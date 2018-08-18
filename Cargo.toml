@@ -1,0 +1,6 @@
+[package]
+name = "mygui"
+version = "0.1.0"
+authors = ["Diggory Hardy <git@dhardy.name>"]
+
+[dependencies]
