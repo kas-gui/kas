@@ -1,6 +1,6 @@
 //! Basic controls
 
-use ::Widget;
+use super::Widget;
 
 // TODO: abstract out text part?
 pub struct TextButton {

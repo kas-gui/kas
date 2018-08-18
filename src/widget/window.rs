@@ -1,6 +1,6 @@
 //! Window widgets
 
-use ::{Widget, control::button, layout};
+use super::{Widget, control::button, layout};
 
 /// Main window type
 pub struct Window<W: Widget> {

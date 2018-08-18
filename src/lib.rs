@@ -1,8 +1,3 @@
-pub mod canvas;
-pub mod control;
-pub mod layout;
-pub mod window;
+//! Mygui lib
 
-
-/// Widget trait
-pub trait Widget {}
+pub mod widget;

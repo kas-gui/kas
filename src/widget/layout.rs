@@ -1,6 +1,6 @@
 //! Layout widgets
 
-use ::Widget;
+use super::Widget;
 
 /// Vertical list of two widgets
 pub struct VList2<A: Widget, B: Widget> {

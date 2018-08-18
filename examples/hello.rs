@@ -2,8 +2,8 @@
 
 extern crate mygui;
 
-use mygui::canvas::Text;
-use mygui::window::message_box;
+use mygui::widget::canvas::Text;
+use mygui::widget::window::message_box;
 
 fn main() {
     // Build widgets.

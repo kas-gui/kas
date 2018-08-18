@@ -1,6 +1,6 @@
 //! Canvas types
 
-use ::Widget;
+use super::Widget;
 
 pub struct Text {
     text: &'static str,
