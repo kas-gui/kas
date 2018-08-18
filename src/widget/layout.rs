@@ -1,5 +1,6 @@
 //! Layout widgets
 
+use widget::event;
 use super::Widget;
 
 /// Vertical list of two widgets
@@ -14,4 +15,6 @@ impl<A: Widget, B: Widget> VList2<A, B> {
     }
 }
 
-impl<A: Widget, B: Widget> Widget for VList2<A, B> {}
+impl<A: Widget, B: Widget> Widget for VList2<A, B> {
+    type Response = event::NoResponse;    //TODO: pass to children
+}

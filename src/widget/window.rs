@@ -1,5 +1,6 @@
 //! Window widgets
 
+use widget::event;
 use super::{Widget, control::button, layout};
 
 /// Main window type
@@ -19,12 +20,20 @@ impl<W: Widget> Window<W> {
     }
 }
 
+impl<W: Widget> Widget for Window<W> {
+    type Response = event::NoResponse;
+    
+    fn event(&mut self, event: event::Event) -> Self::Response {
+        unimplemented!()
+    }
+}
+
 
 pub fn message_box<M: Widget>(message: M) -> Window<impl Widget> {
     Window::new(
         layout::VList2::new(
             message,
-            button::ok()
+            button::ok(|| event::Response::Close)
         )
     )
 }
