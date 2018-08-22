@@ -1,11 +1,13 @@
 //! Counter example (simple button)
 
+#[macro_use]
 extern crate mygui;
 
 use mygui::widget::{
+    Widget,
     canvas::Text,
     control::TextButton,
-    event::NoResponse,
+    event::{self, NoResponse},
     layout::VList2,
     window::Window
 };
@@ -20,6 +22,35 @@ impl From<NoResponse> for Message {
         Message::None
     }
 }
+
+struct WindowInner<B> {
+    display: Text,
+    button: B,
+    counter: usize,
+}
+
+impl_layout!(WindowInner; vertical; display, button);
+
+impl<B: Widget<Response = Message>> Widget for WindowInner<B> {
+    type Response = NoResponse;
+    
+    fn handle(&mut self, event: event::Event) -> Self::Response {
+        match_event_widget!(event;
+            display => self.display.handle(event).into(),
+            button => {
+                match button.handle(event) {
+                    Message::None => {},
+                    Message::Incr => {
+                        self.counter += 1;
+                        self.display.set_text(self.counter.to_string());
+                    }
+                }
+                NoResponse::None
+            },
+        )
+    }
+}
+
 
 fn main() {
     // TODO: need a handler with state (the counter) and ability to connect to widgets

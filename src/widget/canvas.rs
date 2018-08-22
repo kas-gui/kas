@@ -7,6 +7,12 @@ pub struct Text {
     text: &'static str,
 }
 
+impl Text {
+    pub fn set_text(&mut self, s: String) {
+        unimplemented!()
+    }
+}
+
 impl From<&'static str> for Text {
     fn from(text: &'static str) -> Self {
         Text { text }

@@ -20,11 +20,19 @@ impl<W: Widget> Window<W> {
     }
 }
 
-impl<W: Widget> Widget for Window<W> {
+impl<R, W: Widget<Response = R>> Widget for Window<W>
+    where event::Response: From<R>, R: From<event::NoResponse>
+{
     type Response = event::NoResponse;
     
-    fn event(&mut self, event: event::Event) -> Self::Response {
-        unimplemented!()
+    fn handle(&mut self, event: event::Event) -> Self::Response {
+        let response = event::Response::from(self.w.handle(event));
+        match response {
+            event::Response::None => event::NoResponse::None,
+            event::Response::Close => {
+                unimplemented!()
+            }
+        }
     }
 }
 
