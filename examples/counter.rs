@@ -4,7 +4,7 @@
 extern crate mygui;
 
 use mygui::widget::{
-    Widget,
+    Widget, WidgetCore,
     canvas::Text,
     control::TextButton,
     event::{self, NoResponse},
@@ -30,6 +30,8 @@ struct WindowInner<B> {
 }
 
 impl_layout!(WindowInner; vertical; display, button);
+
+impl<B> WidgetCore for WindowInner<B> {}
 
 impl<B: Widget<Response = Message>> Widget for WindowInner<B> {
     type Response = NoResponse;

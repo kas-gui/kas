@@ -1,6 +1,6 @@
 //! Canvas types
 
-use super::Widget;
+use super::{Widget, WidgetCore};
 use super::event;
 
 pub struct Text {
@@ -18,6 +18,8 @@ impl From<&'static str> for Text {
         Text { text }
     }
 }
+
+impl WidgetCore for Text {}
 
 impl Widget for Text {
     type Response = event::NoResponse;

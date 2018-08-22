@@ -1,10 +1,11 @@
 //! Window widgets
 
 use widget::event;
-use super::{Widget, control::button, layout};
+use super::{Widget, WidgetCore};
+use super::{control::button, layout};
 
 /// Main window type
-pub struct Window<W: Widget> {
+pub struct Window<W> {
     w: W
 }
 
@@ -19,6 +20,8 @@ impl<W: Widget> Window<W> {
         // TODO
     }
 }
+
+impl<W> WidgetCore for Window<W> {}
 
 impl<R, W: Widget<Response = R>> Widget for Window<W>
     where event::Response: From<R>, R: From<event::NoResponse>

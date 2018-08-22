@@ -1,10 +1,10 @@
 //! Layout widgets
 
 use widget::event;
-use super::Widget;
+use super::{Widget, WidgetCore};
 
 /// Vertical list of two widgets
-pub struct VList2<A: Widget, B: Widget> {
+pub struct VList2<A, B> {
     a: A,
     b: B
 }
@@ -14,6 +14,8 @@ impl<A: Widget, B: Widget> VList2<A, B> {
         VList2 { a, b }
     }
 }
+
+impl<A, B> WidgetCore for VList2<A, B> {}
 
 impl<A: Widget, B: Widget> Widget for VList2<A, B> {
     type Response = event::NoResponse;    //TODO: pass to children

@@ -1,16 +1,15 @@
 //! Basic controls
 
 use super::event;
-use super::Widget;
+use super::{Widget, WidgetCore};
 
 // TODO: abstract out text part?
-// TODO: use abstraction around handler to allow configuration with single template parameter?
-pub struct TextButton<R, H: Fn() -> R> {
+pub struct TextButton<H> {
     msg: &'static str,
     handler: H,
 }
 
-impl<R, H: Fn() -> R> TextButton<R, H> {
+impl<R, H: Fn() -> R> TextButton<H> {
     pub fn new(msg: &'static str, handler: H) -> Self {
         TextButton { msg, handler }
     }
@@ -24,7 +23,10 @@ impl<R, H: Fn() -> R> TextButton<R, H> {
 //     }
 // }
 
-impl<R: From<event::NoResponse>, H: Fn() -> R> Widget for TextButton<R, H> {
+
+impl<H> WidgetCore for TextButton<H> {}
+
+impl<R: From<event::NoResponse>, H: Fn() -> R> Widget for TextButton<H> {
     type Response = R;
     
     fn handle(&mut self, event: event::Event) -> Self::Response {
@@ -39,7 +41,7 @@ impl<R: From<event::NoResponse>, H: Fn() -> R> Widget for TextButton<R, H> {
 pub mod button {
     use super::TextButton;
     
-    pub fn ok<R, H: Fn() -> R>(handler: H) -> TextButton<R, H> {
+    pub fn ok<R, H: Fn() -> R>(handler: H) -> TextButton<H> {
         TextButton::new("Ok", handler)
     }
 }

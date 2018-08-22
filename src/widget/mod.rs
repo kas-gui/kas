@@ -7,8 +7,12 @@ pub mod layout;
 pub mod window;
 
 
-/// Widget trait
-pub trait Widget {
+/// Core widget trait (object-safe)
+pub trait WidgetCore {
+}
+
+/// Widget trait — includes user-customisable sub-type
+pub trait Widget: WidgetCore {
     type Response: From<event::NoResponse>;
     
     /// Handle an event, and return a user-defined message
