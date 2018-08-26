@@ -2,6 +2,34 @@ My GUI library
 ==========
 
 
+Goals
+------
+
+Rust currently has a smattering of GUI libraries, but none currently offer the
+full complement of features which really show off the strengths of the Rust
+language:
+
+-   **safe**: GUIs are complex, high-level constructions; they really should
+    make it easy to write memory- and thread-safe code
+-   **easy**: while the behaviour expressed by GUIs is complex, the ideas behind
+    them are usually not; it should therefore be easy to write typical GUIs
+-   **flexible building blocks**: the Rust language has succeeded in keeping the
+    language specification *moderately* simple while buliding a rich library
+    on top of this; a Rust GUI library should do the same
+-   **static type model**: Rust has succeeded in allowing most types to have
+    compile-time known size and static linkage; not only does this avoid
+    unnecessary run-time memory allocation, but also enables a *lot*
+    of compile-time optimisation
+
+Note that certain trade-offs must be made to allow the above goals; in
+particular this means the library will not be easy to use via FFI (e.g. from C):
+
+-   **complex types**: many widget types are complex or outright unnameable
+-   **heavy use of macros**: while users *should* be able to implement
+    functionality directly, this may be verbose and monotonous; macros can be
+    used to construct the necessary implementations more succinctly
+
+
 Widgets
 --------
 
