@@ -2,16 +2,18 @@
 
 use super::event;
 use super::{Widget, WidgetCore};
+use super::layout::WidgetLayout;
 
 // TODO: abstract out text part?
 pub struct TextButton<H> {
     msg: &'static str,
     handler: H,
+    size: (u32, u32),
 }
 
 impl<R, H: Fn() -> R> TextButton<H> {
     pub fn new(msg: &'static str, handler: H) -> Self {
-        TextButton { msg, handler }
+        TextButton { msg, handler, size: (0, 0) }
     }
 }
 
@@ -23,6 +25,16 @@ impl<R, H: Fn() -> R> TextButton<H> {
 //     }
 // }
 
+
+impl<H> WidgetLayout for TextButton<H> {
+    fn min_size(&self) -> (u32, u32) {
+        (50, 20)    // TODO
+    }
+
+    fn set_size(&mut self, size: (u32, u32)) {
+        self.size = size;
+    }
+}
 
 impl<H> WidgetCore for TextButton<H> {}
 

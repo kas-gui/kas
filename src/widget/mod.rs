@@ -6,9 +6,10 @@ pub mod event;
 pub mod layout;
 pub mod window;
 
+use self::layout::WidgetLayout;
 
 /// Core widget trait (object-safe)
-pub trait WidgetCore {
+pub trait WidgetCore: WidgetLayout {
 }
 
 /// Widget trait — includes user-customisable sub-type

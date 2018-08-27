@@ -8,7 +8,7 @@ use mygui::widget::{
     canvas::Text,
     control::TextButton,
     event::{self, NoResponse},
-    layout::VList2,
+    layout::WidgetLayout,
     window::Window
 };
 
@@ -29,9 +29,9 @@ struct WindowInner<B> {
     counter: usize,
 }
 
-impl_layout!(WindowInner; vertical; display, button);
+impl_layout!(WindowInner<B: WidgetLayout>; vlist(display, button));
 
-impl<B> WidgetCore for WindowInner<B> {}
+impl<B: WidgetLayout> WidgetCore for WindowInner<B> {}
 
 impl<B: Widget<Response = Message>> Widget for WindowInner<B> {
     type Response = NoResponse;
@@ -55,18 +55,12 @@ impl<B: Widget<Response = Message>> Widget for WindowInner<B> {
 
 
 fn main() {
-    // TODO: need a handler with state (the counter) and ability to connect to widgets
-    // (write new label to the `Text` field).
-    // How to access widgets? Use index in tuple? Can we name?
-    let mut window = Window::new(
-        VList2::new(
-            Text::from("0"),
-            TextButton::new(
-                "increment",
-                || Message::Incr
-            )
-        )
-    );
+    let mut window = Window::new(   // construct with default state and handler
+        WindowInner {
+            display: Text::from("0"),
+            button: TextButton::new("increment", || Message::Incr),
+            counter: 0
+        });
     
     window.display();
 }

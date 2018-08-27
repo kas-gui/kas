@@ -3,6 +3,8 @@
 //! Event handling uses *event* messages, passed from the parent into a widget,
 //! with responses passed back to the parent.
 
+// use super::WidgetSet;
+
 /// Input events
 pub enum Event {
 }
