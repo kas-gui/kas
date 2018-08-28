@@ -5,13 +5,19 @@ extern crate mygui;
 use mygui::widget::canvas::Text;
 use mygui::widget::window::{MessageBox, action_close};
 
-fn main() {
+use mygui::toolkit::Toolkit;
+use mygui::toolkit::gtk::{GtkToolkit, Error};
+
+fn main() -> Result<(), Error> {
     // Build widgets.
     // Message is a Window with an "Ok" button and notification status.
     // Each Window::new method creates objects then solves constraints.
-    let mut window = MessageBox::new(/*Notify::Info,*/
+    let window = MessageBox::new(/*Notify::Info,*/
         Text::from("Hello world"),
         action_close);
     
-    window.display();
+    let mut toolkit = GtkToolkit::new()?;
+    toolkit.show(window);
+    toolkit.main();
+    Ok(())
 }

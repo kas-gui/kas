@@ -9,7 +9,12 @@ use mygui::widget::{
     control::TextButton,
     event::{self, NoResponse},
     layout::WidgetLayout,
-    window::Window
+    window::SimpleWindow
+};
+
+use mygui::toolkit::{
+    Toolkit,
+    gtk::{GtkToolkit, Error}
 };
 
 enum Message {
@@ -54,13 +59,16 @@ impl<B: Widget<Response = Message>> Widget for WindowInner<B> {
 }
 
 
-fn main() {
-    let mut window = Window::new(   // construct with default state and handler
+fn main() -> Result<(), Error> {
+    let window = SimpleWindow::new(   // construct with default state and handler
         WindowInner {
             display: Text::from("0"),
             button: TextButton::new("increment", || Message::Incr),
             counter: 0
         });
     
-    window.display();
+    let mut toolkit = GtkToolkit::new()?;
+    toolkit.show(window);
+    toolkit.main();
+    Ok(())
 }

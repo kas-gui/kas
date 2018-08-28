@@ -4,3 +4,7 @@ version = "0.1.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 
 [dependencies]
+
+[dependencies.gtk]
+version = "0.4.1"
+#features = ["v3_10"]

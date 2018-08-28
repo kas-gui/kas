@@ -5,24 +5,31 @@ use widget::event;
 use widget::control::{button, TextButton};
 use widget::layout::WidgetLayout;
 
+/// Main window trait
+pub trait Window {
+    /// Display the window
+    fn display(&mut self);
+}
+
 /// Main window type
-pub struct Window<W> {
+pub struct SimpleWindow<W> {
     w: W
 }
 
-impl<W: Widget> Window<W> {
+impl<W: Widget> SimpleWindow<W> {
     /// Create
-    pub fn new(w: W) -> Window<W> {
-        Window { w }
+    pub fn new(w: W) -> SimpleWindow<W> {
+        SimpleWindow { w }
     }
-    
-    /// Display the window
-    pub fn display(&mut self) {
+}
+
+impl<W> Window for SimpleWindow<W> {
+    fn display(&mut self) {
         // TODO
     }
 }
 
-impl<W: WidgetLayout> WidgetLayout for Window<W> {
+impl<W: WidgetLayout> WidgetLayout for SimpleWindow<W> {
     fn min_size(&self) -> (u32, u32) {
         self.w.min_size()
     }
@@ -32,9 +39,9 @@ impl<W: WidgetLayout> WidgetLayout for Window<W> {
     }
 }
 
-impl<W: WidgetLayout> WidgetCore for Window<W> {}
+impl<W: WidgetLayout> WidgetCore for SimpleWindow<W> {}
 
-impl<R, W: Widget<Response = R>> Widget for Window<W>
+impl<R, W: Widget<Response = R>> Widget for SimpleWindow<W>
     where event::Response: From<R>, R: From<event::NoResponse>
 {
     type Response = event::NoResponse;
@@ -70,9 +77,10 @@ impl<M, R, H: Fn() -> R> MessageBox<M, H> {
             button: button::ok(action)
         }
     }
-    
-    // TODO: use a Window trait? Or re-use the Window type?
-    pub fn display(&mut self) {
-        //TODO
+}
+
+impl<M, H> Window for MessageBox<M, H> {
+    fn display(&mut self) {
+        // TODO
     }
 }
