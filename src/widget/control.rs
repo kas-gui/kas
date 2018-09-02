@@ -1,19 +1,21 @@
 //! Basic controls
 
 use super::event;
-use super::{Widget, WidgetCore};
+use super::{Widget, WidgetCoreData};
 use super::layout::WidgetLayout;
 
 // TODO: abstract out text part?
 pub struct TextButton<H> {
+    core: WidgetCoreData,
     msg: &'static str,
     handler: H,
-    size: (u32, u32),
 }
+
+impl_widget_core!(TextButton<H>, core);
 
 impl<R, H: Fn() -> R> TextButton<H> {
     pub fn new(msg: &'static str, handler: H) -> Self {
-        TextButton { msg, handler, size: (0, 0) }
+        TextButton { core: Default::default(), msg, handler }
     }
 }
 
@@ -27,16 +29,10 @@ impl<R, H: Fn() -> R> TextButton<H> {
 
 
 impl<H> WidgetLayout for TextButton<H> {
-    fn min_size(&self) -> (u32, u32) {
+    fn min_size(&self) -> (i32, i32) {
         (50, 20)    // TODO
     }
-
-    fn set_size(&mut self, size: (u32, u32)) {
-        self.size = size;
-    }
 }
-
-impl<H> WidgetCore for TextButton<H> {}
 
 impl<R: From<event::NoResponse>, H: Fn() -> R> Widget for TextButton<H> {
     type Response = R;

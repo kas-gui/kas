@@ -7,3 +7,7 @@ extern crate gtk;
 
 pub mod widget;
 pub mod toolkit;
+
+mod util;
+
+pub use util::Rect;

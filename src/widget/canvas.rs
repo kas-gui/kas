@@ -1,37 +1,36 @@
 //! Canvas types
 
-use super::{Widget, WidgetCore};
+use super::{Widget, WidgetCoreData};
 use super::event;
 use super::layout::WidgetLayout;
 
 pub struct Text {
-    text: &'static str,
-    size: (u32, u32),
+    core: WidgetCoreData,
+    text: String,
 }
 
+impl_widget_core!(Text, core);
+
 impl Text {
-    pub fn set_text(&mut self, s: String) {
-        unimplemented!()
+    pub fn set_text<T>(&mut self, s: T) where String: From<T> {
+        self.text = String::from(s);
     }
 }
 
-impl From<&'static str> for Text {
-    fn from(text: &'static str) -> Self {
-        Text { text, size: (0, 0) }
+impl<T> From<T> for Text where String: From<T> {
+    fn from(text: T) -> Self {
+        Text {
+            core: Default::default(),
+            text: String::from(text)
+        }
     }
 }
 
 impl WidgetLayout for Text {
-    fn min_size(&self) -> (u32, u32) {
+    fn min_size(&self) -> (i32, i32) {
         (80, 40)    // TODO
     }
-
-    fn set_size(&mut self, size: (u32, u32)) {
-        self.size = size;
-    }
 }
-
-impl WidgetCore for Text {}
 
 impl Widget for Text {
     type Response = event::NoResponse;

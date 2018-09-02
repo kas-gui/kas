@@ -4,7 +4,7 @@
 extern crate mygui;
 
 use mygui::widget::{
-    Widget, WidgetCore,
+    Widget, WidgetCoreData,
     canvas::Text,
     control::TextButton,
     event::{self, NoResponse},
@@ -29,14 +29,14 @@ impl From<NoResponse> for Message {
 }
 
 struct WindowInner<B> {
+    core: WidgetCoreData,
     display: Text,
     button: B,
     counter: usize,
 }
 
+impl_widget_core!(WindowInner<B>, core);
 impl_layout!(WindowInner<B: WidgetLayout>; vlist(display, button));
-
-impl<B: WidgetLayout> WidgetCore for WindowInner<B> {}
 
 impl<B: Widget<Response = Message>> Widget for WindowInner<B> {
     type Response = NoResponse;
@@ -62,6 +62,7 @@ impl<B: Widget<Response = Message>> Widget for WindowInner<B> {
 fn main() -> Result<(), Error> {
     let window = SimpleWindow::new(   // construct with default state and handler
         WindowInner {
+            core: Default::default(),
             display: Text::from("0"),
             button: TextButton::new("increment", || Message::Incr),
             counter: 0

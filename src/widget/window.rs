@@ -1,6 +1,6 @@
 //! Window widgets
 
-use widget::{Widget, WidgetCore};
+use widget::{Widget, WidgetCoreData};
 use widget::event;
 use widget::control::{button, TextButton};
 use widget::layout::WidgetLayout;
@@ -13,13 +13,16 @@ pub trait Window {
 
 /// Main window type
 pub struct SimpleWindow<W> {
+    core: WidgetCoreData,
     w: W
 }
+
+impl_widget_core!(SimpleWindow<W>, core);
 
 impl<W: Widget> SimpleWindow<W> {
     /// Create
     pub fn new(w: W) -> SimpleWindow<W> {
-        SimpleWindow { w }
+        SimpleWindow { core: Default::default(), w }
     }
 }
 
@@ -30,16 +33,14 @@ impl<W> Window for SimpleWindow<W> {
 }
 
 impl<W: WidgetLayout> WidgetLayout for SimpleWindow<W> {
-    fn min_size(&self) -> (u32, u32) {
+    fn min_size(&self) -> (i32, i32) {
         self.w.min_size()
     }
 
-    fn set_size(&mut self, size: (u32, u32)) {
+    fn set_size(&mut self, size: (i32, i32)) {
         self.w.set_size(size)
     }
 }
-
-impl<W: WidgetLayout> WidgetCore for SimpleWindow<W> {}
 
 impl<R, W: Widget<Response = R>> Widget for SimpleWindow<W>
     where event::Response: From<R>, R: From<event::NoResponse>

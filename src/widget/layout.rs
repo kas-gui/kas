@@ -1,11 +1,15 @@
 //! Widget layout
 
-pub trait WidgetLayout {
+use widget::WidgetCore;
+
+pub trait WidgetLayout: WidgetCore {
     /// Minimum expected widget size; `(width, height)`
-    fn min_size(&self) -> (u32, u32);
+    fn min_size(&self) -> (i32, i32);
     
     /// Called at least once. Should position any sub-widgets.
-    fn set_size(&mut self, size: (u32, u32));
+    fn set_size(&mut self, size: (i32, i32)) {
+        self.rect_mut().size = size;
+    }
 }
 
 #[macro_export]
@@ -58,11 +62,11 @@ macro_rules! impl_layout {
             $crate::widget::layout::WidgetLayout
             for $ty< $( $N ),* >
         {
-            fn min_size(&self) -> (u32, u32) {
+            fn min_size(&self) -> (i32, i32) {
                 min_size_of!( self; $layout $($params)* )
             }
 
-            fn set_size(&mut self, (w, h): (u32, u32)) {
+            fn set_size(&mut self, (w, h): (i32, i32)) {
                 set_size_of!( self; $layout $($params)*; w, h );
             }
         }
