@@ -5,6 +5,7 @@ use super::{Widget, WidgetCoreData};
 use super::layout::WidgetLayout;
 
 // TODO: abstract out text part?
+#[derive(Clone, Default)]
 pub struct TextButton<H> {
     core: WidgetCoreData,
     msg: &'static str,

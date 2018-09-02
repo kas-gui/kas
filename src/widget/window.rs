@@ -5,13 +5,14 @@ use widget::event;
 use widget::control::{button, TextButton};
 use widget::layout::WidgetLayout;
 
-/// Main window trait
+/// A window is a drawable interactive region provided by windowing system.
 pub trait Window {
-    /// Display the window
-    fn display(&mut self);
+    /// Handle an input event.
+    fn handle(&mut self, event: event::Event) -> event::Response;
 }
 
 /// Main window type
+#[derive(Clone, Default)]
 pub struct SimpleWindow<W> {
     core: WidgetCoreData,
     w: W
@@ -26,12 +27,6 @@ impl<W: Widget> SimpleWindow<W> {
     }
 }
 
-impl<W> Window for SimpleWindow<W> {
-    fn display(&mut self) {
-        // TODO
-    }
-}
-
 impl<W: WidgetLayout> WidgetLayout for SimpleWindow<W> {
     fn min_size(&self) -> (i32, i32) {
         self.w.min_size()
@@ -42,19 +37,11 @@ impl<W: WidgetLayout> WidgetLayout for SimpleWindow<W> {
     }
 }
 
-impl<R, W: Widget<Response = R>> Widget for SimpleWindow<W>
+impl<R, W: Widget<Response = R>> Window for SimpleWindow<W>
     where event::Response: From<R>, R: From<event::NoResponse>
 {
-    type Response = event::NoResponse;
-    
-    fn handle(&mut self, event: event::Event) -> Self::Response {
-        let response = event::Response::from(self.w.handle(event));
-        match response {
-            event::Response::None => event::NoResponse::None,
-            event::Response::Close => {
-                unimplemented!()
-            }
-        }
+    fn handle(&mut self, event: event::Event) -> event::Response {
+        event::Response::from(self.w.handle(event))
     }
 }
 
@@ -81,7 +68,7 @@ impl<M, R, H: Fn() -> R> MessageBox<M, H> {
 }
 
 impl<M, H> Window for MessageBox<M, H> {
-    fn display(&mut self) {
-        // TODO
+    fn handle(&mut self, event: event::Event) -> event::Response {
+        unimplemented!()
     }
 }

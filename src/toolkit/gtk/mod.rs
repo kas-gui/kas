@@ -44,7 +44,7 @@ impl GtkToolkit {
 }
 
 impl Toolkit for GtkToolkit {
-    fn show<W: Window+'static>(&mut self, window: W) {
+    fn add<W: Window+'static>(&mut self, window: W) {
         let w = gtk::Window::new(gtk::WindowType::Toplevel);
         w.show_all();
         w.connect_delete_event(|_, _| {

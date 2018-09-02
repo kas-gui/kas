@@ -41,7 +41,7 @@ pub trait WidgetCore {
     fn rect_mut(&mut self) -> &mut Rect;
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct WidgetCoreData {
     rect: Rect,
 }
@@ -56,7 +56,10 @@ impl WidgetCore for WidgetCoreData {
     }
 }
 
-/// Widget trait — includes user-customisable sub-type
+/// A widget encapsulates code for event handling and/or drawing some feature
+/// of a sub-region of a window.
+/// 
+/// Functionality common to all widgets is provided by the `WidgetCore` trait.
 pub trait Widget: WidgetLayout {
     type Response: From<event::NoResponse>;
     

@@ -17,7 +17,7 @@ fn main() -> Result<(), Error> {
         action_close);
     
     let mut toolkit = GtkToolkit::new()?;
-    toolkit.show(window);
+    toolkit.add(window);
     toolkit.main();
     Ok(())
 }

@@ -4,6 +4,7 @@ use super::{Widget, WidgetCoreData};
 use super::event;
 use super::layout::WidgetLayout;
 
+#[derive(Clone, Default)]
 pub struct Text {
     core: WidgetCoreData,
     text: String,

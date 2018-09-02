@@ -10,5 +10,5 @@ use widget::window::Window;
 /// de-initialisation in a `Drop` implementation.
 pub trait Toolkit {
     /// Assume ownership of and display a window.
-    fn show<W: Window+'static>(&mut self, window: W);
+    fn add<W: Window+'static>(&mut self, window: W);
 }
