@@ -5,7 +5,7 @@ use widget::{Layout, Widget, CoreData};
 use widget::control::{button, TextButton};
 
 /// A window is a drawable interactive region provided by windowing system.
-pub trait Window {
+pub trait Window: Widget {
     /// Handle an input event.
     fn handle(&mut self, event: event::Event) -> event::Response;
 }
@@ -36,7 +36,17 @@ impl<W: Layout> Layout for SimpleWindow<W> {
     }
 }
 
-impl<R, W: Handler<Response = R>> Window for SimpleWindow<W>
+impl<W: Widget + 'static> Widget for SimpleWindow<W> {
+    fn len(&self) -> usize { 1 }
+    fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> {
+        match index {
+            1 => Some(&self.w),
+            _ => None,
+        }
+    }
+}
+
+impl<R, W: Handler<Response = R> + Widget + 'static> Window for SimpleWindow<W>
     where event::Response: From<R>, R: From<event::NoResponse>
 {
     fn handle(&mut self, event: event::Event) -> event::Response {
@@ -50,6 +60,7 @@ pub fn action_close() -> impl Fn() -> event::Response {
 }
 
 pub struct MessageBox<M, H> {
+    core: CoreData,
     message: M,
     button: TextButton<H>,
 }
@@ -60,9 +71,29 @@ impl<M, R, H: Fn() -> R> MessageBox<M, H> {
     // Once existential types are available, H parameter will not be needed.
     pub fn new(message: M, action: H) -> Self {
         MessageBox{
+            core: Default::default(),
             message,
             button: button::ok(action)
         }
+    }
+}
+
+impl_widget_core!(MessageBox<M, H>, core);
+
+impl<M, H> Layout for MessageBox<M, H> {
+    fn min_size(&self) -> (i32, i32) {
+        unimplemented!()
+    }
+
+    fn set_size(&mut self, size: (i32, i32)) {
+        unimplemented!()
+    }
+}
+
+impl<M, H> Widget for MessageBox<M, H> {
+    fn len(&self) -> usize { unimplemented!() }
+    fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> {
+        unimplemented!()
     }
 }
 
