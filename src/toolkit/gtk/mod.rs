@@ -6,11 +6,15 @@ use std::marker::PhantomData;
 use std::rc::Rc;
 
 use gtk;
-use gtk::WidgetExt;
+use gtk::{Cast, WidgetExt, ContainerExt};
 
+use widget::{Class, Widget};
 use widget::window::Window;
 use toolkit::Toolkit;
 
+unsafe fn extend_lifetime<'b, R: ?Sized>(r: &'b R) -> &'static R {
+    ::std::mem::transmute::<&'b R, &'static R>(r)
+}
 
 /// Object used to initialise GTK and create windows
 /// 
@@ -23,6 +27,7 @@ use toolkit::Toolkit;
 /// Then: re-build all widgets with desired associated data. Allocate the whole
 /// structure on the heap so that values never get moved. Now set references.
 pub struct GtkToolkit {
+    // Note: `Box<_>` values must exist for as long as last param
     windows: Vec<(Box<Window>, gtk::Window)>,
     _phantom: PhantomData<Rc<()>>,  // not Send or Sync
 }
@@ -41,17 +46,43 @@ impl GtkToolkit {
     pub fn main(&mut self) {
         gtk::main();
     }
+    
+    fn add_widgets(&mut self, gtk_widget: gtk::Container, widget: &'static Widget) {
+        for child in (0..widget.len()).map(|i| &widget[i]) {
+            let gtk_child = match child.class() {
+                Class::Container =>
+                    gtk::Box::new(gtk::Orientation::Vertical, 3)
+                        .upcast::<gtk::Widget>(),
+                Class::Button =>
+                    gtk::Button::new_with_label(child.label().unwrap())
+                        .upcast::<gtk::Widget>(),
+                Class::Text => gtk::Label::new(child.label())
+                        .upcast::<gtk::Widget>(),
+                Class::Window => continue,  // TODO embedded windows?
+            };
+            gtk_widget.add(&gtk_child);
+            if let Ok(gtk_container) = gtk_child.dynamic_cast::<gtk::Container>() {
+                self.add_widgets(gtk_container, child);
+            }
+        }
+    }
 }
 
 impl Toolkit for GtkToolkit {
     fn add<W: Window+'static>(&mut self, window: W) {
-        let w = gtk::Window::new(gtk::WindowType::Toplevel);
-        w.show_all();
-        w.connect_delete_event(|_, _| {
+        let gtk_window = gtk::Window::new(gtk::WindowType::Toplevel);
+        gtk_window.show_all();
+        gtk_window.connect_delete_event(|_, _| {
             gtk::main_quit();
             gtk::Inhibit(false)
         });
-        self.windows.push((Box::new(window), w));
+        let window = Box::new(window);
+        // HACK: GTK widgets depend on passed pointers but don't mark lifetime
+        // restrictions in their types. We cannot guard usage correctly.
+        self.add_widgets(gtk_window.clone().upcast::<gtk::Container>(),
+            unsafe{ extend_lifetime(&*window) });
+        gtk_window.show_all();
+        self.windows.push((window, gtk_window));
     }
 }
 

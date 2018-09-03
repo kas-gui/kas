@@ -1,7 +1,7 @@
 //! Window widgets
 
 use event::{self, Handler};
-use widget::{Layout, Widget, CoreData};
+use widget::{Class, Layout, Widget, CoreData};
 use widget::control::{button, TextButton};
 
 /// A window is a drawable interactive region provided by windowing system.
@@ -37,10 +37,13 @@ impl<W: Layout> Layout for SimpleWindow<W> {
 }
 
 impl<W: Widget + 'static> Widget for SimpleWindow<W> {
+    fn class(&self) -> Class { Class::Window }
+    fn label(&self) -> Option<&str> { None }
+    
     fn len(&self) -> usize { 1 }
     fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> {
         match index {
-            1 => Some(&self.w),
+            0 => Some(&self.w),
             _ => None,
         }
     }
@@ -91,7 +94,10 @@ impl<M, H> Layout for MessageBox<M, H> {
 }
 
 impl<M, H> Widget for MessageBox<M, H> {
-    fn len(&self) -> usize { unimplemented!() }
+    fn class(&self) -> Class { Class::Window }
+    fn label(&self) -> Option<&str> { None }
+    
+    fn len(&self) -> usize { 0 }
     fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> {
         unimplemented!()
     }

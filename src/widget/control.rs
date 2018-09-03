@@ -1,7 +1,7 @@
 //! Basic controls
 
 use event;
-use widget::{Layout, Widget, CoreData};
+use widget::{Class, Layout, Widget, CoreData};
 
 // TODO: abstract out text part?
 #[derive(Clone, Default)]
@@ -12,7 +12,14 @@ pub struct TextButton<H> {
 }
 
 impl_widget_core!(TextButton<H>, core);
-impl_leaf_widget!(TextButton<H>);
+
+impl<H> Widget for TextButton<H> {
+    fn class(&self) -> Class { Class::Button }
+    fn label(&self) -> Option<&str> { Some(self.msg) }
+    
+    fn len(&self) -> usize { 0 }
+    fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> { None }
+}
 
 impl<R, H: Fn() -> R> TextButton<H> {
     pub fn new(msg: &'static str, handler: H) -> Self {

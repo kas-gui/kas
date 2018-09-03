@@ -23,32 +23,14 @@ macro_rules! impl_widget_core {
     };
 }
 
-/// Implements `Widget` for leaf nodes (i.e. no children of their own)
-#[macro_export]
-macro_rules! impl_leaf_widget {
-    // this evil monstrosity matches <A, B: T, C: S+T>
-    // but because there is no "zero or one" rule, also <D: S: T>
-    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >) => {
-        impl< $( $N $(: $b0 $(+$b)* )* ),* >
-            $crate::widget::Widget
-            for $ty< $( $N ),* >
-        {
-            fn len(&self) -> usize { 0 }
-            fn get(&self, index: usize) ->
-                Option<&(dyn $crate::widget::Widget + 'static)> { None }
-        }
-    };
-    ($ty:ident) => {
-        impl_leaf_widget!($ty<>);
-    };
-}
-
 pub mod canvas;
 pub mod control;
 pub mod window;
 
+mod class;
 mod layout;
 
+pub use self::class::Class;
 pub use self::layout::Layout;
 use Rect;
 
@@ -100,6 +82,13 @@ impl WidgetCore for CoreData {
 /// 
 /// Functionality common to all widgets is provided by the `WidgetCore` trait.
 pub trait Widget: Layout {
+    /// Get the widget's classification.
+    fn class(&self) -> Class;
+    
+    /// Get the widget's label, if any.
+    /// TODO: keep?
+    fn label(&self) -> Option<&str>;
+    
     /// Get the number of child widgets
     fn len(&self) -> usize;
     

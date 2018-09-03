@@ -1,7 +1,7 @@
 //! Canvas types
 
 use event;
-use widget::{Layout, Widget, CoreData};
+use widget::{Class, Layout, Widget, CoreData};
 
 #[derive(Clone, Default)]
 pub struct Text {
@@ -10,7 +10,14 @@ pub struct Text {
 }
 
 impl_widget_core!(Text, core);
-impl_leaf_widget!(Text);
+
+impl Widget for Text {
+    fn class(&self) -> Class { Class::Text }
+    fn label(&self) -> Option<&str> { Some(self.text.as_str()) }
+    
+    fn len(&self) -> usize { 0 }
+    fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> { None }
+}
 
 impl Text {
     pub fn set_text<T>(&mut self, s: T) where String: From<T> {

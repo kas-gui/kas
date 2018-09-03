@@ -5,7 +5,7 @@ extern crate mygui;
 
 use mygui::event::{self, Handler, NoResponse};
 use mygui::widget::{
-    Widget, CoreData,
+    Widget, CoreData, Class,
     canvas::Text,
     control::TextButton,
     Layout,
@@ -59,6 +59,9 @@ impl<B: Handler<Response = Message>> Handler for WindowInner<B> {
 }
 
 impl<B: Widget+'static> Widget for WindowInner<B> {
+    fn class(&self) -> Class { Class::Container }
+    fn label(&self) -> Option<&str> { None }
+    
     fn len(&self) -> usize { 2 }
     fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> {
         match index {
