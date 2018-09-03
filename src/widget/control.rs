@@ -1,18 +1,18 @@
 //! Basic controls
 
-use super::event;
-use super::{Widget, WidgetCoreData};
-use super::layout::WidgetLayout;
+use event;
+use widget::{Layout, Widget, CoreData};
 
 // TODO: abstract out text part?
 #[derive(Clone, Default)]
 pub struct TextButton<H> {
-    core: WidgetCoreData,
+    core: CoreData,
     msg: &'static str,
     handler: H,
 }
 
 impl_widget_core!(TextButton<H>, core);
+impl_leaf_widget!(TextButton<H>);
 
 impl<R, H: Fn() -> R> TextButton<H> {
     pub fn new(msg: &'static str, handler: H) -> Self {
@@ -29,13 +29,13 @@ impl<R, H: Fn() -> R> TextButton<H> {
 // }
 
 
-impl<H> WidgetLayout for TextButton<H> {
+impl<H> Layout for TextButton<H> {
     fn min_size(&self) -> (i32, i32) {
         (50, 20)    // TODO
     }
 }
 
-impl<R: From<event::NoResponse>, H: Fn() -> R> Widget for TextButton<H> {
+impl<R: From<event::NoResponse>, H: Fn() -> R> event::Handler for TextButton<H> {
     type Response = R;
     
     fn handle(&mut self, event: event::Event) -> Self::Response {

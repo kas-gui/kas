@@ -3,12 +3,12 @@
 #[macro_use]
 extern crate mygui;
 
+use mygui::event::{self, Handler, NoResponse};
 use mygui::widget::{
-    Widget, WidgetCoreData,
+    Widget, CoreData,
     canvas::Text,
     control::TextButton,
-    event::{self, NoResponse},
-    layout::WidgetLayout,
+    Layout,
     window::SimpleWindow
 };
 
@@ -29,23 +29,23 @@ impl From<NoResponse> for Message {
 }
 
 struct WindowInner<B> {
-    core: WidgetCoreData,
+    core: CoreData,
     display: Text,
     button: B,
     counter: usize,
 }
 
 impl_widget_core!(WindowInner<B>, core);
-impl_layout!(WindowInner<B: WidgetLayout>; vlist(display, button));
+impl_layout!(WindowInner<B: Layout>; vlist(display, button));
 
-impl<B: Widget<Response = Message>> Widget for WindowInner<B> {
+impl<B: Handler<Response = Message>> Handler for WindowInner<B> {
     type Response = NoResponse;
     
-    fn handle(&mut self, event: event::Event) -> Self::Response {
-        match_event_widget!(event;
-            display => self.display.handle(event).into(),
+    fn handle(&mut self, ev: event::Event) -> Self::Response {
+        match_event_widget!(ev;
+            display => self.display.handle(ev).into(),
             button => {
-                match button.handle(event) {
+                match button.handle(ev) {
                     Message::None => {},
                     Message::Incr => {
                         self.counter += 1;
@@ -55,6 +55,17 @@ impl<B: Widget<Response = Message>> Widget for WindowInner<B> {
                 NoResponse::None
             },
         )
+    }
+}
+
+impl<B: Widget+'static> Widget for WindowInner<B> {
+    fn len(&self) -> usize { 2 }
+    fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> {
+        match index {
+            0 => Some(&self.display),
+            1 => Some(&self.button),
+            _ => None
+        }
     }
 }
 

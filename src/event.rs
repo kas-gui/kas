@@ -31,6 +31,17 @@ impl From<NoResponse> for Response {
     }
 }
 
+/// Mark explicitly ignored events.
 pub fn ignore<M: From<NoResponse>>(_: Event) -> M {
     M::from(NoResponse::None)
+}
+
+/// Event-handling aspect of a widget.
+pub trait Handler {
+    type Response: From<NoResponse>;
+    
+    /// Handle an event, and return a user-defined message
+    fn handle(&mut self, event: Event) -> Self::Response {
+        ignore(event)
+    }
 }

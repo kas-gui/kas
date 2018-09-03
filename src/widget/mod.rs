@@ -1,6 +1,6 @@
 //! Widgets
 
-// TODO: use Deref instead? Would be more like inheritance.
+/// Implements `WidgetCore` using a field of type `CoreData`
 #[macro_export]
 macro_rules! impl_widget_core {
     // this evil monstrosity matches <A, B: T, C: S+T>
@@ -23,16 +23,36 @@ macro_rules! impl_widget_core {
     };
 }
 
+/// Implements `Widget` for leaf nodes (i.e. no children of their own)
+#[macro_export]
+macro_rules! impl_leaf_widget {
+    // this evil monstrosity matches <A, B: T, C: S+T>
+    // but because there is no "zero or one" rule, also <D: S: T>
+    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >) => {
+        impl< $( $N $(: $b0 $(+$b)* )* ),* >
+            $crate::widget::Widget
+            for $ty< $( $N ),* >
+        {
+            fn len(&self) -> usize { 0 }
+            fn get(&self, index: usize) ->
+                Option<&(dyn $crate::widget::Widget + 'static)> { None }
+        }
+    };
+    ($ty:ident) => {
+        impl_leaf_widget!($ty<>);
+    };
+}
+
 pub mod canvas;
 pub mod control;
-pub mod event;
-pub mod layout;
 pub mod window;
 
-use widget::layout::WidgetLayout;
+mod layout;
+
+pub use self::layout::Layout;
 use Rect;
 
-/// Core widget trait (object-safe)
+/// Common widget behaviour
 pub trait WidgetCore {
     /// Get the widget's region, relative to its parent.
     fn rect(&self) -> &Rect;
@@ -41,12 +61,31 @@ pub trait WidgetCore {
     fn rect_mut(&mut self) -> &mut Rect;
 }
 
+/// Common widget data
+/// 
+/// Widgets should normally implement `WidgetCore` by use of an embedded field
+/// of this type (i.e. composition). The `impl_widget_core` macro may be used
+/// to write the actual implementation:
+/// 
+/// ```
+/// #[macro_use] extern crate mygui;
+/// use mygui::widget;
+/// 
+/// struct MyWidget {
+///     core: widget::CoreData,
+///     // more fields here
+/// }
+/// 
+/// impl_widget_core!(MyWidget, core);
+/// 
+/// # fn main() {}
+/// ```
 #[derive(Clone, Default)]
-pub struct WidgetCoreData {
+pub struct CoreData {
     rect: Rect,
 }
 
-impl WidgetCore for WidgetCoreData {
+impl WidgetCore for CoreData {
     fn rect(&self) -> &Rect {
         &self.rect
     }
@@ -60,11 +99,22 @@ impl WidgetCore for WidgetCoreData {
 /// of a sub-region of a window.
 /// 
 /// Functionality common to all widgets is provided by the `WidgetCore` trait.
-pub trait Widget: WidgetLayout {
-    type Response: From<event::NoResponse>;
+pub trait Widget: Layout {
+    /// Get the number of child widgets
+    fn len(&self) -> usize;
     
-    /// Handle an event, and return a user-defined message
-    fn handle(&mut self, event: event::Event) -> Self::Response {
-        event::ignore(event)
+    /// Get a reference to a child widget by index, or `None` if the index is
+    /// out of bounds.
+    /// 
+    /// For convenience, `Index<usize>` is implemented via this method.
+    /// 
+    /// Required: `index < self.len()`.
+    fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)>;
+}
+
+impl ::std::ops::Index<usize> for dyn Widget + 'static {
+    type Output = dyn Widget + 'static;
+    fn index(&self, i: usize) -> &Self::Output {
+        self.get(i).unwrap_or_else(|| panic!("Widget::get: index out of bounds"))
     }
 }

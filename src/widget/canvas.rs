@@ -1,16 +1,16 @@
 //! Canvas types
 
-use super::{Widget, WidgetCoreData};
-use super::event;
-use super::layout::WidgetLayout;
+use event;
+use widget::{Layout, Widget, CoreData};
 
 #[derive(Clone, Default)]
 pub struct Text {
-    core: WidgetCoreData,
+    core: CoreData,
     text: String,
 }
 
 impl_widget_core!(Text, core);
+impl_leaf_widget!(Text);
 
 impl Text {
     pub fn set_text<T>(&mut self, s: T) where String: From<T> {
@@ -27,12 +27,12 @@ impl<T> From<T> for Text where String: From<T> {
     }
 }
 
-impl WidgetLayout for Text {
+impl Layout for Text {
     fn min_size(&self) -> (i32, i32) {
         (80, 40)    // TODO
     }
 }
 
-impl Widget for Text {
+impl event::Handler for Text {
     type Response = event::NoResponse;
 }

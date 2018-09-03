@@ -1,9 +1,8 @@
 //! Window widgets
 
-use widget::{Widget, WidgetCoreData};
-use widget::event;
+use event::{self, Handler};
+use widget::{Layout, Widget, CoreData};
 use widget::control::{button, TextButton};
-use widget::layout::WidgetLayout;
 
 /// A window is a drawable interactive region provided by windowing system.
 pub trait Window {
@@ -14,7 +13,7 @@ pub trait Window {
 /// Main window type
 #[derive(Clone, Default)]
 pub struct SimpleWindow<W> {
-    core: WidgetCoreData,
+    core: CoreData,
     w: W
 }
 
@@ -27,7 +26,7 @@ impl<W: Widget> SimpleWindow<W> {
     }
 }
 
-impl<W: WidgetLayout> WidgetLayout for SimpleWindow<W> {
+impl<W: Layout> Layout for SimpleWindow<W> {
     fn min_size(&self) -> (i32, i32) {
         self.w.min_size()
     }
@@ -37,7 +36,7 @@ impl<W: WidgetLayout> WidgetLayout for SimpleWindow<W> {
     }
 }
 
-impl<R, W: Widget<Response = R>> Window for SimpleWindow<W>
+impl<R, W: Handler<Response = R>> Window for SimpleWindow<W>
     where event::Response: From<R>, R: From<event::NoResponse>
 {
     fn handle(&mut self, event: event::Event) -> event::Response {

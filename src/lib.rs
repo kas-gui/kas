@@ -5,6 +5,7 @@
 
 extern crate gtk;
 
+pub mod event;
 pub mod widget;
 pub mod toolkit;
 

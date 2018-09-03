@@ -2,7 +2,7 @@
 
 use widget::WidgetCore;
 
-pub trait WidgetLayout: WidgetCore {
+pub trait Layout: WidgetCore {
     /// Minimum expected widget size; `(width, height)`
     fn min_size(&self) -> (i32, i32);
     
@@ -45,11 +45,11 @@ macro_rules! set_size_of {
     };
 }
 
-/// Implement the `WidgetLayout` trait for some type.
+/// Implement the `Layout` trait for some type.
 /// 
 /// Usage:
 /// ```nocompile
-/// impl_layout!(MyWidget<T: WidgetLayout>; vlist(text, button));
+/// impl_layout!(MyWidget<T: Layout>; vlist(text, button));
 /// ```
 #[macro_export]
 macro_rules! impl_layout {
@@ -59,7 +59,7 @@ macro_rules! impl_layout {
         $layout:ident $( $params:tt )* ) =>
     {
         impl< $( $N $(: $b0 $(+$b)* )* ),* >
-            $crate::widget::layout::WidgetLayout
+            $crate::widget::Layout
             for $ty< $( $N ),* >
         {
             fn min_size(&self) -> (i32, i32) {
