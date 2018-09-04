@@ -5,6 +5,7 @@
 use std::marker::PhantomData;
 use std::rc::Rc;
 
+use gdk;
 use gtk;
 use gtk::{Cast, WidgetExt, ContainerExt};
 
@@ -14,6 +15,11 @@ use toolkit::Toolkit;
 
 unsafe fn extend_lifetime<'b, R: ?Sized>(r: &'b R) -> &'static R {
     ::std::mem::transmute::<&'b R, &'static R>(r)
+}
+
+fn handler(event: &mut gdk::Event) {
+    println!("Event: {:?}", event);
+    gtk::main_do_event(event);
 }
 
 /// Object used to initialise GTK and create windows
@@ -36,6 +42,9 @@ impl GtkToolkit {
     /// Construct
     pub fn new() -> Result<Self, Error> {
         (gtk::init().map_err(|e| Error(e.0)))?;
+        
+        unsafe{ gdk::Event::set_handler(Some(handler)); }
+        
         Ok(GtkToolkit {
             windows: Vec::new(),
             _phantom: PhantomData,

@@ -3,6 +3,7 @@
 // TODO: for now there are many unused things
 #![allow(unused)]
 
+extern crate gdk;
 extern crate gtk;
 
 pub mod event;

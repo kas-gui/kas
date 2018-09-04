@@ -37,6 +37,7 @@ impl From<NoResponse> for Message {
 //                     Message::None => {},
 //                     Message::Incr => {
 //                         self.counter += 1;
+//                         println!("counter: {}", self.counter);
 //                         self.display.set_text(self.counter.to_string());
 //                     }
 //                 }
