@@ -14,14 +14,13 @@ pub trait Layout: WidgetCore {
 
 #[macro_export]
 macro_rules! min_size_of {
-    ($self:ident; none) => {
+    ($self:ident; $direction:ident;) => {
         (0, 0)
     };
-    // TODO: syntactic ambiguity of layout name and sub-widgets!
-    ($self:ident; vlist ( $g:ident ) ) => {
+    ($self:ident; $direction:ident; $g:ident) => {
         $self.$g.min_size()
     };
-    ($self:ident; vlist ( $g0:ident, $($g:ident),+ ) ) => {{
+    ($self:ident; vertical; $g0:ident, $($g:ident),+) => {{
         let (mut w, mut h) = $self.$g0.min_size();
         $(
             let (w1, h1) = $self.$g.min_size();
@@ -35,8 +34,8 @@ macro_rules! min_size_of {
 // TODO: this implementation naively assumes the size equals the minimum
 #[macro_export]
 macro_rules! set_size_of {
-    ($self:ident; none; $w:expr, $h:expr) => {};
-    ($self:ident; vlist ( $($g:ident),* ); $w:expr, $h:expr) => {
+    ($self:ident; $direction:ident; ; $w:expr, $h:expr) => {};
+    ($self:ident; vertical; $($g:ident),*; $w:expr, $h:expr) => {
         $(
             // naive impl: common width, min heigth everywhere
             let (_, gh) = $self.$g.min_size();
@@ -45,35 +44,92 @@ macro_rules! set_size_of {
     };
 }
 
-/// Implement the `Layout` trait for some type.
-/// 
-/// Usage:
-/// ```nocompile
-/// impl_layout!(MyWidget<T: Layout>; vlist(text, button));
-/// ```
 #[macro_export]
-macro_rules! impl_layout {
-    // this evil monstrosity matches <A, B: T, C: S+T>
-    // but because there is no "zero or one" rule, also <D: S: T>
-    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >;
-        $layout:ident $( $params:tt )* ) =>
-    {
-        impl< $( $N $(: $b0 $(+$b)* )* ),* >
-            $crate::widget::Layout
-            for $ty< $( $N ),* >
+macro_rules! count_items {
+    ($name:ident) => { 1 };
+    ($first:ident, $($rest:ident),*) => {
+        1 + count_items!($($rest),*)
+    }
+}
+
+#[macro_export]
+macro_rules! iter_get_widget {
+    ($self:ident, $index:ident, $i:expr ) => { return None; };
+    ($self:ident, $index:ident, $i:expr, $name:ident) => {
+        if $index == $i {
+            return Some(&$self.$name);
+        }
+        return None;
+    };
+    ($self:ident, $index:ident, $i:expr, $name:ident, $($wname:ident),*) => {
+        if $index == $i {
+            return Some(&$self.$name);
+        }
+        iter_get_widget!($self, $index, ($i + 1), $($wname),*);
+    }
+}
+
+/// Construct a container widget
+#[macro_export]
+macro_rules! make_layout {
+    ($direction:ident;
+        $($wname:ident $wt:ident : $wvalue:expr),* ;
+        $($dname:ident $dt:ident : $dvalue:expr),* ;) =>
+    {{
+        use $crate::widget::{Class, CoreData, Widget, Layout};
+        use $crate::event::{Event, Handler, Response};
+
+        struct L<$($wt: Widget + 'static),* , $($dt),*> {
+            core: CoreData,
+            $($wname: $wt),* ,
+            $($dname: $dt),*
+        }
+
+        impl_widget_core!(L<$($wt: Widget),* , $($dt),*>, core);
+
+        impl<$($wt: Widget),* , $($dt),*> Layout
+            for L<$($wt),* , $($dt),*>
         {
             fn min_size(&self) -> (i32, i32) {
-                min_size_of!( self; $layout $($params)* )
+                min_size_of!(self; $direction; $($wname),*)
             }
 
-            fn set_size(&mut self, (w, h): (i32, i32)) {
-                set_size_of!( self; $layout $($params)*; w, h );
+            fn set_size(&mut self, size: (i32, i32)) {
+                set_size_of!(self; $direction; $($wname),*; size.0, size.1);
             }
         }
-    };
-    ($ty:ident; $layout:ident $( $params:tt )* ) => {
-        impl_layout!($ty<>; $layout $($params)*);
-    };
+
+        impl<$($wt: Widget + 'static),* , $($dt),*> Widget
+            for L<$($wt),* , $($dt),*>
+        {
+            fn class(&self) -> Class { Class::Container }
+            fn label(&self) -> Option<&str> { None }
+
+            fn len(&self) -> usize {
+                count_items!($($wname),*)
+            }
+            fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> {
+                // We need to match, but macros cannot expand to match arms
+                // or parts of if-else chains. Hack: use direct return.
+                iter_get_widget!(self, index, 0, $($wname),*);
+            }
+        }
+
+        impl<$($wt: Widget),* , $($dt),*> Handler
+            for L<$($wt),* , $($dt),*>
+        {
+            type Response = Response;   // TODO
+            fn handle(&mut self, event: Event) -> Self::Response {
+                unimplemented!()
+            }
+        }
+
+        L {
+            core: Default::default(),
+            $($wname: $wvalue),* ,
+            $($dname: $dvalue),*
+        }
+    }}
 }
 
 #[macro_export]

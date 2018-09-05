@@ -3,12 +3,10 @@
 #[macro_use]
 extern crate mygui;
 
-use mygui::event::{self, Handler, NoResponse};
+use mygui::event::{NoResponse};
 use mygui::widget::{
-    Widget, CoreData, Class,
     canvas::Text,
     control::TextButton,
-    Layout,
     window::SimpleWindow
 };
 
@@ -28,59 +26,34 @@ impl From<NoResponse> for Message {
     }
 }
 
-struct WindowInner<B> {
-    core: CoreData,
-    display: Text,
-    button: B,
-    counter: usize,
-}
-
-impl_widget_core!(WindowInner<B>, core);
-impl_layout!(WindowInner<B: Layout>; vlist(display, button));
-
-impl<B: Handler<Response = Message>> Handler for WindowInner<B> {
-    type Response = NoResponse;
-    
-    fn handle(&mut self, ev: event::Event) -> Self::Response {
-        match_event_widget!(ev;
-            display => self.display.handle(ev).into(),
-            button => {
-                match button.handle(ev) {
-                    Message::None => {},
-                    Message::Incr => {
-                        self.counter += 1;
-                        self.display.set_text(self.counter.to_string());
-                    }
-                }
-                NoResponse::None
-            },
-        )
-    }
-}
-
-impl<B: Widget+'static> Widget for WindowInner<B> {
-    fn class(&self) -> Class { Class::Container }
-    fn label(&self) -> Option<&str> { None }
-    
-    fn len(&self) -> usize { 2 }
-    fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> {
-        match index {
-            0 => Some(&self.display),
-            1 => Some(&self.button),
-            _ => None
-        }
-    }
-}
-
+// impl<B: Handler<Response = Message>> Handler for WindowInner<B> {
+//     type Response = NoResponse;
+//     
+//     fn handle(&mut self, ev: event::Event) -> Self::Response {
+//         match_event_widget!(ev;
+//             display => self.display.handle(ev).into(),
+//             button => {
+//                 match button.handle(ev) {
+//                     Message::None => {},
+//                     Message::Incr => {
+//                         self.counter += 1;
+//                         self.display.set_text(self.counter.to_string());
+//                     }
+//                 }
+//                 NoResponse::None
+//             },
+//         )
+//     }
+// }
 
 fn main() -> Result<(), Error> {
     let window = SimpleWindow::new(   // construct with default state and handler
-        WindowInner {
-            core: Default::default(),
-            display: Text::from("0"),
-            button: TextButton::new("increment", || Message::Incr),
-            counter: 0
-        });
+        make_layout!(vertical;
+            display D: Text::from("0"),
+            button B: TextButton::new("increment", || Message::Incr);
+            counter C: 0;
+        )
+    );
     
     let mut toolkit = GtkToolkit::new()?;
     toolkit.add(window);
