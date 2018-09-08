@@ -2,7 +2,9 @@
 //! 
 //! This will be migrated to a separate library later.
 
+use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
+use std::ops::Deref;
 use std::rc::Rc;
 
 use gdk;
@@ -18,7 +20,43 @@ unsafe fn extend_lifetime<'b, R: ?Sized>(r: &'b R) -> &'static R {
 }
 
 fn handler(event: &mut gdk::Event) {
-    println!("Event: {:?}", event);
+    use gdk::EventType::*;
+    match event.get_event_type() {
+        Nothing => return,  // ignore this event
+        
+        // let GTK handle these for now:
+        ButtonPress |
+        ButtonRelease |
+        ClientEvent |
+        Configure |     // TODO: layout
+        Damage |
+        Delete |
+        DoubleButtonPress |
+        EnterNotify |
+        Expose |
+        FocusChange |
+        GrabBroken |
+        KeyPress |
+        KeyRelease |
+        LeaveNotify |
+        Map |
+        MotionNotify |
+        PropertyNotify |
+        SelectionClear |
+        SelectionNotify |
+        SelectionRequest |
+        Setting |
+        TripleButtonPress |
+        Unmap |
+        VisibilityNotify |
+        WindowState => {
+            // fall through
+        },
+        
+        _ => {
+            println!("Event: {:?}", event);
+        }
+    }
     gtk::main_do_event(event);
 }
 
@@ -34,26 +72,35 @@ fn handler(event: &mut gdk::Event) {
 /// structure on the heap so that values never get moved. Now set references.
 pub struct GtkToolkit {
     // Note: `Box<_>` values must exist for as long as last param
-    windows: Vec<(Box<Window>, gtk::Window)>,
+    windows: RefCell<Vec<(Box<Window>, gtk::Window)>>,
     _phantom: PhantomData<Rc<()>>,  // not Send or Sync
+}
+
+// Use thread_local because our type and GTK pointers are not Sync.
+thread_local! {
+    static TOOLKIT: Cell<Option<&'static GtkToolkit>> = Cell::new(None);
 }
 
 impl GtkToolkit {
     /// Construct
-    pub fn new() -> Result<Self, Error> {
+    pub fn new() -> Result<Box<Self>, Error> {
+        if TOOLKIT.with(|t| t.get().is_some()) {
+            return Err(Error("GtkToolkit::new(): can only be called once"));
+        }
+        
         (gtk::init().map_err(|e| Error(e.0)))?;
         
         unsafe{ gdk::Event::set_handler(Some(handler)); }
         
-        Ok(GtkToolkit {
-            windows: Vec::new(),
+        let tk = Box::new(GtkToolkit {
+            windows: RefCell::new(Vec::new()),
             _phantom: PhantomData,
-        })
-    }
-    
-    /// Run the main loop.
-    pub fn main(&mut self) {
-        gtk::main();
+        });
+        
+        // Cannot use static lifetime analysis here, so we rely on Drop to clean up
+        let p = Some(unsafe { extend_lifetime(tk.deref()) });
+        TOOLKIT.with(|t| t.set(p));
+        Ok(tk)
     }
     
     fn add_widgets(&mut self, gtk_widget: gtk::Container, widget: &'static Widget) {
@@ -77,12 +124,31 @@ impl GtkToolkit {
     }
 }
 
+// event handler code
+impl GtkToolkit {
+    fn remove_window(&self, window: &gtk::Window) {
+        let mut windows = self.windows.borrow_mut();
+        windows.retain(|w| {
+            w.1 != *window
+        });
+        if windows.is_empty() {
+            gtk::main_quit();
+        }
+    }
+}
+
+impl Drop for GtkToolkit {
+    fn drop(&mut self) {
+        TOOLKIT.with(|t| t.set(None));
+    }
+}
+
 impl Toolkit for GtkToolkit {
     fn add<W: Window+'static>(&mut self, window: W) {
         let gtk_window = gtk::Window::new(gtk::WindowType::Toplevel);
         gtk_window.show_all();
-        gtk_window.connect_delete_event(|_, _| {
-            gtk::main_quit();
+        gtk_window.connect_delete_event(|slf, _| {
+            TOOLKIT.with(|t| t.get().map(|tk| tk.remove_window(slf)));
             gtk::Inhibit(false)
         });
         let window = Box::new(window);
@@ -91,7 +157,11 @@ impl Toolkit for GtkToolkit {
         self.add_widgets(gtk_window.clone().upcast::<gtk::Container>(),
             unsafe{ extend_lifetime(&*window) });
         gtk_window.show_all();
-        self.windows.push((window, gtk_window));
+        self.windows.get_mut().push((window, gtk_window));
+    }
+    
+    fn main(&mut self) {
+        gtk::main();
     }
 }
 

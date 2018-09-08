@@ -11,4 +11,7 @@ use widget::window::Window;
 pub trait Toolkit {
     /// Assume ownership of and display a window.
     fn add<W: Window+'static>(&mut self, window: W);
+    
+    /// Run the main loop.
+    fn main(&mut self);
 }
