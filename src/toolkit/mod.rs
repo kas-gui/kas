@@ -2,7 +2,20 @@
 
 pub mod gtk;
 
+use Coord;
 use widget::window::Window;
+
+/// The type of per-widget toolkit data.
+/// 
+/// May be used however the toolkit deems fit, except that widgets are allowed
+/// to default-construct this (i.e. set to zero).
+/// 
+/// Toolkits may with to transmute data to/from their own type(s). In this case
+/// they should ensure (a) that `size_of::<TkData>()` is sufficient, (b) that
+/// `align_of::<TkData>()` is sufficient, (c) gracefully handle the case
+/// `TkData` is larger than their type.
+#[derive(Clone, Debug, Default)]
+pub struct TkData(pub u64);
 
 /// A toolkit handles window management and rendering for a GUI.
 /// 
@@ -10,8 +23,17 @@ use widget::window::Window;
 /// de-initialisation in a `Drop` implementation.
 pub trait Toolkit {
     /// Assume ownership of and display a window.
-    fn add<W: Window+'static>(&mut self, window: W);
+    fn add<W: Window+'static>(&mut self, window: W) where Self: Sized;
     
     /// Run the main loop.
     fn main(&mut self);
+    
+    /// Get a `TkWidget`
+    fn tk_widget(&self) -> &TkWidget;
+}
+
+/// Common widget properties. Implemented by the toolkit.
+pub trait TkWidget {
+    /// Get the widget's default (preferred) size.
+    fn default_size(&self, tkd: TkData) -> Coord;
 }

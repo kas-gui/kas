@@ -16,6 +16,13 @@ macro_rules! impl_widget_core {
             fn rect_mut(&mut self) -> &mut $crate::Rect {
                 self.$core.rect_mut()
             }
+            
+            fn get_tkd(&self) -> $crate::toolkit::TkData {
+                self.$core.get_tkd()
+            }
+            fn set_tkd(&mut self, tkd: $crate::toolkit::TkData) {
+                self.$core.set_tkd(tkd)
+            }
         }
     };
     ($ty:ident, $core:ident) => {
@@ -33,6 +40,7 @@ mod layout;
 pub use self::class::Class;
 pub use self::layout::Layout;
 use Rect;
+use toolkit::TkData;
 
 /// Common widget behaviour
 pub trait WidgetCore {
@@ -41,6 +49,12 @@ pub trait WidgetCore {
     
     /// Get mutable access to the widget's region
     fn rect_mut(&mut self) -> &mut Rect;
+    
+    /// Get the toolkit data associated with this widget
+    fn get_tkd(&self) -> TkData;
+    
+    /// Set the toolkit data associated with this widgte
+    fn set_tkd(&mut self, tkd: TkData);
 }
 
 /// Common widget data
@@ -64,6 +78,7 @@ pub trait WidgetCore {
 /// ```
 #[derive(Clone, Default)]
 pub struct CoreData {
+    tkd: TkData,
     rect: Rect,
 }
 
@@ -74,6 +89,14 @@ impl WidgetCore for CoreData {
     
     fn rect_mut(&mut self) -> &mut Rect {
         &mut self.rect
+    }
+    
+    fn get_tkd(&self) -> TkData {
+        self.tkd.clone()
+    }
+    
+    fn set_tkd(&mut self, tkd: TkData) {
+        self.tkd = tkd;
     }
 }
 
@@ -98,12 +121,44 @@ pub trait Widget: Layout {
     /// For convenience, `Index<usize>` is implemented via this method.
     /// 
     /// Required: `index < self.len()`.
-    fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)>;
+    fn get(&self, index: usize) -> Option<&Widget>;
+    
+    /// Mutable variant of get
+    fn get_mut(&mut self, index: usize) -> Option<&mut Widget>;
 }
 
-impl ::std::ops::Index<usize> for dyn Widget + 'static {
-    type Output = dyn Widget + 'static;
-    fn index(&self, i: usize) -> &Self::Output {
-        self.get(i).unwrap_or_else(|| panic!("Widget::get: index out of bounds"))
+pub struct ChildIter<'a, W: 'a + Widget + ?Sized> {
+    w: &'a W,
+    i: ::std::ops::Range<usize>,
+}
+
+impl<'a, W: 'a + Widget + ?Sized> ChildIter<'a, W> {
+    fn new(widget: &'a W) -> Self {
+        ChildIter { w: widget, i: (0..widget.len()).into_iter() }
     }
 }
+
+impl<'a, W: 'a + Widget + ?Sized> Iterator for ChildIter<'a, W> {
+    type Item = &'a Widget;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.i.next().and_then(|i| self.w.get(i))
+    }
+}
+/*
+pub struct ChildIterMut<'a, W: 'static + Widget + ?Sized> {
+    w: &'a mut W,
+    i: ::std::ops::Range<usize>,
+}
+
+impl<'a, W: 'static + Widget + ?Sized> ChildIterMut<'a, W> {
+    fn new(widget: &'a mut W) -> Self {
+        let len = widget.len();
+        ChildIterMut { w: widget, i: (0..len).into_iter() }
+    }
+    
+    fn next<'b: 'a>(&'b mut self) -> Option<&'b mut Widget> {
+        // TODO: resolve lifetime error
+        self.i.next().and_then(|i| self.w.get_mut(i)).map(|w| &*w)
+    }
+}
+*/

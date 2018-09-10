@@ -6,6 +6,11 @@ use widget::control::{button, TextButton};
 
 /// A window is a drawable interactive region provided by windowing system.
 pub trait Window: Widget {
+    /// Upcast
+    fn as_widget(&self) -> &Widget;
+    /// Upcast, mutably
+    fn as_widget_mut(&mut self) -> &mut Widget;
+    
     /// Handle an input event.
     fn handle(&mut self, event: event::Event) -> event::Response;
 }
@@ -27,10 +32,6 @@ impl<W: Widget> SimpleWindow<W> {
 }
 
 impl<W: Layout> Layout for SimpleWindow<W> {
-    fn min_size(&self) -> (i32, i32) {
-        self.w.min_size()
-    }
-
     fn set_size(&mut self, size: (i32, i32)) {
         self.w.set_size(size)
     }
@@ -41,10 +42,16 @@ impl<W: Widget + 'static> Widget for SimpleWindow<W> {
     fn label(&self) -> Option<&str> { None }
     
     fn len(&self) -> usize { 1 }
-    fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> {
+    fn get(&self, index: usize) -> Option<&Widget> {
         match index {
             0 => Some(&self.w),
-            _ => None,
+            _ => None
+        }
+    }
+    fn get_mut(&mut self, index: usize) -> Option<&mut Widget> {
+        match index {
+            0 => Some(&mut self.w),
+            _ => None
         }
     }
 }
@@ -52,6 +59,9 @@ impl<W: Widget + 'static> Widget for SimpleWindow<W> {
 impl<R, W: Handler<Response = R> + Widget + 'static> Window for SimpleWindow<W>
     where event::Response: From<R>, R: From<event::NoResponse>
 {
+    fn as_widget(&self) -> &Widget { self }
+    fn as_widget_mut(&mut self) -> &mut Widget { self }
+    
     fn handle(&mut self, event: event::Event) -> event::Response {
         event::Response::from(self.w.handle(event))
     }
@@ -84,10 +94,6 @@ impl<M, R, H: Fn() -> R> MessageBox<M, H> {
 impl_widget_core!(MessageBox<M, H>, core);
 
 impl<M, H> Layout for MessageBox<M, H> {
-    fn min_size(&self) -> (i32, i32) {
-        unimplemented!()
-    }
-
     fn set_size(&mut self, size: (i32, i32)) {
         unimplemented!()
     }
@@ -98,12 +104,18 @@ impl<M, H> Widget for MessageBox<M, H> {
     fn label(&self) -> Option<&str> { None }
     
     fn len(&self) -> usize { 0 }
-    fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> {
+    fn get(&self, index: usize) -> Option<&Widget> {
+        unimplemented!()
+    }
+    fn get_mut(&mut self, index: usize) -> Option<&mut Widget> {
         unimplemented!()
     }
 }
 
 impl<M, H> Window for MessageBox<M, H> {
+    fn as_widget(&self) -> &Widget { self }
+    fn as_widget_mut(&mut self) -> &mut Widget { self }
+    
     fn handle(&mut self, event: event::Event) -> event::Response {
         unimplemented!()
     }

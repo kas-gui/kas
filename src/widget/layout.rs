@@ -1,10 +1,18 @@
 //! Widget layout
 
+use Coord;
 use widget::WidgetCore;
+use toolkit::Toolkit;
 
 pub trait Layout: WidgetCore {
-    /// Minimum expected widget size; `(width, height)`
-    fn min_size(&self) -> (i32, i32);
+    /// Get the widget's default (preferred) size.
+    /// 
+    /// The default implementation simply refers to the toolkit — for toolkit
+    /// native widgets this correct.
+    // TODO: more flexible if instead this adds constraints?
+    fn default_size(&self, tk: &Toolkit) -> Coord {
+        tk.tk_widget().default_size(self.get_tkd())
+    }
     
     /// Called at least once. Should position any sub-widgets.
     fn set_size(&mut self, size: (i32, i32)) {
@@ -12,35 +20,36 @@ pub trait Layout: WidgetCore {
     }
 }
 
-#[macro_export]
-macro_rules! min_size_of {
-    ($self:ident; $direction:ident;) => {
-        (0, 0)
-    };
-    ($self:ident; $direction:ident; $g:ident) => {
-        $self.$g.min_size()
-    };
-    ($self:ident; vertical; $g0:ident, $($g:ident),+) => {{
-        let (mut w, mut h) = $self.$g0.min_size();
-        $(
-            let (w1, h1) = $self.$g.min_size();
-            w = if w1 > w { w1 } else { w };
-            h += h1;
-        )+
-        (w, h)
-    }};
-}
+// #[macro_export]
+// macro_rules! min_size_of {
+//     ($self:ident; $direction:ident;) => {
+//         (0, 0)
+//     };
+//     ($self:ident; $direction:ident; $g:ident) => {
+//         $self.$g.min_size()
+//     };
+//     ($self:ident; vertical; $g0:ident, $($g:ident),+) => {{
+//         let (mut w, mut h) = $self.$g0.min_size();
+//         $(
+//             let (w1, h1) = $self.$g.min_size();
+//             w = if w1 > w { w1 } else { w };
+//             h += h1;
+//         )+
+//         (w, h)
+//     }};
+// }
 
 // TODO: this implementation naively assumes the size equals the minimum
 #[macro_export]
 macro_rules! set_size_of {
     ($self:ident; $direction:ident; ; $w:expr, $h:expr) => {};
     ($self:ident; vertical; $($g:ident),*; $w:expr, $h:expr) => {
-        $(
-            // naive impl: common width, min heigth everywhere
-            let (_, gh) = $self.$g.min_size();
-            $self.$g.set_size(($w, gh));
-        )*
+        unimplemented!()
+//         $(
+//             // naive impl: common width, min heigth everywhere
+//             let (_, gh) = $self.$g.min_size();
+//             $self.$g.set_size(($w, gh));
+//         )*
     };
 }
 
@@ -69,6 +78,23 @@ macro_rules! iter_get_widget {
     }
 }
 
+#[macro_export]
+macro_rules! iter_get_widget_mut {
+    ($self:ident, $index:ident, $i:expr ) => { return None; };
+    ($self:ident, $index:ident, $i:expr, $name:ident) => {
+        if $index == $i {
+            return Some(&mut $self.$name);
+        }
+        return None;
+    };
+    ($self:ident, $index:ident, $i:expr, $name:ident, $($wname:ident),*) => {
+        if $index == $i {
+            return Some(&mut $self.$name);
+        }
+        iter_get_widget_mut!($self, $index, ($i + 1), $($wname),*);
+    }
+}
+
 /// Construct a container widget
 #[macro_export]
 macro_rules! make_layout {
@@ -90,9 +116,9 @@ macro_rules! make_layout {
         impl<$($wt: Widget),* , $($dt),*> Layout
             for L<$($wt),* , $($dt),*>
         {
-            fn min_size(&self) -> (i32, i32) {
-                min_size_of!(self; $direction; $($wname),*)
-            }
+//             fn min_size(&self) -> (i32, i32) {
+//                 min_size_of!(self; $direction; $($wname),*)
+//             }
 
             fn set_size(&mut self, size: (i32, i32)) {
                 set_size_of!(self; $direction; $($wname),*; size.0, size.1);
@@ -108,10 +134,13 @@ macro_rules! make_layout {
             fn len(&self) -> usize {
                 count_items!($($wname),*)
             }
-            fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> {
+            fn get(&self, index: usize) -> Option<&Widget> {
                 // We need to match, but macros cannot expand to match arms
                 // or parts of if-else chains. Hack: use direct return.
                 iter_get_widget!(self, index, 0, $($wname),*);
+            }
+            fn get_mut(&mut self, index: usize) -> Option<&mut Widget> {
+                iter_get_widget_mut!(self, index, 0, $($wname),*);
             }
         }
 

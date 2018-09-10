@@ -4,5 +4,7 @@ version = "0.1.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 
 [dependencies]
-gtk = { version = "0.4.0", path = "../gtk-rs/gtk" }
-gdk = { version = "0.8.0", path = "../gtk-rs/gdk" }
+gtk = "0.5"
+gdk = "0.9"
+glib = "0.6"
+gtk-sys = "0.7"

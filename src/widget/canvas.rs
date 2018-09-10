@@ -16,7 +16,8 @@ impl Widget for Text {
     fn label(&self) -> Option<&str> { Some(self.text.as_str()) }
     
     fn len(&self) -> usize { 0 }
-    fn get(&self, index: usize) -> Option<&(dyn Widget + 'static)> { None }
+    fn get(&self, index: usize) -> Option<&Widget> { None }
+    fn get_mut(&mut self, index: usize) -> Option<&mut Widget> { None }
 }
 
 impl Text {
@@ -35,9 +36,6 @@ impl<T> From<T> for Text where String: From<T> {
 }
 
 impl Layout for Text {
-    fn min_size(&self) -> (i32, i32) {
-        (80, 40)    // TODO
-    }
 }
 
 impl event::Handler for Text {
