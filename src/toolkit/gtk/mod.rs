@@ -12,7 +12,7 @@ use gdk;
 use gtk;
 use gtk::{Cast, WidgetExt, ContainerExt};
 
-use Coord;
+use {Coord, Rect};
 use widget::{Class, Widget};
 use widget::window::Window;
 use toolkit::{Toolkit, TkData, TkWidget};
@@ -169,11 +169,11 @@ impl Drop for GtkToolkit {
 impl Toolkit for GtkToolkit {
     fn add<W: Window+'static>(&mut self, window: W) {
         let gtk_window = gtk::Window::new(gtk::WindowType::Toplevel);
-        gtk_window.show_all();
         gtk_window.connect_delete_event(|slf, _| {
             TOOLKIT.with(|t| t.get().map(|tk| tk.remove_window(slf)));
             gtk::Inhibit(false)
         });
+        
         let mut window = Box::new(window);
         // HACK: GTK widgets depend on passed pointers but don't mark lifetime
         // restrictions in their types. We cannot guard usage correctly.
@@ -181,7 +181,10 @@ impl Toolkit for GtkToolkit {
         // ones (currently they don't; wait until event handling is implemented)
         self.add_widgets(gtk_window.upcast_ref::<gtk::Widget>(),
             unsafe{ extend_lifetime_mut(&mut *window) });
+        
+        window.configure_widgets(self);
         gtk_window.show_all();
+        
         self.windows.get_mut().push((window, gtk_window));
     }
     
@@ -223,9 +226,20 @@ unsafe fn borrow_from_tkd(tkd: TkData) -> Option<gtk::Widget> {
 }
 
 impl TkWidget for GtkToolkit {
-    fn default_size(&self, tkd: TkData) -> Coord {
+    fn size_hints(&self, tkd: TkData) -> (Coord, Coord) {
         let wptr = unsafe { borrow_from_tkd(tkd) }.unwrap();
-        Coord::conv(wptr.get_preferred_size().1)
+        let min = Coord::conv(wptr.get_preferred_size().0);
+        let hint = Coord::conv(wptr.get_preferred_size().1);
+        (min, hint)
+    }
+    
+    fn set_rect(&self, tkd: TkData, rect: &Rect) {
+        let wptr = unsafe { borrow_from_tkd(tkd) }.unwrap();
+        let mut rect = gtk::Rectangle {
+            x: rect.pos.0, y: rect.pos.1,
+            width: rect.size.0, height: rect.size.1
+        };
+        wptr.size_allocate(&mut rect);
     }
 }
 

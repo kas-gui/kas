@@ -157,7 +157,7 @@ impl<'a, W: 'static + Widget + ?Sized> ChildIterMut<'a, W> {
     }
     
     fn next<'b: 'a>(&'b mut self) -> Option<&'b mut Widget> {
-        // TODO: resolve lifetime error
+        // TODO: resolve lifetime error (streaming iterator)
         self.i.next().and_then(|i| self.w.get_mut(i)).map(|w| &*w)
     }
 }

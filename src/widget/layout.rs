@@ -1,56 +1,101 @@
 //! Widget layout
 
+use std::mem;
+
+use cw;
+
 use Coord;
 use widget::WidgetCore;
 use toolkit::Toolkit;
 
 pub trait Layout: WidgetCore {
-    /// Get the widget's default (preferred) size.
+    /// Upcast
+    fn as_core(&self) -> &WidgetCore;
+    /// Upcast, mutably
+    fn as_core_mut(&mut self) -> &mut WidgetCore;
+    
+    /// Initialise the constraint solver.
     /// 
-    /// The default implementation simply refers to the toolkit — for toolkit
-    /// native widgets this correct.
-    // TODO: more flexible if instead this adds constraints?
-    fn default_size(&self, tk: &Toolkit) -> Coord {
-        tk.tk_widget().default_size(self.get_tkd())
+    /// This function applies constraints to the solver based on the current
+    /// widget's size requirements. Once the constraint solver has found a
+    /// solution, `apply_constraints` may be called to update the widget layout.
+    /// 
+    /// If `use_default` is true, then this widget's preferred size is used as
+    /// the initial value, otherwise it's current size is used.
+    /// 
+    /// The default implementation may suffice for simple widgets without
+    /// children, but must be overriden by any parent widget.
+    /// 
+    /// `key` is used to provide a unique identifier for each constraint
+    /// variable. Widgets must use `key` for their width and `key + 1` for their
+    /// height, and may use values if more variables are needed. Widgets must
+    /// return the next unused `key` value (typically `key + 2` if there are no
+    /// child widgets). Behaviour must be identical in `apply_constraints` in
+    /// order to reproduce the same `key` values.
+    // TODO: because of width-for-height relations it may be necessary to
+    // adjust this, e.g. solve for width first then for height.
+    fn init_constraints(&self, tk: &Toolkit, key: usize,
+        s: &mut cw::Solver, use_default: bool) -> usize
+    {
+        let v0 = cw::Variable::from_usize(key);
+        let v1 = cw::Variable::from_usize(key + 1);
+        let key = key + 2;
+        
+        let (min, hint) = tk.tk_widget().size_hints(self.get_tkd());
+        
+        // minimum size constraints:
+        s.add_constraint(cw::Constraint::new(
+            cw::Expression::from_constant(min.0 as f64) - v0,
+            cw::RelationalOperator::LessOrEqual,
+            cw::strength::STRONG)).unwrap();
+        s.add_constraint(cw::Constraint::new(
+            cw::Expression::from_constant(min.1 as f64) - v1,
+            cw::RelationalOperator::LessOrEqual,
+            cw::strength::STRONG)).unwrap();
+        
+        // preferred size constraints:
+        s.add_constraint(cw::Constraint::new(
+            cw::Expression::from_constant(hint.0 as f64) - v0,
+            cw::RelationalOperator::LessOrEqual,
+            cw::strength::MEDIUM)).unwrap();
+        s.add_constraint(cw::Constraint::new(
+            cw::Expression::from_constant(hint.1 as f64) - v1,
+            cw::RelationalOperator::LessOrEqual,
+            cw::strength::MEDIUM)).unwrap();
+        
+        /*
+        // starting points:
+        let size = if use_default { hint } else { self.rect().size };
+        s.add_edit_variable(v0, cw::strength::WEAK).unwrap();
+        s.suggest_value(v0, size.0 as f64);
+        s.add_edit_variable(v1, cw::strength::WEAK).unwrap();
+        s.suggest_value(v1, size.1 as f64);
+        */
+        
+        key
     }
     
-    /// Called at least once. Should position any sub-widgets.
-    fn set_size(&mut self, size: (i32, i32)) {
-        self.rect_mut().size = size;
+    /// Apply constraints from the solver.
+    /// 
+    /// See the `init_constraints` documentation.
+    /// 
+    /// `pos` is the widget's position relative to the parent window.
+    fn apply_constraints(&mut self, tk: &Toolkit, key: usize,
+        s: &cw::Solver, pos: Coord) -> usize
+    {
+        let v0 = cw::Variable::from_usize(key);
+        let v1 = cw::Variable::from_usize(key + 1);
+        let key = key + 2;
+        
+        let tkd = self.as_core().get_tkd();
+        let size = (s.get_value(v0) as i32, s.get_value(v1) as i32);
+        let rect = self.as_core_mut().rect_mut();
+        rect.pos = pos;
+        rect.size = size;
+        tk.tk_widget().set_rect(tkd, rect);
+        
+        key
     }
-}
-
-// #[macro_export]
-// macro_rules! min_size_of {
-//     ($self:ident; $direction:ident;) => {
-//         (0, 0)
-//     };
-//     ($self:ident; $direction:ident; $g:ident) => {
-//         $self.$g.min_size()
-//     };
-//     ($self:ident; vertical; $g0:ident, $($g:ident),+) => {{
-//         let (mut w, mut h) = $self.$g0.min_size();
-//         $(
-//             let (w1, h1) = $self.$g.min_size();
-//             w = if w1 > w { w1 } else { w };
-//             h += h1;
-//         )+
-//         (w, h)
-//     }};
-// }
-
-// TODO: this implementation naively assumes the size equals the minimum
-#[macro_export]
-macro_rules! set_size_of {
-    ($self:ident; $direction:ident; ; $w:expr, $h:expr) => {};
-    ($self:ident; vertical; $($g:ident),*; $w:expr, $h:expr) => {
-        unimplemented!()
-//         $(
-//             // naive impl: common width, min heigth everywhere
-//             let (_, gh) = $self.$g.min_size();
-//             $self.$g.set_size(($w, gh));
-//         )*
-    };
 }
 
 #[macro_export]
@@ -61,40 +106,6 @@ macro_rules! count_items {
     }
 }
 
-#[macro_export]
-macro_rules! iter_get_widget {
-    ($self:ident, $index:ident, $i:expr ) => { return None; };
-    ($self:ident, $index:ident, $i:expr, $name:ident) => {
-        if $index == $i {
-            return Some(&$self.$name);
-        }
-        return None;
-    };
-    ($self:ident, $index:ident, $i:expr, $name:ident, $($wname:ident),*) => {
-        if $index == $i {
-            return Some(&$self.$name);
-        }
-        iter_get_widget!($self, $index, ($i + 1), $($wname),*);
-    }
-}
-
-#[macro_export]
-macro_rules! iter_get_widget_mut {
-    ($self:ident, $index:ident, $i:expr ) => { return None; };
-    ($self:ident, $index:ident, $i:expr, $name:ident) => {
-        if $index == $i {
-            return Some(&mut $self.$name);
-        }
-        return None;
-    };
-    ($self:ident, $index:ident, $i:expr, $name:ident, $($wname:ident),*) => {
-        if $index == $i {
-            return Some(&mut $self.$name);
-        }
-        iter_get_widget_mut!($self, $index, ($i + 1), $($wname),*);
-    }
-}
-
 /// Construct a container widget
 #[macro_export]
 macro_rules! make_layout {
@@ -102,8 +113,10 @@ macro_rules! make_layout {
         $($wname:ident $wt:ident : $wvalue:expr),* ;
         $($dname:ident $dt:ident : $dvalue:expr),* ;) =>
     {{
-        use $crate::widget::{Class, CoreData, Widget, Layout};
+        use $crate::widget::{Class, CoreData, WidgetCore, Widget, Layout};
         use $crate::event::{Event, Handler, Response};
+        use $crate::toolkit::Toolkit;
+        use $crate::cw;
 
         struct L<$($wt: Widget + 'static),* , $($dt),*> {
             core: CoreData,
@@ -116,12 +129,72 @@ macro_rules! make_layout {
         impl<$($wt: Widget),* , $($dt),*> Layout
             for L<$($wt),* , $($dt),*>
         {
-//             fn min_size(&self) -> (i32, i32) {
-//                 min_size_of!(self; $direction; $($wname),*)
-//             }
-
-            fn set_size(&mut self, size: (i32, i32)) {
-                set_size_of!(self; $direction; $($wname),*; size.0, size.1);
+            fn as_core(&self) -> &WidgetCore { &self.core }
+            fn as_core_mut(&mut self) -> &mut WidgetCore { &mut self.core }
+            
+            fn init_constraints(&self, tk: &Toolkit, key: usize,
+                s: &mut cw::Solver, use_default: bool) -> usize
+            {
+                let v0 = cw::Variable::from_usize(key);
+                let v1 = cw::Variable::from_usize(key + 1);
+                let mut key = key + 2;
+                
+                // TODO: borders and margins
+                
+                let width = cw::Expression::from(v0);
+                let mut height = cw::Expression::from(v1);
+                
+                $(
+                    let child_v0 = cw::Variable::from_usize(key);
+                    let child_v1 = cw::Variable::from_usize(key + 1);
+                    s.add_constraint(cw::Constraint::new(
+                        width.clone() - child_v0,
+                        cw::RelationalOperator::GreaterOrEqual,
+                        cw::strength::STRONG)).unwrap();
+                    s.add_constraint(cw::Constraint::new(
+                        width.clone() - child_v0,
+                        cw::RelationalOperator::Equal,
+                        cw::strength::MEDIUM)).unwrap();
+                    height -= child_v1;
+                    key = self.$wname.init_constraints(tk, key, s, use_default);
+                )*
+                
+                s.add_constraint(cw::Constraint::new(
+                    height,
+                    cw::RelationalOperator::Equal,
+                    cw::strength::STRONG * 10.0)).unwrap();
+                
+                key
+            }
+            
+            /// Apply constraints from the solver.
+            /// 
+            /// See the `init_constraints` documentation.
+            /// 
+            /// `pos` is the widget's position relative to the parent window.
+            fn apply_constraints(&mut self, tk: &Toolkit, key: usize,
+                s: &cw::Solver, mut pos: $crate::Coord) -> usize
+            {
+                let v0 = cw::Variable::from_usize(key);
+                let v1 = cw::Variable::from_usize(key + 1);
+                let mut key = key + 2;
+                
+                let tkd = self.as_core().get_tkd();
+                let size = (s.get_value(v0) as i32, s.get_value(v1) as i32);
+                {
+                    let rect = self.as_core_mut().rect_mut();
+                    rect.pos = pos;
+                    rect.size = size;
+                    tk.tk_widget().set_rect(tkd, rect);
+                }
+                
+                $(
+                    let child_v1 = cw::Variable::from_usize(key + 1);
+                    key = self.$wname.apply_constraints(tk, key, s, pos);
+                    pos.1 += s.get_value(child_v1) as i32;
+                )*
+                
+                key
             }
         }
 
@@ -137,10 +210,24 @@ macro_rules! make_layout {
             fn get(&self, index: usize) -> Option<&Widget> {
                 // We need to match, but macros cannot expand to match arms
                 // or parts of if-else chains. Hack: use direct return.
-                iter_get_widget!(self, index, 0, $($wname),*);
+                let _i = 0;
+                $(
+                    if index == _i {
+                        return Some(&self.$wname);
+                    }
+                    let _i = _i + 1;
+                )*
+                return None;
             }
             fn get_mut(&mut self, index: usize) -> Option<&mut Widget> {
-                iter_get_widget_mut!(self, index, 0, $($wname),*);
+                let _i = 0;
+                $(
+                    if index == _i {
+                        return Some(&mut self.$wname);
+                    }
+                    let _i = _i + 1;
+                )*
+                return None;
             }
         }
 
@@ -148,7 +235,7 @@ macro_rules! make_layout {
             for L<$($wt),* , $($dt),*>
         {
             type Response = Response;   // TODO
-            fn handle(&mut self, event: Event) -> Self::Response {
+            fn handle(&mut self, _event: Event) -> Self::Response {
                 unimplemented!()
             }
         }

@@ -3,6 +3,9 @@
 // TODO: for now there are many unused things
 #![allow(unused)]
 
+#[doc(hidden)]
+pub extern crate cassowary as cw;    // used by macros
+
 extern crate glib;
 extern crate gdk;
 extern crate gtk;

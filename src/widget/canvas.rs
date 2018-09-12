@@ -1,7 +1,7 @@
 //! Canvas types
 
 use event;
-use widget::{Class, Layout, Widget, CoreData};
+use widget::{Class, Layout, Widget, CoreData, WidgetCore};
 
 #[derive(Clone, Default)]
 pub struct Text {
@@ -36,6 +36,8 @@ impl<T> From<T> for Text where String: From<T> {
 }
 
 impl Layout for Text {
+    fn as_core(&self) -> &WidgetCore { self }
+    fn as_core_mut(&mut self) -> &mut WidgetCore { self }
 }
 
 impl event::Handler for Text {

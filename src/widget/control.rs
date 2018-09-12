@@ -1,7 +1,7 @@
 //! Basic controls
 
 use event;
-use widget::{Class, Layout, Widget, CoreData};
+use widget::{Class, Layout, Widget, CoreData, WidgetCore};
 
 // TODO: abstract out text part?
 #[derive(Clone, Default)]
@@ -38,6 +38,8 @@ impl<R, H: Fn() -> R> TextButton<H> {
 
 
 impl<H> Layout for TextButton<H> {
+    fn as_core(&self) -> &WidgetCore { self }
+    fn as_core_mut(&mut self) -> &mut WidgetCore { self }
 }
 
 impl<R: From<event::NoResponse>, H: Fn() -> R> event::Handler for TextButton<H> {

@@ -2,7 +2,7 @@
 
 pub mod gtk;
 
-use Coord;
+use {Coord, Rect};
 use widget::window::Window;
 
 /// The type of per-widget toolkit data.
@@ -34,6 +34,11 @@ pub trait Toolkit {
 
 /// Common widget properties. Implemented by the toolkit.
 pub trait TkWidget {
-    /// Get the widget's default (preferred) size.
-    fn default_size(&self, tkd: TkData) -> Coord;
+    /// Get the widget's minimum and preferred sizes.
+    fn size_hints(&self, tkd: TkData) -> (Coord, Coord);
+    
+    /// Set the widget's position and size.
+    /// 
+    /// Does not need to update child widgets.
+    fn set_rect(&self, tkd: TkData, rect: &Rect);
 }
