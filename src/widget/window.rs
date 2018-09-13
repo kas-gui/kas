@@ -140,6 +140,7 @@ pub fn action_close() -> impl Fn() -> event::Response {
     || event::Response::Close
 }
 
+#[derive(Clone)]
 pub struct MessageBox<M, H> {
     core: CoreData,
     message: M,

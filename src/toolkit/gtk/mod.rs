@@ -167,14 +167,14 @@ impl Drop for GtkToolkit {
 }
 
 impl Toolkit for GtkToolkit {
-    fn add<W: Window+'static>(&mut self, window: W) {
+    fn add<W: Clone+Window+'static>(&mut self, window: &W) {
         let gtk_window = gtk::Window::new(gtk::WindowType::Toplevel);
         gtk_window.connect_delete_event(|slf, _| {
             TOOLKIT.with(|t| t.get().map(|tk| tk.remove_window(slf)));
             gtk::Inhibit(false)
         });
         
-        let mut window = Box::new(window);
+        let mut window = Box::new(window.clone());
         // HACK: GTK widgets depend on passed pointers but don't mark lifetime
         // restrictions in their types. We cannot guard usage correctly.
         // TODO: we only need lifetime extension if GTK widgets refer to our

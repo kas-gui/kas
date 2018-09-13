@@ -23,7 +23,7 @@ pub struct TkData(pub u64);
 /// de-initialisation in a `Drop` implementation.
 pub trait Toolkit {
     /// Assume ownership of and display a window.
-    fn add<W: Window+'static>(&mut self, window: W) where Self: Sized;
+    fn add<W: Clone+Window+'static>(&mut self, window: &W) where Self: Sized;
     
     /// Run the main loop.
     fn main(&mut self);

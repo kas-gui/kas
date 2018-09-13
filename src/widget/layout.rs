@@ -118,6 +118,7 @@ macro_rules! make_layout {
         use $crate::toolkit::Toolkit;
         use $crate::cw;
 
+        #[derive(Clone)]
         struct L<$($wt: Widget + 'static),* , $($dt),*> {
             core: CoreData,
             $($wname: $wt),* ,
