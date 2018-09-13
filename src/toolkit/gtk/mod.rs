@@ -182,6 +182,7 @@ impl Toolkit for GtkToolkit {
         self.add_widgets(gtk_window.upcast_ref::<gtk::Widget>(),
             unsafe{ extend_lifetime_mut(&mut *window) });
         
+        // TODO: use GTK's configure-event to receive resize notifications (before/after?)
         window.configure_widgets(self);
         gtk_window.show_all();
         

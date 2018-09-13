@@ -30,6 +30,41 @@ particular this means the library will not be easy to use via FFI (e.g. from C):
     used to construct the necessary implementations more succinctly
 
 
+Components
+---------------
+
+A GUI system needs the following components:
+
+-   a windowing library
+-   a graphics drawing library (may or may not be part of above)
+-   widget dimensions and graphics *(the theme)*
+-   widget sizing and positioning code *(the layout system)*
+-   event handling framework
+-   GUI description *(the application)*
+
+This library mostly concerns the "glue" necessary to tie all these components
+together and allow easy specification of the application. Specifically, this
+library provides:
+
+-   a *toolkit API*, whose implementation provides the windowing API and widget
+    dimensions and graphics, and optionally layout and/or event handling code
+-   an optional layout system
+-   an optional event handling system
+-   an API and tools to help users build their application GUIs
+
+TODO: the layout system and event handling system design is still in flux;
+unknown whether above goals can be met.
+
+The toolkit may be implemented as a wrapper around another GUI toolkit
+(initially targetting GTK); later another implementation will be built with an
+API allowing theme implementation in yet another lib.
+
+This design should therefore eventually support building applications using
+native widget rendering on all major desktops from a single source, as well as
+the option to use a toolkit which minimises non-Rust dependencies for ultimate
+performance and portability.
+
+
 Widgets
 --------
 
