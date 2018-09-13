@@ -1,7 +1,5 @@
 //! Widget layout
 
-use std::mem;
-
 use cw;
 
 use Coord;

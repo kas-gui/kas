@@ -133,7 +133,7 @@ pub struct ChildIter<'a, W: 'a + Widget + ?Sized> {
 }
 
 impl<'a, W: 'a + Widget + ?Sized> ChildIter<'a, W> {
-    fn new(widget: &'a W) -> Self {
+    pub fn new(widget: &'a W) -> Self {
         ChildIter { w: widget, i: (0..widget.len()).into_iter() }
     }
 }

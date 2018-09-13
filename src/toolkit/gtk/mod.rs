@@ -2,9 +2,11 @@
 //! 
 //! This will be migrated to a separate library later.
 
+mod widget;
+mod tkd;
+
 use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
-use std::mem::{align_of, size_of, transmute};
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -12,10 +14,11 @@ use gdk;
 use gtk;
 use gtk::{Cast, WidgetExt, ContainerExt};
 
-use {Coord, Rect};
 use widget::{Class, Widget};
 use widget::window::Window;
-use toolkit::{Toolkit, TkData, TkWidget};
+use toolkit::{Toolkit, TkWidget};
+
+use self::tkd::{own_to_tkd, own_from_tkd};
 
 unsafe fn extend_lifetime<'b, R: ?Sized>(r: &'b R) -> &'static R {
     ::std::mem::transmute::<&'b R, &'static R>(r)
@@ -96,7 +99,7 @@ impl GtkToolkit {
         
         (gtk::init().map_err(|e| Error(e.0)))?;
         
-        unsafe{ gdk::Event::set_handler(Some(handler)); }
+        gdk::Event::set_handler(Some(handler));
         
         let tk = Box::new(GtkToolkit {
             windows: RefCell::new(Vec::new()),
@@ -195,63 +198,6 @@ impl Toolkit for GtkToolkit {
     
     fn tk_widget(&self) -> &TkWidget {
         self
-    }
-}
-
-unsafe fn own_to_tkd(w: &gtk::Widget) -> TkData {
-    use glib::translate::ToGlibPtr;
-    let ptr = gtk::Widget::to_glib_full(w);
-    let mut tkd = TkData::default();
-    tkd.0 = transmute::<*mut ::gtk_sys::GtkWidget, u64>(ptr);
-    tkd
-}
-
-unsafe fn own_from_tkd(tkd: TkData) -> Option<gtk::Widget> {
-    use glib::translate::FromGlibPtrFull;
-    if tkd.0 == 0 {
-        None
-    } else {
-        let ptr = transmute::<u64, *mut ::gtk_sys::GtkWidget>(tkd.0);
-        Some(gtk::Widget::from_glib_full(ptr))
-    }
-}
-
-unsafe fn borrow_from_tkd(tkd: TkData) -> Option<gtk::Widget> {
-    use glib::translate::FromGlibPtrBorrow;
-    if tkd.0 == 0 {
-        None
-    } else {
-        let ptr = transmute::<u64, *mut ::gtk_sys::GtkWidget>(tkd.0);
-        Some(gtk::Widget::from_glib_borrow(ptr))
-    }
-}
-
-impl TkWidget for GtkToolkit {
-    fn size_hints(&self, tkd: TkData) -> (Coord, Coord) {
-        let wptr = unsafe { borrow_from_tkd(tkd) }.unwrap();
-        let min = Coord::conv(wptr.get_preferred_size().0);
-        let hint = Coord::conv(wptr.get_preferred_size().1);
-        (min, hint)
-    }
-    
-    fn set_rect(&self, tkd: TkData, rect: &Rect) {
-        let wptr = unsafe { borrow_from_tkd(tkd) }.unwrap();
-        let mut rect = gtk::Rectangle {
-            x: rect.pos.0, y: rect.pos.1,
-            width: rect.size.0, height: rect.size.1
-        };
-        wptr.size_allocate(&mut rect);
-    }
-}
-
-// From, but constructed locally so that we can implement for foreign types
-trait Convert<T> {
-    fn conv(T) -> Self;
-}
-
-impl Convert<gtk::Requisition> for Coord {
-    fn conv(rq: gtk::Requisition) -> Coord {
-        (rq.width, rq.height)
     }
 }
 

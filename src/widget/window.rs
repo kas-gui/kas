@@ -122,9 +122,9 @@ impl<R, W: Handler<Response = R> + Widget + 'static> Window for SimpleWindow<W>
         let v0 = cw::Variable::from_usize(0);
         let v1 = cw::Variable::from_usize(1);
         self.solver.add_edit_variable(v0, cw::strength::MEDIUM * 100.0).unwrap();
-        self.solver.suggest_value(v0, size.0 as f64);
+        self.solver.suggest_value(v0, size.0 as f64).unwrap();
         self.solver.add_edit_variable(v1, cw::strength::MEDIUM * 100.0).unwrap();
-        self.solver.suggest_value(v1, size.1 as f64);
+        self.solver.suggest_value(v1, size.1 as f64).unwrap();
         
         let apply_key = self.w.apply_constraints(tk, 0, &self.solver, (0, 0));
         assert_eq!(self.key_end, apply_key, "resize called without configure_widgets");
