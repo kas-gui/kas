@@ -1,7 +1,5 @@
 //! Toolkit interface
 
-pub mod gtk;
-
 use {Coord, Rect};
 use widget::window::Window;
 

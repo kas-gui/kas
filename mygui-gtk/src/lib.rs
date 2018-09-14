@@ -1,6 +1,10 @@
-//! GTK backend
-//! 
-//! This will be migrated to a separate library later.
+//! GTK toolkit for mygui
+
+extern crate mygui;
+extern crate glib;
+extern crate gdk;
+extern crate gtk;
+extern crate gtk_sys;
 
 mod widget;
 mod tkd;
@@ -10,13 +14,11 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use gdk;
-use gtk;
 use gtk::{Cast, WidgetExt, ContainerExt};
 
-use widget::{Class, Widget};
-use widget::window::Window;
-use toolkit::{Toolkit, TkWidget};
+use mygui::widget::{Class, Widget};
+use mygui::widget::window::Window;
+use mygui::toolkit::{Toolkit, TkWidget};
 
 use self::tkd::{own_to_tkd, own_from_tkd};
 

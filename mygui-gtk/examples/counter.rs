@@ -2,6 +2,7 @@
 
 #[macro_use]
 extern crate mygui;
+extern crate mygui_gtk;
 
 use mygui::event::{NoResponse};
 use mygui::widget::{
@@ -10,10 +11,8 @@ use mygui::widget::{
     window::SimpleWindow
 };
 
-use mygui::toolkit::{
-    Toolkit,
-    gtk::{GtkToolkit, Error}
-};
+use mygui::toolkit::Toolkit;
+use mygui_gtk::{GtkToolkit, Error};
 
 enum Message {
     None,

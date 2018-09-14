@@ -1,12 +1,13 @@
 //! Hello world example
 
 extern crate mygui;
+extern crate mygui_gtk;
 
 use mygui::widget::canvas::Text;
 use mygui::widget::window::{MessageBox, action_close};
 
 use mygui::toolkit::Toolkit;
-use mygui::toolkit::gtk::{GtkToolkit, Error};
+use mygui_gtk::{GtkToolkit, Error};
 
 fn main() -> Result<(), Error> {
     // Build widgets.

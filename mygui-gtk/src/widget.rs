@@ -5,8 +5,8 @@
 use gtk;
 use gtk::{WidgetExt};
 
-use {Coord, Rect};
-use toolkit::{TkData, TkWidget};
+use mygui::{Coord, Rect};
+use mygui::toolkit::{TkData, TkWidget};
 
 use super::GtkToolkit;
 use super::tkd::borrow_from_tkd;

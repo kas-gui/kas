@@ -6,7 +6,7 @@ use std::mem::transmute;
 
 use gtk;
 
-use toolkit::TkData;
+use mygui::toolkit::TkData;
 
 
 pub(crate) unsafe fn own_to_tkd(w: &gtk::Widget) -> TkData {
