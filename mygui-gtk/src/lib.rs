@@ -6,6 +6,7 @@ extern crate gdk;
 extern crate gtk;
 extern crate gtk_sys;
 
+mod event;
 mod widget;
 mod tkd;
 
@@ -28,47 +29,6 @@ unsafe fn extend_lifetime<'b, R: ?Sized>(r: &'b R) -> &'static R {
 
 unsafe fn extend_lifetime_mut<'b, R: ?Sized>(r: &'b mut R) -> &'static mut R {
     ::std::mem::transmute::<&'b mut R, &'static mut R>(r)
-}
-
-fn handler(event: &mut gdk::Event) {
-    use gdk::EventType::*;
-    match event.get_event_type() {
-        Nothing => return,  // ignore this event
-        
-        // let GTK handle these for now:
-        ButtonPress |
-        ButtonRelease |
-        ClientEvent |
-        Configure |     // TODO: layout
-        Damage |
-        Delete |
-        DoubleButtonPress |
-        EnterNotify |
-        Expose |
-        FocusChange |
-        GrabBroken |
-        KeyPress |
-        KeyRelease |
-        LeaveNotify |
-        Map |
-        MotionNotify |
-        PropertyNotify |
-        SelectionClear |
-        SelectionNotify |
-        SelectionRequest |
-        Setting |
-        TripleButtonPress |
-        Unmap |
-        VisibilityNotify |
-        WindowState => {
-            // fall through
-        },
-        
-        _ => {
-            println!("Event: {:?}", event);
-        }
-    }
-    gtk::main_do_event(event);
 }
 
 /// Object used to initialise GTK and create windows
@@ -101,7 +61,7 @@ impl GtkToolkit {
         
         (gtk::init().map_err(|e| Error(e.0)))?;
         
-        gdk::Event::set_handler(Some(handler));
+        gdk::Event::set_handler(Some(event::handler));
         
         let tk = Box::new(GtkToolkit {
             windows: RefCell::new(Vec::new()),
