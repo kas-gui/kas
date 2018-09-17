@@ -30,12 +30,13 @@ macro_rules! impl_widget_core {
     };
 }
 
+#[macro_use] mod layout;
+
 pub mod canvas;
 pub mod control;
 pub mod window;
 
 mod class;
-mod layout;
 
 pub use self::class::Class;
 pub use self::layout::Layout;

@@ -14,6 +14,7 @@ pub struct TextButton<H> {
 }
 
 impl_widget_core!(TextButton<H>, core);
+impl_layout_simple!(TextButton<H>);
 
 impl<H> Debug for TextButton<H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -45,8 +46,6 @@ impl<R, H: Fn() -> R> TextButton<H> {
 //     }
 // }
 
-
-impl<H> Layout for TextButton<H> {}
 
 impl<R: From<event::NoResponse>, H: Fn() -> R> event::Handler for TextButton<H> {
     type Response = R;

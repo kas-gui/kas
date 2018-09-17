@@ -10,6 +10,7 @@ pub struct Text {
 }
 
 impl_widget_core!(Text, core);
+impl_layout_simple!(Text);
 
 impl Widget for Text {
     fn class(&self) -> Class { Class::Text }
@@ -34,8 +35,6 @@ impl<T> From<T> for Text where String: From<T> {
         }
     }
 }
-
-impl Layout for Text {}
 
 impl event::Handler for Text {
     type Response = event::NoResponse;

@@ -62,6 +62,7 @@ impl<W: Clone> Clone for SimpleWindow<W> {
 }
 
 impl_widget_core!(SimpleWindow<W>, core);
+impl_layout_single!(SimpleWindow<W: Layout + Debug>, w);
 
 impl<W: Widget> SimpleWindow<W> {
     /// Create
@@ -73,27 +74,6 @@ impl<W: Widget> SimpleWindow<W> {
             key_end: 0,
             w
         }
-    }
-}
-
-impl<W: Layout> Layout for SimpleWindow<W> {
-    fn init_constraints(&self, tk: &Toolkit, key: usize,
-        s: &mut cw::Solver, use_default: bool) -> usize
-    {
-        self.w.init_constraints(tk, key, s, use_default)
-    }
-    
-    fn apply_constraints(&mut self, tk: &Toolkit, key: usize,
-        s: &cw::Solver, pos: Coord) -> usize
-    {
-        self.w.apply_constraints(tk, key, s, pos)
-    }
-    
-    fn sync_size(&mut self, tk: &Toolkit) {
-        let new_rect = tk.tk_widget().get_rect(self.get_tkd());
-        *self.rect_mut() = new_rect;
-        
-        self.w.sync_size(tk);
     }
 }
 
@@ -180,8 +160,7 @@ impl<M, R, H: Fn() -> R> MessageBox<M, H> {
 }
 
 impl_widget_core!(MessageBox<M, H>, core);
-
-impl<M: Debug, H: Debug> Layout for MessageBox<M, H> {}
+impl_layout_single!(MessageBox<M: Debug, H: Debug>, button);  // TODO: improve?
 
 impl<M: Debug, H: Debug> Widget for MessageBox<M, H> {
     fn class(&self) -> Class { Class::Window }
