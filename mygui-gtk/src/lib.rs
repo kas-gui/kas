@@ -52,6 +52,11 @@ thread_local! {
     static TOOLKIT: Cell<Option<&'static GtkToolkit>> = Cell::new(None);
 }
 
+/// Call some closure on the toolkit singleton, if it exists.
+fn for_toolkit<F: FnOnce(&GtkToolkit)>(f: F) {
+    TOOLKIT.with(|t| t.get().map(f));
+}
+
 impl GtkToolkit {
     /// Construct
     pub fn new() -> Result<Box<Self>, Error> {
@@ -72,6 +77,21 @@ impl GtkToolkit {
         let p = Some(unsafe { extend_lifetime(tk.deref()) });
         TOOLKIT.with(|t| t.set(p));
         Ok(tk)
+    }
+    
+    // Find first window with matching `gdk::Window`, run the closure, and
+    // return the result, or `None` if no match.
+    fn for_gdk_win<T, F>(&self, gdk_win: gdk::Window, f: F) -> Option<T>
+        where F: FnOnce(&mut Window, &mut gtk::Window) -> T
+    {
+        let mut windows = self.windows.borrow_mut();
+        let gdk_win = Some(gdk_win);
+        for item in windows.iter_mut() {
+            if item.1.get_window() == gdk_win {
+                return Some(f(&mut *item.0, &mut item.1))
+            }
+        }
+        None
     }
     
     fn add_widgets(&mut self, gtk_widget: &gtk::Widget, widget: &mut Widget) {
@@ -135,7 +155,7 @@ impl Toolkit for GtkToolkit {
     fn add<W: Clone+Window+'static>(&mut self, window: &W) {
         let gtk_window = gtk::Window::new(gtk::WindowType::Toplevel);
         gtk_window.connect_delete_event(|slf, _| {
-            TOOLKIT.with(|t| t.get().map(|tk| tk.remove_window(slf)));
+            for_toolkit(|tk| tk.remove_window(slf));
             gtk::Inhibit(false)
         });
         
@@ -147,8 +167,6 @@ impl Toolkit for GtkToolkit {
         self.add_widgets(gtk_window.upcast_ref::<gtk::Widget>(),
             unsafe{ extend_lifetime_mut(&mut *window) });
         
-        // TODO: use GTK's configure-event to receive resize notifications (before/after?)
-        window.configure_widgets(self);
         gtk_window.show_all();
         
         self.windows.get_mut().push((window, gtk_window));

@@ -2,11 +2,13 @@
 
 use cw;
 
+use std::fmt;
+
 use Coord;
 use widget::WidgetCore;
 use toolkit::Toolkit;
 
-pub trait Layout: WidgetCore {
+pub trait Layout: WidgetCore + fmt::Debug {
     /// Upcast
     fn as_core(&self) -> &WidgetCore;
     /// Upcast, mutably
@@ -111,6 +113,7 @@ macro_rules! make_layout {
         $($wname:ident $wt:ident : $wvalue:expr),* ;
         $($dname:ident $dt:ident : $dvalue:expr),* ;) =>
     {{
+        use std::fmt::{self, Debug};
         use $crate::widget::{Class, CoreData, WidgetCore, Widget, Layout};
         use $crate::event::{Event, Handler, Response};
         use $crate::toolkit::Toolkit;
@@ -124,6 +127,17 @@ macro_rules! make_layout {
         }
 
         impl_widget_core!(L<$($wt: Widget),* , $($dt),*>, core);
+
+        impl<$($wt: Widget),* , $($dt),*> Debug
+            for L<$($wt),* , $($dt),*>
+        {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "<widget> {{ core: {:?}", self.core)?;
+                $(write!(f, ", {}: {:?}", stringify!($wname), self.$wname)?;)*
+                $(write!(f, ", {}: <omitted>", stringify!($dname))?;)*
+                write!(f, " }}")
+            }
+        }
 
         impl<$($wt: Widget),* , $($dt),*> Layout
             for L<$($wt),* , $($dt),*>

@@ -3,7 +3,7 @@
 use event;
 use widget::{Class, Layout, Widget, CoreData, WidgetCore};
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct Text {
     core: CoreData,
     text: String,

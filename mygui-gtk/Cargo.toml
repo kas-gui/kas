@@ -6,6 +6,6 @@ authors = ["Diggory Hardy <git@dhardy.name>"]
 [dependencies]
 mygui = { path = ".." }
 gtk = "0.5"
-gdk = "0.9"
+gdk = { version = "0.9", features = ["v3_10"] }
 glib = "0.6"
 gtk-sys = "0.7"

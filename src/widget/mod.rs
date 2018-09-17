@@ -76,7 +76,7 @@ pub trait WidgetCore {
 /// 
 /// # fn main() {}
 /// ```
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct CoreData {
     tkd: TkData,
     rect: Rect,

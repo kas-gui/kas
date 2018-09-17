@@ -1,5 +1,7 @@
 //! Basic controls
 
+use std::fmt::{self, Debug};
+
 use event;
 use widget::{Class, Layout, Widget, CoreData, WidgetCore};
 
@@ -12,6 +14,13 @@ pub struct TextButton<H> {
 }
 
 impl_widget_core!(TextButton<H>, core);
+
+impl<H> Debug for TextButton<H> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "TextButton {{ core: {:?}, msg: {:?}, handler: <omitted> }}",
+            self.core, self.msg)
+    }
+}
 
 impl<H> Widget for TextButton<H> {
     fn class(&self) -> Class { Class::Button }
