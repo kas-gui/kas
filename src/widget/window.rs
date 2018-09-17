@@ -13,8 +13,12 @@ use toolkit::Toolkit;
 /// A window is a drawable interactive region provided by windowing system.
 pub trait Window: Widget {
     /// Upcast
+    /// 
+    /// Note: needed because Rust does not yet support trait object upcasting
     fn as_widget(&self) -> &Widget;
     /// Upcast, mutably
+    /// 
+    /// Note: needed because Rust does not yet support trait object upcasting
     fn as_widget_mut(&mut self) -> &mut Widget;
     
     /// Calculate and update positions for all sub-widgets
@@ -73,9 +77,6 @@ impl<W: Widget> SimpleWindow<W> {
 }
 
 impl<W: Layout> Layout for SimpleWindow<W> {
-    fn as_core(&self) -> &WidgetCore { self }
-    fn as_core_mut(&mut self) -> &mut WidgetCore { self }
-    
     fn init_constraints(&self, tk: &Toolkit, key: usize,
         s: &mut cw::Solver, use_default: bool) -> usize
     {
@@ -86,6 +87,13 @@ impl<W: Layout> Layout for SimpleWindow<W> {
         s: &cw::Solver, pos: Coord) -> usize
     {
         self.w.apply_constraints(tk, key, s, pos)
+    }
+    
+    fn sync_size(&mut self, tk: &Toolkit) {
+        let new_rect = tk.tk_widget().get_rect(self.get_tkd());
+        *self.rect_mut() = new_rect;
+        
+        self.w.sync_size(tk);
     }
 }
 
@@ -173,10 +181,7 @@ impl<M, R, H: Fn() -> R> MessageBox<M, H> {
 
 impl_widget_core!(MessageBox<M, H>, core);
 
-impl<M: Debug, H: Debug> Layout for MessageBox<M, H> {
-    fn as_core(&self) -> &WidgetCore { self }
-    fn as_core_mut(&mut self) -> &mut WidgetCore { self }
-}
+impl<M: Debug, H: Debug> Layout for MessageBox<M, H> {}
 
 impl<M: Debug, H: Debug> Widget for MessageBox<M, H> {
     fn class(&self) -> Class { Class::Window }

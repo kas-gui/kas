@@ -46,10 +46,7 @@ impl<R, H: Fn() -> R> TextButton<H> {
 // }
 
 
-impl<H> Layout for TextButton<H> {
-    fn as_core(&self) -> &WidgetCore { self }
-    fn as_core_mut(&mut self) -> &mut WidgetCore { self }
-}
+impl<H> Layout for TextButton<H> {}
 
 impl<R: From<event::NoResponse>, H: Fn() -> R> event::Handler for TextButton<H> {
     type Response = R;

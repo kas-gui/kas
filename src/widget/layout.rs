@@ -9,11 +9,6 @@ use widget::WidgetCore;
 use toolkit::Toolkit;
 
 pub trait Layout: WidgetCore + fmt::Debug {
-    /// Upcast
-    fn as_core(&self) -> &WidgetCore;
-    /// Upcast, mutably
-    fn as_core_mut(&mut self) -> &mut WidgetCore;
-    
     /// Initialise the constraint solver.
     /// 
     /// This function applies constraints to the solver based on the current
@@ -87,14 +82,40 @@ pub trait Layout: WidgetCore + fmt::Debug {
         let v1 = cw::Variable::from_usize(key + 1);
         let key = key + 2;
         
-        let tkd = self.as_core().get_tkd();
+        let tkd = self.get_tkd();
         let size = (s.get_value(v0) as i32, s.get_value(v1) as i32);
-        let rect = self.as_core_mut().rect_mut();
+        let rect = self.rect_mut();
         rect.pos = pos;
         rect.size = size;
         tk.tk_widget().set_rect(tkd, rect);
         
         key
+    }
+    
+    /// Read position and size of widget from the toolkit
+    /// 
+    /// This is for use when the toolkit does layout adjustment of widgets.
+    fn sync_size(&mut self, tk: &Toolkit) {
+        let new_rect = tk.tk_widget().get_rect(self.get_tkd());
+        *self.rect_mut() = new_rect;
+    }
+}
+
+impl<'a, L: Layout> Layout for &'a mut L {
+    fn init_constraints(&self, tk: &Toolkit, key: usize,
+        s: &mut cw::Solver, use_default: bool) -> usize
+    {
+        (**self).init_constraints(tk, key, s, use_default)
+    }
+    
+    fn apply_constraints(&mut self, tk: &Toolkit, key: usize,
+        s: &cw::Solver, pos: Coord) -> usize
+    {
+        (**self).apply_constraints(tk, key, s, pos)
+    }
+    
+    fn sync_size(&mut self, tk: &Toolkit) {
+        (**self).sync_size(tk)
     }
 }
 
@@ -142,9 +163,6 @@ macro_rules! make_layout {
         impl<$($wt: Widget),* , $($dt),*> Layout
             for L<$($wt),* , $($dt),*>
         {
-            fn as_core(&self) -> &WidgetCore { &self.core }
-            fn as_core_mut(&mut self) -> &mut WidgetCore { &mut self.core }
-            
             fn init_constraints(&self, tk: &Toolkit, key: usize,
                 s: &mut cw::Solver, use_default: bool) -> usize
             {
@@ -180,11 +198,6 @@ macro_rules! make_layout {
                 key
             }
             
-            /// Apply constraints from the solver.
-            /// 
-            /// See the `init_constraints` documentation.
-            /// 
-            /// `pos` is the widget's position relative to the parent window.
             fn apply_constraints(&mut self, tk: &Toolkit, key: usize,
                 s: &cw::Solver, mut pos: $crate::Coord) -> usize
             {
@@ -192,10 +205,10 @@ macro_rules! make_layout {
                 let v1 = cw::Variable::from_usize(key + 1);
                 let mut key = key + 2;
                 
-                let tkd = self.as_core().get_tkd();
+                let tkd = self.get_tkd();
                 let size = (s.get_value(v0) as i32, s.get_value(v1) as i32);
                 {
-                    let rect = self.as_core_mut().rect_mut();
+                    let rect = self.rect_mut();
                     rect.pos = pos;
                     rect.size = size;
                     tk.tk_widget().set_rect(tkd, rect);
@@ -208,6 +221,13 @@ macro_rules! make_layout {
                 )*
                 
                 key
+            }
+            
+            fn sync_size(&mut self, tk: &Toolkit) {
+                let new_rect = tk.tk_widget().get_rect(self.get_tkd());
+                *self.rect_mut() = new_rect;
+                
+                $(self.$wname.sync_size(tk);)*
             }
         }
 

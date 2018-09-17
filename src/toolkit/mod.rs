@@ -31,9 +31,16 @@ pub trait Toolkit {
 }
 
 /// Common widget properties. Implemented by the toolkit.
+/// 
+/// Note that it is not necessary to implement all of these methods, depending
+/// on which functionality from the library is used.
+// TODO: should we provide multiple abstraction traits?
 pub trait TkWidget {
     /// Get the widget's minimum and preferred sizes.
     fn size_hints(&self, tkd: TkData) -> (Coord, Coord);
+    
+    /// Get the widget's position and size.
+    fn get_rect(&self, tkd: TkData) -> Rect;
     
     /// Set the widget's position and size.
     /// 

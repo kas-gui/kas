@@ -57,6 +57,14 @@ pub trait WidgetCore {
     fn set_tkd(&mut self, tkd: TkData);
 }
 
+impl<'a, W: WidgetCore> WidgetCore for &'a mut W {
+    fn rect(&self) -> &Rect { (**self).rect() }
+    fn rect_mut(&mut self) -> &mut Rect { (**self).rect_mut() }
+    
+    fn get_tkd(&self) -> TkData { (**self).get_tkd() }
+    fn set_tkd(&mut self, tkd: TkData) { (**self).set_tkd(tkd) }
+}
+
 /// Common widget data
 /// 
 /// Widgets should normally implement `WidgetCore` by use of an embedded field
@@ -125,6 +133,17 @@ pub trait Widget: Layout {
     
     /// Mutable variant of get
     fn get_mut(&mut self, index: usize) -> Option<&mut Widget>;
+}
+
+impl<'a, W: Widget> Widget for &'a mut W {
+    fn class(&self) -> Class { (**self).class() }
+    fn label(&self) -> Option<&str> { (**self).label() }
+    
+    fn len(&self) -> usize { (**self).len() }
+    fn get(&self, index: usize) -> Option<&Widget> { (**self).get(index) }
+    fn get_mut(&mut self, index: usize) -> Option<&mut Widget> {
+        (**self).get_mut(index)
+    }
 }
 
 pub struct ChildIter<'a, W: 'a + Widget + ?Sized> {
