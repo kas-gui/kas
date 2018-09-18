@@ -20,25 +20,17 @@ pub trait Layout: WidgetCore + fmt::Debug {
     /// 
     /// The default implementation may suffice for simple widgets without
     /// children, but must be overriden by any parent widget.
-    /// 
-    /// `key` is used to provide a unique identifier for each constraint
-    /// variable. Widgets must use `key` for their width and `key + 1` for their
-    /// height, and may use values if more variables are needed. Widgets must
-    /// return the next unused `key` value (typically `key + 2` if there are no
-    /// child widgets). Behaviour must be identical in `apply_constraints` in
-    /// order to reproduce the same `key` values.
     // TODO: because of width-for-height relations it may be necessary to
     // adjust this, e.g. solve for width first then for height.
-    fn init_constraints(&self, tk: &Toolkit, key: usize,
-        s: &mut cw::Solver, use_default: bool) -> usize;
+    fn init_constraints(&self, tk: &Toolkit,
+        s: &mut cw::Solver, use_default: bool);
     
     /// Apply constraints from the solver.
     /// 
     /// See the `init_constraints` documentation.
     /// 
     /// `pos` is the widget's position relative to the parent window.
-    fn apply_constraints(&mut self, tk: &Toolkit, key: usize,
-        s: &cw::Solver, pos: Coord) -> usize;
+    fn apply_constraints(&mut self, tk: &Toolkit, s: &cw::Solver, pos: Coord);
     
     /// Read position and size of widget from the toolkit
     /// 
@@ -47,16 +39,14 @@ pub trait Layout: WidgetCore + fmt::Debug {
 }
 
 impl<'a, L: Layout> Layout for &'a mut L {
-    fn init_constraints(&self, tk: &Toolkit, key: usize,
-        s: &mut cw::Solver, use_default: bool) -> usize
+    fn init_constraints(&self, tk: &Toolkit,
+        s: &mut cw::Solver, use_default: bool)
     {
-        (**self).init_constraints(tk, key, s, use_default)
+        (**self).init_constraints(tk, s, use_default)
     }
     
-    fn apply_constraints(&mut self, tk: &Toolkit, key: usize,
-        s: &cw::Solver, pos: Coord) -> usize
-    {
-        (**self).apply_constraints(tk, key, s, pos)
+    fn apply_constraints(&mut self, tk: &Toolkit, s: &cw::Solver, pos: Coord) {
+        (**self).apply_constraints(tk, s, pos)
     }
     
     fn sync_size(&mut self, tk: &Toolkit) {
@@ -74,14 +64,14 @@ macro_rules! impl_layout_simple {
             $crate::widget::Layout
             for $ty< $( $N ),* >
         {
-            fn init_constraints(&self, tk: &$crate::toolkit::Toolkit, key: usize,
-                s: &mut $crate::cw::Solver, use_default: bool) -> usize
+            fn init_constraints(&self, tk: &$crate::toolkit::Toolkit,
+                s: &mut $crate::cw::Solver, use_default: bool)
             {
                 use $crate::cw;
                 
+                let key = self.get_number();
                 let v0 = cw::Variable::from_usize(key);
-                let v1 = cw::Variable::from_usize(key + 1);
-                let key = key + 2;
+                let v1 = cw::Variable::from_usize(key + 0x1000_0000);
                 
                 let (min, hint) = tk.tk_widget().size_hints(self.get_tkd());
                 
@@ -113,16 +103,14 @@ macro_rules! impl_layout_simple {
                 s.add_edit_variable(v1, cw::strength::WEAK).unwrap();
                 s.suggest_value(v1, size.1 as f64);
                 */
-                
-                key
             }
             
-            fn apply_constraints(&mut self, tk: &$crate::toolkit::Toolkit, key: usize,
-                s: &$crate::cw::Solver, pos: $crate::Coord) -> usize
+            fn apply_constraints(&mut self, tk: &$crate::toolkit::Toolkit,
+                s: &$crate::cw::Solver, pos: $crate::Coord) 
             {
+                let key = self.get_number();
                 let v0 = $crate::cw::Variable::from_usize(key);
-                let v1 = $crate::cw::Variable::from_usize(key + 1);
-                let key = key + 2;
+                let v1 = $crate::cw::Variable::from_usize(key + 0x1000_0000);
                 
                 let tkd = self.get_tkd();
                 let size = (s.get_value(v0) as i32, s.get_value(v1) as i32);
@@ -130,8 +118,6 @@ macro_rules! impl_layout_simple {
                 rect.pos = pos;
                 rect.size = size;
                 tk.tk_widget().set_rect(tkd, rect);
-                
-                key
             }
             
             fn sync_size(&mut self, tk: &$crate::toolkit::Toolkit) {
@@ -155,16 +141,16 @@ macro_rules! impl_layout_single {
             $crate::widget::Layout
             for $ty< $( $N ),* >
         {
-            fn init_constraints(&self, tk: &$crate::toolkit::Toolkit, key: usize,
-                s: &mut $crate::cw::Solver, use_default: bool) -> usize
+            fn init_constraints(&self, tk: &$crate::toolkit::Toolkit,
+                s: &mut $crate::cw::Solver, use_default: bool)
             {
-                self.$child.init_constraints(tk, key, s, use_default)
+                self.$child.init_constraints(tk, s, use_default)
             }
             
-            fn apply_constraints(&mut self, tk: &$crate::toolkit::Toolkit, key: usize,
-                s: &$crate::cw::Solver, pos: $crate::Coord) -> usize
+            fn apply_constraints(&mut self, tk: &$crate::toolkit::Toolkit,
+                s: &$crate::cw::Solver, pos: $crate::Coord)
             {
-                self.$child.apply_constraints(tk, key, s, pos)
+                self.$child.apply_constraints(tk, s, pos)
             }
             
             fn sync_size(&mut self, tk: &$crate::toolkit::Toolkit) {
@@ -224,12 +210,12 @@ macro_rules! make_layout {
         impl<$($wt: Widget),* , $($dt),*> Layout
             for L<$($wt),* , $($dt),*>
         {
-            fn init_constraints(&self, tk: &Toolkit, key: usize,
-                s: &mut cw::Solver, use_default: bool) -> usize
+            fn init_constraints(&self, tk: &Toolkit,
+                s: &mut cw::Solver, use_default: bool)
             {
+                let key = self.get_number();
                 let v0 = cw::Variable::from_usize(key);
-                let v1 = cw::Variable::from_usize(key + 1);
-                let mut key = key + 2;
+                let v1 = cw::Variable::from_usize(key + 0x1000_0000);
                 
                 // TODO: borders and margins
                 
@@ -248,23 +234,21 @@ macro_rules! make_layout {
                         cw::RelationalOperator::Equal,
                         cw::strength::MEDIUM)).unwrap();
                     height -= child_v1;
-                    key = self.$wname.init_constraints(tk, key, s, use_default);
+                    self.$wname.init_constraints(tk, s, use_default);
                 )*
                 
                 s.add_constraint(cw::Constraint::new(
                     height,
                     cw::RelationalOperator::Equal,
                     cw::strength::STRONG * 10.0)).unwrap();
-                
-                key
             }
             
-            fn apply_constraints(&mut self, tk: &Toolkit, key: usize,
-                s: &cw::Solver, mut pos: $crate::Coord) -> usize
+            fn apply_constraints(&mut self, tk: &Toolkit,
+                s: &cw::Solver, mut pos: $crate::Coord)
             {
+                let key = self.get_number();
                 let v0 = cw::Variable::from_usize(key);
-                let v1 = cw::Variable::from_usize(key + 1);
-                let mut key = key + 2;
+                let v1 = cw::Variable::from_usize(key + 0x1000_0000);
                 
                 let tkd = self.get_tkd();
                 let size = (s.get_value(v0) as i32, s.get_value(v1) as i32);
@@ -276,12 +260,11 @@ macro_rules! make_layout {
                 }
                 
                 $(
-                    let child_v1 = cw::Variable::from_usize(key + 1);
-                    key = self.$wname.apply_constraints(tk, key, s, pos);
+                    let child_v1 = cw::Variable::from_usize(
+                        self.$wname.get_number() + 0x1000_0000);
+                    self.$wname.apply_constraints(tk, s, pos);
                     pos.1 += s.get_value(child_v1) as i32;
                 )*
-                
-                key
             }
             
             fn sync_size(&mut self, tk: &Toolkit) {

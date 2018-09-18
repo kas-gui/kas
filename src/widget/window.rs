@@ -38,14 +38,13 @@ pub struct SimpleWindow<W> {
     core: CoreData,
     min_size: Coord,
     solver: cw::Solver,
-    key_end: usize,
     w: W
 }
 
 impl<W: Debug> Debug for SimpleWindow<W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "SimpleWindow {{ core: {:?}, min_size: {:?}, solver: <omitted>, key_end: {}, w: {:?} }}",
-            self.core, self.min_size, self.key_end, self.w)
+        write!(f, "SimpleWindow {{ core: {:?}, min_size: {:?}, solver: <omitted>, w: {:?} }}",
+            self.core, self.min_size, self.w)
     }
 }
 
@@ -55,7 +54,6 @@ impl<W: Clone> Clone for SimpleWindow<W> {
             core: self.core.clone(),
             min_size: self.min_size,
             solver: cw::Solver::new(),
-            key_end: 0,
             w: self.w.clone()
         }
     }
@@ -71,7 +69,6 @@ impl<W: Widget> SimpleWindow<W> {
             core: Default::default(),
             min_size: (0, 0),
             solver: cw::Solver::new(),
-            key_end: 0,
             w
         }
     }
@@ -103,30 +100,32 @@ impl<R, W: Handler<Response = R> + Widget + 'static> Window for SimpleWindow<W>
     fn as_widget_mut(&mut self) -> &mut Widget { self }
     
     fn configure_widgets(&mut self, tk: &Toolkit) {
+        assert!(self.get_number() > 0, "widget not enumerated");
+        
         let v0 = cw::Variable::from_usize(0);
         let v1 = cw::Variable::from_usize(1);
         
         self.solver.reset();
         
-        self.key_end = self.w.init_constraints(tk, 0, &mut self.solver, true);
+        self.w.init_constraints(tk, &mut self.solver, true);
         
         self.solver.add_edit_variable(v0, cw::strength::MEDIUM * 100.0).unwrap();
         self.solver.add_edit_variable(v1, cw::strength::MEDIUM * 100.0).unwrap();
         
         self.min_size = (self.solver.get_value(v0) as i32, self.solver.get_value(v1) as i32);
         
-        let apply_key = self.w.apply_constraints(tk, 0, &self.solver, (0, 0));
-        assert_eq!(self.key_end, apply_key);
+        self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
     
     fn resize(&mut self, tk: &Toolkit, size: Coord) {
+        assert!(self.get_number() > 0, "widget not enumerated");
+        
         let v0 = cw::Variable::from_usize(0);
         let v1 = cw::Variable::from_usize(1);
         self.solver.suggest_value(v0, size.0 as f64).unwrap();
         self.solver.suggest_value(v1, size.1 as f64).unwrap();
         
-        let apply_key = self.w.apply_constraints(tk, 0, &self.solver, (0, 0));
-        assert_eq!(self.key_end, apply_key, "resize called without configure_widgets");
+        self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
     
     fn handle(&mut self, event: event::Event) -> event::Response {

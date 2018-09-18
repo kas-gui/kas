@@ -10,11 +10,12 @@ macro_rules! impl_widget_core {
             $crate::widget::WidgetCore
             for $ty< $( $N ),* >
         {
-            fn rect(&self) -> &$crate::Rect {
-                self.$core.rect()
+            fn set_number(&mut self, number: usize) {
+                self.$core.set_number(number);
             }
-            fn rect_mut(&mut self) -> &mut $crate::Rect {
-                self.$core.rect_mut()
+            
+            fn get_number(&self) -> usize {
+                self.$core.get_number()
             }
             
             fn get_tkd(&self) -> $crate::toolkit::TkData {
@@ -22,6 +23,13 @@ macro_rules! impl_widget_core {
             }
             fn set_tkd(&mut self, tkd: $crate::toolkit::TkData) {
                 self.$core.set_tkd(tkd)
+            }
+            
+            fn rect(&self) -> &$crate::Rect {
+                self.$core.rect()
+            }
+            fn rect_mut(&mut self) -> &mut $crate::Rect {
+                self.$core.rect_mut()
             }
         }
     };
@@ -45,25 +53,36 @@ use toolkit::TkData;
 
 /// Common widget behaviour
 pub trait WidgetCore {
+    /// Set the widget's number
+    /// 
+    /// This should only be called during widget enumeration
+    fn set_number(&mut self, number: usize);
+    
+    /// Get the widget's number
+    fn get_number(&self) -> usize;
+    
+    /// Get the toolkit data associated with this widget
+    fn get_tkd(&self) -> TkData;
+    
+    /// Set the toolkit data associated with this widget
+    fn set_tkd(&mut self, tkd: TkData);
+    
     /// Get the widget's region, relative to its parent.
     fn rect(&self) -> &Rect;
     
     /// Get mutable access to the widget's region
     fn rect_mut(&mut self) -> &mut Rect;
-    
-    /// Get the toolkit data associated with this widget
-    fn get_tkd(&self) -> TkData;
-    
-    /// Set the toolkit data associated with this widgte
-    fn set_tkd(&mut self, tkd: TkData);
 }
 
 impl<'a, W: WidgetCore> WidgetCore for &'a mut W {
-    fn rect(&self) -> &Rect { (**self).rect() }
-    fn rect_mut(&mut self) -> &mut Rect { (**self).rect_mut() }
+    fn set_number(&mut self, number: usize) { (**self).set_number(number) }
+    fn get_number(&self) -> usize { (**self).get_number() }
     
     fn get_tkd(&self) -> TkData { (**self).get_tkd() }
     fn set_tkd(&mut self, tkd: TkData) { (**self).set_tkd(tkd) }
+    
+    fn rect(&self) -> &Rect { (**self).rect() }
+    fn rect_mut(&mut self) -> &mut Rect { (**self).rect_mut() }
 }
 
 /// Common widget data
@@ -87,25 +106,39 @@ impl<'a, W: WidgetCore> WidgetCore for &'a mut W {
 /// ```
 #[derive(Clone, Default, Debug)]
 pub struct CoreData {
+    number: usize,
     tkd: TkData,
     rect: Rect,
 }
 
 impl WidgetCore for CoreData {
-    fn rect(&self) -> &Rect {
-        &self.rect
+    #[inline]
+    fn set_number(&mut self, number: usize) {
+        self.number = number;
+    }
+    #[inline]
+    fn get_number(&self) -> usize {
+        self.number
     }
     
-    fn rect_mut(&mut self) -> &mut Rect {
-        &mut self.rect
-    }
-    
+    #[inline]
     fn get_tkd(&self) -> TkData {
         self.tkd.clone()
     }
     
+    #[inline]
     fn set_tkd(&mut self, tkd: TkData) {
         self.tkd = tkd;
+    }
+    
+    #[inline]
+    fn rect(&self) -> &Rect {
+        &self.rect
+    }
+    
+    #[inline]
+    fn rect_mut(&mut self) -> &mut Rect {
+        &mut self.rect
     }
 }
 
@@ -134,6 +167,15 @@ pub trait Widget: Layout {
     
     /// Mutable variant of get
     fn get_mut(&mut self, index: usize) -> Option<&mut Widget>;
+    
+    /// Set the number for self and each child. Returns own number + 1.
+    fn enumerate(&mut self, mut n: usize) -> usize {
+        for i in 0..self.len() {
+            self.get_mut(i).map(|w| n = w.enumerate(n));
+        }
+        self.set_number(n);
+        n + 1
+    }
 }
 
 impl<'a, W: Widget> Widget for &'a mut W {
@@ -144,6 +186,10 @@ impl<'a, W: Widget> Widget for &'a mut W {
     fn get(&self, index: usize) -> Option<&Widget> { (**self).get(index) }
     fn get_mut(&mut self, index: usize) -> Option<&mut Widget> {
         (**self).get_mut(index)
+    }
+    
+    fn enumerate(&mut self, mut n: usize) -> usize {
+        (**self).enumerate(n)
     }
 }
 

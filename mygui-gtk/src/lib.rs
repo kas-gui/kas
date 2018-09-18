@@ -160,6 +160,8 @@ impl Toolkit for GtkToolkit {
         });
         
         let mut window = Box::new(window.clone());
+        window.enumerate(0);
+        
         // HACK: GTK widgets depend on passed pointers but don't mark lifetime
         // restrictions in their types. We cannot guard usage correctly.
         // TODO: we only need lifetime extension if GTK widgets refer to our
