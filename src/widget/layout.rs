@@ -70,8 +70,8 @@ macro_rules! impl_layout_simple {
                 use $crate::cw;
                 
                 let key = self.get_number();
-                let v0 = cw::Variable::from_usize(key);
-                let v1 = cw::Variable::from_usize(key + 0x1000_0000);
+                let v0 = cw::Variable::from_usize(key as usize);
+                let v1 = cw::Variable::from_usize((key + 0x1000_0000) as usize);
                 
                 let (min, hint) = tk.tk_widget().size_hints(self.get_tkd());
                 
@@ -109,8 +109,8 @@ macro_rules! impl_layout_simple {
                 s: &$crate::cw::Solver, pos: $crate::Coord) 
             {
                 let key = self.get_number();
-                let v0 = $crate::cw::Variable::from_usize(key);
-                let v1 = $crate::cw::Variable::from_usize(key + 0x1000_0000);
+                let v0 = $crate::cw::Variable::from_usize(key as usize);
+                let v1 = $crate::cw::Variable::from_usize((key + 0x1000_0000) as usize);
                 
                 let tkd = self.get_tkd();
                 let size = (s.get_value(v0) as i32, s.get_value(v1) as i32);
@@ -177,45 +177,42 @@ macro_rules! count_items {
 /// Construct a container widget
 #[macro_export]
 macro_rules! make_layout {
-    ($direction:ident;
-        $($wname:ident $wt:ident : $wvalue:expr),* ;
-        $($dname:ident $dt:ident : $dvalue:expr),* ;) =>
+    ($direction:ident; $self:ident, $msg:ident;
+        $($wname:ident $wt:ident : $wvalue:expr ; $wtr:ident => $whandle:expr),* ;
+        $($dname:ident $dt:ident : $dvalue:expr),* ;
+        $response:path) =>
     {{
         use std::fmt::{self, Debug};
-        use $crate::widget::{Class, CoreData, WidgetCore, Widget, Layout};
-        use $crate::event::{Event, Handler, Response};
-        use $crate::toolkit::Toolkit;
         use $crate::cw;
+        use $crate::event::{Action, Handler, NoResponse, ignore};
+        use $crate::toolkit::Toolkit;
+        use $crate::widget::{Class, CoreData, WidgetCore, Widget, Layout};
 
         #[derive(Clone)]
-        struct L<$($wt: Widget + 'static),* , $($dt),*> {
+        struct L<$($wt: Widget + 'static),*> {
             core: CoreData,
             $($wname: $wt),* ,
             $($dname: $dt),*
         }
 
-        impl_widget_core!(L<$($wt: Widget),* , $($dt),*>, core);
+        impl_widget_core!(L<$($wt: Widget),*>, core);
 
-        impl<$($wt: Widget),* , $($dt),*> Debug
-            for L<$($wt),* , $($dt),*>
-        {
+        impl<$($wt: Widget),*> Debug for L<$($wt),*> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                 write!(f, "<widget> {{ core: {:?}", self.core)?;
                 $(write!(f, ", {}: {:?}", stringify!($wname), self.$wname)?;)*
-                $(write!(f, ", {}: <omitted>", stringify!($dname))?;)*
+                $(write!(f, ", {}: {:?}", stringify!($dname), self.$dname)?;)*
                 write!(f, " }}")
             }
         }
 
-        impl<$($wt: Widget),* , $($dt),*> Layout
-            for L<$($wt),* , $($dt),*>
-        {
+        impl<$($wt: Widget),*> Layout for L<$($wt),*> {
             fn init_constraints(&self, tk: &Toolkit,
                 s: &mut cw::Solver, use_default: bool)
             {
                 let key = self.get_number();
-                let v0 = cw::Variable::from_usize(key);
-                let v1 = cw::Variable::from_usize(key + 0x1000_0000);
+                let v0 = cw::Variable::from_usize(key as usize);
+                let v1 = cw::Variable::from_usize((key + 0x1000_0000) as usize);
                 
                 // TODO: borders and margins
                 
@@ -223,8 +220,8 @@ macro_rules! make_layout {
                 let mut height = cw::Expression::from(v1);
                 
                 $(
-                    let child_v0 = cw::Variable::from_usize(key);
-                    let child_v1 = cw::Variable::from_usize(key + 1);
+                    let child_v0 = cw::Variable::from_usize(key as usize);
+                    let child_v1 = cw::Variable::from_usize((key + 0x1000_0000) as usize);
                     s.add_constraint(cw::Constraint::new(
                         width.clone() - child_v0,
                         cw::RelationalOperator::GreaterOrEqual,
@@ -247,8 +244,8 @@ macro_rules! make_layout {
                 s: &cw::Solver, mut pos: $crate::Coord)
             {
                 let key = self.get_number();
-                let v0 = cw::Variable::from_usize(key);
-                let v1 = cw::Variable::from_usize(key + 0x1000_0000);
+                let v0 = cw::Variable::from_usize(key as usize);
+                let v1 = cw::Variable::from_usize((key + 0x1000_0000) as usize);
                 
                 let tkd = self.get_tkd();
                 let size = (s.get_value(v0) as i32, s.get_value(v1) as i32);
@@ -261,7 +258,7 @@ macro_rules! make_layout {
                 
                 $(
                     let child_v1 = cw::Variable::from_usize(
-                        self.$wname.get_number() + 0x1000_0000);
+                        (self.$wname.get_number() + 0x1000_0000) as usize);
                     self.$wname.apply_constraints(tk, s, pos);
                     pos.1 += s.get_value(child_v1) as i32;
                 )*
@@ -275,8 +272,7 @@ macro_rules! make_layout {
             }
         }
 
-        impl<$($wt: Widget + 'static),* , $($dt),*> Widget
-            for L<$($wt),* , $($dt),*>
+        impl<$($wt: Widget + 'static),*> Widget for L<$($wt),*>
         {
             fn class(&self) -> Class { Class::Container }
             fn label(&self) -> Option<&str> { None }
@@ -308,12 +304,24 @@ macro_rules! make_layout {
             }
         }
 
-        impl<$($wt: Widget),* , $($dt),*> Handler
-            for L<$($wt),* , $($dt),*>
+        impl<$($wt: Widget + Handler<Response = $wtr>),*> Handler
+            for L<$($wt),*>
         {
-            type Response = Response;   // TODO
-            fn handle(&mut self, _event: Event) -> Self::Response {
-                unimplemented!()
+            type Response = $response;
+            
+            fn handle_action(&mut $self, action: Action, num: u32) -> $response {
+                $(
+                    if num <= $self.$wname.get_number() {
+                        let $msg = $self.$wname.handle_action(action, num);
+                        return $whandle;
+                    }
+                )*
+                if num == $self.get_number() {
+                    ignore(action)  // no actions handled by this widget
+                } else {
+                    println!("Warning: incorrect widget number");
+                    ignore(action)
+                }
             }
         }
 

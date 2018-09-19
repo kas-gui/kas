@@ -3,36 +3,30 @@
 //! Event handling uses *event* messages, passed from the parent into a widget,
 //! with responses passed back to the parent.
 
-// use super::WidgetSet;
-
-/// Input events
-pub enum Event {
-}
-
-/// Simple variant when no response is delivered
-pub enum NoResponse {
-    /// Success, no response
-    None,
-}
-
-/// Pre-defined event repsonses
-pub enum Response {
-    /// Success, no response
-    None,
-    /// Close the window
+/// Input actions: these are high-level events aimed at specific widgets.
+#[derive(Debug)]
+pub enum Action {
+    /// A button has been clicked.
+    ButtonClick,
+    /// A window has been asked to close.
     Close,
 }
 
-impl From<NoResponse> for Response {
-    fn from(r: NoResponse) -> Self {
-        match r {
-            NoResponse::None => Response::None
-        }
-    }
+// TODO: pub enum Event { .. }
+
+/// A simple response message with only a single variant.
+/// 
+/// All response message types should implement `From<NoResponse>`.
+pub enum NoResponse {
+    /// No action
+    None,
 }
 
 /// Mark explicitly ignored events.
-pub fn ignore<M: From<NoResponse>>(_: Event) -> M {
+/// 
+/// Ignoring events is allowed but emits a warning if enabled.
+pub fn ignore<M: From<NoResponse>>(a: Action) -> M {
+    println!("Ignored action: {:?}", a);
     M::from(NoResponse::None)
 }
 
@@ -40,8 +34,9 @@ pub fn ignore<M: From<NoResponse>>(_: Event) -> M {
 pub trait Handler {
     type Response: From<NoResponse>;
     
-    /// Handle an event, and return a user-defined message
-    fn handle(&mut self, event: Event) -> Self::Response {
-        ignore(event)
+    /// Handle a high-level event directed at the widget identified by `num`,
+    /// and return a user-defined message.
+    fn handle_action(&mut self, action: Action, num: u32) -> Self::Response {
+        ignore(action)
     }
 }

@@ -15,10 +15,11 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use gtk::{Cast, WidgetExt, ContainerExt};
+use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt};
 
+use mygui::event::Action;
 use mygui::widget::{Class, Widget};
-use mygui::widget::window::Window;
+use mygui::widget::window::{Window, Response};
 use mygui::toolkit::{Toolkit, TkWidget};
 
 use self::tkd::{own_to_tkd, own_from_tkd};
@@ -29,6 +30,16 @@ unsafe fn extend_lifetime<'b, R: ?Sized>(r: &'b R) -> &'static R {
 
 unsafe fn extend_lifetime_mut<'b, R: ?Sized>(r: &'b mut R) -> &'static mut R {
     ::std::mem::transmute::<&'b mut R, &'static mut R>(r)
+}
+
+struct TkWindow {
+    /// The mygui window
+    pub win: Box<Window>,
+    /// The GTK window
+    pub gwin: gtk::Window,
+    /// Last widget number used + 1. This is the first number available to the
+    /// next window.
+    pub nend: u32,
 }
 
 /// Object used to initialise GTK and create windows
@@ -43,7 +54,7 @@ unsafe fn extend_lifetime_mut<'b, R: ?Sized>(r: &'b mut R) -> &'static mut R {
 /// structure on the heap so that values never get moved. Now set references.
 pub struct GtkToolkit {
     // Note: `Box<_>` values must exist for as long as last param
-    windows: RefCell<Vec<(Box<Window>, gtk::Window)>>,
+    windows: RefCell<Vec<TkWindow>>,
     _phantom: PhantomData<Rc<()>>,  // not Send or Sync
 }
 
@@ -87,8 +98,8 @@ impl GtkToolkit {
         let mut windows = self.windows.borrow_mut();
         let gdk_win = Some(gdk_win);
         for item in windows.iter_mut() {
-            if item.1.get_window() == gdk_win {
-                return Some(f(&mut *item.0, &mut item.1))
+            if item.gwin.get_window() == gdk_win {
+                return Some(f(&mut *item.win, &mut item.gwin))
             }
         }
         None
@@ -103,9 +114,15 @@ impl GtkToolkit {
                     Class::Container =>
                         gtk::Box::new(gtk::Orientation::Vertical, 3)
                             .upcast::<gtk::Widget>(),
-                    Class::Button =>
-                        gtk::Button::new_with_label(child.label().unwrap())
-                            .upcast::<gtk::Widget>(),
+                    Class::Button => {
+                        let button = gtk::Button::new_with_label(child.label().unwrap());
+                        let num = child.get_number();
+                        button.connect_clicked(move |_| {
+                            let action = Action::ButtonClick;
+                            for_toolkit(|tk| tk.handle_action(action, num))
+                        });
+                        button.upcast::<gtk::Widget>()
+                    }
                     Class::Text => gtk::Label::new(child.label())
                             .upcast::<gtk::Widget>(),
                     Class::Window => panic!(),  // TODO embedded windows?
@@ -129,18 +146,28 @@ impl GtkToolkit {
 
 // event handler code
 impl GtkToolkit {
-    fn remove_window(&self, window: &gtk::Window) {
+    fn handle_action(&self, action: Action, num: u32) {
         let mut windows = self.windows.borrow_mut();
-        for w in windows.iter_mut() {
-            if w.1 == *window {
-                self.clear_tkd(w.0.as_widget_mut());
+        let mut remove = None;
+        
+        for (i, w) in windows.iter_mut().enumerate() {
+            if num < w.nend {
+                match w.win.handle_action(action, num) {
+                    Response::None => (),
+                    Response::Close => {
+                        self.clear_tkd(w.win.as_widget_mut());
+                        remove = Some(i);
+                    }
+                }
+                break;
             }
         }
-        windows.retain(|w| {
-            w.1 != *window
-        });
-        if windows.is_empty() {
-            gtk::main_quit();
+        
+        if let Some(i) = remove {
+            windows.remove(i);
+            if windows.is_empty() {
+                gtk::main_quit();
+            }
         }
     }
 }
@@ -153,25 +180,32 @@ impl Drop for GtkToolkit {
 
 impl Toolkit for GtkToolkit {
     fn add<W: Clone+Window+'static>(&mut self, window: &W) {
-        let gtk_window = gtk::Window::new(gtk::WindowType::Toplevel);
-        gtk_window.connect_delete_event(|slf, _| {
-            for_toolkit(|tk| tk.remove_window(slf));
+        let gwin = gtk::Window::new(gtk::WindowType::Toplevel);
+        
+        let mut win = Box::new(window.clone());
+        let n = self.windows.get_mut().last().map(|tw| tw.nend).unwrap_or(0);
+        let nend = win.enumerate(n);
+        let num = win.get_number();
+        
+        gwin.connect_delete_event(move |_, _| {
+            for_toolkit(|tk| tk.handle_action(Action::Close, num));
             gtk::Inhibit(false)
         });
-        
-        let mut window = Box::new(window.clone());
-        window.enumerate(0);
         
         // HACK: GTK widgets depend on passed pointers but don't mark lifetime
         // restrictions in their types. We cannot guard usage correctly.
         // TODO: we only need lifetime extension if GTK widgets refer to our
         // ones (currently they don't; wait until event handling is implemented)
-        self.add_widgets(gtk_window.upcast_ref::<gtk::Widget>(),
-            unsafe{ extend_lifetime_mut(&mut *window) });
+        self.add_widgets(gwin.upcast_ref::<gtk::Widget>(),
+            unsafe{ extend_lifetime_mut(&mut *win) });
         
-        gtk_window.show_all();
+        gwin.show_all();
         
-        self.windows.get_mut().push((window, gtk_window));
+        self.windows.get_mut().push(TkWindow {
+            win,
+            gwin,
+            nend
+        });
     }
     
     fn main(&mut self) {

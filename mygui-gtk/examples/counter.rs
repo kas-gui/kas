@@ -16,7 +16,7 @@ use mygui_gtk::{GtkToolkit, Error};
 
 enum Message {
     None,
-    Incr,
+    Clicked,
 }
 
 impl From<NoResponse> for Message {
@@ -25,33 +25,24 @@ impl From<NoResponse> for Message {
     }
 }
 
-// impl<B: Handler<Response = Message>> Handler for WindowInner<B> {
-//     type Response = NoResponse;
-//     
-//     fn handle(&mut self, ev: event::Event) -> Self::Response {
-//         match_event_widget!(ev;
-//             display => self.display.handle(ev).into(),
-//             button => {
-//                 match button.handle(ev) {
-//                     Message::None => {},
-//                     Message::Incr => {
-//                         self.counter += 1;
-//                         println!("counter: {}", self.counter);
-//                         self.display.set_text(self.counter.to_string());
-//                     }
-//                 }
-//                 NoResponse::None
-//             },
-//         )
-//     }
-// }
-
 fn main() -> Result<(), Error> {
     let window = SimpleWindow::new(   // construct with default state and handler
-        make_layout!(vertical;
-            display D: Text::from("0"),
-            button B: TextButton::new("increment", || Message::Incr);
-            counter C: 0;
+        make_layout!(vertical; self, msg;
+            display D: Text::from("0") ; NoResponse => msg,
+            button B: TextButton::new("increment", || Message::Clicked) ; Message =>
+                {
+                    match msg {
+                        Message::None => (),
+                        Message::Clicked => {
+                            self.counter += 1;
+                            println!("counter: {}", self.counter);
+//                             self.display.set_text(self.counter.to_string());
+                        }
+                    };
+                    NoResponse::None
+                };
+            counter usize: 0;
+            NoResponse
         )
     );
     

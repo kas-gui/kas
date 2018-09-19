@@ -2,7 +2,7 @@
 
 use std::fmt::{self, Debug};
 
-use event;
+use event::{self, Action, Handler, ignore};
 use widget::{Class, Layout, Widget, CoreData, WidgetCore};
 
 // TODO: abstract out text part?
@@ -47,14 +47,18 @@ impl<R, H: Fn() -> R> TextButton<H> {
 // }
 
 
-impl<R: From<event::NoResponse>, H: Fn() -> R> event::Handler for TextButton<H> {
+impl<R: From<event::NoResponse>, H: Fn() -> R> Handler for TextButton<H> {
     type Response = R;
     
-    fn handle(&mut self, event: event::Event) -> Self::Response {
-        if false /* TODO */ {
-            (self.handler)()
-        } else {
-            event::NoResponse::None.into()
+    fn handle_action(&mut self, action: Action, num: u32) -> Self::Response {
+        if num != self.get_number() {
+            println!("Warning: event passed to wrong widget.");
+            return ignore(action);
+        }
+        
+        match action {
+            Action::ButtonClick => (self.handler)(),
+            a @ _ => ignore(a)
         }
     }
 }

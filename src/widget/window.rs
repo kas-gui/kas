@@ -5,7 +5,7 @@ use cw;
 use std::fmt::{self, Debug};
 
 use Coord;
-use event::{self, Handler};
+use event::{self, Action, Handler, ignore};
 use widget::{Class, Layout, Widget, CoreData, WidgetCore};
 use widget::control::{button, TextButton};
 use toolkit::Toolkit;
@@ -29,8 +29,28 @@ pub trait Window: Widget {
     /// `configure_widgets` must be called before this.
     fn resize(&mut self, tk: &Toolkit, size: Coord);
     
-    /// Handle an input event.
-    fn handle(&mut self, event: event::Event) -> event::Response;
+    /// Handle a high-level event directed at the widget identified by `num`,
+    /// and return a user-defined message.
+    // NOTE: we could instead add the trait bound Handler<Response = Response>
+    // but (1) Rust doesn't yet support mult-trait objects
+    // and (2) Rust erronously claims that Response isn't specified in Box<Window>
+    fn handle_action(&mut self, action: Action, num: u32) -> Response;
+}
+
+/// Window event repsonses
+pub enum Response {
+    /// No action
+    None,
+    /// Close the window
+    Close,
+}
+
+impl From<event::NoResponse> for Response {
+    fn from(r: event::NoResponse) -> Self {
+        match r {
+            event::NoResponse::None => Response::None
+        }
+    }
 }
 
 /// Main window type
@@ -93,8 +113,9 @@ impl<W: Widget + 'static> Widget for SimpleWindow<W> {
     }
 }
 
-impl<R, W: Handler<Response = R> + Widget + 'static> Window for SimpleWindow<W>
-    where event::Response: From<R>, R: From<event::NoResponse>
+impl<R, W: Widget + Handler<Response = R> + 'static> Window
+    for SimpleWindow<W>
+    where Response: From<R>, R: From<event::NoResponse>
 {
     fn as_widget(&self) -> &Widget { self }
     fn as_widget_mut(&mut self) -> &mut Widget { self }
@@ -128,14 +149,24 @@ impl<R, W: Handler<Response = R> + Widget + 'static> Window for SimpleWindow<W>
         self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
     
-    fn handle(&mut self, event: event::Event) -> event::Response {
-        event::Response::from(self.w.handle(event))
+    fn handle_action(&mut self, action: Action, num: u32) -> Response {
+        if num < self.get_number() {
+            Response::from(self.w.handle_action(action, num))
+        } else if num == self.get_number() {
+            match action {
+                Action::Close => Response::Close,
+                _ => ignore(action)
+            }
+        } else {
+            println!("Warning: incorrect widget number");
+            ignore(action)
+        }
     }
 }
 
 
-pub fn action_close() -> impl Fn() -> event::Response {
-    || event::Response::Close
+pub fn action_close() -> impl Fn() -> Response {
+    || Response::Close
 }
 
 #[derive(Clone, Debug)]
@@ -186,7 +217,7 @@ impl<M: Debug, H: Debug> Window for MessageBox<M, H> {
         unimplemented!()
     }
     
-    fn handle(&mut self, event: event::Event) -> event::Response {
+    fn handle_action(&mut self, action: Action, num: u32) -> Response {
         unimplemented!()
     }
 }

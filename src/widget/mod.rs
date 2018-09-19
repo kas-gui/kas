@@ -10,11 +10,11 @@ macro_rules! impl_widget_core {
             $crate::widget::WidgetCore
             for $ty< $( $N ),* >
         {
-            fn set_number(&mut self, number: usize) {
+            fn set_number(&mut self, number: u32) {
                 self.$core.set_number(number);
             }
             
-            fn get_number(&self) -> usize {
+            fn get_number(&self) -> u32 {
                 self.$core.get_number()
             }
             
@@ -56,10 +56,10 @@ pub trait WidgetCore {
     /// Set the widget's number
     /// 
     /// This should only be called during widget enumeration
-    fn set_number(&mut self, number: usize);
+    fn set_number(&mut self, number: u32);
     
     /// Get the widget's number
-    fn get_number(&self) -> usize;
+    fn get_number(&self) -> u32;
     
     /// Get the toolkit data associated with this widget
     fn get_tkd(&self) -> TkData;
@@ -75,8 +75,8 @@ pub trait WidgetCore {
 }
 
 impl<'a, W: WidgetCore> WidgetCore for &'a mut W {
-    fn set_number(&mut self, number: usize) { (**self).set_number(number) }
-    fn get_number(&self) -> usize { (**self).get_number() }
+    fn set_number(&mut self, number: u32) { (**self).set_number(number) }
+    fn get_number(&self) -> u32 { (**self).get_number() }
     
     fn get_tkd(&self) -> TkData { (**self).get_tkd() }
     fn set_tkd(&mut self, tkd: TkData) { (**self).set_tkd(tkd) }
@@ -106,18 +106,18 @@ impl<'a, W: WidgetCore> WidgetCore for &'a mut W {
 /// ```
 #[derive(Clone, Default, Debug)]
 pub struct CoreData {
-    number: usize,
+    number: u32,
     tkd: TkData,
     rect: Rect,
 }
 
 impl WidgetCore for CoreData {
     #[inline]
-    fn set_number(&mut self, number: usize) {
+    fn set_number(&mut self, number: u32) {
         self.number = number;
     }
     #[inline]
-    fn get_number(&self) -> usize {
+    fn get_number(&self) -> u32 {
         self.number
     }
     
@@ -169,7 +169,7 @@ pub trait Widget: Layout {
     fn get_mut(&mut self, index: usize) -> Option<&mut Widget>;
     
     /// Set the number for self and each child. Returns own number + 1.
-    fn enumerate(&mut self, mut n: usize) -> usize {
+    fn enumerate(&mut self, mut n: u32) -> u32 {
         for i in 0..self.len() {
             self.get_mut(i).map(|w| n = w.enumerate(n));
         }
@@ -188,7 +188,7 @@ impl<'a, W: Widget> Widget for &'a mut W {
         (**self).get_mut(index)
     }
     
-    fn enumerate(&mut self, mut n: usize) -> usize {
+    fn enumerate(&mut self, mut n: u32) -> u32 {
         (**self).enumerate(n)
     }
 }

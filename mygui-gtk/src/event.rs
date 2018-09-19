@@ -18,7 +18,9 @@ pub(crate) fn handler(event: &mut Event) {
         
         Configure if MYGUI_LAYOUT => {
             // TODO: use downcast_ref available in next GDK version
-            return for_toolkit(|tk| tk.configure(event.clone().downcast().unwrap()));
+            for_toolkit(|tk| tk.configure(event.clone().downcast().unwrap()));
+            // TODO: emit expose event?
+            return;
         },
         
         // let GTK handle these for now:
