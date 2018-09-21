@@ -22,7 +22,7 @@ use mygui::widget::{Class, Widget};
 use mygui::widget::window::{Window, Response};
 use mygui::toolkit::{Toolkit, TkWidget};
 
-use self::tkd::{own_to_tkd, own_from_tkd};
+use self::tkd::WidgetAbstraction;
 
 unsafe fn extend_lifetime<'b, R: ?Sized>(r: &'b R) -> &'static R {
     ::std::mem::transmute::<&'b R, &'static R>(r)
@@ -104,44 +104,40 @@ impl GtkToolkit {
         }
         None
     }
-    
-    fn add_widgets(&mut self, gtk_widget: &gtk::Widget, widget: &mut Widget) {
-        widget.set_tkd(unsafe { own_to_tkd(gtk_widget) });
-        if let Some(gtk_container) = gtk_widget.downcast_ref::<gtk::Container>() {
-            (0..widget.len()).for_each(|i| {
-                let child = widget.get_mut(i).unwrap();
-                let gtk_child = match child.class() {
-                    Class::Container =>
-                        gtk::Box::new(gtk::Orientation::Vertical, 3)
-                            .upcast::<gtk::Widget>(),
-                    Class::Button => {
-                        let button = gtk::Button::new_with_label(child.label().unwrap());
-                        let num = child.get_number();
-                        button.connect_clicked(move |_| {
-                            let action = Action::ButtonClick;
-                            for_toolkit(|tk| tk.handle_action(action, num))
-                        });
-                        button.upcast::<gtk::Widget>()
-                    }
-                    Class::Text => gtk::Label::new(child.label())
-                            .upcast::<gtk::Widget>(),
-                    Class::Window => panic!(),  // TODO embedded windows?
-                };
-                gtk_container.add(&gtk_child);
-                self.add_widgets(&gtk_child, child);
-            });
-        }
+}
+
+fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
+    widget.set_gw(gtk_widget);
+    if let Some(gtk_container) = gtk_widget.downcast_ref::<gtk::Container>() {
+        (0..widget.len()).for_each(|i| {
+            let child = widget.get_mut(i).unwrap();
+            // TODO: use trait implementation for each different class?
+            let gtk_child = match child.class() {
+                Class::Container =>
+                    gtk::Box::new(gtk::Orientation::Vertical, 3)
+                        .upcast::<gtk::Widget>(),
+                Class::Button => {
+                    let button = gtk::Button::new_with_label(child.label().unwrap());
+                    let num = child.get_number();
+                    button.connect_clicked(move |_| {
+                        let action = Action::ButtonClick;
+                        for_toolkit(|tk| tk.handle_action(action, num))
+                    });
+                    button.upcast::<gtk::Widget>()
+                }
+                Class::Text => gtk::Label::new(child.label())
+                        .upcast::<gtk::Widget>(),
+                Class::Window => panic!(),  // TODO embedded windows?
+            };
+            gtk_container.add(&gtk_child);
+            add_widgets(&gtk_child, child);
+        });
     }
-    
-    fn clear_tkd<'a, 'b>(&'a self, widget: &'b mut Widget) {
-        (0..widget.len()).for_each(|i| self.clear_tkd(widget.get_mut(i).unwrap()));
-        
-        // convert back to smart pointer to reduce reference count
-        if let Some(_) = unsafe { own_from_tkd(widget.get_tkd()) } {
-            // mark empty
-            widget.set_tkd(Default::default());
-        }
-    }
+}
+
+fn clear_tkd(widget: &mut Widget) {
+    (0..widget.len()).for_each(|i| clear_tkd(widget.get_mut(i).unwrap()));
+    widget.clear_gw();
 }
 
 // event handler code
@@ -155,7 +151,7 @@ impl GtkToolkit {
                 match w.win.handle_action(action, num) {
                     Response::None => (),
                     Response::Close => {
-                        self.clear_tkd(w.win.as_widget_mut());
+                        clear_tkd(w.win.as_widget_mut());
                         remove = Some(i);
                     }
                 }
@@ -196,7 +192,7 @@ impl Toolkit for GtkToolkit {
         // restrictions in their types. We cannot guard usage correctly.
         // TODO: we only need lifetime extension if GTK widgets refer to our
         // ones (currently they don't; wait until event handling is implemented)
-        self.add_widgets(gwin.upcast_ref::<gtk::Widget>(),
+        add_widgets(gwin.upcast_ref::<gtk::Widget>(),
             unsafe{ extend_lifetime_mut(&mut *win) });
         
         gwin.show_all();
