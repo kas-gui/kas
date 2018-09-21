@@ -38,22 +38,6 @@ pub trait Layout: WidgetCore + fmt::Debug {
     fn sync_size(&mut self, tk: &Toolkit);
 }
 
-impl<'a, L: Layout> Layout for &'a mut L {
-    fn init_constraints(&self, tk: &Toolkit,
-        s: &mut cw::Solver, use_default: bool)
-    {
-        (**self).init_constraints(tk, s, use_default)
-    }
-    
-    fn apply_constraints(&mut self, tk: &Toolkit, s: &cw::Solver, pos: Coord) {
-        (**self).apply_constraints(tk, s, pos)
-    }
-    
-    fn sync_size(&mut self, tk: &Toolkit) {
-        (**self).sync_size(tk)
-    }
-}
-
 /// Implements `Layout` for widgets with no children
 #[macro_export]
 macro_rules! impl_layout_simple {
