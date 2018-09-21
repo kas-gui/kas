@@ -12,4 +12,4 @@ pub mod toolkit;
 
 mod util;
 
-pub use util::{Coord, Rect};
+pub use crate::util::{Coord, Rect};

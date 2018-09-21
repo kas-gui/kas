@@ -34,7 +34,7 @@ impl TkWidget for GtkToolkit {
 
 // From, but constructed locally so that we can implement for foreign types
 trait Convert<T> {
-    fn conv(T) -> Self;
+    fn conv(t: T) -> Self;
 }
 
 impl Convert<gtk::Requisition> for Coord {

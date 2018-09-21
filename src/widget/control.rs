@@ -2,8 +2,8 @@
 
 use std::fmt::{self, Debug};
 
-use event::{self, Action, Handler, ignore};
-use widget::{Class, Layout, Widget, CoreData, WidgetCore};
+use crate::event::{self, Action, Handler, ignore};
+use crate::widget::{Class, Layout, Widget, CoreData, WidgetCore};
 
 // TODO: abstract out text part?
 #[derive(Clone, Default)]

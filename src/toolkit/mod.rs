@@ -1,7 +1,7 @@
 //! Toolkit interface
 
-use {Coord, Rect};
-use widget::window::Window;
+use crate::{Coord, Rect};
+use crate::widget::window::Window;
 
 /// The type of per-widget toolkit data.
 /// 

@@ -2,6 +2,7 @@
 name = "mygui"
 version = "0.1.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
+edition = "2018"
 
 [dependencies]
 cassowary = { git = "https://github.com/dhardy/cassowary-rs" }

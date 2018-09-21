@@ -5,7 +5,7 @@
 use gdk::{Event, EventConfigure};
 use gtk;
 
-use {GtkToolkit, for_toolkit};
+use crate::{GtkToolkit, for_toolkit};
 
 // If true, use mygui's layout configuration, otherwise use GTK's.
 const MYGUI_LAYOUT: bool = false;

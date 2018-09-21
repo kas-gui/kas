@@ -1,12 +1,12 @@
 //! Widget layout
 
-use cw;
 
 use std::fmt;
 
-use Coord;
-use widget::WidgetCore;
-use toolkit::Toolkit;
+use crate::cw;
+use crate::Coord;
+use crate::widget::WidgetCore;
+use crate::toolkit::Toolkit;
 
 pub trait Layout: WidgetCore + fmt::Debug {
     /// Initialise the constraint solver.

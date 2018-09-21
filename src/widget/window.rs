@@ -1,14 +1,13 @@
 //! Window widgets
 
-use cw;
-
 use std::fmt::{self, Debug};
 
-use Coord;
-use event::{self, Action, Handler, ignore};
-use widget::{Class, Layout, Widget, CoreData, WidgetCore};
-use widget::control::{button, TextButton};
-use toolkit::Toolkit;
+use crate::cw;
+use crate::Coord;
+use crate::event::{self, Action, Handler, ignore};
+use crate::widget::{Class, Layout, Widget, CoreData, WidgetCore};
+use crate::widget::control::{button, TextButton};
+use crate::toolkit::Toolkit;
 
 /// A window is a drawable interactive region provided by windowing system.
 pub trait Window: Widget {
@@ -169,7 +168,7 @@ pub fn action_close() -> impl Fn() -> Response {
     || Response::Close
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct MessageBox<M, H> {
     core: CoreData,
     message: M,
@@ -189,10 +188,18 @@ impl<M, R, H: Fn() -> R> MessageBox<M, H> {
     }
 }
 
-impl_widget_core!(MessageBox<M, H>, core);
-impl_layout_single!(MessageBox<M: Debug, H: Debug>, button);  // TODO: improve?
+// manual impl required because derive requires `H: Debug`
+impl<M: Debug, H> Debug for MessageBox<M, H> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "MessageBox {{ core: {:?}, message: {:?}, button: {:?} }}",
+            self.core, self.message, self.button)
+    }
+}
 
-impl<M: Debug, H: Debug> Widget for MessageBox<M, H> {
+impl_widget_core!(MessageBox<M, H>, core);
+impl_layout_single!(MessageBox<M: Debug, H>, button);  // TODO: improve?
+
+impl<M: Debug, H> Widget for MessageBox<M, H> {
     fn class(&self) -> Class { Class::Window }
     fn label(&self) -> Option<&str> { None }
     
@@ -205,7 +212,7 @@ impl<M: Debug, H: Debug> Widget for MessageBox<M, H> {
     }
 }
 
-impl<M: Debug, H: Debug> Window for MessageBox<M, H> {
+impl<M: Debug, H> Window for MessageBox<M, H> {
     fn as_widget(&self) -> &Widget { self }
     fn as_widget_mut(&mut self) -> &mut Widget { self }
     

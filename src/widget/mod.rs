@@ -48,8 +48,8 @@ mod class;
 
 pub use self::class::Class;
 pub use self::layout::Layout;
-use Rect;
-use toolkit::TkData;
+use crate::Rect;
+use crate::toolkit::TkData;
 
 /// Common widget behaviour
 pub trait WidgetCore {

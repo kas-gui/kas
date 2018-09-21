@@ -1,7 +1,7 @@
 //! Canvas types
 
-use event;
-use widget::{Class, Layout, Widget, CoreData, WidgetCore};
+use crate::event;
+use crate::widget::{Class, Layout, Widget, CoreData, WidgetCore};
 
 #[derive(Clone, Default, Debug)]
 pub struct Text {
