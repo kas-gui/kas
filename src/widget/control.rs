@@ -4,6 +4,7 @@ use std::fmt::{self, Debug};
 
 use crate::event::{self, Action, Handler, ignore};
 use crate::widget::{Class, Layout, Widget, CoreData, WidgetCore};
+use crate::toolkit::Toolkit;
 
 // TODO: abstract out text part?
 #[derive(Clone, Default)]
@@ -50,7 +51,7 @@ impl<R, H: Fn() -> R> TextButton<H> {
 impl<R: From<event::NoResponse>, H: Fn() -> R> Handler for TextButton<H> {
     type Response = R;
     
-    fn handle_action(&mut self, action: Action, num: u32) -> Self::Response {
+    fn handle_action(&mut self, _tk: &Toolkit, action: Action, num: u32) -> Self::Response {
         if num != self.get_number() {
             println!("Warning: event passed to wrong widget.");
             return ignore(action);

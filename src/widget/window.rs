@@ -33,7 +33,7 @@ pub trait Window: Widget {
     // NOTE: we could instead add the trait bound Handler<Response = Response>
     // but (1) Rust doesn't yet support mult-trait objects
     // and (2) Rust erronously claims that Response isn't specified in Box<Window>
-    fn handle_action(&mut self, action: Action, num: u32) -> Response;
+    fn handle_action(&mut self, tk: &Toolkit, action: Action, num: u32) -> Response;
 }
 
 /// Window event repsonses
@@ -148,9 +148,9 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
     
-    fn handle_action(&mut self, action: Action, num: u32) -> Response {
+    fn handle_action(&mut self, tk: &Toolkit, action: Action, num: u32) -> Response {
         if num < self.get_number() {
-            Response::from(self.w.handle_action(action, num))
+            Response::from(self.w.handle_action(tk, action, num))
         } else if num == self.get_number() {
             match action {
                 Action::Close => Response::Close,
@@ -224,7 +224,7 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
         unimplemented!()
     }
     
-    fn handle_action(&mut self, action: Action, num: u32) -> Response {
+    fn handle_action(&mut self, tk: &Toolkit, action: Action, num: u32) -> Response {
         unimplemented!()
     }
 }

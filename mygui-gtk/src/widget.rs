@@ -3,7 +3,7 @@
 //! Widget code
 
 use gtk;
-use gtk::{WidgetExt};
+use gtk::{Cast, WidgetExt, LabelExt};
 
 use mygui::{Coord, Rect};
 use mygui::toolkit::{TkData, TkWidget};
@@ -14,21 +14,37 @@ use super::tkd::borrow_from_tkd;
 
 impl TkWidget for GtkToolkit {
     fn size_hints(&self, tkd: TkData) -> (Coord, Coord) {
-        let wptr = unsafe { borrow_from_tkd(tkd) }.unwrap();
-        let min = Coord::conv(wptr.get_preferred_size().0);
-        let hint = Coord::conv(wptr.get_preferred_size().1);
+        let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
+        let min = Coord::conv(gw.get_preferred_size().0);
+        let hint = Coord::conv(gw.get_preferred_size().1);
         (min, hint)
     }
     
     fn get_rect(&self, tkd: TkData) -> Rect {
-        let wptr = unsafe { borrow_from_tkd(tkd) }.unwrap();
-        Rect::conv(wptr.get_allocation())
+        let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
+        Rect::conv(gw.get_allocation())
     }
     
     fn set_rect(&self, tkd: TkData, rect: &Rect) {
-        let wptr = unsafe { borrow_from_tkd(tkd) }.unwrap();
+        let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
         let mut rect = gtk::Rectangle::conv(rect);
-        wptr.size_allocate(&mut rect);
+        gw.size_allocate(&mut rect);
+    }
+    
+    fn set_label(&self, tkd: TkData, text: &str) {
+        let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
+        if let Some(glabel) = gw.downcast_ref::<gtk::Label>() {
+            glabel.set_label(text);
+        } /*else if let Some(cont) = gw.downcast_ref::<gtk::Container>() {
+            // GTK sometimes uses a child for the actual label
+            // TODO: consider using child_notify instead
+            for child in cont.get_children().iter() {
+                if let Some(glabel) = child.downcast_ref::<gtk::Label>() {
+                    glabel.set_label(text);
+                    break;
+                }
+            }
+        }*/
     }
 }
 

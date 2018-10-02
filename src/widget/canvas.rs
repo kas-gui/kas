@@ -2,6 +2,7 @@
 
 use crate::event;
 use crate::widget::{Class, Layout, Widget, CoreData, WidgetCore};
+use crate::toolkit::Toolkit;
 
 #[derive(Clone, Default, Debug)]
 pub struct Text {
@@ -22,8 +23,9 @@ impl Widget for Text {
 }
 
 impl Text {
-    pub fn set_text<T>(&mut self, s: T) where String: From<T> {
-        self.text = String::from(s);
+    pub fn set_text(&mut self, tk: &Toolkit, text: &str) {
+        self.text = String::from(text);
+        tk.tk_widget().set_label(self.get_tkd(), text);
     }
 }
 

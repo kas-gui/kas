@@ -161,9 +161,10 @@ macro_rules! count_items {
 /// Construct a container widget
 #[macro_export]
 macro_rules! make_layout {
-    ($direction:ident; $self:ident, $msg:ident;
-        $($wname:ident $wt:ident : $wvalue:expr ; $wtr:ident => $whandle:expr),* ;
-        $($dname:ident $dt:ident : $dvalue:expr),* ;
+    ($direction:ident < $($gt:ident [$gtr:path]),* >;
+        $self:ident, $tk: ident, $msg:ident;
+        $($wname:ident: $wt:ident = $wvalue:expr => $whandle:expr),* ;
+        $($dname:ident: $dt:ident = $dvalue:expr),* ;
         $response:path) =>
     {{
         use std::fmt::{self, Debug};
@@ -172,25 +173,16 @@ macro_rules! make_layout {
         use $crate::toolkit::Toolkit;
         use $crate::widget::{Class, CoreData, WidgetCore, Widget, Layout};
 
-        #[derive(Clone)]
-        struct L<$($wt: Widget + 'static),*> {
+        #[derive(Clone, Debug)]
+        struct L<$($gt: Widget + 'static),*> {
             core: CoreData,
             $($wname: $wt),* ,
             $($dname: $dt),*
         }
 
-        impl_widget_core!(L<$($wt: Widget),*>, core);
+        impl_widget_core!(L<$($gt: Widget),*>, core);
 
-        impl<$($wt: Widget),*> Debug for L<$($wt),*> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "<widget> {{ core: {:?}", self.core)?;
-                $(write!(f, ", {}: {:?}", stringify!($wname), self.$wname)?;)*
-                $(write!(f, ", {}: {:?}", stringify!($dname), self.$dname)?;)*
-                write!(f, " }}")
-            }
-        }
-
-        impl<$($wt: Widget),*> Layout for L<$($wt),*> {
+        impl<$($gt: Widget),*> Layout for L<$($gt),*> {
             fn init_constraints(&self, tk: &Toolkit,
                 s: &mut cw::Solver, use_default: bool)
             {
@@ -256,7 +248,7 @@ macro_rules! make_layout {
             }
         }
 
-        impl<$($wt: Widget + 'static),*> Widget for L<$($wt),*>
+        impl<$($gt: Widget + 'static),*> Widget for L<$($gt),*>
         {
             fn class(&self) -> Class { Class::Container }
             fn label(&self) -> Option<&str> { None }
@@ -288,15 +280,15 @@ macro_rules! make_layout {
             }
         }
 
-        impl<$($wt: Widget + Handler<Response = $wtr>),*> Handler
-            for L<$($wt),*>
+        impl<$($gt: Widget + Handler<Response = $gtr>),*> Handler
+            for L<$($gt),*>
         {
             type Response = $response;
             
-            fn handle_action(&mut $self, action: Action, num: u32) -> $response {
+            fn handle_action(&mut $self, $tk: &Toolkit, action: Action, num: u32) -> $response {
                 $(
                     if num <= $self.$wname.get_number() {
-                        let $msg = $self.$wname.handle_action(action, num);
+                        let $msg = $self.$wname.handle_action($tk, action, num);
                         return $whandle;
                     }
                 )*

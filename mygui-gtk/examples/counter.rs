@@ -27,21 +27,20 @@ impl From<NoResponse> for Message {
 
 fn main() -> Result<(), Error> {
     let window = SimpleWindow::new(   // construct with default state and handler
-        make_layout!(vertical; self, msg;
-            display D: Text::from("0") ; NoResponse => msg,
-            button B: TextButton::new("increment", || Message::Clicked) ; Message =>
+        make_layout!(vertical<B[Message]>; self, tk, msg;
+            display: Text = Text::from("0") => msg,
+            button: B = TextButton::new("increment", || Message::Clicked) =>
                 {
                     match msg {
                         Message::None => (),
                         Message::Clicked => {
                             self.counter += 1;
-                            println!("counter: {}", self.counter);
-//                             self.display.set_text(self.counter.to_string());
+                            self.display.set_text(tk, &self.counter.to_string());
                         }
                     };
                     NoResponse::None
                 };
-            counter usize: 0;
+            counter: usize = 0;
             NoResponse
         )
     );

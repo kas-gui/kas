@@ -46,4 +46,7 @@ pub trait TkWidget {
     /// 
     /// Does not need to update child widgets.
     fn set_rect(&self, tkd: TkData, rect: &Rect);
+    
+    /// Set the widget's label (where applicable)
+    fn set_label(&self, tkd: TkData, text: &str);
 }

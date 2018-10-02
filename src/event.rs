@@ -3,6 +3,8 @@
 //! Event handling uses *event* messages, passed from the parent into a widget,
 //! with responses passed back to the parent.
 
+use crate::toolkit::Toolkit;
+
 /// Input actions: these are high-level events aimed at specific widgets.
 #[derive(Debug)]
 pub enum Action {
@@ -36,7 +38,7 @@ pub trait Handler {
     
     /// Handle a high-level event directed at the widget identified by `num`,
     /// and return a user-defined message.
-    fn handle_action(&mut self, action: Action, num: u32) -> Self::Response {
+    fn handle_action(&mut self, _tk: &Toolkit, action: Action, _num: u32) -> Self::Response {
         ignore(action)
     }
 }

@@ -148,7 +148,7 @@ impl GtkToolkit {
         
         for (i, w) in windows.iter_mut().enumerate() {
             if num < w.nend {
-                match w.win.handle_action(action, num) {
+                match w.win.handle_action(self, action, num) {
                     Response::None => (),
                     Response::Close => {
                         clear_tkd(w.win.as_widget_mut());
