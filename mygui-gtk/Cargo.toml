@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 
+[features]
+# Use mygui's layout positioning instead of GTK's.
+# This is just a tech demo, and not currently recommended.
+layout = ["mygui/layout"]
+
 [dependencies]
 mygui = { path = ".." }
 gtk = "0.5"

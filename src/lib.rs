@@ -4,6 +4,7 @@
 #![allow(unused)]
 
 #[doc(hidden)]
+#[cfg(feature = "cassowary")]
 pub extern crate cassowary as cw;    // used by macros
 
 pub mod event;

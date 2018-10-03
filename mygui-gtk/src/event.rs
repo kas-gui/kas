@@ -2,13 +2,10 @@
 //! 
 //! Event handling
 
-use gdk::{Event, EventConfigure};
+use gdk::{Event};
 use gtk;
 
 use crate::{GtkToolkit, for_toolkit};
-
-// If true, use mygui's layout configuration, otherwise use GTK's.
-const MYGUI_LAYOUT: bool = false;
 
 pub(crate) fn handler(event: &mut Event) {
     use gdk::EventType::*;
@@ -16,7 +13,8 @@ pub(crate) fn handler(event: &mut Event) {
     match event.get_event_type() {
         Nothing => return,  // ignore this event
         
-        Configure if MYGUI_LAYOUT => {
+        #[cfg(feature = "layout")]
+        Configure => {
             // TODO: use downcast_ref available in next GDK version
             for_toolkit(|tk| tk.configure(event.clone().downcast().unwrap()));
             // TODO: emit expose event?
@@ -60,7 +58,8 @@ pub(crate) fn handler(event: &mut Event) {
     gtk::main_do_event(event);
     
     match event.get_event_type() {
-        Configure if !MYGUI_LAYOUT => {
+        #[cfg(not(feature = "layout"))]
+        Configure => {
             for_toolkit(|tk| tk.post_configure(event))
         },
         
@@ -69,7 +68,8 @@ pub(crate) fn handler(event: &mut Event) {
 }
 
 impl GtkToolkit {
-    fn configure(&self, event: EventConfigure) {
+    #[cfg(feature = "layout")]
+    fn configure(&self, event: gdk::EventConfigure) {
         let size = event.get_size();
         let size = (size.0 as i32, size.1 as i32);
         if let Some(gdk_win) = event.get_window() {
@@ -84,6 +84,7 @@ impl GtkToolkit {
         }
     }
     
+    #[cfg(not(feature = "layout"))]
     fn post_configure(&self, event: &Event) {
         if let Some(gdk_win) = event.get_window() {
             self.for_gdk_win(gdk_win, |win, _gwin| {

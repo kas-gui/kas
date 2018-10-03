@@ -4,8 +4,13 @@ version = "0.1.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 
+[features]
+# Enable layout solver; uses Cassowary.
+# Not required by all toolkits.
+layout = ["cassowary"]
+
 [dependencies]
-cassowary = { git = "https://github.com/dhardy/cassowary-rs" }
+cassowary = { git = "https://github.com/dhardy/cassowary-rs", optional = true }
 
 [workspace]
 members = ["mygui-gtk"]

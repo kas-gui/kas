@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use crate::cw;
+#[cfg(feature = "cassowary")] use crate::cw;
 use crate::Coord;
 use crate::widget::WidgetCore;
 use crate::toolkit::Toolkit;
@@ -38,6 +38,7 @@ pub trait Layout: WidgetCore + fmt::Debug {
     /// children, but must be overriden by any parent widget.
     // TODO: because of width-for-height relations it may be necessary to
     // adjust this, e.g. solve for width first then for height.
+    #[cfg(feature = "cassowary")]
     fn init_constraints(&self, tk: &Toolkit,
         s: &mut cw::Solver, use_default: bool);
     
@@ -46,6 +47,7 @@ pub trait Layout: WidgetCore + fmt::Debug {
     /// See the `init_constraints` documentation.
     /// 
     /// `pos` is the widget's position relative to the parent window.
+    #[cfg(feature = "cassowary")]
     fn apply_constraints(&mut self, tk: &Toolkit, s: &cw::Solver, pos: Coord);
     
     /// Read position and size of widget from the toolkit
@@ -54,148 +56,73 @@ pub trait Layout: WidgetCore + fmt::Debug {
     fn sync_size(&mut self, tk: &Toolkit);
 }
 
+#[cfg(feature = "cassowary")]
 #[macro_export]
 macro_rules! cw_var {
     ($w:expr, w) => { $crate::cw::Variable::from_usize($w.get_number() as usize) };
     ($w:expr, h) => { $crate::cw::Variable::from_usize(($w.get_number() + 0x1000_0000) as usize) };
 }
 
-/// Implements `Layout` for widgets with no children
+#[cfg(not(feature = "cassowary"))]
 #[macro_export]
-macro_rules! impl_layout_simple {
-    // this evil monstrosity matches <A, B: T, C: S+T>
-    // but because there is no "zero or one" rule, also <D: S: T>
-    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >) => {
-        impl< $( $N $(: $b0 $(+$b)* )* ),* >
-            $crate::widget::Layout
-            for $ty< $( $N ),* >
-        {
-            fn child_layout(&self) -> $crate::widget::ChildLayout {
-                $crate::widget::ChildLayout::None
-            }
-
-            fn init_constraints(&self, tk: &$crate::toolkit::Toolkit,
-                s: &mut $crate::cw::Solver, use_default: bool)
-            {
-                use $crate::cw;
-                
-                let v_w = cw_var!(self, w);
-                let v_h = cw_var!(self, h);
-                
-                let (min, hint) = tk.tk_widget().size_hints(self.get_tkd());
-                
-                // minimum size constraints:
-                s.add_constraint(cw::Constraint::new(
-                    cw::Expression::from_constant(min.0 as f64) - v_w,
-                    cw::RelationalOperator::LessOrEqual,
-                    cw::strength::STRONG)).unwrap();
-                s.add_constraint(cw::Constraint::new(
-                    cw::Expression::from_constant(min.1 as f64) - v_h,
-                    cw::RelationalOperator::LessOrEqual,
-                    cw::strength::STRONG)).unwrap();
-                
-                // preferred size constraints:
-                s.add_constraint(cw::Constraint::new(
-                    cw::Expression::from_constant(hint.0 as f64) - v_w,
-                    cw::RelationalOperator::LessOrEqual,
-                    cw::strength::MEDIUM)).unwrap();
-                s.add_constraint(cw::Constraint::new(
-                    cw::Expression::from_constant(hint.1 as f64) - v_h,
-                    cw::RelationalOperator::LessOrEqual,
-                    cw::strength::MEDIUM)).unwrap();
-                
-                /*
-                // starting points:
-                let size = if use_default { hint } else { self.rect().size };
-                s.add_edit_variable(v_w, cw::strength::WEAK).unwrap();
-                s.suggest_value(v_w, size.0 as f64);
-                s.add_edit_variable(v_h, cw::strength::WEAK).unwrap();
-                s.suggest_value(v_h, size.1 as f64);
-                */
-            }
-            
-            fn apply_constraints(&mut self, tk: &$crate::toolkit::Toolkit,
-                s: &$crate::cw::Solver, pos: $crate::Coord) 
-            {
-                let tkd = self.get_tkd();
-                let w = s.get_value(cw_var!(self, w)) as i32;
-                let h = s.get_value(cw_var!(self, h)) as i32;
-                let rect = self.rect_mut();
-                rect.pos = pos;
-                rect.size = (w, h);
-                tk.tk_widget().set_rect(tkd, rect);
-            }
-            
-            fn sync_size(&mut self, tk: &$crate::toolkit::Toolkit) {
-                let new_rect = tk.tk_widget().get_rect(self.get_tkd());
-                *self.rect_mut() = new_rect;
-            }
-        }
-    };
-    ($ty:ident) => {
-        impl_layout_simple!($ty<>);
-    };
+macro_rules! layout_init_constraints_simple {
+    () => {}
 }
 
-/// Implements `Layout` for widgets with a single child, with specified name
+#[cfg(feature = "cassowary")]
 #[macro_export]
-macro_rules! impl_layout_single {
-    // this evil monstrosity matches <A, B: T, C: S+T>
-    // but because there is no "zero or one" rule, also <D: S: T>
-    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >, $child:ident) => {
-        impl< $( $N $(: $b0 $(+$b)* )* ),* >
-            $crate::widget::Layout
-            for $ty< $( $N ),* >
+macro_rules! layout_init_constraints_simple {
+    () => {
+        fn init_constraints(&self, tk: &$crate::toolkit::Toolkit,
+            s: &mut $crate::cw::Solver, use_default: bool)
         {
-            fn child_layout(&self) -> $crate::widget::ChildLayout {
-                $crate::widget::ChildLayout::None
-            }
-
-            layout_init_constraints!(single; $child);
+            use $crate::cw;
             
-            fn apply_constraints(&mut self, tk: &$crate::toolkit::Toolkit,
-                s: &$crate::cw::Solver, pos: $crate::Coord)
-            {
-                self.$child.apply_constraints(tk, s, pos);
-                let tkd = self.get_tkd();
-                let w = s.get_value(cw_var!(self, w)) as i32;
-                let h = s.get_value(cw_var!(self, h)) as i32;
-                let rect = self.rect_mut();
-                rect.pos = pos;
-                rect.size = (w, h);
-                tk.tk_widget().set_rect(tkd, rect);
-            }
+            let v_w = cw_var!(self, w);
+            let v_h = cw_var!(self, h);
             
-            fn sync_size(&mut self, tk: &$crate::toolkit::Toolkit) {
-                let new_rect = tk.tk_widget().get_rect(self.get_tkd());
-                *self.rect_mut() = new_rect;
-                
-                self.$child.sync_size(tk)
-            }
+            let (min, hint) = tk.tk_widget().size_hints(self.get_tkd());
+            
+            // minimum size constraints:
+            s.add_constraint(cw::Constraint::new(
+                cw::Expression::from_constant(min.0 as f64) - v_w,
+                cw::RelationalOperator::LessOrEqual,
+                cw::strength::STRONG)).unwrap();
+            s.add_constraint(cw::Constraint::new(
+                cw::Expression::from_constant(min.1 as f64) - v_h,
+                cw::RelationalOperator::LessOrEqual,
+                cw::strength::STRONG)).unwrap();
+            
+            // preferred size constraints:
+            s.add_constraint(cw::Constraint::new(
+                cw::Expression::from_constant(hint.0 as f64) - v_w,
+                cw::RelationalOperator::LessOrEqual,
+                cw::strength::MEDIUM)).unwrap();
+            s.add_constraint(cw::Constraint::new(
+                cw::Expression::from_constant(hint.1 as f64) - v_h,
+                cw::RelationalOperator::LessOrEqual,
+                cw::strength::MEDIUM)).unwrap();
+            
+            /*
+            // starting points:
+            let size = if use_default { hint } else { self.rect().size };
+            s.add_edit_variable(v_w, cw::strength::WEAK).unwrap();
+            s.suggest_value(v_w, size.0 as f64);
+            s.add_edit_variable(v_h, cw::strength::WEAK).unwrap();
+            s.suggest_value(v_h, size.1 as f64);
+            */
         }
-    };
-    ($ty:ident, $child:ident) => {
-        impl_layout_single!($ty<>, $child);
-    };
-}
-
-#[macro_export]
-macro_rules! count_items {
-    ($name:ident) => { 1 };
-    ($first:ident, $($rest:ident),*) => {
-        1 + count_items!($($rest),*)
     }
 }
 
+#[cfg(not(feature = "cassowary"))]
 #[macro_export]
-macro_rules! select_child_layout {
-    (single) => { $crate::widget::ChildLayout::None };
-    (horizontal) => { $crate::widget::ChildLayout::Horizontal };
-    (vertical) => { $crate::widget::ChildLayout::Vertical };
-    (grid) => { $crate::widget::ChildLayout::Grid };
+macro_rules! layout_init_constraints {
+    ($direction:ident; $($wname:ident),*) => {}
 }
 
 // TODO: borders and margins
+#[cfg(feature = "cassowary")]
 #[macro_export]
 macro_rules! layout_init_constraints {
     (single; $($wname:ident),*) => {
@@ -276,8 +203,39 @@ macro_rules! layout_init_constraints {
     };
 }
 
+#[cfg(not(feature = "cassowary"))]
 #[macro_export]
-macro_rules! layout_next_pos {
+macro_rules! layout_apply_constraints {
+    ($direction:ident; $($wname:ident),*) => {}
+}
+
+#[cfg(feature = "cassowary")]
+#[macro_export]
+macro_rules! layout_apply_constraints {
+    ($direction:ident; $($wname:ident),*) => {
+        fn apply_constraints(&mut self, tk: &$crate::toolkit::Toolkit,
+            s: &$crate::cw::Solver, pos: $crate::Coord)
+        {
+            let mut cpos = pos;
+            $(
+                self.$wname.apply_constraints(tk, s, cpos);
+                layout_apply_constraints_next!($direction; self, s, cpos; $wname);
+            )*
+            
+            let w = s.get_value(cw_var!(self, w)) as i32;
+            let h = s.get_value(cw_var!(self, h)) as i32;
+            let tkd = self.get_tkd();
+            let rect = self.rect_mut();
+            rect.pos = pos;
+            rect.size = (w, h);
+            tk.tk_widget().set_rect(tkd, rect);
+        }
+    }
+}
+
+#[cfg(feature = "cassowary")]
+#[macro_export]
+macro_rules! layout_apply_constraints_next {
     (single; $self:ident, $s:ident, $pos:ident; $wname:ident) => {};
     (horizontal; $self:ident, $s:ident, $pos:ident; $wname:ident) => {
         $pos.0 += $s.get_value(cw_var!($self.$wname, w)) as i32;
@@ -285,6 +243,80 @@ macro_rules! layout_next_pos {
     (vertical; $self:ident, $s:ident, $pos:ident; $wname:ident) => {
         $pos.1 += $s.get_value(cw_var!($self.$wname, h)) as i32;
     };
+}
+
+/// Implements `Layout` for widgets with no children
+#[macro_export]
+macro_rules! impl_layout_simple {
+    // this evil monstrosity matches <A, B: T, C: S+T>
+    // but because there is no "zero or one" rule, also <D: S: T>
+    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >) => {
+        impl< $( $N $(: $b0 $(+$b)* )* ),* >
+            $crate::widget::Layout
+            for $ty< $( $N ),* >
+        {
+            fn child_layout(&self) -> $crate::widget::ChildLayout {
+                $crate::widget::ChildLayout::None
+            }
+
+            layout_init_constraints_simple!();
+            layout_apply_constraints!(single; );
+            
+            fn sync_size(&mut self, tk: &$crate::toolkit::Toolkit) {
+                let new_rect = tk.tk_widget().get_rect(self.get_tkd());
+                *self.rect_mut() = new_rect;
+            }
+        }
+    };
+    ($ty:ident) => {
+        impl_layout_simple!($ty<>);
+    };
+}
+
+/// Implements `Layout` for widgets with a single child, with specified name
+#[macro_export]
+macro_rules! impl_layout_single {
+    // this evil monstrosity matches <A, B: T, C: S+T>
+    // but because there is no "zero or one" rule, also <D: S: T>
+    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >, $child:ident) => {
+        impl< $( $N $(: $b0 $(+$b)* )* ),* >
+            $crate::widget::Layout
+            for $ty< $( $N ),* >
+        {
+            fn child_layout(&self) -> $crate::widget::ChildLayout {
+                $crate::widget::ChildLayout::None
+            }
+
+            layout_init_constraints!(single; $child);
+            layout_apply_constraints!(single; $child);
+            
+            fn sync_size(&mut self, tk: &$crate::toolkit::Toolkit) {
+                let new_rect = tk.tk_widget().get_rect(self.get_tkd());
+                *self.rect_mut() = new_rect;
+                
+                self.$child.sync_size(tk)
+            }
+        }
+    };
+    ($ty:ident, $child:ident) => {
+        impl_layout_single!($ty<>, $child);
+    };
+}
+
+#[macro_export]
+macro_rules! count_items {
+    ($name:ident) => { 1 };
+    ($first:ident, $($rest:ident),*) => {
+        1 + count_items!($($rest),*)
+    }
+}
+
+#[macro_export]
+macro_rules! select_child_layout {
+    (single) => { $crate::widget::ChildLayout::None };
+    (horizontal) => { $crate::widget::ChildLayout::Horizontal };
+    (vertical) => { $crate::widget::ChildLayout::Vertical };
+    (grid) => { $crate::widget::ChildLayout::Grid };
 }
 
 /// Construct a container widget
@@ -297,7 +329,6 @@ macro_rules! make_layout {
         $response:path) =>
     {{
         use std::fmt::{self, Debug};
-        use $crate::cw;
         use $crate::event::{Action, Handler, NoResponse, ignore};
         use $crate::toolkit::Toolkit;
         use $crate::widget::{Class, CoreData, WidgetCore, Widget, Layout};
@@ -317,27 +348,7 @@ macro_rules! make_layout {
             }
 
             layout_init_constraints!($direction; $($wname),*);
-
-            fn apply_constraints(&mut self, tk: &Toolkit,
-                s: &cw::Solver, mut pos: $crate::Coord)
-            {
-                let v_w = cw_var!(self, w);
-                let v_h = cw_var!(self, h);
-                
-                let tkd = self.get_tkd();
-                let size = (s.get_value(v_w) as i32, s.get_value(v_h) as i32);
-                {
-                    let rect = self.rect_mut();
-                    rect.pos = pos;
-                    rect.size = size;
-                    tk.tk_widget().set_rect(tkd, rect);
-                }
-                
-                $(
-                    self.$wname.apply_constraints(tk, s, pos);
-                    layout_next_pos!($direction; self, s, pos; $wname);
-                )*
-            }
+            layout_apply_constraints!($direction; $($wname),*);
             
             fn sync_size(&mut self, tk: &Toolkit) {
                 let new_rect = tk.tk_widget().get_rect(self.get_tkd());

@@ -2,7 +2,6 @@
 
 use std::fmt::{self, Debug};
 
-use crate::cw;
 use crate::Coord;
 use crate::event::{self, Action, Handler, ignore};
 use crate::widget::{Class, Layout, Widget, CoreData, WidgetCore};
@@ -21,11 +20,13 @@ pub trait Window: Widget {
     fn as_widget_mut(&mut self) -> &mut Widget;
     
     /// Calculate and update positions for all sub-widgets
+    #[cfg(feature = "layout")]
     fn configure_widgets(&mut self, tk: &Toolkit);
     
     /// Adjust the size of the window, repositioning widgets.
     /// 
     /// `configure_widgets` must be called before this.
+    #[cfg(feature = "layout")]
     fn resize(&mut self, tk: &Toolkit, size: Coord);
     
     /// Handle a high-level event directed at the widget identified by `num`,
@@ -56,7 +57,7 @@ impl From<event::NoResponse> for Response {
 pub struct SimpleWindow<W> {
     core: CoreData,
     min_size: Coord,
-    solver: cw::Solver,
+    #[cfg(feature = "cassowary")] solver: crate::cw::Solver,
     w: W
 }
 
@@ -72,7 +73,7 @@ impl<W: Clone> Clone for SimpleWindow<W> {
         SimpleWindow {
             core: self.core.clone(),
             min_size: self.min_size,
-            solver: cw::Solver::new(),
+            #[cfg(feature = "cassowary")] solver: crate::cw::Solver::new(),
             w: self.w.clone()
         }
     }
@@ -87,7 +88,7 @@ impl<W: Widget> SimpleWindow<W> {
         SimpleWindow {
             core: Default::default(),
             min_size: (0, 0),
-            solver: cw::Solver::new(),
+            #[cfg(feature = "cassowary")] solver: crate::cw::Solver::new(),
             w
         }
     }
@@ -119,7 +120,9 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     fn as_widget(&self) -> &Widget { self }
     fn as_widget_mut(&mut self) -> &mut Widget { self }
     
+    #[cfg(feature = "cassowary")]
     fn configure_widgets(&mut self, tk: &Toolkit) {
+        use crate::cw;
         assert!(self.get_number() > 0, "widget not enumerated");
         
         let v_w = cw_var!(self, w);
@@ -137,6 +140,7 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
     
+    #[cfg(feature = "cassowary")]
     fn resize(&mut self, tk: &Toolkit, size: Coord) {
         assert!(self.get_number() > 0, "widget not enumerated");
         
@@ -214,10 +218,12 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     fn as_widget(&self) -> &Widget { self }
     fn as_widget_mut(&mut self) -> &mut Widget { self }
     
+    #[cfg(feature = "layout")]
     fn configure_widgets(&mut self, tk: &Toolkit) {
         unimplemented!()
     }
     
+    #[cfg(feature = "layout")]
     fn resize(&mut self, tk: &Toolkit, size: Coord) {
         unimplemented!()
     }
