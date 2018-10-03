@@ -122,17 +122,17 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     fn configure_widgets(&mut self, tk: &Toolkit) {
         assert!(self.get_number() > 0, "widget not enumerated");
         
-        let v0 = cw::Variable::from_usize(0);
-        let v1 = cw::Variable::from_usize(1);
+        let v_w = cw_var!(self, w);
+        let v_h = cw_var!(self, h);
         
         self.solver.reset();
         
         self.w.init_constraints(tk, &mut self.solver, true);
         
-        self.solver.add_edit_variable(v0, cw::strength::MEDIUM * 100.0).unwrap();
-        self.solver.add_edit_variable(v1, cw::strength::MEDIUM * 100.0).unwrap();
+        self.solver.add_edit_variable(v_w, cw::strength::MEDIUM * 100.0).unwrap();
+        self.solver.add_edit_variable(v_h, cw::strength::MEDIUM * 100.0).unwrap();
         
-        self.min_size = (self.solver.get_value(v0) as i32, self.solver.get_value(v1) as i32);
+        self.min_size = (self.solver.get_value(v_w) as i32, self.solver.get_value(v_h) as i32);
         
         self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
@@ -140,10 +140,8 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     fn resize(&mut self, tk: &Toolkit, size: Coord) {
         assert!(self.get_number() > 0, "widget not enumerated");
         
-        let v0 = cw::Variable::from_usize(0);
-        let v1 = cw::Variable::from_usize(1);
-        self.solver.suggest_value(v0, size.0 as f64).unwrap();
-        self.solver.suggest_value(v1, size.1 as f64).unwrap();
+        self.solver.suggest_value(cw_var!(self, w), size.0 as f64).unwrap();
+        self.solver.suggest_value(cw_var!(self, h), size.1 as f64).unwrap();
         
         self.w.apply_constraints(tk, &self.solver, (0, 0));
     }

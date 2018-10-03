@@ -1,7 +1,7 @@
 //! Canvas types
 
 use crate::event;
-use crate::widget::{Class, Layout, Widget, CoreData, WidgetCore};
+use crate::widget::{Class, Widget, CoreData, WidgetCore};
 use crate::toolkit::Toolkit;
 
 #[derive(Clone, Default, Debug)]

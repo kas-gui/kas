@@ -134,23 +134,16 @@ type templating will often be useful (to avoid having to describe complex types)
 and in many cases even necessary (because closure types are not nameable).
 
 ```rust
-struct MyWidget<A, B> {
+struct MyWidget<B: Widget> {
     // TODO: data
-    text: A,
+    text: Text,
     button: B,
 }
 ```
 
-Macros will be available to facilitate implementation of required traits.
-
-```rust
-impl_layout!(MyWidget,
-    vlist(
-        text,
-        button
-    )
-)
-```
+Macros are available to facilitate implementation of required traits, for
+example `impl_widget_core` and `impl_layout`. These are still under development;
+see the examples (`mygui-gtk/examples`).
 
 ### User-defined widgets (high level)
 

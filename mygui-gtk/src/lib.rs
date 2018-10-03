@@ -18,7 +18,7 @@ use std::rc::Rc;
 use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt};
 
 use mygui::event::Action;
-use mygui::widget::{Class, Widget};
+use mygui::widget::{Class, Widget, ChildLayout};
 use mygui::widget::window::{Window, Response};
 use mygui::toolkit::{Toolkit, TkWidget};
 
@@ -113,9 +113,20 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
             let child = widget.get_mut(i).unwrap();
             // TODO: use trait implementation for each different class?
             let gtk_child = match child.class() {
-                Class::Container =>
-                    gtk::Box::new(gtk::Orientation::Vertical, 3)
-                        .upcast::<gtk::Widget>(),
+                Class::Container => {
+                    match child.child_layout() {
+                        ChildLayout::None |
+                        ChildLayout::Horizontal =>
+                            gtk::Box::new(gtk::Orientation::Horizontal, 3)
+                                .upcast::<gtk::Widget>(),
+                        ChildLayout::Vertical =>
+                            gtk::Box::new(gtk::Orientation::Vertical, 3)
+                                .upcast::<gtk::Widget>(),
+                        ChildLayout::Grid =>
+                            // TODO: need to use grid_attach for children!
+                            gtk::Grid::new().upcast::<gtk::Widget>()
+                    }
+                }
                 Class::Button => {
                     let button = gtk::Button::new_with_label(child.label().unwrap());
                     let num = child.get_number();

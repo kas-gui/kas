@@ -3,7 +3,7 @@
 use std::fmt::{self, Debug};
 
 use crate::event::{self, Action, Handler, ignore};
-use crate::widget::{Class, Layout, Widget, CoreData, WidgetCore};
+use crate::widget::{Class, Widget, CoreData, WidgetCore};
 use crate::toolkit::Toolkit;
 
 // TODO: abstract out text part?

@@ -47,7 +47,7 @@ pub mod window;
 mod class;
 
 pub use self::class::Class;
-pub use self::layout::Layout;
+pub use self::layout::{Layout, ChildLayout};
 use crate::Rect;
 use crate::toolkit::TkData;
 
