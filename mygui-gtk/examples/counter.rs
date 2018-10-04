@@ -16,7 +16,8 @@ use mygui_gtk::{GtkToolkit, Error};
 
 enum Message {
     None,
-    Clicked,
+    Decr,
+    Incr,
 }
 
 impl From<NoResponse> for Message {
@@ -27,19 +28,27 @@ impl From<NoResponse> for Message {
 
 fn main() -> Result<(), Error> {
     let window = SimpleWindow::new(   // construct with default state and handler
-        make_layout!(vertical<B[Message]>; self, tk, msg;
+        make_layout!(vertical<BS[Message]>; self, tk, msg;
             display: Text = Text::from("0") => msg,
-            button: B = TextButton::new("increment", || Message::Clicked) =>
-                {
-                    match msg {
-                        Message::None => (),
-                        Message::Clicked => {
-                            self.counter += 1;
-                            self.display.set_text(tk, &self.counter.to_string());
-                        }
-                    };
-                    NoResponse::None
+            buttons: BS = make_layout!(
+                horizontal<A[Message], B[Message]>; self, tk, msg;
+                decr: A = TextButton::new("−", || Message::Decr) => msg,
+                incr: B = TextButton::new("+", || Message::Incr) => msg;;
+                Message) =>
+            {
+                match msg {
+                    Message::None => (),
+                    Message::Decr => {
+                        self.counter = self.counter.saturating_sub(1);
+                        self.display.set_text(tk, &self.counter.to_string());
+                    }
+                    Message::Incr => {
+                        self.counter = self.counter.saturating_add(1);
+                        self.display.set_text(tk, &self.counter.to_string());
+                    }
                 };
+                NoResponse::None
+            };
             counter: usize = 0;
             NoResponse
         )
