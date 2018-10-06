@@ -1,8 +1,5 @@
 //! Mygui lib
 
-// TODO: for now there are many unused things
-#![allow(unused)]
-
 #[doc(hidden)]
 #[cfg(feature = "cassowary")]
 pub extern crate cassowary as cw;    // used by macros

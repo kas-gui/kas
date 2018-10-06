@@ -4,7 +4,6 @@
 use std::fmt;
 
 #[cfg(feature = "cassowary")] use crate::cw;
-use crate::Coord;
 use crate::widget::WidgetCore;
 use crate::toolkit::Toolkit;
 
@@ -328,8 +327,7 @@ macro_rules! make_layout {
         $($dname:ident: $dt:ident = $dvalue:expr),* ;
         $response:path) =>
     {{
-        use std::fmt::{self, Debug};
-        use $crate::event::{Action, Handler, NoResponse, ignore};
+        use $crate::event::{Action, Handler, ignore};
         use $crate::toolkit::Toolkit;
         use $crate::widget::{Class, CoreData, WidgetCore, Widget, Layout};
 
@@ -432,6 +430,7 @@ macro_rules! match_event_widget {
 
 #[cfg(test)] mod test {
     use crate::widget::{Widget, Layout, WidgetCore, canvas::Text};
+    use crate::event::NoResponse;
 
     #[test]
     fn macro_test_layout() {

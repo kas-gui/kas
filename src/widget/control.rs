@@ -29,8 +29,8 @@ impl<H> Widget for TextButton<H> {
     fn label(&self) -> Option<&str> { Some(self.msg) }
     
     fn len(&self) -> usize { 0 }
-    fn get(&self, index: usize) -> Option<&Widget> { None }
-    fn get_mut(&mut self, index: usize) -> Option<&mut Widget> { None }
+    fn get(&self, _index: usize) -> Option<&Widget> { None }
+    fn get_mut(&mut self, _index: usize) -> Option<&mut Widget> { None }
 }
 
 impl<R, H: Fn() -> R> TextButton<H> {

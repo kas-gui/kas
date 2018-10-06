@@ -206,10 +206,10 @@ impl<M: Debug, H> Widget for MessageBox<M, H> {
     fn label(&self) -> Option<&str> { None }
     
     fn len(&self) -> usize { 0 }
-    fn get(&self, index: usize) -> Option<&Widget> {
+    fn get(&self, _index: usize) -> Option<&Widget> {
         unimplemented!()
     }
-    fn get_mut(&mut self, index: usize) -> Option<&mut Widget> {
+    fn get_mut(&mut self, _index: usize) -> Option<&mut Widget> {
         unimplemented!()
     }
 }
@@ -228,7 +228,7 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
         unimplemented!()
     }
     
-    fn handle_action(&mut self, tk: &Toolkit, action: Action, num: u32) -> Response {
+    fn handle_action(&mut self, _tk: &Toolkit, _action: Action, _num: u32) -> Response {
         unimplemented!()
     }
 }
