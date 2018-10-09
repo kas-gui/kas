@@ -1,47 +1,11 @@
 //! Widgets
 
-/// Implements `WidgetCore` using a field of type `CoreData`
-#[macro_export]
-macro_rules! impl_widget_core {
-    // this evil monstrosity matches <A, B: T, C: S+T>
-    // but because there is no "zero or one" rule, also <D: S: T>
-    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >, $core:ident) => {
-        impl< $( $N $(: $b0 $(+$b)* )* ),* >
-            $crate::widget::WidgetCore
-            for $ty< $( $N ),* >
-        {
-            fn set_number(&mut self, number: u32) {
-                self.$core.set_number(number);
-            }
-            
-            fn get_number(&self) -> u32 {
-                self.$core.get_number()
-            }
-            
-            fn get_tkd(&self) -> $crate::toolkit::TkData {
-                self.$core.get_tkd()
-            }
-            fn set_tkd(&mut self, tkd: $crate::toolkit::TkData) {
-                self.$core.set_tkd(tkd)
-            }
-            
-            fn rect(&self) -> &$crate::Rect {
-                self.$core.rect()
-            }
-            fn rect_mut(&mut self) -> &mut $crate::Rect {
-                self.$core.rect_mut()
-            }
-        }
-    };
-    ($ty:ident, $core:ident) => {
-        impl_widget_core!($ty<>, $core);
-    };
-}
-
 #[cfg(feature = "cassowary")]
 #[macro_use] mod layout_cw;
 
 #[macro_use] mod layout;
+
+#[macro_use] mod make_widget;
 
 pub mod canvas;
 pub mod control;
