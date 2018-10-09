@@ -49,7 +49,7 @@ macro_rules! cw_var {
 macro_rules! layout_init_constraints_simple {
     () => {
         fn init_constraints(&self, tk: &$crate::toolkit::Toolkit,
-            s: &mut $crate::cw::Solver, use_default: bool)
+            s: &mut $crate::cw::Solver, _use_default: bool)
         {
             use $crate::cw;
             
@@ -177,10 +177,10 @@ macro_rules! layout_apply_constraints {
         fn apply_constraints(&mut self, tk: &$crate::toolkit::Toolkit,
             s: &$crate::cw::Solver, pos: $crate::Coord)
         {
-            let mut cpos = pos;
+            let mut _cpos = pos;
             $(
-                self.$wname.apply_constraints(tk, s, cpos);
-                $crate::layout_apply_constraints_next!($direction; self, s, cpos; $wname);
+                self.$wname.apply_constraints(tk, s, _cpos);
+                $crate::layout_apply_constraints_next!($direction; self, s, _cpos; $wname);
             )*
             
             let w = s.get_value($crate::cw_var!(self, w)) as i32;

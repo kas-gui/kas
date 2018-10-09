@@ -219,12 +219,12 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     fn as_widget_mut(&mut self) -> &mut Widget { self }
     
     #[cfg(feature = "layout")]
-    fn configure_widgets(&mut self, tk: &Toolkit) {
+    fn configure_widgets(&mut self, _tk: &Toolkit) {
         unimplemented!()
     }
     
     #[cfg(feature = "layout")]
-    fn resize(&mut self, tk: &Toolkit, size: Coord) {
+    fn resize(&mut self, _tk: &Toolkit, _size: Coord) {
         unimplemented!()
     }
     
