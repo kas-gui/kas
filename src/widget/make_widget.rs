@@ -13,7 +13,7 @@ macro_rules! count_items {
 macro_rules! impl_widget_core {
     // this evil monstrosity matches <A, B: T, C: S+T>
     // but because there is no "zero or one" rule, also <D: S: T>
-    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >, $core:ident) => {
+    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >; $core:ident) => {
         impl< $( $N $(: $b0 $(+$b)* )* ),* >
             $crate::widget::WidgetCore
             for $ty< $( $N ),* >
@@ -41,8 +41,8 @@ macro_rules! impl_widget_core {
             }
         }
     };
-    ($ty:ident, $core:ident) => {
-        impl_widget_core!($ty<>, $core);
+    ($ty:ident; $core:ident) => {
+        impl_widget_core!($ty<>; $core);
     };
 }
 
@@ -57,7 +57,7 @@ macro_rules! make_layout {
     {{
         use $crate::event::{Action, Handler, ignore};
         use $crate::toolkit::Toolkit;
-        use $crate::widget::{Class, CoreData, WidgetCore, Widget, Layout};
+        use $crate::widget::{Class, CoreData, WidgetCore, Widget};
 
         #[derive(Clone, Debug)]
         struct L<$($gt: Widget + 'static),*> {
@@ -66,23 +66,8 @@ macro_rules! make_layout {
             $($dname: $dt),*
         }
 
-        impl_widget_core!(L<$($gt: Widget),*>, core);
-
-        impl<$($gt: Widget),*> Layout for L<$($gt),*> {
-            fn child_layout(&self) -> $crate::widget::ChildLayout {
-                select_child_layout!($direction)
-            }
-
-            layout_init_constraints!($direction; $($wname),*);
-            layout_apply_constraints!($direction; $($wname),*);
-            
-            fn sync_size(&mut self, tk: &Toolkit) {
-                let new_rect = tk.tk_widget().get_rect(self.get_tkd());
-                *self.rect_mut() = new_rect;
-                
-                $(self.$wname.sync_size(tk);)*
-            }
-        }
+        impl_widget_core!(L<$($gt: Widget),*>; core);
+        impl_widget_layout!(L<$($gt: Widget),*>; $direction; $($wname),*);
 
         impl<$($gt: Widget + 'static),*> Widget for L<$($gt),*>
         {

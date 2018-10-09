@@ -1,9 +1,10 @@
 //! Widgets
 
+#[cfg(not(feature = "layout"))]
+#[macro_use] mod layout_extern;
+
 #[cfg(feature = "cassowary")]
 #[macro_use] mod layout_cw;
-
-#[macro_use] mod layout;
 
 #[macro_use] mod make_widget;
 
@@ -13,8 +14,12 @@ pub mod window;
 
 mod class;
 
+#[cfg(not(feature = "layout"))]
+pub use self::layout_extern::{Layout, ChildLayout};
+#[cfg(feature = "cassowary")]
+pub use self::layout_cw::{Layout};
+
 pub use self::class::Class;
-pub use self::layout::{Layout, ChildLayout};
 use crate::Rect;
 use crate::toolkit::TkData;
 
@@ -56,7 +61,7 @@ pub trait WidgetCore {
 ///     // more fields here
 /// }
 /// 
-/// impl_widget_core!(MyWidget, core);
+/// impl_widget_core!(MyWidget; core);
 /// 
 /// # fn main() {}
 /// ```

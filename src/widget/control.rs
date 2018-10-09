@@ -14,7 +14,7 @@ pub struct TextButton<H> {
     handler: H,
 }
 
-impl_widget_core!(TextButton<H>, core);
+impl_widget_core!(TextButton<H>; core);
 impl_layout_simple!(TextButton<H>);
 
 impl<H> Debug for TextButton<H> {

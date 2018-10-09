@@ -79,7 +79,7 @@ impl<W: Clone> Clone for SimpleWindow<W> {
     }
 }
 
-impl_widget_core!(SimpleWindow<W>, core);
+impl_widget_core!(SimpleWindow<W>; core);
 impl_layout_single!(SimpleWindow<W: Layout + Debug>, w);
 
 impl<W: Widget> SimpleWindow<W> {
@@ -198,7 +198,7 @@ impl<M: Debug, H> Debug for MessageBox<M, H> {
     }
 }
 
-impl_widget_core!(MessageBox<M, H>, core);
+impl_widget_core!(MessageBox<M, H>; core);
 impl_layout_single!(MessageBox<M: Debug, H>, button);  // TODO: improve?
 
 impl<M: Debug, H> Widget for MessageBox<M, H> {

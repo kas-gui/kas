@@ -1,4 +1,43 @@
-//! Macros using the Cassowary constraint solver
+//! Layout code using the Cassowary constraint solver
+
+use std::fmt;
+
+use crate::cw;
+use crate::Coord;
+use crate::widget::WidgetCore;
+use crate::toolkit::Toolkit;
+
+/// Size and position handling for widgets, the universal interface to the
+/// layout system.
+/// 
+/// Note that this trait has very different internals depending on which layout
+/// engine is used.
+pub trait Layout: WidgetCore + fmt::Debug {
+    /// Initialise the constraint solver.
+    /// 
+    /// This function applies constraints to the solver based on the current
+    /// widget's size requirements. Once the constraint solver has found a
+    /// solution, `apply_constraints` may be called to update the widget layout.
+    /// 
+    /// If `use_default` is true, then this widget's preferred size is used as
+    /// the initial value, otherwise it's current size is used.
+    /// 
+    /// The default implementation may suffice for simple widgets without
+    /// children, but must be overriden by any parent widget.
+    // TODO: because of width-for-height relations it may be necessary to
+    // adjust this, e.g. solve for width first then for height.
+    #[cfg(feature = "cassowary")]
+    fn init_constraints(&self, tk: &Toolkit,
+        s: &mut cw::Solver, use_default: bool);
+    
+    /// Apply constraints from the solver.
+    /// 
+    /// See the `init_constraints` documentation.
+    /// 
+    /// `pos` is the widget's position relative to the parent window.
+    #[cfg(feature = "cassowary")]
+    fn apply_constraints(&mut self, tk: &Toolkit, s: &cw::Solver, pos: Coord);
+}
 
 #[macro_export]
 macro_rules! cw_var {
@@ -163,5 +202,65 @@ macro_rules! layout_apply_constraints_next {
     };
     (vertical; $self:ident, $s:ident, $pos:ident; $wname:ident) => {
         $pos.1 += $s.get_value(cw_var!($self.$wname, h)) as i32;
+    };
+}
+
+/// Implements `Layout` for widgets with no children
+#[macro_export]
+macro_rules! impl_layout_simple {
+    // this evil monstrosity matches <A, B: T, C: S+T>
+    // but because there is no "zero or one" rule, also <D: S: T>
+    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >) => {
+        impl< $( $N $(: $b0 $(+$b)* )* ),* >
+            $crate::widget::Layout
+            for $ty< $( $N ),* >
+        {
+            layout_init_constraints_simple!();
+            layout_apply_constraints!(single; );
+        }
+    };
+    ($ty:ident) => {
+        impl_layout_simple!($ty<>);
+    };
+}
+
+/// Implements `Layout` for widgets with a single child, with specified name
+#[macro_export]
+macro_rules! impl_layout_single {
+    // this evil monstrosity matches <A, B: T, C: S+T>
+    // but because there is no "zero or one" rule, also <D: S: T>
+    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >, $child:ident) => {
+        impl< $( $N $(: $b0 $(+$b)* )* ),* >
+            $crate::widget::Layout
+            for $ty< $( $N ),* >
+        {
+            layout_init_constraints!(single; $child);
+            layout_apply_constraints!(single; $child);
+        }
+    };
+    ($ty:ident, $child:ident) => {
+        impl_layout_single!($ty<>, $child);
+    };
+}
+
+/// Implements `Layout`
+#[macro_export]
+macro_rules! impl_widget_layout {
+    // this evil monstrosity matches <A, B: T, C: S+T>
+    // but because there is no "zero or one" rule, also <D: S: T>
+    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >;
+        $direction:ident;
+        $($wname:ident),*) =>
+    {
+        impl< $( $N $(: $b0 $(+$b)* )* ),* >
+            $crate::widget::Layout
+            for $ty< $( $N ),* >
+        {
+            layout_init_constraints!($direction; $($wname),*);
+            layout_apply_constraints!($direction; $($wname),*);
+        }
+    };
+    ($ty:ident; $direction:ident; $($wname:ident),*) => {
+        impl_widget_layout!($ty<>; $direction; $($wname),*);
     };
 }

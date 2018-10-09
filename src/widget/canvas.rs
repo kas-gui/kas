@@ -10,7 +10,7 @@ pub struct Text {
     text: String,
 }
 
-impl_widget_core!(Text, core);
+impl_widget_core!(Text; core);
 impl_layout_simple!(Text);
 
 impl Widget for Text {

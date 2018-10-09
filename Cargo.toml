@@ -5,7 +5,7 @@ authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 
 [features]
-# Enable layout solver; uses Cassowary.
+# Enable an internal layout solver. Currently this uses Cassowary.
 # Not required by all toolkits.
 layout = ["cassowary"]
 

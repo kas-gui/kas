@@ -18,7 +18,7 @@ use std::rc::Rc;
 use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt};
 
 use mygui::event::Action;
-use mygui::widget::{Class, Widget, ChildLayout};
+use mygui::widget::{Class, Widget};
 use mygui::widget::window::{Window, Response};
 use mygui::toolkit::{Toolkit, TkWidget};
 
@@ -113,7 +113,9 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
             let child = widget.get_mut(i).unwrap();
             // TODO: use trait implementation for each different class?
             let gtk_child = match child.class() {
+                #[cfg(not(feature = "layout"))]
                 Class::Container => {
+                    use mygui::widget::ChildLayout;
                     match child.child_layout() {
                         ChildLayout::None |
                         ChildLayout::Horizontal =>
@@ -126,6 +128,12 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                             // TODO: need to use grid_attach for children!
                             gtk::Grid::new().upcast::<gtk::Widget>()
                     }
+                }
+                #[cfg(feature = "layout")]
+                Class::Container => {
+                    // orientation is unimportant
+                    gtk::Box::new(gtk::Orientation::Horizontal, 3)
+                                .upcast::<gtk::Widget>()
                 }
                 Class::Button => {
                     let button = gtk::Button::new_with_label(child.label().unwrap());
