@@ -38,6 +38,9 @@ macro_rules! impl_widget_core {
     };
 }
 
+#[cfg(feature = "cassowary")]
+#[macro_use] mod layout_cw;
+
 #[macro_use] mod layout;
 
 pub mod canvas;
