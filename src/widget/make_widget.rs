@@ -11,8 +11,8 @@ macro_rules! count_items {
 /// Implements `WidgetCore` using a field of type `CoreData`
 #[macro_export]
 macro_rules! impl_widget_core {
-    // this evil monstrosity matches <A, B: T, C: S+T>
-    // but because there is no "zero or one" rule, also <D: S: T>
+    // This matches bounds like: <A, B: T, C: S+T>
+    // TODO: use RFC 2298 when stable for `: BOUND` part
     ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >; $core:ident) => {
         impl< $( $N $(: $b0 $(+$b)* )* ),* >
             $crate::widget::WidgetCore
@@ -46,6 +46,53 @@ macro_rules! impl_widget_core {
     };
 }
 
+/// Implements `Widget`
+#[macro_export]
+macro_rules! impl_widget {
+    // this evil monstrosity matches <A, B: T, C: S+T>
+    // TODO: use RFC 2298 when stable for `: BOUND` part
+    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >;
+        $class:path; $label:expr; $($wname:ident),*) =>
+    {
+        impl< $( $N $(: $b0 $(+$b)* )* ),* >
+            $crate::widget::Widget
+            for $ty< $( $N ),* >
+        {
+            fn class(&self) -> $crate::widget::Class { $class }
+            fn label(&self) -> Option<&str> { $label }
+
+            fn len(&self) -> usize {
+                $crate::count_items!($($wname),*)
+            }
+            fn get(&self, index: usize) -> Option<&$crate::widget::Widget> {
+                // We need to match, but macros cannot expand to match arms
+                // or parts of if-else chains. Hack: use direct return.
+                let _i = 0;
+                $(
+                    if index == _i {
+                        return Some(&self.$wname);
+                    }
+                    let _i = _i + 1;
+                )*
+                return None;
+            }
+            fn get_mut(&mut self, index: usize) -> Option<&mut $crate::widget::Widget> {
+                let _i = 0;
+                $(
+                    if index == _i {
+                        return Some(&mut self.$wname);
+                    }
+                    let _i = _i + 1;
+                )*
+                return None;
+            }
+        }
+    };
+    ($ty:ident; $class:path; $label:expr; $($wname:ident),*) => {
+        $crate::impl_widget!($ty<>; $class; $label; $($wname),*);
+    };
+}
+
 /// Construct a container widget
 #[macro_export]
 macro_rules! make_layout {
@@ -68,38 +115,7 @@ macro_rules! make_layout {
 
         $crate::impl_widget_core!(L<$($gt: Widget),*>; core);
         $crate::impl_widget_layout!(L<$($gt: Widget),*>; $direction; $($wname),*);
-
-        impl<$($gt: Widget + 'static),*> Widget for L<$($gt),*>
-        {
-            fn class(&self) -> Class { Class::Container }
-            fn label(&self) -> Option<&str> { None }
-
-            fn len(&self) -> usize {
-                $crate::count_items!($($wname),*)
-            }
-            fn get(&self, index: usize) -> Option<&Widget> {
-                // We need to match, but macros cannot expand to match arms
-                // or parts of if-else chains. Hack: use direct return.
-                let _i = 0;
-                $(
-                    if index == _i {
-                        return Some(&self.$wname);
-                    }
-                    let _i = _i + 1;
-                )*
-                return None;
-            }
-            fn get_mut(&mut self, index: usize) -> Option<&mut Widget> {
-                let _i = 0;
-                $(
-                    if index == _i {
-                        return Some(&mut self.$wname);
-                    }
-                    let _i = _i + 1;
-                )*
-                return None;
-            }
-        }
+        $crate::impl_widget!(L<$($gt: Widget),*>; Class::Container; None; $($wname),*);
 
         impl<$($gt: Widget + Handler<Response = $gtr>),*> Handler
             for L<$($gt),*>
@@ -135,6 +151,7 @@ macro_rules! make_layout {
     use crate::event::NoResponse;
 
     #[test]
+    #[allow(unused)] // spurious warning in unit test
     fn macro_test_layout() {
         fn check_props<T: Widget + Layout + WidgetCore>(_x: T) {}
         
