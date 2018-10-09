@@ -28,9 +28,9 @@ fn main() -> Result<(), Error> {
         make_layout!(vertical<BS[Message]>; self, tk, msg;
             display: Text = Text::from("0") => msg,
             buttons: BS = make_layout!(
-                horizontal<A[Message], B[Message]>; self, tk, msg;
-                decr: A = TextButton::new("−", || Message::Decr) => msg,
-                incr: B = TextButton::new("+", || Message::Incr) => msg;;
+                horizontal<A[Message], B[Message]>;
+                decr: A = TextButton::new("−", || Message::Decr),
+                incr: B = TextButton::new("+", || Message::Incr);;
                 Message) =>
             {
                 match msg {

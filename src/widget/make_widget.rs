@@ -96,6 +96,7 @@ macro_rules! impl_widget {
 /// Construct a container widget
 #[macro_export]
 macro_rules! make_layout {
+    // Full version, allowing custom event handlers per child widget
     ($direction:ident < $($gt:ident [$gtr:path]),* >;
         $self:ident, $tk: ident, $msg:ident;
         $($wname:ident: $wt:ident = $wvalue:expr => $whandle:expr),* ;
@@ -130,6 +131,54 @@ macro_rules! make_layout {
                     }
                 )*
                 if num == $self.get_number() {
+                    ignore(action)  // no actions handled by this widget
+                } else {
+                    println!("Warning: incorrect widget number");
+                    ignore(action)
+                }
+            }
+        }
+
+        L {
+            core: Default::default(),
+            $($wname: $wvalue),* ,
+            $($dname: $dvalue),*
+        }
+    }};
+    // Simplified version with only pass-through event handling
+    // TODO: remove $gtr when macros can create fresh identifiers?
+    ($direction:ident < $($gt:ident [$gtr:path]),* >;
+        $($wname:ident: $wt:ident = $wvalue:expr),* ;
+        $($dname:ident: $dt:ident = $dvalue:expr),* ;
+        $response:path) =>
+    {{
+        use $crate::event::{Action, Handler, ignore};
+        use $crate::toolkit::Toolkit;
+        use $crate::widget::{Class, CoreData, WidgetCore, Widget};
+
+        #[derive(Clone, Debug)]
+        struct L<$($gt: Widget + 'static),*> {
+            core: CoreData,
+            $($wname: $wt),* ,
+            $($dname: $dt),*
+        }
+
+        $crate::impl_widget_core!(L<$($gt: Widget),*>; core);
+        $crate::impl_widget_layout!(L<$($gt: Widget),*>; $direction; $($wname),*);
+        $crate::impl_widget!(L<$($gt: Widget),*>; Class::Container; None; $($wname),*);
+
+        impl<$($gt: Widget + Handler<Response = $gtr>),*> Handler
+            for L<$($gt),*>
+        {
+            type Response = $response;
+            
+            fn handle_action(&mut self, tk: &Toolkit, action: Action, num: u32) -> $response {
+                $(
+                    if num <= self.$wname.get_number() {
+                        return self.$wname.handle_action(tk, action, num).into();
+                    }
+                )*
+                if num == self.get_number() {
                     ignore(action)  // no actions handled by this widget
                 } else {
                     println!("Warning: incorrect widget number");
