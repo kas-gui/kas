@@ -1,11 +1,5 @@
 //! GTK toolkit for mygui
 
-extern crate mygui;
-extern crate glib;
-extern crate gdk;
-extern crate gtk;
-extern crate gtk_sys;
-
 mod event;
 mod widget;
 mod tkd;

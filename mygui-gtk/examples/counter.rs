@@ -1,8 +1,5 @@
 //! Counter example (simple button)
 
-extern crate mygui;
-extern crate mygui_gtk;
-
 use mygui::make_layout;
 use mygui::event::{NoResponse};
 use mygui::widget::{
