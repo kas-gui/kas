@@ -53,8 +53,8 @@ macro_rules! layout_init_constraints_simple {
         {
             use $crate::cw;
             
-            let v_w = cw_var!(self, w);
-            let v_h = cw_var!(self, h);
+            let v_w = $crate::cw_var!(self, w);
+            let v_h = $crate::cw_var!(self, h);
             
             let (min, hint) = tk.tk_widget().size_hints(self.get_tkd());
             
@@ -100,11 +100,11 @@ macro_rules! layout_init_constraints {
             use $crate::cw;
             $(
                 s.add_constraint(cw::Constraint::new(
-                    cw::Expression::from(cw_var!(self, w)) - cw_var!(self.$wname, w),
+                    cw::Expression::from($crate::cw_var!(self, w)) - $crate::cw_var!(self.$wname, w),
                     cw::RelationalOperator::Equal,
                     cw::strength::STRONG)).unwrap();
                 s.add_constraint(cw::Constraint::new(
-                    cw::Expression::from(cw_var!(self, h)) - cw_var!(self.$wname, h),
+                    cw::Expression::from($crate::cw_var!(self, h)) - $crate::cw_var!(self.$wname, h),
                     cw::RelationalOperator::Equal,
                     cw::strength::STRONG)).unwrap();
                 self.$wname.init_constraints(tk, s, use_default);
@@ -116,12 +116,12 @@ macro_rules! layout_init_constraints {
             s: &mut $crate::cw::Solver, use_default: bool)
         {
             use $crate::cw;
-            let mut width = cw::Expression::from(cw_var!(self, w));
-            let height = cw::Expression::from(cw_var!(self, h));
+            let mut width = cw::Expression::from($crate::cw_var!(self, w));
+            let height = cw::Expression::from($crate::cw_var!(self, h));
             
             $(
-                let child_v_w = cw_var!(self.$wname, w);
-                let child_v_h = cw_var!(self.$wname, h);
+                let child_v_w = $crate::cw_var!(self.$wname, w);
+                let child_v_h = $crate::cw_var!(self.$wname, h);
                 width -= child_v_w;
                 s.add_constraint(cw::Constraint::new(
                     height.clone() - child_v_h,
@@ -145,12 +145,12 @@ macro_rules! layout_init_constraints {
             s: &mut $crate::cw::Solver, use_default: bool)
         {
             use $crate::cw;
-            let width = cw::Expression::from(cw_var!(self, w));
-            let mut height = cw::Expression::from(cw_var!(self, h));
+            let width = cw::Expression::from($crate::cw_var!(self, w));
+            let mut height = cw::Expression::from($crate::cw_var!(self, h));
             
             $(
-                let child_v_w = cw_var!(self.$wname, w);
-                let child_v_h = cw_var!(self.$wname, h);
+                let child_v_w = $crate::cw_var!(self.$wname, w);
+                let child_v_h = $crate::cw_var!(self.$wname, h);
                 s.add_constraint(cw::Constraint::new(
                     width.clone() - child_v_w,
                     cw::RelationalOperator::GreaterOrEqual,
@@ -180,11 +180,11 @@ macro_rules! layout_apply_constraints {
             let mut cpos = pos;
             $(
                 self.$wname.apply_constraints(tk, s, cpos);
-                layout_apply_constraints_next!($direction; self, s, cpos; $wname);
+                $crate::layout_apply_constraints_next!($direction; self, s, cpos; $wname);
             )*
             
-            let w = s.get_value(cw_var!(self, w)) as i32;
-            let h = s.get_value(cw_var!(self, h)) as i32;
+            let w = s.get_value($crate::cw_var!(self, w)) as i32;
+            let h = s.get_value($crate::cw_var!(self, h)) as i32;
             let tkd = self.get_tkd();
             let rect = self.rect_mut();
             rect.pos = pos;
@@ -198,10 +198,10 @@ macro_rules! layout_apply_constraints {
 macro_rules! layout_apply_constraints_next {
     (single; $self:ident, $s:ident, $pos:ident; $wname:ident) => {};
     (horizontal; $self:ident, $s:ident, $pos:ident; $wname:ident) => {
-        $pos.0 += $s.get_value(cw_var!($self.$wname, w)) as i32;
+        $pos.0 += $s.get_value($crate::cw_var!($self.$wname, w)) as i32;
     };
     (vertical; $self:ident, $s:ident, $pos:ident; $wname:ident) => {
-        $pos.1 += $s.get_value(cw_var!($self.$wname, h)) as i32;
+        $pos.1 += $s.get_value($crate::cw_var!($self.$wname, h)) as i32;
     };
 }
 
@@ -215,12 +215,12 @@ macro_rules! impl_layout_simple {
             $crate::widget::Layout
             for $ty< $( $N ),* >
         {
-            layout_init_constraints_simple!();
-            layout_apply_constraints!(single; );
+            $crate::layout_init_constraints_simple!();
+            $crate::layout_apply_constraints!(single; );
         }
     };
     ($ty:ident) => {
-        impl_layout_simple!($ty<>);
+        $crate::impl_layout_simple!($ty<>);
     };
 }
 
@@ -234,12 +234,12 @@ macro_rules! impl_layout_single {
             $crate::widget::Layout
             for $ty< $( $N ),* >
         {
-            layout_init_constraints!(single; $child);
-            layout_apply_constraints!(single; $child);
+            $crate::layout_init_constraints!(single; $child);
+            $crate::layout_apply_constraints!(single; $child);
         }
     };
     ($ty:ident, $child:ident) => {
-        impl_layout_single!($ty<>, $child);
+        $crate::impl_layout_single!($ty<>, $child);
     };
 }
 
@@ -256,11 +256,11 @@ macro_rules! impl_widget_layout {
             $crate::widget::Layout
             for $ty< $( $N ),* >
         {
-            layout_init_constraints!($direction; $($wname),*);
-            layout_apply_constraints!($direction; $($wname),*);
+            $crate::layout_init_constraints!($direction; $($wname),*);
+            $crate::layout_apply_constraints!($direction; $($wname),*);
         }
     };
     ($ty:ident; $direction:ident; $($wname:ident),*) => {
-        impl_widget_layout!($ty<>; $direction; $($wname),*);
+        $crate::impl_widget_layout!($ty<>; $direction; $($wname),*);
     };
 }

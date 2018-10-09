@@ -4,7 +4,7 @@
 macro_rules! count_items {
     ($name:ident) => { 1 };
     ($first:ident, $($rest:ident),*) => {
-        1 + count_items!($($rest),*)
+        1 + $crate::count_items!($($rest),*)
     }
 }
 
@@ -42,7 +42,7 @@ macro_rules! impl_widget_core {
         }
     };
     ($ty:ident; $core:ident) => {
-        impl_widget_core!($ty<>; $core);
+        $crate::impl_widget_core!($ty<>; $core);
     };
 }
 
@@ -66,8 +66,8 @@ macro_rules! make_layout {
             $($dname: $dt),*
         }
 
-        impl_widget_core!(L<$($gt: Widget),*>; core);
-        impl_widget_layout!(L<$($gt: Widget),*>; $direction; $($wname),*);
+        $crate::impl_widget_core!(L<$($gt: Widget),*>; core);
+        $crate::impl_widget_layout!(L<$($gt: Widget),*>; $direction; $($wname),*);
 
         impl<$($gt: Widget + 'static),*> Widget for L<$($gt),*>
         {
@@ -75,7 +75,7 @@ macro_rules! make_layout {
             fn label(&self) -> Option<&str> { None }
 
             fn len(&self) -> usize {
-                count_items!($($wname),*)
+                $crate::count_items!($($wname),*)
             }
             fn get(&self, index: usize) -> Option<&Widget> {
                 // We need to match, but macros cannot expand to match arms

@@ -55,7 +55,7 @@ macro_rules! impl_layout_simple {
         }
     };
     ($ty:ident) => {
-        impl_layout_simple!($ty<>);
+        $crate::impl_layout_simple!($ty<>);
     };
 }
 
@@ -82,7 +82,7 @@ macro_rules! impl_layout_single {
         }
     };
     ($ty:ident, $child:ident) => {
-        impl_layout_single!($ty<>, $child);
+        $crate::impl_layout_single!($ty<>, $child);
     };
 }
 
@@ -108,7 +108,7 @@ macro_rules! impl_widget_layout {
             for $ty< $( $N ),* >
         {
             fn child_layout(&self) -> $crate::widget::ChildLayout {
-                select_child_layout!($direction)
+                $crate::select_child_layout!($direction)
             }
 
             fn sync_size(&mut self, tk: &Toolkit) {
@@ -120,6 +120,6 @@ macro_rules! impl_widget_layout {
         }
     };
     ($ty:ident; $direction:ident; $($wname:ident),*) => {
-        impl_widget_layout!($ty<>; $direction; $($wname),*);
+        $crate::impl_widget_layout!($ty<>; $direction; $($wname),*);
     };
 }
