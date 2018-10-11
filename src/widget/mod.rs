@@ -15,7 +15,7 @@ pub mod window;
 mod class;
 
 #[cfg(not(feature = "layout"))]
-pub use self::layout_extern::{Layout, ChildLayout};
+pub use self::layout_extern::{Layout, ChildLayout, GridPos};
 #[cfg(feature = "cassowary")]
 pub use self::layout_cw::{Layout};
 

@@ -99,7 +99,11 @@ macro_rules! make_widget {
     // Full version, allowing custom event handlers per child widget
     ($direction:ident < $($gt:ident [$gtr:path]),* >;
         $self:ident, $tk: ident, $msg:ident;
-        $($wname:ident: $wt:ident = $wvalue:expr => $whandle:expr),* ;
+        $(
+            $([$($pos:expr),*])*    // zero or one times (TODO RFC 2298)
+            $wname:ident: $wt:ident = $wvalue:expr
+            => $whandle:expr
+        ),* ;
         $($dname:ident: $dt:ident = $dvalue:expr),* ;
         $response:path) =>
     {{
@@ -115,7 +119,8 @@ macro_rules! make_widget {
         }
 
         $crate::impl_widget_core!(L<$($gt: Widget),*>; core);
-        $crate::impl_widget_layout!(L<$($gt: Widget),*>; $direction; $($wname),*);
+        $crate::impl_widget_layout!(L<$($gt: Widget),*>; 
+            $direction; $( $( [ $($pos),* ] )* $wname),*);
         $crate::impl_widget!(L<$($gt: Widget),*>; Class::Container; None; $($wname),*);
 
         impl<$($gt: Widget + Handler<Response = $gtr>),*> Handler
@@ -147,7 +152,10 @@ macro_rules! make_widget {
     }};
     // Simplified version with only pass-through event handling
     ($direction:ident < $($gt:ident $gtr:ident),* >;
-        $($wname:ident: $wt:ident = $wvalue:expr),* ;
+        $(
+            $([$($pos:expr),*])*    // zero or one times (TODO RFC 2298)
+            $wname:ident: $wt:ident = $wvalue:expr
+        ),* ;
         $($dname:ident: $dt:ident = $dvalue:expr),* ;
         $response:path) =>
     {{
@@ -163,7 +171,8 @@ macro_rules! make_widget {
         }
 
         $crate::impl_widget_core!(L<$($gt: Widget),*>; core);
-        $crate::impl_widget_layout!(L<$($gt: Widget),*>; $direction; $($wname),*);
+        $crate::impl_widget_layout!(L<$($gt: Widget),*>; 
+            $direction; $( $( [ $($pos),* ] )* $wname),*);
         $crate::impl_widget!(L<$($gt: Widget),*>; Class::Container; None; $($wname),*);
 
         impl<$($gtr, $gt: Widget + Handler<Response = $gtr>),*> Handler

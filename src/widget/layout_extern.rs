@@ -6,6 +6,7 @@ use std::fmt;
 use crate::widget::WidgetCore;
 use crate::toolkit::Toolkit;
 
+/// How child widgets are arranged
 pub enum ChildLayout {
     /// Implies no more than one child widget.
     None,
@@ -17,6 +18,13 @@ pub enum ChildLayout {
     Grid,
 }
 
+/// Column and row location information, `(col, row, col-span, row-span)`.
+/// 
+/// Column and row `0, 0` is the top-left position. Spans are usually 1, but
+/// may be larger; in this case columns from `col` to `col + col-span - 1` are
+/// occupied.
+pub type GridPos = (i32, i32, i32, i32);
+
 /// Size and position handling for widgets, the universal interface to the
 /// layout system.
 /// 
@@ -26,6 +34,15 @@ pub enum ChildLayout {
 pub trait Layout: WidgetCore + fmt::Debug {
     /// Layout for child widgets
     fn child_layout(&self) -> ChildLayout;
+    
+    /// Per child positioning for grid layout
+    /// 
+    /// This may only be called if `self.child_layout() == ChildLayout::Grid`.
+    /// The widget number must be less than `self.len()`.
+    /// 
+    /// Return value: `(col, row, col-span, row-span)` where `col` and `row`
+    /// start at 0 (top-left position).
+    fn grid_pos(&self, index: usize) -> Option<GridPos>;
 
     /// Read position and size of widget from the toolkit
     /// 
@@ -46,6 +63,10 @@ macro_rules! impl_layout_simple {
         {
             fn child_layout(&self) -> $crate::widget::ChildLayout {
                 $crate::widget::ChildLayout::None
+            }
+            
+            fn grid_pos(&self, _index: usize) -> Option<$crate::widget::GridPos> {
+                None
             }
 
             fn sync_size(&mut self, tk: &$crate::toolkit::Toolkit) {
@@ -72,6 +93,10 @@ macro_rules! impl_layout_single {
             fn child_layout(&self) -> $crate::widget::ChildLayout {
                 $crate::widget::ChildLayout::None
             }
+            
+            fn grid_pos(&self, _index: usize) -> Option<$crate::widget::GridPos> {
+                None
+            }
 
             fn sync_size(&mut self, tk: &$crate::toolkit::Toolkit) {
                 let new_rect = tk.tk_widget().get_rect(self.get_tkd());
@@ -94,6 +119,35 @@ macro_rules! select_child_layout {
     (grid) => { $crate::widget::ChildLayout::Grid };
 }
 
+#[macro_export]
+macro_rules! impl_grid_pos_item {
+    ($n:expr, $index:ident; ) => {
+        // missing information; return None
+    };
+    ($n:expr, $index:ident; [$c:expr, $r:expr]) => {
+        if $index == $n {
+            return Some(($c, $r, 1, 1));
+        }
+    };
+    ($n:expr, $index:ident; [$c:expr, $r:expr, $cs:expr, $rs:expr]) => {
+        if $index == $n {
+            return Some(($c, $r, $cs, $rs));
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! impl_grid_pos {
+    ($n:expr, $index:ident; ) => ();
+    ($n:expr, $index:ident; item $([ $($pos:expr),* ])*) => {
+        $crate::impl_grid_pos_item!($n, $index; $([ $($pos),* ])*)
+    };
+    ($n:expr, $index:ident; item $([ $($pos:expr),* ])*, $(item $([ $($xpos:expr),* ])* ),*) => {
+        $crate::impl_grid_pos_item!($n, $index; $([ $($pos),* ])*);
+        $crate::impl_grid_pos!($n + 1, $index; $(item $([ $($xpos),* ])* ),*)
+    };
+}
+
 /// Implements `Layout`
 #[macro_export]
 macro_rules! impl_widget_layout {
@@ -101,7 +155,7 @@ macro_rules! impl_widget_layout {
     // but because there is no "zero or one" rule, also <D: S: T>
     ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >;
         $direction:ident;
-        $($wname:ident),*) =>
+        $($([$($pos:expr),*])* $name:ident),*) =>
     {
         impl< $( $N $(: $b0 $(+$b)* )* ),* >
             $crate::widget::Layout
@@ -110,16 +164,23 @@ macro_rules! impl_widget_layout {
             fn child_layout(&self) -> $crate::widget::ChildLayout {
                 $crate::select_child_layout!($direction)
             }
+            
+            fn grid_pos(&self, _index: usize) -> Option<$crate::widget::GridPos> {
+//                 trace_macros!(true);
+                $crate::impl_grid_pos!(0, _index; $(item $([ $($pos),* ])* ),*);
+//                 trace_macros!(false);
+                None
+            }
 
             fn sync_size(&mut self, tk: &Toolkit) {
                 let new_rect = tk.tk_widget().get_rect(self.get_tkd());
                 *self.rect_mut() = new_rect;
                 
-                $(self.$wname.sync_size(tk);)*
+                $(self.$name.sync_size(tk);)*
             }
         }
     };
-    ($ty:ident; $direction:ident; $($wname:ident),*) => {
-        $crate::impl_widget_layout!($ty<>; $direction; $($wname),*);
+    ($ty:ident; $direction:ident; $($name:ident),*) => {
+        $crate::impl_widget_layout!($ty<>; $direction; $($name),*);
     };
 }

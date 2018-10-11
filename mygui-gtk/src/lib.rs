@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt};
+use gtk::{Cast, WidgetExt, ContainerExt, GridExt, ButtonExt};
 
 use mygui::event::Action;
 use mygui::widget::{Class, Widget};
@@ -119,7 +119,6 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                             gtk::Box::new(gtk::Orientation::Vertical, 3)
                                 .upcast::<gtk::Widget>(),
                         ChildLayout::Grid =>
-                            // TODO: need to use grid_attach for children!
                             gtk::Grid::new().upcast::<gtk::Widget>()
                     }
                 }
@@ -142,8 +141,18 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                         .upcast::<gtk::Widget>(),
                 Class::Window => panic!(),  // TODO embedded windows?
             };
-            gtk_container.add(&gtk_child);
+            
             add_widgets(&gtk_child, child);
+            
+            #[cfg(not(feature = "layout"))] {
+                if let Some((col, row, col_span, row_span)) = widget.grid_pos(i) {
+                    if let Some(grid) = gtk_container.downcast_ref::<gtk::Grid>() {
+                        grid.attach(&gtk_child, col, row, col_span, row_span);
+                        return; // i.e. continue for_each
+                    }
+                }
+            }
+            gtk_container.add(&gtk_child);
         });
     }
 }

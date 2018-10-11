@@ -33,29 +33,28 @@ impl From<NoResponse> for Key {
 }
 
 fn main() -> Result<(), Error> {
-    // TODO: fix grid
     let buttons = make_widget!(grid<C CM, D DM, M MM, S SM,
             N7 N7M, N8 N8M, N9 N9M, A AM,
             N4 N4M, N5 N5M, N6 N6M,
             N1 N1M, N2 N2M, N3 N3M, E EM,
             N0 N0M, P PM>;
-        clear: C = TextButton::new("clear", || Key::Clear), // start row
-        divide: D = TextButton::new("÷", || Key::Divide),
-        multiply: M = TextButton::new("×", || Key::Multiply),
-        subtract: S = TextButton::new("−", || Key::Subtract),
-        num7: N7 = TextButton::new("7", || Key::Char(48 + 7)), // start row
-        num8: N8 = TextButton::new("8", || Key::Char(48 + 8)),
-        num9: N9 = TextButton::new("9", || Key::Char(48 + 9)),
-        add: A = TextButton::new("+", || Key::Add), // two row span
-        num4: N4 = TextButton::new("4", || Key::Char(48 + 4)), // start row
-        num5: N5 = TextButton::new("5", || Key::Char(48 + 5)),
-        num6: N6 = TextButton::new("6", || Key::Char(48 + 6)),
-        num1: N1 = TextButton::new("1", || Key::Char(48 + 1)), // start row
-        num2: N2 = TextButton::new("2", || Key::Char(48 + 2)),
-        num3: N3 = TextButton::new("3", || Key::Char(48 + 3)),
-        equals: E = TextButton::new("=", || Key::Equals),   // two row span
-        num0: N0 = TextButton::new("0", || Key::Char(48 + 0)),  // start row; two column span
-        decimal: P = TextButton::new(".", || Key::Char(46));;
+        [0, 0] clear: C = TextButton::new("clear", || Key::Clear),
+        [1, 0] divide: D = TextButton::new("÷", || Key::Divide),
+        [2, 0] multiply: M = TextButton::new("×", || Key::Multiply),
+        [3, 0] subtract: S = TextButton::new("−", || Key::Subtract),
+        [0, 1] num7: N7 = TextButton::new("7", || Key::Char(48 + 7)),
+        [1, 1] num8: N8 = TextButton::new("8", || Key::Char(48 + 8)),
+        [2, 1] num9: N9 = TextButton::new("9", || Key::Char(48 + 9)),
+        [3, 1, 1, 2] add: A = TextButton::new("+", || Key::Add),
+        [0, 2] num4: N4 = TextButton::new("4", || Key::Char(48 + 4)),
+        [1, 2] num5: N5 = TextButton::new("5", || Key::Char(48 + 5)),
+        [2, 2] num6: N6 = TextButton::new("6", || Key::Char(48 + 6)),
+        [0, 3] num1: N1 = TextButton::new("1", || Key::Char(48 + 1)),
+        [1, 3] num2: N2 = TextButton::new("2", || Key::Char(48 + 2)),
+        [2, 3] num3: N3 = TextButton::new("3", || Key::Char(48 + 3)),
+        [3, 3, 1, 2] equals: E = TextButton::new("=", || Key::Equals),
+        [0, 4, 2, 1] num0: N0 = TextButton::new("0", || Key::Char(48 + 0)),
+        [2, 4] decimal: P = TextButton::new(".", || Key::Char(46));;
         Key);
     
     let window = SimpleWindow::new(   // construct with default state and handler
