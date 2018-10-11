@@ -1,6 +1,6 @@
 //! Counter example (simple button)
 
-use mygui::make_layout;
+use mygui::make_widget;
 use mygui::event::{NoResponse};
 use mygui::widget::{
     canvas::Text,
@@ -25,10 +25,10 @@ impl From<NoResponse> for Message {
 
 fn main() -> Result<(), Error> {
     let window = SimpleWindow::new(   // construct with default state and handler
-        make_layout!(vertical<BS[Message]>; self, tk, msg;
+        make_widget!(vertical<BS[Message]>; self, tk, msg;
             display: Text = Text::from("0") => msg,
-            buttons: BS = make_layout!(
-                horizontal<A[Message], B[Message]>;
+            buttons: BS = make_widget!(
+                horizontal<A AM, B BM>;
                 decr: A = TextButton::new("−", || Message::Decr),
                 incr: B = TextButton::new("+", || Message::Incr);;
                 Message) =>

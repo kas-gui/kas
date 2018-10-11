@@ -95,7 +95,7 @@ macro_rules! impl_widget {
 
 /// Construct a container widget
 #[macro_export]
-macro_rules! make_layout {
+macro_rules! make_widget {
     // Full version, allowing custom event handlers per child widget
     ($direction:ident < $($gt:ident [$gtr:path]),* >;
         $self:ident, $tk: ident, $msg:ident;
@@ -146,8 +146,7 @@ macro_rules! make_layout {
         }
     }};
     // Simplified version with only pass-through event handling
-    // TODO: remove $gtr when macros can create fresh identifiers?
-    ($direction:ident < $($gt:ident [$gtr:path]),* >;
+    ($direction:ident < $($gt:ident $gtr:ident),* >;
         $($wname:ident: $wt:ident = $wvalue:expr),* ;
         $($dname:ident: $dt:ident = $dvalue:expr),* ;
         $response:path) =>
@@ -167,8 +166,9 @@ macro_rules! make_layout {
         $crate::impl_widget_layout!(L<$($gt: Widget),*>; $direction; $($wname),*);
         $crate::impl_widget!(L<$($gt: Widget),*>; Class::Container; None; $($wname),*);
 
-        impl<$($gt: Widget + Handler<Response = $gtr>),*> Handler
+        impl<$($gtr, $gt: Widget + Handler<Response = $gtr>),*> Handler
             for L<$($gt),*>
+            where $($gtr: From<NoResponse>, $response: From<$gtr>),*
         {
             type Response = $response;
             
@@ -204,7 +204,7 @@ macro_rules! make_layout {
     fn macro_test_layout() {
         fn check_props<T: Widget + Layout + WidgetCore>(_x: T) {}
         
-        let w = make_layout!(single<>; self, tk, msg;
+        let w = make_widget!(single<>; self, tk, msg;
             text: Text = Text::from("text") => msg;;
             NoResponse);
         check_props(w);
