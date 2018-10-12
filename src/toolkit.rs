@@ -21,7 +21,15 @@ pub struct TkData(pub u64);
 /// de-initialisation in a `Drop` implementation.
 pub trait Toolkit {
     /// Assume ownership of and display a window.
-    fn add<W: Clone+Window+'static>(&mut self, window: &W) where Self: Sized;
+    /// 
+    /// Note: typically, one should have `W: Clone`, enabling multiple usage.
+    fn add<W: Into<Box<Window>>>(&mut self, window: W) where Self: Sized {
+        self.add_boxed(window.into())
+    }
+    
+    /// Specialised version of `add`; typically toolkits only need to implement
+    /// this.
+    fn add_boxed(&mut self, window: Box<Window>);
     
     /// Run the main loop.
     fn main(&mut self);
@@ -50,3 +58,16 @@ pub trait TkWidget {
     /// Set the widget's label (where applicable)
     fn set_label(&self, tkd: TkData, text: &str);
 }
+
+impl<W: Window + 'static> From<W> for Box<Window> {
+    fn from(window: W) -> Self {
+        Box::new(window)
+    }
+}
+
+// TODO: when specialisation is available:
+// impl<W: Window + 'static> From<Box<W>> for Box<Window> {
+//     fn from(window: W) -> Self {
+//         window
+//     }
+// }

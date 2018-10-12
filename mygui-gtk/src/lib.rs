@@ -197,10 +197,9 @@ impl Drop for GtkToolkit {
 }
 
 impl Toolkit for GtkToolkit {
-    fn add<W: Clone+Window+'static>(&mut self, window: &W) {
+    fn add_boxed(&mut self, mut win: Box<Window>) {
         let gwin = gtk::Window::new(gtk::WindowType::Toplevel);
         
-        let mut win = Box::new(window.clone());
         let n = self.windows.get_mut().last().map(|tw| tw.nend).unwrap_or(0);
         let nend = win.enumerate(n);
         let num = win.get_number();
@@ -215,7 +214,7 @@ impl Toolkit for GtkToolkit {
         // TODO: we only need lifetime extension if GTK widgets refer to our
         // ones (currently they don't; wait until event handling is implemented)
         add_widgets(gwin.upcast_ref::<gtk::Widget>(),
-            unsafe{ extend_lifetime_mut(&mut *win) });
+            unsafe{ extend_lifetime_mut(win.as_widget_mut()) });
         
         gwin.show_all();
         

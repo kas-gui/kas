@@ -52,7 +52,7 @@ fn main() -> Result<(), Error> {
     );
     
     let mut toolkit = GtkToolkit::new()?;
-    toolkit.add(&window);
+    toolkit.add(window);
     toolkit.main();
     Ok(())
 }
