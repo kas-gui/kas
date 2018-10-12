@@ -9,6 +9,8 @@ use crate::widget::control::{button, TextButton};
 use crate::toolkit::Toolkit;
 
 /// A window is a drawable interactive region provided by windowing system.
+// TODO: should this be a trait, instead of simply a struct? Should it be
+// implemented by dialogs?
 pub trait Window: Widget {
     /// Upcast
     /// 
@@ -81,6 +83,7 @@ impl<W: Clone> Clone for SimpleWindow<W> {
 
 impl_widget_core!(SimpleWindow<W>; core);
 impl_layout_single!(SimpleWindow<W: Layout + Debug>, w);
+impl_widget!(SimpleWindow<W: Widget>; Class::Window; None; w);
 
 impl<W: Widget> SimpleWindow<W> {
     /// Create
@@ -90,25 +93,6 @@ impl<W: Widget> SimpleWindow<W> {
             min_size: (0, 0),
             #[cfg(feature = "cassowary")] solver: crate::cw::Solver::new(),
             w
-        }
-    }
-}
-
-impl<W: Widget + 'static> Widget for SimpleWindow<W> {
-    fn class(&self) -> Class { Class::Window }
-    fn label(&self) -> Option<&str> { None }
-    
-    fn len(&self) -> usize { 1 }
-    fn get(&self, index: usize) -> Option<&Widget> {
-        match index {
-            0 => Some(&self.w),
-            _ => None
-        }
-    }
-    fn get_mut(&mut self, index: usize) -> Option<&mut Widget> {
-        match index {
-            0 => Some(&mut self.w),
-            _ => None
         }
     }
 }
