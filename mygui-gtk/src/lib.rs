@@ -113,10 +113,10 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                     match child.child_layout() {
                         ChildLayout::None |
                         ChildLayout::Horizontal =>
-                            gtk::Box::new(gtk::Orientation::Horizontal, 3)
+                            gtk::Box::new(gtk::Orientation::Horizontal, 0)
                                 .upcast::<gtk::Widget>(),
                         ChildLayout::Vertical =>
-                            gtk::Box::new(gtk::Orientation::Vertical, 3)
+                            gtk::Box::new(gtk::Orientation::Vertical, 0)
                                 .upcast::<gtk::Widget>(),
                         ChildLayout::Grid =>
                             gtk::Grid::new().upcast::<gtk::Widget>()
@@ -125,7 +125,7 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                 #[cfg(feature = "layout")]
                 Class::Container => {
                     // orientation is unimportant
-                    gtk::Box::new(gtk::Orientation::Horizontal, 3)
+                    gtk::Box::new(gtk::Orientation::Horizontal, 0)
                                 .upcast::<gtk::Widget>()
                 }
                 Class::Button => {
