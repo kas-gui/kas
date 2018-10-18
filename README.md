@@ -135,14 +135,15 @@ and in many cases even necessary (because closure types are not nameable).
 
 ```rust
 struct MyWidget<B: Widget> {
-    // TODO: data
     text: Text,
     button: B,
+    other_data: i32,
 }
 ```
 
-Macros are available to facilitate implementation of required traits, for
-example `impl_widget_core` and `impl_layout`. These are still under development;
+Macros are available to facilitate implementation of required traits, in
+particular `make_widget`. Additionally, `impl_widget_core` and `impl_layout`
+can be used to assist implementation. These are still under development;
 see the examples (`mygui-gtk/examples`).
 
 ### User-defined widgets (high level)
