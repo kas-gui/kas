@@ -41,18 +41,18 @@ impl<T: Core + ?Sized> WidgetAbstraction for T {
     
     fn clear_gw(&mut self) {
         // convert back to smart pointer to reduce reference count
-        if let Some(_) = unsafe { own_from_tkd(self.get_tkd()) } {
+        if let Some(_) = unsafe { own_from_tkd(self.tkd()) } {
             // mark empty
             self.set_tkd(Default::default());
         }
     }
     
     fn get_gw(&self) -> Option<gtk::Widget> {
-        unsafe { ref_from_tkd(self.get_tkd()) }
+        unsafe { ref_from_tkd(self.tkd()) }
     }
     
     unsafe fn borrow_gw(&self) -> Option<gtk::Widget> {
-        borrow_from_tkd(self.get_tkd())
+        borrow_from_tkd(self.tkd())
     }
 }
 

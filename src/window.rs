@@ -107,7 +107,7 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     #[cfg(feature = "cassowary")]
     fn configure_widgets(&mut self, tk: &Toolkit) {
         use crate::cw;
-        assert!(self.get_number() > 0, "widget not enumerated");
+        assert!(self.number() > 0, "widget not enumerated");
         
         let v_w = cw_var!(self, w);
         let v_h = cw_var!(self, h);
@@ -126,7 +126,7 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     
     #[cfg(feature = "cassowary")]
     fn resize(&mut self, tk: &Toolkit, size: Coord) {
-        assert!(self.get_number() > 0, "widget not enumerated");
+        assert!(self.number() > 0, "widget not enumerated");
         
         self.solver.suggest_value(cw_var!(self, w), size.0 as f64).unwrap();
         self.solver.suggest_value(cw_var!(self, h), size.1 as f64).unwrap();
@@ -135,9 +135,9 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     }
     
     fn handle_action(&mut self, tk: &Toolkit, action: Action, num: u32) -> Response {
-        if num < self.get_number() {
+        if num < self.number() {
             Response::from(self.w.handle_action(tk, action, num))
-        } else if num == self.get_number() {
+        } else if num == self.number() {
             match action {
                 Action::Close => Response::Close,
                 _ => ignore(action)

@@ -18,16 +18,15 @@ macro_rules! impl_core {
             $crate::widget::Core
             for $ty< $( $N ),* >
         {
+            fn number(&self) -> u32 {
+                self.$core.number()
+            }
             fn set_number(&mut self, number: u32) {
                 self.$core.set_number(number);
             }
             
-            fn get_number(&self) -> u32 {
-                self.$core.get_number()
-            }
-            
-            fn get_tkd(&self) -> $crate::toolkit::TkData {
-                self.$core.get_tkd()
+            fn tkd(&self) -> $crate::toolkit::TkData {
+                self.$core.tkd()
             }
             fn set_tkd(&mut self, tkd: $crate::toolkit::TkData) {
                 self.$core.set_tkd(tkd)
@@ -130,12 +129,12 @@ macro_rules! make_widget {
             
             fn handle_action(&mut $self, $tk: &Toolkit, action: Action, num: u32) -> $response {
                 $(
-                    if num <= $self.$wname.get_number() {
+                    if num <= $self.$wname.number() {
                         let $msg = $self.$wname.handle_action($tk, action, num);
                         return $whandle;
                     }
                 )*
-                if num == $self.get_number() {
+                if num == $self.number() {
                     ignore(action)  // no actions handled by this widget
                 } else {
                     println!("Warning: incorrect widget number");
@@ -183,11 +182,11 @@ macro_rules! make_widget {
             
             fn handle_action(&mut self, tk: &Toolkit, action: Action, num: u32) -> $response {
                 $(
-                    if num <= self.$wname.get_number() {
+                    if num <= self.$wname.number() {
                         return self.$wname.handle_action(tk, action, num).into();
                     }
                 )*
-                if num == self.get_number() {
+                if num == self.number() {
                     ignore(action)  // no actions handled by this widget
                 } else {
                     println!("Warning: incorrect widget number");

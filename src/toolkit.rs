@@ -6,7 +6,8 @@ use crate::window::Window;
 /// The type of per-widget toolkit data.
 /// 
 /// May be used however the toolkit deems fit, except that widgets are allowed
-/// to default-construct this (i.e. set to zero).
+/// to default-construct this (i.e. set to zero), and valid values should not be
+/// zero.
 /// 
 /// Toolkits may with to transmute data to/from their own type(s). In this case
 /// they should ensure (a) that `size_of::<TkData>()` is sufficient, (b) that
@@ -14,6 +15,16 @@ use crate::window::Window;
 /// `TkData` is larger than their type.
 #[derive(Clone, Debug, Default)]
 pub struct TkData(pub u64);
+
+impl TkData {
+    /// This property is true for default-constructed values but should be false
+    /// after the data has been set by the toolkit.
+    /// 
+    /// Essentially this test is just that all data is zero.
+    pub fn is_null(&self) -> bool {
+        self.0 == 0
+    }
+}
 
 /// A toolkit handles window management and rendering for a GUI.
 /// 

@@ -70,7 +70,7 @@ macro_rules! impl_layout_simple {
             }
 
             fn sync_size(&mut self, tk: &$crate::toolkit::TkWidget) {
-                let new_rect = tk.get_rect(self.get_tkd());
+                let new_rect = tk.get_rect(self.tkd());
                 *self.rect_mut() = new_rect;
             }
         }
@@ -99,7 +99,7 @@ macro_rules! impl_layout_single {
             }
 
             fn sync_size(&mut self, tk: &$crate::toolkit::TkWidget) {
-                let new_rect = tk.get_rect(self.get_tkd());
+                let new_rect = tk.get_rect(self.tkd());
                 *self.rect_mut() = new_rect;
                 
                 self.$child.sync_size(tk)
@@ -173,7 +173,7 @@ macro_rules! impl_layout {
             }
 
             fn sync_size(&mut self, tk: &$crate::toolkit::TkWidget) {
-                let new_rect = tk.get_rect(self.get_tkd());
+                let new_rect = tk.get_rect(self.tkd());
                 *self.rect_mut() = new_rect;
                 
                 $(self.$name.sync_size(tk);)*

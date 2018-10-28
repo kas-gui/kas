@@ -22,18 +22,21 @@ use crate::toolkit::TkData;
 
 /// Common widget behaviour
 pub trait Core {
+    /// Get the widget's number
+    fn number(&self) -> u32;
+    
     /// Set the widget's number
     /// 
-    /// This should only be called during widget enumeration
+    /// This should only be called during widget enumeration. It will panic if
+    /// the number has already been set (to anything other than 0).
     fn set_number(&mut self, number: u32);
     
-    /// Get the widget's number
-    fn get_number(&self) -> u32;
-    
     /// Get the toolkit data associated with this widget
-    fn get_tkd(&self) -> TkData;
+    fn tkd(&self) -> TkData;
     
     /// Set the toolkit data associated with this widget
+    /// 
+    /// This will panic if the toolkit data is not null.
     fn set_tkd(&mut self, tkd: TkData);
     
     /// Get the widget's region, relative to its parent.
@@ -71,21 +74,28 @@ pub struct CoreData {
 
 impl Core for CoreData {
     #[inline]
-    fn set_number(&mut self, number: u32) {
-        self.number = number;
-    }
-    #[inline]
-    fn get_number(&self) -> u32 {
+    fn number(&self) -> u32 {
         self.number
     }
     
     #[inline]
-    fn get_tkd(&self) -> TkData {
+    fn set_number(&mut self, number: u32) {
+        if self.number != 0 {
+            panic!("widget number has been set twice");
+        }
+        self.number = number;
+    }
+    
+    #[inline]
+    fn tkd(&self) -> TkData {
         self.tkd.clone()
     }
     
     #[inline]
     fn set_tkd(&mut self, tkd: TkData) {
+        if !self.tkd.is_null() {
+            panic!("widget's toolkit data has been set twice");
+        }
         self.tkd = tkd;
     }
     

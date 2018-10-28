@@ -131,7 +131,7 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                 }
                 Class::Button => {
                     let button = gtk::Button::new_with_label(child.label().unwrap());
-                    let num = child.get_number();
+                    let num = child.number();
                     button.connect_clicked(move |_| {
                         let action = Action::ButtonClick;
                         for_toolkit(|tk| tk.handle_action(action, num))
@@ -203,7 +203,7 @@ impl Toolkit for GtkToolkit {
         
         let n = self.windows.get_mut().last().map(|tw| tw.nend).unwrap_or(0);
         let nend = win.enumerate(n);
-        let num = win.get_number();
+        let num = win.number();
         
         gwin.connect_delete_event(move |_, _| {
             for_toolkit(|tk| tk.handle_action(Action::Close, num));

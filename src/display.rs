@@ -25,7 +25,7 @@ impl Widget for Text {
 impl Text {
     pub fn set_text(&mut self, tk: &Toolkit, text: &str) {
         self.text = String::from(text);
-        tk.tk_widget().set_label(self.get_tkd(), text);
+        tk.tk_widget().set_label(self.tkd(), text);
     }
 }
 

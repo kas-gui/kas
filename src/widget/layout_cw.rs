@@ -41,8 +41,8 @@ pub trait Layout: Core + fmt::Debug {
 
 #[macro_export]
 macro_rules! cw_var {
-    ($w:expr, w) => { $crate::cw::Variable::from_usize($w.get_number() as usize) };
-    ($w:expr, h) => { $crate::cw::Variable::from_usize(($w.get_number() + 0x1000_0000) as usize) };
+    ($w:expr, w) => { $crate::cw::Variable::from_usize($w.number() as usize) };
+    ($w:expr, h) => { $crate::cw::Variable::from_usize(($w.number() + 0x1000_0000) as usize) };
 }
 
 #[macro_export]
@@ -56,7 +56,7 @@ macro_rules! layout_init_constraints_simple {
             let v_w = $crate::cw_var!(self, w);
             let v_h = $crate::cw_var!(self, h);
             
-            let (min, hint) = tk.size_hints(self.get_tkd());
+            let (min, hint) = tk.size_hints(self.tkd());
             
             // minimum size constraints:
             s.add_constraint(cw::Constraint::new(
@@ -192,7 +192,7 @@ macro_rules! layout_apply_constraints {
             
             let w = s.get_value($crate::cw_var!(self, w)) as i32;
             let h = s.get_value($crate::cw_var!(self, h)) as i32;
-            let tkd = self.get_tkd();
+            let tkd = self.tkd();
             let rect = self.rect_mut();
             rect.pos = pos;
             rect.size = (w, h);
