@@ -205,7 +205,8 @@ macro_rules! make_widget {
 }
 
 #[cfg(test)] mod test {
-    use crate::widget::{Widget, Layout, WidgetCore, canvas::Text};
+    use crate::widget::{Widget, Layout, WidgetCore};
+    use crate::display::Text;
     use crate::event::NoResponse;
 
     #[test]

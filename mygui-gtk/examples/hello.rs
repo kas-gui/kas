@@ -3,8 +3,8 @@
 extern crate mygui;
 extern crate mygui_gtk;
 
-use mygui::widget::canvas::Text;
-use mygui::widget::window::{MessageBox, action_close};
+use mygui::display::Text;
+use mygui::window::{MessageBox, action_close};
 
 use mygui::toolkit::Toolkit;
 use mygui_gtk::{GtkToolkit, Error};

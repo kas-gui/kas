@@ -14,7 +14,7 @@ use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt};
 
 use mygui::event::Action;
 use mygui::widget::{Class, Widget};
-use mygui::widget::window::{Window, Response};
+use mygui::window::{Window, Response};
 use mygui::toolkit::{Toolkit, TkWidget};
 
 use self::tkd::WidgetAbstraction;

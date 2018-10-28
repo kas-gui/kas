@@ -1,4 +1,4 @@
-//! Canvas types
+//! Display widgets show information but are not interactive
 
 use crate::event;
 use crate::widget::{Class, Widget, CoreData, WidgetCore};

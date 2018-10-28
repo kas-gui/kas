@@ -5,7 +5,7 @@ use std::fmt::{self, Debug};
 use crate::Coord;
 use crate::event::{self, Action, Handler, ignore};
 use crate::widget::{Class, Layout, Widget, CoreData, WidgetCore};
-use crate::widget::control::{button, TextButton};
+use crate::control::{button, TextButton};
 use crate::toolkit::Toolkit;
 
 /// A window is a drawable interactive region provided by windowing system.

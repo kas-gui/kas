@@ -3,13 +3,11 @@
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
+use mygui::control::TextButton;
+use mygui::display::Text;
 use mygui::make_widget;
 use mygui::event::{NoResponse};
-use mygui::widget::{
-    canvas::Text,
-    control::TextButton,
-    window::SimpleWindow
-};
+use mygui::window::SimpleWindow;
 
 use mygui::toolkit::Toolkit;
 use mygui_gtk::{GtkToolkit, Error};

@@ -1,4 +1,4 @@
-//! Basic controls
+//! Control widgets accept simple input
 
 use std::fmt::{self, Debug};
 

@@ -8,10 +8,6 @@
 
 #[macro_use] mod make_widget;
 
-pub mod canvas;
-pub mod control;
-pub mod window;
-
 mod class;
 
 #[cfg(not(feature = "layout"))]
