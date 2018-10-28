@@ -13,19 +13,20 @@ pub(crate) fn handler(event: &mut Event) {
     match event.get_event_type() {
         Nothing => return,  // ignore this event
         
-        #[cfg(feature = "layout")]
         Configure => {
-            // TODO: use downcast_ref available in next GDK version
-            for_toolkit(|tk| tk.configure(event.clone().downcast().unwrap()));
-            // TODO: emit expose event?
-            return;
+            #[cfg(feature = "layout")] {
+                // TODO: use downcast_ref available in next GDK version
+                for_toolkit(|tk| tk.configure(event.clone().downcast().unwrap()));
+                // TODO: emit expose event?
+                return;
+            }
+            // else: fall through
         },
         
         // let GTK handle these for now:
         ButtonPress |
         ButtonRelease |
         ClientEvent |
-        Configure |
         Damage |
         Delete |
         DoubleButtonPress |

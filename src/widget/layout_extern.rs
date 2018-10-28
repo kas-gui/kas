@@ -4,7 +4,7 @@
 use std::fmt;
 
 use crate::widget::WidgetCore;
-use crate::toolkit::Toolkit;
+use crate::toolkit::TkWidget;
 
 /// How child widgets are arranged
 pub enum ChildLayout {
@@ -47,7 +47,7 @@ pub trait Layout: WidgetCore + fmt::Debug {
     /// Read position and size of widget from the toolkit
     /// 
     /// This is for use when the toolkit does layout adjustment of widgets.
-    fn sync_size(&mut self, tk: &Toolkit);
+    fn sync_size(&mut self, tk: &TkWidget);
 }
 
 
@@ -69,8 +69,8 @@ macro_rules! impl_layout_simple {
                 None
             }
 
-            fn sync_size(&mut self, tk: &$crate::toolkit::Toolkit) {
-                let new_rect = tk.tk_widget().get_rect(self.get_tkd());
+            fn sync_size(&mut self, tk: &$crate::toolkit::TkWidget) {
+                let new_rect = tk.get_rect(self.get_tkd());
                 *self.rect_mut() = new_rect;
             }
         }
@@ -98,8 +98,8 @@ macro_rules! impl_layout_single {
                 None
             }
 
-            fn sync_size(&mut self, tk: &$crate::toolkit::Toolkit) {
-                let new_rect = tk.tk_widget().get_rect(self.get_tkd());
+            fn sync_size(&mut self, tk: &$crate::toolkit::TkWidget) {
+                let new_rect = tk.get_rect(self.get_tkd());
                 *self.rect_mut() = new_rect;
                 
                 self.$child.sync_size(tk)
@@ -172,8 +172,8 @@ macro_rules! impl_widget_layout {
                 None
             }
 
-            fn sync_size(&mut self, tk: &Toolkit) {
-                let new_rect = tk.tk_widget().get_rect(self.get_tkd());
+            fn sync_size(&mut self, tk: &$crate::toolkit::TkWidget) {
+                let new_rect = tk.get_rect(self.get_tkd());
                 *self.rect_mut() = new_rect;
                 
                 $(self.$name.sync_size(tk);)*

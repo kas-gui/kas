@@ -9,7 +9,8 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use gtk::{Cast, WidgetExt, ContainerExt, GridExt, ButtonExt};
+use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt};
+#[cfg(not(feature = "layout"))] use gtk::GridExt;
 
 use mygui::event::Action;
 use mygui::widget::{Class, Widget};

@@ -5,7 +5,7 @@ use std::fmt;
 use crate::cw;
 use crate::Coord;
 use crate::widget::WidgetCore;
-use crate::toolkit::Toolkit;
+use crate::toolkit::TkWidget;
 
 /// Size and position handling for widgets, the universal interface to the
 /// layout system.
@@ -27,7 +27,7 @@ pub trait Layout: WidgetCore + fmt::Debug {
     // TODO: because of width-for-height relations it may be necessary to
     // adjust this, e.g. solve for width first then for height.
     #[cfg(feature = "cassowary")]
-    fn init_constraints(&self, tk: &Toolkit,
+    fn init_constraints(&self, tk: &TkWidget,
         s: &mut cw::Solver, use_default: bool);
     
     /// Apply constraints from the solver.
@@ -36,7 +36,7 @@ pub trait Layout: WidgetCore + fmt::Debug {
     /// 
     /// `pos` is the widget's position relative to the parent window.
     #[cfg(feature = "cassowary")]
-    fn apply_constraints(&mut self, tk: &Toolkit, s: &cw::Solver, pos: Coord);
+    fn apply_constraints(&mut self, tk: &TkWidget, s: &cw::Solver, pos: Coord);
 }
 
 #[macro_export]
@@ -48,7 +48,7 @@ macro_rules! cw_var {
 #[macro_export]
 macro_rules! layout_init_constraints_simple {
     () => {
-        fn init_constraints(&self, tk: &$crate::toolkit::Toolkit,
+        fn init_constraints(&self, tk: &$crate::toolkit::TkWidget,
             s: &mut $crate::cw::Solver, _use_default: bool)
         {
             use $crate::cw;
@@ -56,7 +56,7 @@ macro_rules! layout_init_constraints_simple {
             let v_w = $crate::cw_var!(self, w);
             let v_h = $crate::cw_var!(self, h);
             
-            let (min, hint) = tk.tk_widget().size_hints(self.get_tkd());
+            let (min, hint) = tk.size_hints(self.get_tkd());
             
             // minimum size constraints:
             s.add_constraint(cw::Constraint::new(
@@ -94,7 +94,7 @@ macro_rules! layout_init_constraints_simple {
 #[macro_export]
 macro_rules! layout_init_constraints {
     (single; $($name:ident),*) => {
-        fn init_constraints(&self, tk: &$crate::toolkit::Toolkit,
+        fn init_constraints(&self, tk: &$crate::toolkit::TkWidget,
             s: &mut $crate::cw::Solver, use_default: bool)
         {
             use $crate::cw;
@@ -112,7 +112,7 @@ macro_rules! layout_init_constraints {
         }
     };
     (horizontal; $($name:ident),*) => {
-        fn init_constraints(&self, tk: &$crate::toolkit::Toolkit,
+        fn init_constraints(&self, tk: &$crate::toolkit::TkWidget,
             s: &mut $crate::cw::Solver, use_default: bool)
         {
             use $crate::cw;
@@ -141,7 +141,7 @@ macro_rules! layout_init_constraints {
         }
     };
     (vertical; $($name:ident),*) => {
-        fn init_constraints(&self, tk: &$crate::toolkit::Toolkit,
+        fn init_constraints(&self, tk: &$crate::toolkit::TkWidget,
             s: &mut $crate::cw::Solver, use_default: bool)
         {
             use $crate::cw;
@@ -170,7 +170,7 @@ macro_rules! layout_init_constraints {
         }
     };
     (grid; $($name:ident),*) => {
-        fn init_constraints(&self, tk: &$crate::toolkit::Toolkit,
+        fn init_constraints(&self, tk: &$crate::toolkit::TkWidget,
             s: &mut $crate::cw::Solver, use_default: bool)
         {
             // TODO
@@ -181,7 +181,7 @@ macro_rules! layout_init_constraints {
 #[macro_export]
 macro_rules! layout_apply_constraints {
     ($direction:ident; $($name:ident),*) => {
-        fn apply_constraints(&mut self, tk: &$crate::toolkit::Toolkit,
+        fn apply_constraints(&mut self, tk: &$crate::toolkit::TkWidget,
             s: &$crate::cw::Solver, pos: $crate::Coord)
         {
             let mut _cpos = pos;
@@ -196,7 +196,7 @@ macro_rules! layout_apply_constraints {
             let rect = self.rect_mut();
             rect.pos = pos;
             rect.size = (w, h);
-            tk.tk_widget().set_rect(tkd, rect);
+            tk.set_rect(tkd, rect);
         }
     }
 }

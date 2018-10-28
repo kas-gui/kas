@@ -114,14 +114,14 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         
         self.solver.reset();
         
-        self.w.init_constraints(tk, &mut self.solver, true);
+        self.w.init_constraints(tk.tk_widget(), &mut self.solver, true);
         
         self.solver.add_edit_variable(v_w, cw::strength::MEDIUM * 100.0).unwrap();
         self.solver.add_edit_variable(v_h, cw::strength::MEDIUM * 100.0).unwrap();
         
         self.min_size = (self.solver.get_value(v_w) as i32, self.solver.get_value(v_h) as i32);
         
-        self.w.apply_constraints(tk, &self.solver, (0, 0));
+        self.w.apply_constraints(tk.tk_widget(), &self.solver, (0, 0));
     }
     
     #[cfg(feature = "cassowary")]
@@ -131,7 +131,7 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         self.solver.suggest_value(cw_var!(self, w), size.0 as f64).unwrap();
         self.solver.suggest_value(cw_var!(self, h), size.1 as f64).unwrap();
         
-        self.w.apply_constraints(tk, &self.solver, (0, 0));
+        self.w.apply_constraints(tk.tk_widget(), &self.solver, (0, 0));
     }
     
     fn handle_action(&mut self, tk: &Toolkit, action: Action, num: u32) -> Response {
