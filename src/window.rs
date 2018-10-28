@@ -2,7 +2,7 @@
 
 use std::fmt::{self, Debug};
 
-use crate::Coord;
+use crate::widget::Coord;
 use crate::event::{self, Action, Handler, ignore};
 use crate::widget::{Class, Layout, Widget, CoreData, WidgetCore};
 use crate::control::{button, TextButton};

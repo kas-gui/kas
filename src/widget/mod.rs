@@ -9,14 +9,15 @@
 #[macro_use] mod make_widget;
 
 mod class;
+mod data;
 
 #[cfg(not(feature = "layout"))]
 pub use self::layout_extern::{Layout, ChildLayout, GridPos};
 #[cfg(feature = "cassowary")]
 pub use self::layout_cw::{Layout};
 
+pub use self::data::*;
 pub use self::class::Class;
-use crate::Rect;
 use crate::toolkit::TkData;
 
 /// Common widget behaviour

@@ -33,10 +33,10 @@ macro_rules! impl_widget_core {
                 self.$core.set_tkd(tkd)
             }
             
-            fn rect(&self) -> &$crate::Rect {
+            fn rect(&self) -> &$crate::widget::Rect {
                 self.$core.rect()
             }
-            fn rect_mut(&mut self) -> &mut $crate::Rect {
+            fn rect_mut(&mut self) -> &mut $crate::widget::Rect {
                 self.$core.rect_mut()
             }
         }

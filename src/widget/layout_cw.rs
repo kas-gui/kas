@@ -3,7 +3,7 @@
 use std::fmt;
 
 use crate::cw;
-use crate::Coord;
+use crate::widget::Coord;
 use crate::widget::WidgetCore;
 use crate::toolkit::TkWidget;
 
@@ -182,7 +182,7 @@ macro_rules! layout_init_constraints {
 macro_rules! layout_apply_constraints {
     ($direction:ident; $($name:ident),*) => {
         fn apply_constraints(&mut self, tk: &$crate::toolkit::TkWidget,
-            s: &$crate::cw::Solver, pos: $crate::Coord)
+            s: &$crate::cw::Solver, pos: $crate::widget::Coord)
         {
             let mut _cpos = pos;
             $(
