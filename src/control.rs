@@ -3,7 +3,7 @@
 use std::fmt::{self, Debug};
 
 use crate::event::{self, Action, Handler, ignore};
-use crate::widget::{Class, Widget, CoreData, WidgetCore};
+use crate::widget::{Class, Widget, Core, CoreData};
 use crate::toolkit::Toolkit;
 
 // TODO: abstract out text part?
@@ -14,7 +14,7 @@ pub struct TextButton<H> {
     handler: H,
 }
 
-impl_widget_core!(TextButton<H>; core);
+impl_core!(TextButton<H>; core);
 impl_layout_simple!(TextButton<H>);
 
 impl<H> Debug for TextButton<H> {

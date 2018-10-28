@@ -142,7 +142,7 @@ struct MyWidget<B: Widget> {
 ```
 
 Macros are available to facilitate implementation of required traits, in
-particular `make_widget`. Additionally, `impl_widget_core` and `impl_layout`
+particular `make_widget`. Additionally, `impl_core` and `impl_layout`
 can be used to assist implementation. These are still under development;
 see the examples (`mygui-gtk/examples`).
 

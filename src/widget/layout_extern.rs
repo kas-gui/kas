@@ -3,7 +3,7 @@
 
 use std::fmt;
 
-use crate::widget::WidgetCore;
+use crate::widget::Core;
 use crate::toolkit::TkWidget;
 
 /// How child widgets are arranged
@@ -31,7 +31,7 @@ pub type GridPos = (i32, i32, i32, i32);
 /// Note that this trait has very different internals depending on which layout
 /// engine is used.
 // TODO: move Cassowary methods to a sub-trait if we get multi-trait object support
-pub trait Layout: WidgetCore + fmt::Debug {
+pub trait Layout: Core + fmt::Debug {
     /// Layout for child widgets
     fn child_layout(&self) -> ChildLayout;
     
@@ -150,7 +150,7 @@ macro_rules! impl_grid_pos {
 
 /// Implements `Layout`
 #[macro_export]
-macro_rules! impl_widget_layout {
+macro_rules! impl_layout {
     // this evil monstrosity matches <A, B: T, C: S+T>
     // but because there is no "zero or one" rule, also <D: S: T>
     ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >;
@@ -181,6 +181,6 @@ macro_rules! impl_widget_layout {
         }
     };
     ($ty:ident; $direction:ident; $($name:ident),*) => {
-        $crate::impl_widget_layout!($ty<>; $direction; $($name),*);
+        $crate::impl_layout!($ty<>; $direction; $($name),*);
     };
 }

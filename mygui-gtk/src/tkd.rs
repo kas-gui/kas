@@ -7,7 +7,7 @@ use std::mem::transmute;
 use gtk;
 
 use mygui::toolkit::TkData;
-use mygui::widget::WidgetCore;
+use mygui::widget::Core;
 
 
 /// Abstractions over mygui::widget::Widget
@@ -33,7 +33,7 @@ pub(crate) trait WidgetAbstraction {
     unsafe fn borrow_gw(&self) -> Option<gtk::Widget>;
 }
 
-impl<T: WidgetCore + ?Sized> WidgetAbstraction for T {
+impl<T: Core + ?Sized> WidgetAbstraction for T {
     fn set_gw<'a, 'b>(&'a mut self, gw: &'b gtk::Widget) {
         self.clear_gw();
         self.set_tkd(unsafe { own_to_tkd(gw) });

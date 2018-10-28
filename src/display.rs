@@ -1,7 +1,7 @@
 //! Display widgets show information but are not interactive
 
 use crate::event;
-use crate::widget::{Class, Widget, CoreData, WidgetCore};
+use crate::widget::{Class, Widget, Core, CoreData};
 use crate::toolkit::Toolkit;
 
 #[derive(Clone, Default, Debug)]
@@ -10,7 +10,7 @@ pub struct Text {
     text: String,
 }
 
-impl_widget_core!(Text; core);
+impl_core!(Text; core);
 impl_layout_simple!(Text);
 
 impl Widget for Text {

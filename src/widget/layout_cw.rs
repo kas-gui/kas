@@ -4,7 +4,7 @@ use std::fmt;
 
 use crate::cw;
 use crate::widget::Coord;
-use crate::widget::WidgetCore;
+use crate::widget::Core;
 use crate::toolkit::TkWidget;
 
 /// Size and position handling for widgets, the universal interface to the
@@ -12,7 +12,7 @@ use crate::toolkit::TkWidget;
 /// 
 /// Note that this trait has very different internals depending on which layout
 /// engine is used.
-pub trait Layout: WidgetCore + fmt::Debug {
+pub trait Layout: Core + fmt::Debug {
     /// Initialise the constraint solver.
     /// 
     /// This function applies constraints to the solver based on the current
@@ -255,7 +255,7 @@ macro_rules! impl_layout_single {
 
 /// Implements `Layout`
 #[macro_export]
-macro_rules! impl_widget_layout {
+macro_rules! impl_layout {
     // this evil monstrosity matches <A, B: T, C: S+T>
     // but because there is no "zero or one" rule, also <D: S: T>
     ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >;
@@ -271,6 +271,6 @@ macro_rules! impl_widget_layout {
         }
     };
     ($ty:ident; $direction:ident; $($name:ident),*) => {
-        $crate::impl_widget_layout!($ty<>; $direction; $($name),*);
+        $crate::impl_layout!($ty<>; $direction; $($name),*);
     };
 }

@@ -21,7 +21,7 @@ pub use self::class::Class;
 use crate::toolkit::TkData;
 
 /// Common widget behaviour
-pub trait WidgetCore {
+pub trait Core {
     /// Set the widget's number
     /// 
     /// This should only be called during widget enumeration
@@ -45,8 +45,8 @@ pub trait WidgetCore {
 
 /// Common widget data
 /// 
-/// Widgets should normally implement `WidgetCore` by use of an embedded field
-/// of this type (i.e. composition). The `impl_widget_core` macro may be used
+/// Widgets should normally implement `Core` by use of an embedded field
+/// of this type (i.e. composition). The `impl_core` macro may be used
 /// to write the actual implementation:
 /// 
 /// ```
@@ -58,7 +58,7 @@ pub trait WidgetCore {
 ///     // more fields here
 /// }
 /// 
-/// impl_widget_core!(MyWidget; core);
+/// impl_core!(MyWidget; core);
 /// 
 /// # fn main() {}
 /// ```
@@ -69,7 +69,7 @@ pub struct CoreData {
     rect: Rect,
 }
 
-impl WidgetCore for CoreData {
+impl Core for CoreData {
     #[inline]
     fn set_number(&mut self, number: u32) {
         self.number = number;
@@ -103,7 +103,7 @@ impl WidgetCore for CoreData {
 /// A widget encapsulates code for event handling and/or drawing some feature
 /// of a sub-region of a window.
 /// 
-/// Functionality common to all widgets is provided by the `WidgetCore` trait.
+/// Functionality common to all widgets is provided by the `Core` trait.
 pub trait Widget: Layout {
     /// Get the widget's classification.
     fn class(&self) -> Class;

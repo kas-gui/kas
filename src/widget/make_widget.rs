@@ -8,14 +8,14 @@ macro_rules! count_items {
     }
 }
 
-/// Implements `WidgetCore` using a field of type `CoreData`
+/// Implements `Core` using a field of type `CoreData`
 #[macro_export]
-macro_rules! impl_widget_core {
+macro_rules! impl_core {
     // This matches bounds like: <A, B: T, C: S+T>
     // TODO: use RFC 2298 when stable for `: BOUND` part
     ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >; $core:ident) => {
         impl< $( $N $(: $b0 $(+$b)* )* ),* >
-            $crate::widget::WidgetCore
+            $crate::widget::Core
             for $ty< $( $N ),* >
         {
             fn set_number(&mut self, number: u32) {
@@ -42,7 +42,7 @@ macro_rules! impl_widget_core {
         }
     };
     ($ty:ident; $core:ident) => {
-        $crate::impl_widget_core!($ty<>; $core);
+        $crate::impl_core!($ty<>; $core);
     };
 }
 
@@ -109,7 +109,7 @@ macro_rules! make_widget {
     {{
         use $crate::event::{Action, Handler, ignore};
         use $crate::toolkit::Toolkit;
-        use $crate::widget::{Class, CoreData, WidgetCore, Widget};
+        use $crate::widget::{Class, Core, CoreData, Widget};
 
         #[derive(Clone, Debug)]
         struct L<$($gt: Widget + 'static),*> {
@@ -118,8 +118,8 @@ macro_rules! make_widget {
             $($dname: $dt),*
         }
 
-        $crate::impl_widget_core!(L<$($gt: Widget),*>; core);
-        $crate::impl_widget_layout!(L<$($gt: Widget),*>; 
+        $crate::impl_core!(L<$($gt: Widget),*>; core);
+        $crate::impl_layout!(L<$($gt: Widget),*>; 
             $direction; $( $( [ $($pos),* ] )* $wname),*);
         $crate::impl_widget!(L<$($gt: Widget),*>; Class::Container; None; $($wname),*);
 
@@ -161,7 +161,7 @@ macro_rules! make_widget {
     {{
         use $crate::event::{Action, Handler, ignore};
         use $crate::toolkit::Toolkit;
-        use $crate::widget::{Class, CoreData, WidgetCore, Widget};
+        use $crate::widget::{Class, Core, CoreData, Widget};
 
         #[derive(Clone, Debug)]
         struct L<$($gt: Widget + 'static),*> {
@@ -170,8 +170,8 @@ macro_rules! make_widget {
             $($dname: $dt),*
         }
 
-        $crate::impl_widget_core!(L<$($gt: Widget),*>; core);
-        $crate::impl_widget_layout!(L<$($gt: Widget),*>; 
+        $crate::impl_core!(L<$($gt: Widget),*>; core);
+        $crate::impl_layout!(L<$($gt: Widget),*>; 
             $direction; $( $( [ $($pos),* ] )* $wname),*);
         $crate::impl_widget!(L<$($gt: Widget),*>; Class::Container; None; $($wname),*);
 
@@ -205,14 +205,14 @@ macro_rules! make_widget {
 }
 
 #[cfg(test)] mod test {
-    use crate::widget::{Widget, Layout, WidgetCore};
+    use crate::widget::{Widget, Layout, Core};
     use crate::display::Text;
     use crate::event::NoResponse;
 
     #[test]
     #[allow(unused)] // spurious warning in unit test
     fn macro_test_layout() {
-        fn check_props<T: Widget + Layout + WidgetCore>(_x: T) {}
+        fn check_props<T: Widget + Layout + Core>(_x: T) {}
         
         let w = make_widget!(single<>; self, tk, msg;
             text: Text = Text::from("text") => msg;;

@@ -4,7 +4,7 @@ use std::fmt::{self, Debug};
 
 use crate::widget::Coord;
 use crate::event::{self, Action, Handler, ignore};
-use crate::widget::{Class, Layout, Widget, CoreData, WidgetCore};
+use crate::widget::{Class, Layout, Widget, Core, CoreData};
 use crate::control::{button, TextButton};
 use crate::toolkit::Toolkit;
 
@@ -81,7 +81,7 @@ impl<W: Clone> Clone for SimpleWindow<W> {
     }
 }
 
-impl_widget_core!(SimpleWindow<W>; core);
+impl_core!(SimpleWindow<W>; core);
 impl_layout_single!(SimpleWindow<W: Layout + Debug>, w);
 impl_widget!(SimpleWindow<W: Widget>; Class::Window; None; w);
 
@@ -182,7 +182,7 @@ impl<M: Debug, H> Debug for MessageBox<M, H> {
     }
 }
 
-impl_widget_core!(MessageBox<M, H>; core);
+impl_core!(MessageBox<M, H>; core);
 impl_layout_single!(MessageBox<M: Debug, H>, button);  // TODO: improve?
 
 impl<M: Debug, H> Widget for MessageBox<M, H> {
