@@ -8,43 +8,6 @@ macro_rules! count_items {
     }
 }
 
-/// Implements `Core` using a field of type `CoreData`
-#[macro_export]
-macro_rules! impl_core {
-    // This matches bounds like: <A, B: T, C: S+T>
-    // TODO: use RFC 2298 when stable for `: BOUND` part
-    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >; $core:ident) => {
-        impl< $( $N $(: $b0 $(+$b)* )* ),* >
-            $crate::widget::Core
-            for $ty< $( $N ),* >
-        {
-            fn number(&self) -> u32 {
-                self.$core.number()
-            }
-            fn set_number(&mut self, number: u32) {
-                self.$core.set_number(number);
-            }
-            
-            fn tkd(&self) -> $crate::toolkit::TkData {
-                self.$core.tkd()
-            }
-            fn set_tkd(&mut self, tkd: $crate::toolkit::TkData) {
-                self.$core.set_tkd(tkd)
-            }
-            
-            fn rect(&self) -> &$crate::widget::Rect {
-                self.$core.rect()
-            }
-            fn rect_mut(&mut self) -> &mut $crate::widget::Rect {
-                self.$core.rect_mut()
-            }
-        }
-    };
-    ($ty:ident; $core:ident) => {
-        $crate::impl_core!($ty<>; $core);
-    };
-}
-
 /// Implements `Widget`
 #[macro_export]
 macro_rules! impl_widget {
@@ -110,6 +73,7 @@ macro_rules! make_widget {
         use $crate::toolkit::Toolkit;
         use $crate::widget::{Class, Core, CoreData, Widget};
 
+        #[$crate::mygui_impl(Core(core))]
         #[derive(Clone, Debug)]
         struct L<$($gt: Widget + 'static),*> {
             core: CoreData,
@@ -117,7 +81,6 @@ macro_rules! make_widget {
             $($dname: $dt),*
         }
 
-        $crate::impl_core!(L<$($gt: Widget),*>; core);
         $crate::impl_layout!(L<$($gt: Widget),*>; 
             $direction; $( $( [ $($pos),* ] )* $wname),*);
         $crate::impl_widget!(L<$($gt: Widget),*>; Class::Container; None; $($wname),*);
@@ -162,6 +125,7 @@ macro_rules! make_widget {
         use $crate::toolkit::Toolkit;
         use $crate::widget::{Class, Core, CoreData, Widget};
 
+        #[$crate::mygui_impl(Core(core))]
         #[derive(Clone, Debug)]
         struct L<$($gt: Widget + 'static),*> {
             core: CoreData,
@@ -169,7 +133,6 @@ macro_rules! make_widget {
             $($dname: $dt),*
         }
 
-        $crate::impl_core!(L<$($gt: Widget),*>; core);
         $crate::impl_layout!(L<$($gt: Widget),*>; 
             $direction; $( $( [ $($pos),* ] )* $wname),*);
         $crate::impl_widget!(L<$($gt: Widget),*>; Class::Container; None; $($wname),*);

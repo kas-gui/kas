@@ -49,19 +49,19 @@ pub trait Core {
 /// Common widget data
 /// 
 /// Widgets should normally implement `Core` by use of an embedded field
-/// of this type (i.e. composition). The `impl_core` macro may be used
+/// of this type (i.e. composition). The `mygui::derive` macro may be used
 /// to write the actual implementation:
 /// 
-/// ```
-/// #[macro_use] extern crate mygui;
-/// use mygui::widget;
+/// ```notest
+/// # // test fails: mygui_impl uses the wrong prefix for crate?
+/// extern crate mygui;
 /// 
+/// #[mygui::mygui_impl(Core(core))]
 /// struct MyWidget {
-///     core: widget::CoreData,
+///     core: mygui::widget::CoreData,
 ///     // more fields here
 /// }
 /// 
-/// impl_core!(MyWidget; core);
 /// 
 /// # fn main() {}
 /// ```

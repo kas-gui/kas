@@ -7,6 +7,7 @@ use crate::widget::{Class, Widget, Core, CoreData};
 use crate::toolkit::Toolkit;
 
 // TODO: abstract out text part?
+#[crate::mygui_impl(Core(core))]
 #[derive(Clone, Default)]
 pub struct TextButton<H> {
     core: CoreData,
@@ -14,7 +15,6 @@ pub struct TextButton<H> {
     handler: H,
 }
 
-impl_core!(TextButton<H>; core);
 impl_layout_simple!(TextButton<H>);
 
 impl<H> Debug for TextButton<H> {

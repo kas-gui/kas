@@ -56,6 +56,7 @@ impl From<event::NoResponse> for Response {
 }
 
 /// Main window type
+#[crate::mygui_impl(Core(core))]
 pub struct SimpleWindow<W> {
     core: CoreData,
     min_size: Coord,
@@ -81,7 +82,6 @@ impl<W: Clone> Clone for SimpleWindow<W> {
     }
 }
 
-impl_core!(SimpleWindow<W>; core);
 impl_layout_single!(SimpleWindow<W: Layout + Debug>, w);
 impl_widget!(SimpleWindow<W: Widget>; Class::Window; None; w);
 
@@ -154,6 +154,7 @@ pub fn action_close() -> impl Fn() -> Response {
     || Response::Close
 }
 
+#[crate::mygui_impl(Core(core))]
 #[derive(Clone)]
 pub struct MessageBox<M, H> {
     core: CoreData,
@@ -182,7 +183,6 @@ impl<M: Debug, H> Debug for MessageBox<M, H> {
     }
 }
 
-impl_core!(MessageBox<M, H>; core);
 impl_layout_single!(MessageBox<M: Debug, H>, button);  // TODO: improve?
 
 impl<M: Debug, H> Widget for MessageBox<M, H> {

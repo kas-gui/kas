@@ -11,6 +11,7 @@ layout = ["cassowary"]
 
 [dependencies]
 cassowary = { git = "https://github.com/dhardy/cassowary-rs", optional = true }
+mygui-macros = { version = "0.1", path = "mygui-macros" }
 
 [workspace]
-members = ["mygui-gtk"]
+members = ["mygui-gtk", "mygui-macros"]

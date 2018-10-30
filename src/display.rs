@@ -4,13 +4,13 @@ use crate::event;
 use crate::widget::{Class, Widget, Core, CoreData};
 use crate::toolkit::Toolkit;
 
+#[crate::mygui_impl(Core(core))]
 #[derive(Clone, Default, Debug)]
 pub struct Text {
     core: CoreData,
     text: String,
 }
 
-impl_core!(Text; core);
 impl_layout_simple!(Text);
 
 impl Widget for Text {
