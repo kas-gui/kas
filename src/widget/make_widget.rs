@@ -1,59 +1,4 @@
-//! The impl_widget and make_widget macros
-
-#[macro_export]
-macro_rules! count_items {
-    ($name:ident) => { 1 };
-    ($first:ident, $($rest:ident),*) => {
-        1 + $crate::count_items!($($rest),*)
-    }
-}
-
-/// Implements `Widget`
-#[macro_export]
-macro_rules! impl_widget {
-    // this evil monstrosity matches <A, B: T, C: S+T>
-    // TODO: use RFC 2298 when stable for `: BOUND` part
-    ($ty:ident < $( $N:ident $(: $b0:ident $(+$b:ident)* )* ),* >;
-        $class:path; $label:expr; $($wname:ident),*) =>
-    {
-        impl< $( $N $(: $b0 $(+$b)* )* ),* >
-            $crate::widget::Widget
-            for $ty< $( $N ),* >
-        {
-            fn class(&self) -> $crate::widget::Class { $class }
-            fn label(&self) -> Option<&str> { $label }
-
-            fn len(&self) -> usize {
-                $crate::count_items!($($wname),*)
-            }
-            fn get(&self, index: usize) -> Option<&$crate::widget::Widget> {
-                // We need to match, but macros cannot expand to match arms
-                // or parts of if-else chains. Hack: use direct return.
-                let _i = 0;
-                $(
-                    if index == _i {
-                        return Some(&self.$wname);
-                    }
-                    let _i = _i + 1;
-                )*
-                return None;
-            }
-            fn get_mut(&mut self, index: usize) -> Option<&mut $crate::widget::Widget> {
-                let _i = 0;
-                $(
-                    if index == _i {
-                        return Some(&mut self.$wname);
-                    }
-                    let _i = _i + 1;
-                )*
-                return None;
-            }
-        }
-    };
-    ($ty:ident; $class:path; $label:expr; $($wname:ident),*) => {
-        $crate::impl_widget!($ty<>; $class; $label; $($wname),*);
-    };
-}
+//! The make_widget macro
 
 /// Construct a container widget
 #[macro_export]
@@ -73,7 +18,8 @@ macro_rules! make_widget {
         use $crate::toolkit::Toolkit;
         use $crate::widget::{Class, Core, CoreData, Widget};
 
-        #[$crate::mygui_impl(Core(core))]
+        #[$crate::mygui_impl(Core(core),
+            Widget(class=Class::Container, children=[$($wname),*]))]
         #[derive(Clone, Debug)]
         struct L<$($gt: Widget + 'static),*> {
             core: CoreData,
@@ -83,7 +29,6 @@ macro_rules! make_widget {
 
         $crate::impl_layout!(L<$($gt: Widget),*>; 
             $direction; $( $( [ $($pos),* ] )* $wname),*);
-        $crate::impl_widget!(L<$($gt: Widget),*>; Class::Container; None; $($wname),*);
 
         impl<$($gt: Widget + Handler<Response = $gtr>),*> Handler
             for L<$($gt),*>
@@ -125,7 +70,8 @@ macro_rules! make_widget {
         use $crate::toolkit::Toolkit;
         use $crate::widget::{Class, Core, CoreData, Widget};
 
-        #[$crate::mygui_impl(Core(core))]
+        #[$crate::mygui_impl(Core(core),
+            Widget(class=Class::Container, children=[$($wname),*]))]
         #[derive(Clone, Debug)]
         struct L<$($gt: Widget + 'static),*> {
             core: CoreData,
@@ -135,7 +81,6 @@ macro_rules! make_widget {
 
         $crate::impl_layout!(L<$($gt: Widget),*>; 
             $direction; $( $( [ $($pos),* ] )* $wname),*);
-        $crate::impl_widget!(L<$($gt: Widget),*>; Class::Container; None; $($wname),*);
 
         impl<$($gtr, $gt: Widget + Handler<Response = $gtr>),*> Handler
             for L<$($gt),*>

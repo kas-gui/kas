@@ -4,7 +4,7 @@ use std::fmt::{self, Debug};
 
 use crate::widget::Coord;
 use crate::event::{self, Action, Handler, ignore};
-use crate::widget::{Class, Layout, Widget, Core, CoreData};
+use crate::widget::{Class, Widget, Core, CoreData};
 use crate::control::{button, TextButton};
 use crate::toolkit::Toolkit;
 
@@ -56,22 +56,22 @@ impl From<event::NoResponse> for Response {
 }
 
 /// Main window type
-#[crate::mygui_impl(Core(core))]
-pub struct SimpleWindow<W> {
+#[crate::mygui_impl(Core(core), Widget(class=Class::Window, children=[w]))]
+pub struct SimpleWindow<W: Widget> {
     core: CoreData,
     min_size: Coord,
     #[cfg(feature = "cassowary")] solver: crate::cw::Solver,
     w: W
 }
 
-impl<W: Debug> Debug for SimpleWindow<W> {
+impl<W: Widget> Debug for SimpleWindow<W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "SimpleWindow {{ core: {:?}, min_size: {:?}, solver: <omitted>, w: {:?} }}",
             self.core, self.min_size, self.w)
     }
 }
 
-impl<W: Clone> Clone for SimpleWindow<W> {
+impl<W: Widget + Clone> Clone for SimpleWindow<W> {
     fn clone(&self) -> Self {
         SimpleWindow {
             core: self.core.clone(),
@@ -82,8 +82,7 @@ impl<W: Clone> Clone for SimpleWindow<W> {
     }
 }
 
-impl_layout_single!(SimpleWindow<W: Layout + Debug>, w);
-impl_widget!(SimpleWindow<W: Widget>; Class::Window; None; w);
+impl_layout_single!(SimpleWindow<W: Widget>, w);
 
 impl<W: Widget> SimpleWindow<W> {
     /// Create
