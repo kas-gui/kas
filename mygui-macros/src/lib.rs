@@ -7,6 +7,7 @@ use self::proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, DeriveInput, Ident, parenthesized};
 use syn::parse::{Parse, ParseStream, Result};
+use syn::token::Comma;
 
 #[proc_macro_attribute]
 pub fn mygui_impl(args: TokenStream, mut input: TokenStream) -> TokenStream {
@@ -24,6 +25,7 @@ pub fn mygui_impl(args: TokenStream, mut input: TokenStream) -> TokenStream {
     };
     
     if let Some(core) = args.core {
+        let core = core.core;
         let gen = TokenStream::from(quote! {
             impl #impl_generics #c::widget::Core
                 for #name #ty_generics #where_clause
@@ -62,21 +64,45 @@ mod kw {
 }
 
 struct ImplArgs {
-    core: Option<Ident>,
+    core: Option<CoreArgs>,
 }
 
 impl Parse for ImplArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut args = ImplArgs { core: None };
         
-        if input.peek(kw::Core) {
-            let _: kw::Core = input.parse()?;
-            let content;
-            let _ = parenthesized!(content in input);
-            let core: Ident = content.parse()?;
-            args.core = Some(core);
+        loop {
+            if input.is_empty() {
+                break;
+            }
+            
+            let lookahead = input.lookahead1();
+            if args.core.is_none() && lookahead.peek(kw::Core) {
+                args.core = Some(input.parse()?);
+            } else {
+                return Err(lookahead.error());
+            }
+            
+            if input.is_empty() {
+                break;
+            }
+            let _: Comma = input.parse()?;
         }
         
         Ok(args)
+    }
+}
+
+struct CoreArgs {
+    core: Ident
+}
+
+impl Parse for CoreArgs {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let _: kw::Core = input.parse()?;
+        let content;
+        let _ = parenthesized!(content in input);
+        let core: Ident = content.parse()?;
+        Ok(CoreArgs { core })
     }
 }
