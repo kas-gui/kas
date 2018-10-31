@@ -1,4 +1,5 @@
 #![recursion_limit="128"]
+#![feature(proc_macro_diagnostic)]
 
 extern crate proc_macro;
 
@@ -9,16 +10,16 @@ use quote::quote;
 use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Member};
 use syn::{parse_quote, parse_macro_input, parenthesized};
 use syn::parse::{Parse, ParseStream, Result};
-use syn::token::{Comma, Eq};
+use syn::token::{Brace, Comma, Eq, Paren};
+use syn::spanned::Spanned;
 
 /// Macro to derive widget traits
 /// 
-/// Unlike normal derive macros, this one implements multiple traits. Each of
-/// these is optional.
+/// Unlike normal derive macros, this one implements multiple traits. [`Core`]
+/// is always derived; other traits are optional.
 /// 
-/// If a struct field is marked with `#[core]`, then the [`Core`] trait
-/// will be derived. The marked field must implement [`Core`] itself (it is
-/// recommended to use the [`CoreData`] type).
+/// One struct field must be marked with `#[core]` and implement the [`Core`]
+/// trait. It is recommended to use the [`CoreData`] type.
 /// 
 /// If there is a `#[widget(...)]` attribute on the struct (in addition to the
 /// `#[derive(Widget)]` attribute), then the [`Widget`] trait will be
@@ -70,7 +71,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     
     let mut toks = TokenStream::default();
     
-    if let Some(core) = core {
+    if true {
         toks.extend(once(quote! {
             impl #impl_generics #c::widget::Core
                 for #name #ty_generics #where_clause
@@ -153,19 +154,28 @@ fn read_impl_attrs(ast: &mut DeriveInput) -> Result<Option<WidgetArgs>> {
                 let tts = attr.tts;
                 widget = Some(syn::parse2(tts)?);
             } else {
-                panic!("Error: multiple #[widget(..)] attributes on type");
+                attr.span()
+                    .unstable()
+                    .error("multiple #[widget(..)] attributes on type")
+                    .emit()
             }
         }
     }
     Ok(widget)
 }
 
-fn read_field_attrs(ast: &DeriveInput) -> (Option<Member>, Vec<Member>) {
-    match &ast.data {
+fn read_field_attrs(ast: &DeriveInput) -> (Member, Vec<Member>) {
+    let span = match &ast.data {
         Data::Struct(data) => {
             match &data.fields {
-                Fields::Named(FieldsNamed { named: fields, .. }) |
-                Fields::Unnamed(FieldsUnnamed { unnamed: fields, ..}) => {
+                Fields::Named(FieldsNamed {
+                    brace_token: Brace { span },
+                    named: fields,
+                }) |
+                Fields::Unnamed(FieldsUnnamed {
+                    paren_token: Paren { span },
+                    unnamed: fields,
+                }) => {
                     let mut core = None;
                     let mut children = vec![];
                     
@@ -175,7 +185,10 @@ fn read_field_attrs(ast: &DeriveInput) -> (Option<Member>, Vec<Member>) {
                                 if core.is_none() {
                                     core = Some(member(i, field.ident.clone()));
                                 } else {
-                                    panic!("Multiple fields marked as #[core]");
+                                    attr.span()
+                                        .unstable()
+                                        .error("deriving Widget: multiple fields marked with #[core]")
+                                        .emit();
                                 }
                             } else if attr.path == parse_quote!{ widget } {
                                 children.push(member(i, field.ident.clone()));
@@ -183,17 +196,27 @@ fn read_field_attrs(ast: &DeriveInput) -> (Option<Member>, Vec<Member>) {
                         }
                     }
                     
-                    (core, children)
+                    if let Some(core) = core {
+                        return (core, children);
+                    } else {
+                        span
+                            .unstable()
+                            .error("deriving Widget: one field must be marked with #[core]")
+                            .emit();
+                        unreachable!()
+                    }
                 },
-                Fields::Unit => {
-                    panic!("Error: cannot derive Widget on a unit struct")
-                }
+                Fields::Unit => data.struct_token.span(),
             }
         },
-        Data::Enum(_) | Data::Union(_) => {
-            panic!("Error: cannot derive Widget on an enum or a union")
-        }
-    }
+        Data::Enum(data) => data.enum_token.span(),
+        Data::Union(data) => data.union_token.span(),
+    };
+    span
+        .unstable()
+        .error("cannot derive Widget on an enum, union or unit struct")
+        .emit();
+    unreachable!()
 }
 
 fn member(index: usize, ident: Option<Ident>) -> Member {
