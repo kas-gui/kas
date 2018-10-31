@@ -3,14 +3,15 @@
 use std::fmt::{self, Debug};
 
 use crate::event::{self, Action, Handler, ignore};
-use crate::widget::{Class, Core, CoreData};
+use crate::macros::Widget;
 use crate::toolkit::Toolkit;
+use crate::widget::{Class, Core, CoreData};
 
 // TODO: abstract out text part?
-#[crate::mygui_impl(Core(core),
-    Widget(class = Class::Button, label = Some(self.msg), children = []))]
-#[derive(Clone, Default)]
+#[widget(class = Class::Button, label = Some(self.msg))]
+#[derive(Clone, Default, Widget)]
 pub struct TextButton<H> {
+    #[core]
     core: CoreData,
     msg: &'static str,
     handler: H,

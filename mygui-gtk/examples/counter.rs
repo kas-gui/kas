@@ -1,4 +1,5 @@
 //! Counter example (simple button)
+#![feature(unrestricted_attribute_tokens)]
 
 use mygui::control::TextButton;
 use mygui::display::Text;

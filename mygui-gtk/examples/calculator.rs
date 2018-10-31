@@ -1,4 +1,5 @@
 //! Simple calculator example (lots of buttons, grid layout)
+#![feature(unrestricted_attribute_tokens)]
 
 use std::num::ParseFloatError;
 use std::str::FromStr;

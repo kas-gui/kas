@@ -1,4 +1,5 @@
 //! Mygui lib
+#![feature(unrestricted_attribute_tokens)]
 
 #[doc(hidden)]
 #[cfg(feature = "cassowary")]
@@ -17,4 +18,10 @@ pub mod control;
 pub mod display;
 pub mod window;
 
-pub use mygui_macros::mygui_impl;
+/// Library macros
+/// 
+/// Note that some of these are re-exports, but it is expected that users depend on this crate only
+/// and not `mygui_macros`. All functionality is available via these re-exports.
+pub mod macros {
+    pub use mygui_macros::Widget;
+}

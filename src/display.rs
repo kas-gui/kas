@@ -1,26 +1,18 @@
 //! Display widgets show information but are not interactive
 
 use crate::event;
-use crate::widget::{Class, Widget, Core, CoreData};
+use crate::macros::Widget;
 use crate::toolkit::Toolkit;
+use crate::widget::{Class, Core, CoreData};
 
-#[crate::mygui_impl(Core(core))]
-#[derive(Clone, Default, Debug)]
+#[widget(class = Class::Text, label = Some(self.text.as_str()))]
+#[derive(Clone, Default, Debug, Widget)]
 pub struct Text {
-    core: CoreData,
+    #[core] core: CoreData,
     text: String,
 }
 
 impl_layout_simple!(Text);
-
-impl Widget for Text {
-    fn class(&self) -> Class { Class::Text }
-    fn label(&self) -> Option<&str> { Some(self.text.as_str()) }
-    
-    fn len(&self) -> usize { 0 }
-    fn get(&self, _index: usize) -> Option<&Widget> { None }
-    fn get_mut(&mut self, _index: usize) -> Option<&mut Widget> { None }
-}
 
 impl Text {
     pub fn set_text(&mut self, tk: &Toolkit, text: &str) {

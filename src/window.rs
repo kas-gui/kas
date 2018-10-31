@@ -2,11 +2,12 @@
 
 use std::fmt::{self, Debug};
 
-use crate::widget::Coord;
-use crate::event::{self, Action, Handler, ignore};
-use crate::widget::{Class, Widget, Core, CoreData};
 use crate::control::{button, TextButton};
+use crate::event::{self, Action, Handler, ignore};
+use crate::macros::Widget;
 use crate::toolkit::Toolkit;
+use crate::widget::Coord;
+use crate::widget::{Class, Widget, Core, CoreData};
 
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be
@@ -56,12 +57,13 @@ impl From<event::NoResponse> for Response {
 }
 
 /// Main window type
-#[crate::mygui_impl(Core(core), Widget(class=Class::Window, children=[w]))]
+#[widget(class = Class::Window)]
+#[derive(Widget)]
 pub struct SimpleWindow<W: Widget> {
-    core: CoreData,
+    #[core] core: CoreData,
     min_size: Coord,
     #[cfg(feature = "cassowary")] solver: crate::cw::Solver,
-    w: W
+    #[widget] w: W
 }
 
 impl<W: Widget> Debug for SimpleWindow<W> {
@@ -153,10 +155,10 @@ pub fn action_close() -> impl Fn() -> Response {
     || Response::Close
 }
 
-#[crate::mygui_impl(Core(core), Widget(class = Class::Window, children = []))]
-#[derive(Clone)]
+#[widget(class = Class::Window)]
+#[derive(Clone, Widget)]
 pub struct MessageBox<M: Debug, H> {
-    core: CoreData,
+    #[core] core: CoreData,
     message: M,
     button: TextButton<H>,
 }

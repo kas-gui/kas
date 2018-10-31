@@ -15,15 +15,15 @@ macro_rules! make_widget {
         $response:path) =>
     {{
         use $crate::event::{Action, Handler, ignore};
+        use $crate::macros::Widget;
         use $crate::toolkit::Toolkit;
         use $crate::widget::{Class, Core, CoreData, Widget};
 
-        #[$crate::mygui_impl(Core(core),
-            Widget(class=Class::Container, children=[$($wname),*]))]
-        #[derive(Clone, Debug)]
+        #[widget(class = Class::Container)]
+        #[derive(Clone, Debug, Widget)]
         struct L<$($gt: Widget + 'static),*> {
-            core: CoreData,
-            $($wname: $wt),* ,
+            #[core] core: CoreData,
+            $(#[widget] $wname: $wt),* ,
             $($dname: $dt),*
         }
 
@@ -67,15 +67,15 @@ macro_rules! make_widget {
         $response:path) =>
     {{
         use $crate::event::{Action, Handler, ignore};
+        use $crate::macros::Widget;
         use $crate::toolkit::Toolkit;
         use $crate::widget::{Class, Core, CoreData, Widget};
 
-        #[$crate::mygui_impl(Core(core),
-            Widget(class=Class::Container, children=[$($wname),*]))]
-        #[derive(Clone, Debug)]
+        #[widget(class = Class::Container)]
+        #[derive(Clone, Debug, Widget)]
         struct L<$($gt: Widget + 'static),*> {
-            core: CoreData,
-            $($wname: $wt),* ,
+            #[core] core: CoreData,
+            $(#[widget] $wname: $wt),* ,
             $($dname: $dt),*
         }
 
