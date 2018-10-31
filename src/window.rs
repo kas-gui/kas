@@ -153,15 +153,15 @@ pub fn action_close() -> impl Fn() -> Response {
     || Response::Close
 }
 
-#[crate::mygui_impl(Core(core))]
+#[crate::mygui_impl(Core(core), Widget(class = Class::Window, children = []))]
 #[derive(Clone)]
-pub struct MessageBox<M, H> {
+pub struct MessageBox<M: Debug, H> {
     core: CoreData,
     message: M,
     button: TextButton<H>,
 }
 
-impl<M, R, H: Fn() -> R> MessageBox<M, H> {
+impl<M: Debug, R, H: Fn() -> R> MessageBox<M, H> {
     // TODO: action parameter shouldn't be necessary, but we need it because
     // H must be derived from function input somehow, not merely unspecified
     // Once existential types are available, H parameter will not be needed.
@@ -183,19 +183,6 @@ impl<M: Debug, H> Debug for MessageBox<M, H> {
 }
 
 impl_layout_single!(MessageBox<M: Debug, H>, button);  // TODO: improve?
-
-impl<M: Debug, H> Widget for MessageBox<M, H> {
-    fn class(&self) -> Class { Class::Window }
-    fn label(&self) -> Option<&str> { None }
-    
-    fn len(&self) -> usize { 0 }
-    fn get(&self, _index: usize) -> Option<&Widget> {
-        unimplemented!()
-    }
-    fn get_mut(&mut self, _index: usize) -> Option<&mut Widget> {
-        unimplemented!()
-    }
-}
 
 impl<M: Debug, H> Window for MessageBox<M, H> {
     fn as_widget(&self) -> &Widget { self }

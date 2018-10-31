@@ -3,11 +3,12 @@
 use std::fmt::{self, Debug};
 
 use crate::event::{self, Action, Handler, ignore};
-use crate::widget::{Class, Widget, Core, CoreData};
+use crate::widget::{Class, Core, CoreData};
 use crate::toolkit::Toolkit;
 
 // TODO: abstract out text part?
-#[crate::mygui_impl(Core(core))]
+#[crate::mygui_impl(Core(core),
+    Widget(class = Class::Button, label = Some(self.msg), children = []))]
 #[derive(Clone, Default)]
 pub struct TextButton<H> {
     core: CoreData,
@@ -22,15 +23,6 @@ impl<H> Debug for TextButton<H> {
         write!(f, "TextButton {{ core: {:?}, msg: {:?}, handler: <omitted> }}",
             self.core, self.msg)
     }
-}
-
-impl<H> Widget for TextButton<H> {
-    fn class(&self) -> Class { Class::Button }
-    fn label(&self) -> Option<&str> { Some(self.msg) }
-    
-    fn len(&self) -> usize { 0 }
-    fn get(&self, _index: usize) -> Option<&Widget> { None }
-    fn get_mut(&mut self, _index: usize) -> Option<&mut Widget> { None }
 }
 
 impl<R, H: Fn() -> R> TextButton<H> {
