@@ -7,6 +7,7 @@ use std::env;
 use std::iter::once;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
+use quote::TokenStreamExt;
 use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Member};
 use syn::{parse_quote, parse_macro_input, parenthesized};
 use syn::parse::{Error, Parse, ParseStream, Result};
@@ -104,10 +105,17 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let class = widget.class;
         let label = widget.label.unwrap_or_else(|| parse_quote!{ None });
         let count = args.children.len();
-        let child1 = args.children.iter();
-        let child2 = args.children.iter();
         
-        // TODO: iteration could generate nicer code if done without quote
+        fn make_match_rules(children: &Vec<Member>, mut_ref: TokenStream) -> TokenStream {
+            let mut toks = TokenStream::new();
+            for (i, child) in children.iter().enumerate() {
+                toks.append_all(quote!{ #i => Some(&#mut_ref self.#child), });
+            }
+            toks
+        };
+        let get_rules = make_match_rules(&args.children, quote!{});
+        let get_mut_rules = make_match_rules(&args.children, quote!{mut});
+        
         toks.extend(once(quote! {
             impl #impl_generics #c::widget::Widget
                     for #name #ty_generics #where_clause
@@ -119,24 +127,16 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     #count
                 }
                 fn get(&self, _index: usize) -> Option<&#c::widget::Widget> {
-                    let _i = 0;
-                    #(
-                        if _index == _i {
-                            return Some(&self.#child1);
-                        }
-                        let _i = _i + 1;
-                    )*
-                    return None;
+                    match _index {
+                        #get_rules
+                        _ => None
+                    }
                 }
                 fn get_mut(&mut self, _index: usize) -> Option<&mut #c::widget::Widget> {
-                    let _i = 0;
-                    #(
-                        if _index == _i {
-                            return Some(&mut self.#child2);
-                        }
-                        let _i = _i + 1;
-                    )*
-                    return None;
+                    match _index {
+                        #get_mut_rules
+                        _ => None
+                    }
                 }
             }
         }));
