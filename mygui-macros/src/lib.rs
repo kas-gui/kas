@@ -9,7 +9,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Member};
 use syn::{parse_quote, parse_macro_input, parenthesized};
-use syn::parse::{Parse, ParseStream, Result};
+use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::token::{Brace, Comma, Eq, Paren};
 use syn::spanned::Spanned;
 
@@ -61,17 +61,17 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         quote!( mygui )
     };
     
-    let widget = match read_impl_attrs(&mut ast) {
+    let args = match read_attrs(&mut ast) {
         Ok(w) => w,
         Err(err) => return err.to_compile_error().into(),
     };
-    let (core, children) = read_field_attrs(&ast);
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let name = &ast.ident;
     
     let mut toks = TokenStream::default();
     
     if true {
+        let core = args.core;
         toks.extend(once(quote! {
             impl #impl_generics #c::widget::Core
                 for #name #ty_generics #where_clause
@@ -100,12 +100,12 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }));
     }
     
-    if let Some(widget) = widget {
+    if let Some(widget) = args.widget {
         let class = widget.class;
         let label = widget.label.unwrap_or_else(|| parse_quote!{ None });
-        let count = children.len();
-        let child1 = children.iter();
-        let child2 = children.iter();
+        let count = args.children.len();
+        let child1 = args.children.iter();
+        let child2 = args.children.iter();
         
         // TODO: iteration could generate nicer code if done without quote
         toks.extend(once(quote! {
@@ -145,8 +145,13 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     toks.into()
 }
 
+struct Args {
+    widget: Option<WidgetArgs>,
+    core: Member,
+    children: Vec<Member>,
+}
 
-fn read_impl_attrs(ast: &mut DeriveInput) -> Result<Option<WidgetArgs>> {
+fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
     let mut widget = None;
     for attr in ast.attrs.drain(..) {
         if attr.path == parse_quote!{ widget } {
@@ -161,11 +166,10 @@ fn read_impl_attrs(ast: &mut DeriveInput) -> Result<Option<WidgetArgs>> {
             }
         }
     }
-    Ok(widget)
-}
-
-fn read_field_attrs(ast: &DeriveInput) -> (Member, Vec<Member>) {
-    let span = match &ast.data {
+    
+    let not_struct_err = |span| Err(Error::new(span,
+            "cannot derive Widget on an enum, union or unit struct"));
+    let (fields, span) = match &ast.data {
         Data::Struct(data) => {
             match &data.fields {
                 Fields::Named(FieldsNamed {
@@ -176,47 +180,41 @@ fn read_field_attrs(ast: &DeriveInput) -> (Member, Vec<Member>) {
                     paren_token: Paren { span },
                     unnamed: fields,
                 }) => {
-                    let mut core = None;
-                    let mut children = vec![];
-                    
-                    for (i, field) in fields.iter().enumerate() {
-                        for attr in field.attrs.iter() {
-                            if attr.path == parse_quote!{ core } {
-                                if core.is_none() {
-                                    core = Some(member(i, field.ident.clone()));
-                                } else {
-                                    attr.span()
-                                        .unstable()
-                                        .error("deriving Widget: multiple fields marked with #[core]")
-                                        .emit();
-                                }
-                            } else if attr.path == parse_quote!{ widget } {
-                                children.push(member(i, field.ident.clone()));
-                            }
-                        }
-                    }
-                    
-                    if let Some(core) = core {
-                        return (core, children);
-                    } else {
-                        span
-                            .unstable()
-                            .error("deriving Widget: one field must be marked with #[core]")
-                            .emit();
-                        unreachable!()
-                    }
+                    (fields, span)
                 },
-                Fields::Unit => data.struct_token.span(),
+                Fields::Unit => return not_struct_err(data.struct_token.span()),
             }
         },
-        Data::Enum(data) => data.enum_token.span(),
-        Data::Union(data) => data.union_token.span(),
+        Data::Enum(data) => return not_struct_err(data.enum_token.span()),
+        Data::Union(data) => return not_struct_err(data.union_token.span()),
     };
-    span
-        .unstable()
-        .error("cannot derive Widget on an enum, union or unit struct")
-        .emit();
-    unreachable!()
+    
+    let mut core = None;
+    let mut children = vec![];
+    
+    for (i, field) in fields.iter().enumerate() {
+        for attr in field.attrs.iter() {
+            if attr.path == parse_quote!{ core } {
+                if core.is_none() {
+                    core = Some(member(i, field.ident.clone()));
+                } else {
+                    attr.span()
+                        .unstable()
+                        .error("multiple fields marked with #[core]")
+                        .emit();
+                }
+            } else if attr.path == parse_quote!{ widget } {
+                children.push(member(i, field.ident.clone()));
+            }
+        }
+    }
+    
+    if let Some(core) = core {
+        Ok(Args { widget, core, children })
+    } else {
+        Err(Error::new(*span,
+            "one field must be marked with #[core] when deriving Widget"))
+    }
 }
 
 fn member(index: usize, ident: Option<Ident>) -> Member {
