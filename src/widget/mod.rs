@@ -1,7 +1,6 @@
 //! Widgets
 
-#[cfg(not(feature = "layout"))]
-#[macro_use] mod layout_extern;
+#[cfg(not(feature = "layout"))] mod layout_extern;
 
 #[cfg(feature = "cassowary")]
 #[macro_use] mod layout_cw;

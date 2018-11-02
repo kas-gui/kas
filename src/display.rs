@@ -5,14 +5,13 @@ use crate::macros::Widget;
 use crate::toolkit::Toolkit;
 use crate::widget::{Class, Core, CoreData};
 
+#[layout]
 #[widget(class = Class::Text, label = Some(self.text.as_str()))]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Text {
     #[core] core: CoreData,
     text: String,
 }
-
-impl_layout_simple!(Text);
 
 impl Text {
     pub fn set_text(&mut self, tk: &Toolkit, text: &str) {

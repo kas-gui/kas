@@ -19,16 +19,14 @@ macro_rules! make_widget {
         use $crate::toolkit::Toolkit;
         use $crate::widget::{Class, Core, CoreData, Widget};
 
+        #[layout($direction)]
         #[widget(class = Class::Container)]
         #[derive(Clone, Debug, Widget)]
         struct L<$($gt: Widget + 'static),*> {
             #[core] core: CoreData,
-            $(#[widget] $wname: $wt),* ,
+            $(#[widget $((pos=[$($pos),*]))* ] $wname: $wt),* ,
             $($dname: $dt),*
         }
-
-        $crate::impl_layout!(L<$($gt: Widget),*>; 
-            $direction; $( $( [ $($pos),* ] )* $wname),*);
 
         impl<$($gt: Widget + Handler<Response = $gtr>),*> Handler
             for L<$($gt),*>
@@ -71,16 +69,14 @@ macro_rules! make_widget {
         use $crate::toolkit::Toolkit;
         use $crate::widget::{Class, Core, CoreData, Widget};
 
+        #[layout($direction)]
         #[widget(class = Class::Container)]
         #[derive(Clone, Debug, Widget)]
         struct L<$($gt: Widget + 'static),*> {
             #[core] core: CoreData,
-            $(#[widget] $wname: $wt),* ,
+            $(#[widget $((pos=[$($pos),*]))* ] $wname: $wt),* ,
             $($dname: $dt),*
         }
-
-        $crate::impl_layout!(L<$($gt: Widget),*>; 
-            $direction; $( $( [ $($pos),* ] )* $wname),*);
 
         impl<$($gtr, $gt: Widget + Handler<Response = $gtr>),*> Handler
             for L<$($gt),*>

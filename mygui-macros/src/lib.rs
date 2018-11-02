@@ -6,13 +6,19 @@ extern crate proc_macro;
 use std::env;
 use std::iter::once;
 use proc_macro2::{Span, TokenStream};
-use quote::quote;
-use quote::TokenStreamExt;
-use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Member};
-use syn::{parse_quote, parse_macro_input, parenthesized};
+use quote::{quote, TokenStreamExt, ToTokens};
+use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Lit, Member};
+use syn::{parse_quote, parse_macro_input, bracketed, parenthesized};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::token::{Brace, Comma, Eq, Paren};
 use syn::spanned::Spanned;
+
+
+#[cfg(not(feature = "cassowary"))] mod layout_extern;
+#[cfg(not(feature = "cassowary"))] use self::layout_extern as layout;
+
+#[cfg(feature = "cassowary")] mod layout_cw;
+#[cfg(feature = "cassowary")] use self::layout_cw as layout;
 
 /// Macro to derive widget traits
 /// 
@@ -50,13 +56,13 @@ use syn::spanned::Spanned;
 /// [`Core`]: ../mygui/widget/trait.Core.html
 /// [`CoreData`]: ../mygui/widget/struct.CoreData.html
 /// [`Widget`]: ../mygui/widget/trait.Widget.html
-#[proc_macro_derive(Widget, attributes(core, widget))]
+#[proc_macro_derive(Widget, attributes(core, layout, widget))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
     
     // Our stand-in for $crate. Imperfect, but works (excepting other crates in
     // the same package, i.e. doc-tests, examples, integration tests, benches).
-    let c = if env::var("CARGO_PKG_NAME").unwrap() == "mygui" {
+    let c = if env::var("CARGO_PKG_NAME") == Ok("mygui".to_string()) {
         quote!( crate )
     } else {
         quote!( mygui )
@@ -101,15 +107,31 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }));
     }
     
+    if let Some(layout) = args.layout {
+        let fns = match layout::fns(&c, &args.children, layout) {
+            Ok(fns) => fns,
+            Err(err) => return err.to_compile_error().into(),
+        };
+        
+        toks.extend(once(quote! {
+            impl #impl_generics #c::widget::Layout
+                    for #name #ty_generics #where_clause
+            {
+                #fns
+            }
+        }));
+    }
+    
     if let Some(widget) = args.widget {
         let class = widget.class;
         let label = widget.label.unwrap_or_else(|| parse_quote!{ None });
         let count = args.children.len();
         
-        fn make_match_rules(children: &Vec<Member>, mut_ref: TokenStream) -> TokenStream {
+        fn make_match_rules(children: &Vec<Child>, mut_ref: TokenStream) -> TokenStream {
             let mut toks = TokenStream::new();
             for (i, child) in children.iter().enumerate() {
-                toks.append_all(quote!{ #i => Some(&#mut_ref self.#child), });
+                let ident = &child.ident;
+                toks.append_all(quote!{ #i => Some(&#mut_ref self.#ident), });
             }
             toks
         };
@@ -145,33 +167,24 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     toks.into()
 }
 
+struct Child {
+    ident: Member,
+    args: ChildArgs,
+}
+
 struct Args {
-    widget: Option<WidgetArgs>,
     core: Member,
-    children: Vec<Member>,
+    layout: Option<LayoutArgs>,
+    widget: Option<WidgetArgs>,
+    children: Vec<Child>,
 }
 
 fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
-    let mut widget = None;
-    for attr in ast.attrs.drain(..) {
-        if attr.path == parse_quote!{ widget } {
-            if widget.is_none() {
-                let tts = attr.tts;
-                widget = Some(syn::parse2(tts)?);
-            } else {
-                attr.span()
-                    .unstable()
-                    .error("multiple #[widget(..)] attributes on type")
-                    .emit()
-            }
-        }
-    }
-    
     let not_struct_err = |span| Err(Error::new(span,
             "cannot derive Widget on an enum, union or unit struct"));
-    let (fields, span) = match &ast.data {
+    let (fields, span) = match &mut ast.data {
         Data::Struct(data) => {
-            match &data.fields {
+            match &mut data.fields {
                 Fields::Named(FieldsNamed {
                     brace_token: Brace { span },
                     named: fields,
@@ -192,8 +205,8 @@ fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
     let mut core = None;
     let mut children = vec![];
     
-    for (i, field) in fields.iter().enumerate() {
-        for attr in field.attrs.iter() {
+    for (i, field) in fields.iter_mut().enumerate() {
+        for attr in field.attrs.drain(..) {
             if attr.path == parse_quote!{ core } {
                 if core.is_none() {
                     core = Some(member(i, field.ident.clone()));
@@ -204,13 +217,48 @@ fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                         .emit();
                 }
             } else if attr.path == parse_quote!{ widget } {
-                children.push(member(i, field.ident.clone()));
+                let ident = member(i, field.ident.clone());
+                let args = syn::parse2(attr.tts)?;
+                children.push(Child{ ident, args });
+            }
+        }
+    }
+    
+    let mut layout = None;
+    let mut widget = None;
+    
+    for attr in ast.attrs.drain(..) {
+        if attr.path == parse_quote!{ layout } {
+            if layout.is_none() {
+                let span = attr.span();
+                let l: LayoutArgs = syn::parse2(attr.tts)?;
+                if children.len() > 1 && l.layout.is_none() {
+                    span
+                        .unstable()
+                        .error("layout description required with more than one child widget")
+                        .emit()
+                }
+                layout = Some(l);
+            } else {
+                attr.span()
+                    .unstable()
+                    .error("multiple #[layout(..)] attributes on type")
+                    .emit()
+            }
+        } else if attr.path == parse_quote!{ widget } {
+            if widget.is_none() {
+                widget = Some(syn::parse2(attr.tts)?);
+            } else {
+                attr.span()
+                    .unstable()
+                    .error("multiple #[widget(..)] attributes on type")
+                    .emit()
             }
         }
     }
     
     if let Some(core) = core {
-        Ok(Args { widget, core, children })
+        Ok(Args { core, layout, widget, children })
     } else {
         Err(Error::new(*span,
             "one field must be marked with #[core] when deriving Widget"))
@@ -232,6 +280,90 @@ mod kw {
     
     custom_keyword!(class);
     custom_keyword!(label);
+    custom_keyword!(pos);
+}
+
+struct GridPos(Lit, Lit, Lit, Lit);
+struct ChildArgs {
+    pos: Option<GridPos>,
+}
+
+impl Parse for ChildArgs {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let mut args = ChildArgs { pos: None };
+        if input.is_empty() {
+            return Ok(args);
+        }
+        
+        let content;
+        let _ = parenthesized!(content in input);
+        
+        loop {
+            if content.is_empty() {
+                break;
+            }
+            
+            let lookahead = content.lookahead1();
+            if args.pos.is_none() && lookahead.peek(kw::pos) {
+                let _: kw::pos = content.parse()?;
+                let _: Eq = content.parse()?;
+                let items;
+                let _ = bracketed!(items in content);
+                
+                let col: Lit = items.parse()?;
+                let _: Comma = items.parse()?;
+                let row: Lit = items.parse()?;
+                let spans = if !items.is_empty() {
+                    let _: Comma = items.parse()?;
+                    let col: Lit = items.parse()?;
+                    let _: Comma = items.parse()?;
+                    let row: Lit = items.parse()?;
+                    (col, row)
+                } else {
+                    let one: Lit = parse_quote!{ 1 };
+                    (one.clone(), one)
+                };
+                args.pos = Some(GridPos(col, row, spans.0, spans.1));
+            }
+            
+            if content.is_empty() {
+                break;
+            }
+            let _: Comma = content.parse()?;
+        }
+        
+        Ok(args)
+    }
+}
+
+impl ToTokens for GridPos {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let (c, r, cs, rs) = (&self.0, &self.1, &self.2, &self.3);
+        tokens.append_all(quote!{ (#c, #r, #cs, #rs) });
+    }
+}
+
+struct LayoutArgs {
+    layout: Option<Ident>,
+}
+
+impl Parse for LayoutArgs {
+    fn parse(input: ParseStream) -> Result<Self> {
+        if input.is_empty() {
+            return Ok(LayoutArgs { layout: None });
+        }
+        
+        let content;
+        let _ = parenthesized!(content in input);
+        
+        let layout = if content.is_empty() {
+            None
+        } else {
+            Some(content.parse()?)
+        };
+        
+        Ok(LayoutArgs { layout })
+    }
 }
 
 struct WidgetArgs {
@@ -241,6 +373,11 @@ struct WidgetArgs {
 
 impl Parse for WidgetArgs {
     fn parse(input: ParseStream) -> Result<Self> {
+        if input.is_empty() {
+            return Err(Error::new(Span::call_site(),
+                "expected #[widget(class = ...)]; found #[widget]"));
+        }
+        
         let content;
         let _ = parenthesized!(content in input);
         

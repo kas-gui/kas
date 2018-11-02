@@ -57,6 +57,7 @@ impl From<event::NoResponse> for Response {
 }
 
 /// Main window type
+#[layout]
 #[widget(class = Class::Window)]
 #[derive(Widget)]
 pub struct SimpleWindow<W: Widget> {
@@ -83,8 +84,6 @@ impl<W: Widget + Clone> Clone for SimpleWindow<W> {
         }
     }
 }
-
-impl_layout_single!(SimpleWindow<W: Widget>, w);
 
 impl<W: Widget> SimpleWindow<W> {
     /// Create
@@ -155,6 +154,7 @@ pub fn action_close() -> impl Fn() -> Response {
     || Response::Close
 }
 
+#[layout]
 #[widget(class = Class::Window)]
 #[derive(Clone, Widget)]
 pub struct MessageBox<M: Debug, H> {
@@ -183,8 +183,6 @@ impl<M: Debug, H> Debug for MessageBox<M, H> {
             self.core, self.message, self.button)
     }
 }
-
-impl_layout_single!(MessageBox<M: Debug, H>, button);  // TODO: improve?
 
 impl<M: Debug, H> Window for MessageBox<M, H> {
     fn as_widget(&self) -> &Widget { self }

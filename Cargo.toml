@@ -7,7 +7,7 @@ edition = "2018"
 [features]
 # Enable an internal layout solver. Currently this uses Cassowary.
 # Not required by all toolkits.
-layout = ["cassowary"]
+layout = ["cassowary", "mygui-macros/cassowary"]
 
 [dependencies]
 cassowary = { git = "https://github.com/dhardy/cassowary-rs", optional = true }

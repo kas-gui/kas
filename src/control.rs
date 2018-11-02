@@ -8,6 +8,7 @@ use crate::toolkit::Toolkit;
 use crate::widget::{Class, Core, CoreData};
 
 // TODO: abstract out text part?
+#[layout]
 #[widget(class = Class::Button, label = Some(self.msg))]
 #[derive(Clone, Default, Widget)]
 pub struct TextButton<H> {
@@ -16,8 +17,6 @@ pub struct TextButton<H> {
     msg: &'static str,
     handler: H,
 }
-
-impl_layout_simple!(TextButton<H>);
 
 impl<H> Debug for TextButton<H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
