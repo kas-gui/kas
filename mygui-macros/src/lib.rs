@@ -3,14 +3,15 @@
 
 extern crate proc_macro;
 
+mod args;
+
 use std::env;
-use proc_macro2::TokenStream;
+use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, TokenStreamExt};
-use syn::DeriveInput;
+use syn::{DeriveInput, Ident, Path};
 use syn::{parse_quote, parse_macro_input};
 
-
-mod args;
+use self::args::ChildType;
 
 #[cfg(not(feature = "cassowary"))] mod layout_extern;
 #[cfg(not(feature = "cassowary"))] use self::layout_extern as layout;
@@ -57,14 +58,7 @@ mod args;
 #[proc_macro_derive(Widget, attributes(core, layout, widget))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
-    
-    // Our stand-in for $crate. Imperfect, but works (excepting other crates in
-    // the same package, i.e. doc-tests, examples, integration tests, benches).
-    let c = if env::var("CARGO_PKG_NAME") == Ok("mygui".to_string()) {
-        quote!( crate )
-    } else {
-        quote!( mygui )
-    };
+    let c = c();
     
     let args = match args::read_attrs(&mut ast) {
         Ok(w) => w,
@@ -163,4 +157,164 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     }
     
     toks.into()
+}
+
+/// Macro to create a widget with anonymous type
+/// 
+/// This exists purely to save you some typing. You could instead make your own
+/// struct, derive `Widget` (with attributes to enable Core, Layout and Widget
+/// implementation), manually implement `event::Handler`, and instantiate an
+/// object.
+/// 
+/// Currently usage of this macro requires `#![feature(proc_macro_hygiene)]`.
+#[proc_macro]
+pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let args = parse_macro_input!(input as args::MakeWidget);
+    
+    // Used to make fresh identifiers for generic types
+    let mut name_buf = String::with_capacity(32);
+    name_buf.push_str("MWAnon");
+    let len = name_buf.len();
+    
+    let c = c();
+    let comma = TokenTree::from(Punct::new(',', Spacing::Alone));
+    
+    // fields of anonymous struct:
+    let mut field_toks = quote!{ #[core] core: CoreData, };
+    // initialisers for these fields:
+    let mut field_val_toks = quote!{ core: Default::default(), };
+    
+    // generic types on struct, without constraints:
+    let mut gen_tys = TokenStream::new();
+    // generic types on struct, with constraints:
+    let mut gen_ptrs = TokenStream::new();
+    // generic types on handler impl, with constraints:
+    let mut gen_response_ptrs = TokenStream::new();
+    // where clause on handler impl:
+    let mut handler_where = quote!{ where };
+    // Has the above been appended to? (Difficult to test directly.)
+    let mut have_where = false;
+    // per-child-widget result handlering:
+    let mut handler_toks = TokenStream::new();
+    
+    let layout = &args.layout;
+    let response = &args.response;
+    
+    for child in &args.widgets {
+        let ident = &child.ident;
+        let ty: Path = match &child.ty {
+            ChildType::Path(p) => p.clone(),
+            cty @ ChildType::Generic |
+            cty @ ChildType::Response(_) => {
+                name_buf.truncate(len);
+                name_buf.push_str(&ident.to_string());
+                let ty = Ident::new(&name_buf, Span::call_site());
+                
+                if !gen_tys.is_empty() {
+                    gen_tys.append(comma.clone());
+                    gen_ptrs.append(comma.clone());
+                    gen_response_ptrs.append(comma.clone());
+                }
+                
+                gen_tys.append_all(quote!{ #ty });
+                gen_ptrs.append_all(quote!{ #ty: Widget + 'static });
+                
+                match cty {
+                    ChildType::Generic => {
+                        name_buf.push_str("R");
+                        let tyr = Ident::new(&name_buf, Span::call_site());
+                        gen_response_ptrs.append_all(quote!{
+                            #tyr, #ty: Widget + Handler<Response = #tyr>
+                        });
+                        if have_where {
+                            handler_where.append(comma.clone());
+                        }
+                        handler_where.append_all(quote!{
+                            #tyr: From<NoResponse>, #response: From<#tyr>
+                        });
+                        have_where = true;
+                    }
+                    ChildType::Response(tyr) => {
+                        gen_response_ptrs.append_all(quote!{
+                            #ty: Widget + Handler<Response = #tyr>
+                        });
+                    }
+                    _ => unreachable!()
+                }
+                
+                ty.into()
+            }
+        };
+        let value = &child.value;
+        
+        // TODO: pos
+        field_toks.append_all(quote!{ #[widget] #ident: #ty, });
+        field_val_toks.append_all(quote!{ #ident: #value, });
+        
+        let handler = if let Some(ref h) = child.handler {
+            quote!{ #h }
+        } else {
+            quote!{ msg.into() }
+        };
+        handler_toks.append_all(quote!{
+            if num <= self.#ident.number() {
+                let msg = self.#ident.handle_action(tk, action, num);
+                return #handler;
+            }
+        });
+    }
+    
+    if !have_where {
+        handler_where = TokenStream::new();
+    }
+    
+    for data in &args.fields {
+        let ident = &data.0;
+        let ty = &data.1;
+        let expr = &data.2;
+        field_toks.append_all(quote!{ #ident: #ty });
+        field_val_toks.append_all(quote!{ #ident: #expr });
+    }
+    
+    let toks = (quote!{ {
+        use #c::event::{Action, Handler, ignore};
+        use #c::macros::Widget;
+        use #c::toolkit::Toolkit;
+        use #c::widget::{Class, Core, CoreData, Widget};
+
+        #[layout(#layout)]
+        #[widget(class = Class::Container)]
+        #[derive(Clone, Debug, Widget)]
+        struct L<#gen_ptrs> {
+            #field_toks
+        }
+
+        impl<#gen_response_ptrs> Handler for L<#gen_tys> #handler_where {
+            type Response = #response;
+            
+            fn handle_action(&mut self, tk: &Toolkit, action: Action, num: u32) -> #response {
+                #handler_toks
+                
+                if num != self.number() {
+                    println!("Warning: incorrect widget number");
+                }
+                ignore(action)  // no actions handled by this widget
+            }
+        }
+
+        L {
+            #field_val_toks
+        }
+    } }).into();
+    toks
+}
+
+// Our stand-in for $crate. Imperfect, but works (excepting other crates in
+// the same package, i.e. doc-tests, examples, integration tests, benches).
+fn c() -> TokenStream {
+    if env::var("CARGO_PKG_NAME") == Ok("mygui".to_string()) {
+        parse_quote!( crate )
+    } else {
+        parse_quote!( mygui )
+    }
 }

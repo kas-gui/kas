@@ -1,9 +1,9 @@
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, TokenStreamExt, ToTokens};
-use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Lit, Member};
+use syn::{Block, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Lit, Member, Path};
 use syn::{parse_quote, bracketed, parenthesized};
 use syn::parse::{Error, Parse, ParseStream, Result};
-use syn::token::{Brace, Comma, Eq, Paren};
+use syn::token::{Brace, Bracket, Colon, Comma, Eq, FatArrow, Paren, Semi};
 use syn::spanned::Spanned;
 
 pub struct Child {
@@ -253,5 +253,104 @@ impl Parse for WidgetArgs {
             class: class.ok_or_else(|| content.error("expected `class = ...`"))?,
             label,
         })
+    }
+}
+
+pub enum ChildType {
+    Generic,
+    Path(Path),
+    Response(Path),  // generic but with defined handler response type
+}
+
+pub struct ChildWidget {
+    pub ident: Ident,
+    pub ty: ChildType,
+    pub value: Expr,
+    pub handler: Option<Block>,
+}
+
+pub struct MakeWidget {
+    // layout direction
+    pub layout: Ident,
+    // child widgets
+    pub widgets: Vec<ChildWidget>,
+    // (ident, type, value) for each data field
+    pub fields: Vec<(Ident, Path, Expr)>,
+    // response type
+    pub response: Path,
+}
+
+impl Parse for MakeWidget {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let layout: Ident = input.parse()?;
+        let _: Semi = input.parse()?;
+        
+        let mut widgets = vec![];
+        loop {
+            if input.peek(Semi) {
+                let _: Semi = input.parse()?;
+                break;
+            }
+            
+            widgets.push(input.parse::<ChildWidget>()?);
+            
+            if input.peek(Comma) {
+                let _: Comma = input.parse()?;
+            }
+        }
+        
+        let mut fields = vec![];
+        loop {
+            if input.peek(Semi) {
+                let _: Semi = input.parse()?;
+                break;
+            }
+            
+            let ident: Ident = input.parse()?;
+            let _: Colon = input.parse()?;
+            let ty: Path = input.parse()?;
+            let _: Eq = input.parse()?;
+            let value: Expr = input.parse()?;
+            fields.push((ident, ty, value));
+            
+            if input.peek(Comma) {
+                let _: Comma = input.parse()?;
+            }
+        }
+        
+        let response: Path = input.parse()?;
+        
+        Ok(MakeWidget { layout, widgets, fields, response })
+    }
+}
+
+impl Parse for ChildWidget {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let ident: Ident = input.parse()?;
+        
+        let ty = if input.peek(Colon) {
+            let _: Colon = input.parse()?;
+            if input.peek(Bracket) {
+                let inner;
+                let _ = bracketed!(inner in input);
+                ChildType::Response(inner.parse()?)
+            } else {
+                ChildType::Path(input.parse()?)
+            }
+        } else {
+            ChildType::Generic
+        };
+        
+        let _: Eq = input.parse()?;
+        let value: Expr = input.parse()?;
+        
+        let handler = if input.peek(FatArrow) {
+            let _: FatArrow = input.parse()?;
+            Some(input.parse::<Block>()?)
+        } else {
+            None
+        };
+        
+        Ok(ChildWidget{ ident, ty, value, handler })
     }
 }

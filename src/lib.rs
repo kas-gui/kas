@@ -23,5 +23,5 @@ pub mod window;
 /// Note that some of these are re-exports, but it is expected that users depend on this crate only
 /// and not `mygui_macros`. All functionality is available via these re-exports.
 pub mod macros {
-    pub use mygui_macros::Widget;
+    pub use mygui_macros::{Widget, make_widget};
 }

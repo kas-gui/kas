@@ -11,6 +11,11 @@ proc-macro = true
 cassowary = []
 
 [dependencies]
-syn = { version = "0.15", features = ["extra-traits"] }
 quote = "0.6"
 proc-macro2 = { version = "0.4", features = ["nightly"] }
+
+[dependencies.syn]
+version = "0.15"
+# We need 'extra-traits' for equality testing
+# We need 'full' for parsing macros within macro arguments
+features = ["extra-traits", "full"]

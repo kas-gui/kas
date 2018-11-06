@@ -1,9 +1,10 @@
 //! Counter example (simple button)
 #![feature(unrestricted_attribute_tokens)]
+#![feature(proc_macro_hygiene)]
 
 use mygui::control::TextButton;
 use mygui::display::Text;
-use mygui::make_widget;
+use mygui::macros::make_widget;
 use mygui::event::{NoResponse};
 use mygui::window::SimpleWindow;
 
@@ -24,12 +25,12 @@ impl From<NoResponse> for Message {
 
 fn main() -> Result<(), Error> {
     let window = SimpleWindow::new(   // construct with default state and handler
-        make_widget!(vertical<BS[Message]>; self, tk, msg;
-            display: Text = Text::from("0") => msg,
-            buttons: BS = make_widget!(
-                horizontal<A AM, B BM>;
-                decr: A = TextButton::new("−", || Message::Decr),
-                incr: B = TextButton::new("+", || Message::Incr);;
+        make_widget!(vertical;
+            display: Text = Text::from("0"),
+            buttons: [Message] = make_widget!(
+                horizontal;
+                decr = TextButton::new("−", || Message::Decr),
+                incr = TextButton::new("+", || Message::Incr);;
                 Message) =>
             {
                 match msg {
