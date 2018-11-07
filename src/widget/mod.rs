@@ -5,8 +5,6 @@
 #[cfg(feature = "cassowary")]
 #[macro_use] mod layout_cw;
 
-#[macro_use] mod make_widget;
-
 mod class;
 mod data;
 

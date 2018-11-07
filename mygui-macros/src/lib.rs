@@ -6,6 +6,7 @@ extern crate proc_macro;
 mod args;
 
 use std::env;
+use std::fmt::Write;
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, TokenStreamExt};
 use syn::{DeriveInput, Ident, Path};
@@ -173,8 +174,6 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     
     // Used to make fresh identifiers for generic types
     let mut name_buf = String::with_capacity(32);
-    name_buf.push_str("MWAnon");
-    let len = name_buf.len();
     
     let c = c();
     let comma = TokenTree::from(Punct::new(',', Spacing::Alone));
@@ -200,14 +199,24 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let layout = &args.layout;
     let response = &args.response;
     
-    for child in &args.widgets {
-        let ident = &child.ident;
-        let ty: Path = match &child.ty {
+    for (index, field) in args.fields.iter().enumerate() {
+        let attr = &field.widget_attr;
+        
+        let ident = match &field.ident {
+            Some(ref ident) => ident.clone(),
+            None => {
+                name_buf.clear();
+                name_buf.write_fmt(format_args!("mw_anon_{}", index)).unwrap();
+                Ident::new(&name_buf, Span::call_site())
+            }
+        };
+        
+        let ty: Path = match &field.ty {
             ChildType::Path(p) => p.clone(),
             cty @ ChildType::Generic |
             cty @ ChildType::Response(_) => {
-                name_buf.truncate(len);
-                name_buf.push_str(&ident.to_string());
+                name_buf.clear();
+                name_buf.write_fmt(format_args!("MWAnon{}", index)).unwrap();
                 let ty = Ident::new(&name_buf, Span::call_site());
                 
                 if !gen_tys.is_empty() {
@@ -217,63 +226,62 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
                 
                 gen_tys.append_all(quote!{ #ty });
-                gen_ptrs.append_all(quote!{ #ty: Widget + 'static });
-                
-                match cty {
-                    ChildType::Generic => {
-                        name_buf.push_str("R");
-                        let tyr = Ident::new(&name_buf, Span::call_site());
-                        gen_response_ptrs.append_all(quote!{
-                            #tyr, #ty: Widget + Handler<Response = #tyr>
-                        });
-                        if have_where {
-                            handler_where.append(comma.clone());
+                if attr.is_some() {
+                    gen_ptrs.append_all(quote!{ #ty: Widget + 'static });
+                    
+                    match cty {
+                        ChildType::Generic => {
+                            name_buf.push_str("R");
+                            let tyr = Ident::new(&name_buf, Span::call_site());
+                            gen_response_ptrs.append_all(quote!{
+                                #tyr, #ty: Widget + Handler<Response = #tyr>
+                            });
+                            if have_where {
+                                handler_where.append(comma.clone());
+                            }
+                            handler_where.append_all(quote!{
+                                #tyr: From<NoResponse>, #response: From<#tyr>
+                            });
+                            have_where = true;
                         }
-                        handler_where.append_all(quote!{
-                            #tyr: From<NoResponse>, #response: From<#tyr>
-                        });
-                        have_where = true;
+                        ChildType::Response(tyr) => {
+                            gen_response_ptrs.append_all(quote!{
+                                #ty: Widget + Handler<Response = #tyr>
+                            });
+                        }
+                        _ => unreachable!()
                     }
-                    ChildType::Response(tyr) => {
-                        gen_response_ptrs.append_all(quote!{
-                            #ty: Widget + Handler<Response = #tyr>
-                        });
-                    }
-                    _ => unreachable!()
+                } else {
+                    gen_ptrs.append_all(quote!{ #ty });
+                    gen_response_ptrs.append_all(quote!{ #ty });
                 }
                 
                 ty.into()
             }
         };
-        let value = &child.value;
         
-        // TODO: pos
-        field_toks.append_all(quote!{ #[widget] #ident: #ty, });
+        let value = &field.value;
+        
+        field_toks.append_all(quote!{ #attr #ident: #ty, });
         field_val_toks.append_all(quote!{ #ident: #value, });
         
-        let handler = if let Some(ref h) = child.handler {
-            quote!{ #h }
-        } else {
-            quote!{ msg.into() }
-        };
-        handler_toks.append_all(quote!{
-            if num <= self.#ident.number() {
-                let msg = self.#ident.handle_action(tk, action, num);
-                return #handler;
-            }
-        });
+        if attr.is_some() {
+            let handler = if let Some(ref h) = field.handler {
+                quote!{ #h }
+            } else {
+                quote!{ msg.into() }
+            };
+            handler_toks.append_all(quote!{
+                if num <= self.#ident.number() {
+                    let msg = self.#ident.handle_action(tk, action, num);
+                    return #handler;
+                }
+            });
+        }
     }
     
     if !have_where {
         handler_where = TokenStream::new();
-    }
-    
-    for data in &args.fields {
-        let ident = &data.0;
-        let ty = &data.1;
-        let expr = &data.2;
-        field_toks.append_all(quote!{ #ident: #ty });
-        field_val_toks.append_all(quote!{ #ident: #expr });
     }
     
     let toks = (quote!{ {

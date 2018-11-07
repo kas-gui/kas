@@ -4,12 +4,12 @@
 
 use mygui::control::TextButton;
 use mygui::display::Text;
+use mygui::event::NoResponse;
 use mygui::macros::make_widget;
-use mygui::event::{NoResponse};
 use mygui::window::SimpleWindow;
 
 use mygui::toolkit::Toolkit;
-use mygui_gtk::{GtkToolkit, Error};
+use mygui_gtk::{Error, GtkToolkit};
 
 enum Message {
     None,
@@ -24,14 +24,14 @@ impl From<NoResponse> for Message {
 }
 
 fn main() -> Result<(), Error> {
-    let window = SimpleWindow::new(   // construct with default state and handler
-        make_widget!(vertical;
-            display: Text = Text::from("0"),
-            buttons: [Message] = make_widget!(
-                horizontal;
-                decr = TextButton::new("−", || Message::Decr),
-                incr = TextButton::new("+", || Message::Incr);;
-                Message) =>
+    let buttons = make_widget!(horizontal => Message;
+        #[widget] TextButton::new("−", || Message::Decr),
+        #[widget] TextButton::new("+", || Message::Incr),
+    );
+    let window = SimpleWindow::new(
+        make_widget!(vertical => NoResponse;
+            #[widget] display: Text = Text::from("0"),
+            #[widget] buttons: [Message] = buttons =>
             {
                 match msg {
                     Message::None => (),
@@ -45,12 +45,11 @@ fn main() -> Result<(), Error> {
                     }
                 };
                 NoResponse::None
-            };
-            counter: usize = 0;
-            NoResponse
-        )
+            },
+            counter: usize = 0
+        ),
     );
-    
+
     let mut toolkit = GtkToolkit::new()?;
     toolkit.add(window);
     toolkit.main();

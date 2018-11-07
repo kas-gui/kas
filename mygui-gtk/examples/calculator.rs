@@ -1,17 +1,18 @@
 //! Simple calculator example (lots of buttons, grid layout)
 #![feature(unrestricted_attribute_tokens)]
+#![feature(proc_macro_hygiene)]
 
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
 use mygui::control::TextButton;
 use mygui::display::Text;
-use mygui::make_widget;
-use mygui::event::{NoResponse};
+use mygui::event::NoResponse;
+use mygui::macros::make_widget;
 use mygui::window::SimpleWindow;
 
 use mygui::toolkit::Toolkit;
-use mygui_gtk::{GtkToolkit, Error};
+use mygui_gtk::{Error, GtkToolkit};
 
 #[derive(Clone, Debug, PartialEq)]
 enum Key {
@@ -22,7 +23,7 @@ enum Key {
     Subtract,
     Add,
     Equals,
-    Char(u8),  // char in range 0..255
+    Char(u8), // char in range 0..255
 }
 
 impl From<NoResponse> for Key {
@@ -32,48 +33,43 @@ impl From<NoResponse> for Key {
 }
 
 fn main() -> Result<(), Error> {
-    let buttons = make_widget!(grid<C CM, D DM, M MM, S SM,
-            N7 N7M, N8 N8M, N9 N9M, A AM,
-            N4 N4M, N5 N5M, N6 N6M,
-            N1 N1M, N2 N2M, N3 N3M, E EM,
-            N0 N0M, P PM>;
-        [0, 0] clear: C = TextButton::new("clear", || Key::Clear),
-        [1, 0] divide: D = TextButton::new("÷", || Key::Divide),
-        [2, 0] multiply: M = TextButton::new("×", || Key::Multiply),
-        [3, 0] subtract: S = TextButton::new("−", || Key::Subtract),
-        [0, 1] num7: N7 = TextButton::new("7", || Key::Char(48 + 7)),
-        [1, 1] num8: N8 = TextButton::new("8", || Key::Char(48 + 8)),
-        [2, 1] num9: N9 = TextButton::new("9", || Key::Char(48 + 9)),
-        [3, 1, 1, 2] add: A = TextButton::new("+", || Key::Add),
-        [0, 2] num4: N4 = TextButton::new("4", || Key::Char(48 + 4)),
-        [1, 2] num5: N5 = TextButton::new("5", || Key::Char(48 + 5)),
-        [2, 2] num6: N6 = TextButton::new("6", || Key::Char(48 + 6)),
-        [0, 3] num1: N1 = TextButton::new("1", || Key::Char(48 + 1)),
-        [1, 3] num2: N2 = TextButton::new("2", || Key::Char(48 + 2)),
-        [2, 3] num3: N3 = TextButton::new("3", || Key::Char(48 + 3)),
-        [3, 3, 1, 2] equals: E = TextButton::new("=", || Key::Equals),
-        [0, 4, 2, 1] num0: N0 = TextButton::new("0", || Key::Char(48 + 0)),
-        [2, 4] decimal: P = TextButton::new(".", || Key::Char(46));;
-        Key);
-    
-    let window = SimpleWindow::new(   // construct with default state and handler
-        make_widget!(vertical<BS[Key]>; self, tk, msg;
-            // state: Text = Text::from("0") => msg,
-            // buf: Text = Text::from("") => msg,
-            display: Text = Text::from("0") => msg,
-            buttons: BS = buttons => {
+    let buttons = make_widget!(grid => Key;
+        #[widget(col = 0, row = 0)] TextButton::new("clear", || Key::Clear),
+        #[widget(col = 1, row = 0)] TextButton::new("÷", || Key::Divide),
+        #[widget(col = 2, row = 0)] TextButton::new("×", || Key::Multiply),
+        #[widget(col = 3, row = 0)] TextButton::new("−", || Key::Subtract),
+        #[widget(col = 0, row = 1)] TextButton::new("7", || Key::Char(48 + 7)),
+        #[widget(col = 1, row = 1)] TextButton::new("8", || Key::Char(48 + 8)),
+        #[widget(col = 2, row = 1)] TextButton::new("9", || Key::Char(48 + 9)),
+        #[widget(col = 3, row = 1, rspan = 2)] TextButton::new("+", || Key::Add),
+        #[widget(col = 0, row = 2)] TextButton::new("4", || Key::Char(48 + 4)),
+        #[widget(col = 1, row = 2)] TextButton::new("5", || Key::Char(48 + 5)),
+        #[widget(col = 2, row = 2)] TextButton::new("6", || Key::Char(48 + 6)),
+        #[widget(col = 0, row = 3)] TextButton::new("1", || Key::Char(48 + 1)),
+        #[widget(col = 1, row = 3)] TextButton::new("2", || Key::Char(48 + 2)),
+        #[widget(col = 2, row = 3)] TextButton::new("3", || Key::Char(48 + 3)),
+        #[widget(col = 3, row = 3, rspan = 2)] TextButton::new("=", || Key::Equals),
+        #[widget(col = 0, row = 4, cspan = 2)] TextButton::new("0", || Key::Char(48 + 0)),
+        #[widget(col = 2, row = 4)] TextButton::new(".", || Key::Char(46)),
+    );
+
+    let window = SimpleWindow::new(
+        make_widget!(vertical => NoResponse;
+            // #[widget] state: Text = Text::from("0"),
+            // #[widget] buf: Text = Text::from("") ,
+            #[widget] display: Text = Text::from("0"),
+            #[widget] buttons: [Key] = buttons => {
                 if self.calc.handle(msg) {
                     // self.state.set_text(tk, &self.calc.state_str());
                     // self.buf.set_text(tk, &self.calc.line_buf);
                     self.display.set_text(tk, &self.calc.display());
                 }
                 NoResponse::None
-            };
-            calc: Calculator = Calculator::new();
-            NoResponse
-        )
+            },
+            calc: Calculator = Calculator::new()
+        ),
     );
-    
+
     let mut toolkit = GtkToolkit::new()?;
     toolkit.add(window);
     toolkit.main();
@@ -95,14 +91,14 @@ impl Calculator {
             line_buf: String::new(),
         }
     }
-    
+
     fn state_str(&self) -> String {
         match &self.state {
             Ok(x) => x.to_string(),
-            Err(e) => format!("{}", e)
+            Err(e) => format!("{}", e),
         }
     }
-    
+
     // alternative, single line display
     #[allow(unused)]
     fn display(&self) -> String {
@@ -112,7 +108,7 @@ impl Calculator {
             self.line_buf.clone()
         }
     }
-    
+
     // return true if display changes
     fn handle(&mut self, key: Key) -> bool {
         use self::Key::*;
@@ -124,28 +120,24 @@ impl Calculator {
                 self.line_buf.clear();
                 true
             }
-            op @ Divide | op @ Multiply | op @ Subtract | op @ Add => {
-                self.do_op(op)
-            }
-            Equals => {
-                self.do_op(None)
-            }
+            op @ Divide | op @ Multiply | op @ Subtract | op @ Add => self.do_op(op),
+            Equals => self.do_op(None),
             Char(c) => {
                 self.line_buf.push(char::from(c));
                 true
             }
         }
     }
-    
+
     fn do_op(&mut self, next_op: Key) -> bool {
         if self.line_buf.is_empty() {
             self.op = next_op;
             return false;
         }
-        
+
         let line = f64::from_str(&self.line_buf);
         self.line_buf.clear();
-        
+
         if self.op == Key::None {
             self.state = line;
         } else if let Ok(x) = self.state {
@@ -157,13 +149,13 @@ impl Calculator {
                         Multiply => Ok(x * y),
                         Subtract => Ok(x - y),
                         Add => Ok(x + y),
-                        _ => panic!("unexpected op")    // program error
+                        _ => panic!("unexpected op"), // program error
                     }
                 }
                 e @ Err(_) => e,
             };
         }
-        
+
         self.op = next_op;
         true
     }

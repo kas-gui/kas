@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Result};
-use super::{LayoutArgs, Child};
+use crate::args::{LayoutArgs, Child};
 
 pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: LayoutArgs)
     -> Result<TokenStream>

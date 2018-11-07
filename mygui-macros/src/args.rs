@@ -1,14 +1,14 @@
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, TokenStreamExt, ToTokens};
 use syn::{Block, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Lit, Member, Path};
 use syn::{parse_quote, bracketed, parenthesized};
 use syn::parse::{Error, Parse, ParseStream, Result};
-use syn::token::{Brace, Bracket, Colon, Comma, Eq, FatArrow, Paren, Semi};
+use syn::token::{Brace, Bracket, Colon, Comma, Eq, FatArrow, Paren, Pound, Semi};
 use syn::spanned::Spanned;
 
 pub struct Child {
     pub ident: Member,
-    pub args: ChildArgs,
+    pub args: WidgetAttrArgs,
 }
 
 pub struct Args {
@@ -119,17 +119,46 @@ mod kw {
     
     custom_keyword!(class);
     custom_keyword!(label);
-    custom_keyword!(pos);
+    custom_keyword!(col);
+    custom_keyword!(row);
+    custom_keyword!(cspan);
+    custom_keyword!(rspan);
+    custom_keyword!(widget);
+}
+
+pub struct WidgetAttrArgs {
+    pub col: Option<Lit>,
+    pub row: Option<Lit>,
+    pub cspan: Option<Lit>,
+    pub rspan: Option<Lit>,
 }
 
 pub struct GridPos(Lit, Lit, Lit, Lit);
-pub struct ChildArgs {
-    pub pos: Option<GridPos>,
+impl WidgetAttrArgs {
+    // If we have *any* position information, then yield a GridPos, filling in
+    // missing information with defaults.
+    pub fn as_pos(&self) -> Option<GridPos> {
+        if self.col.is_some() || self.row.is_some() ||
+            self.cspan.is_some() || self.rspan.is_some()
+        {
+            Some(GridPos(
+                self.col.as_ref().cloned().unwrap_or_else(|| parse_quote!{ 0}),
+                self.row.as_ref().cloned().unwrap_or_else(|| parse_quote!{ 0 }),
+                self.cspan.as_ref().cloned().unwrap_or_else(|| parse_quote!{ 1 }),
+                self.rspan.as_ref().cloned().unwrap_or_else(|| parse_quote!{ 1 }),
+            ))
+        } else {
+            None
+        }
+    }
 }
 
-impl Parse for ChildArgs {
+impl Parse for WidgetAttrArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut args = ChildArgs { pos: None };
+        let mut args = WidgetAttrArgs {
+            col: None, row: None,
+            cspan: None, rspan: None,
+        };
         if input.is_empty() {
             return Ok(args);
         }
@@ -143,26 +172,24 @@ impl Parse for ChildArgs {
             }
             
             let lookahead = content.lookahead1();
-            if args.pos.is_none() && lookahead.peek(kw::pos) {
-                let _: kw::pos = content.parse()?;
+            if args.col.is_none() && lookahead.peek(kw::col) {
+                let _: kw::col = content.parse()?;
                 let _: Eq = content.parse()?;
-                let items;
-                let _ = bracketed!(items in content);
-                
-                let col: Lit = items.parse()?;
-                let _: Comma = items.parse()?;
-                let row: Lit = items.parse()?;
-                let spans = if !items.is_empty() {
-                    let _: Comma = items.parse()?;
-                    let col: Lit = items.parse()?;
-                    let _: Comma = items.parse()?;
-                    let row: Lit = items.parse()?;
-                    (col, row)
-                } else {
-                    let one: Lit = parse_quote!{ 1 };
-                    (one.clone(), one)
-                };
-                args.pos = Some(GridPos(col, row, spans.0, spans.1));
+                args.col = Some(content.parse()?);
+            } else if args.row.is_none() && lookahead.peek(kw::row) {
+                let _: kw::row = content.parse()?;
+                let _: Eq = content.parse()?;
+                args.row = Some(content.parse()?);
+            } else if args.cspan.is_none() && lookahead.peek(kw::cspan) {
+                let _: kw::cspan = content.parse()?;
+                let _: Eq = content.parse()?;
+                args.cspan = Some(content.parse()?);
+            } else if args.rspan.is_none() && lookahead.peek(kw::rspan) {
+                let _: kw::rspan = content.parse()?;
+                let _: Eq = content.parse()?;
+                args.rspan = Some(content.parse()?);
+            } else {
+                return Err(lookahead.error());
             }
             
             if content.is_empty() {
@@ -172,6 +199,50 @@ impl Parse for ChildArgs {
         }
         
         Ok(args)
+    }
+}
+
+impl ToTokens for WidgetAttrArgs {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        if self.col.is_some() || self.row.is_some() ||
+            self.cspan.is_some() || self.rspan.is_some()
+        {
+            let comma = TokenTree::from(Punct::new(',', Spacing::Alone));
+            let mut args = TokenStream::new();
+            if let Some(ref lit) = self.col {
+                args.append_all(quote!{ col = #lit });
+            }
+            if let Some(ref lit) = self.row {
+                if !args.is_empty() {
+                    args.append(comma.clone());
+                }
+                args.append_all(quote!{ row = #lit });
+            }
+            if let Some(ref lit) = self.cspan {
+                if !args.is_empty() {
+                    args.append(comma.clone());
+                }
+                args.append_all(quote!{ cspan = #lit });
+            }
+            if let Some(ref lit) = self.rspan {
+                if !args.is_empty() {
+                    args.append(comma);
+                }
+                args.append_all(quote!{ rspan = #lit });
+            }
+            tokens.append_all(quote!{ ( #args ) });
+        }
+    }
+}
+
+pub struct WidgetAttr {
+    pub args: WidgetAttrArgs
+}
+
+impl ToTokens for WidgetAttr {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let args = &self.args;
+        tokens.append_all(quote!{ #[widget #args] });
     }
 }
 
@@ -262,8 +333,9 @@ pub enum ChildType {
     Response(Path),  // generic but with defined handler response type
 }
 
-pub struct ChildWidget {
-    pub ident: Ident,
+pub struct WidgetField {
+    pub widget_attr: Option<WidgetAttr>,
+    pub ident: Option<Ident>,
     pub ty: ChildType,
     pub value: Expr,
     pub handler: Option<Block>,
@@ -272,67 +344,69 @@ pub struct ChildWidget {
 pub struct MakeWidget {
     // layout direction
     pub layout: Ident,
-    // child widgets
-    pub widgets: Vec<ChildWidget>,
-    // (ident, type, value) for each data field
-    pub fields: Vec<(Ident, Path, Expr)>,
     // response type
     pub response: Path,
+    // child widgets and data fields
+    pub fields: Vec<WidgetField>,
 }
 
 impl Parse for MakeWidget {
     fn parse(input: ParseStream) -> Result<Self> {
         let layout: Ident = input.parse()?;
-        let _: Semi = input.parse()?;
+        let _: FatArrow = input.parse()?;
         
-        let mut widgets = vec![];
-        loop {
-            if input.peek(Semi) {
-                let _: Semi = input.parse()?;
-                break;
-            }
-            
-            widgets.push(input.parse::<ChildWidget>()?);
-            
-            if input.peek(Comma) {
-                let _: Comma = input.parse()?;
-            }
-        }
+        let response: Path = input.parse()?;
+        let _: Semi = input.parse()?;
         
         let mut fields = vec![];
         loop {
-            if input.peek(Semi) {
-                let _: Semi = input.parse()?;
+            if input.is_empty() {
                 break;
             }
             
-            let ident: Ident = input.parse()?;
-            let _: Colon = input.parse()?;
-            let ty: Path = input.parse()?;
-            let _: Eq = input.parse()?;
-            let value: Expr = input.parse()?;
-            fields.push((ident, ty, value));
+            fields.push(input.parse::<WidgetField>()?);
             
-            if input.peek(Comma) {
-                let _: Comma = input.parse()?;
+            if input.is_empty() {
+                break;
             }
+            let _: Comma = input.parse()?;
         }
         
-        let response: Path = input.parse()?;
-        
-        Ok(MakeWidget { layout, widgets, fields, response })
+        Ok(MakeWidget { layout, fields, response })
     }
 }
 
-impl Parse for ChildWidget {
+impl Parse for WidgetField {
     fn parse(input: ParseStream) -> Result<Self> {
-        let ident: Ident = input.parse()?;
+        let widget_attr = if input.peek(Pound) {
+            let _: Pound = input.parse()?;
+            let inner;
+            let _ = bracketed!(inner in input);
+            let _: kw::widget = inner.parse()?;
+            let args = inner.parse::<WidgetAttrArgs>()?;
+            Some(WidgetAttr { args })
+        } else {
+            None
+        };
         
-        let ty = if input.peek(Colon) {
+        let ident = if input.peek2(Eq) ||
+            input.peek2(Colon) && (input.peek3(Ident) || input.peek3(Bracket))
+        {
+            let ident: Ident = input.parse()?;
+            Some(ident)
+        } else {
+            None
+        };
+        
+        let ty = if ident.is_some() && input.peek(Colon) {
             let _: Colon = input.parse()?;
             if input.peek(Bracket) {
                 let inner;
-                let _ = bracketed!(inner in input);
+                let bracket = bracketed!(inner in input);
+                if !widget_attr.is_some() {
+                    return Err(Error::new(bracket.span,
+                        "can only use [ResponseType] restriction on widgets"))
+                }
                 ChildType::Response(inner.parse()?)
             } else {
                 ChildType::Path(input.parse()?)
@@ -341,7 +415,10 @@ impl Parse for ChildWidget {
             ChildType::Generic
         };
         
-        let _: Eq = input.parse()?;
+        if ident.is_some() {
+            let _: Eq = input.parse()?;
+        }
+        
         let value: Expr = input.parse()?;
         
         let handler = if input.peek(FatArrow) {
@@ -351,6 +428,6 @@ impl Parse for ChildWidget {
             None
         };
         
-        Ok(ChildWidget{ ident, ty, value, handler })
+        Ok(WidgetField{ widget_attr, ident, ty, value, handler })
     }
 }

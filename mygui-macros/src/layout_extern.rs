@@ -28,7 +28,7 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: LayoutArgs)
     let mut sync_children = TokenStream::new();
     for (i, child) in children.iter().enumerate() {
         let ident = &child.ident;
-        if let Some(pos) = &child.args.pos {
+        if let Some(pos) = child.args.as_pos() {
             pos_rules.append_all(quote!{ #i => Some(#pos), });
         }
         sync_children.append_all(quote!{ self.#ident.sync_size(tk); });
