@@ -1,9 +1,9 @@
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, TokenStreamExt, ToTokens};
-use syn::{Block, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Lit, Member, Path};
+use syn::{Block, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Lit, Member, Type};
 use syn::{parse_quote, bracketed, parenthesized};
 use syn::parse::{Error, Parse, ParseStream, Result};
-use syn::token::{Brace, Bracket, Colon, Comma, Eq, FatArrow, Paren, Pound, Semi};
+use syn::token::{Brace, Colon, Comma, Eq, FatArrow, Paren, Pound, RArrow, Semi, Underscore};
 use syn::spanned::Spanned;
 
 pub struct Child {
@@ -329,8 +329,8 @@ impl Parse for WidgetArgs {
 
 pub enum ChildType {
     Generic,
-    Path(Path),
-    Response(Path),  // generic but with defined handler response type
+    Type(Type),
+    Response(Type),  // generic but with defined handler response type
 }
 
 pub struct WidgetField {
@@ -345,7 +345,7 @@ pub struct MakeWidget {
     // layout direction
     pub layout: Ident,
     // response type
-    pub response: Path,
+    pub response: Type,
     // child widgets and data fields
     pub fields: Vec<WidgetField>,
 }
@@ -355,7 +355,7 @@ impl Parse for MakeWidget {
         let layout: Ident = input.parse()?;
         let _: FatArrow = input.parse()?;
         
-        let response: Path = input.parse()?;
+        let response: Type = input.parse()?;
         let _: Semi = input.parse()?;
         
         let mut fields = vec![];
@@ -389,36 +389,34 @@ impl Parse for WidgetField {
             None
         };
         
-        let ident = if input.peek2(Eq) ||
-            input.peek2(Colon) && (input.peek3(Ident) || input.peek3(Bracket))
-        {
-            let ident: Ident = input.parse()?;
-            Some(ident)
-        } else {
-            None
+        let ident = {
+            let lookahead = input.lookahead1();
+            if lookahead.peek(Underscore) {
+                let _: Underscore = input.parse()?;
+                None
+            } else if lookahead.peek(Ident) {
+                Some(input.parse::<Ident>()?)
+            } else {
+                return Err(lookahead.error());
+            }
         };
         
-        let ty = if ident.is_some() && input.peek(Colon) {
+        // Note: Colon matches `::` but that results in confusing error messages
+        let ty = if input.peek(Colon) && !input.peek2(Colon) {
             let _: Colon = input.parse()?;
-            if input.peek(Bracket) {
-                let inner;
-                let bracket = bracketed!(inner in input);
-                if !widget_attr.is_some() {
-                    return Err(Error::new(bracket.span,
-                        "can only use [ResponseType] restriction on widgets"))
-                }
-                ChildType::Response(inner.parse()?)
-            } else {
-                ChildType::Path(input.parse()?)
+            ChildType::Type(input.parse()?)
+        } else if input.peek(RArrow) {
+            let arrow: RArrow = input.parse()?;
+            if !widget_attr.is_some() {
+                return Err(Error::new(arrow.span(),
+                    "can only use `ident -> Response` type restriction on widgets"))
             }
+            ChildType::Response(input.parse()?)
         } else {
             ChildType::Generic
         };
         
-        if ident.is_some() {
-            let _: Eq = input.parse()?;
-        }
-        
+        let _: Eq = input.parse()?;
         let value: Expr = input.parse()?;
         
         let handler = if input.peek(FatArrow) {

@@ -9,7 +9,7 @@ use std::env;
 use std::fmt::Write;
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, TokenStreamExt};
-use syn::{DeriveInput, Ident, Path};
+use syn::{DeriveInput, Ident, Type, TypePath};
 use syn::{parse_quote, parse_macro_input};
 
 use self::args::ChildType;
@@ -211,8 +211,8 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
         };
         
-        let ty: Path = match &field.ty {
-            ChildType::Path(p) => p.clone(),
+        let ty: Type = match &field.ty {
+            ChildType::Type(ty) => ty.clone(),
             cty @ ChildType::Generic |
             cty @ ChildType::Response(_) => {
                 name_buf.clear();
@@ -256,7 +256,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     gen_response_ptrs.append_all(quote!{ #ty });
                 }
                 
-                ty.into()
+                Type::Path(TypePath { qself: None, path: ty.into() })
             }
         };
         

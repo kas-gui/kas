@@ -25,13 +25,13 @@ impl From<NoResponse> for Message {
 
 fn main() -> Result<(), Error> {
     let buttons = make_widget!(horizontal => Message;
-        #[widget] TextButton::new("−", || Message::Decr),
-        #[widget] TextButton::new("+", || Message::Incr),
+        #[widget] _ = TextButton::new("−", || Message::Decr),
+        #[widget] _ = TextButton::new("+", || Message::Incr),
     );
     let window = SimpleWindow::new(
         make_widget!(vertical => NoResponse;
             #[widget] display: Text = Text::from("0"),
-            #[widget] buttons: [Message] = buttons =>
+            #[widget] buttons -> Message = buttons =>
             {
                 match msg {
                     Message::None => (),
