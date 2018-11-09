@@ -167,10 +167,6 @@ impl Parse for WidgetAttrArgs {
         let _ = parenthesized!(content in input);
         
         loop {
-            if content.is_empty() {
-                break;
-            }
-            
             let lookahead = content.lookahead1();
             if args.col.is_none() && lookahead.peek(kw::col) {
                 let _: kw::col = content.parse()?;
@@ -266,12 +262,7 @@ impl Parse for LayoutArgs {
         let content;
         let _ = parenthesized!(content in input);
         
-        let layout = if content.is_empty() {
-            None
-        } else {
-            Some(content.parse()?)
-        };
-        
+        let layout = Some(content.parse()?);
         Ok(LayoutArgs { layout })
     }
 }
@@ -295,10 +286,6 @@ impl Parse for WidgetArgs {
         let mut label = None;
         
         loop {
-            if content.is_empty() {
-                break;
-            }
-            
             let lookahead = content.lookahead1();
             if class.is_none() && lookahead.peek(kw::class) {
                 let _: kw::class = content.parse()?;

@@ -104,7 +104,7 @@ impl GtkToolkit {
 fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
     widget.set_gw(gtk_widget);
     if let Some(gtk_container) = gtk_widget.downcast_ref::<gtk::Container>() {
-        (0..widget.len()).for_each(|i| {
+        for i in 0..widget.len() {
             let child = widget.get_mut(i).unwrap();
             // TODO: use trait implementation for each different class?
             let gtk_child = match child.class() {
@@ -146,15 +146,14 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
             add_widgets(&gtk_child, child);
             
             #[cfg(not(feature = "layout"))] {
-                if let Some((col, row, col_span, row_span)) = widget.grid_pos(i) {
-                    if let Some(grid) = gtk_container.downcast_ref::<gtk::Grid>() {
-                        grid.attach(&gtk_child, col, row, col_span, row_span);
-                        return; // i.e. continue for_each
-                    }
+                if let Some(grid) = gtk_container.downcast_ref::<gtk::Grid>() {
+                    let pos = widget.grid_pos(i).unwrap_or((0, 0, 1, 1));
+                    grid.attach(&gtk_child, pos.0, pos.1, pos.2, pos.3);
+                    continue;   // attach(...) instead of add(...)
                 }
             }
             gtk_container.add(&gtk_child);
-        });
+        }
     }
 }
 

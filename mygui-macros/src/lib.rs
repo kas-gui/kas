@@ -28,6 +28,16 @@ use self::args::ChildType;
 /// One struct field must be marked with `#[core]` and implement the [`Core`]
 /// trait. It is recommended to use the [`CoreData`] type.
 /// 
+/// If there is a `#[layout(...)]` attribute on the struct, then the [`Layout`]
+/// trait will be implemented. This attribute expects one of the following
+/// arguments:
+/// 
+/// -   `single` — single child only
+/// -   `horizontal` — widgets are laid out in a row from left to right in the
+///     order specified
+/// -   `vertical` — same except top-to-bottom
+/// -   `grid` — see per-field `#[widget]` attribute specification
+/// 
 /// If there is a `#[widget(...)]` attribute on the struct (in addition to the
 /// `#[derive(Widget)]` attribute), then the [`Widget`] trait will be
 /// implemented. All child widgets must be a field marked with `#[widget]`.
@@ -36,6 +46,15 @@ use self::args::ChildType;
 /// 
 /// -   `class = ...` (required) — an expression yielding the widget's [`Class`]
 /// -   `label = ...`(optional) — an expression yielding the widget's [`label`]
+/// 
+/// When deriving `Layout` or `Widget`, a `#[widget]` attribute should *also*
+/// be used on each field which is a child widget. This attribute accepts the
+/// following arguments (for use when using the `grid` layout).
+/// 
+/// -   `col = ...` — first column, from left (defaults to 0)
+/// -   `row = ...` — first row, from top (defaults to 0)
+/// -   `cspan = ...` — number of columns to span (defaults to 1)
+/// -   `rspan = ...` — number of rows to span (defaults to 1)
 /// 
 /// Example:
 /// 
@@ -55,6 +74,7 @@ use self::args::ChildType;
 /// [`Class`]: ../mygui/widget/enum.Class.html
 /// [`Core`]: ../mygui/widget/trait.Core.html
 /// [`CoreData`]: ../mygui/widget/struct.CoreData.html
+/// [`Layout`]: ../mygui/widget/trait.Layout.html
 /// [`Widget`]: ../mygui/widget/trait.Widget.html
 #[proc_macro_derive(Widget, attributes(core, layout, widget))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -167,7 +187,62 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// implementation), manually implement `event::Handler`, and instantiate an
 /// object.
 /// 
+/// Syntax should match the following Backus-Naur Form:
+/// 
+/// ```bnf
+/// <input>     ::= <layout> "=>" <response> ";" <fields>
+/// <layout>    ::= "single" | "horizontal" | "vertical" | "grid"
+/// <response>  ::= <type>
+/// <fields>    ::= "" | <field> | <field> "," <fields>
+/// <field>     ::= <w_attr> <opt_ident> <field_ty> = <expr> <handler>
+/// <opt_ident> ::= "_" | <ident>
+/// <field_ty>  ::= "" | ":" <type> | "->" <type>
+/// <handler>   ::= "" | "=>" <block>
+/// <w_attr>    ::= "" | "#" "[" <widget> <w_params> "]"
+/// <w_params>  ::= "" | "(" <w_args> ")"
+/// <w_args>    ::= <w_arg> | <w_arg> "," <w_args>
+/// <w_arg>     ::= <pos_arg> "=" <lit>
+/// <pos_arg>   ::= "col" | "row" | "cspan" | "rspan"
+/// ```
+/// where `<type>` is a type expression, `<expr>` is a (value) expression,
+/// `<ident>` is an identifier, `<block>` is a block (`{ ... }`) and `<lit>` is
+/// a literal. `""` is the empty string (i.e. nothing).
+/// 
+/// The effect of this macro is to create an anonymous struct with the above
+/// fields (plus an implicit `core`), implement [`Core`], [`Layout`], [`Widget`]
+/// and [`Handler`] (with the specified `<response>` type), then construct an
+/// instance using the given value expressions, and return it.
+/// 
+/// Each field is considered a child widget if the `#[widget]` attribute is
+/// present, or a simple data field otherwise. The specification of this
+/// attribute is identical to that used when deriving `Widget`.
+/// 
+/// The `layout` specifier should be self-explanatory, with the exception of
+/// `grid`, where each widget's position must be specified via attribute
+/// arguments (e.g. `#[widget(col=1, row=2)]`). The `col` and `row` parameters
+/// both default to 0, while `cspan` and `rspan` (column and row spans) both
+/// default to 1.
+/// 
+/// Fields may have an identifier or may be anonymous (via usage of `_`). This
+/// is often convenient for child widgets which don't need to be referred to.
+/// 
+/// Fields may have an explicit type (`ident : type = ...`), or the type may be
+/// skipped, or (for widgets only) just the response type can be specified via
+/// `ident -> type = ...`. Note that some type specification is usually needed
+/// when referring to the field later.
+/// 
+/// Optionally, a message handler may be specified for child widgets via
+/// `#[widget] ident = value => handler` where `handler` is a block of code
+/// which receives a response from the child widget (via `msg`) and returns a
+/// response from this widget. Two additional identifiers are available, `self`
+/// (allowing e.g. `self.some_field`) and `tk` (the toolkit).
+/// 
 /// Currently usage of this macro requires `#![feature(proc_macro_hygiene)]`.
+/// 
+/// [`Core`]: ../mygui/widget/trait.Core.html
+/// [`Layout`]: ../mygui/widget/trait.Layout.html
+/// [`Widget`]: ../mygui/widget/trait.Widget.html
+/// [`Handler`]: ../mygui/event/trait.Handler.html
 #[proc_macro]
 pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let args = parse_macro_input!(input as args::MakeWidget);

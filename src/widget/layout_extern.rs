@@ -38,8 +38,8 @@ pub trait Layout: Core + fmt::Debug {
     /// Per child positioning for grid layout
     /// 
     /// This returns `None` if `index` is out of range or if no position
-    /// information was supplied for this widget. Toolkits should gracefully
-    /// handle missing position information.
+    /// information was supplied for this widget. If `None` is returned, then
+    /// the first cell (`GridPos(0,0,1,1)`) should be assumed.
     fn grid_pos(&self, index: usize) -> Option<GridPos>;
 
     /// Read position and size of widget from the toolkit
