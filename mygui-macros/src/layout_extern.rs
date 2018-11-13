@@ -47,6 +47,7 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: LayoutArgs)
         }
 
         fn sync_size(&mut self, tk: &#c::toolkit::TkWidget) {
+            use #c::widget::Core;
             let new_rect = tk.get_rect(self.tkd());
             *self.rect_mut() = new_rect;
             

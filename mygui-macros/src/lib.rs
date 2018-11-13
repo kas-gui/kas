@@ -97,23 +97,29 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 for #name #ty_generics #where_clause
             {
                 fn number(&self) -> u32 {
+                    use #c::widget::Core;
                     self.#core.number()
                 }
                 fn set_number(&mut self, number: u32) {
+                    use #c::widget::Core;
                     self.#core.set_number(number);
                 }
                 
                 fn tkd(&self) -> #c::toolkit::TkData {
+                    use #c::widget::Core;
                     self.#core.tkd()
                 }
                 fn set_tkd(&mut self, tkd: #c::toolkit::TkData) {
+                    use #c::widget::Core;
                     self.#core.set_tkd(tkd)
                 }
                 
                 fn rect(&self) -> &#c::widget::Rect {
+                    use #c::widget::Core;
                     self.#core.rect()
                 }
                 fn rect_mut(&mut self) -> &mut #c::widget::Rect {
+                    use #c::widget::Core;
                     self.#core.rect_mut()
                 }
             }
