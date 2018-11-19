@@ -26,13 +26,13 @@ impl From<NoResponse> for Message {
 fn main() -> Result<(), Error> {
     let buttons = make_widget!(horizontal => Message;
         #[widget] _ = TextButton::new("−", || Message::Decr),
-        #[widget] _ = TextButton::new("+", || Message::Incr),
+        #[widget] _ = TextButton::new("+", || Message::Incr);
     );
-    let window = SimpleWindow::new(
-        make_widget!(vertical => NoResponse;
+    let window = SimpleWindow::new(make_widget!(vertical => NoResponse;
             #[widget] display: Text = Text::from("0"),
-            #[widget] buttons -> Message = buttons =>
-            {
+            #[widget(handler = handle_button)] buttons -> Message = buttons,
+            counter: usize = 0;
+            fn handle_button(&mut self, tk: &Toolkit, msg: Message) -> NoResponse {
                 match msg {
                     Message::None => (),
                     Message::Decr => {
@@ -45,10 +45,8 @@ fn main() -> Result<(), Error> {
                     }
                 };
                 NoResponse::None
-            },
-            counter: usize = 0
-        ),
-    );
+            }
+        ));
 
     let mut toolkit = GtkToolkit::new()?;
     toolkit.add(window);

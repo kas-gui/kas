@@ -50,25 +50,24 @@ fn main() -> Result<(), Error> {
         #[widget(col = 2, row = 3)] _ = TextButton::new("3", || Key::Char(48 + 3)),
         #[widget(col = 3, row = 3, rspan = 2)] _ = TextButton::new("=", || Key::Equals),
         #[widget(col = 0, row = 4, cspan = 2)] _ = TextButton::new("0", || Key::Char(48 + 0)),
-        #[widget(col = 2, row = 4)] _ = TextButton::new(".", || Key::Char(46)),
+        #[widget(col = 2, row = 4)] _ = TextButton::new(".", || Key::Char(46));
     );
 
-    let window = SimpleWindow::new(
-        make_widget!(vertical => NoResponse;
+    let window = SimpleWindow::new(make_widget!(vertical => NoResponse;
             // #[widget] state: Text = Text::from("0"),
             // #[widget] buf: Text = Text::from("") ,
             #[widget] display: Text = Text::from("0"),
-            #[widget] buttons -> Key = buttons => {
+            #[widget(handler = handle_button)] buttons -> Key = buttons,
+            calc: Calculator = Calculator::new();
+            fn handle_button(&mut self, tk: &Toolkit, msg: Key) -> NoResponse {
                 if self.calc.handle(msg) {
                     // self.state.set_text(tk, &self.calc.state_str());
                     // self.buf.set_text(tk, &self.calc.line_buf);
                     self.display.set_text(tk, &self.calc.display());
                 }
                 NoResponse::None
-            },
-            calc: Calculator = Calculator::new()
-        ),
-    );
+            }
+        ));
 
     let mut toolkit = GtkToolkit::new()?;
     toolkit.add(window);

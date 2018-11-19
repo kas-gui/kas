@@ -1,11 +1,12 @@
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, TokenStreamExt, ToTokens};
-use syn::{Block, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Ident, Index, Lit, Member, Type};
+use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Index, Lit, Member, Type, ImplItemMethod};
 use syn::{parse_quote, bracketed, parenthesized};
 use syn::parse::{Error, Parse, ParseStream, Result};
-use syn::token::{Brace, Colon, Comma, Eq, FatArrow, Paren, Pound, RArrow, Semi, Underscore};
+use syn::token::{Brace, Colon, Comma, Eq, FatArrow, Paren, Pound, RArrow, Semi, Underscore, Where};
 use syn::spanned::Spanned;
 
+#[derive(Debug)]
 pub struct Child {
     pub ident: Member,
     pub args: WidgetAttrArgs,
@@ -15,6 +16,7 @@ pub struct Args {
     pub core: Member,
     pub layout: Option<LayoutArgs>,
     pub widget: Option<WidgetArgs>,
+    pub handler: Option<HandlerArgs>,
     pub children: Vec<Child>,
 }
 
@@ -65,6 +67,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
     
     let mut layout = None;
     let mut widget = None;
+    let mut handler = None;
     
     for attr in ast.attrs.drain(..) {
         if attr.path == parse_quote!{ layout } {
@@ -93,11 +96,20 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                     .error("multiple #[widget(..)] attributes on type")
                     .emit()
             }
+        } else if attr.path == parse_quote!{ handler } {
+            if handler.is_none() {
+                handler = Some(syn::parse2(attr.tts)?);
+            } else {
+                attr.span()
+                    .unstable()
+                    .error("multiple #[handler(..)] attributes on type")
+                    .emit()
+            }
         }
     }
     
     if let Some(core) = core {
-        Ok(Args { core, layout, widget, children })
+        Ok(Args { core, layout, widget, handler, children })
     } else {
         Err(Error::new(*span,
             "one field must be marked with #[core] when deriving Widget"))
@@ -124,13 +136,18 @@ mod kw {
     custom_keyword!(cspan);
     custom_keyword!(rspan);
     custom_keyword!(widget);
+    custom_keyword!(handler);
+    custom_keyword!(response);
+    custom_keyword!(generics);
 }
 
+#[derive(Debug)]
 pub struct WidgetAttrArgs {
     pub col: Option<Lit>,
     pub row: Option<Lit>,
     pub cspan: Option<Lit>,
     pub rspan: Option<Lit>,
+    pub handler: Option<Ident>,
 }
 
 pub struct GridPos(Lit, Lit, Lit, Lit);
@@ -158,6 +175,7 @@ impl Parse for WidgetAttrArgs {
         let mut args = WidgetAttrArgs {
             col: None, row: None,
             cspan: None, rspan: None,
+            handler: None,
         };
         if input.is_empty() {
             return Ok(args);
@@ -184,6 +202,10 @@ impl Parse for WidgetAttrArgs {
                 let _: kw::rspan = content.parse()?;
                 let _: Eq = content.parse()?;
                 args.rspan = Some(content.parse()?);
+            } else if args.handler.is_none() && lookahead.peek(kw::handler) {
+                let _: kw::handler = content.parse()?;
+                let _: Eq = content.parse()?;
+                args.handler = Some(content.parse()?);
             } else {
                 return Err(lookahead.error());
             }
@@ -201,7 +223,8 @@ impl Parse for WidgetAttrArgs {
 impl ToTokens for WidgetAttrArgs {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         if self.col.is_some() || self.row.is_some() ||
-            self.cspan.is_some() || self.rspan.is_some()
+            self.cspan.is_some() || self.rspan.is_some() ||
+            self.handler.is_some()
         {
             let comma = TokenTree::from(Punct::new(',', Spacing::Alone));
             let mut args = TokenStream::new();
@@ -222,9 +245,15 @@ impl ToTokens for WidgetAttrArgs {
             }
             if let Some(ref lit) = self.rspan {
                 if !args.is_empty() {
-                    args.append(comma);
+                    args.append(comma.clone());
                 }
                 args.append_all(quote!{ rspan = #lit });
+            }
+            if let Some(ref ident) = self.handler {
+                if !args.is_empty() {
+                    args.append(comma);
+                }
+                args.append_all(quote!{ handler = #ident });
             }
             tokens.append_all(quote!{ ( #args ) });
         }
@@ -314,6 +343,45 @@ impl Parse for WidgetArgs {
     }
 }
 
+pub struct HandlerArgs {
+    pub response: Type,
+    pub generics: Generics,
+}
+
+impl Parse for HandlerArgs {
+    fn parse(input: ParseStream) -> Result<Self> {
+        if input.is_empty() {
+            return Err(Error::new(Span::call_site(),
+                "expected #[handler(response = ...)]; found #[handler]"));
+        }
+        
+        let content;
+        let _ = parenthesized!(content in input);
+        
+        // If we have a where clause, that will greedily consume remaining
+        // input. Because of this, `response = ...` must come first.
+        
+        let _: kw::response = content.parse()?;
+        let _: Eq = content.parse()?;
+        let response: Type = content.parse()?;
+        
+        let generics = if content.peek(Comma) {
+            let _: Comma = content.parse()?;
+            let _: kw::generics = content.parse()?;
+            let _: Eq = content.parse()?;
+            let mut generics: Generics = content.parse()?;
+            if content.peek(Where) {
+                generics.where_clause = content.parse()?;
+            }
+            generics
+        } else {
+            Generics::default()
+        };
+        
+        Ok(HandlerArgs { response, generics })
+    }
+}
+
 pub enum ChildType {
     Generic,
     Type(Type),
@@ -325,7 +393,6 @@ pub struct WidgetField {
     pub ident: Option<Ident>,
     pub ty: ChildType,
     pub value: Expr,
-    pub handler: Option<Block>,
 }
 
 pub struct MakeWidget {
@@ -335,6 +402,8 @@ pub struct MakeWidget {
     pub response: Type,
     // child widgets and data fields
     pub fields: Vec<WidgetField>,
+    // methods defined on the widget
+    pub methods: Vec<ImplItemMethod>,
 }
 
 impl Parse for MakeWidget {
@@ -347,11 +416,32 @@ impl Parse for MakeWidget {
         
         let mut fields = vec![];
         loop {
-            if input.is_empty() {
+            if input.peek(Semi) {
                 break;
             }
             
             fields.push(input.parse::<WidgetField>()?);
+            
+            let lookahead = input.lookahead1();
+            if lookahead.peek(Semi) {
+                break;
+            } else if lookahead.peek(Comma) {
+                let _: Comma = input.parse()?;
+                continue;
+            } else {
+                return Err(lookahead.error());
+            }
+        }
+        
+        let _: Semi = input.parse()?;
+        
+        let mut methods = vec![];
+        loop {
+            if input.is_empty() {
+                break;
+            }
+            
+            methods.push(input.parse::<ImplItemMethod>()?);
             
             if input.is_empty() {
                 break;
@@ -359,7 +449,7 @@ impl Parse for MakeWidget {
             let _: Comma = input.parse()?;
         }
         
-        Ok(MakeWidget { layout, fields, response })
+        Ok(MakeWidget { layout, response, fields, methods })
     }
 }
 
@@ -406,13 +496,6 @@ impl Parse for WidgetField {
         let _: Eq = input.parse()?;
         let value: Expr = input.parse()?;
         
-        let handler = if input.peek(FatArrow) {
-            let _: FatArrow = input.parse()?;
-            Some(input.parse::<Block>()?)
-        } else {
-            None
-        };
-        
-        Ok(WidgetField{ widget_attr, ident, ty, value, handler })
+        Ok(WidgetField{ widget_attr, ident, ty, value })
     }
 }
