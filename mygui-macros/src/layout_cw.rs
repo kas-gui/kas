@@ -148,15 +148,15 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: LayoutArgs)
         }
     };
     Ok(quote! {
-        fn init_constraints(&self, tk: &#c::toolkit::TkWidget,
+        fn init_constraints(&self, tk: &#c::TkWidget,
             s: &mut #c::cw::Solver, _use_default: bool)
         {
             use #c::cw;
             #constraints
         }
         
-        fn apply_constraints(&mut self, tk: &#c::toolkit::TkWidget,
-            s: &#c::cw::Solver, pos: #c::widget::Coord)
+        fn apply_constraints(&mut self, tk: &#c::TkWidget,
+            s: &#c::cw::Solver, pos: #c::Coord)
         {
             #appls
             

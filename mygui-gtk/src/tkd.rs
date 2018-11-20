@@ -6,11 +6,10 @@ use std::mem::transmute;
 
 use gtk;
 
-use mygui::toolkit::TkData;
-use mygui::widget::Core;
+use mygui::{Core, TkData};
 
 
-/// Abstractions over mygui::widget::Widget
+/// Abstractions over mygui::Widget
 pub(crate) trait WidgetAbstraction {
     /// Store a GTK widget pointer in the TKD
     /// 

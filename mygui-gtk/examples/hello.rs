@@ -4,9 +4,9 @@ extern crate mygui;
 extern crate mygui_gtk;
 
 use mygui::display::Text;
-use mygui::window::{action_close, MessageBox};
+use mygui::dialog::{action_close, MessageBox};
 
-use mygui::toolkit::Toolkit;
+use mygui::Toolkit;
 
 fn main() -> Result<(), mygui_gtk::Error> {
     // Build widgets.

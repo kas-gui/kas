@@ -7,16 +7,17 @@ pub extern crate cassowary as cw;    // used by macros
 
 extern crate mygui_macros;
 
-// interface modules:
-pub mod event;
+// internal modules:
 #[macro_use]
-pub mod widget;
-pub mod toolkit;
+mod widget;
+mod window;
+mod toolkit;
 
-// widget implementations:
+// public implementations:
 pub mod control;
+pub mod dialog;
 pub mod display;
-pub mod window;
+pub mod event;
 
 /// Library macros
 /// 
@@ -25,3 +26,8 @@ pub mod window;
 pub mod macros {
     pub use mygui_macros::{Widget, make_widget};
 }
+
+// export most important members directly for convenience and less redundancy:
+pub use crate::widget::*;
+pub use crate::window::*;
+pub use crate::toolkit::*;

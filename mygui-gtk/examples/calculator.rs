@@ -9,9 +9,7 @@ use mygui::control::TextButton;
 use mygui::display::Text;
 use mygui::event::NoResponse;
 use mygui::macros::make_widget;
-use mygui::window::SimpleWindow;
-
-use mygui::toolkit::Toolkit;
+use mygui::{SimpleWindow, Toolkit};
 
 #[derive(Clone, Debug, PartialEq)]
 enum Key {
@@ -64,7 +62,7 @@ fn main() -> Result<(), mygui_gtk::Error> {
                     // self.buf.set_text(tk, &self.calc.line_buf);
                     self.display.set_text(tk, &self.calc.display());
                 }
-                NoResponse::None
+                NoResponse
             }
         ));
 

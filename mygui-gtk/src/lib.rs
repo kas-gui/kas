@@ -33,8 +33,8 @@ impl Toolkit {
     }
 }
 
-impl mygui::toolkit::Toolkit for Toolkit {
-    fn add_boxed(&self, win: Box<mygui::window::Window>) {
+impl mygui::Toolkit for Toolkit {
+    fn add_boxed(&self, win: Box<mygui::Window>) {
         window::with_list(|list| list.add_window(win))
     }
     
@@ -42,7 +42,7 @@ impl mygui::toolkit::Toolkit for Toolkit {
         gtk::main();
     }
     
-    fn tk_widget(&self) -> &mygui::toolkit::TkWidget {
+    fn tk_widget(&self) -> &mygui::TkWidget {
         &widget::Toolkit
     }
 }

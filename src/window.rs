@@ -2,12 +2,9 @@
 
 use std::fmt::{self, Debug};
 
-use crate::control::{button, TextButton};
-use crate::event::{self, Action, Handler, ignore};
 use crate::macros::Widget;
-use crate::toolkit::TkWidget;
-use crate::widget::Coord;
-use crate::widget::{Class, Widget, Core, CoreData};
+use crate::event::{ignore, Action, GuiResponse, Handler, NoResponse};
+use crate::{Class, Coord, Core, CoreData, TkWidget, Widget};
 
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be
@@ -34,26 +31,10 @@ pub trait Window: Widget {
     
     /// Handle a high-level event directed at the widget identified by `num`,
     /// and return a user-defined message.
-    // NOTE: we could instead add the trait bound Handler<Response = Response>
+    // NOTE: we could instead add the trait bound Handler<Response = GuiResponse>
     // but (1) Rust doesn't yet support mult-trait objects
     // and (2) Rust erronously claims that Response isn't specified in Box<Window>
-    fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> Response;
-}
-
-/// Window event repsonses
-pub enum Response {
-    /// No action
-    None,
-    /// Close the window
-    Close,
-}
-
-impl From<event::NoResponse> for Response {
-    fn from(r: event::NoResponse) -> Self {
-        match r {
-            event::NoResponse::None => Response::None
-        }
-    }
+    fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> GuiResponse;
 }
 
 /// Main window type
@@ -99,7 +80,7 @@ impl<W: Widget> SimpleWindow<W> {
 
 impl<R, W: Widget + Handler<Response = R> + 'static> Window
     for SimpleWindow<W>
-    where Response: From<R>, R: From<event::NoResponse>
+    where GuiResponse: From<R>, R: From<NoResponse>
 {
     fn as_widget(&self) -> &Widget { self }
     fn as_widget_mut(&mut self) -> &mut Widget { self }
@@ -134,71 +115,17 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
     
-    fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> Response {
+    fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> GuiResponse {
         if num < self.number() {
-            Response::from(self.w.handle_action(tk, action, num))
+            GuiResponse::from(self.w.handle_action(tk, action, num))
         } else if num == self.number() {
             match action {
-                Action::Close => Response::Close,
+                Action::Close => GuiResponse::Close,
                 _ => ignore(action)
             }
         } else {
             println!("Warning: incorrect widget number");
             ignore(action)
         }
-    }
-}
-
-
-pub fn action_close() -> impl Fn() -> Response {
-    || Response::Close
-}
-
-#[layout]
-#[widget(class = Class::Window)]
-#[derive(Clone, Widget)]
-pub struct MessageBox<M: Debug, H> {
-    #[core] core: CoreData,
-    message: M,
-    button: TextButton<H>,
-}
-
-impl<M: Debug, R, H: Fn() -> R> MessageBox<M, H> {
-    // TODO: action parameter shouldn't be necessary, but we need it because
-    // H must be derived from function input somehow, not merely unspecified
-    // Once existential types are available, H parameter will not be needed.
-    pub fn new(message: M, action: H) -> Self {
-        MessageBox{
-            core: Default::default(),
-            message,
-            button: button::ok(action)
-        }
-    }
-}
-
-// manual impl required because derive requires `H: Debug`
-impl<M: Debug, H> Debug for MessageBox<M, H> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "MessageBox {{ core: {:?}, message: {:?}, button: {:?} }}",
-            self.core, self.message, self.button)
-    }
-}
-
-impl<M: Debug, H> Window for MessageBox<M, H> {
-    fn as_widget(&self) -> &Widget { self }
-    fn as_widget_mut(&mut self) -> &mut Widget { self }
-    
-    #[cfg(feature = "layout")]
-    fn configure_widgets(&mut self, _tk: &TkWidget) {
-        unimplemented!()
-    }
-    
-    #[cfg(feature = "layout")]
-    fn resize(&mut self, _tk: &TkWidget, _size: Coord) {
-        unimplemented!()
-    }
-    
-    fn handle_action(&mut self, _tk: &TkWidget, _action: Action, _num: u32) -> Response {
-        unimplemented!()
     }
 }

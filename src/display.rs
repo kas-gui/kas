@@ -1,9 +1,8 @@
 //! Display widgets show information but are not interactive
 
-use crate::event;
 use crate::macros::Widget;
-use crate::toolkit::TkWidget;
-use crate::widget::{Class, Core, CoreData};
+use crate::event::{Handler, NoResponse};
+use crate::{Class, Core, CoreData, TkWidget};
 
 #[layout]
 #[widget(class = Class::Text, label = Some(self.text.as_str()))]
@@ -29,6 +28,6 @@ impl<T> From<T> for Text where String: From<T> {
     }
 }
 
-impl event::Handler for Text {
-    type Response = event::NoResponse;
+impl Handler for Text {
+    type Response = NoResponse;
 }

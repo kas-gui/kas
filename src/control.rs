@@ -2,10 +2,9 @@
 
 use std::fmt::{self, Debug};
 
-use crate::event::{self, Action, Handler, ignore};
 use crate::macros::Widget;
-use crate::toolkit::TkWidget;
-use crate::widget::{Class, Core, CoreData};
+use crate::event::{ignore, Action, Handler, NoResponse};
+use crate::{Class, Core, CoreData, TkWidget};
 
 // TODO: abstract out text part?
 #[layout]
@@ -31,16 +30,16 @@ impl<R, H: Fn() -> R> TextButton<H> {
     }
 }
 
-// impl<H> From<&'static str> for TextButton<event::NoResponse, H>
-//     where H: Fn(()) -> event::NoResponse
+// impl<H> From<&'static str> for TextButton<NoResponse, H>
+//     where H: Fn(()) -> NoResponse
 // {
 //     fn from(msg: &'static str) -> Self {
-//         TextButton::new(msg, |()| event::NoResponse::None)
+//         TextButton::new(msg, |()| NoResponse)
 //     }
 // }
 
 
-impl<R: From<event::NoResponse>, H: Fn() -> R> Handler for TextButton<H> {
+impl<R: From<NoResponse>, H: Fn() -> R> Handler for TextButton<H> {
     type Response = R;
     
     fn handle_action(&mut self, _tk: &TkWidget, action: Action, num: u32) -> Self::Response {

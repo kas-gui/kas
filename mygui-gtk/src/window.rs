@@ -5,9 +5,8 @@ use std::cell::RefCell;
 use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt};
 #[cfg(not(feature = "layout"))] use gtk::GridExt;
 
-use mygui::event::Action;
-use mygui::widget::{Class, Widget};
-use mygui::window::{Response};
+use mygui::event::{Action, GuiResponse};
+use mygui::{Class, Widget};
 
 use crate::widget;
 use crate::tkd::WidgetAbstraction;
@@ -16,11 +15,25 @@ use crate::tkd::WidgetAbstraction;
 /// Per-window data
 struct Window {
     /// The mygui window. Each is boxed since it must not move.
-    pub win: Box<mygui::window::Window>,
+    pub win: Box<mygui::Window>,
     /// The GTK window
     pub gwin: gtk::Window,
     /// Range of widget numbers used, from first to last+1.
     pub nums: (u32, u32),
+}
+
+fn clear_tkd(widget: &mut Widget) {
+    (0..widget.len()).for_each(|i| clear_tkd(widget.get_mut(i).unwrap()));
+    widget.clear_gw();
+}
+
+// Clear TKD on all widgets to reduce pointer reference counts.
+// We can't implement Drop on mygui types directly since TkData is interpreted
+// by this lib.
+impl Drop for Window {
+    fn drop(&mut self) {
+        clear_tkd(self.win.as_widget_mut());
+    }
 }
 
 /// A list of windows
@@ -48,7 +61,7 @@ impl WindowList {
     // Find first window with matching `gdk::Window`, run the closure, and
     // return the result, or `None` if no match.
     pub(crate) fn for_gdk_win<T, F>(&mut self, gdk_win: gdk::Window, f: F) -> Option<T>
-        where F: FnOnce(&mut mygui::window::Window, &mut gtk::Window) -> T
+        where F: FnOnce(&mut mygui::Window, &mut gtk::Window) -> T
     {
         let gdk_win = Some(gdk_win);
         for item in self.windows.iter_mut() {
@@ -69,7 +82,7 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
             let gtk_child = match child.class() {
                 #[cfg(not(feature = "layout"))]
                 Class::Container => {
-                    use mygui::widget::ChildLayout;
+                    use mygui::ChildLayout;
                     match child.child_layout() {
                         ChildLayout::None |
                         ChildLayout::Horizontal =>
@@ -116,38 +129,30 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
     }
 }
 
-fn clear_tkd(widget: &mut Widget) {
-    (0..widget.len()).for_each(|i| clear_tkd(widget.get_mut(i).unwrap()));
-    widget.clear_gw();
-}
-
 // event handler code
 impl WindowList {
     fn handle_action(&mut self, action: Action, num: u32) {
-        let mut remove = None;
-        
         for (i, w) in self.windows.iter_mut().enumerate() {
             if num >= w.nums.0 && num < w.nums.1 {
                 match w.win.handle_action(&widget::Toolkit, action, num) {
-                    Response::None => (),
-                    Response::Close => {
-                        clear_tkd(w.win.as_widget_mut());
-                        remove = Some(i);
+                    GuiResponse::None => {}
+                    GuiResponse::Close => {
+                        self.windows.remove(i);
+                        if self.windows.is_empty() {
+                            gtk::main_quit();
+                        }
+                    }
+                    GuiResponse::Exit => {
+                        self.windows.clear();
+                        gtk::main_quit();
                     }
                 }
                 break;
             }
         }
-        
-        if let Some(i) = remove {
-            self.windows.remove(i);
-            if self.windows.is_empty() {
-                gtk::main_quit();
-            }
-        }
     }
     
-    pub(crate) fn add_window(&mut self, mut win: Box<mygui::window::Window>) {
+    pub(crate) fn add_window(&mut self, mut win: Box<mygui::Window>) {
         let gwin = gtk::Window::new(gtk::WindowType::Toplevel);
         
         let num0 = self.windows.last().map(|tw| tw.nums.1).unwrap_or(0);

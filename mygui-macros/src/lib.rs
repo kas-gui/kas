@@ -102,6 +102,7 @@ use self::args::ChildType;
 /// [`CoreData`]: ../mygui/widget/struct.CoreData.html
 /// [`Layout`]: ../mygui/widget/trait.Layout.html
 /// [`Widget`]: ../mygui/widget/trait.Widget.html
+/// [`Handler`]: ../mygui/event/trait.Handler.html
 #[proc_macro_derive(Widget, attributes(core, layout, widget, handler))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
@@ -119,33 +120,33 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     if true {
         let core = args.core;
         toks.append_all(quote! {
-            impl #impl_generics #c::widget::Core
+            impl #impl_generics #c::Core
                 for #name #ty_generics #where_clause
             {
                 fn number(&self) -> u32 {
-                    use #c::widget::Core;
+                    use #c::Core;
                     self.#core.number()
                 }
                 fn set_number(&mut self, number: u32) {
-                    use #c::widget::Core;
+                    use #c::Core;
                     self.#core.set_number(number);
                 }
                 
-                fn tkd(&self) -> #c::toolkit::TkData {
-                    use #c::widget::Core;
+                fn tkd(&self) -> #c::TkData {
+                    use #c::Core;
                     self.#core.tkd()
                 }
-                fn set_tkd(&mut self, tkd: #c::toolkit::TkData) {
-                    use #c::widget::Core;
+                fn set_tkd(&mut self, tkd: #c::TkData) {
+                    use #c::Core;
                     self.#core.set_tkd(tkd)
                 }
                 
-                fn rect(&self) -> &#c::widget::Rect {
-                    use #c::widget::Core;
+                fn rect(&self) -> &#c::Rect {
+                    use #c::Core;
                     self.#core.rect()
                 }
-                fn rect_mut(&mut self) -> &mut #c::widget::Rect {
-                    use #c::widget::Core;
+                fn rect_mut(&mut self) -> &mut #c::Rect {
+                    use #c::Core;
                     self.#core.rect_mut()
                 }
             }
@@ -159,7 +160,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         };
         
         toks.append_all(quote! {
-            impl #impl_generics #c::widget::Layout
+            impl #impl_generics #c::Layout
                     for #name #ty_generics #where_clause
             {
                 #fns
@@ -184,22 +185,22 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let get_mut_rules = make_match_rules(&args.children, quote!{mut});
         
         toks.append_all(quote! {
-            impl #impl_generics #c::widget::Widget
+            impl #impl_generics #c::Widget
                     for #name #ty_generics #where_clause
             {
-                fn class(&self) -> #c::widget::Class { #class }
+                fn class(&self) -> #c::Class { #class }
                 fn label(&self) -> Option<&str> { #label }
 
                 fn len(&self) -> usize {
                     #count
                 }
-                fn get(&self, _index: usize) -> Option<&#c::widget::Widget> {
+                fn get(&self, _index: usize) -> Option<&#c::Widget> {
                     match _index {
                         #get_rules
                         _ => None
                     }
                 }
-                fn get_mut(&mut self, _index: usize) -> Option<&mut #c::widget::Widget> {
+                fn get_mut(&mut self, _index: usize) -> Option<&mut #c::Widget> {
                     match _index {
                         #get_mut_rules
                         _ => None
@@ -254,10 +255,8 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             {
                 type Response = #response;
                 
-                fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32)
-                    -> Self::Response
-                {
-                    use #c::event::Handler;
+                fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> Self::Response {
+                    use #c::event::{Handler};
                     #handler_toks
                     
                     if num != self.number() {
@@ -440,8 +439,8 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let toks = (quote!{ {
         use #c::event::{Action, Handler, ignore};
         use #c::macros::Widget;
-        use #c::toolkit::TkWidget;
-        use #c::widget::{Class, Core, CoreData, Widget};
+        use #c::TkWidget;
+        use #c::{Class, Core, CoreData, Widget};
         use std::fmt;
 
         #[layout(#layout)]

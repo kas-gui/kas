@@ -6,9 +6,7 @@ use mygui::control::TextButton;
 use mygui::display::Text;
 use mygui::event::NoResponse;
 use mygui::macros::make_widget;
-use mygui::window::SimpleWindow;
-
-use mygui::toolkit::Toolkit;
+use mygui::{SimpleWindow, Toolkit};
 
 enum Message {
     None,
@@ -43,7 +41,7 @@ fn main() -> Result<(), mygui_gtk::Error> {
                         self.display.set_text(tk, &self.counter.to_string());
                     }
                 };
-                NoResponse::None
+                NoResponse
             }
         ));
 

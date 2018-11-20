@@ -9,19 +9,19 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: LayoutArgs)
 {
     let layout: Path = if let Some(l) = layout.layout {
         if l == "single" {
-            parse_quote!{ #c::widget::ChildLayout::None }
+            parse_quote!{ #c::ChildLayout::None }
         } else if l == "horizontal" {
-            parse_quote!{ #c::widget::ChildLayout::Horizontal }
+            parse_quote!{ #c::ChildLayout::Horizontal }
         } else if l == "vertical" {
-            parse_quote!{ #c::widget::ChildLayout::Vertical }
+            parse_quote!{ #c::ChildLayout::Vertical }
         } else if l == "grid" {
-            parse_quote!{ #c::widget::ChildLayout::Grid }
+            parse_quote!{ #c::ChildLayout::Grid }
         } else {
             return Err(Error::new(l.span(),
                 "expected one of: single, horizontal, vertical, grid"));
         }
     } else {
-        parse_quote!{ #c::widget::ChildLayout::None }
+        parse_quote!{ #c::ChildLayout::None }
     };
     
     let mut pos_rules = TokenStream::new();
@@ -35,19 +35,19 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: LayoutArgs)
     }
     
     Ok(quote! {
-        fn child_layout(&self) -> #c::widget::ChildLayout {
+        fn child_layout(&self) -> #c::ChildLayout {
             #layout
         }
         
-        fn grid_pos(&self, _index: usize) -> Option<#c::widget::GridPos> {
+        fn grid_pos(&self, _index: usize) -> Option<#c::GridPos> {
             match _index {
                 #pos_rules
                 _ => None
             }
         }
 
-        fn sync_size(&mut self, tk: &#c::toolkit::TkWidget) {
-            use #c::widget::Core;
+        fn sync_size(&mut self, tk: &#c::TkWidget) {
+            use #c::Core;
             let new_rect = tk.get_rect(self.tkd());
             *self.rect_mut() = new_rect;
             

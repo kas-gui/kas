@@ -6,7 +6,8 @@
 //! parent and any result is pushed back up the call stack. The model allows
 //! type-safety while allowing user-defined result types.
 
-use crate::toolkit::TkWidget;
+use std::fmt::Debug;
+use crate::TkWidget;
 
 /// Input actions: these are high-level messages aimed at specific widgets.
 #[derive(Debug)]
@@ -26,35 +27,47 @@ pub enum Action {
 pub type Event = ();
 */
 
-/// A simple response message with only a single variant.
+/// No message
 /// 
 /// All response message types should implement `From<NoResponse>`.
-pub enum NoResponse {
+pub struct NoResponse;
+
+/// General GUI event responses
+pub enum GuiResponse {
     /// No action
     None,
+    /// Close the window
+    Close,
+    /// Exit (close all windows)
+    Exit,
+}
+
+impl From<NoResponse> for GuiResponse {
+    fn from(_: NoResponse) -> Self {
+        GuiResponse::None
+    }
 }
 
 /// Mark explicitly ignored events.
 /// 
 /// Ignoring events is allowed but emits a warning if enabled.
-pub fn ignore<M: From<NoResponse>>(a: Action) -> M {
-    println!("Handler ignores: {:?}", a);
-    M::from(NoResponse::None)
+pub fn ignore<M: Debug, R: From<NoResponse>>(m: M) -> R {
+    println!("Handler ignores: {:?}", m);
+    NoResponse.into()
 }
 
 /// Event-handling aspect of a widget.
 pub trait Handler {
-    /// Type of response from handlers. This allows type-safe handling of
-    /// responses to handled actions. Various widgets allow sending responses of
-    /// user-defined type, but only user-defined widgets can handle these
-    /// responses.
+    /// Type of message returned by this handler.
+    /// 
+    /// This mechanism allows type-safe handling of user-defined responses to handled actions.
+    /// For example, a user may define a control panel where each button returns a unique code,
+    /// or a configuration editor may return a full copy of the new configuration on completion.
     type Response: From<NoResponse>;
     
     /// Handle a high-level event directed at the widget identified by `number`,
-    /// and return a user-defined message.
-    fn handle_action(&mut self, tk: &TkWidget, action: Action, number: u32)
-        -> Self::Response
-    {
+    /// and return a user-defined msg.
+    fn handle_action(&mut self, tk: &TkWidget, action: Action, number: u32) -> Self::Response {
         let _unused = (tk, number);  // squelch warning
         ignore(action)
     }
