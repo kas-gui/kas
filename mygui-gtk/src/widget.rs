@@ -8,11 +8,12 @@ use gtk::{Cast, WidgetExt, LabelExt};
 use mygui::widget::{Coord, Rect};
 use mygui::toolkit::{TkData, TkWidget};
 
-use super::GtkToolkit;
 use super::tkd::borrow_from_tkd;
 
 
-impl TkWidget for GtkToolkit {
+pub struct Toolkit;
+
+impl TkWidget for Toolkit {
     fn size_hints(&self, tkd: TkData) -> (Coord, Coord) {
         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
         let min = Coord::conv(gw.get_preferred_size().0);

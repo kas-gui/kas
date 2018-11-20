@@ -12,7 +12,6 @@ use mygui::macros::make_widget;
 use mygui::window::SimpleWindow;
 
 use mygui::toolkit::Toolkit;
-use mygui_gtk::{Error, GtkToolkit};
 
 #[derive(Clone, Debug, PartialEq)]
 enum Key {
@@ -32,7 +31,7 @@ impl From<NoResponse> for Key {
     }
 }
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<(), mygui_gtk::Error> {
     let buttons = make_widget!(grid => Key;
         #[widget(col = 0, row = 0)] _ = TextButton::new("clear", || Key::Clear),
         #[widget(col = 1, row = 0)] _ = TextButton::new("÷", || Key::Divide),
@@ -59,7 +58,7 @@ fn main() -> Result<(), Error> {
             #[widget] display: Text = Text::from("0"),
             #[widget(handler = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new();
-            fn handle_button(&mut self, tk: &Toolkit, msg: Key) -> NoResponse {
+            fn handle_button(&mut self, tk: &TkWidget, msg: Key) -> NoResponse {
                 if self.calc.handle(msg) {
                     // self.state.set_text(tk, &self.calc.state_str());
                     // self.buf.set_text(tk, &self.calc.line_buf);
@@ -69,7 +68,7 @@ fn main() -> Result<(), Error> {
             }
         ));
 
-    let mut toolkit = GtkToolkit::new()?;
+    let mut toolkit = mygui_gtk::Toolkit::new()?;
     toolkit.add(window);
     toolkit.main();
     Ok(())

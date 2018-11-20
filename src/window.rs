@@ -5,7 +5,7 @@ use std::fmt::{self, Debug};
 use crate::control::{button, TextButton};
 use crate::event::{self, Action, Handler, ignore};
 use crate::macros::Widget;
-use crate::toolkit::Toolkit;
+use crate::toolkit::TkWidget;
 use crate::widget::Coord;
 use crate::widget::{Class, Widget, Core, CoreData};
 
@@ -24,20 +24,20 @@ pub trait Window: Widget {
     
     /// Calculate and update positions for all sub-widgets
     #[cfg(feature = "layout")]
-    fn configure_widgets(&mut self, tk: &Toolkit);
+    fn configure_widgets(&mut self, tk: &TkWidget);
     
     /// Adjust the size of the window, repositioning widgets.
     /// 
     /// `configure_widgets` must be called before this.
     #[cfg(feature = "layout")]
-    fn resize(&mut self, tk: &Toolkit, size: Coord);
+    fn resize(&mut self, tk: &TkWidget, size: Coord);
     
     /// Handle a high-level event directed at the widget identified by `num`,
     /// and return a user-defined message.
     // NOTE: we could instead add the trait bound Handler<Response = Response>
     // but (1) Rust doesn't yet support mult-trait objects
     // and (2) Rust erronously claims that Response isn't specified in Box<Window>
-    fn handle_action(&mut self, tk: &Toolkit, action: Action, num: u32) -> Response;
+    fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> Response;
 }
 
 /// Window event repsonses
@@ -105,7 +105,7 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     fn as_widget_mut(&mut self) -> &mut Widget { self }
     
     #[cfg(feature = "cassowary")]
-    fn configure_widgets(&mut self, tk: &Toolkit) {
+    fn configure_widgets(&mut self, tk: &TkWidget) {
         use crate::cw;
         assert!(self.number() > 0, "widget not enumerated");
         
@@ -114,27 +114,27 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         
         self.solver.reset();
         
-        self.w.init_constraints(tk.tk_widget(), &mut self.solver, true);
+        self.w.init_constraints(tk, &mut self.solver, true);
         
         self.solver.add_edit_variable(v_w, cw::strength::MEDIUM * 100.0).unwrap();
         self.solver.add_edit_variable(v_h, cw::strength::MEDIUM * 100.0).unwrap();
         
         self.min_size = (self.solver.get_value(v_w) as i32, self.solver.get_value(v_h) as i32);
         
-        self.w.apply_constraints(tk.tk_widget(), &self.solver, (0, 0));
+        self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
     
     #[cfg(feature = "cassowary")]
-    fn resize(&mut self, tk: &Toolkit, size: Coord) {
+    fn resize(&mut self, tk: &TkWidget, size: Coord) {
         assert!(self.number() > 0, "widget not enumerated");
         
         self.solver.suggest_value(cw_var!(self, w), size.0 as f64).unwrap();
         self.solver.suggest_value(cw_var!(self, h), size.1 as f64).unwrap();
         
-        self.w.apply_constraints(tk.tk_widget(), &self.solver, (0, 0));
+        self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
     
-    fn handle_action(&mut self, tk: &Toolkit, action: Action, num: u32) -> Response {
+    fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> Response {
         if num < self.number() {
             Response::from(self.w.handle_action(tk, action, num))
         } else if num == self.number() {
@@ -189,16 +189,16 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     fn as_widget_mut(&mut self) -> &mut Widget { self }
     
     #[cfg(feature = "layout")]
-    fn configure_widgets(&mut self, _tk: &Toolkit) {
+    fn configure_widgets(&mut self, _tk: &TkWidget) {
         unimplemented!()
     }
     
     #[cfg(feature = "layout")]
-    fn resize(&mut self, _tk: &Toolkit, _size: Coord) {
+    fn resize(&mut self, _tk: &TkWidget, _size: Coord) {
         unimplemented!()
     }
     
-    fn handle_action(&mut self, _tk: &Toolkit, _action: Action, _num: u32) -> Response {
+    fn handle_action(&mut self, _tk: &TkWidget, _action: Action, _num: u32) -> Response {
         unimplemented!()
     }
 }

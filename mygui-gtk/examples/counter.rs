@@ -9,7 +9,6 @@ use mygui::macros::make_widget;
 use mygui::window::SimpleWindow;
 
 use mygui::toolkit::Toolkit;
-use mygui_gtk::{Error, GtkToolkit};
 
 enum Message {
     None,
@@ -23,7 +22,7 @@ impl From<NoResponse> for Message {
     }
 }
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<(), mygui_gtk::Error> {
     let buttons = make_widget!(horizontal => Message;
         #[widget] _ = TextButton::new("−", || Message::Decr),
         #[widget] _ = TextButton::new("+", || Message::Incr);
@@ -32,7 +31,7 @@ fn main() -> Result<(), Error> {
             #[widget] display: Text = Text::from("0"),
             #[widget(handler = handle_button)] buttons -> Message = buttons,
             counter: usize = 0;
-            fn handle_button(&mut self, tk: &Toolkit, msg: Message) -> NoResponse {
+            fn handle_button(&mut self, tk: &TkWidget, msg: Message) -> NoResponse {
                 match msg {
                     Message::None => (),
                     Message::Decr => {
@@ -48,7 +47,7 @@ fn main() -> Result<(), Error> {
             }
         ));
 
-    let mut toolkit = GtkToolkit::new()?;
+    let mut toolkit = mygui_gtk::Toolkit::new()?;
     toolkit.add(window);
     toolkit.main();
     Ok(())

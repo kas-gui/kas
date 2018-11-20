@@ -70,7 +70,7 @@ use self::args::ChildType;
 /// -   `handler = ...` — the name (`f`) of a method defined on this type which
 ///     handles a message from the child (type `M`) and converts it to the
 ///     appropriate response type for this widget (`R`); this method should have
-///     signature `fn f(&mut self, tk: &Toolkit, msg: M) -> R`.
+///     signature `fn f(&mut self, tk: &TkWidget, msg: M) -> R`.
 ///     
 /// 
 /// Example:
@@ -87,7 +87,7 @@ use self::args::ChildType;
 /// }
 /// 
 /// impl<W: Widget> SimpleWindow<W> {
-///     fn handle_msg(&mut self, tk: &Toolkit, msg: ChildMsg) -> MyResponse {
+///     fn handle_msg(&mut self, tk: &TkWidget, msg: ChildMsg) -> MyResponse {
 ///         println!("Recieved message: {:?}", msg);
 ///         MyResponse::None
 ///     }
@@ -254,7 +254,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             {
                 type Response = #response;
                 
-                fn handle_action(&mut self, tk: &Toolkit, action: Action, num: u32)
+                fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32)
                     -> Self::Response
                 {
                     use #c::event::Handler;
@@ -326,7 +326,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// 
 /// Optionally, a message handler may be specified for child widgets via
 /// `#[widget(handler = f)] ident = value` where `f` is a method defined on the
-/// anonymous struct with signature `fn f(&mut self, tk: &Toolkit, msg: M) -> R`
+/// anonymous struct with signature `fn f(&mut self, tk: &TkWidget, msg: M) -> R`
 /// where `M` is the type of response received from the child widget, and `R` is
 /// the type of response sent from this widget.
 /// 
@@ -440,7 +440,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let toks = (quote!{ {
         use #c::event::{Action, Handler, ignore};
         use #c::macros::Widget;
-        use #c::toolkit::Toolkit;
+        use #c::toolkit::TkWidget;
         use #c::widget::{Class, Core, CoreData, Widget};
         use std::fmt;
 

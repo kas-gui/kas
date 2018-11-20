@@ -6,7 +6,7 @@
 //! parent and any result is pushed back up the call stack. The model allows
 //! type-safety while allowing user-defined result types.
 
-use crate::toolkit::Toolkit;
+use crate::toolkit::TkWidget;
 
 /// Input actions: these are high-level messages aimed at specific widgets.
 #[derive(Debug)]
@@ -52,7 +52,7 @@ pub trait Handler {
     
     /// Handle a high-level event directed at the widget identified by `number`,
     /// and return a user-defined message.
-    fn handle_action(&mut self, tk: &Toolkit, action: Action, number: u32)
+    fn handle_action(&mut self, tk: &TkWidget, action: Action, number: u32)
         -> Self::Response
     {
         let _unused = (tk, number);  // squelch warning

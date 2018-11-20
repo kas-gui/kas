@@ -7,9 +7,8 @@ use mygui::display::Text;
 use mygui::window::{action_close, MessageBox};
 
 use mygui::toolkit::Toolkit;
-use mygui_gtk::{Error, GtkToolkit};
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<(), mygui_gtk::Error> {
     // Build widgets.
     // Message is a Window with an "Ok" button and notification status.
     // Each Window::new method creates objects then solves constraints.
@@ -19,7 +18,7 @@ fn main() -> Result<(), Error> {
         action_close,
     );
 
-    let mut toolkit = GtkToolkit::new()?;
+    let mut toolkit = mygui_gtk::Toolkit::new()?;
     toolkit.add(window);
     toolkit.main();
     Ok(())

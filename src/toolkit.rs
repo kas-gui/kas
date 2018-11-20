@@ -34,13 +34,13 @@ pub trait Toolkit {
     /// Assume ownership of and display a window.
     /// 
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
-    fn add<W: Into<Box<Window>>>(&mut self, window: W) where Self: Sized {
+    fn add<W: Into<Box<Window>>>(&self, window: W) where Self: Sized {
         self.add_boxed(window.into())
     }
     
     /// Specialised version of `add`; typically toolkits only need to implement
     /// this.
-    fn add_boxed(&mut self, window: Box<Window>);
+    fn add_boxed(&self, window: Box<Window>);
     
     /// Run the main loop.
     fn main(&mut self);

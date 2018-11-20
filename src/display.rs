@@ -2,7 +2,7 @@
 
 use crate::event;
 use crate::macros::Widget;
-use crate::toolkit::Toolkit;
+use crate::toolkit::TkWidget;
 use crate::widget::{Class, Core, CoreData};
 
 #[layout]
@@ -14,9 +14,9 @@ pub struct Text {
 }
 
 impl Text {
-    pub fn set_text(&mut self, tk: &Toolkit, text: &str) {
+    pub fn set_text(&mut self, tk: &TkWidget, text: &str) {
         self.text = String::from(text);
-        tk.tk_widget().set_label(self.tkd(), text);
+        tk.set_label(self.tkd(), text);
     }
 }
 

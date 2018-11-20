@@ -5,8 +5,9 @@
 use gdk::{Event};
 use gtk;
 
-use crate::{GtkToolkit, for_toolkit};
+use crate::{widget, window};
 
+/// This function is registered as the GTK event handler, allowing event interception
 pub(crate) fn handler(event: &mut Event) {
     use gdk::EventType::*;
     
@@ -16,7 +17,7 @@ pub(crate) fn handler(event: &mut Event) {
         Configure => {
             #[cfg(feature = "layout")] {
                 // TODO: use downcast_ref available in next GDK version
-                for_toolkit(|tk| tk.configure(event.clone().downcast().unwrap()));
+                window::with_list(|list| list.configure(event.clone().downcast().unwrap()));
                 // TODO: emit expose event?
                 return;
             }
@@ -61,16 +62,16 @@ pub(crate) fn handler(event: &mut Event) {
     match event.get_event_type() {
         #[cfg(not(feature = "layout"))]
         Configure => {
-            for_toolkit(|tk| tk.post_configure(event))
+            window::with_list(|list| list.post_configure(event))
         },
         
         _ => {}
     }
 }
 
-impl GtkToolkit {
+impl window::WindowList {
     #[cfg(feature = "layout")]
-    fn configure(&self, event: gdk::EventConfigure) {
+    fn configure(&mut self, event: gdk::EventConfigure) {
         let size = event.get_size();
         let size = (size.0 as i32, size.1 as i32);
         if let Some(gdk_win) = event.get_window() {
@@ -86,10 +87,10 @@ impl GtkToolkit {
     }
     
     #[cfg(not(feature = "layout"))]
-    fn post_configure(&self, event: &Event) {
+    fn post_configure(&mut self, event: &Event) {
         if let Some(gdk_win) = event.get_window() {
             self.for_gdk_win(gdk_win, |win, _gwin| {
-                win.sync_size(self);
+                win.sync_size(&widget::Toolkit);
             });
         }
     }
