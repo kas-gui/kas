@@ -255,8 +255,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             {
                 type Response = #response;
                 
-                fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> Self::Response {
-                    use #c::event::{Handler};
+                fn handle_action(&mut self, tk: &#c::TkWidget, action: #c::event::Action,
+                        num: u32) -> Self::Response
+                {
+                    use #c::{Core, event::{ignore, Handler}};
                     #handler_toks
                     
                     if num != self.number() {
@@ -345,7 +347,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let c = c();
     
     // fields of anonymous struct:
-    let mut field_toks = quote!{ #[core] core: CoreData, };
+    let mut field_toks = quote!{ #[core] core: #c::CoreData, };
     // initialisers for these fields:
     let mut field_val_toks = quote!{ core: Default::default(), };
     // debug impl
@@ -384,18 +386,18 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 
                 gen_tys.push(ty.clone());
                 if attr.is_some() {
-                    gen_ptrs.push(quote!{ #ty: Widget });
+                    gen_ptrs.push(quote!{ #ty: #c::Widget });
                     match cty {
                         ChildType::Generic => {
                             name_buf.push_str("R");
                             let tyr = Ident::new(&name_buf, Span::call_site());
                             handler_extra.push(tyr.clone());
-                            handler_clauses.push(quote!{ #ty: Handler<Response = #tyr> });
-                            handler_clauses.push(quote!{ #tyr: From<NoResponse> });
+                            handler_clauses.push(quote!{ #ty: #c::event::Handler<Response = #tyr> });
+                            handler_clauses.push(quote!{ #tyr: From<#c::event::NoResponse> });
                             handler_clauses.push(quote!{ #response: From<#tyr> });
                         }
                         ChildType::Response(tyr) => {
-                            handler_clauses.push(quote!{ #ty: Handler<Response = #tyr> });
+                            handler_clauses.push(quote!{ #ty: #c::event::Handler<Response = #tyr> });
                         }
                         _ => unreachable!()
                     }
@@ -437,16 +439,10 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote!{ {
-        use #c::event::{Action, Handler, ignore};
-        use #c::macros::Widget;
-        use #c::TkWidget;
-        use #c::{Class, Core, CoreData, Widget};
-        use std::fmt;
-
         #[layout(#layout)]
-        #[widget(class = Class::Container)]
+        #[widget(class = #c::Class::Container)]
         #[handler(response = #response, generics = < #handler_extra > #handler_where)]
-        #[derive(Clone, Debug, Widget)]
+        #[derive(Clone, Debug, #c::macros::Widget)]
         struct AnonWidget<#gen_ptrs> {
             #field_toks
         }

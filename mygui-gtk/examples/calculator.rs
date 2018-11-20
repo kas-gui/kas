@@ -9,7 +9,7 @@ use mygui::control::TextButton;
 use mygui::display::Text;
 use mygui::event::NoResponse;
 use mygui::macros::make_widget;
-use mygui::{SimpleWindow, Toolkit};
+use mygui::{SimpleWindow, Toolkit, TkWidget};
 
 #[derive(Clone, Debug, PartialEq)]
 enum Key {
