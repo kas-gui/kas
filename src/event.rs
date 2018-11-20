@@ -8,6 +8,7 @@
 
 use std::fmt::Debug;
 use crate::TkWidget;
+use crate::macros::NoResponse;
 
 /// Input actions: these are high-level messages aimed at specific widgets.
 #[derive(Debug)]
@@ -30,9 +31,11 @@ pub type Event = ();
 /// No message
 /// 
 /// All response message types should implement `From<NoResponse>`.
+#[derive(Debug)]
 pub struct NoResponse;
 
 /// General GUI event responses
+#[derive(Debug, NoResponse)]
 pub enum GuiResponse {
     /// No action
     None,
@@ -40,12 +43,6 @@ pub enum GuiResponse {
     Close,
     /// Exit (close all windows)
     Exit,
-}
-
-impl From<NoResponse> for GuiResponse {
-    fn from(_: NoResponse) -> Self {
-        GuiResponse::None
-    }
 }
 
 /// Mark explicitly ignored events.

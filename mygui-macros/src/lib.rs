@@ -457,6 +457,29 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     toks
 }
 
+/// Macro to derive `From<NoResponse>`
+/// 
+/// This macro assumes the type is an enum with a simple variant named `None`.
+// TODO: add diagnostics to check against mis-use?
+#[proc_macro_derive(NoResponse)]
+pub fn derive_no_response(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = parse_macro_input!(input as DeriveInput);
+    let c = c();
+    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+    let name = &ast.ident;
+    
+    let toks = quote!{
+        impl #impl_generics From<#c::event::NoResponse>
+            for #name #ty_generics #where_clause
+        {
+            fn from(_: #c::event::NoResponse) -> Self {
+                #name::None
+            }
+        }
+    };
+    toks.into()
+}
+
 // Our stand-in for $crate. Imperfect, but works (excepting other crates in
 // the same package, i.e. doc-tests, examples, integration tests, benches).
 fn c() -> TokenStream {

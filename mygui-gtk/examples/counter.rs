@@ -5,19 +5,14 @@
 use mygui::control::TextButton;
 use mygui::display::Text;
 use mygui::event::NoResponse;
-use mygui::macros::make_widget;
+use mygui::macros::{NoResponse, make_widget};
 use mygui::{SimpleWindow, Toolkit, TkWidget};
 
+#[derive(Debug, NoResponse)]
 enum Message {
     None,
     Decr,
     Incr,
-}
-
-impl From<NoResponse> for Message {
-    fn from(_: NoResponse) -> Self {
-        Message::None
-    }
 }
 
 fn main() -> Result<(), mygui_gtk::Error> {

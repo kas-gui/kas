@@ -24,7 +24,7 @@ pub mod event;
 /// Note that some of these are re-exports, but it is expected that users depend on this crate only
 /// and not `mygui_macros`. All functionality is available via these re-exports.
 pub mod macros {
-    pub use mygui_macros::{Widget, make_widget};
+    pub use mygui_macros::{NoResponse, Widget, make_widget};
 }
 
 // export most important members directly for convenience and less redundancy:

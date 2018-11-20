@@ -8,10 +8,10 @@ use std::str::FromStr;
 use mygui::control::TextButton;
 use mygui::display::Text;
 use mygui::event::NoResponse;
-use mygui::macros::make_widget;
+use mygui::macros::{NoResponse, make_widget};
 use mygui::{SimpleWindow, Toolkit, TkWidget};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, NoResponse)]
 enum Key {
     None,
     Clear,
@@ -21,12 +21,6 @@ enum Key {
     Add,
     Equals,
     Char(u8), // char in range 0..255
-}
-
-impl From<NoResponse> for Key {
-    fn from(_: NoResponse) -> Self {
-        Key::None
-    }
 }
 
 fn main() -> Result<(), mygui_gtk::Error> {
