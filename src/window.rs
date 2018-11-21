@@ -8,7 +8,10 @@ use crate::{Class, Coord, Core, CoreData, TkWidget, Widget};
 
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be
-// implemented by dialogs?
+// implemented by dialogs? Note that from the toolkit perspective, it seems a
+// Window should be a Widget. So alternatives are (1) use a struct instead of a
+// trait or (2) allow any Widget to derive Window (i.e. implement required
+// functionality with macros instead of the generic code below).
 pub trait Window: Widget {
     /// Upcast
     /// 
