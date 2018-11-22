@@ -7,7 +7,7 @@ use std::fmt::{self, Debug};
 use crate::control::{button, TextButton};
 use crate::macros::Widget;
 use crate::event::{Action, GuiResponse};
-use crate::{Class, CoreData, TkWidget, Widget, Window};
+use crate::{Class, CoreData, TkWidget, Widget, Window, Callback, CallbackCond, DrainCallbacks};
 
 
 /// An action for use with `MessageBox::new`.
@@ -62,6 +62,14 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     
     fn handle_action(&mut self, _tk: &TkWidget, _action: Action, _num: u32) -> GuiResponse
     {
+        unimplemented!()
+    }
+    
+    fn add_boxed_callback(&mut self, _when: CallbackCond, _f: Box<Callback<Window>>) {
+        unimplemented!()
+    }
+    
+    fn drain_callbacks<'a>(&'a mut self) -> DrainCallbacks<'a> {
         unimplemented!()
     }
 }

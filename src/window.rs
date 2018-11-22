@@ -6,6 +6,15 @@ use crate::macros::Widget;
 use crate::event::{ignore, Action, GuiResponse, Handler, NoResponse};
 use crate::{Class, Coord, Core, CoreData, TkWidget, Widget};
 
+/// When to trigger a callback
+#[derive(Clone, Copy, Debug)]
+pub enum CallbackCond {
+    TimeoutMs(u32),
+}
+
+/// A callback function, called on some condition by the toolkit
+pub type Callback<T> = FnMut(&mut T, &TkWidget);
+
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be
 // implemented by dialogs? Note that from the toolkit perspective, it seems a
@@ -38,6 +47,47 @@ pub trait Window: Widget {
     // but (1) Rust doesn't yet support mult-trait objects
     // and (2) Rust erronously claims that Response isn't specified in Box<Window>
     fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> GuiResponse;
+    
+    // TODO: how to differentiate functions for the user and functions for the toolkit?
+    /// Add a closure to be called, with a reference to self, on the given
+    /// condition.
+    fn add_callback<F: FnMut(&mut Self, &TkWidget) + 'static>(&mut self,
+            when: CallbackCond, f: F) where Self: Sized
+    {
+        let b = Box::new(f) as Box<Callback<Self>>;
+        let bf = unsafe { std::mem::transmute(b) };
+        self.add_boxed_callback(when, bf)
+    }
+    
+    /// Add a boxed closure to be called on the given condition.
+    /// 
+    /// This closure is called with a `&mut Self` reference. We must use
+    /// `&mut Window` in the function signature to allow construction of
+    /// `Window` trait objects. It is suggested that users instead call `add_fn`
+    /// which handles the conversion interally.
+    fn add_boxed_callback(&mut self, when: CallbackCond, f: Box<Callback<Window>>);
+    
+    /// Iterate over all callbacks added to the window, draining.
+    /// 
+    /// This is for use by the toolkit.
+    fn drain_callbacks<'a>(&'a mut self) -> DrainCallbacks<'a>;
+}
+
+/// Type returned by `Window::drain_callbacks`.
+pub struct DrainCallbacks<'a> {
+    iter: std::vec::Drain<'a, (CallbackCond, Box<Callback<Window>>)>
+}
+
+impl<'a> Iterator for DrainCallbacks<'a> {
+    type Item = (CallbackCond, Box<Callback<Window>>);
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+    
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
 }
 
 /// Main window type
@@ -48,23 +98,37 @@ pub struct SimpleWindow<W: Widget> {
     #[core] core: CoreData,
     min_size: Coord,
     #[cfg(feature = "cassowary")] solver: crate::cw::Solver,
-    #[widget] w: W
+    #[widget] w: W,
+    fns: Vec<(CallbackCond, Box<Callback<Window>>)>,
 }
 
 impl<W: Widget> Debug for SimpleWindow<W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "SimpleWindow {{ core: {:?}, min_size: {:?}, solver: <omitted>, w: {:?} }}",
-            self.core, self.min_size, self.w)
+        write!(f, "SimpleWindow {{ core: {:?}, min_size: {:?}, solver: <omitted>, w: {:?}, fns: [",
+            self.core, self.min_size, self.w)?;
+        let mut iter = self.fns.iter();
+        if let Some(first) = iter.next() {
+            write!(f, "({:?}, <FnMut>)", first.0)?;
+            for next in iter {
+                write!(f, ", ({:?}, <FnMut>)", next.0)?;
+            }
+        }
+        write!(f, "] }}")
     }
 }
 
 impl<W: Widget + Clone> Clone for SimpleWindow<W> {
     fn clone(&self) -> Self {
+        if !self.fns.is_empty() {
+            // TODO: do we support Clone or not? Can we make this type-safe optional?
+            panic!("Unable to clone closures");
+        }
         SimpleWindow {
             core: self.core.clone(),
             min_size: self.min_size,
             #[cfg(feature = "cassowary")] solver: crate::cw::Solver::new(),
-            w: self.w.clone()
+            w: self.w.clone(),
+            fns: Vec::new(),
         }
     }
 }
@@ -76,9 +140,16 @@ impl<W: Widget> SimpleWindow<W> {
             core: Default::default(),
             min_size: (0, 0),
             #[cfg(feature = "cassowary")] solver: crate::cw::Solver::new(),
-            w
+            w,
+            fns: Vec::new(),
         }
     }
+    
+    /// Get direct access to the enclosed widget
+    pub fn get(&self) -> &W { &self.w }
+    
+    /// Get direct mutable access to the enclosed widget
+    pub fn get_mut(&mut self) -> &mut W { &mut self.w }
 }
 
 impl<R, W: Widget + Handler<Response = R> + 'static> Window
@@ -130,5 +201,13 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
             println!("Warning: incorrect widget number");
             ignore(action)
         }
+    }
+    
+    fn add_boxed_callback(&mut self, when: CallbackCond, f: Box<Callback<Window>>) {
+        self.fns.push((when, f));
+    }
+    
+    fn drain_callbacks<'a>(&'a mut self) -> DrainCallbacks<'a> {
+        DrainCallbacks { iter: self.fns.drain(..) }
     }
 }

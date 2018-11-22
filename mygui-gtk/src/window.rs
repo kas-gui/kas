@@ -1,12 +1,12 @@
 //! `Window` and `WindowList` types
 
-use std::cell::RefCell;
+use std::{cell::RefCell, ops::DerefMut, rc::Rc};
 
 use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt};
 #[cfg(not(feature = "layout"))] use gtk::GridExt;
 
 use mygui::event::{Action, GuiResponse};
-use mygui::{Class, Widget};
+use mygui::{Class, Widget, CallbackCond};
 
 use crate::widget;
 use crate::tkd::WidgetAbstraction;
@@ -15,7 +15,7 @@ use crate::tkd::WidgetAbstraction;
 /// Per-window data
 struct Window {
     /// The mygui window. Each is boxed since it must not move.
-    pub win: Box<mygui::Window>,
+    pub win: Rc<RefCell<mygui::Window>>,
     /// The GTK window
     pub gwin: gtk::Window,
     /// Range of widget numbers used, from first to last+1.
@@ -32,7 +32,7 @@ fn clear_tkd(widget: &mut Widget) {
 // by this lib.
 impl Drop for Window {
     fn drop(&mut self) {
-        clear_tkd(self.win.as_widget_mut());
+        clear_tkd(self.win.borrow_mut().as_widget_mut());
     }
 }
 
@@ -66,7 +66,7 @@ impl WindowList {
         let gdk_win = Some(gdk_win);
         for item in self.windows.iter_mut() {
             if item.gwin.get_window() == gdk_win {
-                return Some(f(&mut *item.win, &mut item.gwin))
+                return Some(f(&mut *item.win.borrow_mut(), &mut item.gwin))
             }
         }
         None
@@ -134,7 +134,8 @@ impl WindowList {
     fn handle_action(&mut self, action: Action, num: u32) {
         for (i, w) in self.windows.iter_mut().enumerate() {
             if num >= w.nums.0 && num < w.nums.1 {
-                match w.win.handle_action(&widget::Toolkit, action, num) {
+                let msg = w.win.borrow_mut().handle_action(&widget::Toolkit, action, num);
+                match msg {
                     GuiResponse::None => {}
                     GuiResponse::Close => {
                         self.windows.remove(i);
@@ -152,30 +153,43 @@ impl WindowList {
         }
     }
     
-    pub(crate) fn add_window(&mut self, mut win: Box<mygui::Window>) {
+    pub(crate) fn add_window(&mut self, win: Rc<RefCell<mygui::Window>>) {
         let gwin = gtk::Window::new(gtk::WindowType::Toplevel);
         
         let num0 = self.windows.last().map(|tw| tw.nums.1).unwrap_or(0);
-        let num1 = win.enumerate(num0);
-        let num = win.number();
-        
-        gwin.connect_delete_event(move |_, _| {
-            with_list(|list| list.handle_action(Action::Close, num));
-            gtk::Inhibit(false)
-        });
-        
-        // HACK: GTK widgets depend on passed pointers but don't mark lifetime
-        // restrictions in their types. We cannot guard usage correctly.
-        // TODO: we only need lifetime extension if GTK widgets refer to our
-        // ones (currently they don't; wait until event handling is implemented)
-        add_widgets(gwin.upcast_ref::<gtk::Widget>(), win.as_widget_mut());
+        let nums = {
+            let mut inner = win.borrow_mut();
+            let num1 = inner.enumerate(num0);
+            let num = inner.number();
+            
+            gwin.connect_delete_event(move |_, _| {
+                with_list(|list| list.handle_action(Action::Close, num));
+                gtk::Inhibit(false)
+            });
+            
+            // HACK: GTK widgets depend on passed pointers but don't mark lifetime
+            // restrictions in their types. We cannot guard usage correctly.
+            // TODO: we only need lifetime extension if GTK widgets refer to our
+            // ones (currently they don't; wait until event handling is implemented)
+            add_widgets(gwin.upcast_ref::<gtk::Widget>(), inner.as_widget_mut());
+            
+            for (cond, mut callback) in inner.drain_callbacks() {
+                let win = win.clone();
+                match cond {
+                    CallbackCond::TimeoutMs(t_ms) => {
+                        gtk::timeout_add(t_ms, move || {
+                            let mut borrow = win.borrow_mut();
+                            callback(borrow.deref_mut(), &widget::Toolkit);
+                            gtk::Continue(true)
+                        });
+                    }
+                }
+            }
+            (num0, num1)
+        };
         
         gwin.show_all();
         
-        self.windows.push(Window {
-            win,
-            gwin,
-            nums: (num0, num1),
-        });
+        self.windows.push(Window { win, gwin, nums });
     }
 }

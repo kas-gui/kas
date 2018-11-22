@@ -1,5 +1,7 @@
 //! Toolkit interface
 
+use std::{cell::RefCell, rc::Rc};
+
 use crate::widget::{Coord, Rect};
 use crate::window::Window;
 
@@ -34,13 +36,13 @@ pub trait Toolkit {
     /// Assume ownership of and display a window.
     /// 
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
-    fn add<W: Into<Box<Window>>>(&self, window: W) where Self: Sized {
-        self.add_boxed(window.into())
+    fn add<W: Window + 'static>(&self, window: W) where Self: Sized {
+        self.add_rc(Rc::new(RefCell::new(window)))
     }
     
     /// Specialised version of `add`; typically toolkits only need to implement
     /// this.
-    fn add_boxed(&self, window: Box<Window>);
+    fn add_rc(&self, window: Rc<RefCell<Window>>);
     
     /// Run the main loop.
     fn main(&mut self);
@@ -69,16 +71,3 @@ pub trait TkWidget {
     /// Set the widget's label (where applicable)
     fn set_label(&self, tkd: TkData, text: &str);
 }
-
-impl<W: Window + 'static> From<W> for Box<Window> {
-    fn from(window: W) -> Self {
-        Box::new(window)
-    }
-}
-
-// TODO: when specialisation is available:
-// impl<W: Window + 'static> From<Box<W>> for Box<Window> {
-//     fn from(window: W) -> Self {
-//         window
-//     }
-// }

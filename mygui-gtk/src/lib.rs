@@ -8,7 +8,7 @@ mod window;
 mod tkd;
 
 use std::marker::PhantomData;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 
 /// Object used to initialise GTK and create windows.
@@ -34,7 +34,7 @@ impl Toolkit {
 }
 
 impl mygui::Toolkit for Toolkit {
-    fn add_boxed(&self, win: Box<mygui::Window>) {
+    fn add_rc(&self, win: Rc<RefCell<mygui::Window>>) {
         window::with_list(|list| list.add_window(win))
     }
     
