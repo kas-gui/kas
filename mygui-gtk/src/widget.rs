@@ -3,7 +3,7 @@
 //! Widget code
 
 use gtk;
-use gtk::{Cast, WidgetExt, LabelExt};
+use gtk::{Cast, WidgetExt, LabelExt, EntryExt};
 
 use mygui::{Coord, Rect, TkData, TkWidget};
 
@@ -35,6 +35,8 @@ impl TkWidget for Toolkit {
         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
         if let Some(glabel) = gw.downcast_ref::<gtk::Label>() {
             glabel.set_label(text);
+        } else if let Some(entry) = gw.downcast_ref::<gtk::Entry>() {
+            entry.set_text(text);
         } /*else if let Some(cont) = gw.downcast_ref::<gtk::Container>() {
             // GTK sometimes uses a child for the actual label
             // TODO: consider using child_notify instead

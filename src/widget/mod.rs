@@ -119,6 +119,12 @@ pub trait Widget: Layout {
     /// TODO: keep?
     fn label(&self) -> Option<&str>;
     
+    /// Get whether this input field is editable.
+    /// TODO: this should not be here, but we don't yet have downcast support!
+    fn is_editable(&self) -> bool {
+        false
+    }
+    
     /// Get the number of child widgets
     fn len(&self) -> usize;
     

@@ -6,7 +6,7 @@ use std::num::ParseFloatError;
 use std::str::FromStr;
 
 use mygui::control::TextButton;
-use mygui::display::Text;
+use mygui::display::Entry;
 use mygui::event::NoResponse;
 use mygui::macros::{NoResponse, make_widget};
 use mygui::{SimpleWindow, Toolkit, TkWidget};
@@ -47,7 +47,7 @@ fn main() -> Result<(), mygui_gtk::Error> {
     let window = SimpleWindow::new(make_widget!(vertical => NoResponse;
             // #[widget] state: Text = Text::from("0"),
             // #[widget] buf: Text = Text::from("") ,
-            #[widget] display: Text = Text::from("0"),
+            #[widget] display: Entry = Entry::new(false, "0".to_string()),
             #[widget(handler = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new();
             fn handle_button(&mut self, tk: &TkWidget, msg: Key) -> NoResponse {

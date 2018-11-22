@@ -2,7 +2,7 @@
 
 use std::{cell::RefCell, ops::DerefMut, rc::Rc};
 
-use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt};
+use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt, EntryExt, EditableExt};
 #[cfg(not(feature = "layout"))] use gtk::GridExt;
 
 use mygui::event::{Action, GuiResponse};
@@ -112,6 +112,14 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                 }
                 Class::Text => gtk::Label::new(child.label())
                         .upcast::<gtk::Widget>(),
+                Class::Entry => {
+                    let entry = gtk::Entry::new();
+                    entry.set_editable(child.is_editable());
+                    if let Some(label) = child.label() {
+                        entry.set_text(label);
+                    }
+                    entry.upcast::<gtk::Widget>()
+                }
                 Class::Window => panic!(),  // TODO embedded windows?
             };
             

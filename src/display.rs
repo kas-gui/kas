@@ -2,7 +2,7 @@
 
 use crate::macros::Widget;
 use crate::event::{Handler, NoResponse};
-use crate::{Class, Core, CoreData, TkWidget};
+use crate::{Class, Core, CoreData, TkWidget, Widget};
 
 #[layout]
 #[widget(class = Class::Text, label = Some(self.text.as_str()))]
@@ -28,5 +28,49 @@ impl<T> From<T> for Text where String: From<T> {
 }
 
 impl Handler for Text {
+    type Response = NoResponse;
+}
+
+
+/// Basic text entry.
+/// 
+/// TODO: this is currently just a hack to satisfy a single use-case.
+#[layout]
+#[derive(Clone, Default, Debug, Widget)]
+pub struct Entry {
+    #[core] core: CoreData,
+    editable: bool,
+    text: String,
+}
+
+impl Entry {
+    pub fn new(editable: bool, text: String) -> Self {
+        Entry {
+            core: Default::default(),
+            editable,
+            text,
+        }
+    }
+    
+    pub fn set_text(&mut self, tk: &TkWidget, text: &str) {
+        tk.set_label(self.tkd(), text);
+    }
+}
+
+impl Widget for Entry {
+    fn class(&self) -> Class { Class::Entry }
+    
+    fn label(&self) -> Option<&str> { Some(self.text.as_str()) }
+    
+    fn is_editable(&self) -> bool { self.editable }
+    
+    fn len(&self) -> usize { 0 }
+    
+    fn get(&self, _: usize) -> Option<&Widget> { None }
+    
+    fn get_mut(&mut self, _: usize) -> Option<&mut Widget> { None }
+}
+
+impl Handler for Entry {
     type Response = NoResponse;
 }

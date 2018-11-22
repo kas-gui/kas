@@ -6,5 +6,6 @@ pub enum Class {
     Container,
     // Dialog,
     Text,
+    Entry,
     Window,
 }
