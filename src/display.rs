@@ -14,7 +14,6 @@ pub struct Text {
 
 impl Text {
     pub fn set_text(&mut self, tk: &TkWidget, text: &str) {
-        self.text = String::from(text);
         tk.set_label(self.tkd(), text);
     }
 }
