@@ -39,6 +39,11 @@ impl mygui::Toolkit for Toolkit {
     }
     
     fn main(&mut self) {
+        window::with_list(|list| {
+            for window in &list.windows {
+                window.win.borrow_mut().on_start(&widget::Toolkit);
+            }
+        });
         gtk::main();
     }
     

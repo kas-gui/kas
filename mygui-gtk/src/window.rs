@@ -1,6 +1,6 @@
 //! `Window` and `WindowList` types
 
-use std::{cell::RefCell, ops::DerefMut, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt, EntryExt, EditableExt};
 #[cfg(not(feature = "layout"))] use gtk::GridExt;
@@ -13,7 +13,7 @@ use crate::tkd::WidgetAbstraction;
 
 
 /// Per-window data
-struct Window {
+pub(crate) struct Window {
     /// The mygui window. Each is boxed since it must not move.
     pub win: Rc<RefCell<mygui::Window>>,
     /// The GTK window
@@ -40,7 +40,7 @@ impl Drop for Window {
 /// 
 /// This is a special type which has a single instance per thread.
 pub(crate) struct WindowList {
-    windows: Vec<Window>,
+    pub(crate) windows: Vec<Window>,
 }
 
 // Use thread_local because our type and GTK pointers are not Sync.
@@ -175,19 +175,15 @@ impl WindowList {
                 gtk::Inhibit(false)
             });
             
-            // HACK: GTK widgets depend on passed pointers but don't mark lifetime
-            // restrictions in their types. We cannot guard usage correctly.
-            // TODO: we only need lifetime extension if GTK widgets refer to our
-            // ones (currently they don't; wait until event handling is implemented)
             add_widgets(gwin.upcast_ref::<gtk::Widget>(), inner.as_widget_mut());
             
-            for (cond, mut callback) in inner.drain_callbacks() {
+            for (index, cond) in inner.callbacks() {
                 let win = win.clone();
                 match cond {
                     CallbackCond::TimeoutMs(t_ms) => {
                         gtk::timeout_add(t_ms, move || {
                             let mut borrow = win.borrow_mut();
-                            callback(borrow.deref_mut(), &widget::Toolkit);
+                            borrow.trigger_callback(index, &widget::Toolkit);
                             gtk::Continue(true)
                         });
                     }

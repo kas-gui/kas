@@ -12,9 +12,6 @@ pub enum CallbackCond {
     TimeoutMs(u32),
 }
 
-/// A callback function, called on some condition by the toolkit
-pub type Callback<T> = FnMut(&mut T, &TkWidget);
-
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be
 // implemented by dialogs? Note that from the toolkit perspective, it seems a
@@ -48,46 +45,17 @@ pub trait Window: Widget {
     // and (2) Rust erronously claims that Response isn't specified in Box<Window>
     fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> GuiResponse;
     
-    // TODO: how to differentiate functions for the user and functions for the toolkit?
-    /// Add a closure to be called, with a reference to self, on the given
-    /// condition.
-    fn add_callback<F: FnMut(&mut Self, &TkWidget) + 'static>(&mut self,
-            when: CallbackCond, f: F) where Self: Sized
-    {
-        let b = Box::new(f) as Box<Callback<Self>>;
-        let bf = unsafe { std::mem::transmute(b) };
-        self.add_boxed_callback(when, bf)
-    }
-    
-    /// Add a boxed closure to be called on the given condition.
+    /// Get a list of available callbacks.
     /// 
-    /// This closure is called with a `&mut Self` reference. We must use
-    /// `&mut Window` in the function signature to allow construction of
-    /// `Window` trait objects. It is suggested that users instead call `add_fn`
-    /// which handles the conversion interally.
-    fn add_boxed_callback(&mut self, when: CallbackCond, f: Box<Callback<Window>>);
+    /// This returns a sequence of `(index, condition)` values. The toolkit
+    /// should call `trigger_callback(index, tk)` whenever the condition is met.
+    fn callbacks(&self) -> Vec<(usize, CallbackCond)>;
     
-    /// Iterate over all callbacks added to the window, draining.
-    /// 
-    /// This is for use by the toolkit.
-    fn drain_callbacks<'a>(&'a mut self) -> DrainCallbacks<'a>;
-}
-
-/// Type returned by `Window::drain_callbacks`.
-pub struct DrainCallbacks<'a> {
-    iter: std::vec::Drain<'a, (CallbackCond, Box<Callback<Window>>)>
-}
-
-impl<'a> Iterator for DrainCallbacks<'a> {
-    type Item = (CallbackCond, Box<Callback<Window>>);
+    /// Trigger a callback (see `iter_callbacks`).
+    fn trigger_callback(&mut self, index: usize, tk: &TkWidget);
     
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-    
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
+    /// Called by the toolkit after the window has been created and before it is drawn.
+    fn on_start(&mut self, tk: &TkWidget);
 }
 
 /// Main window type
@@ -99,7 +67,7 @@ pub struct SimpleWindow<W: Widget> {
     min_size: Coord,
     #[cfg(feature = "cassowary")] solver: crate::cw::Solver,
     #[widget] w: W,
-    fns: Vec<(CallbackCond, Box<Callback<Window>>)>,
+    fns: Vec<(CallbackCond, Box<FnMut(&mut W, &TkWidget)>)>,
 }
 
 impl<W: Widget> Debug for SimpleWindow<W> {
@@ -145,11 +113,13 @@ impl<W: Widget> SimpleWindow<W> {
         }
     }
     
-    /// Get direct access to the enclosed widget
-    pub fn get(&self) -> &W { &self.w }
-    
-    /// Get direct mutable access to the enclosed widget
-    pub fn get_mut(&mut self) -> &mut W { &mut self.w }
+    /// Add a closure to be called, with a reference to self, on the given
+    /// condition.
+    pub fn add_callback<F: FnMut(&mut W, &TkWidget) + 'static>(&mut self,
+            when: CallbackCond, f: F)
+    {
+        self.fns.push((when, Box::new(f)));
+    }
 }
 
 impl<R, W: Widget + Handler<Response = R> + 'static> Window
@@ -203,11 +173,20 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         }
     }
     
-    fn add_boxed_callback(&mut self, when: CallbackCond, f: Box<Callback<Window>>) {
-        self.fns.push((when, f));
+    fn callbacks(&self) -> Vec<(usize, CallbackCond)> {
+        self.fns.iter().map(|(cond, _)| *cond).enumerate().collect()
     }
     
-    fn drain_callbacks<'a>(&'a mut self) -> DrainCallbacks<'a> {
-        DrainCallbacks { iter: self.fns.drain(..) }
+    /// Trigger a callback (see `iter_callbacks`).
+    fn trigger_callback(&mut self, index: usize, tk: &TkWidget) {
+        let cb = &mut self.fns[index].1;
+        cb(&mut self.w, tk);
+    }
+    
+    fn on_start(&mut self, tk: &TkWidget) {
+        // TODO: this should be configurable, e.g. make a CallbackCond and allow multiple
+        for cb in &mut self.fns {
+            (cb.1)(&mut self.w, tk);
+        }
     }
 }

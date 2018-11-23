@@ -2,27 +2,27 @@
 #![feature(unrestricted_attribute_tokens)]
 #![feature(proc_macro_hygiene)]
 
-// Could use chrono to print wall time, but don't want an extra dependency here
-use std::time::Instant;
+extern crate chrono;
+
+use chrono::prelude::*;
 
 use mygui::display::Text;
 use mygui::event::NoResponse;
 use mygui::macros::make_widget;
-use mygui::{SimpleWindow, Toolkit, TkWidget, Window, CallbackCond};
+use mygui::{SimpleWindow, Toolkit, TkWidget, CallbackCond};
 
 fn main() -> Result<(), mygui_gtk::Error> {
     let mut window = SimpleWindow::new(make_widget!(vertical => NoResponse;
-            #[widget] display: Text = Text::from("0"),
-            start_time: Instant = Instant::now();
+            #[widget] date: Text = Text::from(""),
+            #[widget] time: Text = Text::from("");
             fn on_tick(&mut self, tk: &TkWidget) {
-                let duration = Instant::now() - self.start_time;
-                let secs = format!("{}", duration.as_secs());
-                self.display.set_text(tk, &secs);
+                let now = Local::now();
+                self.date.set_text(tk, &now.format("%Y %m %d").to_string());
+                self.time.set_text(tk, &now.format("%H:%M:%S").to_string());
             }
         ));
     
-    window.add_callback(CallbackCond::TimeoutMs(1000),
-            |window, tk| window.get_mut().on_tick(tk) );
+    window.add_callback(CallbackCond::TimeoutMs(1000), |w, tk| w.on_tick(tk) );
     
     let mut toolkit = mygui_gtk::Toolkit::new()?;
     toolkit.add(window);

@@ -9,7 +9,7 @@ use mygui::control::TextButton;
 use mygui::display::Text;
 use mygui::event::{Handler, NoResponse};
 use mygui::macros::{NoResponse, Widget};
-use mygui::{Class, CoreData, Widget, SimpleWindow, Toolkit, TkWidget, Window, CallbackCond};
+use mygui::{Class, CoreData, Widget, SimpleWindow, Toolkit, TkWidget, CallbackCond};
 
 #[derive(Debug, NoResponse)]
 enum Control {
@@ -35,12 +35,13 @@ fn main() -> Result<(), mygui_gtk::Error> {
     }
     
     impl<BR: Widget, BS: Widget> Stopwatch<BR, BS> {
-        fn handle_button(&mut self, _tk: &TkWidget, msg: Control) -> NoResponse {
+        fn handle_button(&mut self, tk: &TkWidget, msg: Control) -> NoResponse {
             match msg {
                 Control::None => {}
                 Control::Reset => {
                     self.saved = Duration::default();
                     self.start = None;
+                    self.display.set_text(tk, "0.000");
                 }
                 Control::Start => {
                     if let Some(start) = self.start {
@@ -63,7 +64,6 @@ fn main() -> Result<(), mygui_gtk::Error> {
                     dur.as_secs(),
                     dur.subsec_millis()
                 )).unwrap();
-                println!("dur: {}", &self.dur_buf);
                 self.display.set_text(tk, &self.dur_buf);
             }
         }
@@ -81,8 +81,7 @@ fn main() -> Result<(), mygui_gtk::Error> {
     
     let mut window = SimpleWindow::new(stopwatch);
     
-    window.add_callback(CallbackCond::TimeoutMs(100),
-            |window, tk| window.get_mut().on_tick(tk) );
+    window.add_callback(CallbackCond::TimeoutMs(16), |w, tk| w.on_tick(tk) );
     
     let mut toolkit = mygui_gtk::Toolkit::new()?;
     toolkit.add(window);
