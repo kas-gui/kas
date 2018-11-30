@@ -24,32 +24,38 @@ enum Key {
 }
 
 fn main() -> Result<(), mygui_gtk::Error> {
-    let buttons = make_widget!(grid => Key;
-        #[widget(col = 0, row = 0)] _ = TextButton::new("clear", || Key::Clear),
-        #[widget(col = 1, row = 0)] _ = TextButton::new("÷", || Key::Divide),
-        #[widget(col = 2, row = 0)] _ = TextButton::new("×", || Key::Multiply),
-        #[widget(col = 3, row = 0)] _ = TextButton::new("−", || Key::Subtract),
-        #[widget(col = 0, row = 1)] _ = TextButton::new("7", || Key::Char(48 + 7)),
-        #[widget(col = 1, row = 1)] _ = TextButton::new("8", || Key::Char(48 + 8)),
-        #[widget(col = 2, row = 1)] _ = TextButton::new("9", || Key::Char(48 + 9)),
-        #[widget(col = 3, row = 1, rspan = 2)] _ = TextButton::new("+", || Key::Add),
-        #[widget(col = 0, row = 2)] _ = TextButton::new("4", || Key::Char(48 + 4)),
-        #[widget(col = 1, row = 2)] _ = TextButton::new("5", || Key::Char(48 + 5)),
-        #[widget(col = 2, row = 2)] _ = TextButton::new("6", || Key::Char(48 + 6)),
-        #[widget(col = 0, row = 3)] _ = TextButton::new("1", || Key::Char(48 + 1)),
-        #[widget(col = 1, row = 3)] _ = TextButton::new("2", || Key::Char(48 + 2)),
-        #[widget(col = 2, row = 3)] _ = TextButton::new("3", || Key::Char(48 + 3)),
-        #[widget(col = 3, row = 3, rspan = 2)] _ = TextButton::new("=", || Key::Equals),
-        #[widget(col = 0, row = 4, cspan = 2)] _ = TextButton::new("0", || Key::Char(48 + 0)),
-        #[widget(col = 2, row = 4)] _ = TextButton::new(".", || Key::Char(46));
-    );
-
-    let window = SimpleWindow::new(make_widget!(vertical => NoResponse;
+    let buttons = make_widget!{
+        grid => Key;
+        struct {
+            #[widget(col = 0, row = 0)] _ = TextButton::new("clear", || Key::Clear),
+            #[widget(col = 1, row = 0)] _ = TextButton::new("÷", || Key::Divide),
+            #[widget(col = 2, row = 0)] _ = TextButton::new("×", || Key::Multiply),
+            #[widget(col = 3, row = 0)] _ = TextButton::new("−", || Key::Subtract),
+            #[widget(col = 0, row = 1)] _ = TextButton::new("7", || Key::Char(48 + 7)),
+            #[widget(col = 1, row = 1)] _ = TextButton::new("8", || Key::Char(48 + 8)),
+            #[widget(col = 2, row = 1)] _ = TextButton::new("9", || Key::Char(48 + 9)),
+            #[widget(col = 3, row = 1, rspan = 2)] _ = TextButton::new("+", || Key::Add),
+            #[widget(col = 0, row = 2)] _ = TextButton::new("4", || Key::Char(48 + 4)),
+            #[widget(col = 1, row = 2)] _ = TextButton::new("5", || Key::Char(48 + 5)),
+            #[widget(col = 2, row = 2)] _ = TextButton::new("6", || Key::Char(48 + 6)),
+            #[widget(col = 0, row = 3)] _ = TextButton::new("1", || Key::Char(48 + 1)),
+            #[widget(col = 1, row = 3)] _ = TextButton::new("2", || Key::Char(48 + 2)),
+            #[widget(col = 2, row = 3)] _ = TextButton::new("3", || Key::Char(48 + 3)),
+            #[widget(col = 3, row = 3, rspan = 2)] _ = TextButton::new("=", || Key::Equals),
+            #[widget(col = 0, row = 4, cspan = 2)] _ = TextButton::new("0", || Key::Char(48 + 0)),
+            #[widget(col = 2, row = 4)] _ = TextButton::new(".", || Key::Char(46)),
+        }
+    };
+    let content = make_widget!{
+        vertical => NoResponse;
+        struct {
             // #[widget] state: Text = Text::from("0"),
             // #[widget] buf: Text = Text::from("") ,
             #[widget] display: Entry = Entry::new(false, "0".to_string()),
             #[widget(handler = handle_button)] buttons -> Key = buttons,
-            calc: Calculator = Calculator::new();
+            calc: Calculator = Calculator::new(),
+        }
+        impl {
             fn handle_button(&mut self, tk: &TkWidget, msg: Key) -> NoResponse {
                 if self.calc.handle(msg) {
                     // self.state.set_text(tk, &self.calc.state_str());
@@ -58,7 +64,9 @@ fn main() -> Result<(), mygui_gtk::Error> {
                 }
                 NoResponse
             }
-        ));
+        }
+    };
+    let window = SimpleWindow::new(content);
 
     let mut toolkit = mygui_gtk::Toolkit::new()?;
     toolkit.add(window);

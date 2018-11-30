@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use mygui::control::TextButton;
 use mygui::display::Text;
 use mygui::event::{Handler, NoResponse};
-use mygui::macros::{NoResponse, Widget};
+use mygui::macros::{NoResponse, Widget, make_widget};
 use mygui::{Class, CoreData, Widget, SimpleWindow, Toolkit, TkWidget, CallbackCond};
 
 #[derive(Debug, NoResponse)]
@@ -19,14 +19,19 @@ enum Control {
 }
 
 fn main() -> Result<(), mygui_gtk::Error> {
+    trait SetText {
+        fn set_text(&mut self, tk: &TkWidget, text: &str);
+    }
+    
     #[layout(horizontal)]
     #[widget(class = Class::Container)]
     #[handler(response = NoResponse, generics = <>
-        where BR: Handler<Response = Control>, BS: Handler<Response = Control>)]
+        where BR: Handler<Response = Control>, BS: Handler<Response = Control>,
+        D: Handler<Response = NoResponse>)]
     #[derive(Clone, Debug, Widget)]
-    struct Stopwatch<BR: Widget, BS: Widget> {
+    struct Stopwatch<BR: Widget, BS: Widget, D: Widget + SetText> {
         #[core] core: CoreData,
-        #[widget] display: Text,
+        #[widget] display: D,
         #[widget(handler = handle_button)] b_reset: BR,
         #[widget(handler = handle_button)] b_start: BS,
         saved: Duration,
@@ -34,7 +39,7 @@ fn main() -> Result<(), mygui_gtk::Error> {
         dur_buf: String,
     }
     
-    impl<BR: Widget, BS: Widget> Stopwatch<BR, BS> {
+    impl<BR: Widget, BS: Widget, D: Widget + SetText> Stopwatch<BR, BS, D> {
         fn handle_button(&mut self, tk: &TkWidget, msg: Control) -> NoResponse {
             match msg {
                 Control::None => {}
@@ -71,7 +76,18 @@ fn main() -> Result<(), mygui_gtk::Error> {
     
     let stopwatch = Stopwatch {
         core: CoreData::default(),
-        display: Text::from("0.000"),
+        display: make_widget!{
+            single => NoResponse;
+            class = Class::Frame;
+            struct {
+                #[widget] display: Text = Text::from("0.000"),
+            }
+            impl SetText {
+                fn set_text(&mut self, tk: &TkWidget, text: &str) {
+                    self.display.set_text(tk, text);
+                }
+            }
+        },
         b_reset: TextButton::new("⏮", || Control::Reset),
         b_start: TextButton::new("⏯", || Control::Start),
         saved: Duration::default(),

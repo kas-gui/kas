@@ -1,9 +1,9 @@
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, TokenStreamExt, ToTokens};
-use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Index, Lit, Member, Type, ImplItemMethod};
-use syn::{parse_quote, bracketed, parenthesized};
+use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Index, Lit, Member, Path, Type, TypePath, ImplItemMethod};
+use syn::{parse_quote, braced, bracketed, parenthesized};
 use syn::parse::{Error, Parse, ParseStream, Result};
-use syn::token::{Brace, Colon, Comma, Eq, FatArrow, Paren, Pound, RArrow, Semi, Underscore, Where};
+use syn::token::{Brace, Colon, Comma, Eq, FatArrow, Impl, Paren, Pound, RArrow, Semi, Struct, Underscore, Where};
 use syn::spanned::Spanned;
 
 #[derive(Debug)]
@@ -398,12 +398,14 @@ pub struct WidgetField {
 pub struct MakeWidget {
     // layout direction
     pub layout: Ident,
+    // widget class
+    pub class: Option<Path>,
     // response type
     pub response: Type,
     // child widgets and data fields
     pub fields: Vec<WidgetField>,
-    // methods defined on the widget
-    pub methods: Vec<ImplItemMethod>,
+    // impl blocks on the widget
+    pub impls: Vec<(Option<TypePath>, Vec<ImplItemMethod>)>,
 }
 
 impl Parse for MakeWidget {
@@ -414,42 +416,58 @@ impl Parse for MakeWidget {
         let response: Type = input.parse()?;
         let _: Semi = input.parse()?;
         
+        // TODO: revise attributes?
+        let class = if input.peek(kw::class) {
+            let _: kw::class = input.parse()?;
+            let _: Eq = input.parse()?;
+            let class: Path = input.parse()?;
+            let _: Semi = input.parse()?;
+            Some(class)
+        } else {
+            None
+        };
+        
+        let _: Struct = input.parse()?;
+        let content;
+        let _ = braced!(content in input);
         let mut fields = vec![];
-        loop {
-            if input.peek(Semi) {
+        
+        while !content.is_empty() {
+            fields.push(content.parse::<WidgetField>()?);
+            
+            if content.is_empty() {
                 break;
             }
+            let _: Comma = content.parse()?;
+        }
+        
+        let mut impls = vec![];
+        while !input.is_empty() {
+            let _: Impl = input.parse()?;
             
-            fields.push(input.parse::<WidgetField>()?);
-            
-            let lookahead = input.lookahead1();
-            if lookahead.peek(Semi) {
-                break;
-            } else if lookahead.peek(Comma) {
-                let _: Comma = input.parse()?;
-                continue;
+            let target = if input.peek(Brace) {
+                None
             } else {
-                return Err(lookahead.error());
-            }
-        }
-        
-        let _: Semi = input.parse()?;
-        
-        let mut methods = vec![];
-        loop {
-            if input.is_empty() {
-                break;
+                Some(input.parse::<TypePath>()?)
+            };
+            
+            let content;
+            let _ = braced!(content in input);
+            let mut methods = vec![];
+            
+            while !content.is_empty() {
+                methods.push(content.parse::<ImplItemMethod>()?);
+                
+                if content.is_empty() {
+                    break;
+                }
+                let _: Comma = content.parse()?;
             }
             
-            methods.push(input.parse::<ImplItemMethod>()?);
-            
-            if input.is_empty() {
-                break;
-            }
-            let _: Comma = input.parse()?;
+            impls.push((target, methods));
         }
         
-        Ok(MakeWidget { layout, response, fields, methods })
+        Ok(MakeWidget { layout, class, response, fields, impls })
     }
 }
 

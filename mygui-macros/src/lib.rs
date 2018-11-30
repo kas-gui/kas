@@ -283,9 +283,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// Syntax should match the following Backus-Naur Form:
 /// 
 /// ```bnf
-/// <input>     ::= <layout> "=>" <response> ";" <fields> ";" <funcs>
+/// <input>     ::= <layout> "=>" <response> ";" <class_spec> <fields> ";" <funcs>
 /// <layout>    ::= "single" | "horizontal" | "vertical" | "grid"
 /// <response>  ::= <type>
+/// <class_spec> ::= "" | "class" "=" <path> ";"
 /// <fields>    ::= "" | <field> | <field> "," <fields>
 /// <field>     ::= <w_attr> <opt_ident> <field_ty> = <expr>
 /// <opt_ident> ::= "_" | <ident>
@@ -298,8 +299,8 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// <funcs>     ::= "" | <func> <funcs>
 /// ```
 /// where `<type>` is a type expression, `<expr>` is a (value) expression,
-/// `<ident>` is an identifier, `<lit>` is a literal, and `<func>` is a Rust
-/// method definition. `""` is the empty string (i.e. nothing).
+/// `<ident>` is an identifier, `<lit>` is a literal, `<path>` is a path, and
+/// `<func>` is a Rust method definition. `""` is the empty string (i.e. nothing).
 /// 
 /// The effect of this macro is to create an anonymous struct with the above
 /// fields (plus an implicit `core`), implement [`Core`], [`Layout`], [`Widget`]
@@ -422,32 +423,38 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         quote!{ where #handler_clauses }
     };
     
-    let impl_methods = if args.methods.is_empty() {
-        quote!{}
-    } else {
-        let mut impls = TokenStream::new();
-        for method in args.methods {
-            impls.append_all(std::iter::once(method));
+    let mut impls = TokenStream::new();
+    for impl_block in args.impls {
+        let mut contents = TokenStream::new();
+        for method in impl_block.1 {
+            contents.append_all(std::iter::once(method));
         }
-        quote!{
-            impl<#gen_ptrs> AnonWidget<#gen_tys> {
-                #impls
+        let target = if let Some(t) = impl_block.0 {
+            quote!{ #t for }
+        } else {
+            quote!{}
+        };
+        impls.append_all(quote!{
+            impl<#gen_ptrs> #target AnonWidget<#gen_tys> {
+                #contents
             }
-        }
+        });
     };
+    
+    let class = args.class.unwrap_or_else(|| parse_quote!{ #c::Class::Container });
     
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote!{ {
         #[layout(#layout)]
-        #[widget(class = #c::Class::Container)]
+        #[widget(class = #class)]
         #[handler(response = #response, generics = < #handler_extra > #handler_where)]
         #[derive(Clone, Debug, #c::macros::Widget)]
         struct AnonWidget<#gen_ptrs> {
             #field_toks
         }
         
-        #impl_methods
+        #impls
 
         AnonWidget {
             #field_val_toks

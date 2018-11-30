@@ -7,5 +7,6 @@ pub enum Class {
     // Dialog,
     Text,
     Entry,
+    Frame,
     Window,
 }

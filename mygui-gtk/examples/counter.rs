@@ -16,14 +16,22 @@ enum Message {
 }
 
 fn main() -> Result<(), mygui_gtk::Error> {
-    let buttons = make_widget!(horizontal => Message;
-        #[widget] _ = TextButton::new("−", || Message::Decr),
-        #[widget] _ = TextButton::new("+", || Message::Incr);
+    let buttons = make_widget!(
+        layout = horizontal;
+        response = Message;
+        struct {
+            #[widget] _ = TextButton::new("−", || Message::Decr),
+            #[widget] _ = TextButton::new("+", || Message::Incr),
+        }
     );
-    let window = SimpleWindow::new(make_widget!(vertical => NoResponse;
+    let window = SimpleWindow::new(make_widget!(
+        #[layout(vertical)]
+        struct {
             #[widget] display: Text = Text::from("0"),
             #[widget(handler = handle_button)] buttons -> Message = buttons,
-            counter: usize = 0;
+            counter: usize = 0,
+        }
+        impl {
             fn handle_button(&mut self, tk: &TkWidget, msg: Message) -> NoResponse {
                 match msg {
                     Message::None => (),
@@ -38,7 +46,7 @@ fn main() -> Result<(), mygui_gtk::Error> {
                 };
                 NoResponse
             }
-        ));
+        }));
 
     let mut toolkit = mygui_gtk::Toolkit::new()?;
     toolkit.add(window);

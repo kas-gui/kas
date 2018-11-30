@@ -120,6 +120,11 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                     }
                     entry.upcast::<gtk::Widget>()
                 }
+                Class::Frame => {
+                    // GTK frame with no label
+                    gtk::Frame::new(None)
+                            .upcast::<gtk::Widget>()
+                }
                 Class::Window => panic!(),  // TODO embedded windows?
             };
             
