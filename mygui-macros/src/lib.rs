@@ -9,8 +9,9 @@ use std::env;
 use std::fmt::Write;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, TokenStreamExt};
-use syn::{DeriveInput, Ident, Type, TypePath};
+use syn::{DeriveInput, FnArg, Ident, ImplItemMethod, Type, TypePath};
 use syn::{parse_quote, parse_macro_input};
+    use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::punctuated::Punctuated;
 
@@ -290,7 +291,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// <fields>    ::= "" | <field> | <field> "," <fields>
 /// <field>     ::= <w_attr> <opt_ident> <field_ty> = <expr>
 /// <opt_ident> ::= "_" | <ident>
-/// <field_ty>  ::= "" | ":" <type> | "->" <type>
+/// <field_ty>  ::= "" | ":" <type> | ":" impl <bound> | "->" <type> | ":" impl <bound> "->" <type>
 /// <w_attr>    ::= "" | "#" "[" <widget> <w_params> "]"
 /// <w_params>  ::= "" | "(" <w_args> ")"
 /// <w_args>    ::= <w_arg> | <w_arg> "," <w_args>
@@ -299,7 +300,8 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// <funcs>     ::= "" | <func> <funcs>
 /// ```
 /// where `<type>` is a type expression, `<expr>` is a (value) expression,
-/// `<ident>` is an identifier, `<lit>` is a literal, `<path>` is a path, and
+/// `<ident>` is an identifier, `<lit>` is a literal, `<path>` is a path,
+/// `<bound>` is a trait object bound, and
 /// `<func>` is a Rust method definition. `""` is the empty string (i.e. nothing).
 /// 
 /// The effect of this macro is to create an anonymous struct with the above
@@ -340,7 +342,70 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// [`Handler`]: ../mygui/event/trait.Handler.html
 #[proc_macro]
 pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let args = parse_macro_input!(input as args::MakeWidget);
+    let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
+    // find type of handler's message; return None on error
+    let mut find_handler_ty = |handler: &Ident,
+            impls: &Vec<(Option<TypePath>, Vec<ImplItemMethod>)>|
+            -> Option<Type>
+    {
+        // check the buffer in case we did this already
+        for (ident, ty) in &find_handler_ty_buf {
+            if ident == handler {
+                return Some(ty.clone());
+            }
+        }
+        
+        let name = handler.to_string(); // we can only compare an Ident to a &str!
+        let mut x: Option<(Ident, Type)> = None;
+        
+        for impl_block in impls {
+            for f in &impl_block.1 {
+                if f.sig.ident == name {
+                    if let Some(x) = x {
+                        handler.span()
+                            .unstable()
+                            .error("multiple methods with this name")
+                            .emit();
+                        x.0.span()
+                            .unstable()
+                            .error("first method with this name")
+                            .emit();
+                        f.sig.ident.span()
+                            .unstable()
+                            .error("second method with this name")
+                            .emit();
+                        return None;
+                    }
+                    if f.sig.decl.inputs.len() != 3 {
+                        f.sig.span()
+                            .unstable()
+                            .error("handler functions must have signature: fn handler(&mut self, tk: &TkWidget, msg: T)")
+                            .emit();
+                        return None;
+                    }
+                    let pair = f.sig.decl.inputs.last().unwrap();
+                    let arg = pair.value();
+                    let ty = match arg {
+                        FnArg::Captured(arg) => arg.ty.clone(),
+                        _ => panic!("expected captured argument"),  // nothing else is possible here?
+                    };
+                    x = Some((f.sig.ident.clone(), ty));
+                }
+            }
+        }
+        if let Some(x) = x {
+            find_handler_ty_buf.push((handler.clone(), x.1.clone()));
+            Some(x.1)
+        } else {
+            handler.span()
+                .unstable()
+                .error("no methods with this name found")
+                .emit();
+            None
+        }
+    };
+    
+    let mut args = parse_macro_input!(input as args::MakeWidget);
     
     // Used to make fresh identifiers for generic types
     let mut name_buf = String::with_capacity(32);
@@ -365,7 +430,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let layout = &args.layout;
     let response = &args.response;
     
-    for (index, field) in args.fields.iter().enumerate() {
+    for (index, field) in args.fields.drain(..).enumerate() {
         let attr = &field.widget_attr;
         
         let ident = match &field.ident {
@@ -377,19 +442,28 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
         };
         
-        let ty: Type = match &field.ty {
-            ChildType::Type(ty) => ty.clone(),
-            cty @ ChildType::Generic |
-            cty @ ChildType::Response(_) => {
+        let ty: Type = match field.ty {
+            ChildType::Fixed(ty) => ty.clone(),
+            ChildType::Generic(gen_response, gen_bound) => {
                 name_buf.clear();
                 name_buf.write_fmt(format_args!("MWAnon{}", index)).unwrap();
                 let ty = Ident::new(&name_buf, Span::call_site());
                 
                 gen_tys.push(ty.clone());
-                if attr.is_some() {
-                    gen_ptrs.push(quote!{ #ty: #c::Widget });
-                    match cty {
-                        ChildType::Generic => {
+                if let Some(ref wattr) = attr {
+                    if let Some(tyr) = gen_response {
+                        handler_clauses.push(quote!{ #ty: #c::event::Handler<Response = #tyr> });
+                    } else {
+                        // No typing. If a handler is specified, then the child must implement
+                        // Handler<Response = X> where the handler takes type X; otherwise
+                        // we use `msg.into()` and this conversion must be supported.
+                        if let Some(ref handler) = wattr.args.handler {
+                            if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
+                                handler_clauses.push(quote!{ #ty: #c::event::Handler<Response = #ty_bound> });
+                            } else {
+                                return quote!{}.into(); // exit after emitting error
+                            }
+                        } else {
                             name_buf.push_str("R");
                             let tyr = Ident::new(&name_buf, Span::call_site());
                             handler_extra.push(tyr.clone());
@@ -397,10 +471,13 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             handler_clauses.push(quote!{ #tyr: From<#c::event::NoResponse> });
                             handler_clauses.push(quote!{ #response: From<#tyr> });
                         }
-                        ChildType::Response(tyr) => {
-                            handler_clauses.push(quote!{ #ty: #c::event::Handler<Response = #tyr> });
-                        }
-                        _ => unreachable!()
+                    }
+                    
+                    if let Some(mut bound) = gen_bound {
+                        bound.bounds.push(parse_quote!{ #c::Widget });
+                        gen_ptrs.push(quote!{ #ty: #bound });
+                    } else {
+                        gen_ptrs.push(quote!{ #ty: #c::Widget });
                     }
                 } else {
                     gen_ptrs.push(quote!{ #ty });

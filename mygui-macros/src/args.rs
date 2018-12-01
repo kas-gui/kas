@@ -1,6 +1,6 @@
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, TokenStreamExt, ToTokens};
-use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Index, Lit, Member, Path, Type, TypePath, ImplItemMethod};
+use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Index, Lit, Member, Path, TypeTraitObject, Type, TypePath, ImplItemMethod};
 use syn::{parse_quote, braced, bracketed, parenthesized};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::token::{Brace, Colon, Comma, Eq, FatArrow, Impl, Paren, Pound, RArrow, Semi, Struct, Underscore, Where};
@@ -383,9 +383,10 @@ impl Parse for HandlerArgs {
 }
 
 pub enum ChildType {
-    Generic,
-    Type(Type),
-    Response(Type),  // generic but with defined handler response type
+    Fixed(Type),     // fixed type
+    // Generic, optionally with specified handler response type,
+    // optionally with an additional trait bound.
+    Generic(Option<Type>, Option<TypeTraitObject>),
 }
 
 pub struct WidgetField {
@@ -457,11 +458,6 @@ impl Parse for MakeWidget {
             
             while !content.is_empty() {
                 methods.push(content.parse::<ImplItemMethod>()?);
-                
-                if content.is_empty() {
-                    break;
-                }
-                let _: Comma = content.parse()?;
             }
             
             impls.push((target, methods));
@@ -497,19 +493,37 @@ impl Parse for WidgetField {
         };
         
         // Note: Colon matches `::` but that results in confusing error messages
-        let ty = if input.peek(Colon) && !input.peek2(Colon) {
+        let mut ty = if input.peek(Colon) && !input.peek2(Colon) {
             let _: Colon = input.parse()?;
-            ChildType::Type(input.parse()?)
-        } else if input.peek(RArrow) {
+            if input.peek(Impl) {
+                // generic with trait bound, optionally with response type
+                let _: Impl = input.parse()?;
+                let bound: TypeTraitObject = input.parse()?;
+                ChildType::Generic(None, Some(bound))
+            } else {
+                ChildType::Fixed(input.parse()?)
+            }
+        } else {
+            ChildType::Generic(None, None)
+        };
+        
+        if input.peek(RArrow) {
             let arrow: RArrow = input.parse()?;
             if !widget_attr.is_some() {
                 return Err(Error::new(arrow.span(),
-                    "can only use `ident -> Response` type restriction on widgets"))
+                    "can only use `-> Response` type restriction on widgets"))
             }
-            ChildType::Response(input.parse()?)
-        } else {
-            ChildType::Generic
-        };
+            let response: Type = input.parse()?;
+            match &mut ty {
+                ChildType::Fixed(_) => {
+                    return Err(Error::new(arrow.span(),
+                        "cannot use `-> Response` type restriction with fixed type"));
+                }
+                ChildType::Generic(ref mut gen_r, _) => {
+                    *gen_r = Some(response);
+                }
+            }
+        }
         
         let _: Eq = input.parse()?;
         let value: Expr = input.parse()?;
