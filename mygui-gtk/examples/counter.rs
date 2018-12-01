@@ -17,15 +17,14 @@ enum Message {
 
 fn main() -> Result<(), mygui_gtk::Error> {
     let buttons = make_widget!(
-        layout = horizontal;
-        response = Message;
+        horizontal => Message;
         struct {
             #[widget] _ = TextButton::new("−", || Message::Decr),
             #[widget] _ = TextButton::new("+", || Message::Incr),
         }
     );
     let window = SimpleWindow::new(make_widget!(
-        #[layout(vertical)]
+        vertical => NoResponse;
         struct {
             #[widget] display: Text = Text::from("0"),
             #[widget(handler = handle_button)] buttons -> Message = buttons,

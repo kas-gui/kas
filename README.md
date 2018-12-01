@@ -29,6 +29,9 @@ particular this means the library will not be easy to use via FFI (e.g. from C):
     functionality directly, this may be verbose and monotonous; macros can be
     used to construct the necessary implementations more succinctly
 
+It is also worth noting that we currently make no attempt to support building
+GUIs at run-time. This should eventually be possible to some extent, but is not
+a current goal.
 
 Components
 ---------------
