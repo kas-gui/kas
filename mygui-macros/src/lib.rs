@@ -355,12 +355,11 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
         }
         
-        let name = handler.to_string(); // we can only compare an Ident to a &str!
         let mut x: Option<(Ident, Type)> = None;
         
         for impl_block in impls {
             for f in &impl_block.1 {
-                if f.sig.ident == name {
+                if f.sig.ident == *handler {
                     if let Some(x) = x {
                         handler.span()
                             .unstable()
