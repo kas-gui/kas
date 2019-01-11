@@ -42,7 +42,7 @@ pub trait Window: Widget {
     /// and return a user-defined message.
     // NOTE: we could instead add the trait bound Handler<Response = GuiResponse>
     // but (1) Rust doesn't yet support mult-trait objects
-    // and (2) Rust erronously claims that Response isn't specified in Box<Window>
+    // and (2) https://github.com/rust-lang/rust/issues/57218
     fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> GuiResponse;
     
     /// Get a list of available callbacks.
