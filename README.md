@@ -1,18 +1,55 @@
 My GUI library
 ==========
 
+MyGUI is not a GUI toolkit in the traditional sense — instead it provides an
+abstraction layer between an application's GUI description and the toolkit.
 
-Goals
-------
+Current features:
+
+-   very succinct specification of GUIs via procedural macros
+-   hierarchical widget tree *without* backreferences to parents
+-   a minimal selection of widgets
+-   (planned) easy switching between toolkits (backends)
+-   low memory and CPU usage
+-   an **unstable API**: this is still an early prototype
+
+Planned features:
+
+-   a Rust-native toolkit using OpenGL or Vulkan rendering
+-   wrappers for system-native toolkits
+-   a full widget selection
+
+
+Background
+-----------
+
+Rust has several existing GUI tools / projects:
+
+-   [gtk-rs] — high quality bindings for GTK+ 3;
+    app code feels similar to GTK C code but with increased type safety
+-   [Relm] — a Model-Update-View design inspired by Elm built over [gtk-rs]
+-   [Conrod] — a cached immediate-mode GUI
+-   [Azul] — a function-oriented GUI built over a DOM
+-   [Druid] — Data-oriented Rust User Interface Design toolkit
+
+[gtk-rs]: https://gtk-rs.org/
+[Relm]: https://github.com/antoyo/relm
+[Conrod]: https://github.com/PistonDevelopers/conrod
+[Azul]: https://github.com/maps4print/azul
+[Druid]: https://github.com/xi-editor/druid
+
+Motivation
+----------
 
 Rust currently has a smattering of GUI libraries, but none currently offer the
 full complement of features which really show off the strengths of the Rust
 language:
 
 -   **safe**: GUIs are complex, high-level constructions; they really should
-    make it easy to write memory- and thread-safe code
--   **easy**: while the behaviour expressed by GUIs is complex, the ideas behind
-    them are usually not; it should therefore be easy to write typical GUIs
+    make it easy to write memory-safe, and thread-safe and correct code
+-   **simple**: while the behaviour expressed by GUIs is complex, the ideas behind
+    them are usually not; GUI app code should consist of a simple description
+    of the GUI with minimal bindings to application logic
 -   **flexible building blocks**: the Rust language has succeeded in keeping the
     language specification *moderately* simple while buliding a rich library
     on top of this; a Rust GUI library should do the same
@@ -36,31 +73,29 @@ a current goal.
 Components
 ---------------
 
-A GUI system needs the following components:
+A GUI system needs at least the following components:
 
--   a windowing library
--   a graphics drawing library (may or may not be part of above)
--   widget dimensions and graphics *(the theme)*
--   widget sizing and positioning code *(the layout system)*
+-   a windowing library (e.g. winit or GDK)
+-   a graphics drawing library (provided by the windowing library directly or
+    via another abstraction, e.g. OpenGL)
+-   widget drawing (dimensions and graphics — the theme)
+-   widget sizing and positioning code — the layout system
 -   event handling framework
--   GUI description *(the application)*
+-   GUI description — the application
 
-This library mostly concerns the "glue" necessary to tie all these components
-together and allow easy specification of the application. Specifically, this
-library provides:
+This library focuses on providing a clean API for the last item (the
+application) via an abstraction layer over widget drawing, positioning and
+event handling. Specifically, this library provides:
 
 -   a *toolkit API*, whose implementation provides the windowing API and widget
     dimensions and graphics, and optionally layout and/or event handling code
--   an optional layout system
+-   an optional widget layout system
 -   an optional event handling system
 -   an API and tools to help users build their application GUIs
 
-TODO: the layout system and event handling system design is still in flux;
-unknown whether above goals can be met.
-
-The toolkit may be implemented as a wrapper around another GUI toolkit
-(initially targetting GTK); later another implementation will be built with an
-API allowing theme implementation in yet another lib.
+This approach allows both the usage of a high-level GUI toolkit doing all the
+heavy lifting (the first toolkit being a wrapper around GTK) and implementation
+of a complete toolkit from scratch (in theory; this has yet to be done).
 
 This design should therefore eventually support building applications using
 native widget rendering on all major desktops from a single source, as well as
@@ -71,85 +106,49 @@ performance and portability.
 Widgets
 --------
 
-Core building block: widgets. These have: internal data, user data, event
-handling, sub-widget positioning, ...
+Widget behaviour is described via four traits, all of which are typically
+implemented via macro:
 
-### Facilities
-
-Internal data: data for internal use by the lib (e.g. position offset).
-TBD how users deal with this when writing their own types.
-
-User data: widgets may carry user-defined data specified via a constructor and
-accessible during event handling.
-
-Event handling: use a series of handlers like `handle_new_location`,
-`handle_mouse_click`, `handle_key_entry`, etc. All should have a default
-implementation from the trait, usually doing nothing. User can implement as
-necessary. Event handlers can access user data and call functions on child
-widgets.
-
-User-defined return value: all event handlers return a result, often `None`
-but potentially other predefined things (e.g. `Resize`, `Close`), or user
-defined values. The user-defined type must allow construction from the core
-event type (via `From`) and optional coercion back to it (via `TryFrom`).
-
-Handling event return values: the user should be able to catch return values
-from sub-widget event handling in any parent widget (TBD). This handler can
-access user data and call functions on child-widgets.
-
-Sub-widget positioning: this is only something that needs to happen on
-construction and on adjustment; at other times cached offsets may be used.
-Implement a "layout" trait with functions for getting sizing and calculating
-offsets for sub-widgets (recursively), etc.
-
-### Construction
-
-A widget will normally be a struct with a set of associated trait
-implementations. The struct's fields will hold internal data, user data and
-sub-widgets. Implementations may use these fields directly.
+-   The `Core` trait handles access to common, core data; this is typically
+    implemented over a `CoreData` struct field.
+-   There are two variants of the `Layout` trait; this must be implemented by
+    macro since it requires access to non-public parts of the API.
+-   The `Widget` trait handles a few common operations implemented over the
+    above traits, including access to child widgets.
+-   The `Handler` trait implements event handling. This trait uses an associated
+    type to allow user-defined return values, which may be caught and handled
+    by a parent widget.
 
 ### Built-in widgets
 
-The library will define many built-in widgets. These will likely be templated
-structs. Users should be able to pass user data and callbacks to handle
-common actions (e.g. button press or text field change). Some will allow
-sub-widgets.
+The library provides some standard widgets: a text label, a push-button, etc.
+Currently only a few are available; this should be expanded to a full set.
 
-Examples:
+Some of these standard widgets are templated in order to allow user-defined
+payloads to be returned from handled events; e.g.:
 
-```rust
-let window = Window::new(
-    "Simple Window",    // title
-    (),     // user data
-    Button::new(    // single sub-widget
-        "Close",    // button text
-        || Response::Close  // closure called on press, returning Close result
-    ));
-```
+    TextButton::new("+", || Message::Incr)
 
-### User-defined widgets (low level)
+defines a push-button labelled `+` which returns the enum value `Message::Incr`
+when clicked. This allows application logic to be implemented on a parent widget
+which encapsulates its controls.
 
-Users may define their own widgets. This will be useful for handling event
-actions as well as building custom types of widget.
+### Layout widgets and make_widget
 
-Although sub-widgets will often have a single compile-time-known sub-type,
-type templating will often be useful (to avoid having to describe complex types)
-and in many cases even necessary (because closure types are not nameable).
+Simple (or complex) widgets are typically encapsulated in parent widgets, which
+position each sub-widget relative to the self and encapsulate event handling.
+Typically such widgets are single-use. This library provides a convenient method
+of constructing them: the `make_widget` macro.
 
-```rust
-struct MyWidget<B: Widget> {
-    text: Text,
-    button: B,
-    other_data: i32,
-}
-```
+This macro creates a new struct type, implements all widget traits for this
+type, then constructs a new instance using the given values. Note that in many
+cases the types of sub-widgets need not be explicitly given and often the names
+of fields are not important; this macro allows both to be omitted.
 
-Macros are available to facilitate implementation of required traits, in
-particular `make_widget`. Additionally, `impl_core` and `impl_layout`
-can be used to assist implementation. These are still under development;
-see the examples (`mygui-gtk/examples`).
+The macro syntax is complex and likely to be refined; see the examples and the
+API documentation for details.
 
-### User-defined widgets (high level)
+### Custom widgets
 
-TBD: a macro to construct complex new widgets (all the above, covering at least
-the common cases).
+The `make_widget` macro mentioned above is merely provided for convenience; its
+usage is not required (compare the `counter` and `counter_expanded` examples).
