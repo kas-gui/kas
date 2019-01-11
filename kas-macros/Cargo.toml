@@ -1,5 +1,5 @@
 [package]
-name = "mygui-macros"
+name = "kas-macros"
 version = "0.1.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"

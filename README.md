@@ -1,7 +1,8 @@
-My GUI library
+KAS GUI
 ==========
 
-MyGUI is not a GUI toolkit in the traditional sense — instead it provides an
+The toolKit Abstraction System
+is not a GUI toolkit in the traditional sense — instead it provides an
 abstraction layer between an application's GUI description and the toolkit.
 
 Current features:

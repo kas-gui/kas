@@ -2,11 +2,11 @@
 #![feature(unrestricted_attribute_tokens)]
 #![feature(proc_macro_hygiene)]
 
-use mygui::control::TextButton;
-use mygui::display::Text;
-use mygui::event::{Handler, NoResponse};
-use mygui::macros::{NoResponse, Widget};
-use mygui::{SimpleWindow, Toolkit, TkWidget, Class, CoreData, Widget};
+use kas::control::TextButton;
+use kas::display::Text;
+use kas::event::{Handler, NoResponse};
+use kas::macros::{NoResponse, Widget};
+use kas::{SimpleWindow, Toolkit, TkWidget, Class, CoreData, Widget};
 
 #[derive(Debug, NoResponse)]
 enum Message {
@@ -55,7 +55,7 @@ impl<B: Widget> Contents<B> {
 }
 
 
-fn main() -> Result<(), mygui_gtk::Error> {
+fn main() -> Result<(), kas_gtk::Error> {
     let buttons = Buttons {
         core: CoreData::default(),
         decr: TextButton::new("−", || Message::Decr),
@@ -71,7 +71,7 @@ fn main() -> Result<(), mygui_gtk::Error> {
     
     let window = SimpleWindow::new(contents);
 
-    let mut toolkit = mygui_gtk::Toolkit::new()?;
+    let mut toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add(window);
     toolkit.main();
     Ok(())

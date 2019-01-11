@@ -97,13 +97,13 @@ use self::args::ChildType;
 /// 
 /// Note: usage of this macro currently requires `#![feature(unrestricted_attribute_tokens)]`.
 /// 
-/// [`label`]: ../mygui/widget/trait.Widget.html#tymethod.label
-/// [`Class`]: ../mygui/widget/enum.Class.html
-/// [`Core`]: ../mygui/widget/trait.Core.html
-/// [`CoreData`]: ../mygui/widget/struct.CoreData.html
-/// [`Layout`]: ../mygui/widget/trait.Layout.html
-/// [`Widget`]: ../mygui/widget/trait.Widget.html
-/// [`Handler`]: ../mygui/event/trait.Handler.html
+/// [`label`]: ../kas/widget/trait.Widget.html#tymethod.label
+/// [`Class`]: ../kas/widget/enum.Class.html
+/// [`Core`]: ../kas/widget/trait.Core.html
+/// [`CoreData`]: ../kas/widget/struct.CoreData.html
+/// [`Layout`]: ../kas/widget/trait.Layout.html
+/// [`Widget`]: ../kas/widget/trait.Widget.html
+/// [`Handler`]: ../kas/event/trait.Handler.html
 #[proc_macro_derive(Widget, attributes(core, layout, widget, handler))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
@@ -336,10 +336,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// 
 /// Currently usage of this macro requires `#![feature(proc_macro_hygiene)]`.
 /// 
-/// [`Core`]: ../mygui/widget/trait.Core.html
-/// [`Layout`]: ../mygui/widget/trait.Layout.html
-/// [`Widget`]: ../mygui/widget/trait.Widget.html
-/// [`Handler`]: ../mygui/event/trait.Handler.html
+/// [`Core`]: ../kas/widget/trait.Core.html
+/// [`Layout`]: ../kas/widget/trait.Layout.html
+/// [`Widget`]: ../kas/widget/trait.Widget.html
+/// [`Handler`]: ../kas/event/trait.Handler.html
 #[proc_macro]
 pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
@@ -566,9 +566,9 @@ pub fn derive_no_response(input: proc_macro::TokenStream) -> proc_macro::TokenSt
 // Our stand-in for $crate. Imperfect, but works (excepting other crates in
 // the same package, i.e. doc-tests, examples, integration tests, benches).
 fn c() -> TokenStream {
-    if env::var("CARGO_PKG_NAME") == Ok("mygui".to_string()) {
+    if env::var("CARGO_PKG_NAME") == Ok("kas".to_string()) {
         parse_quote!( crate )
     } else {
-        parse_quote!( mygui )
+        parse_quote!( kas )
     }
 }

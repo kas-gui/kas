@@ -5,8 +5,8 @@ use std::{cell::RefCell, rc::Rc};
 use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt, EntryExt, EditableExt};
 #[cfg(not(feature = "layout"))] use gtk::GridExt;
 
-use mygui::event::{Action, GuiResponse};
-use mygui::{Class, Widget, CallbackCond};
+use kas::event::{Action, GuiResponse};
+use kas::{Class, Widget, CallbackCond};
 
 use crate::widget;
 use crate::tkd::WidgetAbstraction;
@@ -14,8 +14,8 @@ use crate::tkd::WidgetAbstraction;
 
 /// Per-window data
 pub(crate) struct Window {
-    /// The mygui window. Each is boxed since it must not move.
-    pub win: Rc<RefCell<mygui::Window>>,
+    /// The kas window. Each is boxed since it must not move.
+    pub win: Rc<RefCell<kas::Window>>,
     /// The GTK window
     pub gwin: gtk::Window,
     /// Range of widget numbers used, from first to last+1.
@@ -28,7 +28,7 @@ fn clear_tkd(widget: &mut Widget) {
 }
 
 // Clear TKD on all widgets to reduce pointer reference counts.
-// We can't implement Drop on mygui types directly since TkData is interpreted
+// We can't implement Drop on kas types directly since TkData is interpreted
 // by this lib.
 impl Drop for Window {
     fn drop(&mut self) {
@@ -61,7 +61,7 @@ impl WindowList {
     // Find first window with matching `gdk::Window`, run the closure, and
     // return the result, or `None` if no match.
     pub(crate) fn for_gdk_win<T, F>(&mut self, gdk_win: gdk::Window, f: F) -> Option<T>
-        where F: FnOnce(&mut mygui::Window, &mut gtk::Window) -> T
+        where F: FnOnce(&mut kas::Window, &mut gtk::Window) -> T
     {
         let gdk_win = Some(gdk_win);
         for item in self.windows.iter_mut() {
@@ -82,7 +82,7 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
             let gtk_child = match child.class() {
                 #[cfg(not(feature = "layout"))]
                 Class::Container => {
-                    use mygui::ChildLayout;
+                    use kas::ChildLayout;
                     match child.child_layout() {
                         ChildLayout::None |
                         ChildLayout::Horizontal =>
@@ -166,7 +166,7 @@ impl WindowList {
         }
     }
     
-    pub(crate) fn add_window(&mut self, win: Rc<RefCell<mygui::Window>>) {
+    pub(crate) fn add_window(&mut self, win: Rc<RefCell<kas::Window>>) {
         let gwin = gtk::Window::new(gtk::WindowType::Toplevel);
         
         let num0 = self.windows.last().map(|tw| tw.nums.1).unwrap_or(0);

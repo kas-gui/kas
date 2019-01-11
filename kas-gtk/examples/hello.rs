@@ -1,14 +1,14 @@
 //! Hello world example
 
-extern crate mygui;
-extern crate mygui_gtk;
+extern crate kas;
+extern crate kas_gtk;
 
-use mygui::display::Text;
-use mygui::dialog::{action_close, MessageBox};
+use kas::display::Text;
+use kas::dialog::{action_close, MessageBox};
 
-use mygui::Toolkit;
+use kas::Toolkit;
 
-fn main() -> Result<(), mygui_gtk::Error> {
+fn main() -> Result<(), kas_gtk::Error> {
     // Build widgets.
     // Message is a Window with an "Ok" button and notification status.
     // Each Window::new method creates objects then solves constraints.
@@ -18,7 +18,7 @@ fn main() -> Result<(), mygui_gtk::Error> {
         action_close,
     );
 
-    let mut toolkit = mygui_gtk::Toolkit::new()?;
+    let mut toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add(window);
     toolkit.main();
     Ok(())

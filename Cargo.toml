@@ -1,5 +1,5 @@
 [package]
-name = "mygui"
+name = "kas"
 version = "0.1.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
@@ -7,11 +7,11 @@ edition = "2018"
 [features]
 # Enable an internal layout solver. Currently this uses Cassowary.
 # Not required by all toolkits.
-layout = ["cassowary", "mygui-macros/cassowary"]
+layout = ["cassowary", "kas-macros/cassowary"]
 
 [dependencies]
 cassowary = { git = "https://github.com/dhardy/cassowary-rs", optional = true }
-mygui-macros = { version = "0.1", path = "mygui-macros" }
+kas-macros = { version = "0.1", path = "kas-macros" }
 
 [workspace]
-members = ["mygui-gtk", "mygui-macros"]
+members = ["kas-gtk", "kas-macros"]

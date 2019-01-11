@@ -5,7 +5,7 @@
 use gtk;
 use gtk::{Cast, WidgetExt, LabelExt, EntryExt};
 
-use mygui::{Coord, Rect, TkData, TkWidget};
+use kas::{Coord, Rect, TkData, TkWidget};
 
 use super::tkd::borrow_from_tkd;
 

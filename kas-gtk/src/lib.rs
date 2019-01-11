@@ -1,4 +1,4 @@
-//! GTK toolkit for mygui
+//! GTK toolkit for kas
 
 #![feature(const_vec_new)]
 
@@ -33,8 +33,8 @@ impl Toolkit {
     }
 }
 
-impl mygui::Toolkit for Toolkit {
-    fn add_rc(&self, win: Rc<RefCell<mygui::Window>>) {
+impl kas::Toolkit for Toolkit {
+    fn add_rc(&self, win: Rc<RefCell<kas::Window>>) {
         window::with_list(|list| list.add_window(win))
     }
     
@@ -47,7 +47,7 @@ impl mygui::Toolkit for Toolkit {
         gtk::main();
     }
     
-    fn tk_widget(&self) -> &mygui::TkWidget {
+    fn tk_widget(&self) -> &kas::TkWidget {
         &widget::Toolkit
     }
 }

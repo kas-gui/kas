@@ -5,11 +5,11 @@
 use std::fmt::Write;
 use std::time::{Duration, Instant};
 
-use mygui::control::TextButton;
-use mygui::display::Text;
-use mygui::event::{NoResponse};
-use mygui::macros::{NoResponse, make_widget};
-use mygui::{Class, SimpleWindow, Toolkit, TkWidget, CallbackCond};
+use kas::control::TextButton;
+use kas::display::Text;
+use kas::event::{NoResponse};
+use kas::macros::{NoResponse, make_widget};
+use kas::{Class, SimpleWindow, Toolkit, TkWidget, CallbackCond};
 
 #[derive(Debug, NoResponse)]
 enum Control {
@@ -18,7 +18,7 @@ enum Control {
     Start,
 }
 
-fn main() -> Result<(), mygui_gtk::Error> {
+fn main() -> Result<(), kas_gtk::Error> {
     trait SetText {
         fn set_text(&mut self, tk: &TkWidget, text: &str);
     }
@@ -84,7 +84,7 @@ fn main() -> Result<(), mygui_gtk::Error> {
     
     window.add_callback(CallbackCond::TimeoutMs(16), |w, tk| w.on_tick(tk) );
     
-    let mut toolkit = mygui_gtk::Toolkit::new()?;
+    let mut toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add(window);
     toolkit.main();
     Ok(())

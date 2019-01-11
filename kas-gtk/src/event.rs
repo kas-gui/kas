@@ -1,4 +1,4 @@
-//! GTK toolkit for mygui
+//! GTK toolkit for kas
 //! 
 //! Event handling
 

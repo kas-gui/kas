@@ -6,12 +6,12 @@ extern crate chrono;
 
 use chrono::prelude::*;
 
-use mygui::display::Text;
-use mygui::event::NoResponse;
-use mygui::macros::make_widget;
-use mygui::{SimpleWindow, Toolkit, TkWidget, CallbackCond};
+use kas::display::Text;
+use kas::event::NoResponse;
+use kas::macros::make_widget;
+use kas::{SimpleWindow, Toolkit, TkWidget, CallbackCond};
 
-fn main() -> Result<(), mygui_gtk::Error> {
+fn main() -> Result<(), kas_gtk::Error> {
     let mut window = SimpleWindow::new(make_widget! {
             vertical => NoResponse;
             struct {
@@ -29,7 +29,7 @@ fn main() -> Result<(), mygui_gtk::Error> {
     
     window.add_callback(CallbackCond::TimeoutMs(1000), |w, tk| w.on_tick(tk) );
     
-    let mut toolkit = mygui_gtk::Toolkit::new()?;
+    let mut toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add(window);
     toolkit.main();
     Ok(())

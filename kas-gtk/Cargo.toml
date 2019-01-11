@@ -1,16 +1,16 @@
 [package]
-name = "mygui-gtk"
+name = "kas-gtk"
 version = "0.1.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 
 [features]
-# Use mygui's layout positioning instead of GTK's.
+# Use kas's layout positioning instead of GTK's.
 # This is just a tech demo, and not currently recommended.
-layout = ["mygui/layout"]
+layout = ["kas/layout"]
 
 [dependencies]
-mygui = { path = ".." }
+kas = { path = ".." }
 gtk = "0.5"
 gdk = { version = "0.9", features = ["v3_10"] }
 glib = "0.6"

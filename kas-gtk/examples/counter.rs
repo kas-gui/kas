@@ -2,11 +2,11 @@
 #![feature(unrestricted_attribute_tokens)]
 #![feature(proc_macro_hygiene)]
 
-use mygui::control::TextButton;
-use mygui::display::Text;
-use mygui::event::NoResponse;
-use mygui::macros::{NoResponse, make_widget};
-use mygui::{SimpleWindow, Toolkit, TkWidget};
+use kas::control::TextButton;
+use kas::display::Text;
+use kas::event::NoResponse;
+use kas::macros::{NoResponse, make_widget};
+use kas::{SimpleWindow, Toolkit, TkWidget};
 
 #[derive(Debug, NoResponse)]
 enum Message {
@@ -15,7 +15,7 @@ enum Message {
     Incr,
 }
 
-fn main() -> Result<(), mygui_gtk::Error> {
+fn main() -> Result<(), kas_gtk::Error> {
     let buttons = make_widget!(
         horizontal => Message;
         struct {
@@ -47,7 +47,7 @@ fn main() -> Result<(), mygui_gtk::Error> {
             }
         }));
 
-    let mut toolkit = mygui_gtk::Toolkit::new()?;
+    let mut toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add(window);
     toolkit.main();
     Ok(())

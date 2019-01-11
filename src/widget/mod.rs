@@ -46,16 +46,16 @@ pub trait Core {
 /// Common widget data
 /// 
 /// Widgets should normally implement `Core` by use of an embedded field
-/// of this type (i.e. composition). The `mygui::derive` macro may be used
+/// of this type (i.e. composition). The `kas::derive` macro may be used
 /// to write the actual implementation:
 /// 
 /// ```notest
-/// # // test fails: mygui_impl uses the wrong prefix for crate?
-/// extern crate mygui;
+/// # // test fails: kas_impl uses the wrong prefix for crate?
+/// extern crate kas;
 /// 
-/// #[mygui::mygui_impl(Core(core))]
+/// #[kas::kas_impl(Core(core))]
 /// struct MyWidget {
-///     core: mygui::widget::CoreData,
+///     core: kas::widget::CoreData,
 ///     // more fields here
 /// }
 /// 

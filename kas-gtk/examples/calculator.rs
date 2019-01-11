@@ -5,11 +5,11 @@
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
-use mygui::control::TextButton;
-use mygui::display::Entry;
-use mygui::event::NoResponse;
-use mygui::macros::{NoResponse, make_widget};
-use mygui::{SimpleWindow, Toolkit, TkWidget};
+use kas::control::TextButton;
+use kas::display::Entry;
+use kas::event::NoResponse;
+use kas::macros::{NoResponse, make_widget};
+use kas::{SimpleWindow, Toolkit, TkWidget};
 
 #[derive(Clone, Debug, PartialEq, NoResponse)]
 enum Key {
@@ -23,7 +23,7 @@ enum Key {
     Char(u8), // char in range 0..255
 }
 
-fn main() -> Result<(), mygui_gtk::Error> {
+fn main() -> Result<(), kas_gtk::Error> {
     let buttons = make_widget!{
         grid => Key;
         struct {
@@ -68,7 +68,7 @@ fn main() -> Result<(), mygui_gtk::Error> {
     };
     let window = SimpleWindow::new(content);
 
-    let mut toolkit = mygui_gtk::Toolkit::new()?;
+    let mut toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add(window);
     toolkit.main();
     Ok(())
