@@ -15,7 +15,7 @@ repository = "https://gitlab.com/dhardy/mygui"
 layout = ["kas/layout"]
 
 [dependencies]
-kas = { path = ".." }
+kas = { path = "..", version = "0.0.1" }
 gtk = "0.5"
 gdk = { version = "0.9", features = ["v3_10"] }
 glib = "0.6"

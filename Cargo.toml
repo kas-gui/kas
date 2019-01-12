@@ -16,7 +16,7 @@ layout = ["cassowary", "kas-macros/cassowary"]
 
 [dependencies]
 cassowary = { git = "https://github.com/dhardy/cassowary-rs", optional = true }
-kas-macros = { version = "0.1", path = "kas-macros" }
+kas-macros = { version = "=0.0.1", path = "kas-macros" }
 
 [workspace]
 members = ["kas-gtk", "kas-macros"]
