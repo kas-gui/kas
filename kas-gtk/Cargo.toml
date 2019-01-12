@@ -1,8 +1,13 @@
 [package]
 name = "kas-gtk"
-version = "0.1.0"
+version = "0.0.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
+license = "Apache-2.0"
+description = "GTK adaptor to KAS, the GUI Toolkit Abstraction System"
+keywords = ["gui", "gtk"]
+categories = ["gui"]
+repository = "https://gitlab.com/dhardy/mygui"
 
 [features]
 # Use kas's layout positioning instead of GTK's.
