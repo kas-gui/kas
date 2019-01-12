@@ -7,7 +7,7 @@ license = "Apache-2.0"
 description = "GUI Toolkit Abstraction System"
 keywords = ["gui"]
 categories = ["gui"]
-repository = "https://gitlab.com/dhardy/mygui"
+repository = "https://gitlab.com/dhardy/kas"
 
 [features]
 # Enable an internal layout solver. Currently this uses Cassowary.
