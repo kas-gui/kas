@@ -32,7 +32,7 @@ fn main() -> Result<(), kas_gtk::Error> {
             }
         });
     
-    window.add_callback(CallbackCond::TimeoutMs(1000), |w, tk| w.on_tick(tk) );
+    window.add_callback(CallbackCond::TimeoutMs(1000), &|w, tk| w.on_tick(tk) );
     
     let mut toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add(window);

@@ -67,12 +67,12 @@ pub trait Window: Widget {
 #[layout]
 #[widget(class = Class::Window)]
 #[derive(Widget)]
-pub struct SimpleWindow<W: Widget> {
+pub struct SimpleWindow<W: Widget + 'static> {
     #[core] core: CoreData,
     min_size: Coord,
     #[cfg(feature = "cassowary")] solver: crate::cw::Solver,
     #[widget] w: W,
-    fns: Vec<(CallbackCond, Box<FnMut(&mut W, &TkWidget)>)>,
+    fns: Vec<(CallbackCond, &'static Fn(&mut W, &TkWidget))>,
 }
 
 impl<W: Widget> Debug for SimpleWindow<W> {
@@ -92,16 +92,12 @@ impl<W: Widget> Debug for SimpleWindow<W> {
 
 impl<W: Widget + Clone> Clone for SimpleWindow<W> {
     fn clone(&self) -> Self {
-        if !self.fns.is_empty() {
-            // TODO: do we support Clone or not? Can we make this type-safe optional?
-            panic!("Unable to clone closures");
-        }
         SimpleWindow {
             core: self.core.clone(),
             min_size: self.min_size,
             #[cfg(feature = "cassowary")] solver: crate::cw::Solver::new(),
             w: self.w.clone(),
-            fns: Vec::new(),
+            fns: self.fns.clone(),
         }
     }
 }
@@ -119,11 +115,11 @@ impl<W: Widget> SimpleWindow<W> {
     }
     
     /// Add a closure to be called, with a reference to self, on the given
-    /// condition.
-    pub fn add_callback<F: FnMut(&mut W, &TkWidget) + 'static>(&mut self,
-            when: CallbackCond, f: F)
+    /// condition. The closure must be passed by reference.
+    pub fn add_callback(&mut self, when: CallbackCond,
+            f: &'static Fn(&mut W, &TkWidget))
     {
-        self.fns.push((when, Box::new(f)));
+        self.fns.push((when, f));
     }
 }
 

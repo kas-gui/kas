@@ -7,6 +7,7 @@
 #![feature(unrestricted_attribute_tokens)]
 #![feature(proc_macro_hygiene)]
 
+use std::{cell::RefCell, rc::Rc};
 use std::fmt::Write;
 use std::time::{Duration, Instant};
 
@@ -14,7 +15,7 @@ use kas::control::TextButton;
 use kas::display::Text;
 use kas::event::{NoResponse};
 use kas::macros::{NoResponse, make_widget};
-use kas::{Class, SimpleWindow, Toolkit, TkWidget, CallbackCond};
+use kas::{Class, SimpleWindow, Toolkit, TkWidget, CallbackCond, Window};
 
 #[derive(Debug, NoResponse)]
 enum Control {
@@ -23,7 +24,9 @@ enum Control {
     Start,
 }
 
-fn main() -> Result<(), kas_gtk::Error> {
+// Unlike most examples, we encapsulate the GUI configuration into a function.
+// There's no reason for this, but it demonstrates usage of Toolkit::add_rc
+fn make_window() -> Rc<RefCell<Window>> {
     trait SetText {
         fn set_text(&mut self, tk: &TkWidget, text: &str);
     }
@@ -87,10 +90,14 @@ fn main() -> Result<(), kas_gtk::Error> {
     
     let mut window = SimpleWindow::new(stopwatch);
     
-    window.add_callback(CallbackCond::TimeoutMs(16), |w, tk| w.on_tick(tk) );
+    window.add_callback(CallbackCond::TimeoutMs(16), &|w, tk| w.on_tick(tk) );
     
+    Rc::new(RefCell::new(window))
+}
+
+fn main() -> Result<(), kas_gtk::Error> {
     let mut toolkit = kas_gtk::Toolkit::new()?;
-    toolkit.add(window);
+    toolkit.add_rc(make_window());
     toolkit.main();
     Ok(())
 }
