@@ -11,11 +11,12 @@ use std::{cell::RefCell, rc::Rc};
 use std::fmt::Write;
 use std::time::{Duration, Instant};
 
+use kas::callback::Condition;
 use kas::control::TextButton;
 use kas::display::Text;
 use kas::event::{NoResponse};
 use kas::macros::{NoResponse, make_widget};
-use kas::{Class, SimpleWindow, Toolkit, TkWidget, CallbackCond, Window};
+use kas::{Class, SimpleWindow, Toolkit, TkWidget, Window};
 
 #[derive(Debug, NoResponse)]
 enum Control {
@@ -90,7 +91,7 @@ fn make_window() -> Rc<RefCell<Window>> {
     
     let mut window = SimpleWindow::new(stopwatch);
     
-    window.add_callback(CallbackCond::TimeoutMs(16), &|w, tk| w.on_tick(tk) );
+    window.add_callback(&|w, tk| w.on_tick(tk), &[Condition::TimeoutMs(16)]);
     
     Rc::new(RefCell::new(window))
 }

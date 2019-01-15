@@ -7,15 +7,10 @@
 
 use std::fmt::{self, Debug};
 
+use crate::callback::Condition;
 use crate::macros::Widget;
 use crate::event::{ignore, Action, GuiResponse, Handler, NoResponse};
 use crate::{Class, Coord, Core, CoreData, TkWidget, Widget};
-
-/// When to trigger a callback
-#[derive(Clone, Copy, Debug)]
-pub enum CallbackCond {
-    TimeoutMs(u32),
-}
 
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be
@@ -54,12 +49,13 @@ pub trait Window: Widget {
     /// 
     /// This returns a sequence of `(index, condition)` values. The toolkit
     /// should call `trigger_callback(index, tk)` whenever the condition is met.
-    fn callbacks(&self) -> Vec<(usize, CallbackCond)>;
+    fn callbacks(&self) -> Vec<(usize, Condition)>;
     
     /// Trigger a callback (see `iter_callbacks`).
     fn trigger_callback(&mut self, index: usize, tk: &TkWidget);
     
-    /// Called by the toolkit after the window has been created and before it is drawn.
+    /// Called by the toolkit after the window has been created and before it
+    /// is drawn. This allows callbacks to be invoked "on start".
     fn on_start(&mut self, tk: &TkWidget);
 }
 
@@ -72,7 +68,7 @@ pub struct SimpleWindow<W: Widget + 'static> {
     min_size: Coord,
     #[cfg(feature = "cassowary")] solver: crate::cw::Solver,
     #[widget] w: W,
-    fns: Vec<(CallbackCond, &'static Fn(&mut W, &TkWidget))>,
+    fns: Vec<(Condition, &'static Fn(&mut W, &TkWidget))>,
 }
 
 impl<W: Widget> Debug for SimpleWindow<W> {
@@ -116,10 +112,12 @@ impl<W: Widget> SimpleWindow<W> {
     
     /// Add a closure to be called, with a reference to self, on the given
     /// condition. The closure must be passed by reference.
-    pub fn add_callback(&mut self, when: CallbackCond,
-            f: &'static Fn(&mut W, &TkWidget))
+    pub fn add_callback(&mut self, f: &'static Fn(&mut W, &TkWidget),
+            conditions: &[Condition])
     {
-        self.fns.push((when, f));
+        for c in conditions {
+            self.fns.push((*c, f));
+        }
     }
 }
 
@@ -174,7 +172,7 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         }
     }
     
-    fn callbacks(&self) -> Vec<(usize, CallbackCond)> {
+    fn callbacks(&self) -> Vec<(usize, Condition)> {
         self.fns.iter().map(|(cond, _)| *cond).enumerate().collect()
     }
     
@@ -185,9 +183,10 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     }
     
     fn on_start(&mut self, tk: &TkWidget) {
-        // TODO: this should be configurable, e.g. make a CallbackCond and allow multiple
         for cb in &mut self.fns {
-            (cb.1)(&mut self.w, tk);
+            if cb.0 == Condition::Start {
+                (cb.1)(&mut self.w, tk);
+            }
         }
     }
 }

@@ -10,8 +10,9 @@ use std::{cell::RefCell, rc::Rc};
 use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt, EntryExt, EditableExt};
 #[cfg(not(feature = "layout"))] use gtk::GridExt;
 
+use kas::callback::Condition;
 use kas::event::{Action, GuiResponse};
-use kas::{Class, Widget, CallbackCond};
+use kas::{Class, Widget};
 
 use crate::widget;
 use crate::tkd::WidgetAbstraction;
@@ -190,8 +191,16 @@ impl WindowList {
             for (index, cond) in inner.callbacks() {
                 let win = win.clone();
                 match cond {
-                    CallbackCond::TimeoutMs(t_ms) => {
+                    Condition::Start => {}
+                    Condition::TimeoutMs(t_ms) => {
                         gtk::timeout_add(t_ms, move || {
+                            let mut borrow = win.borrow_mut();
+                            borrow.trigger_callback(index, &widget::Toolkit);
+                            gtk::Continue(true)
+                        });
+                    }
+                    Condition::TimeoutSec(t_s) => {
+                        gtk::timeout_add_seconds(t_s, move || {
                             let mut borrow = win.borrow_mut();
                             borrow.trigger_callback(index, &widget::Toolkit);
                             gtk::Continue(true)

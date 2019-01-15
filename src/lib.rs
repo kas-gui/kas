@@ -19,6 +19,7 @@ mod window;
 mod toolkit;
 
 // public implementations:
+pub mod callback;
 pub mod control;
 pub mod dialog;
 pub mod display;

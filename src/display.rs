@@ -9,6 +9,7 @@ use crate::macros::Widget;
 use crate::event::{Handler, NoResponse};
 use crate::{Class, Core, CoreData, TkWidget, Widget};
 
+/// A simple text display widget
 #[layout]
 #[widget(class = Class::Text, label = Some(self.text.as_str()))]
 #[derive(Clone, Default, Debug, Widget)]
@@ -18,6 +19,15 @@ pub struct Text {
 }
 
 impl Text {
+    /// Construct a new, empty instance
+    pub fn new() -> Self {
+        Text {
+            core: Default::default(),
+            text: String::new()
+        }
+    }
+    
+    /// Set the text to display
     pub fn set_text(&mut self, tk: &TkWidget, text: &str) {
         tk.set_label(self.tkd(), text);
     }

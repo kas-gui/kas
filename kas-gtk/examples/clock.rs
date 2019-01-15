@@ -11,17 +11,18 @@ extern crate chrono;
 
 use chrono::prelude::*;
 
+use kas::callback::Condition;
 use kas::display::Text;
 use kas::event::NoResponse;
 use kas::macros::make_widget;
-use kas::{SimpleWindow, Toolkit, TkWidget, CallbackCond};
+use kas::{SimpleWindow, Toolkit, TkWidget};
 
 fn main() -> Result<(), kas_gtk::Error> {
     let mut window = SimpleWindow::new(make_widget! {
             vertical => NoResponse;
             struct {
-                #[widget] date: Text = Text::from(""),
-                #[widget] time: Text = Text::from("")
+                #[widget] date: Text = Text::new(),
+                #[widget] time: Text = Text::new()
             }
             impl {
                 fn on_tick(&mut self, tk: &TkWidget) {
@@ -32,7 +33,8 @@ fn main() -> Result<(), kas_gtk::Error> {
             }
         });
     
-    window.add_callback(CallbackCond::TimeoutMs(1000), &|w, tk| w.on_tick(tk) );
+    window.add_callback(&|w, tk| w.on_tick(tk),
+            &[Condition::Start, Condition::TimeoutSec(1)]);
     
     let mut toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add(window);

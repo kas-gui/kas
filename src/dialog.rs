@@ -9,10 +9,11 @@
 
 use std::fmt::{self, Debug};
 
+use crate::callback::Condition;
 use crate::control::{button, TextButton};
 use crate::macros::Widget;
 use crate::event::{Action, GuiResponse};
-use crate::{Class, CoreData, TkWidget, Widget, Window, CallbackCond};
+use crate::{Class, CoreData, TkWidget, Widget, Window};
 
 
 /// An action for use with `MessageBox::new`.
@@ -71,7 +72,7 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     }
     
     // doesn't support callbacks, so doesn't need to do anything here
-    fn callbacks(&self) -> Vec<(usize, CallbackCond)> { Vec::new() }
+    fn callbacks(&self) -> Vec<(usize, Condition)> { Vec::new() }
     fn trigger_callback(&mut self, _index: usize, _tk: &TkWidget) {}
     fn on_start(&mut self, _tk: &TkWidget) {}
 }

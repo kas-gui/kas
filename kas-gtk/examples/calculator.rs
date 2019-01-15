@@ -55,7 +55,7 @@ fn main() -> Result<(), kas_gtk::Error> {
         vertical => NoResponse;
         struct {
             // #[widget] state: Text = Text::from("0"),
-            // #[widget] buf: Text = Text::from("") ,
+            // #[widget] buf: Text = Text::new() ,
             #[widget] display: Entry = Entry::new(false, "0".to_string()),
             #[widget(handler = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),
