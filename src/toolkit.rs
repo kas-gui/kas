@@ -33,6 +33,8 @@ impl TkData {
     }
 }
 
+/// The primary trait to be implemented by KAS toolkits.
+/// 
 /// A toolkit handles window management and rendering for a GUI.
 /// 
 /// Any initialisation should be taken care of in the constructor, and
@@ -51,16 +53,16 @@ pub trait Toolkit {
     
     /// Run the main loop.
     fn main(&mut self);
-    
-    /// Get a `TkWidget`
-    fn tk_widget(&self) -> &TkWidget;
 }
 
 /// Common widget properties. Implemented by the toolkit.
 /// 
-/// Note that it is not necessary to implement all of these methods, depending
-/// on which functionality from the library is used.
-// TODO: should we provide multiple abstraction traits?
+/// Users interact with this trait in a few cases, such as implementing widget
+/// event handling. In these cases the user is *always* given an existing
+/// reference to a `TkWidget`. Mostly this trait is only used internally.
+/// 
+/// Note that it is not necessary for toolkits to implement all of these
+/// methods, depending on which functionality from the library is used.
 pub trait TkWidget {
     /// Get the widget's minimum and preferred sizes.
     fn size_hints(&self, tkd: TkData) -> (Coord, Coord);

@@ -51,10 +51,6 @@ impl kas::Toolkit for Toolkit {
         });
         gtk::main();
     }
-    
-    fn tk_widget(&self) -> &kas::TkWidget {
-        &widget::Toolkit
-    }
 }
 
 
