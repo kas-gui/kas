@@ -15,7 +15,7 @@ use crate::{Class, Core, CoreData, TkWidget};
 #[layout]
 #[widget(class = Class::Button, label = Some(self.msg))]
 #[derive(Clone, Default, Widget)]
-pub struct TextButton<H> {
+pub struct TextButton<H: 'static> {
     #[core]
     core: CoreData,
     msg: &'static str,

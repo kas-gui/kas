@@ -25,7 +25,7 @@ pub fn action_close() -> impl Fn() -> GuiResponse {
 #[layout]
 #[widget(class = Class::Window)]
 #[derive(Clone, Widget)]
-pub struct MessageBox<M: Debug, H> {
+pub struct MessageBox<M: Debug + 'static, H: 'static> {
     #[core] core: CoreData,
     message: M,
     button: TextButton<H>,

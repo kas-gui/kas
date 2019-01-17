@@ -13,6 +13,8 @@
 mod class;
 mod data;
 
+use downcast_rs::{Downcast, impl_downcast};
+
 #[cfg(not(feature = "layout"))]
 pub use self::layout_extern::{Layout, ChildLayout, GridPos};
 #[cfg(feature = "cassowary")]
@@ -116,7 +118,7 @@ impl Core for CoreData {
 /// of a sub-region of a window.
 /// 
 /// Functionality common to all widgets is provided by the `Core` trait.
-pub trait Widget: Layout {
+pub trait Widget: Layout + Downcast {
     /// Get the widget's classification.
     fn class(&self) -> Class;
     
@@ -153,6 +155,7 @@ pub trait Widget: Layout {
         n + 1
     }
 }
+impl_downcast!(Widget);
 
 pub struct ChildIter<'a, W: 'a + Widget + ?Sized> {
     w: &'a W,
