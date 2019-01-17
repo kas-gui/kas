@@ -7,7 +7,7 @@
 
 use crate::macros::Widget;
 use crate::event::{Handler, NoResponse};
-use crate::{Class, Core, CoreData, TkWidget, Widget};
+use crate::{Class, Core, CoreData, TkWidget};
 
 /// A simple text display widget
 #[layout]
@@ -51,6 +51,7 @@ impl Handler for Text {
 /// 
 /// TODO: this is currently just a hack to satisfy a single use-case.
 #[layout]
+#[widget(class = Class::Entry, label = Some(self.text.as_str()))]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Entry {
     #[core] core: CoreData,
@@ -70,20 +71,11 @@ impl Entry {
     pub fn set_text(&mut self, tk: &TkWidget, text: &str) {
         tk.set_label(self.tkd(), text);
     }
-}
-
-impl Widget for Entry {
-    fn class(&self) -> Class { Class::Entry }
     
-    fn label(&self) -> Option<&str> { Some(self.text.as_str()) }
-    
-    fn is_editable(&self) -> bool { self.editable }
-    
-    fn len(&self) -> usize { 0 }
-    
-    fn get(&self, _: usize) -> Option<&Widget> { None }
-    
-    fn get_mut(&mut self, _: usize) -> Option<&mut Widget> { None }
+    /// Get whether this input field is editable.
+    pub fn is_editable(&self) -> bool {
+        self.editable
+    }
 }
 
 impl Handler for Entry {
