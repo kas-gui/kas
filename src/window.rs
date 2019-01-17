@@ -60,7 +60,6 @@ pub trait Window: Widget {
 }
 
 /// Main window type
-#[layout]
 #[widget(class = Class::Window)]
 #[derive(Widget)]
 pub struct SimpleWindow<W: Widget + 'static> {

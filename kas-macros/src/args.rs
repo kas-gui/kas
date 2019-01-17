@@ -19,8 +19,7 @@ pub struct Child {
 
 pub struct Args {
     pub core: Member,
-    pub layout: Option<LayoutArgs>,
-    pub widget: Option<WidgetArgs>,
+    pub widget: WidgetArgs,
     pub handler: Option<HandlerArgs>,
     pub children: Vec<Child>,
 }
@@ -70,29 +69,11 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
     
-    let mut layout = None;
     let mut widget = None;
     let mut handler = None;
     
     for attr in ast.attrs.drain(..) {
-        if attr.path == parse_quote!{ layout } {
-            if layout.is_none() {
-                let span = attr.span();
-                let l: LayoutArgs = syn::parse2(attr.tts)?;
-                if children.len() > 1 && l.layout.is_none() {
-                    span
-                        .unstable()
-                        .error("layout description required with more than one child widget")
-                        .emit()
-                }
-                layout = Some(l);
-            } else {
-                attr.span()
-                    .unstable()
-                    .error("multiple #[layout(..)] attributes on type")
-                    .emit()
-            }
-        } else if attr.path == parse_quote!{ widget } {
+        if attr.path == parse_quote!{ widget } {
             if widget.is_none() {
                 widget = Some(syn::parse2(attr.tts)?);
             } else {
@@ -114,7 +95,12 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
     }
     
     if let Some(core) = core {
-        Ok(Args { core, layout, widget, handler, children })
+        if let Some(widget) = widget {
+            Ok(Args { core, widget, handler, children })
+        } else {
+            Err(Error::new(*span,
+                "a type deriving Widget must be annotated with the #[widget]` attribute"))
+        }
     } else {
         Err(Error::new(*span,
             "one field must be marked with #[core] when deriving Widget"))
@@ -136,6 +122,7 @@ mod kw {
     
     custom_keyword!(class);
     custom_keyword!(label);
+    custom_keyword!(layout);
     custom_keyword!(col);
     custom_keyword!(row);
     custom_keyword!(cspan);
@@ -283,27 +270,10 @@ impl ToTokens for GridPos {
     }
 }
 
-pub struct LayoutArgs {
-    pub layout: Option<Ident>,
-}
-
-impl Parse for LayoutArgs {
-    fn parse(input: ParseStream) -> Result<Self> {
-        if input.is_empty() {
-            return Ok(LayoutArgs { layout: None });
-        }
-        
-        let content;
-        let _ = parenthesized!(content in input);
-        
-        let layout = Some(content.parse()?);
-        Ok(LayoutArgs { layout })
-    }
-}
-
 pub struct WidgetArgs {
     pub class: Expr,
     pub label: Option<Expr>,
+    pub layout: Option<Ident>,
 }
 
 impl Parse for WidgetArgs {
@@ -318,6 +288,7 @@ impl Parse for WidgetArgs {
         
         let mut class = None;
         let mut label = None;
+        let mut layout = None;
         
         loop {
             let lookahead = content.lookahead1();
@@ -331,6 +302,11 @@ impl Parse for WidgetArgs {
                 let _: Eq = content.parse()?;
                 let expr: Expr = content.parse()?;
                 label = Some(expr);
+            } else if layout.is_none() && lookahead.peek(kw::layout) {
+                let _: kw::layout = content.parse()?;
+                let _: Eq = content.parse()?;
+                let ident: Ident = content.parse()?;
+                layout = Some(ident);
             } else {
                 return Err(lookahead.error());
             }
@@ -344,6 +320,7 @@ impl Parse for WidgetArgs {
         Ok(WidgetArgs {
             class: class.ok_or_else(|| content.error("expected `class = ...`"))?,
             label,
+            layout,
         })
     }
 }

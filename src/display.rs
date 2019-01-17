@@ -10,7 +10,6 @@ use crate::event::NoResponse;
 use crate::{Class, Core, CoreData, TkWidget};
 
 /// A simple text display widget
-#[layout]
 #[widget(class = Class::Text, label = Some(self.text.as_str()))]
 #[handler(response = NoResponse)]
 #[derive(Clone, Default, Debug, Widget)]
@@ -47,7 +46,6 @@ impl<T> From<T> for Text where String: From<T> {
 /// Basic text entry.
 /// 
 /// TODO: this is currently just a hack to satisfy a single use-case.
-#[layout]
 #[widget(class = Class::Entry, label = Some(self.text.as_str()))]
 #[handler(response = NoResponse)]
 #[derive(Clone, Default, Debug, Widget)]

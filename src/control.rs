@@ -12,7 +12,6 @@ use crate::event::{Action, Handler, NoResponse, err_num, err_unhandled};
 use crate::{Class, Core, CoreData, TkWidget};
 
 // TODO: abstract out text part?
-#[layout]
 #[widget(class = Class::Button, label = Some(self.msg))]
 #[derive(Clone, Default, Widget)]
 pub struct TextButton<H: 'static> {

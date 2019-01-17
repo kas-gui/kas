@@ -5,14 +5,14 @@
 
 use proc_macro2::TokenStream;
 use quote::{quote, TokenStreamExt};
-use syn::{parse_quote, Path};
+use syn::{parse_quote, Path, Ident};
 use syn::parse::{Error, Result};
-use crate::args::{LayoutArgs, Child};
+use crate::args::Child;
 
-pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: LayoutArgs)
+pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
     -> Result<TokenStream>
 {
-    let layout: Path = if let Some(l) = layout.layout {
+    let layout: Path = if let Some(l) = layout {
         if l == "single" {
             parse_quote!{ #c::ChildLayout::None }
         } else if l == "horizontal" {

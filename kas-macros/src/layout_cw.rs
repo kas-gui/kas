@@ -5,10 +5,11 @@
 
 use proc_macro2::TokenStream;
 use quote::{quote, TokenStreamExt};
+use syn::Ident;
 use syn::parse::{Error, Result};
-use crate::args::{LayoutArgs, Child};
+use crate::args::Child;
 
-pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: LayoutArgs)
+pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
     -> Result<TokenStream>
 {
     let (constraints, appls) = if children.is_empty() {
@@ -63,7 +64,7 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: LayoutArgs)
             self.#ident.init_constraints(tk, s, _use_default);
         }, quote!{})
     } else {
-        if let Some(l) = layout.layout {
+        if let Some(l) = layout {
             if l == "horizontal" {
                 let mut constr = quote!{
                     let mut width = cw::Expression::from(#c::cw_var!(self, w));

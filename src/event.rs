@@ -74,6 +74,9 @@ pub fn err_num<R: From<NoResponse>>() -> R {
 }
 
 /// Event-handling aspect of a widget.
+/// 
+/// This is a companion trait to [`Widget`]. It can (optionally) be implemented
+/// by the `derive(Widget)` macro, or can be implemented manually.
 pub trait Handler: Core {
     /// Type of message returned by this handler.
     /// 

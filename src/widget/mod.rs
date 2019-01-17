@@ -25,6 +25,9 @@ pub use self::class::Class;
 use crate::toolkit::TkData;
 
 /// Common widget behaviour
+/// 
+/// This is a base trait of [`Widget`] and should not need to be used directly.
+/// It is implemented automatically by the `derive(Widget)` macro.
 pub trait Core {
     /// Get the widget's number
     fn number(&self) -> u32;
@@ -117,7 +120,21 @@ impl Core for CoreData {
 /// A widget encapsulates code for event handling and/or drawing some feature
 /// of a sub-region of a window.
 /// 
-/// Functionality common to all widgets is provided by the `Core` trait.
+/// Widgets must usually also implement the [`Handler`] trait, which is separate
+/// since it is generic.
+/// 
+/// This trait should *only* be implemented by using the `derive(Widget)` macro,
+/// which can optionally also implement [`Handler`], as in the following example:
+/// 
+/// ```notest
+/// #[widget(class = Class::Frame)]
+/// #[handler(response = NoResponse)]
+/// #[derive(Clone, Debug, Widget)]
+/// pub struct Frame<W: Widget> {
+///     #[core] core: CoreData,
+///     child: W,
+/// }
+/// ```
 pub trait Widget: Layout + Downcast {
     /// Get the widget's classification.
     fn class(&self) -> Class;

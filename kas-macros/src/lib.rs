@@ -30,47 +30,83 @@ use self::args::ChildType;
 
 /// Macro to derive widget traits
 /// 
-/// Unlike normal derive macros, this one implements multiple traits. [`Core`]
-/// is always derived; other traits are optional.
+/// The [`Widget`] trait requires multiple base traits to be implemented:
+/// [`Core`] and [`Layout`]. These base traits should be considered
+/// implementation details and not used directly; this macro therefore
+/// implements both base traits and [`Widget`] directly.
 /// 
-/// One struct field must be marked with `#[core]` and implement the [`Core`]
-/// trait. It is recommended to use the [`CoreData`] type.
+/// Additionally, widgets are usually required to implement the [`Handler`]
+/// trait. If (and only if) the deriving struct is marked with a
+/// `#[handler]` attribute, the [`Handler`] trait will also be implemented.
+/// Note that it is also possible to implement this trait manually.
 /// 
-/// If there is a `#[layout(...)]` attribute on the struct, then the [`Layout`]
-/// trait will be implemented. This attribute expects one of the following
-/// arguments:
+/// ### Type attributes
+/// 
+/// This `derive` attribute may only be used on structs. This struct must have
+/// a `#[widget]` attribute and may have a `#[handler]` attribute, as follows.
+/// 
+/// ```notest
+/// #[widget(class = Class::X, ...)]
+/// #[derive(Clone, Debug, Widget)]
+/// struct MyWidget {
+///     ...
+/// }
+/// ```
+/// 
+/// The `#[widget]` attribute on the struct supports the following arguments:
+/// 
+/// -   `class = ...` (required) — an expression yielding the widget's [`Class`]
+/// -   `label = ...`(optional) — an expression yielding the widget's [`label`]
+/// -   `layout = ...` (optional) — see below
+/// 
+/// Widgets with no children or only a single child do not need to specify the
+/// `layout` (or may specify `single`), but those with multiple children must
+/// specify this arguments, as follows:
 /// 
 /// -   `single` — single child only
 /// -   `horizontal` — widgets are laid out in a row from left to right in the
 ///     order specified
 /// -   `vertical` — same except top-to-bottom
-/// -   `grid` — see per-field `#[widget]` attribute specification
+/// -   `grid` — widgets are placed on a grid, with position specified by the
+///     per-field `#[widget]` attribute
 /// 
-/// If there is a `#[widget(...)]` attribute on the struct (in addition to the
-/// `#[derive(Widget)]` attribute), then the [`Widget`] trait will be
-/// implemented. All child widgets must be a field marked with `#[widget]`.
-/// The `#[widget(...)]` attribute on the struct itself supports the following
-/// parameters:
-/// 
-/// -   `class = ...` (required) — an expression yielding the widget's [`Class`]
-/// -   `label = ...`(optional) — an expression yielding the widget's [`label`]
-/// 
-/// If there is a `#[handler(...)]` attribute on the struct, then the [`Handler`]
+/// If there is a `#[handler]` attribute on the struct, then the [`Handler`]
 /// trait will be implemented. This attribute expects the following arguments:
 /// 
-/// -   `response = ...` — the `Handler<Response>` type
-/// -   `generics = < X, Y, ... > where CONDS` — extra generic types and where
-///     clauses for the `Handler` implementation. This is optional; the
-///     `where CONDS` part is also optional; if present, `generics = ...` must
-///     be the last argument. The `X, Y, ...` types and `CONDS` clauses are
-///     *added to* generics defined on the struct itself.
+/// -   `response = ...` — the [`Handler<Response>`] associated type
+/// -   `generics = < X, Y, ... > where CONDS` — see below
 /// 
-/// When deriving `Layout`, `Widget` or `Handler`, a `#[widget]` attribute
-/// should *also* be used on each field which is a child widget. This attribute
-/// accepts the following arguments (for use when using the `grid` layout).
+/// Commonly the [`Handler`] implementation requires extra bounds on generic
+/// types, and sometimes also additional type parameters; the `generics`
+/// argument allows this. This argument is optional and if present must be the
+/// last argument. Note that the generic types and bounds given are *added to*
+/// the generics defined on the struct itself. An example:
 /// 
-/// -   `col = ...` — first column, from left (defaults to 0)
-/// -   `row = ...` — first row, from top (defaults to 0)
+/// ```notest
+/// struct MyWidget<W: Widget> {
+///     #[core] core: CoreData,
+///     #[widget(handler = handler)] child: W,
+/// }
+/// 
+/// impl<W: Widget> MyWidget {
+///     fn handler(&mut self, tk: &TkWidget, msg: ChildMessage) -> MyMessage {
+///         // handle msg and respond somehow
+///         ignore(msg)
+///     }
+/// }
+/// ```
+/// 
+/// ### Fields
+/// 
+/// One struct field must be marked with `#[core]` and implement the [`Core`]
+/// trait; usually this field has the specification `#[core] core: CoreData`.
+/// 
+/// A `#[widget]` attribute is used to denote fields as child widgets. This
+/// attribute accepts the following optional arguments, for use with `grid`
+/// layouts and for handlers:
+/// 
+/// -   `col = ...` — grid column, from left (defaults to 0)
+/// -   `row = ...` — grid row, from top (defaults to 0)
 /// -   `cspan = ...` — number of columns to span (defaults to 1)
 /// -   `rspan = ...` — number of rows to span (defaults to 1)
 /// -   `handler = ...` — the name (`f`) of a method defined on this type which
@@ -82,14 +118,13 @@ use self::args::ChildType;
 /// Example:
 /// 
 /// ```notest
-/// #[layout(single)]
-/// #[widget(class = Class::Window)]
-/// #[handler(response = MyResponse, generics = <> where W: Handler<Response = ChildMsg>)]
+/// #[widget(class = Class::Window, layout = single)]
+/// #[handler(response = MyMessage,
+///         generics = <> where W: Handler<ChildMessage>)]
 /// #[derive(Widget)]
-/// pub struct SimpleWindow<W: Widget> {
+/// struct MyWidget<W: Widget> {
 ///     #[core] core: CoreData,
-///     min_size: Coord,
-///     #[widget(handler=handle_msg)] w: W
+///     #[widget(handler = handler)] child: W,
 /// }
 /// 
 /// impl<W: Widget> SimpleWindow<W> {
@@ -109,7 +144,8 @@ use self::args::ChildType;
 /// [`Layout`]: ../kas/widget/trait.Layout.html
 /// [`Widget`]: ../kas/widget/trait.Widget.html
 /// [`Handler`]: ../kas/event/trait.Handler.html
-#[proc_macro_derive(Widget, attributes(core, layout, widget, handler))]
+/// [`Handler<Response>`]: TODO
+#[proc_macro_derive(Widget, attributes(core, widget, handler))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
     let c = c();
@@ -121,100 +157,88 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let name = &ast.ident;
     
-    let mut toks = TokenStream::default();
+    let core = args.core;
+    let class = args.widget.class;
+    let label = args.widget.label.unwrap_or_else(|| parse_quote!{ None });
+    let count = args.children.len();
     
-    if true {
-        let core = args.core;
-        toks.append_all(quote! {
-            impl #impl_generics #c::Core
+    let layout_fns = match layout::fns(&c, &args.children, args.widget.layout) {
+        Ok(fns) => fns,
+        Err(err) => return err.to_compile_error().into(),
+    };
+    
+    fn make_match_rules(children: &Vec<args::Child>, mut_ref: TokenStream) -> TokenStream {
+        let mut toks = TokenStream::new();
+        for (i, child) in children.iter().enumerate() {
+            let ident = &child.ident;
+            toks.append_all(quote!{ #i => Some(&#mut_ref self.#ident), });
+        }
+        toks
+    };
+    let get_rules = make_match_rules(&args.children, quote!{});
+    let get_mut_rules = make_match_rules(&args.children, quote!{mut});
+    
+    let mut toks = quote! {
+        impl #impl_generics #c::Core
+            for #name #ty_generics #where_clause
+        {
+            fn number(&self) -> u32 {
+                use #c::Core;
+                self.#core.number()
+            }
+            fn set_number(&mut self, number: u32) {
+                use #c::Core;
+                self.#core.set_number(number);
+            }
+            
+            fn tkd(&self) -> #c::TkData {
+                use #c::Core;
+                self.#core.tkd()
+            }
+            fn set_tkd(&mut self, tkd: #c::TkData) {
+                use #c::Core;
+                self.#core.set_tkd(tkd)
+            }
+            
+            fn rect(&self) -> &#c::Rect {
+                use #c::Core;
+                self.#core.rect()
+            }
+            fn rect_mut(&mut self) -> &mut #c::Rect {
+                use #c::Core;
+                self.#core.rect_mut()
+            }
+        }
+        
+        impl #impl_generics #c::Layout
                 for #name #ty_generics #where_clause
-            {
-                fn number(&self) -> u32 {
-                    use #c::Core;
-                    self.#core.number()
-                }
-                fn set_number(&mut self, number: u32) {
-                    use #c::Core;
-                    self.#core.set_number(number);
-                }
-                
-                fn tkd(&self) -> #c::TkData {
-                    use #c::Core;
-                    self.#core.tkd()
-                }
-                fn set_tkd(&mut self, tkd: #c::TkData) {
-                    use #c::Core;
-                    self.#core.set_tkd(tkd)
-                }
-                
-                fn rect(&self) -> &#c::Rect {
-                    use #c::Core;
-                    self.#core.rect()
-                }
-                fn rect_mut(&mut self) -> &mut #c::Rect {
-                    use #c::Core;
-                    self.#core.rect_mut()
-                }
-            }
-        });
-    }
-    
-    if let Some(layout) = args.layout {
-        let fns = match layout::fns(&c, &args.children, layout) {
-            Ok(fns) => fns,
-            Err(err) => return err.to_compile_error().into(),
-        };
+        {
+            #layout_fns
+        }
         
-        toks.append_all(quote! {
-            impl #impl_generics #c::Layout
-                    for #name #ty_generics #where_clause
-            {
-                #fns
-            }
-        });
-    }
-    
-    if let Some(widget) = args.widget {
-        let class = widget.class;
-        let label = widget.label.unwrap_or_else(|| parse_quote!{ None });
-        let count = args.children.len();
-        
-        fn make_match_rules(children: &Vec<args::Child>, mut_ref: TokenStream) -> TokenStream {
-            let mut toks = TokenStream::new();
-            for (i, child) in children.iter().enumerate() {
-                let ident = &child.ident;
-                toks.append_all(quote!{ #i => Some(&#mut_ref self.#ident), });
-            }
-            toks
-        };
-        let get_rules = make_match_rules(&args.children, quote!{});
-        let get_mut_rules = make_match_rules(&args.children, quote!{mut});
-        
-        toks.append_all(quote! {
-            impl #impl_generics #c::Widget
-                    for #name #ty_generics #where_clause
-            {
-                fn class(&self) -> #c::Class { #class }
-                fn label(&self) -> Option<&str> { #label }
+        impl #impl_generics #c::Widget
+                for #name #ty_generics #where_clause
+        {
+            fn class(&self) -> #c::Class { #class }
+            fn label(&self) -> Option<&str> { #label }
 
-                fn len(&self) -> usize {
-                    #count
-                }
-                fn get(&self, _index: usize) -> Option<&#c::Widget> {
-                    match _index {
-                        #get_rules
-                        _ => None
-                    }
-                }
-                fn get_mut(&mut self, _index: usize) -> Option<&mut #c::Widget> {
-                    match _index {
-                        #get_mut_rules
-                        _ => None
-                    }
+            fn len(&self) -> usize {
+                #count
+            }
+            fn get(&self, _index: usize) -> Option<&#c::Widget> {
+                match _index {
+                    #get_rules
+                    _ => None
                 }
             }
-        });
-    }
+            fn get_mut(&mut self, _index: usize) -> Option<&mut #c::Widget> {
+                match _index {
+                    #get_mut_rules
+                    _ => None
+                }
+            }
+        }
+    };
     
     if let Some(handler) = args.handler {
         let response = handler.response;
@@ -530,8 +554,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote!{ {
-        #[layout(#layout)]
-        #[widget(class = #class)]
+        #[widget(class = #class, layout = #layout)]
         #[handler(response = #response, generics = < #handler_extra > #handler_where)]
         #[derive(Clone, Debug, #c::macros::Widget)]
         struct AnonWidget<#gen_ptrs> {

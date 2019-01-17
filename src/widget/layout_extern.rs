@@ -33,6 +33,9 @@ pub type GridPos = (i32, i32, i32, i32);
 /// Size and position handling for widgets, the universal interface to the
 /// layout system.
 /// 
+/// This is a base trait of [`Widget`] and should not need to be used directly.
+/// It is implemented automatically by the `derive(Widget)` macro.
+/// 
 /// Note that this trait has very different internals depending on which layout
 /// engine is used.
 // TODO: move Cassowary methods to a sub-trait if we get multi-trait object support

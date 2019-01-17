@@ -15,6 +15,9 @@ use crate::toolkit::TkWidget;
 /// Size and position handling for widgets, the universal interface to the
 /// layout system.
 /// 
+/// This is a base trait of [`Widget`] and should not need to be used directly.
+/// It is implemented automatically by the `derive(Widget)` macro.
+/// 
 /// Note that this trait has very different internals depending on which layout
 /// engine is used.
 pub trait Layout: Core + fmt::Debug {

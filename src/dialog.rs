@@ -22,7 +22,6 @@ pub fn action_close() -> impl Fn() -> GuiResponse {
 }
 
 /// A message box.
-#[layout]
 #[widget(class = Class::Window)]
 #[derive(Clone, Widget)]
 pub struct MessageBox<M: Debug + 'static, H: 'static> {
