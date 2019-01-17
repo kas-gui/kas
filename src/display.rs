@@ -6,12 +6,13 @@
 //! Display widgets show information but are not interactive
 
 use crate::macros::Widget;
-use crate::event::{Handler, NoResponse};
+use crate::event::NoResponse;
 use crate::{Class, Core, CoreData, TkWidget};
 
 /// A simple text display widget
 #[layout]
 #[widget(class = Class::Text, label = Some(self.text.as_str()))]
+#[handler(response = NoResponse)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Text {
     #[core] core: CoreData,
@@ -42,16 +43,13 @@ impl<T> From<T> for Text where String: From<T> {
     }
 }
 
-impl Handler for Text {
-    type Response = NoResponse;
-}
-
 
 /// Basic text entry.
 /// 
 /// TODO: this is currently just a hack to satisfy a single use-case.
 #[layout]
 #[widget(class = Class::Entry, label = Some(self.text.as_str()))]
+#[handler(response = NoResponse)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Entry {
     #[core] core: CoreData,
@@ -76,8 +74,4 @@ impl Entry {
     pub fn is_editable(&self) -> bool {
         self.editable
     }
-}
-
-impl Handler for Entry {
-    type Response = NoResponse;
 }

@@ -243,14 +243,14 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         for child in args.children.iter() {
             let ident = &child.ident;
             let handler = if let Some(ref h) = child.args.handler {
-                quote!{ self.#h(tk, msg) }
+                quote!{ self.#h(_tk, msg) }
             } else {
                 quote!{ msg.into() }
             };
             handler_toks.append_all(quote!{
-                if num <= self.#ident.number() {
-                    let msg = self.#ident.handle_action(tk, action, num);
-                    return #handler;
+                else if num <= self.#ident.number() {
+                    let msg = self.#ident.handle_action(_tk, action, num);
+                    #handler
                 }
             });
         }
@@ -261,16 +261,19 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             {
                 type Response = #response;
                 
-                fn handle_action(&mut self, tk: &#c::TkWidget, action: #c::event::Action,
+                fn handle_action(&mut self, _tk: &#c::TkWidget, action: #c::event::Action,
                         num: u32) -> Self::Response
                 {
-                    use #c::{Core, event::{ignore, Handler}};
-                    #handler_toks
+                    use #c::{Core, event::{Handler, err_unhandled, err_num}};
                     
-                    if num != self.number() {
-                        println!("Warning: incorrect widget number");
+                    if num == self.number() {
+                        // we may want to allow custom handlers on self here?
+                        err_unhandled(action)
                     }
-                    ignore(action)  // no actions handled by this widget
+                    #handler_toks
+                    else {
+                        err_num()
+                    }
                 }
             }
         });

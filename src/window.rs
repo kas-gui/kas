@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 
 use crate::callback::Condition;
 use crate::macros::Widget;
-use crate::event::{ignore, Action, GuiResponse, Handler, NoResponse};
+use crate::event::{Action, GuiResponse, Handler, NoResponse, err_num, err_unhandled};
 use crate::{Class, Coord, Core, CoreData, TkWidget, Widget};
 
 /// A window is a drawable interactive region provided by windowing system.
@@ -164,11 +164,10 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         } else if num == self.number() {
             match action {
                 Action::Close => GuiResponse::Close,
-                _ => ignore(action)
+                _ => err_unhandled(action),
             }
         } else {
-            println!("Warning: incorrect widget number");
-            ignore(action)
+            err_num()
         }
     }
     

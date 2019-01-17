@@ -14,6 +14,7 @@
 use std::fmt::Debug;
 use crate::TkWidget;
 use crate::macros::NoResponse;
+use crate::widget::Core;
 
 /// Input actions: these are high-level messages aimed at specific widgets.
 #[derive(Debug)]
@@ -52,14 +53,28 @@ pub enum GuiResponse {
 
 /// Mark explicitly ignored events.
 /// 
-/// Ignoring events is allowed but emits a warning if enabled.
-pub fn ignore<M: Debug, R: From<NoResponse>>(m: M) -> R {
-    println!("Handler ignores: {:?}", m);
+/// This is an error, meaning somehow an event has been sent to a widget which
+/// does not support events of that type.
+/// It is safe to ignore this error, but this function panics in debug builds.
+pub fn err_unhandled<M: Debug, R: From<NoResponse>>(m: M) -> R {
+    debug_assert!(false, "handle_action: event not handled by widget: {:?}", m);
+    println!("handle_action: event not handled by widget: {:?}", m);
+    NoResponse.into()
+}
+
+/// Notify of an incorrect widget number.
+/// 
+/// This is an error, meaning somehow an event has been sent to a
+/// widget number which is not a child of the initial window/widget.
+/// It is safe to ignore this error, but this function panics in debug builds.
+pub fn err_num<R: From<NoResponse>>() -> R {
+    debug_assert!(false, "handle_action: bad widget number");
+    println!("handle_action: bad widget number");
     NoResponse.into()
 }
 
 /// Event-handling aspect of a widget.
-pub trait Handler {
+pub trait Handler: Core {
     /// Type of message returned by this handler.
     /// 
     /// This mechanism allows type-safe handling of user-defined responses to handled actions.
@@ -69,8 +84,5 @@ pub trait Handler {
     
     /// Handle a high-level event directed at the widget identified by `number`,
     /// and return a user-defined msg.
-    fn handle_action(&mut self, tk: &TkWidget, action: Action, number: u32) -> Self::Response {
-        let _unused = (tk, number);  // squelch warning
-        ignore(action)
-    }
+    fn handle_action(&mut self, tk: &TkWidget, action: Action, number: u32) -> Self::Response;
 }
