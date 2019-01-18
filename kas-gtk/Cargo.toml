@@ -16,7 +16,7 @@ layout = ["kas/layout"]
 
 [dependencies]
 kas = { path = "..", version = "0.0.1" }
-gtk = "0.5"
+gtk = { version = "0.5", features = ["v3_12"] }
 gdk = { version = "0.9", features = ["v3_10"] }
 glib = "0.6"
 gtk-sys = "0.7"

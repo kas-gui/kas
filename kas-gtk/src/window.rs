@@ -116,8 +116,14 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                     });
                     button.upcast::<gtk::Widget>()
                 }
-                Class::Text => gtk::Label::new(child.label())
-                        .upcast::<gtk::Widget>(),
+                Class::Text => {
+                    let label = gtk::Label::new(child.label());
+                    // Text naturally has a top/bottom margin, but not start/end
+                    // which looks quite odd. Does this solution scale well?
+                    label.set_margin_start(2);
+                    label.set_margin_end(2);
+                    label.upcast::<gtk::Widget>()
+                }
                 Class::Entry => {
                     let entry = gtk::Entry::new();
                     let child = child.downcast_ref::<kas::display::Entry>().unwrap();
