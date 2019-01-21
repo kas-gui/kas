@@ -10,7 +10,6 @@ extern crate proc_macro;
 
 mod args;
 
-use std::env;
 use std::fmt::Write;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, TokenStreamExt};
@@ -146,7 +145,6 @@ use self::args::{Class, ChildType};
 #[proc_macro_derive(Widget, attributes(core, widget, handler))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
-    let c = c();
     
     let args = match args::read_attrs(&mut ast) {
         Ok(w) => w,
@@ -159,7 +157,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let class = args.widget.class;
     let count = args.children.len();
     
-    let layout_fns = match layout::fns(&c, &args.children, args.widget.layout) {
+    let layout_fns = match layout::fns(&args.children, args.widget.layout) {
         Ok(fns) => fns,
         Err(err) => return err.to_compile_error().into(),
     };
@@ -176,58 +174,58 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let get_mut_rules = make_match_rules(&args.children, quote!{mut});
     
     let mut toks = quote! {
-        impl #impl_generics #c::Core
+        impl #impl_generics kas::Core
             for #name #ty_generics #where_clause
         {
             fn number(&self) -> u32 {
-                use #c::Core;
+                use kas::Core;
                 self.#core.number()
             }
             fn set_number(&mut self, number: u32) {
-                use #c::Core;
+                use kas::Core;
                 self.#core.set_number(number);
             }
             
-            fn tkd(&self) -> #c::TkData {
-                use #c::Core;
+            fn tkd(&self) -> kas::TkData {
+                use kas::Core;
                 self.#core.tkd()
             }
-            fn set_tkd(&mut self, tkd: #c::TkData) {
-                use #c::Core;
+            fn set_tkd(&mut self, tkd: kas::TkData) {
+                use kas::Core;
                 self.#core.set_tkd(tkd)
             }
             
-            fn rect(&self) -> &#c::Rect {
-                use #c::Core;
+            fn rect(&self) -> &kas::Rect {
+                use kas::Core;
                 self.#core.rect()
             }
-            fn rect_mut(&mut self) -> &mut #c::Rect {
-                use #c::Core;
+            fn rect_mut(&mut self) -> &mut kas::Rect {
+                use kas::Core;
                 self.#core.rect_mut()
             }
         }
         
-        impl #impl_generics #c::Layout
+        impl #impl_generics kas::Layout
                 for #name #ty_generics #where_clause
         {
             #layout_fns
         }
         
-        impl #impl_generics #c::Widget
+        impl #impl_generics kas::Widget
                 for #name #ty_generics #where_clause
         {
-            fn class(&self) -> #c::Class { #class }
+            fn class(&self) -> kas::Class { #class }
 
             fn len(&self) -> usize {
                 #count
             }
-            fn get(&self, _index: usize) -> Option<&#c::Widget> {
+            fn get(&self, _index: usize) -> Option<&kas::Widget> {
                 match _index {
                     #get_rules
                     _ => None
                 }
             }
-            fn get_mut(&mut self, _index: usize) -> Option<&mut #c::Widget> {
+            fn get_mut(&mut self, _index: usize) -> Option<&mut kas::Widget> {
                 match _index {
                     #get_mut_rules
                     _ => None
@@ -276,15 +274,15 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
         
         toks.append_all(quote! {
-            impl #impl_generics #c::event::Handler
+            impl #impl_generics kas::event::Handler
                     for #name #ty_generics #where_clause
             {
                 type Response = #response;
                 
-                fn handle_action(&mut self, _tk: &#c::TkWidget, action: #c::event::Action,
+                fn handle_action(&mut self, _tk: &kas::TkWidget, action: kas::event::Action,
                         num: u32) -> Self::Response
                 {
-                    use #c::{Core, event::{Handler, err_unhandled, err_num}};
+                    use kas::{Core, event::{Handler, err_unhandled, err_num}};
                     
                     if num == self.number() {
                         // we may want to allow custom handlers on self here?
@@ -442,10 +440,8 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Used to make fresh identifiers for generic types
     let mut name_buf = String::with_capacity(32);
     
-    let c = c();
-    
     // fields of anonymous struct:
-    let mut field_toks = quote!{ #[core] core: #c::CoreData, };
+    let mut field_toks = quote!{ #[core] core: kas::CoreData, };
     // initialisers for these fields:
     let mut field_val_toks = quote!{ core: Default::default(), };
     // debug impl
@@ -463,10 +459,10 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     
     let widget_args = match args.class {
         Class::Container(layout) => quote!{
-            class = #c::Class::Container, layout = #layout
+            class = kas::Class::Container, layout = #layout
         },
         Class::Frame => quote!{
-            class = #c::Class::Frame
+            class = kas::Class::Frame
         },
     };
     
@@ -492,14 +488,14 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 gen_tys.push(ty.clone());
                 if let Some(ref wattr) = attr {
                     if let Some(tyr) = gen_response {
-                        handler_clauses.push(quote!{ #ty: #c::event::Handler<Response = #tyr> });
+                        handler_clauses.push(quote!{ #ty: kas::event::Handler<Response = #tyr> });
                     } else {
                         // No typing. If a handler is specified, then the child must implement
                         // Handler<Response = X> where the handler takes type X; otherwise
                         // we use `msg.into()` and this conversion must be supported.
                         if let Some(ref handler) = wattr.args.handler {
                             if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
-                                handler_clauses.push(quote!{ #ty: #c::event::Handler<Response = #ty_bound> });
+                                handler_clauses.push(quote!{ #ty: kas::event::Handler<Response = #ty_bound> });
                             } else {
                                 return quote!{}.into(); // exit after emitting error
                             }
@@ -507,17 +503,17 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             name_buf.push_str("R");
                             let tyr = Ident::new(&name_buf, Span::call_site());
                             handler_extra.push(tyr.clone());
-                            handler_clauses.push(quote!{ #ty: #c::event::Handler<Response = #tyr> });
-                            handler_clauses.push(quote!{ #tyr: From<#c::event::NoResponse> });
+                            handler_clauses.push(quote!{ #ty: kas::event::Handler<Response = #tyr> });
+                            handler_clauses.push(quote!{ #tyr: From<kas::event::NoResponse> });
                             handler_clauses.push(quote!{ #response: From<#tyr> });
                         }
                     }
                     
                     if let Some(mut bound) = gen_bound {
-                        bound.bounds.push(parse_quote!{ #c::Widget });
+                        bound.bounds.push(parse_quote!{ kas::Widget });
                         gen_ptrs.push(quote!{ #ty: #bound });
                     } else {
-                        gen_ptrs.push(quote!{ #ty: #c::Widget });
+                        gen_ptrs.push(quote!{ #ty: kas::Widget });
                     }
                 } else {
                     gen_ptrs.push(quote!{ #ty });
@@ -563,7 +559,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let toks = (quote!{ {
         #[widget(#widget_args)]
         #[handler(response = #response, generics = < #handler_extra > #handler_where)]
-        #[derive(Clone, Debug, #c::macros::Widget)]
+        #[derive(Clone, Debug, kas::macros::Widget)]
         struct AnonWidget<#gen_ptrs> {
             #field_toks
         }
@@ -585,28 +581,17 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 #[proc_macro_derive(NoResponse)]
 pub fn derive_no_response(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
-    let c = c();
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let name = &ast.ident;
     
     let toks = quote!{
-        impl #impl_generics From<#c::event::NoResponse>
+        impl #impl_generics From<kas::event::NoResponse>
             for #name #ty_generics #where_clause
         {
-            fn from(_: #c::event::NoResponse) -> Self {
+            fn from(_: kas::event::NoResponse) -> Self {
                 #name::None
             }
         }
     };
     toks.into()
-}
-
-// Our stand-in for $crate. Imperfect, but works (excepting other crates in
-// the same package, i.e. doc-tests, examples, integration tests, benches).
-fn c() -> TokenStream {
-    if env::var("CARGO_PKG_NAME") == Ok("kas".to_string()) {
-        parse_quote!( crate )
-    } else {
-        parse_quote!( kas )
-    }
 }

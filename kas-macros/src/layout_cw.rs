@@ -9,14 +9,14 @@ use syn::Ident;
 use syn::parse::{Error, Result};
 use crate::args::Child;
 
-pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
+pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
     -> Result<TokenStream>
 {
     let (constraints, appls) = if children.is_empty() {
         // TODO: warn on invalid layout specification
         (quote!{
-            let v_w = #c::cw_var!(self, w);
-            let v_h = #c::cw_var!(self, h);
+            let v_w = kas::cw_var!(self, w);
+            let v_h = kas::cw_var!(self, h);
             
             let (min, hint) = tk.size_hints(self.tkd());
             
@@ -54,11 +54,11 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
         let ident = &children[0].ident;
         (quote!{
             s.add_constraint(cw::Constraint::new(
-                cw::Expression::from(#c::cw_var!(self, w)) - #c::cw_var!(self.#ident, w),
+                cw::Expression::from(kas::cw_var!(self, w)) - kas::cw_var!(self.#ident, w),
                 cw::RelationalOperator::Equal,
                 cw::strength::STRONG)).unwrap();
             s.add_constraint(cw::Constraint::new(
-                cw::Expression::from(#c::cw_var!(self, h)) - #c::cw_var!(self.#ident, h),
+                cw::Expression::from(kas::cw_var!(self, h)) - kas::cw_var!(self.#ident, h),
                 cw::RelationalOperator::Equal,
                 cw::strength::STRONG)).unwrap();
             self.#ident.init_constraints(tk, s, _use_default);
@@ -67,8 +67,8 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
         if let Some(l) = layout {
             if l == "horizontal" {
                 let mut constr = quote!{
-                    let mut width = cw::Expression::from(#c::cw_var!(self, w));
-                    let height = cw::Expression::from(#c::cw_var!(self, h));
+                    let mut width = cw::Expression::from(kas::cw_var!(self, w));
+                    let height = cw::Expression::from(kas::cw_var!(self, h));
                 };
                 let mut appls = quote!{ let mut cpos = pos; };
                 
@@ -76,8 +76,8 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
                     let ident = &child.ident;
                     
                     constr.append_all(quote!{
-                        let child_v_w = #c::cw_var!(self.#ident, w);
-                        let child_v_h = #c::cw_var!(self.#ident, h);
+                        let child_v_w = kas::cw_var!(self.#ident, w);
+                        let child_v_h = kas::cw_var!(self.#ident, h);
                         width -= child_v_w;
                         s.add_constraint(cw::Constraint::new(
                             height.clone() - child_v_h,
@@ -92,7 +92,7 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
                     
                     appls.append_all(quote!{
                         self.#ident.apply_constraints(tk, s, cpos);
-                        cpos.0 += s.get_value(#c::cw_var!(self.#ident, w)) as i32;
+                        cpos.0 += s.get_value(kas::cw_var!(self.#ident, w)) as i32;
                     });
                 }
                 
@@ -106,8 +106,8 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
                 (constr, appls)
             } else if l == "vertical" {
                 let mut constr = quote!{
-                    let width = cw::Expression::from(#c::cw_var!(self, w));
-                    let mut height = cw::Expression::from(#c::cw_var!(self, h));
+                    let width = cw::Expression::from(kas::cw_var!(self, w));
+                    let mut height = cw::Expression::from(kas::cw_var!(self, h));
                 };
                 let mut appls = quote!{ let mut cpos = pos; };
                 
@@ -115,8 +115,8 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
                     let ident = &child.ident;
                     
                     constr.append_all(quote!{
-                        let child_v_w = #c::cw_var!(self.#ident, w);
-                        let child_v_h = #c::cw_var!(self.#ident, h);
+                        let child_v_w = kas::cw_var!(self.#ident, w);
+                        let child_v_h = kas::cw_var!(self.#ident, h);
                         s.add_constraint(cw::Constraint::new(
                             width.clone() - child_v_w,
                             cw::RelationalOperator::GreaterOrEqual,
@@ -131,7 +131,7 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
                     
                     appls.append_all(quote!{
                         self.#ident.apply_constraints(tk, s, cpos);
-                        cpos.1 += s.get_value(#c::cw_var!(self.#ident, h)) as i32;
+                        cpos.1 += s.get_value(kas::cw_var!(self.#ident, h)) as i32;
                     });
                 }
                 
@@ -154,20 +154,20 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
         }
     };
     Ok(quote! {
-        fn init_constraints(&self, tk: &#c::TkWidget,
-            s: &mut #c::cw::Solver, _use_default: bool)
+        fn init_constraints(&self, tk: &kas::TkWidget,
+            s: &mut kas::cw::Solver, _use_default: bool)
         {
-            use #c::cw;
+            use kas::cw;
             #constraints
         }
         
-        fn apply_constraints(&mut self, tk: &#c::TkWidget,
-            s: &#c::cw::Solver, pos: #c::Coord)
+        fn apply_constraints(&mut self, tk: &kas::TkWidget,
+            s: &kas::cw::Solver, pos: kas::Coord)
         {
             #appls
             
-            let w = s.get_value(#c::cw_var!(self, w)) as i32;
-            let h = s.get_value(#c::cw_var!(self, h)) as i32;
+            let w = s.get_value(kas::cw_var!(self, w)) as i32;
+            let h = s.get_value(kas::cw_var!(self, h)) as i32;
             let tkd = self.tkd();
             let rect = self.rect_mut();
             rect.pos = pos;

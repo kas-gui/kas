@@ -9,24 +9,24 @@ use syn::{parse_quote, Path, Ident};
 use syn::parse::{Error, Result};
 use crate::args::Child;
 
-pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
+pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
     -> Result<TokenStream>
 {
     let layout: Path = if let Some(l) = layout {
         if l == "single" {
-            parse_quote!{ #c::ChildLayout::None }
+            parse_quote!{ kas::ChildLayout::None }
         } else if l == "horizontal" {
-            parse_quote!{ #c::ChildLayout::Horizontal }
+            parse_quote!{ kas::ChildLayout::Horizontal }
         } else if l == "vertical" {
-            parse_quote!{ #c::ChildLayout::Vertical }
+            parse_quote!{ kas::ChildLayout::Vertical }
         } else if l == "grid" {
-            parse_quote!{ #c::ChildLayout::Grid }
+            parse_quote!{ kas::ChildLayout::Grid }
         } else {
             return Err(Error::new(l.span(),
                 "expected one of: single, horizontal, vertical, grid"));
         }
     } else {
-        parse_quote!{ #c::ChildLayout::None }
+        parse_quote!{ kas::ChildLayout::None }
     };
     
     let mut pos_rules = TokenStream::new();
@@ -40,19 +40,19 @@ pub(crate) fn fns(c: &TokenStream, children: &Vec<Child>, layout: Option<Ident>)
     }
     
     Ok(quote! {
-        fn child_layout(&self) -> #c::ChildLayout {
+        fn child_layout(&self) -> kas::ChildLayout {
             #layout
         }
         
-        fn grid_pos(&self, _index: usize) -> Option<#c::GridPos> {
+        fn grid_pos(&self, _index: usize) -> Option<kas::GridPos> {
             match _index {
                 #pos_rules
                 _ => None
             }
         }
 
-        fn sync_size(&mut self, tk: &#c::TkWidget) {
-            use #c::Core;
+        fn sync_size(&mut self, tk: &kas::TkWidget) {
+            use kas::Core;
             let new_rect = tk.get_rect(self.tkd());
             *self.rect_mut() = new_rect;
             

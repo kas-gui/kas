@@ -5,11 +5,13 @@
 
 //! KAS lib
 #![feature(unrestricted_attribute_tokens)]
+#![feature(extern_crate_self)]
 
 #[doc(hidden)]
 #[cfg(feature = "cassowary")]
 pub extern crate cassowary as cw;    // used by macros
 
+extern crate self as kas; // required for reliable self-reference in kas_macros
 extern crate kas_macros;
 
 // internal modules:
