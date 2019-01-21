@@ -5,8 +5,10 @@
 
 //! Display widgets show information but are not interactive
 
+use std::fmt::{self, Debug};
+
 use crate::macros::Widget;
-use crate::event::NoResponse;
+use crate::event::{Action, Handler, NoResponse, err_num, err_unhandled};
 use crate::{Class, Core, CoreData, HasText, Editable, TkWidget};
 
 /// A simple text display widget
@@ -51,31 +53,50 @@ impl HasText for Text {
 
 /// Basic text entry.
 #[widget(class = Class::Entry(self))]
-#[handler(response = NoResponse)]
-#[derive(Clone, Default, Debug, Widget)]
-pub struct Entry {
+#[derive(Clone, Default, Widget)]
+pub struct Entry<H: 'static> {
     #[core] core: CoreData,
     editable: bool,
     text: String,
+    handler: H,
 }
 
-impl Entry {
+impl<H> Debug for Entry<H> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Entry {{ core: {:?}, editable: {:?}, text: {:?}, handler: <omitted> }}",
+            self.core, self.editable, self.text)
+    }
+}
+
+impl<R, H: Fn() -> R> Entry<H> {
+    pub fn new_on_activate(text: String, handler: H) -> Self {
+        Entry {
+            core: Default::default(),
+            editable: true,
+            text,
+            handler,
+        }
+    }
+}
+
+impl Entry<()> {
     pub fn new(editable: bool, text: String) -> Self {
         Entry {
             core: Default::default(),
             editable,
             text,
+            handler: (),
         }
     }
 }
 
-impl Entry {
+impl<H> Entry<H> {
     pub fn set_text(&mut self, tk: &TkWidget, text: &str) {
         tk.set_label(self.tkd(), text);
     }
 }
 
-impl HasText for Entry {
+impl<H> HasText for Entry<H> {
     fn get_text(&self) -> &str {
         &self.text
     }
@@ -86,8 +107,42 @@ impl HasText for Entry {
     }
 }
 
-impl Editable for Entry {
+impl<H> Editable for Entry<H> {
     fn is_editable(&self) -> bool {
         self.editable
+    }
+}
+
+impl Handler for Entry<()> {
+    type Response = NoResponse;
+    
+    fn handle_action(&mut self, _tk: &TkWidget, action: Action, num: u32) -> Self::Response {
+        if num != self.number() {
+            return err_num()
+        }
+        
+        match action {
+            Action::Activate => {
+                NoResponse
+            }
+            a @ _ => err_unhandled(a)
+        }
+    }
+}
+
+impl<R: From<NoResponse>, H: Fn() -> R> Handler for Entry<H> {
+    type Response = R;
+    
+    fn handle_action(&mut self, _tk: &TkWidget, action: Action, num: u32) -> Self::Response {
+        if num != self.number() {
+            return err_num()
+        }
+        
+        match action {
+            Action::Activate => {
+                (self.handler)()
+            }
+            a @ _ => err_unhandled(a)
+        }
     }
 }

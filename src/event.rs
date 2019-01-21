@@ -19,6 +19,8 @@ use crate::widget::Core;
 /// Input actions: these are high-level messages aimed at specific widgets.
 #[derive(Debug)]
 pub enum Action {
+    /// An `Entry` has been activated.
+    Activate,
     /// A button has been clicked.
     ButtonClick,
     /// A window has been asked to close.

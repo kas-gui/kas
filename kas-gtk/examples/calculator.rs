@@ -14,6 +14,7 @@ use kas::control::TextButton;
 use kas::display::Entry;
 use kas::event::NoResponse;
 use kas::macros::{NoResponse, make_widget};
+use kas::HasText;
 use kas::{SimpleWindow, Toolkit, TkWidget};
 
 #[derive(Clone, Debug, PartialEq, NoResponse)]
@@ -56,7 +57,7 @@ fn main() -> Result<(), kas_gtk::Error> {
         struct {
             // #[widget] state: Text = Text::from("0"),
             // #[widget] buf: Text = Text::new() ,
-            #[widget] display: Entry = Entry::new(false, "0".to_string()),
+            #[widget] display: impl HasText = Entry::new(false, "0".to_string()),
             #[widget(handler = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),
         }
