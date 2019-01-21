@@ -79,6 +79,8 @@ pub fn err_num<R: From<NoResponse>>() -> R {
 /// 
 /// This is a companion trait to [`Widget`]. It can (optionally) be implemented
 /// by the `derive(Widget)` macro, or can be implemented manually.
+/// 
+/// [`Widget`]: crate::Widget
 pub trait Handler: Core {
     /// Type of message returned by this handler.
     /// 

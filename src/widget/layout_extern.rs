@@ -38,6 +38,8 @@ pub type GridPos = (i32, i32, i32, i32);
 /// 
 /// Note that this trait has very different internals depending on which layout
 /// engine is used.
+/// 
+/// [`Widget`]: kas::Widget
 // TODO: move Cassowary methods to a sub-trait if we get multi-trait object support
 pub trait Layout: Core + fmt::Debug {
     /// Layout for child widgets

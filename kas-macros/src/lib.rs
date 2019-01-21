@@ -71,7 +71,7 @@ use self::args::{Class, ChildType};
 /// If there is a `#[handler]` attribute on the struct, then the [`Handler`]
 /// trait will be implemented. This attribute expects the following arguments:
 /// 
-/// -   `response = ...` — the [`Handler<Response>`] associated type
+/// -   `response = ...` — the [`Handler::Response`] associated type
 /// -   `generics = < X, Y, ... > where CONDS` — see below
 /// 
 /// Commonly the [`Handler`] implementation requires extra bounds on generic
@@ -141,7 +141,7 @@ use self::args::{Class, ChildType};
 /// [`Layout`]: ../kas/widget/trait.Layout.html
 /// [`Widget`]: ../kas/widget/trait.Widget.html
 /// [`Handler`]: ../kas/event/trait.Handler.html
-/// [`Handler<Response>`]: TODO
+/// [`Handler::Response`]: ../kas/event/trait.Handler.html#associatedtype.Response
 #[proc_macro_derive(Widget, attributes(core, widget, handler))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);

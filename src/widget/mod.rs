@@ -54,22 +54,7 @@ pub trait Core {
 /// Common widget data
 /// 
 /// Widgets should normally implement `Core` by use of an embedded field
-/// of this type (i.e. composition). The `kas::derive` macro may be used
-/// to write the actual implementation:
-/// 
-/// ```notest
-/// # // test fails: kas_impl uses the wrong prefix for crate?
-/// extern crate kas;
-/// 
-/// #[kas::kas_impl(Core(core))]
-/// struct MyWidget {
-///     core: kas::widget::CoreData,
-///     // more fields here
-/// }
-/// 
-/// 
-/// # fn main() {}
-/// ```
+/// of this type (i.e. composition). See documentation of the [`Widget`] type.
 #[derive(Clone, Default, Debug)]
 pub struct CoreData {
     number: u32,
@@ -124,7 +109,13 @@ impl Core for CoreData {
 /// This trait should *only* be implemented by using the `derive(Widget)` macro,
 /// which can optionally also implement [`Handler`], as in the following example:
 /// 
-/// ```notest
+/// ```
+/// #![feature(unrestricted_attribute_tokens)]
+/// 
+/// use kas::{Class, Widget, CoreData};
+/// use kas::event::NoResponse;
+/// use kas::macros::Widget;
+/// 
 /// #[widget(class = Class::Frame)]
 /// #[handler(response = NoResponse)]
 /// #[derive(Clone, Debug, Widget)]
@@ -133,6 +124,8 @@ impl Core for CoreData {
 ///     child: W,
 /// }
 /// ```
+/// 
+/// [`Handler`]: crate::event::Handler
 pub trait Widget: Layout {
     /// Get the widget's classification
     /// 
