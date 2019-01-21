@@ -20,7 +20,7 @@ use syn::{parse_quote, parse_macro_input};
 use syn::token::Comma;
 use syn::punctuated::Punctuated;
 
-use self::args::ChildType;
+use self::args::{Class, ChildType};
 
 #[cfg(not(feature = "cassowary"))] mod layout_extern;
 #[cfg(not(feature = "cassowary"))] use self::layout_extern as layout;
@@ -304,6 +304,11 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 /// Macro to create a widget with anonymous type
 /// 
+/// This macro supports widgets of the following classes:
+/// 
+/// -   Container
+/// -   Frame
+/// 
 /// This exists purely to save you some typing. You could instead make your own
 /// struct, derive `Widget` (with attributes to enable Core, Layout and Widget
 /// implementation), manually implement `event::Handler`, and instantiate an
@@ -312,10 +317,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// Syntax should match the following Backus-Naur Form:
 /// 
 /// ```bnf
-/// <input>     ::= <layout> "=>" <response> ";" <class_spec> <fields> ";" <funcs>
+/// <input>     ::= <class> "=>" <response> ";" <fields> ";" <funcs>
+/// <class>     ::= "container" "(" <layout> ")" | "frame"
 /// <layout>    ::= "single" | "horizontal" | "vertical" | "grid"
 /// <response>  ::= <type>
-/// <class_spec> ::= "" | "class" "=" <path> ";"
 /// <fields>    ::= "" | <field> | <field> "," <fields>
 /// <field>     ::= <w_attr> <opt_ident> <field_ty> = <expr>
 /// <opt_ident> ::= "_" | <ident>
@@ -454,8 +459,16 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut handler_extra = Punctuated::<_, Comma>::new();
     let mut handler_clauses = Punctuated::<_, Comma>::new();
     
-    let layout = &args.layout;
     let response = &args.response;
+    
+    let widget_args = match args.class {
+        Class::Container(layout) => quote!{
+            class = #c::Class::Container, layout = #layout
+        },
+        Class::Frame => quote!{
+            class = #c::Class::Frame
+        },
+    };
     
     for (index, field) in args.fields.drain(..).enumerate() {
         let attr = &field.widget_attr;
@@ -545,12 +558,10 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         });
     };
     
-    let class = args.class.unwrap_or_else(|| parse_quote!{ #c::Class::Container });
-    
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote!{ {
-        #[widget(class = #class, layout = #layout)]
+        #[widget(#widget_args)]
         #[handler(response = #response, generics = < #handler_extra > #handler_where)]
         #[derive(Clone, Debug, #c::macros::Widget)]
         struct AnonWidget<#gen_ptrs> {

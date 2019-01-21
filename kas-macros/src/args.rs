@@ -5,7 +5,7 @@
 
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, TokenStreamExt, ToTokens};
-use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Index, Lit, Member, Path, TypeTraitObject, Type, TypePath, ImplItemMethod};
+use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Index, Lit, Member, TypeTraitObject, Type, TypePath, ImplItemMethod};
 use syn::{parse_quote, braced, bracketed, parenthesized};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::token::{Brace, Colon, Comma, Eq, FatArrow, Impl, Paren, Pound, RArrow, Semi, Struct, Underscore, Where};
@@ -355,6 +355,11 @@ impl Parse for HandlerArgs {
     }
 }
 
+pub enum Class {
+    Container(Ident),
+    Frame,
+}
+
 pub enum ChildType {
     Fixed(Type),     // fixed type
     // Generic, optionally with specified handler response type,
@@ -370,10 +375,8 @@ pub struct WidgetField {
 }
 
 pub struct MakeWidget {
-    // layout direction
-    pub layout: Ident,
     // widget class
-    pub class: Option<Path>,
+    pub class: Class,
     // response type
     pub response: Type,
     // child widgets and data fields
@@ -384,22 +387,22 @@ pub struct MakeWidget {
 
 impl Parse for MakeWidget {
     fn parse(input: ParseStream) -> Result<Self> {
-        let layout: Ident = input.parse()?;
-        let _: FatArrow = input.parse()?;
+        let class_name: Ident = input.parse()?;
+        let class = if class_name == "container" {
+            let content;
+            let _ = parenthesized!(content in input);
+            let layout: Ident = content.parse()?;
+            Class::Container(layout)
+        } else if class_name == "frame" {
+            Class::Frame
+        } else {
+            return Err(Error::new(class_name.span(),
+                    "make_widget only supports the following classes: container, frame"));
+        };
         
+        let _: FatArrow = input.parse()?;
         let response: Type = input.parse()?;
         let _: Semi = input.parse()?;
-        
-        // TODO: revise attributes?
-        let class = if input.peek(kw::class) {
-            let _: kw::class = input.parse()?;
-            let _: Eq = input.parse()?;
-            let class: Path = input.parse()?;
-            let _: Semi = input.parse()?;
-            Some(class)
-        } else {
-            None
-        };
         
         let _: Struct = input.parse()?;
         let content;
@@ -436,7 +439,7 @@ impl Parse for MakeWidget {
             impls.push((target, methods));
         }
         
-        Ok(MakeWidget { layout, class, response, fields, impls })
+        Ok(MakeWidget { class, response, fields, impls })
     }
 }
 

@@ -23,14 +23,14 @@ enum Message {
 
 fn main() -> Result<(), kas_gtk::Error> {
     let buttons = make_widget!(
-        horizontal => Message;
+        container(horizontal) => Message;
         struct {
             #[widget] _ = TextButton::new("−", || Message::Decr),
             #[widget] _ = TextButton::new("+", || Message::Incr),
         }
     );
     let window = SimpleWindow::new(make_widget!(
-        vertical => NoResponse;
+        container(vertical) => NoResponse;
         struct {
             #[widget] display: Text = Text::from("0"),
             #[widget(handler = handle_button)] buttons -> Message = buttons,

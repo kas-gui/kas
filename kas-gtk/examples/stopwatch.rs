@@ -17,7 +17,7 @@ use kas::display::Text;
 use kas::event::{NoResponse};
 use kas::macros::{NoResponse, make_widget};
 use kas::HasText;
-use kas::{Class, SimpleWindow, Toolkit, TkWidget, Window};
+use kas::{SimpleWindow, Toolkit, TkWidget, Window};
 
 #[derive(Debug, NoResponse)]
 enum Control {
@@ -34,11 +34,10 @@ fn make_window() -> Rc<RefCell<Window>> {
     }
     
     let stopwatch = make_widget! {
-        horizontal => NoResponse;
+        container(horizontal) => NoResponse;
         struct {
             #[widget] display: impl SetText = make_widget!{
-                single => NoResponse;
-                class = Class::Frame;
+                frame => NoResponse;
                 struct {
                     #[widget] display: Text = Text::from("0.000"),
                 }

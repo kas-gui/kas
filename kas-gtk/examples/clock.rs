@@ -20,7 +20,7 @@ use kas::{SimpleWindow, Toolkit, TkWidget};
 
 fn main() -> Result<(), kas_gtk::Error> {
     let mut window = SimpleWindow::new(make_widget! {
-            vertical => NoResponse;
+            container(vertical) => NoResponse;
             struct {
                 #[widget] date: Text = Text::new(),
                 #[widget] time: Text = Text::new()

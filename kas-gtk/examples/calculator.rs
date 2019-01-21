@@ -31,7 +31,7 @@ enum Key {
 
 fn main() -> Result<(), kas_gtk::Error> {
     let buttons = make_widget!{
-        grid => Key;
+        container(grid) => Key;
         struct {
             #[widget(col = 0, row = 0)] _ = TextButton::new("clear", || Key::Clear),
             #[widget(col = 1, row = 0)] _ = TextButton::new("÷", || Key::Divide),
@@ -53,7 +53,7 @@ fn main() -> Result<(), kas_gtk::Error> {
         }
     };
     let content = make_widget!{
-        vertical => NoResponse;
+        container(vertical) => NoResponse;
         struct {
             // #[widget] state: Text = Text::from("0"),
             // #[widget] buf: Text = Text::new() ,
