@@ -124,10 +124,9 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                     label.set_margin_end(2);
                     label.upcast::<gtk::Widget>()
                 }
-                Class::Entry => {
+                Class::Entry(iface) => {
                     let entry = gtk::Entry::new();
-                    let child = child.downcast_ref::<kas::display::Entry>().unwrap();
-                    entry.set_editable(child.is_editable());
+                    entry.set_editable(iface.is_editable());
                     if let Some(label) = child.label() {
                         entry.set_text(label);
                     }

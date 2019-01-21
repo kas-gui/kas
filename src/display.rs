@@ -7,7 +7,7 @@
 
 use crate::macros::Widget;
 use crate::event::NoResponse;
-use crate::{Class, Core, CoreData, TkWidget};
+use crate::{Class, Core, CoreData, Editable, TkWidget};
 
 /// A simple text display widget
 #[widget(class = Class::Text, label = Some(self.text.as_str()))]
@@ -46,7 +46,7 @@ impl<T> From<T> for Text where String: From<T> {
 /// Basic text entry.
 /// 
 /// TODO: this is currently just a hack to satisfy a single use-case.
-#[widget(class = Class::Entry, label = Some(self.text.as_str()))]
+#[widget(class = Class::Entry(self), label = Some(self.text.as_str()))]
 #[handler(response = NoResponse)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Entry {
@@ -67,9 +67,10 @@ impl Entry {
     pub fn set_text(&mut self, tk: &TkWidget, text: &str) {
         tk.set_label(self.tkd(), text);
     }
-    
-    /// Get whether this input field is editable.
-    pub fn is_editable(&self) -> bool {
+}
+
+impl Editable for Entry {
+    fn is_editable(&self) -> bool {
         self.editable
     }
 }

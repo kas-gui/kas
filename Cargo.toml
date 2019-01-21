@@ -19,7 +19,6 @@ cassowary = []
 [dependencies]
 # cassowary = { git = "https://github.com/dhardy/cassowary-rs", optional = true }
 kas-macros = { version = "=0.0.1", path = "kas-macros" }
-downcast-rs = "1.0"
 
 [workspace]
 members = ["kas-gtk", "kas-macros"]

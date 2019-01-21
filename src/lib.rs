@@ -17,6 +17,7 @@ extern crate kas_macros;
 mod widget;
 mod window;
 mod toolkit;
+mod traits;
 
 // public implementations:
 pub mod callback;
@@ -37,3 +38,4 @@ pub mod macros {
 pub use crate::widget::*;
 pub use crate::window::*;
 pub use crate::toolkit::*;
+pub use crate::traits::*;
