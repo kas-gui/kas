@@ -29,36 +29,9 @@ pub(crate) fn handler(event: &mut Event) {
             // else: fall through
         },
         
-        // let GTK handle these for now:
-        ButtonPress |
-        ButtonRelease |
-        ClientEvent |
-        Damage |
-        Delete |
-        DoubleButtonPress |
-        EnterNotify |
-        Expose |
-        FocusChange |
-        GrabBroken |
-        KeyPress |
-        KeyRelease |
-        LeaveNotify |
-        Map |
-        MotionNotify |
-        PropertyNotify |
-        SelectionClear |
-        SelectionNotify |
-        SelectionRequest |
-        Setting |
-        TripleButtonPress |
-        Unmap |
-        VisibilityNotify |
-        WindowState => {
-            // fall through
-        },
-        
         _ => {
-            println!("Event: {:?}", event);
+            // This hook can be used to trace events
+            //println!("Event: {:?}", event);
         }
     }
     
