@@ -7,10 +7,10 @@
 
 use crate::macros::Widget;
 use crate::event::NoResponse;
-use crate::{Class, Core, CoreData, Editable, TkWidget};
+use crate::{Class, Core, CoreData, HasText, Editable, TkWidget};
 
 /// A simple text display widget
-#[widget(class = Class::Text, label = Some(self.text.as_str()))]
+#[widget(class = Class::Text(self))]
 #[handler(response = NoResponse)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Text {
@@ -26,11 +26,6 @@ impl Text {
             text: String::new()
         }
     }
-    
-    /// Set the text to display
-    pub fn set_text(&mut self, tk: &TkWidget, text: &str) {
-        tk.set_label(self.tkd(), text);
-    }
 }
 
 impl<T> From<T> for Text where String: From<T> {
@@ -42,11 +37,20 @@ impl<T> From<T> for Text where String: From<T> {
     }
 }
 
+impl HasText for Text {
+    fn get_text(&self) -> &str {
+        &self.text
+    }
+    
+    fn set_text(&mut self, tk: &TkWidget, text: &str) {
+        tk.set_label(self.tkd(), text);
+        self.text = text.into();
+    }
+}
+
 
 /// Basic text entry.
-/// 
-/// TODO: this is currently just a hack to satisfy a single use-case.
-#[widget(class = Class::Entry(self), label = Some(self.text.as_str()))]
+#[widget(class = Class::Entry(self))]
 #[handler(response = NoResponse)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Entry {
@@ -63,9 +67,22 @@ impl Entry {
             text,
         }
     }
-    
+}
+
+impl Entry {
     pub fn set_text(&mut self, tk: &TkWidget, text: &str) {
         tk.set_label(self.tkd(), text);
+    }
+}
+
+impl HasText for Entry {
+    fn get_text(&self) -> &str {
+        &self.text
+    }
+    
+    fn set_text(&mut self, tk: &TkWidget, text: &str) {
+        tk.set_label(self.tkd(), text);
+        self.text = text.into();
     }
 }
 

@@ -139,10 +139,6 @@ pub trait Widget: Layout {
     /// This includes access to additional class-specific interfaces.
     fn class(&self) -> Class;
     
-    /// Get the widget's label, if any.
-    /// TODO: keep?
-    fn label(&self) -> Option<&str>;
-    
     /// Get the number of child widgets
     fn len(&self) -> usize;
     

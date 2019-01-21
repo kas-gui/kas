@@ -56,7 +56,6 @@ use self::args::ChildType;
 /// The `#[widget]` attribute on the struct supports the following arguments:
 /// 
 /// -   `class = ...` (required) — an expression yielding the widget's [`Class`]
-/// -   `label = ...`(optional) — an expression yielding the widget's [`label`]
 /// -   `layout = ...` (optional) — see below
 /// 
 /// Widgets with no children or only a single child do not need to specify the
@@ -137,7 +136,6 @@ use self::args::ChildType;
 /// 
 /// Note: usage of this macro currently requires `#![feature(unrestricted_attribute_tokens)]`.
 /// 
-/// [`label`]: ../kas/widget/trait.Widget.html#tymethod.label
 /// [`Class`]: ../kas/widget/enum.Class.html
 /// [`Core`]: ../kas/widget/trait.Core.html
 /// [`CoreData`]: ../kas/widget/struct.CoreData.html
@@ -159,7 +157,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     
     let core = args.core;
     let class = args.widget.class;
-    let label = args.widget.label.unwrap_or_else(|| parse_quote!{ None });
     let count = args.children.len();
     
     let layout_fns = match layout::fns(&c, &args.children, args.widget.layout) {
@@ -220,7 +217,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 for #name #ty_generics #where_clause
         {
             fn class(&self) -> #c::Class { #class }
-            fn label(&self) -> Option<&str> { #label }
 
             fn len(&self) -> usize {
                 #count

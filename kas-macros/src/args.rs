@@ -121,7 +121,6 @@ mod kw {
     use syn::custom_keyword;
     
     custom_keyword!(class);
-    custom_keyword!(label);
     custom_keyword!(layout);
     custom_keyword!(col);
     custom_keyword!(row);
@@ -272,7 +271,6 @@ impl ToTokens for GridPos {
 
 pub struct WidgetArgs {
     pub class: Expr,
-    pub label: Option<Expr>,
     pub layout: Option<Ident>,
 }
 
@@ -287,7 +285,6 @@ impl Parse for WidgetArgs {
         let _ = parenthesized!(content in input);
         
         let mut class = None;
-        let mut label = None;
         let mut layout = None;
         
         loop {
@@ -297,11 +294,6 @@ impl Parse for WidgetArgs {
                 let _: Eq = content.parse()?;
                 let expr: Expr = content.parse()?;
                 class = Some(expr);
-            } else if label.is_none() && lookahead.peek(kw::label) {
-                let _: kw::label = content.parse()?;
-                let _: Eq = content.parse()?;
-                let expr: Expr = content.parse()?;
-                label = Some(expr);
             } else if layout.is_none() && lookahead.peek(kw::layout) {
                 let _: kw::layout = content.parse()?;
                 let _: Eq = content.parse()?;
@@ -319,7 +311,6 @@ impl Parse for WidgetArgs {
         
         Ok(WidgetArgs {
             class: class.ok_or_else(|| content.error("expected `class = ...`"))?,
-            label,
             layout,
         })
     }

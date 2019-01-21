@@ -9,38 +9,53 @@ use std::fmt::{self, Debug};
 
 use crate::macros::Widget;
 use crate::event::{Action, Handler, NoResponse, err_num, err_unhandled};
-use crate::{Class, Core, CoreData, TkWidget};
+use crate::{Class, Core, CoreData, HasText, TkWidget};
 
 // TODO: abstract out text part?
-#[widget(class = Class::Button, label = Some(self.msg))]
+#[widget(class = Class::Button(self))]
 #[derive(Clone, Default, Widget)]
 pub struct TextButton<H: 'static> {
     #[core]
     core: CoreData,
-    msg: &'static str,
+    text: String,
     handler: H,
 }
 
 impl<H> Debug for TextButton<H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TextButton {{ core: {:?}, msg: {:?}, handler: <omitted> }}",
-            self.core, self.msg)
+        write!(f, "TextButton {{ core: {:?}, text: {:?}, handler: <omitted> }}",
+            self.core, self.text)
     }
 }
 
 impl<R, H: Fn() -> R> TextButton<H> {
-    pub fn new(msg: &'static str, handler: H) -> Self {
-        TextButton { core: Default::default(), msg, handler }
+    pub fn new<S: Into<String>>(text: S, handler: H) -> Self {
+        TextButton {
+            core: Default::default(),
+            text: text.into(),
+            handler
+        }
     }
 }
 
 // impl<H> From<&'static str> for TextButton<NoResponse, H>
 //     where H: Fn(()) -> NoResponse
 // {
-//     fn from(msg: &'static str) -> Self {
-//         TextButton::new(msg, |()| NoResponse)
+//     fn from(text: &'static str) -> Self {
+//         TextButton::new(text, |()| NoResponse)
 //     }
 // }
+
+impl<H> HasText for TextButton<H> {
+    fn get_text(&self) -> &str {
+        &self.text
+    }
+    
+    fn set_text(&mut self, tk: &TkWidget, text: &str) {
+        tk.set_label(self.tkd(), text);
+        self.text = text.into();
+    }
+}
 
 
 impl<R: From<NoResponse>, H: Fn() -> R> Handler for TextButton<H> {

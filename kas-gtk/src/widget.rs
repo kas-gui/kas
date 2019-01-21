@@ -8,7 +8,7 @@
 //! Widget code
 
 use gtk;
-use gtk::{Cast, WidgetExt, LabelExt, EntryExt};
+use gtk::{Cast, WidgetExt, LabelExt, ButtonExt, EntryExt};
 
 use kas::{Coord, Rect, TkData, TkWidget};
 
@@ -40,6 +40,8 @@ impl TkWidget for Toolkit {
         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
         if let Some(glabel) = gw.downcast_ref::<gtk::Label>() {
             glabel.set_label(text);
+        } else if let Some(button) = gw.downcast_ref::<gtk::Button>() {
+            button.set_label(text);
         } else if let Some(entry) = gw.downcast_ref::<gtk::Entry>() {
             entry.set_text(text);
         } /*else if let Some(cont) = gw.downcast_ref::<gtk::Container>() {

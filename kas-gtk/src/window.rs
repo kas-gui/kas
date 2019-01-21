@@ -107,8 +107,8 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                     gtk::Box::new(gtk::Orientation::Horizontal, 0)
                                 .upcast::<gtk::Widget>()
                 }
-                Class::Button => {
-                    let button = gtk::Button::new_with_label(child.label().unwrap());
+                Class::Button(iface) => {
+                    let button = gtk::Button::new_with_label(iface.get_text());
                     let num = child.number();
                     button.connect_clicked(move |_| {
                         let action = Action::ButtonClick;
@@ -116,8 +116,8 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                     });
                     button.upcast::<gtk::Widget>()
                 }
-                Class::Text => {
-                    let label = gtk::Label::new(child.label());
+                Class::Text(iface) => {
+                    let label = gtk::Label::new(iface.get_text());
                     // Text naturally has a top/bottom margin, but not start/end
                     // which looks quite odd. Does this solution scale well?
                     label.set_margin_start(2);
@@ -127,9 +127,7 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                 Class::Entry(iface) => {
                     let entry = gtk::Entry::new();
                     entry.set_editable(iface.is_editable());
-                    if let Some(label) = child.label() {
-                        entry.set_text(label);
-                    }
+                    entry.set_text(iface.get_text());
                     entry.upcast::<gtk::Widget>()
                 }
                 Class::Frame => {

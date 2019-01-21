@@ -16,6 +16,7 @@ use kas::control::TextButton;
 use kas::display::Text;
 use kas::event::{NoResponse};
 use kas::macros::{NoResponse, make_widget};
+use kas::HasText;
 use kas::{Class, SimpleWindow, Toolkit, TkWidget, Window};
 
 #[derive(Debug, NoResponse)]

@@ -15,6 +15,7 @@ use kas::callback::Condition;
 use kas::display::Text;
 use kas::event::NoResponse;
 use kas::macros::make_widget;
+use kas::HasText;
 use kas::{SimpleWindow, Toolkit, TkWidget};
 
 fn main() -> Result<(), kas_gtk::Error> {
