@@ -1,6 +1,6 @@
 [package]
 name = "kas-gtk"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -15,7 +15,7 @@ repository = "https://gitlab.com/dhardy/kas"
 layout = ["kas/layout"]
 
 [dependencies]
-kas = { path = "..", version = "0.0.1" }
+kas = { path = "..", version = "0.0.2" }
 gtk = { version = "0.5", features = ["v3_12"] }
 gdk = { version = "0.9", features = ["v3_10"] }
 glib = "0.6"

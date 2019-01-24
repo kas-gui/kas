@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -18,7 +18,7 @@ cassowary = []
 
 [dependencies]
 # cassowary = { git = "https://github.com/dhardy/cassowary-rs", optional = true }
-kas-macros = { version = "=0.0.1", path = "kas-macros" }
+kas-macros = { version = "=0.0.2", path = "kas-macros" }
 
 [workspace]
 members = ["kas-gtk", "kas-macros"]
