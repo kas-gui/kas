@@ -31,6 +31,7 @@
 //! [`derive(Widget)`]: #the-derivewidget-macro
 //! [`derive(NoResponse)`]: #the-derivenoresponse-macro
 //! 
+//! 
 //! ## The `derive(Widget)` macro
 //! 
 //! The [`Widget`] trait requires multiple base traits to be implemented:
@@ -50,6 +51,7 @@
 //! 
 //! ```notest
 //! #[widget(class = Class::X, ...)]
+//! #[handler(response = ...)]
 //! #[derive(Clone, Debug, Widget)]
 //! struct MyWidget {
 //!     ...
@@ -82,21 +84,7 @@
 //! types, and sometimes also additional type parameters; the `generics`
 //! argument allows this. This argument is optional and if present must be the
 //! last argument. Note that the generic types and bounds given are *added to*
-//! the generics defined on the struct itself. An example:
-//! 
-//! ```notest
-//! struct MyWidget<W: Widget> {
-//!     #[core] core: CoreData,
-//!     #[widget(handler = handler)] child: W,
-//! }
-//! 
-//! impl<W: Widget> MyWidget {
-//!     fn handler(&mut self, tk: &TkWidget, msg: ChildMessage) -> MyMessage {
-//!         // handle msg and respond somehow
-//!         ignore(msg)
-//!     }
-//! }
-//! ```
+//! the generics defined on the struct itself.
 //! 
 //! ### Fields
 //! 
@@ -117,25 +105,55 @@
 //!     signature `fn f(&mut self, tk: &TkWidget, msg: M) -> R`.
 //!     
 //! 
-//! Example:
+//! ### Examples
 //! 
-//! ```notest
+//! A short example, without an implementation for [`Handler`] (which could
+//! still be implemented separately):
+//! 
+//! ```
+//! #![feature(unrestricted_attribute_tokens)]
+//! use kas::{Widget, Class, CoreData};
+//! use kas::macros::Widget;
+//! 
 //! #[widget(class = Class::Window, layout = single)]
+//! #[derive(Debug, Widget)]
+//! struct MyWidget<W: Widget> {
+//!     #[core] core: CoreData,
+//!     #[widget] child: W,
+//! }
+//! ```
+//! 
+//! A longer example, including derivation of the [`Handler`] trait:
+//! 
+//! ```
+//! #![feature(unrestricted_attribute_tokens)]
+//! use kas::{Widget, Class, CoreData, TkWidget};
+//! use kas::event::{Handler, err_unhandled};
+//! use kas::macros::{Widget, NoResponse};
+//! 
+//! #[derive(Debug, NoResponse)]
+//! enum ChildMessage { None }
+//! 
+//! #[derive(NoResponse)]
+//! enum MyMessage { None }
+//! 
+//! #[widget(class = Class::Container)]
 //! #[handler(response = MyMessage,
-//!         generics = <> where W: Handler<ChildMessage>)]
-//! #[derive(Widget)]
+//!         generics = <> where W: Handler<Response = ChildMessage>)]
+//! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
 //!     #[core] core: CoreData,
 //!     #[widget(handler = handler)] child: W,
 //! }
 //! 
-//! impl<W: Widget> SimpleWindow<W> {
-//!     fn handle_msg(&mut self, tk: &TkWidget, msg: ChildMsg) -> MyResponse {
-//!         println!("Recieved message: {:?}", msg);
-//!         MyResponse::None
+//! impl<W: Widget> MyWidget<W> {
+//!     fn handler(&mut self, tk: &TkWidget, msg: ChildMessage) -> MyMessage {
+//!         // handle msg and respond somehow
+//!         err_unhandled(msg)
 //!     }
 //! }
 //! ```
+//! 
 //! 
 //! ## The `make_widget` macro
 //! 
@@ -202,10 +220,45 @@
 //! where `M` is the type of response received from the child widget, and `R` is
 //! the type of response sent from this widget.
 //! 
+//! ### Example
+//! 
+//! ```
+//! #![feature(proc_macro_hygiene)]
+//! #![feature(unrestricted_attribute_tokens)]
+//! 
+//! use kas::control::TextButton;
+//! use kas::macros::{NoResponse, make_widget};
+//! 
+//! #[derive(NoResponse)]
+//! enum OkCancel {
+//!     None,
+//!     Ok,
+//!     Cancel,
+//! }
+//! 
+//! let button_box = make_widget!{
+//!     container(horizontal) => OkCancel;
+//!     struct {
+//!         #[widget] _ = TextButton::new("Ok", || OkCancel::Ok),
+//!         #[widget] _ = TextButton::new("Cancel", || OkCancel::Cancel),
+//!     }
+//! };
+//! ```
+//! 
+//! 
 //! ## The `derive(NoResponse)` macro
 //! 
 //! This macro implements `From<NoResponse>` for the given type.
 //! It assumes that the type is an enum with a simple variant named `None`.
+//! 
+//! ### Example
+//! 
+//! ```
+//! use kas::macros::NoResponse;
+//! 
+//! #[derive(NoResponse)]
+//! enum MyMessage { None, A, B };
+//! ```
 //! 
 //! [`Core`]: crate::Core
 //! [`Layout`]: crate::Layout
