@@ -28,13 +28,8 @@ pub mod dialog;
 pub mod display;
 pub mod event;
 
-/// Library macros
-/// 
-/// Note that some of these are re-exports, but it is expected that users depend on this crate only
-/// and not `kas_macros`. All functionality is available via these re-exports.
-pub mod macros {
-    pub use kas_macros::{NoResponse, Widget, make_widget};
-}
+// macro re-exports
+pub mod macros;
 
 // export most important members directly for convenience and less redundancy:
 pub use crate::widget::*;
