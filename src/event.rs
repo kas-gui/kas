@@ -39,6 +39,8 @@ pub type Event = ();
 /// No message
 /// 
 /// All response message types should implement `From<NoResponse>`.
+/// This can be done conveniently with the
+/// [`derive(NoResponse)`](../macros/index.html#the-derivenoresponse-macro) macro.
 #[derive(Debug)]
 pub struct NoResponse;
 

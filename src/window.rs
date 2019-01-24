@@ -59,7 +59,9 @@ pub trait Window: Widget {
     fn on_start(&mut self, tk: &TkWidget);
 }
 
-/// Main window type
+/// The main instantiation of the `Window` trait.
+/// 
+/// TODO: change the name?
 #[widget(class = Class::Window)]
 #[derive(Widget)]
 pub struct SimpleWindow<W: Widget + 'static> {

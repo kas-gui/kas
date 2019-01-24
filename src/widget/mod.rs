@@ -146,6 +146,9 @@ pub trait Widget: Layout {
     /// Mutable variant of get
     fn get_mut(&mut self, index: usize) -> Option<&mut Widget>;
     
+    #[doc(hidden)]
+    /// This is only for use by toolkits.
+    /// 
     /// Set the number for self and each child. Returns own number + 1.
     fn enumerate(&mut self, mut n: u32) -> u32 {
         for i in 0..self.len() {
@@ -155,39 +158,3 @@ pub trait Widget: Layout {
         n + 1
     }
 }
-
-pub struct ChildIter<'a, W: 'a + Widget + ?Sized> {
-    w: &'a W,
-    i: ::std::ops::Range<usize>,
-}
-
-impl<'a, W: 'a + Widget + ?Sized> ChildIter<'a, W> {
-    pub fn new(widget: &'a W) -> Self {
-        ChildIter { w: widget, i: (0..widget.len()).into_iter() }
-    }
-}
-
-impl<'a, W: 'a + Widget + ?Sized> Iterator for ChildIter<'a, W> {
-    type Item = &'a Widget;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.i.next().and_then(|i| self.w.get(i))
-    }
-}
-/*
-pub struct ChildIterMut<'a, W: 'static + Widget + ?Sized> {
-    w: &'a mut W,
-    i: ::std::ops::Range<usize>,
-}
-
-impl<'a, W: 'static + Widget + ?Sized> ChildIterMut<'a, W> {
-    fn new(widget: &'a mut W) -> Self {
-        let len = widget.len();
-        ChildIterMut { w: widget, i: (0..len).into_iter() }
-    }
-    
-    fn next<'b: 'a>(&'b mut self) -> Option<&'b mut Widget> {
-        // TODO: resolve lifetime error (streaming iterator)
-        self.i.next().and_then(|i| self.w.get_mut(i)).map(|w| &*w)
-    }
-}
-*/

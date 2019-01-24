@@ -12,6 +12,12 @@ use crate::widget::Coord;
 use crate::widget::Core;
 use crate::toolkit::TkWidget;
 
+/// An internal detail.
+/// 
+/// This trait is used internally and by toolkits. Users should not use it
+/// directly, in part because it may have a very different body depending on
+/// feature flags.
+/*
 /// Size and position handling for widgets, the universal interface to the
 /// layout system.
 /// 
@@ -20,7 +26,9 @@ use crate::toolkit::TkWidget;
 /// 
 /// Note that this trait has very different internals depending on which layout
 /// engine is used.
+*/
 pub trait Layout: Core + fmt::Debug {
+    #[doc(hidden)]
     /// Initialise the constraint solver.
     /// 
     /// This function applies constraints to the solver based on the current
@@ -38,6 +46,7 @@ pub trait Layout: Core + fmt::Debug {
     fn init_constraints(&self, tk: &TkWidget,
         s: &mut cw::Solver, use_default: bool);
     
+    #[doc(hidden)]
     /// Apply constraints from the solver.
     /// 
     /// See the `init_constraints` documentation.

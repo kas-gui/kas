@@ -3,7 +3,10 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! KAS lib
+//! KAS, the toolKit Abstraction Library
+//! 
+//! The KAS library is designed for concise, programatic descriptions of GUIs
+//! which are translated to some backend "toolkit" on use.
 #![feature(unrestricted_attribute_tokens)]
 #![feature(extern_crate_self)]
 

@@ -4,6 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Display widgets show information but are not interactive
+// TODO: except `Entry`?
 
 use std::fmt::{self, Debug};
 
@@ -11,7 +12,7 @@ use crate::macros::Widget;
 use crate::event::{Action, Handler, NoResponse, err_num, err_unhandled};
 use crate::{Class, Core, CoreData, HasText, Editable, TkWidget};
 
-/// A simple text display widget
+/// A simple, static text label
 #[widget(class = Class::Text(self))]
 #[handler(response = NoResponse)]
 #[derive(Clone, Default, Debug, Widget)]
@@ -51,7 +52,7 @@ impl HasText for Text {
 }
 
 
-/// Basic text entry.
+/// An editable, single-line text box.
 #[widget(class = Class::Entry(self))]
 #[derive(Clone, Default, Widget)]
 pub struct Entry<H: 'static> {
@@ -69,6 +70,13 @@ impl<H> Debug for Entry<H> {
 }
 
 impl<R, H: Fn() -> R> Entry<H> {
+    /// Construct an `Entry` with the given initial `text`.
+    /// 
+    /// The `handler` is called when [`Action::Activate`] is received
+    /// (when the "enter" key is pressed)
+    /// and its result is returned from the event handler.
+    /// 
+    /// [`Action::Activate`]: kas::event::Action::Activate
     pub fn new_on_activate(text: String, handler: H) -> Self {
         Entry {
             core: Default::default(),
@@ -80,6 +88,8 @@ impl<R, H: Fn() -> R> Entry<H> {
 }
 
 impl Entry<()> {
+    /// Construct an `Entry` which is optionally `editable`, and has the given
+    /// inital `text`.
     pub fn new(editable: bool, text: String) -> Self {
         Entry {
             core: Default::default(),
@@ -87,12 +97,6 @@ impl Entry<()> {
             text,
             handler: (),
         }
-    }
-}
-
-impl<H> Entry<H> {
-    pub fn set_text(&mut self, tk: &TkWidget, text: &str) {
-        tk.set_label(self.tkd(), text);
     }
 }
 

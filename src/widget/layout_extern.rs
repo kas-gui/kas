@@ -11,6 +11,7 @@ use std::fmt;
 use crate::widget::Core;
 use crate::toolkit::TkWidget;
 
+#[doc(hidden)]
 /// How child widgets are arranged
 pub enum ChildLayout {
     /// Implies no more than one child widget.
@@ -23,6 +24,7 @@ pub enum ChildLayout {
     Grid,
 }
 
+#[doc(hidden)]
 /// Column and row location information, `(col, row, col-span, row-span)`.
 /// 
 /// Column and row `0, 0` is the top-left position. Spans are usually 1, but
@@ -30,6 +32,12 @@ pub enum ChildLayout {
 /// occupied.
 pub type GridPos = (i32, i32, i32, i32);
 
+/// An internal detail.
+/// 
+/// This trait is used internally and by toolkits. Users should not use it
+/// directly, in part because it may have a very different body depending on
+/// feature flags.
+/*
 /// Size and position handling for widgets, the universal interface to the
 /// layout system.
 /// 
@@ -40,11 +48,14 @@ pub type GridPos = (i32, i32, i32, i32);
 /// engine is used.
 /// 
 /// [`Widget`]: kas::Widget
+*/
 // TODO: move Cassowary methods to a sub-trait if we get multi-trait object support
 pub trait Layout: Core + fmt::Debug {
+    #[doc(hidden)]
     /// Layout for child widgets
     fn child_layout(&self) -> ChildLayout;
     
+    #[doc(hidden)]
     /// Per child positioning for grid layout
     /// 
     /// This returns `None` if `index` is out of range or if no position
@@ -52,6 +63,7 @@ pub trait Layout: Core + fmt::Debug {
     /// the first cell (`GridPos(0,0,1,1)`) should be assumed.
     fn grid_pos(&self, index: usize) -> Option<GridPos>;
 
+    #[doc(hidden)]
     /// Read position and size of widget from the toolkit
     /// 
     /// This is for use when the toolkit does layout adjustment of widgets.

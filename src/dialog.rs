@@ -3,9 +3,10 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Dialogs
+//! Dialog boxes
 //! 
-//! NOTE: this functionality is broken and will likely be altered significantly.
+//! KAS dialog boxes are pre-configured windows, usually allowing some
+//! customisation.
 
 use std::fmt::{self, Debug};
 

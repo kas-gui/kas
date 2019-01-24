@@ -11,6 +11,7 @@ use crate::macros::Widget;
 use crate::event::{Action, Handler, NoResponse, err_num, err_unhandled};
 use crate::{Class, Core, CoreData, HasText, TkWidget};
 
+/// A push-button with a text label
 // TODO: abstract out text part?
 #[widget(class = Class::Button(self))]
 #[derive(Clone, Default, Widget)]
@@ -29,6 +30,10 @@ impl<H> Debug for TextButton<H> {
 }
 
 impl<R, H: Fn() -> R> TextButton<H> {
+    /// Construct a button with a given `text` label.
+    /// 
+    /// The `handler` is called when the button is pressed, and its result is
+    /// returned from the event handler.
     pub fn new<S: Into<String>>(text: S, handler: H) -> Self {
         TextButton {
             core: Default::default(),
@@ -73,6 +78,7 @@ impl<R: From<NoResponse>, H: Fn() -> R> Handler for TextButton<H> {
     }
 }
 
+/// TODO: for use with dialogs...
 pub mod button {
     use super::TextButton;
     
