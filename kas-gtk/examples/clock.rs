@@ -12,7 +12,7 @@ extern crate chrono;
 use chrono::prelude::*;
 
 use kas::callback::Condition;
-use kas::text::Text;
+use kas::text::Label;
 use kas::event::NoResponse;
 use kas::macros::make_widget;
 use kas::HasText;
@@ -22,8 +22,8 @@ fn main() -> Result<(), kas_gtk::Error> {
     let mut window = SimpleWindow::new(make_widget! {
             container(vertical) => NoResponse;
             struct {
-                #[widget] date: Text = Text::new(),
-                #[widget] time: Text = Text::new()
+                #[widget] date: Label = Label::new(),
+                #[widget] time: Label = Label::new()
             }
             impl {
                 fn on_tick(&mut self, tk: &TkWidget) {

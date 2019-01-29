@@ -8,7 +8,7 @@
 extern crate kas;
 extern crate kas_gtk;
 
-use kas::text::Text;
+use kas::text::Label;
 use kas::dialog::{action_close, MessageBox};
 
 use kas::Toolkit;
@@ -19,7 +19,7 @@ fn main() -> Result<(), kas_gtk::Error> {
     // Each Window::new method creates objects then solves constraints.
     let window = MessageBox::new(
         /*Notify::Info,*/
-        Text::from("Hello world"),
+        Label::from("Hello world"),
         action_close,
     );
 

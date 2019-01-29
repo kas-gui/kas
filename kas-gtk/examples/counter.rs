@@ -8,7 +8,7 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::control::TextButton;
-use kas::text::Text;
+use kas::text::Label;
 use kas::event::NoResponse;
 use kas::macros::{NoResponse, make_widget};
 use kas::HasText;
@@ -32,7 +32,7 @@ fn main() -> Result<(), kas_gtk::Error> {
     let window = SimpleWindow::new(make_widget!(
         container(vertical) => NoResponse;
         struct {
-            #[widget] display: Text = Text::from("0"),
+            #[widget] display: Label = Label::from("0"),
             #[widget(handler = handle_button)] buttons -> Message = buttons,
             counter: usize = 0,
         }

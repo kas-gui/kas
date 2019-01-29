@@ -8,7 +8,7 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::control::TextButton;
-use kas::text::Text;
+use kas::text::Label;
 use kas::event::{Handler, NoResponse};
 use kas::macros::{NoResponse, Widget};
 use kas::HasText;
@@ -37,7 +37,7 @@ struct Buttons<D: Widget, I: Widget> {
 #[derive(Debug, Widget)]
 struct Contents<B: Widget> {
     #[core] core: CoreData,
-    #[widget] display: Text,
+    #[widget] display: Label,
     #[widget(handler = handle_button)] buttons: B,
     counter: usize,
 }
@@ -69,7 +69,7 @@ fn main() -> Result<(), kas_gtk::Error> {
     
     let contents = Contents {
         core: CoreData::default(),
-        display: Text::from("0"),
+        display: Label::from("0"),
         buttons: buttons,
         counter: 0,
     };

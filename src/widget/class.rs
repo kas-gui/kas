@@ -16,7 +16,7 @@ pub enum Class<'a> {
     Button(&'a HasText),
     Container,
     // Dialog,
-    Text(&'a HasText),
+    Label(&'a HasText),
     Entry(&'a Editable),
     Frame,
     Window,

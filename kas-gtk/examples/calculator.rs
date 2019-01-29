@@ -55,8 +55,8 @@ fn main() -> Result<(), kas_gtk::Error> {
     let content = make_widget!{
         container(vertical) => NoResponse;
         struct {
-            // #[widget] state: Text = Text::from("0"),
-            // #[widget] buf: Text = Text::new() ,
+            // #[widget] state: Label = Label::from("0"),
+            // #[widget] buf: Label = Label::new() ,
             #[widget] display: impl HasText = Entry::new(false, "0".to_string()),
             #[widget(handler = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),

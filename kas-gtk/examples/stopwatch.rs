@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 
 use kas::callback::Condition;
 use kas::control::TextButton;
-use kas::text::Text;
+use kas::text::Label;
 use kas::event::{NoResponse};
 use kas::macros::{NoResponse, make_widget};
 use kas::HasText;
@@ -39,7 +39,7 @@ fn make_window() -> Rc<RefCell<Window>> {
             #[widget] display: impl SetText = make_widget!{
                 frame => NoResponse;
                 struct {
-                    #[widget] display: Text = Text::from("0.000"),
+                    #[widget] display: Label = Label::from("0.000"),
                 }
                 impl SetText {
                     fn set_text(&mut self, tk: &TkWidget, text: &str) {

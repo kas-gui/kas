@@ -11,35 +11,35 @@ use crate::macros::Widget;
 use crate::event::{Action, Handler, NoResponse, err_num, err_unhandled};
 use crate::{Class, Core, CoreData, HasText, Editable, TkWidget};
 
-/// A simple, static text label
-#[widget(class = Class::Text(self))]
+/// A simple text label
+#[widget(class = Class::Label(self))]
 #[handler(response = NoResponse)]
 #[derive(Clone, Default, Debug, Widget)]
-pub struct Text {
+pub struct Label {
     #[core] core: CoreData,
     text: String,
 }
 
-impl Text {
+impl Label {
     /// Construct a new, empty instance
     pub fn new() -> Self {
-        Text {
+        Label {
             core: Default::default(),
             text: String::new()
         }
     }
 }
 
-impl<T> From<T> for Text where String: From<T> {
+impl<T> From<T> for Label where String: From<T> {
     fn from(text: T) -> Self {
-        Text {
+        Label {
             core: Default::default(),
             text: String::from(text)
         }
     }
 }
 
-impl HasText for Text {
+impl HasText for Label {
     fn get_text(&self) -> &str {
         &self.text
     }
