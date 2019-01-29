@@ -117,6 +117,7 @@ fn member(index: usize, ident: Option<Ident>) -> Member {
     }
 }
 
+#[allow(non_camel_case_types)]
 mod kw {
     use syn::custom_keyword;
     
