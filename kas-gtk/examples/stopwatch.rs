@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 
 use kas::callback::Condition;
 use kas::control::TextButton;
-use kas::display::Text;
+use kas::text::Text;
 use kas::event::{NoResponse};
 use kas::macros::{NoResponse, make_widget};
 use kas::HasText;

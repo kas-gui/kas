@@ -11,7 +11,7 @@ use std::num::ParseFloatError;
 use std::str::FromStr;
 
 use kas::control::TextButton;
-use kas::display::Entry;
+use kas::text::Entry;
 use kas::event::NoResponse;
 use kas::macros::{NoResponse, make_widget};
 use kas::HasText;

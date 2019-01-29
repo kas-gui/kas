@@ -8,7 +8,7 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::control::TextButton;
-use kas::display::Text;
+use kas::text::Text;
 use kas::event::NoResponse;
 use kas::macros::{NoResponse, make_widget};
 use kas::HasText;

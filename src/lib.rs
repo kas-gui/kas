@@ -28,7 +28,7 @@ mod traits;
 pub mod callback;
 pub mod control;
 pub mod dialog;
-pub mod display;
+pub mod text;
 pub mod event;
 
 // macro re-exports

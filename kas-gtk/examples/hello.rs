@@ -8,7 +8,7 @@
 extern crate kas;
 extern crate kas_gtk;
 
-use kas::display::Text;
+use kas::text::Text;
 use kas::dialog::{action_close, MessageBox};
 
 use kas::Toolkit;
