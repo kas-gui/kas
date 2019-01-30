@@ -36,9 +36,18 @@ impl TkWidget for Toolkit {
         gw.size_allocate(&mut rect);
     }
     
+    fn get_bool(&self, tkd: TkData) -> bool {
+        let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
+        if let Some(b) = gw.downcast_ref::<gtk::ToggleButton>() {
+            b.get_active()
+        } else {
+            panic!("get_bool not implemented on this widget")
+        }
+    }
+    
     fn set_bool(&self, tkd: TkData, state: bool) {
         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
-        if let Some(b) = gw.downcast_ref::<gtk::CheckButton>() {
+        if let Some(b) = gw.downcast_ref::<gtk::ToggleButton>() {
             b.set_active(state);
         }
     }

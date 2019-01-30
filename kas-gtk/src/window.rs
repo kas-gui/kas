@@ -7,7 +7,7 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt, EntryExt, EditableExt};
+use gtk::{Cast, WidgetExt, ContainerExt, ButtonExt, EntryExt, EditableExt, ToggleButtonExt};
 #[cfg(not(feature = "layout"))] use gtk::GridExt;
 
 use kas::callback::Condition;
@@ -111,7 +111,7 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                     let button = gtk::Button::new_with_label(iface.get_text());
                     let num = child.number();
                     button.connect_clicked(move |_| {
-                        let action = Action::ButtonClick;
+                        let action = Action::Button;
                         with_list(|list| list.handle_action(action, num))
                     });
                     button.upcast::<gtk::Widget>()
@@ -119,10 +119,10 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                 Class::CheckBox(iface) => {
                     let button = gtk::CheckButton::new_with_label(iface.get_text());
                     let num = child.number();
-//                     button.connect_toggled(move |_| {
-//                         let action = Action::Toggled;
-//                         with_list(|list| list.handle_action(action, num))
-//                     });
+                    button.connect_toggled(move |_| {
+                        let action = Action::Toggle;
+                        with_list(|list| list.handle_action(action, num))
+                    });
                     button.upcast::<gtk::Widget>()
                 }
                 Class::Label(iface) => {

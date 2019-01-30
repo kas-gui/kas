@@ -9,7 +9,7 @@
 
 use kas::text::{Label, Entry};
 use kas::control::{TextButton, CheckBox};
-use kas::event::NoResponse;
+use kas::event::{NoResponse, noact0, noact1};
 use kas::macros::make_widget;
 use kas::{SimpleWindow, Toolkit};
 
@@ -22,11 +22,12 @@ fn main() -> Result<(), kas_gtk::Error> {
             #[widget(row=1, col=0)] _ = Label::from("Entry"),
             #[widget(row=1, col=1)] _ = Entry::new(true, "edit me".to_string()),
             #[widget(row=2, col=0)] _ = Label::from("TextButton"),
-            #[widget(row=2, col=1)] _ = TextButton::new("Press me", || NoResponse),
+            #[widget(row=2, col=1)] _ = TextButton::new("Press me", noact0),
             #[widget(row=3, col=0)] _ = Label::from("CheckBox"),
-            #[widget(row=3, col=1)] _ = CheckBox::new(false, Some("Check me".to_string())),
+            #[widget(row=3, col=1)] _ =
+                CheckBox::new(false, Some("Check me".to_string()), noact1),
             #[widget(row=4, col=0)] _ = Label::from("CheckBox"),
-            #[widget(row=4, col=1)] _ = CheckBox::new(true, None),
+            #[widget(row=4, col=1)] _ = CheckBox::new(true, None, noact1),
         }
     };
     let window = SimpleWindow::new(make_widget! {

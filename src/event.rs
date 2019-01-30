@@ -22,7 +22,9 @@ pub enum Action {
     /// An `Entry` has been activated.
     Activate,
     /// A button has been clicked.
-    ButtonClick,
+    Button,
+    /// A checkbox/radio button/toggle switch has been toggled.
+    Toggle,
     /// A window has been asked to close.
     Close,
 }
@@ -53,6 +55,16 @@ pub enum GuiResponse {
     Close,
     /// Exit (close all windows)
     Exit,
+}
+
+/// A dummy 0-argument handler for events or actions which should not be handled.
+pub fn noact0() -> NoResponse {
+    NoResponse
+}
+
+/// A dummy 1-argument handler for events or actions which should not be handled.
+pub fn noact1<T>(_: T) -> NoResponse {
+    NoResponse
 }
 
 /// Mark explicitly ignored events.

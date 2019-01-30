@@ -75,6 +75,9 @@ pub trait TkWidget {
     /// Does not need to update child widgets.
     fn set_rect(&self, tkd: TkData, rect: &Rect);
     
+    /// Get the widget's boolean state
+    fn get_bool(&self, tkd: TkData) -> bool;
+    
     /// Set the widget's boolean state
     /// 
     /// As with the [`HasBool`] trait, this can be used for checkboxes,
