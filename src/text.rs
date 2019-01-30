@@ -45,7 +45,7 @@ impl HasText for Label {
     }
     
     fn set_text(&mut self, tk: &TkWidget, text: &str) {
-        tk.set_label(self.tkd(), text);
+        tk.set_text(self.tkd(), text);
         self.text = text.into();
     }
 }
@@ -105,7 +105,7 @@ impl<H> HasText for Entry<H> {
     }
     
     fn set_text(&mut self, tk: &TkWidget, text: &str) {
-        tk.set_label(self.tkd(), text);
+        tk.set_text(self.tkd(), text);
         self.text = text.into();
     }
 }

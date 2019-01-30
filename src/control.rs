@@ -9,15 +9,62 @@ use std::fmt::{self, Debug};
 
 use crate::macros::Widget;
 use crate::event::{Action, Handler, NoResponse, err_num, err_unhandled};
-use crate::{Class, Core, CoreData, HasText, TkWidget};
+use crate::{Class, Core, CoreData, HasBool, HasText, TkWidget};
+
+/// A checkable box with optional label
+#[widget(class = Class::CheckBox(self))]
+#[handler(response = NoResponse)]
+#[derive(Clone, Default, Debug, Widget)]
+pub struct CheckBox {
+    #[core] core: CoreData,
+    value: bool,
+    label: Option<String>,
+}
+
+impl CheckBox {
+    /// Construct a checkbox with state `value`, optionally with a `label`
+    pub fn new(value: bool, label: Option<String>) -> Self {
+        CheckBox {
+            core: Default::default(),
+            value, 
+            label,
+        }
+    }
+}
+
+impl HasBool for CheckBox {
+    fn get_bool(&self) -> bool {
+        self.value
+    }
+    
+    fn set_bool(&mut self, tk: &TkWidget, value: bool) {
+        self.value = value;
+        tk.set_bool(self.tkd(), value);
+    }
+}
+
+impl HasText for CheckBox {
+    fn get_text(&self) -> &str {
+        if let Some(ref s) = self.label {
+            &s
+        } else {
+            ""
+        }
+    }
+    
+    fn set_text(&mut self, tk: &TkWidget, text: &str) {
+        tk.set_text(self.tkd(), text);
+        self.label = Some(text.into());
+    }
+}
+
 
 /// A push-button with a text label
 // TODO: abstract out text part?
 #[widget(class = Class::Button(self))]
 #[derive(Clone, Default, Widget)]
 pub struct TextButton<H: 'static> {
-    #[core]
-    core: CoreData,
+    #[core] core: CoreData,
     text: String,
     handler: H,
 }
@@ -57,7 +104,7 @@ impl<H> HasText for TextButton<H> {
     }
     
     fn set_text(&mut self, tk: &TkWidget, text: &str) {
-        tk.set_label(self.tkd(), text);
+        tk.set_text(self.tkd(), text);
         self.text = text.into();
     }
 }

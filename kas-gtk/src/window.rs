@@ -116,6 +116,15 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                     });
                     button.upcast::<gtk::Widget>()
                 }
+                Class::CheckBox(iface) => {
+                    let button = gtk::CheckButton::new_with_label(iface.get_text());
+                    let num = child.number();
+//                     button.connect_toggled(move |_| {
+//                         let action = Action::Toggled;
+//                         with_list(|list| list.handle_action(action, num))
+//                     });
+                    button.upcast::<gtk::Widget>()
+                }
                 Class::Label(iface) => {
                     let label = gtk::Label::new(iface.get_text());
                     // Text naturally has a top/bottom margin, but not start/end

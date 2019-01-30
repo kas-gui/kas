@@ -13,11 +13,12 @@ use crate::traits::*;
 
 /// Widget classifications
 pub enum Class<'a> {
-    Button(&'a HasText),
     Container,
     // Dialog,
     Label(&'a HasText),
     Entry(&'a Editable),
+    Button(&'a HasText),
+    CheckBox(&'a HasBoolText),
     Frame,
     Window,
 }

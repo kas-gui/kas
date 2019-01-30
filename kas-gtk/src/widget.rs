@@ -8,7 +8,7 @@
 //! Widget code
 
 use gtk;
-use gtk::{Cast, WidgetExt, LabelExt, ButtonExt, EntryExt};
+use gtk::{Cast, WidgetExt, LabelExt, ButtonExt, EntryExt, ToggleButtonExt};
 
 use kas::{Coord, Rect, TkData, TkWidget};
 
@@ -36,7 +36,14 @@ impl TkWidget for Toolkit {
         gw.size_allocate(&mut rect);
     }
     
-    fn set_label(&self, tkd: TkData, text: &str) {
+    fn set_bool(&self, tkd: TkData, state: bool) {
+        let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
+        if let Some(b) = gw.downcast_ref::<gtk::CheckButton>() {
+            b.set_active(state);
+        }
+    }
+    
+    fn set_text(&self, tkd: TkData, text: &str) {
         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
         if let Some(glabel) = gw.downcast_ref::<gtk::Label>() {
             glabel.set_label(text);

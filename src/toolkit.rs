@@ -75,6 +75,15 @@ pub trait TkWidget {
     /// Does not need to update child widgets.
     fn set_rect(&self, tkd: TkData, rect: &Rect);
     
-    /// Set the widget's label (where applicable)
-    fn set_label(&self, tkd: TkData, text: &str);
+    /// Set the widget's boolean state
+    /// 
+    /// As with the [`HasBool`] trait, this can be used for checkboxes,
+    /// radio buttons and toggle switches.
+    fn set_bool(&self, tkd: TkData, state: bool);
+    
+    /// Set the widget's text
+    /// 
+    /// As with the [`HasText`] trait, this applies to both labels and text
+    /// content, depending on the widget.
+    fn set_text(&self, tkd: TkData, text: &str);
 }
