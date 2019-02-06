@@ -33,23 +33,23 @@ fn main() -> Result<(), kas_gtk::Error> {
     let buttons = make_widget!{
         container(grid) => Key;
         struct {
-            #[widget(col = 0, row = 0)] _ = TextButton::new("clear", || Key::Clear),
-            #[widget(col = 1, row = 0)] _ = TextButton::new("÷", || Key::Divide),
-            #[widget(col = 2, row = 0)] _ = TextButton::new("×", || Key::Multiply),
-            #[widget(col = 3, row = 0)] _ = TextButton::new("−", || Key::Subtract),
-            #[widget(col = 0, row = 1)] _ = TextButton::new("7", || Key::Char(48 + 7)),
-            #[widget(col = 1, row = 1)] _ = TextButton::new("8", || Key::Char(48 + 8)),
-            #[widget(col = 2, row = 1)] _ = TextButton::new("9", || Key::Char(48 + 9)),
-            #[widget(col = 3, row = 1, rspan = 2)] _ = TextButton::new("+", || Key::Add),
-            #[widget(col = 0, row = 2)] _ = TextButton::new("4", || Key::Char(48 + 4)),
-            #[widget(col = 1, row = 2)] _ = TextButton::new("5", || Key::Char(48 + 5)),
-            #[widget(col = 2, row = 2)] _ = TextButton::new("6", || Key::Char(48 + 6)),
-            #[widget(col = 0, row = 3)] _ = TextButton::new("1", || Key::Char(48 + 1)),
-            #[widget(col = 1, row = 3)] _ = TextButton::new("2", || Key::Char(48 + 2)),
-            #[widget(col = 2, row = 3)] _ = TextButton::new("3", || Key::Char(48 + 3)),
-            #[widget(col = 3, row = 3, rspan = 2)] _ = TextButton::new("=", || Key::Equals),
-            #[widget(col = 0, row = 4, cspan = 2)] _ = TextButton::new("0", || Key::Char(48 + 0)),
-            #[widget(col = 2, row = 4)] _ = TextButton::new(".", || Key::Char(46)),
+            #[widget(col = 0, row = 0)] _ = TextButton::new_on("clear", || Key::Clear),
+            #[widget(col = 1, row = 0)] _ = TextButton::new_on("÷", || Key::Divide),
+            #[widget(col = 2, row = 0)] _ = TextButton::new_on("×", || Key::Multiply),
+            #[widget(col = 3, row = 0)] _ = TextButton::new_on("−", || Key::Subtract),
+            #[widget(col = 0, row = 1)] _ = TextButton::new_on("7", || Key::Char(48 + 7)),
+            #[widget(col = 1, row = 1)] _ = TextButton::new_on("8", || Key::Char(48 + 8)),
+            #[widget(col = 2, row = 1)] _ = TextButton::new_on("9", || Key::Char(48 + 9)),
+            #[widget(col = 3, row = 1, rspan = 2)] _ = TextButton::new_on("+", || Key::Add),
+            #[widget(col = 0, row = 2)] _ = TextButton::new_on("4", || Key::Char(48 + 4)),
+            #[widget(col = 1, row = 2)] _ = TextButton::new_on("5", || Key::Char(48 + 5)),
+            #[widget(col = 2, row = 2)] _ = TextButton::new_on("6", || Key::Char(48 + 6)),
+            #[widget(col = 0, row = 3)] _ = TextButton::new_on("1", || Key::Char(48 + 1)),
+            #[widget(col = 1, row = 3)] _ = TextButton::new_on("2", || Key::Char(48 + 2)),
+            #[widget(col = 2, row = 3)] _ = TextButton::new_on("3", || Key::Char(48 + 3)),
+            #[widget(col = 3, row = 3, rspan = 2)] _ = TextButton::new_on("=", || Key::Equals),
+            #[widget(col = 0, row = 4, cspan = 2)] _ = TextButton::new_on("0", || Key::Char(48 + 0)),
+            #[widget(col = 2, row = 4)] _ = TextButton::new_on(".", || Key::Char(46)),
         }
     };
     let content = make_widget!{
@@ -57,7 +57,7 @@ fn main() -> Result<(), kas_gtk::Error> {
         struct {
             // #[widget] state: Label = Label::from("0"),
             // #[widget] buf: Label = Label::new() ,
-            #[widget] display: impl HasText = Entry::new(false, "0".to_string()),
+            #[widget] display: impl HasText = Entry::new("0").editable(false),
             #[widget(handler = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),
         }

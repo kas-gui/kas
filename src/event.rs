@@ -57,16 +57,6 @@ pub enum GuiResponse {
     Exit,
 }
 
-/// A dummy 0-argument handler for events or actions which should not be handled.
-pub fn noact0() -> NoResponse {
-    NoResponse
-}
-
-/// A dummy 1-argument handler for events or actions which should not be handled.
-pub fn noact1<T>(_: T) -> NoResponse {
-    NoResponse
-}
-
 /// Mark explicitly ignored events.
 /// 
 /// This is an error, meaning somehow an event has been sent to a widget which

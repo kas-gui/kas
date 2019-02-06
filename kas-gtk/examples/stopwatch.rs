@@ -47,8 +47,8 @@ fn make_window() -> Rc<RefCell<Window>> {
                     }
                 }
             },
-            #[widget(handler = handle_button)] b_reset = TextButton::new("⏮", || Control::Reset),
-            #[widget(handler = handle_button)] b_start = TextButton::new("⏯", || Control::Start),
+            #[widget(handler = handle_button)] b_reset = TextButton::new_on("⏮", || Control::Reset),
+            #[widget(handler = handle_button)] b_start = TextButton::new_on("⏯", || Control::Start),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
             dur_buf: String = String::default(),

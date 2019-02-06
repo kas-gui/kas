@@ -40,6 +40,9 @@ pub trait HasText {
 pub trait Editable: HasText {
     /// Get whether this input field is editable.
     fn is_editable(&self) -> bool;
+    
+    /// Set whether this input field is editable.
+    fn set_editable(&mut self, editable: bool);
 }
 
 

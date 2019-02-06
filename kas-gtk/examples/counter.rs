@@ -25,8 +25,8 @@ fn main() -> Result<(), kas_gtk::Error> {
     let buttons = make_widget!(
         container(horizontal) => Message;
         struct {
-            #[widget] _ = TextButton::new("−", || Message::Decr),
-            #[widget] _ = TextButton::new("+", || Message::Incr),
+            #[widget] _ = TextButton::new_on("−", || Message::Decr),
+            #[widget] _ = TextButton::new_on("+", || Message::Incr),
         }
     );
     let window = SimpleWindow::new(make_widget!(

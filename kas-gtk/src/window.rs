@@ -109,20 +109,25 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                 }
                 Class::Button(iface) => {
                     let button = gtk::Button::new_with_label(iface.get_text());
-                    let num = child.number();
-                    button.connect_clicked(move |_| {
-                        let action = Action::Button;
-                        with_list(|list| list.handle_action(action, num))
-                    });
+                    if true /*TODO iface.has_on_click()*/ {
+                        let num = child.number();
+                        button.connect_clicked(move |_| {
+                            let action = Action::Button;
+                            with_list(|list| list.handle_action(action, num))
+                        });
+                    }
                     button.upcast::<gtk::Widget>()
                 }
                 Class::CheckBox(iface) => {
                     let button = gtk::CheckButton::new_with_label(iface.get_text());
-                    let num = child.number();
-                    button.connect_toggled(move |_| {
-                        let action = Action::Toggle;
-                        with_list(|list| list.handle_action(action, num))
-                    });
+                    button.set_active(iface.get_bool());
+                    if true /*TODO iface.has_on_toggle()*/ {
+                        let num = child.number();
+                        button.connect_toggled(move |_| {
+                            let action = Action::Toggle;
+                            with_list(|list| list.handle_action(action, num))
+                        });
+                    }
                     button.upcast::<gtk::Widget>()
                 }
                 Class::Label(iface) => {
@@ -135,13 +140,15 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
                 }
                 Class::Entry(iface) => {
                     let entry = gtk::Entry::new();
-                    let num = child.number();
                     entry.set_editable(iface.is_editable());
                     entry.set_text(iface.get_text());
-                    entry.connect_activate(move |_| {
-                        let action = Action::Activate;
-                        with_list(|list| list.handle_action(action, num))
-                    });
+                    if true /*TODO iface.has_on_activate()*/ {
+                        let num = child.number();
+                        entry.connect_activate(move |_| {
+                            let action = Action::Activate;
+                            with_list(|list| list.handle_action(action, num))
+                        });
+                    }
                     entry.upcast::<gtk::Widget>()
                 }
                 Class::Frame => {

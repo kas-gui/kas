@@ -63,8 +63,8 @@ impl<B: Widget> Contents<B> {
 fn main() -> Result<(), kas_gtk::Error> {
     let buttons = Buttons {
         core: CoreData::default(),
-        decr: TextButton::new("−", || Message::Decr),
-        incr: TextButton::new("+", || Message::Incr),
+        decr: TextButton::new_on("−", || Message::Decr),
+        incr: TextButton::new_on("+", || Message::Incr),
     };
     
     let contents = Contents {

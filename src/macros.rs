@@ -239,8 +239,8 @@
 //! let button_box = make_widget!{
 //!     container(horizontal) => OkCancel;
 //!     struct {
-//!         #[widget] _ = TextButton::new("Ok", || OkCancel::Ok),
-//!         #[widget] _ = TextButton::new("Cancel", || OkCancel::Cancel),
+//!         #[widget] _ = TextButton::new_on("Ok", || OkCancel::Ok),
+//!         #[widget] _ = TextButton::new_on("Cancel", || OkCancel::Cancel),
 //!     }
 //! };
 //! ```

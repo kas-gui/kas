@@ -58,44 +58,51 @@ pub struct Entry<H: 'static> {
     #[core] core: CoreData,
     editable: bool,
     text: String,
-    handler: H,
+    on_activate: H,
 }
 
 impl<H> Debug for Entry<H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Entry {{ core: {:?}, editable: {:?}, text: {:?}, handler: <omitted> }}",
+        write!(f, "Entry {{ core: {:?}, editable: {:?}, text: {:?}, ... }}",
             self.core, self.editable, self.text)
     }
 }
 
-impl<R, H: Fn() -> R> Entry<H> {
-    /// Construct an `Entry` with the given initial `text`.
-    /// 
-    /// The `handler` is called when [`Action::Activate`] is received
-    /// (when the "enter" key is pressed)
-    /// and its result is returned from the event handler.
-    /// 
-    /// [`Action::Activate`]: kas::event::Action::Activate
-    pub fn new_on_activate(text: String, handler: H) -> Self {
+impl Entry<()> {
+    /// Construct an `Entry` with the given inital `text`.
+    pub fn new<S: Into<String>>(text: S) -> Self {
         Entry {
             core: Default::default(),
             editable: true,
-            text,
-            handler,
+            text: text.into(),
+            on_activate: (),
+        }
+    }
+    
+    /// Set the event handler to be called on activation.
+    /// 
+    /// The closure `f` is called when [`Action::Activate`] is received (when the
+    /// "enter" key is pressed). Its result is returned from the event handler.
+    /// 
+    /// Technically, this consumes `self` and reconstructs another `Entry`
+    /// with a different parameterisation.
+    /// 
+    /// [`Action::Activate`]: kas::event::Action::Activate
+    pub fn on_activate<R, H: Fn() -> R>(self, f: H) -> Entry<H> {
+        Entry {
+            core: self.core,
+            editable: self.editable,
+            text: self.text,
+            on_activate: f
         }
     }
 }
 
-impl Entry<()> {
-    /// Construct an `Entry` which is optionally `editable`, and has the given
-    /// inital `text`.
-    pub fn new(editable: bool, text: String) -> Self {
-        Entry {
-            core: Default::default(),
-            editable,
-            text,
-            handler: (),
-        }
+impl<H> Entry<H> {
+    /// Set whether this `Entry` is editable.
+    pub fn editable(mut self, editable: bool) -> Self {
+        self.editable = editable;
+        self
     }
 }
 
@@ -114,6 +121,10 @@ impl<H> Editable for Entry<H> {
     fn is_editable(&self) -> bool {
         self.editable
     }
+    
+    fn set_editable(&mut self, editable: bool) {
+        self.editable = editable;
+    }
 }
 
 impl Handler for Entry<()> {
@@ -125,9 +136,7 @@ impl Handler for Entry<()> {
         }
         
         match action {
-            Action::Activate => {
-                NoResponse
-            }
+            Action::Activate => NoResponse,
             a @ _ => err_unhandled(a)
         }
     }
@@ -143,7 +152,7 @@ impl<R: From<NoResponse>, H: Fn() -> R> Handler for Entry<H> {
         
         match action {
             Action::Activate => {
-                (self.handler)()
+                (self.on_activate)()
             }
             a @ _ => err_unhandled(a)
         }
