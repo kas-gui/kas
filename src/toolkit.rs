@@ -37,9 +37,12 @@ impl TkData {
 /// 
 /// A toolkit handles window management and rendering for a GUI.
 /// 
+/// This is considered a "handle" and implementations are required to support
+/// `Clone`, however they do not have to support `Send` or `Sync`.
+/// 
 /// Any initialisation should be taken care of in the constructor, and
 /// de-initialisation in a `Drop` implementation.
-pub trait Toolkit {
+pub trait Toolkit: Clone {
     /// Assume ownership of and display a window.
     /// 
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.

@@ -19,6 +19,7 @@ use crate::tkd::WidgetAbstraction;
 
 
 /// Per-window data
+#[derive(Clone)]
 pub(crate) struct Window {
     /// The kas window. Each is boxed since it must not move.
     pub win: Rc<RefCell<kas::Window>>,

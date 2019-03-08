@@ -21,6 +21,7 @@ use std::{cell::RefCell, rc::Rc};
 /// You should only create a single instance of this type. It is neither
 /// `Send` nor `Sync`, thus is constrained to the thread on which it is
 /// created. On OS X, it must be created on the "main thread".
+#[derive(Clone)]
 pub struct Toolkit {
     // we store no real data: it is all thread-local
     _phantom: PhantomData<Rc<()>>,  // not Send or Sync
