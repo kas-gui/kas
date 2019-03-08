@@ -22,10 +22,10 @@ pub struct Label {
 
 impl Label {
     /// Construct a new, empty instance
-    pub fn new() -> Self {
+    pub fn new<T: ToString>(text: T) -> Self {
         Label {
             core: Default::default(),
-            text: String::new()
+            text: text.to_string()
         }
     }
 }
@@ -44,9 +44,9 @@ impl HasText for Label {
         &self.text
     }
     
-    fn set_text(&mut self, tk: &TkWidget, text: &str) {
-        tk.set_text(self.tkd(), text);
-        self.text = text.into();
+    fn set_string(&mut self, tk: &TkWidget, text: String) {
+        tk.set_text(self.tkd(), &text);
+        self.text = text;
     }
 }
 
@@ -111,9 +111,9 @@ impl<H> HasText for Entry<H> {
         &self.text
     }
     
-    fn set_text(&mut self, tk: &TkWidget, text: &str) {
-        tk.set_text(self.tkd(), text);
-        self.text = text.into();
+    fn set_string(&mut self, tk: &TkWidget, text: String) {
+        tk.set_text(self.tkd(), &text);
+        self.text = text;
     }
 }
 

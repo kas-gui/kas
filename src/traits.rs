@@ -33,7 +33,14 @@ pub trait HasText {
     fn get_text(&self) -> &str;
     
     /// Set the widget's text.
-    fn set_text(&mut self, tk: &TkWidget, text: &str);
+    fn set_text<T: ToString>(&mut self, tk: &TkWidget, text: T) where Self: Sized {
+        self.set_string(tk, text.to_string());
+    }
+    
+    /// Set the widget's text (string only).
+    /// 
+    /// This method is for implementation.
+    fn set_string(&mut self, tk: &TkWidget, text: String);
 }
 
 /// Additional functionality required by the [`Entry`] class.

@@ -29,20 +29,19 @@ enum Control {
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_rc
 fn make_window() -> Rc<RefCell<Window>> {
-    trait SetText {
-        fn set_text(&mut self, tk: &TkWidget, text: &str);
-    }
-    
     let stopwatch = make_widget! {
         container(horizontal) => NoResponse;
         struct {
-            #[widget] display: impl SetText = make_widget!{
+            #[widget] display: impl HasText = make_widget!{
                 frame => NoResponse;
                 struct {
                     #[widget] display: Label = Label::from("0.000"),
                 }
-                impl SetText {
-                    fn set_text(&mut self, tk: &TkWidget, text: &str) {
+                impl HasText {
+                    fn get_text(&self) -> &str {
+                        self.display.get_text()
+                    }
+                    fn set_string(&mut self, tk: &TkWidget, text: String) {
                         self.display.set_text(tk, text);
                     }
                 }

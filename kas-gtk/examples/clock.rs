@@ -22,14 +22,14 @@ fn main() -> Result<(), kas_gtk::Error> {
     let mut window = SimpleWindow::new(make_widget! {
             container(vertical) => NoResponse;
             struct {
-                #[widget] date: Label = Label::new(),
-                #[widget] time: Label = Label::new()
+                #[widget] date: Label = Label::new(""),
+                #[widget] time: Label = Label::new("")
             }
             impl {
                 fn on_tick(&mut self, tk: &TkWidget) {
                     let now = Local::now();
-                    self.date.set_text(tk, &now.format("%Y %m %d").to_string());
-                    self.time.set_text(tk, &now.format("%H:%M:%S").to_string());
+                    self.date.set_text(tk, now.format("%Y %m %d").to_string());
+                    self.time.set_text(tk, now.format("%H:%M:%S").to_string());
                 }
             }
         });

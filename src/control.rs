@@ -112,9 +112,9 @@ impl<H> HasText for CheckBox<H> {
         &self.label
     }
     
-    fn set_text(&mut self, tk: &TkWidget, text: &str) {
-        tk.set_text(self.tkd(), text);
-        self.label = text.into();
+    fn set_string(&mut self, tk: &TkWidget, text: String) {
+        tk.set_text(self.tkd(), &text);
+        self.label = text;
     }
 }
 
@@ -221,9 +221,9 @@ impl<H> HasText for TextButton<H> {
         &self.label
     }
     
-    fn set_text(&mut self, tk: &TkWidget, text: &str) {
-        tk.set_text(self.tkd(), text);
-        self.label = text.into();
+    fn set_string(&mut self, tk: &TkWidget, text: String) {
+        tk.set_text(self.tkd(), &text);
+        self.label = text;
     }
 }
 

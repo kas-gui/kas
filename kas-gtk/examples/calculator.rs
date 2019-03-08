@@ -66,7 +66,7 @@ fn main() -> Result<(), kas_gtk::Error> {
                 if self.calc.handle(msg) {
                     // self.state.set_text(tk, &self.calc.state_str());
                     // self.buf.set_text(tk, &self.calc.line_buf);
-                    self.display.set_text(tk, &self.calc.display());
+                    self.display.set_text(tk, self.calc.display());
                 }
                 NoResponse
             }

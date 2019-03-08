@@ -42,11 +42,11 @@ fn main() -> Result<(), kas_gtk::Error> {
                     Message::None => (),
                     Message::Decr => {
                         self.counter = self.counter.saturating_sub(1);
-                        self.display.set_text(tk, &self.counter.to_string());
+                        self.display.set_text(tk, self.counter.to_string());
                     }
                     Message::Incr => {
                         self.counter = self.counter.saturating_add(1);
-                        self.display.set_text(tk, &self.counter.to_string());
+                        self.display.set_text(tk, self.counter.to_string());
                     }
                 };
                 NoResponse
