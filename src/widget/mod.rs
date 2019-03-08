@@ -110,8 +110,6 @@ impl Core for CoreData {
 /// which can optionally also implement [`Handler`], as in the following example:
 /// 
 /// ```
-/// #![feature(unrestricted_attribute_tokens)]
-/// 
 /// use kas::{Class, Widget, CoreData};
 /// use kas::event::NoResponse;
 /// use kas::macros::Widget;

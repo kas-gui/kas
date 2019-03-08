@@ -4,7 +4,6 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Like counter example, but avoiding usage of make_widget
-#![feature(unrestricted_attribute_tokens)]
 #![feature(proc_macro_hygiene)]
 
 use kas::control::TextButton;

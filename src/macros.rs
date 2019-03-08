@@ -23,7 +23,6 @@
 //! Note further that these macros require gated functionality only available
 //! in nightly `rustc` builds:
 //! ```
-//! #![feature(unrestricted_attribute_tokens)]
 //! #![feature(proc_macro_hygiene)]
 //! ```
 //! 
@@ -111,7 +110,6 @@
 //! still be implemented separately):
 //! 
 //! ```
-//! #![feature(unrestricted_attribute_tokens)]
 //! use kas::{Widget, Class, CoreData};
 //! use kas::macros::Widget;
 //! 
@@ -126,7 +124,6 @@
 //! A longer example, including derivation of the [`Handler`] trait:
 //! 
 //! ```
-//! #![feature(unrestricted_attribute_tokens)]
 //! use kas::{Widget, Class, CoreData, TkWidget};
 //! use kas::event::{Handler, err_unhandled};
 //! use kas::macros::{Widget, NoResponse};
@@ -224,7 +221,6 @@
 //! 
 //! ```
 //! #![feature(proc_macro_hygiene)]
-//! #![feature(unrestricted_attribute_tokens)]
 //! 
 //! use kas::control::TextButton;
 //! use kas::macros::{NoResponse, make_widget};

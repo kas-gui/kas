@@ -7,7 +7,6 @@
 //! 
 //! The KAS library is designed for concise, programatic descriptions of GUIs
 //! which are translated to some backend "toolkit" on use.
-#![feature(unrestricted_attribute_tokens)]
 
 #[doc(hidden)]
 #[cfg(feature = "cassowary")]

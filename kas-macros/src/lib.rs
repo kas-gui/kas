@@ -30,8 +30,6 @@ use self::args::{Class, ChildType};
 /// Macro to derive widget traits
 /// 
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
-/// 
-/// Note: usage of this macro currently requires `#![feature(unrestricted_attribute_tokens)]`.
 #[proc_macro_derive(Widget, attributes(core, widget, handler))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);

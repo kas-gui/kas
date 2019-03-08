@@ -4,7 +4,6 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Simple calculator example (lots of buttons, grid layout)
-#![feature(unrestricted_attribute_tokens)]
 #![feature(proc_macro_hygiene)]
 
 use std::num::ParseFloatError;

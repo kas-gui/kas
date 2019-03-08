@@ -4,7 +4,6 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Clock example (simple periodically updated display)
-#![feature(unrestricted_attribute_tokens)]
 #![feature(proc_macro_hygiene)]
 
 extern crate chrono;
