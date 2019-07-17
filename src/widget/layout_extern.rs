@@ -67,5 +67,5 @@ pub trait Layout: Core + fmt::Debug {
     /// Read position and size of widget from the toolkit
     /// 
     /// This is for use when the toolkit does layout adjustment of widgets.
-    fn sync_size(&mut self, tk: &TkWidget);
+    fn sync_size(&mut self, tk: &dyn TkWidget);
 }

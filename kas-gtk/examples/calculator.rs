@@ -61,7 +61,7 @@ fn main() -> Result<(), kas_gtk::Error> {
             calc: Calculator = Calculator::new(),
         }
         impl {
-            fn handle_button(&mut self, tk: &TkWidget, msg: Key) -> NoResponse {
+            fn handle_button(&mut self, tk: &dyn TkWidget, msg: Key) -> NoResponse {
                 if self.calc.handle(msg) {
                     // self.state.set_text(tk, &self.calc.state_str());
                     // self.buf.set_text(tk, &self.calc.line_buf);

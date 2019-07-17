@@ -22,11 +22,11 @@ pub trait Window: Widget {
     /// Upcast
     /// 
     /// Note: needed because Rust does not yet support trait object upcasting
-    fn as_widget(&self) -> &Widget;
+    fn as_widget(&self) -> &dyn Widget;
     /// Upcast, mutably
     /// 
     /// Note: needed because Rust does not yet support trait object upcasting
-    fn as_widget_mut(&mut self) -> &mut Widget;
+    fn as_widget_mut(&mut self) -> &mut dyn Widget;
     
     /// Calculate and update positions for all sub-widgets
     #[cfg(feature = "layout")]
@@ -43,7 +43,7 @@ pub trait Window: Widget {
     // NOTE: we could instead add the trait bound Handler<Response = GuiResponse>
     // but (1) Rust doesn't yet support mult-trait objects
     // and (2) https://github.com/rust-lang/rust/issues/57218
-    fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> GuiResponse;
+    fn handle_action(&mut self, tk: &dyn TkWidget, action: Action, num: u32) -> GuiResponse;
     
     /// Get a list of available callbacks.
     /// 
@@ -52,11 +52,11 @@ pub trait Window: Widget {
     fn callbacks(&self) -> Vec<(usize, Condition)>;
     
     /// Trigger a callback (see `iter_callbacks`).
-    fn trigger_callback(&mut self, index: usize, tk: &TkWidget);
+    fn trigger_callback(&mut self, index: usize, tk: &dyn TkWidget);
     
     /// Called by the toolkit after the window has been created and before it
     /// is drawn. This allows callbacks to be invoked "on start".
-    fn on_start(&mut self, tk: &TkWidget);
+    fn on_start(&mut self, tk: &dyn TkWidget);
 }
 
 /// The main instantiation of the `Window` trait.
@@ -69,7 +69,7 @@ pub struct SimpleWindow<W: Widget + 'static> {
     min_size: Coord,
     #[cfg(feature = "cassowary")] solver: crate::cw::Solver,
     #[widget] w: W,
-    fns: Vec<(Condition, &'static Fn(&mut W, &TkWidget))>,
+    fns: Vec<(Condition, &'static dyn Fn(&mut W, &dyn TkWidget))>,
 }
 
 impl<W: Widget> Debug for SimpleWindow<W> {
@@ -113,7 +113,7 @@ impl<W: Widget> SimpleWindow<W> {
     
     /// Add a closure to be called, with a reference to self, on the given
     /// condition. The closure must be passed by reference.
-    pub fn add_callback(&mut self, f: &'static Fn(&mut W, &TkWidget),
+    pub fn add_callback(&mut self, f: &'static dyn Fn(&mut W, &dyn TkWidget),
             conditions: &[Condition])
     {
         for c in conditions {
@@ -126,8 +126,8 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     for SimpleWindow<W>
     where GuiResponse: From<R>, R: From<NoResponse>
 {
-    fn as_widget(&self) -> &Widget { self }
-    fn as_widget_mut(&mut self) -> &mut Widget { self }
+    fn as_widget(&self) -> &dyn Widget { self }
+    fn as_widget_mut(&mut self) -> &mut dyn Widget { self }
     
     #[cfg(feature = "cassowary")]
     fn configure_widgets(&mut self, tk: &TkWidget) {
@@ -159,7 +159,7 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
     
-    fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> GuiResponse {
+    fn handle_action(&mut self, tk: &dyn TkWidget, action: Action, num: u32) -> GuiResponse {
         if num < self.number() {
             GuiResponse::from(self.w.handle_action(tk, action, num))
         } else if num == self.number() {
@@ -177,12 +177,12 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     }
     
     /// Trigger a callback (see `iter_callbacks`).
-    fn trigger_callback(&mut self, index: usize, tk: &TkWidget) {
+    fn trigger_callback(&mut self, index: usize, tk: &dyn TkWidget) {
         let cb = &mut self.fns[index].1;
         cb(&mut self.w, tk);
     }
     
-    fn on_start(&mut self, tk: &TkWidget) {
+    fn on_start(&mut self, tk: &dyn TkWidget) {
         for cb in &mut self.fns {
             if cb.0 == Condition::Start {
                 (cb.1)(&mut self.w, tk);

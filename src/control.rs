@@ -101,7 +101,7 @@ impl<H> HasBool for CheckBox<H> {
         self.state
     }
     
-    fn set_bool(&mut self, tk: &TkWidget, state: bool) {
+    fn set_bool(&mut self, tk: &dyn TkWidget, state: bool) {
         self.state = state;
         tk.set_bool(self.tkd(), state);
     }
@@ -112,7 +112,7 @@ impl<H> HasText for CheckBox<H> {
         &self.label
     }
     
-    fn set_string(&mut self, tk: &TkWidget, text: String) {
+    fn set_string(&mut self, tk: &dyn TkWidget, text: String) {
         tk.set_text(self.tkd(), &text);
         self.label = text;
     }
@@ -121,7 +121,7 @@ impl<H> HasText for CheckBox<H> {
 impl Handler for CheckBox<()> {
     type Response = NoResponse;
     
-    fn handle_action(&mut self, _: &TkWidget, action: Action, num: u32) -> Self::Response {
+    fn handle_action(&mut self, _: &dyn TkWidget, action: Action, num: u32) -> Self::Response {
         if num != self.number() {
             return err_num()
         }
@@ -136,7 +136,7 @@ impl Handler for CheckBox<()> {
 impl<R: From<NoResponse>, H: Fn(bool) -> R> Handler for CheckBox<H> {
     type Response = R;
     
-    fn handle_action(&mut self, tk: &TkWidget, action: Action, num: u32) -> Self::Response {
+    fn handle_action(&mut self, tk: &dyn TkWidget, action: Action, num: u32) -> Self::Response {
         if num != self.number() {
             return err_num()
         }
@@ -221,7 +221,7 @@ impl<H> HasText for TextButton<H> {
         &self.label
     }
     
-    fn set_string(&mut self, tk: &TkWidget, text: String) {
+    fn set_string(&mut self, tk: &dyn TkWidget, text: String) {
         tk.set_text(self.tkd(), &text);
         self.label = text;
     }
@@ -231,7 +231,7 @@ impl<H> HasText for TextButton<H> {
 impl Handler for TextButton<()> {
     type Response = NoResponse;
     
-    fn handle_action(&mut self, _tk: &TkWidget, action: Action, num: u32) -> Self::Response {
+    fn handle_action(&mut self, _tk: &dyn TkWidget, action: Action, num: u32) -> Self::Response {
         if num != self.number() {
             return err_num()
         }
@@ -246,7 +246,7 @@ impl Handler for TextButton<()> {
 impl<R: From<NoResponse>, H: Fn() -> R> Handler for TextButton<H> {
     type Response = R;
     
-    fn handle_action(&mut self, _tk: &TkWidget, action: Action, num: u32) -> Self::Response {
+    fn handle_action(&mut self, _tk: &dyn TkWidget, action: Action, num: u32) -> Self::Response {
         if num != self.number() {
             return err_num()
         }

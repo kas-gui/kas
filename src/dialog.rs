@@ -53,8 +53,8 @@ impl<M: Debug, H> Debug for MessageBox<M, H> {
 }
 
 impl<M: Debug, H> Window for MessageBox<M, H> {
-    fn as_widget(&self) -> &Widget { self }
-    fn as_widget_mut(&mut self) -> &mut Widget { self }
+    fn as_widget(&self) -> &dyn Widget { self }
+    fn as_widget_mut(&mut self) -> &mut dyn Widget { self }
     
     #[cfg(feature = "layout")]
     fn configure_widgets(&mut self, _tk: &TkWidget) {
@@ -66,13 +66,13 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
         unimplemented!()
     }
     
-    fn handle_action(&mut self, _tk: &TkWidget, _action: Action, _num: u32) -> GuiResponse
+    fn handle_action(&mut self, _tk: &dyn TkWidget, _action: Action, _num: u32) -> GuiResponse
     {
         unimplemented!()
     }
     
     // doesn't support callbacks, so doesn't need to do anything here
     fn callbacks(&self) -> Vec<(usize, Condition)> { Vec::new() }
-    fn trigger_callback(&mut self, _index: usize, _tk: &TkWidget) {}
-    fn on_start(&mut self, _tk: &TkWidget) {}
+    fn trigger_callback(&mut self, _index: usize, _tk: &dyn TkWidget) {}
+    fn on_start(&mut self, _tk: &dyn TkWidget) {}
 }

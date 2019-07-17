@@ -27,7 +27,7 @@ enum Control {
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_rc
-fn make_window() -> Rc<RefCell<Window>> {
+fn make_window() -> Rc<RefCell<dyn Window>> {
     let stopwatch = make_widget! {
         container(horizontal) => NoResponse;
         struct {
@@ -40,7 +40,7 @@ fn make_window() -> Rc<RefCell<Window>> {
                     fn get_text(&self) -> &str {
                         self.display.get_text()
                     }
-                    fn set_string(&mut self, tk: &TkWidget, text: String) {
+                    fn set_string(&mut self, tk: &dyn TkWidget, text: String) {
                         self.display.set_text(tk, text);
                     }
                 }
@@ -52,7 +52,7 @@ fn make_window() -> Rc<RefCell<Window>> {
             dur_buf: String = String::default(),
         }
         impl {
-            fn handle_button(&mut self, tk: &TkWidget, msg: Control) -> NoResponse {
+            fn handle_button(&mut self, tk: &dyn TkWidget, msg: Control) -> NoResponse {
                 match msg {
                     Control::None => {}
                     Control::Reset => {
@@ -72,7 +72,7 @@ fn make_window() -> Rc<RefCell<Window>> {
                 NoResponse
             }
             
-            fn on_tick(&mut self, tk: &TkWidget) {
+            fn on_tick(&mut self, tk: &dyn TkWidget) {
                 if let Some(start) = self.start {
                     let dur = self.saved + (Instant::now() - start);
                     self.dur_buf.clear();

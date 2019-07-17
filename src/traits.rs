@@ -18,7 +18,7 @@ pub trait HasBool {
     fn get_bool(&self) -> bool;
     
     /// Set the widget's state
-    fn set_bool(&mut self, tk: &TkWidget, state: bool);
+    fn set_bool(&mut self, tk: &dyn TkWidget, state: bool);
 }
 
 
@@ -33,14 +33,14 @@ pub trait HasText {
     fn get_text(&self) -> &str;
     
     /// Set the widget's text.
-    fn set_text<T: ToString>(&mut self, tk: &TkWidget, text: T) where Self: Sized {
+    fn set_text<T: ToString>(&mut self, tk: &dyn TkWidget, text: T) where Self: Sized {
         self.set_string(tk, text.to_string());
     }
     
     /// Set the widget's text (string only).
     /// 
     /// This method is for implementation.
-    fn set_string(&mut self, tk: &TkWidget, text: String);
+    fn set_string(&mut self, tk: &dyn TkWidget, text: String);
 }
 
 /// Additional functionality required by the [`Entry`] class.

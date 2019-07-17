@@ -42,7 +42,7 @@ struct Contents<B: Widget> {
 }
 
 impl<B: Widget> Contents<B> {
-    fn handle_button(&mut self, tk: &TkWidget, msg: Message) -> NoResponse {
+    fn handle_button(&mut self, tk: &dyn TkWidget, msg: Message) -> NoResponse {
         match msg {
             Message::None => (),
             Message::Decr => {

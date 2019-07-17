@@ -15,10 +15,10 @@ use crate::traits::*;
 pub enum Class<'a> {
     Container,
     // Dialog,
-    Label(&'a HasText),
-    Entry(&'a Editable),
-    Button(&'a HasText),
-    CheckBox(&'a HasBoolText),
+    Label(&'a dyn HasText),
+    Entry(&'a dyn Editable),
+    Button(&'a dyn HasText),
+    CheckBox(&'a dyn HasBoolText),
     Frame,
     Window,
 }

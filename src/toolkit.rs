@@ -52,7 +52,7 @@ pub trait Toolkit: Clone {
     
     /// Specialised version of `add`; typically toolkits only need to implement
     /// this.
-    fn add_rc(&self, window: Rc<RefCell<Window>>);
+    fn add_rc(&self, window: Rc<RefCell<dyn Window>>);
     
     /// Run the main loop.
     fn main(&mut self);

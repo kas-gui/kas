@@ -139,10 +139,10 @@ pub trait Widget: Layout {
     /// For convenience, `Index<usize>` is implemented via this method.
     /// 
     /// Required: `index < self.len()`.
-    fn get(&self, index: usize) -> Option<&Widget>;
+    fn get(&self, index: usize) -> Option<&dyn Widget>;
     
     /// Mutable variant of get
-    fn get_mut(&mut self, index: usize) -> Option<&mut Widget>;
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
     
     #[doc(hidden)]
     /// This is only for use by toolkits.

@@ -22,14 +22,14 @@ use crate::tkd::WidgetAbstraction;
 #[derive(Clone)]
 pub(crate) struct Window {
     /// The kas window. Each is boxed since it must not move.
-    pub win: Rc<RefCell<kas::Window>>,
+    pub win: Rc<RefCell<dyn kas::Window>>,
     /// The GTK window
     pub gwin: gtk::Window,
     /// Range of widget numbers used, from first to last+1.
     pub nums: (u32, u32),
 }
 
-fn clear_tkd(widget: &mut Widget) {
+fn clear_tkd(widget: &mut dyn Widget) {
     (0..widget.len()).for_each(|i| clear_tkd(widget.get_mut(i).unwrap()));
     widget.clear_gw();
 }
@@ -68,7 +68,7 @@ impl WindowList {
     // Find first window with matching `gdk::Window`, run the closure, and
     // return the result, or `None` if no match.
     pub(crate) fn for_gdk_win<T, F>(&mut self, gdk_win: gdk::Window, f: F) -> Option<T>
-        where F: FnOnce(&mut kas::Window, &mut gtk::Window) -> T
+        where F: FnOnce(&mut dyn kas::Window, &mut gtk::Window) -> T
     {
         let gdk_win = Some(gdk_win);
         for item in self.windows.iter_mut() {
@@ -80,7 +80,7 @@ impl WindowList {
     }
 }
 
-fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut Widget) {
+fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut dyn Widget) {
     widget.set_gw(gtk_widget);
     if let Some(gtk_container) = gtk_widget.downcast_ref::<gtk::Container>() {
         for i in 0..widget.len() {
@@ -198,7 +198,7 @@ impl WindowList {
         }
     }
     
-    pub(crate) fn add_window(&mut self, win: Rc<RefCell<kas::Window>>) {
+    pub(crate) fn add_window(&mut self, win: Rc<RefCell<dyn kas::Window>>) {
         let gwin = gtk::Window::new(gtk::WindowType::Toplevel);
         
         let num0 = self.windows.last().map(|tw| tw.nums.1).unwrap_or(0);

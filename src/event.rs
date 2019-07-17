@@ -95,5 +95,5 @@ pub trait Handler: Core {
     
     /// Handle a high-level event directed at the widget identified by `number`,
     /// and return a user-defined msg.
-    fn handle_action(&mut self, tk: &TkWidget, action: Action, number: u32) -> Self::Response;
+    fn handle_action(&mut self, tk: &dyn TkWidget, action: Action, number: u32) -> Self::Response;
 }

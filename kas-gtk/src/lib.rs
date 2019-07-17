@@ -40,7 +40,7 @@ impl Toolkit {
 }
 
 impl kas::Toolkit for Toolkit {
-    fn add_rc(&self, win: Rc<RefCell<kas::Window>>) {
+    fn add_rc(&self, win: Rc<RefCell<dyn kas::Window>>) {
         window::with_list(|list| list.add_window(win))
     }
     
