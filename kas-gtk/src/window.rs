@@ -132,7 +132,7 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut dyn Widget) {
                     button.upcast::<gtk::Widget>()
                 }
                 Class::Label(iface) => {
-                    let label = gtk::Label::new(iface.get_text());
+                    let label = gtk::Label::new(Some(iface.get_text()));
                     // Text naturally has a top/bottom margin, but not start/end
                     // which looks quite odd. Does this solution scale well?
                     label.set_margin_start(2);

@@ -15,6 +15,8 @@ mod tkd;
 use std::marker::PhantomData;
 use std::{cell::RefCell, rc::Rc};
 
+pub use glib::BoolError as Error;
+
 
 /// Object used to initialise GTK and create windows.
 /// 
@@ -31,7 +33,7 @@ impl Toolkit {
     /// Construct a new instance. This initialises GTK. This should only be
     /// constructed once.
     pub fn new() -> Result<Self, Error> {
-        (gtk::init().map_err(|e| Error(e.0)))?;
+        gtk::init()?;
         
         gdk::Event::set_handler(Some(event::handler));
         
@@ -53,8 +55,3 @@ impl kas::Toolkit for Toolkit {
         gtk::main();
     }
 }
-
-
-/// Error type.
-#[derive(Debug)]
-pub struct Error(pub &'static str);
