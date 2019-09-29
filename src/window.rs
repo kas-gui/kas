@@ -30,13 +30,13 @@ pub trait Window: Widget {
     
     /// Calculate and update positions for all sub-widgets
     #[cfg(feature = "layout")]
-    fn configure_widgets(&mut self, tk: &TkWidget);
+    fn configure_widgets(&mut self, tk: &dyn TkWidget);
     
     /// Adjust the size of the window, repositioning widgets.
     /// 
     /// `configure_widgets` must be called before this.
     #[cfg(feature = "layout")]
-    fn resize(&mut self, tk: &TkWidget, size: Coord);
+    fn resize(&mut self, tk: &dyn TkWidget, size: Coord);
     
     /// Handle a high-level event directed at the widget identified by `num`,
     /// and return a user-defined message.
@@ -130,8 +130,7 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     fn as_widget_mut(&mut self) -> &mut dyn Widget { self }
     
     #[cfg(feature = "cassowary")]
-    fn configure_widgets(&mut self, tk: &TkWidget) {
-        use crate::cw;
+    fn configure_widgets(&mut self, tk: &dyn TkWidget) {
         assert!(self.number() > 0, "widget not enumerated");
         
         let v_w = cw_var!(self, w);
@@ -150,7 +149,7 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     }
     
     #[cfg(feature = "cassowary")]
-    fn resize(&mut self, tk: &TkWidget, size: Coord) {
+    fn resize(&mut self, tk: &dyn TkWidget, size: Coord) {
         assert!(self.number() > 0, "widget not enumerated");
         
         self.solver.suggest_value(cw_var!(self, w), size.0 as f64).unwrap();

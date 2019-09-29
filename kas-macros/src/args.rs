@@ -143,6 +143,8 @@ pub struct WidgetAttrArgs {
 }
 
 pub struct GridPos(Lit, Lit, Lit, Lit);
+
+#[cfg(not(feature = "cassowary"))]
 impl WidgetAttrArgs {
     // If we have *any* position information, then yield a GridPos, filling in
     // missing information with defaults.

@@ -157,13 +157,14 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
         fn init_constraints(&self, tk: &kas::TkWidget,
             s: &mut kas::cw::Solver, _use_default: bool)
         {
-            use kas::cw;
+            use kas::{Core, cw};
             #constraints
         }
         
         fn apply_constraints(&mut self, tk: &kas::TkWidget,
             s: &kas::cw::Solver, pos: kas::Coord)
         {
+            use kas::Core;
             #appls
             
             let w = s.get_value(kas::cw_var!(self, w)) as i32;
