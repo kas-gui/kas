@@ -5,8 +5,6 @@
 
 //! GTK toolkit for kas
 
-#![feature(const_vec_new)]
-
 mod event;
 mod widget;
 mod window;
