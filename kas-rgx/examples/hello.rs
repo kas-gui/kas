@@ -25,6 +25,5 @@ fn main() -> Result<(), kas_gtk::Error> {
 
     let mut toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add(window);
-    toolkit.main();
-    Ok(())
+    toolkit.run()
 }

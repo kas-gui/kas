@@ -7,6 +7,11 @@
 
 use std::{cell::RefCell, rc::Rc};
 
+use rgx::core::*;
+use raw_window_handle::HasRawWindowHandle;
+use winit::event_loop::EventLoopWindowTarget;
+use winit::error::OsError;
+
 use kas::callback::Condition;
 use kas::event::{Action, GuiResponse};
 use kas::{Class, Widget};
@@ -16,14 +21,16 @@ use crate::widget;
 
 
 /// Per-window data
-#[derive(Clone)]
 pub(crate) struct Window {
     /// The kas window. Each is boxed since it must not move.
-    pub win: Rc<RefCell<dyn kas::Window>>,
+    win: Rc<RefCell<dyn kas::Window>>,
+    /// The winit window
+    ww: winit::window::Window,
+    /// The renderer attached to this window
+    rend: Renderer,
 //     /// The GTK window
 //     pub gwin: gtk::Window,
-    /// Range of widget numbers used, from first to last+1.
-    pub nums: (u32, u32),
+    nums: (u32, u32),   // TODO: is this useful?
 }
 
 // Clear TKD on all widgets to reduce pointer reference counts.
@@ -34,6 +41,36 @@ impl Drop for Window {
         unimplemented!()
     }
 }
+
+impl Window {
+    /// Construct a window
+    /// 
+    /// Parameter `num0`: for the first window, use 0. For any other window,
+    /// use the previous window's `nums().1` value.
+    pub fn new<T: 'static>(event_loop: &EventLoopWindowTarget<T>,
+        win: Rc<RefCell<dyn kas::Window>>,
+        num0: u32)
+        -> Result<Window, OsError>
+    {
+        let ww = winit::window::Window::new(event_loop)?;
+        let rend = Renderer::new(ww.raw_window_handle());
+        
+        let num1 = win.borrow_mut().enumerate(num0);
+        
+        Ok(Window {
+            win,
+            ww,
+            rend,
+            nums: (num0, num1),
+        })
+    }
+    
+    /// Range of widget numbers used, from first to last+1.
+    pub fn nums(&self) -> (u32, u32) {
+        self.nums
+    }
+}
+
 /*
 /// A list of windows
 /// 

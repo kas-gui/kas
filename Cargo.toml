@@ -19,4 +19,4 @@ cassowary = { git = "https://github.com/dhardy/cassowary-rs", optional = true }
 kas-macros = { version = "=0.0.2", path = "kas-macros" }
 
 [workspace]
-members = ["kas-gtk", "kas-macros"]
+members = ["kas-gtk", "kas-macros", "kas-rgx"]

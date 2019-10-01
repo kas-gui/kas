@@ -10,37 +10,57 @@ mod widget;
 mod window;
 mod tkd;
 
-use rgx::core::*;
-use raw_window_handle::HasRawWindowHandle;
+use kas::Window;
+
+use winit::event_loop::EventLoop;
 
 use std::marker::PhantomData;
 use std::{cell::RefCell, rc::Rc};
 
 
-/// Builds a toolkit over a `winit::Window`
-pub struct Toolkit {
-    rend: Renderer,
+/// Builds a toolkit over a `winit::event_loop::EventLoop`.
+pub struct Toolkit<T: 'static> {
+    el: EventLoop<T>,
     windows: Vec<window::Window>,
 }
 
-impl Toolkit {
+impl Toolkit<()> {
     /// Construct a new instance.
-    pub fn new(window: &winit::window::Window) -> Self {
-        let rend = Renderer::new(window.raw_window_handle());
-        
+    pub fn new() -> Self {
         Toolkit {
-            rend,
+            el: EventLoop::new(),
             windows: vec![],
         }
     }
 }
 
-impl kas::Toolkit for Toolkit {
-    fn add_rc(&mut self, win: Rc<RefCell<dyn kas::Window>>) {
+impl<T> Toolkit<T> {
+    /// Construct an instance with given user event type
+    /// 
+    /// Refer to the winit's `EventLoop` documentation.
+    pub fn with_user_event() -> Self {
+        Toolkit {
+            el: EventLoop::with_user_event(),
+            windows: vec![],
+        }
+    }
+    
+    
+    /// Assume ownership of and display a window.
+    /// 
+    /// Note: typically, one should have `W: Clone`, enabling multiple usage.
+    pub fn add<W: Window + 'static>(&mut self, window: W) where Self: Sized {
+        self.add_rc(Rc::new(RefCell::new(window)))
+    }
+    
+    /// Specialised version of `add`; typically toolkits only need to implement
+    /// this.
+    pub fn add_rc(&mut self, win: Rc<RefCell<dyn kas::Window>>) {
 //         windows.push_back(
     }
     
-    fn run(mut self) -> ! {
+    /// Run the main loop.
+    pub fn run(mut self) -> ! {
 //         window::with_list(|list| {
 //             for window in &list.windows {
 //                 window.win.borrow_mut().on_start(&widget::Toolkit);

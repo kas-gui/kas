@@ -15,9 +15,9 @@ use kas::text::Label;
 use kas::event::NoResponse;
 use kas::macros::make_widget;
 use kas::HasText;
-use kas::{SimpleWindow, Toolkit, TkWidget};
+use kas::{SimpleWindow, TkWidget};
 
-fn main() -> Result<(), kas_gtk::Error> {
+fn main() {
     let mut window = SimpleWindow::new(make_widget! {
             container(vertical) => NoResponse;
             struct {
@@ -36,8 +36,7 @@ fn main() -> Result<(), kas_gtk::Error> {
     window.add_callback(&|w, tk| w.on_tick(tk),
             &[Condition::Start, Condition::TimeoutSec(1)]);
     
-    let mut toolkit = kas_gtk::Toolkit::new()?;
+    let mut toolkit = kas_rgx::Toolkit::new();
     toolkit.add(window);
-    toolkit.main();
-    Ok(())
+    toolkit.run()
 }

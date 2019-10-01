@@ -97,6 +97,5 @@ fn make_window() -> Rc<RefCell<dyn Window>> {
 fn main() -> Result<(), kas_gtk::Error> {
     let mut toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add_rc(make_window());
-    toolkit.main();
-    Ok(())
+    toolkit.run()
 }

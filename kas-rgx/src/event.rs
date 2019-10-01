@@ -10,13 +10,23 @@ use winit::event_loop::ControlFlow;
 
 use crate::{Toolkit, widget, window};
 
-impl Toolkit {
+impl<T> Toolkit<T> {
     #[inline]
     pub(crate) fn handler(&mut self, event: Event<()>, control_flow: &mut ControlFlow) {
-        unimplemented!()
+        use Event::*;
+        match event {
+            DeviceEvent { device_id, event } => {
+                // TODO: handle input
+            }
+            EventsCleared => {
+                // TODO: redraw when needed
+            }
+            NewEvents(_) => (), // we can ignore these events
+            e @ _ => {
+                println!("Unhandled event: {:?}", e);
+            }
+        }
         /*
-        use gdk::EventType::*;
-        
         match event.get_event_type() {
             Nothing => return,  // ignore this event
             
