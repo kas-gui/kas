@@ -179,7 +179,7 @@ impl WindowList {
     fn handle_action(&mut self, action: Action, num: u32) {
         for (i, w) in self.windows.iter_mut().enumerate() {
             if num >= w.nums.0 && num < w.nums.1 {
-                let msg = w.win.borrow_mut().handle_action(&widget::Toolkit, action, num);
+                let msg = w.win.borrow_mut().handle_action(&mut widget::Toolkit, action, num);
                 match msg {
                     GuiResponse::None => {}
                     GuiResponse::Close => {
@@ -221,14 +221,14 @@ impl WindowList {
                     Condition::TimeoutMs(t_ms) => {
                         gtk::timeout_add(t_ms, move || {
                             let mut borrow = win.borrow_mut();
-                            borrow.trigger_callback(index, &widget::Toolkit);
+                            borrow.trigger_callback(index, &mut widget::Toolkit);
                             gtk::Continue(true)
                         });
                     }
                     Condition::TimeoutSec(t_s) => {
                         gtk::timeout_add_seconds(t_s, move || {
                             let mut borrow = win.borrow_mut();
-                            borrow.trigger_callback(index, &widget::Toolkit);
+                            borrow.trigger_callback(index, &mut widget::Toolkit);
                             gtk::Continue(true)
                         });
                     }

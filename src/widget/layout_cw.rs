@@ -53,7 +53,7 @@ pub trait Layout: Core + fmt::Debug {
     /// 
     /// `pos` is the widget's position relative to the parent window.
     #[cfg(feature = "cassowary")]
-    fn apply_constraints(&mut self, tk: &dyn TkWidget, s: &cw::Solver, pos: Coord);
+    fn apply_constraints(&mut self, tk: &mut dyn TkWidget, s: &cw::Solver, pos: Coord);
 }
 
 #[macro_export]

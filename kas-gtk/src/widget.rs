@@ -30,7 +30,7 @@ impl TkWidget for Toolkit {
         Rect::conv(gw.get_allocation())
     }
     
-    fn set_rect(&self, tkd: TkData, rect: &Rect) {
+    fn set_rect(&mut self, tkd: TkData, rect: &Rect) {
         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
         let mut rect = gtk::Rectangle::conv(rect);
         gw.size_allocate(&mut rect);
@@ -45,14 +45,14 @@ impl TkWidget for Toolkit {
         }
     }
     
-    fn set_bool(&self, tkd: TkData, state: bool) {
+    fn set_bool(&mut self, tkd: TkData, state: bool) {
         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
         if let Some(b) = gw.downcast_ref::<gtk::ToggleButton>() {
             b.set_active(state);
         }
     }
     
-    fn set_text(&self, tkd: TkData, text: &str) {
+    fn set_text(&mut self, tkd: TkData, text: &str) {
         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
         if let Some(glabel) = gw.downcast_ref::<gtk::Label>() {
             glabel.set_label(text);

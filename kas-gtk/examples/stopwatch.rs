@@ -40,7 +40,7 @@ fn make_window() -> Rc<RefCell<dyn Window>> {
                     fn get_text(&self) -> &str {
                         self.display.get_text()
                     }
-                    fn set_string(&mut self, tk: &dyn TkWidget, text: String) {
+                    fn set_string(&mut self, tk: &mut dyn TkWidget, text: String) {
                         self.display.set_text(tk, text);
                     }
                 }
@@ -52,7 +52,7 @@ fn make_window() -> Rc<RefCell<dyn Window>> {
             dur_buf: String = String::default(),
         }
         impl {
-            fn handle_button(&mut self, tk: &dyn TkWidget, msg: Control) -> NoResponse {
+            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Control) -> NoResponse {
                 match msg {
                     Control::None => {}
                     Control::Reset => {
@@ -72,7 +72,7 @@ fn make_window() -> Rc<RefCell<dyn Window>> {
                 NoResponse
             }
             
-            fn on_tick(&mut self, tk: &dyn TkWidget) {
+            fn on_tick(&mut self, tk: &mut dyn TkWidget) {
                 if let Some(start) = self.start {
                     let dur = self.saved + (Instant::now() - start);
                     self.dur_buf.clear();

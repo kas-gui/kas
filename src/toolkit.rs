@@ -48,7 +48,7 @@ pub trait TkWidget {
     /// Set the widget's position and size.
     /// 
     /// Does not need to update child widgets.
-    fn set_rect(&self, tkd: TkData, rect: &Rect);
+    fn set_rect(&mut self, tkd: TkData, rect: &Rect);
     
     /// Get the widget's boolean state
     fn get_bool(&self, tkd: TkData) -> bool;
@@ -57,11 +57,11 @@ pub trait TkWidget {
     /// 
     /// As with the [`HasBool`] trait, this can be used for checkboxes,
     /// radio buttons and toggle switches.
-    fn set_bool(&self, tkd: TkData, state: bool);
+    fn set_bool(&mut self, tkd: TkData, state: bool);
     
     /// Set the widget's text
     /// 
     /// As with the [`HasText`] trait, this applies to both labels and text
     /// content, depending on the widget.
-    fn set_text(&self, tkd: TkData, text: &str);
+    fn set_text(&mut self, tkd: TkData, text: &str);
 }

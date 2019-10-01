@@ -57,7 +57,7 @@ impl Toolkit {
     pub fn main(self) -> () {
         window::with_list(|list| {
             for window in &list.windows {
-                window.win.borrow_mut().on_start(&widget::Toolkit);
+                window.win.borrow_mut().on_start(&mut widget::Toolkit);
             }
         });
         gtk::main();

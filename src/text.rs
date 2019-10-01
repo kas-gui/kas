@@ -44,7 +44,7 @@ impl HasText for Label {
         &self.text
     }
     
-    fn set_string(&mut self, tk: &dyn TkWidget, text: String) {
+    fn set_string(&mut self, tk: &mut dyn TkWidget, text: String) {
         tk.set_text(self.tkd(), &text);
         self.text = text;
     }
@@ -111,7 +111,7 @@ impl<H> HasText for Entry<H> {
         &self.text
     }
     
-    fn set_string(&mut self, tk: &dyn TkWidget, text: String) {
+    fn set_string(&mut self, tk: &mut dyn TkWidget, text: String) {
         tk.set_text(self.tkd(), &text);
         self.text = text;
     }
@@ -130,7 +130,7 @@ impl<H> Editable for Entry<H> {
 impl Handler for Entry<()> {
     type Response = NoResponse;
     
-    fn handle_action(&mut self, _tk: &dyn TkWidget, action: Action, num: u32) -> Self::Response {
+    fn handle_action(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Response {
         if num != self.number() {
             return err_num()
         }
@@ -145,7 +145,7 @@ impl Handler for Entry<()> {
 impl<R: From<NoResponse>, H: Fn() -> R> Handler for Entry<H> {
     type Response = R;
     
-    fn handle_action(&mut self, _tk: &dyn TkWidget, action: Action, num: u32) -> Self::Response {
+    fn handle_action(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Response {
         if num != self.number() {
             return err_num()
         }

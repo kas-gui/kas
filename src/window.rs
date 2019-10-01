@@ -30,20 +30,20 @@ pub trait Window: Widget {
     
     /// Calculate and update positions for all sub-widgets
     #[cfg(feature = "layout")]
-    fn configure_widgets(&mut self, tk: &dyn TkWidget);
+    fn configure_widgets(&mut self, tk: &mut dyn TkWidget);
     
     /// Adjust the size of the window, repositioning widgets.
     /// 
     /// `configure_widgets` must be called before this.
     #[cfg(feature = "layout")]
-    fn resize(&mut self, tk: &dyn TkWidget, size: Coord);
+    fn resize(&mut self, tk: &mut dyn TkWidget, size: Coord);
     
     /// Handle a high-level event directed at the widget identified by `num`,
     /// and return a user-defined message.
     // NOTE: we could instead add the trait bound Handler<Response = GuiResponse>
     // but (1) Rust doesn't yet support mult-trait objects
     // and (2) https://github.com/rust-lang/rust/issues/57218
-    fn handle_action(&mut self, tk: &dyn TkWidget, action: Action, num: u32) -> GuiResponse;
+    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32) -> GuiResponse;
     
     /// Get a list of available callbacks.
     /// 
@@ -52,11 +52,11 @@ pub trait Window: Widget {
     fn callbacks(&self) -> Vec<(usize, Condition)>;
     
     /// Trigger a callback (see `iter_callbacks`).
-    fn trigger_callback(&mut self, index: usize, tk: &dyn TkWidget);
+    fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWidget);
     
     /// Called by the toolkit after the window has been created and before it
     /// is drawn. This allows callbacks to be invoked "on start".
-    fn on_start(&mut self, tk: &dyn TkWidget);
+    fn on_start(&mut self, tk: &mut dyn TkWidget);
 }
 
 /// The main instantiation of the `Window` trait.
@@ -69,7 +69,7 @@ pub struct SimpleWindow<W: Widget + 'static> {
     min_size: Coord,
     #[cfg(feature = "cassowary")] solver: crate::cw::Solver,
     #[widget] w: W,
-    fns: Vec<(Condition, &'static dyn Fn(&mut W, &dyn TkWidget))>,
+    fns: Vec<(Condition, &'static dyn Fn(&mut W, &mut dyn TkWidget))>,
 }
 
 impl<W: Widget> Debug for SimpleWindow<W> {
@@ -113,7 +113,7 @@ impl<W: Widget> SimpleWindow<W> {
     
     /// Add a closure to be called, with a reference to self, on the given
     /// condition. The closure must be passed by reference.
-    pub fn add_callback(&mut self, f: &'static dyn Fn(&mut W, &dyn TkWidget),
+    pub fn add_callback(&mut self, f: &'static dyn Fn(&mut W, &mut dyn TkWidget),
             conditions: &[Condition])
     {
         for c in conditions {
@@ -130,7 +130,7 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     fn as_widget_mut(&mut self) -> &mut dyn Widget { self }
     
     #[cfg(feature = "cassowary")]
-    fn configure_widgets(&mut self, tk: &dyn TkWidget) {
+    fn configure_widgets(&mut self, tk: &mut dyn TkWidget) {
         assert!(self.number() > 0, "widget not enumerated");
         
         let v_w = cw_var!(self, w);
@@ -149,7 +149,7 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     }
     
     #[cfg(feature = "cassowary")]
-    fn resize(&mut self, tk: &dyn TkWidget, size: Coord) {
+    fn resize(&mut self, tk: &mut dyn TkWidget, size: Coord) {
         assert!(self.number() > 0, "widget not enumerated");
         
         self.solver.suggest_value(cw_var!(self, w), size.0 as f64).unwrap();
@@ -158,7 +158,7 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
     
-    fn handle_action(&mut self, tk: &dyn TkWidget, action: Action, num: u32) -> GuiResponse {
+    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32) -> GuiResponse {
         if num < self.number() {
             GuiResponse::from(self.w.handle_action(tk, action, num))
         } else if num == self.number() {
@@ -176,12 +176,12 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
     }
     
     /// Trigger a callback (see `iter_callbacks`).
-    fn trigger_callback(&mut self, index: usize, tk: &dyn TkWidget) {
+    fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWidget) {
         let cb = &mut self.fns[index].1;
         cb(&mut self.w, tk);
     }
     
-    fn on_start(&mut self, tk: &dyn TkWidget) {
+    fn on_start(&mut self, tk: &mut dyn TkWidget) {
         for cb in &mut self.fns {
             if cb.0 == Condition::Start {
                 (cb.1)(&mut self.w, tk);

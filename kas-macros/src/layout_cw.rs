@@ -161,7 +161,7 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
             #constraints
         }
         
-        fn apply_constraints(&mut self, tk: &kas::TkWidget,
+        fn apply_constraints(&mut self, tk: &mut kas::TkWidget,
             s: &kas::cw::Solver, pos: kas::Coord)
         {
             use kas::Core;

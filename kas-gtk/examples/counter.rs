@@ -36,7 +36,7 @@ fn main() -> Result<(), kas_gtk::Error> {
             counter: usize = 0,
         }
         impl {
-            fn handle_button(&mut self, tk: &dyn TkWidget, msg: Message) -> NoResponse {
+            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message) -> NoResponse {
                 match msg {
                     Message::None => (),
                     Message::Decr => {
