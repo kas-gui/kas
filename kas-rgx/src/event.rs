@@ -18,8 +18,25 @@ impl<T> Toolkit<T> {
             DeviceEvent { device_id, event } => {
                 // TODO: handle input
             }
+            WindowEvent { window_id, event } => {
+                let mut to_close = None;
+                for (i, window) in self.windows.iter_mut().enumerate() {
+                    if window.id() == window_id {
+                        if window.handle_event(event) {
+                            to_close = Some(i);
+                        }
+                        break;
+                    }
+                }
+                if let Some(i) = to_close {
+                    self.windows.remove(i);
+                    if self.windows.is_empty() {
+                        *control_flow = ControlFlow::Exit;
+                    }
+                }
+            }
             EventsCleared => {
-                // TODO: redraw when needed
+                *control_flow = ControlFlow::Wait;
             }
             NewEvents(_) => (), // we can ignore these events
             e @ _ => {

@@ -11,6 +11,8 @@ use rgx::core::*;
 use raw_window_handle::HasRawWindowHandle;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::error::OsError;
+use winit::event::WindowEvent;
+use winit::window::WindowId;
 
 use kas::callback::Condition;
 use kas::event::{Action, GuiResponse};
@@ -68,6 +70,33 @@ impl Window {
     /// Range of widget numbers used, from first to last+1.
     pub fn nums(&self) -> (u32, u32) {
         self.nums
+    }
+    
+    /// Identifier for this window
+    pub fn id(&self) -> WindowId {
+        self.ww.id()
+    }
+    
+    /// Handle an event
+    /// 
+    /// Return true to remove the window
+    pub fn handle_event(&mut self, event: WindowEvent) -> bool {
+        use WindowEvent::*;
+        match event {
+            CursorEntered {..} | KeyboardInput {..} | MouseInput {..} => {
+                // TODO: handle input
+            }
+            RedrawRequested => {
+                // TODO
+            }
+            CloseRequested => {
+                return true;
+            }
+            _ => {
+                println!("Unhandled window event: {:?}", event);
+            }
+        }
+        false
     }
 }
 
