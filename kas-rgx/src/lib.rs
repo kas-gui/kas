@@ -5,12 +5,14 @@
 
 //! Toolkit for kas
 
+#![allow(unused)]   // TODO
+
 mod event;
 mod widget;
 mod window;
 mod tkd;
 
-use kas::Window;
+pub use window::Window;
 
 use winit::event_loop::EventLoop;
 use winit::error::OsError;
@@ -22,7 +24,7 @@ use std::{cell::RefCell, rc::Rc};
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
 pub struct Toolkit<T: 'static> {
     el: EventLoop<T>,
-    windows: Vec<window::Window>,
+    windows: Vec<Window>,
 }
 
 impl Toolkit<()> {
@@ -50,30 +52,27 @@ impl<T> Toolkit<T> {
     /// Assume ownership of and display a window.
     /// 
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
-    pub fn add<W: Window + 'static>(&mut self, window: W) -> Result<(), OsError>
-    where Self: Sized
+    pub fn add<W: kas::Window + 'static>(&mut self, window: W)
+        -> Result<(), OsError>
     {
-        self.add_rc(Rc::new(RefCell::new(window)))
+        self.add_boxed(Box::new(window))
     }
     
-    /// Specialised version of `add`; typically toolkits only need to implement
-    /// this.
-    pub fn add_rc(&mut self, win: Rc<RefCell<dyn kas::Window>>)
+    /// Add a boxed window directly
+    pub fn add_boxed(&mut self, window: Box<dyn kas::Window>)
         -> Result<(), OsError>
     {
         let num0 = self.windows.last().map(|w| w.nums().1).unwrap_or(0);
-        let window = window::Window::new(&self.el, win, num0)?;
-        self.windows.push(window);
+        let win = Window::new(&self.el, window, num0)?;
+        self.windows.push(win);
         Ok(())
     }
     
     /// Run the main loop.
     pub fn run(mut self) -> ! {
-//         window::with_list(|list| {
-//             for window in &list.windows {
-//                 window.win.borrow_mut().on_start(&widget::Toolkit);
-//             }
-//         });
+        for window in self.windows.iter_mut() {
+            window.prepare();
+        }
         
         let event_loop = winit::event_loop::EventLoop::new();
         event_loop.run(move |event, _, control_flow| {

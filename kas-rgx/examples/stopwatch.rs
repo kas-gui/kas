@@ -6,7 +6,6 @@
 //! Counter example (simple button)
 #![feature(proc_macro_hygiene)]
 
-use std::{cell::RefCell, rc::Rc};
 use std::fmt::Write;
 use std::time::{Duration, Instant};
 
@@ -16,7 +15,7 @@ use kas::text::Label;
 use kas::event::{NoResponse};
 use kas::macros::{NoResponse, make_widget};
 use kas::HasText;
-use kas::{SimpleWindow, Toolkit, TkWidget, Window};
+use kas::{SimpleWindow, TkWidget, Window};
 
 #[derive(Debug, NoResponse)]
 enum Control {
@@ -26,8 +25,8 @@ enum Control {
 }
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.
-// There's no reason for this, but it demonstrates usage of Toolkit::add_rc
-fn make_window() -> Rc<RefCell<dyn Window>> {
+// There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
+fn make_window() -> Box<dyn Window> {
     let stopwatch = make_widget! {
         container(horizontal) => NoResponse;
         struct {
@@ -40,7 +39,7 @@ fn make_window() -> Rc<RefCell<dyn Window>> {
                     fn get_text(&self) -> &str {
                         self.display.get_text()
                     }
-                    fn set_string(&mut self, tk: &dyn TkWidget, text: String) {
+                    fn set_string(&mut self, tk: &mut dyn TkWidget, text: String) {
                         self.display.set_text(tk, text);
                     }
                 }
@@ -52,7 +51,7 @@ fn make_window() -> Rc<RefCell<dyn Window>> {
             dur_buf: String = String::default(),
         }
         impl {
-            fn handle_button(&mut self, tk: &dyn TkWidget, msg: Control) -> NoResponse {
+            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Control) -> NoResponse {
                 match msg {
                     Control::None => {}
                     Control::Reset => {
@@ -72,7 +71,7 @@ fn make_window() -> Rc<RefCell<dyn Window>> {
                 NoResponse
             }
             
-            fn on_tick(&mut self, tk: &dyn TkWidget) {
+            fn on_tick(&mut self, tk: &mut dyn TkWidget) {
                 if let Some(start) = self.start {
                     let dur = self.saved + (Instant::now() - start);
                     self.dur_buf.clear();
@@ -91,11 +90,11 @@ fn make_window() -> Rc<RefCell<dyn Window>> {
     
     window.add_callback(&|w, tk| w.on_tick(tk), &[Condition::TimeoutMs(16)]);
     
-    Rc::new(RefCell::new(window))
+    Box::new(window)
 }
 
-fn main() -> Result<(), kas_gtk::Error> {
-    let mut toolkit = kas_gtk::Toolkit::new()?;
-    toolkit.add_rc(make_window());
+fn main() -> Result<(), winit::error::OsError> {
+    let mut toolkit = kas_rgx::Toolkit::new();
+    toolkit.add_boxed(make_window())?;
     toolkit.run()
 }

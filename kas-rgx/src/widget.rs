@@ -3,17 +3,82 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! GTK backend
+//! Backend widget code
 //! 
-//! Widget code
+//! TODO: most of this code would be completely unnecessary if we drop the
+//! toolkit abstraction, which might make sense.
 
 use kas::{Coord, Rect, TkData, TkWidget};
 
 
-pub struct Toolkit;
+pub(crate) struct Widgets {
+    ws: Vec<Widget>,
+}
 
-impl TkWidget for Toolkit {
+impl Widgets {
+    pub fn new() -> Self {
+        Widgets { ws: vec![] }
+    }
+    
+    pub fn add(&mut self, w: &mut dyn kas::Widget) {
+        w.set_tkd(TkData(self.ws.len() as u64));
+        
+        use kas::Class::*;
+        self.ws.push(match w.class() {
+            Container => Widget::Container,
+            Label(c) => Widget::Label(c.get_text().into()),
+            Entry(c) => Widget::Entry(c.is_editable(), c.get_text().into()),
+            Button(c) => Widget::Button(c.get_text().into()),
+            CheckBox(c) => Widget::CheckBox(c.get_bool(), c.get_text().into()),
+            Frame => Widget::Frame,
+            Window => Widget::Window,
+        });
+        
+        for i in 0..w.len() {
+            self.add(w.get_mut(i).unwrap());
+        }
+    }
+}
+
+impl TkWidget for Widgets {
     fn size_hints(&self, tkd: TkData) -> (Coord, Coord) {
+        self.ws[tkd.0 as usize].size_hints()
+    }
+    
+    fn get_rect(&self, tkd: TkData) -> Rect {
+        self.ws[tkd.0 as usize].get_rect()
+    }
+    
+    fn set_rect(&mut self, tkd: TkData, rect: &Rect) {
+        self.ws[tkd.0 as usize].set_rect(rect)
+    }
+    
+    fn get_bool(&self, tkd: TkData) -> bool {
+        self.ws[tkd.0 as usize].get_bool()
+    }
+    
+    fn set_bool(&mut self, tkd: TkData, state: bool) {
+        self.ws[tkd.0 as usize].set_bool(state)
+    }
+    
+    fn set_text(&mut self, tkd: TkData, text: &str) {
+        self.ws[tkd.0 as usize].set_text(text)
+    }
+}
+
+
+enum Widget {
+    Container,
+    Label(String),
+    Entry(bool, String),
+    Button(String),
+    CheckBox(bool, String),
+    Frame,
+    Window,
+}
+
+impl Widget {
+    fn size_hints(&self) -> (Coord, Coord) {
         unimplemented!()
 //         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
 //         let min = Coord::conv(gw.get_preferred_size().0);
@@ -21,55 +86,40 @@ impl TkWidget for Toolkit {
 //         (min, hint)
     }
     
-    fn get_rect(&self, tkd: TkData) -> Rect {
+    fn get_rect(&self) -> Rect {
         unimplemented!()
 //         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
 //         Rect::conv(gw.get_allocation())
     }
     
-    fn set_rect(&self, tkd: TkData, rect: &Rect) {
+    fn set_rect(&self, rect: &Rect) {
         unimplemented!()
 //         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
 //         let mut rect = gtk::Rectangle::conv(rect);
 //         gw.size_allocate(&mut rect);
     }
     
-    fn get_bool(&self, tkd: TkData) -> bool {
-        unimplemented!()
-//         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
-//         if let Some(b) = gw.downcast_ref::<gtk::ToggleButton>() {
-//             b.get_active()
-//         } else {
-//             panic!("get_bool not implemented on this widget")
-//         }
+    fn get_bool(&self) -> bool {
+        use Widget::*;
+        match self {
+            Entry(b, ..) | CheckBox(b, ..) => *b,
+            _ => panic!("Widget does not support get_bool!"),
+        }
     }
     
-    fn set_bool(&self, tkd: TkData, state: bool) {
-        unimplemented!()
-//         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
-//         if let Some(b) = gw.downcast_ref::<gtk::ToggleButton>() {
-//             b.set_active(state);
-//         }
+    fn set_bool(&mut self, state: bool) {
+        use Widget::*;
+        match self {
+            Entry(b, ..) | CheckBox(b, ..) => *b = state,
+            _ => panic!("Widget does not support set_bool!"),
+        }
     }
     
-    fn set_text(&self, tkd: TkData, text: &str) {
-        unimplemented!()
-//         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
-//         if let Some(glabel) = gw.downcast_ref::<gtk::Label>() {
-//             glabel.set_label(text);
-//         } else if let Some(button) = gw.downcast_ref::<gtk::Button>() {
-//             button.set_label(text);
-//         } else if let Some(entry) = gw.downcast_ref::<gtk::Entry>() {
-//             entry.set_text(text);
-//         } /*else if let Some(cont) = gw.downcast_ref::<gtk::Container>() {
-//             // GTK sometimes uses a child for the actual label
-//             // TODO: consider using child_notify instead
-//             for child in cont.get_children().iter() {
-//                 if let Some(glabel) = child.downcast_ref::<gtk::Label>() {
-//                     glabel.set_label(text);
-//                     break;
-//                 }
-//             }
-//         }*/
+    fn set_text(&mut self, text: &str) {
+        use Widget::*;
+        match self {
+            Label(s) | Entry(_, s) | Button(s) | CheckBox(_, s) => *s = text.into(),
+            _ => panic!("Widget does not support set_text!"),
+        }
     }
 }

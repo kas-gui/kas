@@ -9,6 +9,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use rgx::core::*;
 use raw_window_handle::HasRawWindowHandle;
+use winit::dpi::LogicalSize;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::error::OsError;
 use winit::event::WindowEvent;
@@ -16,16 +17,15 @@ use winit::window::WindowId;
 
 use kas::callback::Condition;
 use kas::event::{Action, GuiResponse};
-use kas::{Class, Widget};
+use kas::{Class, Coord, Widget, TkData};
 
-use crate::widget;
+use crate::widget::Widgets;
 // use crate::tkd::WidgetAbstraction;
 
 
 /// Per-window data
-pub(crate) struct Window {
-    /// The kas window. Each is boxed since it must not move.
-    win: Rc<RefCell<dyn kas::Window>>,
+pub struct Window {
+    win: Box<dyn kas::Window>,
     /// The winit window
     ww: winit::window::Window,
     /// The renderer attached to this window
@@ -33,6 +33,7 @@ pub(crate) struct Window {
 //     /// The GTK window
 //     pub gwin: gtk::Window,
     nums: (u32, u32),   // TODO: is this useful?
+    widgets: Widgets,
 }
 
 // Clear TKD on all widgets to reduce pointer reference counts.
@@ -40,31 +41,39 @@ pub(crate) struct Window {
 // by this lib.
 impl Drop for Window {
     fn drop(&mut self) {
-        unimplemented!()
+        // TODO?
     }
 }
 
+// Public functions, for use by the toolkit
 impl Window {
     /// Construct a window
     /// 
     /// Parameter `num0`: for the first window, use 0. For any other window,
     /// use the previous window's `nums().1` value.
-    pub fn new<T: 'static>(event_loop: &EventLoopWindowTarget<T>,
-        win: Rc<RefCell<dyn kas::Window>>,
+    pub fn new<T: 'static>(
+        event_loop: &EventLoopWindowTarget<T>,
+        mut win: Box<dyn kas::Window>,
         num0: u32)
         -> Result<Window, OsError>
     {
         let ww = winit::window::Window::new(event_loop)?;
         let rend = Renderer::new(ww.raw_window_handle());
         
-        let num1 = win.borrow_mut().enumerate(num0);
+        let num1 = win.enumerate(num0);
         
-        Ok(Window {
+        let mut widgets = Widgets::new();
+        widgets.add(win.as_widget_mut());
+        
+        let mut w = Window {
             win,
             ww,
             rend,
             nums: (num0, num1),
-        })
+            widgets,
+        };
+        
+        Ok(w)
     }
     
     /// Range of widget numbers used, from first to last+1.
@@ -75,6 +84,13 @@ impl Window {
     /// Identifier for this window
     pub fn id(&self) -> WindowId {
         self.ww.id()
+    }
+    
+    /// Called by the `Toolkit` just before the event loop starts to initialise
+    /// windows.
+    pub fn prepare(&mut self) {
+        self.do_resize(self.ww.inner_size());
+        self.win.on_start(&mut self.widgets);
     }
     
     /// Handle an event
@@ -89,6 +105,7 @@ impl Window {
             RedrawRequested => {
                 // TODO
             }
+            Resized(size) => self.do_resize(size),
             CloseRequested => {
                 return true;
             }
@@ -97,6 +114,18 @@ impl Window {
             }
         }
         false
+    }
+}
+
+// Internal functions
+impl Window {
+    fn do_resize(&mut self, size: LogicalSize) {
+        // TODO: work with logical size to allow DPI scaling
+        let size: (u32, u32) = size.to_physical(self.ww.hidpi_factor()).into();
+        // TODO: any reason Coord should not use u32?
+        let size = (size.0 as i32, size.1 as i32);
+        self.win.configure_widgets(&mut self.widgets);
+        self.win.resize(&mut self.widgets, size);
     }
 }
 
@@ -213,75 +242,6 @@ fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut dyn Widget) {
 //             }
             gtk_container.add(&gtk_child);
         }
-    }
-}
-
-// event handler code
-impl WindowList {
-    fn handle_action(&mut self, action: Action, num: u32) {
-        for (i, w) in self.windows.iter_mut().enumerate() {
-            if num >= w.nums.0 && num < w.nums.1 {
-                let msg = w.win.borrow_mut().handle_action(&widget::Toolkit, action, num);
-                match msg {
-                    GuiResponse::None => {}
-                    GuiResponse::Close => {
-                        self.windows.remove(i);
-                        if self.windows.is_empty() {
-                            gtk::main_quit();
-                        }
-                    }
-                    GuiResponse::Exit => {
-                        self.windows.clear();
-                        gtk::main_quit();
-                    }
-                }
-                break;
-            }
-        }
-    }
-    
-    pub(crate) fn add_window(&mut self, win: Rc<RefCell<dyn kas::Window>>) {
-        let gwin = gtk::Window::new(gtk::WindowType::Toplevel);
-        
-        let num0 = self.windows.last().map(|tw| tw.nums.1).unwrap_or(0);
-        let nums = {
-            let mut inner = win.borrow_mut();
-            let num1 = inner.enumerate(num0);
-            let num = inner.number();
-            
-            gwin.connect_delete_event(move |_, _| {
-                with_list(|list| list.handle_action(Action::Close, num));
-                gtk::Inhibit(false)
-            });
-            
-            add_widgets(gwin.upcast_ref::<gtk::Widget>(), inner.as_widget_mut());
-            
-            for (index, cond) in inner.callbacks() {
-                let win = win.clone();
-                match cond {
-                    Condition::Start => {}
-                    Condition::TimeoutMs(t_ms) => {
-                        gtk::timeout_add(t_ms, move || {
-                            let mut borrow = win.borrow_mut();
-                            borrow.trigger_callback(index, &widget::Toolkit);
-                            gtk::Continue(true)
-                        });
-                    }
-                    Condition::TimeoutSec(t_s) => {
-                        gtk::timeout_add_seconds(t_s, move || {
-                            let mut borrow = win.borrow_mut();
-                            borrow.trigger_callback(index, &widget::Toolkit);
-                            gtk::Continue(true)
-                        });
-                    }
-                }
-            }
-            (num0, num1)
-        };
-        
-        gwin.show_all();
-        
-        self.windows.push(Window { win, gwin, nums });
     }
 }
 */

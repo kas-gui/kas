@@ -10,9 +10,9 @@ use kas::text::{Label, Entry};
 use kas::control::{TextButton, CheckBox};
 use kas::event::NoResponse;
 use kas::macros::make_widget;
-use kas::{SimpleWindow, Toolkit};
+use kas::SimpleWindow;
 
-fn main() -> Result<(), kas_gtk::Error> {
+fn main() -> Result<(), winit::error::OsError> {
     let widgets = make_widget! {
         container(grid) => NoResponse;
         struct {
@@ -41,7 +41,7 @@ fn main() -> Result<(), kas_gtk::Error> {
             }
         });
     
-    let mut toolkit = kas_gtk::Toolkit::new()?;
+    let mut toolkit = kas_rgx::Toolkit::new();
     toolkit.add(window);
     toolkit.run()
 }

@@ -11,7 +11,7 @@ use kas::text::Label;
 use kas::event::{Handler, NoResponse};
 use kas::macros::{NoResponse, Widget};
 use kas::HasText;
-use kas::{SimpleWindow, Toolkit, TkWidget, Class, CoreData, Widget};
+use kas::{SimpleWindow, TkWidget, Class, CoreData, Widget};
 
 #[derive(Debug, NoResponse)]
 enum Message {
@@ -42,7 +42,7 @@ struct Contents<B: Widget> {
 }
 
 impl<B: Widget> Contents<B> {
-    fn handle_button(&mut self, tk: &dyn TkWidget, msg: Message) -> NoResponse {
+    fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message) -> NoResponse {
         match msg {
             Message::None => (),
             Message::Decr => {
@@ -59,7 +59,7 @@ impl<B: Widget> Contents<B> {
 }
 
 
-fn main() -> Result<(), kas_gtk::Error> {
+fn main() -> Result<(), winit::error::OsError> {
     let buttons = Buttons {
         core: CoreData::default(),
         decr: TextButton::new_on("−", || Message::Decr),
@@ -75,7 +75,7 @@ fn main() -> Result<(), kas_gtk::Error> {
     
     let window = SimpleWindow::new(contents);
 
-    let mut toolkit = kas_gtk::Toolkit::new()?;
+    let mut toolkit = kas_rgx::Toolkit::new();
     toolkit.add(window);
     toolkit.run()
 }

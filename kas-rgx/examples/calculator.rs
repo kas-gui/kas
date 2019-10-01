@@ -14,7 +14,7 @@ use kas::text::Entry;
 use kas::event::NoResponse;
 use kas::macros::{NoResponse, make_widget};
 use kas::HasText;
-use kas::{SimpleWindow, Toolkit, TkWidget};
+use kas::{SimpleWindow, TkWidget};
 
 #[derive(Clone, Debug, PartialEq, NoResponse)]
 enum Key {
@@ -28,7 +28,7 @@ enum Key {
     Char(u8), // char in range 0..255
 }
 
-fn main() -> Result<(), kas_gtk::Error> {
+fn main() -> Result<(), winit::error::OsError> {
     let buttons = make_widget!{
         container(grid) => Key;
         struct {
@@ -61,7 +61,7 @@ fn main() -> Result<(), kas_gtk::Error> {
             calc: Calculator = Calculator::new(),
         }
         impl {
-            fn handle_button(&mut self, tk: &dyn TkWidget, msg: Key) -> NoResponse {
+            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Key) -> NoResponse {
                 if self.calc.handle(msg) {
                     // self.state.set_text(tk, &self.calc.state_str());
                     // self.buf.set_text(tk, &self.calc.line_buf);
@@ -73,7 +73,7 @@ fn main() -> Result<(), kas_gtk::Error> {
     };
     let window = SimpleWindow::new(content);
 
-    let mut toolkit = kas_gtk::Toolkit::new()?;
+    let mut toolkit = kas_rgx::Toolkit::new();
     toolkit.add(window);
     toolkit.run()
 }

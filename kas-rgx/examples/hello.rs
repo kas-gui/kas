@@ -5,15 +5,11 @@
 
 //! Hello world example
 
-extern crate kas;
-extern crate kas_gtk;
-
 use kas::text::Label;
 use kas::dialog::{action_close, MessageBox};
 
-use kas::Toolkit;
 
-fn main() -> Result<(), kas_gtk::Error> {
+fn main() -> Result<(), winit::error::OsError> {
     // Build widgets.
     // Message is a Window with an "Ok" button and notification status.
     // Each Window::new method creates objects then solves constraints.
@@ -23,7 +19,7 @@ fn main() -> Result<(), kas_gtk::Error> {
         action_close,
     );
 
-    let mut toolkit = kas_gtk::Toolkit::new()?;
+    let mut toolkit = kas_rgx::Toolkit::new();
     toolkit.add(window);
     toolkit.run()
 }

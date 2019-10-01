@@ -11,7 +11,7 @@ use kas::text::Label;
 use kas::event::NoResponse;
 use kas::macros::{NoResponse, make_widget};
 use kas::HasText;
-use kas::{SimpleWindow, Toolkit, TkWidget};
+use kas::{SimpleWindow, TkWidget};
 
 #[derive(Debug, NoResponse)]
 enum Message {
@@ -20,7 +20,7 @@ enum Message {
     Incr,
 }
 
-fn main() -> Result<(), kas_gtk::Error> {
+fn main() -> Result<(), winit::error::OsError> {
     let buttons = make_widget!(
         container(horizontal) => Message;
         struct {
@@ -36,7 +36,7 @@ fn main() -> Result<(), kas_gtk::Error> {
             counter: usize = 0,
         }
         impl {
-            fn handle_button(&mut self, tk: &dyn TkWidget, msg: Message) -> NoResponse {
+            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message) -> NoResponse {
                 match msg {
                     Message::None => (),
                     Message::Decr => {
@@ -52,7 +52,7 @@ fn main() -> Result<(), kas_gtk::Error> {
             }
         }));
 
-    let mut toolkit = kas_gtk::Toolkit::new()?;
+    let mut toolkit = kas_rgx::Toolkit::new();
     toolkit.add(window);
     toolkit.run()
 }
