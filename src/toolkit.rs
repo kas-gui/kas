@@ -5,10 +5,7 @@
 
 //! Toolkit interface
 
-use std::{cell::RefCell, rc::Rc};
-
 use crate::widget::{Coord, Rect};
-use crate::window::Window;
 
 /// The type of per-widget toolkit data.
 /// 
@@ -31,31 +28,6 @@ impl TkData {
     pub fn is_null(&self) -> bool {
         self.0 == 0
     }
-}
-
-/// The primary trait to be implemented by KAS toolkits.
-/// 
-/// A toolkit handles window management and rendering for a GUI.
-/// 
-/// This is considered a "handle" and implementations are required to support
-/// `Clone`, however they do not have to support `Send` or `Sync`.
-/// 
-/// Any initialisation should be taken care of in the constructor, and
-/// de-initialisation in a `Drop` implementation.
-pub trait Toolkit: Clone {
-    /// Assume ownership of and display a window.
-    /// 
-    /// Note: typically, one should have `W: Clone`, enabling multiple usage.
-    fn add<W: Window + 'static>(&self, window: W) where Self: Sized {
-        self.add_rc(Rc::new(RefCell::new(window)))
-    }
-    
-    /// Specialised version of `add`; typically toolkits only need to implement
-    /// this.
-    fn add_rc(&self, window: Rc<RefCell<dyn Window>>);
-    
-    /// Run the main loop.
-    fn main(&mut self);
 }
 
 /// Common widget properties. Implemented by the toolkit.

@@ -14,7 +14,7 @@ use kas::text::Entry;
 use kas::event::NoResponse;
 use kas::macros::{NoResponse, make_widget};
 use kas::HasText;
-use kas::{SimpleWindow, Toolkit, TkWidget};
+use kas::{SimpleWindow, TkWidget};
 
 #[derive(Clone, Debug, PartialEq, NoResponse)]
 enum Key {
@@ -73,7 +73,7 @@ fn main() -> Result<(), kas_gtk::Error> {
     };
     let window = SimpleWindow::new(content);
 
-    let mut toolkit = kas_gtk::Toolkit::new()?;
+    let toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add(window);
     toolkit.main();
     Ok(())

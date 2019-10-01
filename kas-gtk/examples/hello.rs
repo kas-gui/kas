@@ -11,7 +11,6 @@ extern crate kas_gtk;
 use kas::text::Label;
 use kas::dialog::{action_close, MessageBox};
 
-use kas::Toolkit;
 
 fn main() -> Result<(), kas_gtk::Error> {
     // Build widgets.
@@ -23,7 +22,7 @@ fn main() -> Result<(), kas_gtk::Error> {
         action_close,
     );
 
-    let mut toolkit = kas_gtk::Toolkit::new()?;
+    let toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add(window);
     toolkit.main();
     Ok(())

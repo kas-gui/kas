@@ -11,7 +11,7 @@ use kas::text::Label;
 use kas::event::{Handler, NoResponse};
 use kas::macros::{NoResponse, Widget};
 use kas::HasText;
-use kas::{SimpleWindow, Toolkit, TkWidget, Class, CoreData, Widget};
+use kas::{SimpleWindow, TkWidget, Class, CoreData, Widget};
 
 #[derive(Debug, NoResponse)]
 enum Message {
@@ -75,7 +75,7 @@ fn main() -> Result<(), kas_gtk::Error> {
     
     let window = SimpleWindow::new(contents);
 
-    let mut toolkit = kas_gtk::Toolkit::new()?;
+    let toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add(window);
     toolkit.main();
     Ok(())

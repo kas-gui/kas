@@ -16,7 +16,7 @@ use kas::text::Label;
 use kas::event::{NoResponse};
 use kas::macros::{NoResponse, make_widget};
 use kas::HasText;
-use kas::{SimpleWindow, Toolkit, TkWidget, Window};
+use kas::{SimpleWindow, TkWidget, Window};
 
 #[derive(Debug, NoResponse)]
 enum Control {
@@ -95,7 +95,7 @@ fn make_window() -> Rc<RefCell<dyn Window>> {
 }
 
 fn main() -> Result<(), kas_gtk::Error> {
-    let mut toolkit = kas_gtk::Toolkit::new()?;
+    let toolkit = kas_gtk::Toolkit::new()?;
     toolkit.add_rc(make_window());
     toolkit.main();
     Ok(())

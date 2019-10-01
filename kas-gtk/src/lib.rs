@@ -14,6 +14,7 @@ use std::marker::PhantomData;
 use std::{cell::RefCell, rc::Rc};
 
 pub use glib::BoolError as Error;
+use kas::Window;
 
 
 /// Object used to initialise GTK and create windows.
@@ -37,14 +38,23 @@ impl Toolkit {
         
         Ok(Toolkit { _phantom: Default::default() })
     }
-}
-
-impl kas::Toolkit for Toolkit {
-    fn add_rc(&self, win: Rc<RefCell<dyn kas::Window>>) {
+    
+    
+    /// Assume ownership of and display a window.
+    /// 
+    /// Note: typically, one should have `W: Clone`, enabling multiple usage.
+    pub fn add<W: Window + 'static>(&self, window: W) where Self: Sized {
+        self.add_rc(Rc::new(RefCell::new(window)))
+    }
+    
+    /// Specialised version of `add`; typically toolkits only need to implement
+    /// this.
+    pub fn add_rc(&self, win: Rc<RefCell<dyn kas::Window>>) {
         window::with_list(|list| list.add_window(win))
     }
     
-    fn main(&mut self) {
+    /// Run the main loop.
+    pub fn main(self) -> () {
         window::with_list(|list| {
             for window in &list.windows {
                 window.win.borrow_mut().on_start(&widget::Toolkit);
