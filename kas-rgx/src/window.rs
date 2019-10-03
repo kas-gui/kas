@@ -40,15 +40,6 @@ pub struct Window {
     widgets: Widgets,
 }
 
-// Clear TKD on all widgets to reduce pointer reference counts.
-// We can't implement Drop on kas types directly since TkData is interpreted
-// by this lib.
-impl Drop for Window {
-    fn drop(&mut self) {
-        // TODO?
-    }
-}
-
 // Public functions, for use by the toolkit
 impl Window {
     /// Construct a window
@@ -112,6 +103,12 @@ impl Window {
             CloseRequested => {
                 return true;
             }
+            CursorMoved { position, .. } => {
+                let pos = position.to_physical(self.ww.hidpi_factor()).into();
+                if self.widgets.ev_cursor_moved(pos) {
+                    self.ww.request_redraw();
+                }
+            }
             RedrawRequested => self.do_draw(),
             HiDpiFactorChanged(_) => self.do_resize(self.ww.inner_size()),
             _ => {
@@ -141,14 +138,15 @@ impl Window {
     }
     
     fn do_draw(&mut self) {
-        println!("Drawing");
         let mut batch = Batch::new();
+        self.widgets.draw(&mut batch, self.swap_chain.width, self.swap_chain.height);
         let buffer = batch.finish(&self.rend);
         
         let mut frame = self.rend.frame();
         let texture = self.swap_chain.next();
         {
-            let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &texture);
+            let c = 0.2;
+            let pass = &mut frame.pass(PassOp::Clear(Rgba::new(c, c, c, 1.0)), &texture);
 
             pass.set_pipeline(&self.pipeline);
             pass.draw_buffer(&buffer);

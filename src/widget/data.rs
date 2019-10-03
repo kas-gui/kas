@@ -12,5 +12,23 @@ pub type Coord = (i32, i32);
 #[derive(Clone, Default, Debug)]
 pub struct Rect {
     pub pos: Coord,
-    pub size: Coord,
+    pub size: Coord,    // TODO: more efficient to store pos+size ?
+}
+
+impl Rect {
+    /// Check whether the given coordinate is contained within this rect
+    pub fn contains(&self, c: Coord) -> bool {
+        c.0 >= self.pos.0 && c.0 < self.pos.0 + self.size.0 &&
+        c.1 >= self.pos.1 && c.1 < self.pos.1 + self.size.1
+    }
+    
+    /// Get pos as `f32` tuple
+    pub fn pos_f32(&self) -> (f32, f32) {
+        (self.pos.0 as f32, self.pos.1 as f32)
+    }
+    
+    /// Get size as `f32` tuple
+    pub fn size_f32(&self) -> (f32, f32) {
+        (self.size.0 as f32, self.size.1 as f32)
+    }
 }
