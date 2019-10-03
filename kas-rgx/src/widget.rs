@@ -23,16 +23,7 @@ impl Widgets {
     pub fn add(&mut self, w: &mut dyn kas::Widget) {
         w.set_tkd(TkData(self.ws.len() as u64));
         
-        use kas::Class::*;
-        self.ws.push(match w.class() {
-            Container => Widget::Container,
-            Label(c) => Widget::Label(c.get_text().into()),
-            Entry(c) => Widget::Entry(c.is_editable(), c.get_text().into()),
-            Button(c) => Widget::Button(c.get_text().into()),
-            CheckBox(c) => Widget::CheckBox(c.get_bool(), c.get_text().into()),
-            Frame => Widget::Frame,
-            Window => Widget::Window,
-        });
+        self.ws.push(Widget::new(w));
         
         for i in 0..w.len() {
             self.add(w.get_mut(i).unwrap());
@@ -67,7 +58,12 @@ impl TkWidget for Widgets {
 }
 
 
-enum Widget {
+struct Widget {
+    rect: Rect,
+    details: WidgetDetails,
+}
+
+enum WidgetDetails {
     Container,
     Label(String),
     Entry(bool, String),
@@ -78,46 +74,58 @@ enum Widget {
 }
 
 impl Widget {
+    #[inline]
+    fn new(w: &mut dyn kas::Widget) -> Self {
+        use kas::Class::*;
+        Widget {
+            rect: Rect { pos: (0, 0), size: (0, 0) },
+            details: match w.class() {
+                Container => WidgetDetails::Container,
+                Label(c) => WidgetDetails::Label(c.get_text().into()),
+                Entry(c) => WidgetDetails::Entry(c.is_editable(), c.get_text().into()),
+                Button(c) => WidgetDetails::Button(c.get_text().into()),
+                CheckBox(c) => WidgetDetails::CheckBox(c.get_bool(), c.get_text().into()),
+                Frame => WidgetDetails::Frame,
+                Window => WidgetDetails::Window,
+            }
+        }
+    }
+    
     fn size_hints(&self) -> (Coord, Coord) {
-        unimplemented!()
-//         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
-//         let min = Coord::conv(gw.get_preferred_size().0);
-//         let hint = Coord::conv(gw.get_preferred_size().1);
-//         (min, hint)
+        // FIXME
+        let min = (10, 10);
+        let hint = (50, 20);
+        (min, hint)
     }
     
     fn get_rect(&self) -> Rect {
-        unimplemented!()
-//         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
-//         Rect::conv(gw.get_allocation())
+        self.rect.clone()
     }
     
-    fn set_rect(&self, rect: &Rect) {
-        unimplemented!()
-//         let gw = unsafe { borrow_from_tkd(tkd) }.unwrap();
-//         let mut rect = gtk::Rectangle::conv(rect);
-//         gw.size_allocate(&mut rect);
+    fn set_rect(&mut self, rect: &Rect) {
+        println!("Rect: {:?}", rect);
+        self.rect = rect.clone();
     }
     
     fn get_bool(&self) -> bool {
-        use Widget::*;
-        match self {
+        use WidgetDetails::*;
+        match &self.details {
             Entry(b, ..) | CheckBox(b, ..) => *b,
             _ => panic!("Widget does not support get_bool!"),
         }
     }
     
     fn set_bool(&mut self, state: bool) {
-        use Widget::*;
-        match self {
+        use WidgetDetails::*;
+        match &mut self.details {
             Entry(b, ..) | CheckBox(b, ..) => *b = state,
             _ => panic!("Widget does not support set_bool!"),
         }
     }
     
     fn set_text(&mut self, text: &str) {
-        use Widget::*;
-        match self {
+        use WidgetDetails::*;
+        match &mut self.details {
             Label(s) | Entry(_, s) | Button(s) | CheckBox(_, s) => *s = text.into(),
             _ => panic!("Widget does not support set_text!"),
         }
