@@ -8,6 +8,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use rgx::core::*;
+use rgx::kit::shape2d::{Pipeline, Batch, Fill, Line, Shape, Stroke};
+
 use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
 use winit::event_loop::EventLoopWindowTarget;
@@ -27,9 +29,11 @@ use crate::widget::Widgets;
 pub struct Window {
     win: Box<dyn kas::Window>,
     /// The winit window
-    ww: winit::window::Window,
+    pub(crate) ww: winit::window::Window,
     /// The renderer attached to this window
     rend: Renderer,
+    swap_chain: SwapChain,
+    pipeline: Pipeline,
 //     /// The GTK window
 //     pub gwin: gtk::Window,
     nums: (u32, u32),   // TODO: is this useful?
@@ -60,15 +64,25 @@ impl Window {
         let ww = winit::window::Window::new(event_loop)?;
         let rend = Renderer::new(ww.raw_window_handle());
         
+        let size: (u32, u32) = ww.inner_size().to_physical(ww.hidpi_factor()).into();
+        let pipeline = rend.pipeline(size.0, size.1, Blending::default());
+        let swap_chain = rend.swap_chain(size.0, size.1, PresentMode::default());
+        
         let num1 = win.enumerate(num0);
         
         let mut widgets = Widgets::new();
         widgets.add(win.as_widget_mut());
         
+        let size = (size.0 as i32, size.1 as i32);
+        win.configure_widgets(&mut widgets);
+        win.resize(&mut widgets, size);
+        
         let mut w = Window {
             win,
             ww,
             rend,
+            swap_chain,
+            pipeline,
             nums: (num0, num1),
             widgets,
         };
@@ -81,15 +95,10 @@ impl Window {
         self.nums
     }
     
-    /// Identifier for this window
-    pub fn id(&self) -> WindowId {
-        self.ww.id()
-    }
-    
     /// Called by the `Toolkit` just before the event loop starts to initialise
     /// windows.
     pub fn prepare(&mut self) {
-        self.do_resize(self.ww.inner_size());
+        self.ww.request_redraw();
         self.win.on_start(&mut self.widgets);
     }
     
@@ -99,18 +108,14 @@ impl Window {
     pub fn handle_event(&mut self, event: WindowEvent) -> bool {
         use WindowEvent::*;
         match event {
-            CursorEntered {..} | KeyboardInput {..} | MouseInput {..} => {
-                // TODO: handle input
-            }
-            RedrawRequested => {
-                // TODO
-            }
             Resized(size) => self.do_resize(size),
             CloseRequested => {
                 return true;
             }
+            RedrawRequested => self.do_draw(),
+            HiDpiFactorChanged(_) => self.do_resize(self.ww.inner_size()),
             _ => {
-                println!("Unhandled window event: {:?}", event);
+//                 println!("Unhandled window event: {:?}", event);
             }
         }
         false
@@ -120,53 +125,39 @@ impl Window {
 // Internal functions
 impl Window {
     fn do_resize(&mut self, size: LogicalSize) {
-        // TODO: work with logical size to allow DPI scaling
         let size: (u32, u32) = size.to_physical(self.ww.hidpi_factor()).into();
+        if size == (self.swap_chain.width, self.swap_chain.height) {
+            return;
+        }
+        
+        self.pipeline.resize(size.0, size.1);
+        self.swap_chain = self.rend.swap_chain(size.0, size.1, PresentMode::default());
+        
+        // TODO: work with logical size to allow DPI scaling
         // TODO: any reason Coord should not use u32?
         let size = (size.0 as i32, size.1 as i32);
         self.win.configure_widgets(&mut self.widgets);
         self.win.resize(&mut self.widgets, size);
     }
+    
+    fn do_draw(&mut self) {
+        println!("Drawing");
+        let mut batch = Batch::new();
+        let buffer = batch.finish(&self.rend);
+        
+        let mut frame = self.rend.frame();
+        let texture = self.swap_chain.next();
+        {
+            let pass = &mut frame.pass(PassOp::Clear(Rgba::TRANSPARENT), &texture);
+
+            pass.set_pipeline(&self.pipeline);
+            pass.draw_buffer(&buffer);
+        }
+        self.rend.submit(frame);
+    }
 }
 
 /*
-/// A list of windows
-/// 
-/// This is a special type which has a single instance per thread.
-pub(crate) struct WindowList {
-    pub(crate) windows: Vec<Window>,
-}
-
-// Use thread_local because our type and GTK pointers are not Sync.
-thread_local! {
-    static WINDOWS: RefCell<WindowList> = RefCell::new(WindowList::new());
-}
-
-/// Call some closure on the thread-local window list.
-pub(crate) fn with_list<F: FnOnce(&mut WindowList)>(f: F) {
-    WINDOWS.with(|cell| f(&mut *cell.borrow_mut()) );
-}
-
-impl WindowList {
-    const fn new() -> Self {
-        WindowList { windows: Vec::new() }
-    }
-    
-    // Find first window with matching `gdk::Window`, run the closure, and
-    // return the result, or `None` if no match.
-    pub(crate) fn for_gdk_win<T, F>(&mut self, gdk_win: gdk::Window, f: F) -> Option<T>
-        where F: FnOnce(&mut dyn kas::Window, &mut gtk::Window) -> T
-    {
-        let gdk_win = Some(gdk_win);
-        for item in self.windows.iter_mut() {
-            if item.gwin.get_window() == gdk_win {
-                return Some(f(&mut *item.win.borrow_mut(), &mut item.gwin))
-            }
-        }
-        None
-    }
-}
-
 fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut dyn Widget) {
     widget.set_gw(gtk_widget);
     if let Some(gtk_container) = gtk_widget.downcast_ref::<gtk::Container>() {

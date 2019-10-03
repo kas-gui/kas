@@ -5,78 +5,45 @@
 
 //! Event handling
 
-use winit::event::Event;
+use winit::event::{Event, StartCause};
 use winit::event_loop::ControlFlow;
 
-use crate::{Toolkit, widget, window};
+use crate::{Toolkit, widget, Window};
 
-impl<T> Toolkit<T> {
-    #[inline]
-    pub(crate) fn handler(&mut self, event: Event<()>, control_flow: &mut ControlFlow) {
-        use Event::*;
-        match event {
-            DeviceEvent { device_id, event } => {
-                // TODO: handle input
-            }
-            WindowEvent { window_id, event } => {
-                let mut to_close = None;
-                for (i, window) in self.windows.iter_mut().enumerate() {
-                    if window.id() == window_id {
-                        if window.handle_event(event) {
-                            to_close = Some(i);
-                        }
-                        break;
+#[inline]
+pub(crate) fn handler<T>(
+    windows: &mut Vec<Window>,
+    event: Event<T>,
+    control_flow: &mut ControlFlow)
+{
+    use Event::*;
+    match event {
+        WindowEvent { window_id, event } => {
+            let mut to_close = None;
+            for (i, window) in windows.iter_mut().enumerate() {
+                if window.ww.id() == window_id {
+                    if window.handle_event(event) {
+                        to_close = Some(i);
                     }
-                }
-                if let Some(i) = to_close {
-                    self.windows.remove(i);
-                    if self.windows.is_empty() {
-                        *control_flow = ControlFlow::Exit;
-                    }
+                    break;
                 }
             }
-            EventsCleared => {
-                *control_flow = ControlFlow::Wait;
-            }
-            NewEvents(_) => (), // we can ignore these events
-            e @ _ => {
-                println!("Unhandled event: {:?}", e);
-            }
-        }
-        /*
-        match event.get_event_type() {
-            Nothing => return,  // ignore this event
-            
-            Configure => {
-                window::with_list(|list| list.configure(event.clone().downcast().unwrap()));
-                return;
-            },
-            
-            _ => {
-                // This hook can be used to trace events
-                //println!("Event: {:?}", event);
+            if let Some(i) = to_close {
+                windows.remove(i);
+                if windows.is_empty() {
+                    *control_flow = ControlFlow::Exit;
+                }
             }
         }
-        */
+        
+        DeviceEvent{..} => (), // windows handle local input; we do not handle global input
+        UserEvent(_) => (), // we have no handler for user events
+        
+        NewEvents(StartCause::Init) => {
+            *control_flow = ControlFlow::Wait;
+        }
+        NewEvents(_) => (), // we can ignore these events
+        
+        EventsCleared | LoopDestroyed | Suspended | Resumed => (),
     }
 }
-
-// impl window::WindowList {
-//     fn configure(&mut self/*, event: gdk::EventConfigure*/) {
-//         unimplemented!()
-//         /*
-//         let size = event.get_size();
-//         let size = (size.0 as i32, size.1 as i32);
-//         if let Some(gdk_win) = event.get_window() {
-//             self.for_gdk_win(gdk_win, |win, _gwin| {
-//                 // TODO: this does some redundant work. Additionally the
-//                 // algorithm is not optimal. Unfortunately we cannot
-//                 // initialise constraints when constructing the widgets since
-//                 // GTK does not give correct the size hints then.
-//                 win.configure_widgets(self);
-//                 win.resize(self, size);
-//             });
-//         }
-//         */
-//     }
-// }

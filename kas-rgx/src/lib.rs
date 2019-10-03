@@ -10,7 +10,6 @@
 mod event;
 mod widget;
 mod window;
-mod tkd;
 
 pub use window::Window;
 
@@ -69,14 +68,15 @@ impl<T> Toolkit<T> {
     }
     
     /// Run the main loop.
-    pub fn run(mut self) -> ! {
-        for window in self.windows.iter_mut() {
+    pub fn run(self) -> ! {
+        let mut windows = self.windows;
+        
+        for window in windows.iter_mut() {
             window.prepare();
         }
         
-        let event_loop = winit::event_loop::EventLoop::new();
-        event_loop.run(move |event, _, control_flow| {
-            self.handler(event, control_flow)
+        self.el.run(move |event, _, control_flow| {
+            event::handler(&mut windows, event, control_flow)
         })
     }
 }
