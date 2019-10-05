@@ -8,7 +8,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use rgx::core::*;
-use rgx::kit::shape2d::{Pipeline, Batch, Fill, Line, Shape, Stroke};
+use rgx::math::Matrix4;
 
 use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
@@ -33,7 +33,7 @@ pub struct Window {
     /// The renderer attached to this window
     rend: Renderer,
     swap_chain: SwapChain,
-    pipeline: Pipeline,
+    pipeline: rgx::kit::shape2d::Pipeline,
 //     /// The GTK window
 //     pub gwin: gtk::Window,
     nums: (u32, u32),   // TODO: is this useful?
@@ -127,6 +127,8 @@ impl Window {
             return;
         }
         
+        // Note: pipeline.resize relies on calling self.rend.update_pipeline
+        // to avoid scaling issues; alternative is to create a new pipeline
         self.pipeline.resize(size.0, size.1);
         self.swap_chain = self.rend.swap_chain(size.0, size.1, PresentMode::default());
         
@@ -138,11 +140,11 @@ impl Window {
     }
     
     fn do_draw(&mut self) {
-        let mut batch = Batch::new();
-        self.widgets.draw(&mut batch, self.swap_chain.width, self.swap_chain.height);
-        let buffer = batch.finish(&self.rend);
+        let size = (self.swap_chain.width, self.swap_chain.height);
+        let buffer = self.widgets.draw(&self.rend, size);
         
         let mut frame = self.rend.frame();
+        self.rend.update_pipeline(&self.pipeline, Matrix4::identity(), &mut frame);
         let texture = self.swap_chain.next();
         {
             let c = 0.2;

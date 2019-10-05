@@ -47,22 +47,15 @@ impl Widgets {
         change
     }
     
-    pub fn draw(&self, batch: &mut Batch, width: u32, height: u32) {
-        /* This confirms our coordinate mapping
-        let stroke = Stroke::new(1.0, Rgba::new(0.8, 0.8, 0.1, 1.0));
-        let o = (0.0, 0.0);
-        let t = (width as f32, height as f32);
+    pub fn draw(&self, rend: &Renderer, size: (u32, u32)) -> VertexBuffer {
+        let mut batch = Batch::new();
         
-        batch.add(Shape::Line(Line::new(o.0, o.1, o.0 + 5.0, o.1 + 5.0), stroke));
-        batch.add(Shape::Line(Line::new(o.0, t.1, o.0 + 5.0, t.1 - 5.0), stroke));
-        batch.add(Shape::Line(Line::new(t.0, o.1, t.0 - 5.0, o.1 + 5.0), stroke));
-        batch.add(Shape::Line(Line::new(t.0, t.1, t.0 - 5.0, t.1 - 5.0), stroke));
-        */
-        
-        let height = height as f32;
+        let height = size.1 as f32;
         for w in &self.ws {
-            w.draw(batch, height);
+            w.draw(&mut batch, height);
         }
+        
+        batch.finish(rend)
     }
 }
 
@@ -140,7 +133,6 @@ impl Widget {
     }
     
     fn set_rect(&mut self, rect: &kas::Rect) {
-        println!("Rect: {:?}", rect);
         self.rect = rect.clone();
     }
     
@@ -180,7 +172,7 @@ impl Widget {
         let r = if self.hover { 1.0 } else { 0.5 };
         batch.add(Shape::Rectangle(
             Rect::new(x0, y0, x1, y1),
-            Stroke::new(1.0, Rgba::new(r, 0.5, 0.5, 1.0)),
+            Stroke::new(2.0, Rgba::new(r, 0.5, 0.5, 1.0)),
             Fill::Solid(Rgba::new(1.0, 1.0, 1.0, 0.1)),
         ));
     }
