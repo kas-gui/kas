@@ -8,7 +8,7 @@
 use winit::event::{Event, StartCause};
 use winit::event_loop::ControlFlow;
 
-use crate::{Toolkit, widget, Window};
+use crate::{Window};
 
 #[inline]
 pub(crate) fn handler<T>(

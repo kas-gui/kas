@@ -9,8 +9,8 @@
 //! toolkit abstraction, which might make sense.
 
 use rgx::core::*;
-use rgx::kit::shape2d::{Pipeline, Batch, Fill, Line, Shape, Stroke};
-use winit::event::WindowEvent;
+use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
+
 
 use kas::{Coord, Size, TkData, TkWidget};
 

@@ -5,7 +5,7 @@
 
 //! `Window` and `WindowList` types
 
-use std::{cell::RefCell, rc::Rc};
+
 
 use rgx::core::*;
 use rgx::math::Matrix4;
@@ -15,11 +15,6 @@ use winit::dpi::LogicalSize;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::error::OsError;
 use winit::event::WindowEvent;
-use winit::window::WindowId;
-
-use kas::callback::Condition;
-use kas::event::{Action, GuiResponse};
-use kas::{Class, Widget, TkData};
 
 use crate::widget::Widgets;
 // use crate::tkd::WidgetAbstraction;
@@ -67,7 +62,7 @@ impl Window {
         win.configure_widgets(&mut widgets);
         win.resize(&mut widgets, size);
         
-        let mut w = Window {
+        let w = Window {
             win,
             ww,
             rend,
@@ -153,83 +148,3 @@ impl Window {
         self.rend.submit(frame);
     }
 }
-
-/*
-fn add_widgets(gtk_widget: &gtk::Widget, widget: &mut dyn Widget) {
-    widget.set_gw(gtk_widget);
-    if let Some(gtk_container) = gtk_widget.downcast_ref::<gtk::Container>() {
-        for i in 0..widget.len() {
-            let child = widget.get_mut(i).unwrap();
-            // TODO: use trait implementation for each different class?
-            let gtk_child = match child.class() {
-                Class::Container => {
-                    // orientation is unimportant
-                    gtk::Box::new(gtk::Orientation::Horizontal, 0)
-                                .upcast::<gtk::Widget>()
-                }
-                Class::Button(iface) => {
-                    let button = gtk::Button::new_with_label(iface.get_text());
-                    if true /*TODO iface.has_on_click()*/ {
-                        let num = child.number();
-                        button.connect_clicked(move |_| {
-                            let action = Action::Button;
-                            with_list(|list| list.handle_action(action, num))
-                        });
-                    }
-                    button.upcast::<gtk::Widget>()
-                }
-                Class::CheckBox(iface) => {
-                    let button = gtk::CheckButton::new_with_label(iface.get_text());
-                    button.set_active(iface.get_bool());
-                    if true /*TODO iface.has_on_toggle()*/ {
-                        let num = child.number();
-                        button.connect_toggled(move |_| {
-                            let action = Action::Toggle;
-                            with_list(|list| list.handle_action(action, num))
-                        });
-                    }
-                    button.upcast::<gtk::Widget>()
-                }
-                Class::Label(iface) => {
-                    let label = gtk::Label::new(Some(iface.get_text()));
-                    // Text naturally has a top/bottom margin, but not start/end
-                    // which looks quite odd. Does this solution scale well?
-                    label.set_margin_start(2);
-                    label.set_margin_end(2);
-                    label.upcast::<gtk::Widget>()
-                }
-                Class::Entry(iface) => {
-                    let entry = gtk::Entry::new();
-                    entry.set_editable(iface.is_editable());
-                    entry.set_text(iface.get_text());
-                    if true /*TODO iface.has_on_activate()*/ {
-                        let num = child.number();
-                        entry.connect_activate(move |_| {
-                            let action = Action::Activate;
-                            with_list(|list| list.handle_action(action, num))
-                        });
-                    }
-                    entry.upcast::<gtk::Widget>()
-                }
-                Class::Frame => {
-                    // GTK frame with no label
-                    gtk::Frame::new(None)
-                            .upcast::<gtk::Widget>()
-                }
-                Class::Window => panic!(),  // TODO embedded windows?
-            };
-            
-            add_widgets(&gtk_child, child);
-            
-//             #[cfg(not(feature = "layout"))] {
-//                 if let Some(grid) = gtk_container.downcast_ref::<gtk::Grid>() {
-//                     let pos = widget.grid_pos(i).unwrap_or((0, 0, 1, 1));
-//                     grid.attach(&gtk_child, pos.0, pos.1, pos.2, pos.3);
-//                     continue;   // attach(...) instead of add(...)
-//                 }
-//             }
-            gtk_container.add(&gtk_child);
-        }
-    }
-}
-*/

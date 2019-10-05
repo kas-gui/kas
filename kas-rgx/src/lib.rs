@@ -5,8 +5,6 @@
 
 //! Toolkit for kas
 
-#![allow(unused)]   // TODO
-
 mod event;
 mod widget;
 mod window;
@@ -16,8 +14,8 @@ pub use window::Window;
 use winit::event_loop::EventLoop;
 use winit::error::OsError;
 
-use std::marker::PhantomData;
-use std::{cell::RefCell, rc::Rc};
+
+
 
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.

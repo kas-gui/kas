@@ -76,6 +76,6 @@ fn main() -> Result<(), winit::error::OsError> {
     let window = SimpleWindow::new(contents);
 
     let mut toolkit = kas_rgx::Toolkit::new();
-    toolkit.add(window);
+    toolkit.add(window)?;
     toolkit.run()
 }
