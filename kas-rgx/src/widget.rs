@@ -12,7 +12,7 @@ use rgx::core::*;
 use rgx::kit::shape2d::{Pipeline, Batch, Fill, Line, Shape, Stroke};
 use winit::event::WindowEvent;
 
-use kas::{Coord, TkData, TkWidget};
+use kas::{Coord, Size, TkData, TkWidget};
 
 
 pub(crate) struct Widgets {
@@ -60,7 +60,7 @@ impl Widgets {
 }
 
 impl TkWidget for Widgets {
-    fn size_hints(&self, tkd: TkData) -> (Coord, Coord) {
+    fn size_hints(&self, tkd: TkData) -> (Size, Size) {
         self.ws[tkd.0 as usize].size_hints()
     }
     
@@ -121,7 +121,7 @@ impl Widget {
         }
     }
     
-    fn size_hints(&self) -> (Coord, Coord) {
+    fn size_hints(&self) -> (Size, Size) {
         // FIXME
         let min = (10, 10);
         let hint = (50, 20);

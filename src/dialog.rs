@@ -62,7 +62,7 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     }
     
     #[cfg(feature = "layout")]
-    fn resize(&mut self, _tk: &mut dyn TkWidget, _size: crate::Coord) {
+    fn resize(&mut self, _tk: &mut dyn TkWidget, _size: crate::Size) {
         unimplemented!()
     }
     

@@ -167,8 +167,8 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
             use kas::Core;
             #appls
             
-            let w = s.get_value(kas::cw_var!(self, w)) as i32;
-            let h = s.get_value(kas::cw_var!(self, h)) as i32;
+            let w = s.get_value(kas::cw_var!(self, w)) as u32;
+            let h = s.get_value(kas::cw_var!(self, h)) as u32;
             let tkd = self.tkd();
             let rect = self.rect_mut();
             rect.pos = pos;

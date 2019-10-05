@@ -5,7 +5,7 @@
 
 //! Toolkit interface
 
-use crate::widget::{Coord, Rect};
+use crate::widget::{Size, Rect};
 
 /// The type of per-widget toolkit data.
 /// 
@@ -40,7 +40,7 @@ impl TkData {
 /// methods, depending on which functionality from the library is used.
 pub trait TkWidget {
     /// Get the widget's minimum and preferred sizes.
-    fn size_hints(&self, tkd: TkData) -> (Coord, Coord);
+    fn size_hints(&self, tkd: TkData) -> (Size, Size);
     
     /// Get the widget's position and size.
     fn get_rect(&self, tkd: TkData) -> Rect;

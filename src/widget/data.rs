@@ -5,21 +5,24 @@
 
 //! Utility data types
 
-/// An `(x, y)` coordinate or a size.
+/// An `(x, y)` coordinate.
 pub type Coord = (i32, i32);
+
+/// A `(w, h)` size.
+pub type Size = (u32, u32);
 
 /// A rectangular region.
 #[derive(Clone, Default, Debug)]
 pub struct Rect {
     pub pos: Coord,
-    pub size: Coord,    // TODO: more efficient to store pos+size ?
+    pub size: Size,    // TODO: more efficient to store pos+size ?
 }
 
 impl Rect {
     /// Check whether the given coordinate is contained within this rect
     pub fn contains(&self, c: Coord) -> bool {
-        c.0 >= self.pos.0 && c.0 < self.pos.0 + self.size.0 &&
-        c.1 >= self.pos.1 && c.1 < self.pos.1 + self.size.1
+        c.0 >= self.pos.0 && c.0 < self.pos.0 + (self.size.0 as i32) &&
+        c.1 >= self.pos.1 && c.1 < self.pos.1 + (self.size.1 as i32)
     }
     
     /// Get pos as `f32` tuple

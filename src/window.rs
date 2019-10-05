@@ -10,7 +10,7 @@ use std::fmt::{self, Debug};
 use crate::callback::Condition;
 use crate::macros::Widget;
 use crate::event::{Action, GuiResponse, Handler, NoResponse, err_num, err_unhandled};
-use crate::{Class, Coord, Core, CoreData, TkWidget, Widget};
+use crate::{Class, Size, Core, CoreData, TkWidget, Widget};
 
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be
@@ -36,7 +36,7 @@ pub trait Window: Widget {
     /// 
     /// `configure_widgets` must be called before this.
     #[cfg(feature = "layout")]
-    fn resize(&mut self, tk: &mut dyn TkWidget, size: Coord);
+    fn resize(&mut self, tk: &mut dyn TkWidget, size: Size);
     
     /// Handle a high-level event directed at the widget identified by `num`,
     /// and return a user-defined message.
@@ -66,7 +66,7 @@ pub trait Window: Widget {
 #[derive(Widget)]
 pub struct SimpleWindow<W: Widget + 'static> {
     #[core] core: CoreData,
-    min_size: Coord,
+    min_size: Size,
     #[cfg(feature = "cassowary")] solver: crate::cw::Solver,
     #[widget] w: W,
     fns: Vec<(Condition, &'static dyn Fn(&mut W, &mut dyn TkWidget))>,
@@ -143,13 +143,13 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         self.solver.add_edit_variable(v_w, cw::strength::MEDIUM * 100.0).unwrap();
         self.solver.add_edit_variable(v_h, cw::strength::MEDIUM * 100.0).unwrap();
         
-        self.min_size = (self.solver.get_value(v_w) as i32, self.solver.get_value(v_h) as i32);
+        self.min_size = (self.solver.get_value(v_w) as u32, self.solver.get_value(v_h) as u32);
         
         self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
     
     #[cfg(feature = "cassowary")]
-    fn resize(&mut self, tk: &mut dyn TkWidget, size: Coord) {
+    fn resize(&mut self, tk: &mut dyn TkWidget, size: Size) {
         assert!(self.number() > 0, "widget not enumerated");
         
         self.solver.suggest_value(cw_var!(self, w), size.0 as f64).unwrap();

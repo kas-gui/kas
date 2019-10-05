@@ -19,7 +19,7 @@ use winit::window::WindowId;
 
 use kas::callback::Condition;
 use kas::event::{Action, GuiResponse};
-use kas::{Class, Coord, Widget, TkData};
+use kas::{Class, Widget, TkData};
 
 use crate::widget::Widgets;
 // use crate::tkd::WidgetAbstraction;
@@ -64,7 +64,6 @@ impl Window {
         let mut widgets = Widgets::new();
         widgets.add(win.as_widget_mut());
         
-        let size = (size.0 as i32, size.1 as i32);
         win.configure_widgets(&mut widgets);
         win.resize(&mut widgets, size);
         
@@ -133,8 +132,6 @@ impl Window {
         self.swap_chain = self.rend.swap_chain(size.0, size.1, PresentMode::default());
         
         // TODO: work with logical size to allow DPI scaling
-        // TODO: any reason Coord should not use u32?
-        let size = (size.0 as i32, size.1 as i32);
         self.win.configure_widgets(&mut self.widgets);
         self.win.resize(&mut self.widgets, size);
     }
