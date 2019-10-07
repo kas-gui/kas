@@ -18,7 +18,7 @@ use crate::{Class, Size, Core, CoreData, TkWidget, Widget};
 // Window should be a Widget. So alternatives are (1) use a struct instead of a
 // trait or (2) allow any Widget to derive Window (i.e. implement required
 // functionality with macros instead of the generic code below).
-pub trait Window: Widget {
+pub trait Window: Widget + Handler<Response = GuiResponse> {
     /// Upcast
     /// 
     /// Note: needed because Rust does not yet support trait object upcasting
@@ -37,13 +37,6 @@ pub trait Window: Widget {
     /// `configure_widgets` must be called before this.
     #[cfg(feature = "layout")]
     fn resize(&mut self, tk: &mut dyn TkWidget, size: Size);
-    
-    /// Handle a high-level event directed at the widget identified by `num`,
-    /// and return a user-defined message.
-    // NOTE: we could instead add the trait bound Handler<Response = GuiResponse>
-    // but (1) Rust doesn't yet support mult-trait objects
-    // and (2) https://github.com/rust-lang/rust/issues/57218
-    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32) -> GuiResponse;
     
     /// Get a list of available callbacks.
     /// 
@@ -122,6 +115,26 @@ impl<W: Widget> SimpleWindow<W> {
     }
 }
 
+impl<R, W: Widget + Handler<Response = R> + 'static> Handler
+    for SimpleWindow<W>
+    where GuiResponse: From<R>, R: From<NoResponse>
+{
+    type Response = GuiResponse;
+    
+    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32) -> GuiResponse {
+        if num < self.number() {
+            GuiResponse::from(self.w.handle_action(tk, action, num))
+        } else if num == self.number() {
+            match action {
+                Action::Close => GuiResponse::Close,
+                _ => err_unhandled(action),
+            }
+        } else {
+            err_num()
+        }
+    }
+}
+
 impl<R, W: Widget + Handler<Response = R> + 'static> Window
     for SimpleWindow<W>
     where GuiResponse: From<R>, R: From<NoResponse>
@@ -156,19 +169,6 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Window
         self.solver.suggest_value(cw_var!(self, h), size.1 as f64).unwrap();
         
         self.w.apply_constraints(tk, &self.solver, (0, 0));
-    }
-    
-    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32) -> GuiResponse {
-        if num < self.number() {
-            GuiResponse::from(self.w.handle_action(tk, action, num))
-        } else if num == self.number() {
-            match action {
-                Action::Close => GuiResponse::Close,
-                _ => err_unhandled(action),
-            }
-        } else {
-            err_num()
-        }
     }
     
     fn callbacks(&self) -> Vec<(usize, Condition)> {

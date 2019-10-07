@@ -13,7 +13,7 @@ use std::fmt::{self, Debug};
 use crate::callback::Condition;
 use crate::control::{button, TextButton};
 use crate::macros::Widget;
-use crate::event::{Action, GuiResponse};
+use crate::event::{Action, GuiResponse, Handler};
 use crate::{Class, CoreData, TkWidget, Widget, Window};
 
 
@@ -52,6 +52,16 @@ impl<M: Debug, H> Debug for MessageBox<M, H> {
     }
 }
 
+impl<M: Debug, H> Handler for MessageBox<M, H> {
+    type Response = GuiResponse;
+    
+    fn handle_action(&mut self, _tk: &mut dyn TkWidget, _action: Action, _num: u32)
+    -> GuiResponse
+    {
+        unimplemented!()
+    }
+}
+
 impl<M: Debug, H> Window for MessageBox<M, H> {
     fn as_widget(&self) -> &dyn Widget { self }
     fn as_widget_mut(&mut self) -> &mut dyn Widget { self }
@@ -63,11 +73,6 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     
     #[cfg(feature = "layout")]
     fn resize(&mut self, _tk: &mut dyn TkWidget, _size: crate::Size) {
-        unimplemented!()
-    }
-    
-    fn handle_action(&mut self, _tk: &mut dyn TkWidget, _action: Action, _num: u32) -> GuiResponse
-    {
         unimplemented!()
     }
     
