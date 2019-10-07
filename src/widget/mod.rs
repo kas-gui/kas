@@ -111,11 +111,11 @@ impl Core for CoreData {
 /// 
 /// ```
 /// use kas::{Class, Widget, CoreData};
-/// use kas::event::NoResponse;
+/// use kas::event::EmptyMsg;
 /// use kas::macros::Widget;
 /// 
 /// #[widget(class = Class::Frame)]
-/// #[handler(response = NoResponse)]
+/// #[handler(msg = EmptyMsg)]
 /// #[derive(Clone, Debug, Widget)]
 /// pub struct Frame<W: Widget> {
 ///     #[core] core: CoreData,

@@ -12,14 +12,14 @@ use chrono::prelude::*;
 
 use kas::callback::Condition;
 use kas::text::Label;
-use kas::event::NoResponse;
+use kas::event::EmptyMsg;
 use kas::macros::make_widget;
 use kas::HasText;
 use kas::{SimpleWindow, TkWidget};
 
 fn main() {
     let mut window = SimpleWindow::new(make_widget! {
-            container(vertical) => NoResponse;
+            container(vertical) => EmptyMsg;
             struct {
                 #[widget] date: Label = Label::new(""),
                 #[widget] time: Label = Label::new("")

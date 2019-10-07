@@ -13,7 +13,7 @@
 
 use std::fmt::Debug;
 use crate::TkWidget;
-use crate::macros::NoResponse;
+use crate::macros::EmptyMsg;
 use crate::widget::Core;
 
 /// Input actions: these are high-level messages aimed at specific widgets.
@@ -38,17 +38,18 @@ pub enum Action {
 pub type Event = ();
 */
 
-/// No message
+/// An empty message
 /// 
-/// All response message types should implement `From<NoResponse>`.
-/// This can be done conveniently with the
-/// [`derive(NoResponse)`](../macros/index.html#the-derivenoresponse-macro) macro.
+/// This type is used for handlers without a response message. Additionally,
+/// the `From<EmptyMsg>` trait bound is required on all message types as a
+/// form of default construction. This can be done conveniently with the
+/// [`derive(EmptyMsg)`](../macros/index.html#the-deriveEmptyMsg-macro) macro.
 #[derive(Debug)]
-pub struct NoResponse;
+pub struct EmptyMsg;
 
 /// General GUI event responses
-#[derive(Debug, NoResponse)]
-pub enum GuiResponse {
+#[derive(Debug, EmptyMsg)]
+pub enum WindowMsg {
     /// No action
     None,
     /// Close the window
@@ -62,10 +63,10 @@ pub enum GuiResponse {
 /// This is an error, meaning somehow an event has been sent to a widget which
 /// does not support events of that type.
 /// It is safe to ignore this error, but this function panics in debug builds.
-pub fn err_unhandled<M: Debug, R: From<NoResponse>>(m: M) -> R {
-    debug_assert!(false, "handle_action: event not handled by widget: {:?}", m);
-    println!("handle_action: event not handled by widget: {:?}", m);
-    NoResponse.into()
+pub fn err_unhandled<M: Debug, R: From<EmptyMsg>>(m: M) -> R {
+    debug_assert!(false, "Handler::handle: event not handled by widget: {:?}", m);
+    println!("Handler::handle: event not handled by widget: {:?}", m);
+    EmptyMsg.into()
 }
 
 /// Notify of an incorrect widget number.
@@ -73,10 +74,10 @@ pub fn err_unhandled<M: Debug, R: From<NoResponse>>(m: M) -> R {
 /// This is an error, meaning somehow an event has been sent to a
 /// widget number which is not a child of the initial window/widget.
 /// It is safe to ignore this error, but this function panics in debug builds.
-pub fn err_num<R: From<NoResponse>>() -> R {
-    debug_assert!(false, "handle_action: bad widget number");
-    println!("handle_action: bad widget number");
-    NoResponse.into()
+pub fn err_num<R: From<EmptyMsg>>() -> R {
+    debug_assert!(false, "Handler::handle: bad widget number");
+    println!("Handler::handle: bad widget number");
+    EmptyMsg.into()
 }
 
 /// Event-handling aspect of a widget.
@@ -91,9 +92,9 @@ pub trait Handler: Core {
     /// This mechanism allows type-safe handling of user-defined responses to handled actions.
     /// For example, a user may define a control panel where each button returns a unique code,
     /// or a configuration editor may return a full copy of the new configuration on completion.
-    type Response: From<NoResponse>;
+    type Msg: From<EmptyMsg>;
     
     /// Handle a high-level event directed at the widget identified by `number`,
     /// and return a user-defined msg.
-    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action, number: u32) -> Self::Response;
+    fn handle(&mut self, tk: &mut dyn TkWidget, action: Action, number: u32) -> Self::Msg;
 }

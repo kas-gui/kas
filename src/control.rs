@@ -9,7 +9,7 @@ use std::any::TypeId;
 use std::fmt::{self, Debug};
 
 use crate::macros::Widget;
-use crate::event::{Action, Handler, NoResponse, err_num, err_unhandled};
+use crate::event::{Action, Handler, EmptyMsg, err_num, err_unhandled};
 use crate::{Class, Core, CoreData, HasBool, HasText, TkWidget};
 
 /// A checkable box with optional label
@@ -29,7 +29,7 @@ impl<H> Debug for CheckBox<H> {
     }
 }
 
-impl<R, OT: Fn(bool) -> R> CheckBox<OT> {
+impl<M, OT: Fn(bool) -> M> CheckBox<OT> {
     /// Construct a checkbox with a given `label` which calls `f` when toggled.
     /// 
     /// This is a shortcut for `CheckBox::new(label).on_toggle(f)`.
@@ -67,7 +67,7 @@ impl CheckBox<()> {
     /// 
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
-    pub fn on_toggle<R, OT: Fn() -> R>(self, f: OT) -> CheckBox<OT> {
+    pub fn on_toggle<M, OT: Fn() -> M>(self, f: OT) -> CheckBox<OT> {
         CheckBox {
             core: self.core,
             label: self.label,
@@ -119,24 +119,24 @@ impl<H> HasText for CheckBox<H> {
 }
 
 impl Handler for CheckBox<()> {
-    type Response = NoResponse;
+    type Msg = EmptyMsg;
     
-    fn handle_action(&mut self, _: &mut dyn TkWidget, action: Action, num: u32) -> Self::Response {
+    fn handle(&mut self, _: &mut dyn TkWidget, action: Action, num: u32) -> Self::Msg {
         if num != self.number() {
             return err_num()
         }
         
         match action {
-            Action::Toggle => NoResponse,
+            Action::Toggle => EmptyMsg,
             a @ _ => err_unhandled(a)
         }
     }
 }
 
-impl<R: From<NoResponse>, H: Fn(bool) -> R> Handler for CheckBox<H> {
-    type Response = R;
+impl<M: From<EmptyMsg>, H: Fn(bool) -> M> Handler for CheckBox<H> {
+    type Msg = M;
     
-    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Response {
+    fn handle(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Msg {
         if num != self.number() {
             return err_num()
         }
@@ -169,7 +169,7 @@ impl<H> Debug for TextButton<H> {
     }
 }
 
-impl<R, H: Fn() -> R> TextButton<H> {
+impl<M, H: Fn() -> M> TextButton<H> {
     /// Construct a button with a given `label` which calls `f` on click.
     /// 
     /// This is a shortcut for `TextButton::new(label).on_click(f)`.
@@ -199,7 +199,7 @@ impl TextButton<()> {
     /// 
     /// The closure `f` is called when the button is pressed, and its result is
     /// returned from the event handler.
-    pub fn on_click<R, H: Fn() -> R>(self, f: H) -> TextButton<H> {
+    pub fn on_click<M, H: Fn() -> M>(self, f: H) -> TextButton<H> {
         TextButton {
             core: self.core,
             label: self.label,
@@ -208,11 +208,11 @@ impl TextButton<()> {
     }
 }
 
-// impl<H> From<&'static str> for TextButton<NoResponse, H>
-//     where H: Fn(()) -> NoResponse
+// impl<H> From<&'static str> for TextButton<EmptyMsg, H>
+//     where H: Fn(()) -> EmptyMsg
 // {
 //     fn from(label: &'static str) -> Self {
-//         TextButton::new(label, |()| NoResponse)
+//         TextButton::new(label, |()| EmptyMsg)
 //     }
 // }
 
@@ -229,24 +229,24 @@ impl<H> HasText for TextButton<H> {
 
 
 impl Handler for TextButton<()> {
-    type Response = NoResponse;
+    type Msg = EmptyMsg;
     
-    fn handle_action(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Response {
+    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Msg {
         if num != self.number() {
             return err_num()
         }
         
         match action {
-            Action::Button => NoResponse,
+            Action::Button => EmptyMsg,
             a @ _ => err_unhandled(a)
         }
     }
 }
 
-impl<R: From<NoResponse>, H: Fn() -> R> Handler for TextButton<H> {
-    type Response = R;
+impl<M: From<EmptyMsg>, H: Fn() -> M> Handler for TextButton<H> {
+    type Msg = M;
     
-    fn handle_action(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Response {
+    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Msg {
         if num != self.number() {
             return err_num()
         }
@@ -262,7 +262,7 @@ impl<R: From<NoResponse>, H: Fn() -> R> Handler for TextButton<H> {
 pub mod button {
     use super::TextButton;
     
-    pub fn ok<R, H: Fn() -> R>(on_click: H) -> TextButton<H> {
+    pub fn ok<M, H: Fn() -> M>(on_click: H) -> TextButton<H> {
         TextButton::new_on("Ok", on_click)
     }
 }

@@ -123,7 +123,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     };
     
     if let Some(handler) = args.handler {
-        let response = handler.response;
+        let msg = handler.msg;
         let mut generics = ast.generics.clone();
         if !handler.generics.params.is_empty() {
             if !generics.params.empty_or_trailing() {
@@ -155,7 +155,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             };
             handler_toks.append_all(quote!{
                 else if num <= self.#ident.number() {
-                    let msg = self.#ident.handle_action(_tk, action, num);
+                    let msg = self.#ident.handle(_tk, action, num);
                     #handler
                 }
             });
@@ -165,10 +165,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             impl #impl_generics kas::event::Handler
                     for #name #ty_generics #where_clause
             {
-                type Response = #response;
+                type Msg = #msg;
                 
-                fn handle_action(&mut self, _tk: &mut kas::TkWidget, action: kas::event::Action,
-                        num: u32) -> Self::Response
+                fn handle(&mut self, _tk: &mut kas::TkWidget, action: kas::event::Action,
+                        num: u32) -> Self::Msg
                 {
                     use kas::{Core, event::{Handler, err_unhandled, err_num}};
                     
@@ -277,7 +277,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut handler_extra = Punctuated::<_, Comma>::new();
     let mut handler_clauses = Punctuated::<_, Comma>::new();
     
-    let response = &args.response;
+    let msg = &args.msg;
     
     let widget_args = match args.class {
         Class::Container(layout) => quote!{
@@ -302,22 +302,22 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         
         let ty: Type = match field.ty {
             ChildType::Fixed(ty) => ty.clone(),
-            ChildType::Generic(gen_response, gen_bound) => {
+            ChildType::Generic(gen_msg, gen_bound) => {
                 name_buf.clear();
                 name_buf.write_fmt(format_args!("MWAnon{}", index)).unwrap();
                 let ty = Ident::new(&name_buf, Span::call_site());
                 
                 gen_tys.push(ty.clone());
                 if let Some(ref wattr) = attr {
-                    if let Some(tyr) = gen_response {
-                        handler_clauses.push(quote!{ #ty: kas::event::Handler<Response = #tyr> });
+                    if let Some(tyr) = gen_msg {
+                        handler_clauses.push(quote!{ #ty: kas::event::Handler<Msg = #tyr> });
                     } else {
                         // No typing. If a handler is specified, then the child must implement
-                        // Handler<Response = X> where the handler takes type X; otherwise
+                        // Handler<Msg = X> where the handler takes type X; otherwise
                         // we use `msg.into()` and this conversion must be supported.
                         if let Some(ref handler) = wattr.args.handler {
                             if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
-                                handler_clauses.push(quote!{ #ty: kas::event::Handler<Response = #ty_bound> });
+                                handler_clauses.push(quote!{ #ty: kas::event::Handler<Msg = #ty_bound> });
                             } else {
                                 return quote!{}.into(); // exit after emitting error
                             }
@@ -325,9 +325,9 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             name_buf.push_str("R");
                             let tyr = Ident::new(&name_buf, Span::call_site());
                             handler_extra.push(tyr.clone());
-                            handler_clauses.push(quote!{ #ty: kas::event::Handler<Response = #tyr> });
-                            handler_clauses.push(quote!{ #tyr: From<kas::event::NoResponse> });
-                            handler_clauses.push(quote!{ #response: From<#tyr> });
+                            handler_clauses.push(quote!{ #ty: kas::event::Handler<Msg = #tyr> });
+                            handler_clauses.push(quote!{ #tyr: From<kas::event::EmptyMsg> });
+                            handler_clauses.push(quote!{ #msg: From<#tyr> });
                         }
                     }
                     
@@ -380,7 +380,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote!{ {
         #[widget(#widget_args)]
-        #[handler(response = #response, generics = < #handler_extra > #handler_where)]
+        #[handler(msg = #msg, generics = < #handler_extra > #handler_where)]
         #[derive(Clone, Debug, kas::macros::Widget)]
         struct AnonWidget<#gen_ptrs> {
             #field_toks
@@ -396,23 +396,23 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     toks
 }
 
-/// Macro to derive `From<NoResponse>`
+/// Macro to derive `From<EmptyMsg>`
 /// 
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
 /// 
 /// This macro assumes the type is an enum with a simple variant named `None`.
 // TODO: add diagnostics to check against mis-use?
-#[proc_macro_derive(NoResponse)]
-pub fn derive_no_response(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+#[proc_macro_derive(EmptyMsg)]
+pub fn derive_empty_msg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let name = &ast.ident;
     
     let toks = quote!{
-        impl #impl_generics From<kas::event::NoResponse>
+        impl #impl_generics From<kas::event::EmptyMsg>
             for #name #ty_generics #where_clause
         {
-            fn from(_: kas::event::NoResponse) -> Self {
+            fn from(_: kas::event::EmptyMsg) -> Self {
                 #name::None
             }
         }

@@ -129,7 +129,7 @@ mod kw {
     custom_keyword!(rspan);
     custom_keyword!(widget);
     custom_keyword!(handler);
-    custom_keyword!(response);
+    custom_keyword!(msg);
     custom_keyword!(generics);
 }
 
@@ -320,7 +320,7 @@ impl Parse for WidgetArgs {
 }
 
 pub struct HandlerArgs {
-    pub response: Type,
+    pub msg: Type,
     pub generics: Generics,
 }
 
@@ -328,18 +328,18 @@ impl Parse for HandlerArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         if input.is_empty() {
             return Err(Error::new(Span::call_site(),
-                "expected #[handler(response = ...)]; found #[handler]"));
+                "expected #[handler(msg = ...)]; found #[handler]"));
         }
         
         let content;
         let _ = parenthesized!(content in input);
         
         // If we have a where clause, that will greedily consume remaining
-        // input. Because of this, `response = ...` must come first.
+        // input. Because of this, `msg = ...` must come first.
         
-        let _: kw::response = content.parse()?;
+        let _: kw::msg = content.parse()?;
         let _: Eq = content.parse()?;
-        let response: Type = content.parse()?;
+        let msg: Type = content.parse()?;
         
         let generics = if content.peek(Comma) {
             let _: Comma = content.parse()?;
@@ -354,7 +354,7 @@ impl Parse for HandlerArgs {
             Generics::default()
         };
         
-        Ok(HandlerArgs { response, generics })
+        Ok(HandlerArgs { msg, generics })
     }
 }
 
@@ -365,7 +365,7 @@ pub enum Class {
 
 pub enum ChildType {
     Fixed(Type),     // fixed type
-    // Generic, optionally with specified handler response type,
+    // Generic, optionally with specified handler msg type,
     // optionally with an additional trait bound.
     Generic(Option<Type>, Option<TypeTraitObject>),
 }
@@ -380,8 +380,8 @@ pub struct WidgetField {
 pub struct MakeWidget {
     // widget class
     pub class: Class,
-    // response type
-    pub response: Type,
+    // msg type
+    pub msg: Type,
     // child widgets and data fields
     pub fields: Vec<WidgetField>,
     // impl blocks on the widget
@@ -404,7 +404,7 @@ impl Parse for MakeWidget {
         };
         
         let _: FatArrow = input.parse()?;
-        let response: Type = input.parse()?;
+        let msg: Type = input.parse()?;
         let _: Semi = input.parse()?;
         
         let _: Struct = input.parse()?;
@@ -442,7 +442,7 @@ impl Parse for MakeWidget {
             impls.push((target, methods));
         }
         
-        Ok(MakeWidget { class, response, fields, impls })
+        Ok(MakeWidget { class, msg, fields, impls })
     }
 }
 
@@ -475,7 +475,7 @@ impl Parse for WidgetField {
         let mut ty = if input.peek(Colon) && !input.peek2(Colon) {
             let _: Colon = input.parse()?;
             if input.peek(Impl) {
-                // generic with trait bound, optionally with response type
+                // generic with trait bound, optionally with msg type
                 let _: Impl = input.parse()?;
                 let bound: TypeTraitObject = input.parse()?;
                 ChildType::Generic(None, Some(bound))
@@ -490,16 +490,16 @@ impl Parse for WidgetField {
             let arrow: RArrow = input.parse()?;
             if !widget_attr.is_some() {
                 return Err(Error::new(arrow.span(),
-                    "can only use `-> Response` type restriction on widgets"))
+                    "can only use `-> Msg` type restriction on widgets"))
             }
-            let response: Type = input.parse()?;
+            let msg: Type = input.parse()?;
             match &mut ty {
                 ChildType::Fixed(_) => {
                     return Err(Error::new(arrow.span(),
-                        "cannot use `-> Response` type restriction with fixed type"));
+                        "cannot use `-> Msg` type restriction with fixed type"));
                 }
                 ChildType::Generic(ref mut gen_r, _) => {
-                    *gen_r = Some(response);
+                    *gen_r = Some(msg);
                 }
             }
         }

@@ -8,12 +8,12 @@
 
 use kas::control::TextButton;
 use kas::text::Label;
-use kas::event::{Handler, NoResponse};
-use kas::macros::{NoResponse, Widget};
+use kas::event::{Handler, EmptyMsg};
+use kas::macros::{EmptyMsg, Widget};
 use kas::HasText;
 use kas::{SimpleWindow, TkWidget, Class, CoreData, Widget};
 
-#[derive(Debug, NoResponse)]
+#[derive(Debug, EmptyMsg)]
 enum Message {
     None,
     Decr,
@@ -21,8 +21,8 @@ enum Message {
 }
 
 #[widget(class = Class::Container, layout = horizontal)]
-#[handler(response = Message, generics = <>
-        where D: Handler<Response = Message>, I: Handler<Response = Message>)]
+#[handler(msg = Message, generics = <>
+        where D: Handler<Msg = Message>, I: Handler<Msg = Message>)]
 #[derive(Debug, Widget)]
 struct Buttons<D: Widget, I: Widget> {
     #[core] core: CoreData,
@@ -31,8 +31,8 @@ struct Buttons<D: Widget, I: Widget> {
 }
 
 #[widget(class = Class::Container, layout = vertical)]
-#[handler(response = NoResponse, generics = <>
-        where B: Handler<Response = Message>)]
+#[handler(msg = EmptyMsg, generics = <>
+        where B: Handler<Msg = Message>)]
 #[derive(Debug, Widget)]
 struct Contents<B: Widget> {
     #[core] core: CoreData,
@@ -42,7 +42,7 @@ struct Contents<B: Widget> {
 }
 
 impl<B: Widget> Contents<B> {
-    fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message) -> NoResponse {
+    fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message) -> EmptyMsg {
         match msg {
             Message::None => (),
             Message::Decr => {
@@ -54,7 +54,7 @@ impl<B: Widget> Contents<B> {
                 self.display.set_text(tk, self.counter.to_string());
             }
         };
-        NoResponse
+        EmptyMsg
     }
 }
 

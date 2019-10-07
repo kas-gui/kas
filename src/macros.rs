@@ -13,8 +13,8 @@
 //!     are not part of the public API**, preventing manual implementation.
 //! -   [`make_widget`] is a convenience macro to create a single instance of a
 //!     custom widget type
-//! -   [`derive(NoResponse)`] is a convenience macro to implement
-//!     `From<NoResponse>` for the deriving enum
+//! -   [`derive(EmptyMsg)`] is a convenience macro to implement
+//!     `From<EmptyMsg>` for the deriving enum
 //! 
 //! Note that these macros are defined in the external crate, `kas-macros`, only
 //! because procedural macros must be defined in a special crate. The
@@ -28,7 +28,7 @@
 //! 
 //! [`make_widget`]: #the-make_widget-macro
 //! [`derive(Widget)`]: #the-derivewidget-macro
-//! [`derive(NoResponse)`]: #the-derivenoresponse-macro
+//! [`derive(EmptyMsg)`]: #the-deriveEmptyMsg-macro
 //! 
 //! 
 //! ## The `derive(Widget)` macro
@@ -50,7 +50,7 @@
 //! 
 //! ```notest
 //! #[widget(class = Class::X, ...)]
-//! #[handler(response = ...)]
+//! #[handler(msg = ...)]
 //! #[derive(Clone, Debug, Widget)]
 //! struct MyWidget {
 //!     ...
@@ -76,7 +76,7 @@
 //! If there is a `#[handler]` attribute on the struct, then the [`Handler`]
 //! trait will be implemented. This attribute expects the following arguments:
 //! 
-//! -   `response = ...` — the [`Handler::Response`] associated type
+//! -   `msg = ...` — the [`Handler::Msg`] associated type
 //! -   `generics = < X, Y, ... > where CONDS` — see below
 //! 
 //! Commonly the [`Handler`] implementation requires extra bounds on generic
@@ -126,17 +126,17 @@
 //! ```
 //! use kas::{Widget, Class, CoreData, TkWidget};
 //! use kas::event::{Handler, err_unhandled};
-//! use kas::macros::{Widget, NoResponse};
+//! use kas::macros::{Widget, EmptyMsg};
 //! 
-//! #[derive(Debug, NoResponse)]
+//! #[derive(Debug, EmptyMsg)]
 //! enum ChildMessage { None }
 //! 
-//! #[derive(NoResponse)]
+//! #[derive(EmptyMsg)]
 //! enum MyMessage { None }
 //! 
 //! #[widget(class = Class::Container)]
-//! #[handler(response = MyMessage,
-//!         generics = <> where W: Handler<Response = ChildMessage>)]
+//! #[handler(msg = MyMessage,
+//!         generics = <> where W: Handler<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
 //!     #[core] core: CoreData,
@@ -167,10 +167,10 @@
 //! Syntax should match the following Backus-Naur Form:
 //! 
 //! ```bnf
-//! <input>     ::= <class> "=>" <response> ";" <fields> ";" <funcs>
+//! <input>     ::= <class> "=>" <msg> ";" <fields> ";" <funcs>
 //! <class>     ::= "container" "(" <layout> ")" | "frame"
 //! <layout>    ::= "single" | "horizontal" | "vertical" | "grid"
-//! <response>  ::= <type>
+//! <msg>  ::= <type>
 //! <fields>    ::= "" | <field> | <field> "," <fields>
 //! <field>     ::= <w_attr> <opt_ident> <field_ty> = <expr>
 //! <opt_ident> ::= "_" | <ident>
@@ -189,7 +189,7 @@
 //! 
 //! The effect of this macro is to create an anonymous struct with the above
 //! fields (plus an implicit `core`), implement [`Core`], [`Layout`], [`Widget`]
-//! and [`Handler`] (with the specified `<response>` type), implement the
+//! and [`Handler`] (with the specified `<msg>` type), implement the
 //! additional `<funcs>` listed on this type, then construct and return an
 //! instance using the given value expressions to initialise each field.
 //! 
@@ -207,7 +207,7 @@
 //! is often convenient for child widgets which don't need to be referred to.
 //! 
 //! Fields may have an explicit type (`ident : type = ...`), or the type may be
-//! skipped, or (for widgets only) just the response type can be specified via
+//! skipped, or (for widgets only) just the message type can be specified via
 //! `ident -> type = ...`. Note that some type specification is usually needed
 //! when referring to the field later.
 //! 
@@ -223,9 +223,9 @@
 //! #![feature(proc_macro_hygiene)]
 //! 
 //! use kas::control::TextButton;
-//! use kas::macros::{NoResponse, make_widget};
+//! use kas::macros::{EmptyMsg, make_widget};
 //! 
-//! #[derive(NoResponse)]
+//! #[derive(EmptyMsg)]
 //! enum OkCancel {
 //!     None,
 //!     Ok,
@@ -242,17 +242,17 @@
 //! ```
 //! 
 //! 
-//! ## The `derive(NoResponse)` macro
+//! ## The `derive(EmptyMsg)` macro
 //! 
-//! This macro implements `From<NoResponse>` for the given type.
+//! This macro implements `From<EmptyMsg>` for the given type.
 //! It assumes that the type is an enum with a simple variant named `None`.
 //! 
 //! ### Example
 //! 
 //! ```
-//! use kas::macros::NoResponse;
+//! use kas::macros::EmptyMsg;
 //! 
-//! #[derive(NoResponse)]
+//! #[derive(EmptyMsg)]
 //! enum MyMessage { None, A, B };
 //! ```
 //! 
@@ -262,6 +262,6 @@
 //! [`Handler`]: crate::event::Handler
 //! [`Class`]: crate::Class
 //! [`CoreData`]: crate::CoreData
-//! [`Handler::Response`]: ../kas/event/trait.Handler.html#associatedtype.Response
+//! [`Handler::Msg`]: ../kas/event/trait.Handler.html#associatedtype.Msg
 
-pub use kas_macros::{NoResponse, Widget, make_widget};
+pub use kas_macros::{EmptyMsg, Widget, make_widget};

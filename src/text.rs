@@ -8,12 +8,12 @@
 use std::fmt::{self, Debug};
 
 use crate::macros::Widget;
-use crate::event::{Action, Handler, NoResponse, err_num, err_unhandled};
+use crate::event::{Action, Handler, EmptyMsg, err_num, err_unhandled};
 use crate::{Class, Core, CoreData, HasText, Editable, TkWidget};
 
 /// A simple text label
 #[widget(class = Class::Label(self))]
-#[handler(response = NoResponse)]
+#[handler(msg = EmptyMsg)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Label {
     #[core] core: CoreData,
@@ -88,7 +88,7 @@ impl Entry<()> {
     /// with a different parameterisation.
     /// 
     /// [`Action::Activate`]: kas::event::Action::Activate
-    pub fn on_activate<R, H: Fn() -> R>(self, f: H) -> Entry<H> {
+    pub fn on_activate<M, H: Fn() -> M>(self, f: H) -> Entry<H> {
         Entry {
             core: self.core,
             editable: self.editable,
@@ -128,24 +128,24 @@ impl<H> Editable for Entry<H> {
 }
 
 impl Handler for Entry<()> {
-    type Response = NoResponse;
+    type Msg = EmptyMsg;
     
-    fn handle_action(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Response {
+    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Msg {
         if num != self.number() {
             return err_num()
         }
         
         match action {
-            Action::Activate => NoResponse,
+            Action::Activate => EmptyMsg,
             a @ _ => err_unhandled(a)
         }
     }
 }
 
-impl<R: From<NoResponse>, H: Fn() -> R> Handler for Entry<H> {
-    type Response = R;
+impl<M: From<EmptyMsg>, H: Fn() -> M> Handler for Entry<H> {
+    type Msg = M;
     
-    fn handle_action(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Response {
+    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Msg {
         if num != self.number() {
             return err_num()
         }

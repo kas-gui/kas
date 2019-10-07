@@ -8,13 +8,13 @@
 
 use kas::text::{Label, Entry};
 use kas::control::{TextButton, CheckBox};
-use kas::event::NoResponse;
+use kas::event::EmptyMsg;
 use kas::macros::make_widget;
 use kas::SimpleWindow;
 
 fn main() -> Result<(), winit::error::OsError> {
     let widgets = make_widget! {
-        container(grid) => NoResponse;
+        container(grid) => EmptyMsg;
         struct {
             #[widget(row=0, col=0)] _ = Label::from("Label"),
             #[widget(row=0, col=1)] _ = Label::from("hello world!"),
@@ -29,11 +29,11 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     };
     let window = SimpleWindow::new(make_widget! {
-            container(vertical) => NoResponse;
+            container(vertical) => EmptyMsg;
             struct {
                 #[widget] _ = Label::from("Widget Gallery"),
                 #[widget] _ = make_widget! {
-                    frame => NoResponse;
+                    frame => EmptyMsg;
                     struct {
                         #[widget] _ = widgets
                     }

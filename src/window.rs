@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 
 use crate::callback::Condition;
 use crate::macros::Widget;
-use crate::event::{Action, GuiResponse, Handler, NoResponse, err_num, err_unhandled};
+use crate::event::{Action, WindowMsg, Handler, EmptyMsg, err_num, err_unhandled};
 use crate::{Class, Size, Core, CoreData, TkWidget, Widget};
 
 /// A window is a drawable interactive region provided by windowing system.
@@ -18,7 +18,7 @@ use crate::{Class, Size, Core, CoreData, TkWidget, Widget};
 // Window should be a Widget. So alternatives are (1) use a struct instead of a
 // trait or (2) allow any Widget to derive Window (i.e. implement required
 // functionality with macros instead of the generic code below).
-pub trait Window: Widget + Handler<Response = GuiResponse> {
+pub trait Window: Widget + Handler<Msg = WindowMsg> {
     /// Upcast
     /// 
     /// Note: needed because Rust does not yet support trait object upcasting
@@ -115,18 +115,18 @@ impl<W: Widget> SimpleWindow<W> {
     }
 }
 
-impl<R, W: Widget + Handler<Response = R> + 'static> Handler
+impl<M, W: Widget + Handler<Msg = M> + 'static> Handler
     for SimpleWindow<W>
-    where GuiResponse: From<R>, R: From<NoResponse>
+    where WindowMsg: From<M>, M: From<EmptyMsg>
 {
-    type Response = GuiResponse;
+    type Msg = WindowMsg;
     
-    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32) -> GuiResponse {
+    fn handle(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32) -> WindowMsg {
         if num < self.number() {
-            GuiResponse::from(self.w.handle_action(tk, action, num))
+            WindowMsg::from(self.w.handle(tk, action, num))
         } else if num == self.number() {
             match action {
-                Action::Close => GuiResponse::Close,
+                Action::Close => WindowMsg::Close,
                 _ => err_unhandled(action),
             }
         } else {
@@ -135,9 +135,9 @@ impl<R, W: Widget + Handler<Response = R> + 'static> Handler
     }
 }
 
-impl<R, W: Widget + Handler<Response = R> + 'static> Window
+impl<M, W: Widget + Handler<Msg = M> + 'static> Window
     for SimpleWindow<W>
-    where GuiResponse: From<R>, R: From<NoResponse>
+    where WindowMsg: From<M>, M: From<EmptyMsg>
 {
     fn as_widget(&self) -> &dyn Widget { self }
     fn as_widget_mut(&mut self) -> &mut dyn Widget { self }
