@@ -13,13 +13,13 @@ use std::fmt::{self, Debug};
 use crate::callback::Condition;
 use crate::control::{button, TextButton};
 use crate::macros::Widget;
-use crate::event::{Action, WindowMsg, Handler};
+use crate::event::{Action, Handler, Response, EmptyMsg};
 use crate::{Class, CoreData, TkWidget, Widget, Window};
 
 
 /// An action for use with `MessageBox::new`.
-pub fn action_close() -> impl Fn() -> WindowMsg {
-    || WindowMsg::Close
+pub fn action_close() -> impl Fn() -> Response<()> {
+    || Response::Close
 }
 
 /// A message box.
@@ -53,10 +53,10 @@ impl<M: Debug, H> Debug for MessageBox<M, H> {
 }
 
 impl<M: Debug, H> Handler for MessageBox<M, H> {
-    type Msg = WindowMsg;
+    type Msg = EmptyMsg;
     
     fn handle(&mut self, _tk: &mut dyn TkWidget, _action: Action, _num: u32)
-    -> WindowMsg
+        -> Response<Self::Msg>
     {
         unimplemented!()
     }

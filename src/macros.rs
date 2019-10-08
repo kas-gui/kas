@@ -125,7 +125,7 @@
 //! 
 //! ```
 //! use kas::{Widget, Class, CoreData, TkWidget};
-//! use kas::event::{Handler, err_unhandled};
+//! use kas::event::{Handler, Response, err_unhandled};
 //! use kas::macros::{Widget, EmptyMsg};
 //! 
 //! #[derive(Debug, EmptyMsg)]
@@ -144,7 +144,7 @@
 //! }
 //! 
 //! impl<W: Widget> MyWidget<W> {
-//!     fn handler(&mut self, tk: &TkWidget, msg: ChildMessage) -> MyMessage {
+//!     fn handler(&mut self, tk: &TkWidget, msg: ChildMessage) -> Response<MyMessage> {
 //!         // handle msg and respond somehow
 //!         err_unhandled(msg)
 //!     }

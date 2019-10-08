@@ -9,7 +9,7 @@ use std::any::TypeId;
 use std::fmt::{self, Debug};
 
 use crate::macros::Widget;
-use crate::event::{Action, Handler, EmptyMsg, err_num, err_unhandled};
+use crate::event::{Action, Handler, EmptyMsg, Response, err_num, err_unhandled};
 use crate::{Class, Core, CoreData, HasBool, HasText, TkWidget};
 
 /// A checkable box with optional label
@@ -121,13 +121,15 @@ impl<H> HasText for CheckBox<H> {
 impl Handler for CheckBox<()> {
     type Msg = EmptyMsg;
     
-    fn handle(&mut self, _: &mut dyn TkWidget, action: Action, num: u32) -> Self::Msg {
+    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32)
+        -> Response<Self::Msg>
+    {
         if num != self.number() {
             return err_num()
         }
         
         match action {
-            Action::Toggle => EmptyMsg,
+            Action::Toggle => Response::None,
             a @ _ => err_unhandled(a)
         }
     }
@@ -136,7 +138,9 @@ impl Handler for CheckBox<()> {
 impl<M: From<EmptyMsg>, H: Fn(bool) -> M> Handler for CheckBox<H> {
     type Msg = M;
     
-    fn handle(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Msg {
+    fn handle(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32)
+        -> Response<Self::Msg>
+    {
         if num != self.number() {
             return err_num()
         }
@@ -144,7 +148,7 @@ impl<M: From<EmptyMsg>, H: Fn(bool) -> M> Handler for CheckBox<H> {
         match action {
             Action::Toggle => {
                 self.state = tk.get_bool(self.tkd());  // sync
-                (self.on_toggle)(self.state)
+                ((self.on_toggle)(self.state)).into()
             }
             a @ _ => err_unhandled(a)
         }
@@ -231,13 +235,15 @@ impl<H> HasText for TextButton<H> {
 impl Handler for TextButton<()> {
     type Msg = EmptyMsg;
     
-    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Msg {
+    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32)
+        -> Response<Self::Msg>
+    {
         if num != self.number() {
             return err_num()
         }
         
         match action {
-            Action::Button => EmptyMsg,
+            Action::Button => Response::None,
             a @ _ => err_unhandled(a)
         }
     }
@@ -246,13 +252,15 @@ impl Handler for TextButton<()> {
 impl<M: From<EmptyMsg>, H: Fn() -> M> Handler for TextButton<H> {
     type Msg = M;
     
-    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Msg {
+    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32)
+        -> Response<Self::Msg>
+    {
         if num != self.number() {
             return err_num()
         }
         
         match action {
-            Action::Button => (self.on_click)(),
+            Action::Button => ((self.on_click)()).into(),
             a @ _ => err_unhandled(a)
         }
     }

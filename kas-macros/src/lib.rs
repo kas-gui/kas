@@ -149,13 +149,13 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         for child in args.children.iter() {
             let ident = &child.ident;
             let handler = if let Some(ref h) = child.args.handler {
-                quote!{ self.#h(_tk, msg) }
+                quote!{ r.map_into(|msg| self.#h(_tk, msg)) }
             } else {
-                quote!{ msg.into() }
+                quote!{ r.into() }
             };
             handler_toks.append_all(quote!{
                 else if num <= self.#ident.number() {
-                    let msg = self.#ident.handle(_tk, action, num);
+                    let r = self.#ident.handle(_tk, action, num);
                     #handler
                 }
             });
@@ -168,7 +168,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 type Msg = #msg;
                 
                 fn handle(&mut self, _tk: &mut kas::TkWidget, action: kas::event::Action,
-                        num: u32) -> Self::Msg
+                        num: u32) -> kas::event::Response<Self::Msg>
                 {
                     use kas::{Core, event::{Handler, err_unhandled, err_num}};
                     

@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 
 use crate::callback::Condition;
 use crate::macros::Widget;
-use crate::event::{Action, WindowMsg, Handler, EmptyMsg, err_num, err_unhandled};
+use crate::event::{Action, EmptyMsg, Handler, Response, err_num, err_unhandled};
 use crate::{Class, Size, Core, CoreData, TkWidget, Widget};
 
 /// A window is a drawable interactive region provided by windowing system.
@@ -18,7 +18,7 @@ use crate::{Class, Size, Core, CoreData, TkWidget, Widget};
 // Window should be a Widget. So alternatives are (1) use a struct instead of a
 // trait or (2) allow any Widget to derive Window (i.e. implement required
 // functionality with macros instead of the generic code below).
-pub trait Window: Widget + Handler<Msg = WindowMsg> {
+pub trait Window: Widget + Handler<Msg = EmptyMsg> {
     /// Upcast
     /// 
     /// Note: needed because Rust does not yet support trait object upcasting
@@ -117,16 +117,21 @@ impl<W: Widget> SimpleWindow<W> {
 
 impl<M, W: Widget + Handler<Msg = M> + 'static> Handler
     for SimpleWindow<W>
-    where WindowMsg: From<M>, M: From<EmptyMsg>
+    where M: From<EmptyMsg>
 {
-    type Msg = WindowMsg;
+    type Msg = EmptyMsg;
     
-    fn handle(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32) -> WindowMsg {
+    fn handle(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32)
+        -> Response<Self::Msg>
+    {
         if num < self.number() {
-            WindowMsg::from(self.w.handle(tk, action, num))
+            // TODO: either allow a custom handler or require M=()
+            let r = self.w.handle(tk, action, num);
+            Response::<EmptyMsg>::try_from(r).unwrap_or_else(|_|
+                panic!("TODO: widget returned custom msg to window (currently unsupported)"))
         } else if num == self.number() {
             match action {
-                Action::Close => WindowMsg::Close,
+                Action::Close => Response::Close,
                 _ => err_unhandled(action),
             }
         } else {
@@ -137,7 +142,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Handler
 
 impl<M, W: Widget + Handler<Msg = M> + 'static> Window
     for SimpleWindow<W>
-    where WindowMsg: From<M>, M: From<EmptyMsg>
+    where M: From<EmptyMsg>
 {
     fn as_widget(&self) -> &dyn Widget { self }
     fn as_widget_mut(&mut self) -> &mut dyn Widget { self }

@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use kas::callback::Condition;
 use kas::control::TextButton;
 use kas::text::Label;
-use kas::event::{EmptyMsg};
+use kas::event::{EmptyMsg, Response};
 use kas::macros::{EmptyMsg, make_widget};
 use kas::HasText;
 use kas::{SimpleWindow, TkWidget, Window};
@@ -51,7 +51,7 @@ fn make_window() -> Box<dyn Window> {
             dur_buf: String = String::default(),
         }
         impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Control) -> EmptyMsg {
+            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Control) -> Response<EmptyMsg> {
                 match msg {
                     Control::None => {}
                     Control::Reset => {
@@ -68,7 +68,7 @@ fn make_window() -> Box<dyn Window> {
                         }
                     }
                 }
-                EmptyMsg
+                Response::None
             }
             
             fn on_tick(&mut self, tk: &mut dyn TkWidget) {

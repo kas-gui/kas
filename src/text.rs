@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use crate::macros::Widget;
-use crate::event::{Action, Handler, EmptyMsg, err_num, err_unhandled};
+use crate::event::{Action, Handler, EmptyMsg, Response, err_num, err_unhandled};
 use crate::{Class, Core, CoreData, HasText, Editable, TkWidget};
 
 /// A simple text label
@@ -130,13 +130,15 @@ impl<H> Editable for Entry<H> {
 impl Handler for Entry<()> {
     type Msg = EmptyMsg;
     
-    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Msg {
+    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32)
+        -> Response<Self::Msg>
+    {
         if num != self.number() {
             return err_num()
         }
         
         match action {
-            Action::Activate => EmptyMsg,
+            Action::Activate => Response::None,
             a @ _ => err_unhandled(a)
         }
     }
@@ -145,14 +147,16 @@ impl Handler for Entry<()> {
 impl<M: From<EmptyMsg>, H: Fn() -> M> Handler for Entry<H> {
     type Msg = M;
     
-    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32) -> Self::Msg {
+    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32)
+        -> Response<Self::Msg>
+    {
         if num != self.number() {
             return err_num()
         }
         
         match action {
             Action::Activate => {
-                (self.on_activate)()
+                ((self.on_activate)()).into()
             }
             a @ _ => err_unhandled(a)
         }

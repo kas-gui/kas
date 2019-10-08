@@ -8,7 +8,7 @@
 
 use kas::control::TextButton;
 use kas::text::Label;
-use kas::event::EmptyMsg;
+use kas::event::{EmptyMsg, Response};
 use kas::macros::{EmptyMsg, make_widget};
 use kas::HasText;
 use kas::{SimpleWindow, TkWidget};
@@ -36,7 +36,9 @@ fn main() -> Result<(), winit::error::OsError> {
             counter: usize = 0,
         }
         impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message) -> EmptyMsg {
+            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message)
+                -> Response<EmptyMsg>
+            {
                 match msg {
                     Message::None => (),
                     Message::Decr => {
@@ -48,7 +50,7 @@ fn main() -> Result<(), winit::error::OsError> {
                         self.display.set_text(tk, self.counter.to_string());
                     }
                 };
-                EmptyMsg
+                Response::None
             }
         }));
 
