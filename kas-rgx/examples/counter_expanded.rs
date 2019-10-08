@@ -30,8 +30,7 @@ struct Buttons<D: Widget, I: Widget> {
 }
 
 #[widget(class = Class::Container, layout = vertical)]
-#[handler(msg = (), generics = <>
-        where B: Handler<Msg = Message>)]
+#[handler(generics = <> where B: Handler<Msg = Message>)]
 #[derive(Debug, Widget)]
 struct Contents<B: Widget> {
     #[core] core: CoreData,

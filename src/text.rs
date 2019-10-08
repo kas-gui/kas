@@ -13,7 +13,7 @@ use crate::{Class, Core, CoreData, HasText, Editable, TkWidget};
 
 /// A simple text label
 #[widget(class = Class::Label(self))]
-#[handler(msg = ())]
+#[handler]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Label {
     #[core] core: CoreData,

@@ -114,7 +114,7 @@ impl Core for CoreData {
 /// use kas::macros::Widget;
 /// 
 /// #[widget(class = Class::Frame)]
-/// #[handler(msg = ())]
+/// #[handler]
 /// #[derive(Clone, Debug, Widget)]
 /// pub struct Frame<W: Widget> {
 ///     #[core] core: CoreData,

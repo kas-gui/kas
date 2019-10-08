@@ -47,7 +47,7 @@
 //! 
 //! ```notest
 //! #[widget(class = Class::X, ...)]
-//! #[handler(msg = ...)]
+//! #[handler]
 //! #[derive(Clone, Debug, Widget)]
 //! struct MyWidget {
 //!     ...
@@ -71,9 +71,9 @@
 //!     per-field `#[widget]` attribute
 //! 
 //! If there is a `#[handler]` attribute on the struct, then the [`Handler`]
-//! trait will be implemented. This attribute expects the following arguments:
+//! trait will be implemented. This attribute accepts the following arguments:
 //! 
-//! -   `msg = ...` — the [`Handler::Msg`] associated type
+//! -   `msg = ...` — the [`Handler::Msg`] associated type; defaults to `()`
 //! -   `generics = < X, Y, ... > where CONDS` — see below
 //! 
 //! Commonly the [`Handler`] implementation requires extra bounds on generic
@@ -129,8 +129,7 @@
 //! enum ChildMessage { A }
 //! 
 //! #[widget(class = Class::Container)]
-//! #[handler(msg = (),
-//!         generics = <> where W: Handler<Msg = ChildMessage>)]
+//! #[handler(generics = <> where W: Handler<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
 //!     #[core] core: CoreData,

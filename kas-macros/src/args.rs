@@ -326,9 +326,11 @@ pub struct HandlerArgs {
 
 impl Parse for HandlerArgs {
     fn parse(input: ParseStream) -> Result<Self> {
+        let mut msg = parse_quote!{ () };
+        let mut generics = Generics::default();
+        
         if input.is_empty() {
-            return Err(Error::new(Span::call_site(),
-                "expected #[handler(msg = ...)]; found #[handler]"));
+            return Ok(HandlerArgs{ msg, generics });
         }
         
         let content;
@@ -337,22 +339,24 @@ impl Parse for HandlerArgs {
         // If we have a where clause, that will greedily consume remaining
         // input. Because of this, `msg = ...` must come first.
         
-        let _: kw::msg = content.parse()?;
-        let _: Eq = content.parse()?;
-        let msg: Type = content.parse()?;
+        if content.peek(kw::msg) {
+            let _: kw::msg = content.parse()?;
+            let _: Eq = content.parse()?;
+            msg = content.parse()?;
+            
+            if content.peek(Comma) {
+                let _: Comma = content.parse()?;
+            }
+        }
         
-        let generics = if content.peek(Comma) {
-            let _: Comma = content.parse()?;
+        if content.peek(kw::generics) {
             let _: kw::generics = content.parse()?;
             let _: Eq = content.parse()?;
-            let mut generics: Generics = content.parse()?;
+            generics = content.parse()?;
             if content.peek(Where) {
                 generics.where_clause = content.parse()?;
             }
-            generics
-        } else {
-            Generics::default()
-        };
+        }
         
         Ok(HandlerArgs { msg, generics })
     }
