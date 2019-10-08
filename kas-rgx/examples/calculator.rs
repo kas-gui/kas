@@ -11,14 +11,12 @@ use std::str::FromStr;
 
 use kas::control::TextButton;
 use kas::text::Entry;
-use kas::event::EmptyMsg;
-use kas::macros::{EmptyMsg, make_widget};
+use kas::macros::make_widget;
 use kas::HasText;
 use kas::{SimpleWindow, TkWidget};
 
-#[derive(Clone, Debug, PartialEq, EmptyMsg)]
+#[derive(Clone, Debug, PartialEq)]
 enum Key {
-    None,
     Clear,
     Divide,
     Multiply,
@@ -52,7 +50,7 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     };
     let content = make_widget!{
-        container(vertical) => EmptyMsg;
+        container(vertical) => ();
         struct {
             // #[widget] state: Label = Label::from("0"),
             // #[widget] buf: Label = Label::new() ,
@@ -61,13 +59,13 @@ fn main() -> Result<(), winit::error::OsError> {
             calc: Calculator = Calculator::new(),
         }
         impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Key) -> EmptyMsg {
+            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Key) -> Response<()> {
                 if self.calc.handle(msg) {
                     // self.state.set_text(tk, &self.calc.state_str());
                     // self.buf.set_text(tk, &self.calc.line_buf);
                     self.display.set_text(tk, self.calc.display());
                 }
-                EmptyMsg
+                Response::None
             }
         }
     };

@@ -9,7 +9,7 @@ use std::any::TypeId;
 use std::fmt::{self, Debug};
 
 use crate::macros::Widget;
-use crate::event::{Action, Handler, EmptyMsg, Response, err_num, err_unhandled};
+use crate::event::{Action, Handler, Response, err_num, err_unhandled};
 use crate::{Class, Core, CoreData, HasBool, HasText, TkWidget};
 
 /// A checkable box with optional label
@@ -119,7 +119,7 @@ impl<H> HasText for CheckBox<H> {
 }
 
 impl Handler for CheckBox<()> {
-    type Msg = EmptyMsg;
+    type Msg = ();
     
     fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32)
         -> Response<Self::Msg>
@@ -135,7 +135,7 @@ impl Handler for CheckBox<()> {
     }
 }
 
-impl<M: From<EmptyMsg>, H: Fn(bool) -> M> Handler for CheckBox<H> {
+impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
     type Msg = M;
     
     fn handle(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32)
@@ -212,14 +212,6 @@ impl TextButton<()> {
     }
 }
 
-// impl<H> From<&'static str> for TextButton<EmptyMsg, H>
-//     where H: Fn(()) -> EmptyMsg
-// {
-//     fn from(label: &'static str) -> Self {
-//         TextButton::new(label, |()| EmptyMsg)
-//     }
-// }
-
 impl<H> HasText for TextButton<H> {
     fn get_text(&self) -> &str {
         &self.label
@@ -233,7 +225,7 @@ impl<H> HasText for TextButton<H> {
 
 
 impl Handler for TextButton<()> {
-    type Msg = EmptyMsg;
+    type Msg = ();
     
     fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32)
         -> Response<Self::Msg>
@@ -249,7 +241,7 @@ impl Handler for TextButton<()> {
     }
 }
 
-impl<M: From<EmptyMsg>, H: Fn() -> M> Handler for TextButton<H> {
+impl<M, H: Fn() -> M> Handler for TextButton<H> {
     type Msg = M;
     
     fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32)

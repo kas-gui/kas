@@ -13,7 +13,7 @@ use std::fmt::{self, Debug};
 use crate::callback::Condition;
 use crate::control::{button, TextButton};
 use crate::macros::Widget;
-use crate::event::{Action, Handler, Response, EmptyMsg};
+use crate::event::{Action, Handler, Response};
 use crate::{Class, CoreData, TkWidget, Widget, Window};
 
 
@@ -53,7 +53,7 @@ impl<M: Debug, H> Debug for MessageBox<M, H> {
 }
 
 impl<M: Debug, H> Handler for MessageBox<M, H> {
-    type Msg = EmptyMsg;
+    type Msg = ();
     
     fn handle(&mut self, _tk: &mut dyn TkWidget, _action: Action, _num: u32)
         -> Response<Self::Msg>

@@ -37,16 +37,6 @@ pub enum Action {
 pub type Event = ();
 */
 
-// TODO: should we remove this in favour of an empty value in Response?
-/// An empty message
-/// 
-/// This type is used for handlers without a response message. Additionally,
-/// the `From<EmptyMsg>` trait bound is required on all message types as a
-/// form of default construction. This can be done conveniently with the
-/// [`derive(EmptyMsg)`](../macros/index.html#the-deriveEmptyMsg-macro) macro.
-#[derive(Debug)]
-pub struct EmptyMsg;
-
 /// Mark explicitly ignored events.
 /// 
 /// This is an error, meaning somehow an event has been sent to a widget which
@@ -143,7 +133,7 @@ pub trait Handler: Core {
     /// This mechanism allows type-safe handling of user-defined responses to handled actions.
     /// For example, a user may define a control panel where each button returns a unique code,
     /// or a configuration editor may return a full copy of the new configuration on completion.
-    type Msg: From<EmptyMsg>;
+    type Msg;
     
     /// Handle a high-level event directed at the widget identified by `number`,
     /// and return a user-defined msg.

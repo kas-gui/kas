@@ -8,12 +8,12 @@
 use std::fmt::{self, Debug};
 
 use crate::macros::Widget;
-use crate::event::{Action, Handler, EmptyMsg, Response, err_num, err_unhandled};
+use crate::event::{Action, Handler, Response, err_num, err_unhandled};
 use crate::{Class, Core, CoreData, HasText, Editable, TkWidget};
 
 /// A simple text label
 #[widget(class = Class::Label(self))]
-#[handler(msg = EmptyMsg)]
+#[handler(msg = ())]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Label {
     #[core] core: CoreData,
@@ -128,7 +128,7 @@ impl<H> Editable for Entry<H> {
 }
 
 impl Handler for Entry<()> {
-    type Msg = EmptyMsg;
+    type Msg = ();
     
     fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32)
         -> Response<Self::Msg>
@@ -144,7 +144,7 @@ impl Handler for Entry<()> {
     }
 }
 
-impl<M: From<EmptyMsg>, H: Fn() -> M> Handler for Entry<H> {
+impl<M, H: Fn() -> M> Handler for Entry<H> {
     type Msg = M;
     
     fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32)

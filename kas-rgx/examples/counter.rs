@@ -8,14 +8,13 @@
 
 use kas::control::TextButton;
 use kas::text::Label;
-use kas::event::{EmptyMsg, Response};
-use kas::macros::{EmptyMsg, make_widget};
+use kas::event::Response;
+use kas::macros::make_widget;
 use kas::HasText;
 use kas::{SimpleWindow, TkWidget};
 
-#[derive(Debug, EmptyMsg)]
+#[derive(Debug)]
 enum Message {
-    None,
     Decr,
     Incr,
 }
@@ -29,7 +28,7 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     );
     let window = SimpleWindow::new(make_widget!(
-        container(vertical) => EmptyMsg;
+        container(vertical) => ();
         struct {
             #[widget] display: Label = Label::from("0"),
             #[widget(handler = handle_button)] buttons -> Message = buttons,
@@ -37,10 +36,9 @@ fn main() -> Result<(), winit::error::OsError> {
         }
         impl {
             fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message)
-                -> Response<EmptyMsg>
+                -> Response<()>
             {
                 match msg {
-                    Message::None => (),
                     Message::Decr => {
                         self.counter = self.counter.saturating_sub(1);
                         self.display.set_text(tk, self.counter.to_string());

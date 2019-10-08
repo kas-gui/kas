@@ -13,8 +13,6 @@
 //!     are not part of the public API**, preventing manual implementation.
 //! -   [`make_widget`] is a convenience macro to create a single instance of a
 //!     custom widget type
-//! -   [`derive(EmptyMsg)`] is a convenience macro to implement
-//!     `From<EmptyMsg>` for the deriving enum
 //! 
 //! Note that these macros are defined in the external crate, `kas-macros`, only
 //! because procedural macros must be defined in a special crate. The
@@ -28,7 +26,6 @@
 //! 
 //! [`make_widget`]: #the-make_widget-macro
 //! [`derive(Widget)`]: #the-derivewidget-macro
-//! [`derive(EmptyMsg)`]: #the-deriveEmptyMsg-macro
 //! 
 //! 
 //! ## The `derive(Widget)` macro
@@ -126,16 +123,13 @@
 //! ```
 //! use kas::{Widget, Class, CoreData, TkWidget};
 //! use kas::event::{Handler, Response, err_unhandled};
-//! use kas::macros::{Widget, EmptyMsg};
+//! use kas::macros::Widget;
 //! 
-//! #[derive(Debug, EmptyMsg)]
-//! enum ChildMessage { None }
-//! 
-//! #[derive(EmptyMsg)]
-//! enum MyMessage { None }
+//! #[derive(Debug)]
+//! enum ChildMessage { A }
 //! 
 //! #[widget(class = Class::Container)]
-//! #[handler(msg = MyMessage,
+//! #[handler(msg = (),
 //!         generics = <> where W: Handler<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
@@ -144,9 +138,11 @@
 //! }
 //! 
 //! impl<W: Widget> MyWidget<W> {
-//!     fn handler(&mut self, tk: &TkWidget, msg: ChildMessage) -> Response<MyMessage> {
-//!         // handle msg and respond somehow
-//!         err_unhandled(msg)
+//!     fn handler(&mut self, tk: &TkWidget, msg: ChildMessage) -> Response<()> {
+//!         match msg {
+//!             ChildMessage::A => { println!("handling ChildMessage::A"); }
+//!         }
+//!         Response::None
 //!     }
 //! }
 //! ```
@@ -223,11 +219,9 @@
 //! #![feature(proc_macro_hygiene)]
 //! 
 //! use kas::control::TextButton;
-//! use kas::macros::{EmptyMsg, make_widget};
+//! use kas::macros::{make_widget};
 //! 
-//! #[derive(EmptyMsg)]
 //! enum OkCancel {
-//!     None,
 //!     Ok,
 //!     Cancel,
 //! }
@@ -242,20 +236,6 @@
 //! ```
 //! 
 //! 
-//! ## The `derive(EmptyMsg)` macro
-//! 
-//! This macro implements `From<EmptyMsg>` for the given type.
-//! It assumes that the type is an enum with a simple variant named `None`.
-//! 
-//! ### Example
-//! 
-//! ```
-//! use kas::macros::EmptyMsg;
-//! 
-//! #[derive(EmptyMsg)]
-//! enum MyMessage { None, A, B };
-//! ```
-//! 
 //! [`Core`]: crate::Core
 //! [`Layout`]: crate::Layout
 //! [`Widget`]: crate::Widget
@@ -264,4 +244,4 @@
 //! [`CoreData`]: crate::CoreData
 //! [`Handler::Msg`]: ../kas/event/trait.Handler.html#associatedtype.Msg
 
-pub use kas_macros::{EmptyMsg, Widget, make_widget};
+pub use kas_macros::{Widget, make_widget};
