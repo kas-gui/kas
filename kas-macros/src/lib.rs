@@ -145,7 +145,8 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         // don't want these in ty_generics.
         let (impl_generics, _, where_clause) = generics.split_for_impl();
         
-        let mut handler_toks = TokenStream::new();
+        let mut ev_to_num = TokenStream::new();
+        let mut ev_to_coord = TokenStream::new();
         for child in args.children.iter() {
             let ident = &child.ident;
             let handler = if let Some(ref h) = child.args.handler {
@@ -153,11 +154,18 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             } else {
                 quote!{ r.into() }
             };
-            handler_toks.append_all(quote!{
-                else if num <= self.#ident.number() {
-                    let r = self.#ident.handle(_tk, action, num);
+            // TODO(opt): it is possible to code more efficient search strategies
+            ev_to_num.append_all(quote!{
+                else if *num <= self.#ident.number() {
+                    let r = self.#ident.handle(_tk, event);
                     #handler
                 }
+            });
+            ev_to_coord.append_all(quote!{
+                if self.#ident.rect().contains(coord) {
+                    let r = self.#ident.handle(_tk, event);
+                    #handler
+                } else
             });
         }
         
@@ -167,18 +175,27 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             {
                 type Msg = #msg;
                 
-                fn handle(&mut self, _tk: &mut kas::TkWidget, action: kas::event::Action,
-                        num: u32) -> kas::event::Response<Self::Msg>
+                fn handle(&mut self, _tk: &mut kas::TkWidget, event: kas::event::Event)
+                -> kas::event::Response<Self::Msg>
                 {
-                    use kas::{Core, event::{Handler, err_unhandled, err_num}};
-                    
-                    if num == self.number() {
-                        // we may want to allow custom handlers on self here?
-                        err_unhandled(action)
-                    }
-                    #handler_toks
-                    else {
-                        err_num()
+                    use kas::{Core, WidgetId, event::{Event, EventChild, EventCoord, Response, err_unhandled, err_num}};
+                    match &event {
+                        Event::ToChild(num, ..) => {
+                            if *num == self.number() {
+                                // we may want to allow custom handlers on self here?
+                                err_unhandled(event)
+                            }
+                            #ev_to_num
+                            else {
+                                err_num()
+                            }
+                        }
+                        Event::ToCoord(coord, ..) => {
+                            #ev_to_coord {
+                                // we may want to allow custom handlers on self here?
+                                Response::None
+                            }
+                        }
                     }
                 }
             }

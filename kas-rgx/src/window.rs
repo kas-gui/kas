@@ -15,8 +15,10 @@ use winit::dpi::LogicalSize;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::error::OsError;
 use winit::event::WindowEvent;
+use kas::WidgetId;
+use kas::event::{Event, EventCoord, Response};
 
-use crate::widget::Widgets;
+use crate::render::Widgets;
 // use crate::tkd::WidgetAbstraction;
 
 
@@ -92,24 +94,54 @@ impl Window {
     /// Return true to remove the window
     pub fn handle_event(&mut self, event: WindowEvent) -> bool {
         use WindowEvent::*;
-        match event {
-            Resized(size) => self.do_resize(size),
+        let response: Response<()> = match event {
+            Resized(size) => {
+                self.do_resize(size);
+                return false;
+            }
             CloseRequested => {
                 return true;
             }
-            CursorMoved { position, .. } => {
-                let pos = position.to_physical(self.ww.hidpi_factor()).into();
-                if self.widgets.ev_cursor_moved(pos) {
-                    self.ww.request_redraw();
-                }
+            CursorMoved { device_id, position, modifiers } => {
+                let coord = position.to_physical(self.ww.hidpi_factor()).into();
+                let ev = EventCoord::CursorMoved { device_id, modifiers };
+                self.win.handle(&mut self.widgets, Event::ToCoord(coord, ev))
             }
-            RedrawRequested => self.do_draw(),
-            HiDpiFactorChanged(_) => self.do_resize(self.ww.inner_size()),
+            CursorLeft { .. } => {
+                self.set_hover(None);
+                return false;
+            }
+            RedrawRequested => {
+                self.do_draw();
+                return false;
+            }
+            HiDpiFactorChanged(_) => {
+                self.do_resize(self.ww.inner_size());
+                return false;
+            }
             _ => {
 //                 println!("Unhandled window event: {:?}", event);
+                return false;
+            }
+        };
+        
+        match response {
+            Response::None | Response::Msg(()) => false,
+            // TODO: handle Exit properly
+            Response::Close | Response::Exit => true,
+            Response::Hover(id) => {
+                self.set_hover(Some(id));
+                false
             }
         }
-        false
+    }
+    
+    fn set_hover(&mut self, hover: Option<WidgetId>) {
+        if self.widgets.hover != hover {
+            println!("Hover widget: {:?}", hover);
+            self.widgets.hover = hover;
+            self.ww.request_redraw();
+        }
     }
 }
 
@@ -133,7 +165,7 @@ impl Window {
     
     fn do_draw(&mut self) {
         let size = (self.swap_chain.width, self.swap_chain.height);
-        let buffer = self.widgets.draw(&self.rend, size);
+        let buffer = self.widgets.draw(&self.rend, size, &*self.win);
         
         let mut frame = self.rend.frame();
         self.rend.update_pipeline(&self.pipeline, Matrix4::identity(), &mut frame);

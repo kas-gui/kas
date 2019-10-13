@@ -3,25 +3,25 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Backend widget code
-//! 
-//! TODO: most of this code would be completely unnecessary if we drop the
-//! toolkit abstraction, which might make sense.
+//! Widget rendering
 
 use rgx::core::*;
 use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
 
 
-use kas::{Coord, Size, TkData, TkWidget};
+use kas::{Size, TkData, TkWidget, WidgetId};
 
 
+// TODO: we can probably remove the ws field entirely, along with
+// most TkWidget methods
 pub(crate) struct Widgets {
     ws: Vec<Widget>,
+    pub(crate) hover: Option<WidgetId>,
 }
 
 impl Widgets {
     pub fn new() -> Self {
-        Widgets { ws: vec![] }
+        Widgets { ws: vec![], hover: None }
     }
     
     pub fn add(&mut self, w: &mut dyn kas::Widget) {
@@ -34,28 +34,23 @@ impl Widgets {
         }
     }
     
-    pub fn ev_cursor_moved(&mut self, position: Coord) -> bool {
-        // TODO: more efficient way of detecting hover
-        let mut change = false;
-        for w in &mut self.ws {
-            let hover = w.rect.contains(position);
-            if w.hover != hover {
-                w.hover = hover;
-                change = true;
-            }
-        }
-        change
-    }
-    
-    pub fn draw(&self, rend: &Renderer, size: (u32, u32)) -> VertexBuffer {
+    pub fn draw(&self, rend: &Renderer, size: (u32, u32), win: &dyn kas::Window) -> VertexBuffer {
         let mut batch = Batch::new();
         
         let height = size.1 as f32;
-        for w in &self.ws {
-            w.draw(&mut batch, height);
-        }
+        self.draw_widget(&mut batch, height, win.as_widget());
         
         batch.finish(rend)
+    }
+    
+    fn draw_widget(&self, batch: &mut Batch, height: f32, w: &dyn kas::Widget) {
+        // draw widget; recurse over children
+        let n = w.tkd().0 as usize;
+        self.ws[n].draw(self, batch, height, w);
+        
+        for n in 0..w.len() {
+            self.draw_widget(batch, height, w.get(n).unwrap());
+        }
     }
 }
 
@@ -86,9 +81,11 @@ impl TkWidget for Widgets {
 }
 
 
+trait Drawable: kas::Widget {
+}
+
 struct Widget {
     rect: kas::Rect,
-    hover: bool,
     details: WidgetDetails,
 }
 
@@ -108,7 +105,6 @@ impl Widget {
         use kas::Class::*;
         Widget {
             rect: kas::Rect { pos: (0, 0), size: (0, 0) },
-            hover: false,
             details: match w.class() {
                 Container => WidgetDetails::Container,
                 Label(c) => WidgetDetails::Label(c.get_text().into()),
@@ -160,7 +156,7 @@ impl Widget {
         }
     }
     
-    pub fn draw(&self, batch: &mut Batch, height: f32) {
+    pub fn draw(&self, widgets: &Widgets, batch: &mut Batch, height: f32, widget: &dyn kas::Widget) {
         // Note: widget coordinates place the origin at the top-left.
         // Draw coordinates use f32 with the origin at the bottom-left.
         // Note: it's important to pass smallest coord to Shape::Rectangle first
@@ -169,7 +165,7 @@ impl Widget {
         let (w, h) = self.rect.size_f32();
         let (x1, y0) = (x0 + w, y1 - h);
         
-        let r = if self.hover { 1.0 } else { 0.5 };
+        let r = if Some(widget.number()) == widgets.hover { 1.0 } else { 0.5 };
         batch.add(Shape::Rectangle(
             Rect::new(x0, y0, x1, y1),
             Stroke::new(2.0, Rgba::new(r, 0.5, 0.5, 1.0)),

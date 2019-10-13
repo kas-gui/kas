@@ -6,16 +6,13 @@
 //! Toolkit for kas
 
 mod event;
-mod widget;
+mod render;
 mod window;
 
 pub use window::Window;
 
 use winit::event_loop::EventLoop;
 use winit::error::OsError;
-
-
-
 
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.

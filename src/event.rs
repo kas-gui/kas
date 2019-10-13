@@ -12,30 +12,85 @@
 //! type-safety while allowing user-defined result types.
 
 use std::fmt::Debug;
-use crate::TkWidget;
+// use std::path::PathBuf;
+
+use winit::event::{DeviceId, ModifiersState};
+
+use crate::{Coord, TkWidget, WidgetId};
 use crate::widget::Core;
 
-/// Input actions: these are high-level messages aimed at specific widgets.
-#[derive(Debug)]
-pub enum Action {
-    /// An `Entry` has been activated.
-    Activate,
-    /// A button has been clicked.
-    Button,
-    /// A checkbox/radio button/toggle switch has been toggled.
-    Toggle,
-    /// A window has been asked to close.
-    Close,
-}
-
-/*
 /// Input events: these are low-level messages where the destination widget is
 /// unknown.
 /// 
-/// TODO: probably just re-export `winit::Event`, maybe behind a feature flag.
+/// These events are segregated by delivery method.
 #[derive(Debug)]
-pub type Event = ();
-*/
+pub enum Event {
+    /* NOTE: it's tempting to add this, but we have no model for returning a
+     * response from multiple recipients and no use-case.
+    /// Events to be addressed to all descendents
+    ToAll(EventAll),
+    */
+    /// Events addressed to a child by number
+    ToChild(WidgetId, EventChild),
+    /// Events addressed by coordinate
+    ToCoord(Coord, EventCoord),
+}
+
+/// Events addressed to a child by number
+#[derive(Debug)]
+pub enum EventChild {
+}
+
+/// Events addressed by coordinate
+#[derive(Debug)]
+pub enum EventCoord {
+    /// Widget is under the mouse
+    CursorMoved {
+        device_id: DeviceId,
+        modifiers: ModifiersState,
+    },
+}
+
+// TODO:
+//     DroppedFile(PathBuf),
+//     HoveredFile(PathBuf),
+//     HoveredFileCancelled,
+//     ReceivedCharacter(char),
+//     Focused(bool),
+//     KeyboardInput {
+//         device_id: DeviceId,
+//         input: KeyboardInput,
+//     },
+//     CursorEntered {
+//         device_id: DeviceId,
+//     },
+//     CursorLeft {
+//         device_id: DeviceId,
+//     },
+//     MouseWheel {
+//         device_id: DeviceId,
+//         delta: MouseScrollDelta,
+//         phase: TouchPhase,
+//         modifiers: ModifiersState,
+//     },
+//     MouseInput {
+//         device_id: DeviceId,
+//         state: ElementState,
+//         button: MouseButton,
+//         modifiers: ModifiersState,
+//     },
+//     TouchpadPressure {
+//         device_id: DeviceId,
+//         pressure: f32,
+//         stage: i64,
+//     },
+//     AxisMotion {
+//         device_id: DeviceId,
+//         axis: AxisId,
+//         value: f64,
+//     },
+//     Touch(Touch),
+//     HiDpiFactorChanged(f64),
 
 /// Mark explicitly ignored events.
 /// 
@@ -71,6 +126,8 @@ pub enum Response<M> {
     Close,
     /// Exit (close all windows)
     Exit,
+    /// Update widget under the mouse
+    Hover(WidgetId),
     /// Custom message type
     Msg(M),
 }
@@ -79,15 +136,29 @@ pub enum Response<M> {
 // due to trait coherence rules, so we impl `from` etc. directly.
 impl<M> Response<M> {
     /// Convert
+    /// 
+    /// Once Rust supports specialisation, this will likely be replaced with a
+    /// `From` implementation.
     #[inline]
     pub fn from<N>(r: Response<N>) -> Self where M: From<N> {
         r.map_into(|msg| Response::Msg(M::from(msg)))
     }
     
     /// Convert
+    /// 
+    /// Once Rust supports specialisation, this will likely be redundant.
     #[inline]
     pub fn into<N>(self) -> Response<N> where N: From<M> {
         Response::from(self)
+    }
+    
+    /// Convert from a `Response<()>`
+    /// 
+    /// Once Rust supports specialisation, this will likely be replaced with a
+    /// `From` implementation.
+    #[inline]
+    pub fn from_(r: Response<()>) -> Self {
+        r.map_into(|_| Response::None)
     }
     
     /// Try converting, failing on `Msg` variant
@@ -98,6 +169,7 @@ impl<M> Response<M> {
             None => Ok(None),
             Close => Ok(Close),
             Exit => Ok(Exit),
+            Hover(id) => Ok(Hover(id)),
             Msg(m) => Err(m),
         }
     }
@@ -112,6 +184,16 @@ impl<M> Response<M> {
     #[inline]
     pub fn map_into<N, F: FnOnce(M) -> Response<N>>(self, op: F) -> Response<N> {
         Response::try_from(self).unwrap_or_else(op)
+    }
+}
+
+impl Response<()> {
+    /// Convert
+    /// 
+    /// Once Rust supports specialisation, this will likely be removed.
+    #[inline]
+    pub fn into_<N>(self) -> Response<N> {
+        Response::from_(self)
     }
 }
 
@@ -137,6 +219,24 @@ pub trait Handler: Core {
     
     /// Handle a high-level event directed at the widget identified by `number`,
     /// and return a user-defined msg.
-    fn handle(&mut self, tk: &mut dyn TkWidget, action: Action, number: u32)
+    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event)
         -> Response<Self::Msg>;
+}
+
+/// Common aspects of per-widget event handling, for widgets without children
+// TODO: maybe this should be called directly?
+pub fn common_handler(widget: &mut dyn Core, _tk: &mut dyn TkWidget, event: Event)
+    -> Response<()>
+{
+    match event {
+        Event::ToChild(..) => err_unhandled(event),
+        Event::ToCoord(_, ev) => {
+            match ev {
+                EventCoord::CursorMoved {..} => {
+                    // We can assume the pointer is over this widget
+                    Response::Hover(widget.number())
+                }
+            }
+        }
+    }
 }

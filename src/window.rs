@@ -9,8 +9,8 @@ use std::fmt::{self, Debug};
 
 use crate::callback::Condition;
 use crate::macros::Widget;
-use crate::event::{Action, Handler, Response, err_num, err_unhandled};
-use crate::{Class, Size, Core, CoreData, TkWidget, Widget};
+use crate::event::{Event, Handler, Response, err_num, err_unhandled};
+use crate::{Class, Core, Size, CoreData, TkWidget, Widget};
 
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be
@@ -120,21 +120,30 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Handler
 {
     type Msg = ();
     
-    fn handle(&mut self, tk: &mut dyn TkWidget, action: Action, num: u32)
+    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event)
         -> Response<Self::Msg>
     {
-        if num < self.number() {
-            // TODO: either allow a custom handler or require M=()
-            let r = self.w.handle(tk, action, num);
-            Response::try_from(r).unwrap_or_else(|_|
-                panic!("TODO: widget returned custom msg to window (currently unsupported)"))
-        } else if num == self.number() {
-            match action {
-                Action::Close => Response::Close,
-                _ => err_unhandled(action),
+        match event {
+            Event::ToChild(num, ev) => {
+                if num < self.number() {
+                    // TODO: either allow a custom handler or require M=()
+                    let r = self.w.handle(tk, Event::ToChild(num, ev));
+                    Response::try_from(r).unwrap_or_else(|_|
+                        panic!("TODO: widget returned custom msg to window (currently unsupported)"))
+                } else if num == self.number() {
+                    match ev {
+                        _ => err_unhandled(Event::ToChild(num, ev)),
+                    }
+                } else {
+                    err_num()
+                }
             }
-        } else {
-            err_num()
+            Event::ToCoord(coord, ev) => {
+                // widget covers entire area
+                let r = self.w.handle(tk, Event::ToCoord(coord, ev));
+                Response::try_from(r).unwrap_or_else(|_|
+                    panic!("TODO: widget returned custom msg to window (currently unsupported)"))
+            }
         }
     }
 }

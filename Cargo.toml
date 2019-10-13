@@ -23,5 +23,9 @@ optional = true
 version = "=0.0.2"
 path = "kas-macros"
 
+[dependencies.winit]
+# We use a few event types. Dependency could be made optional if necessary.
+version = "0.20.0-alpha3"
+
 [workspace]
 members = ["kas-macros", "kas-rgx"]

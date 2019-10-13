@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use crate::macros::Widget;
-use crate::event::{Action, Handler, Response, err_num, err_unhandled};
+use crate::event::{Event, Handler, Response, common_handler};
 use crate::{Class, Core, CoreData, HasText, Editable, TkWidget};
 
 /// A simple text label
@@ -81,14 +81,12 @@ impl Entry<()> {
     
     /// Set the event handler to be called on activation.
     /// 
-    /// The closure `f` is called when [`Action::Activate`] is received (when the
+    /// The closure `f` is called when the `Entry` is activated (when the
     /// "enter" key is pressed). Its result is returned from the event handler.
     /// 
     /// Technically, this consumes `self` and reconstructs another `Entry`
     /// with a different parameterisation.
-    /// 
-    /// [`Action::Activate`]: kas::event::Action::Activate
-    pub fn on_activate<M, H: Fn() -> M>(self, f: H) -> Entry<H> {
+    pub fn on_activate<R, H: Fn() -> R>(self, f: H) -> Entry<H> {
         Entry {
             core: self.core,
             editable: self.editable,
@@ -130,35 +128,25 @@ impl<H> Editable for Entry<H> {
 impl Handler for Entry<()> {
     type Msg = ();
     
-    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32)
-        -> Response<Self::Msg>
-    {
-        if num != self.number() {
-            return err_num()
-        }
-        
-        match action {
-            Action::Activate => Response::None,
-            a @ _ => err_unhandled(a)
-        }
+    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<()> {
+        common_handler(self, tk, event).into()
+//         match action {
+//             Action::Activate => Response::None,
+//             a @ _ => err_unhandled(a)
+//         }
     }
 }
 
 impl<M, H: Fn() -> M> Handler for Entry<H> {
     type Msg = M;
     
-    fn handle(&mut self, _tk: &mut dyn TkWidget, action: Action, num: u32)
-        -> Response<Self::Msg>
-    {
-        if num != self.number() {
-            return err_num()
-        }
-        
-        match action {
-            Action::Activate => {
-                ((self.on_activate)()).into()
-            }
-            a @ _ => err_unhandled(a)
-        }
+    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<M> {
+        common_handler(self, tk, event).into_()
+//         match action {
+//             Action::Activate => {
+//                 ((self.on_activate)()).into()
+//             }
+//             a @ _ => err_unhandled(a)
+//         }
     }
 }
