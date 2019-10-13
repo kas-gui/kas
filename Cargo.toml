@@ -14,9 +14,14 @@ repository = "https://gitlab.com/dhardy/kas"
 # Not required by all toolkits. Not currently functional.
 layout = ["cassowary", "kas-macros/cassowary"]
 
-[dependencies]
-cassowary = { git = "https://github.com/dhardy/cassowary-rs", optional = true }
-kas-macros = { version = "=0.0.2", path = "kas-macros" }
+[dependencies.cassowary]
+# Widget layout solver. May be replaced in the future.
+git = "https://github.com/dhardy/cassowary-rs"
+optional = true
+
+[dependencies.kas-macros]
+version = "=0.0.2"
+path = "kas-macros"
 
 [workspace]
 members = ["kas-macros", "kas-rgx"]
