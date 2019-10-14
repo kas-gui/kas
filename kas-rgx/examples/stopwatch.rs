@@ -11,9 +11,9 @@ use std::time::{Duration, Instant};
 
 use kas::callback::Condition;
 use kas::control::TextButton;
-use kas::text::Label;
 use kas::event::Response;
 use kas::macros::make_widget;
+use kas::text::Label;
 use kas::HasText;
 use kas::{SimpleWindow, TkWidget, Window};
 
@@ -68,7 +68,7 @@ fn make_window() -> Box<dyn Window> {
                 }
                 Response::None
             }
-            
+
             fn on_tick(&mut self, tk: &mut dyn TkWidget) {
                 if let Some(start) = self.start {
                     let dur = self.saved + (Instant::now() - start);
@@ -83,11 +83,11 @@ fn make_window() -> Box<dyn Window> {
             }
         }
     };
-    
+
     let mut window = SimpleWindow::new(stopwatch);
-    
+
     window.add_callback(&|w, tk| w.on_tick(tk), &[Condition::TimeoutMs(16)]);
-    
+
     Box::new(window)
 }
 

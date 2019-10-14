@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Callback specific code
-//! 
+//!
 //! Note that callbacks are added to windows, hence some callback functionality
 //! is a detail of the [`Window`] trait.
 

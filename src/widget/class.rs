@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Widget classifications
-//! 
+//!
 //! Each widget must have one of the classifications defined in the [`Class`]
 //! enumeration. In some of these cases, the widget must implement additional
 //! functionality (usually on itself).

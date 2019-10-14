@@ -7,16 +7,17 @@
 
 use std::fmt::{self, Debug};
 
+use crate::event::{common_handler, Event, Handler, Response};
 use crate::macros::Widget;
-use crate::event::{Event, Handler, Response, common_handler};
-use crate::{Class, Core, CoreData, HasText, Editable, TkWidget};
+use crate::{Class, Core, CoreData, Editable, HasText, TkWidget};
 
 /// A simple text label
 #[widget(class = Class::Label(self))]
 #[handler]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Label {
-    #[core] core: CoreData,
+    #[core]
+    core: CoreData,
     text: String,
 }
 
@@ -25,16 +26,19 @@ impl Label {
     pub fn new<T: ToString>(text: T) -> Self {
         Label {
             core: Default::default(),
-            text: text.to_string()
+            text: text.to_string(),
         }
     }
 }
 
-impl<T> From<T> for Label where String: From<T> {
+impl<T> From<T> for Label
+where
+    String: From<T>,
+{
     fn from(text: T) -> Self {
         Label {
             core: Default::default(),
-            text: String::from(text)
+            text: String::from(text),
         }
     }
 }
@@ -43,19 +47,19 @@ impl HasText for Label {
     fn get_text(&self) -> &str {
         &self.text
     }
-    
+
     fn set_string(&mut self, tk: &mut dyn TkWidget, text: String) {
         tk.set_text(self.tkd(), &text);
         self.text = text;
     }
 }
 
-
 /// An editable, single-line text box.
 #[widget(class = Class::Entry(self))]
 #[derive(Clone, Default, Widget)]
 pub struct Entry<H: 'static> {
-    #[core] core: CoreData,
+    #[core]
+    core: CoreData,
     editable: bool,
     text: String,
     on_activate: H,
@@ -63,8 +67,11 @@ pub struct Entry<H: 'static> {
 
 impl<H> Debug for Entry<H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Entry {{ core: {:?}, editable: {:?}, text: {:?}, ... }}",
-            self.core, self.editable, self.text)
+        write!(
+            f,
+            "Entry {{ core: {:?}, editable: {:?}, text: {:?}, ... }}",
+            self.core, self.editable, self.text
+        )
     }
 }
 
@@ -78,12 +85,12 @@ impl Entry<()> {
             on_activate: (),
         }
     }
-    
+
     /// Set the event handler to be called on activation.
-    /// 
+    ///
     /// The closure `f` is called when the `Entry` is activated (when the
     /// "enter" key is pressed). Its result is returned from the event handler.
-    /// 
+    ///
     /// Technically, this consumes `self` and reconstructs another `Entry`
     /// with a different parameterisation.
     pub fn on_activate<R, H: Fn() -> R>(self, f: H) -> Entry<H> {
@@ -91,7 +98,7 @@ impl Entry<()> {
             core: self.core,
             editable: self.editable,
             text: self.text,
-            on_activate: f
+            on_activate: f,
         }
     }
 }
@@ -108,7 +115,7 @@ impl<H> HasText for Entry<H> {
     fn get_text(&self) -> &str {
         &self.text
     }
-    
+
     fn set_string(&mut self, tk: &mut dyn TkWidget, text: String) {
         tk.set_text(self.tkd(), &text);
         self.text = text;
@@ -119,7 +126,7 @@ impl<H> Editable for Entry<H> {
     fn is_editable(&self) -> bool {
         self.editable
     }
-    
+
     fn set_editable(&mut self, editable: bool) {
         self.editable = editable;
     }
@@ -127,26 +134,26 @@ impl<H> Editable for Entry<H> {
 
 impl Handler for Entry<()> {
     type Msg = ();
-    
+
     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<()> {
         common_handler(self, tk, event).into()
-//         match action {
-//             Action::Activate => Response::None,
-//             a @ _ => err_unhandled(a)
-//         }
+        //         match action {
+        //             Action::Activate => Response::None,
+        //             a @ _ => err_unhandled(a)
+        //         }
     }
 }
 
 impl<M, H: Fn() -> M> Handler for Entry<H> {
     type Msg = M;
-    
+
     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<M> {
         common_handler(self, tk, event).into_()
-//         match action {
-//             Action::Activate => {
-//                 ((self.on_activate)()).into()
-//             }
-//             a @ _ => err_unhandled(a)
-//         }
+        //         match action {
+        //             Action::Activate => {
+        //                 ((self.on_activate)()).into()
+        //             }
+        //             a @ _ => err_unhandled(a)
+        //         }
     }
 }

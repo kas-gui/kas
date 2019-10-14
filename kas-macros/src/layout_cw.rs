@@ -3,25 +3,23 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
+use crate::args::Child;
 use proc_macro2::TokenStream;
 use quote::{quote, TokenStreamExt};
-use syn::Ident;
 use syn::parse::{Error, Result};
-use crate::args::Child;
+use syn::Ident;
 
-pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
-    -> Result<TokenStream>
-{
+pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>) -> Result<TokenStream> {
     let mut constraints;
     let mut appls;
     if children.is_empty() {
         // TODO: warn on invalid layout specification
-        constraints = quote!{
+        constraints = quote! {
             let v_w = kas::cw_var!(self, w);
             let v_h = kas::cw_var!(self, h);
-            
+
             let (min, hint) = tk.size_hints(self.tkd());
-            
+
             // minimum size constraints:
             s.add_constraint(cw::Constraint::new(
                 cw::Expression::from_constant(min.0 as f64) - v_w,
@@ -31,7 +29,7 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
                 cw::Expression::from_constant(min.1 as f64) - v_h,
                 cw::RelationalOperator::LessOrEqual,
                 cw::strength::STRONG)).unwrap();
-            
+
             // preferred size constraints:
             s.add_constraint(cw::Constraint::new(
                 cw::Expression::from_constant(hint.0 as f64) - v_w,
@@ -41,7 +39,7 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
                 cw::Expression::from_constant(hint.1 as f64) - v_h,
                 cw::RelationalOperator::LessOrEqual,
                 cw::strength::MEDIUM)).unwrap();
-            
+
             /*
             // starting points:
             let size = if _use_default { hint } else { self.rect().size };
@@ -51,11 +49,11 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
             s.suggest_value(v_h, size.1 as f64);
             */
         };
-        appls = quote!{};
+        appls = quote! {};
     } else if children.len() == 1 {
         // TODO: warn on invalid layout specification
         let ident = &children[0].ident;
-        constraints = quote!{
+        constraints = quote! {
             s.add_constraint(cw::Constraint::new(
                 cw::Expression::from(kas::cw_var!(self, w)) - kas::cw_var!(self.#ident, w),
                 cw::RelationalOperator::Equal,
@@ -72,16 +70,16 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
     } else {
         if let Some(l) = layout {
             if l == "horizontal" {
-                constraints = quote!{
+                constraints = quote! {
                     let mut width = cw::Expression::from(kas::cw_var!(self, w));
                     let height = cw::Expression::from(kas::cw_var!(self, h));
                 };
-                appls = quote!{ let mut cpos = pos; };
-                
+                appls = quote! { let mut cpos = pos; };
+
                 for child in children {
                     let ident = &child.ident;
-                    
-                    constraints.append_all(quote!{
+
+                    constraints.append_all(quote! {
                         let child_v_w = kas::cw_var!(self.#ident, w);
                         let child_v_h = kas::cw_var!(self.#ident, h);
                         width -= child_v_w;
@@ -95,30 +93,30 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
                             cw::strength::MEDIUM)).unwrap();
                         self.#ident.init_constraints(tk, s, _use_default);
                     });
-                    
-                    appls.append_all(quote!{
+
+                    appls.append_all(quote! {
                         self.#ident.apply_constraints(tk, s, cpos);
                         cpos.0 += s.get_value(kas::cw_var!(self.#ident, w)) as i32;
                     });
                 }
-                
-                constraints.append_all(quote!{
+
+                constraints.append_all(quote! {
                     s.add_constraint(cw::Constraint::new(
                         width,
                         cw::RelationalOperator::Equal,
                         cw::strength::STRONG * 10.0)).unwrap();
                 });
             } else if l == "vertical" {
-                constraints = quote!{
+                constraints = quote! {
                     let width = cw::Expression::from(kas::cw_var!(self, w));
                     let mut height = cw::Expression::from(kas::cw_var!(self, h));
                 };
-                appls = quote!{ let mut cpos = pos; };
-                
+                appls = quote! { let mut cpos = pos; };
+
                 for child in children {
                     let ident = &child.ident;
-                    
-                    constraints.append_all(quote!{
+
+                    constraints.append_all(quote! {
                         let child_v_w = kas::cw_var!(self.#ident, w);
                         let child_v_h = kas::cw_var!(self.#ident, h);
                         s.add_constraint(cw::Constraint::new(
@@ -132,14 +130,14 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
                         height -= child_v_h;
                         self.#ident.init_constraints(tk, s, _use_default);
                     });
-                    
-                    appls.append_all(quote!{
+
+                    appls.append_all(quote! {
                         self.#ident.apply_constraints(tk, s, cpos);
                         cpos.1 += s.get_value(kas::cw_var!(self.#ident, h)) as i32;
                     });
                 }
-                
-                constraints.append_all(quote!{
+
+                constraints.append_all(quote! {
                     s.add_constraint(cw::Constraint::new(
                         height,
                         cw::RelationalOperator::Equal,
@@ -236,11 +234,13 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
                         cw::strength::STRONG * 10.0)).unwrap();
                 });
             } else {
-                return Err(Error::new(l.span(),
-                    "expected one of: horizontal, vertical, grid"));
+                return Err(Error::new(
+                    l.span(),
+                    "expected one of: horizontal, vertical, grid",
+                ));
             }
         } else {
-            panic!("missing layout specification")  // should already be trapped
+            panic!("missing layout specification") // should already be trapped
         }
     };
     Ok(quote! {

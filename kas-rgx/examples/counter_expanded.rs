@@ -7,11 +7,11 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::control::TextButton;
-use kas::text::Label;
 use kas::event::{Handler, Response};
 use kas::macros::Widget;
+use kas::text::Label;
 use kas::HasText;
-use kas::{SimpleWindow, TkWidget, Class, CoreData, Widget};
+use kas::{Class, CoreData, SimpleWindow, TkWidget, Widget};
 
 #[derive(Debug)]
 enum Message {
@@ -24,25 +24,29 @@ enum Message {
         where D: Handler<Msg = Message>, I: Handler<Msg = Message>)]
 #[derive(Debug, Widget)]
 struct Buttons<D: Widget, I: Widget> {
-    #[core] core: CoreData,
-    #[widget] decr: D,
-    #[widget] incr: I,
+    #[core]
+    core: CoreData,
+    #[widget]
+    decr: D,
+    #[widget]
+    incr: I,
 }
 
 #[widget(class = Class::Container, layout = vertical)]
 #[handler(generics = <> where B: Handler<Msg = Message>)]
 #[derive(Debug, Widget)]
 struct Contents<B: Widget> {
-    #[core] core: CoreData,
-    #[widget] display: Label,
-    #[widget(handler = handle_button)] buttons: B,
+    #[core]
+    core: CoreData,
+    #[widget]
+    display: Label,
+    #[widget(handler = handle_button)]
+    buttons: B,
     counter: usize,
 }
 
 impl<B: Widget> Contents<B> {
-    fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message)
-        -> Response<()>
-    {
+    fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message) -> Response<()> {
         match msg {
             Message::Decr => {
                 self.counter = self.counter.saturating_sub(1);
@@ -57,21 +61,20 @@ impl<B: Widget> Contents<B> {
     }
 }
 
-
 fn main() -> Result<(), winit::error::OsError> {
     let buttons = Buttons {
         core: CoreData::default(),
         decr: TextButton::new_on("−", || Message::Decr),
         incr: TextButton::new_on("+", || Message::Incr),
     };
-    
+
     let contents = Contents {
         core: CoreData::default(),
         display: Label::from("0"),
         buttons: buttons,
         counter: 0,
     };
-    
+
     let window = SimpleWindow::new(contents);
 
     let mut toolkit = kas_rgx::Toolkit::new();

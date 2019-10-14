@@ -8,14 +8,14 @@
 use winit::event::{Event, StartCause};
 use winit::event_loop::ControlFlow;
 
-use crate::{Window};
+use crate::Window;
 
 #[inline]
 pub(crate) fn handler<T>(
     windows: &mut Vec<Window>,
     event: Event<T>,
-    control_flow: &mut ControlFlow)
-{
+    control_flow: &mut ControlFlow,
+) {
     use Event::*;
     match event {
         WindowEvent { window_id, event } => {
@@ -35,15 +35,15 @@ pub(crate) fn handler<T>(
                 }
             }
         }
-        
-        DeviceEvent{..} => (), // windows handle local input; we do not handle global input
-        UserEvent(_) => (), // we have no handler for user events
-        
+
+        DeviceEvent { .. } => (), // windows handle local input; we do not handle global input
+        UserEvent(_) => (),       // we have no handler for user events
+
         NewEvents(StartCause::Init) => {
             *control_flow = ControlFlow::Wait;
         }
         NewEvents(_) => (), // we can ignore these events
-        
+
         EventsCleared | LoopDestroyed | Suspended | Resumed => (),
     }
 }

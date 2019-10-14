@@ -8,9 +8,7 @@
 use rgx::core::*;
 use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
 
-
 use kas::{Size, TkData, TkWidget, WidgetId};
-
 
 // TODO: we can probably remove the ws field entirely, along with
 // most TkWidget methods
@@ -21,33 +19,36 @@ pub(crate) struct Widgets {
 
 impl Widgets {
     pub fn new() -> Self {
-        Widgets { ws: vec![], hover: None }
+        Widgets {
+            ws: vec![],
+            hover: None,
+        }
     }
-    
+
     pub fn add(&mut self, w: &mut dyn kas::Widget) {
         w.set_tkd(TkData(self.ws.len() as u64));
-        
+
         self.ws.push(Widget::new(w));
-        
+
         for i in 0..w.len() {
             self.add(w.get_mut(i).unwrap());
         }
     }
-    
+
     pub fn draw(&self, rend: &Renderer, size: (u32, u32), win: &dyn kas::Window) -> VertexBuffer {
         let mut batch = Batch::new();
-        
+
         let height = size.1 as f32;
         self.draw_widget(&mut batch, height, win.as_widget());
-        
+
         batch.finish(rend)
     }
-    
+
     fn draw_widget(&self, batch: &mut Batch, height: f32, w: &dyn kas::Widget) {
         // draw widget; recurse over children
         let n = w.tkd().0 as usize;
         self.ws[n].draw(self, batch, height, w);
-        
+
         for n in 0..w.len() {
             self.draw_widget(batch, height, w.get(n).unwrap());
         }
@@ -58,31 +59,29 @@ impl TkWidget for Widgets {
     fn size_hints(&self, tkd: TkData) -> (Size, Size) {
         self.ws[tkd.0 as usize].size_hints()
     }
-    
+
     fn get_rect(&self, tkd: TkData) -> kas::Rect {
         self.ws[tkd.0 as usize].get_rect()
     }
-    
+
     fn set_rect(&mut self, tkd: TkData, rect: &kas::Rect) {
         self.ws[tkd.0 as usize].set_rect(rect)
     }
-    
+
     fn get_bool(&self, tkd: TkData) -> bool {
         self.ws[tkd.0 as usize].get_bool()
     }
-    
+
     fn set_bool(&mut self, tkd: TkData, state: bool) {
         self.ws[tkd.0 as usize].set_bool(state)
     }
-    
+
     fn set_text(&mut self, tkd: TkData, text: &str) {
         self.ws[tkd.0 as usize].set_text(text)
     }
 }
 
-
-trait Drawable: kas::Widget {
-}
+trait Drawable: kas::Widget {}
 
 struct Widget {
     rect: kas::Rect,
@@ -104,7 +103,10 @@ impl Widget {
     fn new(w: &mut dyn kas::Widget) -> Self {
         use kas::Class::*;
         Widget {
-            rect: kas::Rect { pos: (0, 0), size: (0, 0) },
+            rect: kas::Rect {
+                pos: (0, 0),
+                size: (0, 0),
+            },
             details: match w.class() {
                 Container => WidgetDetails::Container,
                 Label(c) => WidgetDetails::Label(c.get_text().into()),
@@ -113,25 +115,25 @@ impl Widget {
                 CheckBox(c) => WidgetDetails::CheckBox(c.get_bool(), c.get_text().into()),
                 Frame => WidgetDetails::Frame,
                 Window => WidgetDetails::Window,
-            }
+            },
         }
     }
-    
+
     fn size_hints(&self) -> (Size, Size) {
         // FIXME
         let min = (10, 10);
         let hint = (50, 20);
         (min, hint)
     }
-    
+
     fn get_rect(&self) -> kas::Rect {
         self.rect.clone()
     }
-    
+
     fn set_rect(&mut self, rect: &kas::Rect) {
         self.rect = rect.clone();
     }
-    
+
     fn get_bool(&self) -> bool {
         use WidgetDetails::*;
         match &self.details {
@@ -139,7 +141,7 @@ impl Widget {
             _ => panic!("Widget does not support get_bool!"),
         }
     }
-    
+
     fn set_bool(&mut self, state: bool) {
         use WidgetDetails::*;
         match &mut self.details {
@@ -147,7 +149,7 @@ impl Widget {
             _ => panic!("Widget does not support set_bool!"),
         }
     }
-    
+
     fn set_text(&mut self, text: &str) {
         use WidgetDetails::*;
         match &mut self.details {
@@ -155,8 +157,14 @@ impl Widget {
             _ => panic!("Widget does not support set_text!"),
         }
     }
-    
-    pub fn draw(&self, widgets: &Widgets, batch: &mut Batch, height: f32, widget: &dyn kas::Widget) {
+
+    pub fn draw(
+        &self,
+        widgets: &Widgets,
+        batch: &mut Batch,
+        height: f32,
+        widget: &dyn kas::Widget,
+    ) {
         // Note: widget coordinates place the origin at the top-left.
         // Draw coordinates use f32 with the origin at the bottom-left.
         // Note: it's important to pass smallest coord to Shape::Rectangle first
@@ -164,8 +172,12 @@ impl Widget {
         let y1 = height - y;
         let (w, h) = self.rect.size_f32();
         let (x1, y0) = (x0 + w, y1 - h);
-        
-        let r = if Some(widget.number()) == widgets.hover { 1.0 } else { 0.5 };
+
+        let r = if Some(widget.number()) == widgets.hover {
+            1.0
+        } else {
+            0.5
+        };
         batch.add(Shape::Rectangle(
             Rect::new(x0, y0, x1, y1),
             Stroke::new(2.0, Rgba::new(r, 0.5, 0.5, 1.0)),

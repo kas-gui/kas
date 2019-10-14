@@ -7,9 +7,9 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::control::TextButton;
-use kas::text::Label;
 use kas::event::Response;
 use kas::macros::make_widget;
+use kas::text::Label;
 use kas::HasText;
 use kas::{SimpleWindow, TkWidget};
 
@@ -28,29 +28,29 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     );
     let window = SimpleWindow::new(make_widget!(
-        container(vertical) => ();
-        struct {
-            #[widget] display: Label = Label::from("0"),
-            #[widget(handler = handle_button)] buttons -> Message = buttons,
-            counter: usize = 0,
+    container(vertical) => ();
+    struct {
+        #[widget] display: Label = Label::from("0"),
+        #[widget(handler = handle_button)] buttons -> Message = buttons,
+        counter: usize = 0,
+    }
+    impl {
+        fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message)
+            -> Response<()>
+        {
+            match msg {
+                Message::Decr => {
+                    self.counter = self.counter.saturating_sub(1);
+                    self.display.set_text(tk, self.counter.to_string());
+                }
+                Message::Incr => {
+                    self.counter = self.counter.saturating_add(1);
+                    self.display.set_text(tk, self.counter.to_string());
+                }
+            };
+            Response::None
         }
-        impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message)
-                -> Response<()>
-            {
-                match msg {
-                    Message::Decr => {
-                        self.counter = self.counter.saturating_sub(1);
-                        self.display.set_text(tk, self.counter.to_string());
-                    }
-                    Message::Incr => {
-                        self.counter = self.counter.saturating_add(1);
-                        self.display.set_text(tk, self.counter.to_string());
-                    }
-                };
-                Response::None
-            }
-        }));
+    }));
 
     let mut toolkit = kas_rgx::Toolkit::new();
     toolkit.add(window)?;

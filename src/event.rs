@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Event handling
-//! 
+//!
 //! Event handling uses *event* messages, passed from the parent into a widget,
 //! with responses passed back to the parent. This model is simpler than that
 //! commonly used by GUI frameworks: widgets do not need a pointer to their
@@ -16,12 +16,12 @@ use std::fmt::Debug;
 
 use winit::event::{DeviceId, ModifiersState};
 
-use crate::{Coord, TkWidget, WidgetId};
 use crate::widget::Core;
+use crate::{Coord, TkWidget, WidgetId};
 
 /// Input events: these are low-level messages where the destination widget is
 /// unknown.
-/// 
+///
 /// These events are segregated by delivery method.
 #[derive(Debug)]
 pub enum Event {
@@ -38,8 +38,7 @@ pub enum Event {
 
 /// Events addressed to a child by number
 #[derive(Debug)]
-pub enum EventChild {
-}
+pub enum EventChild {}
 
 /// Events addressed by coordinate
 #[derive(Debug)]
@@ -93,18 +92,22 @@ pub enum EventCoord {
 //     HiDpiFactorChanged(f64),
 
 /// Mark explicitly ignored events.
-/// 
+///
 /// This is an error, meaning somehow an event has been sent to a widget which
 /// does not support events of that type.
 /// It is safe to ignore this error, but this function panics in debug builds.
 pub fn err_unhandled<M: Debug, N>(m: M) -> Response<N> {
-    debug_assert!(false, "Handler::handle: event not handled by widget: {:?}", m);
+    debug_assert!(
+        false,
+        "Handler::handle: event not handled by widget: {:?}",
+        m
+    );
     println!("Handler::handle: event not handled by widget: {:?}", m);
     Response::None
 }
 
 /// Notify of an incorrect widget number.
-/// 
+///
 /// This is an error, meaning somehow an event has been sent to a
 /// widget number which is not a child of the initial window/widget.
 /// It is safe to ignore this error, but this function panics in debug builds.
@@ -115,7 +118,7 @@ pub fn err_num<N>() -> Response<N> {
 }
 
 /// Response type from [`Handler::handle`].
-/// 
+///
 /// This type wraps [`Handler::Msg`] allowing both custom messages and toolkit
 /// messages.
 #[derive(Copy, Clone, Debug)]
@@ -136,31 +139,37 @@ pub enum Response<M> {
 // due to trait coherence rules, so we impl `from` etc. directly.
 impl<M> Response<M> {
     /// Convert
-    /// 
+    ///
     /// Once Rust supports specialisation, this will likely be replaced with a
     /// `From` implementation.
     #[inline]
-    pub fn from<N>(r: Response<N>) -> Self where M: From<N> {
+    pub fn from<N>(r: Response<N>) -> Self
+    where
+        M: From<N>,
+    {
         r.map_into(|msg| Response::Msg(M::from(msg)))
     }
-    
+
     /// Convert
-    /// 
+    ///
     /// Once Rust supports specialisation, this will likely be redundant.
     #[inline]
-    pub fn into<N>(self) -> Response<N> where N: From<M> {
+    pub fn into<N>(self) -> Response<N>
+    where
+        N: From<M>,
+    {
         Response::from(self)
     }
-    
+
     /// Convert from a `Response<()>`
-    /// 
+    ///
     /// Once Rust supports specialisation, this will likely be replaced with a
     /// `From` implementation.
     #[inline]
     pub fn from_(r: Response<()>) -> Self {
         r.map_into(|_| Response::None)
     }
-    
+
     /// Try converting, failing on `Msg` variant
     #[inline]
     pub fn try_from<N>(r: Response<N>) -> Result<Self, N> {
@@ -173,13 +182,13 @@ impl<M> Response<M> {
             Msg(m) => Err(m),
         }
     }
-    
+
     /// Try converting, failing on `Msg` variant
     #[inline]
     pub fn try_into<N>(self) -> Result<Response<N>, M> {
         Response::try_from(self)
     }
-    
+
     /// Convert, applying map function on `Msg` variant
     #[inline]
     pub fn map_into<N, F: FnOnce(M) -> Response<N>>(self, op: F) -> Response<N> {
@@ -189,7 +198,7 @@ impl<M> Response<M> {
 
 impl Response<()> {
     /// Convert
-    /// 
+    ///
     /// Once Rust supports specialisation, this will likely be removed.
     #[inline]
     pub fn into_<N>(self) -> Response<N> {
@@ -204,35 +213,32 @@ impl<M> From<M> for Response<M> {
 }
 
 /// Event-handling aspect of a widget.
-/// 
+///
 /// This is a companion trait to [`Widget`]. It can (optionally) be implemented
 /// by the `derive(Widget)` macro, or can be implemented manually.
-/// 
+///
 /// [`Widget`]: crate::Widget
 pub trait Handler: Core {
     /// Type of message returned by this handler.
-    /// 
+    ///
     /// This mechanism allows type-safe handling of user-defined responses to handled actions.
     /// For example, a user may define a control panel where each button returns a unique code,
     /// or a configuration editor may return a full copy of the new configuration on completion.
     type Msg;
-    
+
     /// Handle a high-level event directed at the widget identified by `number`,
     /// and return a user-defined msg.
-    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event)
-        -> Response<Self::Msg>;
+    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg>;
 }
 
 /// Common aspects of per-widget event handling, for widgets without children
 // TODO: maybe this should be called directly?
-pub fn common_handler(widget: &mut dyn Core, _tk: &mut dyn TkWidget, event: Event)
-    -> Response<()>
-{
+pub fn common_handler(widget: &mut dyn Core, _tk: &mut dyn TkWidget, event: Event) -> Response<()> {
     match event {
         Event::ToChild(..) => err_unhandled(event),
         Event::ToCoord(_, ev) => {
             match ev {
-                EventCoord::CursorMoved {..} => {
+                EventCoord::CursorMoved { .. } => {
                     // We can assume the pointer is over this widget
                     Response::Hover(widget.number())
                 }

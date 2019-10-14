@@ -4,12 +4,17 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
-use quote::{quote, TokenStreamExt, ToTokens};
-use syn::{Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Index, Lit, Member, TypeTraitObject, Type, TypePath, ImplItemMethod};
-use syn::{parse_quote, braced, bracketed, parenthesized};
+use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
-use syn::token::{Brace, Colon, Comma, Eq, FatArrow, Impl, Paren, Pound, RArrow, Semi, Struct, Underscore, Where};
 use syn::spanned::Spanned;
+use syn::token::{
+    Brace, Colon, Comma, Eq, FatArrow, Impl, Paren, Pound, RArrow, Semi, Struct, Underscore, Where,
+};
+use syn::{braced, bracketed, parenthesized, parse_quote};
+use syn::{
+    Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, ImplItemMethod,
+    Index, Lit, Member, Type, TypePath, TypeTraitObject,
+};
 
 #[derive(Debug)]
 pub struct Child {
@@ -25,34 +30,34 @@ pub struct Args {
 }
 
 pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
-    let not_struct_err = |span| Err(Error::new(span,
-            "cannot derive Widget on an enum, union or unit struct"));
+    let not_struct_err = |span| {
+        Err(Error::new(
+            span,
+            "cannot derive Widget on an enum, union or unit struct",
+        ))
+    };
     let (fields, span) = match &mut ast.data {
-        Data::Struct(data) => {
-            match &mut data.fields {
-                Fields::Named(FieldsNamed {
-                    brace_token: Brace { span },
-                    named: fields,
-                }) |
-                Fields::Unnamed(FieldsUnnamed {
-                    paren_token: Paren { span },
-                    unnamed: fields,
-                }) => {
-                    (fields, span)
-                },
-                Fields::Unit => return not_struct_err(data.struct_token.span()),
-            }
+        Data::Struct(data) => match &mut data.fields {
+            Fields::Named(FieldsNamed {
+                brace_token: Brace { span },
+                named: fields,
+            })
+            | Fields::Unnamed(FieldsUnnamed {
+                paren_token: Paren { span },
+                unnamed: fields,
+            }) => (fields, span),
+            Fields::Unit => return not_struct_err(data.struct_token.span()),
         },
         Data::Enum(data) => return not_struct_err(data.enum_token.span()),
         Data::Union(data) => return not_struct_err(data.union_token.span()),
     };
-    
+
     let mut core = None;
     let mut children = vec![];
-    
+
     for (i, field) in fields.iter_mut().enumerate() {
         for attr in field.attrs.drain(..) {
-            if attr.path == parse_quote!{ core } {
+            if attr.path == parse_quote! { core } {
                 if core.is_none() {
                     core = Some(member(i, field.ident.clone()));
                 } else {
@@ -61,19 +66,19 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                         .error("multiple fields marked with #[core]")
                         .emit();
                 }
-            } else if attr.path == parse_quote!{ widget } {
+            } else if attr.path == parse_quote! { widget } {
                 let ident = member(i, field.ident.clone());
                 let args = syn::parse2(attr.tokens)?;
-                children.push(Child{ ident, args });
+                children.push(Child { ident, args });
             }
         }
     }
-    
+
     let mut widget = None;
     let mut handler = None;
-    
+
     for attr in ast.attrs.drain(..) {
-        if attr.path == parse_quote!{ widget } {
+        if attr.path == parse_quote! { widget } {
             if widget.is_none() {
                 widget = Some(syn::parse2(attr.tokens)?);
             } else {
@@ -82,7 +87,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                     .error("multiple #[widget(..)] attributes on type")
                     .emit()
             }
-        } else if attr.path == parse_quote!{ handler } {
+        } else if attr.path == parse_quote! { handler } {
             if handler.is_none() {
                 handler = Some(syn::parse2(attr.tokens)?);
             } else {
@@ -93,26 +98,35 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
             }
         }
     }
-    
+
     if let Some(core) = core {
         if let Some(widget) = widget {
-            Ok(Args { core, widget, handler, children })
+            Ok(Args {
+                core,
+                widget,
+                handler,
+                children,
+            })
         } else {
-            Err(Error::new(*span,
-                "a type deriving Widget must be annotated with the #[widget]` attribute"))
+            Err(Error::new(
+                *span,
+                "a type deriving Widget must be annotated with the #[widget]` attribute",
+            ))
         }
     } else {
-        Err(Error::new(*span,
-            "one field must be marked with #[core] when deriving Widget"))
+        Err(Error::new(
+            *span,
+            "one field must be marked with #[core] when deriving Widget",
+        ))
     }
 }
 
 fn member(index: usize, ident: Option<Ident>) -> Member {
     match ident {
-        None => Member::Unnamed(Index{
-                index: index as u32,
-                span: Span::call_site()
-            }),
+        None => Member::Unnamed(Index {
+            index: index as u32,
+            span: Span::call_site(),
+        }),
         Some(ident) => Member::Named(ident),
     }
 }
@@ -120,7 +134,7 @@ fn member(index: usize, ident: Option<Ident>) -> Member {
 #[allow(non_camel_case_types)]
 mod kw {
     use syn::custom_keyword;
-    
+
     custom_keyword!(class);
     custom_keyword!(layout);
     custom_keyword!(col);
@@ -171,14 +185,25 @@ impl WidgetAttrArgs {
     // If we have *any* position information, then yield a GridPos, filling in
     // missing information with defaults.
     pub fn as_pos(&self) -> Option<GridPos> {
-        if self.col.is_some() || self.row.is_some() ||
-            self.cspan.is_some() || self.rspan.is_some()
+        if self.col.is_some() || self.row.is_some() || self.cspan.is_some() || self.rspan.is_some()
         {
             Some(GridPos(
-                self.col.as_ref().cloned().unwrap_or_else(|| parse_quote!{ 0}),
-                self.row.as_ref().cloned().unwrap_or_else(|| parse_quote!{ 0 }),
-                self.cspan.as_ref().cloned().unwrap_or_else(|| parse_quote!{ 1 }),
-                self.rspan.as_ref().cloned().unwrap_or_else(|| parse_quote!{ 1 }),
+                self.col
+                    .as_ref()
+                    .cloned()
+                    .unwrap_or_else(|| parse_quote! { 0}),
+                self.row
+                    .as_ref()
+                    .cloned()
+                    .unwrap_or_else(|| parse_quote! { 0 }),
+                self.cspan
+                    .as_ref()
+                    .cloned()
+                    .unwrap_or_else(|| parse_quote! { 1 }),
+                self.rspan
+                    .as_ref()
+                    .cloned()
+                    .unwrap_or_else(|| parse_quote! { 1 }),
             ))
         } else {
             None
@@ -189,17 +214,19 @@ impl WidgetAttrArgs {
 impl Parse for WidgetAttrArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut args = WidgetAttrArgs {
-            col: None, row: None,
-            cspan: None, rspan: None,
+            col: None,
+            row: None,
+            cspan: None,
+            rspan: None,
             handler: None,
         };
         if input.is_empty() {
             return Ok(args);
         }
-        
+
         let content;
         let _ = parenthesized!(content in input);
-        
+
         loop {
             let lookahead = content.lookahead1();
             if args.col.is_none() && lookahead.peek(kw::col) {
@@ -225,72 +252,74 @@ impl Parse for WidgetAttrArgs {
             } else {
                 return Err(lookahead.error());
             }
-            
+
             if content.is_empty() {
                 break;
             }
             let _: Comma = content.parse()?;
         }
-        
+
         Ok(args)
     }
 }
 
 impl ToTokens for WidgetAttrArgs {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        if self.col.is_some() || self.row.is_some() ||
-            self.cspan.is_some() || self.rspan.is_some() ||
-            self.handler.is_some()
+        if self.col.is_some()
+            || self.row.is_some()
+            || self.cspan.is_some()
+            || self.rspan.is_some()
+            || self.handler.is_some()
         {
             let comma = TokenTree::from(Punct::new(',', Spacing::Alone));
             let mut args = TokenStream::new();
             if let Some(ref lit) = self.col {
-                args.append_all(quote!{ col = #lit });
+                args.append_all(quote! { col = #lit });
             }
             if let Some(ref lit) = self.row {
                 if !args.is_empty() {
                     args.append(comma.clone());
                 }
-                args.append_all(quote!{ row = #lit });
+                args.append_all(quote! { row = #lit });
             }
             if let Some(ref lit) = self.cspan {
                 if !args.is_empty() {
                     args.append(comma.clone());
                 }
-                args.append_all(quote!{ cspan = #lit });
+                args.append_all(quote! { cspan = #lit });
             }
             if let Some(ref lit) = self.rspan {
                 if !args.is_empty() {
                     args.append(comma.clone());
                 }
-                args.append_all(quote!{ rspan = #lit });
+                args.append_all(quote! { rspan = #lit });
             }
             if let Some(ref ident) = self.handler {
                 if !args.is_empty() {
                     args.append(comma);
                 }
-                args.append_all(quote!{ handler = #ident });
+                args.append_all(quote! { handler = #ident });
             }
-            tokens.append_all(quote!{ ( #args ) });
+            tokens.append_all(quote! { ( #args ) });
         }
     }
 }
 
 pub struct WidgetAttr {
-    pub args: WidgetAttrArgs
+    pub args: WidgetAttrArgs,
 }
 
 impl ToTokens for WidgetAttr {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let args = &self.args;
-        tokens.append_all(quote!{ #[widget #args] });
+        tokens.append_all(quote! { #[widget #args] });
     }
 }
 
 impl ToTokens for GridPos {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let (c, r, cs, rs) = (&self.0, &self.1, &self.2, &self.3);
-        tokens.append_all(quote!{ (#c, #r, #cs, #rs) });
+        tokens.append_all(quote! { (#c, #r, #cs, #rs) });
     }
 }
 
@@ -302,16 +331,18 @@ pub struct WidgetArgs {
 impl Parse for WidgetArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         if input.is_empty() {
-            return Err(Error::new(Span::call_site(),
-                "expected #[widget(class = ...)]; found #[widget]"));
+            return Err(Error::new(
+                Span::call_site(),
+                "expected #[widget(class = ...)]; found #[widget]",
+            ));
         }
-        
+
         let content;
         let _ = parenthesized!(content in input);
-        
+
         let mut class = None;
         let mut layout = None;
-        
+
         loop {
             let lookahead = content.lookahead1();
             if class.is_none() && lookahead.peek(kw::class) {
@@ -327,13 +358,13 @@ impl Parse for WidgetArgs {
             } else {
                 return Err(lookahead.error());
             }
-            
+
             if content.is_empty() {
                 break;
             }
             let _: Comma = content.parse()?;
         }
-        
+
         Ok(WidgetArgs {
             class: class.ok_or_else(|| content.error("expected `class = ...`"))?,
             layout,
@@ -348,29 +379,29 @@ pub struct HandlerArgs {
 
 impl Parse for HandlerArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut msg = parse_quote!{ () };
+        let mut msg = parse_quote! { () };
         let mut generics = Generics::default();
-        
+
         if input.is_empty() {
-            return Ok(HandlerArgs{ msg, generics });
+            return Ok(HandlerArgs { msg, generics });
         }
-        
+
         let content;
         let _ = parenthesized!(content in input);
-        
+
         // If we have a where clause, that will greedily consume remaining
         // input. Because of this, `msg = ...` must come first.
-        
+
         if content.peek(kw::msg) {
             let _: kw::msg = content.parse()?;
             let _: Eq = content.parse()?;
             msg = content.parse()?;
-            
+
             if content.peek(Comma) {
                 let _: Comma = content.parse()?;
             }
         }
-        
+
         if content.peek(kw::generics) {
             let _: kw::generics = content.parse()?;
             let _: Eq = content.parse()?;
@@ -379,7 +410,7 @@ impl Parse for HandlerArgs {
                 generics.where_clause = content.parse()?;
             }
         }
-        
+
         Ok(HandlerArgs { msg, generics })
     }
 }
@@ -390,7 +421,7 @@ pub enum Class {
 }
 
 pub enum ChildType {
-    Fixed(Type),     // fixed type
+    Fixed(Type), // fixed type
     // Generic, optionally with specified handler msg type,
     // optionally with an additional trait bound.
     Generic(Option<Type>, Option<TypeTraitObject>),
@@ -425,50 +456,57 @@ impl Parse for MakeWidget {
         } else if class_name == "frame" {
             Class::Frame
         } else {
-            return Err(Error::new(class_name.span(),
-                    "make_widget only supports the following classes: container, frame"));
+            return Err(Error::new(
+                class_name.span(),
+                "make_widget only supports the following classes: container, frame",
+            ));
         };
-        
+
         let _: FatArrow = input.parse()?;
         let msg: Type = input.parse()?;
         let _: Semi = input.parse()?;
-        
+
         let _: Struct = input.parse()?;
         let content;
         let _ = braced!(content in input);
         let mut fields = vec![];
-        
+
         while !content.is_empty() {
             fields.push(content.parse::<WidgetField>()?);
-            
+
             if content.is_empty() {
                 break;
             }
             let _: Comma = content.parse()?;
         }
-        
+
         let mut impls = vec![];
         while !input.is_empty() {
             let _: Impl = input.parse()?;
-            
+
             let target = if input.peek(Brace) {
                 None
             } else {
                 Some(input.parse::<TypePath>()?)
             };
-            
+
             let content;
             let _ = braced!(content in input);
             let mut methods = vec![];
-            
+
             while !content.is_empty() {
                 methods.push(content.parse::<ImplItemMethod>()?);
             }
-            
+
             impls.push((target, methods));
         }
-        
-        Ok(MakeWidget { class, msg, fields, impls })
+
+        Ok(MakeWidget {
+            class,
+            msg,
+            fields,
+            impls,
+        })
     }
 }
 
@@ -484,7 +522,7 @@ impl Parse for WidgetField {
         } else {
             None
         };
-        
+
         let ident = {
             let lookahead = input.lookahead1();
             if lookahead.peek(Underscore) {
@@ -496,7 +534,7 @@ impl Parse for WidgetField {
                 return Err(lookahead.error());
             }
         };
-        
+
         // Note: Colon matches `::` but that results in confusing error messages
         let mut ty = if input.peek(Colon) && !input.peek2(Colon) {
             let _: Colon = input.parse()?;
@@ -511,28 +549,37 @@ impl Parse for WidgetField {
         } else {
             ChildType::Generic(None, None)
         };
-        
+
         if input.peek(RArrow) {
             let arrow: RArrow = input.parse()?;
             if !widget_attr.is_some() {
-                return Err(Error::new(arrow.span(),
-                    "can only use `-> Msg` type restriction on widgets"))
+                return Err(Error::new(
+                    arrow.span(),
+                    "can only use `-> Msg` type restriction on widgets",
+                ));
             }
             let msg: Type = input.parse()?;
             match &mut ty {
                 ChildType::Fixed(_) => {
-                    return Err(Error::new(arrow.span(),
-                        "cannot use `-> Msg` type restriction with fixed type"));
+                    return Err(Error::new(
+                        arrow.span(),
+                        "cannot use `-> Msg` type restriction with fixed type",
+                    ));
                 }
                 ChildType::Generic(ref mut gen_r, _) => {
                     *gen_r = Some(msg);
                 }
             }
         }
-        
+
         let _: Eq = input.parse()?;
         let value: Expr = input.parse()?;
-        
-        Ok(WidgetField{ widget_attr, ident, ty, value })
+
+        Ok(WidgetField {
+            widget_attr,
+            ident,
+            ty,
+            value,
+        })
     }
 }
