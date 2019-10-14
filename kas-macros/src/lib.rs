@@ -172,13 +172,12 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 } else
             });
         }
-
-        toks.append_all(quote! {
-            impl #impl_generics kas::event::Handler
-                    for #name #ty_generics #where_clause
-            {
-                type Msg = #msg;
-
+        
+        let handler = if args.children.is_empty() {
+            // rely on the default implementation
+            quote! {}
+        } else {
+            quote! {
                 fn handle(&mut self, _tk: &mut kas::TkWidget, event: kas::event::Event)
                 -> kas::event::Response<Self::Msg>
                 {
@@ -202,6 +201,15 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         }
                     }
                 }
+            }
+        };
+
+        toks.append_all(quote! {
+            impl #impl_generics kas::event::Handler
+                    for #name #ty_generics #where_clause
+            {
+                type Msg = #msg;
+                #handler
             }
         });
     };

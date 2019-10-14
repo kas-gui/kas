@@ -226,21 +226,19 @@ pub trait Handler: Core {
     /// or a configuration editor may return a full copy of the new configuration on completion.
     type Msg;
 
-    /// Handle a high-level event directed at the widget identified by `number`,
-    /// and return a user-defined msg.
-    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg>;
-}
-
-/// Common aspects of per-widget event handling, for widgets without children
-// TODO: maybe this should be called directly?
-pub fn common_handler(widget: &mut dyn Core, _tk: &mut dyn TkWidget, event: Event) -> Response<()> {
-    match event {
-        Event::ToChild(..) => err_unhandled(event),
-        Event::ToCoord(_, ev) => {
-            match ev {
-                EventCoord::CursorMoved { .. } => {
-                    // We can assume the pointer is over this widget
-                    Response::Hover(widget.number())
+    /// Handle a high-level event and return a user-defined msg.
+    // fn handle_action(&mut self, tk: &mut dyn TkWidget, _: Action) -> Response<Self::Msg> {}
+    
+    /// Handle a low-level event. Normally the user should not override this.
+    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
+        match event {
+            Event::ToChild(..) => err_unhandled(event),
+            Event::ToCoord(_, ev) => {
+                match ev {
+                    EventCoord::CursorMoved { .. } => {
+                        // We can assume the pointer is over this widget
+                        Response::Hover(self.number())
+                    }
                 }
             }
         }

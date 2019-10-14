@@ -7,7 +7,7 @@
 
 use std::fmt::{self, Debug};
 
-use crate::event::{common_handler, Event, Handler, Response};
+use crate::event::{Event, Handler, Response};
 use crate::macros::Widget;
 use crate::{Class, Core, CoreData, Editable, HasText, TkWidget};
 
@@ -135,25 +135,23 @@ impl<H> Editable for Entry<H> {
 impl Handler for Entry<()> {
     type Msg = ();
 
-    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<()> {
-        common_handler(self, tk, event).into()
+//     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<()> {
         //         match action {
         //             Action::Activate => Response::None,
         //             a @ _ => err_unhandled(a)
         //         }
-    }
+//     }
 }
 
 impl<M, H: Fn() -> M> Handler for Entry<H> {
     type Msg = M;
 
-    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<M> {
-        common_handler(self, tk, event).into_()
+//     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<M> {
         //         match action {
         //             Action::Activate => {
         //                 ((self.on_activate)()).into()
         //             }
         //             a @ _ => err_unhandled(a)
         //         }
-    }
+//     }
 }
