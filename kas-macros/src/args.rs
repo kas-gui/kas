@@ -63,7 +63,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                 }
             } else if attr.path == parse_quote!{ widget } {
                 let ident = member(i, field.ident.clone());
-                let args = syn::parse2(attr.tts)?;
+                let args = syn::parse2(attr.tokens)?;
                 children.push(Child{ ident, args });
             }
         }
@@ -75,7 +75,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
     for attr in ast.attrs.drain(..) {
         if attr.path == parse_quote!{ widget } {
             if widget.is_none() {
-                widget = Some(syn::parse2(attr.tts)?);
+                widget = Some(syn::parse2(attr.tokens)?);
             } else {
                 attr.span()
                     .unstable()
@@ -84,7 +84,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
             }
         } else if attr.path == parse_quote!{ handler } {
             if handler.is_none() {
-                handler = Some(syn::parse2(attr.tts)?);
+                handler = Some(syn::parse2(attr.tokens)?);
             } else {
                 attr.span()
                     .unstable()

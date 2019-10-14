@@ -245,18 +245,17 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             .emit();
                         return None;
                     }
-                    if f.sig.decl.inputs.len() != 3 {
+                    if f.sig.inputs.len() != 3 {
                         f.sig.span()
                             .unstable()
                             .error("handler functions must have signature: fn handler(&mut self, tk: &mut TkWidget, msg: T)")
                             .emit();
                         return None;
                     }
-                    let pair = f.sig.decl.inputs.last().unwrap();
-                    let arg = pair.value();
+                    let arg = f.sig.inputs.last().unwrap();
                     let ty = match arg {
-                        FnArg::Captured(arg) => arg.ty.clone(),
-                        _ => panic!("expected captured argument"),  // nothing else is possible here?
+                        FnArg::Typed(arg) => (*arg.ty).clone(),
+                        _ => panic!("expected typed argument"),  // nothing else is possible here?
                     };
                     x = Some((f.sig.ident.clone(), ty));
                 }
