@@ -8,7 +8,7 @@
 use rgx::core::*;
 use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
 
-use kas::{Size, TkData, TkWidget, WidgetId};
+use kas::{Class, Size, TkData, TkWidget, WidgetId};
 
 // TODO: we can probably remove the ws field entirely, along with
 // most TkWidget methods
@@ -121,8 +121,8 @@ impl Widget {
 
     fn size_hints(&self) -> (Size, Size) {
         // FIXME
-        let min = (10, 10);
-        let hint = (50, 20);
+        let min = (20, 20);
+        let hint = (80, 40);
         (min, hint)
     }
 
@@ -165,6 +165,8 @@ impl Widget {
         height: f32,
         widget: &dyn kas::Widget,
     ) {
+        // This is a hacky draw routine just to show where widgets are.
+
         // Note: widget coordinates place the origin at the top-left.
         // Draw coordinates use f32 with the origin at the bottom-left.
         // Note: it's important to pass smallest coord to Shape::Rectangle first
@@ -173,6 +175,20 @@ impl Widget {
         let (w, h) = self.rect.size_f32();
         let (x1, y0) = (x0 + w, y1 - h);
 
+        let mut background = Rgba::new(1.0, 1.0, 1.0, 0.1);
+
+        match widget.class() {
+            Class::Container => {
+                // do not draw containers
+                return;
+            }
+            Class::Button(_) => {
+                background = Rgba::new(0.2, 0.7, 1.0, 1.0);
+            }
+            _ => (),
+        }
+
+        // draw margin
         let r = if Some(widget.number()) == widgets.hover {
             1.0
         } else {
@@ -181,7 +197,7 @@ impl Widget {
         batch.add(Shape::Rectangle(
             Rect::new(x0, y0, x1, y1),
             Stroke::new(2.0, Rgba::new(r, 0.5, 0.5, 1.0)),
-            Fill::Solid(Rgba::new(1.0, 1.0, 1.0, 0.1)),
+            Fill::Solid(background),
         ));
     }
 }
