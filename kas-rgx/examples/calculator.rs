@@ -10,13 +10,15 @@ use std::num::ParseFloatError;
 use std::str::FromStr;
 
 use kas::control::TextButton;
-use kas::text::Entry;
+use kas::event::Response;
 use kas::macros::make_widget;
+use kas::text::Entry;
 use kas::HasText;
 use kas::{SimpleWindow, TkWidget};
 
 #[derive(Clone, Debug, PartialEq)]
 enum Key {
+    None,
     Clear,
     Divide,
     Multiply,
@@ -27,7 +29,7 @@ enum Key {
 }
 
 fn main() -> Result<(), winit::error::OsError> {
-    let buttons = make_widget!{
+    let buttons = make_widget! {
         container(grid) => Key;
         struct {
             #[widget(col = 0, row = 0)] _ = TextButton::new_on("clear", || Key::Clear),
@@ -49,7 +51,7 @@ fn main() -> Result<(), winit::error::OsError> {
             #[widget(col = 2, row = 4)] _ = TextButton::new_on(".", || Key::Char(46)),
         }
     };
-    let content = make_widget!{
+    let content = make_widget! {
         container(vertical) => ();
         struct {
             // #[widget] state: Label = Label::from("0"),
@@ -72,7 +74,7 @@ fn main() -> Result<(), winit::error::OsError> {
     let window = SimpleWindow::new(content);
 
     let mut toolkit = kas_rgx::Toolkit::new();
-    toolkit.add(window);
+    toolkit.add(window)?;
     toolkit.run()
 }
 

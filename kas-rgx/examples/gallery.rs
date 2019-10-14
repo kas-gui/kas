@@ -6,9 +6,9 @@
 //! Gallery of all widgets
 #![feature(proc_macro_hygiene)]
 
-use kas::text::{Label, Entry};
-use kas::control::{TextButton, CheckBox};
+use kas::control::{CheckBox, TextButton};
 use kas::macros::make_widget;
+use kas::text::{Entry, Label};
 use kas::SimpleWindow;
 
 fn main() -> Result<(), winit::error::OsError> {
@@ -28,19 +28,19 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     };
     let window = SimpleWindow::new(make_widget! {
-            container(vertical) => ();
-            struct {
-                #[widget] _ = Label::from("Widget Gallery"),
-                #[widget] _ = make_widget! {
-                    frame => ();
-                    struct {
-                        #[widget] _ = widgets
-                    }
+        container(vertical) => ();
+        struct {
+            #[widget] _ = Label::from("Widget Gallery"),
+            #[widget] _ = make_widget! {
+                frame => ();
+                struct {
+                    #[widget] _ = widgets
                 }
             }
-        });
-    
+        }
+    });
+
     let mut toolkit = kas_rgx::Toolkit::new();
-    toolkit.add(window);
+    toolkit.add(window)?;
     toolkit.run()
 }

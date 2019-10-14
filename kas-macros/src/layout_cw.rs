@@ -66,7 +66,9 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
                 cw::strength::STRONG)).unwrap();
             self.#ident.init_constraints(tk, s, _use_default);
         };
-        appls = quote!{};
+        appls = quote! {
+            self.#ident.apply_constraints(tk, s, pos);
+        };
     } else {
         if let Some(l) = layout {
             if l == "horizontal" {
@@ -144,7 +146,95 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
                         cw::strength::STRONG * 10.0)).unwrap();
                 });
             } else if l == "grid" {
-                panic!("not yet implemented: grid layout (with cassowary layout feature)")
+                // TODO(opt): uses two redundant variables per dimension
+
+                let (mut mw, mut mh) = (0, 0);
+
+                constraints = quote! {};
+                appls = quote! {};
+
+                for (ci, child) in children.iter().enumerate() {
+                    let ident = &child.ident;
+                    let gpos = child.args.as_pos()?;
+                    //println!("Child {}, grid pos {:?}", ci, gpos);
+
+                    let (w0, h0) = (gpos.0, gpos.1);
+                    let (w1, h1) = (w0 + gpos.2, h0 + gpos.3);
+                    mw = mw.max(w1);
+                    mh = mh.max(h1);
+
+                    constraints.append_all(quote! {
+                        let mut width = cw::Expression::from(kas::cw_var!(self.#ident, w))
+                            + kas::cw_var!(self, w, #w0)
+                            - kas::cw_var!(self, w, #w1);
+                        let mut height = cw::Expression::from(kas::cw_var!(self.#ident, h))
+                            + kas::cw_var!(self, h, #h0)
+                            - kas::cw_var!(self, h, #h1);
+
+                        s.add_constraint(cw::Constraint::new(
+                            width.clone(),
+                            cw::RelationalOperator::LessOrEqual,
+                            cw::strength::STRONG)).unwrap();
+                        s.add_constraint(cw::Constraint::new(
+                            width,
+                            cw::RelationalOperator::Equal,
+                            cw::strength::MEDIUM)).unwrap();
+
+                        s.add_constraint(cw::Constraint::new(
+                            height.clone(),
+                            cw::RelationalOperator::LessOrEqual,
+                            cw::strength::STRONG)).unwrap();
+                        s.add_constraint(cw::Constraint::new(
+                            height,
+                            cw::RelationalOperator::Equal,
+                            cw::strength::MEDIUM)).unwrap();
+                    });
+
+                    appls.append_all(quote! {
+                        let cpos = (
+                            pos.0 + s.get_value(kas::cw_var!(self, w, #w0)) as i32,
+                            pos.1 + s.get_value(kas::cw_var!(self, h, #h0)) as i32);
+                        //println!("Child {}, Grid ({}, {}), position {:?}", #ci, #w0, #h0, cpos);
+                        self.#ident.apply_constraints(tk, s, cpos);
+                    });
+                }
+
+                constraints.append_all(quote! {
+                    s.add_constraint(cw::Constraint::new(
+                        cw::Expression::from(kas::cw_var!(self, w, 0)),
+                        cw::RelationalOperator::Equal,
+                        cw::strength::STRONG * 10.0)).unwrap();
+                    s.add_constraint(cw::Constraint::new(
+                        cw::Expression::from(kas::cw_var!(self, h, 0)),
+                        cw::RelationalOperator::Equal,
+                        cw::strength::STRONG * 10.0)).unwrap();
+                });
+                for i in 0..mw {
+                    constraints.append_all(quote!{
+                    s.add_constraint(cw::Constraint::new(
+                        cw::Expression::from(kas::cw_var!(self, w, #i + 1)) - kas::cw_var!(self, w, #i),
+                        cw::RelationalOperator::GreaterOrEqual,
+                        cw::strength::STRONG * 10.0)).unwrap();
+                    });
+                }
+                for i in 0..mh {
+                    constraints.append_all(quote!{
+                    s.add_constraint(cw::Constraint::new(
+                        cw::Expression::from(kas::cw_var!(self, h, #i + 1)) - kas::cw_var!(self, h, #i),
+                        cw::RelationalOperator::GreaterOrEqual,
+                        cw::strength::STRONG * 10.0)).unwrap();
+                    });
+                }
+                constraints.append_all(quote! {
+                    s.add_constraint(cw::Constraint::new(
+                        cw::Expression::from(kas::cw_var!(self, w, #mw)) - kas::cw_var!(self, w),
+                        cw::RelationalOperator::Equal,
+                        cw::strength::STRONG * 10.0)).unwrap();
+                    s.add_constraint(cw::Constraint::new(
+                        cw::Expression::from(kas::cw_var!(self, h, #mh)) - kas::cw_var!(self, h),
+                        cw::RelationalOperator::Equal,
+                        cw::strength::STRONG * 10.0)).unwrap();
+                });
             } else {
                 return Err(Error::new(l.span(),
                     "expected one of: horizontal, vertical, grid"));
@@ -160,13 +250,14 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
             use kas::{Core, cw};
             #constraints
         }
-        
+
         fn apply_constraints(&mut self, tk: &mut kas::TkWidget,
             s: &kas::cw::Solver, pos: kas::Coord)
         {
             use kas::Core;
+            //println!("Pos: {:?}", pos);
             #appls
-            
+
             let w = s.get_value(kas::cw_var!(self, w)) as u32;
             let h = s.get_value(kas::cw_var!(self, h)) as u32;
             let tkd = self.tkd();
