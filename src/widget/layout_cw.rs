@@ -59,5 +59,11 @@ pub trait Layout: Core + fmt::Debug {
 #[macro_export]
 macro_rules! cw_var {
     ($w:expr, w) => { $crate::cw::Variable::from_usize($w.number() as usize) };
-    ($w:expr, h) => { $crate::cw::Variable::from_usize(($w.number() + 0x1000_0000) as usize) };
+    ($w:expr, h) => { $crate::cw::Variable::from_usize($w.number() as usize + 0x1000_0000) };
+    ($w:expr, w, n:usize) => {
+        $crate::cw::Variable::from_usize($w.number() as usize + (0x1_0000 * n))
+    };
+    ($w:expr, h, n:usize) => {
+        $crate::cw::Variable::from_usize($w.number() as usize + (0x1_0000 * n) + 0x1000_0000)
+    };
 }
