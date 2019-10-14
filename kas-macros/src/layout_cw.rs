@@ -12,9 +12,11 @@ use crate::args::Child;
 pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
     -> Result<TokenStream>
 {
-    let (constraints, appls) = if children.is_empty() {
+    let mut constraints;
+    let mut appls;
+    if children.is_empty() {
         // TODO: warn on invalid layout specification
-        (quote!{
+        constraints = quote!{
             let v_w = kas::cw_var!(self, w);
             let v_h = kas::cw_var!(self, h);
             
@@ -48,11 +50,12 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
             s.add_edit_variable(v_h, cw::strength::WEAK).unwrap();
             s.suggest_value(v_h, size.1 as f64);
             */
-        }, quote!{})
+        };
+        appls = quote!{};
     } else if children.len() == 1 {
         // TODO: warn on invalid layout specification
         let ident = &children[0].ident;
-        (quote!{
+        constraints = quote!{
             s.add_constraint(cw::Constraint::new(
                 cw::Expression::from(kas::cw_var!(self, w)) - kas::cw_var!(self.#ident, w),
                 cw::RelationalOperator::Equal,
@@ -62,20 +65,21 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
                 cw::RelationalOperator::Equal,
                 cw::strength::STRONG)).unwrap();
             self.#ident.init_constraints(tk, s, _use_default);
-        }, quote!{})
+        };
+        appls = quote!{};
     } else {
         if let Some(l) = layout {
             if l == "horizontal" {
-                let mut constr = quote!{
+                constraints = quote!{
                     let mut width = cw::Expression::from(kas::cw_var!(self, w));
                     let height = cw::Expression::from(kas::cw_var!(self, h));
                 };
-                let mut appls = quote!{ let mut cpos = pos; };
+                appls = quote!{ let mut cpos = pos; };
                 
                 for child in children {
                     let ident = &child.ident;
                     
-                    constr.append_all(quote!{
+                    constraints.append_all(quote!{
                         let child_v_w = kas::cw_var!(self.#ident, w);
                         let child_v_h = kas::cw_var!(self.#ident, h);
                         width -= child_v_w;
@@ -96,25 +100,23 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
                     });
                 }
                 
-                constr.append_all(quote!{
+                constraints.append_all(quote!{
                     s.add_constraint(cw::Constraint::new(
                         width,
                         cw::RelationalOperator::Equal,
                         cw::strength::STRONG * 10.0)).unwrap();
                 });
-                
-                (constr, appls)
             } else if l == "vertical" {
-                let mut constr = quote!{
+                constraints = quote!{
                     let width = cw::Expression::from(kas::cw_var!(self, w));
                     let mut height = cw::Expression::from(kas::cw_var!(self, h));
                 };
-                let mut appls = quote!{ let mut cpos = pos; };
+                appls = quote!{ let mut cpos = pos; };
                 
                 for child in children {
                     let ident = &child.ident;
                     
-                    constr.append_all(quote!{
+                    constraints.append_all(quote!{
                         let child_v_w = kas::cw_var!(self.#ident, w);
                         let child_v_h = kas::cw_var!(self.#ident, h);
                         s.add_constraint(cw::Constraint::new(
@@ -135,14 +137,12 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>)
                     });
                 }
                 
-                constr.append_all(quote!{
+                constraints.append_all(quote!{
                     s.add_constraint(cw::Constraint::new(
                         height,
                         cw::RelationalOperator::Equal,
                         cw::strength::STRONG * 10.0)).unwrap();
                 });
-                
-                (constr, appls)
             } else if l == "grid" {
                 panic!("not yet implemented: grid layout (with cassowary layout feature)")
             } else {
