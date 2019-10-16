@@ -100,7 +100,7 @@ impl<W: Widget> SimpleWindow<W> {
     pub fn new(w: W) -> SimpleWindow<W> {
         SimpleWindow {
             core: Default::default(),
-            min_size: Size::zero(),
+            min_size: Size::ZERO,
             solver: crate::cw::Solver::new(),
             w,
             fns: Vec::new(),
@@ -181,7 +181,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
             self.solver.get_value(v_h) as u32,
         );
 
-        self.w.apply_constraints(tk, &self.solver, Coord::zero());
+        self.w.apply_constraints(tk, &self.solver, Coord::ZERO);
     }
 
     fn resize(&mut self, tk: &mut dyn TkWidget, size: Size) {
@@ -194,7 +194,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
             .suggest_value(cw_var!(self, h), size.1 as f64)
             .unwrap();
 
-        self.w.apply_constraints(tk, &self.solver, Coord::zero());
+        self.w.apply_constraints(tk, &self.solver, Coord::ZERO);
     }
 
     fn callbacks(&self) -> Vec<(usize, Condition)> {

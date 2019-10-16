@@ -11,9 +11,7 @@ pub struct Coord(pub i32, pub i32);
 
 impl Coord {
     /// A coord of `(0, 0)`
-    pub fn zero() -> Coord {
-        Coord(0, 0)
-    }
+    pub const ZERO: Coord = Coord(0, 0);
 }
 
 impl From<(i32, i32)> for Coord {
@@ -28,14 +26,10 @@ pub struct Size(pub u32, pub u32);
 
 impl Size {
     /// A size of `(0, 0)`
-    pub fn zero() -> Size {
-        Size(0, 0)
-    }
+    pub const ZERO: Size = Size(0, 0);
     
     /// Maximum possible size
-    pub fn max() -> Size {
-        Size(std::u32::MAX, std::u32::MAX)
-    }
+    pub const MAX: Size = Size(std::u32::MAX, std::u32::MAX);
 }
 
 impl From<(u32, u32)> for Size {
