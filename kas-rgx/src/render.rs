@@ -105,7 +105,7 @@ impl Widget {
         Widget {
             rect: kas::Rect {
                 pos: (0, 0),
-                size: (0, 0),
+                size: Size::zero(),
             },
             details: match w.class() {
                 Container => WidgetDetails::Container,
@@ -121,8 +121,8 @@ impl Widget {
 
     fn size_hints(&self) -> (Size, Size) {
         // FIXME
-        let min = (20, 20);
-        let hint = (80, 40);
+        let min = Size(20, 20);
+        let hint = Size(80, 40);
         (min, hint)
     }
 

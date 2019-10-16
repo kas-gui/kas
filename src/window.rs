@@ -104,7 +104,7 @@ impl<W: Widget> SimpleWindow<W> {
     pub fn new(w: W) -> SimpleWindow<W> {
         SimpleWindow {
             core: Default::default(),
-            min_size: (0, 0),
+            min_size: Size::zero(),
             #[cfg(feature = "cassowary")]
             solver: crate::cw::Solver::new(),
             w,
@@ -182,7 +182,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
             .add_edit_variable(v_h, cw::strength::MEDIUM * 100.0)
             .unwrap();
 
-        self.min_size = (
+        self.min_size = Size(
             self.solver.get_value(v_w) as u32,
             self.solver.get_value(v_h) as u32,
         );

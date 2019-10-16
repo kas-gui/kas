@@ -9,7 +9,26 @@
 pub type Coord = (i32, i32);
 
 /// A `(w, h)` size.
-pub type Size = (u32, u32);
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
+pub struct Size(pub u32, pub u32);
+
+impl Size {
+    /// A size of `(0, 0)`
+    pub fn zero() -> Size {
+        Size(0, 0)
+    }
+    
+    /// Maximum possible size
+    pub fn max() -> Size {
+        Size(std::u32::MAX, std::u32::MAX)
+    }
+}
+
+impl From<(u32, u32)> for Size {
+    fn from(size: (u32, u32)) -> Size {
+        Size(size.0, size.1)
+    }
+}
 
 /// Child widget identifier
 //TODO: make a tuple struct?

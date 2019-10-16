@@ -58,7 +58,7 @@ impl Window {
         widgets.add(win.as_widget_mut());
 
         win.configure_widgets(&mut widgets);
-        win.resize(&mut widgets, size);
+        win.resize(&mut widgets, size.into());
 
         let w = Window {
             win,
@@ -164,7 +164,7 @@ impl Window {
 
         // TODO: work with logical size to allow DPI scaling
         self.win.configure_widgets(&mut self.widgets);
-        self.win.resize(&mut self.widgets, size);
+        self.win.resize(&mut self.widgets, size.into());
     }
 
     fn do_draw(&mut self) {
