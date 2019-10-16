@@ -35,7 +35,7 @@ impl From<(u32, u32)> for Size {
 pub type WidgetId = u32;
 
 /// A rectangular region.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Copy, Default, Debug)]
 pub struct Rect {
     pub pos: Coord,
     pub size: Size, // TODO: more efficient to store pos+size ?
@@ -43,7 +43,7 @@ pub struct Rect {
 
 impl Rect {
     /// Check whether the given coordinate is contained within this rect
-    pub fn contains(&self, c: &Coord) -> bool {
+    pub fn contains(&self, c: Coord) -> bool {
         c.0 >= self.pos.0
             && c.0 < self.pos.0 + (self.size.0 as i32)
             && c.1 >= self.pos.1

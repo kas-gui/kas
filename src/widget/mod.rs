@@ -38,8 +38,8 @@ pub trait Core {
 
     /// Get the widget's region, relative to its parent.
     #[inline]
-    fn rect(&self) -> &Rect {
-        &self.core_data().rect
+    fn rect(&self) -> Rect {
+        self.core_data().rect
     }
 }
 

@@ -139,7 +139,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
             });
             ev_to_coord.append_all(quote! {
-                if self.#ident.rect().contains(coord) {
+                if self.#ident.rect().contains(*coord) {
                     let r = self.#ident.handle(_tk, event);
                     #handler
                 } else
