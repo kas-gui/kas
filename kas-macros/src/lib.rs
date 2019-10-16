@@ -61,22 +61,12 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         impl #impl_generics kas::Core
             for #name #ty_generics #where_clause
         {
-            fn number(&self) -> u32 {
-                use kas::Core;
-                self.#core.number()
+            fn core_data(&self) -> &kas::CoreData {
+                &self.#core
             }
-            fn set_number(&mut self, number: u32) {
-                use kas::Core;
-                self.#core.set_number(number);
-            }
-
-            fn rect(&self) -> &kas::Rect {
-                use kas::Core;
-                self.#core.rect()
-            }
-            fn rect_mut(&mut self) -> &mut kas::Rect {
-                use kas::Core;
-                self.#core.rect_mut()
+            
+            fn core_data_mut(&mut self) -> &mut kas::CoreData {
+                &mut self.#core
             }
         }
 

@@ -254,15 +254,14 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>) -> Result<TokenS
         fn apply_constraints(&mut self, tk: &mut kas::TkWidget,
             s: &kas::cw::Solver, pos: kas::Coord)
         {
-            use kas::{Core, Size};
+            use kas::{Core, Rect, Size};
             //println!("Pos: {:?}", pos);
             #appls
 
-            let w = s.get_value(kas::cw_var!(self, w)) as u32;
-            let h = s.get_value(kas::cw_var!(self, h)) as u32;
-            let rect = self.rect_mut();
-            rect.pos = pos;
-            rect.size = Size(w, h);
+            let size = Size(
+                s.get_value(kas::cw_var!(self, w)) as u32,
+                s.get_value(kas::cw_var!(self, h)) as u32);
+            self.core_data_mut().rect = Rect { pos, size };
         }
     })
 }

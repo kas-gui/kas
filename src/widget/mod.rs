@@ -16,60 +16,49 @@ pub use self::layout::Layout;
 pub use self::class::Class;
 pub use self::data::*;
 
-/// Common widget behaviour
+/// Common widget data
 ///
-/// This is a base trait of [`Widget`] and should not need to be used directly.
-/// It is implemented automatically by the `derive(Widget)` macro.
+/// This is a base trait of [`Widget`] and usually implemented by the
+/// `derive(Widget)` macro.
 pub trait Core {
-    /// Get the widget's number
-    fn number(&self) -> u32;
+    /// Get direct access to the [`CoreData`] providing property storage.
+    fn core_data(&self) -> &CoreData;
 
-    /// Set the widget's number
-    ///
-    /// This should only be called during widget enumeration. It will panic if
-    /// the number has already been set (to anything other than 0).
-    fn set_number(&mut self, number: u32);
+    /// Get mutable access to the [`CoreData`] providing property storage.
+    /// 
+    /// This should not normally be needed by user code.
+    #[doc(hidden)]
+    fn core_data_mut(&mut self) -> &mut CoreData;
+
+    /// Get the widget's number
+    #[inline]
+    fn number(&self) -> u32 {
+        self.core_data().number
+    }
 
     /// Get the widget's region, relative to its parent.
-    fn rect(&self) -> &Rect;
-
-    /// Get mutable access to the widget's region
-    fn rect_mut(&mut self) -> &mut Rect;
+    #[inline]
+    fn rect(&self) -> &Rect {
+        &self.core_data().rect
+    }
 }
 
 /// Common widget data
 ///
-/// Widgets should normally implement `Core` by use of an embedded field
-/// of this type (i.e. composition). See documentation of the [`Widget`] type.
+/// All widgets should embed a `core: CoreData` field in order to implement the
+/// [`Core`] macro.
 #[derive(Clone, Default, Debug)]
 pub struct CoreData {
-    number: u32,
-    rect: Rect,
+    pub number: u32,
+    pub rect: Rect,
 }
 
 impl Core for CoreData {
     #[inline]
-    fn number(&self) -> u32 {
-        self.number
-    }
-
+    fn core_data(&self) -> &CoreData { self }
+    
     #[inline]
-    fn set_number(&mut self, number: u32) {
-        if self.number != 0 {
-            panic!("widget number has been set twice");
-        }
-        self.number = number;
-    }
-
-    #[inline]
-    fn rect(&self) -> &Rect {
-        &self.rect
-    }
-
-    #[inline]
-    fn rect_mut(&mut self) -> &mut Rect {
-        &mut self.rect
-    }
+    fn core_data_mut(&mut self) -> &mut CoreData { self }
 }
 
 /// A widget encapsulates code for event handling and/or drawing some feature
@@ -123,7 +112,7 @@ pub trait Widget: Layout {
         for i in 0..self.len() {
             self.get_mut(i).map(|w| n = w.enumerate(n));
         }
-        self.set_number(n);
+        self.core_data_mut().number = n;
         n + 1
     }
 }
