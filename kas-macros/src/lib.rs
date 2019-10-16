@@ -70,15 +70,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 self.#core.set_number(number);
             }
 
-            fn tkd(&self) -> kas::TkData {
-                use kas::Core;
-                self.#core.tkd()
-            }
-            fn set_tkd(&mut self, tkd: kas::TkData) {
-                use kas::Core;
-                self.#core.set_tkd(tkd)
-            }
-
             fn rect(&self) -> &kas::Rect {
                 use kas::Core;
                 self.#core.rect()

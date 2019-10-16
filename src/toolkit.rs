@@ -4,31 +4,11 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Toolkit interface
+//! 
+//! TODO: "toolkit" is no longer an apt description of this internal API, but
+//! rather "theme + renderer".
 
-use crate::widget::{Size};
-
-/// The type of per-widget toolkit data.
-///
-/// May be used however the toolkit deems fit, except that widgets are allowed
-/// to default-construct this (i.e. set to zero), and valid values should not be
-/// zero.
-///
-/// Toolkits may with to transmute data to/from their own type(s). In this case
-/// they should ensure (a) that `size_of::<TkData>()` is sufficient, (b) that
-/// `align_of::<TkData>()` is sufficient, (c) gracefully handle the case
-/// `TkData` is larger than their type.
-#[derive(Clone, Debug, Default)]
-pub struct TkData(pub u64);
-
-impl TkData {
-    /// This property is true for default-constructed values but should be false
-    /// after the data has been set by the toolkit.
-    ///
-    /// Essentially this test is just that all data is zero.
-    pub fn is_null(&self) -> bool {
-        self.0 == 0
-    }
-}
+use crate::{Size, Widget};
 
 /// Common widget properties. Implemented by the toolkit.
 ///
@@ -40,5 +20,5 @@ impl TkData {
 /// methods, depending on which functionality from the library is used.
 pub trait TkWidget {
     /// Get the widget's minimum and preferred sizes.
-    fn size_hints(&self, tkd: TkData) -> (Size, Size);
+    fn size_hints(&self, w: &dyn Widget) -> (Size, Size);
 }

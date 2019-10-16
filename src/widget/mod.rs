@@ -15,7 +15,6 @@ pub use self::layout::Layout;
 
 pub use self::class::Class;
 pub use self::data::*;
-use crate::toolkit::TkData;
 
 /// Common widget behaviour
 ///
@@ -31,14 +30,6 @@ pub trait Core {
     /// the number has already been set (to anything other than 0).
     fn set_number(&mut self, number: u32);
 
-    /// Get the toolkit data associated with this widget
-    fn tkd(&self) -> TkData;
-
-    /// Set the toolkit data associated with this widget
-    ///
-    /// This will panic if the toolkit data is not null.
-    fn set_tkd(&mut self, tkd: TkData);
-
     /// Get the widget's region, relative to its parent.
     fn rect(&self) -> &Rect;
 
@@ -53,7 +44,6 @@ pub trait Core {
 #[derive(Clone, Default, Debug)]
 pub struct CoreData {
     number: u32,
-    tkd: TkData,
     rect: Rect,
 }
 
@@ -69,19 +59,6 @@ impl Core for CoreData {
             panic!("widget number has been set twice");
         }
         self.number = number;
-    }
-
-    #[inline]
-    fn tkd(&self) -> TkData {
-        self.tkd.clone()
-    }
-
-    #[inline]
-    fn set_tkd(&mut self, tkd: TkData) {
-        if !self.tkd.is_null() && !tkd.is_null() {
-            panic!("widget's toolkit data has been set twice");
-        }
-        self.tkd = tkd;
     }
 
     #[inline]

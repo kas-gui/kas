@@ -8,7 +8,7 @@
 use rgx::core::*;
 use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
 
-use kas::{Class, Size, TkData, TkWidget, WidgetId};
+use kas::{Class, Size, TkWidget, Widget, WidgetId};
 
 // TODO: we can probably remove the ws field entirely, along with
 // most TkWidget methods
@@ -86,7 +86,7 @@ impl Widgets {
 }
 
 impl TkWidget for Widgets {
-    fn size_hints(&self, _: TkData) -> (Size, Size) {
+    fn size_hints(&self, _: &dyn Widget) -> (Size, Size) {
         // FIXME
         let min = Size(20, 20);
         let hint = Size(80, 40);

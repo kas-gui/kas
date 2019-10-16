@@ -17,7 +17,6 @@ use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 
 use crate::render::Widgets;
-// use crate::tkd::WidgetAbstraction;
 
 /// Per-window data
 pub struct Window {

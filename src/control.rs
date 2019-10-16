@@ -137,7 +137,7 @@ impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
 //     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<M> {
         //         match action {
         //             Action::Toggle => {
-        //                 self.state = tk.get_bool(self.tkd());  // sync
+        //                 self.state = tk.get_bool(self);  // sync
         //                 ((self.on_toggle)(self.state)).into()
         //             }
         //             a @ _ => err_unhandled(a)

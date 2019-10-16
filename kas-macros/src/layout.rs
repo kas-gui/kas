@@ -18,7 +18,7 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>) -> Result<TokenS
             let v_w = kas::cw_var!(self, w);
             let v_h = kas::cw_var!(self, h);
 
-            let (min, hint) = tk.size_hints(self.tkd());
+            let (min, hint) = tk.size_hints(self);
 
             // minimum size constraints:
             s.add_constraint(cw::Constraint::new(
@@ -260,7 +260,6 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>) -> Result<TokenS
 
             let w = s.get_value(kas::cw_var!(self, w)) as u32;
             let h = s.get_value(kas::cw_var!(self, h)) as u32;
-            let tkd = self.tkd();
             let rect = self.rect_mut();
             rect.pos = pos;
             rect.size = Size(w, h);
