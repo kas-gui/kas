@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 
 use crate::event::{Event, Handler, Response};
 use crate::macros::Widget;
-use crate::{Class, Core, CoreData, Editable, HasText, TkWidget};
+use crate::{Class, CoreData, Editable, HasText, TkWidget};
 
 /// A simple text label
 #[widget(class = Class::Label(self))]
@@ -48,8 +48,7 @@ impl HasText for Label {
         &self.text
     }
 
-    fn set_string(&mut self, tk: &mut dyn TkWidget, text: String) {
-        tk.set_text(self.tkd(), &text);
+    fn set_string(&mut self, _tk: &mut dyn TkWidget, text: String) {
         self.text = text;
     }
 }
@@ -116,8 +115,7 @@ impl<H> HasText for Entry<H> {
         &self.text
     }
 
-    fn set_string(&mut self, tk: &mut dyn TkWidget, text: String) {
-        tk.set_text(self.tkd(), &text);
+    fn set_string(&mut self, _tk: &mut dyn TkWidget, text: String) {
         self.text = text;
     }
 }

@@ -10,7 +10,7 @@ use std::fmt::{self, Debug};
 
 use crate::event::{Event, Handler, Response};
 use crate::macros::Widget;
-use crate::{Class, Core, CoreData, HasBool, HasText, TkWidget};
+use crate::{Class, CoreData, HasBool, HasText, TkWidget};
 
 /// A checkable box with optional label
 #[widget(class = Class::CheckBox(self))]
@@ -105,9 +105,8 @@ impl<H> HasBool for CheckBox<H> {
         self.state
     }
 
-    fn set_bool(&mut self, tk: &mut dyn TkWidget, state: bool) {
+    fn set_bool(&mut self, _tk: &mut dyn TkWidget, state: bool) {
         self.state = state;
-        tk.set_bool(self.tkd(), state);
     }
 }
 
@@ -116,8 +115,7 @@ impl<H> HasText for CheckBox<H> {
         &self.label
     }
 
-    fn set_string(&mut self, tk: &mut dyn TkWidget, text: String) {
-        tk.set_text(self.tkd(), &text);
+    fn set_string(&mut self, _tk: &mut dyn TkWidget, text: String) {
         self.label = text;
     }
 }
@@ -212,8 +210,7 @@ impl<H> HasText for TextButton<H> {
         &self.label
     }
 
-    fn set_string(&mut self, tk: &mut dyn TkWidget, text: String) {
-        tk.set_text(self.tkd(), &text);
+    fn set_string(&mut self, _tk: &mut dyn TkWidget, text: String) {
         self.label = text;
     }
 }

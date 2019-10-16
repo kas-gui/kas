@@ -59,51 +59,17 @@ impl TkWidget for Widgets {
     fn size_hints(&self, tkd: TkData) -> (Size, Size) {
         self.ws[tkd.0 as usize].size_hints()
     }
-
-    fn get_bool(&self, tkd: TkData) -> bool {
-        self.ws[tkd.0 as usize].get_bool()
-    }
-
-    fn set_bool(&mut self, tkd: TkData, state: bool) {
-        self.ws[tkd.0 as usize].set_bool(state)
-    }
-
-    fn set_text(&mut self, tkd: TkData, text: &str) {
-        self.ws[tkd.0 as usize].set_text(text)
-    }
 }
 
 trait Drawable: kas::Widget {}
 
 struct Widget {
-    details: WidgetDetails,
-}
-
-enum WidgetDetails {
-    Container,
-    Label(String),
-    Entry(bool, String),
-    Button(String),
-    CheckBox(bool, String),
-    Frame,
-    Window,
 }
 
 impl Widget {
     #[inline]
-    fn new(w: &mut dyn kas::Widget) -> Self {
-        use kas::Class::*;
-        Widget {
-            details: match w.class() {
-                Container => WidgetDetails::Container,
-                Label(c) => WidgetDetails::Label(c.get_text().into()),
-                Entry(c) => WidgetDetails::Entry(c.is_editable(), c.get_text().into()),
-                Button(c) => WidgetDetails::Button(c.get_text().into()),
-                CheckBox(c) => WidgetDetails::CheckBox(c.get_bool(), c.get_text().into()),
-                Frame => WidgetDetails::Frame,
-                Window => WidgetDetails::Window,
-            },
-        }
+    fn new(_: &mut dyn kas::Widget) -> Self {
+        Widget {}
     }
 
     fn size_hints(&self) -> (Size, Size) {
@@ -111,30 +77,6 @@ impl Widget {
         let min = Size(20, 20);
         let hint = Size(80, 40);
         (min, hint)
-    }
-
-    fn get_bool(&self) -> bool {
-        use WidgetDetails::*;
-        match &self.details {
-            Entry(b, ..) | CheckBox(b, ..) => *b,
-            _ => panic!("Widget does not support get_bool!"),
-        }
-    }
-
-    fn set_bool(&mut self, state: bool) {
-        use WidgetDetails::*;
-        match &mut self.details {
-            Entry(b, ..) | CheckBox(b, ..) => *b = state,
-            _ => panic!("Widget does not support set_bool!"),
-        }
-    }
-
-    fn set_text(&mut self, text: &str) {
-        use WidgetDetails::*;
-        match &mut self.details {
-            Label(s) | Entry(_, s) | Button(s) | CheckBox(_, s) => *s = text.into(),
-            _ => panic!("Widget does not support set_text!"),
-        }
     }
 
     pub fn draw(

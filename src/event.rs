@@ -230,7 +230,8 @@ pub trait Handler: Core {
     // fn handle_action(&mut self, tk: &mut dyn TkWidget, _: Action) -> Response<Self::Msg> {}
     
     /// Handle a low-level event. Normally the user should not override this.
-    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
+    // TODO: is there actually any need to pass TkWidget?
+    fn handle(&mut self, _tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
         match event {
             Event::ToChild(..) => err_unhandled(event),
             Event::ToCoord(_, ev) => {

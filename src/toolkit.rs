@@ -5,7 +5,7 @@
 
 //! Toolkit interface
 
-use crate::widget::{Rect, Size};
+use crate::widget::{Size};
 
 /// The type of per-widget toolkit data.
 ///
@@ -41,19 +41,4 @@ impl TkData {
 pub trait TkWidget {
     /// Get the widget's minimum and preferred sizes.
     fn size_hints(&self, tkd: TkData) -> (Size, Size);
-
-    /// Get the widget's boolean state
-    fn get_bool(&self, tkd: TkData) -> bool;
-
-    /// Set the widget's boolean state
-    ///
-    /// As with the [`HasBool`] trait, this can be used for checkboxes,
-    /// radio buttons and toggle switches.
-    fn set_bool(&mut self, tkd: TkData, state: bool);
-
-    /// Set the widget's text
-    ///
-    /// As with the [`HasText`] trait, this applies to both labels and text
-    /// content, depending on the widget.
-    fn set_text(&mut self, tkd: TkData, text: &str);
 }
