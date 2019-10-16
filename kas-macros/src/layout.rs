@@ -264,7 +264,6 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>) -> Result<TokenS
             let rect = self.rect_mut();
             rect.pos = pos;
             rect.size = Size(w, h);
-            tk.set_rect(tkd, rect);
         }
     })
 }

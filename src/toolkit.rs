@@ -42,14 +42,6 @@ pub trait TkWidget {
     /// Get the widget's minimum and preferred sizes.
     fn size_hints(&self, tkd: TkData) -> (Size, Size);
 
-    /// Get the widget's position and size.
-    fn get_rect(&self, tkd: TkData) -> Rect;
-
-    /// Set the widget's position and size.
-    ///
-    /// Does not need to update child widgets.
-    fn set_rect(&mut self, tkd: TkData, rect: &Rect);
-
     /// Get the widget's boolean state
     fn get_bool(&self, tkd: TkData) -> bool;
 

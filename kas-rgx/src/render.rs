@@ -60,14 +60,6 @@ impl TkWidget for Widgets {
         self.ws[tkd.0 as usize].size_hints()
     }
 
-    fn get_rect(&self, tkd: TkData) -> kas::Rect {
-        self.ws[tkd.0 as usize].get_rect()
-    }
-
-    fn set_rect(&mut self, tkd: TkData, rect: &kas::Rect) {
-        self.ws[tkd.0 as usize].set_rect(rect)
-    }
-
     fn get_bool(&self, tkd: TkData) -> bool {
         self.ws[tkd.0 as usize].get_bool()
     }
@@ -84,7 +76,6 @@ impl TkWidget for Widgets {
 trait Drawable: kas::Widget {}
 
 struct Widget {
-    rect: kas::Rect,
     details: WidgetDetails,
 }
 
@@ -103,10 +94,6 @@ impl Widget {
     fn new(w: &mut dyn kas::Widget) -> Self {
         use kas::Class::*;
         Widget {
-            rect: kas::Rect {
-                pos: (0, 0),
-                size: Size::zero(),
-            },
             details: match w.class() {
                 Container => WidgetDetails::Container,
                 Label(c) => WidgetDetails::Label(c.get_text().into()),
@@ -124,14 +111,6 @@ impl Widget {
         let min = Size(20, 20);
         let hint = Size(80, 40);
         (min, hint)
-    }
-
-    fn get_rect(&self) -> kas::Rect {
-        self.rect.clone()
-    }
-
-    fn set_rect(&mut self, rect: &kas::Rect) {
-        self.rect = rect.clone();
     }
 
     fn get_bool(&self) -> bool {
@@ -170,9 +149,10 @@ impl Widget {
         // Note: widget coordinates place the origin at the top-left.
         // Draw coordinates use f32 with the origin at the bottom-left.
         // Note: it's important to pass smallest coord to Shape::Rectangle first
-        let (x0, y) = self.rect.pos_f32();
+        let rect = widget.rect();
+        let (x0, y) = rect.pos_f32();
         let y1 = height - y;
-        let (w, h) = self.rect.size_f32();
+        let (w, h) = rect.size_f32();
         let (x1, y0) = (x0 + w, y1 - h);
 
         let mut background = Rgba::new(1.0, 1.0, 1.0, 0.1);
