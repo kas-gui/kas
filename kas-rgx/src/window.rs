@@ -55,7 +55,6 @@ impl Window {
         let num1 = win.enumerate(num0);
 
         let mut widgets = Widgets::new();
-        widgets.add(win.as_widget_mut());
 
         win.configure_widgets(&mut widgets);
         win.resize(&mut widgets, size.into());

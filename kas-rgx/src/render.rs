@@ -13,25 +13,13 @@ use kas::{Class, Size, TkData, TkWidget, WidgetId};
 // TODO: we can probably remove the ws field entirely, along with
 // most TkWidget methods
 pub(crate) struct Widgets {
-    ws: Vec<Widget>,
     pub(crate) hover: Option<WidgetId>,
 }
 
 impl Widgets {
     pub fn new() -> Self {
         Widgets {
-            ws: vec![],
             hover: None,
-        }
-    }
-
-    pub fn add(&mut self, w: &mut dyn kas::Widget) {
-        w.set_tkd(TkData(self.ws.len() as u64));
-
-        self.ws.push(Widget::new(w));
-
-        for i in 0..w.len() {
-            self.add(w.get_mut(i).unwrap());
         }
     }
 
@@ -39,49 +27,22 @@ impl Widgets {
         let mut batch = Batch::new();
 
         let height = size.1 as f32;
-        self.draw_widget(&mut batch, height, win.as_widget());
+        self.draw_iter(&mut batch, height, win.as_widget());
 
         batch.finish(rend)
     }
 
-    fn draw_widget(&self, batch: &mut Batch, height: f32, w: &dyn kas::Widget) {
+    fn draw_iter(&self, batch: &mut Batch, height: f32, widget: &dyn kas::Widget) {
         // draw widget; recurse over children
-        let n = w.tkd().0 as usize;
-        self.ws[n].draw(self, batch, height, w);
+        self.draw_widget(batch, height, widget);
 
-        for n in 0..w.len() {
-            self.draw_widget(batch, height, w.get(n).unwrap());
+        for n in 0..widget.len() {
+            self.draw_iter(batch, height, widget.get(n).unwrap());
         }
     }
-}
-
-impl TkWidget for Widgets {
-    fn size_hints(&self, tkd: TkData) -> (Size, Size) {
-        self.ws[tkd.0 as usize].size_hints()
-    }
-}
-
-trait Drawable: kas::Widget {}
-
-struct Widget {
-}
-
-impl Widget {
-    #[inline]
-    fn new(_: &mut dyn kas::Widget) -> Self {
-        Widget {}
-    }
-
-    fn size_hints(&self) -> (Size, Size) {
-        // FIXME
-        let min = Size(20, 20);
-        let hint = Size(80, 40);
-        (min, hint)
-    }
-
-    pub fn draw(
-        &self,
-        widgets: &Widgets,
+    
+    fn draw_widget(
+        self: &Widgets,
         batch: &mut Batch,
         height: f32,
         widget: &dyn kas::Widget,
@@ -111,7 +72,7 @@ impl Widget {
         }
 
         // draw margin
-        let r = if Some(widget.number()) == widgets.hover {
+        let r = if Some(widget.number()) == self.hover {
             1.0
         } else {
             0.5
@@ -121,5 +82,14 @@ impl Widget {
             Stroke::new(2.0, Rgba::new(r, 0.5, 0.5, 1.0)),
             Fill::Solid(background),
         ));
+    }
+}
+
+impl TkWidget for Widgets {
+    fn size_hints(&self, _: TkData) -> (Size, Size) {
+        // FIXME
+        let min = Size(20, 20);
+        let hint = Size(80, 40);
+        (min, hint)
     }
 }
