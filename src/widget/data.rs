@@ -6,7 +6,21 @@
 //! Utility data types
 
 /// An `(x, y)` coordinate.
-pub type Coord = (i32, i32);
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
+pub struct Coord(pub i32, pub i32);
+
+impl Coord {
+    /// A coord of `(0, 0)`
+    pub fn zero() -> Coord {
+        Coord(0, 0)
+    }
+}
+
+impl From<(i32, i32)> for Coord {
+    fn from(coord: (i32, i32)) -> Coord {
+        Coord(coord.0, coord.1)
+    }
+}
 
 /// A `(w, h)` size.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]

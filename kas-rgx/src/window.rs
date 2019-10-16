@@ -101,13 +101,13 @@ impl Window {
                 position,
                 modifiers,
             } => {
-                let coord = position.to_physical(self.ww.hidpi_factor()).into();
+                let coord: (i32, i32) = position.to_physical(self.ww.hidpi_factor()).into();
                 let ev = EventCoord::CursorMoved {
                     device_id,
                     modifiers,
                 };
                 self.win
-                    .handle(&mut self.widgets, Event::ToCoord(coord, ev))
+                    .handle(&mut self.widgets, Event::ToCoord(coord.into(), ev))
             }
             CursorLeft { .. } => {
                 self.set_hover(None);

@@ -10,7 +10,7 @@ use std::fmt::{self, Debug};
 use crate::callback::Condition;
 use crate::event::{err_num, err_unhandled, Event, Handler, Response};
 use crate::macros::Widget;
-use crate::{Class, Core, CoreData, Size, TkWidget, Widget};
+use crate::{Class, Core, CoreData, Coord, Size, TkWidget, Widget};
 
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be
@@ -181,7 +181,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
             self.solver.get_value(v_h) as u32,
         );
 
-        self.w.apply_constraints(tk, &self.solver, (0, 0));
+        self.w.apply_constraints(tk, &self.solver, Coord::zero());
     }
 
     fn resize(&mut self, tk: &mut dyn TkWidget, size: Size) {
@@ -194,7 +194,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
             .suggest_value(cw_var!(self, h), size.1 as f64)
             .unwrap();
 
-        self.w.apply_constraints(tk, &self.solver, (0, 0));
+        self.w.apply_constraints(tk, &self.solver, Coord::zero());
     }
 
     fn callbacks(&self) -> Vec<(usize, Condition)> {

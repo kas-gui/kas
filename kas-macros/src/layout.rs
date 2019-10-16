@@ -189,7 +189,7 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>) -> Result<TokenS
                     });
 
                     appls.append_all(quote! {
-                        let cpos = (
+                        let cpos = Coord(
                             pos.0 + s.get_value(kas::cw_var!(self, w, #w0)) as i32,
                             pos.1 + s.get_value(kas::cw_var!(self, h, #h0)) as i32);
                         //println!("Child {}, Grid ({}, {}), position {:?}", #ci, #w0, #h0, cpos);
@@ -254,7 +254,7 @@ pub(crate) fn fns(children: &Vec<Child>, layout: Option<Ident>) -> Result<TokenS
         fn apply_constraints(&mut self, tk: &mut kas::TkWidget,
             s: &kas::cw::Solver, pos: kas::Coord)
         {
-            use kas::{Core, Rect, Size};
+            use kas::{Core, Coord, Rect, Size};
             //println!("Pos: {:?}", pos);
             #appls
 
