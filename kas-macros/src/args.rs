@@ -156,14 +156,10 @@ pub struct WidgetAttrArgs {
     pub handler: Option<Ident>,
 }
 
-#[cfg(feature = "cassowary")]
 #[derive(Debug)]
 pub struct GridPos(pub u32, pub u32, pub u32, pub u32);
-#[cfg(not(feature = "cassowary"))]
-pub struct GridPos(Lit, Lit, Lit, Lit);
 
 impl WidgetAttrArgs {
-    #[cfg(feature = "cassowary")]
     // Parse widget position, filling in missing information with defaults.
     pub fn as_pos(&self) -> Result<GridPos> {
         fn parse_lit(lit: &Lit) -> Result<u32> {
@@ -179,35 +175,6 @@ impl WidgetAttrArgs {
             self.cspan.as_ref().map(parse_lit).unwrap_or(Ok(1))?,
             self.rspan.as_ref().map(parse_lit).unwrap_or(Ok(1))?,
         ))
-    }
-
-    #[cfg(not(feature = "cassowary"))]
-    // If we have *any* position information, then yield a GridPos, filling in
-    // missing information with defaults.
-    pub fn as_pos(&self) -> Option<GridPos> {
-        if self.col.is_some() || self.row.is_some() || self.cspan.is_some() || self.rspan.is_some()
-        {
-            Some(GridPos(
-                self.col
-                    .as_ref()
-                    .cloned()
-                    .unwrap_or_else(|| parse_quote! { 0}),
-                self.row
-                    .as_ref()
-                    .cloned()
-                    .unwrap_or_else(|| parse_quote! { 0 }),
-                self.cspan
-                    .as_ref()
-                    .cloned()
-                    .unwrap_or_else(|| parse_quote! { 1 }),
-                self.rspan
-                    .as_ref()
-                    .cloned()
-                    .unwrap_or_else(|| parse_quote! { 1 }),
-            ))
-        } else {
-            None
-        }
     }
 }
 

@@ -11,7 +11,7 @@ repository = "https://gitlab.com/dhardy/kas"
 
 [features]
 [dependencies]
-kas = { path = "..", version = "0.0.2", features = ["layout"] }
+kas = { path = "..", version = "0.0.2" }
 # TODO: expose backend features
 rgx = { version = "0.1.5", features = ["vulkan"] }
 winit = "0.20.0-alpha3"

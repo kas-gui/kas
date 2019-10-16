@@ -21,15 +21,7 @@ use syn::{DeriveInput, FnArg, Ident, ImplItemMethod, Type, TypePath};
 
 use self::args::{ChildType, Class};
 
-#[cfg(not(feature = "cassowary"))]
-mod layout_extern;
-#[cfg(not(feature = "cassowary"))]
-use self::layout_extern as layout;
-
-#[cfg(feature = "cassowary")]
-mod layout_cw;
-#[cfg(feature = "cassowary")]
-use self::layout_cw as layout;
+mod layout;
 
 /// Macro to derive widget traits
 ///

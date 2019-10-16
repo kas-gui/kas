@@ -42,7 +42,6 @@ pub trait Layout: Core + fmt::Debug {
     /// children, but must be overriden by any parent widget.
     // TODO: because of width-for-height relations it may be necessary to
     // adjust this, e.g. solve for width first then for height.
-    #[cfg(feature = "cassowary")]
     fn init_constraints(&self, tk: &dyn TkWidget, s: &mut cw::Solver, use_default: bool);
 
     #[doc(hidden)]
@@ -51,7 +50,6 @@ pub trait Layout: Core + fmt::Debug {
     /// See the `init_constraints` documentation.
     ///
     /// `pos` is the widget's position relative to the parent window.
-    #[cfg(feature = "cassowary")]
     fn apply_constraints(&mut self, tk: &mut dyn TkWidget, s: &cw::Solver, pos: Coord);
 }
 

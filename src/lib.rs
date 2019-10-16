@@ -9,7 +9,6 @@
 //! which are translated to some backend "toolkit" on use.
 
 #[doc(hidden)]
-#[cfg(feature = "cassowary")]
 pub extern crate cassowary as cw; // used by macros
 
 extern crate kas_macros;

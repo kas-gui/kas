@@ -9,15 +9,9 @@ keywords = ["gui"]
 categories = ["gui"]
 repository = "https://gitlab.com/dhardy/kas"
 
-[features]
-# Enable an internal layout solver. Currently this uses Cassowary.
-# Not required by all toolkits. Not currently functional.
-layout = ["cassowary", "kas-macros/cassowary"]
-
 [dependencies.cassowary]
 # Widget layout solver. May be replaced in the future.
 git = "https://github.com/dhardy/cassowary-rs"
-optional = true
 
 [dependencies.kas-macros]
 version = "=0.0.2"

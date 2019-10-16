@@ -5,20 +5,13 @@
 
 //! Widgets
 
-#[cfg(not(feature = "layout"))]
-mod layout_extern;
-
-#[cfg(feature = "cassowary")]
 #[macro_use]
-mod layout_cw;
+mod layout;
 
 mod class;
 mod data;
 
-#[cfg(feature = "cassowary")]
-pub use self::layout_cw::Layout;
-#[cfg(not(feature = "layout"))]
-pub use self::layout_extern::{ChildLayout, GridPos, Layout};
+pub use self::layout::Layout;
 
 pub use self::class::Class;
 pub use self::data::*;

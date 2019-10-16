@@ -12,9 +12,6 @@ repository = "https://gitlab.com/dhardy/kas"
 [lib]
 proc-macro = true
 
-[features]
-cassowary = []
-
 [dependencies]
 quote = "1.0"
 proc-macro2 = { version = "1.0", features = ["nightly"] }

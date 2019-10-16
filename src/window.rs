@@ -29,13 +29,11 @@ pub trait Window: Widget + Handler<Msg = ()> {
     fn as_widget_mut(&mut self) -> &mut dyn Widget;
 
     /// Calculate and update positions for all sub-widgets
-    #[cfg(feature = "layout")]
     fn configure_widgets(&mut self, tk: &mut dyn TkWidget);
 
     /// Adjust the size of the window, repositioning widgets.
     ///
     /// `configure_widgets` must be called before this.
-    #[cfg(feature = "layout")]
     fn resize(&mut self, tk: &mut dyn TkWidget, size: Size);
 
     /// Get a list of available callbacks.
@@ -61,7 +59,6 @@ pub struct SimpleWindow<W: Widget + 'static> {
     #[core]
     core: CoreData,
     min_size: Size,
-    #[cfg(feature = "cassowary")]
     solver: crate::cw::Solver,
     #[widget]
     w: W,
@@ -91,7 +88,6 @@ impl<W: Widget + Clone> Clone for SimpleWindow<W> {
         SimpleWindow {
             core: self.core.clone(),
             min_size: self.min_size,
-            #[cfg(feature = "cassowary")]
             solver: crate::cw::Solver::new(),
             w: self.w.clone(),
             fns: self.fns.clone(),
@@ -105,7 +101,6 @@ impl<W: Widget> SimpleWindow<W> {
         SimpleWindow {
             core: Default::default(),
             min_size: Size::zero(),
-            #[cfg(feature = "cassowary")]
             solver: crate::cw::Solver::new(),
             w,
             fns: Vec::new(),
@@ -164,7 +159,6 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
         self
     }
 
-    #[cfg(feature = "cassowary")]
     fn configure_widgets(&mut self, tk: &mut dyn TkWidget) {
         assert!(self.number() > 0, "widget not enumerated");
 
@@ -190,7 +184,6 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
         self.w.apply_constraints(tk, &self.solver, (0, 0));
     }
 
-    #[cfg(feature = "cassowary")]
     fn resize(&mut self, tk: &mut dyn TkWidget, size: Size) {
         assert!(self.number() > 0, "widget not enumerated");
 
