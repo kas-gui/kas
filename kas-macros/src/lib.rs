@@ -47,7 +47,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             Ok(fns) => fns,
             Err(err) => return err.to_compile_error().into(),
         };
-        layout_impl = quote!{
+        layout_impl = quote! {
             impl #impl_generics kas::Layout
                     for #name #ty_generics #where_clause
             {
@@ -55,7 +55,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
         };
     } else {
-        layout_impl = quote!{};
+        layout_impl = quote! {};
     };
 
     fn make_match_rules(children: &Vec<args::Child>, mut_ref: TokenStream) -> TokenStream {
@@ -76,7 +76,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             fn core_data(&self) -> &kas::CoreData {
                 &self.#core
             }
-            
+
             fn core_data_mut(&mut self) -> &mut kas::CoreData {
                 &mut self.#core
             }
@@ -153,7 +153,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 } else
             });
         }
-        
+
         let handler = if args.children.is_empty() {
             // rely on the default implementation
             quote! {}
@@ -309,7 +309,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             class = kas::Class::Frame, layout = single
         },
     };
-    
+
     for (index, field) in args.fields.drain(..).enumerate() {
         let attr = field.widget_attr;
 
@@ -323,7 +323,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 Ident::new(&name_buf, Span::call_site())
             }
         };
-        
+
         if let Some(ref wattr) = attr {
             if let Some(ref mut layout) = impl_layout {
                 if let Err(err) = layout.child(&ident, &wattr.args) {
@@ -406,7 +406,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     } else {
         TokenStream::new()
     };
-    
+
     for impl_block in args.impls {
         let mut contents = TokenStream::new();
         for method in impl_block.1 {

@@ -25,7 +25,7 @@ pub trait Core {
     fn core_data(&self) -> &CoreData;
 
     /// Get mutable access to the [`CoreData`] providing property storage.
-    /// 
+    ///
     /// This should not normally be needed by user code.
     #[doc(hidden)]
     fn core_data_mut(&mut self) -> &mut CoreData;
@@ -55,10 +55,14 @@ pub struct CoreData {
 
 impl Core for CoreData {
     #[inline]
-    fn core_data(&self) -> &CoreData { self }
-    
+    fn core_data(&self) -> &CoreData {
+        self
+    }
+
     #[inline]
-    fn core_data_mut(&mut self) -> &mut CoreData { self }
+    fn core_data_mut(&mut self) -> &mut CoreData {
+        self
+    }
 }
 
 /// A widget encapsulates code for event handling and/or drawing some feature
@@ -116,10 +120,16 @@ pub trait Widget: Layout {
         self.core_data_mut().number = n;
         n + 1
     }
-    
+
     /// Debug tool: print the widget hierarchy
     fn print_hierarchy(&self, depth: usize) {
-        println!("{}W[{}]\t{:?}\t{:?}", "- ".repeat(depth), self.number(), self.class(), self.rect());
+        println!(
+            "{}W[{}]\t{:?}\t{:?}",
+            "- ".repeat(depth),
+            self.number(),
+            self.class(),
+            self.rect()
+        );
         for i in 0..self.len() {
             self.get(i).unwrap().print_hierarchy(depth + 1);
         }

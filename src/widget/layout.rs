@@ -7,11 +7,11 @@
 
 use std::fmt;
 
-use crate::widget::{Core, Size, Rect};
 use crate::toolkit::TkWidget;
+use crate::widget::{Core, Rect, Size};
 
 /// Size preferences.
-/// 
+///
 /// This type supports `Ord` such that for all values `x`,
 /// `SizePref::Min <= x` and `x <= SizePref::Max`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -43,7 +43,7 @@ impl SizePref {
             Max => Max,
         }
     }
-    
+
     /// Decrement the size, saturating
     pub fn decrement(self) -> SizePref {
         use SizePref::*;
@@ -62,9 +62,9 @@ impl SizePref {
 pub trait Layout: Core + fmt::Debug {
     #[doc(hidden)]
     /// Get the size according to the given preference and cache the result.
-    /// 
+    ///
     /// Usually, this method is a wrapper around [`TkWidget::size`].
-    /// 
+    ///
     /// Widgets do not need to return distinct sizes for each `SizePref`.
     /// The `SizePref` type supports `Ord`, allowing effective use of ranges.
     /// This should be taken advantage of since size categories may be adjusted
@@ -73,7 +73,7 @@ pub trait Layout: Core + fmt::Debug {
 
     #[doc(hidden)]
     /// Adjust to the given size.
-    /// 
+    ///
     /// It is suggested that widgets (at least, those with children) cache the
     /// results of the last two calls to [`Layout::size`]; the size set by this
     /// method should lie between the last two [`Layout::size`] results.

@@ -24,10 +24,7 @@ impl std::ops::Add for Coord {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        Coord(
-            self.0 + other.0,
-            self.1 + other.1,
-        )
+        Coord(self.0 + other.0, self.1 + other.1)
     }
 }
 
@@ -38,7 +35,7 @@ pub struct Size(pub u32, pub u32);
 impl Size {
     /// A size of `(0, 0)`
     pub const ZERO: Size = Size(0, 0);
-    
+
     /// Maximum possible size
     // TODO: what value do we want to use here? Note that current layout logic
     // can add together multiple copies of this value.

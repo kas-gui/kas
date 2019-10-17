@@ -3,22 +3,25 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
+use crate::args::{Child, WidgetAttrArgs};
 use proc_macro2::TokenStream;
 use quote::{quote, TokenStreamExt};
-use syn::Ident;
 use syn::parse::{Error, Result};
 use syn::spanned::Spanned;
-use crate::args::{Child, WidgetAttrArgs};
+use syn::Ident;
 
-pub(crate) fn derive(children: &Vec<Child>, layout: &Ident)
-    -> Result<TokenStream>
-{
+pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStream> {
     if layout == "empty" {
         if !children.is_empty() {
-            layout.span().unwrap()
+            layout
+                .span()
+                .unwrap()
                 .warning("`layout = empty` is inappropriate ...")
                 .emit();
-            children[0].ident.span().unwrap()
+            children[0]
+                .ident
+                .span()
+                .unwrap()
                 .warning("... when a child widget is present")
                 .emit();
         }
@@ -36,10 +39,15 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident)
         })
     } else if layout == "derive" {
         if !children.is_empty() {
-            layout.span().unwrap()
+            layout
+                .span()
+                .unwrap()
                 .warning("`layout = derive` is inappropriate ...")
                 .emit();
-            children[0].ident.span().unwrap()
+            children[0]
+                .ident
+                .span()
+                .unwrap()
                 .warning("... when a child widget is present")
                 .emit();
         }
@@ -53,8 +61,13 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident)
         })
     } else if layout == "single" {
         if !children.len() == 1 {
-            return Err(Error::new(layout.span(),
-                format_args!("expected 1 child when using `layout = single`; found {}", children.len())));
+            return Err(Error::new(
+                layout.span(),
+                format_args!(
+                    "expected 1 child when using `layout = single`; found {}",
+                    children.len()
+                ),
+            ));
         }
         let ident = &children[0].ident;
         Ok(quote! {
@@ -72,8 +85,10 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident)
             }
         })
     } else {
-        return Err(Error::new(layout.span(),
-            format_args!("expected one of empty, derive, single; found {}", layout)));
+        return Err(Error::new(
+            layout.span(),
+            format_args!("expected one of empty, derive, single; found {}", layout),
+        ));
     }
 }
 
@@ -99,10 +114,10 @@ impl ImplLayout {
                 layout: Layout::Horiz,
                 cols: 0,
                 rows: 1,
-                size: quote!{
+                size: quote! {
                     let mut size = Size::ZERO;
                 },
-                set_rect: quote!{
+                set_rect: quote! {
                     let u0 = self.layout_total[0] as i64;
                     let u1 = self.layout_total[1] as i64;
                     let u = rect.size.0 as i64;
@@ -121,8 +136,8 @@ impl ImplLayout {
                 layout: Layout::Vert,
                 cols: 1,
                 rows: 0,
-                size: quote!{},
-                set_rect: quote!{
+                size: quote! {},
+                set_rect: quote! {
                     let u0 = self.layout_total[0] as i64;
                     let u1 = self.layout_total[1] as i64;
                     let u = rect.size.1 as i64;
@@ -141,29 +156,31 @@ impl ImplLayout {
                 layout: Layout::Grid,
                 cols: 0,
                 rows: 0,
-                size: quote!{},
-                set_rect: quote!{},
+                size: quote! {},
+                set_rect: quote! {},
             })
         } else {
             // Note: "single" case is already handled by caller
-            Err(Error::new(layout.span(),
-                "expected one of: single, horizontal, vertical, grid"))
+            Err(Error::new(
+                layout.span(),
+                "expected one of: single, horizontal, vertical, grid",
+            ))
         }
     }
-    
+
     pub fn child(&mut self, ident: &Ident, args: &WidgetAttrArgs) -> Result<()> {
         match self.layout {
             Layout::Horiz => {
                 let n = (self.cols * 2) as usize;
                 self.cols += 1;
-                
-                self.size.append_all(quote!{
+
+                self.size.append_all(quote! {
                     let child_size = self.#ident.size_pref(tk, pref);
                     self.layout_sizes[#n + which] = child_size.0;
                     size.0 += child_size.0;
                     size.1 = std::cmp::max(size.1, child_size.1);
                 });
-                
+
                 // This rounds down, which is fine except that a few pixels may go unused FIXME
                 self.set_rect.append_all(quote!{
                     let u = (x1 * self.layout_sizes[#n] as f64
@@ -177,16 +194,16 @@ impl ImplLayout {
             Layout::Vert => {
                 let n = (self.rows * 2) as usize;
                 self.rows += 1;
-                
-                self.size.append_all(quote!{
+
+                self.size.append_all(quote! {
                     let child_size = self.#ident.size_pref(tk, pref);
                     self.layout_sizes[#n + which] = child_size.1;
                     size.0 = std::cmp::max(size.0, child_size.0);
                     size.1 += child_size.1;
                 });
-                
+
                 // This rounds down, which is fine except that a few pixels may go unused FIXME
-                self.set_rect.append_all(quote!{
+                self.set_rect.append_all(quote! {
                     let u = (x1 * self.layout_sizes[#n] as f64
                         + x * self.layout_sizes[#n + 1] as f64) as u32;
                     crect.size.1 = u;
@@ -202,8 +219,8 @@ impl ImplLayout {
                 let (nc1, nr1) = ((2 * c1) as usize, (2 * r1) as usize);
                 self.cols = self.cols.max(c1);
                 self.rows = self.rows.max(r1);
-                
-                self.size.append_all(quote!{
+
+                self.size.append_all(quote! {
                     let child_size = self.#ident.size_pref(tk, pref);
                     // FIXME: this doesn't deal with column spans correctly!
                     let i = #nc + which;    // TODO: zero
@@ -211,9 +228,9 @@ impl ImplLayout {
                     let i = #nr + which;
                     self.layout_heights[i] = self.layout_heights[i].max(child_size.1);
                 });
-                
+
                 // This rounds down, which is fine except that a few pixels may go unused FIXME
-                self.set_rect.append_all(quote!{
+                self.set_rect.append_all(quote! {
                     let pos = Coord(self.layout_widths[#nc + 1] as i32,
                             self.layout_heights[#nr + 1] as i32);
                     let mut size = Size::ZERO;
@@ -230,17 +247,17 @@ impl ImplLayout {
         }
         Ok(())
     }
-    
+
     pub fn finish(self) -> (TokenStream, TokenStream, TokenStream) {
         let cols = self.cols as usize;
         let rows = self.rows as usize;
         let size = self.size;
         let set_rect = self.set_rect;
-        
+
         let (fields, field_ctors);
         match self.layout {
             Layout::Horiz | Layout::Vert => {
-                let n = if self.layout == Layout::Horiz { 
+                let n = if self.layout == Layout::Horiz {
                     cols * 2
                 } else {
                     rows * 2
@@ -271,7 +288,7 @@ impl ImplLayout {
                 };
             }
         }
-        
+
         let (size_pre, size_post, set_rect_pre);
         match self.layout {
             Layout::Horiz => {
@@ -295,7 +312,7 @@ impl ImplLayout {
             Layout::Grid => {
                 let nc = cols * 2;
                 let nr = rows * 2;
-                size_pre = quote!{
+                size_pre = quote! {
                     for i in (0..#nc).step_by(2) {
                         self.layout_widths[i + which] = 0;
                     }
@@ -342,7 +359,7 @@ impl ImplLayout {
                         self.layout_widths[i + 1] = accum;
                         accum += u;
                     }
-                    
+
                     accum = 0;
                     for i in (0..#nr).step_by(2) {
                         let u = (y1 * self.layout_heights[i] as f64
@@ -354,18 +371,18 @@ impl ImplLayout {
                 };
             }
         };
-        
+
         let fns = quote! {
             fn size_pref(&mut self, tk: &dyn kas::TkWidget, pref: kas::SizePref) -> kas::Size {
                 use kas::{Core, Size, SizePref};
-                
+
                 let which = self.layout_which as usize;
                 self.layout_which = !self.layout_which;
-                
+
                 #size_pre
                 #size
                 #size_post
-                
+
                 println!("[{}] size({:?}): {:?}", self.number(), pref, size);
                 size
             }
@@ -373,12 +390,12 @@ impl ImplLayout {
             fn set_rect(&mut self, rect: kas::Rect) {
                 use kas::{Core, Coord, Size, Rect};
                 self.core_data_mut().rect = rect;
-                
+
                 #set_rect_pre
                 #set_rect
             }
         };
-        
+
         (fields, field_ctors, fns)
     }
 }

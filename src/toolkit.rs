@@ -4,11 +4,11 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Toolkit interface
-//! 
+//!
 //! TODO: "toolkit" is no longer an apt description of this internal API, but
 //! rather "theme + renderer".
 
-use crate::widget::{Size, Widget, SizePref};
+use crate::widget::{Size, SizePref, Widget};
 
 /// Common widget properties. Implemented by the toolkit.
 ///

@@ -10,7 +10,7 @@ use std::fmt::{self, Debug};
 use crate::callback::Condition;
 use crate::event::{err_num, err_unhandled, Event, Handler, Response};
 use crate::macros::Widget;
-use crate::{Class, Core, CoreData, Layout, Coord, Rect, Size, SizePref, TkWidget, Widget};
+use crate::{Class, Coord, Core, CoreData, Layout, Rect, Size, SizePref, TkWidget, Widget};
 
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be
@@ -27,7 +27,7 @@ pub trait Window: Widget + Handler<Msg = ()> {
     ///
     /// Note: needed because Rust does not yet support trait object upcasting
     fn as_widget_mut(&mut self) -> &mut dyn Widget;
-    
+
     /// Adjust the size of the window, repositioning widgets.
     fn resize(&mut self, tk: &mut dyn TkWidget, size: Size);
 
@@ -92,7 +92,7 @@ impl<W: Widget> Layout for SimpleWindow<W> {
     fn size_pref(&mut self, tk: &dyn TkWidget, pref: SizePref) -> Size {
         self.w.size_pref(tk, pref)
     }
-    
+
     fn set_rect(&mut self, rect: Rect) {
         self.core_data_mut().rect = rect;
         self.w.set_rect(rect);
@@ -161,11 +161,11 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
     fn as_widget_mut(&mut self) -> &mut dyn Widget {
         self
     }
-    
+
     fn resize(&mut self, tk: &mut dyn TkWidget, size: Size) {
         let mut pref = SizePref::Default;
         let mut s = self.w.size_pref(tk, pref);
-        
+
         // TODO: algorithm is only 1D!
         if s.0 < size.0 {
             while s.0 < size.0 && pref < SizePref::Max {
@@ -178,10 +178,13 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
                 s = self.w.size_pref(tk, pref);
             }
         }
-        
-        let rect = Rect { pos: Coord::ZERO, size };
+
+        let rect = Rect {
+            pos: Coord::ZERO,
+            size,
+        };
         self.w.set_rect(rect);
-        
+
         println!("SimpleWindow:");
         self.w.print_hierarchy(0);
     }

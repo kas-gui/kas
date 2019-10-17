@@ -70,7 +70,7 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     fn as_widget_mut(&mut self) -> &mut dyn Widget {
         self
     }
-    
+
     fn resize(&mut self, _tk: &mut dyn TkWidget, _size: Size) {
         unimplemented!()
     }

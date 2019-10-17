@@ -18,9 +18,7 @@ pub(crate) struct Widgets {
 
 impl Widgets {
     pub fn new() -> Self {
-        Widgets {
-            hover: None,
-        }
+        Widgets { hover: None }
     }
 
     pub fn draw(&self, rend: &Renderer, size: (u32, u32), win: &dyn kas::Window) -> VertexBuffer {
@@ -40,13 +38,8 @@ impl Widgets {
             self.draw_iter(batch, height, widget.get(n).unwrap());
         }
     }
-    
-    fn draw_widget(
-        self: &Widgets,
-        batch: &mut Batch,
-        height: f32,
-        widget: &dyn kas::Widget,
-    ) {
+
+    fn draw_widget(self: &Widgets, batch: &mut Batch, height: f32, widget: &dyn kas::Widget) {
         // This is a hacky draw routine just to show where widgets are.
 
         // Note: widget coordinates place the origin at the top-left.
@@ -87,13 +80,18 @@ impl Widgets {
 
 impl TkWidget for Widgets {
     fn size_pref(&self, widget: &dyn Widget, pref: SizePref) -> Size {
-        println!("[{}] size request; {:?}, {:?}", widget.number(), widget.class(), pref);
+        println!(
+            "[{}] size request; {:?}, {:?}",
+            widget.number(),
+            widget.class(),
+            pref
+        );
         if pref == SizePref::Min {
             Size::ZERO
         } else if pref == SizePref::Max {
             Size::MAX
         } else {
-            Size(80, 40)    // FIXME
+            Size(80, 40) // FIXME
         }
     }
 }

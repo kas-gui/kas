@@ -9,7 +9,7 @@
 //! enumeration. In some of these cases, the widget must implement additional
 //! functionality (usually on itself).
 
-use crate::traits::{HasText, Editable, HasBoolText};
+use crate::traits::{Editable, HasBoolText, HasText};
 use std::fmt;
 
 /// Widget classifications
@@ -26,7 +26,9 @@ pub enum Class<'a> {
 
 impl<'a> fmt::Debug for Class<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Class::{}",
+        write!(
+            f,
+            "Class::{}",
             match self {
                 Class::Container => "Container",
                 Class::Label(_) => "Label",
