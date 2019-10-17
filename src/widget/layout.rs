@@ -25,8 +25,8 @@ pub enum SizePref {
     /// Larger size
     Large,
     /// Maximal useful size
-    MaxUseful,
-    /// Absolute maximum desired
+    ///
+    /// Widgets may be enlarged beyond this size
     Max,
 }
 
@@ -38,8 +38,7 @@ impl SizePref {
             Min => Small,
             Small => Default,
             Default => Large,
-            Large => MaxUseful,
-            MaxUseful => Max,
+            Large => Max,
             Max => Max,
         }
     }
@@ -52,8 +51,7 @@ impl SizePref {
             Small => Min,
             Default => Small,
             Large => Default,
-            MaxUseful => Large,
-            Max => MaxUseful,
+            Max => Large,
         }
     }
 }
@@ -79,9 +77,9 @@ pub trait Layout: Core + fmt::Debug {
     /// significantly more complicated, and we recommend use of the
     /// [`kas_macros::make_widget`] macro.
     ///
-    /// The cache should only be updated for horizontal / vertical axes
-    /// covered by the `axes` argument. Sizes returned for other axes need not
-    /// be correct.
+    /// The last two returned sizes should be "cached" for use by
+    /// [`Layout::set_rect`], but only where the axis is included by the `axes`
+    /// argument. Sizes returned for other axes need not be correct.
     ///
     /// Widgets do not need to return distinct sizes for each `SizePref`.
     /// The `SizePref` type supports `Ord`, allowing effective use of ranges.
@@ -92,9 +90,14 @@ pub trait Layout: Core + fmt::Debug {
     #[doc(hidden)]
     /// Adjust to the given size.
     ///
-    /// It is suggested that widgets (at least, those with children) cache the
-    /// results of the last two calls to [`Layout::size`]; the size set by this
-    /// method should lie between the last two [`Layout::size`] results.
+    /// For many widgets this operation is trivial and the default
+    /// implementation will suffice. For layout widgets (those with children),
+    /// this operation is more complex.
+    ///
+    /// See notes on the [`Layout::size_pref`] method regarding caching of
+    /// results. For each axis, the size specified by this method is guaranteed
+    /// to be either equal to the result of the last `size_pref` query, or
+    /// between the results of the last two queries.
     fn set_rect(&mut self, rect: Rect) {
         self.core_data_mut().rect = rect;
     }
