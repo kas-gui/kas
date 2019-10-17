@@ -11,7 +11,7 @@ mod layout;
 mod class;
 mod data;
 
-pub use self::layout::{Layout, SizePref};
+pub use self::layout::*;
 
 pub use self::class::Class;
 pub use self::data::*;

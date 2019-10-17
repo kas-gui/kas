@@ -26,7 +26,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_pref(&mut self, _: &dyn kas::TkWidget, pref: kas::SizePref) -> kas::Size {
+            fn size_pref(&mut self, _: &dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes) -> kas::Size {
                 let size = if pref == SizePref::Max {
                     Size::MAX
                 } else {
@@ -52,7 +52,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_pref(&mut self, tk: &dyn kas::TkWidget, pref: kas::SizePref) -> kas::Size {
+            fn size_pref(&mut self, tk: &dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes) -> kas::Size {
                 let size = tk.size_pref(self, pref);
                 use kas::Core;
                 println!("[{}] derive size({:?}): {:?}", self.number(), pref, size);
@@ -71,8 +71,8 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
         }
         let ident = &children[0].ident;
         Ok(quote! {
-            fn size_pref(&mut self, tk: &dyn kas::TkWidget, pref: kas::SizePref) -> kas::Size {
-                let size = self.#ident.size_pref(tk, pref);
+            fn size_pref(&mut self, tk: &dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes) -> kas::Size {
+                let size = self.#ident.size_pref(tk, pref, axes);
                 use kas::Core;
                 println!("[{}] single size({:?}): {:?}", self.number(), pref, size);
                 size
@@ -175,8 +175,10 @@ impl ImplLayout {
                 self.cols += 1;
 
                 self.size.append_all(quote! {
-                    let child_size = self.#ident.size_pref(tk, pref);
-                    self.layout_sizes[#n + which] = child_size.0;
+                    let child_size = self.#ident.size_pref(tk, pref, axes);
+                    if axes != Axes::Vert {
+                        self.layout_sizes[#n + which] = child_size.0;
+                    }
                     size.0 += child_size.0;
                     size.1 = std::cmp::max(size.1, child_size.1);
                 });
@@ -196,8 +198,10 @@ impl ImplLayout {
                 self.rows += 1;
 
                 self.size.append_all(quote! {
-                    let child_size = self.#ident.size_pref(tk, pref);
-                    self.layout_sizes[#n + which] = child_size.1;
+                    let child_size = self.#ident.size_pref(tk, pref, axes);
+                    if axes != Axes::Horiz {
+                        self.layout_sizes[#n + which] = child_size.1;
+                    }
                     size.0 = std::cmp::max(size.0, child_size.0);
                     size.1 += child_size.1;
                 });
@@ -221,12 +225,16 @@ impl ImplLayout {
                 self.rows = self.rows.max(r1);
 
                 self.size.append_all(quote! {
-                    let child_size = self.#ident.size_pref(tk, pref);
+                    let child_size = self.#ident.size_pref(tk, pref, axes);
                     // FIXME: this doesn't deal with column spans correctly!
-                    let i = #nc + which;    // TODO: zero
-                    self.layout_widths[i] = self.layout_widths[i].max(child_size.0);
-                    let i = #nr + which;
-                    self.layout_heights[i] = self.layout_heights[i].max(child_size.1);
+                    if axes != Axes::Vert {
+                        let i = #nc + which;
+                        self.layout_widths[i] = self.layout_widths[i].max(child_size.0);
+                    }
+                    if axes != Axes::Horiz {
+                        let i = #nr + which;
+                        self.layout_heights[i] = self.layout_heights[i].max(child_size.1);
+                    }
                 });
 
                 // This rounds down, which is fine except that a few pixels may go unused FIXME
@@ -296,7 +304,9 @@ impl ImplLayout {
                     let mut size = Size::ZERO;
                 };
                 size_post = quote! {
-                    self.layout_total[which] = size.0;
+                    if axes != Axes::Vert {
+                        self.layout_total[which] = size.0;
+                    }
                 };
                 set_rect_pre = quote! {};
             }
@@ -305,7 +315,9 @@ impl ImplLayout {
                     let mut size = Size::ZERO;
                 };
                 size_post = quote! {
-                    self.layout_total[which] = size.1;
+                    if axes != Axes::Horiz {
+                        self.layout_total[which] = size.1;
+                    }
                 };
                 set_rect_pre = quote! {};
             }
@@ -327,6 +339,11 @@ impl ImplLayout {
                     }
                     for i in (0..#nr).step_by(2) {
                         size.1 += self.layout_heights[i + which];
+                    }
+                    if axes == Axes::Horiz {
+                        size.1 = self.layout_total[which].1;
+                    } else if axes == Axes::Vert {
+                        size.0 = self.layout_total[which].0;
                     }
                     self.layout_total[which] = size;
                 };
@@ -373,8 +390,8 @@ impl ImplLayout {
         };
 
         let fns = quote! {
-            fn size_pref(&mut self, tk: &dyn kas::TkWidget, pref: kas::SizePref) -> kas::Size {
-                use kas::{Core, Size, SizePref};
+            fn size_pref(&mut self, tk: &dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes) -> kas::Size {
+                use kas::{Axes, Core, Size, SizePref};
 
                 let which = self.layout_which as usize;
                 self.layout_which = !self.layout_which;

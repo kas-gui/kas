@@ -58,18 +58,36 @@ impl SizePref {
     }
 }
 
+/// Axes being resized
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Axes {
+    /// Adjust both axes
+    Both,
+    /// Adjust horizontal axis only
+    Horiz,
+    /// Adjust vertical axis only
+    Vert,
+}
+
 /// Widget size and layout.
 pub trait Layout: Core + fmt::Debug {
     #[doc(hidden)]
     /// Get the size according to the given preference and cache the result.
     ///
-    /// Usually, this method is a wrapper around [`TkWidget::size`].
+    /// For simple widgets (without children), this method is usually just a
+    /// wrapper around [`TkWidget::size`]. For parent widgets it gets
+    /// significantly more complicated, and we recommend use of the
+    /// [`kas_macros::make_widget`] macro.
+    ///
+    /// The cache should only be updated for horizontal / vertical axes
+    /// covered by the `axes` argument. Sizes returned for other axes need not
+    /// be correct.
     ///
     /// Widgets do not need to return distinct sizes for each `SizePref`.
     /// The `SizePref` type supports `Ord`, allowing effective use of ranges.
     /// This should be taken advantage of since size categories may be adjusted
     /// in the future.
-    fn size_pref(&mut self, tk: &dyn TkWidget, pref: SizePref) -> Size;
+    fn size_pref(&mut self, tk: &dyn TkWidget, pref: SizePref, axes: Axes) -> Size;
 
     #[doc(hidden)]
     /// Adjust to the given size.

@@ -10,7 +10,7 @@ use std::fmt::{self, Debug};
 use crate::callback::Condition;
 use crate::event::{err_num, err_unhandled, Event, Handler, Response};
 use crate::macros::Widget;
-use crate::{Class, Coord, Core, CoreData, Layout, Rect, Size, SizePref, TkWidget, Widget};
+use crate::{Axes, Class, Coord, Core, CoreData, Layout, Rect, Size, SizePref, TkWidget, Widget};
 
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be
@@ -56,6 +56,7 @@ pub struct SimpleWindow<W: Widget + 'static> {
     min_size: Size,
     #[widget]
     w: W,
+    size_pref: SizePref,
     fns: Vec<(Condition, &'static dyn Fn(&mut W, &mut dyn TkWidget))>,
 }
 
@@ -83,14 +84,15 @@ impl<W: Widget + Clone> Clone for SimpleWindow<W> {
             core: self.core.clone(),
             min_size: self.min_size,
             w: self.w.clone(),
+            size_pref: self.size_pref,
             fns: self.fns.clone(),
         }
     }
 }
 
 impl<W: Widget> Layout for SimpleWindow<W> {
-    fn size_pref(&mut self, tk: &dyn TkWidget, pref: SizePref) -> Size {
-        self.w.size_pref(tk, pref)
+    fn size_pref(&mut self, tk: &dyn TkWidget, pref: SizePref, axes: Axes) -> Size {
+        self.w.size_pref(tk, pref, axes)
     }
 
     fn set_rect(&mut self, rect: Rect) {
@@ -106,6 +108,7 @@ impl<W: Widget> SimpleWindow<W> {
             core: Default::default(),
             min_size: Size::ZERO,
             w,
+            size_pref: SizePref::Default,
             fns: Vec::new(),
         }
     }
@@ -163,27 +166,63 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
     }
 
     fn resize(&mut self, tk: &mut dyn TkWidget, size: Size) {
-        let mut pref = SizePref::Default;
-        let mut s = self.w.size_pref(tk, pref);
+        #[derive(Copy, Clone, PartialEq)]
+        enum Dir {
+            Incr,
+            Decr,
+            Stop,
+        };
+        impl Dir {
+            fn from(x: u32, y: u32) -> Dir {
+                if x < y {
+                    Dir::Incr
+                } else if x > y {
+                    Dir::Decr
+                } else {
+                    Dir::Stop
+                }
+            }
+            fn adjust(&self, pref: SizePref) -> SizePref {
+                match self {
+                    Dir::Incr => pref.increment(),
+                    Dir::Decr => pref.decrement(),
+                    Dir::Stop => pref,
+                }
+            }
+        }
 
-        // TODO: algorithm is only 1D!
-        if s.0 < size.0 {
-            while s.0 < size.0 && pref < SizePref::Max {
-                pref = pref.increment();
-                s = self.w.size_pref(tk, pref);
+        let mut pref = self.size_pref;
+        let mut axes = Axes::Both;
+        let mut s = self.size_pref(tk, pref, axes);
+
+        let init_dir0 = Dir::from(s.0, size.0);
+        let init_dir1 = Dir::from(s.1, size.1);
+        let (mut dir0, mut dir1) = (init_dir0, init_dir1);
+        while dir0 == init_dir0 {
+            if dir1 != dir0 {
+                axes = Axes::Horiz;
             }
-        } else {
-            while s.0 > size.0 && pref < SizePref::Min {
-                pref = pref.decrement();
-                s = self.w.size_pref(tk, pref);
-            }
+            pref = dir0.adjust(pref);
+            s = self.size_pref(tk, pref, axes);
+            dir0 = Dir::from(s.0, size.0);
+            dir1 = Dir::from(s.1, size.1);
+        }
+
+        // Remember final value from first loop only
+        self.size_pref = pref;
+
+        axes = Axes::Vert;
+        while dir1 == init_dir1 {
+            pref = dir1.adjust(pref);
+            s = self.size_pref(tk, pref, axes);
+            dir1 = Dir::from(s.1, size.1);
         }
 
         let rect = Rect {
             pos: Coord::ZERO,
             size,
         };
-        self.w.set_rect(rect);
+        self.set_rect(rect);
 
         println!("SimpleWindow:");
         self.w.print_hierarchy(0);
