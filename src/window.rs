@@ -224,8 +224,8 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
         };
         self.set_rect(rect);
 
-        println!("SimpleWindow:");
-        self.w.print_hierarchy(0);
+        // println!("SimpleWindow:");
+        // self.w.print_hierarchy(0);
     }
 
     fn callbacks(&self) -> Vec<(usize, Condition)> {

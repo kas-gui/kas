@@ -27,14 +27,11 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
         }
         Ok(quote! {
             fn size_pref(&mut self, _: &dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes) -> kas::Size {
-                let size = if pref == SizePref::Max {
+                if pref == SizePref::Max {
                     Size::MAX
                 } else {
                     Size::ZERO
-                };
-                use kas::Core;
-                println!("[{}] empty size({:?}): {:?}", self.number(), pref, size);
-                size
+                }
             }
         })
     } else if layout == "derive" {
@@ -53,10 +50,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
         }
         Ok(quote! {
             fn size_pref(&mut self, tk: &dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes) -> kas::Size {
-                let size = tk.size_pref(self, pref);
-                use kas::Core;
-                println!("[{}] derive size({:?}): {:?}", self.number(), pref, size);
-                size
+                tk.size_pref(self, pref)
             }
         })
     } else if layout == "single" {
@@ -72,10 +66,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
         let ident = &children[0].ident;
         Ok(quote! {
             fn size_pref(&mut self, tk: &dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes) -> kas::Size {
-                let size = self.#ident.size_pref(tk, pref, axes);
-                use kas::Core;
-                println!("[{}] single size({:?}): {:?}", self.number(), pref, size);
-                size
+                self.#ident.size_pref(tk, pref, axes)
             }
 
             fn set_rect(&mut self, rect: kas::Rect) {
@@ -124,7 +115,7 @@ impl ImplLayout {
                     let x = if u0 == u1 { 0.0 } else {
                         (u - u0) as f64 / (u1 - u0) as f64
                     };
-                    println!("Horiz: u0={}, u1={}, u={}, x={}", u0, u1, u, x);
+                    // println!("Horiz: u0={}, u1={}, u={}, x={}", u0, u1, u, x);
                     assert!(0.0 <= x && x <= 1.0);
                     let x1 = 1.0 - x;
 
@@ -144,7 +135,7 @@ impl ImplLayout {
                     let x = if u0 == u1 { 0.0 } else {
                         (u - u0) as f64 / (u1 - u0) as f64
                     };
-                    println!("Vert: u0={}, u1={}, u={}, x={}", u0, u1, u, x);
+                    // println!("Vert: u0={}, u1={}, u={}, x={}", u0, u1, u, x);
                     assert!(0.0 <= x && x <= 1.0);
                     let x1 = 1.0 - x;
 
@@ -184,10 +175,9 @@ impl ImplLayout {
                 });
 
                 // This rounds down, which is fine except that a few pixels may go unused FIXME
-                self.set_rect.append_all(quote!{
+                self.set_rect.append_all(quote! {
                     let u = (x1 * self.layout_sizes[#n] as f64
                         + x * self.layout_sizes[#n + 1] as f64) as u32;
-                    println!("cache: {}, {}; u = {}", self.layout_sizes[#n], self.layout_sizes[#n + 1], u);
                     crect.size.0 = u;
                     self.#ident.set_rect(crect);
                     crect.pos.0 += u as i32;
@@ -325,11 +315,15 @@ impl ImplLayout {
                 let nc = cols * 2;
                 let nr = rows * 2;
                 size_pre = quote! {
-                    for i in (0..#nc).step_by(2) {
-                        self.layout_widths[i + which] = 0;
+                    if axes != Axes::Vert {
+                        for i in (0..#nc).step_by(2) {
+                            self.layout_widths[i + which] = 0;
+                        }
                     }
-                    for i in (0..#nr).step_by(2) {
-                        self.layout_heights[i + which] = 0;
+                    if axes != Axes::Horiz {
+                        for i in (0..#nr).step_by(2) {
+                            self.layout_heights[i + which] = 0;
+                        }
                     }
                 };
                 size_post = quote! {
@@ -354,14 +348,14 @@ impl ImplLayout {
                     let x = if u0 == u1 { 0.0 } else {
                         (u - u0) as f64 / (u1 - u0) as f64
                     };
-                    println!("Grid: u0={}, u1={}, u={}, x={}", u0, u1, u, x);
+                    // println!("Grid: u0={}, u1={}, u={}, x={}", u0, u1, u, x);
                     let u0 = self.layout_total[0].1 as i64;
                     let u1 = self.layout_total[1].1 as i64;
                     let u = rect.size.1 as i64;
                     let y = if u0 == u1 { 0.0 } else {
                         (u - u0) as f64 / (u1 - u0) as f64
                     };
-                    println!("Grid: v0={}, v1={}, v={}, y={}", u0, u1, u, y);
+                    // println!("Grid: v0={}, v1={}, v={}, y={}", u0, u1, u, y);
                     assert!(0.0 <= x && x <= 1.0);
                     assert!(0.0 <= y && y <= 1.0);
                     let x1 = 1.0 - x;
@@ -399,8 +393,6 @@ impl ImplLayout {
                 #size_pre
                 #size
                 #size_post
-
-                println!("[{}] size({:?}): {:?}", self.number(), pref, size);
                 size
             }
 

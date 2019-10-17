@@ -79,13 +79,7 @@ impl Widgets {
 }
 
 impl TkWidget for Widgets {
-    fn size_pref(&self, widget: &dyn Widget, pref: SizePref) -> Size {
-        println!(
-            "[{}] size request; {:?}, {:?}",
-            widget.number(),
-            widget.class(),
-            pref
-        );
+    fn size_pref(&self, _widget: &dyn Widget, pref: SizePref) -> Size {
         if pref == SizePref::Min {
             Size::ZERO
         } else if pref == SizePref::Max {
