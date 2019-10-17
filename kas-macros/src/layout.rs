@@ -361,46 +361,46 @@ impl ImplLayout {
                     let y1 = 1.0 - y;
 
                     // Now calculate widths and cumulative widths
-                    let mut accum = 0;
+                    let mut accum_w = 0;
                     for i in (0..#nc).step_by(2) {
                         let u = (x1 * self.layout_widths[i] as f64
                             + x * self.layout_widths[i + 1] as f64) as u32;
                         self.layout_widths[i] = u;
-                        self.layout_widths[i + 1] = accum;
-                        accum += u;
+                        self.layout_widths[i + 1] = accum_w;
+                        accum_w += u;
                     }
-                    let total_width = accum;
 
-                    accum = 0;
+                    let mut accum_h = 0;
                     for i in (0..#nr).step_by(2) {
                         let u = (y1 * self.layout_heights[i] as f64
                             + y * self.layout_heights[i + 1] as f64) as u32;
                         self.layout_heights[i] = u;
-                        self.layout_heights[i + 1] = accum;
-                        accum += u;
+                        self.layout_heights[i + 1] = accum_h;
+                        accum_h += u;
                     }
-                    let total_height = accum;
 
                     // Assign excess from rounding errors to last rows/columns
-                    let excess = rect.size.0 - total_width;
+                    let excess = rect.size.0 - accum_w;
                     let ex2 = 2 * excess as usize;
-                    assert!(ex2 <= #nc);
-                    accum = 0;
+                    assert!(excess >= 0 && ex2 <= #nc);
+                    accum_w = 0;
                     for i in ((#nc - ex2)..#nc).step_by(2) {
                         self.layout_widths[i] += 1;
-                        self.layout_widths[i + 1] += accum;
-                        accum += 1;
+                        self.layout_widths[i + 1] += accum_w;
+                        accum_w += 1;
                     }
+                    assert!(rect.size.0 == self.layout_widths[#nc - 1] + self.layout_widths[#nc - 2]);
 
-                    let excess = rect.size.1 - total_height;
+                    let excess = rect.size.1 - accum_h;
                     let ex2 = 2 * excess as usize;
-                    assert!(ex2 <= #nr);
-                    accum = 0;
+                    assert!(excess >= 0 && ex2 <= #nr);
+                    accum_h = 0;
                     for i in ((#nr - ex2)..#nr).step_by(2) {
                         self.layout_heights[i] += 1;
-                        self.layout_heights[i + 1] += accum;
-                        accum += 1;
+                        self.layout_heights[i + 1] += accum_h;
+                        accum_h += 1;
                     }
+                    assert!(rect.size.1 == self.layout_heights[#nr - 1] + self.layout_heights[#nr - 2]);
                 };
             }
         };
