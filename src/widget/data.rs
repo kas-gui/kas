@@ -20,6 +20,17 @@ impl From<(i32, i32)> for Coord {
     }
 }
 
+impl std::ops::Add for Coord {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Coord(
+            self.0 + other.0,
+            self.1 + other.1,
+        )
+    }
+}
+
 /// A `(w, h)` size.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Size(pub u32, pub u32);

@@ -326,7 +326,9 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         
         if let Some(ref wattr) = attr {
             if let Some(ref mut layout) = impl_layout {
-                layout.child(&ident, &wattr.args);
+                if let Err(err) = layout.child(&ident, &wattr.args) {
+                    return err.to_compile_error().into();
+                }
             }
         };
 
