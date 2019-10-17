@@ -225,24 +225,24 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     if let Some(x) = x {
                         handler
                             .span()
-                            .unstable()
+                            .unwrap()
                             .error("multiple methods with this name")
                             .emit();
                         x.0.span()
-                            .unstable()
+                            .unwrap()
                             .error("first method with this name")
                             .emit();
                         f.sig
                             .ident
                             .span()
-                            .unstable()
+                            .unwrap()
                             .error("second method with this name")
                             .emit();
                         return None;
                     }
                     if f.sig.inputs.len() != 3 {
                         f.sig.span()
-                            .unstable()
+                            .unwrap()
                             .error("handler functions must have signature: fn handler(&mut self, tk: &mut TkWidget, msg: T)")
                             .emit();
                         return None;
@@ -262,7 +262,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         } else {
             handler
                 .span()
-                .unstable()
+                .unwrap()
                 .error("no methods with this name found")
                 .emit();
             None

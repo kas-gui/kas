@@ -62,7 +62,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                     core = Some(member(i, field.ident.clone()));
                 } else {
                     attr.span()
-                        .unstable()
+                        .unwrap()
                         .error("multiple fields marked with #[core]")
                         .emit();
                 }
@@ -83,7 +83,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                 widget = Some(syn::parse2(attr.tokens)?);
             } else {
                 attr.span()
-                    .unstable()
+                    .unwrap()
                     .error("multiple #[widget(..)] attributes on type")
                     .emit()
             }
@@ -92,7 +92,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                 handler = Some(syn::parse2(attr.tokens)?);
             } else {
                 attr.span()
-                    .unstable()
+                    .unwrap()
                     .error("multiple #[handler(..)] attributes on type")
                     .emit()
             }
