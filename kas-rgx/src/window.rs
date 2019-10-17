@@ -55,7 +55,6 @@ impl Window {
 
         let mut widgets = Widgets::new();
 
-        win.configure_widgets(&mut widgets);
         win.resize(&mut widgets, size.into());
 
         let w = Window {
@@ -161,7 +160,6 @@ impl Window {
         self.swap_chain = self.rend.swap_chain(size.0, size.1, PresentMode::default());
 
         // TODO: work with logical size to allow DPI scaling
-        self.win.configure_widgets(&mut self.widgets);
         self.win.resize(&mut self.widgets, size.into());
     }
 

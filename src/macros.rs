@@ -59,16 +59,15 @@
 //! -   `class = ...` (required) — an expression yielding the widget's [`Class`]
 //! -   `layout = ...` (optional) — see below
 //!
-//! Widgets with no children or only a single child do not need to specify the
-//! `layout` (or may specify `single`), but those with multiple children must
-//! specify this arguments, as follows:
+//! If the `layout` argument is missing, the [`Layout`] trait must be
+//! implemented manually. If present, this trait will be implemented depending
+//! on the `layout` argument's value:
 //!
-//! -   `single` — single child only
-//! -   `horizontal` — widgets are laid out in a row from left to right in the
-//!     order specified
-//! -   `vertical` — same except top-to-bottom
-//! -   `grid` — widgets are placed on a grid, with position specified by the
-//!     per-field `#[widget]` attribute
+//! -   `empty` — the widget displays no content and has zero size,
+//!     except when expanded to fill empty space
+//! -   `derive` — this is a simple widget with no children; content and
+//!     dimensions are derived from the toolkit based on the widget's class
+//! -   `single` — the widget wraps a single child, with no border or margin
 //!
 //! If there is a `#[handler]` attribute on the struct, then the [`Handler`]
 //! trait will be implemented. This attribute accepts the following arguments:
@@ -128,7 +127,7 @@
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
 //!
-//! #[widget(class = Class::Container)]
+//! #[widget(class = Class::Container, layout = single)]
 //! #[handler(generics = <> where W: Handler<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
@@ -137,7 +136,7 @@
 //! }
 //!
 //! impl<W: Widget> MyWidget<W> {
-//!     fn handler(&mut self, tk: &TkWidget, msg: ChildMessage) -> Response<()> {
+//!     fn handler(&mut self, tk: &dyn TkWidget, msg: ChildMessage) -> Response<()> {
 //!         match msg {
 //!             ChildMessage::A => { println!("handling ChildMessage::A"); }
 //!         }

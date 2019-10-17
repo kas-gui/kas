@@ -12,7 +12,7 @@ use crate::macros::Widget;
 use crate::{Class, CoreData, Editable, HasText, TkWidget};
 
 /// A simple text label
-#[widget(class = Class::Label(self))]
+#[widget(class = Class::Label(self), layout = derive)]
 #[handler]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Label {
@@ -54,7 +54,7 @@ impl HasText for Label {
 }
 
 /// An editable, single-line text box.
-#[widget(class = Class::Entry(self))]
+#[widget(class = Class::Entry(self), layout = derive)]
 #[derive(Clone, Default, Widget)]
 pub struct Entry<H: 'static> {
     #[core]

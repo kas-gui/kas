@@ -14,7 +14,7 @@ use crate::callback::Condition;
 use crate::control::{button, TextButton};
 use crate::event::{Event, Handler, Response};
 use crate::macros::Widget;
-use crate::{Class, CoreData, TkWidget, Widget, Window};
+use crate::{Class, CoreData, Size, TkWidget, Widget, Window};
 
 /// An action for use with `MessageBox::new`.
 pub fn action_close() -> impl Fn() -> Response<()> {
@@ -22,7 +22,7 @@ pub fn action_close() -> impl Fn() -> Response<()> {
 }
 
 /// A message box.
-#[widget(class = Class::Window)]
+#[widget(class = Class::Window, layout = derive)]
 #[derive(Clone, Widget)]
 pub struct MessageBox<M: Debug + 'static, H: 'static> {
     #[core]
@@ -70,12 +70,8 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     fn as_widget_mut(&mut self) -> &mut dyn Widget {
         self
     }
-
-    fn configure_widgets(&mut self, _tk: &mut dyn TkWidget) {
-        unimplemented!()
-    }
-
-    fn resize(&mut self, _tk: &mut dyn TkWidget, _size: crate::Size) {
+    
+    fn resize(&mut self, _tk: &mut dyn TkWidget, _size: Size) {
         unimplemented!()
     }
 

@@ -10,7 +10,7 @@ use std::fmt::{self, Debug};
 use crate::callback::Condition;
 use crate::event::{err_num, err_unhandled, Event, Handler, Response};
 use crate::macros::Widget;
-use crate::{Class, Core, CoreData, Coord, Size, TkWidget, Widget};
+use crate::{Class, Core, CoreData, Layout, Coord, Rect, Size, SizePref, TkWidget, Widget};
 
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be
@@ -27,13 +27,8 @@ pub trait Window: Widget + Handler<Msg = ()> {
     ///
     /// Note: needed because Rust does not yet support trait object upcasting
     fn as_widget_mut(&mut self) -> &mut dyn Widget;
-
-    /// Calculate and update positions for all sub-widgets
-    fn configure_widgets(&mut self, tk: &mut dyn TkWidget);
-
+    
     /// Adjust the size of the window, repositioning widgets.
-    ///
-    /// `configure_widgets` must be called before this.
     fn resize(&mut self, tk: &mut dyn TkWidget, size: Size);
 
     /// Get a list of available callbacks.
@@ -59,7 +54,6 @@ pub struct SimpleWindow<W: Widget + 'static> {
     #[core]
     core: CoreData,
     min_size: Size,
-    solver: crate::cw::Solver,
     #[widget]
     w: W,
     fns: Vec<(Condition, &'static dyn Fn(&mut W, &mut dyn TkWidget))>,
@@ -88,10 +82,20 @@ impl<W: Widget + Clone> Clone for SimpleWindow<W> {
         SimpleWindow {
             core: self.core.clone(),
             min_size: self.min_size,
-            solver: crate::cw::Solver::new(),
             w: self.w.clone(),
             fns: self.fns.clone(),
         }
+    }
+}
+
+impl<W: Widget> Layout for SimpleWindow<W> {
+    fn size_pref(&mut self, tk: &dyn TkWidget, pref: SizePref) -> Size {
+        self.w.size_pref(tk, pref)
+    }
+    
+    fn set_rect(&mut self, rect: Rect) {
+        self.core_data_mut().rect = rect;
+        self.w.set_rect(rect);
     }
 }
 
@@ -101,7 +105,6 @@ impl<W: Widget> SimpleWindow<W> {
         SimpleWindow {
             core: Default::default(),
             min_size: Size::ZERO,
-            solver: crate::cw::Solver::new(),
             w,
             fns: Vec::new(),
         }
@@ -158,43 +161,29 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
     fn as_widget_mut(&mut self) -> &mut dyn Widget {
         self
     }
-
-    fn configure_widgets(&mut self, tk: &mut dyn TkWidget) {
-        assert!(self.number() > 0, "widget not enumerated");
-
-        let v_w = cw_var!(self, w);
-        let v_h = cw_var!(self, h);
-
-        self.solver.reset();
-
-        self.w.init_constraints(tk, &mut self.solver, true);
-
-        self.solver
-            .add_edit_variable(v_w, cw::strength::MEDIUM * 100.0)
-            .unwrap();
-        self.solver
-            .add_edit_variable(v_h, cw::strength::MEDIUM * 100.0)
-            .unwrap();
-
-        self.min_size = Size(
-            self.solver.get_value(v_w) as u32,
-            self.solver.get_value(v_h) as u32,
-        );
-
-        self.w.apply_constraints(tk, &self.solver, Coord::ZERO);
-    }
-
+    
     fn resize(&mut self, tk: &mut dyn TkWidget, size: Size) {
-        assert!(self.number() > 0, "widget not enumerated");
-
-        self.solver
-            .suggest_value(cw_var!(self, w), size.0 as f64)
-            .unwrap();
-        self.solver
-            .suggest_value(cw_var!(self, h), size.1 as f64)
-            .unwrap();
-
-        self.w.apply_constraints(tk, &self.solver, Coord::ZERO);
+        let mut pref = SizePref::Default;
+        let mut s = self.w.size_pref(tk, pref);
+        
+        // TODO: algorithm is only 1D!
+        if s.0 < size.0 {
+            while s.0 < size.0 && pref < SizePref::Max {
+                pref = pref.increment();
+                s = self.w.size_pref(tk, pref);
+            }
+        } else {
+            while s.0 > size.0 && pref < SizePref::Min {
+                pref = pref.decrement();
+                s = self.w.size_pref(tk, pref);
+            }
+        }
+        
+        let rect = Rect { pos: Coord::ZERO, size };
+        self.w.set_rect(rect);
+        
+        println!("SimpleWindow:");
+        self.w.print_hierarchy(0);
     }
 
     fn callbacks(&self) -> Vec<(usize, Condition)> {

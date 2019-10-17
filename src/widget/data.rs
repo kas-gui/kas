@@ -29,7 +29,9 @@ impl Size {
     pub const ZERO: Size = Size(0, 0);
     
     /// Maximum possible size
-    pub const MAX: Size = Size(std::u32::MAX, std::u32::MAX);
+    // TODO: what value do we want to use here? Note that current layout logic
+    // can add together multiple copies of this value.
+    pub const MAX: Size = Size(0xFFFF, 0xFFFF);
 }
 
 impl From<(u32, u32)> for Size {

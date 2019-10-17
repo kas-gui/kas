@@ -41,9 +41,21 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let class = args.widget.class;
     let count = args.children.len();
 
-    let layout_fns = match layout::fns(&args.children, args.widget.layout) {
-        Ok(fns) => fns,
-        Err(err) => return err.to_compile_error().into(),
+    let layout_impl;
+    if let Some(ref layout) = args.widget.layout {
+        let layout_fns = match layout::derive(&args.children, layout) {
+            Ok(fns) => fns,
+            Err(err) => return err.to_compile_error().into(),
+        };
+        layout_impl = quote!{
+            impl #impl_generics kas::Layout
+                    for #name #ty_generics #where_clause
+            {
+                #layout_fns
+            }
+        };
+    } else {
+        layout_impl = quote!{};
     };
 
     fn make_match_rules(children: &Vec<args::Child>, mut_ref: TokenStream) -> TokenStream {
@@ -70,11 +82,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
         }
 
-        impl #impl_generics kas::Layout
-                for #name #ty_generics #where_clause
-        {
-            #layout_fns
-        }
+        #layout_impl
 
         impl #impl_generics kas::Widget
                 for #name #ty_generics #where_clause
@@ -283,17 +291,27 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let msg = &args.msg;
 
+    let mut impl_layout = None;
     let widget_args = match args.class {
-        Class::Container(layout) => quote! {
-            class = kas::Class::Container, layout = #layout
-        },
+        Class::Container(layout) => {
+            if layout == "single" {
+                quote! { class = kas::Class::Container, layout = #layout }
+            } else {
+                impl_layout = match layout::ImplLayout::new(&layout) {
+                    Ok(out) => Some(out),
+                    Err(err) => return err.to_compile_error().into(),
+                };
+                quote! { class = kas::Class::Container }
+            }
+        }
         Class::Frame => quote! {
-            class = kas::Class::Frame
+            // TODO: include frame dimensions
+            class = kas::Class::Frame, layout = single
         },
     };
-
+    
     for (index, field) in args.fields.drain(..).enumerate() {
-        let attr = &field.widget_attr;
+        let attr = field.widget_attr;
 
         let ident = match &field.ident {
             Some(ref ident) => ident.clone(),
@@ -303,6 +321,12 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     .write_fmt(format_args!("mw_anon_{}", index))
                     .unwrap();
                 Ident::new(&name_buf, Span::call_site())
+            }
+        };
+        
+        if let Some(ref wattr) = attr {
+            if let Some(ref mut layout) = impl_layout {
+                layout.child(&ident, &wattr.args);
             }
         };
 
@@ -368,7 +392,19 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         quote! { where #handler_clauses }
     };
 
-    let mut impls = TokenStream::new();
+    let mut impls = if let Some(layout) = impl_layout {
+        let (fields, field_ctors, fns) = layout.finish();
+        field_toks.append_all(fields);
+        field_val_toks.append_all(field_ctors);
+        quote! {
+            impl<#gen_ptrs> kas::Layout for AnonWidget<#gen_tys> {
+                #fns
+            }
+        }
+    } else {
+        TokenStream::new()
+    };
+    
     for impl_block in args.impls {
         let mut contents = TokenStream::new();
         for method in impl_block.1 {

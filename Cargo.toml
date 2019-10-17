@@ -9,10 +9,6 @@ keywords = ["gui"]
 categories = ["gui"]
 repository = "https://gitlab.com/dhardy/kas"
 
-[dependencies.cassowary]
-# Widget layout solver. May be replaced in the future.
-git = "https://github.com/dhardy/cassowary-rs"
-
 [dependencies.kas-macros]
 version = "=0.0.2"
 path = "kas-macros"

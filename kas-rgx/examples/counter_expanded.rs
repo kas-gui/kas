@@ -19,7 +19,7 @@ enum Message {
     Incr,
 }
 
-#[widget(class = Class::Container, layout = horizontal)]
+#[widget(class = Class::Container)]
 #[handler(msg = Message, generics = <>
         where D: Handler<Msg = Message>, I: Handler<Msg = Message>)]
 #[derive(Debug, Widget)]
@@ -32,7 +32,7 @@ struct Buttons<D: Widget, I: Widget> {
     incr: I,
 }
 
-#[widget(class = Class::Container, layout = vertical)]
+#[widget(class = Class::Container)]
 #[handler(generics = <> where B: Handler<Msg = Message>)]
 #[derive(Debug, Widget)]
 struct Contents<B: Widget> {

@@ -13,7 +13,7 @@ use crate::macros::Widget;
 use crate::{Class, CoreData, HasBool, HasText, TkWidget};
 
 /// A checkable box with optional label
-#[widget(class = Class::CheckBox(self))]
+#[widget(class = Class::CheckBox(self), layout = derive)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<OT: 'static> {
     #[core]
@@ -147,7 +147,7 @@ impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
 
 /// A push-button with a text label
 // TODO: abstract out text part?
-#[widget(class = Class::Button(self))]
+#[widget(class = Class::Button(self), layout = derive)]
 #[derive(Clone, Default, Widget)]
 pub struct TextButton<H: 'static> {
     #[core]

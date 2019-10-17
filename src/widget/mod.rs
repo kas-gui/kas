@@ -11,7 +11,7 @@ mod layout;
 mod class;
 mod data;
 
-pub use self::layout::Layout;
+pub use self::layout::{Layout, SizePref};
 
 pub use self::class::Class;
 pub use self::data::*;
@@ -67,19 +67,20 @@ impl Core for CoreData {
 /// Widgets must usually also implement the [`Handler`] trait, which is separate
 /// since it is generic.
 ///
-/// This trait should *only* be implemented by using the `derive(Widget)` macro,
-/// which can optionally also implement [`Handler`], as in the following example:
+/// This trait should *only* be implemented by using the `derive(Widget)` macro.
+/// This macro additionally implements the [`Core`] trait, and optionally also
+/// the [`Layout`] and [`Handler`] traits. See documentation in the
+/// [`kas::macros`] module.
 ///
 /// ```
 /// use kas::{Class, Widget, CoreData};
 /// use kas::macros::Widget;
 ///
-/// #[widget(class = Class::Frame)]
-/// #[handler]
+/// #[widget(class = Class::Frame, layout = single)]
 /// #[derive(Clone, Debug, Widget)]
 /// pub struct Frame<W: Widget> {
 ///     #[core] core: CoreData,
-///     child: W,
+///     #[widget] child: W,
 /// }
 /// ```
 ///
@@ -114,5 +115,13 @@ pub trait Widget: Layout {
         }
         self.core_data_mut().number = n;
         n + 1
+    }
+    
+    /// Debug tool: print the widget hierarchy
+    fn print_hierarchy(&self, depth: usize) {
+        println!("{}W[{}]\t{:?}\t{:?}", "- ".repeat(depth), self.number(), self.class(), self.rect());
+        for i in 0..self.len() {
+            self.get(i).unwrap().print_hierarchy(depth + 1);
+        }
     }
 }

@@ -8,9 +8,6 @@
 //! The KAS library is designed for concise, programatic descriptions of GUIs
 //! which are translated to some backend "toolkit" on use.
 
-#[doc(hidden)]
-pub extern crate cassowary as cw; // used by macros
-
 extern crate kas_macros;
 extern crate self as kas; // required for reliable self-reference in kas_macros
 
