@@ -182,11 +182,17 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
                     Dir::Stop
                 }
             }
-            fn adjust(&self, pref: SizePref) -> SizePref {
-                match self {
+            fn adjust(&self, pref: &mut SizePref) -> bool {
+                let new = match self {
                     Dir::Incr => pref.increment(),
                     Dir::Decr => pref.decrement(),
-                    Dir::Stop => pref,
+                    Dir::Stop => *pref,
+                };
+                if new == *pref {
+                    true
+                } else {
+                    *pref = new;
+                    false
                 }
             }
         }
@@ -202,10 +208,14 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
             if dir1 != dir0 {
                 axes = Axes::Horiz;
             }
-            pref = dir0.adjust(pref);
+            if dir0.adjust(&mut pref) {
+                break;
+            }
             s = self.size_pref(tk, pref, axes);
             dir0 = Dir::from(s.0, size.0);
-            dir1 = Dir::from(s.1, size.1);
+            if axes == Axes::Both {
+                dir1 = Dir::from(s.1, size.1);
+            }
         }
 
         // Remember final value from first loop only
@@ -213,7 +223,9 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
 
         axes = Axes::Vert;
         while dir1 == init_dir1 {
-            pref = dir1.adjust(pref);
+            if dir1.adjust(&mut pref) {
+                break;
+            }
             s = self.size_pref(tk, pref, axes);
             dir1 = Dir::from(s.1, size.1);
         }
