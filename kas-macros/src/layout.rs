@@ -227,7 +227,6 @@ impl ImplLayout {
                     }
                 });
 
-                // This rounds down, which is fine except that a few pixels may go unused FIXME
                 self.set_rect.append_all(quote! {
                     let pos = Coord(self.layout_widths[#nc + 1] as i32,
                             self.layout_heights[#nr + 1] as i32);
@@ -370,6 +369,7 @@ impl ImplLayout {
                         self.layout_widths[i + 1] = accum;
                         accum += u;
                     }
+                    let total_width = accum;
 
                     accum = 0;
                     for i in (0..#nr).step_by(2) {
@@ -378,6 +378,28 @@ impl ImplLayout {
                         self.layout_heights[i] = u;
                         self.layout_heights[i + 1] = accum;
                         accum += u;
+                    }
+                    let total_height = accum;
+
+                    // Assign excess from rounding errors to last rows/columns
+                    let excess = rect.size.0 - total_width;
+                    let ex2 = 2 * excess as usize;
+                    assert!(ex2 <= #nc);
+                    accum = 0;
+                    for i in ((#nc - ex2)..#nc).step_by(2) {
+                        self.layout_widths[i] += 1;
+                        self.layout_widths[i + 1] += accum;
+                        accum += 1;
+                    }
+
+                    let excess = rect.size.1 - total_height;
+                    let ex2 = 2 * excess as usize;
+                    assert!(ex2 <= #nr);
+                    accum = 0;
+                    for i in ((#nr - ex2)..#nr).step_by(2) {
+                        self.layout_heights[i] += 1;
+                        self.layout_heights[i + 1] += accum;
+                        accum += 1;
                     }
                 };
             }
