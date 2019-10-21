@@ -24,6 +24,7 @@ use crate::{Coord, TkWidget, WidgetId};
 pub enum Action {
     /// Widget activation, for example clicking a button or toggling a check-box
     Activate,
+    Dummy, // exists temporarily to allow _ pattern in matchers
 }
 
 /// Input events: these are low-level messages where the destination widget is
@@ -231,8 +232,7 @@ pub trait Handler: Core {
     type Msg;
 
     /// Handle a high-level event and return a user-defined msg.
-    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action) -> Response<Self::Msg> {
-        println!("Action on widget {}: {:?}", self.number(), action);
+    fn handle_action(&mut self, _: &mut dyn TkWidget, _: Action) -> Response<Self::Msg> {
         Response::None
     }
 
@@ -249,11 +249,13 @@ pub trait Handler: Core {
                                 Response::None
                             }
                             ElementState::Released => {
-                                if tk.click_start() == self_id {
+                                let r = if tk.click_start() == self_id {
                                     self.handle_action(tk, Action::Activate)
                                 } else {
                                     Response::None
-                                }
+                                };
+                                tk.set_click_start(None);
+                                r
                             }
                         }
                     } else {

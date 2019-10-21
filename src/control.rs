@@ -8,7 +8,7 @@
 use std::any::TypeId;
 use std::fmt::{self, Debug};
 
-use crate::event::{Event, Handler, Response};
+use crate::event::{err_unhandled, Action, Handler, Response};
 use crate::macros::Widget;
 use crate::{Class, CoreData, HasBool, HasText, TkWidget};
 
@@ -123,26 +123,31 @@ impl<H> HasText for CheckBox<H> {
 impl Handler for CheckBox<()> {
     type Msg = ();
 
-//     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<()> {
-        //         match action {
-        //             Action::Toggle => Response::None,
-        //             a @ _ => err_unhandled(a)
-        //         }
-//     }
+    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action) -> Response<()> {
+        match action {
+            Action::Activate => {
+                self.state = !self.state;
+                tk.redraw(self);
+                Response::None
+            }
+            a @ _ => err_unhandled(a),
+        }
+    }
 }
 
 impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
     type Msg = M;
 
-//     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<M> {
-        //         match action {
-        //             Action::Toggle => {
-        //                 self.state = tk.get_bool(self);  // sync
-        //                 ((self.on_toggle)(self.state)).into()
-        //             }
-        //             a @ _ => err_unhandled(a)
-        //         }
-//     }
+    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action) -> Response<M> {
+        match action {
+            Action::Activate => {
+                self.state = !self.state;
+                tk.redraw(self);
+                ((self.on_toggle)(self.state)).into()
+            }
+            a @ _ => err_unhandled(a),
+        }
+    }
 }
 
 /// A push-button with a text label
@@ -218,23 +223,23 @@ impl<H> HasText for TextButton<H> {
 impl Handler for TextButton<()> {
     type Msg = ();
 
-//     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<()> {
-        //         match action {
-        //             Action::Button => Response::None,
-        //             a @ _ => err_unhandled(a)
-        //         }
-//     }
+    fn handle_action(&mut self, _: &mut dyn TkWidget, action: Action) -> Response<()> {
+        match action {
+            Action::Activate => Response::None,
+            a @ _ => err_unhandled(a),
+        }
+    }
 }
 
 impl<M, H: Fn() -> M> Handler for TextButton<H> {
     type Msg = M;
 
-//     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<M> {
-        //         match action {
-        //             Action::Button => ((self.on_click)()).into(),
-        //             a @ _ => err_unhandled(a)
-        //         }
-//     }
+    fn handle_action(&mut self, _: &mut dyn TkWidget, action: Action) -> Response<M> {
+        match action {
+            Action::Activate => ((self.on_click)()).into(),
+            a @ _ => err_unhandled(a),
+        }
+    }
 }
 
 /// TODO: for use with dialogs...

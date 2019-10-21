@@ -136,7 +136,8 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for SimpleWindow<W> {
                     // TODO: either allow a custom handler or require M=()
                     let r = self.w.handle(tk, Event::ToChild(num, ev));
                     Response::try_from(r).unwrap_or_else(|_| {
-                        panic!("TODO: widget returned custom msg to window (currently unsupported)")
+                        println!("TODO: widget returned custom msg to window");
+                        Response::None
                     })
                 } else if num == self.number() {
                     match ev {
@@ -150,7 +151,8 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for SimpleWindow<W> {
                 // widget covers entire area
                 let r = self.w.handle(tk, Event::ToCoord(coord, ev));
                 Response::try_from(r).unwrap_or_else(|_| {
-                    panic!("TODO: widget returned custom msg to window (currently unsupported)")
+                    println!("TODO: widget returned custom msg to window");
+                    Response::None
                 })
             }
         }

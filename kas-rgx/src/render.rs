@@ -71,6 +71,7 @@ impl Widgets {
         widget: &dyn kas::Widget,
     ) {
         // This is a hacky draw routine just to show where widgets are.
+        let w_id = Some(widget.number());
 
         // Note: widget coordinates place the origin at the top-left.
         // Draw coordinates use f32 with the origin at the bottom-left.
@@ -118,6 +119,13 @@ impl Widgets {
             }
             Class::Button(cls) => {
                 background = Rgba::new(0.2, 0.7, 1.0, 1.0);
+                if self.hover == w_id {
+                    if self.click_start == w_id {
+                        background = Rgba::new(0.2, 0.6, 0.8, 1.0);
+                    } else if self.click_start.is_none() {
+                        background = Rgba::new(0.25, 0.8, 1.0, 1.0);
+                    }
+                }
                 let color = [1.0, 1.0, 1.0, 1.0];
                 glyph_brush.queue(Section {
                     text: cls.get_text(),
@@ -148,11 +156,7 @@ impl Widgets {
         }
 
         // draw margin
-        let r = if Some(widget.number()) == self.hover {
-            1.0
-        } else {
-            0.5
-        };
+        let r = if self.hover == w_id { 1.0 } else { 0.5 };
         batch.add(Shape::Rectangle(
             Rect::new(x0, y0, x1, y1),
             Stroke::new(margin, Rgba::new(r, 0.5, 0.5, 1.0)),
@@ -170,6 +174,10 @@ impl TkWidget for Widgets {
         } else {
             Size(80, 40) // FIXME
         }
+    }
+
+    fn redraw(&mut self, _: &dyn Widget) {
+        self.redraw = true;
     }
 
     fn hover(&self) -> Option<WidgetId> {

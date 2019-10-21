@@ -22,6 +22,9 @@ pub trait TkWidget {
     /// Get the widget's size preferences
     fn size_pref(&self, widget: &dyn Widget, pref: SizePref) -> Size;
 
+    /// Notify that a widget must be redrawn
+    fn redraw(&mut self, widget: &dyn Widget);
+
     /// Get the widget under the mouse
     fn hover(&self) -> Option<WidgetId>;
     /// Set the widget under the mouse
