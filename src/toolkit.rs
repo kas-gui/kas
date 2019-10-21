@@ -8,7 +8,7 @@
 //! TODO: "toolkit" is no longer an apt description of this internal API, but
 //! rather "theme + renderer".
 
-use crate::widget::{Size, SizePref, Widget};
+use crate::widget::{Size, SizePref, Widget, WidgetId};
 
 /// Common widget properties. Implemented by the toolkit.
 ///
@@ -21,4 +21,7 @@ use crate::widget::{Size, SizePref, Widget};
 pub trait TkWidget {
     /// Get the widget's size preferences
     fn size_pref(&self, widget: &dyn Widget, pref: SizePref) -> Size;
+
+    /// Set the widget under the mouse
+    fn set_hover(&mut self, hover: Option<WidgetId>);
 }

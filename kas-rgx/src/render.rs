@@ -13,8 +13,9 @@ use kas::{Class, Size, SizePref, TkWidget, Widget, WidgetId};
 
 /// Widget renderer
 pub(crate) struct Widgets {
-    pub(crate) hover: Option<WidgetId>,
+    hover: Option<WidgetId>,
     font_scale: f32,
+    redraw: bool,
 }
 
 impl Widgets {
@@ -22,7 +23,12 @@ impl Widgets {
         Widgets {
             hover: None,
             font_scale: 24.0,
+            redraw: false,
         }
+    }
+
+    pub fn need_redraw(&self) -> bool {
+        self.redraw
     }
 
     pub fn draw<'a, V>(
@@ -161,6 +167,13 @@ impl TkWidget for Widgets {
             Size::MAX
         } else {
             Size(80, 40) // FIXME
+        }
+    }
+
+    fn set_hover(&mut self, hover: Option<WidgetId>) {
+        if self.hover != hover {
+            self.hover = hover;
+            self.redraw = true;
         }
     }
 }

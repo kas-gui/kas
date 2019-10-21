@@ -10,7 +10,7 @@ use rgx::math::Matrix4;
 use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder};
 
 use kas::event::{Event, EventCoord, Response};
-use kas::WidgetId;
+use kas::TkWidget;
 use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
@@ -117,7 +117,7 @@ impl Window {
                     .handle(&mut self.wrend, Event::ToCoord(coord.into(), ev))
             }
             CursorLeft { .. } => {
-                self.set_hover(None);
+                self.wrend.set_hover(None);
                 return false;
             }
             RedrawRequested => {
@@ -134,22 +134,15 @@ impl Window {
             }
         };
 
+        // Event handling may trigger a redraw
+        if self.wrend.need_redraw() {
+            self.ww.request_redraw();
+        }
+
         match response {
             Response::None | Response::Msg(()) => false,
             // TODO: handle Exit properly
             Response::Close | Response::Exit => true,
-            Response::Hover(id) => {
-                self.set_hover(Some(id));
-                false
-            }
-        }
-    }
-
-    fn set_hover(&mut self, hover: Option<WidgetId>) {
-        if self.wrend.hover != hover {
-            println!("Hover widget: {:?}", hover);
-            self.wrend.hover = hover;
-            self.ww.request_redraw();
         }
     }
 }

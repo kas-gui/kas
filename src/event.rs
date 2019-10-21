@@ -129,8 +129,6 @@ pub enum Response<M> {
     Close,
     /// Exit (close all windows)
     Exit,
-    /// Update widget under the mouse
-    Hover(WidgetId),
     /// Custom message type
     Msg(M),
 }
@@ -178,7 +176,6 @@ impl<M> Response<M> {
             None => Ok(None),
             Close => Ok(Close),
             Exit => Ok(Exit),
-            Hover(id) => Ok(Hover(id)),
             Msg(m) => Err(m),
         }
     }
@@ -230,15 +227,15 @@ pub trait Handler: Core {
     // fn handle_action(&mut self, tk: &mut dyn TkWidget, _: Action) -> Response<Self::Msg> {}
 
     /// Handle a low-level event. Normally the user should not override this.
-    // TODO: is there actually any need to pass TkWidget?
-    fn handle(&mut self, _tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
         match event {
             Event::ToChild(..) => err_unhandled(event),
             Event::ToCoord(_, ev) => {
                 match ev {
                     EventCoord::CursorMoved { .. } => {
                         // We can assume the pointer is over this widget
-                        Response::Hover(self.number())
+                        tk.set_hover(Some(self.number()));
+                        Response::None
                     }
                 }
             }
