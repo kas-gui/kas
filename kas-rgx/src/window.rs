@@ -15,6 +15,7 @@ use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
+use winit::event::{ElementState, MouseButton};
 use winit::event_loop::EventLoopWindowTarget;
 
 use crate::render::Widgets;
@@ -135,7 +136,12 @@ impl Window {
                 if let Some(id) = self.wrend.hover() {
                     self.win.handle(&mut self.wrend, Event::ToChild(id, ev))
                 } else {
-                    println!("Warning: mouse input without hover target!");
+                    // This happens for example on click-release when the
+                    // cursor is no longer over the window.
+                    // TODO: move event handler
+                    if button == MouseButton::Left && state == ElementState::Released {
+                        self.wrend.set_click_start(None);
+                    }
                     Response::None
                 }
             }
