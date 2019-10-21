@@ -30,7 +30,7 @@ pub struct Window {
     //     /// The GTK window
     //     pub gwin: gtk::Window,
     nums: (u32, u32), // TODO: is this useful?
-    widgets: Widgets,
+    wrend: Widgets,
 }
 
 // Public functions, for use by the toolkit
@@ -53,9 +53,9 @@ impl Window {
 
         let num1 = win.enumerate(num0);
 
-        let mut widgets = Widgets::new();
+        let mut wrend = Widgets::new();
 
-        win.resize(&mut widgets, size.into());
+        win.resize(&mut wrend, size.into());
 
         let w = Window {
             win,
@@ -64,7 +64,7 @@ impl Window {
             swap_chain,
             pipeline,
             nums: (num0, num1),
-            widgets,
+            wrend,
         };
 
         Ok(w)
@@ -79,7 +79,7 @@ impl Window {
     /// windows.
     pub fn prepare(&mut self) {
         self.ww.request_redraw();
-        self.win.on_start(&mut self.widgets);
+        self.win.on_start(&mut self.wrend);
     }
 
     /// Handle an event
@@ -106,7 +106,7 @@ impl Window {
                     modifiers,
                 };
                 self.win
-                    .handle(&mut self.widgets, Event::ToCoord(coord.into(), ev))
+                    .handle(&mut self.wrend, Event::ToCoord(coord.into(), ev))
             }
             CursorLeft { .. } => {
                 self.set_hover(None);
@@ -138,9 +138,9 @@ impl Window {
     }
 
     fn set_hover(&mut self, hover: Option<WidgetId>) {
-        if self.widgets.hover != hover {
+        if self.wrend.hover != hover {
             println!("Hover widget: {:?}", hover);
-            self.widgets.hover = hover;
+            self.wrend.hover = hover;
             self.ww.request_redraw();
         }
     }
@@ -160,12 +160,12 @@ impl Window {
         self.swap_chain = self.rend.swap_chain(size.0, size.1, PresentMode::default());
 
         // TODO: work with logical size to allow DPI scaling
-        self.win.resize(&mut self.widgets, size.into());
+        self.win.resize(&mut self.wrend, size.into());
     }
 
     fn do_draw(&mut self) {
         let size = (self.swap_chain.width, self.swap_chain.height);
-        let buffer = self.widgets.draw(&self.rend, size, &*self.win);
+        let buffer = self.wrend.draw(&self.rend, size, &*self.win);
 
         let mut frame = self.rend.frame();
         self.rend

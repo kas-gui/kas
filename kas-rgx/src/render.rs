@@ -10,8 +10,7 @@ use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
 
 use kas::{Class, Size, SizePref, TkWidget, Widget, WidgetId};
 
-// TODO: we can probably remove the ws field entirely, along with
-// most TkWidget methods
+/// Widget renderer
 pub(crate) struct Widgets {
     pub(crate) hover: Option<WidgetId>,
 }
@@ -39,7 +38,7 @@ impl Widgets {
         }
     }
 
-    fn draw_widget(self: &Widgets, batch: &mut Batch, height: f32, widget: &dyn kas::Widget) {
+    fn draw_widget(&self, batch: &mut Batch, height: f32, widget: &dyn kas::Widget) {
         // This is a hacky draw routine just to show where widgets are.
 
         // Note: widget coordinates place the origin at the top-left.
