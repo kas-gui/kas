@@ -7,6 +7,7 @@
 
 use rgx::core::*;
 use rgx::math::Matrix4;
+use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder};
 
 use kas::event::{Event, EventCoord, Response};
 use kas::WidgetId;
@@ -27,9 +28,9 @@ pub struct Window {
     rend: Renderer,
     swap_chain: SwapChain,
     pipeline: rgx::kit::shape2d::Pipeline,
-    //     /// The GTK window
-    //     pub gwin: gtk::Window,
+    glyph_brush: GlyphBrush<'static, ()>,
     nums: (u32, u32), // TODO: is this useful?
+    size: (u32, u32),
     wrend: Widgets,
 }
 
@@ -45,11 +46,16 @@ impl Window {
         num0: u32,
     ) -> Result<Window, OsError> {
         let ww = winit::window::Window::new(event_loop)?;
-        let rend = Renderer::new(ww.raw_window_handle());
+        let mut rend = Renderer::new(ww.raw_window_handle());
 
         let size: (u32, u32) = ww.inner_size().to_physical(ww.hidpi_factor()).into();
         let pipeline = rend.pipeline(size.0, size.1, Blending::default());
         let swap_chain = rend.swap_chain(size.0, size.1, PresentMode::default());
+
+        // FIXME: font source!
+        let font: &[u8] = include_bytes!("/usr/share/fonts/dejavu/DejaVuSerif.ttf");
+        let glyph_brush = GlyphBrushBuilder::using_font_bytes(font)
+            .build(rend.device.device_mut(), swap_chain.format());
 
         let num1 = win.enumerate(num0);
 
@@ -63,7 +69,9 @@ impl Window {
             rend,
             swap_chain,
             pipeline,
+            glyph_brush,
             nums: (num0, num1),
+            size,
             wrend,
         };
 
@@ -150,9 +158,10 @@ impl Window {
 impl Window {
     fn do_resize(&mut self, size: LogicalSize) {
         let size: (u32, u32) = size.to_physical(self.ww.hidpi_factor()).into();
-        if size == (self.swap_chain.width, self.swap_chain.height) {
+        if size == self.size {
             return;
         }
+        self.size = size;
 
         // Note: pipeline.resize relies on calling self.rend.update_pipeline
         // to avoid scaling issues; alternative is to create a new pipeline
@@ -165,12 +174,15 @@ impl Window {
 
     fn do_draw(&mut self) {
         let size = (self.swap_chain.width, self.swap_chain.height);
-        let buffer = self.wrend.draw(&self.rend, size, &*self.win);
+        let buffer = self
+            .wrend
+            .draw(&self.rend, &mut self.glyph_brush, size, &*self.win);
 
         let mut frame = self.rend.frame();
         self.rend
             .update_pipeline(&self.pipeline, Matrix4::identity(), &mut frame);
         let texture = self.swap_chain.next();
+
         {
             let c = 0.2;
             let pass = &mut frame.pass(PassOp::Clear(Rgba::new(c, c, c, 1.0)), &texture);
@@ -178,6 +190,17 @@ impl Window {
             pass.set_pipeline(&self.pipeline);
             pass.draw_buffer(&buffer);
         }
+
+        self.glyph_brush
+            .draw_queued(
+                self.rend.device.device_mut(),
+                frame.encoder_mut(),
+                texture.texture_view(),
+                self.size.0,
+                self.size.1,
+            )
+            .expect("glyph_brush.draw_queued");
+
         self.rend.submit(frame);
     }
 }
