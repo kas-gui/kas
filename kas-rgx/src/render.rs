@@ -14,6 +14,7 @@ use kas::{Class, Size, SizePref, TkWidget, Widget, WidgetId};
 /// Widget renderer
 pub(crate) struct Widgets {
     hover: Option<WidgetId>,
+    click_start: Option<WidgetId>,
     font_scale: f32,
     redraw: bool,
 }
@@ -22,6 +23,7 @@ impl Widgets {
     pub fn new() -> Self {
         Widgets {
             hover: None,
+            click_start: None,
             font_scale: 24.0,
             redraw: false,
         }
@@ -170,10 +172,20 @@ impl TkWidget for Widgets {
         }
     }
 
-    fn set_hover(&mut self, hover: Option<WidgetId>) {
-        if self.hover != hover {
-            self.hover = hover;
+    fn hover(&self) -> Option<WidgetId> {
+        self.hover
+    }
+    fn set_hover(&mut self, id: Option<WidgetId>) {
+        if self.hover != id {
+            self.hover = id;
             self.redraw = true;
         }
+    }
+
+    fn click_start(&self) -> Option<WidgetId> {
+        self.click_start
+    }
+    fn set_click_start(&mut self, id: Option<WidgetId>) {
+        self.click_start = id;
     }
 }

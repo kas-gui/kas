@@ -22,6 +22,13 @@ pub trait TkWidget {
     /// Get the widget's size preferences
     fn size_pref(&self, widget: &dyn Widget, pref: SizePref) -> Size;
 
+    /// Get the widget under the mouse
+    fn hover(&self) -> Option<WidgetId>;
     /// Set the widget under the mouse
-    fn set_hover(&mut self, hover: Option<WidgetId>);
+    fn set_hover(&mut self, id: Option<WidgetId>);
+
+    /// Get the widget under the mouse when a left-click starts
+    fn click_start(&self) -> Option<WidgetId>;
+    /// Set the widget under the mouse when a left-click starts
+    fn set_click_start(&mut self, id: Option<WidgetId>);
 }

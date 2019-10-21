@@ -9,7 +9,7 @@ use rgx::core::*;
 use rgx::math::Matrix4;
 use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder};
 
-use kas::event::{Event, EventCoord, Response};
+use kas::event::{Event, EventChild, EventCoord, Response};
 use kas::TkWidget;
 use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
@@ -119,6 +119,25 @@ impl Window {
             CursorLeft { .. } => {
                 self.wrend.set_hover(None);
                 return false;
+            }
+            MouseInput {
+                device_id,
+                state,
+                button,
+                modifiers,
+            } => {
+                let ev = EventChild::MouseInput {
+                    device_id,
+                    state,
+                    button,
+                    modifiers,
+                };
+                if let Some(id) = self.wrend.hover() {
+                    self.win.handle(&mut self.wrend, Event::ToChild(id, ev))
+                } else {
+                    println!("Warning: mouse input without hover target!");
+                    Response::None
+                }
             }
             RedrawRequested => {
                 self.do_draw();

@@ -14,10 +14,17 @@
 use std::fmt::Debug;
 // use std::path::PathBuf;
 
-use winit::event::{DeviceId, ModifiersState};
+use winit::event::{DeviceId, ElementState, ModifiersState, MouseButton};
 
 use crate::widget::Core;
 use crate::{Coord, TkWidget, WidgetId};
+
+/// High-level actions supported by widgets
+#[derive(Debug)]
+pub enum Action {
+    /// Widget activation, for example clicking a button or toggling a check-box
+    Activate,
+}
 
 /// Input events: these are low-level messages where the destination widget is
 /// unknown.
@@ -38,12 +45,18 @@ pub enum Event {
 
 /// Events addressed to a child by number
 #[derive(Debug)]
-pub enum EventChild {}
+pub enum EventChild {
+    MouseInput {
+        device_id: DeviceId,
+        state: ElementState,
+        button: MouseButton,
+        modifiers: ModifiersState,
+    },
+}
 
 /// Events addressed by coordinate
 #[derive(Debug)]
 pub enum EventCoord {
-    /// Widget is under the mouse
     CursorMoved {
         device_id: DeviceId,
         modifiers: ModifiersState,
@@ -70,12 +83,6 @@ pub enum EventCoord {
 //         device_id: DeviceId,
 //         delta: MouseScrollDelta,
 //         phase: TouchPhase,
-//         modifiers: ModifiersState,
-//     },
-//     MouseInput {
-//         device_id: DeviceId,
-//         state: ElementState,
-//         button: MouseButton,
 //         modifiers: ModifiersState,
 //     },
 //     TouchpadPressure {
@@ -224,17 +231,41 @@ pub trait Handler: Core {
     type Msg;
 
     /// Handle a high-level event and return a user-defined msg.
-    // fn handle_action(&mut self, tk: &mut dyn TkWidget, _: Action) -> Response<Self::Msg> {}
+    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action) -> Response<Self::Msg> {
+        println!("Action on widget {}: {:?}", self.number(), action);
+        Response::None
+    }
 
     /// Handle a low-level event. Normally the user should not override this.
     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
+        let self_id = Some(self.number());
         match event {
-            Event::ToChild(..) => err_unhandled(event),
+            Event::ToChild(_, ev) => match ev {
+                EventChild::MouseInput { state, button, .. } => {
+                    if button == MouseButton::Left {
+                        match state {
+                            ElementState::Pressed => {
+                                tk.set_click_start(self_id);
+                                Response::None
+                            }
+                            ElementState::Released => {
+                                if tk.click_start() == self_id {
+                                    self.handle_action(tk, Action::Activate)
+                                } else {
+                                    Response::None
+                                }
+                            }
+                        }
+                    } else {
+                        Response::None
+                    }
+                }
+            },
             Event::ToCoord(_, ev) => {
                 match ev {
                     EventCoord::CursorMoved { .. } => {
                         // We can assume the pointer is over this widget
-                        tk.set_hover(Some(self.number()));
+                        tk.set_hover(self_id);
                         Response::None
                     }
                 }
