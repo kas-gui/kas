@@ -6,6 +6,7 @@
 //! Toolkit for kas
 
 mod event;
+mod font;
 mod render;
 mod window;
 

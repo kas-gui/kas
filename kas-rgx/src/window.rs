@@ -53,9 +53,7 @@ impl Window {
         let pipeline = rend.pipeline(size.0, size.1, Blending::default());
         let swap_chain = rend.swap_chain(size.0, size.1, PresentMode::default());
 
-        // FIXME: font source!
-        let font: &[u8] = include_bytes!("/usr/share/fonts/dejavu/DejaVuSerif.ttf");
-        let glyph_brush = GlyphBrushBuilder::using_font_bytes(font)
+        let glyph_brush = GlyphBrushBuilder::using_font(crate::font::get_font())
             .build(rend.device.device_mut(), swap_chain.format());
 
         let num1 = win.enumerate(num0);
