@@ -7,7 +7,7 @@ license = "Apache-2.0"
 description = "Native KAS toolkit using rgx renderer"
 keywords = ["gui"]
 categories = ["gui"]
-repository = "https://gitlab.com/dhardy/kas"
+repository = "https://github.com/dhardy/kas"
 
 [features]
 [dependencies]

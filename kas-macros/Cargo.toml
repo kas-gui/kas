@@ -7,7 +7,7 @@ license = "Apache-2.0"
 description = "GUI Toolkit Abstraction System (macros)"
 keywords = ["gui", "proc-macro"]
 categories = ["gui"]
-repository = "https://gitlab.com/dhardy/kas"
+repository = "https://github.com/dhardy/kas"
 
 [lib]
 proc-macro = true
