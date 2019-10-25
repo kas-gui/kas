@@ -20,37 +20,38 @@ enum Message {
 }
 
 fn main() -> Result<(), winit::error::OsError> {
-    let buttons = make_widget!(
+    let buttons = make_widget! {
         container(horizontal) => Message;
         struct {
             #[widget] _ = TextButton::new_on("−", || Message::Decr),
             #[widget] _ = TextButton::new_on("+", || Message::Incr),
         }
-    );
-    let window = SimpleWindow::new(make_widget!(
-    container(vertical) => ();
-    struct {
-        #[widget] display: Label = Label::from("0"),
-        #[widget(handler = handle_button)] buttons -> Message = buttons,
-        counter: usize = 0,
-    }
-    impl {
-        fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message)
-            -> Response<()>
-        {
-            match msg {
-                Message::Decr => {
-                    self.counter = self.counter.saturating_sub(1);
-                    self.display.set_text(tk, self.counter.to_string());
-                }
-                Message::Incr => {
-                    self.counter = self.counter.saturating_add(1);
-                    self.display.set_text(tk, self.counter.to_string());
-                }
-            };
-            Response::None
+    };
+    let window = SimpleWindow::new(make_widget! {
+        container(vertical) => ();
+        struct {
+            #[widget] display: Label = Label::from("0"),
+            #[widget(handler = handle_button)] buttons -> Message = buttons,
+            counter: usize = 0,
         }
-    }));
+        impl {
+            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message)
+                -> Response<()>
+            {
+                match msg {
+                    Message::Decr => {
+                        self.counter = self.counter.saturating_sub(1);
+                        self.display.set_text(tk, self.counter.to_string());
+                    }
+                    Message::Incr => {
+                        self.counter = self.counter.saturating_add(1);
+                        self.display.set_text(tk, self.counter.to_string());
+                    }
+                };
+                Response::None
+            }
+        }
+    });
 
     let mut toolkit = kas_rgx::Toolkit::new();
     toolkit.add(window)?;

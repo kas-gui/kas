@@ -27,6 +27,7 @@ fn main() -> Result<(), winit::error::OsError> {
             #[widget(row=4, col=1)] _ = CheckBox::new("").state(true),
         }
     };
+
     let window = SimpleWindow::new(make_widget! {
         container(vertical) => ();
         struct {

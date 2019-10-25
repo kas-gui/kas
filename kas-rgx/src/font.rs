@@ -10,10 +10,8 @@
 
 #[cfg(feature = "font-config")]
 use font_kit::{
-    family_name::FamilyName,
-    handle::Handle,
-    properties::Properties,
-    source::SystemSource};
+    family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource,
+};
 
 #[cfg(feature = "font-config")]
 use lazy_static::lazy_static;
@@ -21,10 +19,7 @@ use wgpu_glyph::Font;
 // use wgpu_glyph::rusttype::FontCollection;
 
 #[cfg(feature = "font-config")]
-use std::{
-    fs::File,
-    io::Read,
-    sync::Arc};
+use std::{fs::File, io::Read, sync::Arc};
 
 #[cfg(feature = "font-config")]
 struct FontCollectionBytes {
@@ -35,18 +30,24 @@ struct FontCollectionBytes {
 #[cfg(feature = "font-config")]
 impl FontCollectionBytes {
     fn load() -> Self {
-        let handle = SystemSource::new().select_best_match(
-            &[FamilyName::SansSerif],
-            &Properties::new()).unwrap();
+        let handle = SystemSource::new()
+            .select_best_match(&[FamilyName::SansSerif], &Properties::new())
+            .unwrap();
         match handle {
-            Handle::Path{ path, font_index } => {
+            Handle::Path { path, font_index } => {
                 let mut bytes = vec![];
                 File::open(path).unwrap().read_to_end(&mut bytes).unwrap();
-                FontCollectionBytes { bytes, index: font_index }
+                FontCollectionBytes {
+                    bytes,
+                    index: font_index,
+                }
             }
             Handle::Memory { bytes, font_index } => {
                 let bytes = Arc::try_unwrap(bytes).unwrap();
-                FontCollectionBytes { bytes, index: font_index }
+                FontCollectionBytes {
+                    bytes,
+                    index: font_index,
+                }
             }
         }
     }
