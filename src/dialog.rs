@@ -80,5 +80,4 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
         Vec::new()
     }
     fn trigger_callback(&mut self, _index: usize, _tk: &mut dyn TkWidget) {}
-    fn on_start(&mut self, _tk: &mut dyn TkWidget) {}
 }

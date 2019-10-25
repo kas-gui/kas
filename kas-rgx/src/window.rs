@@ -5,10 +5,13 @@
 
 //! `Window` and `WindowList` types
 
+use std::time::{Duration, Instant};
+
 use rgx::core::*;
 use rgx::math::Matrix4;
 use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder};
 
+use kas::callback::Condition;
 use kas::event::{Event, EventChild, EventCoord, Response};
 use kas::TkWidget;
 use raw_window_handle::HasRawWindowHandle;
@@ -32,6 +35,7 @@ pub struct Window {
     glyph_brush: GlyphBrush<'static, ()>,
     nums: (u32, u32), // TODO: is this useful?
     size: (u32, u32),
+    timeouts: Vec<(usize, Instant, Option<Duration>)>,
     wrend: Widgets,
 }
 
@@ -71,6 +75,7 @@ impl Window {
             glyph_brush,
             nums: (num0, num1),
             size,
+            timeouts: vec![],
             wrend,
         };
 
@@ -86,7 +91,18 @@ impl Window {
     /// windows.
     pub fn prepare(&mut self) {
         self.ww.request_redraw();
-        self.win.on_start(&mut self.wrend);
+
+        for (i, condition) in self.win.callbacks() {
+            match condition {
+                Condition::Start => {
+                    self.win.trigger_callback(i, &mut self.wrend);
+                }
+                Condition::Repeat(dur) => {
+                    self.win.trigger_callback(i, &mut self.wrend);
+                    self.timeouts.push((i, Instant::now() + dur, Some(dur)));
+                }
+            }
+        }
     }
 
     /// Handle an event
@@ -167,6 +183,45 @@ impl Window {
             // TODO: handle Exit properly
             Response::Close | Response::Exit => true,
         }
+    }
+
+    pub(crate) fn timer_resume(&mut self, instant: Instant) {
+        // Iterate over loop, mutating some elements, removing others.
+        let mut i = 0;
+        while i < self.timeouts.len() {
+            for timeout in &mut self.timeouts[i..] {
+                if timeout.1 == instant {
+                    self.win.trigger_callback(timeout.0, &mut self.wrend);
+                    if let Some(dur) = timeout.2 {
+                        while timeout.1 <= Instant::now() {
+                            timeout.1 += dur;
+                        }
+                    } else {
+                        break; // remove
+                    }
+                }
+                i += 1;
+            }
+            if i < self.timeouts.len() {
+                self.timeouts.remove(i);
+            }
+        }
+
+        // Timer handling may trigger a redraw
+        if self.wrend.need_redraw() {
+            self.ww.request_redraw();
+        }
+    }
+
+    pub(crate) fn next_resume(&self) -> Option<Instant> {
+        let mut next = None;
+        for timeout in &self.timeouts {
+            next = match next {
+                None => Some(timeout.1),
+                Some(t) => Some(t.min(timeout.1)),
+            }
+        }
+        next
     }
 }
 

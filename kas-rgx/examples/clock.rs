@@ -9,6 +9,7 @@
 extern crate chrono;
 
 use chrono::prelude::*;
+use std::time::Duration;
 
 use kas::callback::Condition;
 use kas::macros::make_widget;
@@ -28,14 +29,14 @@ fn main() {
                 let now = Local::now();
                 self.date.set_text(tk, now.format("%Y %m %d").to_string());
                 self.time.set_text(tk, now.format("%H:%M:%S").to_string());
+                tk.redraw(self);
             }
         }
     });
 
-    window.add_callback(
-        &|w, tk| w.on_tick(tk),
-        &[Condition::Start, Condition::TimeoutSec(1)],
-    );
+    window.add_callback(Condition::Repeat(Duration::from_secs(1)), &|w, tk| {
+        w.on_tick(tk)
+    });
 
     let mut toolkit = kas_rgx::Toolkit::new();
     toolkit.add(window).unwrap();

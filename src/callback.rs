@@ -8,6 +8,8 @@
 //! Note that callbacks are added to windows, hence some callback functionality
 //! is a detail of the [`Window`] trait.
 
+use std::time::Duration;
+
 /// A Condition specifies when a callback is called.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Condition {
@@ -16,12 +18,8 @@ pub enum Condition {
     // GDK's Map event instead, which is called when the window is created and
     // when it is restored from a minimised state.
     Start,
-    /// Call repeatedly after a timeout specified in milliseconds. Precise
-    /// timing is not guaranteed.
+    /// Call on start and repeatedly with the given period. Precise timing is not guaranteed.
     // Note: do we want to auto-suspend timeouts for minimised windows? Perhaps
     // make this optional?
-    TimeoutMs(u32),
-    /// Call repeatedly after a timeout specified in seconds. Precise timing is
-    /// not guaranteed.
-    TimeoutSec(u32),
+    Repeat(Duration),
 }

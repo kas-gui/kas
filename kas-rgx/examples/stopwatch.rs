@@ -43,8 +43,8 @@ fn make_window() -> Box<dyn Window> {
                     }
                 }
             },
-            #[widget(handler = handle_button)] b_reset = TextButton::new_on("⏮", || Control::Reset),
-            #[widget(handler = handle_button)] b_start = TextButton::new_on("⏯", || Control::Start),
+            #[widget(handler = handle_button)] b_reset = TextButton::new_on("reset", || Control::Reset),
+            #[widget(handler = handle_button)] b_start = TextButton::new_on("start / stop", || Control::Start),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
             dur_buf: String = String::default(),
@@ -86,7 +86,9 @@ fn make_window() -> Box<dyn Window> {
 
     let mut window = SimpleWindow::new(stopwatch);
 
-    window.add_callback(&|w, tk| w.on_tick(tk), &[Condition::TimeoutMs(16)]);
+    window.add_callback(Condition::Repeat(Duration::from_millis(16)), &|w, tk| {
+        w.on_tick(tk)
+    });
 
     Box::new(window)
 }

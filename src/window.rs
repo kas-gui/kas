@@ -39,10 +39,6 @@ pub trait Window: Widget + Handler<Msg = ()> {
 
     /// Trigger a callback (see `iter_callbacks`).
     fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWidget);
-
-    /// Called by the toolkit after the window has been created and before it
-    /// is drawn. This allows callbacks to be invoked "on start".
-    fn on_start(&mut self, tk: &mut dyn TkWidget);
 }
 
 /// The main instantiation of the `Window` trait.
@@ -69,9 +65,9 @@ impl<W: Widget> Debug for SimpleWindow<W> {
         )?;
         let mut iter = self.fns.iter();
         if let Some(first) = iter.next() {
-            write!(f, "({:?}, <FnMut>)", first.0)?;
+            write!(f, "({:?}, <Fn>)", first.0)?;
             for next in iter {
-                write!(f, ", ({:?}, <FnMut>)", next.0)?;
+                write!(f, ", ({:?}, <Fn>)", next.0)?;
             }
         }
         write!(f, "] }}")
@@ -117,12 +113,10 @@ impl<W: Widget> SimpleWindow<W> {
     /// condition. The closure must be passed by reference.
     pub fn add_callback(
         &mut self,
+        condition: Condition,
         f: &'static dyn Fn(&mut W, &mut dyn TkWidget),
-        conditions: &[Condition],
     ) {
-        for c in conditions {
-            self.fns.push((*c, f));
-        }
+        self.fns.push((condition, f));
     }
 }
 
@@ -250,13 +244,5 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
     fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWidget) {
         let cb = &mut self.fns[index].1;
         cb(&mut self.w, tk);
-    }
-
-    fn on_start(&mut self, tk: &mut dyn TkWidget) {
-        for cb in &mut self.fns {
-            if cb.0 == Condition::Start {
-                (cb.1)(&mut self.w, tk);
-            }
-        }
     }
 }

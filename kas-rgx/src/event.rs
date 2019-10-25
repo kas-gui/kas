@@ -5,6 +5,8 @@
 
 //! Event handling
 
+use std::time::Instant;
+
 use winit::event::{Event, StartCause};
 use winit::event_loop::ControlFlow;
 
@@ -39,11 +41,36 @@ pub(crate) fn handler<T>(
         DeviceEvent { .. } => (), // windows handle local input; we do not handle global input
         UserEvent(_) => (),       // we have no handler for user events
 
-        NewEvents(StartCause::Init) => {
-            *control_flow = ControlFlow::Wait;
+        NewEvents(cause) => {
+            match cause {
+                StartCause::ResumeTimeReached {
+                    requested_resume, ..
+                } => {
+                    for window in windows.iter_mut() {
+                        window.timer_resume(requested_resume);
+                    }
+                    *control_flow = next_resume_time(windows);
+                }
+                StartCause::Init => *control_flow = next_resume_time(windows),
+                _ => (), // we can ignore these events
+            }
         }
-        NewEvents(_) => (), // we can ignore these events
 
         EventsCleared | LoopDestroyed | Suspended | Resumed => (),
     }
+}
+
+fn next_resume_time(windows: &mut Vec<Window>) -> ControlFlow {
+    let mut resume_time: Option<Instant> = None;
+    for window in windows.iter() {
+        if let Some(time) = window.next_resume() {
+            resume_time = match resume_time {
+                Some(t) => Some(t.min(time)),
+                None => Some(time),
+            };
+        }
+    }
+    resume_time
+        .map(|t| ControlFlow::WaitUntil(t))
+        .unwrap_or(ControlFlow::Wait)
 }
