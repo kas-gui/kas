@@ -1,6 +1,9 @@
 KAS GUI
 ==========
 
+[![home](https://img.shields.io/badge/GitHub-home-blue)](https://github.com/dhardy/kas)
+[![old-home](https://img.shields.io/badge/GitLab-old--home-blueviolet)](https://gitlab.com/dhardy/kas)
+
 The name KAS comes from *toolKit Abstraction System*. The original goal of this
 project was to build a UI using native widget libraries configured from pure
 Rust; aims to use native widget libraries have been dropped.
