@@ -1,43 +1,90 @@
 KAS GUI
 ==========
 
-The toolKit Abstraction System
-is not a GUI toolkit in the traditional sense — instead it provides an
-abstraction layer between an application's GUI description and the toolkit.
+The name KAS comes from *toolKit Abstraction System*. The original goal of this
+project was to build a UI using native widget libraries configured from pure
+Rust; aims to use native widget libraries have been dropped.
 
-Current features:
-
--   very succinct specification of GUIs via procedural macros
--   hierarchical widget tree *without* backreferences to parents
--   a minimal selection of widgets
--   (planned) easy switching between toolkits (backends)
--   low memory and CPU usage
--   an **unstable API**: this is still an early prototype
-
-Planned features:
-
--   a Rust-native toolkit using OpenGL or Vulkan rendering
--   wrappers for system-native toolkits
--   a full widget selection
+The `gtk` branch is outdated but maintains integration with the GTK toolkit.
 
 
-Background
+UI specification
+--------------
+
+UI models are written in pure Rust such that:
+
+-   UI design specification is mostly declarative
+-   UI specification is *succinct*, macro based
+-   Event handling is local to the widgets and maximally type-safe
+
+Specification relies heavily on procedural macros. This may have some impact on
+compile times, but so far this does not appear to be a significant issue (tested
+~10 seconds with 100 layout widgets vs ~5 sec for a simple UI).
+
+### Event handling
+
+To maximise use of type-safety, each widget's event handler may have a custom
+response type, with handler and additional state integrated into the parent
+widget.
+
+### Example
+
+The following is extracted from the `counter` example:
+
+```rust
+let buttons = make_widget! {
+    container(horizontal) => Message;
+    struct {
+        #[widget] _ = TextButton::new_on("−", || Message::Decr),
+        #[widget] _ = TextButton::new_on("+", || Message::Incr),
+    }
+};
+let window = SimpleWindow::new(make_widget! {
+    container(vertical) => ();
+    struct {
+        #[widget] display: Label = Label::from("0"),
+        #[widget(handler = handle_button)] buttons -> Message = buttons,
+        counter: usize = 0,
+    }
+    impl {
+        fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message)
+            -> Response<()>
+        {
+            match msg {
+                Message::Decr => {
+                    self.counter = self.counter.saturating_sub(1);
+                    self.display.set_text(tk, self.counter.to_string());
+                }
+                Message::Incr => {
+                    self.counter = self.counter.saturating_add(1);
+                    self.display.set_text(tk, self.counter.to_string());
+                }
+            };
+            Response::None
+        }
+    }
+});
+```
+
+Style and rendering
 -----------
 
-Rust has several existing GUI tools / projects:
+UI style and rendering is offloaded to a separate crate, whose responsibilties
+include window management, widget sizing, widget rendering, and
+interfacing with platform event handling. Despite this, the majority of
+widget specification, event handling and positioning is handled by the core
+`kas` crate (plus internal `kas-macros` crate), facilitating creation of
+additional rendering crates.
 
--   [gtk-rs] — high quality bindings for GTK+ 3;
-    app code feels similar to GTK C code but with increased type safety
--   [Relm] — a Model-Update-View design inspired by Elm built over [gtk-rs]
--   [Conrod] — a cached immediate-mode GUI
--   [Azul] — a function-oriented GUI built over a DOM
--   [Druid] — Data-oriented Rust User Interface Design toolkit
+Rendering is currently handled by `kas-rgx`. In the name of simplicity, this is
+not configurable. Rendering is hardware-accelerated (via `wgpu` aka WebGPU with
+support for multiple backends: Vulkan, DX12, DX11, Metal).
 
-[gtk-rs]: https://gtk-rs.org/
-[Relm]: https://github.com/antoyo/relm
-[Conrod]: https://github.com/PistonDevelopers/conrod
-[Azul]: https://github.com/maps4print/azul
-[Druid]: https://github.com/xi-editor/druid
+Custom styling should (eventually) be achievable in two ways:
+
+-   development of a new rendering crate
+-   adjusting run-time configuration of an existing rendering crate
+
 
 Motivation
 ----------
@@ -70,89 +117,6 @@ particular this means the library will not be easy to use via FFI (e.g. from C):
 It is also worth noting that we currently make no attempt to support building
 GUIs at run-time. This should eventually be possible to some extent, but is not
 a current goal.
-
-Components
----------------
-
-A GUI system needs at least the following components:
-
--   a windowing library (e.g. winit or GDK)
--   a graphics drawing library (provided by the windowing library directly or
-    via another abstraction, e.g. OpenGL)
--   widget drawing (dimensions and graphics — the theme)
--   widget sizing and positioning code — the layout system
--   event handling framework
--   GUI description — the application
-
-This library focuses on providing a clean API for the last item (the
-application) via an abstraction layer over widget drawing, positioning and
-event handling. Specifically, this library provides:
-
--   a *toolkit API*, whose implementation provides the windowing API and widget
-    dimensions and graphics, and optionally layout and/or event handling code
--   an optional widget layout system
--   an optional event handling system
--   an API and tools to help users build their application GUIs
-
-This approach allows both the usage of a high-level GUI toolkit doing all the
-heavy lifting (the first toolkit being a wrapper around GTK) and implementation
-of a complete toolkit from scratch (in theory; this has yet to be done).
-
-This design should therefore eventually support building applications using
-native widget rendering on all major desktops from a single source, as well as
-the option to use a toolkit which minimises non-Rust dependencies for ultimate
-performance and portability.
-
-
-Widgets
---------
-
-Widget behaviour is described via four traits, all of which are typically
-implemented via macro:
-
--   The `Core` trait handles access to common, core data; this is typically
-    implemented over a `CoreData` struct field.
--   There are two variants of the `Layout` trait; this must be implemented by
-    macro since it requires access to non-public parts of the API.
--   The `Widget` trait handles a few common operations implemented over the
-    above traits, including access to child widgets.
--   The `Handler` trait implements event handling. This trait uses an associated
-    type to allow user-defined return values, which may be caught and handled
-    by a parent widget.
-
-### Built-in widgets
-
-The library provides some standard widgets: a text label, a push-button, etc.
-Currently only a few are available; this should be expanded to a full set.
-
-Some of these standard widgets are templated in order to allow user-defined
-payloads to be returned from handled events; e.g.:
-
-    TextButton::new("+", || Message::Incr)
-
-defines a push-button labelled `+` which returns the enum value `Message::Incr`
-when clicked. This allows application logic to be implemented on a parent widget
-which encapsulates its controls.
-
-### Layout widgets and make_widget
-
-Simple (or complex) widgets are typically encapsulated in parent widgets, which
-position each sub-widget relative to the self and encapsulate event handling.
-Typically such widgets are single-use. This library provides a convenient method
-of constructing them: the `make_widget` macro.
-
-This macro creates a new struct type, implements all widget traits for this
-type, then constructs a new instance using the given values. Note that in many
-cases the types of sub-widgets need not be explicitly given and often the names
-of fields are not important; this macro allows both to be omitted.
-
-The macro syntax is complex and likely to be refined; see the examples and the
-API documentation for details.
-
-### Custom widgets
-
-The `make_widget` macro mentioned above is merely provided for convenience; its
-usage is not required (compare the `counter` and `counter_expanded` examples).
 
 
 Copyright and Licence
