@@ -204,7 +204,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
         let mut s = self.size_pref(tk, pref, axes, 0);
 
         // Last two valid sizes
-        let mut b = [s, Size::ZERO];
+        let mut b = [s, s];
         let mut which = true;
         let mut which_vert = which;
 

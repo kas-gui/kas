@@ -320,11 +320,11 @@ impl ImplLayout {
                 }
 
                 // Assign excess from rounding errors to last rows/columns
-                let excess = rect.size.0 - accum_w;
-                let ex2 = 2 * excess as usize;
-                assert!(excess >= 0 && ex2 <= #nc);
+                assert!(rect.size.0 >= accum_w);
+                let excess2 = 2 * (rect.size.0 - accum_w) as usize;
+                assert!(excess2 <= #nc);
                 accum_w = 0;
-                for i in ((#nc - ex2)..#nc).step_by(2) {
+                for i in ((#nc - excess2)..#nc).step_by(2) {
                     self.layout_widths[i] += 1;
                     self.layout_widths[i + 1] += accum_w;
                     accum_w += 1;
@@ -355,11 +355,11 @@ impl ImplLayout {
                 }
 
                 // Assign excess from rounding errors to last rows/columns
-                let excess = rect.size.1 - accum_h;
-                let ex2 = 2 * excess as usize;
-                assert!(excess >= 0 && ex2 <= #nr);
+                assert!(rect.size.1 >= accum_h);
+                let excess2 = 2 * (rect.size.1 - accum_h) as usize;
+                assert!(excess2 <= #nr);
                 accum_h = 0;
-                for i in ((#nr - ex2)..#nr).step_by(2) {
+                for i in ((#nr - excess2)..#nr).step_by(2) {
                     self.layout_heights[i] += 1;
                     self.layout_heights[i + 1] += accum_h;
                     accum_h += 1;
