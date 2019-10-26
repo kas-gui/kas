@@ -26,7 +26,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_pref(&mut self, _: &dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes) -> kas::Size {
+            fn size_pref(&mut self, _: &mut dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes) -> kas::Size {
                 if pref == SizePref::Max {
                     Size::MAX
                 } else {
@@ -49,7 +49,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_pref(&mut self, tk: &dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes) -> kas::Size {
+            fn size_pref(&mut self, tk: &mut dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes) -> kas::Size {
                 tk.size_pref(self, pref)
             }
         })
@@ -65,7 +65,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
         }
         let ident = &children[0].ident;
         Ok(quote! {
-            fn size_pref(&mut self, tk: &dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes) -> kas::Size {
+            fn size_pref(&mut self, tk: &mut dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes) -> kas::Size {
                 self.#ident.size_pref(tk, pref, axes)
             }
 
@@ -373,7 +373,7 @@ impl ImplLayout {
         }
 
         let fns = quote! {
-            fn size_pref(&mut self, tk: &dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes) -> kas::Size {
+            fn size_pref(&mut self, tk: &mut dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes) -> kas::Size {
                 use kas::{Axes, Core, Size, SizePref};
 
                 let which = self.layout_which as usize;

@@ -87,7 +87,7 @@ impl<W: Widget + Clone> Clone for SimpleWindow<W> {
 }
 
 impl<W: Widget> Layout for SimpleWindow<W> {
-    fn size_pref(&mut self, tk: &dyn TkWidget, pref: SizePref, axes: Axes) -> Size {
+    fn size_pref(&mut self, tk: &mut dyn TkWidget, pref: SizePref, axes: Axes) -> Size {
         self.w.size_pref(tk, pref, axes)
     }
 

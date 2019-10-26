@@ -48,6 +48,14 @@ impl From<(u32, u32)> for Size {
     }
 }
 
+impl std::ops::Add for Size {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Size(self.0 + other.0, self.1 + other.1)
+    }
+}
+
 /// Child widget identifier
 //TODO: make a tuple struct?
 pub type WidgetId = u32;

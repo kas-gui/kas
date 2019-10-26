@@ -7,12 +7,15 @@
 
 use rgx::core::*;
 use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
-use wgpu_glyph::{GlyphBrush, Scale, Section};
+use wgpu_glyph::{GlyphBrush, GlyphCruncher, Scale, Section, rusttype};
 
 use kas::{Class, Size, SizePref, TkWidget, Widget, WidgetId};
 
+const MARGIN: f32 = 2.0;
+
 /// Widget renderer
 pub(crate) struct Widgets {
+    pub(crate) glyph_brush: GlyphBrush<'static, ()>,
     hover: Option<WidgetId>,
     click_start: Option<WidgetId>,
     font_scale: f32,
@@ -20,8 +23,9 @@ pub(crate) struct Widgets {
 }
 
 impl Widgets {
-    pub fn new() -> Self {
+    pub fn new(glyph_brush: GlyphBrush<'static, ()>) -> Self {
         Widgets {
+            glyph_brush,
             hover: None,
             click_start: None,
             font_scale: 24.0,
@@ -33,40 +37,37 @@ impl Widgets {
         self.redraw
     }
 
-    pub fn draw<'a, V>(
-        &self,
+    pub fn draw(
+        &mut self,
         rend: &Renderer,
-        glyph_brush: &mut GlyphBrush<'a, V>,
         size: (u32, u32),
         win: &dyn kas::Window,
     ) -> VertexBuffer {
         let mut batch = Batch::new();
 
         let height = size.1 as f32;
-        self.draw_iter(&mut batch, glyph_brush, height, win.as_widget());
+        self.draw_iter(&mut batch, height, win.as_widget());
 
         batch.finish(rend)
     }
 
-    fn draw_iter<'a, V>(
-        &self,
+    fn draw_iter(
+        &mut self,
         batch: &mut Batch,
-        glyph_brush: &mut GlyphBrush<'a, V>,
         height: f32,
         widget: &dyn kas::Widget,
     ) {
         // draw widget; recurse over children
-        self.draw_widget(batch, glyph_brush, height, widget);
+        self.draw_widget(batch, height, widget);
 
         for n in 0..widget.len() {
-            self.draw_iter(batch, glyph_brush, height, widget.get(n).unwrap());
+            self.draw_iter(batch, height, widget.get(n).unwrap());
         }
     }
-
-    fn draw_widget<'a, V>(
-        &self,
+    
+    fn draw_widget(
+        &mut self,
         batch: &mut Batch,
-        glyph_brush: &mut GlyphBrush<'a, V>,
         height: f32,
         widget: &dyn kas::Widget,
     ) {
@@ -84,10 +85,9 @@ impl Widgets {
 
         let mut background = Rgba::new(1.0, 1.0, 1.0, 0.1);
 
-        let margin = 2.0;
-        let text_pos = (x0 + margin, y + margin);
+        let text_pos = (x0 + MARGIN, y + MARGIN);
         let scale = Scale::uniform(self.font_scale);
-        let bounds = (x1 - x0 - margin - margin, y1 - y0 - margin - margin);
+        let bounds = (x1 - x0 - MARGIN - MARGIN, y1 - y0 - MARGIN - MARGIN);
 
         match widget.class() {
             Class::Container | Class::Window => {
@@ -96,7 +96,7 @@ impl Widgets {
             }
             Class::Label(cls) => {
                 let color = [1.0, 1.0, 1.0, 1.0];
-                glyph_brush.queue(Section {
+                self.glyph_brush.queue(Section {
                     text: cls.get_text(),
                     screen_position: text_pos,
                     color,
@@ -108,7 +108,7 @@ impl Widgets {
             Class::Entry(cls) => {
                 background = Rgba::new(1.0, 1.0, 1.0, 1.0);
                 let color = [0.0, 0.0, 0.0, 1.0];
-                glyph_brush.queue(Section {
+                self.glyph_brush.queue(Section {
                     text: cls.get_text(),
                     screen_position: text_pos,
                     color,
@@ -127,7 +127,7 @@ impl Widgets {
                     }
                 }
                 let color = [1.0, 1.0, 1.0, 1.0];
-                glyph_brush.queue(Section {
+                self.glyph_brush.queue(Section {
                     text: cls.get_text(),
                     screen_position: text_pos,
                     color,
@@ -141,7 +141,7 @@ impl Widgets {
                 let color = [0.0, 0.0, 0.0, 1.0];
                 // TODO: draw check mark *and* optional text
                 // let text = if cls.get_bool() { "✓" } else { "" };
-                glyph_brush.queue(Section {
+                self.glyph_brush.queue(Section {
                     text: cls.get_text(),
                     screen_position: text_pos,
                     color,
@@ -159,20 +159,48 @@ impl Widgets {
         let r = if self.hover == w_id { 1.0 } else { 0.5 };
         batch.add(Shape::Rectangle(
             Rect::new(x0, y0, x1, y1),
-            Stroke::new(margin, Rgba::new(r, 0.5, 0.5, 1.0)),
+            Stroke::new(MARGIN, Rgba::new(r, 0.5, 0.5, 1.0)),
             Fill::Solid(background),
         ));
     }
 }
 
 impl TkWidget for Widgets {
-    fn size_pref(&self, _widget: &dyn Widget, pref: SizePref) -> Size {
-        if pref == SizePref::Min {
-            Size::ZERO
-        } else if pref == SizePref::Max {
-            Size::MAX
-        } else {
-            Size(80, 40) // FIXME
+    fn size_pref(&mut self, widget: &dyn Widget, pref: SizePref) -> Size {
+        // TODO: cache?
+        let bounds = widget.class().text().and_then(|text| {
+            self.glyph_brush.pixel_bounds(Section {
+                text,
+                screen_position: (0.0, 0.0),
+                scale: Scale::uniform(self.font_scale),
+                ..Section::default()
+            })
+        });
+        let line_height = self.font_scale as u32;
+        
+        match widget.class() {
+            Class::Container | Class::Frame | Class::Window =>
+                Size(0, 0), // not important
+            Class::Label(_) => if pref < SizePref::Max {
+                    map_size_min(bounds, Size(0, line_height))
+                } else {
+                    Size::MAX
+                },
+            Class::Entry(_) => if pref < SizePref::Default {
+                    Size(4 * line_height, line_height)
+                } else if pref < SizePref::Max {
+                    Size(8 * line_height, line_height)
+                } else {
+                    Size(Size::MAX.0, line_height)
+                },
+            Class::Button(_) => if pref < SizePref::Small {
+                    Size(2 * line_height, line_height)
+                } else if pref < SizePref::Large {
+                    map_size_min(bounds, Size(line_height*2, line_height))
+                } else {
+                    Size(Size::MAX.0, line_height)
+                },
+            Class::CheckBox(_) => Size(line_height, line_height),
         }
     }
 
@@ -196,4 +224,16 @@ impl TkWidget for Widgets {
     fn set_click_start(&mut self, id: Option<WidgetId>) {
         self.click_start = id;
     }
+}
+
+fn map_size_min(rect: Option<rusttype::Rect<i32>>, ms: Size) -> Size {
+    let size = match rect {
+        Some(rusttype::Rect{ min, max }) => {
+            Size(ms.0.max((max.x - min.x) as u32), ms.1.max((max.y - min.y) as u32))
+        }
+        None => ms
+    };
+    
+    let margins = MARGIN as u32 * 2;
+    size + Size(margins, margins)
 }

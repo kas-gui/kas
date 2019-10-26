@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use rgx::core::*;
 use rgx::math::Matrix4;
-use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder};
+use wgpu_glyph::GlyphBrushBuilder;
 
 use kas::callback::Condition;
 use kas::event::{Event, EventChild, EventCoord, Response};
@@ -32,7 +32,6 @@ pub struct Window {
     rend: Renderer,
     swap_chain: SwapChain,
     pipeline: rgx::kit::shape2d::Pipeline,
-    glyph_brush: GlyphBrush<'static, ()>,
     nums: (u32, u32), // TODO: is this useful?
     size: (u32, u32),
     timeouts: Vec<(usize, Instant, Option<Duration>)>,
@@ -57,12 +56,11 @@ impl Window {
         let pipeline = rend.pipeline(size.0, size.1, Blending::default());
         let swap_chain = rend.swap_chain(size.0, size.1, PresentMode::default());
 
-        let glyph_brush = GlyphBrushBuilder::using_font(crate::font::get_font())
-            .build(rend.device.device_mut(), swap_chain.format());
-
         let num1 = win.enumerate(num0);
 
-        let mut wrend = Widgets::new();
+        let glyph_brush = GlyphBrushBuilder::using_font(crate::font::get_font())
+            .build(rend.device.device_mut(), swap_chain.format());
+        let mut wrend = Widgets::new(glyph_brush);
 
         win.resize(&mut wrend, size.into());
 
@@ -72,7 +70,6 @@ impl Window {
             rend,
             swap_chain,
             pipeline,
-            glyph_brush,
             nums: (num0, num1),
             size,
             timeouts: vec![],
@@ -247,7 +244,7 @@ impl Window {
         let size = (self.swap_chain.width, self.swap_chain.height);
         let buffer = self
             .wrend
-            .draw(&self.rend, &mut self.glyph_brush, size, &*self.win);
+            .draw(&self.rend, size, &*self.win);
 
         let mut frame = self.rend.frame();
         self.rend
@@ -262,7 +259,7 @@ impl Window {
             pass.draw_buffer(&buffer);
         }
 
-        self.glyph_brush
+        self.wrend.glyph_brush
             .draw_queued(
                 self.rend.device.device_mut(),
                 frame.encoder_mut(),

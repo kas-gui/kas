@@ -20,7 +20,7 @@ use crate::widget::{Size, SizePref, Widget, WidgetId};
 /// methods, depending on which functionality from the library is used.
 pub trait TkWidget {
     /// Get the widget's size preferences
-    fn size_pref(&self, widget: &dyn Widget, pref: SizePref) -> Size;
+    fn size_pref(&mut self, widget: &dyn Widget, pref: SizePref) -> Size;
 
     /// Notify that a widget must be redrawn
     fn redraw(&mut self, widget: &dyn Widget);

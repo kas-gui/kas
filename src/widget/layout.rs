@@ -85,7 +85,7 @@ pub trait Layout: Core + fmt::Debug {
     /// The `SizePref` type supports `Ord`, allowing effective use of ranges.
     /// This should be taken advantage of since size categories may be adjusted
     /// in the future.
-    fn size_pref(&mut self, tk: &dyn TkWidget, pref: SizePref, axes: Axes) -> Size;
+    fn size_pref(&mut self, tk: &mut dyn TkWidget, pref: SizePref, axes: Axes) -> Size;
 
     #[doc(hidden)]
     /// Adjust to the given size.

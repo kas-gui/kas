@@ -41,3 +41,18 @@ impl<'a> fmt::Debug for Class<'a> {
         )
     }
 }
+
+impl<'a> Class<'a> {
+    /// Get widget text, if any
+    pub fn text(&'a self) -> Option<&'a str> {
+        match self {
+            Class::Container => None,
+            Class::Label(cls) => Some(cls.get_text()),
+            Class::Entry(cls) => Some(cls.get_text()),
+            Class::Button(cls) => Some(cls.get_text()),
+            Class::CheckBox(cls) => Some(cls.get_text()),
+            Class::Frame => None,
+            Class::Window => None,
+        }
+    }
+}
