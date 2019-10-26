@@ -168,7 +168,7 @@ impl TkWidget for Widgets {
         });
         let line_height = self.font_scale as u32;
 
-        match widget.class() {
+        let size = match widget.class() {
             Class::Container | Class::Frame | Class::Window => Size(0, 0), // not important
             Class::Label(_) => {
                 if pref < SizePref::Max {
@@ -196,7 +196,10 @@ impl TkWidget for Widgets {
                 }
             }
             Class::CheckBox(_) => Size(line_height, line_height),
-        }
+        };
+
+        let margins = MARGIN as u32 * 2;
+        size + Size(margins, margins)
     }
 
     fn redraw(&mut self, _: &dyn Widget) {
@@ -222,14 +225,11 @@ impl TkWidget for Widgets {
 }
 
 fn map_size_min(rect: Option<rusttype::Rect<i32>>, ms: Size) -> Size {
-    let size = match rect {
+    match rect {
         Some(rusttype::Rect { min, max }) => Size(
             ms.0.max((max.x - min.x) as u32),
             ms.1.max((max.y - min.y) as u32),
         ),
         None => ms,
-    };
-
-    let margins = MARGIN as u32 * 2;
-    size + Size(margins, margins)
+    }
 }
