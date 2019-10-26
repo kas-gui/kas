@@ -196,6 +196,9 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
         let mut pref = self.size_pref;
         let mut axes = Axes::Both;
         let mut s = self.size_pref(tk, pref, axes);
+        
+        // Minimum and maximum valid sizes
+        let (mut min_s, mut max_s) = (s, s);
 
         let init_dir0 = Dir::from(s.0, size.0);
         let init_dir1 = Dir::from(s.1, size.1);
@@ -208,8 +211,12 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
                 break;
             }
             s = self.size_pref(tk, pref, axes);
+            min_s.0 = min_s.0.min(s.0);
+            max_s.0 = max_s.0.max(s.0);
             dir0 = Dir::from(s.0, size.0);
             if axes == Axes::Both {
+                min_s.1 = min_s.1.min(s.1);
+                max_s.1 = max_s.1.max(s.1);
                 dir1 = Dir::from(s.1, size.1);
             }
         }
@@ -223,12 +230,18 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
                 break;
             }
             s = self.size_pref(tk, pref, axes);
+            min_s.1 = min_s.1.min(s.1);
+            max_s.1 = max_s.1.max(s.1);
             dir1 = Dir::from(s.1, size.1);
         }
+        
+        // Using sizes outside the observed range is invalid
+        s.0 = size.0.max(min_s.0).min(max_s.0);
+        s.1 = size.1.max(min_s.1).min(max_s.1);
 
         let rect = Rect {
             pos: Coord::ZERO,
-            size,
+            size: s,
         };
         self.set_rect(rect);
 
