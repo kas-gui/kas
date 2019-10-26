@@ -87,8 +87,14 @@ impl<W: Widget + Clone> Clone for SimpleWindow<W> {
 }
 
 impl<W: Widget> Layout for SimpleWindow<W> {
-    fn size_pref(&mut self, tk: &mut dyn TkWidget, pref: SizePref, axes: Axes) -> Size {
-        self.w.size_pref(tk, pref, axes)
+    fn size_pref(
+        &mut self,
+        tk: &mut dyn TkWidget,
+        pref: SizePref,
+        axes: Axes,
+        which: usize,
+    ) -> Size {
+        self.w.size_pref(tk, pref, axes, which)
     }
 
     fn set_rect(&mut self, rect: Rect) {
@@ -195,10 +201,12 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
 
         let mut pref = self.size_pref;
         let mut axes = Axes::Both;
-        let mut s = self.size_pref(tk, pref, axes);
-        
-        // Minimum and maximum valid sizes
-        let (mut min_s, mut max_s) = (s, s);
+        let mut s = self.size_pref(tk, pref, axes, 0);
+
+        // Last two valid sizes
+        let mut b = [s, Size::ZERO];
+        let mut which = true;
+        let mut which_vert = which;
 
         let init_dir0 = Dir::from(s.0, size.0);
         let init_dir1 = Dir::from(s.1, size.1);
@@ -210,15 +218,15 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
             if dir0.adjust(&mut pref) {
                 break;
             }
-            s = self.size_pref(tk, pref, axes);
-            min_s.0 = min_s.0.min(s.0);
-            max_s.0 = max_s.0.max(s.0);
+            s = self.size_pref(tk, pref, axes, which as usize);
+            b[which as usize].0 = s.0;
             dir0 = Dir::from(s.0, size.0);
             if axes == Axes::Both {
-                min_s.1 = min_s.1.min(s.1);
-                max_s.1 = max_s.1.max(s.1);
+                b[which as usize].1 = s.1;
                 dir1 = Dir::from(s.1, size.1);
+                which_vert = !which;
             }
+            which = !which;
         }
 
         // Remember final value from first loop only
@@ -229,13 +237,15 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
             if dir1.adjust(&mut pref) {
                 break;
             }
-            s = self.size_pref(tk, pref, axes);
-            min_s.1 = min_s.1.min(s.1);
-            max_s.1 = max_s.1.max(s.1);
+            s = self.size_pref(tk, pref, axes, which_vert as usize);
+            b[which_vert as usize].1 = s.1;
             dir1 = Dir::from(s.1, size.1);
+            which_vert = !which_vert;
         }
-        
-        // Using sizes outside the observed range is invalid
+
+        // Using sizes outside this range is invalid
+        let min_s = Size(b[0].0.min(b[1].0), b[0].1.min(b[1].1));
+        let max_s = Size(b[0].0.max(b[1].0), b[0].1.max(b[1].1));
         s.0 = size.0.max(min_s.0).min(max_s.0);
         s.1 = size.1.max(min_s.1).min(max_s.1);
 

@@ -26,7 +26,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_pref(&mut self, _: &mut dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes) -> kas::Size {
+            fn size_pref(&mut self, _: &mut dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes, _: usize) -> kas::Size {
                 if pref == SizePref::Max {
                     Size::MAX
                 } else {
@@ -49,7 +49,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_pref(&mut self, tk: &mut dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes) -> kas::Size {
+            fn size_pref(&mut self, tk: &mut dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes, _: usize) -> kas::Size {
                 tk.size_pref(self, pref)
             }
         })
@@ -65,8 +65,8 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
         }
         let ident = &children[0].ident;
         Ok(quote! {
-            fn size_pref(&mut self, tk: &mut dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes) -> kas::Size {
-                self.#ident.size_pref(tk, pref, axes)
+            fn size_pref(&mut self, tk: &mut dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes, which: usize) -> kas::Size {
+                self.#ident.size_pref(tk, pref, axes, which)
             }
 
             fn set_rect(&mut self, rect: kas::Rect) {
@@ -148,7 +148,7 @@ impl ImplLayout {
                 self.cols += 1;
 
                 self.size.append_all(quote! {
-                    let child_size = self.#ident.size_pref(tk, pref, axes);
+                    let child_size = self.#ident.size_pref(tk, pref, axes, which);
                     if axes != Axes::Vert {
                         self.layout_widths[#n + which] = child_size.0;
                     }
@@ -167,7 +167,7 @@ impl ImplLayout {
                 self.rows += 1;
 
                 self.size.append_all(quote! {
-                    let child_size = self.#ident.size_pref(tk, pref, axes);
+                    let child_size = self.#ident.size_pref(tk, pref, axes, which);
                     if axes != Axes::Horiz {
                         self.layout_heights[#n + which] = child_size.1;
                     }
@@ -191,7 +191,7 @@ impl ImplLayout {
                 self.rows = self.rows.max(r1);
 
                 self.size.append_all(quote! {
-                    let child_size = self.#ident.size_pref(tk, pref, axes);
+                    let child_size = self.#ident.size_pref(tk, pref, axes, which);
                     // FIXME: this doesn't deal with column spans correctly!
                     if axes != Axes::Vert {
                         let i = #nc + which;
@@ -229,12 +229,8 @@ impl ImplLayout {
         let size = self.size;
         let set_rect = self.set_rect;
 
-        let mut fields = quote! {
-            layout_which: bool,
-        };
-        let mut field_ctors = quote! {
-            layout_which: false,
-        };
+        let mut fields = quote! {};
+        let mut field_ctors = quote! {};
 
         if self.layout != Layout::Vert {
             fields.append_all(quote! {
@@ -303,9 +299,9 @@ impl ImplLayout {
         let mut set_rect_pre = quote! {};
         if self.layout != Layout::Vert {
             set_rect_pre.append_all(quote! {
-                let u0 = self.layout_widths[#nc + 0] as i64;
-                let u1 = self.layout_widths[#nc + 1] as i64;
-                let u = rect.size.0 as i64;
+                let u0 = self.layout_widths[#nc + 0] as i32;
+                let u1 = self.layout_widths[#nc + 1] as i32;
+                let u = rect.size.0 as i32;
                 let x = if u0 == u1 { 0.0 } else {
                     (u - u0) as f64 / (u1 - u0) as f64
                 };
@@ -338,9 +334,9 @@ impl ImplLayout {
         }
         if self.layout != Layout::Horiz {
             set_rect_pre.append_all(quote! {
-                let u0 = self.layout_heights[#nr + 0] as i64;
-                let u1 = self.layout_heights[#nr + 1] as i64;
-                let u = rect.size.1 as i64;
+                let u0 = self.layout_heights[#nr + 0] as i32;
+                let u1 = self.layout_heights[#nr + 1] as i32;
+                let u = rect.size.1 as i32;
                 let y = if u0 == u1 { 0.0 } else {
                     (u - u0) as f64 / (u1 - u0) as f64
                 };
@@ -373,11 +369,8 @@ impl ImplLayout {
         }
 
         let fns = quote! {
-            fn size_pref(&mut self, tk: &mut dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes) -> kas::Size {
+            fn size_pref(&mut self, tk: &mut dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes, which: usize) -> kas::Size {
                 use kas::{Axes, Core, Size, SizePref};
-
-                let which = self.layout_which as usize;
-                self.layout_which = !self.layout_which;
 
                 #size_pre
                 #size

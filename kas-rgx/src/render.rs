@@ -7,7 +7,7 @@
 
 use rgx::core::*;
 use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
-use wgpu_glyph::{GlyphBrush, GlyphCruncher, Scale, Section, rusttype};
+use wgpu_glyph::{rusttype, GlyphBrush, GlyphCruncher, Scale, Section};
 
 use kas::{Class, Size, SizePref, TkWidget, Widget, WidgetId};
 
@@ -51,12 +51,7 @@ impl Widgets {
         batch.finish(rend)
     }
 
-    fn draw_iter(
-        &mut self,
-        batch: &mut Batch,
-        height: f32,
-        widget: &dyn kas::Widget,
-    ) {
+    fn draw_iter(&mut self, batch: &mut Batch, height: f32, widget: &dyn kas::Widget) {
         // draw widget; recurse over children
         self.draw_widget(batch, height, widget);
 
@@ -64,13 +59,8 @@ impl Widgets {
             self.draw_iter(batch, height, widget.get(n).unwrap());
         }
     }
-    
-    fn draw_widget(
-        &mut self,
-        batch: &mut Batch,
-        height: f32,
-        widget: &dyn kas::Widget,
-    ) {
+
+    fn draw_widget(&mut self, batch: &mut Batch, height: f32, widget: &dyn kas::Widget) {
         // This is a hacky draw routine just to show where widgets are.
         let w_id = Some(widget.number());
 
@@ -177,29 +167,34 @@ impl TkWidget for Widgets {
             })
         });
         let line_height = self.font_scale as u32;
-        
+
         match widget.class() {
-            Class::Container | Class::Frame | Class::Window =>
-                Size(0, 0), // not important
-            Class::Label(_) => if pref < SizePref::Max {
+            Class::Container | Class::Frame | Class::Window => Size(0, 0), // not important
+            Class::Label(_) => {
+                if pref < SizePref::Max {
                     map_size_min(bounds, Size(0, line_height))
                 } else {
                     Size::MAX
-                },
-            Class::Entry(_) => if pref < SizePref::Default {
+                }
+            }
+            Class::Entry(_) => {
+                if pref < SizePref::Default {
                     Size(4 * line_height, line_height)
                 } else if pref < SizePref::Max {
                     Size(8 * line_height, line_height)
                 } else {
                     Size(Size::MAX.0, line_height)
-                },
-            Class::Button(_) => if pref < SizePref::Small {
+                }
+            }
+            Class::Button(_) => {
+                if pref < SizePref::Small {
                     Size(2 * line_height, line_height)
                 } else if pref < SizePref::Large {
-                    map_size_min(bounds, Size(line_height*2, line_height))
+                    map_size_min(bounds, Size(line_height * 2, line_height))
                 } else {
                     Size(Size::MAX.0, line_height)
-                },
+                }
+            }
             Class::CheckBox(_) => Size(line_height, line_height),
         }
     }
@@ -228,12 +223,13 @@ impl TkWidget for Widgets {
 
 fn map_size_min(rect: Option<rusttype::Rect<i32>>, ms: Size) -> Size {
     let size = match rect {
-        Some(rusttype::Rect{ min, max }) => {
-            Size(ms.0.max((max.x - min.x) as u32), ms.1.max((max.y - min.y) as u32))
-        }
-        None => ms
+        Some(rusttype::Rect { min, max }) => Size(
+            ms.0.max((max.x - min.x) as u32),
+            ms.1.max((max.y - min.y) as u32),
+        ),
+        None => ms,
     };
-    
+
     let margins = MARGIN as u32 * 2;
     size + Size(margins, margins)
 }

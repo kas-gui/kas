@@ -242,9 +242,7 @@ impl Window {
 
     fn do_draw(&mut self) {
         let size = (self.swap_chain.width, self.swap_chain.height);
-        let buffer = self
-            .wrend
-            .draw(&self.rend, size, &*self.win);
+        let buffer = self.wrend.draw(&self.rend, size, &*self.win);
 
         let mut frame = self.rend.frame();
         self.rend
@@ -259,7 +257,8 @@ impl Window {
             pass.draw_buffer(&buffer);
         }
 
-        self.wrend.glyph_brush
+        self.wrend
+            .glyph_brush
             .draw_queued(
                 self.rend.device.device_mut(),
                 frame.encoder_mut(),
