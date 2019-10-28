@@ -5,11 +5,13 @@
 
 //! Widget rendering
 
+use std::f32;
+
 use rgx::core::*;
 use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
 use wgpu_glyph::{rusttype, GlyphBrush, GlyphCruncher, Scale, Section};
 
-use kas::{Class, Size, SizePref, TkWidget, Widget, WidgetId};
+use kas::{Axes, Class, Size, SizePref, TkWidget, Widget, WidgetId};
 
 const MARGIN: f32 = 2.0;
 
@@ -156,13 +158,20 @@ impl Widgets {
 }
 
 impl TkWidget for Widgets {
-    fn size_pref(&mut self, widget: &dyn Widget, pref: SizePref) -> Size {
+    fn size_pref(&mut self, widget: &dyn Widget, pref: SizePref, axes: Axes) -> Size {
         // TODO: cache?
         let bounds = widget.class().text().and_then(|text| {
-            self.glyph_brush.pixel_bounds(Section {
+            let mut bounds = (f32::INFINITY, f32::INFINITY);
+            if axes == Axes::Horiz(true) {
+                bounds.1 = widget.rect().size.1 as f32;
+            } else if axes == Axes::Vert(true) {
+                bounds.0 = widget.rect().size.0 as f32;
+            }
+            self.glyph_brush.glyph_bounds(Section {
                 text,
                 screen_position: (0.0, 0.0),
                 scale: Scale::uniform(self.font_scale),
+                bounds,
                 ..Section::default()
             })
         });
@@ -171,7 +180,9 @@ impl TkWidget for Widgets {
         let size = match widget.class() {
             Class::Container | Class::Frame | Class::Window => Size(0, 0), // not important
             Class::Label(_) => {
-                if pref < SizePref::Max {
+                if pref < SizePref::Small {
+                    Size(4 * line_height, line_height)
+                } else if pref < SizePref::Max {
                     map_size_min(bounds, Size(0, line_height))
                 } else {
                     Size::MAX
@@ -224,7 +235,7 @@ impl TkWidget for Widgets {
     }
 }
 
-fn map_size_min(rect: Option<rusttype::Rect<i32>>, ms: Size) -> Size {
+fn map_size_min(rect: Option<rusttype::Rect<f32>>, ms: Size) -> Size {
     match rect {
         Some(rusttype::Rect { min, max }) => Size(
             ms.0.max((max.x - min.x) as u32),

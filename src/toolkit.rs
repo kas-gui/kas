@@ -8,7 +8,7 @@
 //! TODO: "toolkit" is no longer an apt description of this internal API, but
 //! rather "theme + renderer".
 
-use crate::widget::{Size, SizePref, Widget, WidgetId};
+use crate::widget::{Axes, Size, SizePref, Widget, WidgetId};
 
 /// Common widget properties. Implemented by the toolkit.
 ///
@@ -20,7 +20,7 @@ use crate::widget::{Size, SizePref, Widget, WidgetId};
 /// methods, depending on which functionality from the library is used.
 pub trait TkWidget {
     /// Get the widget's size preferences
-    fn size_pref(&mut self, widget: &dyn Widget, pref: SizePref) -> Size;
+    fn size_pref(&mut self, widget: &dyn Widget, pref: SizePref, axes: Axes) -> Size;
 
     /// Notify that a widget must be redrawn
     fn redraw(&mut self, widget: &dyn Widget);

@@ -92,14 +92,14 @@ impl<W: Widget> Layout for SimpleWindow<W> {
         tk: &mut dyn TkWidget,
         pref: SizePref,
         axes: Axes,
-        which: usize,
+        index: bool,
     ) -> Size {
-        self.w.size_pref(tk, pref, axes, which)
+        self.w.size_pref(tk, pref, axes, index)
     }
 
-    fn set_rect(&mut self, rect: Rect) {
+    fn set_rect(&mut self, rect: Rect, axes: Axes) {
         self.core_data_mut().rect = rect;
-        self.w.set_rect(rect);
+        self.w.set_rect(rect, axes);
     }
 }
 
@@ -201,59 +201,77 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
 
         let mut pref = self.size_pref;
         let mut axes = Axes::Both;
-        let mut s = self.size_pref(tk, pref, axes, 0);
+        let mut which = false;
+        let mut s = self.size_pref(tk, pref, axes, which);
+        which = !which;
 
         // Last two valid sizes
         let mut b = [s, s];
-        let mut which = true;
-        let mut which_vert = which;
 
-        let init_dir0 = Dir::from(s.0, size.0);
-        let init_dir1 = Dir::from(s.1, size.1);
-        let (mut dir0, mut dir1) = (init_dir0, init_dir1);
-        while dir0 == init_dir0 {
-            if dir1 != dir0 {
-                axes = Axes::Horiz;
-            }
+        let mut dir0 = Dir::from(s.0, size.0);
+        let mut dir1 = Dir::from(s.1, size.1);
+        let init_dir = dir0;
+
+        // Stage 1a: adjust both dimensions in step
+        while dir0 == dir1 && dir0 == init_dir {
             if dir0.adjust(&mut pref) {
                 break;
             }
-            s = self.size_pref(tk, pref, axes, which as usize);
-            b[which as usize].0 = s.0;
+            s = self.size_pref(tk, pref, axes, which);
+            b[which as usize] = s;
             dir0 = Dir::from(s.0, size.0);
-            if axes == Axes::Both {
-                b[which as usize].1 = s.1;
-                dir1 = Dir::from(s.1, size.1);
-                which_vert = !which;
-            }
+            dir1 = Dir::from(s.1, size.1);
             which = !which;
         }
 
-        // Remember final value from first loop only
+        // Stage 1b: continue adjusting horizontally; ignore verticals
+        // TODO: generalise, prioritising most restricted dimension?
+        axes = Axes::Horiz(false);
+        let which1 = which;
+
+        while dir0 == init_dir {
+            if dir0.adjust(&mut pref) {
+                break;
+            }
+            s = self.size_pref(tk, pref, axes, which);
+            b[which as usize].0 = s.0;
+            dir0 = Dir::from(s.0, size.0);
+            which = !which;
+        }
+
+        // Cache final SizePref for horizontal axis
         self.size_pref = pref;
 
-        axes = Axes::Vert;
-        while dir1 == init_dir1 {
+        // Stage 2a: calculate final horizontal size and fix
+        let range = (b[0].0.min(b[1].0), b[0].0.max(b[1].0));
+        let dim = size.0.max(range.0).min(range.1);
+        let dim2 = b[0].1; // any valid value
+        let pos = Coord::ZERO;
+        s = Size(dim, dim2);
+        self.set_rect(Rect { pos, size: s }, axes);
+
+        // Stage 2b: calculate vertical axis with fixed horizontal
+        axes = Axes::Vert(true);
+        which = which1;
+        dir1 = Dir::from(s.1, size.1);
+        let init_dir = dir1;
+
+        while dir1 == init_dir {
             if dir1.adjust(&mut pref) {
                 break;
             }
-            s = self.size_pref(tk, pref, axes, which_vert as usize);
-            b[which_vert as usize].1 = s.1;
+            s = self.size_pref(tk, pref, axes, which);
+            b[which as usize].1 = s.1;
             dir1 = Dir::from(s.1, size.1);
-            which_vert = !which_vert;
+            which = !which;
         }
 
         // Using sizes outside this range is invalid
-        let min_s = Size(b[0].0.min(b[1].0), b[0].1.min(b[1].1));
-        let max_s = Size(b[0].0.max(b[1].0), b[0].1.max(b[1].1));
-        s.0 = size.0.max(min_s.0).min(max_s.0);
-        s.1 = size.1.max(min_s.1).min(max_s.1);
+        let range = (b[0].1.min(b[1].1), b[0].1.max(b[1].1));
+        let dim2 = size.1.max(range.0).min(range.1);
 
-        let rect = Rect {
-            pos: Coord::ZERO,
-            size: s,
-        };
-        self.set_rect(rect);
+        s = Size(dim, dim2);
+        self.set_rect(Rect { pos, size: s }, axes);
 
         // println!("SimpleWindow:");
         // self.w.print_hierarchy(0);

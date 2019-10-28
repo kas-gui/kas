@@ -61,37 +61,49 @@ impl SizePref {
 pub enum Axes {
     /// Adjust both axes
     Both,
-    /// Adjust horizontal axis only
-    Horiz,
-    /// Adjust vertical axis only
-    Vert,
+    /// Adjust horizontal axis only.
+    /// If param is true, other axis is given fixed dimension.
+    Horiz(bool),
+    /// Adjust vertical axis only.
+    /// If param is true, other axis is given fixed dimension.
+    Vert(bool),
+}
+
+impl Axes {
+    /// Adjust horizontal axis
+    pub fn horiz(self) -> bool {
+        if let Axes::Vert(_) = self {
+            false
+        } else {
+            true
+        }
+    }
+
+    /// Adjust vertical axis
+    pub fn vert(self) -> bool {
+        if let Axes::Horiz(_) = self {
+            false
+        } else {
+            true
+        }
+    }
 }
 
 /// Widget size and layout.
 pub trait Layout: Core + fmt::Debug {
-    #[doc(hidden)]
     /// Get the size according to the given preference and cache the result.
     ///
     /// For simple widgets (without children), this method is usually just a
-    /// wrapper around [`TkWidget::size`]. For parent widgets it gets
-    /// significantly more complicated, and we recommend use of the
-    /// [`kas_macros::make_widget`] macro.
-    ///
-    /// The last two returned sizes should be "cached" for use by
-    /// [`Layout::set_rect`], but only where the axis is included by the `axes`
-    /// argument. Sizes returned for other axes need not be correct.
-    ///
-    /// Widgets do not need to return distinct sizes for each `SizePref`.
-    /// The `SizePref` type supports `Ord`, allowing effective use of ranges.
-    /// This should be taken advantage of since size categories may be adjusted
-    /// in the future.
-    fn size_pref(
-        &mut self,
-        tk: &mut dyn TkWidget,
-        pref: SizePref,
-        axes: Axes,
-        which: usize,
-    ) -> Size;
+    /// wrapper around [`TkWidget::size_pref`]. For widgets with children this
+    /// method is much more complex, and it is strongly recommended to rely on
+    /// the [`kas_macros`] macros for implementations.
+    // This function should calculate a size recommendation for one or both axes
+    // (in compliance with the `axes` parameter), according to the given `pref`,
+    // and optionally with the other axis fixed (see `Axes` enum).
+    // The resulting size should then be cached locally at the given `index`
+    // (0 or 1) but only for the enabled `axes`.
+    fn size_pref(&mut self, tk: &mut dyn TkWidget, pref: SizePref, axes: Axes, index: bool)
+        -> Size;
 
     #[doc(hidden)]
     /// Adjust to the given size.
@@ -104,7 +116,19 @@ pub trait Layout: Core + fmt::Debug {
     /// results. For each axis, the size specified by this method is guaranteed
     /// to be either equal to the result of the last `size_pref` query, or
     /// between the results of the last two queries.
-    fn set_rect(&mut self, rect: Rect) {
-        self.core_data_mut().rect = rect;
+    fn set_rect(&mut self, rect: Rect, axes: Axes) {
+        match axes {
+            Axes::Both => {
+                self.core_data_mut().rect = rect;
+            }
+            Axes::Horiz(_) => {
+                self.core_data_mut().rect.size.0 = rect.size.0;
+                self.core_data_mut().rect.pos.0 = rect.pos.0;
+            }
+            Axes::Vert(_) => {
+                self.core_data_mut().rect.size.1 = rect.size.1;
+                self.core_data_mut().rect.pos.1 = rect.pos.1;
+            }
+        }
     }
 }

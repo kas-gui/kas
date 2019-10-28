@@ -26,7 +26,13 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_pref(&mut self, _: &mut dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes, _: usize) -> kas::Size {
+            fn size_pref(
+                &mut self,
+                _tk: &mut dyn kas::TkWidget,
+                pref: kas::SizePref,
+                _axes: kas::Axes,
+                _index: bool,
+            ) -> kas::Size {
                 if pref == SizePref::Max {
                     Size::MAX
                 } else {
@@ -49,8 +55,14 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_pref(&mut self, tk: &mut dyn kas::TkWidget, pref: kas::SizePref, _: kas::Axes, _: usize) -> kas::Size {
-                tk.size_pref(self, pref)
+            fn size_pref(
+                &mut self,
+                tk: &mut dyn kas::TkWidget,
+                pref: kas::SizePref,
+                axes: kas::Axes,
+                _index: bool,
+            ) -> kas::Size {
+                tk.size_pref(self, pref, axes)
             }
         })
     } else if layout == "single" {
@@ -65,14 +77,20 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
         }
         let ident = &children[0].ident;
         Ok(quote! {
-            fn size_pref(&mut self, tk: &mut dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes, which: usize) -> kas::Size {
-                self.#ident.size_pref(tk, pref, axes, which)
+            fn size_pref(
+                &mut self,
+                tk: &mut dyn kas::TkWidget,
+                pref: kas::SizePref,
+                axes: kas::Axes,
+                index: bool,
+            ) -> kas::Size {
+                self.#ident.size_pref(tk, pref, axes, index)
             }
 
-            fn set_rect(&mut self, rect: kas::Rect) {
+            fn set_rect(&mut self, rect: kas::Rect, axes: kas::Axes) {
                 use kas::Core;
                 self.core_data_mut().rect = rect;
-                self.#ident.set_rect(rect);
+                self.#ident.set_rect(rect, axes);
             }
         })
     } else {
@@ -148,8 +166,8 @@ impl ImplLayout {
                 self.cols += 1;
 
                 self.size.append_all(quote! {
-                    let child_size = self.#ident.size_pref(tk, pref, axes, which);
-                    if axes != Axes::Vert {
+                    let child_size = self.#ident.size_pref(tk, pref, axes, index);
+                    if axes.horiz() {
                         self.layout_widths[#n + which] = child_size.0;
                     }
                     size.0 += child_size.0;
@@ -159,7 +177,7 @@ impl ImplLayout {
                 self.set_rect.append_all(quote! {
                     crect.pos.0 = self.layout_widths[#n + 1] as i32;
                     crect.size.0 = self.layout_widths[#n];
-                    self.#ident.set_rect(crect);
+                    self.#ident.set_rect(crect, axes);
                 });
             }
             Layout::Vert => {
@@ -167,8 +185,8 @@ impl ImplLayout {
                 self.rows += 1;
 
                 self.size.append_all(quote! {
-                    let child_size = self.#ident.size_pref(tk, pref, axes, which);
-                    if axes != Axes::Horiz {
+                    let child_size = self.#ident.size_pref(tk, pref, axes, index);
+                    if axes.vert() {
                         self.layout_heights[#n + which] = child_size.1;
                     }
                     size.0 = std::cmp::max(size.0, child_size.0);
@@ -178,7 +196,7 @@ impl ImplLayout {
                 self.set_rect.append_all(quote! {
                     crect.pos.1 = self.layout_heights[#n + 1] as i32;
                     crect.size.1 = self.layout_heights[#n];
-                    self.#ident.set_rect(crect);
+                    self.#ident.set_rect(crect, axes);
                 });
             }
             Layout::Grid => {
@@ -191,13 +209,13 @@ impl ImplLayout {
                 self.rows = self.rows.max(r1);
 
                 self.size.append_all(quote! {
-                    let child_size = self.#ident.size_pref(tk, pref, axes, which);
+                    let child_size = self.#ident.size_pref(tk, pref, axes, index);
                     // FIXME: this doesn't deal with column spans correctly!
-                    if axes != Axes::Vert {
+                    if axes.horiz() {
                         let i = #nc + which;
                         self.layout_widths[i] = self.layout_widths[i].max(child_size.0);
                     }
-                    if axes != Axes::Horiz {
+                    if axes.vert() {
                         let i = #nr + which;
                         self.layout_heights[i] = self.layout_heights[i].max(child_size.1);
                     }
@@ -214,7 +232,7 @@ impl ImplLayout {
                         size.1 += self.layout_heights[r];
                     }
                     let crect = Rect { pos: pos + rect.pos, size };
-                    self.#ident.set_rect(crect);
+                    self.#ident.set_rect(crect, axes);
                 });
             }
         }
@@ -255,12 +273,12 @@ impl ImplLayout {
             }
         } else {
             quote! {
-                if axes != Axes::Vert {
+                if axes.horiz() {
                     for i in (0..#nc).step_by(2) {
                         self.layout_widths[i + which] = 0;
                     }
                 }
-                if axes != Axes::Horiz {
+                if axes.vert() {
                     for i in (0..#nr).step_by(2) {
                         self.layout_heights[i + which] = 0;
                     }
@@ -270,24 +288,24 @@ impl ImplLayout {
 
         let size_post = match self.layout {
             Layout::Horiz => quote! {
-                if axes != Axes::Vert {
+                if axes.horiz() {
                     self.layout_widths[#nc + which] = size.0;
                 }
             },
             Layout::Vert => quote! {
-                if axes != Axes::Horiz {
+                if axes.vert() {
                     self.layout_heights[#nr + which] = size.1;
                 }
             },
             Layout::Grid => quote! {
                 let mut size = Size::ZERO;
-                if axes != Axes::Vert {
+                if axes.horiz() {
                     for i in (0..#nc).step_by(2) {
                         size.0 += self.layout_widths[i + which];
                     }
                     self.layout_widths[#nc + which] = size.0;
                 }
-                if axes != Axes::Horiz {
+                if axes.vert() {
                     for i in (0..#nr).step_by(2) {
                         size.1 += self.layout_heights[i + which];
                     }
@@ -299,78 +317,89 @@ impl ImplLayout {
         let mut set_rect_pre = quote! {};
         if self.layout != Layout::Vert {
             set_rect_pre.append_all(quote! {
-                let u0 = self.layout_widths[#nc + 0] as i32;
-                let u1 = self.layout_widths[#nc + 1] as i32;
-                let u = rect.size.0 as i32;
-                let x = if u0 == u1 { 0.0 } else {
-                    (u - u0) as f64 / (u1 - u0) as f64
-                };
-                // println!("Grid: u0={}, u1={}, u={}, x={}", u0, u1, u, x);
-                assert!(0.0 <= x && x <= 1.0);
-                let x1 = 1.0 - x;
+                if axes.horiz() {
+                    let u0 = self.layout_widths[#nc + 0] as i32;
+                    let u1 = self.layout_widths[#nc + 1] as i32;
+                    let u = rect.size.0 as i32;
+                    let x = if u0 == u1 { 0.0 } else {
+                        (u - u0) as f64 / (u1 - u0) as f64
+                    };
+                    // println!("Grid: u0={}, u1={}, u={}, x={}", u0, u1, u, x);
+                    assert!(0.0 <= x && x <= 1.0);
+                    let x1 = 1.0 - x;
 
-                // Now calculate widths and cumulative widths
-                let mut accum_w = 0;
-                for i in (0..#nc).step_by(2) {
-                    let u = (x1 * self.layout_widths[i] as f64
-                        + x * self.layout_widths[i + 1] as f64) as u32;
-                    self.layout_widths[i] = u;
-                    self.layout_widths[i + 1] = accum_w;
-                    accum_w += u;
-                }
+                    // Now calculate widths and cumulative widths
+                    let mut accum_w = 0;
+                    for i in (0..#nc).step_by(2) {
+                        let u = (x1 * self.layout_widths[i] as f64
+                            + x * self.layout_widths[i + 1] as f64) as u32;
+                        self.layout_widths[i] = u;
+                        self.layout_widths[i + 1] = accum_w;
+                        accum_w += u;
+                    }
 
-                // Assign excess from rounding errors to last rows/columns
-                assert!(rect.size.0 >= accum_w);
-                let excess2 = 2 * (rect.size.0 - accum_w) as usize;
-                assert!(excess2 <= #nc);
-                accum_w = 0;
-                for i in ((#nc - excess2)..#nc).step_by(2) {
-                    self.layout_widths[i] += 1;
-                    self.layout_widths[i + 1] += accum_w;
-                    accum_w += 1;
+                    // Assign excess from rounding errors to last rows/columns
+                    assert!(rect.size.0 >= accum_w);
+                    let excess2 = 2 * (rect.size.0 - accum_w) as usize;
+                    assert!(excess2 <= #nc);
+                    accum_w = 0;
+                    for i in ((#nc - excess2)..#nc).step_by(2) {
+                        self.layout_widths[i] += 1;
+                        self.layout_widths[i + 1] += accum_w;
+                        accum_w += 1;
+                    }
+                    assert!(rect.size.0 == self.layout_widths[#nc - 1] + self.layout_widths[#nc - 2]);
                 }
-                assert!(rect.size.0 == self.layout_widths[#nc - 1] + self.layout_widths[#nc - 2]);
             });
         }
         if self.layout != Layout::Horiz {
             set_rect_pre.append_all(quote! {
-                let u0 = self.layout_heights[#nr + 0] as i32;
-                let u1 = self.layout_heights[#nr + 1] as i32;
-                let u = rect.size.1 as i32;
-                let y = if u0 == u1 { 0.0 } else {
-                    (u - u0) as f64 / (u1 - u0) as f64
-                };
-                // println!("Grid: v0={}, v1={}, v={}, y={}", u0, u1, u, y);
-                assert!(0.0 <= y && y <= 1.0);
-                let y1 = 1.0 - y;
+                if axes.vert() {
+                    let u0 = self.layout_heights[#nr + 0] as i32;
+                    let u1 = self.layout_heights[#nr + 1] as i32;
+                    let u = rect.size.1 as i32;
+                    let y = if u0 == u1 { 0.0 } else {
+                        (u - u0) as f64 / (u1 - u0) as f64
+                    };
+                    // println!("Grid: v0={}, v1={}, v={}, y={}", u0, u1, u, y);
+                    assert!(0.0 <= y && y <= 1.0);
+                    let y1 = 1.0 - y;
 
-                // Now calculate widths and cumulative widths
-                let mut accum_h = 0;
-                for i in (0..#nr).step_by(2) {
-                    let u = (y1 * self.layout_heights[i] as f64
-                        + y * self.layout_heights[i + 1] as f64) as u32;
-                    self.layout_heights[i] = u;
-                    self.layout_heights[i + 1] = accum_h;
-                    accum_h += u;
-                }
+                    // Now calculate widths and cumulative widths
+                    let mut accum_h = 0;
+                    for i in (0..#nr).step_by(2) {
+                        let u = (y1 * self.layout_heights[i] as f64
+                            + y * self.layout_heights[i + 1] as f64) as u32;
+                        self.layout_heights[i] = u;
+                        self.layout_heights[i + 1] = accum_h;
+                        accum_h += u;
+                    }
 
-                // Assign excess from rounding errors to last rows/columns
-                assert!(rect.size.1 >= accum_h);
-                let excess2 = 2 * (rect.size.1 - accum_h) as usize;
-                assert!(excess2 <= #nr);
-                accum_h = 0;
-                for i in ((#nr - excess2)..#nr).step_by(2) {
-                    self.layout_heights[i] += 1;
-                    self.layout_heights[i + 1] += accum_h;
-                    accum_h += 1;
+                    // Assign excess from rounding errors to last rows/columns
+                    assert!(rect.size.1 >= accum_h);
+                    let excess2 = 2 * (rect.size.1 - accum_h) as usize;
+                    assert!(excess2 <= #nr);
+                    accum_h = 0;
+                    for i in ((#nr - excess2)..#nr).step_by(2) {
+                        self.layout_heights[i] += 1;
+                        self.layout_heights[i + 1] += accum_h;
+                        accum_h += 1;
+                    }
+                    assert!(rect.size.1 == self.layout_heights[#nr - 1] + self.layout_heights[#nr - 2]);
                 }
-                assert!(rect.size.1 == self.layout_heights[#nr - 1] + self.layout_heights[#nr - 2]);
             });
         }
 
         let fns = quote! {
-            fn size_pref(&mut self, tk: &mut dyn kas::TkWidget, pref: kas::SizePref, axes: kas::Axes, which: usize) -> kas::Size {
+            fn size_pref(
+                &mut self,
+                tk: &mut dyn kas::TkWidget,
+                pref: kas::SizePref,
+                axes: kas::Axes,
+                index: bool,
+            ) -> kas::Size {
                 use kas::{Axes, Core, Size, SizePref};
+                let which = index as usize;
 
                 #size_pre
                 #size
@@ -378,7 +407,7 @@ impl ImplLayout {
                 size
             }
 
-            fn set_rect(&mut self, rect: kas::Rect) {
+            fn set_rect(&mut self, rect: kas::Rect, axes: kas::Axes) {
                 use kas::{Core, Coord, Size, Rect};
                 self.core_data_mut().rect = rect;
 
