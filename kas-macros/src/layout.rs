@@ -203,8 +203,8 @@ impl ImplLayout {
                 let pos = args.as_pos()?;
                 let (c0, c1) = (pos.0, pos.0 + pos.2);
                 let (r0, r1) = (pos.1, pos.1 + pos.3);
-                let (nc, nr) = ((2 * c0) as usize, (2 * r0) as usize);
-                let (nc1, nr1) = ((2 * c1) as usize, (2 * r1) as usize);
+                let (nc2, nr2) = ((2 * c0) as usize, (2 * r0) as usize);
+                let (nc2_1, nr2_1) = ((2 * c1) as usize, (2 * r1) as usize);
                 self.cols = self.cols.max(c1);
                 self.rows = self.rows.max(r1);
 
@@ -212,23 +212,23 @@ impl ImplLayout {
                     let child_size = self.#ident.size_pref(tk, pref, axes, index);
                     // FIXME: this doesn't deal with column spans correctly!
                     if axes.horiz() {
-                        let i = #nc + which;
+                        let i = #nc2 + which;
                         self.layout_widths[i] = self.layout_widths[i].max(child_size.0);
                     }
                     if axes.vert() {
-                        let i = #nr + which;
+                        let i = #nr2 + which;
                         self.layout_heights[i] = self.layout_heights[i].max(child_size.1);
                     }
                 });
 
                 self.set_rect.append_all(quote! {
-                    let pos = Coord(self.layout_widths[#nc + 1] as i32,
-                            self.layout_heights[#nr + 1] as i32);
+                    let pos = Coord(self.layout_widths[#nc2 + 1] as i32,
+                            self.layout_heights[#nr2 + 1] as i32);
                     let mut size = Size::ZERO;
-                    for c in (#nc..#nc1).step_by(2) {
+                    for c in (#nc2..#nc2_1).step_by(2) {
                         size.0 += self.layout_widths[c];
                     }
-                    for r in (#nr..#nr1).step_by(2) {
+                    for r in (#nr2..#nr2_1).step_by(2) {
                         size.1 += self.layout_heights[r];
                     }
                     let crect = Rect { pos: pos + rect.pos, size };
@@ -240,10 +240,10 @@ impl ImplLayout {
     }
 
     pub fn finish(self) -> (TokenStream, TokenStream, TokenStream) {
-        let cols = self.cols as usize;
-        let rows = self.rows as usize;
-        let nc = cols * 2;
-        let nr = rows * 2;
+        let cols = self.cols;
+        let rows = self.rows;
+        let nc2 = cols as usize * 2;
+        let nr2 = rows as usize * 2;
         let size = self.size;
         let set_rect = self.set_rect;
 
@@ -252,18 +252,18 @@ impl ImplLayout {
 
         if self.layout != Layout::Vert {
             fields.append_all(quote! {
-                layout_widths: [u32; #nc + 2],
+                layout_widths: [u32; #nc2 + 2],
             });
             field_ctors.append_all(quote! {
-                layout_widths: [0; #nc + 2],
+                layout_widths: [0; #nc2 + 2],
             });
         }
         if self.layout != Layout::Horiz {
             fields.append_all(quote! {
-                    layout_heights: [u32; #nr + 2],
+                    layout_heights: [u32; #nr2 + 2],
             });
             field_ctors.append_all(quote! {
-                    layout_heights: [0; #nr + 2],
+                    layout_heights: [0; #nr2 + 2],
             });
         }
 
@@ -274,12 +274,12 @@ impl ImplLayout {
         } else {
             quote! {
                 if axes.horiz() {
-                    for i in (0..#nc).step_by(2) {
+                    for i in (0..#nc2).step_by(2) {
                         self.layout_widths[i + which] = 0;
                     }
                 }
                 if axes.vert() {
-                    for i in (0..#nr).step_by(2) {
+                    for i in (0..#nr2).step_by(2) {
                         self.layout_heights[i + which] = 0;
                     }
                 }
@@ -289,27 +289,27 @@ impl ImplLayout {
         let size_post = match self.layout {
             Layout::Horiz => quote! {
                 if axes.horiz() {
-                    self.layout_widths[#nc + which] = size.0;
+                    self.layout_widths[#nc2 + which] = size.0;
                 }
             },
             Layout::Vert => quote! {
                 if axes.vert() {
-                    self.layout_heights[#nr + which] = size.1;
+                    self.layout_heights[#nr2 + which] = size.1;
                 }
             },
             Layout::Grid => quote! {
                 let mut size = Size::ZERO;
                 if axes.horiz() {
-                    for i in (0..#nc).step_by(2) {
+                    for i in (0..#nc2).step_by(2) {
                         size.0 += self.layout_widths[i + which];
                     }
-                    self.layout_widths[#nc + which] = size.0;
+                    self.layout_widths[#nc2 + which] = size.0;
                 }
                 if axes.vert() {
-                    for i in (0..#nr).step_by(2) {
+                    for i in (0..#nr2).step_by(2) {
                         size.1 += self.layout_heights[i + which];
                     }
-                    self.layout_heights[#nr + which] = size.1;
+                    self.layout_heights[#nr2 + which] = size.1;
                 }
             },
         };
@@ -318,74 +318,127 @@ impl ImplLayout {
         if self.layout != Layout::Vert {
             set_rect_pre.append_all(quote! {
                 if axes.horiz() {
-                    let u0 = self.layout_widths[#nc + 0] as i32;
-                    let u1 = self.layout_widths[#nc + 1] as i32;
-                    let u = rect.size.0 as i32;
-                    let x = if u0 == u1 { 0.0 } else {
-                        (u - u0) as f64 / (u1 - u0) as f64
-                    };
-                    // println!("Grid: u0={}, u1={}, u={}, x={}", u0, u1, u, x);
-                    assert!(0.0 <= x && x <= 1.0);
-                    let x1 = 1.0 - x;
+                    let target = rect.size.0;
+                    let u0 = self.layout_widths[#nc2 + 0];
+                    let u1 = self.layout_widths[#nc2 + 1];
+                    if target != u0 && (target == u1 || u1 < u0) {
+                        for i in (0..(#nc2 + 2)).step_by(2) {
+                            self.layout_widths.swap(i, i + 1);
+                        }
+                    }
+                    assert!(self.layout_widths[#nc2] <= target);
+                    assert!(target <= self.layout_widths[#nc2 + 1]);
 
-                    // Now calculate widths and cumulative widths
-                    let mut accum_w = 0;
-                    for i in (0..#nc).step_by(2) {
-                        let u = (x1 * self.layout_widths[i] as f64
-                            + x * self.layout_widths[i + 1] as f64) as u32;
-                        self.layout_widths[i] = u;
-                        self.layout_widths[i + 1] = accum_w;
-                        accum_w += u;
+                    let mut excess = target - self.layout_widths[#nc2];
+                    let mut rounds = 0;
+                    let mut remaining = #cols;
+                    while excess > 0 {
+                        assert!(rounds < #cols, "Layout::set_rect: too many rounds!");
+                        rounds += 1;
+
+                        let mut next_step = 0;
+                        let mut num_over = 0;
+                        for i in (0..#nc2).step_by(2) {
+                            let step = self.layout_widths[i + 1] - self.layout_widths[i];
+                            if step > 0 {
+                                num_over += 1;
+                                if next_step == 0
+                                    || (remaining * next_step > excess && step < next_step)
+                                    || (remaining * step <= excess && step > next_step)
+                                {
+                                    next_step = step;
+                                }
+                            }
+                        }
+
+                        assert!(num_over <= remaining);
+                        remaining = num_over;
+
+                        let mut extra = 0;
+                        if num_over * next_step > excess {
+                            next_step = excess / num_over;  // round down
+                            extra = 2 * (excess - num_over * next_step) as usize;
+                        }
+                        let mut total = 0;
+                        for i in (0..#nc2).step_by(2) {
+                            let diff = self.layout_widths[i + 1] - self.layout_widths[i];
+                            let extra1 = if i < extra { 1 } else { 0 };
+                            let add = diff.min(next_step + extra1);
+                            self.layout_widths[i] += add;
+                            total += self.layout_widths[i];
+                        }
+                        assert!(target >= total);
+                        excess = target - total;
                     }
 
-                    // Assign excess from rounding errors to last rows/columns
-                    assert!(rect.size.0 >= accum_w);
-                    let excess2 = 2 * (rect.size.0 - accum_w) as usize;
-                    assert!(excess2 <= #nc);
-                    accum_w = 0;
-                    for i in ((#nc - excess2)..#nc).step_by(2) {
-                        self.layout_widths[i] += 1;
-                        self.layout_widths[i + 1] += accum_w;
-                        accum_w += 1;
+                    let mut total = 0;
+                    for i in (0..#nc2).step_by(2) {
+                        self.layout_widths[i + 1] = total;
+                        total += self.layout_widths[i];
                     }
-                    assert!(rect.size.0 == self.layout_widths[#nc - 1] + self.layout_widths[#nc - 2]);
+                    assert!(total == target);
                 }
             });
         }
         if self.layout != Layout::Horiz {
             set_rect_pre.append_all(quote! {
                 if axes.vert() {
-                    let u0 = self.layout_heights[#nr + 0] as i32;
-                    let u1 = self.layout_heights[#nr + 1] as i32;
-                    let u = rect.size.1 as i32;
-                    let y = if u0 == u1 { 0.0 } else {
-                        (u - u0) as f64 / (u1 - u0) as f64
-                    };
-                    // println!("Grid: v0={}, v1={}, v={}, y={}", u0, u1, u, y);
-                    assert!(0.0 <= y && y <= 1.0);
-                    let y1 = 1.0 - y;
+                    let target = rect.size.1;
+                    let u0 = self.layout_heights[#nr2 + 0];
+                    let u1 = self.layout_heights[#nr2 + 1];
+                    if target != u0 && (target == u1 || u1 < u0) {
+                        for i in (0..(#nr2 + 2)).step_by(2) {
+                            self.layout_heights.swap(i, i + 1);
+                        }
+                    }
+                    assert!(self.layout_heights[#nr2] <= target);
+                    assert!(target <= self.layout_heights[#nr2 + 1]);
 
-                    // Now calculate widths and cumulative widths
-                    let mut accum_h = 0;
-                    for i in (0..#nr).step_by(2) {
-                        let u = (y1 * self.layout_heights[i] as f64
-                            + y * self.layout_heights[i + 1] as f64) as u32;
-                        self.layout_heights[i] = u;
-                        self.layout_heights[i + 1] = accum_h;
-                        accum_h += u;
+                    let mut excess = target - self.layout_heights[#nr2];
+                    let mut rounds = 0;
+                    let mut remaining = #rows;
+                    while excess > 0 {
+                        assert!(rounds < #rows, "Layout::set_rect: too many rounds!");
+                        rounds += 1;
+
+                        let mut next_step = 0;
+                        let mut num_over = 0;
+                        for i in (0..#nr2).step_by(2) {
+                            let step = self.layout_heights[i + 1] - self.layout_heights[i];
+                            if step > 0 {
+                                num_over += 1;
+                                if next_step == 0
+                                    || (remaining * next_step > excess && step < next_step)
+                                    || (remaining * step <= excess && step > next_step)
+                                {
+                                    next_step = step;
+                                }
+                            }
+                        }
+
+                        let mut extra = 0;
+                        if num_over * next_step > excess {
+                            next_step = excess / num_over;  // round down
+                            extra = 2 * (excess - num_over * next_step) as usize;
+                        }
+                        let mut total = 0;
+                        for i in (0..#nr2).step_by(2) {
+                            let diff = self.layout_heights[i + 1] - self.layout_heights[i];
+                            let extra1 = if i < extra { 1 } else { 0 };
+                            let add = diff.min(next_step + extra1);
+                            self.layout_heights[i] += add;
+                            total += self.layout_heights[i];
+                        }
+                        assert!(target >= total);
+                        excess = target - total;
                     }
 
-                    // Assign excess from rounding errors to last rows/columns
-                    assert!(rect.size.1 >= accum_h);
-                    let excess2 = 2 * (rect.size.1 - accum_h) as usize;
-                    assert!(excess2 <= #nr);
-                    accum_h = 0;
-                    for i in ((#nr - excess2)..#nr).step_by(2) {
-                        self.layout_heights[i] += 1;
-                        self.layout_heights[i + 1] += accum_h;
-                        accum_h += 1;
+                    let mut total = 0;
+                    for i in (0..#nr2).step_by(2) {
+                        self.layout_heights[i + 1] = total;
+                        total += self.layout_heights[i];
                     }
-                    assert!(rect.size.1 == self.layout_heights[#nr - 1] + self.layout_heights[#nr - 2]);
+                    assert!(total == target);
                 }
             });
         }
