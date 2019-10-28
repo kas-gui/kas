@@ -52,7 +52,6 @@ pub struct SimpleWindow<W: Widget + 'static> {
     min_size: Size,
     #[widget]
     w: W,
-    size_pref: SizePref,
     fns: Vec<(Condition, &'static dyn Fn(&mut W, &mut dyn TkWidget))>,
 }
 
@@ -80,7 +79,6 @@ impl<W: Widget + Clone> Clone for SimpleWindow<W> {
             core: self.core.clone(),
             min_size: self.min_size,
             w: self.w.clone(),
-            size_pref: self.size_pref,
             fns: self.fns.clone(),
         }
     }
@@ -110,7 +108,6 @@ impl<W: Widget> SimpleWindow<W> {
             core: Default::default(),
             min_size: Size::ZERO,
             w,
-            size_pref: SizePref::Default,
             fns: Vec::new(),
         }
     }
@@ -199,7 +196,8 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
             }
         }
 
-        let mut pref = self.size_pref;
+        // Note: it might be tempting to cache pref, but this can lead to unstable behaviour.
+        let mut pref = SizePref::Default;
         let mut axes = Axes::Both;
         let mut which = false;
         let mut s = self.size_pref(tk, pref, axes, which);
@@ -238,9 +236,6 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
             dir0 = Dir::from(s.0, size.0);
             which = !which;
         }
-
-        // Cache final SizePref for horizontal axis
-        self.size_pref = pref;
 
         // Stage 2a: calculate final horizontal size and fix
         let range = (b[0].0.min(b[1].0), b[0].0.max(b[1].0));

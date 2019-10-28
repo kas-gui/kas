@@ -17,7 +17,7 @@ fn main() -> Result<(), winit::error::OsError> {
         container(grid) => ();
         struct {
             #[widget(row=0, col=0)] _ = Label::from("Label"),
-            #[widget(row=0, col=1)] _ = Label::from(lipsum),
+            #[widget(row=0, col=1)] _ = Label::from("Hello world"),
             #[widget(row=1, col=0)] _ = Label::from("Entry"),
             #[widget(row=1, col=1)] _ = Entry::new("edit me"),
             #[widget(row=2, col=0)] _ = Label::from("TextButton"),
@@ -26,6 +26,7 @@ fn main() -> Result<(), winit::error::OsError> {
             #[widget(row=3, col=1)] _ = CheckBox::new("Check me"),
             #[widget(row=4, col=0)] _ = Label::from("CheckBox"),
             #[widget(row=4, col=1)] _ = CheckBox::new("").state(true),
+            #[widget(row=5, col=0, cspan=2)] _ = Label::from(lipsum),
         }
     };
 
