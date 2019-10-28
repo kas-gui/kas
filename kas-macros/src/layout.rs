@@ -326,10 +326,11 @@ impl ImplLayout {
                             self.layout_widths.swap(i, i + 1);
                         }
                     }
-                    assert!(self.layout_widths[#nc2] <= target);
-                    assert!(target <= self.layout_widths[#nc2 + 1]);
 
+                    assert!(self.layout_widths[#nc2] <= target);
                     let mut excess = target - self.layout_widths[#nc2];
+                    assert!(excess == 0 || target <= self.layout_widths[#nc2 + 1]);
+
                     let mut rounds = 0;
                     let mut remaining = #cols;
                     while excess > 0 {
@@ -391,10 +392,11 @@ impl ImplLayout {
                             self.layout_heights.swap(i, i + 1);
                         }
                     }
-                    assert!(self.layout_heights[#nr2] <= target);
-                    assert!(target <= self.layout_heights[#nr2 + 1]);
 
+                    assert!(self.layout_heights[#nr2] <= target);
                     let mut excess = target - self.layout_heights[#nr2];
+                    assert!(excess == 0 || target <= self.layout_heights[#nr2 + 1]);
+
                     let mut rounds = 0;
                     let mut remaining = #rows;
                     while excess > 0 {
