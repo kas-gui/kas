@@ -12,7 +12,6 @@ use kas::text::{Entry, Label};
 use kas::SimpleWindow;
 
 fn main() -> Result<(), winit::error::OsError> {
-    let lipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nunc mi, consequat eget urna ut, auctor luctus mi. Sed molestie mi est. Sed non ligula ante. Curabitur ac molestie ante, nec sodales eros. In non arcu at turpis euismod bibendum ut tincidunt eros. Suspendisse blandit maximus nisi, viverra hendrerit elit efficitur et. Morbi ut facilisis eros. Vivamus dignissim, sapien sed mattis consectetur, libero leo imperdiet turpis, ac pulvinar libero purus eu lorem. Etiam quis sollicitudin urna. Integer vitae erat vel neque gravida blandit ac non quam.";
     let widgets = make_widget! {
         container(grid) => ();
         struct {
@@ -26,7 +25,6 @@ fn main() -> Result<(), winit::error::OsError> {
             #[widget(row=3, col=1)] _ = CheckBox::new("Check me"),
             #[widget(row=4, col=0)] _ = Label::from("CheckBox"),
             #[widget(row=4, col=1)] _ = CheckBox::new("").state(true),
-            #[widget(row=5, col=0, cspan=2)] _ = Label::from(lipsum),
         }
     };
 

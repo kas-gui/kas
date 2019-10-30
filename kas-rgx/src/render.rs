@@ -181,9 +181,9 @@ impl TkWidget for Widgets {
             Class::Container | Class::Frame | Class::Window => Size(0, 0), // not important
             Class::Label(_) => {
                 if pref < SizePref::Small {
-                    Size(4 * line_height, line_height)
+                    map_size_min(bounds, Size(4 * line_height, line_height))
                 } else if pref < SizePref::Max {
-                    map_size_min(bounds, Size(0, line_height))
+                    map_size_max(bounds, Size(0, line_height))
                 } else {
                     Size::MAX
                 }
@@ -201,7 +201,7 @@ impl TkWidget for Widgets {
                 if pref < SizePref::Small {
                     Size(2 * line_height, line_height)
                 } else if pref < SizePref::Large {
-                    map_size_min(bounds, Size(line_height * 2, line_height))
+                    map_size_max(bounds, Size(line_height * 2, line_height))
                 } else {
                     Size(Size::MAX.0, line_height)
                 }
@@ -236,6 +236,16 @@ impl TkWidget for Widgets {
 }
 
 fn map_size_min(rect: Option<rusttype::Rect<f32>>, ms: Size) -> Size {
+    match rect {
+        Some(rusttype::Rect { min, max }) => Size(
+            ms.0.min((max.x - min.x) as u32),
+            ms.1.min((max.y - min.y) as u32),
+        ),
+        None => ms,
+    }
+}
+
+fn map_size_max(rect: Option<rusttype::Rect<f32>>, ms: Size) -> Size {
     match rect {
         Some(rusttype::Rect { min, max }) => Size(
             ms.0.max((max.x - min.x) as u32),
