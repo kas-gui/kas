@@ -8,127 +8,249 @@
 use std::fmt;
 
 use crate::toolkit::TkWidget;
-use crate::widget::{Core, Rect, Size};
+use crate::widget::{Core, Rect};
 
-/// Size preferences.
-///
-/// This type supports `Ord` such that for all values `x`,
-/// `SizePref::Min <= x` and `x <= SizePref::Max`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum SizePref {
-    /// Minimal functional size
-    Min,
-    /// Small size
-    Small,
-    /// The default and preferred size
-    Default,
-    /// Larger size
-    Large,
-    /// Maximal useful size
-    ///
-    /// Widgets may be enlarged beyond this size
-    Max,
+/// The axis being resized
+#[derive(Copy, Clone, Debug)]
+pub struct AxisInfo {
+    is_vert: bool,
+    fixed: bool,
+    other: u32,
 }
 
-impl SizePref {
-    /// Increment the size, saturating
-    pub fn increment(self) -> SizePref {
-        use SizePref::*;
-        match self {
-            Min => Small,
-            Small => Default,
-            Default => Large,
-            Large => Max,
-            Max => Max,
+impl AxisInfo {
+    /// Construct an instance
+    #[inline]
+    pub fn new(vert: bool, fixed: Option<u32>) -> Self {
+        AxisInfo {
+            is_vert: vert,
+            fixed: fixed.is_some(),
+            other: fixed.unwrap_or(0),
         }
     }
-
-    /// Decrement the size, saturating
-    pub fn decrement(self) -> SizePref {
-        use SizePref::*;
-        match self {
-            Min => Min,
-            Small => Min,
-            Default => Small,
-            Large => Default,
-            Max => Large,
-        }
-    }
-}
-
-/// Axes being resized
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Axes {
-    /// Adjust both axes
-    Both,
-    /// Adjust horizontal axis only.
-    /// If param is true, other axis is given fixed dimension.
-    Horiz(bool),
-    /// Adjust vertical axis only.
-    /// If param is true, other axis is given fixed dimension.
-    Vert(bool),
-}
-
-impl Axes {
+    
     /// Adjust horizontal axis
-    pub fn horiz(self) -> bool {
-        if let Axes::Vert(_) = self {
-            false
-        } else {
-            true
-        }
+    #[inline]
+    pub fn horiz(&self) -> bool {
+        !self.is_vert
     }
 
     /// Adjust vertical axis
-    pub fn vert(self) -> bool {
-        if let Axes::Horiz(_) = self {
-            false
+    #[inline]
+    pub fn vert(&self) -> bool {
+        self.is_vert
+    }
+    
+    /// Size of other axis, if fixed and (`vert == self.vert()`).
+    #[inline]
+    pub fn fixed(&self, vert: bool) -> Option<u32> {
+        if vert == self.is_vert && self.fixed {
+            Some(self.other)
         } else {
-            true
+            None
         }
+    }
+    
+    /// Set size of fixed axis, if applicable
+    #[inline]
+    pub fn set_size(&mut self, size: u32) {
+        self.other = size;
+    }
+}
+
+/// Return value of [`Layout::size_rules`].
+#[derive(Copy, Clone, Debug, Default)]
+pub struct SizeRules {
+    // minimum size
+    a: u32,
+    // maximum size; b >= a
+    b: u32,
+}
+
+impl SizeRules {
+    /// Empty (zero size)
+    pub const EMPTY: Self = SizeRules { a: 0, b: 0 };
+    
+    /// A fixed size
+    #[inline]
+    pub fn fixed(size: u32) -> Self {
+        SizeRules { a: size, b: size }
+    }
+    
+    /// A variable size with given `min`-imum and `pref`-erred values.
+    ///
+    /// Required: `pref >= min`.
+    #[inline]
+    pub fn variable(min: u32, pref: u32) -> Self {
+        if min > pref {
+            panic!("SizeRules::variable(min, pref): min > pref !");
+        }
+        SizeRules { a: min, b: pref }
+    }
+    
+    /// Use the maximum size of `self` and `rhs`.
+    #[inline]
+    pub fn max(self, rhs: Self) -> SizeRules {
+        SizeRules {
+            a: self.a.max(rhs.a),
+            b: self.b.max(rhs.b),
+        }
+    }
+    
+    #[doc(hidden)]
+    /// Solve a sequence of rules
+    ///
+    /// Given a sequence of width / height `rules` from children (including a
+    /// final value which is the total) and a `target` size, find an appropriate
+    /// size for each child width / height.
+    // TODO (const generics):
+//     fn solve_seq<const N: usize>(out: &mut [u32; N], rules: &[Self; N + 1], target: u32)
+    pub fn solve_seq(out: &mut [u32], rules: &[Self], target: u32) {
+        #[allow(non_snake_case)]
+        let N = out.len();
+        assert!(rules.len() == N + 1);
+        if N == 0 { return; }
+        
+//         println!("solve_seq: {:?}, {}", rules, target);
+        
+        if target >= rules[N].a {
+            // At or over minimum: distribute extra relative to preferences.
+            // TODO: perhaps this should not use the minimum except as a minimum?
+            
+            let target_rel = target - rules[N].a;
+            let pref_rel = rules[N].b - rules[N].a;
+            let mut sum = 0;
+            
+            if pref_rel > 0 {
+                let x = target_rel as f64 / pref_rel as f64;
+                
+                for n in 0..N {
+                    // This will round down:
+                    let r = rules[n];
+                    let size = r.a + (x * (r.b - r.a) as f64) as u32;
+                    out[n] = size;
+                    sum += size;
+                }
+            } else {
+                // special case: pref_rel == 0
+                let add = target_rel / N as u32;
+                sum += add * N as u32;
+                for n in 0..N {
+                    out[n] = rules[n].a + add;
+                }
+            }
+            
+            // The above may round down, which may leave us a little short.
+            assert!(sum <= target_rel);
+            let rem = target_rel - sum;
+            assert!(rem as usize <= N);
+            // Distribute to first rem. sizes.
+            for n in 0..(rem as usize) {
+                out[n] += 1;
+            }
+        } else {
+            // Under minimum: reduce maximum allowed size.
+            let mut excess = rules[N].a - target;
+            
+            let mut largest = 0;
+            let mut num_equal = 0;
+            let mut next_largest = 0;
+            for n in 0..N {
+                let a = rules[n].a;
+                out[n] = a;
+                if a == largest {
+                    num_equal += 1;
+                } else if a > largest {
+                    next_largest = largest;
+                    largest = a;
+                    num_equal = 1;
+                } else if a > next_largest {
+                    next_largest = a;
+                }
+            }
+            
+            while excess > 0 {
+                let step = (excess / num_equal).min(largest - next_largest);
+                if step == 0 {
+                    for n in 0..N {
+                        if out[n] == largest {
+                            out[n] -= 1;
+                            if excess == 0 {
+                                break;
+                            }
+                            excess -= 1;
+                        }
+                    }
+                    break;
+                }
+                
+                let thresh = next_largest;
+                let mut num_add = 0;
+                next_largest = 0;
+                for n in 0..N {
+                    let a = out[n];
+                    if a == largest {
+                        out[n] = a - step;
+                    } else if a == thresh {
+                        num_add += 1;
+                    } else if a > next_largest {
+                        next_largest = a;
+                    }
+                }
+                excess -= step * num_equal;
+                
+                largest -= step;
+                num_equal += num_add;
+            }
+        }
+    }
+}
+
+impl std::ops::Add<SizeRules> for SizeRules {
+    type Output = Self;
+    
+    #[inline]
+    fn add(self, rhs: SizeRules) -> Self::Output {
+        SizeRules {
+            a: self.a + rhs.a,
+            b: self.b + rhs.b,
+        }
+    }
+}
+
+impl std::ops::AddAssign for SizeRules {
+    #[inline]
+    fn add_assign(&mut self, rhs: Self) {
+        *self = Self {
+            a: self.a + rhs.a,
+            b: self.b + rhs.b,
+        };
     }
 }
 
 /// Widget size and layout.
 pub trait Layout: Core + fmt::Debug {
-    /// Get the size according to the given preference and cache the result.
+    /// Get size rules for the given axis.
     ///
-    /// For simple widgets (without children), this method is usually just a
-    /// wrapper around [`TkWidget::size_pref`]. For widgets with children this
-    /// method is much more complex, and it is strongly recommended to rely on
-    /// the [`kas_macros`] macros for implementations.
-    // This function should calculate a size recommendation for one or both axes
-    // (in compliance with the `axes` parameter), according to the given `pref`,
-    // and optionally with the other axis fixed (see `Axes` enum).
-    // The resulting size should then be cached locally at the given `index`
-    // (0 or 1) but only for the enabled `axes`.
-    fn size_pref(&mut self, tk: &mut dyn TkWidget, pref: SizePref, axes: Axes, index: bool)
-        -> Size;
+    /// This method takes `&mut self` to allow local caching of child widget
+    /// configuration for future `size_rules` and `set_rect` calls.
+    ///
+    /// If operating on one axis and the other is fixed, then the `other`
+    /// parameter is used for the fixed dimension. Additionally, one may assume
+    /// that `size_rules` has previously been called on the fixed axis with the
+    /// current widget configuration.
+    fn size_rules(&mut self, tk: &mut dyn TkWidget, axis: AxisInfo) -> SizeRules;
 
-    #[doc(hidden)]
     /// Adjust to the given size.
     ///
     /// For many widgets this operation is trivial and the default
     /// implementation will suffice. For layout widgets (those with children),
     /// this operation is more complex.
     ///
-    /// See notes on the [`Layout::size_pref`] method regarding caching of
-    /// results. For each axis, the size specified by this method is guaranteed
-    /// to be either equal to the result of the last `size_pref` query, or
-    /// between the results of the last two queries.
-    fn set_rect(&mut self, rect: Rect, axes: Axes) {
-        match axes {
-            Axes::Both => {
-                self.core_data_mut().rect = rect;
-            }
-            Axes::Horiz(_) => {
-                self.core_data_mut().rect.size.0 = rect.size.0;
-                self.core_data_mut().rect.pos.0 = rect.pos.0;
-            }
-            Axes::Vert(_) => {
-                self.core_data_mut().rect.size.1 = rect.size.1;
-                self.core_data_mut().rect.pos.1 = rect.pos.1;
-            }
-        }
+    /// One may assume that `size_rules` has been called for each axis with the
+    /// current widget configuration.
+    #[inline]
+    fn set_rect(&mut self, rect: Rect) {
+        self.core_data_mut().rect = rect;
     }
 }

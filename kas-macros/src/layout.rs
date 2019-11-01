@@ -28,18 +28,8 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_pref(
-                &mut self,
-                _tk: &mut dyn kas::TkWidget,
-                pref: kas::SizePref,
-                _axes: kas::Axes,
-                _index: bool,
-            ) -> kas::Size {
-                if pref == SizePref::Max {
-                    Size::MAX
-                } else {
-                    Size::ZERO
-                }
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, axis: kas::AxisInfo) -> kas::SizeRules {
+                (0, 0)
             }
         })
     } else if layout == "derive" {
@@ -57,14 +47,8 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_pref(
-                &mut self,
-                tk: &mut dyn kas::TkWidget,
-                pref: kas::SizePref,
-                axes: kas::Axes,
-                _index: bool,
-            ) -> kas::Size {
-                tk.size_pref(self, pref, axes)
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, axis: kas::AxisInfo) -> kas::SizeRules {
+                tk.size_rules(self, axis)
             }
         })
     } else if layout == "single" {
@@ -79,20 +63,14 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
         }
         let ident = &children[0].ident;
         Ok(quote! {
-            fn size_pref(
-                &mut self,
-                tk: &mut dyn kas::TkWidget,
-                pref: kas::SizePref,
-                axes: kas::Axes,
-                index: bool,
-            ) -> kas::Size {
-                self.#ident.size_pref(tk, pref, axes, index)
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, axis: kas::AxisInfo) -> kas::SizeRules {
+                self.#ident.size_rules(tk, axis)
             }
 
-            fn set_rect(&mut self, rect: kas::Rect, axes: kas::Axes) {
+            fn set_rect(&mut self, rect: kas::Rect) {
                 use kas::Core;
                 self.core_data_mut().rect = rect;
-                self.#ident.set_rect(rect, axes);
+                self.#ident.set_rect(rect);
             }
         })
     } else {
@@ -125,11 +103,9 @@ impl ImplLayout {
             Ok(ImplLayout {
                 layout: Layout::Horiz,
                 cols: 0,
-                rows: 1,
+                rows: 0,
                 spans: vec![],
-                size: quote! {
-                    let mut size = Size::ZERO;
-                },
+                size: quote! {},
                 set_rect: quote! {
                     let mut crect = rect;
                 },
@@ -137,12 +113,10 @@ impl ImplLayout {
         } else if layout == "vertical" {
             Ok(ImplLayout {
                 layout: Layout::Vert,
-                cols: 1,
+                cols: 0,
                 rows: 0,
                 spans: vec![],
-                size: quote! {
-                    let mut size = Size::ZERO;
-                },
+                size: quote! {},
                 set_rect: quote! {
                     let mut crect = rect;
                 },
@@ -168,41 +142,49 @@ impl ImplLayout {
     pub fn child(&mut self, ident: &Ident, args: &WidgetAttrArgs) -> Result<()> {
         match self.layout {
             Layout::Horiz => {
-                let n = (self.cols * 2) as usize;
+                let col = self.cols as usize;
                 self.cols += 1;
 
                 self.size.append_all(quote! {
-                    let child_size = self.#ident.size_pref(tk, pref, axes, index);
-                    if axes.horiz() {
-                        self.layout_widths[#n + which] = child_size.0;
+                    if axis.horiz() {
+                        axis.set_size(widths[#col]);
                     }
-                    size.0 += child_size.0;
-                    size.1 = std::cmp::max(size.1, child_size.1);
+                    let child_rules = self.#ident.size_rules(tk, axis);
+                    if axis.horiz() {
+                        self.col_rules[#col] = child_rules;
+                        rules += child_rules;
+                    } else {
+                        rules = rules.max(child_rules);
+                    }
                 });
 
                 self.set_rect.append_all(quote! {
-                    crect.pos.0 = self.layout_widths[#n + 1] as i32;
-                    crect.size.0 = self.layout_widths[#n];
-                    self.#ident.set_rect(crect, axes);
+                    crect.size.0 = widths[#col];
+                    self.#ident.set_rect(crect);
+                    crect.pos.0 += crect.size.0 as i32;
                 });
             }
             Layout::Vert => {
-                let n = (self.rows * 2) as usize;
+                let row = self.rows as usize;
                 self.rows += 1;
 
                 self.size.append_all(quote! {
-                    let child_size = self.#ident.size_pref(tk, pref, axes, index);
-                    if axes.vert() {
-                        self.layout_heights[#n + which] = child_size.1;
+                    if axis.vert() {
+                        axis.set_size(heights[#row]);
                     }
-                    size.0 = std::cmp::max(size.0, child_size.0);
-                    size.1 += child_size.1;
+                    let child_rules = self.#ident.size_rules(tk, axis);
+                    if axis.vert() {
+                        self.row_rules[#row] = child_rules;
+                        rules += child_rules;
+                    } else {
+                        rules = rules.max(child_rules);
+                    }
                 });
 
                 self.set_rect.append_all(quote! {
-                    crect.pos.1 = self.layout_heights[#n + 1] as i32;
-                    crect.size.1 = self.layout_heights[#n];
-                    self.#ident.set_rect(crect, axes);
+                    crect.size.1 = heights[#row];
+                    self.#ident.set_rect(crect);
+                    crect.pos.1 += crect.size.1 as i32;
                 });
             }
             Layout::Grid => {
@@ -270,10 +252,8 @@ impl ImplLayout {
     }
 
     pub fn finish(self) -> (TokenStream, TokenStream, TokenStream) {
-        let cols = self.cols;
-        let rows = self.rows;
-        let nc2 = cols as usize * 2;
-        let nr2 = rows as usize * 2;
+        let cols = self.cols as usize;
+        let rows = self.rows as usize;
         let mut spans = self.spans;
         let ns2 = spans.len() * 2;
         let size = self.size;
@@ -290,50 +270,48 @@ impl ImplLayout {
 
         if self.layout != Layout::Vert {
             fields.append_all(quote! {
-                layout_widths: [u32; #nc2 + 2],
+                col_rules: [kas::SizeRules; #cols + 1],
             });
             field_ctors.append_all(quote! {
-                layout_widths: Default::default(),
+                col_rules: Default::default(),
             });
         }
         if self.layout != Layout::Horiz {
             fields.append_all(quote! {
-                layout_heights: [u32; #nr2 + 2],
+                row_rules: [kas::SizeRules; #rows + 1],
             });
             field_ctors.append_all(quote! {
-                layout_heights: Default::default(),
+                row_rules: Default::default(),
             });
         }
 
-        let size_pre = if self.layout != Layout::Grid {
-            quote! {
-                let mut size = Size::ZERO;
-            }
-        } else {
-            quote! {
-                if axes.horiz() {
-                    for i in (0..#nc2).step_by(2) {
-                        self.layout_widths[i + which] = 0;
-                    }
+        let size_pre = match self.layout {
+            Layout::Horiz => quote! {
+                let mut rules = SizeRules::EMPTY;
+                let mut widths = [0; #cols];
+                if let Some(size) = axis.fixed(false) {
+                    // TODO: cache this for use by set_rect?
+                    SizeRules::solve_seq(&mut widths, &self.col_rules, size);
                 }
-                if axes.vert() {
-                    for i in (0..#nr2).step_by(2) {
-                        self.layout_heights[i + which] = 0;
-                    }
+            },
+            Layout::Vert => quote! {
+                let mut rules = SizeRules::EMPTY;
+                let mut heights = [0; #rows];
+                if let Some(size) = axis.fixed(true) {
+                    SizeRules::solve_seq(&mut heights, &self.row_rules, size);
                 }
-                let mut layout_spans = [0u32; #ns2];
-            }
+            },
         };
 
         let size_post = match self.layout {
             Layout::Horiz => quote! {
-                if axes.horiz() {
-                    self.layout_widths[#nc2 + which] = size.0;
+                if axis.horiz() {
+                    self.col_rules[#cols] = rules;
                 }
             },
             Layout::Vert => quote! {
-                if axes.vert() {
-                    self.layout_heights[#nr2 + which] = size.1;
+                if axis.vert() {
+                    self.row_rules[#rows] = rules;
                 }
             },
             Layout::Grid => {
@@ -387,156 +365,33 @@ impl ImplLayout {
             }
         };
 
-        let mut set_rect_pre = quote! {};
+        let mut set_rect_pre = quote! {
+        };
         if self.layout != Layout::Vert {
             set_rect_pre.append_all(quote! {
-                if axes.horiz() {
-                    let target = rect.size.0;
-                    let u0 = self.layout_widths[#nc2 + 0];
-                    let u1 = self.layout_widths[#nc2 + 1];
-                    if target != u0 && (target == u1 || u1 < u0) {
-                        for i in (0..(#nc2 + 2)).step_by(2) {
-                            self.layout_widths.swap(i, i + 1);
-                        }
-                    }
-
-                    assert!(self.layout_widths[#nc2] <= target, "target={}: {:?}", target, self.layout_widths);
-                    let mut excess = target - self.layout_widths[#nc2];
-                    assert!(excess == 0 || target <= self.layout_widths[#nc2 + 1]);
-
-                    let mut rounds = 0;
-                    let mut remaining = #cols;
-                    while excess > 0 {
-                        assert!(rounds < #cols, "Layout::set_rect: too many rounds!");
-                        rounds += 1;
-
-                        let mut next_step = 0;
-                        let mut num_over = 0;
-                        for i in (0..#nc2).step_by(2) {
-                            let step = self.layout_widths[i + 1] - self.layout_widths[i];
-                            if step > 0 {
-                                num_over += 1;
-                                if next_step == 0
-                                    || (remaining * next_step > excess && step < next_step)
-                                    || (remaining * step <= excess && step > next_step)
-                                {
-                                    next_step = step;
-                                }
-                            }
-                        }
-
-                        assert!(num_over <= remaining);
-                        remaining = num_over;
-
-                        let mut extra = 0;
-                        if num_over * next_step > excess {
-                            next_step = excess / num_over;  // round down
-                            extra = 2 * (excess - num_over * next_step) as usize;
-                        }
-                        let mut total = 0;
-                        for i in (0..#nc2).step_by(2) {
-                            let diff = self.layout_widths[i + 1] - self.layout_widths[i];
-                            let extra1 = if i < extra { 1 } else { 0 };
-                            let add = diff.min(next_step + extra1);
-                            self.layout_widths[i] += add;
-                            total += self.layout_widths[i];
-                        }
-                        assert!(target >= total);
-                        excess = target - total;
-                    }
-
-                    let mut total = 0;
-                    for i in (0..#nc2).step_by(2) {
-                        self.layout_widths[i + 1] = total;
-                        total += self.layout_widths[i];
-                    }
-                    assert!(total == target);
-                }
+                let mut widths = [0; #cols];
+                SizeRules::solve_seq(&mut widths, &self.col_rules, rect.size.0);
             });
         }
         if self.layout != Layout::Horiz {
             set_rect_pre.append_all(quote! {
-                if axes.vert() {
-                    let target = rect.size.1;
-                    let u0 = self.layout_heights[#nr2 + 0];
-                    let u1 = self.layout_heights[#nr2 + 1];
-                    if target != u0 && (target == u1 || u1 < u0) {
-                        for i in (0..(#nr2 + 2)).step_by(2) {
-                            self.layout_heights.swap(i, i + 1);
-                        }
-                    }
-
-                    assert!(self.layout_heights[#nr2] <= target);
-                    let mut excess = target - self.layout_heights[#nr2];
-                    assert!(excess == 0 || target <= self.layout_heights[#nr2 + 1]);
-
-                    let mut rounds = 0;
-                    let mut remaining = #rows;
-                    while excess > 0 {
-                        assert!(rounds < #rows, "Layout::set_rect: too many rounds!");
-                        rounds += 1;
-
-                        let mut next_step = 0;
-                        let mut num_over = 0;
-                        for i in (0..#nr2).step_by(2) {
-                            let step = self.layout_heights[i + 1] - self.layout_heights[i];
-                            if step > 0 {
-                                num_over += 1;
-                                if next_step == 0
-                                    || (remaining * next_step > excess && step < next_step)
-                                    || (remaining * step <= excess && step > next_step)
-                                {
-                                    next_step = step;
-                                }
-                            }
-                        }
-
-                        let mut extra = 0;
-                        if num_over * next_step > excess {
-                            next_step = excess / num_over;  // round down
-                            extra = 2 * (excess - num_over * next_step) as usize;
-                        }
-                        let mut total = 0;
-                        for i in (0..#nr2).step_by(2) {
-                            let diff = self.layout_heights[i + 1] - self.layout_heights[i];
-                            let extra1 = if i < extra { 1 } else { 0 };
-                            let add = diff.min(next_step + extra1);
-                            self.layout_heights[i] += add;
-                            total += self.layout_heights[i];
-                        }
-                        assert!(target >= total);
-                        excess = target - total;
-                    }
-
-                    let mut total = 0;
-                    for i in (0..#nr2).step_by(2) {
-                        self.layout_heights[i + 1] = total;
-                        total += self.layout_heights[i];
-                    }
-                    assert!(total == target);
-                }
+                let mut heights = [0; #rows];
+                SizeRules::solve_seq(&mut heights, &self.row_rules, rect.size.1);
             });
-        }
+        };
 
         let fns = quote! {
-            fn size_pref(
-                &mut self,
-                tk: &mut dyn kas::TkWidget,
-                pref: kas::SizePref,
-                axes: kas::Axes,
-                index: bool,
-            ) -> kas::Size {
-                use kas::{Axes, Core, Size, SizePref};
-                let which = index as usize;
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, mut axis: kas::AxisInfo) -> kas::SizeRules {
+                use kas::{AxisInfo, Core, Size, SizeRules};
 
                 #size_pre
                 #size
                 #size_post
-                size
+                rules
             }
 
-            fn set_rect(&mut self, rect: kas::Rect, axes: kas::Axes) {
-                use kas::{Core, Coord, Size, Rect};
+            fn set_rect(&mut self, rect: kas::Rect) {
+                use kas::{Core, Coord, Size, SizeRules, Rect};
                 self.core_data_mut().rect = rect;
 
                 #set_rect_pre

@@ -9,9 +9,9 @@ use std::f32;
 
 use rgx::core::*;
 use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
-use wgpu_glyph::{rusttype, GlyphBrush, GlyphCruncher, Scale, Section};
+use wgpu_glyph::{GlyphBrush, GlyphCruncher, Scale, Section};
 
-use kas::{Axes, Class, Size, SizePref, TkWidget, Widget, WidgetId};
+use kas::{AxisInfo, Class, SizeRules, TkWidget, Widget, WidgetId};
 
 const MARGIN: f32 = 2.0;
 
@@ -158,59 +158,45 @@ impl Widgets {
 }
 
 impl TkWidget for Widgets {
-    fn size_pref(&mut self, widget: &dyn Widget, pref: SizePref, axes: Axes) -> Size {
-        // TODO: cache?
-        let bounds = widget.class().text().and_then(|text| {
-            let mut bounds = (f32::INFINITY, f32::INFINITY);
-            if axes == Axes::Horiz(true) {
-                bounds.1 = widget.rect().size.1 as f32;
-            } else if axes == Axes::Vert(true) {
-                bounds.0 = widget.rect().size.0 as f32;
-            }
-            self.glyph_brush.glyph_bounds(Section {
-                text,
-                screen_position: (0.0, 0.0),
-                scale: Scale::uniform(self.font_scale),
-                bounds,
-                ..Section::default()
-            })
-        });
+    fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
         let line_height = self.font_scale as u32;
-
-        let size = match widget.class() {
-            Class::Container | Class::Frame | Class::Window => Size(0, 0), // not important
-            Class::Label(_) => {
-                if pref < SizePref::Small {
-                    map_size_min(bounds, Size(4 * line_height, line_height))
-                } else if pref < SizePref::Max {
-                    map_size_max(bounds, Size(0, line_height))
-                } else {
-                    Size::MAX
+        let mut bound = |vert: bool| -> u32 {
+            let bounds = widget.class().text().and_then(|text| {
+                let mut bounds = (f32::INFINITY, f32::INFINITY);
+                if let Some(size) = axis.fixed(false) {
+                    bounds.1 = size as f32;
+                } else if let Some(size) = axis.fixed(true) {
+                    bounds.0 = size as f32;
                 }
-            }
-            Class::Entry(_) => {
-                if pref < SizePref::Default {
-                    Size(4 * line_height, line_height)
-                } else if pref < SizePref::Max {
-                    Size(8 * line_height, line_height)
-                } else {
-                    Size(Size::MAX.0, line_height)
-                }
-            }
-            Class::Button(_) => {
-                if pref < SizePref::Small {
-                    Size(2 * line_height, line_height)
-                } else if pref < SizePref::Large {
-                    map_size_max(bounds, Size(line_height * 2, line_height))
-                } else {
-                    Size(Size::MAX.0, line_height)
-                }
-            }
-            Class::CheckBox(_) => Size(line_height, line_height),
+                self.glyph_brush.glyph_bounds(Section {
+                    text,
+                    screen_position: (0.0, 0.0),
+                    scale: Scale::uniform(self.font_scale),
+                    bounds,
+                    ..Section::default()
+                })
+            });
+            
+            bounds.map(|rect| match vert {
+                    false => rect.max.x - rect.min.x,
+                    true => rect.max.y - rect.min.y,
+                } as u32).unwrap_or(0)
         };
 
-        let margins = MARGIN as u32 * 2;
-        size + Size(margins, margins)
+        let size = match widget.class() {
+            Class::Container | Class::Frame | Class::Window => SizeRules::EMPTY, // not important
+            Class::Label(_) | Class::Entry(_) | Class::Button(_) => {
+                if axis.horiz() {
+                    let min = 3 * line_height;
+                    SizeRules::variable(min, bound(false).max(min))
+                } else {
+                    SizeRules::fixed(line_height)
+                }
+            }
+            Class::CheckBox(_) => SizeRules::fixed(line_height),
+        };
+
+        size + SizeRules::fixed(MARGIN as u32 * 2)
     }
 
     fn redraw(&mut self, _: &dyn Widget) {
@@ -232,25 +218,5 @@ impl TkWidget for Widgets {
     }
     fn set_click_start(&mut self, id: Option<WidgetId>) {
         self.click_start = id;
-    }
-}
-
-fn map_size_min(rect: Option<rusttype::Rect<f32>>, ms: Size) -> Size {
-    match rect {
-        Some(rusttype::Rect { min, max }) => Size(
-            ms.0.min((max.x - min.x) as u32),
-            ms.1.min((max.y - min.y) as u32),
-        ),
-        None => ms,
-    }
-}
-
-fn map_size_max(rect: Option<rusttype::Rect<f32>>, ms: Size) -> Size {
-    match rect {
-        Some(rusttype::Rect { min, max }) => Size(
-            ms.0.max((max.x - min.x) as u32),
-            ms.1.max((max.y - min.y) as u32),
-        ),
-        None => ms,
     }
 }
