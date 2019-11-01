@@ -97,6 +97,17 @@ impl SizeRules {
         }
     }
     
+    /// Like `self = self.max(x - y)` but handling negative values correctly
+    // TODO: switch to i32?
+    pub fn set_at_least_op_sub(&mut self, x: Self, y: Self) {
+        if x.a > y.a {
+            self.a = self.a.max(x.a - y.a);
+        }
+        if x.b > y.b {
+            self.b = self.b.max(x.b - y.b);
+        }
+    }
+    
     #[doc(hidden)]
     /// Solve a sequence of rules
     ///
@@ -134,15 +145,16 @@ impl SizeRules {
             } else {
                 // special case: pref_rel == 0
                 let add = target_rel / N as u32;
-                sum += add * N as u32;
                 for n in 0..N {
-                    out[n] = rules[n].a + add;
+                    let size = rules[n].a + add;
+                    out[n] = size;
+                    sum += size;
                 }
             }
             
             // The above may round down, which may leave us a little short.
-            assert!(sum <= target_rel);
-            let rem = target_rel - sum;
+            assert!(sum <= target);
+            let rem = target - sum;
             assert!(rem as usize <= N);
             // Distribute to first rem. sizes.
             for n in 0..(rem as usize) {

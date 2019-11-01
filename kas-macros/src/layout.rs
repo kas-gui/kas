@@ -92,51 +92,37 @@ pub(crate) struct ImplLayout {
     layout: Layout,
     cols: u32,
     rows: u32,
-    spans: Vec<(u32, u32, bool, u32)>,
+    col_spans: Vec<(u32, u32, u32)>,
+    row_spans: Vec<(u32, u32, u32)>,
     size: TokenStream,
     set_rect: TokenStream,
 }
 
 impl ImplLayout {
     pub fn new(layout: &Ident) -> Result<ImplLayout> {
-        if layout == "horizontal" {
-            Ok(ImplLayout {
-                layout: Layout::Horiz,
-                cols: 0,
-                rows: 0,
-                spans: vec![],
-                size: quote! {},
-                set_rect: quote! {
-                    let mut crect = rect;
-                },
-            })
+        // Note: "single" case is already handled by caller
+        let layout = if layout == "horizontal" {
+            Layout::Horiz
         } else if layout == "vertical" {
-            Ok(ImplLayout {
-                layout: Layout::Vert,
-                cols: 0,
-                rows: 0,
-                spans: vec![],
-                size: quote! {},
-                set_rect: quote! {
-                    let mut crect = rect;
-                },
-            })
+            Layout::Vert
         } else if layout == "grid" {
-            Ok(ImplLayout {
-                layout: Layout::Grid,
-                cols: 0,
-                rows: 0,
-                spans: vec![],
-                size: quote! {},
-                set_rect: quote! {},
-            })
+            Layout::Grid
         } else {
-            // Note: "single" case is already handled by caller
-            Err(Error::new(
+            return Err(Error::new(
                 layout.span(),
                 "expected one of: single, horizontal, vertical, grid",
-            ))
-        }
+            ));
+        };
+        
+        Ok(ImplLayout {
+            layout,
+            cols: 0,
+            rows: 0,
+            col_spans: vec![],
+            row_spans: vec![],
+            size: quote! {},
+            set_rect: quote! {},
+        })
     }
 
     pub fn child(&mut self, ident: &Ident, args: &WidgetAttrArgs) -> Result<()> {
@@ -191,48 +177,45 @@ impl ImplLayout {
                 let pos = args.as_pos()?;
                 let (c0, c1) = (pos.0, pos.0 + pos.2);
                 let (r0, r1) = (pos.1, pos.1 + pos.3);
-                let (nc2, nr2) = ((2 * c0) as usize, (2 * r0) as usize);
-                let (nc2_1, nr2_1) = ((2 * c1) as usize, (2 * r1) as usize);
                 self.cols = self.cols.max(c1);
                 self.rows = self.rows.max(r1);
+                let col = c0 as usize;
+                let row = r0 as usize;
+                let col_end = c1 as usize;
+                let row_end = r1 as usize;
 
-                let width = if pos.2 == 1 {
-                    quote! { self.layout_widths[#nc2 + which] }
+                let width = if pos.2 <= 1 {
+                    quote! { self.col_rules[#col] }
                 } else {
-                    assert!(pos.2 > 1);
-                    let span_index = self.get_span(false, c0, c1);
-                    quote! { layout_spans[#span_index + which] }
+                    let ind = self.get_span(false, c0, c1);
+                    quote! { col_spans[#ind] }
                 };
-                let height = if pos.3 == 1 {
-                    quote! { self.layout_heights[#nr2 + which] }
+                let height = if pos.3 <= 1 {
+                    quote! { self.row_rules[#row] }
                 } else {
-                    assert!(pos.3 > 1);
-                    let span_index = self.get_span(true, r0, r1);
-                    quote! { layout_spans[#span_index + which] }
+                    let ind = self.get_span(true, r0, r1);
+                    quote! { row_spans[#ind] }
                 };
 
                 self.size.append_all(quote! {
-                    let child_size = self.#ident.size_pref(tk, pref, axes, index);
-                    if axes.horiz() {
-                        #width = #width.max(child_size.0);
-                    }
-                    if axes.vert() {
-                        #height = #height.max(child_size.1);
+                    let child_rules = self.#ident.size_rules(tk, axis);
+                    if axis.horiz() {
+                        #width = #width.max(child_rules);
+                    } else {
+                        #height = #height.max(child_rules);
                     }
                 });
 
                 self.set_rect.append_all(quote! {
-                    let pos = Coord(self.layout_widths[#nc2 + 1] as i32,
-                            self.layout_heights[#nr2 + 1] as i32);
-                    let mut size = Size::ZERO;
-                    for c in (#nc2..#nc2_1).step_by(2) {
-                        size.0 += self.layout_widths[c];
+                    crect.pos = rect.pos + Coord(col_pos[#col], row_pos[#row]);
+                    crect.size = Size::ZERO;
+                    for n in #col..#col_end {
+                        crect.size.0 += widths[n];
                     }
-                    for r in (#nr2..#nr2_1).step_by(2) {
-                        size.1 += self.layout_heights[r];
+                    for n in #row..#row_end {
+                        crect.size.1 += heights[n];
                     }
-                    let crect = Rect { pos: pos + rect.pos, size };
-                    self.#ident.set_rect(crect, axes);
+                    self.#ident.set_rect(crect);
                 });
             }
         }
@@ -240,27 +223,39 @@ impl ImplLayout {
     }
     // dir: horiz (false) or vert (true)
     fn get_span(&mut self, dir: bool, begin: u32, end: u32) -> usize {
-        for s in &self.spans {
-            if s.0 == begin && s.1 == end && s.2 == dir {
-                return s.3 as usize;
+        let list = if dir {
+            &mut self.row_spans
+        } else {
+            &mut self.col_spans
+        };
+        
+        for s in list.iter() {
+            if s.0 == begin && s.1 == end {
+                return s.2 as usize;
             }
         }
 
-        let i = self.spans.len();
-        self.spans.push((begin, end, dir, i as u32));
+        let i = list.len();
+        list.push((begin, end, i as u32));
         i
     }
 
     pub fn finish(self) -> (TokenStream, TokenStream, TokenStream) {
         let cols = self.cols as usize;
         let rows = self.rows as usize;
-        let mut spans = self.spans;
-        let ns2 = spans.len() * 2;
+        let mut col_spans = self.col_spans;
+        let mut row_spans = self.row_spans;
+        let num_col_spans = col_spans.len() as usize;
+        let num_row_spans = row_spans.len() as usize;
         let size = self.size;
         let set_rect = self.set_rect;
 
         // sort by end column, then by start column in reverse order
-        spans.sort_by(|a, b| match a.1.cmp(&b.1) {
+        col_spans.sort_by(|a, b| match a.1.cmp(&b.1) {
+            Ordering::Equal => a.0.cmp(&b.0).reverse(),
+            o @ _ => o,
+        });
+        row_spans.sort_by(|a, b| match a.1.cmp(&b.1) {
             Ordering::Equal => a.0.cmp(&b.0).reverse(),
             o @ _ => o,
         });
@@ -301,6 +296,20 @@ impl ImplLayout {
                     SizeRules::solve_seq(&mut heights, &self.row_rules, size);
                 }
             },
+            Layout::Grid =>  quote! {
+                if axis.horiz() {
+                    for n in 0..#cols {
+                        self.col_rules[n] = SizeRules::EMPTY;
+                    }
+                }
+                if axis.vert() {
+                    for n in 0..#rows {
+                        self.row_rules[n] = SizeRules::EMPTY;
+                    }
+                }
+                let mut col_spans = [SizeRules::EMPTY; #num_col_spans];
+                let mut row_spans = [SizeRules::EMPTY; #num_row_spans];
+            },
         };
 
         let size_post = match self.layout {
@@ -317,55 +326,50 @@ impl ImplLayout {
             Layout::Grid => {
                 let mut horiz = quote! {};
                 let mut vert = quote! {};
-                for span in &spans {
-                    let start2 = 2 * span.0 as usize;
-                    let end2 = 2 * span.1 as usize;
-                    let ind = span.3 as usize;
-                    if !span.2 {
-                        horiz.append_all(quote! {
-                            let start = #start2 + which;
-                            let mut sum = (start..#end2)
-                                .step_by(2)
-                                .map(|i| self.layout_widths[i])
-                                .sum();
-                            if layout_spans[#ind] > sum {
-                                self.layout_widths[start] += layout_spans[#ind] - sum;
-                            }
-                        });
-                    } else {
-                        vert.append_all(quote! {
-                            let start = #start2 + which;
-                            let mut sum = (start..#end2)
-                                .step_by(2)
-                                .map(|i| self.layout_heights[i])
-                                .sum();
-                            if layout_spans[#ind] > sum {
-                                self.layout_heights[start] += layout_spans[#ind] - sum;
-                            }
-                        });
-                    }
+                for span in &col_spans {
+                    let start = span.0 as usize;
+                    let end = span.1 as usize;
+                    let ind = span.2 as usize;
+                    horiz.append_all(quote! {
+                        let mut sum = (#start..#end)
+                            .map(|n| self.col_rules[n])
+                            .fold(SizeRules::EMPTY, |x, y| x + y);
+                        self.col_rules[#start].set_at_least_op_sub(col_spans[#ind], sum);
+                    });
                 }
+                for span in &row_spans {
+                    let start = span.0 as usize;
+                    let end = span.1 as usize;
+                    let ind = span.2 as usize;
+                    vert.append_all(quote! {
+                        let mut sum = (#start..#end)
+                            .map(|n| self.row_rules[n])
+                            .fold(SizeRules::EMPTY, |x, y| x + y);
+                        self.row_rules[#start].set_at_least_op_sub(row_spans[#ind], sum);
+                    });
+                }
+                
                 quote! {
-                    let mut size = Size::ZERO;
-                    if axes.horiz() {
+                    let rules;
+                    if axis.horiz() {
                         #horiz
-                        for i in (0..#nc2).step_by(2) {
-                            size.0 += self.layout_widths[i + which];
-                        }
-                        self.layout_widths[#nc2 + which] = size.0;
-                    }
-                    if axes.vert() {
+                        
+                        rules = self.col_rules[0..#cols].iter().copied()
+                            .fold(SizeRules::EMPTY, |rules, item| rules + item);
+                        self.col_rules[#cols] = rules;
+                    } else {
                         #vert
-                        for i in (0..#nr2).step_by(2) {
-                            size.1 += self.layout_heights[i + which];
-                        }
-                        self.layout_heights[#nr2 + which] = size.1;
+                        
+                        rules = self.row_rules[0..#rows].iter().copied()
+                            .fold(SizeRules::EMPTY, |rules, item| rules + item);
+                        self.row_rules[#rows] = rules;
                     }
                 }
-            }
+            },
         };
 
         let mut set_rect_pre = quote! {
+            let mut crect = rect;
         };
         if self.layout != Layout::Vert {
             set_rect_pre.append_all(quote! {
@@ -378,7 +382,23 @@ impl ImplLayout {
                 let mut heights = [0; #rows];
                 SizeRules::solve_seq(&mut heights, &self.row_rules, rect.size.1);
             });
-        };
+        }
+        if self.layout == Layout::Grid {
+            set_rect_pre.append_all(quote! {
+                let mut col_pos = [0; #cols];
+                let mut row_pos = [0; #rows];
+                let mut pos = 0;
+                for n in 0..#cols {
+                    col_pos[n] = pos;
+                    pos += widths[n] as i32;
+                }
+                pos = 0;
+                for n in 0..#rows {
+                    row_pos[n] = pos;
+                    pos += heights[n] as i32;
+                }
+            });
+        }
 
         let fns = quote! {
             fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, mut axis: kas::AxisInfo) -> kas::SizeRules {
