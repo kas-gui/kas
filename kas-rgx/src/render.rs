@@ -176,11 +176,13 @@ impl TkWidget for Widgets {
                     ..Section::default()
                 })
             });
-            
-            bounds.map(|rect| match vert {
+
+            bounds
+                .map(|rect| match vert {
                     false => rect.max.x - rect.min.x,
                     true => rect.max.y - rect.min.y,
-                } as u32).unwrap_or(0)
+                } as u32)
+                .unwrap_or(0)
         };
 
         let size = match widget.class() {

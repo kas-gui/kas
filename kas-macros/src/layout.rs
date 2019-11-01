@@ -113,7 +113,7 @@ impl ImplLayout {
                 "expected one of: single, horizontal, vertical, grid",
             ));
         };
-        
+
         Ok(ImplLayout {
             layout,
             cols: 0,
@@ -228,7 +228,7 @@ impl ImplLayout {
         } else {
             &mut self.col_spans
         };
-        
+
         for s in list.iter() {
             if s.0 == begin && s.1 == end {
                 return s.2 as usize;
@@ -296,7 +296,7 @@ impl ImplLayout {
                     SizeRules::solve_seq(&mut heights, &self.row_rules, size);
                 }
             },
-            Layout::Grid =>  quote! {
+            Layout::Grid => quote! {
                 if axis.horiz() {
                     for n in 0..#cols {
                         self.col_rules[n] = SizeRules::EMPTY;
@@ -348,24 +348,24 @@ impl ImplLayout {
                         self.row_rules[#start].set_at_least_op_sub(row_spans[#ind], sum);
                     });
                 }
-                
+
                 quote! {
                     let rules;
                     if axis.horiz() {
                         #horiz
-                        
+
                         rules = self.col_rules[0..#cols].iter().copied()
                             .fold(SizeRules::EMPTY, |rules, item| rules + item);
                         self.col_rules[#cols] = rules;
                     } else {
                         #vert
-                        
+
                         rules = self.row_rules[0..#rows].iter().copied()
                             .fold(SizeRules::EMPTY, |rules, item| rules + item);
                         self.row_rules[#rows] = rules;
                     }
                 }
-            },
+            }
         };
 
         let mut set_rect_pre = quote! {

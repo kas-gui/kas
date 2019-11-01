@@ -10,7 +10,9 @@ use std::fmt::{self, Debug};
 use crate::callback::Condition;
 use crate::event::{err_num, err_unhandled, Event, Handler, Response};
 use crate::macros::Widget;
-use crate::{AxisInfo, Class, Coord, Core, CoreData, Layout, Rect, Size, SizeRules, TkWidget, Widget};
+use crate::{
+    AxisInfo, Class, Coord, Core, CoreData, Layout, Rect, Size, SizeRules, TkWidget, Widget,
+};
 
 /// A window is a drawable interactive region provided by windowing system.
 // TODO: should this be a trait, instead of simply a struct? Should it be

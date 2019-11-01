@@ -28,7 +28,7 @@ impl AxisInfo {
             other: fixed.unwrap_or(0),
         }
     }
-    
+
     /// Adjust horizontal axis
     #[inline]
     pub fn horiz(&self) -> bool {
@@ -40,7 +40,7 @@ impl AxisInfo {
     pub fn vert(&self) -> bool {
         self.is_vert
     }
-    
+
     /// Size of other axis, if fixed and (`vert == self.vert()`).
     #[inline]
     pub fn fixed(&self, vert: bool) -> Option<u32> {
@@ -50,7 +50,7 @@ impl AxisInfo {
             None
         }
     }
-    
+
     /// Set size of fixed axis, if applicable
     #[inline]
     pub fn set_size(&mut self, size: u32) {
@@ -70,13 +70,13 @@ pub struct SizeRules {
 impl SizeRules {
     /// Empty (zero size)
     pub const EMPTY: Self = SizeRules { a: 0, b: 0 };
-    
+
     /// A fixed size
     #[inline]
     pub fn fixed(size: u32) -> Self {
         SizeRules { a: size, b: size }
     }
-    
+
     /// A variable size with given `min`-imum and `pref`-erred values.
     ///
     /// Required: `pref >= min`.
@@ -87,7 +87,7 @@ impl SizeRules {
         }
         SizeRules { a: min, b: pref }
     }
-    
+
     /// Use the maximum size of `self` and `rhs`.
     #[inline]
     pub fn max(self, rhs: Self) -> SizeRules {
@@ -96,7 +96,7 @@ impl SizeRules {
             b: self.b.max(rhs.b),
         }
     }
-    
+
     /// Like `self = self.max(x - y)` but handling negative values correctly
     // TODO: switch to i32?
     pub fn set_at_least_op_sub(&mut self, x: Self, y: Self) {
@@ -107,7 +107,7 @@ impl SizeRules {
             self.b = self.b.max(x.b - y.b);
         }
     }
-    
+
     #[doc(hidden)]
     /// Solve a sequence of rules
     ///
@@ -115,26 +115,26 @@ impl SizeRules {
     /// final value which is the total) and a `target` size, find an appropriate
     /// size for each child width / height.
     // TODO (const generics):
-//     fn solve_seq<const N: usize>(out: &mut [u32; N], rules: &[Self; N + 1], target: u32)
+    // fn solve_seq<const N: usize>(out: &mut [u32; N], rules: &[Self; N + 1], target: u32)
     pub fn solve_seq(out: &mut [u32], rules: &[Self], target: u32) {
         #[allow(non_snake_case)]
         let N = out.len();
         assert!(rules.len() == N + 1);
-        if N == 0 { return; }
-        
-//         println!("solve_seq: {:?}, {}", rules, target);
-        
+        if N == 0 {
+            return;
+        }
+
         if target >= rules[N].a {
             // At or over minimum: distribute extra relative to preferences.
             // TODO: perhaps this should not use the minimum except as a minimum?
-            
+
             let target_rel = target - rules[N].a;
             let pref_rel = rules[N].b - rules[N].a;
             let mut sum = 0;
-            
+
             if pref_rel > 0 {
                 let x = target_rel as f64 / pref_rel as f64;
-                
+
                 for n in 0..N {
                     // This will round down:
                     let r = rules[n];
@@ -151,7 +151,7 @@ impl SizeRules {
                     sum += size;
                 }
             }
-            
+
             // The above may round down, which may leave us a little short.
             assert!(sum <= target);
             let rem = target - sum;
@@ -163,7 +163,7 @@ impl SizeRules {
         } else {
             // Under minimum: reduce maximum allowed size.
             let mut excess = rules[N].a - target;
-            
+
             let mut largest = 0;
             let mut num_equal = 0;
             let mut next_largest = 0;
@@ -180,7 +180,7 @@ impl SizeRules {
                     next_largest = a;
                 }
             }
-            
+
             while excess > 0 {
                 let step = (excess / num_equal).min(largest - next_largest);
                 if step == 0 {
@@ -195,7 +195,7 @@ impl SizeRules {
                     }
                     break;
                 }
-                
+
                 let thresh = next_largest;
                 let mut num_add = 0;
                 next_largest = 0;
@@ -210,7 +210,7 @@ impl SizeRules {
                     }
                 }
                 excess -= step * num_equal;
-                
+
                 largest -= step;
                 num_equal += num_add;
             }
@@ -220,7 +220,7 @@ impl SizeRules {
 
 impl std::ops::Add<SizeRules> for SizeRules {
     type Output = Self;
-    
+
     #[inline]
     fn add(self, rhs: SizeRules) -> Self::Output {
         SizeRules {
