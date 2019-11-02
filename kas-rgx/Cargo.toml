@@ -13,7 +13,7 @@ repository = "https://github.com/dhardy/kas"
 [dependencies]
 kas = { path = "..", version = "0.0.2" }
 # TODO: expose backend features
-rgx = { git = "https://github.com/dhardy/rgx.git", version = "0.1.5", features = ["vulkan"] }
+rgx = { version = "0.2", features = ["vulkan"] }
 # Note: alpha4 is a breaking release due to raw-window-handle changes;
 # we must wait until rgx & wgpu dependencies have been updated.
 winit = "=0.20.0-alpha3"

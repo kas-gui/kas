@@ -8,7 +8,6 @@
 use std::time::{Duration, Instant};
 
 use rgx::core::*;
-use rgx::math::Matrix4;
 use wgpu_glyph::GlyphBrushBuilder;
 
 use kas::callback::Condition;
@@ -56,7 +55,7 @@ impl Window {
         let size: Size = ww.inner_size().to_physical(dpi_factor).into();
 
         let mut rend = Renderer::new(ww.raw_window_handle());
-        let pipeline = rend.pipeline(size.0, size.1, Blending::default());
+        let pipeline = rend.pipeline(Blending::default());
         let swap_chain = rend.swap_chain(size.0, size.1, PresentMode::default());
 
         let glyph_brush = GlyphBrushBuilder::using_font(crate::font::get_font())
@@ -233,7 +232,6 @@ impl Window {
 
         // Note: pipeline.resize relies on calling self.rend.update_pipeline
         // to avoid scaling issues; alternative is to create a new pipeline
-        self.pipeline.resize(size.0, size.1);
         self.swap_chain = self.rend.swap_chain(size.0, size.1, PresentMode::default());
 
         // TODO: work with logical size to allow DPI scaling
@@ -246,7 +244,7 @@ impl Window {
 
         let mut frame = self.rend.frame();
         self.rend
-            .update_pipeline(&self.pipeline, Matrix4::identity(), &mut frame);
+            .update_pipeline(&self.pipeline, rgx::kit::ortho(size.0, size.1), &mut frame);
         let texture = self.swap_chain.next();
 
         {
@@ -268,6 +266,6 @@ impl Window {
             )
             .expect("glyph_brush.draw_queued");
 
-        self.rend.submit(frame);
+        self.rend.present(frame);
     }
 }
