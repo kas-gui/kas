@@ -187,7 +187,15 @@ impl TkWidget for Widgets {
 
         let size = match widget.class() {
             Class::Container | Class::Frame | Class::Window => SizeRules::EMPTY, // not important
-            Class::Label(_) | Class::Entry(_) | Class::Button(_) => {
+            Class::Label(_) => {
+                if axis.horiz() {
+                    let min = 3 * line_height;
+                    SizeRules::variable(min, bound(false).max(min))
+                } else {
+                    SizeRules::variable(line_height, bound(true).max(line_height))
+                }
+            }
+            Class::Entry(_) | Class::Button(_) => {
                 if axis.horiz() {
                     let min = 3 * line_height;
                     SizeRules::variable(min, bound(false).max(min))
