@@ -36,14 +36,14 @@ impl Widgets {
             hover: None,
             click_start: None,
             font_scale: (FONT_SIZE * dpi).round(),
-            margin: MARGIN * dpi,
+            margin: (MARGIN * dpi).round(),
             redraw: false,
         }
     }
 
     pub fn set_dpi_factor(&mut self, dpi: f32) {
         self.font_scale = (FONT_SIZE * dpi).round();
-        self.margin = MARGIN * dpi;
+        self.margin = (MARGIN * dpi).round();
         // Note: we rely on caller to resize widget
     }
 
