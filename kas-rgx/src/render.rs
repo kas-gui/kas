@@ -9,7 +9,9 @@ use std::f32;
 
 use rgx::core::*;
 use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
-use wgpu_glyph::{GlyphBrush, GlyphCruncher, Scale, Section};
+use wgpu_glyph::{
+    GlyphBrush, GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign,
+};
 
 use kas::{Align, AxisInfo, Class, SizeRules, TkWidget, Widget, WidgetId};
 
@@ -93,36 +95,20 @@ impl Widgets {
         let scale = Scale::uniform(self.font_scale);
         let bounds = (x1 - x0 - margin - margin, y1 - y0 - margin - margin);
 
-        // TODO: can we cache this, yet update it whenever contents change?
-        // Currently we rely on glyph_brush's caching.
-        let text_bounds = widget
-            .class()
-            .text()
-            .and_then(|text| {
-                self.glyph_brush.glyph_bounds(Section {
-                    text,
-                    screen_position: (0.0, 0.0),
-                    scale: Scale::uniform(self.font_scale),
-                    bounds,
-                    ..Section::default()
-                })
-            })
-            .map(|rect| (rect.max.x - rect.min.x, rect.max.y - rect.min.y))
-            .unwrap_or((0.0, 0.0));
-
         let alignments = widget.class().alignments();
         // TODO: support justified alignment
-        let woffset = match alignments.1 {
-            Align::Begin | Align::Justify => 0.0,
-            Align::Center => 0.5 * (bounds.0 - text_bounds.0 as f32),
-            Align::End => bounds.0 - text_bounds.0 as f32,
+        let (h_align, h_offset) = match alignments.1 {
+            Align::Begin | Align::Justify => (HorizontalAlign::Left, 0.0),
+            Align::Center => (HorizontalAlign::Center, 0.5 * bounds.0),
+            Align::End => (HorizontalAlign::Right, bounds.0),
         };
-        let hoffset = match alignments.1 {
-            Align::Begin | Align::Justify => 0.0,
-            Align::Center => 0.5 * (bounds.1 - text_bounds.1 as f32),
-            Align::End => bounds.1 - text_bounds.1 as f32,
+        let (v_align, v_offset) = match alignments.1 {
+            Align::Begin | Align::Justify => (VerticalAlign::Top, 0.0),
+            Align::Center => (VerticalAlign::Center, 0.5 * bounds.1),
+            Align::End => (VerticalAlign::Bottom, bounds.1),
         };
-        let text_pos = (x0 + margin + woffset, y + margin + hoffset);
+        let layout = Layout::default().h_align(h_align).v_align(v_align);
+        let text_pos = (x0 + margin + h_offset, y + margin + v_offset);
 
         match widget.class() {
             Class::Container | Class::Window => {
@@ -131,14 +117,16 @@ impl Widgets {
             }
             Class::Label(cls) => {
                 let color = [1.0, 1.0, 1.0, 1.0];
-                self.glyph_brush.queue(Section {
+                let section = Section {
                     text: cls.get_text(),
                     screen_position: text_pos,
                     color,
                     scale,
                     bounds,
+                    layout,
                     ..Section::default()
-                });
+                };
+                self.glyph_brush.queue(section);
             }
             Class::Entry(cls) => {
                 background = Rgba::new(1.0, 1.0, 1.0, 1.0);
@@ -149,6 +137,7 @@ impl Widgets {
                     color,
                     scale,
                     bounds,
+                    layout,
                     ..Section::default()
                 });
             }
@@ -168,6 +157,7 @@ impl Widgets {
                     color,
                     scale,
                     bounds,
+                    layout,
                     ..Section::default()
                 });
             }
@@ -182,6 +172,7 @@ impl Widgets {
                     color,
                     scale,
                     bounds,
+                    layout,
                     ..Section::default()
                 });
             }
