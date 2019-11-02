@@ -11,10 +11,12 @@ use rgx::core::*;
 use rgx::kit::shape2d::{Batch, Fill, Shape, Stroke};
 use wgpu_glyph::{GlyphBrush, GlyphCruncher, Scale, Section};
 
-use kas::{AxisInfo, Class, SizeRules, TkWidget, Widget, WidgetId};
+use kas::{Align, AxisInfo, Class, SizeRules, TkWidget, Widget, WidgetId};
 
 /// Font size (units are half-point sizes?)
 const FONT_SIZE: f32 = 20.0;
+/// Inner margin; this is multiplied by the DPI factor then rounded to nearest
+/// integer, e.g. `(2.0 * 1.25).round() == 3.0`.
 const MARGIN: f32 = 2.0;
 
 /// Widget renderer
@@ -42,6 +44,7 @@ impl Widgets {
     pub fn set_dpi_factor(&mut self, dpi: f32) {
         self.font_scale = (FONT_SIZE * dpi).round();
         self.margin = MARGIN * dpi;
+        // Note: we rely on caller to resize widget
     }
 
     pub fn need_redraw(&self) -> bool {
@@ -87,9 +90,39 @@ impl Widgets {
         let mut background = Rgba::new(1.0, 1.0, 1.0, 0.1);
 
         let margin = self.margin;
-        let text_pos = (x0 + margin, y + margin);
         let scale = Scale::uniform(self.font_scale);
         let bounds = (x1 - x0 - margin - margin, y1 - y0 - margin - margin);
+
+        // TODO: can we cache this, yet update it whenever contents change?
+        // Currently we rely on glyph_brush's caching.
+        let text_bounds = widget
+            .class()
+            .text()
+            .and_then(|text| {
+                self.glyph_brush.glyph_bounds(Section {
+                    text,
+                    screen_position: (0.0, 0.0),
+                    scale: Scale::uniform(self.font_scale),
+                    bounds,
+                    ..Section::default()
+                })
+            })
+            .map(|rect| (rect.max.x - rect.min.x, rect.max.y - rect.min.y))
+            .unwrap_or((0.0, 0.0));
+
+        let alignments = widget.class().alignments();
+        // TODO: support justified alignment
+        let woffset = match alignments.1 {
+            Align::Begin | Align::Justify => 0.0,
+            Align::Center => 0.5 * (bounds.0 - text_bounds.0 as f32),
+            Align::End => bounds.0 - text_bounds.0 as f32,
+        };
+        let hoffset = match alignments.1 {
+            Align::Begin | Align::Justify => 0.0,
+            Align::Center => 0.5 * (bounds.1 - text_bounds.1 as f32),
+            Align::End => bounds.1 - text_bounds.1 as f32,
+        };
+        let text_pos = (x0 + margin + woffset, y + margin + hoffset);
 
         match widget.class() {
             Class::Container | Class::Window => {

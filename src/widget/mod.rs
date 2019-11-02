@@ -13,7 +13,7 @@ mod data;
 
 pub use self::layout::*;
 
-pub use self::class::Class;
+pub use self::class::*;
 pub use self::data::*;
 
 /// Common widget data

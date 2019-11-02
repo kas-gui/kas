@@ -12,6 +12,18 @@
 use crate::traits::{Editable, HasBoolText, HasText};
 use std::fmt;
 
+/// Alignment of contents
+pub enum Align {
+    /// Align to top or left (for left-to-right text)
+    Begin,
+    /// Align to centre
+    Center,
+    /// Align to bottom or right (for left-to-right text)
+    End,
+    /// Attempt to align to both margins, padding with space
+    Justify,
+}
+
 /// Widget classifications
 pub enum Class<'a> {
     Container,
@@ -53,6 +65,17 @@ impl<'a> Class<'a> {
             Class::CheckBox(cls) => Some(cls.get_text()),
             Class::Frame => None,
             Class::Window => None,
+        }
+    }
+
+    /// Get widget alignment for horizontal and vertical axes respectively
+    // TODO: allow customisation?
+    pub fn alignments(&'a self) -> (Align, Align) {
+        match self {
+            Class::Container | Class::Frame | Class::Window => (Align::Justify, Align::Justify),
+            Class::Label(_) => (Align::Begin, Align::Center),
+            Class::Entry(_) => (Align::Begin, Align::Begin),
+            Class::Button(_) | Class::CheckBox(_) => (Align::Center, Align::Center),
         }
     }
 }
