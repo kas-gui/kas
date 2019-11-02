@@ -60,7 +60,7 @@ impl Window {
 
         let glyph_brush = GlyphBrushBuilder::using_font(crate::font::get_font())
             .build(rend.device.device_mut(), swap_chain.format());
-        let mut wrend = Widgets::new(glyph_brush);
+        let mut wrend = Widgets::new(dpi_factor as f32, glyph_brush);
 
         win.resize(&mut wrend, size.into());
 
@@ -159,7 +159,10 @@ impl Window {
                 self.do_draw();
                 return false;
             }
-            HiDpiFactorChanged(_) => {
+            HiDpiFactorChanged(factor) => {
+                self.wrend.set_dpi_factor(factor as f32);
+                // NOTE: possibly the resize should be triggered directly by
+                // self.wrend on redraw; investigate when supporting reconfigure
                 self.do_resize(self.ww.inner_size());
                 return false;
             }
@@ -234,7 +237,6 @@ impl Window {
         // to avoid scaling issues; alternative is to create a new pipeline
         self.swap_chain = self.rend.swap_chain(size.0, size.1, PresentMode::default());
 
-        // TODO: work with logical size to allow DPI scaling
         self.win.resize(&mut self.wrend, size.into());
     }
 

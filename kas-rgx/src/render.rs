@@ -13,6 +13,8 @@ use wgpu_glyph::{GlyphBrush, GlyphCruncher, Scale, Section};
 
 use kas::{AxisInfo, Class, SizeRules, TkWidget, Widget, WidgetId};
 
+/// Font size (units are half-point sizes?)
+const FONT_SIZE: f32 = 20.0;
 const MARGIN: f32 = 2.0;
 
 /// Widget renderer
@@ -21,18 +23,25 @@ pub(crate) struct Widgets {
     hover: Option<WidgetId>,
     click_start: Option<WidgetId>,
     font_scale: f32,
+    margin: f32,
     redraw: bool,
 }
 
 impl Widgets {
-    pub fn new(glyph_brush: GlyphBrush<'static, ()>) -> Self {
+    pub fn new(dpi: f32, glyph_brush: GlyphBrush<'static, ()>) -> Self {
         Widgets {
             glyph_brush,
             hover: None,
             click_start: None,
-            font_scale: 24.0,
+            font_scale: (FONT_SIZE * dpi).round(),
+            margin: MARGIN * dpi,
             redraw: false,
         }
+    }
+
+    pub fn set_dpi_factor(&mut self, dpi: f32) {
+        self.font_scale = (FONT_SIZE * dpi).round();
+        self.margin = MARGIN * dpi;
     }
 
     pub fn need_redraw(&self) -> bool {
@@ -77,9 +86,10 @@ impl Widgets {
 
         let mut background = Rgba::new(1.0, 1.0, 1.0, 0.1);
 
-        let text_pos = (x0 + MARGIN, y + MARGIN);
+        let margin = self.margin;
+        let text_pos = (x0 + margin, y + margin);
         let scale = Scale::uniform(self.font_scale);
-        let bounds = (x1 - x0 - MARGIN - MARGIN, y1 - y0 - MARGIN - MARGIN);
+        let bounds = (x1 - x0 - margin - margin, y1 - y0 - margin - margin);
 
         match widget.class() {
             Class::Container | Class::Window => {
@@ -151,7 +161,7 @@ impl Widgets {
         let r = if self.hover == w_id { 1.0 } else { 0.5 };
         batch.add(Shape::Rectangle(
             Rect::new(x0, y0, x1, y1),
-            Stroke::new(MARGIN, Rgba::new(r, 0.5, 0.5, 1.0)),
+            Stroke::new(margin, Rgba::new(r, 0.5, 0.5, 1.0)),
             Fill::Solid(background),
         ));
     }
@@ -206,7 +216,7 @@ impl TkWidget for Widgets {
             Class::CheckBox(_) => SizeRules::fixed(line_height),
         };
 
-        size + SizeRules::fixed(MARGIN as u32 * 2)
+        size + SizeRules::fixed(self.margin as u32 * 2)
     }
 
     fn redraw(&mut self, _: &dyn Widget) {
