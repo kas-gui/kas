@@ -161,6 +161,8 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
     }
 
     fn resize(&mut self, tk: &mut dyn TkWidget, size: Size) {
+        // We call size_rules not because we want the result, but because our
+        // spec requires that we do so before calling set_rect.
         let _ = self.size_rules(tk, AxisInfo::new(false, None));
         let _ = self.size_rules(tk, AxisInfo::new(true, Some(size.0)));
         let pos = Coord(0, 0);

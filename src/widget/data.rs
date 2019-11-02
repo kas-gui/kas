@@ -5,6 +5,8 @@
 
 //! Utility data types
 
+use winit::dpi::{PhysicalPosition, PhysicalSize};
+
 /// An `(x, y)` coordinate.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Coord(pub i32, pub i32);
@@ -28,6 +30,19 @@ impl std::ops::Add for Coord {
     }
 }
 
+impl From<PhysicalPosition> for Coord {
+    fn from(pos: PhysicalPosition) -> Coord {
+        let pos: (i32, i32) = pos.into();
+        Coord(pos.0, pos.1)
+    }
+}
+
+impl From<Coord> for PhysicalPosition {
+    fn from(coord: Coord) -> PhysicalPosition {
+        (coord.0, coord.1).into()
+    }
+}
+
 /// A `(w, h)` size.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Size(pub u32, pub u32);
@@ -45,6 +60,19 @@ impl Size {
 impl From<(u32, u32)> for Size {
     fn from(size: (u32, u32)) -> Size {
         Size(size.0, size.1)
+    }
+}
+
+impl From<PhysicalSize> for Size {
+    fn from(size: PhysicalSize) -> Size {
+        let size: (u32, u32) = size.into();
+        Size(size.0, size.1)
+    }
+}
+
+impl From<Size> for PhysicalSize {
+    fn from(size: Size) -> PhysicalSize {
+        (size.0, size.1).into()
     }
 }
 

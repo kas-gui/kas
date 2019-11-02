@@ -13,7 +13,7 @@ use wgpu_glyph::GlyphBrushBuilder;
 
 use kas::callback::Condition;
 use kas::event::{Event, EventChild, EventCoord, Response};
-use kas::TkWidget;
+use kas::{Size, TkWidget};
 use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
@@ -33,7 +33,7 @@ pub struct Window {
     swap_chain: SwapChain,
     pipeline: rgx::kit::shape2d::Pipeline,
     nums: (u32, u32), // TODO: is this useful?
-    size: (u32, u32),
+    size: Size,
     timeouts: Vec<(usize, Instant, Option<Duration>)>,
     wrend: Widgets,
 }
@@ -49,14 +49,15 @@ impl Window {
         mut win: Box<dyn kas::Window>,
         num0: u32,
     ) -> Result<Window, OsError> {
-        let ww = winit::window::Window::new(event_loop)?;
-        let mut rend = Renderer::new(ww.raw_window_handle());
+        let num1 = win.enumerate(num0);
 
-        let size: (u32, u32) = ww.inner_size().to_physical(ww.hidpi_factor()).into();
+        let ww = winit::window::Window::new(event_loop)?;
+        let dpi_factor = ww.hidpi_factor();
+        let size: Size = ww.inner_size().to_physical(dpi_factor).into();
+
+        let mut rend = Renderer::new(ww.raw_window_handle());
         let pipeline = rend.pipeline(size.0, size.1, Blending::default());
         let swap_chain = rend.swap_chain(size.0, size.1, PresentMode::default());
-
-        let num1 = win.enumerate(num0);
 
         let glyph_brush = GlyphBrushBuilder::using_font(crate::font::get_font())
             .build(rend.device.device_mut(), swap_chain.format());
@@ -120,13 +121,12 @@ impl Window {
                 position,
                 modifiers,
             } => {
-                let coord: (i32, i32) = position.to_physical(self.ww.hidpi_factor()).into();
+                let coord = position.to_physical(self.ww.hidpi_factor()).into();
                 let ev = EventCoord::CursorMoved {
                     device_id,
                     modifiers,
                 };
-                self.win
-                    .handle(&mut self.wrend, Event::ToCoord(coord.into(), ev))
+                self.win.handle(&mut self.wrend, Event::ToCoord(coord, ev))
             }
             CursorLeft { .. } => {
                 self.wrend.set_hover(None);
@@ -225,7 +225,7 @@ impl Window {
 // Internal functions
 impl Window {
     fn do_resize(&mut self, size: LogicalSize) {
-        let size: (u32, u32) = size.to_physical(self.ww.hidpi_factor()).into();
+        let size = size.to_physical(self.ww.hidpi_factor()).into();
         if size == self.size {
             return;
         }
