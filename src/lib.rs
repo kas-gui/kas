@@ -5,8 +5,19 @@
 
 //! KAS, the toolKit Abstraction Library
 //!
-//! The KAS library is designed for concise, programatic descriptions of GUIs
-//! which are translated to some backend "toolkit" on use.
+//! KAS is a GUI library, providing approximately two thirds of GUI toolkit
+//! functionality:
+//!
+//! -   widget model
+//! -   widget layout engine
+//! -   widget event handling
+//! -   widget types
+//!
+//! The remaining third is provided by a separate crate, referred to as the
+//! "toolkit". A KAS toolkit must provide:
+//!
+//! -   system interfaces (window creation and event capture)
+//! -   widget rendering and sizing
 
 extern crate kas_macros;
 extern crate self as kas; // required for reliable self-reference in kas_macros

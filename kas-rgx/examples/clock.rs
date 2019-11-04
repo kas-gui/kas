@@ -15,7 +15,7 @@ use kas::class::HasText;
 use kas::event::Callback;
 use kas::macros::make_widget;
 use kas::widget::{Label, Window};
-use kas::TkWidget;
+use kas::TkWindow;
 
 fn main() {
     let mut window = Window::new(make_widget! {
@@ -25,7 +25,7 @@ fn main() {
             #[widget] time: Label = Label::new("")
         }
         impl {
-            fn on_tick(&mut self, tk: &mut dyn TkWidget) {
+            fn on_tick(&mut self, tk: &mut dyn TkWindow) {
                 let now = Local::now();
                 self.date.set_text(tk, now.format("%Y %m %d").to_string());
                 self.time.set_text(tk, now.format("%H:%M:%S").to_string());

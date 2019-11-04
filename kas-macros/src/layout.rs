@@ -28,7 +28,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWindow, axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
                 (0, 0)
             }
         })
@@ -47,7 +47,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWindow, axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
                 tk.size_rules(self, axis)
             }
         })
@@ -63,7 +63,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
         }
         let ident = &children[0].ident;
         Ok(quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWindow, axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
                 self.#ident.size_rules(tk, axis)
             }
 
@@ -401,7 +401,7 @@ impl ImplLayout {
         }
 
         let fns = quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, mut axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWindow, mut axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
                 use kas::Core;
                 use kas::geom::{AxisInfo, Size, SizeRules};
 

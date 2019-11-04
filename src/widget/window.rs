@@ -11,7 +11,7 @@ use crate::class::Class;
 use crate::event::{err_num, err_unhandled, Callback, Event, Handler, Response};
 use crate::geom::{AxisInfo, Coord, Rect, Size, SizeRules};
 use crate::macros::Widget;
-use crate::{Core, CoreData, Layout, TkWidget, Widget};
+use crate::{Core, CoreData, Layout, TkWindow, Widget};
 
 /// The main instantiation of the [`Window`] trait.
 ///
@@ -24,7 +24,7 @@ pub struct Window<W: Widget + 'static> {
     min_size: Size,
     #[widget]
     w: W,
-    fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut dyn TkWidget))>,
+    fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut dyn TkWindow))>,
 }
 
 impl<W: Widget> Debug for Window<W> {
@@ -57,7 +57,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
 }
 
 impl<W: Widget> Layout for Window<W> {
-    fn size_rules(&mut self, tk: &mut dyn TkWidget, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, tk: &mut dyn TkWindow, axis: AxisInfo) -> SizeRules {
         self.w.size_rules(tk, axis)
     }
 
@@ -83,7 +83,7 @@ impl<W: Widget> Window<W> {
     pub fn add_callback(
         &mut self,
         condition: Callback,
-        f: &'static dyn Fn(&mut W, &mut dyn TkWidget),
+        f: &'static dyn Fn(&mut W, &mut dyn TkWindow),
     ) {
         self.fns.push((condition, f));
     }
@@ -92,7 +92,7 @@ impl<W: Widget> Window<W> {
 impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for Window<W> {
     type Msg = ();
 
-    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
         match event {
             Event::ToChild(id, ev) => {
                 if id < self.id() {
@@ -130,7 +130,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> kas::Window for Window<W> {
         self
     }
 
-    fn resize(&mut self, tk: &mut dyn TkWidget, size: Size) {
+    fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
         // We call size_rules not because we want the result, but because our
         // spec requires that we do so before calling set_rect.
         let _ = self.size_rules(tk, AxisInfo::new(false, None));
@@ -147,7 +147,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> kas::Window for Window<W> {
     }
 
     /// Trigger a callback (see `iter_callbacks`).
-    fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWidget) {
+    fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWindow) {
         let cb = &mut self.fns[index].1;
         cb(&mut self.w, tk);
     }

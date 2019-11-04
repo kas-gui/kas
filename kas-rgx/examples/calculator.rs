@@ -13,7 +13,7 @@ use kas::class::HasText;
 use kas::event::Response;
 use kas::macros::make_widget;
 use kas::widget::{Entry, TextButton, Window};
-use kas::TkWidget;
+use kas::TkWindow;
 
 #[derive(Clone, Debug, PartialEq)]
 enum Key {
@@ -60,7 +60,7 @@ fn main() -> Result<(), winit::error::OsError> {
             calc: Calculator = Calculator::new(),
         }
         impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Key) -> Response<()> {
+            fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Key) -> Response<()> {
                 if self.calc.handle(msg) {
                     // self.state.set_text(tk, &self.calc.state_str());
                     // self.buf.set_text(tk, &self.calc.line_buf);

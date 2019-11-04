@@ -8,7 +8,7 @@
 use std::fmt;
 
 use super::Rect;
-use crate::toolkit::TkWidget;
+use crate::toolkit::TkWindow;
 use crate::Core;
 
 /// Used by the layout engine to specify the axis of interest.
@@ -258,7 +258,7 @@ pub trait Layout: Core + fmt::Debug {
     /// parameter is used for the fixed dimension. Additionally, one may assume
     /// that `size_rules` has previously been called on the fixed axis with the
     /// current widget configuration.
-    fn size_rules(&mut self, tk: &mut dyn TkWidget, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, tk: &mut dyn TkWindow, axis: AxisInfo) -> SizeRules;
 
     /// Adjust to the given size.
     ///

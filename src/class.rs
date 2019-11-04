@@ -11,7 +11,7 @@
 //!
 //! [`Class`]: class::Class
 
-use crate::TkWidget;
+use crate::TkWindow;
 use std::fmt;
 
 /// Alignment of contents
@@ -91,7 +91,7 @@ pub trait HasBool {
     fn get_bool(&self) -> bool;
 
     /// Set the widget's state
-    fn set_bool(&mut self, tk: &mut dyn TkWidget, state: bool);
+    fn set_bool(&mut self, tk: &mut dyn TkWindow, state: bool);
 }
 
 /// Functionality for widgets with visible text.
@@ -105,7 +105,7 @@ pub trait HasText {
     fn get_text(&self) -> &str;
 
     /// Set the widget's text.
-    fn set_text<T: ToString>(&mut self, tk: &mut dyn TkWidget, text: T)
+    fn set_text<T: ToString>(&mut self, tk: &mut dyn TkWindow, text: T)
     where
         Self: Sized,
     {
@@ -115,7 +115,7 @@ pub trait HasText {
     /// Set the widget's text (string only).
     ///
     /// This method is for implementation.
-    fn set_string(&mut self, tk: &mut dyn TkWidget, text: String);
+    fn set_string(&mut self, tk: &mut dyn TkWindow, text: String);
 }
 
 /// Additional functionality required by the `Entry` class.

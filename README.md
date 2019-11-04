@@ -50,7 +50,7 @@ let window = Window::new(make_widget! {
         counter: usize = 0,
     }
     impl {
-        fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message)
+        fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Message)
             -> Response<()>
         {
             match msg {

@@ -159,7 +159,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             quote! {}
         } else {
             quote! {
-                fn handle(&mut self, _tk: &mut kas::TkWidget, event: kas::event::Event)
+                fn handle(&mut self, _tk: &mut kas::TkWindow, event: kas::event::Event)
                 -> kas::event::Response<Self::Msg>
                 {
                     use kas::{Core, WidgetId, event::{Event, EventChild, EventCoord, Response, err_unhandled, err_num}};
@@ -243,7 +243,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     if f.sig.inputs.len() != 3 {
                         f.sig.span()
                             .unwrap()
-                            .error("handler functions must have signature: fn handler(&mut self, tk: &mut TkWidget, msg: T)")
+                            .error("handler functions must have signature: fn handler(&mut self, tk: &mut TkWindow, msg: T)")
                             .emit();
                         return None;
                     }

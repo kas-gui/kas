@@ -97,7 +97,7 @@
 //! -   `handler = ...` — the name (`f`) of a method defined on this type which
 //!     handles a message from the child (type `M`) and converts it to the
 //!     appropriate response type for this widget (`R`); this method should have
-//!     signature `fn f(&mut self, tk: &TkWidget, msg: M) -> R`.
+//!     signature `fn f(&mut self, tk: &TkWindow, msg: M) -> R`.
 //!
 //!
 //! ### Examples
@@ -124,7 +124,7 @@
 //! use kas::class::Class;
 //! use kas::event::{Handler, Response, err_unhandled};
 //! use kas::macros::Widget;
-//! use kas::{Widget, CoreData, TkWidget};
+//! use kas::{Widget, CoreData, TkWindow};
 //!
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
@@ -138,7 +138,7 @@
 //! }
 //!
 //! impl<W: Widget> MyWidget<W> {
-//!     fn handler(&mut self, tk: &dyn TkWidget, msg: ChildMessage) -> Response<()> {
+//!     fn handler(&mut self, tk: &dyn TkWindow, msg: ChildMessage) -> Response<()> {
 //!         match msg {
 //!             ChildMessage::A => { println!("handling ChildMessage::A"); }
 //!         }
@@ -209,7 +209,7 @@
 //!
 //! Optionally, a message handler may be specified for child widgets via
 //! `#[widget(handler = f)] ident = value` where `f` is a method defined on the
-//! anonymous struct with signature `fn f(&mut self, tk: &TkWidget, msg: M) -> R`
+//! anonymous struct with signature `fn f(&mut self, tk: &TkWindow, msg: M) -> R`
 //! where `M` is the type of response received from the child widget, and `R` is
 //! the type of response sent from this widget.
 //!

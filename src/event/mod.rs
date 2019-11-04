@@ -24,7 +24,7 @@ use std::fmt::Debug;
 #[cfg(feature = "winit")]
 pub use winit::event::{DeviceId, ElementState, ModifiersState, MouseButton};
 
-use crate::{Core, TkWidget};
+use crate::{Core, TkWindow};
 
 pub use callback::Callback;
 #[cfg(not(feature = "winit"))]
@@ -77,7 +77,7 @@ pub trait Handler: Core {
 
     /// Handle a high-level event and return a user-defined msg.
     #[inline]
-    fn handle_action(&mut self, _: &mut dyn TkWidget, _: Action) -> Response<Self::Msg> {
+    fn handle_action(&mut self, _: &mut dyn TkWindow, _: Action) -> Response<Self::Msg> {
         Response::None
     }
 
@@ -88,7 +88,7 @@ pub trait Handler: Core {
     /// cases requiring custom handling, and use
     /// [`Manager::handle_generic`] for all other cases.
     #[inline]
-    fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
         Manager::handle_generic(self, tk, event)
     }
 }

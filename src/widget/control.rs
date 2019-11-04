@@ -11,7 +11,7 @@ use std::fmt::{self, Debug};
 use crate::class::{Class, HasBool, HasText};
 use crate::event::{err_unhandled, Action, Handler, Response};
 use crate::macros::Widget;
-use crate::{CoreData, TkWidget};
+use crate::{CoreData, TkWindow};
 
 /// A checkable box with optional label
 #[widget(class = Class::CheckBox(self), layout = derive)]
@@ -106,7 +106,7 @@ impl<H> HasBool for CheckBox<H> {
         self.state
     }
 
-    fn set_bool(&mut self, _tk: &mut dyn TkWidget, state: bool) {
+    fn set_bool(&mut self, _tk: &mut dyn TkWindow, state: bool) {
         self.state = state;
     }
 }
@@ -116,7 +116,7 @@ impl<H> HasText for CheckBox<H> {
         &self.label
     }
 
-    fn set_string(&mut self, _tk: &mut dyn TkWidget, text: String) {
+    fn set_string(&mut self, _tk: &mut dyn TkWindow, text: String) {
         self.label = text;
     }
 }
@@ -124,7 +124,7 @@ impl<H> HasText for CheckBox<H> {
 impl Handler for CheckBox<()> {
     type Msg = ();
 
-    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action) -> Response<()> {
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<()> {
         match action {
             Action::Activate => {
                 self.state = !self.state;
@@ -139,7 +139,7 @@ impl Handler for CheckBox<()> {
 impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
     type Msg = M;
 
-    fn handle_action(&mut self, tk: &mut dyn TkWidget, action: Action) -> Response<M> {
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<M> {
         match action {
             Action::Activate => {
                 self.state = !self.state;
@@ -216,7 +216,7 @@ impl<H> HasText for TextButton<H> {
         &self.label
     }
 
-    fn set_string(&mut self, _tk: &mut dyn TkWidget, text: String) {
+    fn set_string(&mut self, _tk: &mut dyn TkWindow, text: String) {
         self.label = text;
     }
 }
@@ -224,7 +224,7 @@ impl<H> HasText for TextButton<H> {
 impl Handler for TextButton<()> {
     type Msg = ();
 
-    fn handle_action(&mut self, _: &mut dyn TkWidget, action: Action) -> Response<()> {
+    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<()> {
         match action {
             Action::Activate => Response::None,
             a @ _ => err_unhandled(a),
@@ -235,7 +235,7 @@ impl Handler for TextButton<()> {
 impl<M, H: Fn() -> M> Handler for TextButton<H> {
     type Msg = M;
 
-    fn handle_action(&mut self, _: &mut dyn TkWidget, action: Action) -> Response<M> {
+    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<M> {
         match action {
             Action::Activate => ((self.on_click)()).into(),
             a @ _ => err_unhandled(a),

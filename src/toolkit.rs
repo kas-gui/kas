@@ -17,12 +17,16 @@
 use crate::geom::{AxisInfo, SizeRules};
 use crate::{Widget, WidgetId};
 
-/// Common widget properties. Implemented by the toolkit.
+/// Toolkit-specific window management and style interface.
+///
+/// This is implemented by a KAS toolkit on a window handle. Since each window
+/// is assumed to have uniform styling and this styling is provided by the
+/// toolkit, this interface includes widget styling ([`size_rules`]).
 ///
 /// Users interact with this trait in a few cases, such as implementing widget
 /// event handling. In these cases the user is *always* given an existing
-/// reference to a `TkWidget`. Mostly this trait is only used internally.
-pub trait TkWidget {
+/// reference to a `TkWindow`. Mostly this trait is only used internally.
+pub trait TkWindow {
     /// Get the widget's size preferences
     ///
     /// See documentation of [`crate::Layout::size_rules`].

@@ -9,7 +9,7 @@ use std::fmt;
 
 use crate::event::{Callback, Handler};
 use crate::geom::{AxisInfo, Rect, Size, SizeRules};
-use crate::toolkit::TkWidget;
+use crate::toolkit::TkWindow;
 use crate::{CoreData, WidgetId};
 
 /// Common widget data
@@ -50,7 +50,7 @@ pub trait Layout: Core + fmt::Debug {
     /// parameter is used for the fixed dimension. Additionally, one may assume
     /// that `size_rules` has previously been called on the fixed axis with the
     /// current widget configuration.
-    fn size_rules(&mut self, tk: &mut dyn TkWidget, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, tk: &mut dyn TkWindow, axis: AxisInfo) -> SizeRules;
 
     /// Adjust to the given size.
     ///
@@ -155,7 +155,7 @@ pub trait Window: Widget + Handler<Msg = ()> {
     fn as_widget_mut(&mut self) -> &mut dyn Widget;
 
     /// Adjust the size of the window, repositioning widgets.
-    fn resize(&mut self, tk: &mut dyn TkWidget, size: Size);
+    fn resize(&mut self, tk: &mut dyn TkWindow, size: Size);
 
     /// Get a list of available callbacks.
     ///
@@ -164,5 +164,5 @@ pub trait Window: Widget + Handler<Msg = ()> {
     fn callbacks(&self) -> Vec<(usize, Callback)>;
 
     /// Trigger a callback (see `iter_callbacks`).
-    fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWidget);
+    fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWindow);
 }

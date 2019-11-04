@@ -15,7 +15,7 @@ use wgpu_glyph::{
 
 use kas::class::{Align, Class};
 use kas::geom::{AxisInfo, SizeRules};
-use kas::{TkWidget, Widget, WidgetId};
+use kas::{TkWindow, Widget, WidgetId};
 
 /// Font size (units are half-point sizes?)
 const FONT_SIZE: f32 = 20.0;
@@ -193,7 +193,7 @@ impl Widgets {
     }
 }
 
-impl TkWidget for Widgets {
+impl TkWindow for Widgets {
     fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
         let line_height = self.font_scale as u32;
         let mut bound = |vert: bool| -> u32 {

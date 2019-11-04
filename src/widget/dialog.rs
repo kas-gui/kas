@@ -14,7 +14,7 @@ use crate::event::{Callback, Event, Handler, Response};
 use crate::geom::Size;
 use crate::macros::Widget;
 use crate::widget::{button, TextButton};
-use crate::{class::Class, CoreData, TkWidget, Widget, Window};
+use crate::{class::Class, CoreData, TkWindow, Widget, Window};
 
 /// An action for use with `MessageBox::new`.
 pub fn action_close() -> impl Fn() -> Response<()> {
@@ -58,7 +58,7 @@ impl<M: Debug, H> Debug for MessageBox<M, H> {
 impl<M: Debug, H> Handler for MessageBox<M, H> {
     type Msg = ();
 
-    fn handle(&mut self, _tk: &mut dyn TkWidget, _event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, _tk: &mut dyn TkWindow, _event: Event) -> Response<Self::Msg> {
         unimplemented!()
     }
 }
@@ -71,7 +71,7 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
         self
     }
 
-    fn resize(&mut self, _tk: &mut dyn TkWidget, _size: Size) {
+    fn resize(&mut self, _tk: &mut dyn TkWindow, _size: Size) {
         unimplemented!()
     }
 
@@ -79,5 +79,5 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     fn callbacks(&self) -> Vec<(usize, Callback)> {
         Vec::new()
     }
-    fn trigger_callback(&mut self, _index: usize, _tk: &mut dyn TkWidget) {}
+    fn trigger_callback(&mut self, _index: usize, _tk: &mut dyn TkWindow) {}
 }

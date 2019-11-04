@@ -13,7 +13,7 @@ use kas::class::HasText;
 use kas::event::{Callback, Response};
 use kas::macros::make_widget;
 use kas::widget::{Label, TextButton, Window};
-use kas::TkWidget;
+use kas::TkWindow;
 
 #[derive(Debug)]
 enum Control {
@@ -36,7 +36,7 @@ fn make_window() -> Box<dyn kas::Window> {
                     fn get_text(&self) -> &str {
                         self.display.get_text()
                     }
-                    fn set_string(&mut self, tk: &mut dyn TkWidget, text: String) {
+                    fn set_string(&mut self, tk: &mut dyn TkWindow, text: String) {
                         self.display.set_text(tk, text);
                     }
                 }
@@ -48,7 +48,7 @@ fn make_window() -> Box<dyn kas::Window> {
             dur_buf: String = String::default(),
         }
         impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Control) -> Response<()> {
+            fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Control) -> Response<()> {
                 match msg {
                     Control::Reset => {
                         self.saved = Duration::default();
@@ -67,7 +67,7 @@ fn make_window() -> Box<dyn kas::Window> {
                 Response::None
             }
 
-            fn on_tick(&mut self, tk: &mut dyn TkWidget) {
+            fn on_tick(&mut self, tk: &mut dyn TkWindow) {
                 if let Some(start) = self.start {
                     let dur = self.saved + (Instant::now() - start);
                     self.dur_buf.clear();

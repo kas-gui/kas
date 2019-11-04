@@ -10,7 +10,7 @@ use kas::class::HasText;
 use kas::event::Response;
 use kas::macros::make_widget;
 use kas::widget::{Label, TextButton, Window};
-use kas::TkWidget;
+use kas::TkWindow;
 
 #[derive(Debug)]
 enum Message {
@@ -34,7 +34,7 @@ fn main() -> Result<(), winit::error::OsError> {
             counter: usize = 0,
         }
         impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWidget, msg: Message)
+            fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Message)
                 -> Response<()>
             {
                 match msg {

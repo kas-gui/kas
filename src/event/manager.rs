@@ -6,7 +6,7 @@
 //! Event manager
 
 use super::*;
-use crate::TkWidget;
+use crate::TkWindow;
 
 /// Window event manager
 ///
@@ -17,7 +17,7 @@ impl Manager {
     /// Generic handler for low-level events
     pub fn handle_generic<W>(
         widget: &mut W,
-        tk: &mut dyn TkWidget,
+        tk: &mut dyn TkWindow,
         event: Event,
     ) -> Response<<W as Handler>::Msg>
     where

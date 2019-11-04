@@ -10,7 +10,7 @@ use std::fmt::{self, Debug};
 use crate::class::{Class, Editable, HasText};
 use crate::event::{err_unhandled, Action, Handler, Response};
 use crate::macros::Widget;
-use crate::{CoreData, TkWidget};
+use crate::{CoreData, TkWindow};
 
 /// A simple text label
 #[widget(class = Class::Label(self), layout = derive)]
@@ -49,7 +49,7 @@ impl HasText for Label {
         &self.text
     }
 
-    fn set_string(&mut self, _tk: &mut dyn TkWidget, text: String) {
+    fn set_string(&mut self, _tk: &mut dyn TkWindow, text: String) {
         self.text = text;
     }
 }
@@ -116,7 +116,7 @@ impl<H> HasText for Entry<H> {
         &self.text
     }
 
-    fn set_string(&mut self, _tk: &mut dyn TkWidget, text: String) {
+    fn set_string(&mut self, _tk: &mut dyn TkWindow, text: String) {
         self.text = text;
     }
 }
@@ -134,7 +134,7 @@ impl<H> Editable for Entry<H> {
 impl Handler for Entry<()> {
     type Msg = ();
 
-    fn handle_action(&mut self, _: &mut dyn TkWidget, action: Action) -> Response<()> {
+    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<()> {
         match action {
             Action::Activate => Response::None,
             a @ _ => err_unhandled(a),
@@ -145,7 +145,7 @@ impl Handler for Entry<()> {
 impl<M, H: Fn() -> M> Handler for Entry<H> {
     type Msg = M;
 
-    fn handle_action(&mut self, _: &mut dyn TkWidget, action: Action) -> Response<M> {
+    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<M> {
         match action {
             Action::Activate => ((self.on_activate)()).into(),
             a @ _ => err_unhandled(a),
