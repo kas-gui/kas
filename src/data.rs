@@ -6,6 +6,8 @@
 //! Data types
 
 use std::fmt;
+use std::num::NonZeroU32;
+use std::u32;
 
 use crate::{geom::Rect, Core};
 
@@ -16,16 +18,23 @@ use crate::{geom::Rect, Core};
 ///
 /// Note: identifiers are first assigned when a window is instantiated by the
 /// toolkit.
-#[derive(Debug, Default, Clone, Copy, Hash, Ord, PartialOrd, PartialEq, Eq)]
-pub struct WidgetId(u32);
+#[derive(Debug, Clone, Copy, Hash, Ord, PartialOrd, PartialEq, Eq)]
+pub struct WidgetId(NonZeroU32);
 
 impl WidgetId {
     #[doc(hidden)]
-    pub const FIRST: WidgetId = WidgetId(1);
+    pub const FIRST: WidgetId = WidgetId(unsafe{ NonZeroU32::new_unchecked(1) });
+    const LAST: WidgetId = WidgetId(unsafe{ NonZeroU32::new_unchecked(u32::MAX) });
 
     #[doc(hidden)]
     pub(crate) fn next(self) -> Self {
-        WidgetId(self.0 + 1)
+        WidgetId(NonZeroU32::new(self.0.get() + 1).unwrap())
+    }
+}
+
+impl Default for WidgetId {
+    fn default() -> Self {
+        WidgetId::LAST
     }
 }
 
