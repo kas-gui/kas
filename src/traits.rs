@@ -10,7 +10,7 @@ use std::fmt;
 use crate::event::{Callback, Handler};
 use crate::geom::{AxisInfo, Rect, Size, SizeRules};
 use crate::toolkit::TkWidget;
-use crate::WidgetId;
+use crate::{CoreData, WidgetId};
 
 /// Common widget data
 ///
@@ -36,28 +36,6 @@ pub trait Core {
     #[inline]
     fn rect(&self) -> Rect {
         self.core_data().rect
-    }
-}
-
-/// Common widget data
-///
-/// All widgets should embed a `core: CoreData` field in order to implement the
-/// [`Core`] macro.
-#[derive(Clone, Default, Debug)]
-pub struct CoreData {
-    pub id: WidgetId,
-    pub rect: Rect,
-}
-
-impl Core for CoreData {
-    #[inline]
-    fn core_data(&self) -> &CoreData {
-        self
-    }
-
-    #[inline]
-    fn core_data_mut(&mut self) -> &mut CoreData {
-        self
     }
 }
 

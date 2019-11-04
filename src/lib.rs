@@ -11,9 +11,8 @@
 extern crate kas_macros;
 extern crate self as kas; // required for reliable self-reference in kas_macros
 
-use std::fmt;
-
 // internal modules:
+mod data;
 mod toolkit;
 mod traits;
 
@@ -27,31 +26,6 @@ pub mod widget;
 pub mod macros;
 
 // export most important members directly for convenience and less redundancy:
+pub use crate::data::*;
 pub use crate::toolkit::*;
 pub use crate::traits::*;
-
-/// Widget identifier
-///
-/// All widgets within a window are assigned a unique numeric identifier. This
-/// type may be tested for equality and order.
-///
-/// Note: identifiers are first assigned when a window is instantiated by the
-/// toolkit.
-#[derive(Debug, Default, Clone, Copy, Hash, Ord, PartialOrd, PartialEq, Eq)]
-pub struct WidgetId(u32);
-
-impl WidgetId {
-    #[doc(hidden)]
-    pub const FIRST: WidgetId = WidgetId(1);
-
-    #[doc(hidden)]
-    fn next(self) -> Self {
-        WidgetId(self.0 + 1)
-    }
-}
-
-impl fmt::Display for WidgetId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.0)
-    }
-}
