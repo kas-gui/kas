@@ -12,17 +12,22 @@
 //! type-safety while allowing user-defined result types.
 
 mod callback;
+#[cfg(not(feature = "winit"))]
+mod enums;
 mod events;
 mod response;
 
 use std::fmt::Debug;
 // use std::path::PathBuf;
 
-use winit::event::{ElementState, MouseButton};
+#[cfg(feature = "winit")]
+pub use winit::event::{DeviceId, ElementState, ModifiersState, MouseButton};
 
 use crate::{Core, TkWidget};
 
 pub use callback::Callback;
+#[cfg(not(feature = "winit"))]
+pub use enums::*;
 pub use events::*;
 pub use response::Response;
 

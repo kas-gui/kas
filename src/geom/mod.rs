@@ -8,6 +8,7 @@
 mod layout;
 
 pub use layout::*;
+#[cfg(feature = "winit")]
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 
 /// An `(x, y)` coordinate.
@@ -33,6 +34,7 @@ impl std::ops::Add for Coord {
     }
 }
 
+#[cfg(feature = "winit")]
 impl From<PhysicalPosition> for Coord {
     fn from(pos: PhysicalPosition) -> Coord {
         let pos: (i32, i32) = pos.into();
@@ -40,6 +42,7 @@ impl From<PhysicalPosition> for Coord {
     }
 }
 
+#[cfg(feature = "winit")]
 impl From<Coord> for PhysicalPosition {
     fn from(coord: Coord) -> PhysicalPosition {
         (coord.0, coord.1).into()
@@ -66,6 +69,7 @@ impl From<(u32, u32)> for Size {
     }
 }
 
+#[cfg(feature = "winit")]
 impl From<PhysicalSize> for Size {
     fn from(size: PhysicalSize) -> Size {
         let size: (u32, u32) = size.into();
@@ -73,6 +77,7 @@ impl From<PhysicalSize> for Size {
     }
 }
 
+#[cfg(feature = "winit")]
 impl From<Size> for PhysicalSize {
     fn from(size: Size) -> PhysicalSize {
         (size.0, size.1).into()

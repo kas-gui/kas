@@ -11,7 +11,7 @@
 //! parent and any result is pushed back up the call stack. The model allows
 //! type-safety while allowing user-defined result types.
 
-use winit::event::{DeviceId, ElementState, ModifiersState, MouseButton};
+use super::{DeviceId, ElementState, ModifiersState, MouseButton};
 
 use crate::geom::Coord;
 use crate::WidgetId;

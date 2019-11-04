@@ -37,7 +37,7 @@ pub use crate::traits::*;
 ///
 /// Note: identifiers are first assigned when a window is instantiated by the
 /// toolkit.
-#[derive(Debug, Default, Clone, Copy, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, Hash, Ord, PartialOrd, PartialEq, Eq)]
 pub struct WidgetId(u32);
 
 impl WidgetId {
