@@ -7,11 +7,10 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::class::HasText;
-use kas::control::TextButton;
 use kas::event::Response;
 use kas::macros::make_widget;
-use kas::text::Label;
-use kas::{SimpleWindow, TkWidget};
+use kas::widget::{Label, SimpleWindow, TextButton};
+use kas::TkWidget;
 
 #[derive(Debug)]
 enum Message {

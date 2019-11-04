@@ -11,11 +11,10 @@ use std::time::{Duration, Instant};
 
 use kas::callback::Condition;
 use kas::class::HasText;
-use kas::control::TextButton;
 use kas::event::Response;
 use kas::macros::make_widget;
-use kas::text::Label;
-use kas::{SimpleWindow, TkWidget, Window};
+use kas::widget::{Label, SimpleWindow, TextButton};
+use kas::{TkWidget, Window};
 
 #[derive(Debug)]
 enum Control {

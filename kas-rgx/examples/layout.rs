@@ -6,10 +6,8 @@
 //! Gallery of all widgets
 #![feature(proc_macro_hygiene)]
 
-use kas::control::CheckBox;
 use kas::macros::make_widget;
-use kas::text::{Entry, Label};
-use kas::SimpleWindow;
+use kas::widget::{CheckBox, Entry, Label, SimpleWindow};
 
 fn main() -> Result<(), winit::error::OsError> {
     let lipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nunc mi, consequat eget urna ut, auctor luctus mi. Sed molestie mi est. Sed non ligula ante. Curabitur ac molestie ante, nec sodales eros. In non arcu at turpis euismod bibendum ut tincidunt eros. Suspendisse blandit maximus nisi, viverra hendrerit elit efficitur et. Morbi ut facilisis eros. Vivamus dignissim, sapien sed mattis consectetur, libero leo imperdiet turpis, ac pulvinar libero purus eu lorem. Etiam quis sollicitudin urna. Integer vitae erat vel neque gravida blandit ac non quam.";

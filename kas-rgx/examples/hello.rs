@@ -5,8 +5,7 @@
 
 //! Hello world example
 
-use kas::dialog::{action_close, MessageBox};
-use kas::text::Label;
+use kas::widget::{action_close, Label, MessageBox};
 
 fn main() -> Result<(), winit::error::OsError> {
     // Build widgets.

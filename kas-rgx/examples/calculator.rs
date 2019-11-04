@@ -10,11 +10,10 @@ use std::num::ParseFloatError;
 use std::str::FromStr;
 
 use kas::class::HasText;
-use kas::control::TextButton;
 use kas::event::Response;
 use kas::macros::make_widget;
-use kas::text::Entry;
-use kas::{SimpleWindow, TkWidget};
+use kas::widget::{Entry, SimpleWindow, TextButton};
+use kas::TkWidget;
 
 #[derive(Clone, Debug, PartialEq)]
 enum Key {

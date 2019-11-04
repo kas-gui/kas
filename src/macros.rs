@@ -218,8 +218,8 @@
 //! ```
 //! #![feature(proc_macro_hygiene)]
 //!
-//! use kas::control::TextButton;
 //! use kas::macros::{make_widget};
+//! use kas::widget::TextButton;
 //!
 //! enum OkCancel {
 //!     Ok,

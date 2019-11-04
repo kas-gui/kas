@@ -11,10 +11,10 @@
 use std::fmt::{self, Debug};
 
 use crate::callback::Condition;
-use crate::control::{button, TextButton};
 use crate::event::{Event, Handler, Response};
 use crate::geom::Size;
 use crate::macros::Widget;
+use crate::widget::{button, TextButton};
 use crate::{class::Class, CoreData, TkWidget, Widget, Window};
 
 /// An action for use with `MessageBox::new`.
@@ -22,7 +22,7 @@ pub fn action_close() -> impl Fn() -> Response<()> {
     || Response::Close
 }
 
-/// A message box.
+/// A message box. TODO: this needs revision.
 #[widget(class = Class::Window, layout = derive)]
 #[derive(Clone, Widget)]
 pub struct MessageBox<M: Debug + 'static, H: 'static> {

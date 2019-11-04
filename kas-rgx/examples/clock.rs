@@ -14,8 +14,8 @@ use std::time::Duration;
 use kas::callback::Condition;
 use kas::class::HasText;
 use kas::macros::make_widget;
-use kas::text::Label;
-use kas::{SimpleWindow, TkWidget};
+use kas::widget::{Label, SimpleWindow};
+use kas::TkWidget;
 
 fn main() {
     let mut window = SimpleWindow::new(make_widget! {

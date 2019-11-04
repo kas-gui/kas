@@ -12,20 +12,15 @@ extern crate kas_macros;
 extern crate self as kas; // required for reliable self-reference in kas_macros
 
 // internal modules:
-#[macro_use]
-mod widget;
 mod toolkit;
 mod traits;
-mod window;
 
 // public implementations:
 pub mod callback;
 pub mod class;
-pub mod control;
-pub mod dialog;
 pub mod event;
 pub mod geom;
-pub mod text;
+pub mod widget;
 
 // macro re-exports
 pub mod macros;
@@ -33,8 +28,6 @@ pub mod macros;
 // export most important members directly for convenience and less redundancy:
 pub use crate::toolkit::*;
 pub use crate::traits::*;
-pub use crate::widget::*;
-pub use crate::window::*;
 
 /// Child widget identifier
 //TODO: make a tuple struct?
