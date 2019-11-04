@@ -15,6 +15,7 @@ mod callback;
 #[cfg(not(feature = "winit"))]
 mod enums;
 mod events;
+mod manager;
 mod response;
 
 use std::fmt::Debug;
@@ -29,6 +30,7 @@ pub use callback::Callback;
 #[cfg(not(feature = "winit"))]
 pub use enums::*;
 pub use events::*;
+pub use manager::Manager;
 pub use response::Response;
 
 /// Mark explicitly ignored events.
@@ -74,46 +76,19 @@ pub trait Handler: Core {
     type Msg;
 
     /// Handle a high-level event and return a user-defined msg.
+    #[inline]
     fn handle_action(&mut self, _: &mut dyn TkWidget, _: Action) -> Response<Self::Msg> {
         Response::None
     }
 
-    /// Handle a low-level event. Normally the user should not override this.
+    /// Handle a low-level event.
+    ///
+    /// Usually the user has no reason to override the default implementation of
+    /// this function. If this is required, it is recommended to handle only the
+    /// cases requiring custom handling, and use
+    /// [`Manager::handle_generic`] for all other cases.
+    #[inline]
     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
-        let self_id = Some(self.id());
-        match event {
-            Event::ToChild(_, ev) => match ev {
-                EventChild::MouseInput { state, button, .. } => {
-                    if button == MouseButton::Left {
-                        match state {
-                            ElementState::Pressed => {
-                                tk.set_click_start(self_id);
-                                Response::None
-                            }
-                            ElementState::Released => {
-                                let r = if tk.click_start() == self_id {
-                                    self.handle_action(tk, Action::Activate)
-                                } else {
-                                    Response::None
-                                };
-                                tk.set_click_start(None);
-                                r
-                            }
-                        }
-                    } else {
-                        Response::None
-                    }
-                }
-            },
-            Event::ToCoord(_, ev) => {
-                match ev {
-                    EventCoord::CursorMoved { .. } => {
-                        // We can assume the pointer is over this widget
-                        tk.set_hover(self_id);
-                        Response::None
-                    }
-                }
-            }
-        }
+        Manager::handle_generic(self, tk, event)
     }
 }

@@ -23,8 +23,8 @@ pub struct WidgetId(NonZeroU32);
 
 impl WidgetId {
     #[doc(hidden)]
-    pub const FIRST: WidgetId = WidgetId(unsafe{ NonZeroU32::new_unchecked(1) });
-    const LAST: WidgetId = WidgetId(unsafe{ NonZeroU32::new_unchecked(u32::MAX) });
+    pub const FIRST: WidgetId = WidgetId(unsafe { NonZeroU32::new_unchecked(1) });
+    const LAST: WidgetId = WidgetId(unsafe { NonZeroU32::new_unchecked(u32::MAX) });
 
     #[doc(hidden)]
     pub(crate) fn next(self) -> Self {
