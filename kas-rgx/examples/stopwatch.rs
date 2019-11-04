@@ -10,11 +10,11 @@ use std::fmt::Write;
 use std::time::{Duration, Instant};
 
 use kas::callback::Condition;
+use kas::class::HasText;
 use kas::control::TextButton;
 use kas::event::Response;
 use kas::macros::make_widget;
 use kas::text::Label;
-use kas::HasText;
 use kas::{SimpleWindow, TkWidget, Window};
 
 #[derive(Debug)]

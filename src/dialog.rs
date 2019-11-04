@@ -14,7 +14,7 @@ use crate::callback::Condition;
 use crate::control::{button, TextButton};
 use crate::event::{Event, Handler, Response};
 use crate::macros::Widget;
-use crate::{Class, CoreData, Size, TkWidget, Widget, Window};
+use crate::{class::Class, CoreData, Size, TkWidget, Widget, Window};
 
 /// An action for use with `MessageBox::new`.
 pub fn action_close() -> impl Fn() -> Response<()> {

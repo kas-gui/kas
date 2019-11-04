@@ -8,9 +8,10 @@
 use std::any::TypeId;
 use std::fmt::{self, Debug};
 
+use crate::class::{Class, HasBool, HasText};
 use crate::event::{err_unhandled, Action, Handler, Response};
 use crate::macros::Widget;
-use crate::{Class, CoreData, HasBool, HasText, TkWidget};
+use crate::{CoreData, TkWidget};
 
 /// A checkable box with optional label
 #[widget(class = Class::CheckBox(self), layout = derive)]

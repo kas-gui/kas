@@ -13,7 +13,8 @@ use wgpu_glyph::{
     GlyphBrush, GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign,
 };
 
-use kas::{Align, AxisInfo, Class, SizeRules, TkWidget, Widget, WidgetId};
+use kas::class::{Align, Class};
+use kas::{AxisInfo, SizeRules, TkWidget, Widget, WidgetId};
 
 /// Font size (units are half-point sizes?)
 const FONT_SIZE: f32 = 20.0;

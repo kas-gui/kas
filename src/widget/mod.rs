@@ -8,12 +8,10 @@
 #[macro_use]
 mod layout;
 
-mod class;
 mod data;
 
 pub use self::layout::*;
 
-pub use self::class::*;
 pub use self::data::*;
 
 /// Common widget data
@@ -93,7 +91,7 @@ pub trait Widget: Layout {
     /// Get the widget's classification
     ///
     /// This includes access to additional class-specific interfaces.
-    fn class(&self) -> Class;
+    fn class(&self) -> crate::class::Class;
 
     /// Get the number of child widgets
     fn len(&self) -> usize;

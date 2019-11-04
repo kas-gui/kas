@@ -15,11 +15,11 @@ extern crate self as kas; // required for reliable self-reference in kas_macros
 #[macro_use]
 mod widget;
 mod toolkit;
-mod traits;
 mod window;
 
 // public implementations:
 pub mod callback;
+pub mod class;
 pub mod control;
 pub mod dialog;
 pub mod event;
@@ -30,6 +30,5 @@ pub mod macros;
 
 // export most important members directly for convenience and less redundancy:
 pub use crate::toolkit::*;
-pub use crate::traits::*;
 pub use crate::widget::*;
 pub use crate::window::*;

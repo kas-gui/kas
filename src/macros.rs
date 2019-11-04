@@ -238,7 +238,7 @@
 //! [`Layout`]: crate::Layout
 //! [`Widget`]: crate::Widget
 //! [`Handler`]: crate::event::Handler
-//! [`Class`]: crate::Class
+//! [`Class`]: crate::class::Class
 //! [`CoreData`]: crate::CoreData
 //! [`Handler::Msg`]: ../kas/event/trait.Handler.html#associatedtype.Msg
 

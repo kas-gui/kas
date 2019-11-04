@@ -12,9 +12,9 @@ use chrono::prelude::*;
 use std::time::Duration;
 
 use kas::callback::Condition;
+use kas::class::HasText;
 use kas::macros::make_widget;
 use kas::text::Label;
-use kas::HasText;
 use kas::{SimpleWindow, TkWidget};
 
 fn main() {
