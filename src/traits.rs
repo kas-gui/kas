@@ -10,6 +10,7 @@ use std::fmt;
 use crate::event::{Callback, Handler};
 use crate::geom::{AxisInfo, Rect, Size, SizeRules};
 use crate::toolkit::TkWidget;
+use crate::WidgetId;
 
 /// Common widget data
 ///
@@ -25,10 +26,10 @@ pub trait Core {
     #[doc(hidden)]
     fn core_data_mut(&mut self) -> &mut CoreData;
 
-    /// Get the widget's number
+    /// Get the widget's numeric identifier
     #[inline]
-    fn number(&self) -> u32 {
-        self.core_data().number
+    fn id(&self) -> WidgetId {
+        self.core_data().id
     }
 
     /// Get the widget's region, relative to its parent.
@@ -44,7 +45,7 @@ pub trait Core {
 /// [`Core`] macro.
 #[derive(Clone, Default, Debug)]
 pub struct CoreData {
-    pub number: u32,
+    pub id: WidgetId,
     pub rect: Rect,
 }
 
@@ -135,13 +136,13 @@ pub trait Widget: Layout {
     #[doc(hidden)]
     /// This is only for use by toolkits.
     ///
-    /// Set the number for self and each child. Returns own number + 1.
-    fn enumerate(&mut self, mut n: u32) -> u32 {
+    /// Set the numeric [`WidgetId`] for self and each child. Returns own number + 1.
+    fn enumerate(&mut self, mut n: WidgetId) -> WidgetId {
         for i in 0..self.len() {
             self.get_mut(i).map(|w| n = w.enumerate(n));
         }
-        self.core_data_mut().number = n;
-        n + 1
+        self.core_data_mut().id = n;
+        n.next()
     }
 
     /// Debug tool: print the widget hierarchy
@@ -149,7 +150,7 @@ pub trait Widget: Layout {
         println!(
             "{}W[{}]\t{:?}\t{:?}",
             "- ".repeat(depth),
-            self.number(),
+            self.id(),
             self.class(),
             self.rect()
         );

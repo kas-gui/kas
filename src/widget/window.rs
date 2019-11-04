@@ -94,17 +94,17 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for Window<W> {
 
     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
         match event {
-            Event::ToChild(num, ev) => {
-                if num < self.number() {
+            Event::ToChild(id, ev) => {
+                if id < self.id() {
                     // TODO: either allow a custom handler or require M=()
-                    let r = self.w.handle(tk, Event::ToChild(num, ev));
+                    let r = self.w.handle(tk, Event::ToChild(id, ev));
                     Response::try_from(r).unwrap_or_else(|_| {
                         println!("TODO: widget returned custom msg to window");
                         Response::None
                     })
-                } else if num == self.number() {
+                } else if id == self.id() {
                     match ev {
-                        _ => err_unhandled(Event::ToChild(num, ev)),
+                        _ => err_unhandled(Event::ToChild(id, ev)),
                     }
                 } else {
                     err_num()

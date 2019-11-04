@@ -41,14 +41,16 @@ pub fn err_unhandled<M: Debug, N>(m: M) -> Response<N> {
     Response::None
 }
 
-/// Notify of an incorrect widget number.
+/// Notify of an incorrect widget identifier.
 ///
 /// This is an error, meaning somehow an event has been sent to a
-/// widget number which is not a child of the initial window/widget.
+/// [`WidgetId`] which is not a child of the initial window/widget.
 /// It is safe to ignore this error, but this function panics in debug builds.
+///
+/// [`WidgetId`]: crate::WidgetId
 pub fn err_num<N>() -> Response<N> {
-    debug_assert!(false, "Handler::handle: bad widget number");
-    println!("Handler::handle: bad widget number");
+    debug_assert!(false, "Handler::handle: bad WidgetId");
+    println!("Handler::handle: bad widget WidgetId");
     Response::None
 }
 
@@ -73,7 +75,7 @@ pub trait Handler: Core {
 
     /// Handle a low-level event. Normally the user should not override this.
     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
-        let self_id = Some(self.number());
+        let self_id = Some(self.id());
         match event {
             Event::ToChild(_, ev) => match ev {
                 EventChild::MouseInput { state, button, .. } => {

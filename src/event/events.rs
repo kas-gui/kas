@@ -35,13 +35,13 @@ pub enum Event {
     /// Events to be addressed to all descendents
     ToAll(EventAll),
     */
-    /// Events addressed to a child by number
+    /// Events addressed to a child by [`WidgetId`]
     ToChild(WidgetId, EventChild),
     /// Events addressed by coordinate
     ToCoord(Coord, EventCoord),
 }
 
-/// Events addressed to a child by number
+/// Events addressed to a child by [`WidgetId`]
 #[derive(Debug)]
 pub enum EventChild {
     MouseInput {

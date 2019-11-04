@@ -141,7 +141,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             };
             // TODO(opt): it is possible to code more efficient search strategies
             ev_to_num.append_all(quote! {
-                else if *num <= self.#ident.number() {
+                else if *id <= self.#ident.id() {
                     let r = self.#ident.handle(_tk, event);
                     #handler
                 }
@@ -164,8 +164,8 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 {
                     use kas::{Core, WidgetId, event::{Event, EventChild, EventCoord, Response, err_unhandled, err_num}};
                     match &event {
-                        Event::ToChild(num, ..) => {
-                            if *num == self.number() {
+                        Event::ToChild(id, ..) => {
+                            if *id == self.id() {
                                 // we may want to allow custom handlers on self here?
                                 err_unhandled(event)
                             }
