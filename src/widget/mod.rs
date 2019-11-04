@@ -75,8 +75,9 @@ impl Core for CoreData {
 /// [`kas::macros`] module.
 ///
 /// ```
-/// use kas::{Class, Widget, CoreData};
+/// use kas::class::Class;
 /// use kas::macros::Widget;
+/// use kas::{Widget, CoreData};
 ///
 /// #[widget(class = Class::Frame, layout = single)]
 /// #[derive(Clone, Debug, Widget)]
