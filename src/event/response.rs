@@ -22,10 +22,6 @@
 pub enum Response<M> {
     /// No action
     None,
-    /// Close the window
-    Close,
-    /// Exit (close all windows)
-    Exit,
     /// Custom message type
     Msg(M),
 }
@@ -71,8 +67,6 @@ impl<M> Response<M> {
         use Response::*;
         match r {
             None => Ok(None),
-            Close => Ok(Close),
-            Exit => Ok(Exit),
             Msg(m) => Err(m),
         }
     }

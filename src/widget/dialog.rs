@@ -18,7 +18,7 @@ use crate::{class::Class, CoreData, TkWindow, Widget, Window};
 
 /// An action for use with `MessageBox::new`.
 pub fn action_close() -> impl Fn() -> Response<()> {
-    || Response::Close
+    || Response::Msg(()) // TODO: close
 }
 
 /// A message box. TODO: this needs revision.

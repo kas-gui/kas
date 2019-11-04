@@ -15,7 +15,7 @@ use wgpu_glyph::{
 
 use kas::class::{Align, Class};
 use kas::geom::{AxisInfo, SizeRules};
-use kas::{TkWindow, Widget, WidgetId};
+use kas::{TkAction, TkWindow, Widget, WidgetId};
 
 /// Font size (units are half-point sizes?)
 const FONT_SIZE: f32 = 20.0;
@@ -30,7 +30,7 @@ pub(crate) struct Widgets {
     click_start: Option<WidgetId>,
     font_scale: f32,
     margin: f32,
-    redraw: bool,
+    action: TkAction,
 }
 
 impl Widgets {
@@ -41,7 +41,7 @@ impl Widgets {
             click_start: None,
             font_scale: (FONT_SIZE * dpi).round(),
             margin: (MARGIN * dpi).round(),
-            redraw: false,
+            action: TkAction::None,
         }
     }
 
@@ -51,8 +51,11 @@ impl Widgets {
         // Note: we rely on caller to resize widget
     }
 
-    pub fn need_redraw(&self) -> bool {
-        self.redraw
+    #[inline]
+    pub fn pop_action(&mut self) -> TkAction {
+        let action = self.action;
+        self.action = TkAction::None;
+        action
     }
 
     pub fn draw(
@@ -245,8 +248,14 @@ impl TkWindow for Widgets {
         size + SizeRules::fixed(self.margin as u32 * 2)
     }
 
+    #[inline]
     fn redraw(&mut self, _: &dyn Widget) {
-        self.redraw = true;
+        self.send_action(TkAction::Redraw);
+    }
+
+    #[inline]
+    fn send_action(&mut self, action: TkAction) {
+        self.action = self.action.max(action);
     }
 
     fn hover(&self) -> Option<WidgetId> {
@@ -255,7 +264,7 @@ impl TkWindow for Widgets {
     fn set_hover(&mut self, id: Option<WidgetId>) {
         if self.hover != id {
             self.hover = id;
-            self.redraw = true;
+            self.send_action(TkAction::Redraw);
         }
     }
 

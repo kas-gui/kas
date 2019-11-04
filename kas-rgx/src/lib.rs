@@ -58,13 +58,8 @@ impl<T> Toolkit<T> {
 
     /// Run the main loop.
     pub fn run(self) -> ! {
-        let mut windows = self.windows;
-
-        for window in windows.iter_mut() {
-            window.prepare();
-        }
-
+        let mut el = event::Loop::new(self.windows);
         self.el
-            .run(move |event, _, control_flow| event::handler(&mut windows, event, control_flow))
+            .run(move |event, _, control_flow| el.handle(event, control_flow))
     }
 }

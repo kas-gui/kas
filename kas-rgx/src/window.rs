@@ -10,9 +10,9 @@ use std::time::{Duration, Instant};
 use rgx::core::*;
 use wgpu_glyph::GlyphBrushBuilder;
 
-use kas::event::{Callback, Event, EventChild, EventCoord, Response};
+use kas::event::{Callback, Event, EventChild, EventCoord};
 use kas::geom::Size;
-use kas::{TkWindow, WidgetId};
+use kas::{TkAction, TkWindow, WidgetId};
 use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
@@ -57,7 +57,7 @@ impl Window {
             .build(rend.device.device_mut(), swap_chain.format());
         let mut wrend = Widgets::new(dpi_factor as f32, glyph_brush);
 
-        win.resize(&mut wrend, size.into());
+        win.resize(&mut wrend, size);
 
         let w = Window {
             win,
@@ -73,9 +73,9 @@ impl Window {
         Ok(w)
     }
 
-    /// Called by the `Toolkit` just before the event loop starts to initialise
-    /// windows.
-    pub fn prepare(&mut self) {
+    /// Called by the `Toolkit` when the event loop starts to initialise
+    /// windows. Optionally returns a callback time.
+    pub fn init(&mut self) -> Option<Instant> {
         self.ww.request_redraw();
 
         for (i, condition) in self.win.callbacks() {
@@ -89,20 +89,27 @@ impl Window {
                 }
             }
         }
+
+        self.next_resume()
+    }
+
+    /// Recompute layout of widgets and redraw
+    pub fn reconfigure(&mut self) {
+        self.win.resize(&mut self.wrend, self.size);
+        self.ww.request_redraw();
     }
 
     /// Handle an event
     ///
     /// Return true to remove the window
-    pub fn handle_event(&mut self, event: WindowEvent) -> bool {
+    pub fn handle_event(&mut self, event: WindowEvent) -> TkAction {
         use WindowEvent::*;
-        let response: Response<()> = match event {
+        match event {
             Resized(size) => {
                 self.do_resize(size);
-                return false;
             }
             CloseRequested => {
-                return true;
+                self.wrend.send_action(TkAction::Close);
             }
             CursorMoved {
                 device_id,
@@ -114,11 +121,10 @@ impl Window {
                     device_id,
                     modifiers,
                 };
-                self.win.handle(&mut self.wrend, Event::ToCoord(coord, ev))
+                self.win.handle(&mut self.wrend, Event::ToCoord(coord, ev));
             }
             CursorLeft { .. } => {
                 self.wrend.set_hover(None);
-                return false;
             }
             MouseInput {
                 device_id,
@@ -133,7 +139,7 @@ impl Window {
                     modifiers,
                 };
                 if let Some(id) = self.wrend.hover() {
-                    self.win.handle(&mut self.wrend, Event::ToChild(id, ev))
+                    self.win.handle(&mut self.wrend, Event::ToChild(id, ev));
                 } else {
                     // This happens for example on click-release when the
                     // cursor is no longer over the window.
@@ -141,39 +147,26 @@ impl Window {
                     if button == MouseButton::Left && state == ElementState::Released {
                         self.wrend.set_click_start(None);
                     }
-                    Response::None
                 }
             }
             RedrawRequested => {
                 self.do_draw();
-                return false;
             }
             HiDpiFactorChanged(factor) => {
                 self.wrend.set_dpi_factor(factor as f32);
                 // NOTE: possibly the resize should be triggered directly by
                 // self.wrend on redraw; investigate when supporting reconfigure
                 self.do_resize(self.ww.inner_size());
-                return false;
             }
             _ => {
-                //                 println!("Unhandled window event: {:?}", event);
-                return false;
+                // println!("Unhandled window event: {:?}", event);
             }
         };
 
-        // Event handling may trigger a redraw
-        if self.wrend.need_redraw() {
-            self.ww.request_redraw();
-        }
-
-        match response {
-            Response::None | Response::Msg(()) => false,
-            // TODO: handle Exit properly
-            Response::Close | Response::Exit => true,
-        }
+        self.wrend.pop_action()
     }
 
-    pub(crate) fn timer_resume(&mut self, instant: Instant) {
+    pub(crate) fn timer_resume(&mut self, instant: Instant) -> (TkAction, Option<Instant>) {
         // Iterate over loop, mutating some elements, removing others.
         let mut i = 0;
         while i < self.timeouts.len() {
@@ -195,13 +188,10 @@ impl Window {
             }
         }
 
-        // Timer handling may trigger a redraw
-        if self.wrend.need_redraw() {
-            self.ww.request_redraw();
-        }
+        (self.wrend.pop_action(), self.next_resume())
     }
 
-    pub(crate) fn next_resume(&self) -> Option<Instant> {
+    fn next_resume(&self) -> Option<Instant> {
         let mut next = None;
         for timeout in &self.timeouts {
             next = match next {
@@ -221,12 +211,11 @@ impl Window {
             return;
         }
         self.size = size;
+        self.win.resize(&mut self.wrend, size);
 
         // Note: pipeline.resize relies on calling self.rend.update_pipeline
         // to avoid scaling issues; alternative is to create a new pipeline
         self.swap_chain = self.rend.swap_chain(size.0, size.1, PresentMode::default());
-
-        self.win.resize(&mut self.wrend, size.into());
     }
 
     fn do_draw(&mut self) {

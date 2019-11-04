@@ -17,6 +17,24 @@
 use crate::geom::{AxisInfo, SizeRules};
 use crate::{Widget, WidgetId};
 
+/// Toolkit actions needed after event handling, if any.
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+pub enum TkAction {
+    /// No action needed
+    None,
+    /// Whole window requires redrawing
+    ///
+    /// Note that [`TkWindow::redraw`] can instead be used for more selective
+    /// redrawing, if supported by the toolkit.
+    Redraw,
+    /// Whole window requires reconfigure *and* redrawing
+    Reconfigure,
+    /// Window should be closed
+    Close,
+    /// All windows should close (toolkit exit)
+    CloseAll,
+}
+
 /// Toolkit-specific window management and style interface.
 ///
 /// This is implemented by a KAS toolkit on a window handle. Since each window
@@ -34,6 +52,11 @@ pub trait TkWindow {
 
     /// Notify that a widget must be redrawn
     fn redraw(&mut self, widget: &dyn Widget);
+
+    /// Notify that a toolkit action should happen
+    ///
+    /// Allows signalling application exit, etc.
+    fn send_action(&mut self, action: TkAction);
 
     /// Get the widget under the mouse
     fn hover(&self) -> Option<WidgetId>;

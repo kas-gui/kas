@@ -116,8 +116,9 @@ impl<H> HasText for CheckBox<H> {
         &self.label
     }
 
-    fn set_string(&mut self, _tk: &mut dyn TkWindow, text: String) {
+    fn set_string(&mut self, tk: &mut dyn TkWindow, text: String) {
         self.label = text;
+        tk.redraw(self);
     }
 }
 
@@ -216,8 +217,9 @@ impl<H> HasText for TextButton<H> {
         &self.label
     }
 
-    fn set_string(&mut self, _tk: &mut dyn TkWindow, text: String) {
+    fn set_string(&mut self, tk: &mut dyn TkWindow, text: String) {
         self.label = text;
+        tk.redraw(self);
     }
 }
 
