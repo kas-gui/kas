@@ -7,61 +7,31 @@
 
 use std::fmt::{self, Debug};
 
-use crate::callback::Condition;
-use crate::event::{err_num, err_unhandled, Event, Handler, Response};
+use crate::class::Class;
+use crate::event::{err_num, err_unhandled, Callback, Event, Handler, Response};
+use crate::geom::{AxisInfo, Coord, Rect, Size, SizeRules};
 use crate::macros::Widget;
-use crate::{
-    AxisInfo, Class, Coord, Core, CoreData, Layout, Rect, Size, SizeRules, TkWidget, Widget,
-};
+use crate::{Core, CoreData, Layout, TkWidget, Widget};
 
-/// A window is a drawable interactive region provided by windowing system.
-// TODO: should this be a trait, instead of simply a struct? Should it be
-// implemented by dialogs? Note that from the toolkit perspective, it seems a
-// Window should be a Widget. So alternatives are (1) use a struct instead of a
-// trait or (2) allow any Widget to derive Window (i.e. implement required
-// functionality with macros instead of the generic code below).
-pub trait Window: Widget + Handler<Msg = ()> {
-    /// Upcast
-    ///
-    /// Note: needed because Rust does not yet support trait object upcasting
-    fn as_widget(&self) -> &dyn Widget;
-    /// Upcast, mutably
-    ///
-    /// Note: needed because Rust does not yet support trait object upcasting
-    fn as_widget_mut(&mut self) -> &mut dyn Widget;
-
-    /// Adjust the size of the window, repositioning widgets.
-    fn resize(&mut self, tk: &mut dyn TkWidget, size: Size);
-
-    /// Get a list of available callbacks.
-    ///
-    /// This returns a sequence of `(index, condition)` values. The toolkit
-    /// should call `trigger_callback(index, tk)` whenever the condition is met.
-    fn callbacks(&self) -> Vec<(usize, Condition)>;
-
-    /// Trigger a callback (see `iter_callbacks`).
-    fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWidget);
-}
-
-/// The main instantiation of the `Window` trait.
+/// The main instantiation of the [`Window`] trait.
 ///
 /// TODO: change the name?
 #[widget(class = Class::Window)]
 #[derive(Widget)]
-pub struct SimpleWindow<W: Widget + 'static> {
+pub struct Window<W: Widget + 'static> {
     #[core]
     core: CoreData,
     min_size: Size,
     #[widget]
     w: W,
-    fns: Vec<(Condition, &'static dyn Fn(&mut W, &mut dyn TkWidget))>,
+    fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut dyn TkWidget))>,
 }
 
-impl<W: Widget> Debug for SimpleWindow<W> {
+impl<W: Widget> Debug for Window<W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "SimpleWindow {{ core: {:?}, min_size: {:?}, solver: <omitted>, w: {:?}, fns: [",
+            "Window {{ core: {:?}, min_size: {:?}, solver: <omitted>, w: {:?}, fns: [",
             self.core, self.min_size, self.w
         )?;
         let mut iter = self.fns.iter();
@@ -75,9 +45,9 @@ impl<W: Widget> Debug for SimpleWindow<W> {
     }
 }
 
-impl<W: Widget + Clone> Clone for SimpleWindow<W> {
+impl<W: Widget + Clone> Clone for Window<W> {
     fn clone(&self) -> Self {
-        SimpleWindow {
+        Window {
             core: self.core.clone(),
             min_size: self.min_size,
             w: self.w.clone(),
@@ -86,7 +56,7 @@ impl<W: Widget + Clone> Clone for SimpleWindow<W> {
     }
 }
 
-impl<W: Widget> Layout for SimpleWindow<W> {
+impl<W: Widget> Layout for Window<W> {
     fn size_rules(&mut self, tk: &mut dyn TkWidget, axis: AxisInfo) -> SizeRules {
         self.w.size_rules(tk, axis)
     }
@@ -97,10 +67,10 @@ impl<W: Widget> Layout for SimpleWindow<W> {
     }
 }
 
-impl<W: Widget> SimpleWindow<W> {
+impl<W: Widget> Window<W> {
     /// Create
-    pub fn new(w: W) -> SimpleWindow<W> {
-        SimpleWindow {
+    pub fn new(w: W) -> Window<W> {
+        Window {
             core: Default::default(),
             min_size: Size::ZERO,
             w,
@@ -112,29 +82,29 @@ impl<W: Widget> SimpleWindow<W> {
     /// condition. The closure must be passed by reference.
     pub fn add_callback(
         &mut self,
-        condition: Condition,
+        condition: Callback,
         f: &'static dyn Fn(&mut W, &mut dyn TkWidget),
     ) {
         self.fns.push((condition, f));
     }
 }
 
-impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for SimpleWindow<W> {
+impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for Window<W> {
     type Msg = ();
 
     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
         match event {
-            Event::ToChild(num, ev) => {
-                if num < self.number() {
+            Event::ToChild(id, ev) => {
+                if id < self.id() {
                     // TODO: either allow a custom handler or require M=()
-                    let r = self.w.handle(tk, Event::ToChild(num, ev));
+                    let r = self.w.handle(tk, Event::ToChild(id, ev));
                     Response::try_from(r).unwrap_or_else(|_| {
                         println!("TODO: widget returned custom msg to window");
                         Response::None
                     })
-                } else if num == self.number() {
+                } else if id == self.id() {
                     match ev {
-                        _ => err_unhandled(Event::ToChild(num, ev)),
+                        _ => err_unhandled(Event::ToChild(id, ev)),
                     }
                 } else {
                     err_num()
@@ -152,7 +122,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for SimpleWindow<W> {
     }
 }
 
-impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
+impl<M, W: Widget + Handler<Msg = M> + 'static> kas::Window for Window<W> {
     fn as_widget(&self) -> &dyn Widget {
         self
     }
@@ -168,11 +138,11 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
         let pos = Coord(0, 0);
         self.set_rect(Rect { pos, size });
 
-        // println!("SimpleWindow:");
+        // println!("Window:");
         // self.w.print_hierarchy(0);
     }
 
-    fn callbacks(&self) -> Vec<(usize, Condition)> {
+    fn callbacks(&self) -> Vec<(usize, Callback)> {
         self.fns.iter().map(|(cond, _)| *cond).enumerate().collect()
     }
 

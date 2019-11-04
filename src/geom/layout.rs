@@ -3,14 +3,18 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Simple widget layout system
+//! Data types specific to the layout engine
 
 use std::fmt;
 
+use super::Rect;
 use crate::toolkit::TkWidget;
-use crate::widget::{Core, Rect};
+use crate::Core;
 
-/// The axis being resized
+/// Used by the layout engine to specify the axis of interest.
+///
+/// The layout engine works on a single axis at a time, and when doing so may
+/// provide a fixed size for the other axis.
 #[derive(Copy, Clone, Debug)]
 pub struct AxisInfo {
     is_vert: bool,
@@ -59,6 +63,9 @@ impl AxisInfo {
 }
 
 /// Return value of [`Layout::size_rules`].
+///
+/// This struct conveys properties such as the minimum size and preferred size
+/// of the widgets being queried.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct SizeRules {
     // minimum size

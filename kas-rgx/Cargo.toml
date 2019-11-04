@@ -11,7 +11,7 @@ repository = "https://github.com/dhardy/kas"
 
 [features]
 [dependencies]
-kas = { path = "..", version = "0.0.2" }
+kas = { path = "..", version = "0.0.2", features = ["winit"] }
 # TODO: expose backend features
 rgx = { version = "0.2", features = ["vulkan"] }
 # Note: alpha4 is a breaking release due to raw-window-handle changes;

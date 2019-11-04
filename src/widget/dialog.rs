@@ -10,18 +10,18 @@
 
 use std::fmt::{self, Debug};
 
-use crate::callback::Condition;
-use crate::control::{button, TextButton};
-use crate::event::{Event, Handler, Response};
+use crate::event::{Callback, Event, Handler, Response};
+use crate::geom::Size;
 use crate::macros::Widget;
-use crate::{Class, CoreData, Size, TkWidget, Widget, Window};
+use crate::widget::{button, TextButton};
+use crate::{class::Class, CoreData, TkWidget, Widget, Window};
 
 /// An action for use with `MessageBox::new`.
 pub fn action_close() -> impl Fn() -> Response<()> {
     || Response::Close
 }
 
-/// A message box.
+/// A message box. TODO: this needs revision.
 #[widget(class = Class::Window, layout = derive)]
 #[derive(Clone, Widget)]
 pub struct MessageBox<M: Debug + 'static, H: 'static> {
@@ -76,7 +76,7 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     }
 
     // doesn't support callbacks, so doesn't need to do anything here
-    fn callbacks(&self) -> Vec<(usize, Condition)> {
+    fn callbacks(&self) -> Vec<(usize, Callback)> {
         Vec::new()
     }
     fn trigger_callback(&mut self, _index: usize, _tk: &mut dyn TkWidget) {}

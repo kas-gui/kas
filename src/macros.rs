@@ -106,8 +106,9 @@
 //! still be implemented separately):
 //!
 //! ```
-//! use kas::{Widget, Class, CoreData};
+//! use kas::class::Class;
 //! use kas::macros::Widget;
+//! use kas::{Widget, CoreData};
 //!
 //! #[widget(class = Class::Window, layout = single)]
 //! #[derive(Debug, Widget)]
@@ -120,9 +121,10 @@
 //! A longer example, including derivation of the [`Handler`] trait:
 //!
 //! ```
-//! use kas::{Widget, Class, CoreData, TkWidget};
+//! use kas::class::Class;
 //! use kas::event::{Handler, Response, err_unhandled};
 //! use kas::macros::Widget;
+//! use kas::{Widget, CoreData, TkWidget};
 //!
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
@@ -216,8 +218,8 @@
 //! ```
 //! #![feature(proc_macro_hygiene)]
 //!
-//! use kas::control::TextButton;
 //! use kas::macros::{make_widget};
+//! use kas::widget::TextButton;
 //!
 //! enum OkCancel {
 //!     Ok,
@@ -238,7 +240,7 @@
 //! [`Layout`]: crate::Layout
 //! [`Widget`]: crate::Widget
 //! [`Handler`]: crate::event::Handler
-//! [`Class`]: crate::Class
+//! [`Class`]: crate::class::Class
 //! [`CoreData`]: crate::CoreData
 //! [`Handler::Msg`]: ../kas/event/trait.Handler.html#associatedtype.Msg
 

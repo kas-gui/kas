@@ -9,12 +9,11 @@
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
-use kas::control::TextButton;
+use kas::class::HasText;
 use kas::event::Response;
 use kas::macros::make_widget;
-use kas::text::Entry;
-use kas::HasText;
-use kas::{SimpleWindow, TkWidget};
+use kas::widget::{Entry, TextButton, Window};
+use kas::TkWidget;
 
 #[derive(Clone, Debug, PartialEq)]
 enum Key {
@@ -71,7 +70,7 @@ fn main() -> Result<(), winit::error::OsError> {
             }
         }
     };
-    let window = SimpleWindow::new(content);
+    let window = Window::new(content);
 
     let mut toolkit = kas_rgx::Toolkit::new();
     toolkit.add(window)?;

@@ -8,8 +8,10 @@
 //! Each widget must have one of the classifications defined in the [`Class`]
 //! enumeration. In some of these cases, the widget must implement additional
 //! functionality (usually on itself).
+//!
+//! [`Class`]: class::Class
 
-use crate::traits::{Editable, HasBoolText, HasText};
+use crate::TkWidget;
 use std::fmt;
 
 /// Alignment of contents
@@ -79,3 +81,55 @@ impl<'a> Class<'a> {
         }
     }
 }
+
+/// Functionality for widgets which can be toggled or selected: check boxes,
+/// radio buttons, toggle switches.
+///
+/// The value `true` means *checked*, *selected* or *toggled on*.
+pub trait HasBool {
+    /// Get the widget's state
+    fn get_bool(&self) -> bool;
+
+    /// Set the widget's state
+    fn set_bool(&mut self, tk: &mut dyn TkWidget, state: bool);
+}
+
+/// Functionality for widgets with visible text.
+///
+/// This applies to both labels and the text content of interactive widgets.
+/// The only widgets supporting both labels and interactive content have
+/// boolean values (e.g. checkboxes); these may support *both* `HasText` and
+/// [`HasBool`].
+pub trait HasText {
+    /// Get the widget's text.
+    fn get_text(&self) -> &str;
+
+    /// Set the widget's text.
+    fn set_text<T: ToString>(&mut self, tk: &mut dyn TkWidget, text: T)
+    where
+        Self: Sized,
+    {
+        self.set_string(tk, text.to_string());
+    }
+
+    /// Set the widget's text (string only).
+    ///
+    /// This method is for implementation.
+    fn set_string(&mut self, tk: &mut dyn TkWidget, text: String);
+}
+
+/// Additional functionality required by the `Entry` class.
+pub trait Editable: HasText {
+    /// Get whether this input field is editable.
+    fn is_editable(&self) -> bool;
+
+    /// Set whether this input field is editable.
+    fn set_editable(&mut self, editable: bool);
+}
+
+/// Summation of [`HasBool`] and [`HasText`] traits.
+///
+/// Used because Rust doesn't (yet) support multi-trait objects.
+pub trait HasBoolText: HasBool + HasText {}
+
+impl<T> HasBoolText for T where T: HasBool + HasText {}

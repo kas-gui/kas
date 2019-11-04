@@ -9,13 +9,11 @@
 use std::fmt::Write;
 use std::time::{Duration, Instant};
 
-use kas::callback::Condition;
-use kas::control::TextButton;
-use kas::event::Response;
+use kas::class::HasText;
+use kas::event::{Callback, Response};
 use kas::macros::make_widget;
-use kas::text::Label;
-use kas::HasText;
-use kas::{SimpleWindow, TkWidget, Window};
+use kas::widget::{Label, TextButton, Window};
+use kas::TkWidget;
 
 #[derive(Debug)]
 enum Control {
@@ -25,7 +23,7 @@ enum Control {
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
-fn make_window() -> Box<dyn Window> {
+fn make_window() -> Box<dyn kas::Window> {
     let stopwatch = make_widget! {
         container(horizontal) => ();
         struct {
@@ -84,9 +82,9 @@ fn make_window() -> Box<dyn Window> {
         }
     };
 
-    let mut window = SimpleWindow::new(stopwatch);
+    let mut window = Window::new(stopwatch);
 
-    window.add_callback(Condition::Repeat(Duration::from_millis(16)), &|w, tk| {
+    window.add_callback(Callback::Repeat(Duration::from_millis(16)), &|w, tk| {
         w.on_tick(tk)
     });
 

@@ -5,19 +5,23 @@
 
 //! Toolkit interface
 //!
-//! TODO: "toolkit" is no longer an apt description of this internal API, but
-//! rather "theme + renderer".
+//! In KAS, the "toolkit" is an external library handling system interfaces
+//! (windowing and event translation) plus rendering. This allows KAS's core
+//! to remain system-neutral.
+//!
+//! Note: although the choice of windowing library is left to the toolkit, for
+//! convenience KAS is able to use several [winit] types.
+//!
+//! [winit]: https://github.com/rust-windowing/winit
 
-use crate::widget::{AxisInfo, SizeRules, Widget, WidgetId};
+use crate::geom::{AxisInfo, SizeRules};
+use crate::{Widget, WidgetId};
 
 /// Common widget properties. Implemented by the toolkit.
 ///
 /// Users interact with this trait in a few cases, such as implementing widget
 /// event handling. In these cases the user is *always* given an existing
 /// reference to a `TkWidget`. Mostly this trait is only used internally.
-///
-/// Note that it is not necessary for toolkits to implement all of these
-/// methods, depending on which functionality from the library is used.
 pub trait TkWidget {
     /// Get the widget's size preferences
     ///

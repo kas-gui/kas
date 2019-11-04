@@ -87,7 +87,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         impl #impl_generics kas::Widget
                 for #name #ty_generics #where_clause
         {
-            fn class(&self) -> kas::Class { #class }
+            fn class(&self) -> kas::class::Class { #class }
 
             fn len(&self) -> usize {
                 #count
@@ -141,7 +141,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             };
             // TODO(opt): it is possible to code more efficient search strategies
             ev_to_num.append_all(quote! {
-                else if *num <= self.#ident.number() {
+                else if *id <= self.#ident.id() {
                     let r = self.#ident.handle(_tk, event);
                     #handler
                 }
@@ -164,8 +164,8 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 {
                     use kas::{Core, WidgetId, event::{Event, EventChild, EventCoord, Response, err_unhandled, err_num}};
                     match &event {
-                        Event::ToChild(num, ..) => {
-                            if *num == self.number() {
+                        Event::ToChild(id, ..) => {
+                            if *id == self.id() {
                                 // we may want to allow custom handlers on self here?
                                 err_unhandled(event)
                             }
@@ -295,18 +295,18 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let widget_args = match args.class {
         Class::Container(layout) => {
             if layout == "single" {
-                quote! { class = kas::Class::Container, layout = #layout }
+                quote! { class = kas::class::Class::Container, layout = #layout }
             } else {
                 impl_layout = match layout::ImplLayout::new(&layout) {
                     Ok(out) => Some(out),
                     Err(err) => return err.to_compile_error().into(),
                 };
-                quote! { class = kas::Class::Container }
+                quote! { class = kas::class::Class::Container }
             }
         }
         Class::Frame => quote! {
             // TODO: include frame dimensions
-            class = kas::Class::Frame, layout = single
+            class = kas::class::Class::Frame, layout = single
         },
     };
 

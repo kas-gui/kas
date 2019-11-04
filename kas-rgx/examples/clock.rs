@@ -11,14 +11,14 @@ extern crate chrono;
 use chrono::prelude::*;
 use std::time::Duration;
 
-use kas::callback::Condition;
+use kas::class::HasText;
+use kas::event::Callback;
 use kas::macros::make_widget;
-use kas::text::Label;
-use kas::HasText;
-use kas::{SimpleWindow, TkWidget};
+use kas::widget::{Label, Window};
+use kas::TkWidget;
 
 fn main() {
-    let mut window = SimpleWindow::new(make_widget! {
+    let mut window = Window::new(make_widget! {
         container(vertical) => ();
         struct {
             #[widget] date: Label = Label::new(""),
@@ -34,7 +34,7 @@ fn main() {
         }
     });
 
-    window.add_callback(Condition::Repeat(Duration::from_secs(1)), &|w, tk| {
+    window.add_callback(Callback::Repeat(Duration::from_secs(1)), &|w, tk| {
         w.on_tick(tk)
     });
 

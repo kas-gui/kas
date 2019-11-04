@@ -6,10 +6,8 @@
 //! Gallery of all widgets
 #![feature(proc_macro_hygiene)]
 
-use kas::control::{CheckBox, TextButton};
 use kas::macros::make_widget;
-use kas::text::{Entry, Label};
-use kas::SimpleWindow;
+use kas::widget::*;
 
 fn main() -> Result<(), winit::error::OsError> {
     let widgets = make_widget! {
@@ -28,7 +26,7 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     };
 
-    let window = SimpleWindow::new(make_widget! {
+    let window = Window::new(make_widget! {
         container(vertical) => ();
         struct {
             #[widget] _ = Label::from("Widget Gallery"),

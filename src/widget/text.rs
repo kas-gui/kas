@@ -7,9 +7,10 @@
 
 use std::fmt::{self, Debug};
 
+use crate::class::{Class, Editable, HasText};
 use crate::event::{err_unhandled, Action, Handler, Response};
 use crate::macros::Widget;
-use crate::{Class, CoreData, Editable, HasText, TkWidget};
+use crate::{CoreData, TkWidget};
 
 /// A simple text label
 #[widget(class = Class::Label(self), layout = derive)]

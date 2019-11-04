@@ -10,9 +10,9 @@ use std::time::{Duration, Instant};
 use rgx::core::*;
 use wgpu_glyph::GlyphBrushBuilder;
 
-use kas::callback::Condition;
-use kas::event::{Event, EventChild, EventCoord, Response};
-use kas::{Size, TkWidget};
+use kas::event::{Callback, Event, EventChild, EventCoord, Response};
+use kas::geom::Size;
+use kas::{TkWidget, WidgetId};
 use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
@@ -31,7 +31,6 @@ pub struct Window {
     rend: Renderer,
     swap_chain: SwapChain,
     pipeline: rgx::kit::shape2d::Pipeline,
-    nums: (u32, u32), // TODO: is this useful?
     size: Size,
     timeouts: Vec<(usize, Instant, Option<Duration>)>,
     wrend: Widgets,
@@ -40,15 +39,11 @@ pub struct Window {
 // Public functions, for use by the toolkit
 impl Window {
     /// Construct a window
-    ///
-    /// Parameter `num0`: for the first window, use 0. For any other window,
-    /// use the previous window's `nums().1` value.
     pub fn new<T: 'static>(
         event_loop: &EventLoopWindowTarget<T>,
         mut win: Box<dyn kas::Window>,
-        num0: u32,
     ) -> Result<Window, OsError> {
-        let num1 = win.enumerate(num0);
+        win.enumerate(WidgetId::FIRST);
 
         let ww = winit::window::Window::new(event_loop)?;
         let dpi_factor = ww.hidpi_factor();
@@ -70,18 +65,12 @@ impl Window {
             rend,
             swap_chain,
             pipeline,
-            nums: (num0, num1),
             size,
             timeouts: vec![],
             wrend,
         };
 
         Ok(w)
-    }
-
-    /// Range of widget numbers used, from first to last+1.
-    pub fn nums(&self) -> (u32, u32) {
-        self.nums
     }
 
     /// Called by the `Toolkit` just before the event loop starts to initialise
@@ -91,10 +80,10 @@ impl Window {
 
         for (i, condition) in self.win.callbacks() {
             match condition {
-                Condition::Start => {
+                Callback::Start => {
                     self.win.trigger_callback(i, &mut self.wrend);
                 }
-                Condition::Repeat(dur) => {
+                Callback::Repeat(dur) => {
                     self.win.trigger_callback(i, &mut self.wrend);
                     self.timeouts.push((i, Instant::now() + dur, Some(dur)));
                 }

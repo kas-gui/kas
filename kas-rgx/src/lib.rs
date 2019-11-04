@@ -51,8 +51,7 @@ impl<T> Toolkit<T> {
 
     /// Add a boxed window directly
     pub fn add_boxed(&mut self, window: Box<dyn kas::Window>) -> Result<(), OsError> {
-        let num0 = self.windows.last().map(|w| w.nums().1).unwrap_or(0);
-        let win = Window::new(&self.el, window, num0)?;
+        let win = Window::new(&self.el, window)?;
         self.windows.push(win);
         Ok(())
     }

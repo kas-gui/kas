@@ -7,16 +7,15 @@
 //!
 //! Note that callbacks are added to windows, hence some callback functionality
 //! is a detail of the [`Window`] trait.
+//!
+//! [`Window`]: crate::Window
 
 use std::time::Duration;
 
-/// A Condition specifies when a callback is called.
+/// Specifies under which condition a callback is called.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Condition {
-    /// Call once immediately on start
-    // Note: we call this when the event loop starts. We could perhaps use
-    // GDK's Map event instead, which is called when the window is created and
-    // when it is restored from a minimised state.
+pub enum Callback {
+    /// Call once immediately on start.
     Start,
     /// Call on start and repeatedly with the given period. Precise timing is not guaranteed.
     // Note: do we want to auto-suspend timeouts for minimised windows? Perhaps
