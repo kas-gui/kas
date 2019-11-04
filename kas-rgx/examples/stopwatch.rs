@@ -10,7 +10,7 @@ use std::fmt::Write;
 use std::time::{Duration, Instant};
 
 use kas::class::HasText;
-use kas::event::{Condition, Response};
+use kas::event::{Callback, Response};
 use kas::macros::make_widget;
 use kas::widget::{Label, TextButton, Window};
 use kas::TkWidget;
@@ -84,7 +84,7 @@ fn make_window() -> Box<dyn kas::Window> {
 
     let mut window = Window::new(stopwatch);
 
-    window.add_callback(Condition::Repeat(Duration::from_millis(16)), &|w, tk| {
+    window.add_callback(Callback::Repeat(Duration::from_millis(16)), &|w, tk| {
         w.on_tick(tk)
     });
 

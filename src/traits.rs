@@ -7,7 +7,7 @@
 
 use std::fmt;
 
-use crate::event::{Condition, Handler};
+use crate::event::{Callback, Handler};
 use crate::geom::{AxisInfo, Rect, Size, SizeRules};
 use crate::toolkit::TkWidget;
 
@@ -182,7 +182,7 @@ pub trait Window: Widget + Handler<Msg = ()> {
     ///
     /// This returns a sequence of `(index, condition)` values. The toolkit
     /// should call `trigger_callback(index, tk)` whenever the condition is met.
-    fn callbacks(&self) -> Vec<(usize, Condition)>;
+    fn callbacks(&self) -> Vec<(usize, Callback)>;
 
     /// Trigger a callback (see `iter_callbacks`).
     fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWidget);

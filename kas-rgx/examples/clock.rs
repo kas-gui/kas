@@ -12,7 +12,7 @@ use chrono::prelude::*;
 use std::time::Duration;
 
 use kas::class::HasText;
-use kas::event::Condition;
+use kas::event::Callback;
 use kas::macros::make_widget;
 use kas::widget::{Label, Window};
 use kas::TkWidget;
@@ -34,7 +34,7 @@ fn main() {
         }
     });
 
-    window.add_callback(Condition::Repeat(Duration::from_secs(1)), &|w, tk| {
+    window.add_callback(Callback::Repeat(Duration::from_secs(1)), &|w, tk| {
         w.on_tick(tk)
     });
 

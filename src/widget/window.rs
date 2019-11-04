@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use crate::class::Class;
-use crate::event::{err_num, err_unhandled, Condition, Event, Handler, Response};
+use crate::event::{err_num, err_unhandled, Callback, Event, Handler, Response};
 use crate::geom::{AxisInfo, Coord, Rect, Size, SizeRules};
 use crate::macros::Widget;
 use crate::{Core, CoreData, Layout, TkWidget, Widget};
@@ -24,7 +24,7 @@ pub struct Window<W: Widget + 'static> {
     min_size: Size,
     #[widget]
     w: W,
-    fns: Vec<(Condition, &'static dyn Fn(&mut W, &mut dyn TkWidget))>,
+    fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut dyn TkWidget))>,
 }
 
 impl<W: Widget> Debug for Window<W> {
@@ -82,7 +82,7 @@ impl<W: Widget> Window<W> {
     /// condition. The closure must be passed by reference.
     pub fn add_callback(
         &mut self,
-        condition: Condition,
+        condition: Callback,
         f: &'static dyn Fn(&mut W, &mut dyn TkWidget),
     ) {
         self.fns.push((condition, f));
@@ -142,7 +142,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> kas::Window for Window<W> {
         // self.w.print_hierarchy(0);
     }
 
-    fn callbacks(&self) -> Vec<(usize, Condition)> {
+    fn callbacks(&self) -> Vec<(usize, Callback)> {
         self.fns.iter().map(|(cond, _)| *cond).enumerate().collect()
     }
 

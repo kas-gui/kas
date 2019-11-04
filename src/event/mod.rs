@@ -22,7 +22,7 @@ use winit::event::{ElementState, MouseButton};
 
 use crate::{Core, TkWidget};
 
-pub use callback::Condition;
+pub use callback::Callback;
 pub use events::*;
 pub use response::Response;
 

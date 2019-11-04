@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use rgx::core::*;
 use wgpu_glyph::GlyphBrushBuilder;
 
-use kas::event::{Condition, Event, EventChild, EventCoord, Response};
+use kas::event::{Callback, Event, EventChild, EventCoord, Response};
 use kas::geom::Size;
 use kas::TkWidget;
 use raw_window_handle::HasRawWindowHandle;
@@ -91,10 +91,10 @@ impl Window {
 
         for (i, condition) in self.win.callbacks() {
             match condition {
-                Condition::Start => {
+                Callback::Start => {
                     self.win.trigger_callback(i, &mut self.wrend);
                 }
-                Condition::Repeat(dur) => {
+                Callback::Repeat(dur) => {
                     self.win.trigger_callback(i, &mut self.wrend);
                     self.timeouts.push((i, Instant::now() + dur, Some(dur)));
                 }

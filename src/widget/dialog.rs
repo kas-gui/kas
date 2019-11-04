@@ -10,7 +10,7 @@
 
 use std::fmt::{self, Debug};
 
-use crate::event::{Condition, Event, Handler, Response};
+use crate::event::{Callback, Event, Handler, Response};
 use crate::geom::Size;
 use crate::macros::Widget;
 use crate::widget::{button, TextButton};
@@ -76,7 +76,7 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     }
 
     // doesn't support callbacks, so doesn't need to do anything here
-    fn callbacks(&self) -> Vec<(usize, Condition)> {
+    fn callbacks(&self) -> Vec<(usize, Callback)> {
         Vec::new()
     }
     fn trigger_callback(&mut self, _index: usize, _tk: &mut dyn TkWidget) {}
