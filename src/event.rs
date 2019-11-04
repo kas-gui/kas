@@ -17,8 +17,7 @@ use std::fmt::Debug;
 use winit::event::{DeviceId, ElementState, ModifiersState, MouseButton};
 
 use crate::geom::Coord;
-use crate::widget::Core;
-use crate::{TkWidget, WidgetId};
+use crate::{Core, TkWidget, WidgetId};
 
 /// High-level actions supported by widgets
 #[derive(Debug)]

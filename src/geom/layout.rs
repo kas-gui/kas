@@ -9,7 +9,7 @@ use std::fmt;
 
 use super::Rect;
 use crate::toolkit::TkWidget;
-use crate::widget::Core;
+use crate::Core;
 
 /// Used by the layout engine to specify the axis of interest.
 ///
