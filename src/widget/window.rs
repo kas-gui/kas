@@ -12,14 +12,14 @@ use crate::class::Class;
 use crate::event::{err_num, err_unhandled, Event, Handler, Response};
 use crate::geom::{AxisInfo, Coord, Rect, Size, SizeRules};
 use crate::macros::Widget;
-use crate::{Core, CoreData, Layout, TkWidget, Widget, Window};
+use crate::{Core, CoreData, Layout, TkWidget, Widget};
 
-/// The main instantiation of the `Window` trait.
+/// The main instantiation of the [`Window`] trait.
 ///
 /// TODO: change the name?
 #[widget(class = Class::Window)]
 #[derive(Widget)]
-pub struct SimpleWindow<W: Widget + 'static> {
+pub struct Window<W: Widget + 'static> {
     #[core]
     core: CoreData,
     min_size: Size,
@@ -28,11 +28,11 @@ pub struct SimpleWindow<W: Widget + 'static> {
     fns: Vec<(Condition, &'static dyn Fn(&mut W, &mut dyn TkWidget))>,
 }
 
-impl<W: Widget> Debug for SimpleWindow<W> {
+impl<W: Widget> Debug for Window<W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "SimpleWindow {{ core: {:?}, min_size: {:?}, solver: <omitted>, w: {:?}, fns: [",
+            "Window {{ core: {:?}, min_size: {:?}, solver: <omitted>, w: {:?}, fns: [",
             self.core, self.min_size, self.w
         )?;
         let mut iter = self.fns.iter();
@@ -46,9 +46,9 @@ impl<W: Widget> Debug for SimpleWindow<W> {
     }
 }
 
-impl<W: Widget + Clone> Clone for SimpleWindow<W> {
+impl<W: Widget + Clone> Clone for Window<W> {
     fn clone(&self) -> Self {
-        SimpleWindow {
+        Window {
             core: self.core.clone(),
             min_size: self.min_size,
             w: self.w.clone(),
@@ -57,7 +57,7 @@ impl<W: Widget + Clone> Clone for SimpleWindow<W> {
     }
 }
 
-impl<W: Widget> Layout for SimpleWindow<W> {
+impl<W: Widget> Layout for Window<W> {
     fn size_rules(&mut self, tk: &mut dyn TkWidget, axis: AxisInfo) -> SizeRules {
         self.w.size_rules(tk, axis)
     }
@@ -68,10 +68,10 @@ impl<W: Widget> Layout for SimpleWindow<W> {
     }
 }
 
-impl<W: Widget> SimpleWindow<W> {
+impl<W: Widget> Window<W> {
     /// Create
-    pub fn new(w: W) -> SimpleWindow<W> {
-        SimpleWindow {
+    pub fn new(w: W) -> Window<W> {
+        Window {
             core: Default::default(),
             min_size: Size::ZERO,
             w,
@@ -90,7 +90,7 @@ impl<W: Widget> SimpleWindow<W> {
     }
 }
 
-impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for SimpleWindow<W> {
+impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for Window<W> {
     type Msg = ();
 
     fn handle(&mut self, tk: &mut dyn TkWidget, event: Event) -> Response<Self::Msg> {
@@ -123,7 +123,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for SimpleWindow<W> {
     }
 }
 
-impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
+impl<M, W: Widget + Handler<Msg = M> + 'static> kas::Window for Window<W> {
     fn as_widget(&self) -> &dyn Widget {
         self
     }
@@ -139,7 +139,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Window for SimpleWindow<W> {
         let pos = Coord(0, 0);
         self.set_rect(Rect { pos, size });
 
-        // println!("SimpleWindow:");
+        // println!("Window:");
         // self.w.print_hierarchy(0);
     }
 

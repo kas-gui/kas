@@ -26,7 +26,7 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     };
 
-    let window = SimpleWindow::new(make_widget! {
+    let window = Window::new(make_widget! {
         container(vertical) => ();
         struct {
             #[widget] _ = Label::from("Widget Gallery"),

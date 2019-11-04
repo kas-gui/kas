@@ -13,4 +13,4 @@ mod window;
 pub use control::{button, CheckBox, TextButton};
 pub use dialog::{action_close, MessageBox};
 pub use text::{Entry, Label};
-pub use window::SimpleWindow;
+pub use window::Window;

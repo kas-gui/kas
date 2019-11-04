@@ -42,7 +42,7 @@ let buttons = make_widget! {
         #[widget] _ = TextButton::new_on("+", || Message::Incr),
     }
 };
-let window = SimpleWindow::new(make_widget! {
+let window = Window::new(make_widget! {
     container(vertical) => ();
     struct {
         #[widget] display: Label = Label::from("0"),

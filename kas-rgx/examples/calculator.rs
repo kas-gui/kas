@@ -12,7 +12,7 @@ use std::str::FromStr;
 use kas::class::HasText;
 use kas::event::Response;
 use kas::macros::make_widget;
-use kas::widget::{Entry, SimpleWindow, TextButton};
+use kas::widget::{Entry, TextButton, Window};
 use kas::TkWidget;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -70,7 +70,7 @@ fn main() -> Result<(), winit::error::OsError> {
             }
         }
     };
-    let window = SimpleWindow::new(content);
+    let window = Window::new(content);
 
     let mut toolkit = kas_rgx::Toolkit::new();
     toolkit.add(window)?;

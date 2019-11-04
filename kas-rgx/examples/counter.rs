@@ -9,7 +9,7 @@
 use kas::class::HasText;
 use kas::event::Response;
 use kas::macros::make_widget;
-use kas::widget::{Label, SimpleWindow, TextButton};
+use kas::widget::{Label, TextButton, Window};
 use kas::TkWidget;
 
 #[derive(Debug)]
@@ -26,7 +26,7 @@ fn main() -> Result<(), winit::error::OsError> {
             #[widget] _ = TextButton::new_on("+", || Message::Incr),
         }
     };
-    let window = SimpleWindow::new(make_widget! {
+    let window = Window::new(make_widget! {
         container(vertical) => ();
         struct {
             #[widget] display: Label = Label::from("0"),
