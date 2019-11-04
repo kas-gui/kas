@@ -3,8 +3,11 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Utility data types
+//! Geometry data types
 
+mod layout;
+
+pub use layout::*;
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 
 /// An `(x, y)` coordinate.
@@ -83,10 +86,6 @@ impl std::ops::Add for Size {
         Size(self.0 + other.0, self.1 + other.1)
     }
 }
-
-/// Child widget identifier
-//TODO: make a tuple struct?
-pub type WidgetId = u32;
 
 /// A rectangular region.
 #[derive(Clone, Copy, Default, Debug)]

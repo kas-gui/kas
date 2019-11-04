@@ -23,6 +23,7 @@ pub mod class;
 pub mod control;
 pub mod dialog;
 pub mod event;
+pub mod geom;
 pub mod text;
 
 // macro re-exports
@@ -32,3 +33,7 @@ pub mod macros;
 pub use crate::toolkit::*;
 pub use crate::widget::*;
 pub use crate::window::*;
+
+/// Child widget identifier
+//TODO: make a tuple struct?
+pub type WidgetId = u32;

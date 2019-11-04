@@ -14,7 +14,8 @@ use wgpu_glyph::{
 };
 
 use kas::class::{Align, Class};
-use kas::{AxisInfo, SizeRules, TkWidget, Widget, WidgetId};
+use kas::geom::{AxisInfo, SizeRules};
+use kas::{TkWidget, Widget, WidgetId};
 
 /// Font size (units are half-point sizes?)
 const FONT_SIZE: f32 = 20.0;

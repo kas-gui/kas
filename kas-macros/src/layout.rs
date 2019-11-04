@@ -28,7 +28,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, axis: kas::AxisInfo) -> kas::SizeRules {
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
                 (0, 0)
             }
         })
@@ -47,7 +47,7 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .emit();
         }
         Ok(quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, axis: kas::AxisInfo) -> kas::SizeRules {
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
                 tk.size_rules(self, axis)
             }
         })
@@ -63,11 +63,11 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
         }
         let ident = &children[0].ident;
         Ok(quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, axis: kas::AxisInfo) -> kas::SizeRules {
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
                 self.#ident.size_rules(tk, axis)
             }
 
-            fn set_rect(&mut self, rect: kas::Rect) {
+            fn set_rect(&mut self, rect: kas::geom::Rect) {
                 use kas::Core;
                 self.core_data_mut().rect = rect;
                 self.#ident.set_rect(rect);
@@ -265,7 +265,7 @@ impl ImplLayout {
 
         if self.layout != Layout::Vert {
             fields.append_all(quote! {
-                col_rules: [kas::SizeRules; #cols + 1],
+                col_rules: [kas::geom::SizeRules; #cols + 1],
             });
             field_ctors.append_all(quote! {
                 col_rules: Default::default(),
@@ -273,7 +273,7 @@ impl ImplLayout {
         }
         if self.layout != Layout::Horiz {
             fields.append_all(quote! {
-                row_rules: [kas::SizeRules; #rows + 1],
+                row_rules: [kas::geom::SizeRules; #rows + 1],
             });
             field_ctors.append_all(quote! {
                 row_rules: Default::default(),
@@ -401,8 +401,9 @@ impl ImplLayout {
         }
 
         let fns = quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, mut axis: kas::AxisInfo) -> kas::SizeRules {
-                use kas::{AxisInfo, Core, Size, SizeRules};
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWidget, mut axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
+                use kas::Core;
+                use kas::geom::{AxisInfo, Size, SizeRules};
 
                 #size_pre
                 #size
@@ -410,8 +411,9 @@ impl ImplLayout {
                 rules
             }
 
-            fn set_rect(&mut self, rect: kas::Rect) {
-                use kas::{Core, Coord, Size, SizeRules, Rect};
+            fn set_rect(&mut self, rect: kas::geom::Rect) {
+                use kas::Core;
+                use kas::geom::{Coord, Size, SizeRules, Rect};
                 self.core_data_mut().rect = rect;
 
                 #set_rect_pre

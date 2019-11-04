@@ -8,7 +8,8 @@
 //! TODO: "toolkit" is no longer an apt description of this internal API, but
 //! rather "theme + renderer".
 
-use crate::widget::{AxisInfo, SizeRules, Widget, WidgetId};
+use crate::geom::{AxisInfo, SizeRules};
+use crate::{Widget, WidgetId};
 
 /// Common widget properties. Implemented by the toolkit.
 ///

@@ -8,11 +8,8 @@
 #[macro_use]
 mod layout;
 
-mod data;
-
 pub use self::layout::*;
-
-pub use self::data::*;
+use crate::geom::Rect;
 
 /// Common widget data
 ///

@@ -12,7 +12,8 @@ use wgpu_glyph::GlyphBrushBuilder;
 
 use kas::callback::Condition;
 use kas::event::{Event, EventChild, EventCoord, Response};
-use kas::{Size, TkWidget};
+use kas::geom::Size;
+use kas::TkWidget;
 use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
