@@ -10,8 +10,7 @@
 
 use std::fmt::{self, Debug};
 
-use crate::callback::Condition;
-use crate::event::{Event, Handler, Response};
+use crate::event::{Condition, Event, Handler, Response};
 use crate::geom::Size;
 use crate::macros::Widget;
 use crate::widget::{button, TextButton};

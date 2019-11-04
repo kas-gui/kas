@@ -7,8 +7,7 @@
 
 use std::fmt;
 
-use crate::callback::Condition;
-use crate::event::Handler;
+use crate::event::{Condition, Handler};
 use crate::geom::{AxisInfo, Rect, Size, SizeRules};
 use crate::toolkit::TkWidget;
 

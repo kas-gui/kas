@@ -11,8 +11,8 @@ extern crate chrono;
 use chrono::prelude::*;
 use std::time::Duration;
 
-use kas::callback::Condition;
 use kas::class::HasText;
+use kas::event::Condition;
 use kas::macros::make_widget;
 use kas::widget::{Label, Window};
 use kas::TkWidget;

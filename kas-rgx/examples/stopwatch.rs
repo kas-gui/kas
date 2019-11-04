@@ -9,9 +9,8 @@
 use std::fmt::Write;
 use std::time::{Duration, Instant};
 
-use kas::callback::Condition;
 use kas::class::HasText;
-use kas::event::Response;
+use kas::event::{Condition, Response};
 use kas::macros::make_widget;
 use kas::widget::{Label, TextButton, Window};
 use kas::TkWidget;

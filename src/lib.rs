@@ -16,7 +16,6 @@ mod toolkit;
 mod traits;
 
 // public implementations:
-pub mod callback;
 pub mod class;
 pub mod event;
 pub mod geom;

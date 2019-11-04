@@ -7,6 +7,8 @@
 //!
 //! Note that callbacks are added to windows, hence some callback functionality
 //! is a detail of the [`Window`] trait.
+//!
+//! [`Window`]: crate::Window
 
 use std::time::Duration;
 

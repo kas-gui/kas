@@ -7,9 +7,8 @@
 
 use std::fmt::{self, Debug};
 
-use crate::callback::Condition;
 use crate::class::Class;
-use crate::event::{err_num, err_unhandled, Event, Handler, Response};
+use crate::event::{err_num, err_unhandled, Condition, Event, Handler, Response};
 use crate::geom::{AxisInfo, Coord, Rect, Size, SizeRules};
 use crate::macros::Widget;
 use crate::{Core, CoreData, Layout, TkWidget, Widget};
