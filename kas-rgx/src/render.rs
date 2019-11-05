@@ -15,7 +15,7 @@ use wgpu_glyph::{
 
 use kas::class::{Align, Class};
 use kas::geom::{AxisInfo, SizeRules};
-use kas::{TkAction, TkWindow, Widget, WidgetId};
+use kas::{event, TkAction, TkWindow, Widget, WidgetId};
 
 /// Font size (units are half-point sizes?)
 const FONT_SIZE: f32 = 20.0;
@@ -26,28 +26,29 @@ const MARGIN: f32 = 2.0;
 /// Widget renderer
 pub(crate) struct Widgets {
     pub(crate) glyph_brush: GlyphBrush<'static, ()>,
-    hover: Option<WidgetId>,
-    click_start: Option<WidgetId>,
     font_scale: f32,
     margin: f32,
     action: TkAction,
+    ev_mgr: event::ManagerData,
 }
 
 impl Widgets {
-    pub fn new(dpi: f32, glyph_brush: GlyphBrush<'static, ()>) -> Self {
+    pub fn new(dpi_factor: f64, glyph_brush: GlyphBrush<'static, ()>) -> Self {
+        let dpi = dpi_factor as f32;
         Widgets {
             glyph_brush,
-            hover: None,
-            click_start: None,
             font_scale: (FONT_SIZE * dpi).round(),
             margin: (MARGIN * dpi).round(),
             action: TkAction::None,
+            ev_mgr: event::ManagerData::new(dpi_factor),
         }
     }
 
-    pub fn set_dpi_factor(&mut self, dpi: f32) {
+    pub fn set_dpi_factor(&mut self, dpi_factor: f64) {
+        let dpi = dpi_factor as f32;
         self.font_scale = (FONT_SIZE * dpi).round();
         self.margin = (MARGIN * dpi).round();
+        self.ev_mgr.set_dpi_factor(dpi_factor);
         // Note: we rely on caller to resize widget
     }
 
@@ -148,10 +149,10 @@ impl Widgets {
             }
             Class::Button(cls) => {
                 background = Rgba::new(0.2, 0.7, 1.0, 1.0);
-                if self.hover == w_id {
-                    if self.click_start == w_id {
+                if self.ev_mgr.mouse_hover() == w_id {
+                    if self.ev_mgr.mouse_depress() == w_id {
                         background = Rgba::new(0.2, 0.6, 0.8, 1.0);
-                    } else if self.click_start.is_none() {
+                    } else if self.ev_mgr.mouse_depress().is_none() {
                         background = Rgba::new(0.25, 0.8, 1.0, 1.0);
                     }
                 }
@@ -187,7 +188,11 @@ impl Widgets {
         }
 
         // draw margin
-        let r = if self.hover == w_id { 1.0 } else { 0.5 };
+        let r = if self.ev_mgr.mouse_hover() == w_id {
+            1.0
+        } else {
+            0.5
+        };
         batch.add(Shape::Rectangle(
             Rect::new(x0, y0, x1, y1),
             Stroke::new(margin, Rgba::new(r, 0.5, 0.5, 1.0)),
@@ -197,6 +202,20 @@ impl Widgets {
 }
 
 impl TkWindow for Widgets {
+    fn data(&self) -> &event::ManagerData {
+        &self.ev_mgr
+    }
+
+    fn update_data(
+        &mut self,
+        f: fn(&mut event::ManagerData, Option<WidgetId>) -> bool,
+        id: Option<WidgetId>,
+    ) {
+        if f(&mut self.ev_mgr, id) {
+            self.send_action(TkAction::Redraw);
+        }
+    }
+
     fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
         let line_height = self.font_scale as u32;
         let mut bound = |vert: bool| -> u32 {
@@ -256,22 +275,5 @@ impl TkWindow for Widgets {
     #[inline]
     fn send_action(&mut self, action: TkAction) {
         self.action = self.action.max(action);
-    }
-
-    fn hover(&self) -> Option<WidgetId> {
-        self.hover
-    }
-    fn set_hover(&mut self, id: Option<WidgetId>) {
-        if self.hover != id {
-            self.hover = id;
-            self.send_action(TkAction::Redraw);
-        }
-    }
-
-    fn click_start(&self) -> Option<WidgetId> {
-        self.click_start
-    }
-    fn set_click_start(&mut self, id: Option<WidgetId>) {
-        self.click_start = id;
     }
 }

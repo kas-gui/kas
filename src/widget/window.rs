@@ -8,14 +8,12 @@
 use std::fmt::{self, Debug};
 
 use crate::class::Class;
-use crate::event::{err_num, err_unhandled, Callback, Event, Handler, Response};
+use crate::event::{Callback, Event, Handler, Response};
 use crate::geom::{AxisInfo, Coord, Rect, Size, SizeRules};
 use crate::macros::Widget;
 use crate::{Core, CoreData, Layout, TkWindow, Widget};
 
 /// The main instantiation of the [`Window`] trait.
-///
-/// TODO: change the name?
 #[widget(class = Class::Window)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
@@ -93,32 +91,13 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for Window<W> {
     type Msg = ();
 
     fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
-        match event {
-            Event::ToChild(id, ev) => {
-                if id < self.id() {
-                    // TODO: either allow a custom handler or require M=()
-                    let r = self.w.handle(tk, Event::ToChild(id, ev));
-                    Response::try_from(r).unwrap_or_else(|_| {
-                        println!("TODO: widget returned custom msg to window");
-                        Response::None
-                    })
-                } else if id == self.id() {
-                    match ev {
-                        _ => err_unhandled(Event::ToChild(id, ev)),
-                    }
-                } else {
-                    err_num()
-                }
-            }
-            Event::ToCoord(coord, ev) => {
-                // widget covers entire area
-                let r = self.w.handle(tk, Event::ToCoord(coord, ev));
-                Response::try_from(r).unwrap_or_else(|_| {
-                    println!("TODO: widget returned custom msg to window");
-                    Response::None
-                })
-            }
-        }
+        // The window itself doesn't handle events, so we can just pass through
+        // TODO: either allow a custom handler or require M=()
+        let r = self.w.handle(tk, event);
+        Response::try_from(r).unwrap_or_else(|_| {
+            println!("TODO: widget returned custom msg to window");
+            Response::None
+        })
     }
 }
 

@@ -243,7 +243,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     if f.sig.inputs.len() != 3 {
                         f.sig.span()
                             .unwrap()
-                            .error("handler functions must have signature: fn handler(&mut self, tk: &mut TkWindow, msg: T)")
+                            .error("handler functions must have signature: fn handler(&mut self, tk: &mut dyn TkWindow, msg: T)")
                             .emit();
                         return None;
                     }

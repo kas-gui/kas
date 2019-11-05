@@ -22,7 +22,7 @@ use std::fmt::Debug;
 // use std::path::PathBuf;
 
 #[cfg(feature = "winit")]
-pub use winit::event::{DeviceId, ElementState, ModifiersState, MouseButton};
+pub use winit::event::{DeviceId, ElementState, ModifiersState, MouseButton, WindowEvent};
 
 use crate::{Core, TkWindow};
 
@@ -30,7 +30,7 @@ pub use callback::Callback;
 #[cfg(not(feature = "winit"))]
 pub use enums::*;
 pub use events::*;
-pub use manager::Manager;
+pub use manager::{Manager, ManagerData};
 pub use response::Response;
 
 /// Mark explicitly ignored events.

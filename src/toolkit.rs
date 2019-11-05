@@ -15,7 +15,7 @@
 //! [winit]: https://github.com/rust-windowing/winit
 
 use crate::geom::{AxisInfo, SizeRules};
-use crate::{Widget, WidgetId};
+use crate::{event, Widget, WidgetId};
 
 /// Toolkit actions needed after event handling, if any.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
@@ -39,12 +39,24 @@ pub enum TkAction {
 ///
 /// This is implemented by a KAS toolkit on a window handle. Since each window
 /// is assumed to have uniform styling and this styling is provided by the
-/// toolkit, this interface includes widget styling ([`size_rules`]).
+/// toolkit, this interface includes widget styling ([`TkWindow::size_rules`]).
 ///
 /// Users interact with this trait in a few cases, such as implementing widget
 /// event handling. In these cases the user is *always* given an existing
 /// reference to a `TkWindow`. Mostly this trait is only used internally.
 pub trait TkWindow {
+    /// Read access to the event manager data
+    fn data(&self) -> &event::ManagerData;
+
+    /// Update event manager data with a closure
+    ///
+    /// The closure should return true if this update may require a redraw.
+    fn update_data(
+        &mut self,
+        f: fn(&mut event::ManagerData, Option<WidgetId>) -> bool,
+        id: Option<WidgetId>,
+    );
+
     /// Get the widget's size preferences
     ///
     /// See documentation of [`crate::Layout::size_rules`].
@@ -57,14 +69,4 @@ pub trait TkWindow {
     ///
     /// Allows signalling application exit, etc.
     fn send_action(&mut self, action: TkAction);
-
-    /// Get the widget under the mouse
-    fn hover(&self) -> Option<WidgetId>;
-    /// Set the widget under the mouse
-    fn set_hover(&mut self, id: Option<WidgetId>);
-
-    /// Get the widget under the mouse when a left-click starts
-    fn click_start(&self) -> Option<WidgetId>;
-    /// Set the widget under the mouse when a left-click starts
-    fn set_click_start(&mut self, id: Option<WidgetId>);
 }

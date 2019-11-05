@@ -10,14 +10,13 @@ use std::time::{Duration, Instant};
 use rgx::core::*;
 use wgpu_glyph::GlyphBrushBuilder;
 
-use kas::event::{Callback, Event, EventChild, EventCoord};
+use kas::event::Callback;
 use kas::geom::Size;
-use kas::{TkAction, TkWindow, WidgetId};
+use kas::{event, TkAction, WidgetId};
 use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
-use winit::event::{ElementState, MouseButton};
 use winit::event_loop::EventLoopWindowTarget;
 
 use crate::render::Widgets;
@@ -55,7 +54,7 @@ impl Window {
 
         let glyph_brush = GlyphBrushBuilder::using_font(crate::font::get_font())
             .build(rend.device.device_mut(), swap_chain.format());
-        let mut wrend = Widgets::new(dpi_factor as f32, glyph_brush);
+        let mut wrend = Widgets::new(dpi_factor, glyph_brush);
 
         win.resize(&mut wrend, size);
 
@@ -103,66 +102,16 @@ impl Window {
     ///
     /// Return true to remove the window
     pub fn handle_event(&mut self, event: WindowEvent) -> TkAction {
-        use WindowEvent::*;
+        // Note: resize must be handled here to update self.swap_chain.
         match event {
-            Resized(size) => {
-                self.do_resize(size);
-            }
-            CloseRequested => {
-                self.wrend.send_action(TkAction::Close);
-            }
-            CursorMoved {
-                device_id,
-                position,
-                modifiers,
-            } => {
-                let coord = position.to_physical(self.ww.hidpi_factor()).into();
-                let ev = EventCoord::CursorMoved {
-                    device_id,
-                    modifiers,
-                };
-                self.win.handle(&mut self.wrend, Event::ToCoord(coord, ev));
-            }
-            CursorLeft { .. } => {
-                self.wrend.set_hover(None);
-            }
-            MouseInput {
-                device_id,
-                state,
-                button,
-                modifiers,
-            } => {
-                let ev = EventChild::MouseInput {
-                    device_id,
-                    state,
-                    button,
-                    modifiers,
-                };
-                if let Some(id) = self.wrend.hover() {
-                    self.win.handle(&mut self.wrend, Event::ToChild(id, ev));
-                } else {
-                    // This happens for example on click-release when the
-                    // cursor is no longer over the window.
-                    // TODO: move event handler
-                    if button == MouseButton::Left && state == ElementState::Released {
-                        self.wrend.set_click_start(None);
-                    }
-                }
-            }
-            RedrawRequested => {
-                self.do_draw();
-            }
-            HiDpiFactorChanged(factor) => {
-                self.wrend.set_dpi_factor(factor as f32);
-                // NOTE: possibly the resize should be triggered directly by
-                // self.wrend on redraw; investigate when supporting reconfigure
+            WindowEvent::Resized(size) => self.do_resize(size),
+            WindowEvent::RedrawRequested => self.do_draw(),
+            WindowEvent::HiDpiFactorChanged(factor) => {
+                self.wrend.set_dpi_factor(factor);
                 self.do_resize(self.ww.inner_size());
             }
-            _ => {
-                // println!("Unhandled window event: {:?}", event);
-            }
-        };
-
+            event @ _ => event::Manager::handle_winit(&mut *self.win, &mut self.wrend, event),
+        }
         self.wrend.pop_action()
     }
 
