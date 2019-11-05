@@ -106,7 +106,7 @@ impl Manager {
                 widget.handle(tk, Event::ToCoord(coord, ev));
             }
             CursorLeft { .. } => {
-                tk.update_data(ManagerData::set_hover, None);
+                tk.update_data(&|data| data.set_hover(None));
             }
             MouseInput {
                 device_id,
@@ -126,7 +126,7 @@ impl Manager {
                     // This happens for example on click-release when the
                     // cursor is no longer over the window.
                     if button == MouseButton::Left && state == ElementState::Released {
-                        tk.update_data(ManagerData::set_click_start, None);
+                        tk.update_data(&|data| data.set_click_start(None));
                     }
                 }
             }
@@ -152,7 +152,7 @@ impl Manager {
                     if button == MouseButton::Left {
                         match state {
                             ElementState::Pressed => {
-                                tk.update_data(ManagerData::set_click_start, w_id);
+                                tk.update_data(&|data| data.set_click_start(w_id));
                                 Response::None
                             }
                             ElementState::Released => {
@@ -161,7 +161,7 @@ impl Manager {
                                 } else {
                                     Response::None
                                 };
-                                tk.update_data(ManagerData::set_click_start, None);
+                                tk.update_data(&|data| data.set_click_start(None));
                                 r
                             }
                         }
@@ -174,7 +174,7 @@ impl Manager {
                 match ev {
                     EventCoord::CursorMoved { .. } => {
                         // We can assume the pointer is over this widget
-                        tk.update_data(ManagerData::set_hover, w_id);
+                        tk.update_data(&|data| data.set_hover(w_id));
                         Response::None
                     }
                 }

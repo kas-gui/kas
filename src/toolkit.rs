@@ -15,7 +15,7 @@
 //! [winit]: https://github.com/rust-windowing/winit
 
 use crate::geom::{AxisInfo, SizeRules};
-use crate::{event, Widget, WidgetId};
+use crate::{event, Widget};
 
 /// Toolkit actions needed after event handling, if any.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
@@ -51,11 +51,7 @@ pub trait TkWindow {
     /// Update event manager data with a closure
     ///
     /// The closure should return true if this update may require a redraw.
-    fn update_data(
-        &mut self,
-        f: fn(&mut event::ManagerData, Option<WidgetId>) -> bool,
-        id: Option<WidgetId>,
-    );
+    fn update_data(&mut self, f: &dyn Fn(&mut event::ManagerData) -> bool);
 
     /// Get the widget's size preferences
     ///

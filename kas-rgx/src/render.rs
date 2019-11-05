@@ -15,7 +15,7 @@ use wgpu_glyph::{
 
 use kas::class::{Align, Class};
 use kas::geom::{AxisInfo, SizeRules};
-use kas::{event, TkAction, TkWindow, Widget, WidgetId};
+use kas::{event, TkAction, TkWindow, Widget};
 
 /// Font size (units are half-point sizes?)
 const FONT_SIZE: f32 = 20.0;
@@ -206,12 +206,8 @@ impl TkWindow for Widgets {
         &self.ev_mgr
     }
 
-    fn update_data(
-        &mut self,
-        f: fn(&mut event::ManagerData, Option<WidgetId>) -> bool,
-        id: Option<WidgetId>,
-    ) {
-        if f(&mut self.ev_mgr, id) {
+    fn update_data(&mut self, f: &dyn Fn(&mut event::ManagerData) -> bool) {
+        if f(&mut self.ev_mgr) {
             self.send_action(TkAction::Redraw);
         }
     }
