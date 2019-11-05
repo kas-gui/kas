@@ -16,7 +16,7 @@ pub struct ManagerData {
     dpi_factor: f64,
     hover: Option<WidgetId>,
     click_start: Option<WidgetId>,
-    touch_starts: Vec<(u64, WidgetId)>,
+    touch_events: Vec<(u64, WidgetId, WidgetId)>,
 }
 
 impl ManagerData {
@@ -31,7 +31,7 @@ impl ManagerData {
             dpi_factor,
             hover: None,
             click_start: None,
-            touch_starts: vec![],
+            touch_events: Vec::with_capacity(10),
         }
     }
 
@@ -42,10 +42,18 @@ impl ManagerData {
         self.dpi_factor = dpi_factor;
     }
 
-    /// Get whether the widget is under the mouse
+    /// Get whether the widget is under the mouse or finger
     #[inline]
     pub fn is_hovered(&self, w_id: WidgetId) -> bool {
-        self.hover == Some(w_id)
+        if self.hover == Some(w_id) {
+            return true;
+        }
+        for start in &self.touch_events {
+            if start.2 == w_id {
+                return true;
+            }
+        }
+        false
     }
 
     /// Check whether the given widget is visually depressed
@@ -54,8 +62,8 @@ impl ManagerData {
         if self.click_start == Some(w_id) && self.hover == Some(w_id) {
             return true;
         }
-        for start in &self.touch_starts {
-            if start.1 == w_id {
+        for start in &self.touch_events {
+            if start.1 == w_id && start.2 == w_id {
                 return true;
             }
         }
@@ -79,11 +87,21 @@ impl ManagerData {
 
     fn start_touch(&mut self, id: u64, w_id: WidgetId) -> bool {
         assert!(self.clear_touch(id) == false);
-        self.touch_starts.push((id, w_id));
+        self.touch_events.push((id, w_id, w_id));
         true
     }
+    fn touch_move(&mut self, id: u64, w_id: WidgetId) -> bool {
+        for start in &mut self.touch_events {
+            if start.0 == id {
+                start.2 = w_id;
+                return true;
+            }
+        }
+        assert!(false);
+        false
+    }
     fn touch_start(&self, id: u64) -> Option<WidgetId> {
-        for start in &self.touch_starts {
+        for start in &self.touch_events {
             if start.0 == id {
                 return Some(start.1);
             }
@@ -91,9 +109,9 @@ impl ManagerData {
         None
     }
     fn clear_touch(&mut self, id: u64) -> bool {
-        for (i, start) in self.touch_starts.iter().enumerate() {
+        for (i, start) in self.touch_events.iter().enumerate() {
             if start.0 == id {
-                self.touch_starts.remove(i);
+                self.touch_events.remove(i);
                 return true;
             }
         }
@@ -226,6 +244,10 @@ impl Manager {
                     }
                     EventCoord::TouchStart(id) => {
                         tk.update_data(&|data| data.start_touch(id, w_id));
+                        Response::None
+                    }
+                    EventCoord::TouchMove(id) => {
+                        tk.update_data(&|data| data.touch_move(id, w_id));
                         Response::None
                     }
                     EventCoord::TouchEnd(id) => {

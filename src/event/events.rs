@@ -60,6 +60,7 @@ pub enum EventCoord {
         modifiers: ModifiersState,
     },
     TouchStart(u64),
+    TouchMove(u64),
     TouchEnd(u64),
 }
 
