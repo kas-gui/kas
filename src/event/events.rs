@@ -59,36 +59,3 @@ pub enum EventCoord {
     TouchMove(u64),
     TouchEnd(u64),
 }
-
-// TODO:
-//     DroppedFile(PathBuf),
-//     HoveredFile(PathBuf),
-//     HoveredFileCancelled,
-//     ReceivedCharacter(char),
-//     Focused(bool),
-//     KeyboardInput {
-//         device_id: DeviceId,
-//         input: KeyboardInput,
-//     },
-//     CursorEntered {
-//         device_id: DeviceId,
-//     },
-//     CursorLeft {
-//         device_id: DeviceId,
-//     },
-//     MouseWheel {
-//         device_id: DeviceId,
-//         delta: MouseScrollDelta,
-//         phase: TouchPhase,
-//         modifiers: ModifiersState,
-//     },
-//     TouchpadPressure {
-//         device_id: DeviceId,
-//         pressure: f32,
-//         stage: i64,
-//     },
-//     AxisMotion {
-//         device_id: DeviceId,
-//         axis: AxisId,
-//         value: f64,
-//     },

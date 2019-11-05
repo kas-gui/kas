@@ -137,9 +137,18 @@ impl Manager {
         use winit::event::{TouchPhase, WindowEvent::*};
 
         match event {
+            // Resized(size) [handled by toolkit]
+            // Moved(position)
             CloseRequested => {
                 tk.send_action(TkAction::Close);
             }
+            // Destroyed
+            // DroppedFile(PathBuf),
+            // HoveredFile(PathBuf),
+            // HoveredFileCancelled,
+            // ReceivedCharacter(char),
+            // Focused(bool),
+            // KeyboardInput { input: KeyboardInput, .. },
             CursorMoved {
                 position,
                 modifiers,
@@ -149,9 +158,11 @@ impl Manager {
                 let ev = EventCoord::CursorMoved { modifiers };
                 widget.handle(tk, Event::ToCoord(coord, ev));
             }
+            // CursorEntered { .. },
             CursorLeft { .. } => {
                 tk.update_data(&|data| data.set_hover(None));
             }
+            // MouseWheel { delta: MouseScrollDelta, phase: TouchPhase, modifiers: ModifiersState, .. },
             MouseInput {
                 state,
                 button,
@@ -173,6 +184,9 @@ impl Manager {
                     }
                 }
             }
+            // TouchpadPressure { pressure: f32, stage: i64, },
+            // AxisMotion { axis: AxisId, value: f64, },
+            // RedrawRequested [handled by toolkit]
             Touch(touch) => {
                 let coord = touch.location.to_physical(tk.data().dpi_factor).into();
                 match touch.phase {
@@ -193,6 +207,7 @@ impl Manager {
                     }
                 }
             }
+            // HiDpiFactorChanged(factor) [handled by toolkit]
             _ => {
                 // println!("Unhandled window event: {:?}", event);
             }
