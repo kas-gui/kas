@@ -11,7 +11,7 @@
 //! parent and any result is pushed back up the call stack. The model allows
 //! type-safety while allowing user-defined result types.
 
-use super::{DeviceId, ElementState, ModifiersState, MouseButton};
+use super::{ElementState, ModifiersState, MouseButton};
 
 use crate::geom::Coord;
 use crate::WidgetId;
@@ -45,7 +45,6 @@ pub enum Event {
 #[derive(Debug)]
 pub enum EventChild {
     MouseInput {
-        device_id: DeviceId,
         state: ElementState,
         button: MouseButton,
         modifiers: ModifiersState,
@@ -55,10 +54,7 @@ pub enum EventChild {
 /// Events addressed by coordinate
 #[derive(Debug)]
 pub enum EventCoord {
-    CursorMoved {
-        device_id: DeviceId,
-        modifiers: ModifiersState,
-    },
+    CursorMoved { modifiers: ModifiersState },
     TouchStart(u64),
     TouchMove(u64),
     TouchEnd(u64),

@@ -22,7 +22,7 @@ use std::fmt::Debug;
 // use std::path::PathBuf;
 
 #[cfg(feature = "winit")]
-pub use winit::event::{DeviceId, ElementState, ModifiersState, MouseButton, WindowEvent};
+pub use winit::event::{ElementState, ModifiersState, MouseButton};
 
 use crate::{Core, TkWindow};
 

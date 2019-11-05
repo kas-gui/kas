@@ -5,27 +5,9 @@
 
 //! Event enum fallbacks for use without winit
 
-/// Identifier of an input device.
-///
-/// When compiled without the `winit` feature, this is just a dummy type.
-#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
-pub struct DeviceId;
-
-impl DeviceId {
-    /// Returns a dummy `DeviceId`. The only guarantees made about the return
-    /// value of this function is that it will always be equal to itself and to
-    /// future values returned by this function.
-    ///
-    /// In contrast to winit's equivalent, this function is safe. If KAS's winit
-    /// dependency is enabled, calls to this function will become unsafe.
-    pub fn dummy() -> Self {
-        DeviceId
-    }
-}
-
 /// Describes the input state of a key.
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum ElementState {
     Pressed,
     Released,

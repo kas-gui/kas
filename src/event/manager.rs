@@ -129,41 +129,36 @@ impl Manager {
     /// events the toolkit must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(feature = "winit")]
-    pub fn handle_winit<W>(widget: &mut W, tk: &mut dyn TkWindow, event: WindowEvent)
+    pub fn handle_winit<W>(widget: &mut W, tk: &mut dyn TkWindow, event: winit::event::WindowEvent)
     where
         W: Handler + ?Sized,
     {
         use crate::TkAction;
-        use winit::event::TouchPhase;
-        use WindowEvent::*;
+        use winit::event::{TouchPhase, WindowEvent::*};
 
         match event {
             CloseRequested => {
                 tk.send_action(TkAction::Close);
             }
             CursorMoved {
-                device_id,
                 position,
                 modifiers,
+                ..
             } => {
                 let coord = position.to_physical(tk.data().dpi_factor).into();
-                let ev = EventCoord::CursorMoved {
-                    device_id,
-                    modifiers,
-                };
+                let ev = EventCoord::CursorMoved { modifiers };
                 widget.handle(tk, Event::ToCoord(coord, ev));
             }
             CursorLeft { .. } => {
                 tk.update_data(&|data| data.set_hover(None));
             }
             MouseInput {
-                device_id,
                 state,
                 button,
                 modifiers,
+                ..
             } => {
                 let ev = EventChild::MouseInput {
-                    device_id,
                     state,
                     button,
                     modifiers,
