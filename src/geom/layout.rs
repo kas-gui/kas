@@ -5,12 +5,6 @@
 
 //! Data types specific to the layout engine
 
-use std::fmt;
-
-use super::Rect;
-use crate::toolkit::TkWindow;
-use crate::Core;
-
 /// Used by the layout engine to specify the axis of interest.
 ///
 /// The layout engine works on a single axis at a time, and when doing so may
@@ -62,7 +56,7 @@ impl AxisInfo {
     }
 }
 
-/// Return value of [`Layout::size_rules`].
+/// Return value of [`crate::Layout::size_rules`].
 ///
 /// This struct conveys properties such as the minimum size and preferred size
 /// of the widgets being queried.
@@ -244,32 +238,5 @@ impl std::ops::AddAssign for SizeRules {
             a: self.a + rhs.a,
             b: self.b + rhs.b,
         };
-    }
-}
-
-/// Widget size and layout.
-pub trait Layout: Core + fmt::Debug {
-    /// Get size rules for the given axis.
-    ///
-    /// This method takes `&mut self` to allow local caching of child widget
-    /// configuration for future `size_rules` and `set_rect` calls.
-    ///
-    /// If operating on one axis and the other is fixed, then the `other`
-    /// parameter is used for the fixed dimension. Additionally, one may assume
-    /// that `size_rules` has previously been called on the fixed axis with the
-    /// current widget configuration.
-    fn size_rules(&mut self, tk: &mut dyn TkWindow, axis: AxisInfo) -> SizeRules;
-
-    /// Adjust to the given size.
-    ///
-    /// For many widgets this operation is trivial and the default
-    /// implementation will suffice. For layout widgets (those with children),
-    /// this operation is more complex.
-    ///
-    /// One may assume that `size_rules` has been called for each axis with the
-    /// current widget configuration.
-    #[inline]
-    fn set_rect(&mut self, rect: Rect) {
-        self.core_data_mut().rect = rect;
     }
 }
