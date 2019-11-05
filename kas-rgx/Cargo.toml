@@ -12,14 +12,9 @@ repository = "https://github.com/dhardy/kas"
 [features]
 [dependencies]
 kas = { path = "..", version = "0.0.2", features = ["winit"] }
-# TODO: expose backend features
-rgx = { version = "0.2", features = ["vulkan"] }
-# Note: alpha4 is a breaking release due to raw-window-handle changes;
-# we must wait until rgx & wgpu dependencies have been updated.
-winit = "=0.20.0-alpha3"
-raw-window-handle = "0.1"
-wgpu = "0.3.0"
-wgpu_glyph = "0.4.0"
+rgx = { version = "0.3" }
+winit = "=0.20.0-alpha4"
+wgpu_glyph = "0.5.0"
 font-kit = { version = "0.4.0", optional = true }
 lazy_static = "1.4.0"
 

@@ -13,7 +13,6 @@ use wgpu_glyph::GlyphBrushBuilder;
 use kas::event::Callback;
 use kas::geom::Size;
 use kas::{event, TkAction, WidgetId};
-use raw_window_handle::HasRawWindowHandle;
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
@@ -48,7 +47,7 @@ impl Window {
         let dpi_factor = ww.hidpi_factor();
         let size: Size = ww.inner_size().to_physical(dpi_factor).into();
 
-        let mut rend = Renderer::new(ww.raw_window_handle());
+        let mut rend = Renderer::new(&ww);
         let pipeline = rend.pipeline(Blending::default());
         let swap_chain = rend.swap_chain(size.0, size.1, PresentMode::default());
 
