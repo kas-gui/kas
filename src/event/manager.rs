@@ -185,7 +185,10 @@ impl Manager {
                         let ev = EventCoord::TouchStart(touch.id);
                         widget.handle(tk, Event::ToCoord(coord, ev));
                     }
-                    TouchPhase::Moved => (), // currently nothing to do
+                    TouchPhase::Moved => {
+                        let ev = EventCoord::TouchMove(touch.id);
+                        widget.handle(tk, Event::ToCoord(coord, ev));
+                    }
                     TouchPhase::Ended => {
                         let ev = EventCoord::TouchEnd(touch.id);
                         widget.handle(tk, Event::ToCoord(coord, ev));
