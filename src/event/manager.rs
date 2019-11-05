@@ -16,6 +16,7 @@ pub struct ManagerData {
     dpi_factor: f64,
     hover: Option<WidgetId>,
     click_start: Option<WidgetId>,
+    touch_starts: Vec<(u64, WidgetId)>,
 }
 
 impl ManagerData {
@@ -30,6 +31,7 @@ impl ManagerData {
             dpi_factor,
             hover: None,
             click_start: None,
+            touch_starts: vec![],
         }
     }
 
@@ -71,6 +73,29 @@ impl ManagerData {
         }
         false
     }
+
+    fn start_touch(&mut self, id: u64, w_id: WidgetId) -> bool {
+        assert!(self.clear_touch(id) == false);
+        self.touch_starts.push((id, w_id));
+        true
+    }
+    fn touch_start(&self, id: u64) -> Option<WidgetId> {
+        for start in &self.touch_starts {
+            if start.0 == id {
+                return Some(start.1);
+            }
+        }
+        None
+    }
+    fn clear_touch(&mut self, id: u64) -> bool {
+        for (i, start) in self.touch_starts.iter().enumerate() {
+            if start.0 == id {
+                self.touch_starts.remove(i);
+                return true;
+            }
+        }
+        false
+    }
 }
 
 /// An interface for managing per-widget events
@@ -88,7 +113,9 @@ impl Manager {
         W: Handler + ?Sized,
     {
         use crate::TkAction;
+        use winit::event::TouchPhase;
         use WindowEvent::*;
+
         match event {
             CloseRequested => {
                 tk.send_action(TkAction::Close);
@@ -130,6 +157,23 @@ impl Manager {
                     }
                 }
             }
+            Touch(touch) => {
+                let coord = touch.location.to_physical(tk.data().dpi_factor).into();
+                match touch.phase {
+                    TouchPhase::Started => {
+                        let ev = EventCoord::TouchStart(touch.id);
+                        widget.handle(tk, Event::ToCoord(coord, ev));
+                    }
+                    TouchPhase::Moved => (), // currently nothing to do
+                    TouchPhase::Ended => {
+                        let ev = EventCoord::TouchEnd(touch.id);
+                        widget.handle(tk, Event::ToCoord(coord, ev));
+                    }
+                    TouchPhase::Cancelled => {
+                        tk.update_data(&|data| data.clear_touch(touch.id));
+                    }
+                }
+            }
             _ => {
                 // println!("Unhandled window event: {:?}", event);
             }
@@ -145,18 +189,18 @@ impl Manager {
     where
         W: Handler + ?Sized,
     {
-        let w_id = Some(widget.id());
+        let w_id = widget.id();
         match event {
             Event::ToChild(_, ev) => match ev {
                 EventChild::MouseInput { state, button, .. } => {
                     if button == MouseButton::Left {
                         match state {
                             ElementState::Pressed => {
-                                tk.update_data(&|data| data.set_click_start(w_id));
+                                tk.update_data(&|data| data.set_click_start(Some(w_id)));
                                 Response::None
                             }
                             ElementState::Released => {
-                                let r = if tk.data().click_start == w_id {
+                                let r = if tk.data().click_start == Some(w_id) {
                                     widget.handle_action(tk, Action::Activate)
                                 } else {
                                     Response::None
@@ -174,8 +218,21 @@ impl Manager {
                 match ev {
                     EventCoord::CursorMoved { .. } => {
                         // We can assume the pointer is over this widget
-                        tk.update_data(&|data| data.set_hover(w_id));
+                        tk.update_data(&|data| data.set_hover(Some(w_id)));
                         Response::None
+                    }
+                    EventCoord::TouchStart(id) => {
+                        tk.update_data(&|data| data.start_touch(id, w_id));
+                        Response::None
+                    }
+                    EventCoord::TouchEnd(id) => {
+                        let r = if tk.data().touch_start(id) == Some(w_id) {
+                            widget.handle_action(tk, Action::Activate)
+                        } else {
+                            Response::None
+                        };
+                        tk.update_data(&|data| data.clear_touch(id));
+                        r
                     }
                 }
             }

@@ -59,6 +59,8 @@ pub enum EventCoord {
         device_id: DeviceId,
         modifiers: ModifiersState,
     },
+    TouchStart(u64),
+    TouchEnd(u64),
 }
 
 // TODO:
@@ -93,5 +95,3 @@ pub enum EventCoord {
 //         axis: AxisId,
 //         value: f64,
 //     },
-//     Touch(Touch),
-//     HiDpiFactorChanged(f64),
