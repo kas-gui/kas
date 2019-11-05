@@ -5,6 +5,8 @@
 
 //! Event manager
 
+use std::collections::HashMap;
+
 use super::*;
 use crate::{TkWindow, WidgetId};
 
@@ -17,6 +19,7 @@ pub struct ManagerData {
     hover: Option<WidgetId>,
     click_start: Option<WidgetId>,
     touch_events: Vec<(u64, WidgetId, WidgetId)>,
+    accel_keys: HashMap<VirtualKeyCode, WidgetId>,
 }
 
 impl ManagerData {
@@ -32,6 +35,7 @@ impl ManagerData {
             hover: None,
             click_start: None,
             touch_events: Vec::with_capacity(10),
+            accel_keys: HashMap::new(),
         }
     }
 
@@ -128,6 +132,7 @@ impl Manager {
     /// Note that some event types are not *does not* handled, since for these
     /// events the toolkit must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
+    // TODO: use widget.handle() return value?
     #[cfg(feature = "winit")]
     pub fn handle_winit<W>(widget: &mut W, tk: &mut dyn TkWindow, event: winit::event::WindowEvent)
     where
@@ -148,7 +153,14 @@ impl Manager {
             // HoveredFileCancelled,
             // ReceivedCharacter(char),
             // Focused(bool),
-            // KeyboardInput { input: KeyboardInput, .. },
+            KeyboardInput { input, .. } => {
+                if let Some(vkey) = input.virtual_keycode {
+                    if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
+                        let ev = EventChild::Action(Action::Activate);
+                        widget.handle(tk, Event::ToChild(id, ev));
+                    }
+                }
+            }
             CursorMoved {
                 position,
                 modifiers,
@@ -226,6 +238,7 @@ impl Manager {
         let w_id = widget.id();
         match event {
             Event::ToChild(_, ev) => match ev {
+                EventChild::Action(action) => widget.handle_action(tk, action),
                 EventChild::MouseInput { state, button, .. } => {
                     if button == MouseButton::Left {
                         match state {

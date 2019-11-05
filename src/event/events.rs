@@ -44,6 +44,7 @@ pub enum Event {
 /// Events addressed to a child by [`WidgetId`]
 #[derive(Debug)]
 pub enum EventChild {
+    Action(Action),
     MouseInput {
         state: ElementState,
         button: MouseButton,
