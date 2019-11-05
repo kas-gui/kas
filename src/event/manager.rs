@@ -42,21 +42,24 @@ impl ManagerData {
         self.dpi_factor = dpi_factor;
     }
 
-    /// Get the widget under the mouse
+    /// Get whether the widget is under the mouse
     #[inline]
-    pub fn mouse_hover(&self) -> Option<WidgetId> {
-        self.hover
+    pub fn is_hovered(&self, w_id: WidgetId) -> bool {
+        self.hover == Some(w_id)
     }
 
-    /// Get the widget depressed by the mouse
-    ///
-    /// Note that this may be a different widget than that given by
-    /// [`ManagerData::mouse_hover`] since a widget counts as "depressed" by the mouse until
-    /// a click action on that widget is either completed or cancelled. Visually
-    /// a widget may only appear depressed if both point to the same widget.
+    /// Check whether the given widget is visually depressed
     #[inline]
-    pub fn mouse_depress(&self) -> Option<WidgetId> {
-        self.click_start
+    pub fn is_depressed(&self, w_id: WidgetId) -> bool {
+        if self.click_start == Some(w_id) && self.hover == Some(w_id) {
+            return true;
+        }
+        for start in &self.touch_starts {
+            if start.1 == w_id {
+                return true;
+            }
+        }
+        false
     }
 
     fn set_hover(&mut self, w_id: Option<WidgetId>) -> bool {

@@ -84,7 +84,7 @@ impl Widgets {
 
     fn draw_widget(&mut self, batch: &mut Batch, height: f32, widget: &dyn kas::Widget) {
         // This is a hacky draw routine just to show where widgets are.
-        let w_id = Some(widget.id());
+        let w_id = widget.id();
 
         // Note: widget coordinates place the origin at the top-left.
         // Draw coordinates use f32 with the origin at the bottom-left.
@@ -149,12 +149,10 @@ impl Widgets {
             }
             Class::Button(cls) => {
                 background = Rgba::new(0.2, 0.7, 1.0, 1.0);
-                if self.ev_mgr.mouse_hover() == w_id {
-                    if self.ev_mgr.mouse_depress() == w_id {
-                        background = Rgba::new(0.2, 0.6, 0.8, 1.0);
-                    } else if self.ev_mgr.mouse_depress().is_none() {
-                        background = Rgba::new(0.25, 0.8, 1.0, 1.0);
-                    }
+                if self.ev_mgr.is_depressed(w_id) {
+                    background = Rgba::new(0.2, 0.6, 0.8, 1.0);
+                } else if self.ev_mgr.is_hovered(w_id) {
+                    background = Rgba::new(0.25, 0.8, 1.0, 1.0);
                 }
                 let color = [1.0, 1.0, 1.0, 1.0];
                 self.glyph_brush.queue(Section {
@@ -188,7 +186,7 @@ impl Widgets {
         }
 
         // draw margin
-        let r = if self.ev_mgr.mouse_hover() == w_id {
+        let r = if self.ev_mgr.is_hovered(w_id) {
             1.0
         } else {
             0.5
