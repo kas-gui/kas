@@ -11,7 +11,7 @@ use crate::class::Class;
 use crate::event::{Callback, Event, Handler, Response};
 use crate::geom::{AxisInfo, Coord, Rect, Size, SizeRules};
 use crate::macros::Widget;
-use crate::{Core, CoreData, Layout, TkWindow, Widget};
+use crate::{Core, CoreData, Layout, TkWindow, Widget, WidgetId};
 
 /// The main instantiation of the [`Window`] trait.
 #[widget(class = Class::Window)]
@@ -107,6 +107,14 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> kas::Window for Window<W> {
     }
     fn as_widget_mut(&mut self) -> &mut dyn Widget {
         self
+    }
+
+    fn configure(&mut self) {
+        let mut id = WidgetId::FIRST;
+        self.walk(&mut |widget| {
+            widget.core_data_mut().id = id;
+            id = id.next();
+        });
     }
 
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {

@@ -68,6 +68,11 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     };
     let get_rules = make_match_rules(&args.children, quote! {});
     let get_mut_rules = make_match_rules(&args.children, quote! {mut});
+    let walk_rules = args.children.iter().fold(quote! {}, |mut init, child| {
+        let ident = &child.ident;
+        init.append_all(quote! { self.#ident.walk(f); });
+        init
+    });
 
     let mut toks = quote! {
         impl #impl_generics kas::Core
@@ -103,6 +108,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     #get_mut_rules
                     _ => None
                 }
+            }
+            fn walk(&mut self, f: &mut dyn FnMut(&mut dyn kas::Widget)) {
+                #walk_rules
+                f(self);
             }
         }
     };

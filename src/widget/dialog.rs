@@ -71,6 +71,10 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
         self
     }
 
+    fn configure(&mut self) {
+        unimplemented!()
+    }
+
     fn resize(&mut self, _tk: &mut dyn TkWindow, _size: Size) {
         unimplemented!()
     }

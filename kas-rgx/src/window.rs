@@ -12,7 +12,7 @@ use wgpu_glyph::GlyphBrushBuilder;
 
 use kas::event::Callback;
 use kas::geom::Size;
-use kas::{event, TkAction, WidgetId};
+use kas::{event, TkAction};
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
@@ -41,7 +41,7 @@ impl Window {
         event_loop: &EventLoopWindowTarget<T>,
         mut win: Box<dyn kas::Window>,
     ) -> Result<Window, OsError> {
-        win.enumerate(WidgetId::FIRST);
+        win.configure();
 
         let ww = winit::window::Window::new(event_loop)?;
         let dpi_factor = ww.hidpi_factor();

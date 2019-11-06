@@ -111,17 +111,11 @@ pub trait Widget: Layout {
     /// Mutable variant of get
     fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
 
-    #[doc(hidden)]
-    /// This is only for use by toolkits.
+    /// Walk through all widgets, calling `f` once on each.
     ///
-    /// Set the numeric [`WidgetId`] for self and each child. Returns own number + 1.
-    fn enumerate(&mut self, mut n: WidgetId) -> WidgetId {
-        for i in 0..self.len() {
-            self.get_mut(i).map(|w| n = w.enumerate(n));
-        }
-        self.core_data_mut().id = n;
-        n.next()
-    }
+    /// This walk is iterative (nonconcurrent), depth-first, and always calls
+    /// `f` on self *after* walking through all children.
+    fn walk(&mut self, f: &mut dyn FnMut(&mut dyn Widget));
 
     /// Debug tool: print the widget hierarchy
     fn print_hierarchy(&self, depth: usize) {
@@ -153,6 +147,9 @@ pub trait Window: Widget + Handler<Msg = ()> {
     ///
     /// Note: needed because Rust does not yet support trait object upcasting
     fn as_widget_mut(&mut self) -> &mut dyn Widget;
+
+    /// Configure widgets. Called by the toolkit.
+    fn configure(&mut self);
 
     /// Adjust the size of the window, repositioning widgets.
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size);
