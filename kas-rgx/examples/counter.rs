@@ -12,7 +12,7 @@ use kas::macros::make_widget;
 use kas::widget::{Label, TextButton, Window};
 use kas::TkWindow;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum Message {
     Decr,
     Incr,
@@ -22,8 +22,8 @@ fn main() -> Result<(), winit::error::OsError> {
     let buttons = make_widget! {
         container(horizontal) => Message;
         struct {
-            #[widget] _ = TextButton::new_on("−", || Message::Decr),
-            #[widget] _ = TextButton::new_on("+", || Message::Incr),
+            #[widget] _ = TextButton::new("−", Message::Decr),
+            #[widget] _ = TextButton::new("+", Message::Incr),
         }
     };
     let window = Window::new(make_widget! {

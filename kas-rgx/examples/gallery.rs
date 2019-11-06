@@ -18,7 +18,7 @@ fn main() -> Result<(), winit::error::OsError> {
             #[widget(row=1, col=0)] _ = Label::from("Entry"),
             #[widget(row=1, col=1)] _ = Entry::new("edit me"),
             #[widget(row=2, col=0)] _ = Label::from("TextButton"),
-            #[widget(row=2, col=1)] _ = TextButton::new_on("Press me", || println!("Clicked!")),
+            #[widget(row=2, col=1)] _ = TextButton::new("Press me", println!("Clicked!")),
             #[widget(row=3, col=0)] _ = Label::from("CheckBox"),
             #[widget(row=3, col=1)] _ = CheckBox::new("Check me"),
             #[widget(row=4, col=0)] _ = Label::from("CheckBox"),

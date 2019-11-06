@@ -37,7 +37,7 @@ impl MessageBox {
             core: Default::default(),
             layout_data: Default::default(),
             label: Label::new(message),
-            button: TextButton::new("Ok"),
+            button: TextButton::new("Ok", ()),
         }
     }
 

@@ -15,7 +15,7 @@ use kas::macros::make_widget;
 use kas::widget::{Label, TextButton, Window};
 use kas::TkWindow;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum Control {
     Reset,
     Start,
@@ -41,8 +41,8 @@ fn make_window() -> Box<dyn kas::Window> {
                     }
                 }
             },
-            #[widget(handler = handle_button)] b_reset = TextButton::new_on("reset", || Control::Reset),
-            #[widget(handler = handle_button)] b_start = TextButton::new_on("start / stop", || Control::Start),
+            #[widget(handler = handle_button)] b_reset = TextButton::new("reset", Control::Reset),
+            #[widget(handler = handle_button)] b_start = TextButton::new("start / stop", Control::Start),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
             dur_buf: String = String::default(),

@@ -38,8 +38,8 @@ The following is extracted from the `counter` example:
 let buttons = make_widget! {
     container(horizontal) => Message;
     struct {
-        #[widget] _ = TextButton::new_on("−", || Message::Decr),
-        #[widget] _ = TextButton::new_on("+", || Message::Incr),
+        #[widget] _ = TextButton::new("−", Message::Decr),
+        #[widget] _ = TextButton::new("+", Message::Incr),
     }
 };
 let window = Window::new(make_widget! {

@@ -155,64 +155,36 @@ impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
 /// A push-button with a text label
 // TODO: abstract out text part?
 #[widget(class = Class::Button(self), layout = derive)]
-#[derive(Clone, Default, Widget)]
-pub struct TextButton<H: 'static> {
+#[derive(Clone, Debug, Default, Widget)]
+pub struct TextButton<M: Clone + Debug> {
     #[core]
     core: CoreData,
     label: String,
-    on_click: H,
+    msg: M,
 }
 
-impl<H> Debug for TextButton<H> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "TextButton {{ core: {:?}, label: {:?}, ... }}",
-            self.core, self.label
-        )
-    }
-}
-
-impl<M, H: Fn() -> M> TextButton<H> {
-    /// Construct a button with a given `label` which calls `f` on click.
+impl<M: Clone + Debug> TextButton<M> {
+    /// Construct a button with a given `label` and `msg`
     ///
-    /// This is a shortcut for `TextButton::new(label).on_click(f)`.
-    ///
-    /// The closure `f` is called when the button is pressed, and its result is
-    /// returned from the event handler.
-    pub fn new_on<S: Into<String>>(label: S, f: H) -> Self {
+    /// The message `msg` is returned to the parent widget on activation. Any
+    /// type supporting `Clone` is valid, though it is recommended to use a
+    /// simple `Copy` type (e.g. an enum). Click actions must be implemented on
+    /// the parent (or other ancestor).
+    pub fn new<S: Into<String>>(label: S, msg: M) -> Self {
         TextButton {
             core: Default::default(),
             label: label.into(),
-            on_click: f,
+            msg,
         }
+    }
+
+    /// Replace the message value
+    pub fn set_msg(&mut self, msg: M) {
+        self.msg = msg;
     }
 }
 
-impl TextButton<()> {
-    /// Construct a button with a given `label`.
-    pub fn new<S: Into<String>>(label: S) -> Self {
-        TextButton {
-            core: Default::default(),
-            label: label.into(),
-            on_click: (),
-        }
-    }
-
-    /// Set the event handler to be called on click.
-    ///
-    /// The closure `f` is called when the button is pressed, and its result is
-    /// returned from the event handler.
-    pub fn on_click<M, H: Fn() -> M>(self, f: H) -> TextButton<H> {
-        TextButton {
-            core: self.core,
-            label: self.label,
-            on_click: f,
-        }
-    }
-}
-
-impl<H> HasText for TextButton<H> {
+impl<M: Clone + Debug> HasText for TextButton<M> {
     fn get_text(&self) -> &str {
         &self.label
     }
@@ -223,23 +195,12 @@ impl<H> HasText for TextButton<H> {
     }
 }
 
-impl Handler for TextButton<()> {
-    type Msg = ();
-
-    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<()> {
-        match action {
-            Action::Activate => Response::Msg(()),
-            a @ _ => err_unhandled(a),
-        }
-    }
-}
-
-impl<M, H: Fn() -> M> Handler for TextButton<H> {
+impl<M: Clone + Debug> Handler for TextButton<M> {
     type Msg = M;
 
     fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<M> {
         match action {
-            Action::Activate => ((self.on_click)()).into(),
+            Action::Activate => self.msg.clone().into(),
             a @ _ => err_unhandled(a),
         }
     }
