@@ -8,62 +8,46 @@
 //! KAS dialog boxes are pre-configured windows, usually allowing some
 //! customisation.
 
-use std::fmt::{self, Debug};
-
-use crate::event::{Callback, Event, Handler, Response};
-use crate::geom::Size;
+use crate::event::{Callback, Response};
+use crate::geom::{AxisInfo, Coord, Rect, Size};
 use crate::macros::Widget;
-use crate::widget::{button, TextButton};
-use crate::{class::Class, CoreData, TkWindow, Widget, Window};
+use crate::widget::{Label, TextButton};
+use crate::{
+    class::Class, CoreData, Layout, LayoutData, TkAction, TkWindow, Widget, WidgetId, Window,
+};
 
-/// An action for use with `MessageBox::new`.
-pub fn action_close() -> impl Fn() -> Response<()> {
-    || Response::Msg(()) // TODO: close
-}
-
-/// A message box. TODO: this needs revision.
-#[widget(class = Class::Window, layout = derive)]
-#[derive(Clone, Widget)]
-pub struct MessageBox<M: Debug + 'static, H: 'static> {
+/// A simple message box.
+#[widget(class = Class::Window, layout = vertical)]
+#[handler]
+#[derive(Clone, Debug, Widget)]
+pub struct MessageBox {
     #[core]
     core: CoreData,
-    message: M,
-    button: TextButton<H>,
+    #[layout_data]
+    layout_data: <Self as LayoutData>::Data,
+    #[widget]
+    label: Label,
+    #[widget(handler = handle_button)]
+    button: TextButton<()>,
 }
 
-impl<M: Debug, R, H: Fn() -> R> MessageBox<M, H> {
-    // TODO: action parameter shouldn't be necessary, but we need it because
-    // H must be derived from function input somehow, not merely unspecified
-    // Once existential types are available, H parameter will not be needed.
-    pub fn new(message: M, action: H) -> Self {
+impl MessageBox {
+    pub fn new<T: ToString>(message: T) -> Self {
         MessageBox {
             core: Default::default(),
-            message,
-            button: button::ok(action),
+            layout_data: Default::default(),
+            label: Label::new(message),
+            button: TextButton::new("Ok"),
         }
     }
-}
 
-// manual impl required because derive requires `H: Debug`
-impl<M: Debug, H> Debug for MessageBox<M, H> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "MessageBox {{ core: {:?}, message: {:?}, button: {:?} }}",
-            self.core, self.message, self.button
-        )
+    fn handle_button(&mut self, tk: &mut dyn TkWindow, _msg: ()) -> Response<()> {
+        tk.send_action(TkAction::Close);
+        Response::None
     }
 }
 
-impl<M: Debug, H> Handler for MessageBox<M, H> {
-    type Msg = ();
-
-    fn handle(&mut self, _tk: &mut dyn TkWindow, _event: Event) -> Response<Self::Msg> {
-        unimplemented!()
-    }
-}
-
-impl<M: Debug, H> Window for MessageBox<M, H> {
+impl Window for MessageBox {
     fn as_widget(&self) -> &dyn Widget {
         self
     }
@@ -72,11 +56,20 @@ impl<M: Debug, H> Window for MessageBox<M, H> {
     }
 
     fn configure(&mut self) {
-        unimplemented!()
+        let mut id = WidgetId::FIRST;
+        self.walk(&mut |widget| {
+            widget.core_data_mut().id = id;
+            id = id.next();
+        });
     }
 
-    fn resize(&mut self, _tk: &mut dyn TkWindow, _size: Size) {
-        unimplemented!()
+    fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
+        // We call size_rules not because we want the result, but because our
+        // spec requires that we do so before calling set_rect.
+        let _ = self.size_rules(tk, AxisInfo::new(false, None));
+        let _ = self.size_rules(tk, AxisInfo::new(true, Some(size.0)));
+        let pos = Coord(0, 0);
+        self.set_rect(Rect { pos, size });
     }
 
     // doesn't support callbacks, so doesn't need to do anything here

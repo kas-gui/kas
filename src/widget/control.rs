@@ -228,7 +228,7 @@ impl Handler for TextButton<()> {
 
     fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<()> {
         match action {
-            Action::Activate => Response::None,
+            Action::Activate => Response::Msg(()),
             a @ _ => err_unhandled(a),
         }
     }
@@ -242,14 +242,5 @@ impl<M, H: Fn() -> M> Handler for TextButton<H> {
             Action::Activate => ((self.on_click)()).into(),
             a @ _ => err_unhandled(a),
         }
-    }
-}
-
-/// TODO: for use with dialogs...
-pub mod button {
-    use super::TextButton;
-
-    pub fn ok<M, H: Fn() -> M>(on_click: H) -> TextButton<H> {
-        TextButton::new_on("Ok", on_click)
     }
 }

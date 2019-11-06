@@ -5,17 +5,13 @@
 
 //! Hello world example
 
-use kas::widget::{action_close, Label, MessageBox};
+use kas::widget::MessageBox;
 
 fn main() -> Result<(), winit::error::OsError> {
     // Build widgets.
     // Message is a Window with an "Ok" button and notification status.
     // Each Window::new method creates objects then solves constraints.
-    let window = MessageBox::new(
-        /*Notify::Info,*/
-        Label::from("Hello world"),
-        action_close,
-    );
+    let window = MessageBox::new(/*Notify::Info,*/ "Hello world");
 
     let mut toolkit = kas_rgx::Toolkit::new();
     toolkit.add(window)?;

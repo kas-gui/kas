@@ -10,7 +10,7 @@ mod dialog;
 mod text;
 mod window;
 
-pub use control::{button, CheckBox, TextButton};
-pub use dialog::{action_close, MessageBox};
+pub use control::{CheckBox, TextButton};
+pub use dialog::MessageBox;
 pub use text::{Entry, Label};
 pub use window::Window;
