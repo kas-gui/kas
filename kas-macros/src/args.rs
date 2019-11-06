@@ -24,6 +24,7 @@ pub struct Child {
 
 pub struct Args {
     pub core: Member,
+    pub layout_data: Option<Member>,
     pub widget: WidgetArgs,
     pub handler: Option<HandlerArgs>,
     pub children: Vec<Child>,
@@ -53,6 +54,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
     };
 
     let mut core = None;
+    let mut layout_data = None;
     let mut children = vec![];
 
     for (i, field) in fields.iter_mut().enumerate() {
@@ -64,6 +66,25 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                     attr.span()
                         .unwrap()
                         .error("multiple fields marked with #[core]")
+                        .emit();
+                }
+            } else if attr.path == parse_quote! { layout_data } {
+                if layout_data.is_none() {
+                    if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
+                        && field.ty != parse_quote! { <Self as LayoutData>::Data }
+                    {
+                        field
+                            .ty
+                            .span()
+                            .unwrap()
+                            .warning("expected type `<Self as kas::LayoutData>::Data`")
+                            .emit();
+                    }
+                    layout_data = Some(member(i, field.ident.clone()));
+                } else {
+                    attr.span()
+                        .unwrap()
+                        .error("multiple fields marked with #[layout_data]")
                         .emit();
                 }
             } else if attr.path == parse_quote! { widget } {
@@ -103,6 +124,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         if let Some(widget) = widget {
             Ok(Args {
                 core,
+                layout_data,
                 widget,
                 handler,
                 children,
@@ -320,8 +342,7 @@ impl Parse for WidgetArgs {
             } else if layout.is_none() && lookahead.peek(kw::layout) {
                 let _: kw::layout = content.parse()?;
                 let _: Eq = content.parse()?;
-                let ident: Ident = content.parse()?;
-                layout = Some(ident);
+                layout = Some(content.parse()?);
             } else {
                 return Err(lookahead.error());
             }
@@ -418,8 +439,7 @@ impl Parse for MakeWidget {
         let class = if class_name == "container" {
             let content;
             let _ = parenthesized!(content in input);
-            let layout: Ident = content.parse()?;
-            Class::Container(layout)
+            Class::Container(content.parse()?)
         } else if class_name == "frame" {
             Class::Frame
         } else {

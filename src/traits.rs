@@ -66,6 +66,22 @@ pub trait Layout: Core + fmt::Debug {
     }
 }
 
+/// Trait to describe the type needed by the [`Layout`] implementation.
+///
+/// To allow the `derive(Widget)` macro to implement [`Layout`], we use an
+/// associated type to describe a data field of the following form:
+/// ```none
+/// #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
+/// ```
+///
+/// Ideally we would use an inherent associated type on the struct in question,
+/// but until rust-lang#8995 is implemented that is not possible. We also cannot
+/// place this associated type on the [`Layout`] trait itself, since then uses
+/// of the trait would require parameterisation. Thus, this trait.
+pub trait LayoutData {
+    type Data: Clone + fmt::Debug + Default;
+}
+
 /// A widget encapsulates code for event handling and/or drawing some feature
 /// of a sub-region of a window.
 ///

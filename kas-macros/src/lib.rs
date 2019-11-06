@@ -26,7 +26,7 @@ mod layout;
 /// Macro to derive widget traits
 ///
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
-#[proc_macro_derive(Widget, attributes(core, widget, handler))]
+#[proc_macro_derive(Widget, attributes(core, widget, handler, layout_data))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
 
@@ -43,15 +43,20 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let layout_impl;
     if let Some(ref layout) = args.widget.layout {
-        let layout_fns = match layout::derive(&args.children, layout) {
-            Ok(fns) => fns,
+        let (fns, dt) = match layout::derive(&args.children, layout, &args.layout_data) {
+            Ok(res) => res,
             Err(err) => return err.to_compile_error().into(),
         };
         layout_impl = quote! {
             impl #impl_generics kas::Layout
                     for #name #ty_generics #where_clause
             {
-                #layout_fns
+                #fns
+            }
+            impl #impl_generics kas::LayoutData
+                    for #name #ty_generics #where_clause
+            {
+                #dt
             }
         };
     } else {
@@ -97,13 +102,13 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             fn len(&self) -> usize {
                 #count
             }
-            fn get(&self, _index: usize) -> Option<&kas::Widget> {
+            fn get(&self, _index: usize) -> Option<&dyn kas::Widget> {
                 match _index {
                     #get_rules
                     _ => None
                 }
             }
-            fn get_mut(&mut self, _index: usize) -> Option<&mut kas::Widget> {
+            fn get_mut(&mut self, _index: usize) -> Option<&mut dyn kas::Widget> {
                 match _index {
                     #get_mut_rules
                     _ => None
@@ -168,10 +173,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             quote! {}
         } else {
             quote! {
-                fn handle(&mut self, _tk: &mut kas::TkWindow, event: kas::event::Event)
+                fn handle(&mut self, _tk: &mut dyn kas::TkWindow, event: kas::event::Event)
                 -> kas::event::Response<Self::Msg>
                 {
-                    use kas::{Core, WidgetId, event::{Event, EventChild, EventCoord, Response, err_unhandled, err_num}};
+                    use kas::{Core, event::{Event, Response, err_unhandled, err_num}};
                     match &event {
                         Event::ToChild(id, ..) => {
                             if *id == self.id() {
@@ -284,9 +289,15 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut name_buf = String::with_capacity(32);
 
     // fields of anonymous struct:
-    let mut field_toks = quote! { #[core] core: kas::CoreData, };
+    let mut field_toks = quote! {
+        #[core] core: kas::CoreData,
+        #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
+    };
     // initialisers for these fields:
-    let mut field_val_toks = quote! { core: Default::default(), };
+    let mut field_val_toks = quote! {
+        core: Default::default(),
+        layout_data: Default::default(),
+    };
     // debug impl
     let mut debug_fields = TokenStream::new();
 
@@ -300,18 +311,9 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let msg = &args.msg;
 
-    let mut impl_layout = None;
     let widget_args = match args.class {
         Class::Container(layout) => {
-            if layout == "single" {
-                quote! { class = kas::class::Class::Container, layout = #layout }
-            } else {
-                impl_layout = match layout::ImplLayout::new(&layout) {
-                    Ok(out) => Some(out),
-                    Err(err) => return err.to_compile_error().into(),
-                };
-                quote! { class = kas::class::Class::Container }
-            }
+            quote! { class = kas::class::Class::Container, layout = #layout }
         }
         Class::Frame => quote! {
             // TODO: include frame dimensions
@@ -330,14 +332,6 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     .write_fmt(format_args!("mw_anon_{}", index))
                     .unwrap();
                 Ident::new(&name_buf, Span::call_site())
-            }
-        };
-
-        if let Some(ref wattr) = attr {
-            if let Some(ref mut layout) = impl_layout {
-                if let Err(err) = layout.child(&ident, &wattr.args) {
-                    return err.to_compile_error().into();
-                }
             }
         };
 
@@ -403,18 +397,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         quote! { where #handler_clauses }
     };
 
-    let mut impls = if let Some(layout) = impl_layout {
-        let (fields, field_ctors, fns) = layout.finish();
-        field_toks.append_all(fields);
-        field_val_toks.append_all(field_ctors);
-        quote! {
-            impl<#gen_ptrs> kas::Layout for AnonWidget<#gen_tys> {
-                #fns
-            }
-        }
-    } else {
-        TokenStream::new()
-    };
+    let mut impls = quote! {};
 
     for impl_block in args.impls {
         let mut contents = TokenStream::new();

@@ -10,9 +10,13 @@ use proc_macro2::TokenStream;
 use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Result};
 use syn::spanned::Spanned;
-use syn::Ident;
+use syn::{Ident, Member};
 
-pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStream> {
+pub(crate) fn derive(
+    children: &Vec<Child>,
+    layout: &Ident,
+    data_field: &Option<Member>,
+) -> Result<(TokenStream, TokenStream)> {
     if layout == "empty" {
         if !children.is_empty() {
             layout
@@ -27,11 +31,19 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .warning("... when a child widget is present")
                 .emit();
         }
-        Ok(quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWindow, axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
+        let fns = quote! {
+            fn size_rules(
+                &mut self,
+                tk: &mut dyn kas::TkWindow,
+                axis: kas::geom::AxisInfo
+            )
+                -> kas::geom::SizeRules
+            {
                 (0, 0)
             }
-        })
+        };
+        let ty = quote! { type Data = (); };
+        Ok((fns, ty))
     } else if layout == "derive" {
         if !children.is_empty() {
             layout
@@ -46,11 +58,19 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 .warning("... when a child widget is present")
                 .emit();
         }
-        Ok(quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWindow, axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
+        let fns = quote! {
+            fn size_rules(
+                &mut self,
+                tk: &mut dyn kas::TkWindow,
+                axis: kas::geom::AxisInfo
+            )
+                -> kas::geom::SizeRules
+            {
                 tk.size_rules(self, axis)
             }
-        })
+        };
+        let ty = quote! { type Data = (); };
+        Ok((fns, ty))
     } else if layout == "single" {
         if !children.len() == 1 {
             return Err(Error::new(
@@ -62,8 +82,14 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
             ));
         }
         let ident = &children[0].ident;
-        Ok(quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWindow, axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
+        let fns = quote! {
+            fn size_rules(
+                &mut self,
+                tk: &mut dyn kas::TkWindow,
+                axis: kas::geom::AxisInfo
+            )
+                -> kas::geom::SizeRules
+            {
                 self.#ident.size_rules(tk, axis)
             }
 
@@ -72,62 +98,87 @@ pub(crate) fn derive(children: &Vec<Child>, layout: &Ident) -> Result<TokenStrea
                 self.core_data_mut().rect = rect;
                 self.#ident.set_rect(rect);
             }
-        })
+        };
+        let ty = quote! { type Data = (); };
+        Ok((fns, ty))
     } else {
-        return Err(Error::new(
-            layout.span(),
-            format_args!("expected one of empty, derive, single; found {}", layout),
-        ));
-    }
-}
-
-#[derive(PartialEq)]
-enum Layout {
-    Horiz,
-    Vert,
-    Grid,
-}
-
-pub(crate) struct ImplLayout {
-    layout: Layout,
-    cols: u32,
-    rows: u32,
-    col_spans: Vec<(u32, u32, u32)>,
-    row_spans: Vec<(u32, u32, u32)>,
-    size: TokenStream,
-    set_rect: TokenStream,
-}
-
-impl ImplLayout {
-    pub fn new(layout: &Ident) -> Result<ImplLayout> {
-        // Note: "single" case is already handled by caller
-        let layout = if layout == "horizontal" {
-            Layout::Horiz
+        let lay = if layout == "horizontal" {
+            Layout::Horizontal
         } else if layout == "vertical" {
-            Layout::Vert
+            Layout::Vertical
         } else if layout == "grid" {
             Layout::Grid
         } else {
             return Err(Error::new(
                 layout.span(),
-                "expected one of: single, horizontal, vertical, grid",
+                format_args!(
+                    "expected one of: empty, derive, single, horizontal, vertical, grid; found {}",
+                    layout
+                ),
             ));
         };
 
-        Ok(ImplLayout {
+        let data = data_field.as_ref().ok_or_else(|| {
+            Error::new(
+                layout.span(),
+                "data field marked with #[layout_data] required for this layout",
+            )
+        })?;
+
+        // TODO: this could be rewritten
+        let mut impl_layout = ImplLayout::new(lay, data);
+        for child in children.iter() {
+            impl_layout.child(&child.ident, &child.args)?;
+        }
+        Ok(impl_layout.finish())
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum Layout {
+    Horizontal,
+    Vertical,
+    Grid,
+}
+
+impl Layout {
+    pub fn has_horizontal(self) -> bool {
+        self != Layout::Vertical
+    }
+    pub fn has_vertical(self) -> bool {
+        self != Layout::Horizontal
+    }
+}
+
+pub(crate) struct ImplLayout<'a> {
+    layout: Layout,
+    cols: u32,
+    rows: u32,
+    col_spans: Vec<(u32, u32, u32)>,
+    row_spans: Vec<(u32, u32, u32)>,
+    data: &'a Member,
+    size: TokenStream,
+    set_rect: TokenStream,
+}
+
+impl<'a> ImplLayout<'a> {
+    pub fn new(layout: Layout, data: &'a Member) -> Self {
+        ImplLayout {
             layout,
             cols: 0,
             rows: 0,
             col_spans: vec![],
             row_spans: vec![],
+            data,
             size: quote! {},
             set_rect: quote! {},
-        })
+        }
     }
 
-    pub fn child(&mut self, ident: &Ident, args: &WidgetAttrArgs) -> Result<()> {
+    pub fn child(&mut self, ident: &Member, args: &WidgetAttrArgs) -> Result<()> {
+        let data = self.data;
         match self.layout {
-            Layout::Horiz => {
+            Layout::Horizontal => {
                 let col = self.cols as usize;
                 self.cols += 1;
 
@@ -137,7 +188,7 @@ impl ImplLayout {
                     }
                     let child_rules = self.#ident.size_rules(tk, axis);
                     if axis.horiz() {
-                        self.col_rules[#col] = child_rules;
+                        self.#data.0[#col] = child_rules;
                         rules += child_rules;
                     } else {
                         rules = rules.max(child_rules);
@@ -150,7 +201,7 @@ impl ImplLayout {
                     crect.pos.0 += crect.size.0 as i32;
                 });
             }
-            Layout::Vert => {
+            Layout::Vertical => {
                 let row = self.rows as usize;
                 self.rows += 1;
 
@@ -160,7 +211,7 @@ impl ImplLayout {
                     }
                     let child_rules = self.#ident.size_rules(tk, axis);
                     if axis.vert() {
-                        self.row_rules[#row] = child_rules;
+                        self.#data.1[#row] = child_rules;
                         rules += child_rules;
                     } else {
                         rules = rules.max(child_rules);
@@ -185,13 +236,13 @@ impl ImplLayout {
                 let row_end = r1 as usize;
 
                 let width = if pos.2 <= 1 {
-                    quote! { self.col_rules[#col] }
+                    quote! { self.#data.0[#col] }
                 } else {
                     let ind = self.get_span(false, c0, c1);
                     quote! { col_spans[#ind] }
                 };
                 let height = if pos.3 <= 1 {
-                    quote! { self.row_rules[#row] }
+                    quote! { self.#data.1[#row] }
                 } else {
                     let ind = self.get_span(true, r0, r1);
                     quote! { row_spans[#ind] }
@@ -240,7 +291,8 @@ impl ImplLayout {
         i
     }
 
-    pub fn finish(self) -> (TokenStream, TokenStream, TokenStream) {
+    pub fn finish(self) -> (TokenStream, TokenStream) {
+        let data = self.data;
         let cols = self.cols as usize;
         let rows = self.rows as usize;
         let mut col_spans = self.col_spans;
@@ -260,51 +312,43 @@ impl ImplLayout {
             o @ _ => o,
         });
 
-        let mut fields = quote! {};
-        let mut field_ctors = quote! {};
-
-        if self.layout != Layout::Vert {
-            fields.append_all(quote! {
-                col_rules: [kas::geom::SizeRules; #cols + 1],
-            });
-            field_ctors.append_all(quote! {
-                col_rules: Default::default(),
-            });
-        }
-        if self.layout != Layout::Horiz {
-            fields.append_all(quote! {
-                row_rules: [kas::geom::SizeRules; #rows + 1],
-            });
-            field_ctors.append_all(quote! {
-                row_rules: Default::default(),
-            });
-        }
+        let horiz_type = if self.layout.has_horizontal() {
+            quote! { [kas::geom::SizeRules; #cols + 1] }
+        } else {
+            quote! { () }
+        };
+        let vert_type = if self.layout.has_vertical() {
+            quote! { [kas::geom::SizeRules; #rows + 1] }
+        } else {
+            quote! { () }
+        };
+        let data_type = quote! {type Data = (#horiz_type, #vert_type);};
 
         let size_pre = match self.layout {
-            Layout::Horiz => quote! {
+            Layout::Horizontal => quote! {
                 let mut rules = SizeRules::EMPTY;
                 let mut widths = [0; #cols];
                 if let Some(size) = axis.fixed(false) {
                     // TODO: cache this for use by set_rect?
-                    SizeRules::solve_seq(&mut widths, &self.col_rules, size);
+                    SizeRules::solve_seq(&mut widths, &self.#data.0, size);
                 }
             },
-            Layout::Vert => quote! {
+            Layout::Vertical => quote! {
                 let mut rules = SizeRules::EMPTY;
                 let mut heights = [0; #rows];
                 if let Some(size) = axis.fixed(true) {
-                    SizeRules::solve_seq(&mut heights, &self.row_rules, size);
+                    SizeRules::solve_seq(&mut heights, &self.#data.1, size);
                 }
             },
             Layout::Grid => quote! {
                 if axis.horiz() {
                     for n in 0..#cols {
-                        self.col_rules[n] = SizeRules::EMPTY;
+                        self.#data.0[n] = SizeRules::EMPTY;
                     }
                 }
                 if axis.vert() {
                     for n in 0..#rows {
-                        self.row_rules[n] = SizeRules::EMPTY;
+                        self.#data.1[n] = SizeRules::EMPTY;
                     }
                 }
                 let mut col_spans = [SizeRules::EMPTY; #num_col_spans];
@@ -313,14 +357,14 @@ impl ImplLayout {
         };
 
         let size_post = match self.layout {
-            Layout::Horiz => quote! {
+            Layout::Horizontal => quote! {
                 if axis.horiz() {
-                    self.col_rules[#cols] = rules;
+                    self.#data.0[#cols] = rules;
                 }
             },
-            Layout::Vert => quote! {
+            Layout::Vertical => quote! {
                 if axis.vert() {
-                    self.row_rules[#rows] = rules;
+                    self.#data.1[#rows] = rules;
                 }
             },
             Layout::Grid => {
@@ -332,9 +376,9 @@ impl ImplLayout {
                     let ind = span.2 as usize;
                     horiz.append_all(quote! {
                         let mut sum = (#start..#end)
-                            .map(|n| self.col_rules[n])
+                            .map(|n| self.#data.0[n])
                             .fold(SizeRules::EMPTY, |x, y| x + y);
-                        self.col_rules[#start].set_at_least_op_sub(col_spans[#ind], sum);
+                        self.#data.0[#start].set_at_least_op_sub(col_spans[#ind], sum);
                     });
                 }
                 for span in &row_spans {
@@ -343,9 +387,9 @@ impl ImplLayout {
                     let ind = span.2 as usize;
                     vert.append_all(quote! {
                         let mut sum = (#start..#end)
-                            .map(|n| self.row_rules[n])
+                            .map(|n| self.#data.1[n])
                             .fold(SizeRules::EMPTY, |x, y| x + y);
-                        self.row_rules[#start].set_at_least_op_sub(row_spans[#ind], sum);
+                        self.#data.1[#start].set_at_least_op_sub(row_spans[#ind], sum);
                     });
                 }
 
@@ -354,15 +398,15 @@ impl ImplLayout {
                     if axis.horiz() {
                         #horiz
 
-                        rules = self.col_rules[0..#cols].iter().copied()
+                        rules = self.#data.0[0..#cols].iter().copied()
                             .fold(SizeRules::EMPTY, |rules, item| rules + item);
-                        self.col_rules[#cols] = rules;
+                        self.#data.0[#cols] = rules;
                     } else {
                         #vert
 
-                        rules = self.row_rules[0..#rows].iter().copied()
+                        rules = self.#data.1[0..#rows].iter().copied()
                             .fold(SizeRules::EMPTY, |rules, item| rules + item);
-                        self.row_rules[#rows] = rules;
+                        self.#data.1[#rows] = rules;
                     }
                 }
             }
@@ -371,19 +415,19 @@ impl ImplLayout {
         let mut set_rect_pre = quote! {
             let mut crect = rect;
         };
-        if self.layout != Layout::Vert {
+        if self.layout.has_horizontal() {
             set_rect_pre.append_all(quote! {
                 let mut widths = [0; #cols];
-                SizeRules::solve_seq(&mut widths, &self.col_rules, rect.size.0);
+                SizeRules::solve_seq(&mut widths, &self.#data.0, rect.size.0);
             });
         }
-        if self.layout != Layout::Horiz {
+        if self.layout.has_vertical() {
             set_rect_pre.append_all(quote! {
                 let mut heights = [0; #rows];
-                SizeRules::solve_seq(&mut heights, &self.row_rules, rect.size.1);
+                SizeRules::solve_seq(&mut heights, &self.#data.1, rect.size.1);
             });
         }
-        if self.layout == Layout::Grid {
+        if let Layout::Grid = self.layout {
             set_rect_pre.append_all(quote! {
                 let mut col_pos = [0; #cols];
                 let mut row_pos = [0; #rows];
@@ -421,6 +465,6 @@ impl ImplLayout {
             }
         };
 
-        (fields, field_ctors, fns)
+        (fns, data_type)
     }
 }
