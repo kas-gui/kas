@@ -111,7 +111,7 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> kas::Window for Window<W> {
 
     fn configure(&mut self) {
         let mut id = WidgetId::FIRST;
-        self.walk(&mut |widget| {
+        self.walk_mut(&mut |widget| {
             widget.core_data_mut().id = id;
             id = id.next();
         });

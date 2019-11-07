@@ -57,7 +57,7 @@ impl Window for MessageBox {
 
     fn configure(&mut self) {
         let mut id = WidgetId::FIRST;
-        self.walk(&mut |widget| {
+        self.walk_mut(&mut |widget| {
             widget.core_data_mut().id = id;
             id = id.next();
         });

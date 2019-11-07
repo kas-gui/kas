@@ -131,7 +131,13 @@ pub trait Widget: Layout {
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk(&mut self, f: &mut dyn FnMut(&mut dyn Widget));
+    fn walk(&self, f: &mut dyn FnMut(&dyn Widget));
+
+    /// Walk through all widgets, calling `f` once on each.
+    ///
+    /// This walk is iterative (nonconcurrent), depth-first, and always calls
+    /// `f` on self *after* walking through all children.
+    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget));
 
     /// Debug tool: print the widget hierarchy
     fn print_hierarchy(&self, depth: usize) {
