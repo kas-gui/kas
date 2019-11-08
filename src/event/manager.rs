@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 
 use super::*;
-use crate::{TkWindow, WidgetId};
+use crate::{TkWindow, Widget, WidgetId};
 
 /// Window event manager
 ///
@@ -37,6 +37,16 @@ impl ManagerData {
             touch_events: Vec::with_capacity(10),
             accel_keys: HashMap::new(),
         }
+    }
+
+    /// Configure event manager for a widget tree
+    pub fn configure(&mut self, widget: &dyn Widget) {
+        self.accel_keys.clear();
+        widget.walk(&mut |widget| {
+            for key in widget.core_data().keys() {
+                self.accel_keys.insert(key, widget.id());
+            }
+        });
     }
 
     /// Set the DPI factor. Must be updated for correct event translation by
@@ -154,10 +164,12 @@ impl Manager {
             // ReceivedCharacter(char),
             // Focused(bool),
             KeyboardInput { input, .. } => {
-                if let Some(vkey) = input.virtual_keycode {
-                    if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
-                        let ev = EventChild::Action(Action::Activate);
-                        widget.handle(tk, Event::ToChild(id, ev));
+                if input.state == ElementState::Pressed {
+                    if let Some(vkey) = input.virtual_keycode {
+                        if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
+                            let ev = EventChild::Action(Action::Activate);
+                            widget.handle(tk, Event::ToChild(id, ev));
+                        }
                     }
                 }
             }

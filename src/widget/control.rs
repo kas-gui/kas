@@ -9,7 +9,7 @@ use std::any::TypeId;
 use std::fmt::{self, Debug};
 
 use crate::class::{Class, HasBool, HasText};
-use crate::event::{err_unhandled, Action, Handler, Response};
+use crate::event::{err_unhandled, Action, Handler, Response, VirtualKeyCode};
 use crate::macros::Widget;
 use crate::{CoreData, TkWindow};
 
@@ -181,6 +181,22 @@ impl<M: Clone + Debug> TextButton<M> {
     /// Replace the message value
     pub fn set_msg(&mut self, msg: M) {
         self.msg = msg;
+    }
+}
+
+impl TextButton<VirtualKeyCode> {
+    /// Construct a button which can be activated by an accelerator key
+    ///
+    /// To avoid redundancy, the button uses this key as its message when
+    /// pressed. TODO: variant with separate message.
+    pub fn from_keys<S: Into<String>>(label: S, keys: &[VirtualKeyCode]) -> Self {
+        let mut core: CoreData = Default::default();
+        core.set_keys(keys);
+        TextButton {
+            core,
+            label: label.into(),
+            msg: keys[0],
+        }
     }
 }
 

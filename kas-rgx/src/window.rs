@@ -54,6 +54,7 @@ impl Window {
         let glyph_brush = GlyphBrushBuilder::using_font(crate::font::get_font())
             .build(rend.device.device_mut(), swap_chain.format());
         let mut wrend = Widgets::new(dpi_factor, glyph_brush);
+        wrend.ev_mgr.configure(win.as_widget());
 
         win.resize(&mut wrend, size);
 

@@ -29,7 +29,7 @@ pub(crate) struct Widgets {
     font_scale: f32,
     margin: f32,
     action: TkAction,
-    ev_mgr: event::ManagerData,
+    pub(crate) ev_mgr: event::ManagerData,
 }
 
 impl Widgets {
