@@ -53,8 +53,6 @@ fn main() -> Result<(), winit::error::OsError> {
     let content = make_widget! {
         container(vertical) => ();
         struct {
-            // #[widget] state: Label = Label::from("0"),
-            // #[widget] buf: Label = Label::new() ,
             #[widget] display: impl HasText = Entry::new("0").editable(false),
             #[widget(handler = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),
@@ -62,8 +60,6 @@ fn main() -> Result<(), winit::error::OsError> {
         impl {
             fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Key) -> Response<()> {
                 if self.calc.handle(msg) {
-                    // self.state.set_text(tk, &self.calc.state_str());
-                    // self.buf.set_text(tk, &self.calc.line_buf);
                     self.display.set_text(tk, self.calc.display());
                 }
                 Response::None
@@ -103,11 +99,25 @@ impl Calculator {
     // alternative, single line display
     #[allow(unused)]
     fn display(&self) -> String {
-        if self.line_buf.is_empty() {
+        // Single-line display:
+        /*if self.line_buf.is_empty() {
             self.state_str()
         } else {
             self.line_buf.clone()
-        }
+        }*/
+        
+        // Multi-line display:
+        let op = match self.op {
+            Key::Add => "+",
+            Key::Subtract => "−",
+            Key::Multiply => "×",
+            Key::Divide => "÷",
+            _ => "",
+        };
+        format!("{}\n{}\n{}",
+            self.state_str(),
+            op,
+            &self.line_buf)
     }
 
     // return true if display changes
@@ -133,7 +143,7 @@ impl Calculator {
     fn do_op(&mut self, next_op: Key) -> bool {
         if self.line_buf.is_empty() {
             self.op = next_op;
-            return false;
+            return true;
         }
 
         let line = f64::from_str(&self.line_buf);
