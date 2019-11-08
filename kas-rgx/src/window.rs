@@ -41,8 +41,6 @@ impl Window {
         event_loop: &EventLoopWindowTarget<T>,
         mut win: Box<dyn kas::Window>,
     ) -> Result<Window, OsError> {
-        win.configure();
-
         let ww = winit::window::Window::new(event_loop)?;
         let dpi_factor = ww.hidpi_factor();
         let size: Size = ww.inner_size().to_physical(dpi_factor).into();
@@ -54,7 +52,7 @@ impl Window {
         let glyph_brush = GlyphBrushBuilder::using_font(crate::font::get_font())
             .build(rend.device.device_mut(), swap_chain.format());
         let mut wrend = Widgets::new(dpi_factor, glyph_brush);
-        wrend.ev_mgr.configure(win.as_widget());
+        wrend.ev_mgr.configure(win.as_widget_mut());
 
         win.resize(&mut wrend, size);
 

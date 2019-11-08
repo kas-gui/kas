@@ -170,9 +170,6 @@ pub trait Window: Widget + Handler<Msg = ()> {
     /// Note: needed because Rust does not yet support trait object upcasting
     fn as_widget_mut(&mut self) -> &mut dyn Widget;
 
-    /// Configure widgets. Called by the toolkit.
-    fn configure(&mut self);
-
     /// Adjust the size of the window, repositioning widgets.
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size);
 

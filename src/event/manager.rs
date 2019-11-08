@@ -39,13 +39,19 @@ impl ManagerData {
         }
     }
 
-    /// Configure event manager for a widget tree
-    pub fn configure(&mut self, widget: &dyn Widget) {
+    /// Configure event manager for a widget tree.
+    ///
+    /// This should be called by the toolkit on the widget tree when the window
+    /// is created (before or after resizing).
+    pub fn configure(&mut self, widget: &mut dyn Widget) {
+        let mut id = WidgetId::FIRST;
         self.accel_keys.clear();
-        widget.walk(&mut |widget| {
+        widget.walk_mut(&mut |widget| {
+            widget.core_data_mut().id = id;
             for key in widget.core_data().keys() {
-                self.accel_keys.insert(key, widget.id());
+                self.accel_keys.insert(key, id);
             }
+            id = id.next();
         });
     }
 

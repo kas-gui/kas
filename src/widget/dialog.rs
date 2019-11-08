@@ -12,9 +12,7 @@ use crate::event::{Callback, Response};
 use crate::geom::{AxisInfo, Coord, Rect, Size};
 use crate::macros::Widget;
 use crate::widget::{Label, TextButton};
-use crate::{
-    class::Class, CoreData, Layout, LayoutData, TkAction, TkWindow, Widget, WidgetId, Window,
-};
+use crate::{class::Class, CoreData, Layout, LayoutData, TkAction, TkWindow, Widget, Window};
 
 /// A simple message box.
 #[widget(class = Class::Window, layout = vertical)]
@@ -53,14 +51,6 @@ impl Window for MessageBox {
     }
     fn as_widget_mut(&mut self) -> &mut dyn Widget {
         self
-    }
-
-    fn configure(&mut self) {
-        let mut id = WidgetId::FIRST;
-        self.walk_mut(&mut |widget| {
-            widget.core_data_mut().id = id;
-            id = id.next();
-        });
     }
 
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
