@@ -180,16 +180,17 @@ impl Manager {
     #[cfg(feature = "winit")]
     pub fn handle_winit<W>(widget: &mut W, tk: &mut dyn TkWindow, event: winit::event::WindowEvent)
     where
-        W: Widget + Handler + ?Sized,
+        W: Widget + Handler<Msg = ()> + ?Sized,
     {
         use crate::TkAction;
         use winit::event::{TouchPhase, WindowEvent::*};
 
-        match event {
+        let response = match event {
             // Resized(size) [handled by toolkit]
             // Moved(position)
             CloseRequested => {
                 tk.send_action(TkAction::Close);
+                Response::None
             }
             // Destroyed
             // DroppedFile(PathBuf),
@@ -197,29 +198,31 @@ impl Manager {
             // HoveredFileCancelled,
             // ReceivedCharacter(char),
             // Focused(bool),
-            KeyboardInput { input, .. } => {
-                if input.state == ElementState::Pressed {
-                    if let Some(vkey) = input.virtual_keycode {
-                        match vkey {
-                            VirtualKeyCode::Tab => tk.update_data(&mut |data| {
-                                data.next_key_focus(widget.as_widget_mut())
-                            }),
-                            VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
-                                if let Some(id) = tk.data().key_focus {
-                                    let ev = EventChild::Action(Action::Activate);
-                                    widget.handle(tk, Event::ToChild(id, ev));
-                                }
-                            }
-                            vkey @ _ => {
-                                if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
-                                    let ev = EventChild::Action(Action::Activate);
-                                    widget.handle(tk, Event::ToChild(id, ev));
-                                }
-                            }
+            KeyboardInput { input, .. } => match (input.state, input.virtual_keycode) {
+                (ElementState::Pressed, Some(vkey)) => match vkey {
+                    VirtualKeyCode::Tab => {
+                        tk.update_data(&mut |data| data.next_key_focus(widget.as_widget_mut()));
+                        Response::None
+                    }
+                    VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
+                        if let Some(id) = tk.data().key_focus {
+                            let ev = EventChild::Action(Action::Activate);
+                            widget.handle(tk, Event::ToChild(id, ev))
+                        } else {
+                            Response::None
                         }
                     }
-                }
-            }
+                    vkey @ _ => {
+                        if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
+                            let ev = EventChild::Action(Action::Activate);
+                            widget.handle(tk, Event::ToChild(id, ev))
+                        } else {
+                            Response::None
+                        }
+                    }
+                },
+                _ => Response::None,
+            },
             CursorMoved {
                 position,
                 modifiers,
@@ -227,11 +230,12 @@ impl Manager {
             } => {
                 let coord = position.to_physical(tk.data().dpi_factor).into();
                 let ev = EventCoord::CursorMoved { modifiers };
-                widget.handle(tk, Event::ToCoord(coord, ev));
+                widget.handle(tk, Event::ToCoord(coord, ev))
             }
             // CursorEntered { .. },
             CursorLeft { .. } => {
                 tk.update_data(&mut |data| data.set_hover(None));
+                Response::None
             }
             // MouseWheel { delta: MouseScrollDelta, phase: TouchPhase, modifiers: ModifiersState, .. },
             MouseInput {
@@ -246,13 +250,14 @@ impl Manager {
                     modifiers,
                 };
                 if let Some(id) = tk.data().hover {
-                    widget.handle(tk, Event::ToChild(id, ev));
+                    widget.handle(tk, Event::ToChild(id, ev))
                 } else {
                     // This happens for example on click-release when the
                     // cursor is no longer over the window.
                     if button == MouseButton::Left && state == ElementState::Released {
                         tk.update_data(&mut |data| data.set_click_start(None));
                     }
+                    Response::None
                 }
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
@@ -263,25 +268,31 @@ impl Manager {
                 match touch.phase {
                     TouchPhase::Started => {
                         let ev = EventCoord::TouchStart(touch.id);
-                        widget.handle(tk, Event::ToCoord(coord, ev));
+                        widget.handle(tk, Event::ToCoord(coord, ev))
                     }
                     TouchPhase::Moved => {
                         let ev = EventCoord::TouchMove(touch.id);
-                        widget.handle(tk, Event::ToCoord(coord, ev));
+                        widget.handle(tk, Event::ToCoord(coord, ev))
                     }
                     TouchPhase::Ended => {
                         let ev = EventCoord::TouchEnd(touch.id);
-                        widget.handle(tk, Event::ToCoord(coord, ev));
+                        widget.handle(tk, Event::ToCoord(coord, ev))
                     }
                     TouchPhase::Cancelled => {
                         tk.update_data(&mut |data| data.clear_touch(touch.id));
+                        Response::None
                     }
                 }
             }
             // HiDpiFactorChanged(factor) [handled by toolkit]
             _ => {
                 // println!("Unhandled window event: {:?}", event);
+                Response::None
             }
+        };
+
+        match response {
+            Response::None | Response::Msg(()) => (),
         };
     }
 

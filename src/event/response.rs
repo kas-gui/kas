@@ -19,6 +19,7 @@
 /// [`Handler::handle`]: super::Handler::handle
 /// [`Handler::Msg`]: super::Handler::Msg
 #[derive(Copy, Clone, Debug)]
+#[must_use]
 pub enum Response<M> {
     /// No action
     None,
