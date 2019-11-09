@@ -108,6 +108,11 @@ pub trait LayoutData {
 ///
 /// [`Handler`]: crate::event::Handler
 pub trait Widget: Layout {
+    /// Erase type
+    fn as_widget(&self) -> &dyn Widget;
+    /// Erase type
+    fn as_widget_mut(&mut self) -> &mut dyn Widget;
+
     /// Get the widget's classification
     ///
     /// This includes access to additional class-specific interfaces.
@@ -161,15 +166,6 @@ pub trait Widget: Layout {
 // trait or (2) allow any Widget to derive Window (i.e. implement required
 // functionality with macros instead of the generic code below).
 pub trait Window: Widget + Handler<Msg = ()> {
-    /// Upcast
-    ///
-    /// Note: needed because Rust does not yet support trait object upcasting
-    fn as_widget(&self) -> &dyn Widget;
-    /// Upcast, mutably
-    ///
-    /// Note: needed because Rust does not yet support trait object upcasting
-    fn as_widget_mut(&mut self) -> &mut dyn Widget;
-
     /// Adjust the size of the window, repositioning widgets.
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size);
 

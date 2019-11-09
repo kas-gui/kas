@@ -93,6 +93,9 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         impl #impl_generics kas::Widget
                 for #name #ty_generics #where_clause
         {
+            fn as_widget(&self) -> &dyn kas::Widget { self }
+            fn as_widget_mut(&mut self) -> &mut dyn kas::Widget { self }
+
             fn class(&self) -> kas::class::Class { #class }
 
             fn len(&self) -> usize {

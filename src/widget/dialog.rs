@@ -12,7 +12,7 @@ use crate::event::{Callback, Response};
 use crate::geom::{AxisInfo, Coord, Rect, Size};
 use crate::macros::Widget;
 use crate::widget::{Label, TextButton};
-use crate::{class::Class, CoreData, Layout, LayoutData, TkAction, TkWindow, Widget, Window};
+use crate::{class::Class, CoreData, Layout, LayoutData, TkAction, TkWindow, Window};
 
 /// A simple message box.
 #[widget(class = Class::Window, layout = vertical)]
@@ -46,13 +46,6 @@ impl MessageBox {
 }
 
 impl Window for MessageBox {
-    fn as_widget(&self) -> &dyn Widget {
-        self
-    }
-    fn as_widget_mut(&mut self) -> &mut dyn Widget {
-        self
-    }
-
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
         // We call size_rules not because we want the result, but because our
         // spec requires that we do so before calling set_rect.

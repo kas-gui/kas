@@ -102,13 +102,6 @@ impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for Window<W> {
 }
 
 impl<M, W: Widget + Handler<Msg = M> + 'static> kas::Window for Window<W> {
-    fn as_widget(&self) -> &dyn Widget {
-        self
-    }
-    fn as_widget_mut(&mut self) -> &mut dyn Widget {
-        self
-    }
-
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
         // We call size_rules not because we want the result, but because our
         // spec requires that we do so before calling set_rect.
