@@ -132,6 +132,25 @@ pub trait Widget: Layout {
     /// Mutable variant of get
     fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
 
+    /// Find a child widget by identifier
+    ///
+    /// This requires that the widget tree has already been configured by
+    /// [`crate::event::ManagerData::configure`].
+    fn get_by_id(&self, id: WidgetId) -> Option<&dyn Widget> {
+        if id == self.id() {
+            return Some(self.as_widget());
+        } else if id < self.id() {
+            for i in 0..self.len() {
+                if let Some(w) = self.get(i) {
+                    if id <= w.id() {
+                        return w.get_by_id(id);
+                    }
+                }
+            }
+        }
+        None
+    }
+
     /// Walk through all widgets, calling `f` once on each.
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls

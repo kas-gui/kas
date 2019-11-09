@@ -186,14 +186,17 @@ impl Widgets {
         }
 
         // draw margin
-        let r = if self.ev_mgr.is_hovered(w_id) {
-            1.0
-        } else {
-            0.5
+        let margin_r = match self.ev_mgr.key_focus(w_id) {
+            false => 0.5,
+            true => 1.0,
+        };
+        let margin_g = match self.ev_mgr.is_hovered(w_id) {
+            false => 0.5,
+            true => 1.0,
         };
         batch.add(Shape::Rectangle(
             Rect::new(x0, y0, x1, y1),
-            Stroke::new(margin, Rgba::new(r, 0.5, 0.5, 1.0)),
+            Stroke::new(margin, Rgba::new(margin_r, margin_g, 0.5, 1.0)),
             Fill::Solid(background),
         ));
     }

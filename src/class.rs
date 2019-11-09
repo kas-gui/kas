@@ -80,6 +80,14 @@ impl<'a> Class<'a> {
             Class::Button(_) | Class::CheckBox(_) => (Align::Center, Align::Center),
         }
     }
+
+    /// Does this widget allow keyboard focus?
+    pub fn allow_focus(&self) -> bool {
+        match self {
+            Class::Container | Class::Label(_) | Class::Frame | Class::Window => false,
+            Class::Entry(_) | Class::Button(_) | Class::CheckBox(_) => true,
+        }
+    }
 }
 
 /// Functionality for widgets which can be toggled or selected: check boxes,

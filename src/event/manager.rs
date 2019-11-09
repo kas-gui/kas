@@ -16,6 +16,7 @@ use crate::{TkWindow, Widget, WidgetId};
 #[derive(Clone, Debug)]
 pub struct ManagerData {
     dpi_factor: f64,
+    key_focus: Option<WidgetId>,
     hover: Option<WidgetId>,
     click_start: Option<WidgetId>,
     touch_events: Vec<(u64, WidgetId, WidgetId)>,
@@ -32,6 +33,7 @@ impl ManagerData {
     pub fn new(dpi_factor: f64) -> Self {
         ManagerData {
             dpi_factor,
+            key_focus: None,
             hover: None,
             click_start: None,
             touch_events: Vec::with_capacity(10),
@@ -60,6 +62,12 @@ impl ManagerData {
     #[inline]
     pub fn set_dpi_factor(&mut self, dpi_factor: f64) {
         self.dpi_factor = dpi_factor;
+    }
+
+    /// Get whether this widget has keyboard focus
+    #[inline]
+    pub fn key_focus(&self, w_id: WidgetId) -> bool {
+        self.key_focus == Some(w_id)
     }
 
     /// Get whether the widget is under the mouse or finger
@@ -137,6 +145,26 @@ impl ManagerData {
         }
         false
     }
+
+    #[cfg(feature = "winit")]
+    fn next_key_focus(&mut self, widget: &mut dyn Widget) -> bool {
+        let start = self.key_focus;
+        let mut id = start.map(|id| id.next()).unwrap_or(WidgetId::FIRST);
+        let end = widget.id();
+        while id <= end {
+            if widget
+                .get_by_id(id)
+                .map(|w| w.class().allow_focus())
+                .unwrap_or(false)
+            {
+                self.key_focus = Some(id);
+                return start != Some(id);
+            }
+            id = id.next();
+        }
+        self.key_focus = None;
+        start != None
+    }
 }
 
 /// An interface for managing per-widget events
@@ -152,7 +180,7 @@ impl Manager {
     #[cfg(feature = "winit")]
     pub fn handle_winit<W>(widget: &mut W, tk: &mut dyn TkWindow, event: winit::event::WindowEvent)
     where
-        W: Handler + ?Sized,
+        W: Widget + Handler + ?Sized,
     {
         use crate::TkAction;
         use winit::event::{TouchPhase, WindowEvent::*};
@@ -172,7 +200,9 @@ impl Manager {
             KeyboardInput { input, .. } => {
                 if input.state == ElementState::Pressed {
                     if let Some(vkey) = input.virtual_keycode {
-                        if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
+                        if vkey == VirtualKeyCode::Tab {
+                            tk.update_data(&mut |data| data.next_key_focus(widget.as_widget_mut()));
+                        } else if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
                             let ev = EventChild::Action(Action::Activate);
                             widget.handle(tk, Event::ToChild(id, ev));
                         }
