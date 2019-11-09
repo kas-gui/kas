@@ -200,11 +200,22 @@ impl Manager {
             KeyboardInput { input, .. } => {
                 if input.state == ElementState::Pressed {
                     if let Some(vkey) = input.virtual_keycode {
-                        if vkey == VirtualKeyCode::Tab {
-                            tk.update_data(&mut |data| data.next_key_focus(widget.as_widget_mut()));
-                        } else if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
-                            let ev = EventChild::Action(Action::Activate);
-                            widget.handle(tk, Event::ToChild(id, ev));
+                        match vkey {
+                            VirtualKeyCode::Tab => tk.update_data(&mut |data| {
+                                data.next_key_focus(widget.as_widget_mut())
+                            }),
+                            VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
+                                if let Some(id) = tk.data().key_focus {
+                                    let ev = EventChild::Action(Action::Activate);
+                                    widget.handle(tk, Event::ToChild(id, ev));
+                                }
+                            }
+                            vkey @ _ => {
+                                if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
+                                    let ev = EventChild::Action(Action::Activate);
+                                    widget.handle(tk, Event::ToChild(id, ev));
+                                }
+                            }
                         }
                     }
                 }
