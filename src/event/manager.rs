@@ -190,7 +190,7 @@ impl Manager {
             }
             // CursorEntered { .. },
             CursorLeft { .. } => {
-                tk.update_data(&|data| data.set_hover(None));
+                tk.update_data(&mut |data| data.set_hover(None));
             }
             // MouseWheel { delta: MouseScrollDelta, phase: TouchPhase, modifiers: ModifiersState, .. },
             MouseInput {
@@ -210,7 +210,7 @@ impl Manager {
                     // This happens for example on click-release when the
                     // cursor is no longer over the window.
                     if button == MouseButton::Left && state == ElementState::Released {
-                        tk.update_data(&|data| data.set_click_start(None));
+                        tk.update_data(&mut |data| data.set_click_start(None));
                     }
                 }
             }
@@ -233,7 +233,7 @@ impl Manager {
                         widget.handle(tk, Event::ToCoord(coord, ev));
                     }
                     TouchPhase::Cancelled => {
-                        tk.update_data(&|data| data.clear_touch(touch.id));
+                        tk.update_data(&mut |data| data.clear_touch(touch.id));
                     }
                 }
             }
@@ -261,7 +261,7 @@ impl Manager {
                     if button == MouseButton::Left {
                         match state {
                             ElementState::Pressed => {
-                                tk.update_data(&|data| data.set_click_start(Some(w_id)));
+                                tk.update_data(&mut |data| data.set_click_start(Some(w_id)));
                                 Response::None
                             }
                             ElementState::Released => {
@@ -270,7 +270,7 @@ impl Manager {
                                 } else {
                                     Response::None
                                 };
-                                tk.update_data(&|data| data.set_click_start(None));
+                                tk.update_data(&mut |data| data.set_click_start(None));
                                 r
                             }
                         }
@@ -283,15 +283,15 @@ impl Manager {
                 match ev {
                     EventCoord::CursorMoved { .. } => {
                         // We can assume the pointer is over this widget
-                        tk.update_data(&|data| data.set_hover(Some(w_id)));
+                        tk.update_data(&mut |data| data.set_hover(Some(w_id)));
                         Response::None
                     }
                     EventCoord::TouchStart(id) => {
-                        tk.update_data(&|data| data.start_touch(id, w_id));
+                        tk.update_data(&mut |data| data.start_touch(id, w_id));
                         Response::None
                     }
                     EventCoord::TouchMove(id) => {
-                        tk.update_data(&|data| data.touch_move(id, w_id));
+                        tk.update_data(&mut |data| data.touch_move(id, w_id));
                         Response::None
                     }
                     EventCoord::TouchEnd(id) => {
@@ -300,7 +300,7 @@ impl Manager {
                         } else {
                             Response::None
                         };
-                        tk.update_data(&|data| data.clear_touch(id));
+                        tk.update_data(&mut |data| data.clear_touch(id));
                         r
                     }
                 }

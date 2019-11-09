@@ -51,7 +51,7 @@ pub trait TkWindow {
     /// Update event manager data with a closure
     ///
     /// The closure should return true if this update may require a redraw.
-    fn update_data(&mut self, f: &dyn Fn(&mut event::ManagerData) -> bool);
+    fn update_data(&mut self, f: &mut dyn FnMut(&mut event::ManagerData) -> bool);
 
     /// Get the widget's size preferences
     ///

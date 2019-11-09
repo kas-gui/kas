@@ -204,7 +204,7 @@ impl TkWindow for Widgets {
         &self.ev_mgr
     }
 
-    fn update_data(&mut self, f: &dyn Fn(&mut event::ManagerData) -> bool) {
+    fn update_data(&mut self, f: &mut dyn FnMut(&mut event::ManagerData) -> bool) {
         if f(&mut self.ev_mgr) {
             self.send_action(TkAction::Redraw);
         }
