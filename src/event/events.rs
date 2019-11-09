@@ -21,7 +21,8 @@ use crate::WidgetId;
 pub enum Action {
     /// Widget activation, for example clicking a button or toggling a check-box
     Activate,
-    Dummy, // exists temporarily to allow _ pattern in matchers
+    /// Widget receives a character of text input
+    ReceivedCharacter(char),
 }
 
 /// Input events: these are low-level messages where the destination widget is

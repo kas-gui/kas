@@ -16,6 +16,7 @@ use crate::{TkWindow, Widget, WidgetId};
 #[derive(Clone, Debug)]
 pub struct ManagerData {
     dpi_factor: f64,
+    grab_focus: Option<WidgetId>,
     key_focus: Option<WidgetId>,
     hover: Option<WidgetId>,
     click_start: Option<WidgetId>,
@@ -33,6 +34,7 @@ impl ManagerData {
     pub fn new(dpi_factor: f64) -> Self {
         ManagerData {
             dpi_factor,
+            grab_focus: None,
             key_focus: None,
             hover: None,
             click_start: None,
@@ -184,7 +186,7 @@ impl Manager {
     {
         use crate::TkAction;
         use winit::event::{TouchPhase, WindowEvent::*};
-
+        // TODO: bind tk.data()
         let response = match event {
             // Resized(size) [handled by toolkit]
             // Moved(position)
@@ -196,33 +198,57 @@ impl Manager {
             // DroppedFile(PathBuf),
             // HoveredFile(PathBuf),
             // HoveredFileCancelled,
-            // ReceivedCharacter(char),
+            ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
+                if let Some(id) = tk.data().grab_focus {
+                    let ev = EventChild::Action(Action::ReceivedCharacter(c));
+                    widget.handle(tk, Event::ToChild(id, ev))
+                } else {
+                    Response::None
+                }
+            }
             // Focused(bool),
-            KeyboardInput { input, .. } => match (input.state, input.virtual_keycode) {
-                (ElementState::Pressed, Some(vkey)) => match vkey {
-                    VirtualKeyCode::Tab => {
-                        tk.update_data(&mut |data| data.next_key_focus(widget.as_widget_mut()));
-                        Response::None
-                    }
-                    VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
-                        if let Some(id) = tk.data().key_focus {
-                            let ev = EventChild::Action(Action::Activate);
-                            widget.handle(tk, Event::ToChild(id, ev))
-                        } else {
+            KeyboardInput { input, .. } => {
+                match (input.state, input.virtual_keycode) {
+                    (ElementState::Pressed, Some(vkey)) => match vkey {
+                        VirtualKeyCode::Tab if tk.data().grab_focus.is_none() => {
+                            tk.update_data(&mut |data| data.next_key_focus(widget.as_widget_mut()));
                             Response::None
                         }
-                    }
-                    vkey @ _ => {
-                        if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
-                            let ev = EventChild::Action(Action::Activate);
-                            widget.handle(tk, Event::ToChild(id, ev))
-                        } else {
+                        VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter if tk.data().grab_focus.is_none() => {
+                            if let Some(id) = tk.data().key_focus {
+                                let ev = EventChild::Action(Action::Activate);
+                                widget.handle(tk, Event::ToChild(id, ev))
+                            } else {
+                                Response::None
+                            }
+                        }
+                        VirtualKeyCode::Escape => {
+                            tk.update_data(&mut |data| {
+                                if data.grab_focus.is_some() {
+                                    data.grab_focus = None;
+                                    false
+                                } else if data.key_focus.is_some() {
+                                    data.key_focus = None;
+                                    true
+                                } else {
+                                    false
+                                }
+                            });
                             Response::None
                         }
-                    }
-                },
-                _ => Response::None,
-            },
+                        vkey @ _ if tk.data().grab_focus.is_none() => {
+                            if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
+                                let ev = EventChild::Action(Action::Activate);
+                                widget.handle(tk, Event::ToChild(id, ev))
+                            } else {
+                                Response::None
+                            }
+                        }
+                        _ /* implies grab_focus.is_some() */ => Response::None,
+                    },
+                    _ => Response::None,
+                }
+            }
             CursorMoved {
                 position,
                 modifiers,
@@ -293,6 +319,14 @@ impl Manager {
 
         match response {
             Response::None | Response::Msg(()) => (),
+            Response::Grab(id) => {
+                tk.update_data(&mut |data| {
+                    let r = data.key_focus != Some(id);
+                    data.grab_focus = Some(id);
+                    data.key_focus = Some(id);
+                    r
+                });
+            }
         };
     }
 

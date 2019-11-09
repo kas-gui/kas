@@ -11,6 +11,8 @@
 //! parent and any result is pushed back up the call stack. The model allows
 //! type-safety while allowing user-defined result types.
 
+use crate::WidgetId;
+
 /// Response type from [`Handler::handle`].
 ///
 /// This type wraps [`Handler::Msg`] allowing both custom messages and toolkit
@@ -23,6 +25,8 @@
 pub enum Response<M> {
     /// No action
     None,
+    /// Request keyboard grab for a widget
+    Grab(WidgetId),
     /// Custom message type
     Msg(M),
 }
@@ -68,6 +72,7 @@ impl<M> Response<M> {
         use Response::*;
         match r {
             None => Ok(None),
+            Grab(id) => Ok(Grab(id)),
             Msg(m) => Err(m),
         }
     }

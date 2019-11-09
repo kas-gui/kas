@@ -8,9 +8,9 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{Class, Editable, HasText};
-use crate::event::{err_unhandled, Action, Handler, Response};
+use crate::event::{Action, Handler, Response};
 use crate::macros::Widget;
-use crate::{CoreData, TkWindow};
+use crate::{Core, CoreData, TkWindow};
 
 /// A simple text label
 #[widget(class = Class::Label(self), layout = derive)]
@@ -110,6 +110,18 @@ impl<H> Entry<H> {
         self.editable = editable;
         self
     }
+
+    fn received_char(&mut self, tk: &mut dyn TkWindow, c: char) -> bool {
+        // TODO: allow edit position other than end
+        match c {
+            '\u{8}' /* backspace */  => { self.text.pop(); }
+            '\u{7f}' /* delete */ => self.text.clear(),
+            '\r' /* enter */ => return true,
+            _ => self.text.push(c),
+        };
+        tk.redraw(self);
+        false
+    }
 }
 
 impl<H> HasText for Entry<H> {
@@ -136,10 +148,13 @@ impl<H> Editable for Entry<H> {
 impl Handler for Entry<()> {
     type Msg = ();
 
-    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<()> {
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<()> {
         match action {
-            Action::Activate => Response::None,
-            a @ _ => err_unhandled(a),
+            Action::Activate => Response::Grab(self.id()),
+            Action::ReceivedCharacter(c) => {
+                self.received_char(tk, c);
+                Response::None
+            }
         }
     }
 }
@@ -147,10 +162,16 @@ impl Handler for Entry<()> {
 impl<M, H: Fn() -> M> Handler for Entry<H> {
     type Msg = M;
 
-    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<M> {
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<M> {
         match action {
-            Action::Activate => ((self.on_activate)()).into(),
-            a @ _ => err_unhandled(a),
+            Action::Activate => Response::Grab(self.id()),
+            Action::ReceivedCharacter(c) => {
+                if self.received_char(tk, c) {
+                    ((self.on_activate)()).into()
+                } else {
+                    Response::None
+                }
+            }
         }
     }
 }
