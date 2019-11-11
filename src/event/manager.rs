@@ -66,6 +66,12 @@ impl ManagerData {
         self.dpi_factor = dpi_factor;
     }
 
+    /// Get whether this widget has a keyboard grab
+    #[inline]
+    pub fn key_grab(&self, w_id: WidgetId) -> bool {
+        self.grab_focus == Some(w_id)
+    }
+
     /// Get whether this widget has keyboard focus
     #[inline]
     pub fn key_focus(&self, w_id: WidgetId) -> bool {
@@ -226,7 +232,7 @@ impl Manager {
                             tk.update_data(&mut |data| {
                                 if data.grab_focus.is_some() {
                                     data.grab_focus = None;
-                                    false
+                                    true
                                 } else if data.key_focus.is_some() {
                                     data.key_focus = None;
                                     true
@@ -321,10 +327,9 @@ impl Manager {
             Response::None | Response::Msg(()) => (),
             Response::Grab(id) => {
                 tk.update_data(&mut |data| {
-                    let r = data.key_focus != Some(id);
                     data.grab_focus = Some(id);
                     data.key_focus = Some(id);
-                    r
+                    true
                 });
             }
         };

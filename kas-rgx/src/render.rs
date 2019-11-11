@@ -135,10 +135,15 @@ impl Widgets {
                 self.glyph_brush.queue(section);
             }
             Class::Entry(cls) => {
+                let mut text = cls.get_text().to_string();
+                if self.ev_mgr.key_grab(w_id) {
+                    // TODO: proper edit character and positioning
+                    text.push('|');
+                }
                 background = Rgba::new(1.0, 1.0, 1.0, 1.0);
                 let color = [0.0, 0.0, 0.0, 1.0];
                 self.glyph_brush.queue(Section {
-                    text: cls.get_text(),
+                    text: &text,
                     screen_position: text_pos,
                     color,
                     scale,
