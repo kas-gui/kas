@@ -94,7 +94,7 @@ impl Entry<()> {
     ///
     /// Technically, this consumes `self` and reconstructs another `Entry`
     /// with a different parameterisation.
-    pub fn on_activate<R, H: Fn() -> R>(self, f: H) -> Entry<H> {
+    pub fn on_activate<R, H: Fn(&str) -> R>(self, f: H) -> Entry<H> {
         Entry {
             core: self.core,
             editable: self.editable,
@@ -159,7 +159,7 @@ impl Handler for Entry<()> {
     }
 }
 
-impl<M: From<EmptyMsg>, H: Fn() -> M> Handler for Entry<H> {
+impl<M: From<EmptyMsg>, H: Fn(&str) -> M> Handler for Entry<H> {
     type Msg = M;
 
     fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> M {
@@ -170,7 +170,7 @@ impl<M: From<EmptyMsg>, H: Fn() -> M> Handler for Entry<H> {
             }
             Action::ReceivedCharacter(c) => {
                 if self.received_char(tk, c) {
-                    ((self.on_activate)()).into()
+                    ((self.on_activate)(&self.text)).into()
                 } else {
                     EmptyMsg.into()
                 }

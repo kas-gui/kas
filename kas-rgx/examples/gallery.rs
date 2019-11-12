@@ -7,23 +7,35 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::event::EmptyMsg;
-use kas::macros::make_widget;
+use kas::macros::{make_widget, EmptyMsg};
 use kas::widget::*;
+use kas::TkWindow;
+
+#[derive(Clone, Debug, EmptyMsg)]
+enum Item {
+    None,
+    Button,
+    Check(bool),
+    Edit(String),
+}
 
 fn main() -> Result<(), winit::error::OsError> {
     let widgets = make_widget! {
-        container(grid) => EmptyMsg;
+        container(grid) => Item;
         struct {
             #[widget(row=0, col=0)] _ = Label::from("Label"),
             #[widget(row=0, col=1)] _ = Label::from("Hello world"),
             #[widget(row=1, col=0)] _ = Label::from("Entry"),
-            #[widget(row=1, col=1)] _ = Entry::new("edit me"),
+            #[widget(row=1, col=1)] _ = Entry::new("edit me")
+                .on_activate(|entry| Item::Edit(entry.to_string())),
             #[widget(row=2, col=0)] _ = Label::from("TextButton"),
-            #[widget(row=2, col=1)] _ = TextButton::new("Press me", EmptyMsg),
+            #[widget(row=2, col=1)] _ = TextButton::new("Press me", Item::Button),
             #[widget(row=3, col=0)] _ = Label::from("CheckBox"),
-            #[widget(row=3, col=1)] _ = CheckBox::new("Check me"),
+            #[widget(row=3, col=1)] _ = CheckBox::new("Check me")
+                .on_toggle(|check| Item::Check(check)),
             #[widget(row=4, col=0)] _ = Label::from("CheckBox"),
-            #[widget(row=4, col=1)] _ = CheckBox::new("").state(true),
+            #[widget(row=4, col=1)] _ = CheckBox::new("").state(true)
+                .on_toggle(|check| Item::Check(check)),
         }
     };
 
@@ -31,11 +43,24 @@ fn main() -> Result<(), winit::error::OsError> {
         container(vertical) => EmptyMsg;
         struct {
             #[widget] _ = Label::from("Widget Gallery"),
-            #[widget] _ = make_widget! {
-                frame => EmptyMsg;
+            #[widget(handler = activations)] _ = make_widget! {
+                frame => Item;
                 struct {
                     #[widget] _ = widgets
                 }
+            }
+        }
+        impl {
+            fn activations(&mut self, _: &mut dyn TkWindow, item: Item)
+                -> EmptyMsg
+            {
+                match item {
+                    Item::None => (),
+                    Item::Button => println!("Clicked!"),
+                    Item::Check(b) => println!("Checkbox: {}", b),
+                    Item::Edit(s) => println!("Edited: {}", s),
+                };
+                EmptyMsg
             }
         }
     });

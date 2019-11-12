@@ -72,7 +72,7 @@ impl CheckBox<()> {
     ///
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
-    pub fn on_toggle<M, OT: Fn() -> M>(self, f: OT) -> CheckBox<OT> {
+    pub fn on_toggle<M, OT: Fn(bool) -> M>(self, f: OT) -> CheckBox<OT> {
         CheckBox {
             core: self.core,
             label: self.label,
