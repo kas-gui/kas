@@ -173,6 +173,12 @@ impl ManagerData {
         self.key_focus = None;
         start != None
     }
+
+    pub(crate) fn set_grab(&mut self, id: WidgetId) -> bool {
+        self.grab_focus = Some(id);
+        self.key_focus = Some(id);
+        true
+    }
 }
 
 /// An interface for managing per-widget events
@@ -325,13 +331,6 @@ impl Manager {
 
         match response {
             Response::None | Response::Msg(()) => (),
-            Response::Grab(id) => {
-                tk.update_data(&mut |data| {
-                    data.grab_focus = Some(id);
-                    data.key_focus = Some(id);
-                    true
-                });
-            }
         };
     }
 

@@ -150,12 +150,12 @@ impl Handler for Entry<()> {
 
     fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<()> {
         match action {
-            Action::Activate => Response::Grab(self.id()),
+            Action::Activate => tk.update_data(&mut |data| data.set_grab(self.id())),
             Action::ReceivedCharacter(c) => {
                 self.received_char(tk, c);
-                Response::None
             }
         }
+        Response::None
     }
 }
 
@@ -164,7 +164,10 @@ impl<M, H: Fn() -> M> Handler for Entry<H> {
 
     fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<M> {
         match action {
-            Action::Activate => Response::Grab(self.id()),
+            Action::Activate => {
+                tk.update_data(&mut |data| data.set_grab(self.id()));
+                Response::None
+            }
             Action::ReceivedCharacter(c) => {
                 if self.received_char(tk, c) {
                     ((self.on_activate)()).into()
