@@ -178,25 +178,20 @@ impl<M: Clone + Debug> TextButton<M> {
         }
     }
 
+    /// Set accelerator keys (chain style)
+    pub fn with_keys(mut self, keys: &[VirtualKeyCode]) -> Self {
+        self.set_keys(keys);
+        self
+    }
+
     /// Replace the message value
     pub fn set_msg(&mut self, msg: M) {
         self.msg = msg;
     }
-}
 
-impl TextButton<VirtualKeyCode> {
-    /// Construct a button which can be activated by an accelerator key
-    ///
-    /// To avoid redundancy, the button uses this key as its message when
-    /// pressed. TODO: variant with separate message.
-    pub fn from_keys<S: Into<String>>(label: S, keys: &[VirtualKeyCode]) -> Self {
-        let mut core: CoreData = Default::default();
-        core.set_keys(keys);
-        TextButton {
-            core,
-            label: label.into(),
-            msg: keys[0],
-        }
+    /// Set accelerator keys
+    pub fn set_keys(&mut self, keys: &[VirtualKeyCode]) {
+        self.core.set_keys(keys);
     }
 }
 

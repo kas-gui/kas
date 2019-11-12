@@ -16,40 +16,67 @@ use kas::macros::make_widget;
 use kas::widget::{Entry, TextButton, Window};
 use kas::TkWindow;
 
+#[derive(Clone, Debug)]
+enum Key {
+    Clear,
+    Divide,
+    Multiply,
+    Subtract,
+    Add,
+    Equals,
+    Char(char),
+}
+
 fn main() -> Result<(), winit::error::OsError> {
     let buttons = make_widget! {
-        container(grid) => VK;
+        container(grid) => Key;
         struct {
-            #[widget(col = 0, row = 0)] _ = TextButton::from_keys("clear", &[VK::Delete]),
-            #[widget(col = 1, row = 0)] _ = TextButton::from_keys("÷", &[VK::Divide, VK::Slash]),
-            #[widget(col = 2, row = 0)] _ = TextButton::from_keys("×", &[VK::Multiply]),
-            #[widget(col = 3, row = 0)] _ = TextButton::from_keys("−", &[VK::Subtract]),
-            #[widget(col = 0, row = 1)] _ = TextButton::from_keys("7", &[VK::Key7, VK::Numpad7]),
-            #[widget(col = 1, row = 1)] _ = TextButton::from_keys("8", &[VK::Key8, VK::Numpad8]),
-            #[widget(col = 2, row = 1)] _ = TextButton::from_keys("9", &[VK::Key9, VK::Numpad9]),
-            #[widget(col = 3, row = 1, rspan = 2)] _ = TextButton::from_keys("+", &[VK::Add]),
-            #[widget(col = 0, row = 2)] _ = TextButton::from_keys("4", &[VK::Key4, VK::Numpad4]),
-            #[widget(col = 1, row = 2)] _ = TextButton::from_keys("5", &[VK::Key5, VK::Numpad5]),
-            #[widget(col = 2, row = 2)] _ = TextButton::from_keys("6", &[VK::Key6, VK::Numpad6]),
-            #[widget(col = 0, row = 3)] _ = TextButton::from_keys("1", &[VK::Key1, VK::Numpad1]),
-            #[widget(col = 1, row = 3)] _ = TextButton::from_keys("2", &[VK::Key2, VK::Numpad2]),
-            #[widget(col = 2, row = 3)] _ = TextButton::from_keys("3", &[VK::Key3, VK::Numpad3]),
-            #[widget(col = 3, row = 3, rspan = 2)] _ = TextButton::from_keys("=",
-                &[VK::Equals, VK::Return, VK::NumpadEnter, VK::NumpadEquals]),
-            #[widget(col = 0, row = 4, cspan = 2)] _ = TextButton::from_keys("0",
-                &[VK::Key0, VK::Numpad0]),
-            #[widget(col = 2, row = 4)] _ = TextButton::from_keys(".", &[VK::Period]),
+            #[widget(col = 0, row = 0)]
+            _ = TextButton::new("clear", Key::Clear).with_keys(&[VK::Delete]),
+            #[widget(col = 1, row = 0)]
+            _ = TextButton::new("÷", Key::Divide).with_keys(&[VK::Divide, VK::Slash]),
+            #[widget(col = 2, row = 0)]
+            _ = TextButton::new("×", Key::Multiply).with_keys(&[VK::Multiply]),
+            #[widget(col = 3, row = 0)]
+            _ = TextButton::new("−", Key::Subtract).with_keys(&[VK::Subtract]),
+            #[widget(col = 0, row = 1)]
+            _ = TextButton::new("7", Key::Char('7')).with_keys(&[VK::Key7, VK::Numpad7]),
+            #[widget(col = 1, row = 1)]
+            _ = TextButton::new("8", Key::Char('8')).with_keys(&[VK::Key8, VK::Numpad8]),
+            #[widget(col = 2, row = 1)]
+            _ = TextButton::new("9", Key::Char('9')).with_keys(&[VK::Key9, VK::Numpad9]),
+            #[widget(col = 3, row = 1, rspan = 2)]
+            _ = TextButton::new("+", Key::Add).with_keys(&[VK::Add]),
+            #[widget(col = 0, row = 2)]
+            _ = TextButton::new("4", Key::Char('4')).with_keys(&[VK::Key4, VK::Numpad4]),
+            #[widget(col = 1, row = 2)]
+            _ = TextButton::new("5", Key::Char('5')).with_keys(&[VK::Key5, VK::Numpad5]),
+            #[widget(col = 2, row = 2)]
+            _ = TextButton::new("6", Key::Char('6')).with_keys(&[VK::Key6, VK::Numpad6]),
+            #[widget(col = 0, row = 3)]
+            _ = TextButton::new("1", Key::Char('1')).with_keys(&[VK::Key1, VK::Numpad1]),
+            #[widget(col = 1, row = 3)]
+            _ = TextButton::new("2", Key::Char('2')).with_keys(&[VK::Key2, VK::Numpad2]),
+            #[widget(col = 2, row = 3)]
+            _ = TextButton::new("3", Key::Char('3')).with_keys(&[VK::Key3, VK::Numpad3]),
+            #[widget(col = 3, row = 3, rspan = 2)]
+            _ = TextButton::new("=", Key::Equals)
+                .with_keys(&[VK::Equals, VK::Return, VK::NumpadEnter, VK::NumpadEquals]),
+            #[widget(col = 0, row = 4, cspan = 2)]
+            _ = TextButton::new("0", Key::Char('0')).with_keys(&[VK::Key0, VK::Numpad0]),
+            #[widget(col = 2, row = 4)]
+            _ = TextButton::new(".", Key::Char('.')).with_keys(&[VK::Period]),
         }
     };
     let content = make_widget! {
         container(vertical) => ();
         struct {
             #[widget] display: impl HasText = Entry::new("0").editable(false),
-            #[widget(handler = handle_button)] buttons -> VK = buttons,
+            #[widget(handler = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),
         }
         impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: VK) -> Response<()> {
+            fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Key) -> Response<()> {
                 if self.calc.handle(msg) {
                     self.display.set_text(tk, self.calc.display());
                 }
@@ -118,31 +145,20 @@ impl Calculator {
     }
 
     // return true if display changes
-    fn handle(&mut self, key: VK) -> bool {
+    fn handle(&mut self, key: Key) -> bool {
         match key {
-            VK::Delete => {
+            Key::Clear => {
                 self.state = Ok(0.0);
                 self.op = Op::None;
                 self.line_buf.clear();
                 true
             }
-            VK::Divide => self.do_op(Op::Divide),
-            VK::Multiply => self.do_op(Op::Multiply),
-            VK::Subtract => self.do_op(Op::Subtract),
-            VK::Add => self.do_op(Op::Add),
-            VK::Equals => self.do_op(Op::None),
-            VK::Period => self.push_char('.'),
-            VK::Key0 => self.push_char('0'),
-            VK::Key1 => self.push_char('1'),
-            VK::Key2 => self.push_char('2'),
-            VK::Key3 => self.push_char('3'),
-            VK::Key4 => self.push_char('4'),
-            VK::Key5 => self.push_char('5'),
-            VK::Key6 => self.push_char('6'),
-            VK::Key7 => self.push_char('7'),
-            VK::Key8 => self.push_char('8'),
-            VK::Key9 => self.push_char('9'),
-            _ => unreachable!(),
+            Key::Divide => self.do_op(Op::Divide),
+            Key::Multiply => self.do_op(Op::Multiply),
+            Key::Subtract => self.do_op(Op::Subtract),
+            Key::Add => self.do_op(Op::Add),
+            Key::Equals => self.do_op(Op::None),
+            Key::Char(c) => self.push_char(c),
         }
     }
 
