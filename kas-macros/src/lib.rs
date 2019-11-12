@@ -152,7 +152,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         for child in args.children.iter() {
             let ident = &child.ident;
             let handler = if let Some(ref h) = child.args.handler {
-                quote! { r.map_into(|msg| self.#h(_tk, msg)) }
+                quote! { self.#h(_tk, r) }
             } else {
                 quote! { r.into() }
             };
@@ -177,24 +177,24 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         } else {
             quote! {
                 fn handle(&mut self, _tk: &mut dyn kas::TkWindow, event: kas::event::Event)
-                -> kas::event::Response<Self::Msg>
+                -> Self::Msg
                 {
-                    use kas::{Core, event::{Event, Response, err_unhandled, err_num}};
+                    use kas::{Core, event::Event};
                     match &event {
                         Event::ToChild(id, ..) => {
                             if *id == self.id() {
                                 // we may want to allow custom handlers on self here?
-                                err_unhandled(event)
+                                kas::event::err_unhandled(event)
                             }
                             #ev_to_num
                             else {
-                                err_num()
+                                kas::event::err_num()
                             }
                         }
                         Event::ToCoord(coord, ..) => {
                             #ev_to_coord {
                                 // we may want to allow custom handlers on self here?
-                                Response::None
+                                kas::event::EmptyMsg.into()
                             }
                         }
                     }
@@ -365,6 +365,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             let tyr = Ident::new(&name_buf, Span::call_site());
                             handler_extra.push(tyr.clone());
                             handler_clauses.push(quote! { #ty: kas::event::Handler<Msg = #tyr> });
+                            handler_clauses.push(quote! { #tyr: From<kas::event::EmptyMsg> });
                             handler_clauses.push(quote! { #msg: From<#tyr> });
                         }
                     }
@@ -438,4 +439,28 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     .into();
 
     toks
+}
+
+/// Macro to derive `From<EmptyMsg>`
+///
+/// See the [`kas::macros`](../kas/macros/index.html) module documentation.
+///
+/// This macro assumes the type is an enum with a simple variant named `None`.
+// TODO: add diagnostics to check against mis-use?
+#[proc_macro_derive(EmptyMsg)]
+pub fn derive_empty_msg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = parse_macro_input!(input as DeriveInput);
+    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+    let name = &ast.ident;
+
+    let toks = quote! {
+        impl #impl_generics From<kas::event::EmptyMsg>
+            for #name #ty_generics #where_clause
+        {
+            fn from(_: kas::event::EmptyMsg) -> Self {
+                #name::None
+            }
+        }
+    };
+    toks.into()
 }

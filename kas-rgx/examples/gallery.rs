@@ -6,19 +6,20 @@
 //! Gallery of all widgets
 #![feature(proc_macro_hygiene)]
 
+use kas::event::EmptyMsg;
 use kas::macros::make_widget;
 use kas::widget::*;
 
 fn main() -> Result<(), winit::error::OsError> {
     let widgets = make_widget! {
-        container(grid) => ();
+        container(grid) => EmptyMsg;
         struct {
             #[widget(row=0, col=0)] _ = Label::from("Label"),
             #[widget(row=0, col=1)] _ = Label::from("Hello world"),
             #[widget(row=1, col=0)] _ = Label::from("Entry"),
             #[widget(row=1, col=1)] _ = Entry::new("edit me"),
             #[widget(row=2, col=0)] _ = Label::from("TextButton"),
-            #[widget(row=2, col=1)] _ = TextButton::new("Press me", println!("Clicked!")),
+            #[widget(row=2, col=1)] _ = TextButton::new("Press me", EmptyMsg),
             #[widget(row=3, col=0)] _ = Label::from("CheckBox"),
             #[widget(row=3, col=1)] _ = CheckBox::new("Check me"),
             #[widget(row=4, col=0)] _ = Label::from("CheckBox"),
@@ -27,11 +28,11 @@ fn main() -> Result<(), winit::error::OsError> {
     };
 
     let window = Window::new(make_widget! {
-        container(vertical) => ();
+        container(vertical) => EmptyMsg;
         struct {
             #[widget] _ = Label::from("Widget Gallery"),
             #[widget] _ = make_widget! {
-                frame => ();
+                frame => EmptyMsg;
                 struct {
                     #[widget] _ = widgets
                 }

@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{Class, Editable, HasText};
-use crate::event::{Action, Handler, Response};
+use crate::event::{Action, EmptyMsg, Handler};
 use crate::macros::Widget;
 use crate::{Core, CoreData, TkWindow};
 
@@ -146,33 +146,33 @@ impl<H> Editable for Entry<H> {
 }
 
 impl Handler for Entry<()> {
-    type Msg = ();
+    type Msg = EmptyMsg;
 
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<()> {
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> EmptyMsg {
         match action {
             Action::Activate => tk.update_data(&mut |data| data.set_grab(self.id())),
             Action::ReceivedCharacter(c) => {
                 self.received_char(tk, c);
             }
         }
-        Response::None
+        EmptyMsg
     }
 }
 
-impl<M, H: Fn() -> M> Handler for Entry<H> {
+impl<M: From<EmptyMsg>, H: Fn() -> M> Handler for Entry<H> {
     type Msg = M;
 
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<M> {
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> M {
         match action {
             Action::Activate => {
                 tk.update_data(&mut |data| data.set_grab(self.id()));
-                Response::None
+                EmptyMsg.into()
             }
             Action::ReceivedCharacter(c) => {
                 if self.received_char(tk, c) {
                     ((self.on_activate)()).into()
                 } else {
-                    Response::None
+                    EmptyMsg.into()
                 }
             }
         }

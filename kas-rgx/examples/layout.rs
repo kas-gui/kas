@@ -6,6 +6,7 @@
 //! Gallery of all widgets
 #![feature(proc_macro_hygiene)]
 
+use kas::event::EmptyMsg;
 use kas::macros::make_widget;
 use kas::widget::{CheckBox, Entry, Label, Window};
 
@@ -14,7 +15,7 @@ fn main() -> Result<(), winit::error::OsError> {
     let crasit = "Cras sit amet justo ipsum. Aliquam in nunc posuere leo egestas laoreet convallis eu libero. Nullam ut massa ante. Cras vitae velit pharetra, euismod nisl suscipit, feugiat nulla. Aenean consectetur, diam non tristique iaculis, nisl lectus hendrerit sapien, nec rhoncus mi sem non odio. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Nulla a lorem eu ipsum faucibus placerat ac quis quam. Curabitur justo ligula, laoreet nec ultrices eu, scelerisque non metus. Mauris sit amet est enim. Mauris risus eros, accumsan ut iaculis sit amet, sagittis facilisis neque. Nunc venenatis risus nec purus malesuada, a tristique arcu efficitur. Nulla suscipit arcu nibh. Cras facilisis nibh a gravida aliquet. Praesent fringilla felis a tristique luctus.";
 
     let window = Window::new(make_widget! {
-        container(grid) => ();
+        container(grid) => EmptyMsg;
         struct {
             #[widget(row=0, col=2)] _ = Label::from("Layout demo"),
             #[widget(row=1, col=1, cspan=3)] _ = Label::from(lipsum),

@@ -7,13 +7,14 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::class::HasText;
-use kas::event::Response;
-use kas::macros::make_widget;
+use kas::event::EmptyMsg;
+use kas::macros::{make_widget, EmptyMsg};
 use kas::widget::{Label, TextButton, Window};
 use kas::TkWindow;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EmptyMsg)]
 enum Message {
+    None,
     Decr,
     Incr,
 }
@@ -27,7 +28,7 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     };
     let window = Window::new(make_widget! {
-        container(vertical) => ();
+        container(vertical) => EmptyMsg;
         struct {
             #[widget] display: Label = Label::from("0"),
             #[widget(handler = handle_button)] buttons -> Message = buttons,
@@ -35,9 +36,10 @@ fn main() -> Result<(), winit::error::OsError> {
         }
         impl {
             fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Message)
-                -> Response<()>
+                -> EmptyMsg
             {
                 match msg {
+                    Message::None => (),
                     Message::Decr => {
                         self.counter = self.counter.saturating_sub(1);
                         self.display.set_text(tk, self.counter.to_string());
@@ -47,7 +49,7 @@ fn main() -> Result<(), winit::error::OsError> {
                         self.display.set_text(tk, self.counter.to_string());
                     }
                 };
-                Response::None
+                EmptyMsg
             }
         }
     });

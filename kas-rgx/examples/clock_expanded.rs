@@ -19,7 +19,7 @@ use kas::TkWindow;
 fn main() {
     let mut window = Window::new({
         #[widget (class = kas :: class :: Class :: Container, layout = vertical)]
-        #[handler (msg = ())]
+        #[handler]
         #[derive(Clone, Debug, kas :: macros :: Widget)]
         struct AnonWidget {
             #[core]

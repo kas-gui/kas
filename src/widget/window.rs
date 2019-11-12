@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use crate::class::Class;
-use crate::event::{Callback, Event, Handler, Response};
+use crate::event::{Callback, EmptyMsg, Event, Handler};
 use crate::geom::{AxisInfo, Coord, Rect, Size, SizeRules};
 use crate::macros::Widget;
 use crate::{Core, CoreData, Layout, TkWindow, Widget};
@@ -87,21 +87,22 @@ impl<W: Widget> Window<W> {
     }
 }
 
-impl<M, W: Widget + Handler<Msg = M> + 'static> Handler for Window<W> {
-    type Msg = ();
+impl<W> Handler for Window<W>
+where
+    W: Widget + Handler<Msg = EmptyMsg> + 'static,
+{
+    type Msg = EmptyMsg;
 
-    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> EmptyMsg {
         // The window itself doesn't handle events, so we can just pass through
-        // TODO: either allow a custom handler or require M=()
-        let r = self.w.handle(tk, event);
-        Response::try_from(r).unwrap_or_else(|_| {
-            println!("TODO: widget returned custom msg to window");
-            Response::None
-        })
+        self.w.handle(tk, event)
     }
 }
 
-impl<M, W: Widget + Handler<Msg = M> + 'static> kas::Window for Window<W> {
+impl<W> kas::Window for Window<W>
+where
+    W: Widget + Handler<Msg = EmptyMsg> + 'static,
+{
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
         // We call size_rules not because we want the result, but because our
         // spec requires that we do so before calling set_rect.

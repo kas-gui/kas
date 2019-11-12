@@ -13,13 +13,14 @@ use std::time::Duration;
 
 use kas::class::HasText;
 use kas::event::Callback;
+use kas::event::EmptyMsg;
 use kas::macros::make_widget;
 use kas::widget::{Label, Window};
 use kas::TkWindow;
 
 fn main() {
     let mut window = Window::new(make_widget! {
-        container(vertical) => ();
+        container(vertical) => EmptyMsg;
         struct {
             #[widget] date: Label = Label::new(""),
             #[widget] time: Label = Label::new("")

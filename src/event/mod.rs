@@ -16,7 +16,6 @@ mod callback;
 mod enums;
 mod events;
 mod manager;
-mod response;
 
 use std::fmt::Debug;
 // use std::path::PathBuf;
@@ -31,21 +30,29 @@ pub use callback::Callback;
 pub use enums::*;
 pub use events::*;
 pub use manager::{Manager, ManagerData};
-pub use response::Response;
+
+/// An empty message
+///
+/// This type is used for handlers without a response message. Additionally,
+/// the `From<EmptyMsg>` trait bound is required on all message types as a
+/// form of default construction. This can be done conveniently with the
+/// [`derive(EmptyMsg)`](../macros/index.html#the-deriveemptymsg-macro) macro.
+#[derive(Clone, Debug)]
+pub struct EmptyMsg;
 
 /// Mark explicitly ignored events.
 ///
 /// This is an error, meaning somehow an event has been sent to a widget which
 /// does not support events of that type.
 /// It is safe to ignore this error, but this function panics in debug builds.
-pub fn err_unhandled<M: Debug, N>(m: M) -> Response<N> {
+pub fn err_unhandled<M: Debug, N: From<EmptyMsg>>(m: M) -> N {
     debug_assert!(
         false,
         "Handler::handle: event not handled by widget: {:?}",
         m
     );
     println!("Handler::handle: event not handled by widget: {:?}", m);
-    Response::None
+    EmptyMsg.into()
 }
 
 /// Notify of an incorrect widget identifier.
@@ -55,10 +62,10 @@ pub fn err_unhandled<M: Debug, N>(m: M) -> Response<N> {
 /// It is safe to ignore this error, but this function panics in debug builds.
 ///
 /// [`WidgetId`]: crate::WidgetId
-pub fn err_num<N>() -> Response<N> {
+pub fn err_num<N: From<EmptyMsg>>() -> N {
     debug_assert!(false, "Handler::handle: bad WidgetId");
     println!("Handler::handle: bad widget WidgetId");
-    Response::None
+    EmptyMsg.into()
 }
 
 /// Event-handling aspect of a widget.
@@ -73,12 +80,12 @@ pub trait Handler: Core {
     /// This mechanism allows type-safe handling of user-defined responses to handled actions.
     /// For example, a user may define a control panel where each button returns a unique code,
     /// or a configuration editor may return a full copy of the new configuration on completion.
-    type Msg;
+    type Msg: From<EmptyMsg>;
 
     /// Handle a high-level event and return a user-defined msg.
     #[inline]
-    fn handle_action(&mut self, _: &mut dyn TkWindow, _: Action) -> Response<Self::Msg> {
-        Response::None
+    fn handle_action(&mut self, _: &mut dyn TkWindow, _: Action) -> Self::Msg {
+        EmptyMsg.into()
     }
 
     /// Handle a low-level event.
@@ -88,7 +95,7 @@ pub trait Handler: Core {
     /// cases requiring custom handling, and use
     /// [`Manager::handle_generic`] for all other cases.
     #[inline]
-    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Self::Msg {
         Manager::handle_generic(self, tk, event)
     }
 }

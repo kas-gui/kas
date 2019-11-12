@@ -10,14 +10,15 @@ use std::num::ParseFloatError;
 use std::str::FromStr;
 
 use kas::class::HasText;
-use kas::event::Response;
+use kas::event::EmptyMsg;
 use kas::event::VirtualKeyCode as VK;
-use kas::macros::make_widget;
+use kas::macros::{make_widget, EmptyMsg};
 use kas::widget::{Entry, TextButton, Window};
 use kas::TkWindow;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EmptyMsg)]
 enum Key {
+    None,
     Clear,
     Divide,
     Multiply,
@@ -69,18 +70,18 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     };
     let content = make_widget! {
-        container(vertical) => ();
+        container(vertical) => EmptyMsg;
         struct {
             #[widget] display: impl HasText = Entry::new("0").editable(false),
             #[widget(handler = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),
         }
         impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Key) -> Response<()> {
+            fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Key) -> EmptyMsg {
                 if self.calc.handle(msg) {
                     self.display.set_text(tk, self.calc.display());
                 }
-                Response::None
+                EmptyMsg
             }
         }
     };
@@ -147,6 +148,7 @@ impl Calculator {
     // return true if display changes
     fn handle(&mut self, key: Key) -> bool {
         match key {
+            Key::None => false,
             Key::Clear => {
                 self.state = Ok(0.0);
                 self.op = Op::None;

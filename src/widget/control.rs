@@ -9,7 +9,7 @@ use std::any::TypeId;
 use std::fmt::{self, Debug};
 
 use crate::class::{Class, HasBool, HasText};
-use crate::event::{err_unhandled, Action, Handler, Response, VirtualKeyCode};
+use crate::event::{err_unhandled, Action, EmptyMsg, Handler, VirtualKeyCode};
 use crate::macros::Widget;
 use crate::{CoreData, TkWindow};
 
@@ -123,24 +123,24 @@ impl<H> HasText for CheckBox<H> {
 }
 
 impl Handler for CheckBox<()> {
-    type Msg = ();
+    type Msg = EmptyMsg;
 
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<()> {
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> EmptyMsg {
         match action {
             Action::Activate => {
                 self.state = !self.state;
                 tk.redraw(self);
-                Response::None
+                EmptyMsg
             }
             a @ _ => err_unhandled(a),
         }
     }
 }
 
-impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
+impl<M: From<EmptyMsg>, H: Fn(bool) -> M> Handler for CheckBox<H> {
     type Msg = M;
 
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<M> {
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> M {
         match action {
             Action::Activate => {
                 self.state = !self.state;
@@ -156,14 +156,14 @@ impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
 // TODO: abstract out text part?
 #[widget(class = Class::Button(self), layout = derive)]
 #[derive(Clone, Debug, Default, Widget)]
-pub struct TextButton<M: Clone + Debug> {
+pub struct TextButton<M: Clone + Debug + From<EmptyMsg>> {
     #[core]
     core: CoreData,
     label: String,
     msg: M,
 }
 
-impl<M: Clone + Debug> TextButton<M> {
+impl<M: Clone + Debug + From<EmptyMsg>> TextButton<M> {
     /// Construct a button with a given `label` and `msg`
     ///
     /// The message `msg` is returned to the parent widget on activation. Any
@@ -195,7 +195,7 @@ impl<M: Clone + Debug> TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug> HasText for TextButton<M> {
+impl<M: Clone + Debug + From<EmptyMsg>> HasText for TextButton<M> {
     fn get_text(&self) -> &str {
         &self.label
     }
@@ -206,10 +206,10 @@ impl<M: Clone + Debug> HasText for TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug> Handler for TextButton<M> {
+impl<M: Clone + Debug + From<EmptyMsg>> Handler for TextButton<M> {
     type Msg = M;
 
-    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<M> {
+    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> M {
         match action {
             Action::Activate => self.msg.clone().into(),
             a @ _ => err_unhandled(a),

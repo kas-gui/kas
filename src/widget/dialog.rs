@@ -8,11 +8,17 @@
 //! KAS dialog boxes are pre-configured windows, usually allowing some
 //! customisation.
 
-use crate::event::{Callback, Response};
+use crate::event::{Callback, EmptyMsg};
 use crate::geom::{AxisInfo, Coord, Rect, Size};
-use crate::macros::Widget;
+use crate::macros::{EmptyMsg, Widget};
 use crate::widget::{Label, TextButton};
 use crate::{class::Class, CoreData, Layout, LayoutData, TkAction, TkWindow, Window};
+
+#[derive(Clone, Debug, EmptyMsg)]
+enum DialogButton {
+    None,
+    Close,
+}
 
 /// A simple message box.
 #[widget(class = Class::Window, layout = vertical)]
@@ -26,7 +32,7 @@ pub struct MessageBox {
     #[widget]
     label: Label,
     #[widget(handler = handle_button)]
-    button: TextButton<()>,
+    button: TextButton<DialogButton>,
 }
 
 impl MessageBox {
@@ -35,13 +41,16 @@ impl MessageBox {
             core: Default::default(),
             layout_data: Default::default(),
             label: Label::new(message),
-            button: TextButton::new("Ok", ()),
+            button: TextButton::new("Ok", DialogButton::Close),
         }
     }
 
-    fn handle_button(&mut self, tk: &mut dyn TkWindow, _msg: ()) -> Response<()> {
-        tk.send_action(TkAction::Close);
-        Response::None
+    fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: DialogButton) -> EmptyMsg {
+        match msg {
+            DialogButton::None => (),
+            DialogButton::Close => tk.send_action(TkAction::Close),
+        };
+        EmptyMsg
     }
 }
 

@@ -367,7 +367,7 @@ pub struct HandlerArgs {
 
 impl Parse for HandlerArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut msg = parse_quote! { () };
+        let mut msg = parse_quote! { kas::event::EmptyMsg };
         let mut generics = Generics::default();
 
         if input.is_empty() {

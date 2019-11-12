@@ -10,13 +10,14 @@ use std::fmt::Write;
 use std::time::{Duration, Instant};
 
 use kas::class::HasText;
-use kas::event::{Callback, Response};
-use kas::macros::make_widget;
+use kas::event::{Callback, EmptyMsg};
+use kas::macros::{make_widget, EmptyMsg};
 use kas::widget::{Label, TextButton, Window};
 use kas::TkWindow;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EmptyMsg)]
 enum Control {
+    None,
     Reset,
     Start,
 }
@@ -25,10 +26,10 @@ enum Control {
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
 fn make_window() -> Box<dyn kas::Window> {
     let stopwatch = make_widget! {
-        container(horizontal) => ();
+        container(horizontal) => EmptyMsg;
         struct {
             #[widget] display: impl HasText = make_widget!{
-                frame => ();
+                frame => EmptyMsg;
                 struct {
                     #[widget] display: Label = Label::from("0.000"),
                 }
@@ -48,8 +49,9 @@ fn make_window() -> Box<dyn kas::Window> {
             dur_buf: String = String::default(),
         }
         impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Control) -> Response<()> {
+            fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Control) -> EmptyMsg {
                 match msg {
+                    Control::None => {}
                     Control::Reset => {
                         self.saved = Duration::default();
                         self.start = None;
@@ -64,7 +66,7 @@ fn make_window() -> Box<dyn kas::Window> {
                         }
                     }
                 }
-                Response::None
+                EmptyMsg
             }
 
             fn on_tick(&mut self, tk: &mut dyn TkWindow) {

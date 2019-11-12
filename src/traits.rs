@@ -7,7 +7,7 @@
 
 use std::fmt;
 
-use crate::event::{Callback, Handler};
+use crate::event::{Callback, EmptyMsg, Handler};
 use crate::geom::{AxisInfo, Rect, Size, SizeRules};
 use crate::toolkit::TkWindow;
 use crate::{CoreData, WidgetId};
@@ -184,7 +184,7 @@ pub trait Widget: Layout {
 // Window should be a Widget. So alternatives are (1) use a struct instead of a
 // trait or (2) allow any Widget to derive Window (i.e. implement required
 // functionality with macros instead of the generic code below).
-pub trait Window: Widget + Handler<Msg = ()> {
+pub trait Window: Widget + Handler<Msg = EmptyMsg> {
     /// Adjust the size of the window, repositioning widgets.
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size);
 
