@@ -277,6 +277,14 @@ impl Manager {
                     button,
                     modifiers,
                 };
+                tk.update_data(&mut |data| {
+                    if data.grab_focus.is_some() && data.grab_focus != data.hover {
+                        data.grab_focus = None;
+                        true
+                    } else {
+                        false
+                    }
+                });
                 if let Some(id) = tk.data().hover {
                     widget.handle(tk, Event::ToChild(id, ev));
                 } else {
@@ -302,6 +310,11 @@ impl Manager {
                         widget.handle(tk, Event::ToCoord(coord, ev));
                     }
                     TouchPhase::Ended => {
+                        tk.update_data(&mut |data| {
+                            let r = data.grab_focus.is_some();
+                            data.grab_focus = None;
+                            r
+                        });
                         let ev = EventCoord::TouchEnd(touch.id);
                         widget.handle(tk, Event::ToCoord(coord, ev));
                     }
