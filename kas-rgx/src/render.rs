@@ -190,18 +190,28 @@ impl Widgets {
             }
         }
 
-        // draw margin
-        let margin_r = match self.ev_mgr.key_focus(w_id) {
-            false => 0.5,
-            true => 1.0,
-        };
-        let margin_g = match self.ev_mgr.is_hovered(w_id) {
-            false => 0.5,
-            true => 1.0,
-        };
+        // draw any highlights within the margin area
+        // note: may be disabled via 'false &&' prefix
+        let hover = false && self.ev_mgr.is_hovered(w_id);
+        let key_focus = self.ev_mgr.key_focus(w_id);
+        let key_grab = self.ev_mgr.key_grab(w_id);
+        let mut stroke = Stroke::NONE;
+        if hover || key_focus || key_grab {
+            let mut frame = Rgba::new(0.7, 0.7, 0.7, 1.0);
+            if hover {
+                frame.g = 1.0;
+            }
+            if key_focus {
+                frame.r = 1.0;
+            }
+            if key_grab {
+                frame.b = 1.0;
+            }
+            stroke = Stroke::new(margin, frame);
+        }
         batch.add(Shape::Rectangle(
             Rect::new(x0, y0, x1, y1),
-            Stroke::new(margin, Rgba::new(margin_r, margin_g, 0.5, 1.0)),
+            stroke,
             Fill::Solid(background),
         ));
     }
