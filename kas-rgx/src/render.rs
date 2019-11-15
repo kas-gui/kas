@@ -23,7 +23,7 @@ const FONT_SIZE: f32 = 20.0;
 /// integer, e.g. `(2.0 * 1.25).round() == 3.0`.
 const MARGIN: f32 = 2.0;
 /// Frame size (adjusted as above)
-const FRAME_SIZE: f32 = 5.0;
+const FRAME_SIZE: f32 = 4.0;
 
 /// Widget renderer
 pub(crate) struct Widgets {
@@ -95,16 +95,16 @@ impl Widgets {
         // Draw coordinates use f32 with the origin at the bottom-left.
         // Note: it's important to pass smallest coord to Shape::Rectangle first
         let rect = widget.rect();
-        let (x0, y) = rect.pos_f32();
-        let y1 = height - y;
+        let (mut x0, y) = rect.pos_f32();
+        let mut y1 = height - y;
         let (w, h) = rect.size_f32();
-        let (x1, y0) = (x0 + w, y1 - h);
+        let (mut x1, mut y0) = (x0 + w, y1 - h);
 
         let mut background = Rgba::new(1.0, 1.0, 1.0, 0.1);
 
         let margin = self.margin;
         let scale = Scale::uniform(self.font_scale);
-        let bounds = (x1 - x0 - margin - margin, y1 - y0 - margin - margin);
+        let mut bounds = (x1 - x0 - margin - margin, y1 - y0 - margin - margin);
 
         let alignments = widget.class().alignments();
         // TODO: support justified alignment
@@ -119,7 +119,7 @@ impl Widgets {
             Align::End => (VerticalAlign::Bottom, bounds.1),
         };
         let layout = Layout::default().h_align(h_align).v_align(v_align);
-        let text_pos = (x0 + margin + h_offset, y + margin + v_offset);
+        let mut text_pos = (x0 + margin + h_offset, y + margin + v_offset);
 
         match widget.class() {
             Class::Container | Class::Window => {
@@ -140,6 +140,21 @@ impl Widgets {
                 self.glyph_brush.queue(section);
             }
             Class::Entry(cls) => {
+                let f = self.frame_size;
+                batch.add(Shape::Rectangle(
+                    Rect::new(x0, y0, x1, y1),
+                    Stroke::new(f, Rgba::new(0.6, 0.6, 0.6, 1.0)),
+                    Fill::Empty(),
+                ));
+                x0 += f;
+                x1 -= f;
+                y0 += f;
+                y1 -= f;
+                bounds.0 -= 2.0 * f;
+                bounds.1 -= 2.0 * f;
+                text_pos.0 += f;
+                text_pos.1 += f;
+
                 let mut text = cls.get_text().to_string();
                 if self.ev_mgr.key_grab(w_id) {
                     // TODO: proper edit character and positioning
@@ -176,6 +191,21 @@ impl Widgets {
                 });
             }
             Class::CheckBox(cls) => {
+                let f = self.frame_size;
+                batch.add(Shape::Rectangle(
+                    Rect::new(x0, y0, x1, y1),
+                    Stroke::new(f, Rgba::new(0.6, 0.6, 0.6, 1.0)),
+                    Fill::Empty(),
+                ));
+                x0 += f;
+                x1 -= f;
+                y0 += f;
+                y1 -= f;
+                bounds.0 -= 2.0 * f;
+                bounds.1 -= 2.0 * f;
+                text_pos.0 += f;
+                text_pos.1 += f;
+
                 background = Rgba::new(1.0, 1.0, 1.0, 1.0);
                 let color = [0.0, 0.0, 0.0, 1.0];
                 // TODO: draw check mark *and* optional text
@@ -239,7 +269,7 @@ impl TkWindow for Widgets {
 
     fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
         let line_height = self.font_scale as u32;
-        let mut bound = |vert: bool| -> u32 {
+        let bound = |s: &mut Widgets, vert: bool| -> u32 {
             let bounds = widget.class().text().and_then(|text| {
                 let mut bounds = (f32::INFINITY, f32::INFINITY);
                 if let Some(size) = axis.fixed(false) {
@@ -247,10 +277,10 @@ impl TkWindow for Widgets {
                 } else if let Some(size) = axis.fixed(true) {
                     bounds.0 = size as f32;
                 }
-                self.glyph_brush.glyph_bounds(Section {
+                s.glyph_brush.glyph_bounds(Section {
                     text,
                     screen_position: (0.0, 0.0),
-                    scale: Scale::uniform(self.font_scale),
+                    scale: Scale::uniform(s.font_scale),
                     bounds,
                     ..Section::default()
                 })
@@ -269,20 +299,32 @@ impl TkWindow for Widgets {
             Class::Label(_) => {
                 if axis.horiz() {
                     let min = 3 * line_height;
-                    SizeRules::variable(min, bound(false).max(min))
+                    SizeRules::variable(min, bound(self, false).max(min))
                 } else {
-                    SizeRules::variable(line_height, bound(true).max(line_height))
+                    SizeRules::variable(line_height, bound(self, true).max(line_height))
                 }
             }
-            Class::Entry(_) | Class::Button(_) => {
+            Class::Entry(_) => {
+                let frame = 2 * self.frame_size as u32;
                 if axis.horiz() {
                     let min = 3 * line_height;
-                    SizeRules::variable(min, bound(false).max(min))
+                    SizeRules::variable(min, bound(self, false).max(min)) + frame
+                } else {
+                    SizeRules::fixed(line_height + frame)
+                }
+            }
+            Class::Button(_) => {
+                if axis.horiz() {
+                    let min = 3 * line_height;
+                    SizeRules::variable(min, bound(self, false).max(min))
                 } else {
                     SizeRules::fixed(line_height)
                 }
             }
-            Class::CheckBox(_) => SizeRules::fixed(line_height),
+            Class::CheckBox(_) => {
+                let frame = 2 * self.frame_size as u32;
+                SizeRules::fixed(line_height + frame)
+            }
         };
 
         size + SizeRules::fixed(self.margin as u32 * 2)

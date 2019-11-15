@@ -276,6 +276,18 @@ impl std::ops::Add<SizeRules> for SizeRules {
     }
 }
 
+impl std::ops::Add<u32> for SizeRules {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, rhs: u32) -> Self::Output {
+        SizeRules {
+            a: self.a + rhs,
+            b: self.b + rhs,
+        }
+    }
+}
+
 impl std::ops::AddAssign for SizeRules {
     #[inline]
     fn add_assign(&mut self, rhs: Self) {
