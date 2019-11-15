@@ -235,8 +235,6 @@ impl<'a> ImplLayout<'a> {
                 self.rows = self.rows.max(r1);
                 let col = c0 as usize;
                 let row = r0 as usize;
-                let col_end = c1 as usize;
-                let row_end = r1 as usize;
 
                 let width = if pos.2 <= 1 {
                     quote! { self.#data.0[#col] }
@@ -260,15 +258,17 @@ impl<'a> ImplLayout<'a> {
                     }
                 });
 
+                let mut width = quote! { widths[#col] };
+                for n in (col+1)..(c1 as usize) {
+                    width.append_all(quote! { + widths[#n] });
+                }
+                let mut height = quote! { heights[#row] };
+                for n in (row + 1)..(r1 as usize) {
+                    height.append_all(quote! { + heights[#n] });
+                }
                 self.set_rect.append_all(quote! {
                     crect.pos = rect.pos + Coord(col_pos[#col], row_pos[#row]);
-                    crect.size = Size::ZERO;
-                    for n in #col..#col_end {
-                        crect.size.0 += widths[n];
-                    }
-                    for n in #row..#row_end {
-                        crect.size.1 += heights[n];
-                    }
+                    crect.size = Size(#width, #height);
                     self.#ident.set_rect(tk, crect);
                 });
             }
