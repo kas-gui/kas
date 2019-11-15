@@ -59,9 +59,9 @@ impl<W: Widget> Layout for Window<W> {
         self.w.size_rules(tk, axis)
     }
 
-    fn set_rect(&mut self, rect: Rect) {
+    fn set_rect(&mut self, tk: &mut dyn TkWindow, rect: Rect) {
         self.core_data_mut().rect = rect;
-        self.w.set_rect(rect);
+        self.w.set_rect(tk, rect);
     }
 }
 
@@ -109,7 +109,7 @@ where
         let _ = self.size_rules(tk, AxisInfo::new(false, None));
         let _ = self.size_rules(tk, AxisInfo::new(true, Some(size.0)));
         let pos = Coord(0, 0);
-        self.set_rect(Rect { pos, size });
+        self.set_rect(tk, Rect { pos, size });
 
         // println!("Window:");
         // self.w.print_hierarchy(0);

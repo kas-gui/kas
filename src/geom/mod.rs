@@ -92,6 +92,14 @@ impl std::ops::Add for Size {
     }
 }
 
+impl std::ops::Sub for Size {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
+        Size(self.0 - other.0, self.1 - other.1)
+    }
+}
+
 /// A rectangular region.
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Rect {

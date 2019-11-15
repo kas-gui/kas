@@ -14,7 +14,7 @@ use wgpu_glyph::{
 };
 
 use kas::class::{Align, Class};
-use kas::geom::{AxisInfo, SizeRules};
+use kas::geom::{AxisInfo, Coord, Margins, Size, SizeRules};
 use kas::{event, TkAction, TkWindow, Widget};
 
 /// Font size (units are half-point sizes?)
@@ -22,12 +22,15 @@ const FONT_SIZE: f32 = 20.0;
 /// Inner margin; this is multiplied by the DPI factor then rounded to nearest
 /// integer, e.g. `(2.0 * 1.25).round() == 3.0`.
 const MARGIN: f32 = 2.0;
+/// Frame size (adjusted as above)
+const FRAME_SIZE: f32 = 5.0;
 
 /// Widget renderer
 pub(crate) struct Widgets {
     pub(crate) glyph_brush: GlyphBrush<'static, ()>,
     font_scale: f32,
     margin: f32,
+    frame_size: f32,
     action: TkAction,
     pub(crate) ev_mgr: event::ManagerData,
 }
@@ -39,6 +42,7 @@ impl Widgets {
             glyph_brush,
             font_scale: (FONT_SIZE * dpi).round(),
             margin: (MARGIN * dpi).round(),
+            frame_size: (FRAME_SIZE * dpi).round(),
             action: TkAction::None,
             ev_mgr: event::ManagerData::new(dpi_factor),
         }
@@ -48,6 +52,7 @@ impl Widgets {
         let dpi = dpi_factor as f32;
         self.font_scale = (FONT_SIZE * dpi).round();
         self.margin = (MARGIN * dpi).round();
+        self.frame_size = (FRAME_SIZE * dpi).round();
         self.ev_mgr.set_dpi_factor(dpi_factor);
         // Note: we rely on caller to resize widget
     }
@@ -186,7 +191,11 @@ impl Widgets {
                 });
             }
             Class::Frame => {
-                // TODO
+                batch.add(Shape::Rectangle(
+                    Rect::new(x0, y0, x1, y1),
+                    Stroke::new(self.frame_size, Rgba::new(0.6, 0.6, 0.6, 1.0)),
+                    Fill::Empty(),
+                ));
             }
         }
 
@@ -277,6 +286,25 @@ impl TkWindow for Widgets {
         };
 
         size + SizeRules::fixed(self.margin as u32 * 2)
+    }
+
+    fn margins(&self, widget: &dyn Widget) -> Margins {
+        match widget.class() {
+            Class::Frame => {
+                let off = self.frame_size as i32;
+                let size = 2 * off as u32;
+                Margins {
+                    outer: Size(size, size),
+                    offset: Coord(off, off),
+                    inner: Coord::ZERO,
+                }
+            }
+            _ => Margins {
+                outer: Size::ZERO,
+                offset: Coord::ZERO,
+                inner: Coord::ZERO,
+            },
+        }
     }
 
     #[inline]

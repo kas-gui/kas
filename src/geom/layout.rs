@@ -5,6 +5,8 @@
 
 //! Data types specific to the layout engine
 
+use super::{Coord, Rect, Size};
+
 /// Used by the layout engine to specify the axis of interest.
 ///
 /// The layout engine works on a single axis at a time, and when doing so may
@@ -56,6 +58,35 @@ impl AxisInfo {
     }
 }
 
+/// Margin dimensions
+pub struct Margins {
+    /// Total size of the margin surrounding contents
+    pub outer: Size,
+    /// Offset of contents from widget position (usually half of `outer`)
+    pub offset: Coord,
+    /// Inner offset between rows / columns
+    pub inner: Coord,
+}
+
+impl Margins {
+    /// Construct SizeRules appropriate for the margin
+    ///
+    /// Parameters: `vertical` if vertical axis, number of additional
+    /// `col_spacings`, `row_spacings`.
+    pub fn size_rules(&self, vertical: bool, col_spacings: u32, row_spacings: u32) -> SizeRules {
+        SizeRules::fixed(match vertical {
+            false => self.outer.0 + col_spacings * self.inner.0 as u32,
+            true => self.outer.1 + row_spacings * self.inner.1 as u32,
+        })
+    }
+
+    /// Shrink and offset a `rect` to account for margins
+    pub fn adjust(&self, rect: &mut Rect) {
+        rect.size = rect.size - self.outer;
+        rect.pos = rect.pos + self.offset;
+    }
+}
+
 /// Return value of [`crate::Layout::size_rules`].
 ///
 /// This struct conveys properties such as the minimum size and preferred size
@@ -71,6 +102,20 @@ pub struct SizeRules {
 impl SizeRules {
     /// Empty (zero size)
     pub const EMPTY: Self = SizeRules { a: 0, b: 0 };
+
+    /// Construct from margins
+    ///
+    /// The `vertical` parameter determines which axis margins are read. The
+    /// `num_inner ≥ 0` parameter controls how many additional rows or
+    /// columns are added (beyond the first one).
+    pub fn from_margins(margins: Margins, vertical: bool, num_inner: u32) -> Self {
+        let a = if !vertical {
+            margins.outer.0 + num_inner * margins.inner.0 as u32
+        } else {
+            margins.outer.1 + num_inner * margins.inner.1 as u32
+        };
+        SizeRules { a, b: a }
+    }
 
     /// A fixed size
     #[inline]

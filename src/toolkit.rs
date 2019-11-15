@@ -14,7 +14,7 @@
 //!
 //! [winit]: https://github.com/rust-windowing/winit
 
-use crate::geom::{AxisInfo, SizeRules};
+use crate::geom::{AxisInfo, Margins, SizeRules};
 use crate::{event, Widget};
 
 /// Toolkit actions needed after event handling, if any.
@@ -57,6 +57,12 @@ pub trait TkWindow {
     ///
     /// See documentation of [`crate::Layout::size_rules`].
     fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules;
+
+    /// Margin dimensions
+    ///
+    /// Controls how much space is allocated to margins and frames (which are
+    /// equivalent from the point of view of space allocation).
+    fn margins(&self, widget: &dyn Widget) -> Margins;
 
     /// Notify that a widget must be redrawn
     fn redraw(&mut self, widget: &dyn Widget);

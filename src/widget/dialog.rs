@@ -61,7 +61,7 @@ impl Window for MessageBox {
         let _ = self.size_rules(tk, AxisInfo::new(false, None));
         let _ = self.size_rules(tk, AxisInfo::new(true, Some(size.0)));
         let pos = Coord(0, 0);
-        self.set_rect(Rect { pos, size });
+        self.set_rect(tk, Rect { pos, size });
     }
 
     // doesn't support callbacks, so doesn't need to do anything here

@@ -61,7 +61,7 @@ pub trait Layout: Core + fmt::Debug {
     /// One may assume that `size_rules` has been called for each axis with the
     /// current widget configuration.
     #[inline]
-    fn set_rect(&mut self, rect: Rect) {
+    fn set_rect(&mut self, _tk: &mut dyn TkWindow, rect: Rect) {
         self.core_data_mut().rect = rect;
     }
 }

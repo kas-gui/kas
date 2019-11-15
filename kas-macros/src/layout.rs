@@ -39,7 +39,7 @@ pub(crate) fn derive(
             )
                 -> kas::geom::SizeRules
             {
-                (0, 0)
+                (0, 0) + tk.margins(self).size_rules(axis.vert(), 0, 0)
             }
         };
         let ty = quote! { type Data = (); };
@@ -66,7 +66,7 @@ pub(crate) fn derive(
             )
                 -> kas::geom::SizeRules
             {
-                tk.size_rules(self, axis)
+                tk.size_rules(self, axis) + tk.margins(self).size_rules(axis.vert(), 0, 0)
             }
         };
         let ty = quote! { type Data = (); };
@@ -90,13 +90,14 @@ pub(crate) fn derive(
             )
                 -> kas::geom::SizeRules
             {
-                self.#ident.size_rules(tk, axis)
+                self.#ident.size_rules(tk, axis) + tk.margins(self).size_rules(axis.vert(), 0, 0)
             }
 
-            fn set_rect(&mut self, rect: kas::geom::Rect) {
+            fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, mut rect: kas::geom::Rect) {
                 use kas::Core;
                 self.core_data_mut().rect = rect;
-                self.#ident.set_rect(rect);
+                tk.margins(self).adjust(&mut rect);
+                self.#ident.set_rect(tk, rect);
             }
         };
         let ty = quote! { type Data = (); };
@@ -181,6 +182,7 @@ impl<'a> ImplLayout<'a> {
             Layout::Horizontal => {
                 let col = self.cols as usize;
                 self.cols += 1;
+                self.rows = 1;
 
                 self.size.append_all(quote! {
                     if axis.horiz() {
@@ -197,11 +199,12 @@ impl<'a> ImplLayout<'a> {
 
                 self.set_rect.append_all(quote! {
                     crect.size.0 = widths[#col];
-                    self.#ident.set_rect(crect);
-                    crect.pos.0 += crect.size.0 as i32;
+                    self.#ident.set_rect(tk, crect);
+                    crect.pos.0 += crect.size.0 as i32 + margins.inner.0;
                 });
             }
             Layout::Vertical => {
+                self.cols = 1;
                 let row = self.rows as usize;
                 self.rows += 1;
 
@@ -220,8 +223,8 @@ impl<'a> ImplLayout<'a> {
 
                 self.set_rect.append_all(quote! {
                     crect.size.1 = heights[#row];
-                    self.#ident.set_rect(crect);
-                    crect.pos.1 += crect.size.1 as i32;
+                    self.#ident.set_rect(tk, crect);
+                    crect.pos.1 += crect.size.1 as i32 + margins.inner.1;
                 });
             }
             Layout::Grid => {
@@ -266,7 +269,7 @@ impl<'a> ImplLayout<'a> {
                     for n in #row..#row_end {
                         crect.size.1 += heights[n];
                     }
-                    self.#ident.set_rect(crect);
+                    self.#ident.set_rect(tk, crect);
                 });
             }
         }
@@ -295,6 +298,8 @@ impl<'a> ImplLayout<'a> {
         let data = self.data;
         let cols = self.cols as usize;
         let rows = self.rows as usize;
+        let col_spacings = self.cols - 1;
+        let row_spacings = self.rows - 1;
         let mut col_spans = self.col_spans;
         let mut row_spans = self.row_spans;
         let num_col_spans = col_spans.len() as usize;
@@ -434,12 +439,12 @@ impl<'a> ImplLayout<'a> {
                 let mut pos = 0;
                 for n in 0..#cols {
                     col_pos[n] = pos;
-                    pos += widths[n] as i32;
+                    pos += widths[n] as i32 + margins.inner.0;
                 }
                 pos = 0;
                 for n in 0..#rows {
                     row_pos[n] = pos;
-                    pos += heights[n] as i32;
+                    pos += heights[n] as i32 + margins.inner.1;
                 }
             });
         }
@@ -452,13 +457,16 @@ impl<'a> ImplLayout<'a> {
                 #size_pre
                 #size
                 #size_post
-                rules
+
+                rules + tk.margins(self).size_rules(axis.vert(), #col_spacings, #row_spacings)
             }
 
-            fn set_rect(&mut self, rect: kas::geom::Rect) {
+            fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, mut rect: kas::geom::Rect) {
                 use kas::Core;
                 use kas::geom::{Coord, Size, SizeRules, Rect};
                 self.core_data_mut().rect = rect;
+                let margins = tk.margins(self);
+                margins.adjust(&mut rect);
 
                 #set_rect_pre
                 #set_rect
