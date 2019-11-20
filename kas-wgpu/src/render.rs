@@ -6,6 +6,7 @@
 //! Widget rendering
 
 use std::f32;
+use std::mem::size_of;
 
 use wgpu_glyph::{
     GlyphBrush, GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign,
@@ -23,8 +24,54 @@ const MARGIN: f32 = 2.0;
 /// Frame size (adjusted as above)
 const FRAME_SIZE: f32 = 4.0;
 
+#[derive(Clone, Copy, Debug)]
+struct VertPos(f32, f32);
+
+#[derive(Clone, Copy, Debug)]
+struct VertCol(f32, f32, f32);
+
+#[derive(Clone, Copy, Debug)]
+struct Vertex(VertPos, VertCol);
+
+struct TriBuffer {
+    v: Vec<Vertex>,
+}
+
+impl TriBuffer {
+    fn new() -> Self {
+        TriBuffer { v: vec![] }
+    }
+
+    fn clear(&mut self) {
+        self.v.clear();
+    }
+
+    fn create_buffer(&self, device: &wgpu::Device) -> (wgpu::Buffer, u32) {
+        let buffer = device
+            .create_buffer_mapped(self.v.len(), wgpu::BufferUsage::VERTEX)
+            .fill_from_slice(&self.v);
+        let count = self.v.len() as u32;
+        (buffer, count)
+    }
+
+    fn add_quad(&mut self, aa: VertPos, bb: VertPos, col: VertCol) {
+        let ab = VertPos(aa.0, bb.1);
+        let ba = VertPos(bb.0, aa.1);
+
+        #[rustfmt::skip]
+        self.v.extend_from_slice(&[
+            Vertex(aa, col), Vertex(ba, col), Vertex(ab, col),
+            Vertex(ab, col), Vertex(ba, col), Vertex(bb, col),
+        ]);
+    }
+}
+
 /// Widget renderer
 pub(crate) struct Widgets {
+    bind_group: wgpu::BindGroup,
+    uniform_buf: wgpu::Buffer,
+    render_pipeline: wgpu::RenderPipeline,
+    tri_buffer: TriBuffer,
     pub(crate) glyph_brush: GlyphBrush<'static, ()>,
     font_scale: f32,
     margin: f32,
@@ -33,10 +80,112 @@ pub(crate) struct Widgets {
     pub(crate) ev_mgr: event::ManagerData,
 }
 
+pub fn read_glsl(code: &str, stage: glsl_to_spirv::ShaderType) -> Vec<u32> {
+    wgpu::read_spirv(glsl_to_spirv::compile(&code, stage).unwrap()).unwrap()
+}
+
 impl Widgets {
-    pub fn new(dpi_factor: f64, glyph_brush: GlyphBrush<'static, ()>) -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        size: Size,
+        dpi_factor: f64,
+        glyph_brush: GlyphBrush<'static, ()>,
+    ) -> Self {
+        let vs_bytes = read_glsl(
+            include_str!("shaders/tri_buffer.vert"),
+            glsl_to_spirv::ShaderType::Vertex,
+        );
+        let fs_bytes = read_glsl(
+            include_str!("shaders/tri_buffer.frag"),
+            glsl_to_spirv::ShaderType::Fragment,
+        );
+
+        let vs_module = device.create_shader_module(&vs_bytes);
+        let fs_module = device.create_shader_module(&fs_bytes);
+
+        type Scale = [f32; 2];
+        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
+        let uniform_buf = device
+            .create_buffer_mapped(
+                scale_factor.len(),
+                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            )
+            .fill_from_slice(&scale_factor);
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            bindings: &[wgpu::BindGroupLayoutBinding {
+                binding: 0,
+                visibility: wgpu::ShaderStage::VERTEX,
+                ty: wgpu::BindingType::UniformBuffer { dynamic: false },
+            }],
+        });
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &bind_group_layout,
+            bindings: &[wgpu::Binding {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer {
+                    buffer: &uniform_buf,
+                    range: 0..(size_of::<Scale>() as u64),
+                },
+            }],
+        });
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            bind_group_layouts: &[&bind_group_layout],
+        });
+
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            layout: &pipeline_layout,
+            vertex_stage: wgpu::ProgrammableStageDescriptor {
+                module: &vs_module,
+                entry_point: "main",
+            },
+            fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+                module: &fs_module,
+                entry_point: "main",
+            }),
+            rasterization_state: Some(wgpu::RasterizationStateDescriptor {
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: wgpu::CullMode::None,
+                depth_bias: 0,
+                depth_bias_slope_scale: 0.0,
+                depth_bias_clamp: 0.0,
+            }),
+            primitive_topology: wgpu::PrimitiveTopology::TriangleList,
+            color_states: &[wgpu::ColorStateDescriptor {
+                format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                color_blend: wgpu::BlendDescriptor::REPLACE,
+                alpha_blend: wgpu::BlendDescriptor::REPLACE,
+                write_mask: wgpu::ColorWrite::ALL,
+            }],
+            depth_stencil_state: None,
+            index_format: wgpu::IndexFormat::Uint16,
+            vertex_buffers: &[wgpu::VertexBufferDescriptor {
+                stride: size_of::<Vertex>() as wgpu::BufferAddress,
+                step_mode: wgpu::InputStepMode::Vertex,
+                attributes: &[
+                    wgpu::VertexAttributeDescriptor {
+                        format: wgpu::VertexFormat::Float2,
+                        offset: 0,
+                        shader_location: 0,
+                    },
+                    wgpu::VertexAttributeDescriptor {
+                        format: wgpu::VertexFormat::Float3,
+                        offset: size_of::<VertPos>() as u64,
+                        shader_location: 1,
+                    },
+                ],
+            }],
+            sample_count: 1,
+            sample_mask: !0,
+            alpha_to_coverage_enabled: false,
+        });
+
         let dpi = dpi_factor as f32;
         Widgets {
+            bind_group,
+            uniform_buf,
+            render_pipeline,
+            tri_buffer: TriBuffer::new(),
             glyph_brush,
             font_scale: (FONT_SIZE * dpi).round(),
             margin: (MARGIN * dpi).round(),
@@ -55,6 +204,20 @@ impl Widgets {
         // Note: we rely on caller to resize widget
     }
 
+    pub fn resize(&mut self, device: &wgpu::Device, size: Size) -> wgpu::CommandBuffer {
+        type Scale = [f32; 2];
+        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
+        let uniform_buf = device
+            .create_buffer_mapped(scale_factor.len(), wgpu::BufferUsage::COPY_SRC)
+            .fill_from_slice(&scale_factor);
+        let byte_len = size_of::<Scale>() as u64;
+
+        let mut encoder =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+        encoder.copy_buffer_to_buffer(&uniform_buf, 0, &self.uniform_buf, 0, byte_len);
+        encoder.finish()
+    }
+
     #[inline]
     pub fn pop_action(&mut self) -> TkAction {
         let action = self.action;
@@ -62,34 +225,44 @@ impl Widgets {
         action
     }
 
-    pub fn draw(&mut self, rpass: &mut wgpu::RenderPass, size: Size, win: &dyn kas::Window) {
-        let height = size.1 as f32;
-        self.draw_iter(height, win.as_widget());
+    pub fn draw(
+        &mut self,
+        device: &wgpu::Device,
+        rpass: &mut wgpu::RenderPass,
+        win: &dyn kas::Window,
+    ) {
+        self.tri_buffer.clear();
+
+        self.draw_iter(win.as_widget());
+
+        let (buffer, count) = self.tri_buffer.create_buffer(device);
+
+        rpass.set_pipeline(&self.render_pipeline);
+        rpass.set_bind_group(0, &self.bind_group, &[]);
+        rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
+        rpass.draw(0..count, 0..1);
     }
 
-    fn draw_iter(&mut self, height: f32, widget: &dyn kas::Widget) {
+    fn draw_iter(&mut self, widget: &dyn kas::Widget) {
         // draw widget; recurse over children
-        self.draw_widget(height, widget);
+        self.draw_widget(widget);
 
         for n in 0..widget.len() {
-            self.draw_iter(height, widget.get(n).unwrap());
+            self.draw_iter(widget.get(n).unwrap());
         }
     }
 
-    fn draw_widget(&mut self, height: f32, widget: &dyn kas::Widget) {
+    fn draw_widget(&mut self, widget: &dyn kas::Widget) {
         // This is a hacky draw routine just to show where widgets are.
         let w_id = widget.id();
 
-        // Note: widget coordinates place the origin at the top-left.
-        // Draw coordinates use f32 with the origin at the bottom-left.
-        // Note: it's important to pass smallest coord to Shape::Rectangle first
+        // Note: coordinates place the origin at the top-left.
         let rect = widget.rect();
-        let (mut x0, y) = rect.pos_f32();
-        let mut y1 = height - y;
+        let (mut x0, mut y0) = rect.pos_f32();
         let (w, h) = rect.size_f32();
-        let (mut x1, mut y0) = (x0 + w, y1 - h);
+        let (mut x1, mut y1) = (x0 + w, y0 + h);
 
-        // let mut background = Rgba::new(1.0, 1.0, 1.0, 0.1);
+        let mut background = VertCol(0.1, 0.1, 0.1);
 
         let margin = self.margin;
         let scale = Scale::uniform(self.font_scale);
@@ -108,7 +281,7 @@ impl Widgets {
             Align::End => (VerticalAlign::Bottom, bounds.1),
         };
         let layout = Layout::default().h_align(h_align).v_align(v_align);
-        let mut text_pos = (x0 + margin + h_offset, y + margin + v_offset);
+        let mut text_pos = (x0 + margin + h_offset, y0 + margin + v_offset);
 
         match widget.class() {
             Class::Container | Class::Window => {
@@ -133,7 +306,7 @@ impl Widgets {
                 /*
                 batch.add(Shape::Rectangle(
                     Rect::new(x0, y0, x1, y1),
-                    Stroke::new(f, Rgba::new(0.6, 0.6, 0.6, 1.0)),
+                    Stroke::new(f, VertCol(0.6, 0.6, 0.6)),
                     Fill::Empty(),
                 ));
                 */
@@ -151,7 +324,7 @@ impl Widgets {
                     // TODO: proper edit character and positioning
                     text.push('|');
                 }
-                // background = Rgba::new(1.0, 1.0, 1.0, 1.0);
+                background = VertCol(1.0, 1.0, 1.0);
                 let color = [0.0, 0.0, 0.0, 1.0];
                 self.glyph_brush.queue(Section {
                     text: &text,
@@ -164,14 +337,12 @@ impl Widgets {
                 });
             }
             Class::Button(cls) => {
-                /*
-                background = Rgba::new(0.2, 0.7, 1.0, 1.0);
+                background = VertCol(0.2, 0.7, 1.0);
                 if self.ev_mgr.is_depressed(w_id) {
-                    background = Rgba::new(0.2, 0.6, 0.8, 1.0);
+                    background = VertCol(0.2, 0.6, 0.8);
                 } else if self.ev_mgr.is_hovered(w_id) {
-                    background = Rgba::new(0.25, 0.8, 1.0, 1.0);
+                    background = VertCol(0.25, 0.8, 1.0);
                 }
-                */
                 let color = [1.0, 1.0, 1.0, 1.0];
                 self.glyph_brush.queue(Section {
                     text: cls.get_text(),
@@ -188,7 +359,7 @@ impl Widgets {
                 /*
                 batch.add(Shape::Rectangle(
                     Rect::new(x0, y0, x1, y1),
-                    Stroke::new(f, Rgba::new(0.6, 0.6, 0.6, 1.0)),
+                    Stroke::new(f, VertCol(0.6, 0.6, 0.6)),
                     Fill::Empty(),
                 ));
                 */
@@ -201,7 +372,7 @@ impl Widgets {
                 text_pos.0 += f;
                 text_pos.1 += f;
 
-                // background = Rgba::new(1.0, 1.0, 1.0, 1.0);
+                background = VertCol(1.0, 1.0, 1.0);
                 let color = [0.0, 0.0, 0.0, 1.0];
                 // TODO: draw check mark *and* optional text
                 // let text = if cls.get_bool() { "✓" } else { "" };
@@ -219,7 +390,7 @@ impl Widgets {
                 /*
                 batch.add(Shape::Rectangle(
                     Rect::new(x0, y0, x1, y1),
-                    Stroke::new(self.frame_size, Rgba::new(0.6, 0.6, 0.6, 1.0)),
+                    Stroke::new(self.frame_size, VertCol(0.6, 0.6, 0.6)),
                     Fill::Empty(),
                 ));
                 */
@@ -234,7 +405,7 @@ impl Widgets {
         /*
         let mut stroke = Stroke::NONE;
         if hover || key_focus || key_grab {
-            let mut frame = Rgba::new(0.7, 0.7, 0.7, 1.0);
+            let mut frame = VertCol(0.7, 0.7, 0.7);
             if hover {
                 frame.g = 1.0;
             }
@@ -246,12 +417,9 @@ impl Widgets {
             }
             stroke = Stroke::new(margin, frame);
         }
-        batch.add(Shape::Rectangle(
-            Rect::new(x0, y0, x1, y1),
-            stroke,
-            Fill::Solid(background),
-        ));
         */
+        self.tri_buffer
+            .add_quad(VertPos(x0, y0), VertPos(x1, y1), background);
     }
 }
 

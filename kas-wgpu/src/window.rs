@@ -73,7 +73,7 @@ impl Window {
         let glyph_brush = GlyphBrushBuilder::using_font(crate::font::get_font())
             .build(&mut device, sc_desc.format);
 
-        let mut wrend = Widgets::new(dpi_factor, glyph_brush);
+        let mut wrend = Widgets::new(&device, size, dpi_factor, glyph_brush);
         wrend.ev_mgr.configure(widget.as_widget_mut());
 
         widget.resize(&mut wrend, size);
@@ -184,6 +184,9 @@ impl Window {
         self.size = size;
         self.widget.resize(&mut self.wrend, size);
 
+        let buf = self.wrend.resize(&self.device, size);
+        self.queue.submit(&[buf]);
+
         self.sc_desc.width = size.0;
         self.sc_desc.height = size.1;
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
@@ -214,7 +217,7 @@ impl Window {
             depth_stencil_attachment: None,
         });
 
-        self.wrend.draw(&mut rpass, self.size, &*self.widget);
+        self.wrend.draw(&self.device, &mut rpass, &*self.widget);
 
         drop(rpass);
 
