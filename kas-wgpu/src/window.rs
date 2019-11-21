@@ -37,19 +37,13 @@ pub struct Window {
 impl Window {
     /// Construct a window
     pub fn new<T: 'static>(
+        adapter: &wgpu::Adapter,
         event_loop: &EventLoopWindowTarget<T>,
         mut widget: Box<dyn kas::Window>,
     ) -> Result<Window, OsError> {
         let window = winit::window::Window::new(event_loop)?;
         let dpi_factor = window.hidpi_factor();
         let size: Size = window.inner_size().to_physical(dpi_factor).into();
-
-        // TODO: move adapter, device and queue to Toolkit?
-        let adapter = wgpu::Adapter::request(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::Default,
-            backends: wgpu::BackendBit::PRIMARY,
-        })
-        .unwrap();
 
         let (mut device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
             extensions: wgpu::Extensions {

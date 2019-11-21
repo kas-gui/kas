@@ -17,26 +17,41 @@ use winit::event_loop::EventLoop;
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
 pub struct Toolkit<T: 'static> {
+    adapter: wgpu::Adapter,
     el: EventLoop<T>,
     windows: Vec<Window>,
 }
 
 impl Toolkit<()> {
-    /// Construct a new instance.
+    /// Construct a new instance with default options.
+    ///
+    /// This chooses a low-power graphics adapter by preference.
     pub fn new() -> Self {
-        Toolkit {
-            el: EventLoop::new(),
-            windows: vec![],
-        }
+        Toolkit::<()>::new_custom(None)
     }
 }
 
 impl<T> Toolkit<T> {
-    /// Construct an instance with given user event type
+    /// Construct an instance with custom options
     ///
-    /// Refer to the winit's `EventLoop` documentation.
-    pub fn with_user_event() -> Self {
+    /// The graphics adapter is chosen according to the given options. If `None`
+    /// is supplied, a low-power adapter will be chosen.
+    ///
+    /// The event loop supports user events of type `T`. Refer to winit's
+    /// documentation of `EventLoop::with_user_event` for details.
+    /// If not using user events, it may be necessary to force this type:
+    /// ```
+    /// let toolkit = kas_wgpu::Toolkit::<()>::new_custom(None);
+    /// ```
+    pub fn new_custom(adapter_options: Option<&wgpu::RequestAdapterOptions>) -> Self {
+        let adapter_options = adapter_options.unwrap_or(&wgpu::RequestAdapterOptions {
+            power_preference: wgpu::PowerPreference::LowPower,
+            backends: wgpu::BackendBit::PRIMARY,
+        });
+        let adapter = wgpu::Adapter::request(adapter_options).unwrap();
+
         Toolkit {
+            adapter,
             el: EventLoop::with_user_event(),
             windows: vec![],
         }
@@ -51,7 +66,7 @@ impl<T> Toolkit<T> {
 
     /// Add a boxed window directly
     pub fn add_boxed(&mut self, window: Box<dyn kas::Window>) -> Result<(), OsError> {
-        let win = Window::new(&self.el, window)?;
+        let win = Window::new(&self.adapter, &self.el, window)?;
         self.windows.push(win);
         Ok(())
     }
