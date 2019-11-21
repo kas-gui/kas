@@ -19,4 +19,4 @@ version = "0.20.0-alpha3"
 optional = true
 
 [workspace]
-members = ["kas-macros", "kas-rgx"]
+members = ["kas-macros", "kas-rgx", "kas-wgpu"]
