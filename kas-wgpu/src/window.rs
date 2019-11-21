@@ -195,18 +195,12 @@ impl Window {
     fn do_draw(&mut self) {
         let frame = self.swap_chain.get_next_texture();
 
-        let c = 0.2;
         let rpass_color_attachment = wgpu::RenderPassColorAttachmentDescriptor {
             attachment: &frame.view,
             resolve_target: None,
             load_op: wgpu::LoadOp::Clear,
             store_op: wgpu::StoreOp::Store,
-            clear_color: wgpu::Color {
-                r: c,
-                g: c,
-                b: c,
-                a: 1.0,
-            },
+            clear_color: wgpu::Color::BLACK,
         };
 
         let desc = wgpu::CommandEncoderDescriptor { todo: 0 };

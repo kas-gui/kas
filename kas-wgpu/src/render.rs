@@ -7,6 +7,7 @@
 
 use std::f32;
 use std::mem::size_of;
+use std::ops::{Add, Sub};
 
 use wgpu_glyph::{
     GlyphBrush, GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign,
@@ -25,13 +26,63 @@ const MARGIN: f32 = 2.0;
 const FRAME_SIZE: f32 = 4.0;
 
 #[derive(Clone, Copy, Debug)]
-struct VertPos(f32, f32);
+struct Vec2(f32, f32);
+
+impl Add<Vec2> for Vec2 {
+    type Output = Vec2;
+    fn add(self, rhs: Vec2) -> Self::Output {
+        Vec2(self.0 + rhs.0, self.1 + rhs.1)
+    }
+}
+
+impl Add<f32> for Vec2 {
+    type Output = Vec2;
+    fn add(self, rhs: f32) -> Self::Output {
+        Vec2(self.0 + rhs, self.1 + rhs)
+    }
+}
+
+impl Sub<Vec2> for Vec2 {
+    type Output = Vec2;
+    fn sub(self, rhs: Vec2) -> Self::Output {
+        Vec2(self.0 - rhs.0, self.1 - rhs.1)
+    }
+}
+
+impl Sub<f32> for Vec2 {
+    type Output = Vec2;
+    fn sub(self, rhs: f32) -> Self::Output {
+        Vec2(self.0 - rhs, self.1 - rhs)
+    }
+}
+
+impl From<(f32, f32)> for Vec2 {
+    fn from(arg: (f32, f32)) -> Self {
+        Vec2(arg.0, arg.1)
+    }
+}
+
+impl From<Vec2> for (f32, f32) {
+    fn from(v: Vec2) -> Self {
+        (v.0, v.1)
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
-struct VertCol(f32, f32, f32);
+struct Rgb {
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+}
+
+impl Rgb {
+    pub fn new(r: f32, g: f32, b: f32) -> Self {
+        Rgb { r, g, b }
+    }
+}
 
 #[derive(Clone, Copy, Debug)]
-struct Vertex(VertPos, VertCol);
+struct Vertex(Vec2, Rgb);
 
 struct TriBuffer {
     v: Vec<Vertex>,
@@ -54,14 +105,43 @@ impl TriBuffer {
         (buffer, count)
     }
 
-    fn add_quad(&mut self, aa: VertPos, bb: VertPos, col: VertCol) {
-        let ab = VertPos(aa.0, bb.1);
-        let ba = VertPos(bb.0, aa.1);
+    fn add_quad(&mut self, aa: Vec2, bb: Vec2, col: Rgb) {
+        let ab = Vec2(aa.0, bb.1);
+        let ba = Vec2(bb.0, aa.1);
 
         #[rustfmt::skip]
         self.v.extend_from_slice(&[
             Vertex(aa, col), Vertex(ba, col), Vertex(ab, col),
             Vertex(ab, col), Vertex(ba, col), Vertex(bb, col),
+        ]);
+    }
+
+    // (aa, bb): outer corners
+    // (cc, dd): inner corners
+    fn add_frame(&mut self, aa: Vec2, bb: Vec2, cc: Vec2, dd: Vec2, col: Rgb) {
+        let ab = Vec2(aa.0, bb.1);
+        let ba = Vec2(bb.0, aa.1);
+        let ca = Vec2(cc.0, aa.1);
+        let cb = Vec2(cc.0, bb.1);
+        let cd = Vec2(cc.0, dd.1);
+        let da = Vec2(dd.0, aa.1);
+        let db = Vec2(dd.0, bb.1);
+        let dc = Vec2(dd.0, cc.1);
+
+        #[rustfmt::skip]
+        self.v.extend_from_slice(&[
+            // top inner bar: (ca, dc)
+            Vertex(ca, col), Vertex(da, col), Vertex(cc, col),
+            Vertex(cc, col), Vertex(da, col), Vertex(dc, col),
+            // bottom inner bar: (cd, db)
+            Vertex(cd, col), Vertex(dd, col), Vertex(cb, col),
+            Vertex(cb, col), Vertex(dd, col), Vertex(db, col),
+            // left bar: (aa, cb)
+            Vertex(aa, col), Vertex(ca, col), Vertex(ab, col),
+            Vertex(ab, col), Vertex(ca, col), Vertex(cb, col),
+            // right bar: (ca, bb)
+            Vertex(ca, col), Vertex(ba, col), Vertex(cb, col),
+            Vertex(cb, col), Vertex(ba, col), Vertex(bb, col),
         ]);
     }
 }
@@ -170,7 +250,7 @@ impl Widgets {
                     },
                     wgpu::VertexAttributeDescriptor {
                         format: wgpu::VertexFormat::Float3,
-                        offset: size_of::<VertPos>() as u64,
+                        offset: size_of::<Vec2>() as u64,
                         shader_location: 1,
                     },
                 ],
@@ -258,15 +338,15 @@ impl Widgets {
 
         // Note: coordinates place the origin at the top-left.
         let rect = widget.rect();
-        let (mut x0, mut y0) = rect.pos_f32();
-        let (w, h) = rect.size_f32();
-        let (mut x1, mut y1) = (x0 + w, y0 + h);
+        let mut u = Vec2::from(rect.pos_f32());
+        let size = Vec2::from(rect.size_f32());
+        let mut v = u + size;
 
-        let mut background = VertCol(0.1, 0.1, 0.1);
+        let mut background = Rgb::new(0.1, 0.1, 0.1);
 
         let margin = self.margin;
         let scale = Scale::uniform(self.font_scale);
-        let mut bounds = (x1 - x0 - margin - margin, y1 - y0 - margin - margin);
+        let mut bounds = size - 2.0 * margin;
 
         let alignments = widget.class().alignments();
         // TODO: support justified alignment
@@ -281,7 +361,7 @@ impl Widgets {
             Align::End => (VerticalAlign::Bottom, bounds.1),
         };
         let layout = Layout::default().h_align(h_align).v_align(v_align);
-        let mut text_pos = (x0 + margin + h_offset, y0 + margin + v_offset);
+        let mut text_pos = u + margin + Vec2(h_offset, v_offset);
 
         match widget.class() {
             Class::Container | Class::Window => {
@@ -292,10 +372,10 @@ impl Widgets {
                 let color = [1.0, 1.0, 1.0, 1.0];
                 let section = Section {
                     text: cls.get_text(),
-                    screen_position: text_pos,
+                    screen_position: text_pos.into(),
                     color,
                     scale,
-                    bounds,
+                    bounds: bounds.into(),
                     layout,
                     ..Section::default()
                 };
@@ -303,97 +383,78 @@ impl Widgets {
             }
             Class::Entry(cls) => {
                 let f = self.frame_size;
-                /*
-                batch.add(Shape::Rectangle(
-                    Rect::new(x0, y0, x1, y1),
-                    Stroke::new(f, VertCol(0.6, 0.6, 0.6)),
-                    Fill::Empty(),
-                ));
-                */
-                x0 += f;
-                x1 -= f;
-                y0 += f;
-                y1 -= f;
-                bounds.0 -= 2.0 * f;
-                bounds.1 -= 2.0 * f;
-                text_pos.0 += f;
-                text_pos.1 += f;
+                let (s, t) = (u, v);
+                u = u + f;
+                v = v - f;
+                self.tri_buffer
+                    .add_frame(s, t, u, v, Rgb::new(0.6, 0.6, 0.6));
+                bounds = bounds - 2.0 * f;
+                text_pos = text_pos + f;
 
                 let mut text = cls.get_text().to_string();
                 if self.ev_mgr.key_grab(w_id) {
                     // TODO: proper edit character and positioning
                     text.push('|');
                 }
-                background = VertCol(1.0, 1.0, 1.0);
+                background = Rgb::new(1.0, 1.0, 1.0);
                 let color = [0.0, 0.0, 0.0, 1.0];
                 self.glyph_brush.queue(Section {
                     text: &text,
-                    screen_position: text_pos,
+                    screen_position: text_pos.into(),
                     color,
                     scale,
-                    bounds,
+                    bounds: bounds.into(),
                     layout,
                     ..Section::default()
                 });
             }
             Class::Button(cls) => {
-                background = VertCol(0.2, 0.7, 1.0);
+                background = Rgb::new(0.2, 0.7, 1.0);
                 if self.ev_mgr.is_depressed(w_id) {
-                    background = VertCol(0.2, 0.6, 0.8);
+                    background = Rgb::new(0.2, 0.6, 0.8);
                 } else if self.ev_mgr.is_hovered(w_id) {
-                    background = VertCol(0.25, 0.8, 1.0);
+                    background = Rgb::new(0.25, 0.8, 1.0);
                 }
                 let color = [1.0, 1.0, 1.0, 1.0];
                 self.glyph_brush.queue(Section {
                     text: cls.get_text(),
-                    screen_position: text_pos,
+                    screen_position: text_pos.into(),
                     color,
                     scale,
-                    bounds,
+                    bounds: bounds.into(),
                     layout,
                     ..Section::default()
                 });
             }
             Class::CheckBox(cls) => {
                 let f = self.frame_size;
-                /*
-                batch.add(Shape::Rectangle(
-                    Rect::new(x0, y0, x1, y1),
-                    Stroke::new(f, VertCol(0.6, 0.6, 0.6)),
-                    Fill::Empty(),
-                ));
-                */
-                x0 += f;
-                x1 -= f;
-                y0 += f;
-                y1 -= f;
-                bounds.0 -= 2.0 * f;
-                bounds.1 -= 2.0 * f;
-                text_pos.0 += f;
-                text_pos.1 += f;
+                let (s, t) = (u, v);
+                u = u + f;
+                v = v - f;
+                self.tri_buffer
+                    .add_frame(s, t, u, v, Rgb::new(0.6, 0.6, 0.6));
+                bounds = bounds - 2.0 * f;
+                text_pos = text_pos + f;
 
-                background = VertCol(1.0, 1.0, 1.0);
+                background = Rgb::new(1.0, 1.0, 1.0);
                 let color = [0.0, 0.0, 0.0, 1.0];
                 // TODO: draw check mark *and* optional text
                 // let text = if cls.get_bool() { "✓" } else { "" };
                 self.glyph_brush.queue(Section {
                     text: cls.get_text(),
-                    screen_position: text_pos,
+                    screen_position: text_pos.into(),
                     color,
                     scale,
-                    bounds,
+                    bounds: bounds.into(),
                     layout,
                     ..Section::default()
                 });
             }
             Class::Frame => {
-                /*
-                batch.add(Shape::Rectangle(
-                    Rect::new(x0, y0, x1, y1),
-                    Stroke::new(self.frame_size, VertCol(0.6, 0.6, 0.6)),
-                    Fill::Empty(),
-                ));
-                */
+                let f = self.frame_size;
+                self.tri_buffer
+                    .add_frame(u, v, u + f, v - f, Rgb::new(0.6, 0.6, 0.6));
+                return;
             }
         }
 
@@ -402,24 +463,25 @@ impl Widgets {
         let hover = false && self.ev_mgr.is_hovered(w_id);
         let key_focus = self.ev_mgr.key_focus(w_id);
         let key_grab = self.ev_mgr.key_grab(w_id);
-        /*
-        let mut stroke = Stroke::NONE;
         if hover || key_focus || key_grab {
-            let mut frame = VertCol(0.7, 0.7, 0.7);
+            let mut col = Rgb::new(0.7, 0.7, 0.7);
             if hover {
-                frame.g = 1.0;
+                col.g = 1.0;
             }
             if key_focus {
-                frame.r = 1.0;
+                col.r = 1.0;
             }
             if key_grab {
-                frame.b = 1.0;
+                col.b = 1.0;
             }
-            stroke = Stroke::new(margin, frame);
+
+            let (s, t) = (u, v);
+            u = u + margin;
+            v = v - margin;
+            self.tri_buffer.add_frame(s, t, u, v, col);
         }
-        */
-        self.tri_buffer
-            .add_quad(VertPos(x0, y0), VertPos(x1, y1), background);
+
+        self.tri_buffer.add_quad(u, v, background);
     }
 }
 
