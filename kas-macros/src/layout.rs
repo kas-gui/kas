@@ -259,7 +259,7 @@ impl<'a> ImplLayout<'a> {
                 });
 
                 let mut width = quote! { widths[#col] };
-                for n in (col+1)..(c1 as usize) {
+                for n in (col + 1)..(c1 as usize) {
                     width.append_all(quote! { + widths[#n] });
                 }
                 let mut height = quote! { heights[#row] };

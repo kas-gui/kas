@@ -29,7 +29,6 @@ pub struct Window {
     surface: wgpu::Surface,
     sc_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
-    size: Size,
     timeouts: Vec<(usize, Instant, Option<Duration>)>,
     wrend: Widgets,
 }
@@ -86,7 +85,6 @@ impl Window {
             surface,
             sc_desc,
             swap_chain,
-            size, // TODO: remove?
             timeouts: vec![],
             wrend,
         };
@@ -116,7 +114,8 @@ impl Window {
 
     /// Recompute layout of widgets and redraw
     pub fn reconfigure(&mut self) {
-        self.widget.resize(&mut self.wrend, self.size);
+        let size = Size(self.sc_desc.width, self.sc_desc.height);
+        self.widget.resize(&mut self.wrend, size);
         self.window.request_redraw();
     }
 
@@ -178,10 +177,9 @@ impl Window {
 impl Window {
     fn do_resize(&mut self, size: LogicalSize) {
         let size = size.to_physical(self.window.hidpi_factor()).into();
-        if size == self.size {
+        if size == Size(self.sc_desc.width, self.sc_desc.height) {
             return;
         }
-        self.size = size;
         self.widget.resize(&mut self.wrend, size);
 
         let buf = self.wrend.resize(&self.device, size);
@@ -221,8 +219,8 @@ impl Window {
                 &mut self.device,
                 &mut encoder,
                 &frame.view,
-                self.size.0,
-                self.size.1,
+                self.sc_desc.width,
+                self.sc_desc.height,
             )
             .expect("glyph_brush.draw_queued");
 
