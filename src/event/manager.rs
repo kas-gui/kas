@@ -176,7 +176,6 @@ impl ManagerData {
 
     pub(crate) fn set_grab(&mut self, id: WidgetId) -> bool {
         self.grab_focus = Some(id);
-        self.key_focus = Some(id);
         true
     }
 }
