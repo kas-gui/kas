@@ -120,23 +120,11 @@ impl Widgets {
         let mut bounds = size - 2.0 * margin;
 
         let f = self.frame_size;
-        let f_out = colour::FRAME_OUTER.into();
-        let f_in = colour::FRAME_INNER.into();
+        let f_out = colour::FRAME_OUTER;
+        let f_in = colour::FRAME_INNER;
 
-        let alignments = widget.class().alignments();
-        // TODO: support justified alignment
-        let (h_align, h_offset) = match alignments.1 {
-            Align::Begin | Align::Justify => (HorizontalAlign::Left, 0.0),
-            Align::Center => (HorizontalAlign::Center, 0.5 * bounds.0),
-            Align::End => (HorizontalAlign::Right, bounds.0),
-        };
-        let (v_align, v_offset) = match alignments.1 {
-            Align::Begin | Align::Justify => (VerticalAlign::Top, 0.0),
-            Align::Center => (VerticalAlign::Center, 0.5 * bounds.1),
-            Align::End => (VerticalAlign::Bottom, bounds.1),
-        };
-        let layout = Layout::default().h_align(h_align).v_align(v_align);
-        let mut text_pos = u + margin + Vec2(h_offset, v_offset);
+        let mut _string; // Entry needs this to give a valid lifetime
+        let text: Option<(&str, Colour)>;
 
         match widget.class() {
             Class::Container | Class::Window => {
@@ -144,16 +132,7 @@ impl Widgets {
                 return;
             }
             Class::Label(cls) => {
-                let section = Section {
-                    text: cls.get_text(),
-                    screen_position: text_pos.into(),
-                    color: colour::LABEL_TEXT.into(),
-                    scale,
-                    bounds: bounds.into(),
-                    layout,
-                    ..Section::default()
-                };
-                self.glyph_brush.queue(section);
+                text = Some((cls.get_text(), colour::LABEL_TEXT));
             }
             Class::Entry(cls) => {
                 let (s, t) = (u, v);
@@ -161,23 +140,15 @@ impl Widgets {
                 v = v - f;
                 self.tri_pipe.add_frame(s, t, u, v, f_out, f_in);
                 bounds = bounds - 2.0 * f;
-                text_pos = text_pos + f;
 
-                let mut text = cls.get_text().to_string();
+                background = Some(colour::TEXT_AREA);
+
+                _string = cls.get_text().to_string();
                 if self.ev_mgr.key_grab(w_id) {
                     // TODO: proper edit character and positioning
-                    text.push('|');
+                    _string.push('|');
                 }
-                background = Some(colour::TEXT_AREA.into());
-                self.glyph_brush.queue(Section {
-                    text: &text,
-                    screen_position: text_pos.into(),
-                    color: colour::TEXT.into(),
-                    scale,
-                    bounds: bounds.into(),
-                    layout,
-                    ..Section::default()
-                });
+                text = Some((&_string, colour::TEXT));
             }
             Class::Button(cls) => {
                 let c = if self.ev_mgr.is_depressed(w_id) {
@@ -195,17 +166,8 @@ impl Widgets {
                 v = v - f;
                 self.tri_pipe.add_frame(s, t, u, v, f_out, c);
                 bounds = bounds - 2.0 * f;
-                text_pos = text_pos + f;
 
-                self.glyph_brush.queue(Section {
-                    text: cls.get_text(),
-                    screen_position: text_pos.into(),
-                    color: colour::BUTTON_TEXT.into(),
-                    scale,
-                    bounds: bounds.into(),
-                    layout,
-                    ..Section::default()
-                });
+                text = Some((cls.get_text(), colour::BUTTON_TEXT));
             }
             Class::CheckBox(cls) => {
                 let (s, t) = (u, v);
@@ -213,25 +175,44 @@ impl Widgets {
                 v = v - f;
                 self.tri_pipe.add_frame(s, t, u, v, f_out, f_in);
                 bounds = bounds - 2.0 * f;
-                text_pos = text_pos + f;
 
-                background = Some(colour::TEXT_AREA.into());
+                background = Some(colour::TEXT_AREA);
+
                 // TODO: draw check mark *and* optional text
                 // let text = if cls.get_bool() { "✓" } else { "" };
-                self.glyph_brush.queue(Section {
-                    text: cls.get_text(),
-                    screen_position: text_pos.into(),
-                    color: colour::TEXT.into(),
-                    scale,
-                    bounds: bounds.into(),
-                    layout,
-                    ..Section::default()
-                });
+                text = Some((cls.get_text(), colour::TEXT));
             }
             Class::Frame => {
                 self.tri_pipe.add_frame(u, v, u + f, v - f, f_out, f_in);
                 return;
             }
+        }
+
+        if let Some((text, colour)) = text {
+            let alignments = widget.class().alignments();
+            // TODO: support justified alignment
+            let (h_align, h_offset) = match alignments.1 {
+                Align::Begin | Align::Justify => (HorizontalAlign::Left, 0.0),
+                Align::Center => (HorizontalAlign::Center, 0.5 * bounds.0),
+                Align::End => (HorizontalAlign::Right, bounds.0),
+            };
+            let (v_align, v_offset) = match alignments.1 {
+                Align::Begin | Align::Justify => (VerticalAlign::Top, 0.0),
+                Align::Center => (VerticalAlign::Center, 0.5 * bounds.1),
+                Align::End => (VerticalAlign::Bottom, bounds.1),
+            };
+            let layout = Layout::default().h_align(h_align).v_align(v_align);
+            let text_pos = u + margin + Vec2(h_offset, v_offset);
+
+            self.glyph_brush.queue(Section {
+                text,
+                screen_position: text_pos.into(),
+                color: colour.into(),
+                scale,
+                bounds: bounds.into(),
+                layout,
+                ..Section::default()
+            });
         }
 
         // draw any highlights within the margin area
@@ -258,7 +239,7 @@ impl Widgets {
         }
 
         if let Some(background) = background {
-            self.tri_pipe.add_quad(u, v, background);
+            self.tri_pipe.add_quad(u, v, background.into());
         }
     }
 }
