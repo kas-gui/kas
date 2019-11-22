@@ -81,6 +81,10 @@ impl Rgb {
     pub fn new(r: f32, g: f32, b: f32) -> Self {
         Rgb { r, g, b }
     }
+
+    pub fn grey(s: f32) -> Self {
+        Rgb { r: s, g: s, b: s }
+    }
 }
 
 #[repr(C)]
@@ -119,32 +123,28 @@ impl TriBuffer {
         ]);
     }
 
-    // (aa, bb): outer corners
-    // (cc, dd): inner corners
-    fn add_frame(&mut self, aa: Vec2, bb: Vec2, cc: Vec2, dd: Vec2, col: Rgb) {
+    // (aa, bb), co: outer corners, colour
+    // (cc, dd), ci: inner corners, colour
+    fn add_frame(&mut self, aa: Vec2, bb: Vec2, cc: Vec2, dd: Vec2, co: Rgb, ci: Rgb) {
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
-        let ca = Vec2(cc.0, aa.1);
-        let cb = Vec2(cc.0, bb.1);
         let cd = Vec2(cc.0, dd.1);
-        let da = Vec2(dd.0, aa.1);
-        let db = Vec2(dd.0, bb.1);
         let dc = Vec2(dd.0, cc.1);
 
         #[rustfmt::skip]
         self.v.extend_from_slice(&[
-            // top inner bar: (ca, dc)
-            Vertex(ca, col), Vertex(da, col), Vertex(cc, col),
-            Vertex(cc, col), Vertex(da, col), Vertex(dc, col),
-            // bottom inner bar: (cd, db)
-            Vertex(cd, col), Vertex(dd, col), Vertex(cb, col),
-            Vertex(cb, col), Vertex(dd, col), Vertex(db, col),
-            // left bar: (aa, cb)
-            Vertex(aa, col), Vertex(ca, col), Vertex(ab, col),
-            Vertex(ab, col), Vertex(ca, col), Vertex(cb, col),
-            // right bar: (ca, bb)
-            Vertex(ca, col), Vertex(ba, col), Vertex(cb, col),
-            Vertex(cb, col), Vertex(ba, col), Vertex(bb, col),
+            // top bar: ba - dc - cc - aa
+            Vertex(ba, co), Vertex(dc, ci), Vertex(aa, co),
+            Vertex(aa, co), Vertex(dc, ci), Vertex(cc, ci),
+            // left bar: aa - cc - cd - ab
+            Vertex(aa, co), Vertex(cc, ci), Vertex(ab, co),
+            Vertex(ab, co), Vertex(cc, ci), Vertex(cd, ci),
+            // bottom bar: ab - cd - dd - bb
+            Vertex(ab, co), Vertex(cd, ci), Vertex(bb, co),
+            Vertex(bb, co), Vertex(cd, ci), Vertex(dd, ci),
+            // right bar: bb - dd - dc - ba
+            Vertex(bb, co), Vertex(dd, ci), Vertex(ba, co),
+            Vertex(ba, co), Vertex(dd, ci), Vertex(dc, ci),
         ]);
     }
 }
@@ -345,11 +345,15 @@ impl Widgets {
         let size = Vec2::from(rect.size_f32());
         let mut v = u + size;
 
-        let mut background = Rgb::new(0.1, 0.1, 0.1);
+        let mut background = Rgb::grey(0.7);
 
         let margin = self.margin;
         let scale = Scale::uniform(self.font_scale);
         let mut bounds = size - 2.0 * margin;
+
+        let f = self.frame_size;
+        let f_out = background;
+        let f_in = Rgb::grey(0.2);
 
         let alignments = widget.class().alignments();
         // TODO: support justified alignment
@@ -372,7 +376,7 @@ impl Widgets {
                 return;
             }
             Class::Label(cls) => {
-                let color = [1.0, 1.0, 1.0, 1.0];
+                let color = [0.0, 0.0, 0.0, 1.0];
                 let section = Section {
                     text: cls.get_text(),
                     screen_position: text_pos.into(),
@@ -385,12 +389,10 @@ impl Widgets {
                 self.glyph_brush.queue(section);
             }
             Class::Entry(cls) => {
-                let f = self.frame_size;
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                self.tri_buffer
-                    .add_frame(s, t, u, v, Rgb::new(0.6, 0.6, 0.6));
+                self.tri_buffer.add_frame(s, t, u, v, f_out, f_in);
                 bounds = bounds - 2.0 * f;
                 text_pos = text_pos + f;
 
@@ -399,7 +401,7 @@ impl Widgets {
                     // TODO: proper edit character and positioning
                     text.push('|');
                 }
-                background = Rgb::new(1.0, 1.0, 1.0);
+                background = Rgb::grey(1.0);
                 let color = [0.0, 0.0, 0.0, 1.0];
                 self.glyph_brush.queue(Section {
                     text: &text,
@@ -430,16 +432,14 @@ impl Widgets {
                 });
             }
             Class::CheckBox(cls) => {
-                let f = self.frame_size;
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                self.tri_buffer
-                    .add_frame(s, t, u, v, Rgb::new(0.6, 0.6, 0.6));
+                self.tri_buffer.add_frame(s, t, u, v, f_out, f_in);
                 bounds = bounds - 2.0 * f;
                 text_pos = text_pos + f;
 
-                background = Rgb::new(1.0, 1.0, 1.0);
+                background = Rgb::grey(1.0);
                 let color = [0.0, 0.0, 0.0, 1.0];
                 // TODO: draw check mark *and* optional text
                 // let text = if cls.get_bool() { "✓" } else { "" };
@@ -454,9 +454,7 @@ impl Widgets {
                 });
             }
             Class::Frame => {
-                let f = self.frame_size;
-                self.tri_buffer
-                    .add_frame(u, v, u + f, v - f, Rgb::new(0.6, 0.6, 0.6));
+                self.tri_buffer.add_frame(u, v, u + f, v - f, f_out, f_in);
                 return;
             }
         }
@@ -481,7 +479,7 @@ impl Widgets {
             let (s, t) = (u, v);
             u = u + margin;
             v = v - margin;
-            self.tri_buffer.add_frame(s, t, u, v, col);
+            self.tri_buffer.add_frame(s, t, u, v, col, col);
         }
 
         self.tri_buffer.add_quad(u, v, background);
