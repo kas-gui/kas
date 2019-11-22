@@ -6,7 +6,7 @@
 //! Library macros
 //!
 //! This documentation is provided as a reference. The macros may be easier to
-//! understand from the example apps provided with `kas-rgx`.
+//! understand from the example apps provided with `kas-wgpu`.
 //!
 //! This module provides two important macros:
 //!

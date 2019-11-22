@@ -79,7 +79,7 @@ widget specification, event handling and positioning is handled by the core
 `kas` crate (plus internal `kas-macros` crate), facilitating creation of
 additional rendering crates.
 
-Rendering is currently handled by `kas-rgx`. In the name of simplicity, this is
+Rendering is currently handled by `kas-wgpu`. In the name of simplicity, this is
 not configurable. Rendering is hardware-accelerated (via `wgpu` aka WebGPU with
 support for multiple backends: Vulkan, DX12, DX11, Metal).
 
