@@ -9,6 +9,8 @@ mod colour;
 mod event;
 mod font;
 mod render;
+mod tri_pipe;
+mod vertex;
 mod window;
 
 pub use window::Window;
