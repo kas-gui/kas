@@ -17,6 +17,7 @@ use winit::error::OsError;
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 
+use crate::colour;
 use crate::render::Widgets;
 
 /// Per-window data
@@ -192,7 +193,7 @@ impl Window {
             resolve_target: None,
             load_op: wgpu::LoadOp::Clear,
             store_op: wgpu::StoreOp::Store,
-            clear_color: wgpu::Color::BLACK,
+            clear_color: colour::BACKGROUND.into(),
         };
 
         let desc = wgpu::CommandEncoderDescriptor { todo: 0 };

@@ -5,6 +5,7 @@
 
 //! Toolkit for kas
 
+mod colour;
 mod event;
 mod font;
 mod render;

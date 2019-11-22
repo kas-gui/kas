@@ -17,6 +17,8 @@ use kas::class::{Align, Class};
 use kas::geom::{AxisInfo, Coord, Margins, Size, SizeRules};
 use kas::{event, TkAction, TkWindow, Widget};
 
+use crate::colour;
+
 /// Font size (units are half-point sizes?)
 const FONT_SIZE: f32 = 20.0;
 /// Inner margin; this is multiplied by the DPI factor then rounded to nearest
@@ -81,9 +83,15 @@ impl Rgb {
     pub fn new(r: f32, g: f32, b: f32) -> Self {
         Rgb { r, g, b }
     }
+}
 
-    pub fn grey(s: f32) -> Self {
-        Rgb { r: s, g: s, b: s }
+impl From<colour::Colour> for Rgb {
+    fn from(c: colour::Colour) -> Self {
+        Rgb {
+            r: c.r,
+            g: c.g,
+            b: c.b,
+        }
     }
 }
 
@@ -345,15 +353,15 @@ impl Widgets {
         let size = Vec2::from(rect.size_f32());
         let mut v = u + size;
 
-        let mut background = Rgb::grey(0.7);
+        let mut background = None;
 
         let margin = self.margin;
         let scale = Scale::uniform(self.font_scale);
         let mut bounds = size - 2.0 * margin;
 
         let f = self.frame_size;
-        let f_out = background;
-        let f_in = Rgb::grey(0.2);
+        let f_out = colour::FRAME_OUTER.into();
+        let f_in = colour::FRAME_INNER.into();
 
         let alignments = widget.class().alignments();
         // TODO: support justified alignment
@@ -376,11 +384,10 @@ impl Widgets {
                 return;
             }
             Class::Label(cls) => {
-                let color = [0.0, 0.0, 0.0, 1.0];
                 let section = Section {
                     text: cls.get_text(),
                     screen_position: text_pos.into(),
-                    color,
+                    color: colour::LABEL_TEXT.into(),
                     scale,
                     bounds: bounds.into(),
                     layout,
@@ -401,12 +408,11 @@ impl Widgets {
                     // TODO: proper edit character and positioning
                     text.push('|');
                 }
-                background = Rgb::grey(1.0);
-                let color = [0.0, 0.0, 0.0, 1.0];
+                background = Some(colour::TEXT_AREA.into());
                 self.glyph_brush.queue(Section {
                     text: &text,
                     screen_position: text_pos.into(),
-                    color,
+                    color: colour::TEXT.into(),
                     scale,
                     bounds: bounds.into(),
                     layout,
@@ -414,17 +420,16 @@ impl Widgets {
                 });
             }
             Class::Button(cls) => {
-                background = Rgb::new(0.2, 0.7, 1.0);
+                background = Some(Rgb::new(0.2, 0.7, 1.0));
                 if self.ev_mgr.is_depressed(w_id) {
-                    background = Rgb::new(0.2, 0.6, 0.8);
+                    background = Some(Rgb::new(0.2, 0.6, 0.8));
                 } else if self.ev_mgr.is_hovered(w_id) {
-                    background = Rgb::new(0.25, 0.8, 1.0);
+                    background = Some(Rgb::new(0.25, 0.8, 1.0));
                 }
-                let color = [1.0, 1.0, 1.0, 1.0];
                 self.glyph_brush.queue(Section {
                     text: cls.get_text(),
                     screen_position: text_pos.into(),
-                    color,
+                    color: colour::BUTTON_TEXT.into(),
                     scale,
                     bounds: bounds.into(),
                     layout,
@@ -439,14 +444,13 @@ impl Widgets {
                 bounds = bounds - 2.0 * f;
                 text_pos = text_pos + f;
 
-                background = Rgb::grey(1.0);
-                let color = [0.0, 0.0, 0.0, 1.0];
+                background = Some(colour::TEXT_AREA.into());
                 // TODO: draw check mark *and* optional text
                 // let text = if cls.get_bool() { "✓" } else { "" };
                 self.glyph_brush.queue(Section {
                     text: cls.get_text(),
                     screen_position: text_pos.into(),
-                    color,
+                    color: colour::TEXT.into(),
                     scale,
                     bounds: bounds.into(),
                     layout,
@@ -482,7 +486,9 @@ impl Widgets {
             self.tri_buffer.add_frame(s, t, u, v, col, col);
         }
 
-        self.tri_buffer.add_quad(u, v, background);
+        if let Some(background) = background {
+            self.tri_buffer.add_quad(u, v, background);
+        }
     }
 }
 
