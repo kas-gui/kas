@@ -26,6 +26,8 @@ const FONT_SIZE: f32 = 20.0;
 const MARGIN: f32 = 2.0;
 /// Frame size (adjusted as above)
 const FRAME_SIZE: f32 = 4.0;
+/// Button frame size (non-flat outer region)
+const BUTTON_FRAME: f32 = 6.0;
 
 /// Widget renderer
 pub(crate) struct Widgets {
@@ -34,6 +36,7 @@ pub(crate) struct Widgets {
     font_scale: f32,
     margin: f32,
     frame_size: f32,
+    button_frame: f32,
     action: TkAction,
     pub(crate) ev_mgr: event::ManagerData,
 }
@@ -54,6 +57,7 @@ impl Widgets {
             font_scale: (FONT_SIZE * dpi).round(),
             margin: (MARGIN * dpi).round(),
             frame_size: (FRAME_SIZE * dpi).round(),
+            button_frame: (BUTTON_FRAME * dpi).round(),
             action: TkAction::None,
             ev_mgr: event::ManagerData::new(dpi_factor),
         }
@@ -64,6 +68,7 @@ impl Widgets {
         self.font_scale = (FONT_SIZE * dpi).round();
         self.margin = (MARGIN * dpi).round();
         self.frame_size = (FRAME_SIZE * dpi).round();
+        self.button_frame = (BUTTON_FRAME * dpi).round();
         self.ev_mgr.set_dpi_factor(dpi_factor);
         // Note: we rely on caller to resize widget
     }
@@ -175,12 +180,23 @@ impl Widgets {
                 });
             }
             Class::Button(cls) => {
-                background = Some(Colour::new(0.2, 0.7, 1.0));
-                if self.ev_mgr.is_depressed(w_id) {
-                    background = Some(Colour::new(0.2, 0.6, 0.8));
+                let c = if self.ev_mgr.is_depressed(w_id) {
+                    Colour::new(0.2, 0.6, 0.8)
                 } else if self.ev_mgr.is_hovered(w_id) {
-                    background = Some(Colour::new(0.25, 0.8, 1.0));
-                }
+                    Colour::new(0.25, 0.8, 1.0)
+                } else {
+                    Colour::new(0.2, 0.7, 1.0)
+                };
+                background = Some(c);
+
+                let f = self.button_frame;
+                let (s, t) = (u, v);
+                u = u + f;
+                v = v - f;
+                self.tri_pipe.add_frame(s, t, u, v, f_out, c);
+                bounds = bounds - 2.0 * f;
+                text_pos = text_pos + f;
+
                 self.glyph_brush.queue(Section {
                     text: cls.get_text(),
                     screen_position: text_pos.into(),
@@ -305,11 +321,12 @@ impl TkWindow for Widgets {
                 }
             }
             Class::Button(_) => {
+                let f = 2 * self.button_frame as u32;
                 if axis.horiz() {
-                    let min = 3 * line_height;
+                    let min = 3 * line_height + f;
                     SizeRules::variable(min, bound(self, false).max(min))
                 } else {
-                    SizeRules::fixed(line_height)
+                    SizeRules::fixed(line_height + f)
                 }
             }
             Class::CheckBox(_) => {
