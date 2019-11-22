@@ -25,6 +25,7 @@ const MARGIN: f32 = 2.0;
 /// Frame size (adjusted as above)
 const FRAME_SIZE: f32 = 4.0;
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct Vec2(f32, f32);
 
@@ -68,6 +69,7 @@ impl From<Vec2> for (f32, f32) {
     }
 }
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct Rgb {
     pub r: f32,
@@ -81,6 +83,7 @@ impl Rgb {
     }
 }
 
+#[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct Vertex(Vec2, Rgb);
 
