@@ -15,12 +15,12 @@ use crate::vertex::{Rgb, Vec2};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec2, Rgb);
+struct Vertex(Vec2, Rgb, Vec2);
 
-/// A pipeline for rendering triangles with flat and graded shading
+/// A pipeline for rendering triangles with flat and lighting-based shading
 pub struct TriPipe {
     bind_group: wgpu::BindGroup,
-    uniform_buf: wgpu::Buffer,
+    scale_buf: wgpu::Buffer,
     render_pipeline: wgpu::RenderPipeline,
     v: Vec<Vertex>,
 }
@@ -42,29 +42,54 @@ impl TriPipe {
 
         type Scale = [f32; 2];
         let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
-        let uniform_buf = device
+        let scale_buf = device
             .create_buffer_mapped(
                 scale_factor.len(),
                 wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
             )
             .fill_from_slice(&scale_factor);
 
+        type Norm = [f32; 3];
+        let light_norm: Norm = [0.2588, -0.5, 0.8365];
+        let light_norm_buf = device
+            .create_buffer_mapped(
+                light_norm.len(),
+                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            )
+            .fill_from_slice(&light_norm);
+
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            bindings: &[wgpu::BindGroupLayoutBinding {
-                binding: 0,
-                visibility: wgpu::ShaderStage::VERTEX,
-                ty: wgpu::BindingType::UniformBuffer { dynamic: false },
-            }],
+            bindings: &[
+                wgpu::BindGroupLayoutBinding {
+                    binding: 0,
+                    visibility: wgpu::ShaderStage::VERTEX,
+                    ty: wgpu::BindingType::UniformBuffer { dynamic: false },
+                },
+                wgpu::BindGroupLayoutBinding {
+                    binding: 1,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::UniformBuffer { dynamic: false },
+                },
+            ],
         });
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &bind_group_layout,
-            bindings: &[wgpu::Binding {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer {
-                    buffer: &uniform_buf,
-                    range: 0..(size_of::<Scale>() as u64),
+            bindings: &[
+                wgpu::Binding {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &scale_buf,
+                        range: 0..(size_of::<Scale>() as u64),
+                    },
                 },
-            }],
+                wgpu::Binding {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &light_norm_buf,
+                        range: 0..(size_of::<Norm>() as u64),
+                    },
+                },
+            ],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             bind_group_layouts: &[&bind_group_layout],
@@ -110,6 +135,11 @@ impl TriPipe {
                         offset: size_of::<Vec2>() as u64,
                         shader_location: 1,
                     },
+                    wgpu::VertexAttributeDescriptor {
+                        format: wgpu::VertexFormat::Float2,
+                        offset: (size_of::<Vec2>() + size_of::<Rgb>()) as u64,
+                        shader_location: 2,
+                    },
                 ],
             }],
             sample_count: 1,
@@ -119,7 +149,7 @@ impl TriPipe {
 
         TriPipe {
             bind_group,
-            uniform_buf,
+            scale_buf,
             render_pipeline,
             v: vec![],
         }
@@ -128,14 +158,14 @@ impl TriPipe {
     pub fn resize(&mut self, device: &wgpu::Device, size: Size) -> wgpu::CommandBuffer {
         type Scale = [f32; 2];
         let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
-        let uniform_buf = device
+        let scale_buf = device
             .create_buffer_mapped(scale_factor.len(), wgpu::BufferUsage::COPY_SRC)
             .fill_from_slice(&scale_factor);
         let byte_len = size_of::<Scale>() as u64;
 
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-        encoder.copy_buffer_to_buffer(&uniform_buf, 0, &self.uniform_buf, 0, byte_len);
+        encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);
         encoder.finish()
     }
 
@@ -159,40 +189,58 @@ impl TriPipe {
     pub fn add_quad(&mut self, aa: Vec2, bb: Vec2, col: Colour) {
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
+
         let col = col.into();
+        let t = Vec2(0.0, 0.0);
 
         #[rustfmt::skip]
         self.v.extend_from_slice(&[
-            Vertex(aa, col), Vertex(ba, col), Vertex(ab, col),
-            Vertex(ab, col), Vertex(ba, col), Vertex(bb, col),
+            Vertex(aa, col, t), Vertex(ba, col, t), Vertex(ab, col, t),
+            Vertex(ab, col, t), Vertex(ba, col, t), Vertex(bb, col, t),
         ]);
     }
 
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
-    /// and two inner corners, `cc` and `dd`. Uses grey-scale shading from
-    /// outer colour `co` to inner colour `ci`.
-    pub fn add_frame(&mut self, aa: Vec2, bb: Vec2, cc: Vec2, dd: Vec2, co: Colour, ci: Colour) {
+    /// and two inner corners, `cc` and `dd` with colour `col`.
+    ///
+    /// The frame is shaded according to normals `norm = (outer, inner)`. A
+    /// normal of 0 implies a surface parallel to the screen, and 1
+    /// perpendicular to the screen. Can be positive (sunk frame) or negative
+    /// (raised frame).
+    pub fn add_frame(
+        &mut self,
+        aa: Vec2,
+        bb: Vec2,
+        cc: Vec2,
+        dd: Vec2,
+        norm: (f32, f32),
+        col: Colour,
+    ) {
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
         let cd = Vec2(cc.0, dd.1);
         let dc = Vec2(dd.0, cc.1);
-        let co = co.into();
-        let ci = ci.into();
+
+        let col = col.into();
+        let tt = (Vec2(0.0, norm.0), Vec2(0.0, norm.1));
+        let tl = (Vec2(norm.1, 0.0), Vec2(norm.1, 0.0));
+        let tb = (Vec2(0.0, -norm.0), Vec2(0.0, -norm.1));
+        let tr = (Vec2(-norm.0, 0.0), Vec2(-norm.1, 0.0));
 
         #[rustfmt::skip]
         self.v.extend_from_slice(&[
             // top bar: ba - dc - cc - aa
-            Vertex(ba, co), Vertex(dc, ci), Vertex(aa, co),
-            Vertex(aa, co), Vertex(dc, ci), Vertex(cc, ci),
+            Vertex(ba, col, tt.0), Vertex(dc, col, tt.1), Vertex(aa, col, tt.0),
+            Vertex(aa, col, tt.0), Vertex(dc, col, tt.1), Vertex(cc, col, tt.1),
             // left bar: aa - cc - cd - ab
-            Vertex(aa, co), Vertex(cc, ci), Vertex(ab, co),
-            Vertex(ab, co), Vertex(cc, ci), Vertex(cd, ci),
+            Vertex(aa, col, tl.0), Vertex(cc, col, tl.1), Vertex(ab, col, tl.0),
+            Vertex(ab, col, tl.0), Vertex(cc, col, tl.1), Vertex(cd, col, tl.1),
             // bottom bar: ab - cd - dd - bb
-            Vertex(ab, co), Vertex(cd, ci), Vertex(bb, co),
-            Vertex(bb, co), Vertex(cd, ci), Vertex(dd, ci),
+            Vertex(ab, col, tb.0), Vertex(cd, col, tb.1), Vertex(bb, col, tb.0),
+            Vertex(bb, col, tb.0), Vertex(cd, col, tb.1), Vertex(dd, col, tb.1),
             // right bar: bb - dd - dc - ba
-            Vertex(bb, co), Vertex(dd, ci), Vertex(ba, co),
-            Vertex(ba, co), Vertex(dd, ci), Vertex(dc, ci),
+            Vertex(bb, col, tr.0), Vertex(dd, col, tr.1), Vertex(ba, col, tr.0),
+            Vertex(ba, col, tr.0), Vertex(dd, col, tr.1), Vertex(dc, col, tr.1),
         ]);
     }
 }

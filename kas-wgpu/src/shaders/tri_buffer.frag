@@ -7,9 +7,18 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(location = 0) in vec3 fragColor;
+layout(location = 1) in vec2 norm2;
 
 layout(location = 0) out vec4 outColor;
 
+layout(set = 0, binding = 1) uniform Locals {
+    vec3 lightNorm;
+};
+
+
 void main() {
-    outColor = vec4(fragColor, 1.0);
+    float n3 = 1.0 - sqrt(norm2.x * norm2.x + norm2.y * norm2.y);
+    vec3 norm = vec3(norm2, n3);
+    vec3 c = fragColor * max(dot(norm, lightNorm), 0);
+    outColor = vec4(c, 1.0);
 }

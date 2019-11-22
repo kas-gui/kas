@@ -45,10 +45,8 @@ impl From<Colour> for [f32; 4] {
 
 /// Background colour
 pub const BACKGROUND: Colour = Colour::grey(0.7);
-/// Frame outer colour
-pub const FRAME_OUTER: Colour = BACKGROUND;
-/// Frame inner colour
-pub const FRAME_INNER: Colour = Colour::grey(0.2);
+/// Frame colour
+pub const FRAME: Colour = BACKGROUND;
 /// Text background
 pub const TEXT_AREA: Colour = Colour::grey(1.0);
 

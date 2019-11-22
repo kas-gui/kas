@@ -120,8 +120,6 @@ impl Widgets {
         let mut bounds = size - 2.0 * margin;
 
         let f = self.frame_size;
-        let f_out = colour::FRAME_OUTER;
-        let f_in = colour::FRAME_INNER;
 
         let mut _string; // Entry needs this to give a valid lifetime
         let text: Option<(&str, Colour)>;
@@ -138,7 +136,8 @@ impl Widgets {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                self.tri_pipe.add_frame(s, t, u, v, f_out, f_in);
+                self.tri_pipe
+                    .add_frame(s, t, u, v, (0.0, 0.8), colour::FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(colour::TEXT_AREA);
@@ -164,7 +163,7 @@ impl Widgets {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                self.tri_pipe.add_frame(s, t, u, v, f_out, c);
+                self.tri_pipe.add_frame(s, t, u, v, (-0.7, 0.0), c);
                 bounds = bounds - 2.0 * f;
 
                 text = Some((cls.get_text(), colour::BUTTON_TEXT));
@@ -173,7 +172,8 @@ impl Widgets {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                self.tri_pipe.add_frame(s, t, u, v, f_out, f_in);
+                self.tri_pipe
+                    .add_frame(s, t, u, v, (0.0, 0.8), colour::FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(colour::TEXT_AREA);
@@ -183,7 +183,8 @@ impl Widgets {
                 text = Some((cls.get_text(), colour::TEXT));
             }
             Class::Frame => {
-                self.tri_pipe.add_frame(u, v, u + f, v - f, f_out, f_in);
+                self.tri_pipe
+                    .add_frame(u, v, u + f, v - f, (0.0, 0.8), colour::FRAME);
                 return;
             }
         }
@@ -235,7 +236,7 @@ impl Widgets {
             let (s, t) = (u, v);
             u = u + margin;
             v = v - margin;
-            self.tri_pipe.add_frame(s, t, u, v, col, col);
+            self.tri_pipe.add_frame(s, t, u, v, (0.0, 0.0), col);
         }
 
         if let Some(background) = background {

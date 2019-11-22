@@ -8,8 +8,10 @@
 
 layout(location = 0) in vec2 a_Pos;
 layout(location = 1) in vec3 a_Color;
+layout(location = 2) in vec2 a_Norm;
 
 layout(location = 0) out vec3 fragColor;
+layout(location = 1) out vec2 norm2;
 
 layout(set = 0, binding = 0) uniform Locals {
     vec2 scale;
@@ -20,4 +22,5 @@ const vec2 offset = { 1.0, 1.0 };
 void main() {
     gl_Position = vec4(scale * a_Pos - offset, 0.0, 1.0);
     fragColor = a_Color;
+    norm2 = a_Norm;
 }
