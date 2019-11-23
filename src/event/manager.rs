@@ -20,6 +20,7 @@ pub struct ManagerData {
     key_focus: Option<WidgetId>,
     hover: Option<WidgetId>,
     click_start: Option<WidgetId>,
+    key_events: Vec<(VirtualKeyCode, WidgetId)>,
     touch_events: Vec<(u64, WidgetId, WidgetId)>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
 }
@@ -38,6 +39,7 @@ impl ManagerData {
             key_focus: None,
             hover: None,
             click_start: None,
+            key_events: Vec::with_capacity(4),
             touch_events: Vec::with_capacity(10),
             accel_keys: HashMap::new(),
         }
@@ -97,6 +99,11 @@ impl ManagerData {
     pub fn is_depressed(&self, w_id: WidgetId) -> bool {
         if self.click_start == Some(w_id) && self.hover == Some(w_id) {
             return true;
+        }
+        for (_, id) in &self.key_events {
+            if *id == w_id {
+                return true;
+            }
         }
         for start in &self.touch_events {
             if start.1 == w_id && start.2 == w_id {
@@ -244,10 +251,34 @@ impl Manager {
                             if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
                                 let ev = EventChild::Action(Action::Activate);
                                 widget.handle(tk, Event::ToChild(id, ev));
+
+                                tk.update_data(&mut |data| {
+                                    for item in &data.key_events {
+                                        if item.1 == id {
+                                            return false;
+                                        }
+                                    }
+                                    data.key_events.push((vkey, id));
+                                    true
+                                });
                             }
                         }
                         _ /* implies grab_focus.is_some() */ => (),
                     },
+                    (ElementState::Released, Some(vkey)) => {
+                        tk.update_data(&mut |data| {
+                            let r = 'outer: loop {
+                                for (i, item) in data.key_events.iter().enumerate() {
+                                    if item.0 == vkey {
+                                        break 'outer i;
+                                    }
+                                }
+                                return false;
+                            };
+                            data.key_events.remove(r);
+                            true
+                        });
+                    }
                     _ => (),
                 }
             }
