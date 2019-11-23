@@ -16,6 +16,7 @@ use kas::geom::{AxisInfo, Coord, Margins, Size, SizeRules};
 use kas::{event, TkAction, TkWindow, Widget};
 
 use crate::colour::{self, Colour};
+use crate::round_pipe::Rounded;
 use crate::tri_pipe::TriPipe;
 use crate::vertex::Vec2;
 
@@ -31,6 +32,7 @@ const BUTTON_FRAME: f32 = 6.0;
 
 /// Widget renderer
 pub(crate) struct Widgets {
+    round_pipe: Rounded,
     tri_pipe: TriPipe,
     pub(crate) glyph_brush: GlyphBrush<'static, ()>,
     font_scale: f32,
@@ -48,10 +50,12 @@ impl Widgets {
         dpi_factor: f64,
         glyph_brush: GlyphBrush<'static, ()>,
     ) -> Self {
+        let round_pipe = Rounded::new(device, size);
         let tri_pipe = TriPipe::new(device, size);
 
         let dpi = dpi_factor as f32;
         Widgets {
+            round_pipe,
             tri_pipe,
             glyph_brush,
             font_scale: (FONT_SIZE * dpi).round(),
@@ -74,7 +78,11 @@ impl Widgets {
     }
 
     pub fn resize(&mut self, device: &wgpu::Device, size: Size) -> wgpu::CommandBuffer {
-        self.tri_pipe.resize(device, size)
+        let mut encoder =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+        self.tri_pipe.resize(device, &mut encoder, size);
+        self.round_pipe.resize(device, &mut encoder, size);
+        encoder.finish()
     }
 
     #[inline]
@@ -92,6 +100,7 @@ impl Widgets {
     ) {
         self.draw_iter(win.as_widget());
         self.tri_pipe.render(device, rpass);
+        self.round_pipe.render(device, rpass);
     }
 
     fn draw_iter(&mut self, widget: &dyn kas::Widget) {
@@ -163,7 +172,7 @@ impl Widgets {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                self.tri_pipe.add_frame(s, t, u, v, (-0.7, 0.0), c);
+                self.round_pipe.add_frame(s, t, u, v, c);
                 bounds = bounds - 2.0 * f;
 
                 text = Some((cls.get_text(), colour::BUTTON_TEXT));

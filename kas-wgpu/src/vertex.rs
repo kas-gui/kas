@@ -5,12 +5,26 @@
 
 //! Vertex data types
 
-use std::ops::{Add, Sub};
+use std::ops::{Add, Neg, Sub};
 
 /// 2D positional data
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct Vec2(pub f32, pub f32);
+
+impl Vec2 {
+    pub fn sign(self) -> Self {
+        let one = 1f32;
+        Vec2(one.copysign(self.0), one.copysign(self.1))
+    }
+}
+
+impl Neg for Vec2 {
+    type Output = Vec2;
+    fn neg(self) -> Self::Output {
+        Vec2(-self.0, -self.1)
+    }
+}
 
 impl Add<Vec2> for Vec2 {
     type Output = Vec2;

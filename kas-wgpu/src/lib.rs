@@ -9,6 +9,7 @@ mod colour;
 mod event;
 mod font;
 mod render;
+mod round_pipe;
 mod tri_pipe;
 mod vertex;
 mod window;
