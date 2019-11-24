@@ -42,13 +42,13 @@ fn main() -> Result<(), winit::error::OsError> {
     let window = Window::new(make_widget! {
         container(vertical) => EmptyMsg;
         struct {
-            #[widget] _ = Label::from("Widget Gallery"),
-            #[widget(handler = activations)] _ = make_widget! {
-                frame => Item;
+            #[widget] _ = make_widget! {
+                frame => EmptyMsg;
                 struct {
-                    #[widget] _ = widgets
+                    #[widget] _ = Label::from("Widget Gallery"),
                 }
-            }
+            },
+            #[widget(handler = activations)] _ = widgets,
         }
         impl {
             fn activations(&mut self, _: &mut dyn TkWindow, item: Item)
