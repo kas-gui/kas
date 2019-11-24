@@ -13,7 +13,8 @@ fn main() -> Result<(), winit::error::OsError> {
     // Each Window::new method creates objects then solves constraints.
     let window = MessageBox::new(/*Notify::Info,*/ "Hello world");
 
-    let mut toolkit = kas_wgpu::Toolkit::new();
+    let theme = kas_wgpu::SampleTheme::new();
+    let mut toolkit = kas_wgpu::Toolkit::new(theme);
     toolkit.add(window)?;
     toolkit.run()
 }

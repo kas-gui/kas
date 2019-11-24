@@ -39,7 +39,8 @@ fn main() {
         w.on_tick(tk)
     });
 
-    let mut toolkit = kas_wgpu::Toolkit::new();
+    let theme = kas_wgpu::SampleTheme::new();
+    let mut toolkit = kas_wgpu::Toolkit::new(theme);
     toolkit.add(window).unwrap();
     toolkit.run()
 }

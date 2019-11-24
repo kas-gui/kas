@@ -12,22 +12,23 @@ use winit::event_loop::ControlFlow;
 
 use kas::TkAction;
 
+use crate::theme::Theme;
 use crate::Window;
 
-pub(crate) struct Loop {
-    windows: Vec<Window>,
+pub(crate) struct Loop<T: Theme> {
+    windows: Vec<Window<T>>,
     resumes: Vec<(Instant, usize)>,
 }
 
-impl Loop {
-    pub(crate) fn new(windows: Vec<Window>) -> Self {
+impl<T: Theme> Loop<T> {
+    pub(crate) fn new(windows: Vec<Window<T>>) -> Self {
         Loop {
             windows,
             resumes: vec![],
         }
     }
 
-    pub(crate) fn handle<T>(&mut self, event: Event<T>, control_flow: &mut ControlFlow) {
+    pub(crate) fn handle<U>(&mut self, event: Event<U>, control_flow: &mut ControlFlow) {
         use Event::*;
         let (i, action) = match event {
             WindowEvent { window_id, event } => 'outer: loop {

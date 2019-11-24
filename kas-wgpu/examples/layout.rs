@@ -27,7 +27,8 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     });
 
-    let mut toolkit = kas_wgpu::Toolkit::new();
+    let theme = kas_wgpu::SampleTheme::new();
+    let mut toolkit = kas_wgpu::Toolkit::new(theme);
     toolkit.add(window)?;
     toolkit.run()
 }

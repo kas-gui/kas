@@ -10,32 +10,38 @@ mod event;
 mod font;
 mod render;
 mod round_pipe;
+mod theme;
 mod tri_pipe;
 mod vertex;
 mod window;
 
-pub use window::Window;
-
 use winit::error::OsError;
 use winit::event_loop::EventLoop;
 
+pub use theme::{SampleTheme, Theme};
+pub use window::Window;
+
+pub use kas;
+pub use wgpu_glyph as glyph;
+
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
-pub struct Toolkit<T: 'static> {
+pub struct Toolkit<T: Theme + 'static, U: 'static> {
     adapter: wgpu::Adapter,
-    el: EventLoop<T>,
-    windows: Vec<Window>,
+    el: EventLoop<U>,
+    windows: Vec<Window<T>>,
+    theme: T,
 }
 
-impl Toolkit<()> {
+impl<T: Theme + 'static> Toolkit<T, ()> {
     /// Construct a new instance with default options.
     ///
     /// This chooses a low-power graphics adapter by preference.
-    pub fn new() -> Self {
-        Toolkit::<()>::new_custom(None)
+    pub fn new(theme: T) -> Self {
+        Toolkit::<T, ()>::new_custom(theme, None)
     }
 }
 
-impl<T> Toolkit<T> {
+impl<T: Theme + 'static, U: 'static> Toolkit<T, U> {
     /// Construct an instance with custom options
     ///
     /// The graphics adapter is chosen according to the given options. If `None`
@@ -45,9 +51,10 @@ impl<T> Toolkit<T> {
     /// documentation of `EventLoop::with_user_event` for details.
     /// If not using user events, it may be necessary to force this type:
     /// ```
-    /// let toolkit = kas_wgpu::Toolkit::<()>::new_custom(None);
+    /// let theme = kas_wgpu::SampleTheme::new();
+    /// let toolkit = kas_wgpu::Toolkit::<_, ()>::new_custom(theme, None);
     /// ```
-    pub fn new_custom(adapter_options: Option<&wgpu::RequestAdapterOptions>) -> Self {
+    pub fn new_custom(theme: T, adapter_options: Option<&wgpu::RequestAdapterOptions>) -> Self {
         let adapter_options = adapter_options.unwrap_or(&wgpu::RequestAdapterOptions {
             power_preference: wgpu::PowerPreference::LowPower,
             backends: wgpu::BackendBit::PRIMARY,
@@ -58,6 +65,7 @@ impl<T> Toolkit<T> {
             adapter,
             el: EventLoop::with_user_event(),
             windows: vec![],
+            theme,
         }
     }
 
@@ -70,7 +78,7 @@ impl<T> Toolkit<T> {
 
     /// Add a boxed window directly
     pub fn add_boxed(&mut self, window: Box<dyn kas::Window>) -> Result<(), OsError> {
-        let win = Window::new(&self.adapter, &self.el, window)?;
+        let win = Window::new(&self.adapter, &self.el, window, self.theme.clone())?;
         self.windows.push(win);
         Ok(())
     }

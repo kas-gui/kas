@@ -19,9 +19,10 @@ use winit::event_loop::EventLoopWindowTarget;
 
 use crate::colour;
 use crate::render::Widgets;
+use crate::theme::Theme;
 
 /// Per-window data
-pub struct Window {
+pub struct Window<T: Theme> {
     widget: Box<dyn kas::Window>,
     /// The winit window
     pub(crate) window: winit::window::Window,
@@ -31,17 +32,18 @@ pub struct Window {
     sc_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
     timeouts: Vec<(usize, Instant, Option<Duration>)>,
-    wrend: Widgets,
+    wrend: Widgets<T>,
 }
 
 // Public functions, for use by the toolkit
-impl Window {
+impl<T: Theme> Window<T> {
     /// Construct a window
-    pub fn new<T: 'static>(
+    pub fn new<U: 'static>(
         adapter: &wgpu::Adapter,
-        event_loop: &EventLoopWindowTarget<T>,
+        event_loop: &EventLoopWindowTarget<U>,
         mut widget: Box<dyn kas::Window>,
-    ) -> Result<Window, OsError> {
+        theme: T,
+    ) -> Result<Self, OsError> {
         let window = winit::window::Window::new(event_loop)?;
         let dpi_factor = window.hidpi_factor();
         let size: Size = window.inner_size().to_physical(dpi_factor).into();
@@ -67,7 +69,7 @@ impl Window {
         let glyph_brush = GlyphBrushBuilder::using_font(crate::font::get_font())
             .build(&mut device, sc_desc.format);
 
-        let mut wrend = Widgets::new(&device, size, dpi_factor, glyph_brush);
+        let mut wrend = Widgets::new(&device, size, dpi_factor, glyph_brush, theme);
         wrend.ev_mgr.configure(widget.as_widget_mut());
 
         widget.resize(&mut wrend, size);
@@ -169,7 +171,7 @@ impl Window {
 }
 
 // Internal functions
-impl Window {
+impl<T: Theme> Window<T> {
     fn do_resize(&mut self, size: LogicalSize) {
         let size = size.to_physical(self.window.hidpi_factor()).into();
         if size == Size(self.sc_desc.width, self.sc_desc.height) {

@@ -61,6 +61,12 @@ impl Size {
     // TODO: what value do we want to use here? Note that current layout logic
     // can add together multiple copies of this value.
     pub const MAX: Size = Size(0xFFFF, 0xFFFF);
+
+    /// Uniform size in each dimension
+    #[inline]
+    pub const fn uniform(v: u32) -> Self {
+        Size(v, v)
+    }
 }
 
 impl From<(u32, u32)> for Size {
