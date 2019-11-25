@@ -138,7 +138,7 @@ pub const LABEL_TEXT: Colour = Colour::grey(0.0);
 /// Text on button
 pub const BUTTON_TEXT: Colour = Colour::grey(1.0);
 
-impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
+impl Theme<DrawPipe> for SampleTheme {
     fn set_dpi_factor(&mut self, factor: f32) {
         self.font_scale = (FONT_SIZE * factor).round();
         self.margin = (MARGIN * factor).round();
@@ -177,7 +177,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
         }
     }
 
-    fn size_rules(&self, draw: &mut D, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&self, draw: &mut DrawPipe, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
         let font_scale = self.font_scale;
         let line_height = font_scale as u32;
         let mut bound = |vert: bool| -> u32 {
@@ -240,7 +240,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
         }
     }
 
-    fn draw(&self, draw: &mut D, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
+    fn draw(&self, draw: &mut DrawPipe, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
         // This is a hacky draw routine just to show where widgets are.
         let w_id = widget.id();
 

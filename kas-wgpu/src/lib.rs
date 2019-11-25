@@ -5,8 +5,8 @@
 
 //! Toolkit for kas
 
-mod colour;
-mod draw;
+pub mod colour;
+pub mod draw;
 mod event;
 mod font;
 mod theme;
