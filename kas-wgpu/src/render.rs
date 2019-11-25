@@ -57,27 +57,22 @@ impl<T: Theme<DrawPipe>> Widgets<T> {
         action
     }
 
-    pub fn draw(
-        &mut self,
-        device: &mut wgpu::Device,
-        frame_view: &wgpu::TextureView,
-        win: &dyn kas::Window,
-    ) -> wgpu::CommandBuffer {
-        self.draw_iter(win.as_widget());
-        self.draw_pipe.render(device, frame_view)
-    }
-
-    fn draw_iter(&mut self, widget: &dyn kas::Widget) {
-        // draw widget; recurse over children
-        self.draw_widget(widget);
+    /// Iterate over a widget tree, queuing drawables
+    pub fn draw_iter(&mut self, widget: &dyn kas::Widget) {
+        self.theme.draw(&mut self.draw_pipe, &self.ev_mgr, widget);
 
         for n in 0..widget.len() {
             self.draw_iter(widget.get(n).unwrap());
         }
     }
 
-    fn draw_widget(&mut self, widget: &dyn kas::Widget) {
-        self.theme.draw(&mut self.draw_pipe, &self.ev_mgr, widget)
+    /// Render all queued drawables
+    pub fn render(
+        &mut self,
+        device: &mut wgpu::Device,
+        frame_view: &wgpu::TextureView,
+    ) -> wgpu::CommandBuffer {
+        self.draw_pipe.render(device, frame_view)
     }
 }
 

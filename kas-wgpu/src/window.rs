@@ -184,9 +184,8 @@ impl<T: Theme<DrawPipe>> Window<T> {
 
     fn do_draw(&mut self) {
         let frame = self.swap_chain.get_next_texture();
-        let buf = self
-            .wrend
-            .draw(&mut self.device, &frame.view, &*self.widget);
+        self.wrend.draw_iter(self.widget.as_widget());
+        let buf = self.wrend.render(&mut self.device, &frame.view);
         self.queue.submit(&[buf]);
     }
 }
