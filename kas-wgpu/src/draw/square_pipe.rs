@@ -202,11 +202,6 @@ impl SquarePipe {
 
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
     /// and two inner corners, `cc` and `dd` with colour `col`.
-    ///
-    /// The frame is shaded according to normals `norm = (outer, inner)`. A
-    /// normal of 0 implies a surface parallel to the screen, and 1
-    /// perpendicular to the screen. Can be positive (sunk frame) or negative
-    /// (raised frame).
     pub fn add_frame(
         &mut self,
         aa: Vec2,
@@ -222,10 +217,10 @@ impl SquarePipe {
         let dc = Vec2(dd.0, cc.1);
 
         let col = col.into();
-        let tt = (Vec2(0.0, norm.0), Vec2(0.0, norm.1));
-        let tl = (Vec2(norm.0, 0.0), Vec2(norm.1, 0.0));
-        let tb = (Vec2(0.0, -norm.0), Vec2(0.0, -norm.1));
-        let tr = (Vec2(-norm.0, 0.0), Vec2(-norm.1, 0.0));
+        let tt = (Vec2(0.0, -norm.0), Vec2(0.0, -norm.1));
+        let tl = (Vec2(-norm.0, 0.0), Vec2(-norm.1, 0.0));
+        let tb = (Vec2(0.0, norm.0), Vec2(0.0, norm.1));
+        let tr = (Vec2(norm.0, 0.0), Vec2(norm.1, 0.0));
 
         #[rustfmt::skip]
         self.v.extend_from_slice(&[

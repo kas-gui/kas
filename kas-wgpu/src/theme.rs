@@ -120,9 +120,9 @@ const FONT_SIZE: f32 = 20.0;
 /// integer, e.g. `(2.0 * 1.25).round() == 3.0`.
 const MARGIN: f32 = 2.0;
 /// Frame size (adjusted as above)
-const FRAME_SIZE: f32 = 4.0;
+const FRAME_SIZE: f32 = 5.0;
 /// Button frame size (non-flat outer region)
-const BUTTON_FRAME: f32 = 6.0;
+const BUTTON_FRAME: f32 = 5.0;
 
 /// Background colour
 pub const BACKGROUND: Colour = Colour::grey(0.7);
@@ -273,7 +273,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                draw.draw_square_frame(s, t, u, v, (0.0, 0.8), FRAME);
+                draw.draw_square_frame(s, t, u, v, (0.0, -0.8), FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(TEXT_AREA);
@@ -299,7 +299,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                draw.draw_round_frame(s, t, u, v, c);
+                draw.draw_round_frame(s, t, u, v, (0.0, 0.6), c);
                 bounds = bounds - 2.0 * f;
 
                 text = Some((cls.get_text(), BUTTON_TEXT));
@@ -308,7 +308,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                draw.draw_square_frame(s, t, u, v, (0.0, 0.8), FRAME);
+                draw.draw_square_frame(s, t, u, v, (0.0, -0.8), FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(TEXT_AREA);
@@ -318,7 +318,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
                 text = Some((cls.get_text(), TEXT));
             }
             Class::Frame => {
-                draw.draw_square_frame(u, v, u + f, v - f, (0.0, 0.8), FRAME);
+                draw.draw_round_frame(u, v, u + f, v - f, (0.6, -0.6), FRAME);
                 return;
             }
         }

@@ -32,8 +32,9 @@ pub trait DrawSquare {
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
     /// and two inner corners, `cc` and `dd`, with solid colour `col`.
     ///
-    /// The frame is shaded according to its normal, and appears flat when
-    /// `norm = (0.0, 0.0)`.
+    /// The frame has square corners and is shaded according to its normal.
+    /// Frame sides are divided at the corners by a straight line from inner to
+    /// outer corner. The frame appears flat when `norm = (0.0, 0.0)`.
     ///
     /// The normal is calculated from the `x` component (for verticals) or `y`
     /// component (for horizontals); the other `x` / `y` component is set to
@@ -41,8 +42,8 @@ pub trait DrawSquare {
     ///
     /// The normal component itself is calculated via linear interpolation
     /// between `outer` and `inner`, where parameter `norm = (outer, inner)`,
-    /// with both parameters pointing towards the centre of the frame (thus
-    /// positive values make the frame appear sunken).
+    /// with both parameters pointing out from the frame (thus
+    /// positive values make the frame appear raised).
     ///
     /// Component-wise bounds: `aa < cc < dd < bb`; `-1 < norm < 1`.
     fn draw_square_frame(
@@ -59,9 +60,31 @@ pub trait DrawSquare {
 /// Abstraction over rounded drawing commands
 pub trait DrawRound {
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
-    /// and two inner corners, `cc` and `dd` with colour `col`.
-    // TODO: allow control of normals
-    fn draw_round_frame(&mut self, aa: Vec2, bb: Vec2, cc: Vec2, dd: Vec2, col: Colour);
+    /// and two inner corners, `cc` and `dd`, with solid colour `col`.
+    ///
+    /// The frame has rounded corners and is shaded according to its normal.
+    /// Corners are smoothly shaded; pixels beyond the outer curve are not
+    /// drawn. The frame appears flat when `norm = (0.0, 0.0)`.
+    ///
+    /// The normal is calculated from the `x` component (for verticals) or `y`
+    /// component (for horizontals); the other `x` / `y` component is set to
+    /// zero while the `z` component is calculated such that `x² + y² + z² = 1`.
+    ///
+    /// The normal component itself is calculated via linear interpolation
+    /// between `outer` and `inner`, where parameter `norm = (outer, inner)`,
+    /// with both parameters pointing out from the frame (thus
+    /// positive values make the frame appear raised).
+    ///
+    /// Component-wise bounds: `aa < cc < dd < bb`; `-1 < norm < 1`.
+    fn draw_round_frame(
+        &mut self,
+        aa: Vec2,
+        bb: Vec2,
+        cc: Vec2,
+        dd: Vec2,
+        norm: (f32, f32),
+        col: Colour,
+    );
 }
 
 /// Abstraction over text rendering
@@ -191,8 +214,16 @@ impl DrawSquare for DrawPipe {
 }
 
 impl DrawRound for DrawPipe {
-    fn draw_round_frame(&mut self, aa: Vec2, bb: Vec2, cc: Vec2, dd: Vec2, col: Colour) {
-        self.round_pipe.add_frame(aa, bb, cc, dd, col)
+    fn draw_round_frame(
+        &mut self,
+        aa: Vec2,
+        bb: Vec2,
+        cc: Vec2,
+        dd: Vec2,
+        norm: (f32, f32),
+        col: Colour,
+    ) {
+        self.round_pipe.add_frame(aa, bb, cc, dd, norm, col)
     }
 }
 

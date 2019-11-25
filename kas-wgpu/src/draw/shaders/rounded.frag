@@ -6,8 +6,12 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+// Low precision seems to be good enough
+precision lowp float;
+
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec2 dir;
+layout(location = 2) in vec2 adjust;
 
 layout(location = 0) out vec4 outColor;
 
@@ -15,17 +19,24 @@ layout(set = 0, binding = 1) uniform Locals {
     vec3 lightNorm;
 };
 
-
 void main() {
-    vec2 dir2 = abs(dir) * dir;
-    float ss = abs(dir2.x) + abs(dir2.y);
-    if (ss < 0.0 || ss > 1.0) discard;
+    vec2 dir2 = dir * dir;
+    float ss = dir2.x + dir2.y;
+    if (ss > 1.0) discard;
     
-    // TODO: allow scaling and inversion?
-    vec2 norm2 = dir2;
+    float z = sqrt(1.0 - ss);
+    float h = sqrt(ss);
+    float t = adjust.x + adjust.y * atan(h / z);
+    vec2 normh;
+    if (h > 0.0) {
+        normh = dir * (sin(t) / h);
+        z = cos(t);
+    }
+    vec3 norm = vec3(normh, z);
     
-    float n3 = 1.0 - sqrt(norm2.x * norm2.x + norm2.y * norm2.y);
-    vec3 norm = vec3(norm2, n3);
+    // Simplified version with only scale adjustment:
+    // float z = sqrt(1.0 - adjust.y * ss);
+    // vec3 norm = vec3(dir * sqrt(adjust.y), z);
     
     vec3 c = fragColor * max(dot(norm, lightNorm), 0);
     outColor = vec4(c, 1.0);

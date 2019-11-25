@@ -5,7 +5,7 @@
 
 //! Rounded shading pipeline
 
-use std::f32;
+use std::f32::consts::FRAC_PI_2;
 use std::mem::size_of;
 
 use kas::geom::Size;
@@ -15,7 +15,7 @@ use crate::vertex::{Rgb, Vec2};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec2, Rgb, Vec2);
+struct Vertex(Vec2, Rgb, Vec2, Vec2);
 
 /// A pipeline for rendering rounded shapes
 pub struct RoundPipe {
@@ -138,6 +138,11 @@ impl RoundPipe {
                         offset: (size_of::<Vec2>() + size_of::<Rgb>()) as u64,
                         shader_location: 2,
                     },
+                    wgpu::VertexAttributeDescriptor {
+                        format: wgpu::VertexFormat::Float2,
+                        offset: (2 * size_of::<Vec2>() + size_of::<Rgb>()) as u64,
+                        shader_location: 3,
+                    },
                 ],
             }],
             sample_count: 1,
@@ -186,7 +191,16 @@ impl RoundPipe {
 
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
     /// and two inner corners, `cc` and `dd` with colour `col`.
-    pub fn add_frame(&mut self, aa: Vec2, bb: Vec2, cc: Vec2, dd: Vec2, col: Colour) {
+    pub fn add_frame(
+        &mut self,
+        aa: Vec2,
+        bb: Vec2,
+        cc: Vec2,
+        dd: Vec2,
+        norm: (f32, f32),
+        col: Colour,
+    ) {
+        let adjust = Vec2(FRAC_PI_2 * norm.0, norm.1 - norm.0);
         let col = col.into();
 
         let n0 = Vec2(0.0, 0.0);
@@ -201,25 +215,25 @@ impl RoundPipe {
 
         // We must add corners separately to ensure correct interpolation of dir
         // values, hence need 12 points:
-        let ab = Vertex(Vec2(aa.0, bb.1), col, nab);
-        let ba = Vertex(Vec2(bb.0, aa.1), col, nba);
-        let cd = Vertex(Vec2(cc.0, dd.1), col, n0);
-        let dc = Vertex(Vec2(dd.0, cc.1), col, n0);
+        let ab = Vertex(Vec2(aa.0, bb.1), col, nab, adjust);
+        let ba = Vertex(Vec2(bb.0, aa.1), col, nba, adjust);
+        let cd = Vertex(Vec2(cc.0, dd.1), col, n0, adjust);
+        let dc = Vertex(Vec2(dd.0, cc.1), col, n0, adjust);
 
-        let ac = Vertex(Vec2(aa.0, cc.1), col, na0);
-        let ad = Vertex(Vec2(aa.0, dd.1), col, na0);
-        let bc = Vertex(Vec2(bb.0, cc.1), col, nb0);
-        let bd = Vertex(Vec2(bb.0, dd.1), col, nb0);
+        let ac = Vertex(Vec2(aa.0, cc.1), col, na0, adjust);
+        let ad = Vertex(Vec2(aa.0, dd.1), col, na0, adjust);
+        let bc = Vertex(Vec2(bb.0, cc.1), col, nb0, adjust);
+        let bd = Vertex(Vec2(bb.0, dd.1), col, nb0, adjust);
 
-        let ca = Vertex(Vec2(cc.0, aa.1), col, n0a);
-        let cb = Vertex(Vec2(cc.0, bb.1), col, n0b);
-        let da = Vertex(Vec2(dd.0, aa.1), col, n0a);
-        let db = Vertex(Vec2(dd.0, bb.1), col, n0b);
+        let ca = Vertex(Vec2(cc.0, aa.1), col, n0a, adjust);
+        let cb = Vertex(Vec2(cc.0, bb.1), col, n0b, adjust);
+        let da = Vertex(Vec2(dd.0, aa.1), col, n0a, adjust);
+        let db = Vertex(Vec2(dd.0, bb.1), col, n0b, adjust);
 
-        let aa = Vertex(aa, col, naa);
-        let bb = Vertex(bb, col, nbb);
-        let cc = Vertex(cc, col, n0);
-        let dd = Vertex(dd, col, n0);
+        let aa = Vertex(aa, col, naa, adjust);
+        let bb = Vertex(bb, col, nbb, adjust);
+        let cc = Vertex(cc, col, n0, adjust);
+        let dd = Vertex(dd, col, n0, adjust);
 
         #[rustfmt::skip]
         self.v.extend_from_slice(&[

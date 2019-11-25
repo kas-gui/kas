@@ -9,9 +9,11 @@
 layout(location = 0) in vec2 a_Pos;
 layout(location = 1) in vec3 a_Color;
 layout(location = 2) in vec2 a_Dir;
+layout(location = 3) in vec2 a_Adjust;
 
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 dir;
+layout(location = 2) out vec2 adjust;
 
 layout(set = 0, binding = 0) uniform Locals {
     vec2 scale;
@@ -23,4 +25,5 @@ void main() {
     gl_Position = vec4(scale * a_Pos - offset, 0.0, 1.0);
     fragColor = a_Color;
     dir = a_Dir;
+    adjust = a_Adjust;
 }
