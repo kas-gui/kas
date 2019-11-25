@@ -22,7 +22,7 @@ pub(crate) struct Widgets<T: Theme> {
     tri_pipe: TriPipe,
     pub(crate) glyph_brush: GlyphBrush<'static, ()>,
     action: TkAction,
-    pub(crate) ev_mgr: event::ManagerData,
+    pub(crate) ev_mgr: event::Manager,
     theme: T,
 }
 
@@ -43,7 +43,7 @@ impl<T: Theme> Widgets<T> {
             tri_pipe,
             glyph_brush,
             action: TkAction::None,
-            ev_mgr: event::ManagerData::new(dpi_factor),
+            ev_mgr: event::Manager::new(dpi_factor),
             theme,
         }
     }
@@ -101,11 +101,11 @@ impl<T: Theme> Widgets<T> {
 }
 
 impl<T: Theme> TkWindow for Widgets<T> {
-    fn data(&self) -> &event::ManagerData {
+    fn data(&self) -> &event::Manager {
         &self.ev_mgr
     }
 
-    fn update_data(&mut self, f: &mut dyn FnMut(&mut event::ManagerData) -> bool) {
+    fn update_data(&mut self, f: &mut dyn FnMut(&mut event::Manager) -> bool) {
         if f(&mut self.ev_mgr) {
             self.send_action(TkAction::Redraw);
         }

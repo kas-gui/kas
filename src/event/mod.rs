@@ -29,7 +29,7 @@ pub use callback::Callback;
 #[cfg(not(feature = "winit"))]
 pub use enums::*;
 pub use events::*;
-pub use manager::{Manager, ManagerData};
+pub use manager::Manager;
 
 /// An empty message
 ///

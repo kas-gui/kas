@@ -45,13 +45,13 @@ pub enum TkAction {
 /// event handling. In these cases the user is *always* given an existing
 /// reference to a `TkWindow`. Mostly this trait is only used internally.
 pub trait TkWindow {
-    /// Read access to the event manager data
-    fn data(&self) -> &event::ManagerData;
+    /// Read access to the event manager state
+    fn data(&self) -> &event::Manager;
 
     /// Update event manager data with a closure
     ///
     /// The closure should return true if this update may require a redraw.
-    fn update_data(&mut self, f: &mut dyn FnMut(&mut event::ManagerData) -> bool);
+    fn update_data(&mut self, f: &mut dyn FnMut(&mut event::Manager) -> bool);
 
     /// Get the widget's size preferences
     ///

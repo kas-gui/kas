@@ -89,7 +89,7 @@ pub trait Theme: Clone {
         tri_pipe: &mut TriPipe,
         round_pipe: &mut Rounded,
         glyph_brush: &mut GlyphBrush<'static, ()>,
-        ev_mgr: &event::ManagerData,
+        ev_mgr: &event::Manager,
         widget: &dyn kas::Widget,
     );
 }
@@ -225,7 +225,7 @@ impl Theme for SampleTheme {
         tri_pipe: &mut TriPipe,
         round_pipe: &mut Rounded,
         glyph_brush: &mut GlyphBrush<'static, ()>,
-        ev_mgr: &event::ManagerData,
+        ev_mgr: &event::Manager,
         widget: &dyn kas::Widget,
     ) {
         // This is a hacky draw routine just to show where widgets are.

@@ -12,9 +12,9 @@ use crate::{TkWindow, Widget, WidgetId};
 
 /// Window event manager
 ///
-/// Event handling requires some state on the window; this struct provides that.
+/// Encapsulation of per-window event state plus supporting methods.
 #[derive(Clone, Debug)]
-pub struct ManagerData {
+pub struct Manager {
     dpi_factor: f64,
     grab_focus: Option<WidgetId>,
     key_focus: Option<WidgetId>,
@@ -25,7 +25,7 @@ pub struct ManagerData {
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
 }
 
-impl ManagerData {
+impl Manager {
     /// Construct an event manager per-window data struct
     ///
     /// (For toolkit use.)
@@ -33,7 +33,7 @@ impl ManagerData {
     /// The DPI factor may be required for event coordinate translation.
     #[inline]
     pub fn new(dpi_factor: f64) -> Self {
-        ManagerData {
+        Manager {
             dpi_factor,
             grab_focus: None,
             key_focus: None,
@@ -186,9 +186,6 @@ impl ManagerData {
         true
     }
 }
-
-/// An interface for managing per-widget events
-pub struct Manager;
 
 impl Manager {
     /// Handle a winit `WindowEvent`.

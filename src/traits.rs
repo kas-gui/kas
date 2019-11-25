@@ -135,7 +135,7 @@ pub trait Widget: Layout {
     /// Find a child widget by identifier
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`crate::event::ManagerData::configure`].
+    /// [`crate::event::Manager::configure`].
     fn get_by_id(&self, id: WidgetId) -> Option<&dyn Widget> {
         if id == self.id() {
             return Some(self.as_widget());
