@@ -250,7 +250,8 @@ impl<T: Theme<DrawPipe>> TkWindow<T> {
         device: &mut wgpu::Device,
         frame_view: &wgpu::TextureView,
     ) -> wgpu::CommandBuffer {
-        self.draw_pipe.render(device, frame_view)
+        let clear_color = self.theme.clear_colour().into();
+        self.draw_pipe.render(device, frame_view, clear_color)
     }
 }
 

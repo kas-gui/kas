@@ -54,6 +54,9 @@ pub trait Theme<D>: Clone {
     /// The first font in the list will be the default font.
     fn get_fonts<'a>(&self) -> Vec<Font<'a>>;
 
+    /// Background colour
+    fn clear_colour(&self) -> Colour;
+
     /// Margin and inter-row/column dimensions
     ///
     /// Margin dimensions are added to the area allocated to each widget. For
@@ -119,6 +122,10 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
 
     fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
         vec![crate::font::get_font()]
+    }
+
+    fn clear_colour(&self) -> Colour {
+        colour::BACKGROUND
     }
 
     fn margins(&self, widget: &dyn Widget) -> Margins {

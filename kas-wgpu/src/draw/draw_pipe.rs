@@ -15,7 +15,7 @@ use kas::geom::Size;
 
 use super::round_pipe::RoundPipe;
 use super::square_pipe::SquarePipe;
-use crate::colour::{self, Colour};
+use crate::colour::Colour;
 use crate::vertex::Vec2;
 
 /// Abstraction over flat drawing commands
@@ -128,13 +128,14 @@ impl DrawPipe {
         &mut self,
         device: &mut wgpu::Device,
         frame_view: &wgpu::TextureView,
+        clear_color: wgpu::Color,
     ) -> wgpu::CommandBuffer {
         let rpass_color_attachment = wgpu::RenderPassColorAttachmentDescriptor {
             attachment: frame_view,
             resolve_target: None,
             load_op: wgpu::LoadOp::Clear,
             store_op: wgpu::StoreOp::Store,
-            clear_color: colour::BACKGROUND.into(),
+            clear_color,
         };
 
         let desc = wgpu::CommandEncoderDescriptor { todo: 0 };
