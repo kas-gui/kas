@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Simple triangle pipeline
+//! Rounded shading pipeline
 
 use std::f32;
 use std::mem::size_of;
@@ -17,23 +17,23 @@ use crate::vertex::{Rgb, Vec2};
 #[derive(Clone, Copy, Debug)]
 struct Vertex(Vec2, Rgb, Vec2);
 
-/// A pipeline for rendering triangles with flat and lighting-based shading
-pub struct TriPipe {
+/// A pipeline for rendering rounded shapes
+pub struct RoundPipe {
     bind_group: wgpu::BindGroup,
     scale_buf: wgpu::Buffer,
     render_pipeline: wgpu::RenderPipeline,
     v: Vec<Vertex>,
 }
 
-impl TriPipe {
+impl RoundPipe {
     /// Construct
     pub fn new(device: &wgpu::Device, size: Size) -> Self {
-        let vs_bytes = read_glsl(
-            include_str!("shaders/tri_buffer.vert"),
+        let vs_bytes = super::read_glsl(
+            include_str!("shaders/rounded.vert"),
             glsl_to_spirv::ShaderType::Vertex,
         );
-        let fs_bytes = read_glsl(
-            include_str!("shaders/tri_buffer.frag"),
+        let fs_bytes = super::read_glsl(
+            include_str!("shaders/rounded.frag"),
             glsl_to_spirv::ShaderType::Fragment,
         );
 
@@ -147,7 +147,7 @@ impl TriPipe {
             alpha_to_coverage_enabled: false,
         });
 
-        TriPipe {
+        RoundPipe {
             bind_group,
             scale_buf,
             render_pipeline,
@@ -186,67 +186,65 @@ impl TriPipe {
         self.v.clear();
     }
 
-    /// Add a rectangle to the buffer defined by two corners, `aa` and `bb`
-    /// with colour `col`.
-    pub fn add_quad(&mut self, aa: Vec2, bb: Vec2, col: Colour) {
-        let ab = Vec2(aa.0, bb.1);
-        let ba = Vec2(bb.0, aa.1);
-
-        let col = col.into();
-        let t = Vec2(0.0, 0.0);
-
-        #[rustfmt::skip]
-        self.v.extend_from_slice(&[
-            Vertex(aa, col, t), Vertex(ba, col, t), Vertex(ab, col, t),
-            Vertex(ab, col, t), Vertex(ba, col, t), Vertex(bb, col, t),
-        ]);
-    }
-
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
     /// and two inner corners, `cc` and `dd` with colour `col`.
-    ///
-    /// The frame is shaded according to normals `norm = (outer, inner)`. A
-    /// normal of 0 implies a surface parallel to the screen, and 1
-    /// perpendicular to the screen. Can be positive (sunk frame) or negative
-    /// (raised frame).
-    pub fn add_frame(
-        &mut self,
-        aa: Vec2,
-        bb: Vec2,
-        cc: Vec2,
-        dd: Vec2,
-        norm: (f32, f32),
-        col: Colour,
-    ) {
-        let ab = Vec2(aa.0, bb.1);
-        let ba = Vec2(bb.0, aa.1);
-        let cd = Vec2(cc.0, dd.1);
-        let dc = Vec2(dd.0, cc.1);
-
+    pub fn add_frame(&mut self, aa: Vec2, bb: Vec2, cc: Vec2, dd: Vec2, col: Colour) {
         let col = col.into();
-        let tt = (Vec2(0.0, norm.0), Vec2(0.0, norm.1));
-        let tl = (Vec2(norm.0, 0.0), Vec2(norm.1, 0.0));
-        let tb = (Vec2(0.0, -norm.0), Vec2(0.0, -norm.1));
-        let tr = (Vec2(-norm.0, 0.0), Vec2(-norm.1, 0.0));
+
+        let n0 = Vec2(0.0, 0.0);
+        let nbb = (bb - aa).sign();
+        let naa = -nbb;
+        let nab = Vec2(naa.0, nbb.1);
+        let nba = Vec2(nbb.0, naa.1);
+        let na0 = Vec2(naa.0, 0.0);
+        let nb0 = Vec2(nbb.0, 0.0);
+        let n0a = Vec2(0.0, naa.1);
+        let n0b = Vec2(0.0, nbb.1);
+
+        // We must add corners separately to ensure correct interpolation of dir
+        // values, hence need 12 points:
+        let ab = Vertex(Vec2(aa.0, bb.1), col, nab);
+        let ba = Vertex(Vec2(bb.0, aa.1), col, nba);
+        let cd = Vertex(Vec2(cc.0, dd.1), col, n0);
+        let dc = Vertex(Vec2(dd.0, cc.1), col, n0);
+
+        let ac = Vertex(Vec2(aa.0, cc.1), col, na0);
+        let ad = Vertex(Vec2(aa.0, dd.1), col, na0);
+        let bc = Vertex(Vec2(bb.0, cc.1), col, nb0);
+        let bd = Vertex(Vec2(bb.0, dd.1), col, nb0);
+
+        let ca = Vertex(Vec2(cc.0, aa.1), col, n0a);
+        let cb = Vertex(Vec2(cc.0, bb.1), col, n0b);
+        let da = Vertex(Vec2(dd.0, aa.1), col, n0a);
+        let db = Vertex(Vec2(dd.0, bb.1), col, n0b);
+
+        let aa = Vertex(aa, col, naa);
+        let bb = Vertex(bb, col, nbb);
+        let cc = Vertex(cc, col, n0);
+        let dd = Vertex(dd, col, n0);
 
         #[rustfmt::skip]
         self.v.extend_from_slice(&[
             // top bar: ba - dc - cc - aa
-            Vertex(ba, col, tt.0), Vertex(dc, col, tt.1), Vertex(aa, col, tt.0),
-            Vertex(aa, col, tt.0), Vertex(dc, col, tt.1), Vertex(cc, col, tt.1),
+            ba, dc, da,
+            da, dc, ca,
+            dc, cc, ca,
+            ca, cc, aa,
             // left bar: aa - cc - cd - ab
-            Vertex(aa, col, tl.0), Vertex(cc, col, tl.1), Vertex(ab, col, tl.0),
-            Vertex(ab, col, tl.0), Vertex(cc, col, tl.1), Vertex(cd, col, tl.1),
+            aa, cc, ac,
+            ac, cc, cd,
+            ac, cd, ad,
+            ad, cd, ab,
             // bottom bar: ab - cd - dd - bb
-            Vertex(ab, col, tb.0), Vertex(cd, col, tb.1), Vertex(bb, col, tb.0),
-            Vertex(bb, col, tb.0), Vertex(cd, col, tb.1), Vertex(dd, col, tb.1),
+            ab, cd, cb,
+            cb, cd, dd,
+            cb, dd, db,
+            db, dd, bb,
             // right bar: bb - dd - dc - ba
-            Vertex(bb, col, tr.0), Vertex(dd, col, tr.1), Vertex(ba, col, tr.0),
-            Vertex(ba, col, tr.0), Vertex(dd, col, tr.1), Vertex(dc, col, tr.1),
+            bb, dd, bd,
+            bd, dd, dc,
+            bd, dc, bc,
+            bc, dc, ba,
         ]);
     }
-}
-
-pub fn read_glsl(code: &str, stage: glsl_to_spirv::ShaderType) -> Vec<u32> {
-    wgpu::read_spirv(glsl_to_spirv::compile(&code, stage).unwrap()).unwrap()
 }

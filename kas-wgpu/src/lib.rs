@@ -10,9 +10,7 @@ mod draw;
 mod event;
 mod font;
 mod render;
-mod round_pipe;
 mod theme;
-mod tri_pipe;
 mod vertex;
 mod window;
 
