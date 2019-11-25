@@ -20,7 +20,7 @@ pub struct Manager {
     key_focus: Option<WidgetId>,
     hover: Option<WidgetId>,
     click_start: Option<WidgetId>,
-    key_events: Vec<(VirtualKeyCode, WidgetId)>,
+    key_events: Vec<(u32, WidgetId)>,
     touch_events: Vec<(u64, WidgetId, WidgetId)>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
 }
@@ -220,8 +220,8 @@ impl Manager {
             }
             // Focused(bool),
             KeyboardInput { input, .. } => {
-                match (input.state, input.virtual_keycode) {
-                    (ElementState::Pressed, Some(vkey)) => match vkey {
+                match (input.scancode, input.state, input.virtual_keycode) {
+                    (scancode, ElementState::Pressed, Some(vkey)) => match vkey {
                         VirtualKeyCode::Tab if tk.data().grab_focus.is_none() => {
                             tk.update_data(&mut |data| data.next_key_focus(widget.as_widget_mut()));
                         }
@@ -255,18 +255,20 @@ impl Manager {
                                             return false;
                                         }
                                     }
-                                    data.key_events.push((vkey, id));
+                                    data.key_events.push((scancode, id));
                                     true
                                 });
                             }
                         }
                         _ /* implies grab_focus.is_some() */ => (),
                     },
-                    (ElementState::Released, Some(vkey)) => {
+                    (scancode, ElementState::Released, _) => {
                         tk.update_data(&mut |data| {
                             let r = 'outer: loop {
                                 for (i, item) in data.key_events.iter().enumerate() {
-                                    if item.0 == vkey {
+                                    // We must match scancode not vkey since the
+                                    // latter may have changed due to modifiers
+                                    if item.0 == scancode {
                                         break 'outer i;
                                     }
                                 }
