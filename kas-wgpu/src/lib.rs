@@ -9,7 +9,6 @@ mod colour;
 mod draw;
 mod event;
 mod font;
-mod render;
 mod theme;
 mod vertex;
 mod window;
