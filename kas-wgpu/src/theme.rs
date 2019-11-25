@@ -11,9 +11,7 @@
 
 use std::f32;
 
-use wgpu_glyph::{
-    GlyphBrush, GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign,
-};
+use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use kas::class::{Align, Class};
 use kas::geom::{AxisInfo, Coord, Margins, Size, SizeRules};
@@ -41,7 +39,7 @@ pub trait Theme<D>: Clone {
     /// self.margin = (MARGIN * factor).round();
     /// ```
     fn set_dpi_factor(&mut self, factor: f32);
-    /*TODO
+
     /// Get the list of available fonts
     ///
     /// Currently, all fonts used must be specified up front by this method.
@@ -55,7 +53,7 @@ pub trait Theme<D>: Clone {
     /// Corresponding `FontId`s may be created from the index into this list.
     /// The first font in the list will be the default font.
     fn get_fonts<'a>(&self) -> Vec<Font<'a>>;
-    */
+
     /// Margin and inter-row/column dimensions
     ///
     /// Margin dimensions are added to the area allocated to each widget. For
@@ -71,25 +69,13 @@ pub trait Theme<D>: Clone {
     /// This method is *not* called on "parent" widgets (those with a layout
     /// other than "derive"); these widgets can only specify margins via the
     /// [`Theme::margins`] method.
-    fn size_rules(
-        &self,
-        glyph_brush: &mut GlyphBrush<'static, ()>,
-        widget: &dyn Widget,
-        axis: AxisInfo,
-    ) -> SizeRules;
+    fn size_rules(&self, draw: &mut D, widget: &dyn Widget, axis: AxisInfo) -> SizeRules;
 
     /// Draw a widget
     ///
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
-    // TODO: revise drawing API
-    fn draw(
-        &self,
-        draw: &mut D,
-        glyph_brush: &mut GlyphBrush<'static, ()>,
-        ev_mgr: &event::Manager,
-        widget: &dyn kas::Widget,
-    );
+    fn draw(&self, draw: &mut D, ev_mgr: &event::Manager, widget: &dyn kas::Widget);
 }
 
 /// A simple, inflexible theme providing a sample implementation.
@@ -123,12 +109,16 @@ const FRAME_SIZE: f32 = 4.0;
 /// Button frame size (non-flat outer region)
 const BUTTON_FRAME: f32 = 6.0;
 
-impl<D: DrawFlat + DrawSquare + DrawRound> Theme<D> for SampleTheme {
+impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
     fn set_dpi_factor(&mut self, factor: f32) {
         self.font_scale = (FONT_SIZE * factor).round();
         self.margin = (MARGIN * factor).round();
         self.frame_size = (FRAME_SIZE * factor).round();
         self.button_frame = (BUTTON_FRAME * factor).round();
+    }
+
+    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
+        vec![crate::font::get_font()]
     }
 
     fn margins(&self, widget: &dyn Widget) -> Margins {
@@ -150,12 +140,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound> Theme<D> for SampleTheme {
         }
     }
 
-    fn size_rules(
-        &self,
-        glyph_brush: &mut GlyphBrush<'static, ()>,
-        widget: &dyn Widget,
-        axis: AxisInfo,
-    ) -> SizeRules {
+    fn size_rules(&self, draw: &mut D, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
         let font_scale = self.font_scale;
         let line_height = font_scale as u32;
         let mut bound = |vert: bool| -> u32 {
@@ -166,7 +151,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound> Theme<D> for SampleTheme {
                 } else if let Some(size) = axis.fixed(true) {
                     bounds.0 = size as f32;
                 }
-                glyph_brush.glyph_bounds(Section {
+                draw.glyph_bounds(Section {
                     text,
                     screen_position: (0.0, 0.0),
                     scale: Scale::uniform(font_scale),
@@ -176,9 +161,9 @@ impl<D: DrawFlat + DrawSquare + DrawRound> Theme<D> for SampleTheme {
             });
 
             bounds
-                .map(|rect| match vert {
-                    false => rect.max.x - rect.min.x,
-                    true => rect.max.y - rect.min.y,
+                .map(|(min, max)| match vert {
+                    false => (max - min).0,
+                    true => (max - min).1,
                 } as u32)
                 .unwrap_or(0)
         };
@@ -218,13 +203,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound> Theme<D> for SampleTheme {
         }
     }
 
-    fn draw(
-        &self,
-        draw: &mut D,
-        glyph_brush: &mut GlyphBrush<'static, ()>,
-        ev_mgr: &event::Manager,
-        widget: &dyn kas::Widget,
-    ) {
+    fn draw(&self, draw: &mut D, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
         // This is a hacky draw routine just to show where widgets are.
         let w_id = widget.id();
 
@@ -323,7 +302,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound> Theme<D> for SampleTheme {
             let layout = Layout::default().h_align(h_align).v_align(v_align);
             let text_pos = u + margin + Vec2(h_offset, v_offset);
 
-            glyph_brush.queue(Section {
+            draw.draw_text(Section {
                 text,
                 screen_position: text_pos.into(),
                 color: colour.into(),

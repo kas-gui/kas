@@ -13,7 +13,6 @@ use font_kit::{
     family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource,
 };
 
-#[cfg(feature = "font-config")]
 use lazy_static::lazy_static;
 use wgpu_glyph::Font;
 // use wgpu_glyph::rusttype::FontCollection;
@@ -64,13 +63,14 @@ lazy_static! {
     static ref FONT: Font<'static> = FCB.font();
 }
 
-#[cfg(feature = "font-config")]
-pub(crate) fn get_font() -> Font<'static> {
-    FONT.clone()
-}
+#[cfg(not(feature = "font-config"))]
+const BYTES: &'static [u8] = include_bytes!("/usr/share/fonts/dejavu/DejaVuSerif.ttf");
 
 #[cfg(not(feature = "font-config"))]
+lazy_static! {
+    static ref FONT: Font<'static> = Font::from_bytes(BYTES).unwrap();
+}
+
 pub(crate) fn get_font() -> Font<'static> {
-    const BYTES: &'static [u8] = include_bytes!("/usr/share/fonts/dejavu/DejaVuSerif.ttf");
-    Font::from_bytes(BYTES).unwrap()
+    FONT.clone()
 }

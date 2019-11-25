@@ -7,8 +7,6 @@
 
 use std::f32;
 
-use wgpu_glyph::GlyphBrush;
-
 use kas::geom::{AxisInfo, Margins, Size, SizeRules};
 use kas::{event, TkAction, TkWindow, Widget};
 
@@ -18,7 +16,6 @@ use crate::theme::Theme;
 /// Widget renderer
 pub(crate) struct Widgets<T> {
     draw_pipe: DrawPipe,
-    pub(crate) glyph_brush: GlyphBrush<'static, ()>,
     action: TkAction,
     pub(crate) ev_mgr: event::Manager,
     theme: T,
@@ -26,17 +23,17 @@ pub(crate) struct Widgets<T> {
 
 impl<T: Theme<DrawPipe>> Widgets<T> {
     pub fn new(
-        device: &wgpu::Device,
+        device: &mut wgpu::Device,
+        tex_format: wgpu::TextureFormat,
         size: Size,
         dpi_factor: f64,
-        glyph_brush: GlyphBrush<'static, ()>,
         mut theme: T,
     ) -> Self {
+        let draw_pipe = DrawPipe::new(device, tex_format, theme.get_fonts(), size);
         theme.set_dpi_factor(dpi_factor as f32);
 
         Widgets {
-            draw_pipe: DrawPipe::new(device, size),
-            glyph_brush,
+            draw_pipe,
             action: TkAction::None,
             ev_mgr: event::Manager::new(dpi_factor),
             theme,
@@ -62,12 +59,12 @@ impl<T: Theme<DrawPipe>> Widgets<T> {
 
     pub fn draw(
         &mut self,
-        device: &wgpu::Device,
-        rpass: &mut wgpu::RenderPass,
+        device: &mut wgpu::Device,
+        frame_view: &wgpu::TextureView,
         win: &dyn kas::Window,
-    ) {
+    ) -> wgpu::CommandBuffer {
         self.draw_iter(win.as_widget());
-        self.draw_pipe.render(device, rpass);
+        self.draw_pipe.render(device, frame_view)
     }
 
     fn draw_iter(&mut self, widget: &dyn kas::Widget) {
@@ -80,12 +77,7 @@ impl<T: Theme<DrawPipe>> Widgets<T> {
     }
 
     fn draw_widget(&mut self, widget: &dyn kas::Widget) {
-        self.theme.draw(
-            &mut self.draw_pipe,
-            &mut self.glyph_brush,
-            &self.ev_mgr,
-            widget,
-        )
+        self.theme.draw(&mut self.draw_pipe, &self.ev_mgr, widget)
     }
 }
 
@@ -101,7 +93,7 @@ impl<T: Theme<DrawPipe>> TkWindow for Widgets<T> {
     }
 
     fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
-        self.theme.size_rules(&mut self.glyph_brush, widget, axis)
+        self.theme.size_rules(&mut self.draw_pipe, widget, axis)
     }
 
     fn margins(&self, widget: &dyn Widget) -> Margins {

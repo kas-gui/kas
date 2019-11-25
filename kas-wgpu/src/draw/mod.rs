@@ -22,7 +22,7 @@ mod draw_pipe;
 mod round_pipe;
 mod square_pipe;
 
-pub use draw_pipe::{DrawFlat, DrawPipe, DrawRound, DrawSquare};
+pub use draw_pipe::{DrawFlat, DrawPipe, DrawRound, DrawSquare, DrawText};
 
 pub fn read_glsl(code: &str, stage: glsl_to_spirv::ShaderType) -> Vec<u32> {
     wgpu::read_spirv(glsl_to_spirv::compile(&code, stage).unwrap()).unwrap()

@@ -7,8 +7,6 @@
 
 use std::time::{Duration, Instant};
 
-use wgpu_glyph::GlyphBrushBuilder;
-
 use kas::event::Callback;
 use kas::geom::Size;
 use kas::{event, TkAction};
@@ -17,7 +15,6 @@ use winit::error::OsError;
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 
-use crate::colour;
 use crate::draw::DrawPipe;
 use crate::render::Widgets;
 use crate::theme::Theme;
@@ -67,10 +64,7 @@ impl<T: Theme<DrawPipe>> Window<T> {
         };
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
 
-        let glyph_brush = GlyphBrushBuilder::using_font(crate::font::get_font())
-            .build(&mut device, sc_desc.format);
-
-        let mut wrend = Widgets::new(&device, size, dpi_factor, glyph_brush, theme);
+        let mut wrend = Widgets::new(&mut device, sc_desc.format, size, dpi_factor, theme);
         wrend.ev_mgr.configure(widget.as_widget_mut());
 
         widget.resize(&mut wrend, size);
@@ -190,38 +184,9 @@ impl<T: Theme<DrawPipe>> Window<T> {
 
     fn do_draw(&mut self) {
         let frame = self.swap_chain.get_next_texture();
-
-        let rpass_color_attachment = wgpu::RenderPassColorAttachmentDescriptor {
-            attachment: &frame.view,
-            resolve_target: None,
-            load_op: wgpu::LoadOp::Clear,
-            store_op: wgpu::StoreOp::Store,
-            clear_color: colour::BACKGROUND.into(),
-        };
-
-        let desc = wgpu::CommandEncoderDescriptor { todo: 0 };
-        let mut encoder = self.device.create_command_encoder(&desc);
-
-        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            color_attachments: &[rpass_color_attachment],
-            depth_stencil_attachment: None,
-        });
-
-        self.wrend.draw(&self.device, &mut rpass, &*self.widget);
-
-        drop(rpass);
-
-        self.wrend
-            .glyph_brush
-            .draw_queued(
-                &mut self.device,
-                &mut encoder,
-                &frame.view,
-                self.sc_desc.width,
-                self.sc_desc.height,
-            )
-            .expect("glyph_brush.draw_queued");
-
-        self.queue.submit(&[encoder.finish()]);
+        let buf = self
+            .wrend
+            .draw(&mut self.device, &frame.view, &*self.widget);
+        self.queue.submit(&[buf]);
     }
 }
