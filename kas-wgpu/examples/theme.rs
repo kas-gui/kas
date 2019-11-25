@@ -22,16 +22,24 @@ use kas_wgpu::{SampleTheme, Theme};
 /// A demo theme
 ///
 /// We set a custom background colour and use `SampleTheme` for everything else.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct ColouredTheme {
-    inner: SampleTheme,
+pub struct ColouredTheme<D> {
+    inner: SampleTheme<D>,
 }
 
-impl ColouredTheme {
+impl<D> ColouredTheme<D> {
     /// Construct
     pub fn new() -> Self {
         ColouredTheme {
             inner: SampleTheme::new(),
+        }
+    }
+}
+
+// manual impl because derive macro applies incorrect bounds
+impl<D> Clone for ColouredTheme<D> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
         }
     }
 }
@@ -41,7 +49,9 @@ thread_local! {
     static BACKGROUND: Cell<Colour> = Cell::new(Colour::grey(1.0));
 }
 
-impl Theme<DrawPipe> for ColouredTheme {
+impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for ColouredTheme<D> {
+    type Draw = D;
+
     fn set_dpi_factor(&mut self, factor: f32) {
         self.inner.set_dpi_factor(factor)
     }
@@ -62,11 +72,11 @@ impl Theme<DrawPipe> for ColouredTheme {
         self.inner.margins(widget)
     }
 
-    fn size_rules(&self, draw: &mut DrawPipe, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&self, draw: &mut D, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
         self.inner.size_rules(draw, widget, axis)
     }
 
-    fn draw(&self, draw: &mut DrawPipe, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
+    fn draw(&self, draw: &mut D, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
         self.inner.draw(draw, ev_mgr, widget)
     }
 }

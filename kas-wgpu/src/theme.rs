@@ -10,6 +10,7 @@
 //! Theme implementations depend on a graphics API (TODO).
 
 use std::f32;
+use std::marker::PhantomData;
 
 use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
@@ -25,7 +26,10 @@ use crate::vertex::Vec2;
 ///
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
-pub trait Theme<D>: Clone {
+pub trait Theme: Clone {
+    /// Implementor of draw API
+    type Draw;
+
     /// Set the DPI factor.
     ///
     /// This method is called after constructing a window and each time the DPI
@@ -84,25 +88,26 @@ pub trait Theme<D>: Clone {
     /// This method is *not* called on "parent" widgets (those with a layout
     /// other than "derive"); these widgets can only specify margins via the
     /// [`Theme::margins`] method.
-    fn size_rules(&self, draw: &mut D, widget: &dyn Widget, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&self, draw: &mut Self::Draw, widget: &dyn Widget, axis: AxisInfo) -> SizeRules;
 
     /// Draw a widget
     ///
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
-    fn draw(&self, draw: &mut D, ev_mgr: &event::Manager, widget: &dyn kas::Widget);
+    fn draw(&self, draw: &mut Self::Draw, ev_mgr: &event::Manager, widget: &dyn kas::Widget);
 }
 
 /// A simple, inflexible theme providing a sample implementation.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct SampleTheme {
+#[derive(Copy, Debug, Default)]
+pub struct SampleTheme<D> {
     font_scale: f32,
     margin: f32,
     frame_size: f32,
     button_frame: f32,
+    _phantom: PhantomData<D>,
 }
 
-impl SampleTheme {
+impl<D> SampleTheme<D> {
     /// Construct
     pub fn new() -> Self {
         SampleTheme {
@@ -110,6 +115,20 @@ impl SampleTheme {
             margin: MARGIN,
             frame_size: FRAME_SIZE,
             button_frame: BUTTON_FRAME,
+            _phantom: Default::default(),
+        }
+    }
+}
+
+// manual impl because derive macro applies incorrect bounds
+impl<D> Clone for SampleTheme<D> {
+    fn clone(&self) -> Self {
+        Self {
+            font_scale: self.font_scale,
+            margin: self.margin,
+            frame_size: self.frame_size,
+            button_frame: self.button_frame,
+            _phantom: Default::default(),
         }
     }
 }
@@ -138,7 +157,9 @@ pub const LABEL_TEXT: Colour = Colour::grey(0.0);
 /// Text on button
 pub const BUTTON_TEXT: Colour = Colour::grey(1.0);
 
-impl Theme<DrawPipe> for SampleTheme {
+impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
+    type Draw = D;
+
     fn set_dpi_factor(&mut self, factor: f32) {
         self.font_scale = (FONT_SIZE * factor).round();
         self.margin = (MARGIN * factor).round();
@@ -177,7 +198,7 @@ impl Theme<DrawPipe> for SampleTheme {
         }
     }
 
-    fn size_rules(&self, draw: &mut DrawPipe, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&self, draw: &mut D, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
         let font_scale = self.font_scale;
         let line_height = font_scale as u32;
         let mut bound = |vert: bool| -> u32 {
@@ -240,7 +261,7 @@ impl Theme<DrawPipe> for SampleTheme {
         }
     }
 
-    fn draw(&self, draw: &mut DrawPipe, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
+    fn draw(&self, draw: &mut D, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
         // This is a hacky draw routine just to show where widgets are.
         let w_id = widget.id();
 
