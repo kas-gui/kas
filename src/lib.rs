@@ -29,6 +29,7 @@ mod traits;
 
 // public implementations:
 pub mod class;
+pub mod draw;
 pub mod event;
 pub mod geom;
 pub mod widget;

@@ -26,17 +26,6 @@ impl Colour {
     }
 }
 
-impl From<Colour> for wgpu::Color {
-    fn from(c: Colour) -> Self {
-        wgpu::Color {
-            r: c.r as f64,
-            g: c.g as f64,
-            b: c.b as f64,
-            a: c.a as f64,
-        }
-    }
-}
-
 impl From<Colour> for [f32; 4] {
     fn from(c: Colour) -> Self {
         [c.r, c.g, c.b, c.a]

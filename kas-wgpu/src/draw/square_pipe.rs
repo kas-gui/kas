@@ -8,10 +8,10 @@
 use std::f32;
 use std::mem::size_of;
 
+use kas::draw::*;
 use kas::geom::Size;
 
-use crate::colour::Colour;
-use crate::vertex::{Rgb, Vec2};
+use super::Rgb;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]

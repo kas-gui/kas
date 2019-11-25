@@ -250,7 +250,7 @@ impl<T: Theme<Draw = DrawPipe>> TkWindow<T> {
         device: &mut wgpu::Device,
         frame_view: &wgpu::TextureView,
     ) -> wgpu::CommandBuffer {
-        let clear_color = self.theme.clear_colour().into();
+        let clear_color = to_wgpu_color(self.theme.clear_colour());
         self.draw_pipe.render(device, frame_view, clear_color)
     }
 }
@@ -282,5 +282,14 @@ impl<T: Theme<Draw = DrawPipe>> kas::TkWindow for TkWindow<T> {
     #[inline]
     fn send_action(&mut self, action: TkAction) {
         self.action = self.action.max(action);
+    }
+}
+
+fn to_wgpu_color(c: kas::draw::Colour) -> wgpu::Color {
+    wgpu::Color {
+        r: c.r as f64,
+        g: c.g as f64,
+        b: c.b as f64,
+        a: c.a as f64,
     }
 }

@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Vertex data types
+//! Vector types
 
 use std::ops::{Add, Neg, Sub};
 
@@ -63,24 +63,5 @@ impl From<(f32, f32)> for Vec2 {
 impl From<Vec2> for (f32, f32) {
     fn from(v: Vec2) -> Self {
         (v.0, v.1)
-    }
-}
-
-/// 3-part colour data
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
-pub struct Rgb {
-    pub r: f32,
-    pub g: f32,
-    pub b: f32,
-}
-
-impl From<crate::colour::Colour> for Rgb {
-    fn from(c: crate::colour::Colour) -> Self {
-        Rgb {
-            r: c.r,
-            g: c.g,
-            b: c.b,
-        }
     }
 }

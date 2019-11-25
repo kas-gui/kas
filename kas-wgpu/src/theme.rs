@@ -15,12 +15,11 @@ use std::marker::PhantomData;
 use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use kas::class::{Align, Class};
+use kas::draw::*;
 use kas::geom::{AxisInfo, Coord, Margins, Size, SizeRules};
 use kas::{event, Widget};
 
-use crate::colour::Colour;
 use crate::draw::*;
-use crate::vertex::Vec2;
 
 /// A *theme* provides widget sizing and drawing implementations.
 ///

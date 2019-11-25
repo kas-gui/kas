@@ -9,12 +9,12 @@
 use std::cell::Cell;
 
 use kas::event::{self, EmptyMsg};
+use kas::draw::*;
 use kas::geom::{AxisInfo, Margins, SizeRules};
 use kas::macros::{make_widget, EmptyMsg};
 use kas::widget::*;
 use kas::{TkWindow, Widget};
 
-use kas_wgpu::colour::Colour;
 use kas_wgpu::draw::*;
 use kas_wgpu::glyph::Font;
 use kas_wgpu::{SampleTheme, Theme};

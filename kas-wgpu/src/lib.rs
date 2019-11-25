@@ -5,12 +5,10 @@
 
 //! Toolkit for kas
 
-pub mod colour;
 pub mod draw;
 mod event;
 mod font;
 mod theme;
-mod vertex;
 mod window;
 
 use winit::error::OsError;
