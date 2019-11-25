@@ -29,11 +29,11 @@ impl RoundPipe {
     /// Construct
     pub fn new(device: &wgpu::Device, size: Size, light_norm: [f32; 3]) -> Self {
         let vs_bytes = super::read_glsl(
-            include_str!("shaders/rounded.vert"),
+            include_str!("shaders/round.vert"),
             glsl_to_spirv::ShaderType::Vertex,
         );
         let fs_bytes = super::read_glsl(
-            include_str!("shaders/rounded.frag"),
+            include_str!("shaders/round.frag"),
             glsl_to_spirv::ShaderType::Fragment,
         );
 
