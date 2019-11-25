@@ -20,8 +20,7 @@ use kas::geom::{AxisInfo, Coord, Margins, Size, SizeRules};
 use kas::{event, Widget};
 
 use crate::colour::{self, Colour};
-use crate::round_pipe::Rounded;
-use crate::tri_pipe::TriPipe;
+use crate::draw::Draw;
 use crate::vertex::Vec2;
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -86,8 +85,7 @@ pub trait Theme: Clone {
     // TODO: revise drawing API
     fn draw(
         &self,
-        tri_pipe: &mut TriPipe,
-        round_pipe: &mut Rounded,
+        draw: &mut dyn Draw,
         glyph_brush: &mut GlyphBrush<'static, ()>,
         ev_mgr: &event::Manager,
         widget: &dyn kas::Widget,
@@ -222,8 +220,7 @@ impl Theme for SampleTheme {
 
     fn draw(
         &self,
-        tri_pipe: &mut TriPipe,
-        round_pipe: &mut Rounded,
+        draw: &mut dyn Draw,
         glyph_brush: &mut GlyphBrush<'static, ()>,
         ev_mgr: &event::Manager,
         widget: &dyn kas::Widget,
@@ -260,7 +257,7 @@ impl Theme for SampleTheme {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                tri_pipe.add_frame(s, t, u, v, (0.0, 0.8), colour::FRAME);
+                draw.draw_square_frame(s, t, u, v, (0.0, 0.8), colour::FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(colour::TEXT_AREA);
@@ -286,7 +283,7 @@ impl Theme for SampleTheme {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                round_pipe.add_frame(s, t, u, v, c);
+                draw.draw_round_frame(s, t, u, v, c);
                 bounds = bounds - 2.0 * f;
 
                 text = Some((cls.get_text(), colour::BUTTON_TEXT));
@@ -295,7 +292,7 @@ impl Theme for SampleTheme {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                tri_pipe.add_frame(s, t, u, v, (0.0, 0.8), colour::FRAME);
+                draw.draw_square_frame(s, t, u, v, (0.0, 0.8), colour::FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(colour::TEXT_AREA);
@@ -305,7 +302,7 @@ impl Theme for SampleTheme {
                 text = Some((cls.get_text(), colour::TEXT));
             }
             Class::Frame => {
-                tri_pipe.add_frame(u, v, u + f, v - f, (0.0, 0.8), colour::FRAME);
+                draw.draw_square_frame(u, v, u + f, v - f, (0.0, 0.8), colour::FRAME);
                 return;
             }
         }
@@ -357,11 +354,11 @@ impl Theme for SampleTheme {
             let (s, t) = (u, v);
             u = u + margin;
             v = v - margin;
-            tri_pipe.add_frame(s, t, u, v, (0.0, 0.0), col);
+            draw.draw_square_frame(s, t, u, v, (0.0, 0.0), col);
         }
 
         if let Some(background) = background {
-            tri_pipe.add_quad(u, v, background.into());
+            draw.draw_flat_quad(u, v, background.into());
         }
     }
 }

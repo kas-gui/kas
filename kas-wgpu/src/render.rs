@@ -12,14 +12,12 @@ use wgpu_glyph::GlyphBrush;
 use kas::geom::{AxisInfo, Margins, Size, SizeRules};
 use kas::{event, TkAction, TkWindow, Widget};
 
-use crate::round_pipe::Rounded;
+use crate::draw::DrawPipe;
 use crate::theme::Theme;
-use crate::tri_pipe::TriPipe;
 
 /// Widget renderer
 pub(crate) struct Widgets<T: Theme> {
-    round_pipe: Rounded,
-    tri_pipe: TriPipe,
+    draw_pipe: DrawPipe,
     pub(crate) glyph_brush: GlyphBrush<'static, ()>,
     action: TkAction,
     pub(crate) ev_mgr: event::Manager,
@@ -34,13 +32,10 @@ impl<T: Theme> Widgets<T> {
         glyph_brush: GlyphBrush<'static, ()>,
         mut theme: T,
     ) -> Self {
-        let round_pipe = Rounded::new(device, size);
-        let tri_pipe = TriPipe::new(device, size);
         theme.set_dpi_factor(dpi_factor as f32);
 
         Widgets {
-            round_pipe,
-            tri_pipe,
+            draw_pipe: DrawPipe::new(device, size),
             glyph_brush,
             action: TkAction::None,
             ev_mgr: event::Manager::new(dpi_factor),
@@ -55,11 +50,7 @@ impl<T: Theme> Widgets<T> {
     }
 
     pub fn resize(&mut self, device: &wgpu::Device, size: Size) -> wgpu::CommandBuffer {
-        let mut encoder =
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-        self.tri_pipe.resize(device, &mut encoder, size);
-        self.round_pipe.resize(device, &mut encoder, size);
-        encoder.finish()
+        self.draw_pipe.resize(device, size)
     }
 
     #[inline]
@@ -76,8 +67,7 @@ impl<T: Theme> Widgets<T> {
         win: &dyn kas::Window,
     ) {
         self.draw_iter(win.as_widget());
-        self.tri_pipe.render(device, rpass);
-        self.round_pipe.render(device, rpass);
+        self.draw_pipe.render(device, rpass);
     }
 
     fn draw_iter(&mut self, widget: &dyn kas::Widget) {
@@ -91,8 +81,7 @@ impl<T: Theme> Widgets<T> {
 
     fn draw_widget(&mut self, widget: &dyn kas::Widget) {
         self.theme.draw(
-            &mut self.tri_pipe,
-            &mut self.round_pipe,
+            &mut self.draw_pipe,
             &mut self.glyph_brush,
             &self.ev_mgr,
             widget,
