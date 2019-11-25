@@ -24,12 +24,15 @@ use crate::round_pipe::Rounded;
 use crate::tri_pipe::TriPipe;
 use crate::vertex::Vec2;
 
-/// Abstraction over drawing commands
-pub trait Draw {
+/// Abstraction over flat drawing commands
+pub trait DrawFlat {
     /// Add a rectangle to the draw buffer defined by two corners
     /// `aa` and `bb` with solid colour `col`.
     fn draw_flat_quad(&mut self, aa: Vec2, bb: Vec2, col: Colour);
+}
 
+/// Abstraction over square drawing commands
+pub trait DrawSquare {
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
     /// and two inner corners, `cc` and `dd`, with solid colour `col`.
     ///
@@ -55,7 +58,10 @@ pub trait Draw {
         norm: (f32, f32),
         col: Colour,
     );
+}
 
+/// Abstraction over rounded drawing commands
+pub trait DrawRound {
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
     /// and two inner corners, `cc` and `dd` with colour `col`.
     // TODO: allow control of normals
@@ -93,11 +99,13 @@ impl DrawPipe {
     }
 }
 
-impl Draw for DrawPipe {
+impl DrawFlat for DrawPipe {
     fn draw_flat_quad(&mut self, aa: Vec2, bb: Vec2, col: Colour) {
         self.tri_pipe.add_quad(aa, bb, col)
     }
+}
 
+impl DrawSquare for DrawPipe {
     fn draw_square_frame(
         &mut self,
         aa: Vec2,
@@ -109,7 +117,9 @@ impl Draw for DrawPipe {
     ) {
         self.tri_pipe.add_frame(aa, bb, cc, dd, norm, col)
     }
+}
 
+impl DrawRound for DrawPipe {
     fn draw_round_frame(&mut self, aa: Vec2, bb: Vec2, cc: Vec2, dd: Vec2, col: Colour) {
         self.round_pipe.add_frame(aa, bb, cc, dd, col)
     }

@@ -12,15 +12,16 @@ use winit::event_loop::ControlFlow;
 
 use kas::TkAction;
 
+use crate::draw::DrawPipe;
 use crate::theme::Theme;
 use crate::Window;
 
-pub(crate) struct Loop<T: Theme> {
+pub(crate) struct Loop<T> {
     windows: Vec<Window<T>>,
     resumes: Vec<(Instant, usize)>,
 }
 
-impl<T: Theme> Loop<T> {
+impl<T: Theme<DrawPipe>> Loop<T> {
     pub(crate) fn new(windows: Vec<Window<T>>) -> Self {
         Loop {
             windows,

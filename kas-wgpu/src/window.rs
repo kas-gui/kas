@@ -18,11 +18,12 @@ use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 
 use crate::colour;
+use crate::draw::DrawPipe;
 use crate::render::Widgets;
 use crate::theme::Theme;
 
 /// Per-window data
-pub struct Window<T: Theme> {
+pub struct Window<T> {
     widget: Box<dyn kas::Window>,
     /// The winit window
     pub(crate) window: winit::window::Window,
@@ -36,7 +37,7 @@ pub struct Window<T: Theme> {
 }
 
 // Public functions, for use by the toolkit
-impl<T: Theme> Window<T> {
+impl<T: Theme<DrawPipe>> Window<T> {
     /// Construct a window
     pub fn new<U: 'static>(
         adapter: &wgpu::Adapter,
@@ -171,7 +172,7 @@ impl<T: Theme> Window<T> {
 }
 
 // Internal functions
-impl<T: Theme> Window<T> {
+impl<T: Theme<DrawPipe>> Window<T> {
     fn do_resize(&mut self, size: LogicalSize) {
         let size = size.to_physical(self.window.hidpi_factor()).into();
         if size == Size(self.sc_desc.width, self.sc_desc.height) {

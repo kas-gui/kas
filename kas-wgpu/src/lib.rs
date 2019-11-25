@@ -19,6 +19,8 @@ mod window;
 use winit::error::OsError;
 use winit::event_loop::EventLoop;
 
+use crate::draw::DrawPipe;
+
 pub use theme::{SampleTheme, Theme};
 pub use window::Window;
 
@@ -26,14 +28,14 @@ pub use kas;
 pub use wgpu_glyph as glyph;
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
-pub struct Toolkit<T: Theme + 'static, U: 'static> {
+pub struct Toolkit<T, U: 'static> {
     adapter: wgpu::Adapter,
     el: EventLoop<U>,
     windows: Vec<Window<T>>,
     theme: T,
 }
 
-impl<T: Theme + 'static> Toolkit<T, ()> {
+impl<T: Theme<DrawPipe> + 'static> Toolkit<T, ()> {
     /// Construct a new instance with default options.
     ///
     /// This chooses a low-power graphics adapter by preference.
@@ -42,7 +44,7 @@ impl<T: Theme + 'static> Toolkit<T, ()> {
     }
 }
 
-impl<T: Theme + 'static, U: 'static> Toolkit<T, U> {
+impl<T: Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
     /// Construct an instance with custom options
     ///
     /// The graphics adapter is chosen according to the given options. If `None`

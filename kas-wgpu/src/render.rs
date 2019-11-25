@@ -16,7 +16,7 @@ use crate::draw::DrawPipe;
 use crate::theme::Theme;
 
 /// Widget renderer
-pub(crate) struct Widgets<T: Theme> {
+pub(crate) struct Widgets<T> {
     draw_pipe: DrawPipe,
     pub(crate) glyph_brush: GlyphBrush<'static, ()>,
     action: TkAction,
@@ -24,7 +24,7 @@ pub(crate) struct Widgets<T: Theme> {
     theme: T,
 }
 
-impl<T: Theme> Widgets<T> {
+impl<T: Theme<DrawPipe>> Widgets<T> {
     pub fn new(
         device: &wgpu::Device,
         size: Size,
@@ -89,7 +89,7 @@ impl<T: Theme> Widgets<T> {
     }
 }
 
-impl<T: Theme> TkWindow for Widgets<T> {
+impl<T: Theme<DrawPipe>> TkWindow for Widgets<T> {
     fn data(&self) -> &event::Manager {
         &self.ev_mgr
     }

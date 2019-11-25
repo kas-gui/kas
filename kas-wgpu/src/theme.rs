@@ -20,14 +20,14 @@ use kas::geom::{AxisInfo, Coord, Margins, Size, SizeRules};
 use kas::{event, Widget};
 
 use crate::colour::{self, Colour};
-use crate::draw::Draw;
+use crate::draw::*;
 use crate::vertex::Vec2;
 
 /// A *theme* provides widget sizing and drawing implementations.
 ///
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
-pub trait Theme: Clone {
+pub trait Theme<D>: Clone {
     /// Set the DPI factor.
     ///
     /// This method is called after constructing a window and each time the DPI
@@ -85,7 +85,7 @@ pub trait Theme: Clone {
     // TODO: revise drawing API
     fn draw(
         &self,
-        draw: &mut dyn Draw,
+        draw: &mut D,
         glyph_brush: &mut GlyphBrush<'static, ()>,
         ev_mgr: &event::Manager,
         widget: &dyn kas::Widget,
@@ -123,7 +123,7 @@ const FRAME_SIZE: f32 = 4.0;
 /// Button frame size (non-flat outer region)
 const BUTTON_FRAME: f32 = 6.0;
 
-impl Theme for SampleTheme {
+impl<D: DrawFlat + DrawSquare + DrawRound> Theme<D> for SampleTheme {
     fn set_dpi_factor(&mut self, factor: f32) {
         self.font_scale = (FONT_SIZE * factor).round();
         self.margin = (MARGIN * factor).round();
@@ -220,7 +220,7 @@ impl Theme for SampleTheme {
 
     fn draw(
         &self,
-        draw: &mut dyn Draw,
+        draw: &mut D,
         glyph_brush: &mut GlyphBrush<'static, ()>,
         ev_mgr: &event::Manager,
         widget: &dyn kas::Widget,
