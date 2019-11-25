@@ -54,6 +54,18 @@ pub trait Theme<D>: Clone {
     /// The first font in the list will be the default font.
     fn get_fonts<'a>(&self) -> Vec<Font<'a>>;
 
+    /// Light source
+    ///
+    /// This affects shadows on frames, etc. The light source has neutral colour
+    /// and intensity such that the colour of flat surfaces is unaffected.
+    ///
+    /// Return value: `(a, b)` where `0 ≤ a < pi/2` is the angle to the screen
+    /// normal (i.e. `a = 0` is straight at the screen) and `b` is the bearing
+    /// (from UP, clockwise), both in radians.
+    ///
+    /// Currently this is not updated after initial set-up.
+    fn light_direction(&self) -> (f32, f32);
+
     /// Background colour
     fn clear_colour(&self) -> Colour;
 
@@ -136,6 +148,10 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
 
     fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
         vec![crate::font::get_font()]
+    }
+
+    fn light_direction(&self) -> (f32, f32) {
+        (0.3, 0.4)
     }
 
     fn clear_colour(&self) -> Colour {

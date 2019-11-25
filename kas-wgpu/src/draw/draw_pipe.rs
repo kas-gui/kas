@@ -8,14 +8,16 @@
 //! TODO: move traits up to kas?
 
 use std::borrow::Cow;
+use std::f32::consts::FRAC_PI_2;
 
-use wgpu_glyph::{Font, GlyphBrush, GlyphBrushBuilder, GlyphCruncher, VariedSection};
+use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder, GlyphCruncher, VariedSection};
 
 use kas::geom::Size;
 
 use super::round_pipe::RoundPipe;
 use super::square_pipe::SquarePipe;
 use crate::colour::Colour;
+use crate::theme::Theme;
 use crate::vertex::Vec2;
 
 /// Abstraction over flat drawing commands
@@ -97,18 +99,27 @@ pub struct DrawPipe {
 
 impl DrawPipe {
     /// Construct
-    pub fn new(
+    pub fn new<D: Theme<Self>>(
         device: &mut wgpu::Device,
         tex_format: wgpu::TextureFormat,
-        fonts: Vec<Font<'static>>,
         size: Size,
+        theme: &D,
     ) -> Self {
-        let glyph_brush = GlyphBrushBuilder::using_fonts(fonts).build(device, tex_format);
+        let dir = theme.light_direction();
+        assert!(dir.0 >= 0.0);
+        assert!(dir.0 < FRAC_PI_2);
+        let a = (dir.0.sin(), dir.0.cos());
+        // We normalise intensity:
+        let f = a.0 / a.1;
+        let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
+
+        let glyph_brush =
+            GlyphBrushBuilder::using_fonts(theme.get_fonts()).build(device, tex_format);
 
         DrawPipe {
             size,
-            square_pipe: SquarePipe::new(device, size),
-            round_pipe: RoundPipe::new(device, size),
+            square_pipe: SquarePipe::new(device, size, norm),
+            round_pipe: RoundPipe::new(device, size, norm),
             glyph_brush,
         }
     }

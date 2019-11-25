@@ -27,7 +27,7 @@ pub struct RoundPipe {
 
 impl RoundPipe {
     /// Construct
-    pub fn new(device: &wgpu::Device, size: Size) -> Self {
+    pub fn new(device: &wgpu::Device, size: Size, light_norm: [f32; 3]) -> Self {
         let vs_bytes = super::read_glsl(
             include_str!("shaders/rounded.vert"),
             glsl_to_spirv::ShaderType::Vertex,
@@ -49,8 +49,6 @@ impl RoundPipe {
             )
             .fill_from_slice(&scale_factor);
 
-        type Norm = [f32; 3];
-        let light_norm: Norm = [0.2588, -0.5, 0.8365];
         let light_norm_buf = device
             .create_buffer_mapped(
                 light_norm.len(),
@@ -86,7 +84,7 @@ impl RoundPipe {
                     binding: 1,
                     resource: wgpu::BindingResource::Buffer {
                         buffer: &light_norm_buf,
-                        range: 0..(size_of::<Norm>() as u64),
+                        range: 0..(size_of::<[f32; 3]>() as u64),
                     },
                 },
             ],

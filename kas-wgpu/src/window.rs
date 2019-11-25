@@ -207,7 +207,7 @@ impl<T: Theme<DrawPipe>> TkWindow<T> {
         dpi_factor: f64,
         mut theme: T,
     ) -> Self {
-        let draw_pipe = DrawPipe::new(device, tex_format, theme.get_fonts(), size);
+        let draw_pipe = DrawPipe::new(device, tex_format, size, &theme);
         theme.set_dpi_factor(dpi_factor as f32);
 
         TkWindow {
