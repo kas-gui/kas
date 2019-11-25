@@ -42,17 +42,3 @@ impl From<Colour> for [f32; 4] {
         [c.r, c.g, c.b, c.a]
     }
 }
-
-/// Background colour
-pub const BACKGROUND: Colour = Colour::grey(0.7);
-/// Frame colour
-pub const FRAME: Colour = BACKGROUND;
-/// Text background
-pub const TEXT_AREA: Colour = Colour::grey(1.0);
-
-/// Text in text area
-pub const TEXT: Colour = Colour::grey(0.0);
-/// Text on background
-pub const LABEL_TEXT: Colour = Colour::grey(0.0);
-/// Text on button
-pub const BUTTON_TEXT: Colour = Colour::grey(1.0);

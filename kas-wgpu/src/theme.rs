@@ -17,7 +17,7 @@ use kas::class::{Align, Class};
 use kas::geom::{AxisInfo, Coord, Margins, Size, SizeRules};
 use kas::{event, Widget};
 
-use crate::colour::{self, Colour};
+use crate::colour::Colour;
 use crate::draw::*;
 use crate::vertex::Vec2;
 
@@ -112,6 +112,20 @@ const FRAME_SIZE: f32 = 4.0;
 /// Button frame size (non-flat outer region)
 const BUTTON_FRAME: f32 = 6.0;
 
+/// Background colour
+pub const BACKGROUND: Colour = Colour::grey(0.7);
+/// Frame colour
+pub const FRAME: Colour = BACKGROUND;
+/// Text background
+pub const TEXT_AREA: Colour = Colour::grey(1.0);
+
+/// Text in text area
+pub const TEXT: Colour = Colour::grey(0.0);
+/// Text on background
+pub const LABEL_TEXT: Colour = Colour::grey(0.0);
+/// Text on button
+pub const BUTTON_TEXT: Colour = Colour::grey(1.0);
+
 impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
     fn set_dpi_factor(&mut self, factor: f32) {
         self.font_scale = (FONT_SIZE * factor).round();
@@ -125,7 +139,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
     }
 
     fn clear_colour(&self) -> Colour {
-        colour::BACKGROUND
+        BACKGROUND
     }
 
     fn margins(&self, widget: &dyn Widget) -> Margins {
@@ -237,23 +251,23 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
                 return;
             }
             Class::Label(cls) => {
-                text = Some((cls.get_text(), colour::LABEL_TEXT));
+                text = Some((cls.get_text(), LABEL_TEXT));
             }
             Class::Entry(cls) => {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                draw.draw_square_frame(s, t, u, v, (0.0, 0.8), colour::FRAME);
+                draw.draw_square_frame(s, t, u, v, (0.0, 0.8), FRAME);
                 bounds = bounds - 2.0 * f;
 
-                background = Some(colour::TEXT_AREA);
+                background = Some(TEXT_AREA);
 
                 _string = cls.get_text().to_string();
                 if ev_mgr.key_grab(w_id) {
                     // TODO: proper edit character and positioning
                     _string.push('|');
                 }
-                text = Some((&_string, colour::TEXT));
+                text = Some((&_string, TEXT));
             }
             Class::Button(cls) => {
                 let c = if ev_mgr.is_depressed(w_id) {
@@ -272,23 +286,23 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme<D> for SampleTheme {
                 draw.draw_round_frame(s, t, u, v, c);
                 bounds = bounds - 2.0 * f;
 
-                text = Some((cls.get_text(), colour::BUTTON_TEXT));
+                text = Some((cls.get_text(), BUTTON_TEXT));
             }
             Class::CheckBox(cls) => {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                draw.draw_square_frame(s, t, u, v, (0.0, 0.8), colour::FRAME);
+                draw.draw_square_frame(s, t, u, v, (0.0, 0.8), FRAME);
                 bounds = bounds - 2.0 * f;
 
-                background = Some(colour::TEXT_AREA);
+                background = Some(TEXT_AREA);
 
                 // TODO: draw check mark *and* optional text
                 // let text = if cls.get_bool() { "✓" } else { "" };
-                text = Some((cls.get_text(), colour::TEXT));
+                text = Some((cls.get_text(), TEXT));
             }
             Class::Frame => {
-                draw.draw_square_frame(u, v, u + f, v - f, (0.0, 0.8), colour::FRAME);
+                draw.draw_square_frame(u, v, u + f, v - f, (0.0, 0.8), FRAME);
                 return;
             }
         }
