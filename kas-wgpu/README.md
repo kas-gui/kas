@@ -4,6 +4,12 @@ KAS WGPU
 Toolkit rendering over the [wgpu](https://crates.io/crates/wgpu) lib.
 
 
+Optional features
+-------
+
+-   `font-kit` uses the library of the same name to locate a suitable font
+
+
 Copyright and Licence
 -------
 

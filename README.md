@@ -4,31 +4,84 @@ KAS GUI
 [![home](https://img.shields.io/badge/GitHub-home-blue)](https://github.com/dhardy/kas)
 [![old-home](https://img.shields.io/badge/GitLab-old--home-blueviolet)](https://gitlab.com/dhardy/kas)
 
-The name KAS comes from *toolKit Abstraction System*. The original goal of this
-project was to build a UI using native widget libraries configured from pure
-Rust; aims to use native widget libraries have been dropped.
+KAS is the *toolKit Abstraction System*. It comprises:
 
-The `gtk` branch is outdated but maintains integration with the GTK toolkit.
+-   `kas`: the *core* of the GUI library, providing core interfaces and types,
+    standard widgets, widget layout and event handling
+-   `kas_macros`: a helper crate providing the procedural macros used by `kas`
+-   `kas_wgpu`: an interface to [`winit`] and [`wgpu`], providing windowing and
+    hardware-accelerated rendering
+
+A user depends on `kas` to write their complete UI specification, and then
+pastes a few lines of code to initialise `kas_wgpu::Toolkit`, add the window
+and run the UI.
+
+[`winit`]: https://github.com/rust-windowing/winit/
+[`wgpu`]: https://github.com/gfx-rs/wgpu-rs
 
 
-UI specification
+Examples
+---------
+
+Several examples are available for the `kas_wgpu` sub-crate. Try e.g.
+
+```
+cargo run --example calculator
+```
+
+Cross-platform
+------------
+
+KAS uses cross-platform libraries, allowing it to target all major platforms.
+Current development & test targets:
+
+-   Linux / X11
+-   Linux / Wayland
+
+It *should* work fine on other platforms, though font-loading may fail.
+Try passing `--features font-kit` in this case. Feedback & fixes welcome.
+
+
+Features
+----------
+
+-   Type-safe event handler allowing user data to be embedded in the widget tree
+-   Built-in widget selection (currently limited)
+-   Row / column layouts
+-   Flexible grid layouts
+-   Draw-command abstraction (currently limited to required features)
+-   Custom themes (with full control of sizing and rendering)
+-   Touch-screen support
+-   Keyboard navigation & accelerator keys
+-   Fully scalable (hidpi)
+-   Mult-window support
+-   Fast and low CPU usage
+
+### Planned features
+
+-   Dynamic layouts
+-   Custom widgets
+-   Better support for custom event handling
+-   Allow direct access to wgpu when using `kas_wgpu` (custom shaders)
+-   Animations
+
+
+Data model and specification
 --------------
 
-UI models are written in pure Rust such that:
+KAS is in part motivated by some of the common limitations of UIs:
 
--   UI design specification is mostly declarative
--   UI specification is *succinct*, macro based
--   Event handling is local to the widgets and maximally type-safe
+-   specification is often redundant, requiring widgets to be created, added
+    to a parent, sometimes forcing elements to be named when *any* custom
+    properties are required
+-   declarative specifications may need to be recreated frequently
+-   user state (data) and UI models are often separated, making event handling
+    and data transfer more difficult than ought be necessary
 
-Specification relies heavily on procedural macros. This may have some impact on
-compile times, but so far this does not appear to be a significant issue (tested
-~10 seconds with 100 layout widgets vs ~5 sec for a simple UI).
-
-### Event handling
-
-To maximise use of type-safety, each widget's event handler may have a custom
-response type, with handler and additional state integrated into the parent
-widget.
+KAS takes some inspiration from Qt (but using macros in place of language
+extensions), in that custom widget structs may combine user state and UI
+components. Most of KAS is inspired by finding a maximally-type-safe, flexible
+"Rustic" solution to the problem at hand.
 
 ### Example
 
@@ -69,57 +122,33 @@ let window = Window::new(make_widget! {
 });
 ```
 
-Style and rendering
------------
 
-UI style and rendering is offloaded to a separate crate, whose responsibilties
-include window management, widget sizing, widget rendering, and
-interfacing with platform event handling. Despite this, the majority of
-widget specification, event handling and positioning is handled by the core
-`kas` crate (plus internal `kas-macros` crate), facilitating creation of
-additional rendering crates.
+Drawing and themes
+--------
 
-Rendering is currently handled by `kas-wgpu`. In the name of simplicity, this is
-not configurable. Rendering is hardware-accelerated (via `wgpu` aka WebGPU with
-support for multiple backends: Vulkan, DX12, DX11, Metal).
+One of the key problems to solve in a UI is the question of *how are widgets
+drawn?* Already, multiple approaches have been tried and abandoned:
 
-Custom styling should (eventually) be achievable in two ways:
+-   `kas_gtk` used GTK to do the rendering; in practice this meant using GTK
+    for event handling and widget layout too, and made building the desired API
+    around GTK very difficult; an additional issue with this approach is that
+    GTK libs can be difficult to install on some platforms
+-   `kas_rgx` used RGX as a rendering API allowing custom widget rendering
+    with a "mid-level graphics API"; ultimately this proved less flexible than
+    desired while also lacking high-level drawing routines (e.g. pretty frames)
 
--   development of a new rendering crate
--   adjusting run-time configuration of an existing rendering crate
+Thus, KAS has now moved to direct use of `wgpu` and `wgpu_glyph` for rendering,
+providing its own high-level abstractions (the `Draw*` traits provided by
+`kas` and `kas_wgpu`). This still needs fleshing out (more drawing primitives,
+a better text API, and support for custom pipes & shaders), but looks to be a
+viable path forward.
 
+### Themes
 
-Motivation
-----------
+A "theme" provides widget sizing and drawing implementations over the above
+`Draw*` traits as well as a choice of fonts (and eventually icons).
 
-Rust currently has a smattering of GUI libraries, but none currently offer the
-full complement of features which really show off the strengths of the Rust
-language:
-
--   **safe**: GUIs are complex, high-level constructions; they really should
-    make it easy to write memory-safe, and thread-safe and correct code
--   **simple**: while the behaviour expressed by GUIs is complex, the ideas behind
-    them are usually not; GUI app code should consist of a simple description
-    of the GUI with minimal bindings to application logic
--   **flexible building blocks**: the Rust language has succeeded in keeping the
-    language specification *moderately* simple while buliding a rich library
-    on top of this; a Rust GUI library should do the same
--   **static type model**: Rust has succeeded in allowing most types to have
-    compile-time known size and static linkage; not only does this avoid
-    unnecessary run-time memory allocation, but also enables a *lot*
-    of compile-time optimisation
-
-Note that certain trade-offs must be made to allow the above goals; in
-particular this means the library will not be easy to use via FFI (e.g. from C):
-
--   **complex types**: many widget types are complex or outright unnameable
--   **heavy use of macros**: while users *should* be able to implement
-    functionality directly, this may be verbose and monotonous; macros can be
-    used to construct the necessary implementations more succinctly
-
-It is also worth noting that we currently make no attempt to support building
-GUIs at run-time. This should eventually be possible to some extent, but is not
-a current goal.
+Currently a single `SampleTheme` is provided, along with a custom theme example.
 
 
 Copyright and Licence
