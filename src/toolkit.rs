@@ -55,13 +55,14 @@ pub trait TkWindow {
 
     /// Get the widget's size preferences
     ///
-    /// See documentation of [`crate::Layout::size_rules`].
+    /// See documentation of [`crate::draw::Theme`] and
+    /// [`crate::geom::SizeRules`].
     fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules;
 
     /// Margin dimensions
     ///
-    /// Controls how much space is allocated to margins and frames (which are
-    /// equivalent from the point of view of space allocation).
+    /// See documentation of [`crate::draw::Theme`] and
+    /// [`crate::geom::Margins`].
     fn margins(&self, widget: &dyn Widget) -> Margins;
 
     /// Notify that a widget must be redrawn

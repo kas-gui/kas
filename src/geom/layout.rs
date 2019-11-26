@@ -62,13 +62,24 @@ impl AxisInfo {
 pub struct Margins {
     /// Total size of the margin surrounding contents
     pub outer: Size,
-    /// Offset of contents from widget position (usually half of `outer`)
+    /// Offset of first child widget from widget position (usually half of
+    /// `outer`). This only affects placement of children; event handling and
+    /// widget drawing use the entire widget area (including margins).
     pub offset: Coord,
-    /// Inner offset between rows / columns
+    /// Inner offset between rows / columns of widgets
     pub inner: Coord,
 }
 
 impl Margins {
+    /// Provide margin `outer` on each side and `inner` between child widgets.
+    pub const fn with_margin(outer: i32, inner: i32) -> Self {
+        Margins {
+            outer: Size::uniform(2 * outer as u32),
+            offset: Coord(outer, outer),
+            inner: Coord(inner, inner),
+        }
+    }
+
     /// Construct SizeRules appropriate for the margin
     ///
     /// Parameters: `vertical` if vertical axis, number of additional

@@ -70,10 +70,12 @@ pub trait Theme: Clone {
 
     /// Margin and inter-row/column dimensions
     ///
-    /// Margin dimensions are added to the area allocated to each widget. For
-    /// simple widgets, margins may be specified here *or* by
-    /// [`Theme::size_rules`]; for parent widgets, margins can only be specified
-    /// by this method.
+    /// Controls how much extra space is allocated to this widget. This is added
+    /// to any size requested via [`Theme::size_rules`], and is most useful
+    /// in providing spacing around and between child widgets.
+    ///
+    /// Note that widget drawing affects the entire area allocated by
+    /// `size_rules + margins` and is not offset for margins.
     fn margins(&self, widget: &dyn Widget) -> Margins;
 
     /// Widget dimensions

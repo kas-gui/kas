@@ -14,7 +14,7 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use kas::class::{Align, Class};
 use kas::draw::*;
-use kas::geom::{AxisInfo, Coord, Margins, Size, SizeRules};
+use kas::geom::{AxisInfo, Margins, SizeRules};
 use kas::{event, Widget};
 
 use crate::draw::*;
@@ -103,20 +103,9 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
 
     fn margins(&self, widget: &dyn Widget) -> Margins {
         match widget.class() {
-            Class::Frame => {
-                let off = self.frame_size as i32;
-                let size = 2 * off as u32;
-                Margins {
-                    outer: Size(size, size),
-                    offset: Coord(off, off),
-                    inner: Coord::ZERO,
-                }
-            }
-            _ => Margins {
-                outer: Size::uniform(self.margin as u32 * 2),
-                offset: Coord::ZERO,
-                inner: Coord::ZERO,
-            },
+            Class::Frame => Margins::with_margin(self.frame_size as i32, 0),
+            Class::Container | Class::Window => Margins::with_margin(0, 0),
+            _ => Margins::with_margin(self.margin as i32, 0),
         }
     }
 
