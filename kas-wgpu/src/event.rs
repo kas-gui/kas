@@ -10,10 +10,10 @@ use std::time::Instant;
 use winit::event::{Event, StartCause};
 use winit::event_loop::ControlFlow;
 
+use kas::draw::Theme;
 use kas::TkAction;
 
 use crate::draw::DrawPipe;
-use crate::theme::Theme;
 use crate::Window;
 
 pub(crate) struct Loop<T> {

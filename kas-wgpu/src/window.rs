@@ -7,6 +7,7 @@
 
 use std::time::{Duration, Instant};
 
+use kas::draw::Theme;
 use kas::event::Callback;
 use kas::geom::{AxisInfo, Margins, Size, SizeRules};
 use kas::{event, TkAction, Widget};
@@ -16,7 +17,6 @@ use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 
 use crate::draw::DrawPipe;
-use crate::theme::Theme;
 
 /// Per-window data
 pub struct Window<T> {

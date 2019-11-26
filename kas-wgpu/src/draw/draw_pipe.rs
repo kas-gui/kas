@@ -17,11 +17,14 @@ use kas::geom::Size;
 
 use super::round_pipe::RoundPipe;
 use super::square_pipe::SquarePipe;
-use crate::theme::Theme;
 
 /// Abstraction over text rendering
+///
+/// TODO: this API is heavily dependent on `glyph_brush`. Eventually we want our
+/// own API, encapsulating translation functionality and with more default
+/// values (e.g. scale). When we get there, we should be able to move
+/// `SampleTheme` to `kas`.
 pub trait DrawText {
-    // TODO: should we have an API not dependent on glyph_brush?
     /// Queues a text section/layout.
     fn draw_text<'a, S>(&mut self, section: S)
     where

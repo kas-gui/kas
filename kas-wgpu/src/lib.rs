@@ -14,9 +14,11 @@ mod window;
 use winit::error::OsError;
 use winit::event_loop::EventLoop;
 
+use kas::draw::Theme;
+
 use crate::draw::DrawPipe;
 
-pub use theme::{SampleTheme, Theme};
+pub use theme::SampleTheme;
 pub use window::Window;
 
 pub use kas;

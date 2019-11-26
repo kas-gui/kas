@@ -9,9 +9,11 @@
 //! types.
 
 mod colour;
+mod theme;
 mod traits;
 mod vector;
 
 pub use colour::Colour;
-pub use traits::{DrawFlat, DrawSquare, DrawRound};
+pub use theme::Theme;
+pub use traits::{DrawFlat, DrawRound, DrawSquare};
 pub use vector::Vec2;
