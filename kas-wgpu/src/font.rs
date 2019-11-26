@@ -8,7 +8,7 @@
 //! Optionally, this uses font-kit to find a suitable font. Since this is a
 //! large dependency, an alternative is provided.
 
-#[cfg(feature = "font-config")]
+#[cfg(feature = "font-kit")]
 use font_kit::{
     family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource,
 };
@@ -17,16 +17,16 @@ use lazy_static::lazy_static;
 use wgpu_glyph::Font;
 // use wgpu_glyph::rusttype::FontCollection;
 
-#[cfg(feature = "font-config")]
+#[cfg(feature = "font-kit")]
 use std::{fs::File, io::Read, sync::Arc};
 
-#[cfg(feature = "font-config")]
+#[cfg(feature = "font-kit")]
 struct FontCollectionBytes {
     bytes: Vec<u8>,
     index: u32,
 }
 
-#[cfg(feature = "font-config")]
+#[cfg(feature = "font-kit")]
 impl FontCollectionBytes {
     fn load() -> Self {
         let handle = SystemSource::new()
@@ -57,16 +57,16 @@ impl FontCollectionBytes {
     }
 }
 
-#[cfg(feature = "font-config")]
+#[cfg(feature = "font-kit")]
 lazy_static! {
     static ref FCB: FontCollectionBytes = FontCollectionBytes::load();
     static ref FONT: Font<'static> = FCB.font();
 }
 
-#[cfg(not(feature = "font-config"))]
+#[cfg(not(feature = "font-kit"))]
 const BYTES: &'static [u8] = include_bytes!("/usr/share/fonts/dejavu/DejaVuSerif.ttf");
 
-#[cfg(not(feature = "font-config"))]
+#[cfg(not(feature = "font-kit"))]
 lazy_static! {
     static ref FONT: Font<'static> = Font::from_bytes(BYTES).unwrap();
 }
