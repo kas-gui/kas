@@ -186,7 +186,14 @@ impl SquarePipe {
 
     /// Add a rectangle to the buffer defined by two corners, `aa` and `bb`
     /// with colour `col`.
+    ///
+    /// Bounds on input: `aa < bb`.
     pub fn add_quad(&mut self, aa: Vec2, bb: Vec2, col: Colour) {
+        if !aa.lt(bb) {
+            // zero / negative size: nothing to draw
+            return;
+        }
+
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
 
@@ -202,15 +209,34 @@ impl SquarePipe {
 
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
     /// and two inner corners, `cc` and `dd` with colour `col`.
+    ///
+    /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
     pub fn add_frame(
         &mut self,
         aa: Vec2,
         bb: Vec2,
-        cc: Vec2,
-        dd: Vec2,
-        norm: (f32, f32),
+        mut cc: Vec2,
+        mut dd: Vec2,
+        mut norm: Vec2,
         col: Colour,
     ) {
+        if !aa.lt(bb) {
+            // zero / negative size: nothing to draw
+            return;
+        }
+        if !aa.le(cc) || !cc.le(bb) {
+            cc = aa;
+        }
+        if !aa.le(dd) || !dd.le(bb) {
+            dd = bb;
+        }
+        if !cc.le(dd) {
+            dd = cc;
+        }
+        if !Vec2::splat(-1.0).le(norm) || !norm.le(Vec2::splat(1.0)) {
+            norm = Vec2::splat(0.0);
+        }
+
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
         let cd = Vec2(cc.0, dd.1);

@@ -11,6 +11,9 @@ use super::{Colour, Vec2};
 pub trait DrawFlat {
     /// Add a rectangle to the draw buffer defined by two corners
     /// `aa` and `bb` with solid colour `col`.
+    ///
+    /// Expected componentwise bounds on input: `aa < bb`.
+    /// Failure to meet bounds may lead to graphical tweaks or no drawing.
     fn draw_flat_quad(&mut self, aa: Vec2, bb: Vec2, col: Colour);
 }
 
@@ -32,14 +35,16 @@ pub trait DrawSquare {
     /// with both parameters pointing out from the frame (thus
     /// positive values make the frame appear raised).
     ///
-    /// Component-wise bounds: `aa < cc < dd < bb`; `-1 < norm < 1`.
+    /// Expected componentwise bounds on input: `aa < cc < dd < bb` and
+    /// `-1 ≤ norm ≤ 1`.
+    /// Failure to meet bounds may lead to graphical tweaks or no drawing.
     fn draw_square_frame(
         &mut self,
         aa: Vec2,
         bb: Vec2,
         cc: Vec2,
         dd: Vec2,
-        norm: (f32, f32),
+        norm: Vec2,
         col: Colour,
     );
 }
@@ -62,14 +67,8 @@ pub trait DrawRound {
     /// with both parameters pointing out from the frame (thus
     /// positive values make the frame appear raised).
     ///
-    /// Component-wise bounds: `aa < cc < dd < bb`; `-1 < norm < 1`.
-    fn draw_round_frame(
-        &mut self,
-        aa: Vec2,
-        bb: Vec2,
-        cc: Vec2,
-        dd: Vec2,
-        norm: (f32, f32),
-        col: Colour,
-    );
+    /// Expected componentwise bounds on input: `aa < cc < dd < bb` and
+    /// `-1 ≤ norm ≤ 1`.
+    /// Failure to meet bounds may lead to graphical tweaks or no drawing.
+    fn draw_round_frame(&mut self, aa: Vec2, bb: Vec2, cc: Vec2, dd: Vec2, norm: Vec2, col: Colour);
 }

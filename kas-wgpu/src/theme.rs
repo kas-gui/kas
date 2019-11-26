@@ -205,7 +205,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                draw.draw_square_frame(s, t, u, v, (0.0, -0.8), FRAME);
+                draw.draw_square_frame(s, t, u, v, Vec2(0.0, -0.8), FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(TEXT_AREA);
@@ -231,7 +231,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                draw.draw_round_frame(s, t, u, v, (0.0, 0.6), c);
+                draw.draw_round_frame(s, t, u, v, Vec2(0.0, 0.6), c);
                 bounds = bounds - 2.0 * f;
 
                 text = Some((cls.get_text(), BUTTON_TEXT));
@@ -240,7 +240,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
                 let (s, t) = (u, v);
                 u = u + f;
                 v = v - f;
-                draw.draw_square_frame(s, t, u, v, (0.0, -0.8), FRAME);
+                draw.draw_square_frame(s, t, u, v, Vec2(0.0, -0.8), FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(TEXT_AREA);
@@ -250,7 +250,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
                 text = Some((cls.get_text(), TEXT));
             }
             Class::Frame => {
-                draw.draw_round_frame(u, v, u + f, v - f, (0.6, -0.6), FRAME);
+                draw.draw_round_frame(u, v, u + f, v - f, Vec2(0.6, -0.6), FRAME);
                 return;
             }
         }
@@ -302,7 +302,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
             let (s, t) = (u, v);
             u = u + margin;
             v = v - margin;
-            draw.draw_square_frame(s, t, u, v, (0.0, 0.0), col);
+            draw.draw_square_frame(s, t, u, v, Vec2(0.0, 0.0), col);
         }
 
         if let Some(background) = background {

@@ -191,19 +191,38 @@ impl RoundPipe {
 
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
     /// and two inner corners, `cc` and `dd` with colour `col`.
+    ///
+    /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
     pub fn add_frame(
         &mut self,
         aa: Vec2,
         bb: Vec2,
-        cc: Vec2,
-        dd: Vec2,
-        norm: (f32, f32),
+        mut cc: Vec2,
+        mut dd: Vec2,
+        mut norm: Vec2,
         col: Colour,
     ) {
+        if !aa.lt(bb) {
+            // zero / negative size: nothing to draw
+            return;
+        }
+        if !aa.le(cc) || !cc.le(bb) {
+            cc = aa;
+        }
+        if !aa.le(dd) || !dd.le(bb) {
+            dd = bb;
+        }
+        if !cc.le(dd) {
+            dd = cc;
+        }
+        if !Vec2::splat(-1.0).le(norm) || !norm.le(Vec2::splat(1.0)) {
+            norm = Vec2::splat(0.0);
+        }
+
         let adjust = Vec2(FRAC_PI_2 * norm.0, norm.1 - norm.0);
         let col = col.into();
 
-        let n0 = Vec2(0.0, 0.0);
+        let n0 = Vec2::splat(0.0);
         let nbb = (bb - aa).sign();
         let naa = -nbb;
         let nab = Vec2(naa.0, nbb.1);
