@@ -4,8 +4,27 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Vector types
+//!
+//! For drawing operations, all dimensions use the `f32` type.
 
 use std::ops::{Add, Neg, Sub};
+
+/// Axis-aligned 2D cuboid, specified via two corners
+///
+/// Typically it is expected that `self.0.le(self.1)`.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Quad(pub Vec2, pub Vec2);
+
+impl Quad {
+    /// Make self smaller by `value` on all sides (i.e. add to `self.0` and
+    /// subtract from `self.1`).
+    #[inline]
+    pub fn shrink(&mut self, value: f32) {
+        self.0 = self.0 + value;
+        self.1 = self.1 - value;
+    }
+}
 
 /// 2D vector
 ///

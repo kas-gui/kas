@@ -178,9 +178,9 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
 
         // Note: coordinates place the origin at the top-left.
         let rect = widget.rect();
-        let mut u = Vec2::from(rect.pos_f32());
+        let p = Vec2::from(rect.pos_f32());
         let size = Vec2::from(rect.size_f32());
-        let mut v = u + size;
+        let mut quad = Quad(p, p + size);
 
         let mut background = None;
 
@@ -202,10 +202,9 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
                 text = Some((cls.get_text(), LABEL_TEXT));
             }
             Class::Entry(cls) => {
-                let (s, t) = (u, v);
-                u = u + f;
-                v = v - f;
-                draw.draw_square_frame(s, t, u, v, Vec2(0.0, -0.8), FRAME);
+                let outer = quad;
+                quad.shrink(f);
+                draw.draw_square_frame(outer, quad, Vec2(0.0, -0.8), FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(TEXT_AREA);
@@ -228,19 +227,17 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
                 background = Some(c);
 
                 let f = self.button_frame;
-                let (s, t) = (u, v);
-                u = u + f;
-                v = v - f;
-                draw.draw_round_frame(s, t, u, v, Vec2(0.0, 0.6), c);
+                let outer = quad;
+                quad.shrink(f);
+                draw.draw_round_frame(outer, quad, Vec2(0.0, 0.6), c);
                 bounds = bounds - 2.0 * f;
 
                 text = Some((cls.get_text(), BUTTON_TEXT));
             }
             Class::CheckBox(cls) => {
-                let (s, t) = (u, v);
-                u = u + f;
-                v = v - f;
-                draw.draw_square_frame(s, t, u, v, Vec2(0.0, -0.8), FRAME);
+                let outer = quad;
+                quad.shrink(f);
+                draw.draw_square_frame(outer, quad, Vec2(0.0, -0.8), FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(TEXT_AREA);
@@ -250,7 +247,9 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
                 text = Some((cls.get_text(), TEXT));
             }
             Class::Frame => {
-                draw.draw_round_frame(u, v, u + f, v - f, Vec2(0.6, -0.6), FRAME);
+                let outer = quad;
+                quad.shrink(f);
+                draw.draw_round_frame(outer, quad, Vec2(0.6, -0.6), FRAME);
                 return;
             }
         }
@@ -269,7 +268,7 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
                 Align::End => (VerticalAlign::Bottom, bounds.1),
             };
             let layout = Layout::default().h_align(h_align).v_align(v_align);
-            let text_pos = u + margin + Vec2(h_offset, v_offset);
+            let text_pos = quad.0 + margin + Vec2(h_offset, v_offset);
 
             draw.draw_text(Section {
                 text,
@@ -299,14 +298,13 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
                 col.b = 1.0;
             }
 
-            let (s, t) = (u, v);
-            u = u + margin;
-            v = v - margin;
-            draw.draw_square_frame(s, t, u, v, Vec2(0.0, 0.0), col);
+            let outer = quad;
+            quad.shrink(margin);
+            draw.draw_square_frame(outer, quad, Vec2(0.0, 0.0), col);
         }
 
         if let Some(background) = background {
-            draw.draw_flat_quad(u, v, background.into());
+            draw.draw_flat_quad(quad, background.into());
         }
     }
 }

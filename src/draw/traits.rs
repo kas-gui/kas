@@ -5,22 +5,20 @@
 
 //! Drawing API
 
-use super::{Colour, Vec2};
+use super::{Colour, Quad, Vec2};
 
 /// Abstraction over flat drawing commands
 pub trait DrawFlat {
-    /// Add a rectangle to the draw buffer defined by two corners
-    /// `aa` and `bb` with solid colour `col`.
+    /// Add a rectangle to the draw buffer.
     ///
-    /// Expected componentwise bounds on input: `aa < bb`.
+    /// Expected componentwise bounds on input: `q.0 < q.1`.
     /// Failure to meet bounds may lead to graphical tweaks or no drawing.
-    fn draw_flat_quad(&mut self, aa: Vec2, bb: Vec2, col: Colour);
+    fn draw_flat_quad(&mut self, quad: Quad, col: Colour);
 }
 
 /// Abstraction over square drawing commands
 pub trait DrawSquare {
-    /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
-    /// and two inner corners, `cc` and `dd`, with solid colour `col`.
+    /// Add a frame to the buffer.
     ///
     /// The frame has square corners and is shaded according to its normal.
     /// Frame sides are divided at the corners by a straight line from inner to
@@ -35,18 +33,10 @@ pub trait DrawSquare {
     /// with both parameters pointing out from the frame (thus
     /// positive values make the frame appear raised).
     ///
-    /// Expected componentwise bounds on input: `aa < cc < dd < bb` and
-    /// `-1 ≤ norm ≤ 1`.
+    /// Expected componentwise bounds on input:
+    /// `outer.0 < inner.0 < inner.1 < outer.1` and `-1 ≤ norm ≤ 1`.
     /// Failure to meet bounds may lead to graphical tweaks or no drawing.
-    fn draw_square_frame(
-        &mut self,
-        aa: Vec2,
-        bb: Vec2,
-        cc: Vec2,
-        dd: Vec2,
-        norm: Vec2,
-        col: Colour,
-    );
+    fn draw_square_frame(&mut self, outer: Quad, inner: Quad, norm: Vec2, col: Colour);
 }
 
 /// Abstraction over rounded drawing commands
@@ -67,8 +57,8 @@ pub trait DrawRound {
     /// with both parameters pointing out from the frame (thus
     /// positive values make the frame appear raised).
     ///
-    /// Expected componentwise bounds on input: `aa < cc < dd < bb` and
-    /// `-1 ≤ norm ≤ 1`.
+    /// Expected componentwise bounds on input:
+    /// `outer.0 < inner.0 < inner.1 < outer.1` and `-1 ≤ norm ≤ 1`.
     /// Failure to meet bounds may lead to graphical tweaks or no drawing.
-    fn draw_round_frame(&mut self, aa: Vec2, bb: Vec2, cc: Vec2, dd: Vec2, norm: Vec2, col: Colour);
+    fn draw_round_frame(&mut self, outer: Quad, inner: Quad, norm: Vec2, col: Colour);
 }

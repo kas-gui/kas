@@ -129,39 +129,23 @@ impl DrawPipe {
 
 impl DrawFlat for DrawPipe {
     #[inline]
-    fn draw_flat_quad(&mut self, aa: Vec2, bb: Vec2, col: Colour) {
+    fn draw_flat_quad(&mut self, quad: Quad, col: Colour) {
         // TODO: is it more efficient to have a dedicated pipeline for this?
-        self.square_pipe.add_quad(aa, bb, col)
+        self.square_pipe.add_quad(quad, col)
     }
 }
 
 impl DrawSquare for DrawPipe {
     #[inline]
-    fn draw_square_frame(
-        &mut self,
-        aa: Vec2,
-        bb: Vec2,
-        cc: Vec2,
-        dd: Vec2,
-        norm: Vec2,
-        col: Colour,
-    ) {
-        self.square_pipe.add_frame(aa, bb, cc, dd, norm, col)
+    fn draw_square_frame(&mut self, outer: Quad, inner: Quad, norm: Vec2, col: Colour) {
+        self.square_pipe.add_frame(outer, inner, norm, col)
     }
 }
 
 impl DrawRound for DrawPipe {
     #[inline]
-    fn draw_round_frame(
-        &mut self,
-        aa: Vec2,
-        bb: Vec2,
-        cc: Vec2,
-        dd: Vec2,
-        norm: Vec2,
-        col: Colour,
-    ) {
-        self.round_pipe.add_frame(aa, bb, cc, dd, norm, col)
+    fn draw_round_frame(&mut self, outer: Quad, inner: Quad, norm: Vec2, col: Colour) {
+        self.round_pipe.add_frame(outer, inner, norm, col)
     }
 }
 

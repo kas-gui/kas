@@ -189,19 +189,11 @@ impl RoundPipe {
         self.v.clear();
     }
 
-    /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
-    /// and two inner corners, `cc` and `dd` with colour `col`.
-    ///
     /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
-    pub fn add_frame(
-        &mut self,
-        aa: Vec2,
-        bb: Vec2,
-        mut cc: Vec2,
-        mut dd: Vec2,
-        mut norm: Vec2,
-        col: Colour,
-    ) {
+    pub fn add_frame(&mut self, outer: Quad, inner: Quad, mut norm: Vec2, col: Colour) {
+        let (aa, bb) = (outer.0, outer.1);
+        let (mut cc, mut dd) = (inner.0, inner.1);
+
         if !aa.lt(bb) {
             // zero / negative size: nothing to draw
             return;
