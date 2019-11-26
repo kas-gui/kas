@@ -79,7 +79,7 @@ pub const LABEL_TEXT: Colour = Colour::grey(0.0);
 /// Text on button
 pub const BUTTON_TEXT: Colour = Colour::grey(1.0);
 
-impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
+impl<D: Draw + DrawText> Theme for SampleTheme<D> {
     type Draw = D;
 
     fn set_dpi_factor(&mut self, factor: f32) {
@@ -204,7 +204,8 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
             Class::Entry(cls) => {
                 let outer = quad;
                 quad.shrink(f);
-                draw.draw_square_frame(outer, quad, Vec2(0.0, -0.8), FRAME);
+                let style = Style::Square(Vec2(0.0, -0.8));
+                draw.draw_frame(outer, quad, style, FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(TEXT_AREA);
@@ -229,7 +230,8 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
                 let f = self.button_frame;
                 let outer = quad;
                 quad.shrink(f);
-                draw.draw_round_frame(outer, quad, Vec2(0.0, 0.6), c);
+                let style = Style::Round(Vec2(0.0, 0.6));
+                draw.draw_frame(outer, quad, style, c);
                 bounds = bounds - 2.0 * f;
 
                 text = Some((cls.get_text(), BUTTON_TEXT));
@@ -237,7 +239,8 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
             Class::CheckBox(cls) => {
                 let outer = quad;
                 quad.shrink(f);
-                draw.draw_square_frame(outer, quad, Vec2(0.0, -0.8), FRAME);
+                let style = Style::Square(Vec2(0.0, -0.8));
+                draw.draw_frame(outer, quad, style, FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(TEXT_AREA);
@@ -249,7 +252,8 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
             Class::Frame => {
                 let outer = quad;
                 quad.shrink(f);
-                draw.draw_round_frame(outer, quad, Vec2(0.6, -0.6), FRAME);
+                let style = Style::Round(Vec2(0.6, -0.6));
+                draw.draw_frame(outer, quad, style, FRAME);
                 return;
             }
         }
@@ -300,11 +304,12 @@ impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for SampleTheme<D> {
 
             let outer = quad;
             quad.shrink(margin);
-            draw.draw_square_frame(outer, quad, Vec2(0.0, 0.0), col);
+            let style = Style::Flat;
+            draw.draw_frame(outer, quad, style, col);
         }
 
         if let Some(background) = background {
-            draw.draw_flat_quad(quad, background.into());
+            draw.draw_quad(quad, Style::Flat, background.into());
         }
     }
 }

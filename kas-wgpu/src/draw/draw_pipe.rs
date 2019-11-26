@@ -12,7 +12,7 @@ use std::f32::consts::FRAC_PI_2;
 
 use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder, GlyphCruncher, VariedSection};
 
-use kas::draw::*;
+use kas::draw::{Colour, Draw, Quad, Style, Theme, Vec2};
 use kas::geom::Size;
 
 use super::round_pipe::RoundPipe;
@@ -127,25 +127,23 @@ impl DrawPipe {
     }
 }
 
-impl DrawFlat for DrawPipe {
+impl Draw for DrawPipe {
     #[inline]
-    fn draw_flat_quad(&mut self, quad: Quad, col: Colour) {
-        // TODO: is it more efficient to have a dedicated pipeline for this?
+    fn draw_quad(&mut self, quad: Quad, style: Style, col: Colour) {
+        // TODO: support styles
+        let _ = style;
         self.square_pipe.add_quad(quad, col)
     }
-}
 
-impl DrawSquare for DrawPipe {
     #[inline]
-    fn draw_square_frame(&mut self, outer: Quad, inner: Quad, norm: Vec2, col: Colour) {
-        self.square_pipe.add_frame(outer, inner, norm, col)
-    }
-}
-
-impl DrawRound for DrawPipe {
-    #[inline]
-    fn draw_round_frame(&mut self, outer: Quad, inner: Quad, norm: Vec2, col: Colour) {
-        self.round_pipe.add_frame(outer, inner, norm, col)
+    fn draw_frame(&mut self, outer: Quad, inner: Quad, style: Style, col: Colour) {
+        match style {
+            Style::Flat => self
+                .square_pipe
+                .add_frame(outer, inner, Vec2::splat(0.0), col),
+            Style::Square(norm) => self.square_pipe.add_frame(outer, inner, norm, col),
+            Style::Round(norm) => self.round_pipe.add_frame(outer, inner, norm, col),
+        }
     }
 }
 
