@@ -106,12 +106,14 @@ where
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
         // We call size_rules not because we want the result, but because our
         // spec requires that we do so before calling set_rect.
-        let _ = self.size_rules(tk, AxisInfo::new(false, None));
-        let _ = self.size_rules(tk, AxisInfo::new(true, Some(size.0)));
+        let _w = self.size_rules(tk, AxisInfo::new(false, None));
+        let _h = self.size_rules(tk, AxisInfo::new(true, Some(size.0)));
         let pos = Coord(0, 0);
         self.set_rect(tk, Rect { pos, size });
 
-        // println!("Window:");
+        // println!("Window size:\t{:?}", size);
+        // println!("Width rules:\t{:?}", _w);
+        // println!("Height rules:\t{:?}", _h);
         // self.w.print_hierarchy(0);
     }
 

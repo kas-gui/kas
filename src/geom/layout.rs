@@ -41,6 +41,12 @@ impl AxisInfo {
         self.is_vert
     }
 
+    /// Has a fixed dimension for one axis
+    #[inline]
+    pub fn has_fixed(&self) -> bool {
+        self.fixed
+    }
+
     /// Size of other axis, if fixed and (`vert == self.vert()`).
     #[inline]
     pub fn fixed(&self, vert: bool) -> Option<u32> {

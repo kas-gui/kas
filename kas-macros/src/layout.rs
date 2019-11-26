@@ -185,7 +185,7 @@ impl<'a> ImplLayout<'a> {
                 self.rows = 1;
 
                 self.size.append_all(quote! {
-                    if axis.horiz() {
+                    if axis.has_fixed() && axis.vert() {
                         axis.set_size(widths[#col]);
                     }
                     let child_rules = self.#ident.size_rules(tk, axis);
@@ -209,7 +209,7 @@ impl<'a> ImplLayout<'a> {
                 self.rows += 1;
 
                 self.size.append_all(quote! {
-                    if axis.vert() {
+                    if axis.has_fixed() && axis.horiz() {
                         axis.set_size(heights[#row]);
                     }
                     let child_rules = self.#ident.size_rules(tk, axis);
@@ -236,39 +236,47 @@ impl<'a> ImplLayout<'a> {
                 let col = c0 as usize;
                 let row = r0 as usize;
 
-                let width = if pos.2 <= 1 {
+                let set_width = if pos.2 <= 1 {
                     quote! { self.#data.0[#col] }
                 } else {
                     let ind = self.get_span(false, c0, c1);
                     quote! { col_spans[#ind] }
                 };
-                let height = if pos.3 <= 1 {
+                let set_height = if pos.3 <= 1 {
                     quote! { self.#data.1[#row] }
                 } else {
                     let ind = self.get_span(true, r0, r1);
                     quote! { row_spans[#ind] }
                 };
 
+                let mut get_width = quote! { widths[#col] };
+                for n in (col + 1)..(c1 as usize) {
+                    get_width.append_all(quote! { + widths[#n] });
+                }
+                let mut get_height = quote! { heights[#row] };
+                for n in (row + 1)..(r1 as usize) {
+                    get_height.append_all(quote! { + heights[#n] });
+                }
+
                 self.size.append_all(quote! {
+                    if axis.has_fixed() {
+                        if axis.horiz() {
+                            axis.set_size(#get_height)
+                        } else {
+                            axis.set_size(#get_width)
+                        }
+                    }
                     let child_rules = self.#ident.size_rules(tk, axis);
                     if axis.horiz() {
-                        #width = #width.max(child_rules);
+                        #set_width = #set_width.max(child_rules);
                     } else {
-                        #height = #height.max(child_rules);
+                        #set_height = #set_height.max(child_rules);
                     }
                 });
 
-                let mut width = quote! { widths[#col] };
-                for n in (col + 1)..(c1 as usize) {
-                    width.append_all(quote! { + widths[#n] });
-                }
-                let mut height = quote! { heights[#row] };
-                for n in (row + 1)..(r1 as usize) {
-                    height.append_all(quote! { + heights[#n] });
-                }
                 self.set_rect.append_all(quote! {
                     crect.pos = rect.pos + Coord(col_pos[#col], row_pos[#row]);
-                    crect.size = Size(#width, #height);
+                    crect.size = Size(#get_width, #get_height);
                     self.#ident.set_rect(tk, crect);
                 });
             }
@@ -346,6 +354,15 @@ impl<'a> ImplLayout<'a> {
                 }
             },
             Layout::Grid => quote! {
+                // TODO: again, this could be cached:
+                let mut widths = [0; #cols];
+                let mut heights = [0; #rows];
+                if let Some(size) = axis.fixed(false) {
+                    SizeRules::solve_seq(&mut widths, &self.#data.0, size);
+                } else if let Some(size) = axis.fixed(true) {
+                    SizeRules::solve_seq(&mut heights, &self.#data.1, size);
+                }
+
                 if axis.horiz() {
                     for n in 0..#cols {
                         self.#data.0[n] = SizeRules::EMPTY;
