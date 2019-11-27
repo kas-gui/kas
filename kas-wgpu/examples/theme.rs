@@ -49,7 +49,7 @@ thread_local! {
     static BACKGROUND: Cell<Colour> = Cell::new(Colour::grey(1.0));
 }
 
-impl<D: DrawFlat + DrawSquare + DrawRound + DrawText> Theme for ColouredTheme<D> {
+impl<D: Draw + DrawText> Theme for ColouredTheme<D> {
     type Draw = D;
 
     fn set_dpi_factor(&mut self, factor: f32) {
