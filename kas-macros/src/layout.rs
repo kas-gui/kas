@@ -341,7 +341,7 @@ impl<'a> ImplLayout<'a> {
             Layout::Horizontal => quote! {
                 let mut rules = SizeRules::EMPTY;
                 let mut widths = [0; #cols];
-                if let Some(size) = axis.fixed(false) {
+                if let Some(size) = axis.fixed(true) {
                     // TODO: cache this for use by set_rect?
                     SizeRules::solve_seq(&mut widths, &self.#data.0, size);
                 }
@@ -349,7 +349,7 @@ impl<'a> ImplLayout<'a> {
             Layout::Vertical => quote! {
                 let mut rules = SizeRules::EMPTY;
                 let mut heights = [0; #rows];
-                if let Some(size) = axis.fixed(true) {
+                if let Some(size) = axis.fixed(false) {
                     SizeRules::solve_seq(&mut heights, &self.#data.1, size);
                 }
             },
@@ -357,9 +357,9 @@ impl<'a> ImplLayout<'a> {
                 // TODO: again, this could be cached:
                 let mut widths = [0; #cols];
                 let mut heights = [0; #rows];
-                if let Some(size) = axis.fixed(false) {
+                if let Some(size) = axis.fixed(true) {
                     SizeRules::solve_seq(&mut widths, &self.#data.0, size);
-                } else if let Some(size) = axis.fixed(true) {
+                } else if let Some(size) = axis.fixed(false) {
                     SizeRules::solve_seq(&mut heights, &self.#data.1, size);
                 }
 
