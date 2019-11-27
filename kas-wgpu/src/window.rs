@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use kas::draw::Theme;
 use kas::event::Callback;
-use kas::geom::{AxisInfo, Margins, Size, SizeRules};
+use kas::geom::{AxisInfo, Size, SizeRules};
 use kas::{event, TkAction, Widget};
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
@@ -270,8 +270,12 @@ impl<T: Theme<Draw = DrawPipe>> kas::TkWindow for TkWindow<T> {
         self.theme.size_rules(&mut self.draw_pipe, widget, axis)
     }
 
-    fn margins(&self, widget: &dyn Widget) -> Margins {
-        self.theme.margins(widget)
+    fn inner_margin(&self, widget: &dyn Widget, axis_is_vertical: bool) -> u32 {
+        self.theme.inner_margin(widget, axis_is_vertical)
+    }
+
+    fn child_margins(&self, widget: &dyn Widget) -> (Size, Size, Size) {
+        self.theme.child_margins(widget)
     }
 
     #[inline]

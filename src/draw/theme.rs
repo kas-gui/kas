@@ -10,7 +10,7 @@
 use rusttype::Font;
 
 use kas::draw::*;
-use kas::geom::{AxisInfo, Margins, SizeRules};
+use kas::geom::{AxisInfo, Size, SizeRules};
 use kas::{event, Widget};
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -68,23 +68,27 @@ pub trait Theme: Clone {
     /// Background colour
     fn clear_colour(&self) -> Colour;
 
-    /// Margin and inter-row/column dimensions
+    /// Margin between child widgets
     ///
-    /// Controls how much extra space is allocated to this widget. This is added
-    /// to any size requested via [`Theme::size_rules`], and is most useful
-    /// in providing spacing around and between child widgets.
+    /// This is only applicable to parents with multiple child widgets.
+    fn inner_margin(&self, widget: &dyn Widget, axis_is_vertical: bool) -> u32;
+
+    /// Margins around child widgets
     ///
-    /// Note that widget drawing affects the entire area allocated by
-    /// `size_rules + margins` and is not offset for margins.
-    fn margins(&self, widget: &dyn Widget) -> Margins;
+    /// Returns three components: size of the top-left margin, size of
+    /// inter-widget margins, size of the bottom-right margin.
+    ///
+    /// These must match the margins returned by `size_rules` and `inner_margin`
+    /// for correct operation.
+    fn child_margins(&self, widget: &dyn Widget) -> (Size, Size, Size);
 
     /// Widget dimensions
     ///
     /// Used to specify the dimension of a widget, based on class and contents.
+    /// This should include margins (except inter-child margins).
     ///
-    /// This method is *not* called on "parent" widgets (those with a layout
-    /// other than "derive"); these widgets can only specify margins via the
-    /// [`Theme::margins`] method.
+    /// On parent widgets, this should only return the size of margins and any
+    /// area dedicated to self.
     fn size_rules(&self, draw: &mut Self::Draw, widget: &dyn Widget, axis: AxisInfo) -> SizeRules;
 
     /// Draw a widget

@@ -49,6 +49,13 @@ impl From<Coord> for PhysicalPosition {
     }
 }
 
+impl std::ops::AddAssign<Size> for Coord {
+    fn add_assign(&mut self, rhs: Size) {
+        self.0 += rhs.0 as i32;
+        self.1 += rhs.1 as i32;
+    }
+}
+
 /// A `(w, h)` size.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Size(pub u32, pub u32);
@@ -103,6 +110,20 @@ impl std::ops::Sub for Size {
 
     fn sub(self, other: Self) -> Self {
         Size(self.0 - other.0, self.1 - other.1)
+    }
+}
+
+impl std::ops::AddAssign for Size {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0;
+        self.1 += rhs.1;
+    }
+}
+
+impl std::ops::SubAssign for Size {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0;
+        self.1 -= rhs.1;
     }
 }
 

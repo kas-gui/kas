@@ -14,7 +14,7 @@
 //!
 //! [winit]: https://github.com/rust-windowing/winit
 
-use crate::geom::{AxisInfo, Margins, SizeRules};
+use crate::geom::{AxisInfo, Size, SizeRules};
 use crate::{event, Widget};
 
 /// Toolkit actions needed after event handling, if any.
@@ -59,11 +59,19 @@ pub trait TkWindow {
     /// [`crate::geom::SizeRules`].
     fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules;
 
-    /// Margin dimensions
+    /// Margin between child widgets
     ///
-    /// See documentation of [`crate::draw::Theme`] and
-    /// [`crate::geom::Margins`].
-    fn margins(&self, widget: &dyn Widget) -> Margins;
+    /// This is only applicable to parents with multiple child widgets.
+    fn inner_margin(&self, widget: &dyn Widget, axis_is_vertical: bool) -> u32;
+
+    /// Margins around child widgets
+    ///
+    /// Returns three components: size of the top-left margin, size of
+    /// inter-widget margins, size of the bottom-right margin.
+    ///
+    /// These must match the margins returned by `size_rules` and `inner_margin`
+    /// for correct operation.
+    fn child_margins(&self, widget: &dyn Widget) -> (Size, Size, Size);
 
     /// Notify that a widget must be redrawn
     fn redraw(&mut self, widget: &dyn Widget);

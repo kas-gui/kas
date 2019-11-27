@@ -14,7 +14,7 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use kas::class::{Align, Class};
 use kas::draw::*;
-use kas::geom::{AxisInfo, Margins, SizeRules};
+use kas::geom::{AxisInfo, Size, SizeRules};
 use kas::{event, Widget};
 
 use crate::draw::*;
@@ -101,14 +101,6 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
         BACKGROUND
     }
 
-    fn margins(&self, widget: &dyn Widget) -> Margins {
-        match widget.class() {
-            Class::Frame => Margins::with_margin(self.frame_size as i32, 0),
-            Class::Container | Class::Window => Margins::with_margin(0, 0),
-            _ => Margins::with_margin(self.margin as i32, 0),
-        }
-    }
-
     fn size_rules(&self, draw: &mut D, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
         let font_scale = self.font_scale;
         let line_height = font_scale as u32;
@@ -137,8 +129,9 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
                 .unwrap_or(0)
         };
 
-        match widget.class() {
-            Class::Container | Class::Frame | Class::Window => SizeRules::EMPTY, // not important
+        let inner = match widget.class() {
+            Class::Frame => return SizeRules::fixed(self.frame_size as u32),
+            Class::Container | Class::Window => return SizeRules::EMPTY,
             Class::Label(_) => {
                 if axis.horiz() {
                     let min = 3 * line_height;
@@ -169,6 +162,22 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
                 let frame = 2 * self.frame_size as u32;
                 SizeRules::fixed(line_height + frame)
             }
+        };
+        let margin = SizeRules::fixed(2 * self.margin as u32);
+        inner + margin
+    }
+
+    fn inner_margin(&self, _: &dyn Widget, _: bool) -> u32 {
+        0
+    }
+
+    fn child_margins(&self, widget: &dyn Widget) -> (Size, Size, Size) {
+        match widget.class() {
+            Class::Frame => {
+                let f = self.frame_size as u32;
+                (Size::uniform(f), Size::ZERO, Size::uniform(f))
+            }
+            _ => (Size::ZERO, Size::ZERO, Size::ZERO),
         }
     }
 
