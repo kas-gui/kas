@@ -32,6 +32,7 @@ pub mod class;
 pub mod draw;
 pub mod event;
 pub mod geom;
+pub mod layout;
 pub mod widget;
 
 // macro re-exports

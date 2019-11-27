@@ -57,6 +57,12 @@ impl AxisInfo {
         }
     }
 
+    /// Size of other axis, if applicable
+    #[inline]
+    pub fn other(&self) -> u32 {
+        self.other
+    }
+
     /// Set size of fixed axis, if applicable
     #[inline]
     pub fn set_size(&mut self, size: u32) {
