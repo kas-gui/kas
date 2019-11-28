@@ -66,7 +66,7 @@ impl<'a> FixedGridSolver<'a> {
         assert!(widths.iter().all(|w| *w == 0));
         assert!(heights.iter().all(|w| *w == 0));
 
-        FixedGridSolver {
+        let mut solver = FixedGridSolver {
             axis,
             tk,
             widths,
@@ -75,12 +75,10 @@ impl<'a> FixedGridSolver<'a> {
             height_rules,
             col_span_rules,
             row_span_rules,
-        }
+        };
+        solver.prepare();
+        solver
     }
-}
-
-impl<'a> Sizer for FixedGridSolver<'a> {
-    type ChildInfo = GridChildInfo;
 
     fn prepare(&mut self) {
         if self.axis.has_fixed {
@@ -102,6 +100,10 @@ impl<'a> Sizer for FixedGridSolver<'a> {
             }
         }
     }
+}
+
+impl<'a> Sizer for FixedGridSolver<'a> {
+    type ChildInfo = GridChildInfo;
 
     fn for_child<C: Layout>(&mut self, child_info: Self::ChildInfo, child: &mut C) {
         if self.axis.has_fixed {

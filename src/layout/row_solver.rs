@@ -33,13 +33,19 @@ impl<'a> FixedRowSolver<'a> {
         vertical: bool,
         axis: AxisInfo,
         tk: &'a mut (dyn TkWindow + 'a),
-        widths: &'a mut [u32],
+        mut widths: &'a mut [u32],
         width_rules: &'a mut [SizeRules],
     ) -> Self {
         assert!(widths.len() + 1 == width_rules.len());
         assert!(widths.iter().all(|w| *w == 0));
 
         let axis_is_vertical = axis.vertical ^ vertical;
+
+        if axis.has_fixed && axis_is_vertical {
+            // TODO: cache this for use by set_rect?
+            SizeRules::solve_seq(&mut widths, width_rules, axis.other_axis);
+        }
+
         FixedRowSolver {
             axis,
             tk,
@@ -54,13 +60,6 @@ impl<'a> FixedRowSolver<'a> {
 impl<'a> Sizer for FixedRowSolver<'a> {
     /// `ChildInfo` should contain the child index in the sequence
     type ChildInfo = usize;
-
-    fn prepare(&mut self) {
-        if self.axis.has_fixed && self.axis_is_vertical {
-            // TODO: cache this for use by set_rect?
-            SizeRules::solve_seq(&mut self.widths, self.width_rules, self.axis.other_axis);
-        }
-    }
 
     fn for_child<C: Layout>(&mut self, child_info: Self::ChildInfo, child: &mut C) {
         if self.axis.has_fixed && self.axis_is_vertical {

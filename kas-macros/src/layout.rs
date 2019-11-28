@@ -419,7 +419,6 @@ impl<'a> ImplLayout<'a> {
                 use kas::layout::{AxisInfo, Sizer, SizeRules};
 
                 #size_pre
-                solver.prepare();
                 #size
                 #size_post
 

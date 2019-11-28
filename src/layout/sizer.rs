@@ -13,8 +13,6 @@ use crate::{Layout, TkWindow};
 pub trait Sizer {
     /// Type required by [`Sizer::for_child`] (see implementation documentation)
     type ChildInfo;
-    /// Called before [`Sizer::for_child`]
-    fn prepare(&mut self);
     /// Called once for each child. For most layouts the order is important.
     fn for_child<C: Layout>(&mut self, child_info: Self::ChildInfo, child: &mut C);
     /// Called at the end to output [`SizeRules`].
