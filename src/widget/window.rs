@@ -9,8 +9,8 @@ use std::fmt::{self, Debug};
 
 use crate::class::Class;
 use crate::event::{Callback, EmptyMsg, Event, Handler};
-use crate::geom::{AxisInfo, Coord, Rect, Size, SizeRules};
-use crate::layout;
+use crate::geom::{Coord, Rect, Size};
+use crate::layout::{self, AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::{Core, CoreData, Layout, TkWindow, Widget};
 

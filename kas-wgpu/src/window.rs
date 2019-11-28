@@ -9,7 +9,8 @@ use std::time::{Duration, Instant};
 
 use kas::draw::Theme;
 use kas::event::Callback;
-use kas::geom::{AxisInfo, Size, SizeRules};
+use kas::geom::Size;
+use kas::layout::{AxisInfo, SizeRules};
 use kas::{event, TkAction, Widget};
 use winit::dpi::LogicalSize;
 use winit::error::OsError;

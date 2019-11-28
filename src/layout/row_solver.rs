@@ -5,10 +5,8 @@
 
 //! Row / column solver
 
-use crate::geom::{AxisInfo, SizeRules};
+use super::{AxisInfo, SizeRules, Sizer};
 use crate::{Layout, TkWindow};
-
-use super::Sizer;
 
 /// A [`Sizer`] for rows (and, without loss of generality, for columns).
 ///

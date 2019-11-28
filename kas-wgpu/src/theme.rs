@@ -14,7 +14,8 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use kas::class::{Align, Class};
 use kas::draw::*;
-use kas::geom::{AxisInfo, Size, SizeRules};
+use kas::geom::Size;
+use kas::layout::{AxisInfo, SizeRules};
 use kas::{event, Widget};
 
 use crate::draw::*;

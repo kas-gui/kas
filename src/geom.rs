@@ -5,9 +5,6 @@
 
 //! Geometry data types
 
-mod layout;
-
-pub use layout::*;
 #[cfg(feature = "winit")]
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 

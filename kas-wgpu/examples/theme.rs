@@ -10,7 +10,8 @@ use std::cell::Cell;
 
 use kas::draw::*;
 use kas::event::{self, EmptyMsg};
-use kas::geom::{AxisInfo, Size, SizeRules};
+use kas::geom::Size;
+use kas::layout::{AxisInfo, SizeRules};
 use kas::macros::{make_widget, EmptyMsg};
 use kas::widget::*;
 use kas::{TkWindow, Widget};

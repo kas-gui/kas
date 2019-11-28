@@ -35,9 +35,9 @@ pub(crate) fn derive(
             fn size_rules(
                 &mut self,
                 tk: &mut dyn kas::TkWindow,
-                axis: kas::geom::AxisInfo
+                axis: kas::layout::AxisInfo
             )
-                -> kas::geom::SizeRules
+                -> kas::layout::SizeRules
             {
                 (0, 0) + tk.size_rules(self, axis)
             }
@@ -62,9 +62,9 @@ pub(crate) fn derive(
             fn size_rules(
                 &mut self,
                 tk: &mut dyn kas::TkWindow,
-                axis: kas::geom::AxisInfo
+                axis: kas::layout::AxisInfo
             )
-                -> kas::geom::SizeRules
+                -> kas::layout::SizeRules
             {
                 tk.size_rules(self, axis)
             }
@@ -86,9 +86,9 @@ pub(crate) fn derive(
             fn size_rules(
                 &mut self,
                 tk: &mut dyn kas::TkWindow,
-                axis: kas::geom::AxisInfo
+                axis: kas::layout::AxisInfo
             )
-                -> kas::geom::SizeRules
+                -> kas::layout::SizeRules
             {
                 self.#ident.size_rules(tk, axis) + tk.size_rules(self, axis)
             }
@@ -298,12 +298,12 @@ impl<'a> ImplLayout<'a> {
         });
 
         let horiz_type = if self.layout.has_horizontal() {
-            quote! { [kas::geom::SizeRules; #cols + 1] }
+            quote! { [kas::layout::SizeRules; #cols + 1] }
         } else {
             quote! { () }
         };
         let vert_type = if self.layout.has_vertical() {
-            quote! { [kas::geom::SizeRules; #rows + 1] }
+            quote! { [kas::layout::SizeRules; #rows + 1] }
         } else {
             quote! { () }
         };
@@ -421,11 +421,11 @@ impl<'a> ImplLayout<'a> {
         }
 
         let fns = quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWindow, mut axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWindow, mut axis: kas::layout::AxisInfo) -> kas::layout::SizeRules {
                 use std::iter;
                 use kas::Core;
-                use kas::geom::{AxisInfo, Size, SizeRules};
-                use kas::layout::Sizer;
+                use kas::geom::{Size};
+                use kas::layout::{AxisInfo, Sizer, SizeRules};
 
                 #size_pre
                 solver.prepare();
@@ -441,7 +441,8 @@ impl<'a> ImplLayout<'a> {
 
             fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, mut rect: kas::geom::Rect) {
                 use kas::Core;
-                use kas::geom::{Coord, Size, SizeRules, Rect};
+                use kas::geom::{Coord, Size, Rect};
+                use kas::layout::SizeRules;
                 self.core_data_mut().rect = rect;
                 let margins = tk.child_margins(self);
                 rect.pos += margins.0;

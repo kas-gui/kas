@@ -3,72 +3,9 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Data types specific to the layout engine
+//! [`SizeRules`] type
 
-/// Used by the layout engine to specify the axis of interest.
-///
-/// The layout engine works on a single axis at a time, and when doing so may
-/// provide a fixed size for the other axis.
-#[derive(Copy, Clone, Debug)]
-pub struct AxisInfo {
-    is_vert: bool,
-    fixed: bool,
-    other: u32,
-}
-
-impl AxisInfo {
-    /// Construct an instance
-    #[inline]
-    pub fn new(vert: bool, fixed: Option<u32>) -> Self {
-        AxisInfo {
-            is_vert: vert,
-            fixed: fixed.is_some(),
-            other: fixed.unwrap_or(0),
-        }
-    }
-
-    /// Adjust horizontal axis
-    #[inline]
-    pub fn horiz(&self) -> bool {
-        !self.is_vert
-    }
-
-    /// Adjust vertical axis
-    #[inline]
-    pub fn vert(&self) -> bool {
-        self.is_vert
-    }
-
-    /// Has a fixed dimension for one axis
-    #[inline]
-    pub fn has_fixed(&self) -> bool {
-        self.fixed
-    }
-
-    /// Size of other axis, if fixed and (`vert == self.vert()`).
-    #[inline]
-    pub fn fixed(&self, vert: bool) -> Option<u32> {
-        if vert == self.is_vert && self.fixed {
-            Some(self.other)
-        } else {
-            None
-        }
-    }
-
-    /// Size of other axis, if applicable
-    #[inline]
-    pub fn other(&self) -> u32 {
-        self.other
-    }
-
-    /// Set size of fixed axis, if applicable
-    #[inline]
-    pub fn set_size(&mut self, size: u32) {
-        self.other = size;
-    }
-}
-
-/// Return value of [`crate::Layout::size_rules`].
+/// Return value of [`Layout::size_rules`] and [`TkWindow::size_rules`].
 ///
 /// This struct conveys properties such as the minimum size and preferred size
 /// of the widgets being queried.

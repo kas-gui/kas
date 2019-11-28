@@ -9,7 +9,8 @@
 //! customisation.
 
 use crate::event::{Callback, EmptyMsg};
-use crate::geom::{AxisInfo, Coord, Rect, Size};
+use crate::geom::{Coord, Rect, Size};
+use crate::layout::AxisInfo;
 use crate::macros::{EmptyMsg, Widget};
 use crate::widget::{Label, TextButton};
 use crate::{class::Class, CoreData, Layout, LayoutData, TkAction, TkWindow, Window};

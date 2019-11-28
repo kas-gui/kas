@@ -14,7 +14,8 @@
 //!
 //! [winit]: https://github.com/rust-windowing/winit
 
-use crate::geom::{AxisInfo, Size, SizeRules};
+use crate::geom::Size;
+use crate::layout::{AxisInfo, SizeRules};
 use crate::{event, Widget};
 
 /// Toolkit actions needed after event handling, if any.

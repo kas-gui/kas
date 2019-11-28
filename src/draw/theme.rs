@@ -9,8 +9,9 @@
 
 use rusttype::Font;
 
+use crate::layout::{AxisInfo, SizeRules};
 use kas::draw::*;
-use kas::geom::{AxisInfo, Size, SizeRules};
+use kas::geom::Size;
 use kas::{event, Widget};
 
 /// A *theme* provides widget sizing and drawing implementations.

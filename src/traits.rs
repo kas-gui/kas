@@ -8,7 +8,8 @@
 use std::fmt;
 
 use crate::event::{Callback, EmptyMsg, Handler};
-use crate::geom::{AxisInfo, Rect, Size, SizeRules};
+use crate::geom::{Rect, Size};
+use crate::layout::{AxisInfo, SizeRules};
 use crate::toolkit::TkWindow;
 use crate::{CoreData, WidgetId};
 
