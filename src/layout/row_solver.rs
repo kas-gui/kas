@@ -75,7 +75,11 @@ impl<'a> Sizer for FixedRowSolver<'a> {
         }
     }
 
-    fn finish<Iter: Iterator<Item = (usize, usize, usize)>>(self, _: Iter) -> SizeRules {
+    fn finish<ColIter, RowIter>(self, _: ColIter, _: RowIter) -> SizeRules
+    where
+        ColIter: Iterator<Item = (usize, usize, usize)>,
+        RowIter: Iterator<Item = (usize, usize, usize)>,
+    {
         let cols = self.width_rules.len() - 1;
         if !self.axis_is_vertical {
             self.width_rules[cols] = self.rules;

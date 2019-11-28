@@ -333,10 +333,6 @@ impl<'a> ImplLayout<'a> {
                 let mut heights = [0; #rows];
                 let mut col_spans = [SizeRules::EMPTY; #num_col_spans];
                 let mut row_spans = [SizeRules::EMPTY; #num_row_spans];
-                let spans = match axis.vertical() {
-                    false => &mut col_spans[..],
-                    true => &mut row_spans[..],
-                };
                 let mut solver = kas::layout::FixedGridSolver::new(
                     axis,
                     tk,
@@ -344,17 +340,18 @@ impl<'a> ImplLayout<'a> {
                     &mut heights[..],
                     &mut self.#data.0,
                     &mut self.#data.1,
-                    spans
+                    &mut col_spans[..],
+                    &mut row_spans[..],
                 );
             },
         };
 
         let size_post = match self.layout {
             Layout::Horizontal => quote! {
-                let rules = solver.finish(iter::empty());
+                let rules = solver.finish(iter::empty(), iter::empty());
             },
             Layout::Vertical => quote! {
-                let rules = solver.finish(iter::empty());
+                let rules = solver.finish(iter::empty(), iter::empty());
             },
             Layout::Grid => {
                 let mut horiz = quote! {};
@@ -377,11 +374,7 @@ impl<'a> ImplLayout<'a> {
                 }
 
                 quote! {
-                    let rules = if !axis.vertical() {
-                        solver.finish(iter::empty() #horiz)
-                    } else {
-                        solver.finish(iter::empty() #vert)
-                    };
+                    let rules = solver.finish(iter::empty() #horiz, iter::empty() # vert);
                 }
             }
         };

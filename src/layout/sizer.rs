@@ -20,7 +20,10 @@ pub trait Sizer {
     /// Called at the end to output [`SizeRules`].
     ///
     /// Note that this does not include margins!
-    fn finish<Iter: Iterator<Item = (usize, usize, usize)>>(self, span_iter: Iter) -> SizeRules;
+    fn finish<ColIter, RowIter>(self, col_spans: ColIter, row_spans: RowIter) -> SizeRules
+    where
+        ColIter: Iterator<Item = (usize, usize, usize)>,
+        RowIter: Iterator<Item = (usize, usize, usize)>;
 }
 
 /// Solve `widget` for `SizeRules` on both axes, horizontal first.

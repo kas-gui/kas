@@ -36,7 +36,8 @@ pub struct FixedGridSolver<'a> {
     heights: &'a mut [u32],
     width_rules: &'a mut [SizeRules],
     height_rules: &'a mut [SizeRules],
-    span_rules: &'a mut [SizeRules],
+    col_span_rules: &'a mut [SizeRules],
+    row_span_rules: &'a mut [SizeRules],
 }
 
 impl<'a> FixedGridSolver<'a> {
@@ -48,8 +49,8 @@ impl<'a> FixedGridSolver<'a> {
     /// - `heights`: temporary storage of length *rows*, initialised to 0
     /// - `width_rules`: persistent storage of length *columns + 1*
     /// - `height_rules`: persistent storage of length *rows + 1*
-    /// - `span_rules`: temporary storage of length *column spans*
-    ///     (if horizontal axis) or *row spans* (if `axis.vertical`)
+    /// - `col_span_rules`: temporary storage of length *column spans*
+    /// - `row_span_rules`: temporary storage of length *row spans*
     pub fn new(
         axis: AxisInfo,
         tk: &'a mut (dyn TkWindow + 'a),
@@ -57,7 +58,8 @@ impl<'a> FixedGridSolver<'a> {
         heights: &'a mut [u32],
         width_rules: &'a mut [SizeRules],
         height_rules: &'a mut [SizeRules],
-        span_rules: &'a mut [SizeRules],
+        col_span_rules: &'a mut [SizeRules],
+        row_span_rules: &'a mut [SizeRules],
     ) -> Self {
         assert!(widths.len() + 1 == width_rules.len());
         assert!(heights.len() + 1 == height_rules.len());
@@ -71,7 +73,8 @@ impl<'a> FixedGridSolver<'a> {
             heights,
             width_rules,
             height_rules,
-            span_rules,
+            col_span_rules,
+            row_span_rules,
         }
     }
 }
@@ -115,25 +118,29 @@ impl<'a> Sizer for FixedGridSolver<'a> {
             if child_info.col_span_index == std::usize::MAX {
                 &mut self.width_rules[child_info.col]
             } else {
-                &mut self.span_rules[child_info.col_span_index]
+                &mut self.col_span_rules[child_info.col_span_index]
             }
         } else {
             if child_info.row_span_index == std::usize::MAX {
                 &mut self.height_rules[child_info.row]
             } else {
-                &mut self.span_rules[child_info.row_span_index]
+                &mut self.row_span_rules[child_info.row_span_index]
             }
         };
         *rules = rules.max(child_rules);
     }
 
-    fn finish<Iter: Iterator<Item = (usize, usize, usize)>>(self, span_iter: Iter) -> SizeRules {
+    fn finish<ColIter, RowIter>(self, col_spans: ColIter, row_spans: RowIter) -> SizeRules
+    where
+        ColIter: Iterator<Item = (usize, usize, usize)>,
+        RowIter: Iterator<Item = (usize, usize, usize)>,
+    {
         let cols = self.width_rules.len() - 1;
         let rows = self.height_rules.len() - 1;
 
         let rules;
         if !self.axis.vertical {
-            for span in span_iter {
+            for span in col_spans {
                 let start = span.0 as usize;
                 let end = span.1 as usize;
                 let ind = span.2 as usize;
@@ -141,7 +148,7 @@ impl<'a> Sizer for FixedGridSolver<'a> {
                 let sum = (start..end)
                     .map(|n| self.width_rules[n])
                     .fold(SizeRules::EMPTY, |x, y| x + y);
-                self.width_rules[start].set_at_least_op_sub(self.span_rules[ind], sum);
+                self.width_rules[start].set_at_least_op_sub(self.col_span_rules[ind], sum);
             }
 
             rules = self.width_rules[0..cols]
@@ -150,7 +157,7 @@ impl<'a> Sizer for FixedGridSolver<'a> {
                 .fold(SizeRules::EMPTY, |rules, item| rules + item);
             self.width_rules[cols] = rules;
         } else {
-            for span in span_iter {
+            for span in row_spans {
                 let start = span.0 as usize;
                 let end = span.1 as usize;
                 let ind = span.2 as usize;
@@ -158,7 +165,7 @@ impl<'a> Sizer for FixedGridSolver<'a> {
                 let sum = (start..end)
                     .map(|n| self.height_rules[n])
                     .fold(SizeRules::EMPTY, |x, y| x + y);
-                self.height_rules[start].set_at_least_op_sub(self.span_rules[ind], sum);
+                self.height_rules[start].set_at_least_op_sub(self.row_span_rules[ind], sum);
             }
 
             rules = self.height_rules[0..rows]
