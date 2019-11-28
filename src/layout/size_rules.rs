@@ -5,10 +5,63 @@
 
 //! [`SizeRules`] type
 
+use super::AxisInfo;
+use crate::geom::Size;
+
+/// Margin sizes
+///
+/// Return value of [`TkWindow::margins`].
+///
+/// Used by the layout system for margins around child widgets. Margins may be
+/// drawn in and handle events like any other widget area.
+///
+/// This is *only* used for container widgets; for all other widgets the
+/// [`Layout::margins`] method is never called.
+pub struct Margins {
+    /// Size of top/left margin
+    pub first: Size,
+    /// Size of bottom/right margin
+    pub last: Size,
+    /// Size of inter-widget horizontal/vertical margins
+    pub inter: Size,
+}
+
+impl Margins {
+    /// Zero-sized margins
+    pub const ZERO: Margins = Margins::uniform(0, 0);
+
+    /// Margins with equal size on each edge, and on each axis.
+    pub const fn uniform(edge: u32, inter: u32) -> Self {
+        Margins {
+            first: Size::uniform(edge),
+            last: Size::uniform(edge),
+            inter: Size::uniform(inter),
+        }
+    }
+
+    /// Generate `SizeRules` from self
+    ///
+    /// Assumes zero-sized content (usually added separately).
+    ///
+    /// Requires the number of child columns and rows.
+    pub fn size_rules(&self, axis_info: AxisInfo, columns: u32, rows: u32) -> SizeRules {
+        SizeRules::fixed(if !axis_info.vertical {
+            self.first.0 + self.last.0 + self.inter.0 * columns.saturating_sub(1)
+        } else {
+            self.first.1 + self.last.1 + self.inter.1 * rows.saturating_sub(1)
+        })
+    }
+}
+
+/// Widget sizing information
+///
 /// Return value of [`Layout::size_rules`] and [`TkWindow::size_rules`].
 ///
 /// This struct conveys properties such as the minimum size and preferred size
 /// of the widgets being queried.
+///
+/// This is *not* used for container widgets; for these,
+/// [`TkWindow::size_rules`] is never called!
 #[derive(Copy, Clone, Debug, Default)]
 pub struct SizeRules {
     // minimum size

@@ -10,8 +10,7 @@ use std::time::{Duration, Instant};
 use kas::draw::Theme;
 use kas::event::Callback;
 use kas::geom::Size;
-use kas::layout::{AxisInfo, SizeRules};
-use kas::{event, TkAction, Widget};
+use kas::{event, layout, TkAction, Widget};
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
@@ -267,16 +266,12 @@ impl<T: Theme<Draw = DrawPipe>> kas::TkWindow for TkWindow<T> {
         }
     }
 
-    fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
+    fn margins(&self, widget: &dyn Widget) -> layout::Margins {
+        self.theme.margins(widget)
+    }
+
+    fn size_rules(&mut self, widget: &dyn Widget, axis: layout::AxisInfo) -> layout::SizeRules {
         self.theme.size_rules(&mut self.draw_pipe, widget, axis)
-    }
-
-    fn inner_margin(&self, widget: &dyn Widget, axis_is_vertical: bool) -> u32 {
-        self.theme.inner_margin(widget, axis_is_vertical)
-    }
-
-    fn child_margins(&self, widget: &dyn Widget) -> (Size, Size, Size) {
-        self.theme.child_margins(widget)
     }
 
     #[inline]

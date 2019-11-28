@@ -14,8 +14,7 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use kas::class::{Align, Class};
 use kas::draw::*;
-use kas::geom::Size;
-use kas::layout::{AxisInfo, SizeRules};
+use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::{event, Widget};
 
 use crate::draw::*;
@@ -131,8 +130,7 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
         };
 
         let inner = match widget.class() {
-            Class::Frame => return SizeRules::fixed(self.frame_size as u32),
-            Class::Container | Class::Window => return SizeRules::EMPTY,
+            Class::Frame | Class::Container | Class::Window => return SizeRules::EMPTY,
             Class::Label(_) => {
                 if !axis.vertical() {
                     let min = 3 * line_height;
@@ -168,17 +166,10 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
         inner + margin
     }
 
-    fn inner_margin(&self, _: &dyn Widget, _: bool) -> u32 {
-        0
-    }
-
-    fn child_margins(&self, widget: &dyn Widget) -> (Size, Size, Size) {
+    fn margins(&self, widget: &dyn Widget) -> Margins {
         match widget.class() {
-            Class::Frame => {
-                let f = self.frame_size as u32;
-                (Size::uniform(f), Size::ZERO, Size::uniform(f))
-            }
-            _ => (Size::ZERO, Size::ZERO, Size::ZERO),
+            Class::Frame => Margins::uniform(self.frame_size as u32, 0),
+            _ => Margins::ZERO,
         }
     }
 

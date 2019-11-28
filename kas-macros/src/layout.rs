@@ -39,7 +39,7 @@ pub(crate) fn derive(
             )
                 -> kas::layout::SizeRules
             {
-                (0, 0) + tk.size_rules(self, axis)
+                (0, 0)
             }
         };
         let ty = quote! { type Data = (); };
@@ -90,15 +90,15 @@ pub(crate) fn derive(
             )
                 -> kas::layout::SizeRules
             {
-                self.#ident.size_rules(tk, axis) + tk.size_rules(self, axis)
+                self.#ident.size_rules(tk, axis) + tk.margins(self).size_rules(axis, 0, 0)
             }
 
             fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, mut rect: kas::geom::Rect) {
                 use kas::Core;
                 self.core_data_mut().rect = rect;
-                let margins = tk.child_margins(self);
-                rect.pos += margins.0;
-                rect.size -= (margins.0 + margins.2);
+                let margins = tk.margins(self);
+                rect.pos += margins.first;
+                rect.size -= (margins.first + margins.last);
                 self.#ident.set_rect(tk, rect);
             }
         };
@@ -192,7 +192,7 @@ impl<'a> ImplLayout<'a> {
                 self.set_rect.append_all(quote! {
                     crect.size.0 = widths[#col];
                     self.#ident.set_rect(tk, crect);
-                    crect.pos.0 += (crect.size.0 + (margins.1).0) as i32;
+                    crect.pos.0 += (crect.size.0 + margins.inter.0) as i32;
                 });
             }
             Layout::Vertical => {
@@ -207,7 +207,7 @@ impl<'a> ImplLayout<'a> {
                 self.set_rect.append_all(quote! {
                     crect.size.1 = heights[#row];
                     self.#ident.set_rect(tk, crect);
-                    crect.pos.1 += (crect.size.1 + (margins.1).1) as i32;
+                    crect.pos.1 += (crect.size.1 + margins.inter.1) as i32;
                 });
             }
             Layout::Grid => {
@@ -278,8 +278,6 @@ impl<'a> ImplLayout<'a> {
         let data = self.data;
         let cols = self.cols as usize;
         let rows = self.rows as usize;
-        let col_spacings = self.cols - 1;
-        let row_spacings = self.rows - 1;
         let mut col_spans = self.col_spans;
         let mut row_spans = self.row_spans;
         let num_col_spans = col_spans.len() as usize;
@@ -410,12 +408,12 @@ impl<'a> ImplLayout<'a> {
                 let mut pos = 0;
                 for n in 0..#cols {
                     col_pos[n] = pos;
-                    pos += (widths[n] + (margins.1).0) as i32;
+                    pos += (widths[n] + margins.inter.0) as i32;
                 }
                 pos = 0;
                 for n in 0..#rows {
                     row_pos[n] = pos;
-                    pos += (heights[n] + (margins.1).1) as i32;
+                    pos += (heights[n] + margins.inter.1) as i32;
                 }
             });
         }
@@ -432,11 +430,7 @@ impl<'a> ImplLayout<'a> {
                 #size
                 #size_post
 
-                let margins = tk.size_rules(self, axis) + match axis.vertical() {
-                    false => SizeRules::fixed(#col_spacings * tk.inner_margin(self, false)),
-                    true => SizeRules::fixed(#row_spacings * tk.inner_margin(self, false)),
-                };
-                rules + margins
+                rules + tk.margins(self).size_rules(axis, #cols as u32, #rows as u32)
             }
 
             fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, mut rect: kas::geom::Rect) {
@@ -444,9 +438,9 @@ impl<'a> ImplLayout<'a> {
                 use kas::geom::{Coord, Size, Rect};
                 use kas::layout::SizeRules;
                 self.core_data_mut().rect = rect;
-                let margins = tk.child_margins(self);
-                rect.pos += margins.0;
-                rect.size -= (margins.0 + margins.2);
+                let margins = tk.margins(self);
+                rect.pos += margins.first;
+                rect.size -= (margins.first + margins.last);
 
                 #set_rect_pre
                 #set_rect

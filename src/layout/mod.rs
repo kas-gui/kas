@@ -14,7 +14,7 @@ mod sizer;
 
 pub use grid_solver::{FixedGridSolver, GridChildInfo};
 pub use row_solver::FixedRowSolver;
-pub use size_rules::SizeRules;
+pub use size_rules::{Margins, SizeRules};
 pub use sizer::{solve, Sizer};
 
 /// Parameter type passed to [`Layout::size_rules`]

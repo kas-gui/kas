@@ -10,8 +10,7 @@ use std::cell::Cell;
 
 use kas::draw::*;
 use kas::event::{self, EmptyMsg};
-use kas::geom::Size;
-use kas::layout::{AxisInfo, SizeRules};
+use kas::layout;
 use kas::macros::{make_widget, EmptyMsg};
 use kas::widget::*;
 use kas::{TkWindow, Widget};
@@ -69,16 +68,17 @@ impl<D: Draw + DrawText> Theme for ColouredTheme<D> {
         BACKGROUND.with(|b| b.get())
     }
 
-    fn size_rules(&self, draw: &mut D, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
+    fn margins(&self, widget: &dyn Widget) -> layout::Margins {
+        self.inner.margins(widget)
+    }
+
+    fn size_rules(
+        &self,
+        draw: &mut Self::Draw,
+        widget: &dyn Widget,
+        axis: layout::AxisInfo,
+    ) -> layout::SizeRules {
         self.inner.size_rules(draw, widget, axis)
-    }
-
-    fn inner_margin(&self, widget: &dyn Widget, axis_is_vertical: bool) -> u32 {
-        self.inner.inner_margin(widget, axis_is_vertical)
-    }
-
-    fn child_margins(&self, widget: &dyn Widget) -> (Size, Size, Size) {
-        self.inner.child_margins(widget)
     }
 
     fn draw(&self, draw: &mut D, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
