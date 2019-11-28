@@ -49,7 +49,7 @@ impl<'a> FixedGridSolver<'a> {
     /// - `width_rules`: persistent storage of length *columns + 1*
     /// - `height_rules`: persistent storage of length *rows + 1*
     /// - `span_rules`: temporary storage of length *column spans*
-    ///     (if `axis.horiz()`) or *row spans* (if `axis.vert()`)
+    ///     (if horizontal axis) or *row spans* (if `axis.vertical`)
     pub fn new(
         axis: AxisInfo,
         tk: &'a mut (dyn TkWindow + 'a),
@@ -80,16 +80,16 @@ impl<'a> Sizer for FixedGridSolver<'a> {
     type ChildInfo = GridChildInfo;
 
     fn prepare(&mut self) {
-        if self.axis.has_fixed() {
+        if self.axis.has_fixed {
             // TODO: cache this for use by set_rect?
-            if self.axis.vert() {
-                SizeRules::solve_seq(&mut self.widths, &self.width_rules, self.axis.other());
+            if self.axis.vertical {
+                SizeRules::solve_seq(&mut self.widths, &self.width_rules, self.axis.other_axis);
             } else {
-                SizeRules::solve_seq(&mut self.heights, &self.height_rules, self.axis.other());
+                SizeRules::solve_seq(&mut self.heights, &self.height_rules, self.axis.other_axis);
             }
         }
 
-        if self.axis.horiz() {
+        if !self.axis.vertical {
             for n in 0..self.width_rules.len() {
                 self.width_rules[n] = SizeRules::EMPTY;
             }
@@ -101,21 +101,17 @@ impl<'a> Sizer for FixedGridSolver<'a> {
     }
 
     fn for_child<C: Layout>(&mut self, child_info: Self::ChildInfo, child: &mut C) {
-        if self.axis.has_fixed() {
-            if !self.axis.vert() {
-                self.axis.set_size(
-                    ((child_info.row + 1)..child_info.row_end)
-                        .fold(self.heights[child_info.row], |h, i| h + self.heights[i]),
-                );
+        if self.axis.has_fixed {
+            if !self.axis.vertical {
+                self.axis.other_axis = ((child_info.row + 1)..child_info.row_end)
+                    .fold(self.heights[child_info.row], |h, i| h + self.heights[i]);
             } else {
-                self.axis.set_size(
-                    ((child_info.col + 1)..child_info.col_end)
-                        .fold(self.widths[child_info.col], |w, i| w + self.widths[i]),
-                );
+                self.axis.other_axis = ((child_info.col + 1)..child_info.col_end)
+                    .fold(self.widths[child_info.col], |w, i| w + self.widths[i]);
             }
         }
         let child_rules = child.size_rules(self.tk, self.axis);
-        let rules = if !self.axis.vert() {
+        let rules = if !self.axis.vertical {
             if child_info.col_span_index == std::usize::MAX {
                 &mut self.width_rules[child_info.col]
             } else {
@@ -136,7 +132,7 @@ impl<'a> Sizer for FixedGridSolver<'a> {
         let rows = self.height_rules.len() - 1;
 
         let rules;
-        if !self.axis.vert() {
+        if !self.axis.vertical {
             for span in span_iter {
                 let start = span.0 as usize;
                 let end = span.1 as usize;

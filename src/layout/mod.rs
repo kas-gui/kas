@@ -15,4 +15,38 @@ mod sizer;
 pub use grid_solver::{FixedGridSolver, GridChildInfo};
 pub use row_solver::FixedRowSolver;
 pub use size_rules::SizeRules;
-pub use sizer::{solve, AxisInfo, Sizer};
+pub use sizer::{solve, Sizer};
+
+/// Parameter type passed to [`Layout::size_rules`]
+#[derive(Copy, Clone, Debug)]
+pub struct AxisInfo {
+    vertical: bool,
+    has_fixed: bool,
+    other_axis: u32,
+}
+
+impl AxisInfo {
+    fn new(vertical: bool, fixed: Option<u32>) -> Self {
+        AxisInfo {
+            vertical: vertical,
+            has_fixed: fixed.is_some(),
+            other_axis: fixed.unwrap_or(0),
+        }
+    }
+
+    /// True if the current axis is vertical, false if horizontal
+    #[inline]
+    pub fn vertical(&self) -> bool {
+        self.vertical
+    }
+
+    /// Size of other axis, if fixed and `vertical == self.vertical()`.
+    #[inline]
+    pub fn fixed(&self, vertical: bool) -> Option<u32> {
+        if vertical == self.vertical && self.has_fixed {
+            Some(self.other_axis)
+        } else {
+            None
+        }
+    }
+}

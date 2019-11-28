@@ -5,69 +5,9 @@
 
 //! Layout solver
 
-use super::SizeRules;
+use super::{AxisInfo, SizeRules};
 use crate::geom::Size;
 use crate::{Layout, TkWindow};
-
-/// Parameter type passed to [`Layout::size_rules`]
-#[derive(Copy, Clone, Debug)]
-pub struct AxisInfo {
-    is_vert: bool,
-    fixed: bool,
-    other: u32,
-}
-
-impl AxisInfo {
-    /// Construct an instance
-    #[inline]
-    pub fn new(vert: bool, fixed: Option<u32>) -> Self {
-        AxisInfo {
-            is_vert: vert,
-            fixed: fixed.is_some(),
-            other: fixed.unwrap_or(0),
-        }
-    }
-
-    /// Adjust horizontal axis
-    #[inline]
-    pub fn horiz(&self) -> bool {
-        !self.is_vert
-    }
-
-    /// Adjust vertical axis
-    #[inline]
-    pub fn vert(&self) -> bool {
-        self.is_vert
-    }
-
-    /// Has a fixed dimension for one axis
-    #[inline]
-    pub fn has_fixed(&self) -> bool {
-        self.fixed
-    }
-
-    /// Size of other axis, if fixed and (`vert == self.vert()`).
-    #[inline]
-    pub fn fixed(&self, vert: bool) -> Option<u32> {
-        if vert == self.is_vert && self.fixed {
-            Some(self.other)
-        } else {
-            None
-        }
-    }
-
-    /// Size of other axis, if applicable
-    #[inline]
-    pub fn other(&self) -> u32 {
-        self.other
-    }
-
-    /// Set size of fixed axis, if applicable
-    #[inline]
-    pub fn set_size(&mut self, size: u32) {
-        self.other = size;
-    }
-}
 
 /// A [`SizeRules`] solver for layouts
 pub trait Sizer {

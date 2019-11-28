@@ -335,7 +335,7 @@ impl<'a> ImplLayout<'a> {
                 let mut heights = [0; #rows];
                 let mut col_spans = [SizeRules::EMPTY; #num_col_spans];
                 let mut row_spans = [SizeRules::EMPTY; #num_row_spans];
-                let spans = match axis.vert() {
+                let spans = match axis.vertical() {
                     false => &mut col_spans[..],
                     true => &mut row_spans[..],
                 };
@@ -379,7 +379,7 @@ impl<'a> ImplLayout<'a> {
                 }
 
                 quote! {
-                    let rules = if axis.horiz() {
+                    let rules = if !axis.vertical() {
                         solver.finish(iter::empty() #horiz)
                     } else {
                         solver.finish(iter::empty() #vert)
@@ -432,7 +432,7 @@ impl<'a> ImplLayout<'a> {
                 #size
                 #size_post
 
-                let margins = tk.size_rules(self, axis) + match axis.vert() {
+                let margins = tk.size_rules(self, axis) + match axis.vertical() {
                     false => SizeRules::fixed(#col_spacings * tk.inner_margin(self, false)),
                     true => SizeRules::fixed(#row_spacings * tk.inner_margin(self, false)),
                 };

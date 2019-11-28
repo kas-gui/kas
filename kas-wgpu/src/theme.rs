@@ -134,7 +134,7 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
             Class::Frame => return SizeRules::fixed(self.frame_size as u32),
             Class::Container | Class::Window => return SizeRules::EMPTY,
             Class::Label(_) => {
-                if axis.horiz() {
+                if !axis.vertical() {
                     let min = 3 * line_height;
                     SizeRules::variable(min, bound(false).max(min))
                 } else {
@@ -143,7 +143,7 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
             }
             Class::Entry(_) => {
                 let frame = 2 * self.frame_size as u32;
-                if axis.horiz() {
+                if !axis.vertical() {
                     let min = 3 * line_height;
                     SizeRules::variable(min, bound(false).max(min)) + frame
                 } else {
@@ -152,7 +152,7 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
             }
             Class::Button(_) => {
                 let f = 2 * self.button_frame as u32;
-                if axis.horiz() {
+                if !axis.vertical() {
                     let min = 3 * line_height + f;
                     SizeRules::variable(min, bound(false).max(min))
                 } else {

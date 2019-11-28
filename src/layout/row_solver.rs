@@ -15,7 +15,7 @@ pub struct FixedRowSolver<'a> {
     // Generalisation implies that axis.vert() is incorrect
     axis: AxisInfo,
     tk: &'a mut dyn TkWindow,
-    axis_is_vert: bool,
+    axis_is_vertical: bool,
     rules: SizeRules,
     widths: &'a mut [u32],
     width_rules: &'a mut [SizeRules],
@@ -39,11 +39,11 @@ impl<'a> FixedRowSolver<'a> {
         assert!(widths.len() + 1 == width_rules.len());
         assert!(widths.iter().all(|w| *w == 0));
 
-        let axis_is_vert = axis.vert() ^ vertical;
+        let axis_is_vertical = axis.vertical ^ vertical;
         FixedRowSolver {
             axis,
             tk,
-            axis_is_vert,
+            axis_is_vertical,
             rules: SizeRules::EMPTY,
             widths,
             width_rules,
@@ -56,18 +56,18 @@ impl<'a> Sizer for FixedRowSolver<'a> {
     type ChildInfo = usize;
 
     fn prepare(&mut self) {
-        if self.axis.has_fixed() && self.axis_is_vert {
+        if self.axis.has_fixed && self.axis_is_vertical {
             // TODO: cache this for use by set_rect?
-            SizeRules::solve_seq(&mut self.widths, self.width_rules, self.axis.other());
+            SizeRules::solve_seq(&mut self.widths, self.width_rules, self.axis.other_axis);
         }
     }
 
     fn for_child<C: Layout>(&mut self, child_info: Self::ChildInfo, child: &mut C) {
-        if self.axis.has_fixed() && self.axis_is_vert {
-            self.axis.set_size(self.widths[child_info]);
+        if self.axis.has_fixed && self.axis_is_vertical {
+            self.axis.other_axis = self.widths[child_info];
         }
         let child_rules = child.size_rules(self.tk, self.axis);
-        if !self.axis_is_vert {
+        if !self.axis_is_vertical {
             self.width_rules[child_info] = child_rules;
             self.rules += child_rules;
         } else {
@@ -77,7 +77,7 @@ impl<'a> Sizer for FixedRowSolver<'a> {
 
     fn finish<Iter: Iterator<Item = (usize, usize, usize)>>(self, _: Iter) -> SizeRules {
         let cols = self.width_rules.len() - 1;
-        if !self.axis_is_vert {
+        if !self.axis_is_vertical {
             self.width_rules[cols] = self.rules;
         }
 

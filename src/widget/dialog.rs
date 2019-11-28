@@ -10,7 +10,7 @@
 
 use crate::event::{Callback, EmptyMsg};
 use crate::geom::{Coord, Rect, Size};
-use crate::layout::AxisInfo;
+use crate::layout;
 use crate::macros::{EmptyMsg, Widget};
 use crate::widget::{Label, TextButton};
 use crate::{class::Class, CoreData, Layout, LayoutData, TkAction, TkWindow, Window};
@@ -57,10 +57,7 @@ impl MessageBox {
 
 impl Window for MessageBox {
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
-        // We call size_rules not because we want the result, but because our
-        // spec requires that we do so before calling set_rect.
-        let _ = self.size_rules(tk, AxisInfo::new(false, None));
-        let _ = self.size_rules(tk, AxisInfo::new(true, Some(size.0)));
+        layout::solve(self, tk, size);
         let pos = Coord(0, 0);
         self.set_rect(tk, Rect { pos, size });
     }
