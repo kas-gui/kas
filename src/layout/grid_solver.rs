@@ -5,7 +5,7 @@
 
 //! Row / column solver
 
-use super::{AxisInfo, SizeRules, Sizer};
+use super::{AxisInfo, RulesSolver, SizeRules};
 use crate::{Layout, TkWindow};
 
 /// Per-child information
@@ -26,7 +26,7 @@ pub struct GridChildInfo {
     pub row_span_index: usize,
 }
 
-/// A [`Sizer`] for grids supporting cell-spans
+/// A [`RulesSolver`] for grids supporting cell-spans
 ///
 /// This implementation relies on the caller to provide storage for solver data.
 pub struct FixedGridSolver<'a> {
@@ -102,7 +102,7 @@ impl<'a> FixedGridSolver<'a> {
     }
 }
 
-impl<'a> Sizer for FixedGridSolver<'a> {
+impl<'a> RulesSolver for FixedGridSolver<'a> {
     type ChildInfo = GridChildInfo;
 
     fn for_child<C: Layout>(&mut self, child_info: Self::ChildInfo, child: &mut C) {

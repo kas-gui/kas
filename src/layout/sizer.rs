@@ -10,8 +10,8 @@ use crate::geom::Size;
 use crate::{Layout, TkWindow};
 
 /// A [`SizeRules`] solver for layouts
-pub trait Sizer {
-    /// Type required by [`Sizer::for_child`] (see implementation documentation)
+pub trait RulesSolver {
+    /// Type required by [`RulesSolver::for_child`] (see implementation documentation)
     type ChildInfo;
     /// Called once for each child. For most layouts the order is important.
     fn for_child<C: Layout>(&mut self, child_info: Self::ChildInfo, child: &mut C);

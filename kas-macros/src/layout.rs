@@ -416,7 +416,7 @@ impl<'a> ImplLayout<'a> {
                 use std::iter;
                 use kas::Core;
                 use kas::geom::{Size};
-                use kas::layout::{AxisInfo, Sizer, SizeRules};
+                use kas::layout::{AxisInfo, RulesSolver, SizeRules};
 
                 #size_pre
                 #size

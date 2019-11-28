@@ -15,9 +15,11 @@ mod sizer;
 pub use grid_solver::{FixedGridSolver, GridChildInfo};
 pub use row_solver::FixedRowSolver;
 pub use size_rules::{Margins, SizeRules};
-pub use sizer::{solve, Sizer};
+pub use sizer::{solve, RulesSolver};
 
-/// Parameter type passed to [`Layout::size_rules`]
+/// Information on which axis is being resized
+///
+/// Also conveys the size of the other axis, if fixed.
 #[derive(Copy, Clone, Debug)]
 pub struct AxisInfo {
     vertical: bool,

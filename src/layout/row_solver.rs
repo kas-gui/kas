@@ -5,10 +5,10 @@
 
 //! Row / column solver
 
-use super::{AxisInfo, SizeRules, Sizer};
+use super::{AxisInfo, RulesSolver, SizeRules};
 use crate::{Layout, TkWindow};
 
-/// A [`Sizer`] for rows (and, without loss of generality, for columns).
+/// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
 /// This implementation relies on the caller to provide storage for solver data.
 pub struct FixedRowSolver<'a> {
@@ -57,7 +57,7 @@ impl<'a> FixedRowSolver<'a> {
     }
 }
 
-impl<'a> Sizer for FixedRowSolver<'a> {
+impl<'a> RulesSolver for FixedRowSolver<'a> {
     /// `ChildInfo` should contain the child index in the sequence
     type ChildInfo = usize;
 
