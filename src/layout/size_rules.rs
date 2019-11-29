@@ -17,6 +17,7 @@ use crate::geom::Size;
 ///
 /// This is *only* used for container widgets; for all other widgets the
 /// [`Layout::margins`] method is never called.
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Margins {
     /// Size of top/left margin
     pub first: Size,

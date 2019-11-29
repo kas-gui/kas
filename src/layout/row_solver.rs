@@ -11,17 +11,20 @@ use crate::{Layout, TkWindow};
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
 /// This implementation relies on the caller to provide storage for solver data.
-pub struct FixedRowSolver<'a> {
+///
+/// NOTE: ideally this would use const-generics, but those aren't stable (or
+/// even usable) yet. This will likely be implemented in the future.
+pub struct FixedRowSolver<'a, T> {
     // Generalisation implies that axis.vert() is incorrect
     axis: AxisInfo,
     tk: &'a mut dyn TkWindow,
     axis_is_vertical: bool,
     rules: SizeRules,
-    widths: &'a mut [u32],
+    widths: T,
     width_rules: &'a mut [SizeRules],
 }
 
-impl<'a> FixedRowSolver<'a> {
+impl<'a, T: Default + AsRef<[u32]> + AsMut<[u32]>> FixedRowSolver<'a, T> {
     /// Construct.
     ///
     /// - `vertical`: if true, this represents a column, not a row
@@ -33,17 +36,17 @@ impl<'a> FixedRowSolver<'a> {
         vertical: bool,
         axis: AxisInfo,
         tk: &'a mut (dyn TkWindow + 'a),
-        mut widths: &'a mut [u32],
         width_rules: &'a mut [SizeRules],
     ) -> Self {
-        assert!(widths.len() + 1 == width_rules.len());
-        assert!(widths.iter().all(|w| *w == 0));
+        let mut widths = T::default();
+        assert!(widths.as_ref().len() + 1 == width_rules.len());
+        assert!(widths.as_ref().iter().all(|w| *w == 0));
 
         let axis_is_vertical = axis.vertical ^ vertical;
 
         if axis.has_fixed && axis_is_vertical {
             // TODO: cache this for use by set_rect?
-            SizeRules::solve_seq(&mut widths, width_rules, axis.other_axis);
+            SizeRules::solve_seq(widths.as_mut(), width_rules, axis.other_axis);
         }
 
         FixedRowSolver {
@@ -57,13 +60,13 @@ impl<'a> FixedRowSolver<'a> {
     }
 }
 
-impl<'a> RulesSolver for FixedRowSolver<'a> {
+impl<'a, T: AsRef<[u32]>> RulesSolver for FixedRowSolver<'a, T> {
     /// `ChildInfo` should contain the child index in the sequence
     type ChildInfo = usize;
 
     fn for_child<C: Layout>(&mut self, child_info: Self::ChildInfo, child: &mut C) {
         if self.axis.has_fixed && self.axis_is_vertical {
-            self.axis.other_axis = self.widths[child_info];
+            self.axis.other_axis = self.widths.as_ref()[child_info];
         }
         let child_rules = child.size_rules(self.tk, self.axis);
         if !self.axis_is_vertical {

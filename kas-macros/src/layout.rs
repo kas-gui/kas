@@ -309,39 +309,32 @@ impl<'a> ImplLayout<'a> {
 
         let size_pre = match self.layout {
             Layout::Horizontal => quote! {
-                let mut widths = [0; #cols];
-                let mut solver = kas::layout::FixedRowSolver::new(
+                let mut solver = kas::layout::FixedRowSolver::<[u32; #cols]>::new(
                     false,
                     axis,
                     tk,
-                    &mut widths[..],
                     &mut self.#data.0
                 );
             },
             Layout::Vertical => quote! {
-                let mut heights = [0; #rows];
-                let mut solver = kas::layout::FixedRowSolver::new(
+                let mut solver = kas::layout::FixedRowSolver::<[u32; #rows]>::new(
                     true,
                     axis,
                     tk,
-                    &mut heights[..],
                     &mut self.#data.1
                 );
             },
             Layout::Grid => quote! {
-                let mut widths = [0; #cols];
-                let mut heights = [0; #rows];
-                let mut col_spans = [SizeRules::EMPTY; #num_col_spans];
-                let mut row_spans = [SizeRules::EMPTY; #num_row_spans];
-                let mut solver = kas::layout::FixedGridSolver::new(
+                let mut solver = kas::layout::FixedGridSolver::<
+                    [u32; #cols],
+                    [u32; #rows],
+                    [SizeRules; #num_col_spans],
+                    [SizeRules; #num_row_spans],
+                >::new(
                     axis,
                     tk,
-                    &mut widths[..],
-                    &mut heights[..],
                     &mut self.#data.0,
                     &mut self.#data.1,
-                    &mut col_spans[..],
-                    &mut row_spans[..],
                 );
             },
         };
