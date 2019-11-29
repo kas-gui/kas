@@ -123,10 +123,12 @@ where
     R: Clone + AsRef<[SizeRules]>,
     T: Default + AsRef<[u32]> + AsMut<[u32]>,
 {
-    pub fn new(rect: Rect, margins: Margins, storage: &mut FixedRowStorage<R>) -> Self {
+    pub fn new(mut rect: Rect, margins: Margins, storage: &mut FixedRowStorage<R>) -> Self {
         let mut widths = T::default();
         assert!(widths.as_ref().len() + 1 == storage.rules.as_ref().len());
 
+        rect.pos += margins.first;
+        rect.size -= margins.first + margins.last;
         let mut crect = rect;
 
         let (width, inter) = if !D::is_vertical() {

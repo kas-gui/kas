@@ -8,11 +8,13 @@
 //! This is only of interest if building a custom widget with children.
 
 mod grid_solver;
+mod misc_solver;
 mod row_solver;
 mod size_rules;
 mod sizer;
 
 pub use grid_solver::{FixedGridSetter, FixedGridSolver, FixedGridStorage, GridChildInfo};
+pub use misc_solver::{SingleSetter, SingleSolver};
 pub use row_solver::{FixedRowSetter, FixedRowSolver, FixedRowStorage};
 pub use size_rules::{Margins, SizeRules};
 pub use sizer::{solve, RulesSetter, RulesSolver, Storage};

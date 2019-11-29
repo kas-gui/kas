@@ -41,39 +41,6 @@ pub trait RulesSolver {
         RowIter: Iterator<Item = (usize, usize, usize)>;
 }
 
-/// Dummy implementation
-///
-/// TODO: make real implementations to solve empty/single/derive cases?
-impl RulesSolver for () {
-    type Storage = ();
-    type ChildInfo = ();
-
-    /// Called once for each child. For most layouts the order is important.
-    fn for_child<CR: FnOnce(AxisInfo) -> SizeRules>(
-        &mut self,
-        _storage: &mut Self::Storage,
-        _child_info: Self::ChildInfo,
-        _child_rules: CR,
-    ) {
-    }
-
-    /// Called at the end to output [`SizeRules`].
-    ///
-    /// Note that this does not include margins!
-    fn finish<ColIter, RowIter>(
-        self,
-        _storage: &mut Self::Storage,
-        _col_spans: ColIter,
-        _row_spans: RowIter,
-    ) -> SizeRules
-    where
-        ColIter: Iterator<Item = (usize, usize, usize)>,
-        RowIter: Iterator<Item = (usize, usize, usize)>,
-    {
-        unimplemented!()
-    }
-}
-
 /// Tool to solve for a `Rect` over child widgets
 pub trait RulesSetter {
     /// Type of storage
@@ -84,18 +51,6 @@ pub trait RulesSetter {
 
     /// Called once for each child. For most layouts the order is important.
     fn child_rect(&mut self, child_info: Self::ChildInfo) -> Rect;
-}
-
-/// Dummy implementation
-///
-/// TODO: make real implementations to solve empty/single/derive cases?
-impl RulesSetter for () {
-    type Storage = ();
-    type ChildInfo = ();
-
-    fn child_rect(&mut self, _child_info: Self::ChildInfo) -> Rect {
-        unimplemented!()
-    }
 }
 
 /// Solve `widget` for `SizeRules` on both axes, horizontal first.

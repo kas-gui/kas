@@ -243,7 +243,7 @@ where
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `margins`: margin sizes
     /// - `storage`: reference to persistent storage
-    pub fn new(rect: Rect, margins: Margins, storage: &mut FixedGridStorage<WR, HR>) -> Self {
+    pub fn new(mut rect: Rect, margins: Margins, storage: &mut FixedGridStorage<WR, HR>) -> Self {
         let mut widths = W::default();
         let mut heights = H::default();
         let cols = widths.as_ref().len();
@@ -251,6 +251,8 @@ where
         assert!(cols + 1 == storage.width_rules.as_ref().len());
         assert!(rows + 1 == storage.height_rules.as_ref().len());
 
+        rect.pos += margins.first;
+        rect.size -= margins.first + margins.last;
         let inter = margins.inter;
 
         SizeRules::solve_seq(widths.as_mut(), storage.width_rules.as_ref(), rect.size.0);
