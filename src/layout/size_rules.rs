@@ -10,13 +10,13 @@ use crate::geom::Size;
 
 /// Margin sizes
 ///
-/// Return value of [`TkWindow::margins`].
+/// Return value of [`kas::TkWindow::margins`].
 ///
 /// Used by the layout system for margins around child widgets. Margins may be
 /// drawn in and handle events like any other widget area.
 ///
 /// This is *only* used for container widgets; for all other widgets the
-/// [`Layout::margins`] method is never called.
+/// [`kas::TkWindow::margins`] method is never called.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Margins {
     /// Size of top/left margin
@@ -56,13 +56,13 @@ impl Margins {
 
 /// Widget sizing information
 ///
-/// Return value of [`Layout::size_rules`] and [`TkWindow::size_rules`].
+/// Return value of [`kas::Layout::size_rules`] and [`kas::TkWindow::size_rules`].
 ///
 /// This struct conveys properties such as the minimum size and preferred size
 /// of the widgets being queried.
 ///
 /// This is *not* used for container widgets; for these,
-/// [`TkWindow::size_rules`] is never called!
+/// [`kas::TkWindow::size_rules`] is never called!
 #[derive(Copy, Clone, Debug, Default)]
 pub struct SizeRules {
     // minimum size

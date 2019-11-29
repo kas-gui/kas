@@ -7,6 +7,11 @@
 //!
 //! This module includes abstractions over the drawing API and some associated
 //! types.
+//!
+//! All draw operations are batched and do not happen immediately. Each
+//! [`Style`] of drawing may batch operations independently of other styles or
+//! may share batching with another style. Roughly speaking, later [`Style`]s
+//! are drawn later, but draw order is implementation defined.
 
 mod colour;
 mod theme;

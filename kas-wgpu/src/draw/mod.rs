@@ -8,15 +8,6 @@
 //! The drawing API is tiered: add bounds on the traits you need.
 //!
 //! All drawing operations are batched and do not happen immediately.
-//! The order of draw operations is as follows:
-//!
-//! 1. [`DrawFlat`] - for "flat" (non-bevelled) shading; this may or may not
-//!     be combined with [`DrawSquare`] rendering
-//! 2. [`DrawSquare`] - for bevelled shading with square edges
-//! 3. [`DrawRound`] - for bevelled shading with rounded edges; this happens
-//!     after flat and square rendering and may not draw all pixels within rect
-//!     bounds
-//! 4. [`DrawText`] - for text rendering; this happens after all other rendering
 
 mod draw_pipe;
 mod round_pipe;
