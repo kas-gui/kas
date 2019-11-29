@@ -184,32 +184,20 @@ impl<'a> ImplLayout<'a> {
     pub fn child(&mut self, ident: &Member, args: &WidgetAttrArgs) -> Result<()> {
         let data = self.data;
 
-        match self.layout {
+        let child_info = match self.layout {
             Layout::Horizontal => {
                 let col = self.cols as usize;
                 self.cols += 1;
                 self.rows = 1;
 
-                self.size.append_all(quote! {
-                    solver.for_child(tk, &mut self.#data, #col, &mut self.#ident);
-                });
-
-                self.set_rect.append_all(quote! {
-                    self.#ident.set_rect(tk, setter.child_rect(#col));
-                });
+                quote! { #col }
             }
             Layout::Vertical => {
                 let row = self.rows as usize;
                 self.cols = 1;
                 self.rows += 1;
 
-                self.size.append_all(quote! {
-                    solver.for_child(tk, &mut self.#data, #row, &mut self.#ident);
-                });
-
-                self.set_rect.append_all(quote! {
-                    self.#ident.set_rect(tk, setter.child_rect(#row));
-                });
+                quote! { #row }
             }
             Layout::Grid => {
                 let pos = args.as_pos()?;
@@ -222,7 +210,7 @@ impl<'a> ImplLayout<'a> {
                 let col_span_index = self.get_span(false, c0, c1);
                 let row_span_index = self.get_span(true, r0, r1);
 
-                let child_info = quote! {
+                quote! {
                     kas::layout::GridChildInfo {
                         col: #col,
                         col_end: #c1 as usize,
@@ -231,17 +219,23 @@ impl<'a> ImplLayout<'a> {
                         row_end: #r1 as usize,
                         row_span_index: #row_span_index,
                     }
-                };
-
-                self.size.append_all(quote! {
-                    solver.for_child(tk, &mut self.#data, #child_info, &mut self.#ident);
-                });
-
-                self.set_rect.append_all(quote! {
-                    self.#ident.set_rect(tk, setter.child_rect(#child_info));
-                });
+                }
             }
-        }
+        };
+
+        self.size.append_all(quote! {
+            let child = &mut self.#ident;
+            solver.for_child(
+                &mut self.#data,
+                #child_info,
+                |data| child.size_rules(tk, data)
+            );
+        });
+
+        self.set_rect.append_all(quote! {
+            self.#ident.set_rect(tk, setter.child_rect(#child_info));
+        });
+
         Ok(())
     }
     // dir: horiz (false) or vert (true)
@@ -343,7 +337,7 @@ impl<'a> ImplLayout<'a> {
 
         let size_post = match self.layout {
             Layout::Horizontal | Layout::Vertical => quote! {
-                let rules = solver.finish(tk, &mut self.#data, iter::empty(), iter::empty());
+                let rules = solver.finish(&mut self.#data, iter::empty(), iter::empty());
             },
             Layout::Grid => {
                 let mut horiz = quote! {};
@@ -366,7 +360,7 @@ impl<'a> ImplLayout<'a> {
                 }
 
                 quote! {
-                    let rules = solver.finish(tk, &mut self.#data,
+                    let rules = solver.finish(&mut self.#data,
                         iter::empty() #horiz, iter::empty() # vert);
                 }
             }
@@ -381,7 +375,6 @@ impl<'a> ImplLayout<'a> {
 
                 let mut solver = <Self as kas::LayoutData>::Solver::new(
                     axis,
-                    tk,
                     &mut self.#data,
                 );
                 #size

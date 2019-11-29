@@ -8,7 +8,7 @@
 use std::marker::PhantomData;
 
 use super::{AxisInfo, Direction, Margins, RulesSetter, RulesSolver, SizeRules, Storage};
-use crate::{geom::Rect, Layout, TkWindow};
+use crate::geom::Rect;
 
 #[derive(Clone, Debug, Default)]
 pub struct FixedRowStorage<R: Clone> {
@@ -41,9 +41,8 @@ where
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
-    /// - `tk`: `&dyn TkWindow` parameter passed into `size_rules`
     /// - `storage`: reference to persistent storage
-    pub fn new(axis: AxisInfo, _tk: &mut dyn TkWindow, storage: &mut FixedRowStorage<R>) -> Self {
+    pub fn new(axis: AxisInfo, storage: &mut FixedRowStorage<R>) -> Self {
         let mut widths = T::default();
         assert!(widths.as_ref().len() + 1 == storage.rules.as_ref().len());
         assert!(widths.as_ref().iter().all(|w| *w == 0));
@@ -74,17 +73,16 @@ where
     type Storage = FixedRowStorage<R>;
     type ChildInfo = usize;
 
-    fn for_child<C: Layout>(
+    fn for_child<CR: FnOnce(AxisInfo) -> SizeRules>(
         &mut self,
-        tk: &mut dyn TkWindow,
         storage: &mut Self::Storage,
         child_info: Self::ChildInfo,
-        child: &mut C,
+        child_rules: CR,
     ) {
         if self.axis.has_fixed && self.axis_is_vertical {
             self.axis.other_axis = self.widths.as_ref()[child_info];
         }
-        let child_rules = child.size_rules(tk, self.axis);
+        let child_rules = child_rules(self.axis);
         if !self.axis_is_vertical {
             storage.rules.as_mut()[child_info] = child_rules;
             self.rules += child_rules;
@@ -95,7 +93,6 @@ where
 
     fn finish<ColIter, RowIter>(
         self,
-        _tk: &mut dyn TkWindow,
         storage: &mut Self::Storage,
         _: ColIter,
         _: RowIter,

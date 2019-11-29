@@ -9,7 +9,6 @@ use std::marker::PhantomData;
 
 use super::{AxisInfo, Margins, RulesSetter, RulesSolver, SizeRules, Storage};
 use crate::geom::{Coord, Rect, Size};
-use crate::{Layout, TkWindow};
 
 /// Per-child information
 pub struct GridChildInfo {
@@ -62,13 +61,8 @@ where
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
-    /// - `tk`: `&dyn TkWindow` parameter passed into `size_rules`
     /// - `storage`: reference to persistent storage
-    pub fn new(
-        axis: AxisInfo,
-        _tk: &mut dyn TkWindow,
-        storage: &mut FixedGridStorage<WR, HR>,
-    ) -> Self {
+    pub fn new(axis: AxisInfo, storage: &mut FixedGridStorage<WR, HR>) -> Self {
         let widths = W::default();
         let heights = H::default();
         let col_span_rules = CSR::default();
@@ -134,12 +128,11 @@ where
     type Storage = FixedGridStorage<WR, HR>;
     type ChildInfo = GridChildInfo;
 
-    fn for_child<C: Layout>(
+    fn for_child<CR: FnOnce(AxisInfo) -> SizeRules>(
         &mut self,
-        tk: &mut dyn TkWindow,
         storage: &mut Self::Storage,
         child_info: Self::ChildInfo,
-        child: &mut C,
+        child_rules: CR,
     ) {
         if self.axis.has_fixed {
             if !self.axis.vertical {
@@ -154,7 +147,7 @@ where
                     });
             }
         }
-        let child_rules = child.size_rules(tk, self.axis);
+        let child_rules = child_rules(self.axis);
         let rules = if !self.axis.vertical {
             if child_info.col_span_index == std::usize::MAX {
                 &mut storage.width_rules.as_mut()[child_info.col]
@@ -173,7 +166,6 @@ where
 
     fn finish<ColIter, RowIter>(
         self,
-        _tk: &mut dyn TkWindow,
         storage: &mut Self::Storage,
         col_spans: ColIter,
         row_spans: RowIter,
@@ -249,7 +241,7 @@ where
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
-    /// - `tk`: `&dyn TkWindow` parameter passed into `size_rules`
+    /// - `margins`: margin sizes
     /// - `storage`: reference to persistent storage
     pub fn new(rect: Rect, margins: Margins, storage: &mut FixedGridStorage<WR, HR>) -> Self {
         let mut widths = W::default();

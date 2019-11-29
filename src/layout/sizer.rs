@@ -20,12 +20,11 @@ pub trait RulesSolver {
     type ChildInfo;
 
     /// Called once for each child. For most layouts the order is important.
-    fn for_child<C: Layout>(
+    fn for_child<CR: FnOnce(AxisInfo) -> SizeRules>(
         &mut self,
-        tk: &mut dyn TkWindow,
         storage: &mut Self::Storage,
         child_info: Self::ChildInfo,
-        child: &mut C,
+        child_rules: CR,
     );
 
     /// Called at the end to output [`SizeRules`].
@@ -33,7 +32,6 @@ pub trait RulesSolver {
     /// Note that this does not include margins!
     fn finish<ColIter, RowIter>(
         self,
-        tk: &mut dyn TkWindow,
         storage: &mut Self::Storage,
         col_spans: ColIter,
         row_spans: RowIter,
@@ -51,12 +49,11 @@ impl RulesSolver for () {
     type ChildInfo = ();
 
     /// Called once for each child. For most layouts the order is important.
-    fn for_child<C: Layout>(
+    fn for_child<CR: FnOnce(AxisInfo) -> SizeRules>(
         &mut self,
-        _tk: &mut dyn TkWindow,
         _storage: &mut Self::Storage,
         _child_info: Self::ChildInfo,
-        _child: &mut C,
+        _child_rules: CR,
     ) {
     }
 
@@ -65,7 +62,6 @@ impl RulesSolver for () {
     /// Note that this does not include margins!
     fn finish<ColIter, RowIter>(
         self,
-        _tk: &mut dyn TkWindow,
         _storage: &mut Self::Storage,
         _col_spans: ColIter,
         _row_spans: RowIter,
