@@ -98,18 +98,7 @@ pub(crate) fn derive(
             )
                 -> kas::layout::SizeRules
             {
-                use std::iter;
-                use kas::layout::RulesSolver;
-
-                let mut solver = <Self as kas::LayoutData>::Solver::new(
-                    axis,
-                    &mut (),
-                );
-                let child = &mut self.#ident;
-                solver.for_child(&mut (), (), |axis| child.size_rules(tk, axis));
-                let rules = solver.finish(&mut (), iter::empty(), iter::empty());
-
-                rules + tk.margins(self).size_rules(axis, 0, 0)
+                self.#ident.size_rules(tk, axis) + tk.margins(self).size_rules(axis, 0, 0)
             }
 
             fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, mut rect: kas::geom::Rect) {
@@ -127,7 +116,7 @@ pub(crate) fn derive(
         };
         let ty = quote! {
             type Data = ();
-            type Solver = kas::layout::SingleSolver;
+            type Solver = ();
             type Setter = kas::layout::SingleSetter;
         };
         Ok((fns, ty))

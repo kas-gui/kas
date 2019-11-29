@@ -14,7 +14,7 @@ mod size_rules;
 mod sizer;
 
 pub use grid_solver::{FixedGridSetter, FixedGridSolver, FixedGridStorage, GridChildInfo};
-pub use misc_solver::{SingleSetter, SingleSolver};
+pub use misc_solver::SingleSetter;
 pub use row_solver::{FixedRowSetter, FixedRowSolver, FixedRowStorage};
 pub use size_rules::{Margins, SizeRules};
 pub use sizer::{solve, RulesSetter, RulesSolver, Storage};
