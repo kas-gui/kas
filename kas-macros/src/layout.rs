@@ -221,11 +221,11 @@ impl<'a> ImplLayout<'a> {
                 let col_span_index = self.get_span(false, c0, c1);
                 let row_span_index = self.get_span(true, r0, r1);
 
-                let mut get_width = quote! { widths[#col] };
+                let mut get_width = quote! { margins.inter.0 * (#c1 - #c0 - 1) + widths[#col] };
                 for n in (col + 1)..(c1 as usize) {
                     get_width.append_all(quote! { + widths[#n] });
                 }
-                let mut get_height = quote! { heights[#row] };
+                let mut get_height = quote! { margins.inter.1 * (#r1 - #r0 - 1) + heights[#row] };
                 for n in (row + 1)..(r1 as usize) {
                     get_height.append_all(quote! { + heights[#n] });
                 }
