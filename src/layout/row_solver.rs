@@ -5,8 +5,17 @@
 
 //! Row / column solver
 
-use super::{AxisInfo, RulesSolver, SizeRules};
-use crate::{Layout, TkWindow};
+use std::marker::PhantomData;
+
+use super::{AxisInfo, Direction, Margins, RulesSetter, RulesSolver, SizeRules, Storage};
+use crate::{geom::Rect, Layout, TkWindow};
+
+#[derive(Clone, Debug, Default)]
+pub struct FixedRowStorage<R: Clone> {
+    rules: R,
+}
+
+impl<R: Clone> Storage for FixedRowStorage<R> {}
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
@@ -14,79 +23,151 @@ use crate::{Layout, TkWindow};
 ///
 /// NOTE: ideally this would use const-generics, but those aren't stable (or
 /// even usable) yet. This will likely be implemented in the future.
-pub struct FixedRowSolver<'a, T> {
+pub struct FixedRowSolver<D, R: Clone, T> {
     // Generalisation implies that axis.vert() is incorrect
     axis: AxisInfo,
-    tk: &'a mut dyn TkWindow,
     axis_is_vertical: bool,
     rules: SizeRules,
     widths: T,
-    width_rules: &'a mut [SizeRules],
+    _d: PhantomData<D>,
+    _r: PhantomData<R>,
 }
 
-impl<'a, T: Default + AsRef<[u32]> + AsMut<[u32]>> FixedRowSolver<'a, T> {
+impl<D: Direction, R, T> FixedRowSolver<D, R, T>
+where
+    R: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
+    T: Default + AsRef<[u32]> + AsMut<[u32]>,
+{
     /// Construct.
     ///
-    /// - `vertical`: if true, this represents a column, not a row
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `tk`: `&dyn TkWindow` parameter passed into `size_rules`
-    /// - `widths`: temporary storage of length *columns*, initialised to 0
-    /// - `width_rules`: persistent storage of length *columns + 1*
-    pub fn new(
-        vertical: bool,
-        axis: AxisInfo,
-        tk: &'a mut (dyn TkWindow + 'a),
-        width_rules: &'a mut [SizeRules],
-    ) -> Self {
+    /// - `storage`: reference to persistent storage
+    pub fn new(axis: AxisInfo, _tk: &mut dyn TkWindow, storage: &mut FixedRowStorage<R>) -> Self {
         let mut widths = T::default();
-        assert!(widths.as_ref().len() + 1 == width_rules.len());
+        assert!(widths.as_ref().len() + 1 == storage.rules.as_ref().len());
         assert!(widths.as_ref().iter().all(|w| *w == 0));
 
-        let axis_is_vertical = axis.vertical ^ vertical;
+        let axis_is_vertical = axis.vertical ^ D::is_vertical();
 
         if axis.has_fixed && axis_is_vertical {
             // TODO: cache this for use by set_rect?
-            SizeRules::solve_seq(widths.as_mut(), width_rules, axis.other_axis);
+            SizeRules::solve_seq(widths.as_mut(), storage.rules.as_ref(), axis.other_axis);
         }
 
         FixedRowSolver {
             axis,
-            tk,
             axis_is_vertical,
             rules: SizeRules::EMPTY,
             widths,
-            width_rules,
+            _d: Default::default(),
+            _r: Default::default(),
         }
     }
 }
 
-impl<'a, T: AsRef<[u32]>> RulesSolver for FixedRowSolver<'a, T> {
-    /// `ChildInfo` should contain the child index in the sequence
+impl<D, R, T> RulesSolver for FixedRowSolver<D, R, T>
+where
+    R: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
+    T: AsRef<[u32]>,
+{
+    type Storage = FixedRowStorage<R>;
     type ChildInfo = usize;
 
-    fn for_child<C: Layout>(&mut self, child_info: Self::ChildInfo, child: &mut C) {
+    fn for_child<C: Layout>(
+        &mut self,
+        tk: &mut dyn TkWindow,
+        storage: &mut Self::Storage,
+        child_info: Self::ChildInfo,
+        child: &mut C,
+    ) {
         if self.axis.has_fixed && self.axis_is_vertical {
             self.axis.other_axis = self.widths.as_ref()[child_info];
         }
-        let child_rules = child.size_rules(self.tk, self.axis);
+        let child_rules = child.size_rules(tk, self.axis);
         if !self.axis_is_vertical {
-            self.width_rules[child_info] = child_rules;
+            storage.rules.as_mut()[child_info] = child_rules;
             self.rules += child_rules;
         } else {
             self.rules = self.rules.max(child_rules);
         }
     }
 
-    fn finish<ColIter, RowIter>(self, _: ColIter, _: RowIter) -> SizeRules
+    fn finish<ColIter, RowIter>(
+        self,
+        _tk: &mut dyn TkWindow,
+        storage: &mut Self::Storage,
+        _: ColIter,
+        _: RowIter,
+    ) -> SizeRules
     where
         ColIter: Iterator<Item = (usize, usize, usize)>,
         RowIter: Iterator<Item = (usize, usize, usize)>,
     {
-        let cols = self.width_rules.len() - 1;
+        let cols = storage.rules.as_ref().len() - 1;
         if !self.axis_is_vertical {
-            self.width_rules[cols] = self.rules;
+            storage.rules.as_mut()[cols] = self.rules;
         }
 
         self.rules
+    }
+}
+
+pub struct FixedRowSetter<D, R: Clone, T> {
+    crect: Rect,
+    inter: u32,
+    widths: T,
+    _d: PhantomData<D>,
+    _r: PhantomData<R>,
+}
+
+impl<D: Direction, R, T> FixedRowSetter<D, R, T>
+where
+    R: Clone + AsRef<[SizeRules]>,
+    T: Default + AsRef<[u32]> + AsMut<[u32]>,
+{
+    pub fn new(rect: Rect, margins: Margins, storage: &mut FixedRowStorage<R>) -> Self {
+        let mut widths = T::default();
+        assert!(widths.as_ref().len() + 1 == storage.rules.as_ref().len());
+
+        let mut crect = rect;
+
+        let (width, inter) = if !D::is_vertical() {
+            crect.size.0 = 0; // hack to get correct first offset
+            (rect.size.0, margins.inter.0)
+        } else {
+            crect.size.1 = 0;
+            (rect.size.1, margins.inter.1)
+        };
+
+        SizeRules::solve_seq(widths.as_mut(), storage.rules.as_ref(), width);
+
+        FixedRowSetter {
+            crect,
+            inter,
+            widths,
+            _d: Default::default(),
+            _r: Default::default(),
+        }
+    }
+}
+
+impl<D: Direction, R, T> RulesSetter for FixedRowSetter<D, R, T>
+where
+    R: Clone,
+    T: AsRef<[u32]>,
+{
+    type Storage = FixedRowStorage<R>;
+    type ChildInfo = usize;
+
+    fn child_rect(&mut self, child_info: Self::ChildInfo) -> Rect {
+        if !D::is_vertical() {
+            self.crect.pos.0 += (self.crect.size.0 + self.inter) as i32;
+            self.crect.size.0 = self.widths.as_ref()[child_info];
+        } else {
+            self.crect.pos.1 += (self.crect.size.1 + self.inter) as i32;
+            self.crect.size.1 = self.widths.as_ref()[child_info];
+        }
+        self.crect
     }
 }

@@ -12,10 +12,10 @@ mod row_solver;
 mod size_rules;
 mod sizer;
 
-pub use grid_solver::{FixedGridSolver, GridChildInfo};
-pub use row_solver::FixedRowSolver;
+pub use grid_solver::{FixedGridSetter, FixedGridSolver, FixedGridStorage, GridChildInfo};
+pub use row_solver::{FixedRowSetter, FixedRowSolver, FixedRowStorage};
 pub use size_rules::{Margins, SizeRules};
-pub use sizer::{solve, RulesSolver};
+pub use sizer::{solve, RulesSetter, RulesSolver, Storage};
 
 /// Information on which axis is being resized
 ///
@@ -50,5 +50,23 @@ impl AxisInfo {
         } else {
             None
         }
+    }
+}
+
+pub trait Direction {
+    fn is_vertical() -> bool;
+}
+
+pub struct Horizontal;
+impl Direction for Horizontal {
+    fn is_vertical() -> bool {
+        false
+    }
+}
+
+pub struct Vertical;
+impl Direction for Vertical {
+    fn is_vertical() -> bool {
+        true
     }
 }

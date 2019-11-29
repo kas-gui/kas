@@ -13,7 +13,7 @@ use crate::geom::{Coord, Rect, Size};
 use crate::layout;
 use crate::macros::{EmptyMsg, Widget};
 use crate::widget::{Label, TextButton};
-use crate::{class::Class, CoreData, Layout, LayoutData, TkAction, TkWindow, Window};
+use crate::{class::Class, CoreData, Layout, TkAction, TkWindow, Window};
 
 #[derive(Clone, Debug, EmptyMsg)]
 enum DialogButton {
@@ -29,7 +29,7 @@ pub struct MessageBox {
     #[core]
     core: CoreData,
     #[layout_data]
-    layout_data: <Self as LayoutData>::Data,
+    layout_data: <Self as kas::LayoutData>::Data,
     #[widget]
     label: Label,
     #[widget(handler = handle_button)]

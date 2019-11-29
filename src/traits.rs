@@ -9,7 +9,7 @@ use std::fmt;
 
 use crate::event::{Callback, EmptyMsg, Handler};
 use crate::geom::{Rect, Size};
-use crate::layout::{AxisInfo, SizeRules};
+use crate::layout::{self, AxisInfo, SizeRules};
 use crate::toolkit::TkWindow;
 use crate::{CoreData, WidgetId};
 
@@ -81,6 +81,8 @@ pub trait Layout: Core + fmt::Debug {
 /// of the trait would require parameterisation. Thus, this trait.
 pub trait LayoutData {
     type Data: Clone + fmt::Debug + Default;
+    type Solver: layout::RulesSolver;
+    type Setter: layout::RulesSetter;
 }
 
 /// A widget encapsulates code for event handling and/or drawing some feature
