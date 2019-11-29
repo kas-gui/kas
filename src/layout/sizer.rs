@@ -6,7 +6,7 @@
 //! Layout solver
 
 use super::{AxisInfo, SizeRules};
-use crate::geom::{Rect, Size};
+use crate::geom::{Coord, Rect, Size};
 use crate::{Layout, TkWindow};
 
 pub trait Storage {}
@@ -104,4 +104,12 @@ pub fn solve<L: Layout>(widget: &mut L, tk: &mut dyn TkWindow, size: Size) {
     // spec requires that we do so before calling set_rect.
     let _w = widget.size_rules(tk, AxisInfo::new(false, None));
     let _h = widget.size_rules(tk, AxisInfo::new(true, Some(size.0)));
+
+    let pos = Coord(0, 0);
+    widget.set_rect(tk, Rect { pos, size });
+
+    // println!("Window size:\t{:?}", size);
+    // println!("Width rules:\t{:?}", _w);
+    // println!("Height rules:\t{:?}", _h);
+    // self.w.print_hierarchy(0);
 }

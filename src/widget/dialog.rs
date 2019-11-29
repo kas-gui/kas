@@ -9,11 +9,11 @@
 //! customisation.
 
 use crate::event::{Callback, EmptyMsg};
-use crate::geom::{Coord, Rect, Size};
+use crate::geom::Size;
 use crate::layout;
 use crate::macros::{EmptyMsg, Widget};
 use crate::widget::{Label, TextButton};
-use crate::{class::Class, CoreData, Layout, TkAction, TkWindow, Window};
+use crate::{class::Class, CoreData, TkAction, TkWindow, Window};
 
 #[derive(Clone, Debug, EmptyMsg)]
 enum DialogButton {
@@ -58,8 +58,6 @@ impl MessageBox {
 impl Window for MessageBox {
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
         layout::solve(self, tk, size);
-        let pos = Coord(0, 0);
-        self.set_rect(tk, Rect { pos, size });
     }
 
     // doesn't support callbacks, so doesn't need to do anything here
