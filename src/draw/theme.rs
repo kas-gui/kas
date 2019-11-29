@@ -9,8 +9,8 @@
 
 use rusttype::Font;
 
+use crate::layout;
 use kas::draw::*;
-use kas::geom::{AxisInfo, Margins, SizeRules};
 use kas::{event, Widget};
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -68,24 +68,24 @@ pub trait Theme: Clone {
     /// Background colour
     fn clear_colour(&self) -> Colour;
 
-    /// Margin and inter-row/column dimensions
+    /// Margin sizes
     ///
-    /// Controls how much extra space is allocated to this widget. This is added
-    /// to any size requested via [`Theme::size_rules`], and is most useful
-    /// in providing spacing around and between child widgets.
+    /// May be called multiple times during a resize operation.
     ///
-    /// Note that widget drawing affects the entire area allocated by
-    /// `size_rules + margins` and is not offset for margins.
-    fn margins(&self, widget: &dyn Widget) -> Margins;
+    /// See documentation of [`layout::Margins`].
+    fn margins(&self, widget: &dyn Widget) -> layout::Margins;
 
-    /// Widget dimensions
+    /// Widget size preferences
     ///
-    /// Used to specify the dimension of a widget, based on class and contents.
+    /// Widgets should expect this to be called at least once for each axis.
     ///
-    /// This method is *not* called on "parent" widgets (those with a layout
-    /// other than "derive"); these widgets can only specify margins via the
-    /// [`Theme::margins`] method.
-    fn size_rules(&self, draw: &mut Self::Draw, widget: &dyn Widget, axis: AxisInfo) -> SizeRules;
+    /// See documentation of [`layout::SizeRules`].
+    fn size_rules(
+        &self,
+        draw: &mut Self::Draw,
+        widget: &dyn Widget,
+        axis: layout::AxisInfo,
+    ) -> layout::SizeRules;
 
     /// Draw a widget
     ///

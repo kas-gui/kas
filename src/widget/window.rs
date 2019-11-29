@@ -9,7 +9,8 @@ use std::fmt::{self, Debug};
 
 use crate::class::Class;
 use crate::event::{Callback, EmptyMsg, Event, Handler};
-use crate::geom::{AxisInfo, Coord, Rect, Size, SizeRules};
+use crate::geom::{Rect, Size};
+use crate::layout::{self, AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::{Core, CoreData, Layout, TkWindow, Widget};
 
@@ -104,17 +105,7 @@ where
     W: Widget + Handler<Msg = EmptyMsg> + 'static,
 {
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
-        // We call size_rules not because we want the result, but because our
-        // spec requires that we do so before calling set_rect.
-        let _w = self.size_rules(tk, AxisInfo::new(false, None));
-        let _h = self.size_rules(tk, AxisInfo::new(true, Some(size.0)));
-        let pos = Coord(0, 0);
-        self.set_rect(tk, Rect { pos, size });
-
-        // println!("Window size:\t{:?}", size);
-        // println!("Width rules:\t{:?}", _w);
-        // println!("Height rules:\t{:?}", _h);
-        // self.w.print_hierarchy(0);
+        layout::solve(self, tk, size);
     }
 
     fn callbacks(&self) -> Vec<(usize, Callback)> {

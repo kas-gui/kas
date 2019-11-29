@@ -5,9 +5,6 @@
 
 //! Geometry data types
 
-mod layout;
-
-pub use layout::*;
 #[cfg(feature = "winit")]
 use winit::dpi::{PhysicalPosition, PhysicalSize};
 
@@ -46,6 +43,13 @@ impl From<PhysicalPosition> for Coord {
 impl From<Coord> for PhysicalPosition {
     fn from(coord: Coord) -> PhysicalPosition {
         (coord.0, coord.1).into()
+    }
+}
+
+impl std::ops::AddAssign<Size> for Coord {
+    fn add_assign(&mut self, rhs: Size) {
+        self.0 += rhs.0 as i32;
+        self.1 += rhs.1 as i32;
     }
 }
 
@@ -103,6 +107,20 @@ impl std::ops::Sub for Size {
 
     fn sub(self, other: Self) -> Self {
         Size(self.0 - other.0, self.1 - other.1)
+    }
+}
+
+impl std::ops::AddAssign for Size {
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0;
+        self.1 += rhs.1;
+    }
+}
+
+impl std::ops::SubAssign for Size {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0;
+        self.1 -= rhs.1;
     }
 }
 

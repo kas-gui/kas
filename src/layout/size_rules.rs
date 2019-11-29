@@ -3,111 +3,66 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Data types specific to the layout engine
+//! [`SizeRules`] type
 
-use super::{Coord, Rect, Size};
+use super::AxisInfo;
+use crate::geom::Size;
 
-/// Used by the layout engine to specify the axis of interest.
+/// Margin sizes
 ///
-/// The layout engine works on a single axis at a time, and when doing so may
-/// provide a fixed size for the other axis.
-#[derive(Copy, Clone, Debug)]
-pub struct AxisInfo {
-    is_vert: bool,
-    fixed: bool,
-    other: u32,
-}
-
-impl AxisInfo {
-    /// Construct an instance
-    #[inline]
-    pub fn new(vert: bool, fixed: Option<u32>) -> Self {
-        AxisInfo {
-            is_vert: vert,
-            fixed: fixed.is_some(),
-            other: fixed.unwrap_or(0),
-        }
-    }
-
-    /// Adjust horizontal axis
-    #[inline]
-    pub fn horiz(&self) -> bool {
-        !self.is_vert
-    }
-
-    /// Adjust vertical axis
-    #[inline]
-    pub fn vert(&self) -> bool {
-        self.is_vert
-    }
-
-    /// Has a fixed dimension for one axis
-    #[inline]
-    pub fn has_fixed(&self) -> bool {
-        self.fixed
-    }
-
-    /// Size of other axis, if fixed and (`vert == self.vert()`).
-    #[inline]
-    pub fn fixed(&self, vert: bool) -> Option<u32> {
-        if vert == self.is_vert && self.fixed {
-            Some(self.other)
-        } else {
-            None
-        }
-    }
-
-    /// Set size of fixed axis, if applicable
-    #[inline]
-    pub fn set_size(&mut self, size: u32) {
-        self.other = size;
-    }
-}
-
-/// Margin dimensions
+/// Return value of [`kas::TkWindow::margins`].
+///
+/// Used by the layout system for margins around child widgets. Margins may be
+/// drawn in and handle events like any other widget area.
+///
+/// This is *only* used for container widgets; for all other widgets the
+/// [`kas::TkWindow::margins`] method is never called.
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Margins {
-    /// Total size of the margin surrounding contents
-    pub outer: Size,
-    /// Offset of first child widget from widget position (usually half of
-    /// `outer`). This only affects placement of children; event handling and
-    /// widget drawing use the entire widget area (including margins).
-    pub offset: Coord,
-    /// Inner offset between rows / columns of widgets
-    pub inner: Coord,
+    /// Size of top/left margin
+    pub first: Size,
+    /// Size of bottom/right margin
+    pub last: Size,
+    /// Size of inter-widget horizontal/vertical margins
+    pub inter: Size,
 }
 
 impl Margins {
-    /// Provide margin `outer` on each side and `inner` between child widgets.
-    pub const fn with_margin(outer: i32, inner: i32) -> Self {
+    /// Zero-sized margins
+    pub const ZERO: Margins = Margins::uniform(0, 0);
+
+    /// Margins with equal size on each edge, and on each axis.
+    pub const fn uniform(edge: u32, inter: u32) -> Self {
         Margins {
-            outer: Size::uniform(2 * outer as u32),
-            offset: Coord(outer, outer),
-            inner: Coord(inner, inner),
+            first: Size::uniform(edge),
+            last: Size::uniform(edge),
+            inter: Size::uniform(inter),
         }
     }
 
-    /// Construct SizeRules appropriate for the margin
+    /// Generate `SizeRules` from self
     ///
-    /// Parameters: `vertical` if vertical axis, number of additional
-    /// `col_spacings`, `row_spacings`.
-    pub fn size_rules(&self, vertical: bool, col_spacings: u32, row_spacings: u32) -> SizeRules {
-        SizeRules::fixed(match vertical {
-            false => self.outer.0 + col_spacings * self.inner.0 as u32,
-            true => self.outer.1 + row_spacings * self.inner.1 as u32,
+    /// Assumes zero-sized content (usually added separately).
+    ///
+    /// Requires the number of child columns and rows.
+    pub fn size_rules(&self, axis_info: AxisInfo, columns: u32, rows: u32) -> SizeRules {
+        SizeRules::fixed(if !axis_info.vertical {
+            self.first.0 + self.last.0 + self.inter.0 * columns.saturating_sub(1)
+        } else {
+            self.first.1 + self.last.1 + self.inter.1 * rows.saturating_sub(1)
         })
-    }
-
-    /// Shrink and offset a `rect` to account for margins
-    pub fn adjust(&self, rect: &mut Rect) {
-        rect.size = rect.size - self.outer;
-        rect.pos = rect.pos + self.offset;
     }
 }
 
-/// Return value of [`crate::Layout::size_rules`].
+/// Widget sizing information
+///
+/// Return value of [`kas::Layout::size_rules`] and [`kas::TkWindow::size_rules`].
 ///
 /// This struct conveys properties such as the minimum size and preferred size
 /// of the widgets being queried.
+///
+/// This is *not* used for container widgets; for these,
+/// [`kas::TkWindow::size_rules`] is never called!
 #[derive(Copy, Clone, Debug, Default)]
 pub struct SizeRules {
     // minimum size
@@ -119,20 +74,6 @@ pub struct SizeRules {
 impl SizeRules {
     /// Empty (zero size)
     pub const EMPTY: Self = SizeRules { a: 0, b: 0 };
-
-    /// Construct from margins
-    ///
-    /// The `vertical` parameter determines which axis margins are read. The
-    /// `num_inner ≥ 0` parameter controls how many additional rows or
-    /// columns are added (beyond the first one).
-    pub fn from_margins(margins: Margins, vertical: bool, num_inner: u32) -> Self {
-        let a = if !vertical {
-            margins.outer.0 + num_inner * margins.inner.0 as u32
-        } else {
-            margins.outer.1 + num_inner * margins.inner.1 as u32
-        };
-        SizeRules { a, b: a }
-    }
 
     /// A fixed size
     #[inline]

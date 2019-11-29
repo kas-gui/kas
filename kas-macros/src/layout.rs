@@ -35,14 +35,18 @@ pub(crate) fn derive(
             fn size_rules(
                 &mut self,
                 tk: &mut dyn kas::TkWindow,
-                axis: kas::geom::AxisInfo
+                axis: kas::layout::AxisInfo
             )
-                -> kas::geom::SizeRules
+                -> kas::layout::SizeRules
             {
-                (0, 0) + tk.margins(self).size_rules(axis.vert(), 0, 0)
+                (0, 0)
             }
         };
-        let ty = quote! { type Data = (); };
+        let ty = quote! {
+            type Data = ();
+            type Solver = ();
+            type Setter = ();
+        };
         Ok((fns, ty))
     } else if layout == "derive" {
         if !children.is_empty() {
@@ -62,14 +66,18 @@ pub(crate) fn derive(
             fn size_rules(
                 &mut self,
                 tk: &mut dyn kas::TkWindow,
-                axis: kas::geom::AxisInfo
+                axis: kas::layout::AxisInfo
             )
-                -> kas::geom::SizeRules
+                -> kas::layout::SizeRules
             {
-                tk.size_rules(self, axis) + tk.margins(self).size_rules(axis.vert(), 0, 0)
+                tk.size_rules(self, axis)
             }
         };
-        let ty = quote! { type Data = (); };
+        let ty = quote! {
+            type Data = ();
+            type Solver = ();
+            type Setter = ();
+        };
         Ok((fns, ty))
     } else if layout == "single" {
         if !children.len() == 1 {
@@ -86,21 +94,31 @@ pub(crate) fn derive(
             fn size_rules(
                 &mut self,
                 tk: &mut dyn kas::TkWindow,
-                axis: kas::geom::AxisInfo
+                axis: kas::layout::AxisInfo
             )
-                -> kas::geom::SizeRules
+                -> kas::layout::SizeRules
             {
-                self.#ident.size_rules(tk, axis) + tk.margins(self).size_rules(axis.vert(), 0, 0)
+                self.#ident.size_rules(tk, axis) + tk.margins(self).size_rules(axis, 0, 0)
             }
 
             fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, mut rect: kas::geom::Rect) {
                 use kas::Core;
+                use kas::layout::RulesSetter;
                 self.core_data_mut().rect = rect;
-                tk.margins(self).adjust(&mut rect);
-                self.#ident.set_rect(tk, rect);
+
+                let mut setter = <Self as kas::LayoutData>::Setter::new(
+                    rect,
+                    tk.margins(self),
+                    &mut (),
+                );
+                self.#ident.set_rect(tk, setter.child_rect(()));
             }
         };
-        let ty = quote! { type Data = (); };
+        let ty = quote! {
+            type Data = ();
+            type Solver = ();
+            type Setter = kas::layout::SingleSetter;
+        };
         Ok((fns, ty))
     } else {
         let lay = if layout == "horizontal" {
@@ -142,15 +160,6 @@ pub enum Layout {
     Grid,
 }
 
-impl Layout {
-    pub fn has_horizontal(self) -> bool {
-        self != Layout::Vertical
-    }
-    pub fn has_vertical(self) -> bool {
-        self != Layout::Horizontal
-    }
-}
-
 pub(crate) struct ImplLayout<'a> {
     layout: Layout,
     cols: u32,
@@ -178,54 +187,21 @@ impl<'a> ImplLayout<'a> {
 
     pub fn child(&mut self, ident: &Member, args: &WidgetAttrArgs) -> Result<()> {
         let data = self.data;
-        match self.layout {
+
+        let child_info = match self.layout {
             Layout::Horizontal => {
                 let col = self.cols as usize;
                 self.cols += 1;
                 self.rows = 1;
 
-                self.size.append_all(quote! {
-                    if axis.has_fixed() && axis.vert() {
-                        axis.set_size(widths[#col]);
-                    }
-                    let child_rules = self.#ident.size_rules(tk, axis);
-                    if axis.horiz() {
-                        self.#data.0[#col] = child_rules;
-                        rules += child_rules;
-                    } else {
-                        rules = rules.max(child_rules);
-                    }
-                });
-
-                self.set_rect.append_all(quote! {
-                    crect.size.0 = widths[#col];
-                    self.#ident.set_rect(tk, crect);
-                    crect.pos.0 += crect.size.0 as i32 + margins.inner.0;
-                });
+                quote! { #col }
             }
             Layout::Vertical => {
-                self.cols = 1;
                 let row = self.rows as usize;
+                self.cols = 1;
                 self.rows += 1;
 
-                self.size.append_all(quote! {
-                    if axis.has_fixed() && axis.horiz() {
-                        axis.set_size(heights[#row]);
-                    }
-                    let child_rules = self.#ident.size_rules(tk, axis);
-                    if axis.vert() {
-                        self.#data.1[#row] = child_rules;
-                        rules += child_rules;
-                    } else {
-                        rules = rules.max(child_rules);
-                    }
-                });
-
-                self.set_rect.append_all(quote! {
-                    crect.size.1 = heights[#row];
-                    self.#ident.set_rect(tk, crect);
-                    crect.pos.1 += crect.size.1 as i32 + margins.inner.1;
-                });
+                quote! { #row }
             }
             Layout::Grid => {
                 let pos = args.as_pos()?;
@@ -235,56 +211,43 @@ impl<'a> ImplLayout<'a> {
                 self.rows = self.rows.max(r1);
                 let col = c0 as usize;
                 let row = r0 as usize;
+                let col_span_index = self.get_span(false, c0, c1);
+                let row_span_index = self.get_span(true, r0, r1);
 
-                let set_width = if pos.2 <= 1 {
-                    quote! { self.#data.0[#col] }
-                } else {
-                    let ind = self.get_span(false, c0, c1);
-                    quote! { col_spans[#ind] }
-                };
-                let set_height = if pos.3 <= 1 {
-                    quote! { self.#data.1[#row] }
-                } else {
-                    let ind = self.get_span(true, r0, r1);
-                    quote! { row_spans[#ind] }
-                };
-
-                let mut get_width = quote! { widths[#col] };
-                for n in (col + 1)..(c1 as usize) {
-                    get_width.append_all(quote! { + widths[#n] });
-                }
-                let mut get_height = quote! { heights[#row] };
-                for n in (row + 1)..(r1 as usize) {
-                    get_height.append_all(quote! { + heights[#n] });
-                }
-
-                self.size.append_all(quote! {
-                    if axis.has_fixed() {
-                        if axis.horiz() {
-                            axis.set_size(#get_height)
-                        } else {
-                            axis.set_size(#get_width)
-                        }
+                quote! {
+                    kas::layout::GridChildInfo {
+                        col: #col,
+                        col_end: #c1 as usize,
+                        col_span_index: #col_span_index,
+                        row: #row,
+                        row_end: #r1 as usize,
+                        row_span_index: #row_span_index,
                     }
-                    let child_rules = self.#ident.size_rules(tk, axis);
-                    if axis.horiz() {
-                        #set_width = #set_width.max(child_rules);
-                    } else {
-                        #set_height = #set_height.max(child_rules);
-                    }
-                });
-
-                self.set_rect.append_all(quote! {
-                    crect.pos = rect.pos + Coord(col_pos[#col], row_pos[#row]);
-                    crect.size = Size(#get_width, #get_height);
-                    self.#ident.set_rect(tk, crect);
-                });
+                }
             }
-        }
+        };
+
+        self.size.append_all(quote! {
+            let child = &mut self.#ident;
+            solver.for_child(
+                &mut self.#data,
+                #child_info,
+                |axis| child.size_rules(tk, axis)
+            );
+        });
+
+        self.set_rect.append_all(quote! {
+            self.#ident.set_rect(tk, setter.child_rect(#child_info));
+        });
+
         Ok(())
     }
     // dir: horiz (false) or vert (true)
     fn get_span(&mut self, dir: bool, begin: u32, end: u32) -> usize {
+        if end <= begin + 1 {
+            return std::usize::MAX;
+        }
+
         let list = if dir {
             &mut self.row_spans
         } else {
@@ -306,8 +269,6 @@ impl<'a> ImplLayout<'a> {
         let data = self.data;
         let cols = self.cols as usize;
         let rows = self.rows as usize;
-        let col_spacings = self.cols - 1;
-        let row_spacings = self.rows - 1;
         let mut col_spans = self.col_spans;
         let mut row_spans = self.row_spans;
         let num_col_spans = col_spans.len() as usize;
@@ -325,69 +286,62 @@ impl<'a> ImplLayout<'a> {
             o @ _ => o,
         });
 
-        let horiz_type = if self.layout.has_horizontal() {
-            quote! { [kas::geom::SizeRules; #cols + 1] }
-        } else {
-            quote! { () }
-        };
-        let vert_type = if self.layout.has_vertical() {
-            quote! { [kas::geom::SizeRules; #rows + 1] }
-        } else {
-            quote! { () }
-        };
-        let data_type = quote! {type Data = (#horiz_type, #vert_type);};
-
-        let size_pre = match self.layout {
+        let data_type = match self.layout {
             Layout::Horizontal => quote! {
-                let mut rules = SizeRules::EMPTY;
-                let mut widths = [0; #cols];
-                if let Some(size) = axis.fixed(true) {
-                    // TODO: cache this for use by set_rect?
-                    SizeRules::solve_seq(&mut widths, &self.#data.0, size);
-                }
+                type Data = kas::layout::FixedRowStorage::<
+                    [kas::layout::SizeRules; #cols + 1]
+                >;
+                type Solver = kas::layout::FixedRowSolver::<
+                    kas::layout::Horizontal,
+                    [kas::layout::SizeRules; #cols + 1],
+                    [u32; #cols],
+                >;
+                type Setter = kas::layout::FixedRowSetter::<
+                    kas::layout::Horizontal,
+                    [kas::layout::SizeRules; #cols + 1],
+                    [u32; #cols],
+                >;
             },
             Layout::Vertical => quote! {
-                let mut rules = SizeRules::EMPTY;
-                let mut heights = [0; #rows];
-                if let Some(size) = axis.fixed(false) {
-                    SizeRules::solve_seq(&mut heights, &self.#data.1, size);
-                }
+                type Data = kas::layout::FixedRowStorage::<
+                    [kas::layout::SizeRules; #rows + 1],
+                >;
+                type Solver = kas::layout::FixedRowSolver::<
+                    kas::layout::Vertical,
+                    [kas::layout::SizeRules; #rows + 1],
+                    [u32; #rows],
+                >;
+                type Setter = kas::layout::FixedRowSetter::<
+                    kas::layout::Vertical,
+                    [kas::layout::SizeRules; #rows + 1],
+                    [u32; #rows],
+                >;
             },
             Layout::Grid => quote! {
-                // TODO: again, this could be cached:
-                let mut widths = [0; #cols];
-                let mut heights = [0; #rows];
-                if let Some(size) = axis.fixed(true) {
-                    SizeRules::solve_seq(&mut widths, &self.#data.0, size);
-                } else if let Some(size) = axis.fixed(false) {
-                    SizeRules::solve_seq(&mut heights, &self.#data.1, size);
-                }
-
-                if axis.horiz() {
-                    for n in 0..#cols {
-                        self.#data.0[n] = SizeRules::EMPTY;
-                    }
-                }
-                if axis.vert() {
-                    for n in 0..#rows {
-                        self.#data.1[n] = SizeRules::EMPTY;
-                    }
-                }
-                let mut col_spans = [SizeRules::EMPTY; #num_col_spans];
-                let mut row_spans = [SizeRules::EMPTY; #num_row_spans];
+                type Data = kas::layout::FixedGridStorage::<
+                    [kas::layout::SizeRules; #cols + 1],
+                    [kas::layout::SizeRules; #rows + 1],
+                >;
+                type Solver = kas::layout::FixedGridSolver::<
+                    [kas::layout::SizeRules; #cols + 1],
+                    [kas::layout::SizeRules; #rows + 1],
+                    [u32; #cols],
+                    [u32; #rows],
+                    [kas::layout::SizeRules; #num_col_spans],
+                    [kas::layout::SizeRules; #num_row_spans],
+                >;
+                type Setter = kas::layout::FixedGridSetter::<
+                    [kas::layout::SizeRules; #cols + 1],
+                    [kas::layout::SizeRules; #rows + 1],
+                    [u32; #cols],
+                    [u32; #rows],
+                >;
             },
         };
 
         let size_post = match self.layout {
-            Layout::Horizontal => quote! {
-                if axis.horiz() {
-                    self.#data.0[#cols] = rules;
-                }
-            },
-            Layout::Vertical => quote! {
-                if axis.vert() {
-                    self.#data.1[#rows] = rules;
-                }
+            Layout::Horizontal | Layout::Vertical => quote! {
+                let rules = solver.finish(&mut self.#data, iter::empty(), iter::empty());
             },
             Layout::Grid => {
                 let mut horiz = quote! {};
@@ -397,10 +351,7 @@ impl<'a> ImplLayout<'a> {
                     let end = span.1 as usize;
                     let ind = span.2 as usize;
                     horiz.append_all(quote! {
-                        let mut sum = (#start..#end)
-                            .map(|n| self.#data.0[n])
-                            .fold(SizeRules::EMPTY, |x, y| x + y);
-                        self.#data.0[#start].set_at_least_op_sub(col_spans[#ind], sum);
+                        .chain(iter::once((#start, #end, #ind)))
                     });
                 }
                 for span in &row_spans {
@@ -408,84 +359,43 @@ impl<'a> ImplLayout<'a> {
                     let end = span.1 as usize;
                     let ind = span.2 as usize;
                     vert.append_all(quote! {
-                        let mut sum = (#start..#end)
-                            .map(|n| self.#data.1[n])
-                            .fold(SizeRules::EMPTY, |x, y| x + y);
-                        self.#data.1[#start].set_at_least_op_sub(row_spans[#ind], sum);
+                        .chain(iter::once((#start, #end, #ind)))
                     });
                 }
 
                 quote! {
-                    let rules;
-                    if axis.horiz() {
-                        #horiz
-
-                        rules = self.#data.0[0..#cols].iter().copied()
-                            .fold(SizeRules::EMPTY, |rules, item| rules + item);
-                        self.#data.0[#cols] = rules;
-                    } else {
-                        #vert
-
-                        rules = self.#data.1[0..#rows].iter().copied()
-                            .fold(SizeRules::EMPTY, |rules, item| rules + item);
-                        self.#data.1[#rows] = rules;
-                    }
+                    let rules = solver.finish(&mut self.#data,
+                        iter::empty() #horiz, iter::empty() # vert);
                 }
             }
         };
 
-        let mut set_rect_pre = quote! {
-            let mut crect = rect;
-        };
-        if self.layout.has_horizontal() {
-            set_rect_pre.append_all(quote! {
-                let mut widths = [0; #cols];
-                SizeRules::solve_seq(&mut widths, &self.#data.0, rect.size.0);
-            });
-        }
-        if self.layout.has_vertical() {
-            set_rect_pre.append_all(quote! {
-                let mut heights = [0; #rows];
-                SizeRules::solve_seq(&mut heights, &self.#data.1, rect.size.1);
-            });
-        }
-        if let Layout::Grid = self.layout {
-            set_rect_pre.append_all(quote! {
-                let mut col_pos = [0; #cols];
-                let mut row_pos = [0; #rows];
-                let mut pos = 0;
-                for n in 0..#cols {
-                    col_pos[n] = pos;
-                    pos += widths[n] as i32 + margins.inner.0;
-                }
-                pos = 0;
-                for n in 0..#rows {
-                    row_pos[n] = pos;
-                    pos += heights[n] as i32 + margins.inner.1;
-                }
-            });
-        }
-
         let fns = quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWindow, mut axis: kas::geom::AxisInfo) -> kas::geom::SizeRules {
+            fn size_rules(&mut self, tk: &mut dyn kas::TkWindow, mut axis: kas::layout::AxisInfo) -> kas::layout::SizeRules {
+                use std::iter;
                 use kas::Core;
-                use kas::geom::{AxisInfo, Size, SizeRules};
+                use kas::layout::RulesSolver;
 
-                #size_pre
+                let mut solver = <Self as kas::LayoutData>::Solver::new(
+                    axis,
+                    &mut self.#data,
+                );
                 #size
                 #size_post
 
-                rules + tk.margins(self).size_rules(axis.vert(), #col_spacings, #row_spacings)
+                rules + tk.margins(self).size_rules(axis, #cols as u32, #rows as u32)
             }
 
             fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, mut rect: kas::geom::Rect) {
                 use kas::Core;
-                use kas::geom::{Coord, Size, SizeRules, Rect};
+                use kas::layout::RulesSetter;
                 self.core_data_mut().rect = rect;
-                let margins = tk.margins(self);
-                margins.adjust(&mut rect);
 
-                #set_rect_pre
+                let mut setter = <Self as kas::LayoutData>::Setter::new(
+                    rect,
+                    tk.margins(self),
+                    &mut self.#data,
+                );
                 #set_rect
             }
         };

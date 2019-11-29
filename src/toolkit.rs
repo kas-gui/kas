@@ -14,7 +14,7 @@
 //!
 //! [winit]: https://github.com/rust-windowing/winit
 
-use crate::geom::{AxisInfo, Margins, SizeRules};
+use crate::layout;
 use crate::{event, Widget};
 
 /// Toolkit actions needed after event handling, if any.
@@ -53,17 +53,19 @@ pub trait TkWindow {
     /// The closure should return true if this update may require a redraw.
     fn update_data(&mut self, f: &mut dyn FnMut(&mut event::Manager) -> bool);
 
-    /// Get the widget's size preferences
+    /// Margin sizes
     ///
-    /// See documentation of [`crate::draw::Theme`] and
-    /// [`crate::geom::SizeRules`].
-    fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules;
+    /// May be called multiple times during a resize operation.
+    ///
+    /// See documentation of [`layout::Margins`].
+    fn margins(&self, widget: &dyn Widget) -> layout::Margins;
 
-    /// Margin dimensions
+    /// Widget size preferences
     ///
-    /// See documentation of [`crate::draw::Theme`] and
-    /// [`crate::geom::Margins`].
-    fn margins(&self, widget: &dyn Widget) -> Margins;
+    /// Widgets should expect this to be called at least once for each axis.
+    ///
+    /// See documentation of [`layout::SizeRules`].
+    fn size_rules(&mut self, widget: &dyn Widget, axis: layout::AxisInfo) -> layout::SizeRules;
 
     /// Notify that a widget must be redrawn
     fn redraw(&mut self, widget: &dyn Widget);
