@@ -105,6 +105,10 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
         let font_scale = self.font_scale;
         let line_height = font_scale as u32;
         let mut bound = |vert: bool| -> u32 {
+            let layout = match widget.class() {
+                Class::Entry(_) => Layout::default_single_line(),
+                _ => Layout::default_wrap(),
+            };
             let bounds = widget.class().text().and_then(|text| {
                 let mut bounds = (f32::INFINITY, f32::INFINITY);
                 if let Some(size) = axis.fixed(false) {
@@ -117,6 +121,7 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
                     screen_position: (0.0, 0.0),
                     scale: Scale::uniform(font_scale),
                     bounds,
+                    layout,
                     ..Section::default()
                 })
             });
@@ -193,6 +198,7 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
 
         let mut _string; // Entry needs this to give a valid lifetime
         let text: Option<(&str, Colour)>;
+        let mut layout = Layout::default_wrap();
 
         match widget.class() {
             Class::Container | Class::Window => {
@@ -208,6 +214,7 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
                 let style = Style::Square(Vec2(0.0, -0.8));
                 draw.draw_frame(outer, quad, style, FRAME);
                 bounds = bounds - 2.0 * f;
+                layout = Layout::default_single_line();
 
                 background = Some(TEXT_AREA);
 
@@ -272,7 +279,7 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
                 Align::Center => (VerticalAlign::Center, 0.5 * bounds.1),
                 Align::End => (VerticalAlign::Bottom, bounds.1),
             };
-            let layout = Layout::default().h_align(h_align).v_align(v_align);
+            let layout = layout.h_align(h_align).v_align(v_align);
             let text_pos = quad.0 + margin + Vec2(h_offset, v_offset);
 
             draw.draw_text(Section {
