@@ -147,10 +147,11 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
             Class::Entry(_) => {
                 let frame = 2 * self.frame_size as u32;
                 if !axis.vertical() {
-                    let min = 3 * line_height;
-                    SizeRules::variable(min, bound(false).max(min)) + frame
+                    let min = frame + 3 * line_height;
+                    SizeRules::variable(min, bound(false).max(min))
                 } else {
-                    SizeRules::fixed(line_height + frame)
+                    let min = frame + line_height;
+                    SizeRules::variable(min, bound(true).max(min))
                 }
             }
             Class::Button(_) => {
@@ -159,7 +160,8 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
                     let min = 3 * line_height + f;
                     SizeRules::variable(min, bound(false).max(min))
                 } else {
-                    SizeRules::fixed(line_height + f)
+                    let min = f + line_height;
+                    SizeRules::variable(min, bound(true).max(min))
                 }
             }
             Class::CheckBox(_) => {
