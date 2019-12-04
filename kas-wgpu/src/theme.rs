@@ -221,7 +221,7 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
                 background = Some(TEXT_AREA);
 
                 _string = cls.get_text().to_string();
-                if ev_mgr.key_grab(w_id) {
+                if ev_mgr.char_focus(w_id) {
                     // TODO: proper edit character and positioning
                     _string.push('|');
                 }
@@ -299,8 +299,8 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
         // note: may be disabled via 'false &&' prefix
         let hover = false && ev_mgr.is_hovered(w_id);
         let key_focus = ev_mgr.key_focus(w_id);
-        let key_grab = ev_mgr.key_grab(w_id);
-        if hover || key_focus || key_grab {
+        let char_focus = ev_mgr.char_focus(w_id);
+        if hover || key_focus || char_focus {
             let mut col = Colour::new(0.7, 0.7, 0.7);
             if hover {
                 col.g = 1.0;
@@ -308,7 +308,7 @@ impl<D: Draw + DrawText> Theme for SampleTheme<D> {
             if key_focus {
                 col.r = 1.0;
             }
-            if key_grab {
+            if char_focus {
                 col.b = 1.0;
             }
 

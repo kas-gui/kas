@@ -16,7 +16,7 @@ use crate::{TkWindow, Widget, WidgetId};
 #[derive(Clone, Debug)]
 pub struct Manager {
     dpi_factor: f64,
-    grab_focus: Option<WidgetId>,
+    char_focus: Option<WidgetId>,
     key_focus: Option<WidgetId>,
     hover: Option<WidgetId>,
     click_start: Option<WidgetId>,
@@ -35,7 +35,7 @@ impl Manager {
     pub fn new(dpi_factor: f64) -> Self {
         Manager {
             dpi_factor,
-            grab_focus: None,
+            char_focus: None,
             key_focus: None,
             hover: None,
             click_start: None,
@@ -68,10 +68,10 @@ impl Manager {
         self.dpi_factor = dpi_factor;
     }
 
-    /// Get whether this widget has a keyboard grab
+    /// Get whether this widget has a grab on character input
     #[inline]
-    pub fn key_grab(&self, w_id: WidgetId) -> bool {
-        self.grab_focus == Some(w_id)
+    pub fn char_focus(&self, w_id: WidgetId) -> bool {
+        self.char_focus == Some(w_id)
     }
 
     /// Get whether this widget has keyboard focus
@@ -181,8 +181,8 @@ impl Manager {
         start != None
     }
 
-    pub(crate) fn set_grab(&mut self, id: WidgetId) -> bool {
-        self.grab_focus = Some(id);
+    pub(crate) fn set_char_focus(&mut self, id: WidgetId) -> bool {
+        self.char_focus = Some(id);
         true
     }
 }
@@ -213,19 +213,29 @@ impl Manager {
             // HoveredFile(PathBuf),
             // HoveredFileCancelled,
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
-                if let Some(id) = tk.data().grab_focus {
+                if let Some(id) = tk.data().char_focus {
                     let ev = EventChild::Action(Action::ReceivedCharacter(c));
                     widget.handle(tk, Event::ToChild(id, ev));
                 }
             }
             // Focused(bool),
             KeyboardInput { input, .. } => {
+                let char_focus = tk.data().char_focus.is_some();
                 match (input.scancode, input.state, input.virtual_keycode) {
-                    (scancode, ElementState::Pressed, Some(vkey)) => match vkey {
-                        VirtualKeyCode::Tab if tk.data().grab_focus.is_none() => {
+                    (_, ElementState::Pressed, Some(vkey)) if char_focus => match vkey {
+                        VirtualKeyCode::Escape => {
+                            tk.update_data(&mut |data| {
+                                data.char_focus = None;
+                                true
+                            });
+                        }
+                        _ => (),
+                    },
+                    (scancode, ElementState::Pressed, Some(vkey)) if !char_focus => match vkey {
+                        VirtualKeyCode::Tab => {
                             tk.update_data(&mut |data| data.next_key_focus(widget.as_widget_mut()));
                         }
-                        VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter if tk.data().grab_focus.is_none() => {
+                        VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
                             if let Some(id) = tk.data().key_focus {
                                 let ev = EventChild::Action(Action::Activate);
                                 widget.handle(tk, Event::ToChild(id, ev));
@@ -233,10 +243,7 @@ impl Manager {
                         }
                         VirtualKeyCode::Escape => {
                             tk.update_data(&mut |data| {
-                                if data.grab_focus.is_some() {
-                                    data.grab_focus = None;
-                                    true
-                                } else if data.key_focus.is_some() {
+                                if data.key_focus.is_some() {
                                     data.key_focus = None;
                                     true
                                 } else {
@@ -244,7 +251,7 @@ impl Manager {
                                 }
                             });
                         }
-                        vkey @ _ if tk.data().grab_focus.is_none() => {
+                        vkey @ _ => {
                             if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
                                 let ev = EventChild::Action(Action::Activate);
                                 widget.handle(tk, Event::ToChild(id, ev));
@@ -260,7 +267,6 @@ impl Manager {
                                 });
                             }
                         }
-                        _ /* implies grab_focus.is_some() */ => (),
                     },
                     (scancode, ElementState::Released, _) => {
                         tk.update_data(&mut |data| {
@@ -307,8 +313,8 @@ impl Manager {
                     modifiers,
                 };
                 tk.update_data(&mut |data| {
-                    if data.grab_focus.is_some() && data.grab_focus != data.hover {
-                        data.grab_focus = None;
+                    if data.char_focus.is_some() && data.char_focus != data.hover {
+                        data.char_focus = None;
                         true
                     } else {
                         false
@@ -340,8 +346,8 @@ impl Manager {
                     }
                     TouchPhase::Ended => {
                         tk.update_data(&mut |data| {
-                            let r = data.grab_focus.is_some();
-                            data.grab_focus = None;
+                            let r = data.char_focus.is_some();
+                            data.char_focus = None;
                             r
                         });
                         let ev = EventCoord::TouchEnd(touch.id);
