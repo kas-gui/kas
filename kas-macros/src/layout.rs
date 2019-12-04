@@ -101,7 +101,7 @@ pub(crate) fn derive(
                 self.#ident.size_rules(tk, axis) + tk.margins(self).size_rules(axis, 0, 0)
             }
 
-            fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, mut rect: kas::geom::Rect) {
+            fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, rect: kas::geom::Rect) {
                 use kas::Core;
                 use kas::layout::RulesSetter;
                 self.core_data_mut().rect = rect;
