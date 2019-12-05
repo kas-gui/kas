@@ -74,4 +74,13 @@ pub trait TkWindow {
     ///
     /// Allows signalling application exit, etc.
     fn send_action(&mut self, action: TkAction);
+
+    /// Attempt to get clipboard contents
+    ///
+    /// In case of failure, paste actions will simply fail. The implementation
+    /// may wish to log an appropriate warning message.
+    fn get_clipboard(&mut self) -> Option<String>;
+
+    /// Attempt to set clipboard contents
+    fn set_clipboard(&mut self, content: String);
 }

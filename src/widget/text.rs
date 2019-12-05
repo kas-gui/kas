@@ -55,6 +55,21 @@ impl HasText for Label {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+enum LastEdit {
+    None,
+    Insert,
+    Backspace,
+    Clear,
+    Paste,
+}
+
+impl Default for LastEdit {
+    fn default() -> Self {
+        LastEdit::None
+    }
+}
+
 /// An editable, single-line text box.
 #[widget(class = Class::Entry(self), layout = derive)]
 #[derive(Clone, Default, Widget)]
@@ -63,6 +78,8 @@ pub struct Entry<H: 'static> {
     core: CoreData,
     editable: bool,
     text: String,
+    old_state: Option<String>,
+    last_edit: LastEdit,
     on_activate: H,
 }
 
@@ -83,6 +100,8 @@ impl Entry<()> {
             core: Default::default(),
             editable: true,
             text: text.into(),
+            old_state: None,
+            last_edit: LastEdit::None,
             on_activate: (),
         }
     }
@@ -99,6 +118,8 @@ impl Entry<()> {
             core: self.core,
             editable: self.editable,
             text: self.text,
+            old_state: self.old_state,
+            last_edit: self.last_edit,
             on_activate: f,
         }
     }
@@ -112,13 +133,75 @@ impl<H> Entry<H> {
     }
 
     fn received_char(&mut self, tk: &mut dyn TkWindow, c: char) -> bool {
-        // TODO: allow edit position other than end
-        match c {
-            '\u{8}' /* backspace */  => { self.text.pop(); }
-            '\u{7f}' /* delete */ => self.text.clear(),
-            '\r' /* enter */ => return true,
-            _ => self.text.push(c),
-        };
+        if !self.editable {
+            return false;
+        }
+
+        // TODO: Text selection and editing (see Unicode std. section 5.11)
+        // Note that it may make sense to implement text shaping first.
+        // For now we just filter control characters and append the rest.
+        if c < '\u{20}' || (c >= '\u{7f}' && c <= '\u{9f}') {
+            match c {
+                '\u{03}' /* copy */ => {
+                    // we don't yet have selection support, so just copy everything
+                    tk.set_clipboard(self.text.clone());
+                }
+                '\u{08}' /* backspace */  => {
+                    if self.last_edit != LastEdit::Backspace {
+                        self.old_state = Some(self.text.clone());
+                        self.last_edit = LastEdit::Backspace;
+                    }
+                    self.text.pop();
+                }
+                '\u{09}' /* tab */ => (),
+                '\u{0A}' /* line feed */ => (),
+                '\u{0B}' /* vertical tab */ => (),
+                '\u{0C}' /* form feed */ => (),
+                '\u{0D}' /* carriage return (\r) */ => return true,
+                '\u{16}' /* paste */ => {
+                    if self.last_edit != LastEdit::Paste {
+                        self.old_state = Some(self.text.clone());
+                        self.last_edit = LastEdit::Paste;
+                    }
+                    if let Some(content) = tk.get_clipboard() {
+                        // We cut the content short on control characters and
+                        // ignore them (preventing line-breaks and ignoring any
+                        // actions such as recursive-paste).
+                        let mut end = content.len();
+                        for (i, b) in content.as_bytes().iter().cloned().enumerate() {
+                            if b < 0x20 || (b >= 0x7f && b <= 0x9f) {
+                                end = i;
+                                break;
+                            }
+                        }
+                        self.text.push_str(&content[0..end]);
+                    }
+                }
+                '\u{1A}' /* undo and redo */ => {
+                    // TODO: maintain full edit history (externally?)
+                    // NOTE: undo *and* redo shortcuts map to this control char
+                    if let Some(state) = self.old_state.as_mut() {
+                        std::mem::swap(state, &mut self.text);
+                        self.last_edit = LastEdit::None;
+                    }
+                }
+                '\u{1B}' /* escape */ => (),
+                '\u{7f}' /* delete */ => {
+                    if self.last_edit != LastEdit::Clear {
+                        self.old_state = Some(self.text.clone());
+                        self.last_edit = LastEdit::Clear;
+                    }
+                    self.text.clear();
+                }
+                _ => (),
+            };
+        } else {
+            if self.last_edit != LastEdit::Insert {
+                self.old_state = Some(self.text.clone());
+                self.last_edit = LastEdit::Insert;
+            }
+            self.text.push(c);
+        }
         tk.redraw(self);
         false
     }

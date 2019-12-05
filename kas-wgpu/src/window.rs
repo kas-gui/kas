@@ -7,6 +7,9 @@
 
 use std::time::{Duration, Instant};
 
+#[cfg(feature = "clipboard")]
+use clipboard::{ClipboardContext, ClipboardProvider};
+
 use kas::draw::Theme;
 use kas::event::Callback;
 use kas::geom::Size;
@@ -193,6 +196,8 @@ impl<T: Theme<Draw = DrawPipe>> Window<T> {
 
 /// Implementation of [`kas::TkWindow`]
 pub(crate) struct TkWindow<T> {
+    #[cfg(feature = "clipboard")]
+    clipboard: Option<ClipboardContext>,
     draw_pipe: DrawPipe,
     action: TkAction,
     pub(crate) ev_mgr: event::Manager,
@@ -207,10 +212,22 @@ impl<T: Theme<Draw = DrawPipe>> TkWindow<T> {
         dpi_factor: f64,
         mut theme: T,
     ) -> Self {
+        #[cfg(feature = "clipboard")]
+        let clipboard = match ClipboardContext::new() {
+            Ok(cb) => Some(cb),
+            Err(e) => {
+                // TODO: use log
+                println!("Warning: unable to open clipboard: {:?}", e);
+                None
+            }
+        };
+
         let draw_pipe = DrawPipe::new(device, tex_format, size, &theme);
         theme.set_dpi_factor(dpi_factor as f32);
 
         TkWindow {
+            #[cfg(feature = "clipboard")]
+            clipboard,
             draw_pipe,
             action: TkAction::None,
             ev_mgr: event::Manager::new(dpi_factor),
@@ -282,6 +299,39 @@ impl<T: Theme<Draw = DrawPipe>> kas::TkWindow for TkWindow<T> {
     #[inline]
     fn send_action(&mut self, action: TkAction) {
         self.action = self.action.max(action);
+    }
+
+    #[cfg(not(feature = "clipboard"))]
+    #[inline]
+    fn get_clipboard(&mut self) -> Option<String> {
+        None
+    }
+
+    #[cfg(feature = "clipboard")]
+    fn get_clipboard(&mut self) -> Option<String> {
+        self.clipboard
+            .as_mut()
+            .and_then(|cb| match cb.get_contents() {
+                Ok(c) => Some(c),
+                Err(e) => {
+                    // TODO: use log
+                    println!("Warning: failed to get clipboard contents: {:?}", e);
+                    None
+                }
+            })
+    }
+
+    #[cfg(not(feature = "clipboard"))]
+    #[inline]
+    fn set_clipboard(&mut self, _content: String) {}
+
+    #[cfg(feature = "clipboard")]
+    fn set_clipboard(&mut self, content: String) {
+        self.clipboard.as_mut().map(|cb| {
+            cb.set_contents(content).unwrap_or_else(|e|
+                // TODO: use log
+                println!("Warning: failed to set clipboard contents: {:?}", e))
+        });
     }
 }
 
