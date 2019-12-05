@@ -7,6 +7,7 @@
 //!
 //! Widget size and appearance can be modified through themes.
 
+use std::any::Any;
 use std::f32;
 
 use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
@@ -73,6 +74,10 @@ impl SampleThemeWindow {
 }
 
 impl<D: Draw + DrawText> ThemeWindow<D> for SampleThemeWindow {
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
     fn set_dpi_factor(&mut self, factor: f32) {
         *self = SampleThemeWindow::new(factor)
     }

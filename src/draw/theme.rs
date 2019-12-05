@@ -7,6 +7,8 @@
 //!
 //! Widget size and appearance can be modified through themes.
 
+use std::any::Any;
+
 use rusttype::Font;
 
 use super::Colour;
@@ -21,7 +23,7 @@ use kas::{event, Widget};
 /// large resources (e.g. fonts and icons) consider using external storage.
 pub trait Theme<Draw> {
     /// The associated [`ThemeWindow`] implementation.
-    type Window: ThemeWindow<Draw>;
+    type Window: ThemeWindow<Draw> + 'static;
 
     /// Construct per-window storage
     ///
@@ -74,13 +76,49 @@ pub trait Theme<Draw> {
     );
 }
 
+impl<Draw: 'static, T: Theme<Draw> + ?Sized> Theme<Draw> for Box<T> {
+    type Window = Box<dyn ThemeWindow<Draw>>;
+
+    fn new_window(&self, dpi_factor: f32) -> Self::Window {
+        Box::new(T::new_window(self, dpi_factor))
+    }
+
+    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
+        T::get_fonts(self)
+    }
+
+    fn light_direction(&self) -> (f32, f32) {
+        T::light_direction(self)
+    }
+
+    fn clear_colour(&self) -> Colour {
+        T::clear_colour(self)
+    }
+
+    fn draw(
+        &self,
+        theme_window: &mut Self::Window,
+        draw: &mut Draw,
+        ev_mgr: &event::Manager,
+        widget: &dyn kas::Widget,
+    ) {
+        let theme_window = theme_window
+            .as_any_mut()
+            .downcast_mut()
+            .unwrap_or_else(|| panic!("Theme::draw: theme_window parameter has wrong type"));
+        T::draw(self, theme_window, draw, ev_mgr, widget)
+    }
+}
+
 /// Per-window storage for the theme
 ///
 /// Constructed via [`Theme::new_window`].
 ///
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
-pub trait ThemeWindow<Draw> {
+pub trait ThemeWindow<Draw>: Any {
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+
     /// Set the DPI factor.
     ///
     /// This method is called when the DPI changes (e.g. via system settings or
@@ -113,4 +151,27 @@ pub trait ThemeWindow<Draw> {
         widget: &dyn Widget,
         axis: layout::AxisInfo,
     ) -> layout::SizeRules;
+}
+
+impl<Draw, TW: ThemeWindow<Draw> + ?Sized> ThemeWindow<Draw> for Box<TW> {
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn set_dpi_factor(&mut self, factor: f32) {
+        TW::set_dpi_factor(self, factor)
+    }
+
+    fn margins(&self, widget: &dyn Widget) -> layout::Margins {
+        TW::margins(self, widget)
+    }
+
+    fn size_rules(
+        &self,
+        draw: &mut Draw,
+        widget: &dyn Widget,
+        axis: layout::AxisInfo,
+    ) -> layout::SizeRules {
+        TW::size_rules(self, draw, widget, axis)
+    }
 }
