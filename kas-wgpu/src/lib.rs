@@ -17,19 +17,25 @@ use winit::event_loop::EventLoop;
 use kas::draw::Theme;
 
 use crate::draw::DrawPipe;
+use window::Window;
 
 pub use theme::SampleTheme;
-pub use window::Window;
 
 pub use kas;
 pub use wgpu_glyph as glyph;
 
+/// State shared between windows
+struct SharedState<T> {
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    theme: T,
+}
+
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
 pub struct Toolkit<T: Theme<DrawPipe>, U: 'static> {
-    adapter: wgpu::Adapter,
     el: EventLoop<U>,
-    windows: Vec<Window<T>>,
-    theme: T,
+    windows: Vec<Window<T::Window>>,
+    shared: SharedState<T>,
 }
 
 impl<T: Theme<DrawPipe> + 'static> Toolkit<T, ()> {
@@ -61,11 +67,21 @@ impl<T: Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
         });
         let adapter = wgpu::Adapter::request(adapter_options).unwrap();
 
+        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
+            extensions: wgpu::Extensions {
+                anisotropic_filtering: false,
+            },
+            limits: wgpu::Limits::default(),
+        });
+
         Toolkit {
-            adapter,
             el: EventLoop::with_user_event(),
             windows: vec![],
-            theme,
+            shared: SharedState {
+                device,
+                queue,
+                theme,
+            },
         }
     }
 
@@ -78,14 +94,14 @@ impl<T: Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
 
     /// Add a boxed window directly
     pub fn add_boxed(&mut self, window: Box<dyn kas::Window>) -> Result<(), OsError> {
-        let win = Window::new(&self.adapter, &self.el, window, self.theme.clone())?;
+        let win = Window::new(&mut self.shared, &self.el, window)?;
         self.windows.push(win);
         Ok(())
     }
 
     /// Run the main loop.
     pub fn run(self) -> ! {
-        let mut el = event::Loop::new(self.windows);
+        let mut el = event::Loop::new(self.windows, self.shared);
         self.el
             .run(move |event, _, control_flow| el.handle(event, control_flow))
     }

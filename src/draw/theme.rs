@@ -19,7 +19,7 @@ use kas::{event, Widget};
 ///
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
-pub trait Theme<Draw>: Clone {
+pub trait Theme<Draw> {
     /// The associated [`ThemeWindow`] implementation.
     type Window: ThemeWindow<Draw>;
 

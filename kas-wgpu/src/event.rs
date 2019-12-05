@@ -14,17 +14,19 @@ use kas::draw::Theme;
 use kas::TkAction;
 
 use crate::draw::DrawPipe;
-use crate::Window;
+use crate::{SharedState, Window};
 
 pub(crate) struct Loop<T: Theme<DrawPipe>> {
-    windows: Vec<Window<T>>,
+    windows: Vec<Window<T::Window>>,
+    shared: SharedState<T>,
     resumes: Vec<(Instant, usize)>,
 }
 
 impl<T: Theme<DrawPipe>> Loop<T> {
-    pub(crate) fn new(windows: Vec<Window<T>>) -> Self {
+    pub(crate) fn new(windows: Vec<Window<T::Window>>, shared: SharedState<T>) -> Self {
         Loop {
             windows,
+            shared,
             resumes: vec![],
         }
     }
@@ -35,7 +37,7 @@ impl<T: Theme<DrawPipe>> Loop<T> {
             WindowEvent { window_id, event } => 'outer: loop {
                 for (i, window) in self.windows.iter_mut().enumerate() {
                     if window.window.id() == window_id {
-                        break 'outer (i, window.handle_event(event));
+                        break 'outer (i, window.handle_event(&mut self.shared, event));
                     }
                 }
                 return;
