@@ -36,7 +36,7 @@ pub struct Window<T> {
 }
 
 // Public functions, for use by the toolkit
-impl<T: Theme<Draw = DrawPipe>> Window<T> {
+impl<T: Theme<DrawPipe>> Window<T> {
     /// Construct a window
     pub fn new<U: 'static>(
         adapter: &wgpu::Adapter,
@@ -170,7 +170,7 @@ impl<T: Theme<Draw = DrawPipe>> Window<T> {
 }
 
 // Internal functions
-impl<T: Theme<Draw = DrawPipe>> Window<T> {
+impl<T: Theme<DrawPipe>> Window<T> {
     fn do_resize(&mut self, size: LogicalSize) {
         let size = size.to_physical(self.window.hidpi_factor()).into();
         if size == Size(self.sc_desc.width, self.sc_desc.height) {
@@ -204,7 +204,7 @@ pub(crate) struct TkWindow<T> {
     theme: T,
 }
 
-impl<T: Theme<Draw = DrawPipe>> TkWindow<T> {
+impl<T: Theme<DrawPipe>> TkWindow<T> {
     pub fn new(
         device: &mut wgpu::Device,
         tex_format: wgpu::TextureFormat,
@@ -272,7 +272,7 @@ impl<T: Theme<Draw = DrawPipe>> TkWindow<T> {
     }
 }
 
-impl<T: Theme<Draw = DrawPipe>> kas::TkWindow for TkWindow<T> {
+impl<T: Theme<DrawPipe>> kas::TkWindow for TkWindow<T> {
     fn data(&self) -> &event::Manager {
         &self.ev_mgr
     }

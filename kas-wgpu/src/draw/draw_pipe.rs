@@ -57,7 +57,7 @@ pub struct DrawPipe {
 
 impl DrawPipe {
     /// Construct
-    pub fn new<D: Theme>(
+    pub fn new<D: Theme<Self>>(
         device: &mut wgpu::Device,
         tex_format: wgpu::TextureFormat,
         size: Size,

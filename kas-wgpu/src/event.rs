@@ -21,7 +21,7 @@ pub(crate) struct Loop<T> {
     resumes: Vec<(Instant, usize)>,
 }
 
-impl<T: Theme<Draw = DrawPipe>> Loop<T> {
+impl<T: Theme<DrawPipe>> Loop<T> {
     pub(crate) fn new(windows: Vec<Window<T>>) -> Self {
         Loop {
             windows,

@@ -8,7 +8,6 @@
 //! Widget size and appearance can be modified through themes.
 
 use std::f32;
-use std::marker::PhantomData;
 
 use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
@@ -21,15 +20,14 @@ use crate::draw::*;
 
 /// A simple, inflexible theme providing a sample implementation.
 #[derive(Copy, Debug, Default)]
-pub struct SampleTheme<D> {
+pub struct SampleTheme {
     font_scale: f32,
     margin: f32,
     frame_size: f32,
     button_frame: f32,
-    _phantom: PhantomData<D>,
 }
 
-impl<D> SampleTheme<D> {
+impl SampleTheme {
     /// Construct
     pub fn new() -> Self {
         SampleTheme {
@@ -37,20 +35,18 @@ impl<D> SampleTheme<D> {
             margin: MARGIN,
             frame_size: FRAME_SIZE,
             button_frame: BUTTON_FRAME,
-            _phantom: Default::default(),
         }
     }
 }
 
 // manual impl because derive macro applies incorrect bounds
-impl<D> Clone for SampleTheme<D> {
+impl Clone for SampleTheme {
     fn clone(&self) -> Self {
         Self {
             font_scale: self.font_scale,
             margin: self.margin,
             frame_size: self.frame_size,
             button_frame: self.button_frame,
-            _phantom: Default::default(),
         }
     }
 }
@@ -79,9 +75,7 @@ pub const LABEL_TEXT: Colour = Colour::grey(0.0);
 /// Text on button
 pub const BUTTON_TEXT: Colour = Colour::grey(1.0);
 
-impl<D: Draw + DrawText> Theme for SampleTheme<D> {
-    type Draw = D;
-
+impl<D: Draw + DrawText> Theme<D> for SampleTheme {
     fn set_dpi_factor(&mut self, factor: f32) {
         self.font_scale = (FONT_SIZE * factor).round();
         self.margin = (MARGIN * factor).round();

@@ -32,7 +32,7 @@ pub struct Toolkit<T, U: 'static> {
     theme: T,
 }
 
-impl<T: Theme<Draw = DrawPipe> + 'static> Toolkit<T, ()> {
+impl<T: Theme<DrawPipe> + 'static> Toolkit<T, ()> {
     /// Construct a new instance with default options.
     ///
     /// This chooses a low-power graphics adapter by preference.
@@ -41,7 +41,7 @@ impl<T: Theme<Draw = DrawPipe> + 'static> Toolkit<T, ()> {
     }
 }
 
-impl<T: Theme<Draw = DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
+impl<T: Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
     /// Construct an instance with custom options
     ///
     /// The graphics adapter is chosen according to the given options. If `None`

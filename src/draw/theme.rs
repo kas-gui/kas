@@ -15,12 +15,11 @@ use kas::{event, Widget};
 
 /// A *theme* provides widget sizing and drawing implementations.
 ///
+/// The theme is generic over some `Draw` type.
+///
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
-pub trait Theme: Clone {
-    /// Implementor of draw API
-    type Draw;
-
+pub trait Theme<Draw>: Clone {
     /// Set the DPI factor.
     ///
     /// This method is called after constructing a window and each time the DPI
@@ -82,7 +81,7 @@ pub trait Theme: Clone {
     /// See documentation of [`layout::SizeRules`].
     fn size_rules(
         &self,
-        draw: &mut Self::Draw,
+        draw: &mut Draw,
         widget: &dyn Widget,
         axis: layout::AxisInfo,
     ) -> layout::SizeRules;
@@ -91,5 +90,5 @@ pub trait Theme: Clone {
     ///
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
-    fn draw(&self, draw: &mut Self::Draw, ev_mgr: &event::Manager, widget: &dyn kas::Widget);
+    fn draw(&self, draw: &mut Draw, ev_mgr: &event::Manager, widget: &dyn kas::Widget);
 }

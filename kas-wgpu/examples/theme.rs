@@ -22,11 +22,11 @@ use kas_wgpu::SampleTheme;
 /// A demo theme
 ///
 /// We set a custom background colour and use `SampleTheme` for everything else.
-pub struct ColouredTheme<D> {
-    inner: SampleTheme<D>,
+pub struct ColouredTheme {
+    inner: SampleTheme,
 }
 
-impl<D> ColouredTheme<D> {
+impl ColouredTheme {
     /// Construct
     pub fn new() -> Self {
         ColouredTheme {
@@ -36,7 +36,7 @@ impl<D> ColouredTheme<D> {
 }
 
 // manual impl because derive macro applies incorrect bounds
-impl<D> Clone for ColouredTheme<D> {
+impl Clone for ColouredTheme {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
@@ -49,19 +49,17 @@ thread_local! {
     static BACKGROUND: Cell<Colour> = Cell::new(Colour::grey(1.0));
 }
 
-impl<D: Draw + DrawText> Theme for ColouredTheme<D> {
-    type Draw = D;
-
+impl<D: Draw + DrawText> Theme<D> for ColouredTheme {
     fn set_dpi_factor(&mut self, factor: f32) {
-        self.inner.set_dpi_factor(factor)
+        Theme::<D>::set_dpi_factor(&mut self.inner, factor)
     }
 
     fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
-        self.inner.get_fonts()
+        Theme::<D>::get_fonts(&self.inner)
     }
 
     fn light_direction(&self) -> (f32, f32) {
-        self.inner.light_direction()
+        Theme::<D>::light_direction(&self.inner)
     }
 
     fn clear_colour(&self) -> Colour {
@@ -69,20 +67,20 @@ impl<D: Draw + DrawText> Theme for ColouredTheme<D> {
     }
 
     fn margins(&self, widget: &dyn Widget) -> layout::Margins {
-        self.inner.margins(widget)
+        Theme::<D>::margins(&self.inner, widget)
     }
 
     fn size_rules(
         &self,
-        draw: &mut Self::Draw,
+        draw: &mut D,
         widget: &dyn Widget,
         axis: layout::AxisInfo,
     ) -> layout::SizeRules {
-        self.inner.size_rules(draw, widget, axis)
+        Theme::<D>::size_rules(&self.inner, draw, widget, axis)
     }
 
     fn draw(&self, draw: &mut D, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
-        self.inner.draw(draw, ev_mgr, widget)
+        Theme::<D>::draw(&self.inner, draw, ev_mgr, widget)
     }
 }
 
