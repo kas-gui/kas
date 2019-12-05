@@ -16,7 +16,7 @@ use kas::TkAction;
 use crate::draw::DrawPipe;
 use crate::Window;
 
-pub(crate) struct Loop<T> {
+pub(crate) struct Loop<T: Theme<DrawPipe>> {
     windows: Vec<Window<T>>,
     resumes: Vec<(Instant, usize)>,
 }

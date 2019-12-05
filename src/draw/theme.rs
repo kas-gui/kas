@@ -9,8 +9,8 @@
 
 use rusttype::Font;
 
+use super::Colour;
 use crate::layout;
-use kas::draw::*;
 use kas::{event, Widget};
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -20,19 +20,13 @@ use kas::{event, Widget};
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
 pub trait Theme<Draw>: Clone {
-    /// Set the DPI factor.
+    /// The associated [`ThemeWindow`] implementation.
+    type Window: ThemeWindow<Draw>;
+
+    /// Construct per-window storage
     ///
-    /// This method is called after constructing a window and each time the DPI
-    /// changes (e.g. via system settings or with monitor-specific DPI factors).
-    ///
-    /// On "standard" monitors, the factor is 1. High-DPI screens may have a
-    /// factor of 2 or higher. The factor may not be an integer; e.g.
-    /// `9/8 = 1.125` works well with many 1440p screens. It is recommended to
-    /// round dimensions to the nearest integer, and cache the result:
-    /// ```notest
-    /// self.margin = (MARGIN * factor).round();
-    /// ```
-    fn set_dpi_factor(&mut self, factor: f32);
+    /// See also documentation on [`ThemeWindow::set_dpi_factor`].
+    fn new_window(&self, dpi_factor: f32) -> Self::Window;
 
     /// Get the list of available fonts
     ///
@@ -67,6 +61,40 @@ pub trait Theme<Draw>: Clone {
     /// Background colour
     fn clear_colour(&self) -> Colour;
 
+    /// Draw a widget
+    ///
+    /// This method is called to draw each visible widget (and should not
+    /// attempt recursion on child widgets).
+    fn draw(
+        &self,
+        theme_window: &mut Self::Window,
+        draw: &mut Draw,
+        ev_mgr: &event::Manager,
+        widget: &dyn kas::Widget,
+    );
+}
+
+/// Per-window storage for the theme
+///
+/// Constructed via [`Theme::new_window`].
+///
+/// The main reason for this separation is to allow proper handling of
+/// multi-window applications across screens with differing DPIs.
+pub trait ThemeWindow<Draw> {
+    /// Set the DPI factor.
+    ///
+    /// This method is called when the DPI changes (e.g. via system settings or
+    /// when a window is moved to a different screen).
+    ///
+    /// On "standard" monitors, the factor is 1. High-DPI screens may have a
+    /// factor of 2 or higher. The factor may not be an integer; e.g.
+    /// `9/8 = 1.125` works well with many 1440p screens. It is recommended to
+    /// round dimensions to the nearest integer, and cache the result:
+    /// ```notest
+    /// self.margin = (MARGIN * factor).round();
+    /// ```
+    fn set_dpi_factor(&mut self, factor: f32);
+
     /// Margin sizes
     ///
     /// May be called multiple times during a resize operation.
@@ -85,10 +113,4 @@ pub trait Theme<Draw>: Clone {
         widget: &dyn Widget,
         axis: layout::AxisInfo,
     ) -> layout::SizeRules;
-
-    /// Draw a widget
-    ///
-    /// This method is called to draw each visible widget (and should not
-    /// attempt recursion on child widgets).
-    fn draw(&self, draw: &mut Draw, ev_mgr: &event::Manager, widget: &dyn kas::Widget);
 }

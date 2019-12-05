@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 #[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
 
-use kas::draw::Theme;
+use kas::draw::{Theme, ThemeWindow};
 use kas::event::Callback;
 use kas::geom::Size;
 use kas::{event, layout, TkAction, Widget};
@@ -22,7 +22,7 @@ use winit::event_loop::EventLoopWindowTarget;
 use crate::draw::DrawPipe;
 
 /// Per-window data
-pub struct Window<T> {
+pub struct Window<T: Theme<DrawPipe>> {
     widget: Box<dyn kas::Window>,
     /// The winit window
     pub(crate) window: winit::window::Window,
@@ -195,13 +195,14 @@ impl<T: Theme<DrawPipe>> Window<T> {
 }
 
 /// Implementation of [`kas::TkWindow`]
-pub(crate) struct TkWindow<T> {
+pub(crate) struct TkWindow<T: Theme<DrawPipe>> {
     #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
     draw_pipe: DrawPipe,
     action: TkAction,
     pub(crate) ev_mgr: event::Manager,
     theme: T,
+    theme_window: T::Window,
 }
 
 impl<T: Theme<DrawPipe>> TkWindow<T> {
@@ -210,7 +211,7 @@ impl<T: Theme<DrawPipe>> TkWindow<T> {
         tex_format: wgpu::TextureFormat,
         size: Size,
         dpi_factor: f64,
-        mut theme: T,
+        theme: T,
     ) -> Self {
         #[cfg(feature = "clipboard")]
         let clipboard = match ClipboardContext::new() {
@@ -223,7 +224,7 @@ impl<T: Theme<DrawPipe>> TkWindow<T> {
         };
 
         let draw_pipe = DrawPipe::new(device, tex_format, size, &theme);
-        theme.set_dpi_factor(dpi_factor as f32);
+        let theme_window = theme.new_window(dpi_factor as f32);
 
         TkWindow {
             #[cfg(feature = "clipboard")]
@@ -232,12 +233,13 @@ impl<T: Theme<DrawPipe>> TkWindow<T> {
             action: TkAction::None,
             ev_mgr: event::Manager::new(dpi_factor),
             theme,
+            theme_window,
         }
     }
 
     pub fn set_dpi_factor(&mut self, dpi_factor: f64) {
         self.ev_mgr.set_dpi_factor(dpi_factor);
-        self.theme.set_dpi_factor(dpi_factor as f32);
+        self.theme_window.set_dpi_factor(dpi_factor as f32);
         // Note: we rely on caller to resize widget
     }
 
@@ -254,7 +256,12 @@ impl<T: Theme<DrawPipe>> TkWindow<T> {
 
     /// Iterate over a widget tree, queuing drawables
     pub fn draw_iter(&mut self, widget: &dyn kas::Widget) {
-        self.theme.draw(&mut self.draw_pipe, &self.ev_mgr, widget);
+        self.theme.draw(
+            &mut self.theme_window,
+            &mut self.draw_pipe,
+            &self.ev_mgr,
+            widget,
+        );
 
         for n in 0..widget.len() {
             self.draw_iter(widget.get(n).unwrap());
@@ -284,11 +291,12 @@ impl<T: Theme<DrawPipe>> kas::TkWindow for TkWindow<T> {
     }
 
     fn margins(&self, widget: &dyn Widget) -> layout::Margins {
-        self.theme.margins(widget)
+        self.theme_window.margins(widget)
     }
 
     fn size_rules(&mut self, widget: &dyn Widget, axis: layout::AxisInfo) -> layout::SizeRules {
-        self.theme.size_rules(&mut self.draw_pipe, widget, axis)
+        self.theme_window
+            .size_rules(&mut self.draw_pipe, widget, axis)
     }
 
     #[inline]

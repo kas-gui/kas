@@ -10,10 +10,9 @@ use std::cell::Cell;
 
 use kas::draw::*;
 use kas::event::{self, EmptyMsg};
-use kas::layout;
 use kas::macros::{make_widget, EmptyMsg};
 use kas::widget::*;
-use kas::{TkWindow, Widget};
+use kas::TkWindow;
 
 use kas_wgpu::draw::*;
 use kas_wgpu::glyph::Font;
@@ -50,8 +49,10 @@ thread_local! {
 }
 
 impl<D: Draw + DrawText> Theme<D> for ColouredTheme {
-    fn set_dpi_factor(&mut self, factor: f32) {
-        Theme::<D>::set_dpi_factor(&mut self.inner, factor)
+    type Window = <SampleTheme as Theme<D>>::Window;
+
+    fn new_window(&self, dpi_factor: f32) -> Self::Window {
+        Theme::<D>::new_window(&self.inner, dpi_factor)
     }
 
     fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
@@ -66,21 +67,14 @@ impl<D: Draw + DrawText> Theme<D> for ColouredTheme {
         BACKGROUND.with(|b| b.get())
     }
 
-    fn margins(&self, widget: &dyn Widget) -> layout::Margins {
-        Theme::<D>::margins(&self.inner, widget)
-    }
-
-    fn size_rules(
+    fn draw(
         &self,
+        theme_window: &mut Self::Window,
         draw: &mut D,
-        widget: &dyn Widget,
-        axis: layout::AxisInfo,
-    ) -> layout::SizeRules {
-        Theme::<D>::size_rules(&self.inner, draw, widget, axis)
-    }
-
-    fn draw(&self, draw: &mut D, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
-        Theme::<D>::draw(&self.inner, draw, ev_mgr, widget)
+        ev_mgr: &event::Manager,
+        widget: &dyn kas::Widget,
+    ) {
+        Theme::<D>::draw(&self.inner, theme_window, draw, ev_mgr, widget)
     }
 }
 

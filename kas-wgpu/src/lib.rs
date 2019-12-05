@@ -25,7 +25,7 @@ pub use kas;
 pub use wgpu_glyph as glyph;
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
-pub struct Toolkit<T, U: 'static> {
+pub struct Toolkit<T: Theme<DrawPipe>, U: 'static> {
     adapter: wgpu::Adapter,
     el: EventLoop<U>,
     windows: Vec<Window<T>>,

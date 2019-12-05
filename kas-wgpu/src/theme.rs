@@ -19,36 +19,22 @@ use kas::{event, Widget};
 use crate::draw::*;
 
 /// A simple, inflexible theme providing a sample implementation.
-#[derive(Copy, Debug, Default)]
-pub struct SampleTheme {
-    font_scale: f32,
-    margin: f32,
-    frame_size: f32,
-    button_frame: f32,
-}
+#[derive(Copy, Clone, Debug, Default)]
+pub struct SampleTheme;
 
 impl SampleTheme {
     /// Construct
     pub fn new() -> Self {
-        SampleTheme {
-            font_scale: FONT_SIZE,
-            margin: MARGIN,
-            frame_size: FRAME_SIZE,
-            button_frame: BUTTON_FRAME,
-        }
+        SampleTheme
     }
 }
 
-// manual impl because derive macro applies incorrect bounds
-impl Clone for SampleTheme {
-    fn clone(&self) -> Self {
-        Self {
-            font_scale: self.font_scale,
-            margin: self.margin,
-            frame_size: self.frame_size,
-            button_frame: self.button_frame,
-        }
-    }
+#[doc(hidden)]
+pub struct SampleThemeWindow {
+    font_scale: f32,
+    margin: f32,
+    frame_size: f32,
+    button_frame: f32,
 }
 
 /// Font size (units are half-point sizes?)
@@ -75,24 +61,27 @@ pub const LABEL_TEXT: Colour = Colour::grey(0.0);
 /// Text on button
 pub const BUTTON_TEXT: Colour = Colour::grey(1.0);
 
-impl<D: Draw + DrawText> Theme<D> for SampleTheme {
+impl SampleThemeWindow {
+    fn new(dpi_factor: f32) -> Self {
+        SampleThemeWindow {
+            font_scale: (FONT_SIZE * dpi_factor).round(),
+            margin: (MARGIN * dpi_factor).round(),
+            frame_size: (FRAME_SIZE * dpi_factor).round(),
+            button_frame: (BUTTON_FRAME * dpi_factor).round(),
+        }
+    }
+}
+
+impl<D: Draw + DrawText> ThemeWindow<D> for SampleThemeWindow {
     fn set_dpi_factor(&mut self, factor: f32) {
-        self.font_scale = (FONT_SIZE * factor).round();
-        self.margin = (MARGIN * factor).round();
-        self.frame_size = (FRAME_SIZE * factor).round();
-        self.button_frame = (BUTTON_FRAME * factor).round();
+        *self = SampleThemeWindow::new(factor)
     }
 
-    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
-        vec![crate::font::get_font()]
-    }
-
-    fn light_direction(&self) -> (f32, f32) {
-        (0.3, 0.4)
-    }
-
-    fn clear_colour(&self) -> Colour {
-        BACKGROUND
+    fn margins(&self, widget: &dyn Widget) -> Margins {
+        match widget.class() {
+            Class::Frame => Margins::uniform(self.frame_size as u32, 0),
+            _ => Margins::ZERO,
+        }
     }
 
     fn size_rules(&self, draw: &mut D, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
@@ -166,15 +155,37 @@ impl<D: Draw + DrawText> Theme<D> for SampleTheme {
         let margin = SizeRules::fixed(2 * self.margin as u32);
         inner + margin
     }
+}
 
-    fn margins(&self, widget: &dyn Widget) -> Margins {
-        match widget.class() {
-            Class::Frame => Margins::uniform(self.frame_size as u32, 0),
-            _ => Margins::ZERO,
-        }
+impl<D: Draw + DrawText> Theme<D> for SampleTheme {
+    type Window = SampleThemeWindow;
+
+    /// Construct per-window storage
+    ///
+    /// See also documentation on [`ThemeWindow::set_dpi_factor`].
+    fn new_window(&self, dpi_factor: f32) -> Self::Window {
+        SampleThemeWindow::new(dpi_factor)
     }
 
-    fn draw(&self, draw: &mut D, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
+    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
+        vec![crate::font::get_font()]
+    }
+
+    fn light_direction(&self) -> (f32, f32) {
+        (0.3, 0.4)
+    }
+
+    fn clear_colour(&self) -> Colour {
+        BACKGROUND
+    }
+
+    fn draw(
+        &self,
+        theme_window: &mut Self::Window,
+        draw: &mut D,
+        ev_mgr: &event::Manager,
+        widget: &dyn kas::Widget,
+    ) {
         // This is a hacky draw routine just to show where widgets are.
         let w_id = widget.id();
 
@@ -186,11 +197,11 @@ impl<D: Draw + DrawText> Theme<D> for SampleTheme {
 
         let mut background = None;
 
-        let margin = self.margin;
-        let scale = Scale::uniform(self.font_scale);
+        let margin = theme_window.margin;
+        let scale = Scale::uniform(theme_window.font_scale);
         let mut bounds = size - 2.0 * margin;
 
-        let f = self.frame_size;
+        let f = theme_window.frame_size;
 
         let mut _string; // Entry needs this to give a valid lifetime
         let text: Option<(&str, Colour)>;
@@ -231,7 +242,7 @@ impl<D: Draw + DrawText> Theme<D> for SampleTheme {
                 };
                 background = Some(c);
 
-                let f = self.button_frame;
+                let f = theme_window.button_frame;
                 let outer = quad;
                 quad.shrink(f);
                 let style = Style::Round(Vec2(0.0, 0.6));
