@@ -13,7 +13,7 @@ use clipboard::{ClipboardContext, ClipboardProvider};
 use kas::draw::{Theme, ThemeWindow};
 use kas::event::Callback;
 use kas::geom::Size;
-use kas::{event, layout, TkAction, Widget};
+use kas::{event, layout, TkAction, Widget, WidgetId};
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
@@ -302,7 +302,7 @@ impl<TW: ThemeWindow<DrawPipe>> kas::TkWindow for TkWindow<TW> {
     }
 
     #[inline]
-    fn redraw(&mut self, _: &dyn Widget) {
+    fn redraw(&mut self, _id: WidgetId) {
         self.send_action(TkAction::Redraw);
     }
 

@@ -11,7 +11,7 @@ use std::fmt::{self, Debug};
 use crate::class::{Class, HasBool, HasText};
 use crate::event::{err_unhandled, Action, EmptyMsg, Handler, VirtualKeyCode};
 use crate::macros::Widget;
-use crate::{CoreData, TkWindow};
+use crate::{Core, CoreData, TkWindow};
 
 /// A checkable box with optional label
 #[widget(class = Class::CheckBox(self), layout = derive)]
@@ -118,7 +118,7 @@ impl<H> HasText for CheckBox<H> {
 
     fn set_string(&mut self, tk: &mut dyn TkWindow, text: String) {
         self.label = text;
-        tk.redraw(self);
+        tk.redraw(self.id());
     }
 }
 
@@ -129,7 +129,7 @@ impl Handler for CheckBox<()> {
         match action {
             Action::Activate => {
                 self.state = !self.state;
-                tk.redraw(self);
+                tk.redraw(self.id());
                 EmptyMsg
             }
             a @ _ => err_unhandled(a),
@@ -144,7 +144,7 @@ impl<M: From<EmptyMsg>, H: Fn(bool) -> M> Handler for CheckBox<H> {
         match action {
             Action::Activate => {
                 self.state = !self.state;
-                tk.redraw(self);
+                tk.redraw(self.id());
                 ((self.on_toggle)(self.state)).into()
             }
             a @ _ => err_unhandled(a),
@@ -202,7 +202,7 @@ impl<M: Clone + Debug + From<EmptyMsg>> HasText for TextButton<M> {
 
     fn set_string(&mut self, tk: &mut dyn TkWindow, text: String) {
         self.label = text;
-        tk.redraw(self);
+        tk.redraw(self.id());
     }
 }
 

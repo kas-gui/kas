@@ -15,7 +15,7 @@
 //! [winit]: https://github.com/rust-windowing/winit
 
 use crate::layout;
-use crate::{event, Widget};
+use crate::{event, Widget, WidgetId};
 
 /// Toolkit actions needed after event handling, if any.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
@@ -68,7 +68,7 @@ pub trait TkWindow {
     fn size_rules(&mut self, widget: &dyn Widget, axis: layout::AxisInfo) -> layout::SizeRules;
 
     /// Notify that a widget must be redrawn
-    fn redraw(&mut self, widget: &dyn Widget);
+    fn redraw(&mut self, id: WidgetId);
 
     /// Notify that a toolkit action should happen
     ///

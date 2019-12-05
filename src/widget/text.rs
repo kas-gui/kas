@@ -51,7 +51,7 @@ impl HasText for Label {
 
     fn set_string(&mut self, tk: &mut dyn TkWindow, text: String) {
         self.text = text;
-        tk.redraw(self);
+        tk.redraw(self.id());
     }
 }
 
@@ -202,7 +202,7 @@ impl<H> Entry<H> {
             }
             self.text.push(c);
         }
-        tk.redraw(self);
+        tk.redraw(self.id());
         false
     }
 }
@@ -214,7 +214,7 @@ impl<H> HasText for Entry<H> {
 
     fn set_string(&mut self, tk: &mut dyn TkWindow, text: String) {
         self.text = text;
-        tk.redraw(self);
+        tk.redraw(self.id());
     }
 }
 

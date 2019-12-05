@@ -16,7 +16,7 @@ use kas::event::Callback;
 use kas::event::EmptyMsg;
 use kas::macros::make_widget;
 use kas::widget::{Label, Window};
-use kas::TkWindow;
+use kas::{Core, TkWindow};
 
 fn main() {
     let mut window = Window::new(make_widget! {
@@ -30,7 +30,7 @@ fn main() {
                 let now = Local::now();
                 self.date.set_text(tk, now.format("%Y %m %d").to_string());
                 self.time.set_text(tk, now.format("%H:%M:%S").to_string());
-                tk.redraw(self);
+                tk.redraw(self.id());
             }
         }
     });
