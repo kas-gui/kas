@@ -58,7 +58,7 @@ pub trait TkWindow {
     /// May be called multiple times during a resize operation.
     ///
     /// See documentation of [`layout::Margins`].
-    fn margins(&self, widget: &dyn Widget) -> layout::Margins;
+    fn margins(&mut self, widget: &dyn Widget) -> layout::Margins;
 
     /// Widget size preferences
     ///

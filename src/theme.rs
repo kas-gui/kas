@@ -127,17 +127,17 @@ pub trait Window<Draw> {
     /// self.margin = (MARGIN * factor).round();
     /// ```
     fn set_dpi_factor(&mut self, factor: f32);
+}
 
+/// Handle passed to objects during draw and sizing operations
+pub trait SizeHandle {
     /// Margin sizes
     ///
     /// May be called multiple times during a resize operation.
     ///
     /// See documentation of [`layout::Margins`].
-    fn margins(&self, widget: &dyn Widget) -> layout::Margins;
-}
+    fn margins(&mut self, widget: &dyn Widget) -> layout::Margins;
 
-/// Handle passed to objects during draw and sizing operations
-pub trait SizeHandle {
     /// Widget size preferences
     ///
     /// Widgets should expect this to be called at least once for each axis.

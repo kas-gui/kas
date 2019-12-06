@@ -288,8 +288,10 @@ impl<TW: theme::Window<DrawPipe>> kas::TkWindow for TkWindow<TW> {
         }
     }
 
-    fn margins(&self, widget: &dyn Widget) -> layout::Margins {
-        self.theme_window.margins(widget)
+    fn margins(&mut self, widget: &dyn Widget) -> layout::Margins {
+        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
+        use kas::theme::SizeHandle;
+        size_handle.margins(widget)
     }
 
     fn size_rules(&mut self, widget: &dyn Widget, axis: layout::AxisInfo) -> layout::SizeRules {

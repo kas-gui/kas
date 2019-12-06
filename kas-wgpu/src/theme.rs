@@ -100,16 +100,16 @@ impl theme::Window<DrawPipe> for SampleWindow {
     fn set_dpi_factor(&mut self, factor: f32) {
         *self = SampleWindow::new(factor)
     }
-
-    fn margins(&self, widget: &dyn Widget) -> Margins {
-        match widget.class() {
-            Class::Frame => Margins::uniform(self.frame_size as u32, 0),
-            _ => Margins::ZERO,
-        }
-    }
 }
 
 impl<'a> theme::SizeHandle for SampleHandle<'a> {
+    fn margins(&mut self, widget: &dyn Widget) -> Margins {
+        match widget.class() {
+            Class::Frame => Margins::uniform(self.window.frame_size as u32, 0),
+            _ => Margins::ZERO,
+        }
+    }
+
     fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
         let font_scale = self.window.font_scale;
         let line_height = font_scale as u32;
