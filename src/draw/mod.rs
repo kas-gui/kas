@@ -19,6 +19,6 @@ mod traits;
 mod vector;
 
 pub use colour::Colour;
-pub use theme::{Theme, ThemeWindow};
+pub use theme::{Theme, ThemeHandle, ThemeWindow};
 pub use traits::{Draw, Style};
 pub use vector::{Quad, Vec2};

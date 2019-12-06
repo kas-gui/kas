@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 #[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
 
-use kas::draw::{Theme, ThemeWindow};
+use kas::draw::{Theme, ThemeHandle, ThemeWindow};
 use kas::event::Callback;
 use kas::geom::Size;
 use kas::{event, layout, TkAction, Widget, WidgetId};
@@ -35,7 +35,7 @@ pub(crate) struct Window<TW> {
 }
 
 // Public functions, for use by the toolkit
-impl<TW: ThemeWindow<DrawPipe>> Window<TW> {
+impl<TW: ThemeWindow<DrawPipe> + 'static> Window<TW> {
     /// Construct a window
     pub fn new<T: Theme<DrawPipe, Window = TW>, U: 'static>(
         shared: &mut SharedState<T>,
@@ -163,7 +163,7 @@ impl<TW: ThemeWindow<DrawPipe>> Window<TW> {
 }
 
 // Internal functions
-impl<TW: ThemeWindow<DrawPipe>> Window<TW> {
+impl<TW: ThemeWindow<DrawPipe> + 'static> Window<TW> {
     fn do_resize<T: Theme<DrawPipe, Window = TW>>(
         &mut self,
         shared: &mut SharedState<T>,
@@ -187,8 +187,14 @@ impl<TW: ThemeWindow<DrawPipe>> Window<TW> {
 
     fn do_draw<T: Theme<DrawPipe, Window = TW>>(&mut self, shared: &mut SharedState<T>) {
         let frame = self.swap_chain.get_next_texture();
+        let mut theme_handle = unsafe {
+            shared.theme.make_handle(
+                &mut self.tk_window.draw_pipe,
+                &mut self.tk_window.theme_window,
+            )
+        };
         self.tk_window
-            .draw_iter(&shared.theme, self.widget.as_widget());
+            .draw_iter(&mut theme_handle, self.widget.as_widget());
         let buf = self.tk_window.render(shared, &frame.view);
         shared.queue.submit(&[buf]);
     }
@@ -204,7 +210,7 @@ pub(crate) struct TkWindow<TW> {
     theme_window: TW,
 }
 
-impl<TW: ThemeWindow<DrawPipe>> TkWindow<TW> {
+impl<TW: ThemeWindow<DrawPipe> + 'static> TkWindow<TW> {
     pub fn new<T: Theme<DrawPipe, Window = TW>>(
         shared: &mut SharedState<T>,
         tex_format: wgpu::TextureFormat,
@@ -221,8 +227,8 @@ impl<TW: ThemeWindow<DrawPipe>> TkWindow<TW> {
             }
         };
 
-        let draw_pipe = DrawPipe::new(&mut shared.device, tex_format, size, &shared.theme);
-        let theme_window = shared.theme.new_window(dpi_factor as f32);
+        let mut draw_pipe = DrawPipe::new(&mut shared.device, tex_format, size, &shared.theme);
+        let theme_window = shared.theme.new_window(&mut draw_pipe, dpi_factor as f32);
 
         TkWindow {
             #[cfg(feature = "clipboard")]
@@ -252,17 +258,8 @@ impl<TW: ThemeWindow<DrawPipe>> TkWindow<TW> {
     }
 
     /// Iterate over a widget tree, queuing drawables
-    pub fn draw_iter<T: Theme<DrawPipe, Window = TW>>(
-        &mut self,
-        theme: &T,
-        widget: &dyn kas::Widget,
-    ) {
-        theme.draw(
-            &mut self.theme_window,
-            &mut self.draw_pipe,
-            &self.ev_mgr,
-            widget,
-        );
+    pub fn draw_iter(&mut self, theme: &mut dyn ThemeHandle, widget: &dyn kas::Widget) {
+        theme.draw(&self.ev_mgr, widget);
 
         for n in 0..widget.len() {
             self.draw_iter(theme, widget.get(n).unwrap());

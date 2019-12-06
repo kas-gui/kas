@@ -7,6 +7,7 @@
 //!
 //! TODO: move traits up to kas?
 
+use std::any::Any;
 use std::borrow::Cow;
 use std::f32::consts::FRAC_PI_2;
 
@@ -128,6 +129,11 @@ impl DrawPipe {
 }
 
 impl Draw for DrawPipe {
+    #[inline]
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
     #[inline]
     fn draw_quad(&mut self, quad: Quad, style: Style, col: Colour) {
         // TODO: support styles

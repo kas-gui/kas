@@ -5,6 +5,8 @@
 
 //! Drawing API
 
+use std::any::Any;
+
 use super::{Colour, Quad, Vec2};
 
 /// Style of drawing
@@ -35,6 +37,12 @@ pub enum Style {
 /// that the outer region does not have positive size or has reversed
 /// coordinates, drawing may not occur at all.
 pub trait Draw {
+    /// Cast self to [`std::any::Any`] reference.
+    ///
+    /// A downcast on this value may be used to obtain a reference to a
+    /// toolkit-specific API.
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+
     /// Add a rectangle to the draw buffer.
     ///
     /// Expected componentwise bounds on input: `q.0 < q.1`.

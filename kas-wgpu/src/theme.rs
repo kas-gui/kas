@@ -73,7 +73,13 @@ impl SampleThemeWindow {
     }
 }
 
-impl<D: Draw + DrawText> ThemeWindow<D> for SampleThemeWindow {
+#[doc(hidden)]
+pub struct SampleThemeHandle<'a> {
+    draw: &'a mut DrawPipe,
+    window: &'a mut SampleThemeWindow,
+}
+
+impl ThemeWindow<DrawPipe> for SampleThemeWindow {
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
@@ -89,7 +95,7 @@ impl<D: Draw + DrawText> ThemeWindow<D> for SampleThemeWindow {
         }
     }
 
-    fn size_rules(&self, draw: &mut D, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
+    fn size_rules(&self, draw: &mut DrawPipe, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
         let font_scale = self.font_scale;
         let line_height = font_scale as u32;
         let mut bound = |vert: bool| -> u32 {
@@ -162,14 +168,28 @@ impl<D: Draw + DrawText> ThemeWindow<D> for SampleThemeWindow {
     }
 }
 
-impl<D: Draw + DrawText> Theme<D> for SampleTheme {
+impl Theme<DrawPipe> for SampleTheme {
     type Window = SampleThemeWindow;
+    type Handle = SampleThemeHandle<'static>;
 
     /// Construct per-window storage
     ///
     /// See also documentation on [`ThemeWindow::set_dpi_factor`].
-    fn new_window(&self, dpi_factor: f32) -> Self::Window {
+    fn new_window(&self, _draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         SampleThemeWindow::new(dpi_factor)
+    }
+
+    unsafe fn make_handle<'a>(
+        &'a self,
+        draw: &'a mut DrawPipe,
+        window: &'a mut Self::Window,
+    ) -> Self::Handle {
+        // We extend lifetimes (unsafe) due to the lack of associated type generics.
+        use std::mem::transmute;
+        SampleThemeHandle {
+            draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
+            window: transmute::<&'a mut Self::Window, &'static mut Self::Window>(window),
+        }
     }
 
     fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
@@ -183,14 +203,10 @@ impl<D: Draw + DrawText> Theme<D> for SampleTheme {
     fn clear_colour(&self) -> Colour {
         BACKGROUND
     }
+}
 
-    fn draw(
-        &self,
-        theme_window: &mut Self::Window,
-        draw: &mut D,
-        ev_mgr: &event::Manager,
-        widget: &dyn kas::Widget,
-    ) {
+impl<'a> ThemeHandle for SampleThemeHandle<'a> {
+    fn draw(&mut self, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
         // This is a hacky draw routine just to show where widgets are.
         let w_id = widget.id();
 
@@ -202,11 +218,11 @@ impl<D: Draw + DrawText> Theme<D> for SampleTheme {
 
         let mut background = None;
 
-        let margin = theme_window.margin;
-        let scale = Scale::uniform(theme_window.font_scale);
+        let margin = self.window.margin;
+        let scale = Scale::uniform(self.window.font_scale);
         let mut bounds = size - 2.0 * margin;
 
-        let f = theme_window.frame_size;
+        let f = self.window.frame_size;
 
         let mut _string; // Entry needs this to give a valid lifetime
         let text: Option<(&str, Colour)>;
@@ -224,7 +240,7 @@ impl<D: Draw + DrawText> Theme<D> for SampleTheme {
                 let outer = quad;
                 quad.shrink(f);
                 let style = Style::Square(Vec2(0.0, -0.8));
-                draw.draw_frame(outer, quad, style, FRAME);
+                self.draw.draw_frame(outer, quad, style, FRAME);
                 bounds = bounds - 2.0 * f;
                 layout = Layout::default_single_line();
 
@@ -247,11 +263,11 @@ impl<D: Draw + DrawText> Theme<D> for SampleTheme {
                 };
                 background = Some(c);
 
-                let f = theme_window.button_frame;
+                let f = self.window.button_frame;
                 let outer = quad;
                 quad.shrink(f);
                 let style = Style::Round(Vec2(0.0, 0.6));
-                draw.draw_frame(outer, quad, style, c);
+                self.draw.draw_frame(outer, quad, style, c);
                 bounds = bounds - 2.0 * f;
 
                 text = Some((cls.get_text(), BUTTON_TEXT));
@@ -260,7 +276,7 @@ impl<D: Draw + DrawText> Theme<D> for SampleTheme {
                 let outer = quad;
                 quad.shrink(f);
                 let style = Style::Square(Vec2(0.0, -0.8));
-                draw.draw_frame(outer, quad, style, FRAME);
+                self.draw.draw_frame(outer, quad, style, FRAME);
                 bounds = bounds - 2.0 * f;
 
                 background = Some(TEXT_AREA);
@@ -273,7 +289,7 @@ impl<D: Draw + DrawText> Theme<D> for SampleTheme {
                 let outer = quad;
                 quad.shrink(f);
                 let style = Style::Round(Vec2(0.6, -0.6));
-                draw.draw_frame(outer, quad, style, FRAME);
+                self.draw.draw_frame(outer, quad, style, FRAME);
                 return;
             }
         }
@@ -294,7 +310,7 @@ impl<D: Draw + DrawText> Theme<D> for SampleTheme {
             let layout = layout.h_align(h_align).v_align(v_align);
             let text_pos = quad.0 + margin + Vec2(h_offset, v_offset);
 
-            draw.draw_text(Section {
+            self.draw.draw_text(Section {
                 text,
                 screen_position: text_pos.into(),
                 color: colour.into(),
@@ -325,11 +341,11 @@ impl<D: Draw + DrawText> Theme<D> for SampleTheme {
             let outer = quad;
             quad.shrink(margin);
             let style = Style::Flat;
-            draw.draw_frame(outer, quad, style, col);
+            self.draw.draw_frame(outer, quad, style, col);
         }
 
         if let Some(background) = background {
-            draw.draw_quad(quad, Style::Flat, background.into());
+            self.draw.draw_quad(quad, Style::Flat, background.into());
         }
     }
 }

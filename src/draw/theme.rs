@@ -25,10 +25,27 @@ pub trait Theme<Draw> {
     /// The associated [`ThemeWindow`] implementation.
     type Window: ThemeWindow<Draw> + 'static;
 
+    /// The associated [`ThemeHandle`] implementation.
+    type Handle: ThemeHandle;
+
     /// Construct per-window storage
     ///
+    /// A reference to the draw backend is provided allowing configuration.
+    ///
     /// See also documentation on [`ThemeWindow::set_dpi_factor`].
-    fn new_window(&self, dpi_factor: f32) -> Self::Window;
+    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window;
+
+    /// Construct a [`ThemeHandle`] object
+    ///
+    /// The `theme_window` is guaranteed to be one created by a call to
+    /// [`Theme::new_window`] on `self`, and the `draw` reference is guaranteed
+    /// to be identical to the one passed to [`Theme::new_window`].
+    ///
+    /// Note: this function is marked **unsafe** because the returned object
+    /// requires a lifetime bound not exceeding that of all three pointers
+    /// passed in. This ought to be expressible using generic associated types
+    /// but currently is not: https://github.com/rust-lang/rust/issues/67089
+    unsafe fn make_handle(&self, draw: &mut Draw, theme_window: &mut Self::Window) -> Self::Handle;
 
     /// Get the list of available fonts
     ///
@@ -62,52 +79,6 @@ pub trait Theme<Draw> {
 
     /// Background colour
     fn clear_colour(&self) -> Colour;
-
-    /// Draw a widget
-    ///
-    /// This method is called to draw each visible widget (and should not
-    /// attempt recursion on child widgets).
-    fn draw(
-        &self,
-        theme_window: &mut Self::Window,
-        draw: &mut Draw,
-        ev_mgr: &event::Manager,
-        widget: &dyn kas::Widget,
-    );
-}
-
-impl<Draw: 'static, T: Theme<Draw> + ?Sized> Theme<Draw> for Box<T> {
-    type Window = Box<dyn ThemeWindow<Draw>>;
-
-    fn new_window(&self, dpi_factor: f32) -> Self::Window {
-        Box::new(T::new_window(self, dpi_factor))
-    }
-
-    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
-        T::get_fonts(self)
-    }
-
-    fn light_direction(&self) -> (f32, f32) {
-        T::light_direction(self)
-    }
-
-    fn clear_colour(&self) -> Colour {
-        T::clear_colour(self)
-    }
-
-    fn draw(
-        &self,
-        theme_window: &mut Self::Window,
-        draw: &mut Draw,
-        ev_mgr: &event::Manager,
-        widget: &dyn kas::Widget,
-    ) {
-        let theme_window = theme_window
-            .as_any_mut()
-            .downcast_mut()
-            .unwrap_or_else(|| panic!("Theme::draw: theme_window parameter has wrong type"));
-        T::draw(self, theme_window, draw, ev_mgr, widget)
-    }
 }
 
 /// Per-window storage for the theme
@@ -116,7 +87,7 @@ impl<Draw: 'static, T: Theme<Draw> + ?Sized> Theme<Draw> for Box<T> {
 ///
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
-pub trait ThemeWindow<Draw>: Any {
+pub trait ThemeWindow<Draw> {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
     /// Set the DPI factor.
@@ -153,25 +124,11 @@ pub trait ThemeWindow<Draw>: Any {
     ) -> layout::SizeRules;
 }
 
-impl<Draw, TW: ThemeWindow<Draw> + ?Sized> ThemeWindow<Draw> for Box<TW> {
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn set_dpi_factor(&mut self, factor: f32) {
-        TW::set_dpi_factor(self, factor)
-    }
-
-    fn margins(&self, widget: &dyn Widget) -> layout::Margins {
-        TW::margins(self, widget)
-    }
-
-    fn size_rules(
-        &self,
-        draw: &mut Draw,
-        widget: &dyn Widget,
-        axis: layout::AxisInfo,
-    ) -> layout::SizeRules {
-        TW::size_rules(self, draw, widget, axis)
-    }
+/// Handle passed to objects during draw and sizing operations
+pub trait ThemeHandle {
+    /// Draw a widget
+    ///
+    /// This method is called to draw each visible widget (and should not
+    /// attempt recursion on child widgets).
+    fn draw(&mut self, ev_mgr: &event::Manager, widget: &dyn kas::Widget);
 }

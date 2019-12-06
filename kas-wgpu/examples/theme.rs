@@ -9,7 +9,7 @@
 use std::cell::Cell;
 
 use kas::draw::*;
-use kas::event::{self, EmptyMsg};
+use kas::event::EmptyMsg;
 use kas::macros::{make_widget, EmptyMsg};
 use kas::widget::*;
 use kas::TkWindow;
@@ -48,33 +48,32 @@ thread_local! {
     static BACKGROUND: Cell<Colour> = Cell::new(Colour::grey(1.0));
 }
 
-impl<D: Draw + DrawText> Theme<D> for ColouredTheme {
-    type Window = <SampleTheme as Theme<D>>::Window;
+impl Theme<DrawPipe> for ColouredTheme {
+    type Window = <SampleTheme as Theme<DrawPipe>>::Window;
+    type Handle = <SampleTheme as Theme<DrawPipe>>::Handle;
 
-    fn new_window(&self, dpi_factor: f32) -> Self::Window {
-        Theme::<D>::new_window(&self.inner, dpi_factor)
+    fn new_window(&self, draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
+        Theme::<DrawPipe>::new_window(&self.inner, draw, dpi_factor)
+    }
+
+    unsafe fn make_handle(
+        &self,
+        draw: &mut DrawPipe,
+        theme_window: &mut Self::Window,
+    ) -> Self::Handle {
+        Theme::<DrawPipe>::make_handle(&self.inner, draw, theme_window)
     }
 
     fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
-        Theme::<D>::get_fonts(&self.inner)
+        Theme::<DrawPipe>::get_fonts(&self.inner)
     }
 
     fn light_direction(&self) -> (f32, f32) {
-        Theme::<D>::light_direction(&self.inner)
+        Theme::<DrawPipe>::light_direction(&self.inner)
     }
 
     fn clear_colour(&self) -> Colour {
         BACKGROUND.with(|b| b.get())
-    }
-
-    fn draw(
-        &self,
-        theme_window: &mut Self::Window,
-        draw: &mut D,
-        ev_mgr: &event::Manager,
-        widget: &dyn kas::Widget,
-    ) {
-        Theme::<D>::draw(&self.inner, theme_window, draw, ev_mgr, widget)
     }
 }
 
