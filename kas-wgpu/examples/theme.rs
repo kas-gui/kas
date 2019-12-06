@@ -8,9 +8,10 @@
 
 use std::cell::Cell;
 
-use kas::draw::*;
+use kas::draw::Colour;
 use kas::event::EmptyMsg;
 use kas::macros::{make_widget, EmptyMsg};
+use kas::theme::Theme;
 use kas::widget::*;
 use kas::TkWindow;
 
@@ -50,18 +51,18 @@ thread_local! {
 
 impl Theme<DrawPipe> for ColouredTheme {
     type Window = <SampleTheme as Theme<DrawPipe>>::Window;
-    type Handle = <SampleTheme as Theme<DrawPipe>>::Handle;
+    type DrawHandle = <SampleTheme as Theme<DrawPipe>>::DrawHandle;
 
     fn new_window(&self, draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         Theme::<DrawPipe>::new_window(&self.inner, draw, dpi_factor)
     }
 
-    unsafe fn make_handle(
+    unsafe fn draw_handle(
         &self,
         draw: &mut DrawPipe,
         theme_window: &mut Self::Window,
-    ) -> Self::Handle {
-        Theme::<DrawPipe>::make_handle(&self.inner, draw, theme_window)
+    ) -> Self::DrawHandle {
+        self.inner.draw_handle(draw, theme_window)
     }
 
     fn get_fonts<'a>(&self) -> Vec<Font<'a>> {

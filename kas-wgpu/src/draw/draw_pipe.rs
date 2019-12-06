@@ -13,8 +13,9 @@ use std::f32::consts::FRAC_PI_2;
 
 use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder, GlyphCruncher, VariedSection};
 
-use kas::draw::{Colour, Draw, Quad, Style, Theme, Vec2};
+use kas::draw::{Colour, Draw, Quad, Style, Vec2};
 use kas::geom::Size;
+use kas::theme;
 
 use super::round_pipe::RoundPipe;
 use super::square_pipe::SquarePipe;
@@ -58,7 +59,7 @@ pub struct DrawPipe {
 
 impl DrawPipe {
     /// Construct
-    pub fn new<D: Theme<Self>>(
+    pub fn new<D: theme::Theme<Self>>(
         device: &mut wgpu::Device,
         tex_format: wgpu::TextureFormat,
         size: Size,

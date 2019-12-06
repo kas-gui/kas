@@ -14,11 +14,9 @@
 //! are drawn later, but draw order is implementation defined.
 
 mod colour;
-mod theme;
 mod traits;
 mod vector;
 
 pub use colour::Colour;
-pub use theme::{Theme, ThemeHandle, ThemeWindow};
 pub use traits::{Draw, Style};
 pub use vector::{Quad, Vec2};

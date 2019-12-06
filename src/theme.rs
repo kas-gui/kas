@@ -3,16 +3,22 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Widget styling
+//! High-level drawing interface
 //!
-//! Widget size and appearance can be modified through themes.
+//! A [`Theme`] provides a high-level drawing interface. It may be provided by
+//! the toolkit or separately (but dependent on a toolkit's drawing API).
+//!
+//! A theme is implemented in multiple parts: the [`Theme`] object is shared
+//! by all windows and may provide shared resources (e.g. fonts and textures).
+//! It is also responsible for creating a per-window [`ThemeWindow`] object and
+//! draw handles ([`DrawHandle`]).
 
 use std::any::Any;
 
 use rusttype::Font;
 
-use super::Colour;
 use crate::layout;
+use kas::draw::Colour;
 use kas::{event, Widget};
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -23,10 +29,10 @@ use kas::{event, Widget};
 /// large resources (e.g. fonts and icons) consider using external storage.
 pub trait Theme<Draw> {
     /// The associated [`ThemeWindow`] implementation.
-    type Window: ThemeWindow<Draw> + 'static;
+    type Window: Window<Draw> + 'static;
 
-    /// The associated [`ThemeHandle`] implementation.
-    type Handle: ThemeHandle;
+    /// The associated [`DrawHandle`] implementation.
+    type DrawHandle: DrawHandle;
 
     /// Construct per-window storage
     ///
@@ -35,7 +41,7 @@ pub trait Theme<Draw> {
     /// See also documentation on [`ThemeWindow::set_dpi_factor`].
     fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window;
 
-    /// Construct a [`ThemeHandle`] object
+    /// Construct a [`DrawHandle`] object
     ///
     /// The `theme_window` is guaranteed to be one created by a call to
     /// [`Theme::new_window`] on `self`, and the `draw` reference is guaranteed
@@ -45,7 +51,11 @@ pub trait Theme<Draw> {
     /// requires a lifetime bound not exceeding that of all three pointers
     /// passed in. This ought to be expressible using generic associated types
     /// but currently is not: https://github.com/rust-lang/rust/issues/67089
-    unsafe fn make_handle(&self, draw: &mut Draw, theme_window: &mut Self::Window) -> Self::Handle;
+    unsafe fn draw_handle(
+        &self,
+        draw: &mut Draw,
+        theme_window: &mut Self::Window,
+    ) -> Self::DrawHandle;
 
     /// Get the list of available fonts
     ///
@@ -87,7 +97,21 @@ pub trait Theme<Draw> {
 ///
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
-pub trait ThemeWindow<Draw> {
+pub trait Window<Draw> {
+    /// The associated [`SizeHandle`] implementation.
+    type SizeHandle: SizeHandle;
+
+    /// Construct a [`SizeHandle`] object
+    ///
+    /// The `draw` reference is guaranteed to be identical to the one used to
+    /// construct this object.
+    ///
+    /// Note: this function is marked **unsafe** because the returned object
+    /// requires a lifetime bound not exceeding that of all three pointers
+    /// passed in. This ought to be expressible using generic associated types
+    /// but currently is not: https://github.com/rust-lang/rust/issues/67089
+    unsafe fn size_handle(&mut self, draw: &mut Draw) -> Self::SizeHandle;
+
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
     /// Set the DPI factor.
@@ -110,22 +134,20 @@ pub trait ThemeWindow<Draw> {
     ///
     /// See documentation of [`layout::Margins`].
     fn margins(&self, widget: &dyn Widget) -> layout::Margins;
+}
 
+/// Handle passed to objects during draw and sizing operations
+pub trait SizeHandle {
     /// Widget size preferences
     ///
     /// Widgets should expect this to be called at least once for each axis.
     ///
     /// See documentation of [`layout::SizeRules`].
-    fn size_rules(
-        &self,
-        draw: &mut Draw,
-        widget: &dyn Widget,
-        axis: layout::AxisInfo,
-    ) -> layout::SizeRules;
+    fn size_rules(&mut self, widget: &dyn Widget, axis: layout::AxisInfo) -> layout::SizeRules;
 }
 
 /// Handle passed to objects during draw and sizing operations
-pub trait ThemeHandle {
+pub trait DrawHandle {
     /// Draw a widget
     ///
     /// This method is called to draw each visible widget (and should not

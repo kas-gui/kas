@@ -10,19 +10,18 @@ use std::time::Instant;
 use winit::event::{Event, StartCause};
 use winit::event_loop::ControlFlow;
 
-use kas::draw::Theme;
-use kas::TkAction;
+use kas::{theme, TkAction};
 
 use crate::draw::DrawPipe;
 use crate::{SharedState, Window};
 
-pub(crate) struct Loop<T: Theme<DrawPipe>> {
+pub(crate) struct Loop<T: theme::Theme<DrawPipe>> {
     windows: Vec<Window<T::Window>>,
     shared: SharedState<T>,
     resumes: Vec<(Instant, usize)>,
 }
 
-impl<T: Theme<DrawPipe>> Loop<T> {
+impl<T: theme::Theme<DrawPipe>> Loop<T> {
     pub(crate) fn new(windows: Vec<Window<T::Window>>, shared: SharedState<T>) -> Self {
         Loop {
             windows,

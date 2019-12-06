@@ -10,10 +10,9 @@ use std::time::{Duration, Instant};
 #[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
 
-use kas::draw::{Theme, ThemeHandle, ThemeWindow};
 use kas::event::Callback;
 use kas::geom::Size;
-use kas::{event, layout, TkAction, Widget, WidgetId};
+use kas::{event, layout, theme, TkAction, Widget, WidgetId};
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
@@ -35,9 +34,9 @@ pub(crate) struct Window<TW> {
 }
 
 // Public functions, for use by the toolkit
-impl<TW: ThemeWindow<DrawPipe> + 'static> Window<TW> {
+impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     /// Construct a window
-    pub fn new<T: Theme<DrawPipe, Window = TW>, U: 'static>(
+    pub fn new<T: theme::Theme<DrawPipe, Window = TW>, U: 'static>(
         shared: &mut SharedState<T>,
         event_loop: &EventLoopWindowTarget<U>,
         mut widget: Box<dyn kas::Window>,
@@ -105,7 +104,7 @@ impl<TW: ThemeWindow<DrawPipe> + 'static> Window<TW> {
     /// Handle an event
     ///
     /// Return true to remove the window
-    pub fn handle_event<T: Theme<DrawPipe, Window = TW>>(
+    pub fn handle_event<T: theme::Theme<DrawPipe, Window = TW>>(
         &mut self,
         shared: &mut SharedState<T>,
         event: WindowEvent,
@@ -163,8 +162,8 @@ impl<TW: ThemeWindow<DrawPipe> + 'static> Window<TW> {
 }
 
 // Internal functions
-impl<TW: ThemeWindow<DrawPipe> + 'static> Window<TW> {
-    fn do_resize<T: Theme<DrawPipe, Window = TW>>(
+impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
+    fn do_resize<T: theme::Theme<DrawPipe, Window = TW>>(
         &mut self,
         shared: &mut SharedState<T>,
         size: LogicalSize,
@@ -185,16 +184,16 @@ impl<TW: ThemeWindow<DrawPipe> + 'static> Window<TW> {
             .create_swap_chain(&self.surface, &self.sc_desc);
     }
 
-    fn do_draw<T: Theme<DrawPipe, Window = TW>>(&mut self, shared: &mut SharedState<T>) {
+    fn do_draw<T: theme::Theme<DrawPipe, Window = TW>>(&mut self, shared: &mut SharedState<T>) {
         let frame = self.swap_chain.get_next_texture();
-        let mut theme_handle = unsafe {
-            shared.theme.make_handle(
+        let mut draw_handle = unsafe {
+            shared.theme.draw_handle(
                 &mut self.tk_window.draw_pipe,
                 &mut self.tk_window.theme_window,
             )
         };
         self.tk_window
-            .draw_iter(&mut theme_handle, self.widget.as_widget());
+            .draw_iter(&mut draw_handle, self.widget.as_widget());
         let buf = self.tk_window.render(shared, &frame.view);
         shared.queue.submit(&[buf]);
     }
@@ -210,8 +209,8 @@ pub(crate) struct TkWindow<TW> {
     theme_window: TW,
 }
 
-impl<TW: ThemeWindow<DrawPipe> + 'static> TkWindow<TW> {
-    pub fn new<T: Theme<DrawPipe, Window = TW>>(
+impl<TW: theme::Window<DrawPipe> + 'static> TkWindow<TW> {
+    pub fn new<T: theme::Theme<DrawPipe, Window = TW>>(
         shared: &mut SharedState<T>,
         tex_format: wgpu::TextureFormat,
         size: Size,
@@ -258,7 +257,7 @@ impl<TW: ThemeWindow<DrawPipe> + 'static> TkWindow<TW> {
     }
 
     /// Iterate over a widget tree, queuing drawables
-    pub fn draw_iter(&mut self, theme: &mut dyn ThemeHandle, widget: &dyn kas::Widget) {
+    pub fn draw_iter(&mut self, theme: &mut dyn theme::DrawHandle, widget: &dyn kas::Widget) {
         theme.draw(&self.ev_mgr, widget);
 
         for n in 0..widget.len() {
@@ -267,7 +266,7 @@ impl<TW: ThemeWindow<DrawPipe> + 'static> TkWindow<TW> {
     }
 
     /// Render all queued drawables
-    pub fn render<T: Theme<DrawPipe, Window = TW>>(
+    pub fn render<T: theme::Theme<DrawPipe, Window = TW>>(
         &mut self,
         shared: &mut SharedState<T>,
         frame_view: &wgpu::TextureView,
@@ -278,7 +277,7 @@ impl<TW: ThemeWindow<DrawPipe> + 'static> TkWindow<TW> {
     }
 }
 
-impl<TW: ThemeWindow<DrawPipe>> kas::TkWindow for TkWindow<TW> {
+impl<TW: theme::Window<DrawPipe>> kas::TkWindow for TkWindow<TW> {
     fn data(&self) -> &event::Manager {
         &self.ev_mgr
     }
@@ -294,8 +293,9 @@ impl<TW: ThemeWindow<DrawPipe>> kas::TkWindow for TkWindow<TW> {
     }
 
     fn size_rules(&mut self, widget: &dyn Widget, axis: layout::AxisInfo) -> layout::SizeRules {
-        self.theme_window
-            .size_rules(&mut self.draw_pipe, widget, axis)
+        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
+        use kas::theme::SizeHandle;
+        size_handle.size_rules(widget, axis)
     }
 
     #[inline]

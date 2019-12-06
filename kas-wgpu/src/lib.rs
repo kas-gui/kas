@@ -14,8 +14,6 @@ mod window;
 use winit::error::OsError;
 use winit::event_loop::EventLoop;
 
-use kas::draw::Theme;
-
 use crate::draw::DrawPipe;
 use window::Window;
 
@@ -32,13 +30,13 @@ struct SharedState<T> {
 }
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
-pub struct Toolkit<T: Theme<DrawPipe>, U: 'static> {
+pub struct Toolkit<T: kas::theme::Theme<DrawPipe>, U: 'static> {
     el: EventLoop<U>,
     windows: Vec<Window<T::Window>>,
     shared: SharedState<T>,
 }
 
-impl<T: Theme<DrawPipe> + 'static> Toolkit<T, ()> {
+impl<T: kas::theme::Theme<DrawPipe> + 'static> Toolkit<T, ()> {
     /// Construct a new instance with default options.
     ///
     /// This chooses a low-power graphics adapter by preference.
@@ -47,7 +45,7 @@ impl<T: Theme<DrawPipe> + 'static> Toolkit<T, ()> {
     }
 }
 
-impl<T: Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
+impl<T: kas::theme::Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
     /// Construct an instance with custom options
     ///
     /// The graphics adapter is chosen according to the given options. If `None`

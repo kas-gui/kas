@@ -15,7 +15,7 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 use kas::class::{Align, Class};
 use kas::draw::*;
 use kas::layout::{AxisInfo, Margins, SizeRules};
-use kas::{event, Widget};
+use kas::{event, theme, Widget};
 
 use crate::draw::*;
 
@@ -31,7 +31,7 @@ impl SampleTheme {
 }
 
 #[doc(hidden)]
-pub struct SampleThemeWindow {
+pub struct SampleWindow {
     font_scale: f32,
     margin: f32,
     frame_size: f32,
@@ -62,9 +62,9 @@ pub const LABEL_TEXT: Colour = Colour::grey(0.0);
 /// Text on button
 pub const BUTTON_TEXT: Colour = Colour::grey(1.0);
 
-impl SampleThemeWindow {
+impl SampleWindow {
     fn new(dpi_factor: f32) -> Self {
-        SampleThemeWindow {
+        SampleWindow {
             font_scale: (FONT_SIZE * dpi_factor).round(),
             margin: (MARGIN * dpi_factor).round(),
             frame_size: (FRAME_SIZE * dpi_factor).round(),
@@ -73,19 +73,32 @@ impl SampleThemeWindow {
     }
 }
 
+// This theme does not need shared resources, hence we can use the same type for
+// theme::Theme::DrawHandle and theme::Window::SizeHandle.
 #[doc(hidden)]
-pub struct SampleThemeHandle<'a> {
+pub struct SampleHandle<'a> {
     draw: &'a mut DrawPipe,
-    window: &'a mut SampleThemeWindow,
+    window: &'a mut SampleWindow,
 }
 
-impl ThemeWindow<DrawPipe> for SampleThemeWindow {
+impl theme::Window<DrawPipe> for SampleWindow {
+    type SizeHandle = SampleHandle<'static>;
+
+    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle {
+        // We extend lifetimes (unsafe) due to the lack of associated type generics.
+        use std::mem::transmute;
+        SampleHandle {
+            draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
+            window: transmute::<&'a mut Self, &'static mut Self>(self),
+        }
+    }
+
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 
     fn set_dpi_factor(&mut self, factor: f32) {
-        *self = SampleThemeWindow::new(factor)
+        *self = SampleWindow::new(factor)
     }
 
     fn margins(&self, widget: &dyn Widget) -> Margins {
@@ -94,10 +107,13 @@ impl ThemeWindow<DrawPipe> for SampleThemeWindow {
             _ => Margins::ZERO,
         }
     }
+}
 
-    fn size_rules(&self, draw: &mut DrawPipe, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
-        let font_scale = self.font_scale;
+impl<'a> theme::SizeHandle for SampleHandle<'a> {
+    fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
+        let font_scale = self.window.font_scale;
         let line_height = font_scale as u32;
+        let draw = &mut self.draw;
         let mut bound = |vert: bool| -> u32 {
             let layout = match widget.class() {
                 Class::Entry(_) => Layout::default_single_line(),
@@ -139,7 +155,7 @@ impl ThemeWindow<DrawPipe> for SampleThemeWindow {
                 }
             }
             Class::Entry(_) => {
-                let frame = 2 * self.frame_size as u32;
+                let frame = 2 * self.window.frame_size as u32;
                 if !axis.vertical() {
                     let min = frame + 3 * line_height;
                     SizeRules::variable(min, bound(false).max(min))
@@ -149,7 +165,7 @@ impl ThemeWindow<DrawPipe> for SampleThemeWindow {
                 }
             }
             Class::Button(_) => {
-                let f = 2 * self.button_frame as u32;
+                let f = 2 * self.window.button_frame as u32;
                 if !axis.vertical() {
                     let min = 3 * line_height + f;
                     SizeRules::variable(min, bound(false).max(min))
@@ -159,34 +175,34 @@ impl ThemeWindow<DrawPipe> for SampleThemeWindow {
                 }
             }
             Class::CheckBox(_) => {
-                let frame = 2 * self.frame_size as u32;
+                let frame = 2 * self.window.frame_size as u32;
                 SizeRules::fixed(line_height + frame)
             }
         };
-        let margin = SizeRules::fixed(2 * self.margin as u32);
+        let margin = SizeRules::fixed(2 * self.window.margin as u32);
         inner + margin
     }
 }
 
-impl Theme<DrawPipe> for SampleTheme {
-    type Window = SampleThemeWindow;
-    type Handle = SampleThemeHandle<'static>;
+impl theme::Theme<DrawPipe> for SampleTheme {
+    type Window = SampleWindow;
+    type DrawHandle = SampleHandle<'static>;
 
     /// Construct per-window storage
     ///
     /// See also documentation on [`ThemeWindow::set_dpi_factor`].
     fn new_window(&self, _draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
-        SampleThemeWindow::new(dpi_factor)
+        SampleWindow::new(dpi_factor)
     }
 
-    unsafe fn make_handle<'a>(
+    unsafe fn draw_handle<'a>(
         &'a self,
         draw: &'a mut DrawPipe,
         window: &'a mut Self::Window,
-    ) -> Self::Handle {
+    ) -> Self::DrawHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
         use std::mem::transmute;
-        SampleThemeHandle {
+        SampleHandle {
             draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
             window: transmute::<&'a mut Self::Window, &'static mut Self::Window>(window),
         }
@@ -205,7 +221,7 @@ impl Theme<DrawPipe> for SampleTheme {
     }
 }
 
-impl<'a> ThemeHandle for SampleThemeHandle<'a> {
+impl<'a> theme::DrawHandle for SampleHandle<'a> {
     fn draw(&mut self, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
         // This is a hacky draw routine just to show where widgets are.
         let w_id = widget.id();
