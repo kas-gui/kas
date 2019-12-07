@@ -193,8 +193,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 &mut self.tk_window.theme_window,
             )
         };
-        self.tk_window
-            .draw_iter(&mut draw_handle, self.widget.as_widget());
+        self.widget.draw(&mut draw_handle, &self.tk_window.ev_mgr);
         let buf = self.tk_window.render(shared, &frame.view);
         shared.queue.submit(&[buf]);
     }
@@ -255,15 +254,6 @@ impl<TW: theme::Window<DrawPipe> + 'static> TkWindow<TW> {
         let action = self.action;
         self.action = TkAction::None;
         action
-    }
-
-    /// Iterate over a widget tree, queuing drawables
-    pub fn draw_iter(&mut self, theme: &mut dyn theme::DrawHandle, widget: &dyn kas::Widget) {
-        theme.draw(&self.ev_mgr, widget);
-
-        for n in 0..widget.len() {
-            self.draw_iter(theme, widget.get(n).unwrap());
-        }
     }
 
     /// Render all queued drawables

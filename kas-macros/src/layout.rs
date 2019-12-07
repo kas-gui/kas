@@ -41,6 +41,12 @@ pub(crate) fn derive(
             {
                 (0, 0)
             }
+
+            fn draw(
+                &self,
+                draw_handle: &mut dyn kas::theme::DrawHandle,
+                ev_mgr: &kas::event::Manager
+            ) {}
         };
         let ty = quote! {
             type Data = ();
@@ -85,6 +91,15 @@ pub(crate) fn derive(
                     &mut (),
                 );
                 self.#ident.set_rect(size_handle, setter.child_rect(()));
+            }
+
+            fn draw(
+                &self,
+                draw_handle: &mut dyn kas::theme::DrawHandle,
+                ev_mgr: &kas::event::Manager
+            ) {
+                draw_handle.draw(ev_mgr, self);
+                self.#ident.draw(draw_handle, ev_mgr);
             }
         };
         let ty = quote! {
@@ -142,6 +157,7 @@ pub(crate) struct ImplLayout<'a> {
     data: &'a Member,
     size: TokenStream,
     set_rect: TokenStream,
+    draw: TokenStream,
 }
 
 impl<'a> ImplLayout<'a> {
@@ -155,6 +171,7 @@ impl<'a> ImplLayout<'a> {
             data,
             size: quote! {},
             set_rect: quote! {},
+            draw: quote! {},
         }
     }
 
@@ -213,6 +230,10 @@ impl<'a> ImplLayout<'a> {
             self.#ident.set_rect(size_handle, setter.child_rect(#child_info));
         });
 
+        self.draw.append_all(quote! {
+            self.#ident.draw(draw_handle, ev_mgr);
+        });
+
         Ok(())
     }
     // dir: horiz (false) or vert (true)
@@ -248,6 +269,7 @@ impl<'a> ImplLayout<'a> {
         let num_row_spans = row_spans.len() as usize;
         let size = self.size;
         let set_rect = self.set_rect;
+        let draw = self.draw;
 
         // sort by end column, then by start column in reverse order
         col_spans.sort_by(|a, b| match a.1.cmp(&b.1) {
@@ -380,6 +402,15 @@ impl<'a> ImplLayout<'a> {
                     &mut self.#data,
                 );
                 #set_rect
+            }
+
+            fn draw(
+                &self,
+                draw_handle: &mut dyn kas::theme::DrawHandle,
+                ev_mgr: &kas::event::Manager
+            ) {
+                draw_handle.draw(ev_mgr, self);
+                #draw
             }
         };
 

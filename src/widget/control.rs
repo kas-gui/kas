@@ -9,10 +9,10 @@ use std::any::TypeId;
 use std::fmt::{self, Debug};
 
 use crate::class::{Class, HasBool, HasText};
-use crate::event::{err_unhandled, Action, EmptyMsg, Handler, VirtualKeyCode};
+use crate::event::{self, err_unhandled, Action, EmptyMsg, Handler, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::SizeHandle;
+use crate::theme::{DrawHandle, SizeHandle};
 use crate::{Core, CoreData, Layout, TkWindow};
 
 /// A checkable box with optional label
@@ -39,6 +39,10 @@ impl<H> Debug for CheckBox<H> {
 impl<OT: 'static> Layout for CheckBox<OT> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         size_handle.size_rules(self, axis)
+    }
+
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
+        draw_handle.draw(ev_mgr, self)
     }
 }
 
@@ -174,6 +178,10 @@ pub struct TextButton<M: Clone + Debug + From<EmptyMsg>> {
 impl<M: Clone + Debug + From<EmptyMsg>> Layout for TextButton<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         size_handle.size_rules(self, axis)
+    }
+
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
+        draw_handle.draw(ev_mgr, self)
     }
 }
 

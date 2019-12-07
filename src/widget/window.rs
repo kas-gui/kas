@@ -9,14 +9,13 @@ use std::fmt::{self, Debug};
 
 use crate::class::Class;
 use crate::event::{Callback, EmptyMsg, Event, Handler};
-use crate::geom::{Rect, Size};
-use crate::layout::{self, AxisInfo, SizeRules};
+use crate::geom::Size;
+use crate::layout::{self};
 use crate::macros::Widget;
-use crate::theme::SizeHandle;
-use crate::{Core, CoreData, Layout, TkWindow, Widget};
+use crate::{CoreData, TkWindow, Widget};
 
 /// The main instantiation of the [`Window`] trait.
-#[widget(class = Class::Window)]
+#[widget(class = Class::Window, layout = single)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
     #[core]
@@ -53,17 +52,6 @@ impl<W: Widget + Clone> Clone for Window<W> {
             w: self.w.clone(),
             fns: self.fns.clone(),
         }
-    }
-}
-
-impl<W: Widget> Layout for Window<W> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.w.size_rules(size_handle, axis)
-    }
-
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
-        self.core_data_mut().rect = rect;
-        self.w.set_rect(size_handle, rect);
     }
 }
 

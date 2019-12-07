@@ -7,10 +7,10 @@
 
 use std::fmt;
 
-use crate::event::{Callback, EmptyMsg, Handler};
+use crate::event::{self, Callback, EmptyMsg, Handler};
 use crate::geom::{Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
-use crate::theme::SizeHandle;
+use crate::theme::{DrawHandle, SizeHandle};
 use crate::toolkit::TkWindow;
 use crate::{CoreData, WidgetId};
 
@@ -41,7 +41,7 @@ pub trait Core {
     }
 }
 
-/// Widget size and layout.
+/// Widget sizing and drawing
 pub trait Layout: Core + fmt::Debug {
     /// Get size rules for the given axis.
     ///
@@ -66,6 +66,12 @@ pub trait Layout: Core + fmt::Debug {
     fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect) {
         self.core_data_mut().rect = rect;
     }
+
+    /// Draw a widget
+    ///
+    /// This method is called to draw each visible widget (and should not
+    /// attempt recursion on child widgets).
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager);
 }
 
 /// Trait to describe the type needed by the [`Layout`] implementation.

@@ -8,10 +8,10 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{Class, Editable, HasText};
-use crate::event::{Action, EmptyMsg, Handler};
+use crate::event::{self, Action, EmptyMsg, Handler};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::SizeHandle;
+use crate::theme::{DrawHandle, SizeHandle};
 use crate::{Core, CoreData, Layout, TkWindow};
 
 /// A simple text label
@@ -27,6 +27,10 @@ pub struct Label {
 impl Layout for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         size_handle.size_rules(self, axis)
+    }
+
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
+        draw_handle.draw(ev_mgr, self)
     }
 }
 
@@ -104,6 +108,10 @@ impl<H> Debug for Entry<H> {
 impl<H: 'static> Layout for Entry<H> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         size_handle.size_rules(self, axis)
+    }
+
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
+        draw_handle.draw(ev_mgr, self)
     }
 }
 
