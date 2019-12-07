@@ -23,7 +23,7 @@ use std::fmt::Debug;
 #[cfg(feature = "winit")]
 pub use winit::event::{ElementState, ModifiersState, MouseButton, VirtualKeyCode};
 
-use crate::{Core, TkWindow};
+use crate::{TkWindow, Widget};
 
 pub use callback::Callback;
 #[cfg(not(feature = "winit"))]
@@ -74,7 +74,7 @@ pub fn err_num<N: From<EmptyMsg>>() -> N {
 /// by the `derive(Widget)` macro, or can be implemented manually.
 ///
 /// [`Widget`]: crate::Widget
-pub trait Handler: Core {
+pub trait Handler: Widget {
     /// Type of message returned by this handler.
     ///
     /// This mechanism allows type-safe handling of user-defined responses to handled actions.

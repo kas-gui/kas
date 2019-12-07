@@ -10,7 +10,7 @@ use std::num::NonZeroU32;
 use std::u32;
 
 use crate::event::VirtualKeyCode;
-use crate::{geom::Rect, Core};
+use crate::geom::Rect;
 
 /// Widget identifier
 ///
@@ -47,8 +47,7 @@ impl fmt::Display for WidgetId {
 
 /// Common widget data
 ///
-/// All widgets should embed a `core: CoreData` field in order to implement the
-/// [`Core`] macro.
+/// All widgets should embed a `#[core] core: CoreData` field.
 #[derive(Clone, Default, Debug)]
 pub struct CoreData {
     pub rect: Rect,
@@ -82,17 +81,5 @@ impl CoreData {
             .take_while(|x| x.is_some())
             .fuse()
             .map(|x| x.unwrap())
-    }
-}
-
-impl Core for CoreData {
-    #[inline]
-    fn core_data(&self) -> &CoreData {
-        self
-    }
-
-    #[inline]
-    fn core_data_mut(&mut self) -> &mut CoreData {
-        self
     }
 }

@@ -16,7 +16,7 @@ use kas::event::Callback;
 use kas::event::EmptyMsg;
 use kas::macros::make_widget;
 use kas::widget::{Label, Window};
-use kas::{Core, TkWindow};
+use kas::{TkWindow, WidgetCore};
 
 fn main() {
     let mut window = Window::new(make_widget! {

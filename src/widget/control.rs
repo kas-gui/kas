@@ -13,7 +13,7 @@ use crate::event::{self, err_unhandled, Action, EmptyMsg, Handler, VirtualKeyCod
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{Core, CoreData, TkWindow, Widget};
+use crate::{CoreData, TkWindow, Widget, WidgetCore};
 
 /// A checkable box with optional label
 #[widget(class = Class::CheckBox(self))]

@@ -54,7 +54,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     }
 
     let mut toks = quote! {
-        impl #impl_generics kas::Core
+        impl #impl_generics kas::WidgetCore
             for #name #ty_generics #where_clause
         {
             fn core_data(&self) -> &kas::CoreData {
@@ -64,11 +64,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             fn core_data_mut(&mut self) -> &mut kas::CoreData {
                 &mut self.#core
             }
-        }
 
-        impl #impl_generics kas::WidgetAuto
-                for #name #ty_generics #where_clause
-        {
             fn as_widget(&self) -> &dyn kas::Widget { self }
             fn as_widget_mut(&mut self) -> &mut dyn kas::Widget { self }
 
@@ -174,7 +170,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 fn handle(&mut self, _tk: &mut dyn kas::TkWindow, event: kas::event::Event)
                 -> Self::Msg
                 {
-                    use kas::{Core, event::Event};
+                    use kas::{WidgetCore, event::Event};
                     match &event {
                         Event::ToChild(id, ..) => {
                             if *id == self.id() {

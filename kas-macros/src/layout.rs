@@ -80,7 +80,7 @@ pub(crate) fn derive(
                 size_handle: &mut dyn kas::theme::SizeHandle,
                 rect: kas::geom::Rect)
             {
-                use kas::Core;
+                use kas::WidgetCore;
                 use kas::layout::RulesSetter;
                 self.core_data_mut().rect = rect;
 
@@ -97,7 +97,7 @@ pub(crate) fn derive(
                 draw_handle: &mut dyn kas::theme::DrawHandle,
                 ev_mgr: &kas::event::Manager
             ) {
-                use kas::Core;
+                use kas::WidgetCore;
                 if #is_frame {
                     draw_handle.draw_frame(self.core_data().rect);
                 }
@@ -363,7 +363,7 @@ impl<'a> ImplLayout<'a> {
                 -> kas::layout::SizeRules
             {
                 use std::iter;
-                use kas::Core;
+                use kas::WidgetCore;
                 use kas::layout::RulesSolver;
 
                 let mut solver = <Self as kas::LayoutData>::Solver::new(
@@ -381,7 +381,7 @@ impl<'a> ImplLayout<'a> {
                 size_handle: &mut dyn kas::theme::SizeHandle,
                 rect: kas::geom::Rect)
             {
-                use kas::Core;
+                use kas::WidgetCore;
                 use kas::layout::{Margins, RulesSetter};
                 self.core_data_mut().rect = rect;
 

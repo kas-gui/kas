@@ -10,8 +10,8 @@
 //!
 //! This module provides two important macros:
 //!
-//! -   [`derive(Widget)`] implements the [`WidgetAuto`] trait (including super-traits
-//!     like [`Core`] and optionally [`Handler`])
+//! -   [`derive(Widget)`] implements the [`Widget`] trait (including associated
+//!     traits like [`WidgetCore`] and optionally [`Handler`])
 //! -   [`make_widget`] is a convenience macro to create a single instance of a
 //!     custom widget type
 //! -   [`derive(EmptyMsg)`] is a convenience macro to implement
@@ -34,21 +34,12 @@
 //!
 //! ## The `derive(Widget)` macro
 //!
-//! This macro is a core building block of the library to address the fact that
-//! custom widget structs must implement several tedious traits whose details
-//! are not necessary stable (or even public) parts of the API!
+//! The [`Widget`] trait requires the base trait [`WidgetCore`] be implemented;
+//! additionally, widgets should implement [`Handler`]. This macro can generate
+//! implementations for all of these traits or only for [`WidgetCore`] as
+//! required.
 //!
-//! Most users should prefer to use the [`make_widget`] macro.
-//!
-//! The [`Widget`] trait requires multiple base traits to be implemented:
-//! [`Core`] and [`WidgetAuto`]. These base traits should be considered
-//! implementation details and not used directly; this macro therefore
-//! implements both base traits and [`Widget`] directly.
-//!
-//! Additionally, widgets are usually required to implement the [`Handler`]
-//! trait. If (and only if) the deriving struct is marked with a
-//! `#[handler]` attribute, the [`Handler`] trait will also be implemented.
-//! Note that it is also possible to implement this trait manually.
+//! For parent widgets, the [`make_widget`] macro is even more concise.
 //!
 //! ### Type attributes
 //!
@@ -179,14 +170,10 @@
 //!
 //! ## The `make_widget` macro
 //!
-//! This macro supports widgets of the following classes:
-//!
-//! -   Container
-//!
-//! This exists purely to save you some typing. You could instead make your own
-//! struct, derive `Widget` (with attributes to enable Core, WidgetAuto and Widget
-//! implementation), manually implement `event::Handler`, and instantiate an
-//! object.
+//! This macro allows easy creation of "layout" widgets (those whose purpose is
+//! to house one or more child widgets) by introducing syntax for a struct
+//! literal and adding the additional fields and implementations required by all
+//! widgets.
 //!
 //! Syntax should match the following Backus-Naur Form:
 //!
@@ -211,7 +198,7 @@
 //! `<func>` is a Rust method definition. `""` is the empty string (i.e. nothing).
 //!
 //! The effect of this macro is to create an anonymous struct with the above
-//! fields (plus an implicit `core`), implement [`Core`], [`WidgetAuto`], [`Widget`]
+//! fields (plus an implicit `core`), implement [`WidgetCore`], [`Widget`]
 //! and [`Handler`] (with the specified `<msg>` type), implement the
 //! additional `<funcs>` listed on this type, then construct and return an
 //! instance using the given value expressions to initialise each field.
@@ -278,7 +265,7 @@
 //! ```
 //!
 //! [`Core`]: crate::Core
-//! [`WidgetAuto`]: crate::WidgetAuto
+//! [`WidgetCore`]: crate::WidgetCore
 //! [`Widget`]: crate::Widget
 //! [`Handler`]: crate::event::Handler
 //! [`Class`]: crate::class::Class

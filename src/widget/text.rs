@@ -12,7 +12,7 @@ use crate::event::{self, Action, EmptyMsg, Handler};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{Core, CoreData, TkWindow, Widget};
+use crate::{CoreData, TkWindow, Widget, WidgetCore};
 
 /// A simple text label
 #[widget(class = Class::Label(self))]

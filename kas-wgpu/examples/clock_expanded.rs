@@ -14,7 +14,7 @@ use std::time::Duration;
 use kas::class::HasText;
 use kas::event::Callback;
 use kas::widget::{Label, Window};
-use kas::{Core, TkWindow};
+use kas::{TkWindow, WidgetCore};
 
 fn main() {
     let mut window = Window::new({
