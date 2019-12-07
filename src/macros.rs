@@ -134,7 +134,7 @@
 //! use kas::macros::Widget;
 //! use kas::{Widget, CoreData};
 //!
-//! #[widget(class = Class::Window, layout = single)]
+//! #[widget(class = Class::Container, layout = single)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
 //!     #[core] core: CoreData,

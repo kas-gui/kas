@@ -145,7 +145,7 @@ impl<'a> theme::SizeHandle for SampleHandle<'a> {
         };
 
         let inner = match widget.class() {
-            Class::Frame | Class::Container | Class::Window => return SizeRules::EMPTY,
+            Class::Frame | Class::Container => return SizeRules::EMPTY,
             Class::Label(_) => {
                 if !axis.vertical() {
                     let min = 3 * line_height;
@@ -245,7 +245,7 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         let mut layout = Layout::default_wrap();
 
         match widget.class() {
-            Class::Container | Class::Window => {
+            Class::Container => {
                 // do not draw containers
                 return;
             }

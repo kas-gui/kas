@@ -15,7 +15,7 @@ use crate::macros::Widget;
 use crate::{CoreData, TkWindow, Widget};
 
 /// The main instantiation of the [`Window`] trait.
-#[widget(class = Class::Window, layout = single)]
+#[widget(class = Class::Container, layout = single)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
     #[core]

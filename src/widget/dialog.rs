@@ -22,7 +22,7 @@ enum DialogButton {
 }
 
 /// A simple message box.
-#[widget(class = Class::Window, layout = vertical)]
+#[widget(class = Class::Container, layout = vertical)]
 #[handler]
 #[derive(Clone, Debug, Widget)]
 pub struct MessageBox {
