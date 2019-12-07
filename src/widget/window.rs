@@ -12,6 +12,7 @@ use crate::event::{Callback, EmptyMsg, Event, Handler};
 use crate::geom::{Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::macros::Widget;
+use crate::theme::SizeHandle;
 use crate::{Core, CoreData, Layout, TkWindow, Widget};
 
 /// The main instantiation of the [`Window`] trait.
@@ -56,8 +57,8 @@ impl<W: Widget + Clone> Clone for Window<W> {
 }
 
 impl<W: Widget> Layout for Window<W> {
-    fn size_rules(&mut self, tk: &mut dyn TkWindow, axis: AxisInfo) -> SizeRules {
-        self.w.size_rules(tk, axis)
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        self.w.size_rules(size_handle, axis)
     }
 
     fn set_rect(&mut self, tk: &mut dyn TkWindow, rect: Rect) {

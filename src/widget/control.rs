@@ -12,6 +12,7 @@ use crate::class::{Class, HasBool, HasText};
 use crate::event::{err_unhandled, Action, EmptyMsg, Handler, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
+use crate::theme::SizeHandle;
 use crate::{Core, CoreData, Layout, TkWindow};
 
 /// A checkable box with optional label
@@ -36,8 +37,8 @@ impl<H> Debug for CheckBox<H> {
 }
 
 impl<OT: 'static> Layout for CheckBox<OT> {
-    fn size_rules(&mut self, tk: &mut dyn TkWindow, axis: AxisInfo) -> SizeRules {
-        tk.size_rules(self, axis)
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        size_handle.size_rules(self, axis)
     }
 }
 
@@ -171,8 +172,8 @@ pub struct TextButton<M: Clone + Debug + From<EmptyMsg>> {
 }
 
 impl<M: Clone + Debug + From<EmptyMsg>> Layout for TextButton<M> {
-    fn size_rules(&mut self, tk: &mut dyn TkWindow, axis: AxisInfo) -> SizeRules {
-        tk.size_rules(self, axis)
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        size_handle.size_rules(self, axis)
     }
 }
 

@@ -12,6 +12,7 @@ use clipboard::{ClipboardContext, ClipboardProvider};
 
 use kas::event::Callback;
 use kas::geom::Size;
+use kas::theme::SizeHandle;
 use kas::{event, layout, theme, TkAction, Widget, WidgetId};
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
@@ -288,16 +289,18 @@ impl<TW: theme::Window<DrawPipe>> kas::TkWindow for TkWindow<TW> {
         }
     }
 
-    fn margins(&mut self, widget: &dyn Widget) -> layout::Margins {
+    fn with_size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
+        // The reason we take a closure instead of returning the size handle is
+        // because (a) the result is unsized (without use of generics on widgets)
+        // and (b) because its lifetime is tied to the borrow on self, which we
+        // can't represent (hence why theme::Window::size_handle is unsafe).
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
-        use kas::theme::SizeHandle;
-        size_handle.margins(widget)
+        f(&mut size_handle);
     }
 
-    fn size_rules(&mut self, widget: &dyn Widget, axis: layout::AxisInfo) -> layout::SizeRules {
+    fn margins(&mut self, widget: &dyn Widget) -> layout::Margins {
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
-        use kas::theme::SizeHandle;
-        size_handle.size_rules(widget, axis)
+        size_handle.margins(widget)
     }
 
     #[inline]

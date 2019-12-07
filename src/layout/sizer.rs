@@ -57,8 +57,10 @@ pub trait RulesSetter {
 pub fn solve<L: Layout>(widget: &mut L, tk: &mut dyn TkWindow, size: Size) {
     // We call size_rules not because we want the result, but because our
     // spec requires that we do so before calling set_rect.
-    let _w = widget.size_rules(tk, AxisInfo::new(false, None));
-    let _h = widget.size_rules(tk, AxisInfo::new(true, Some(size.0)));
+    tk.with_size_handle(&mut |size_handle| {
+        let _w = widget.size_rules(size_handle, AxisInfo::new(false, None));
+        let _h = widget.size_rules(size_handle, AxisInfo::new(true, Some(size.0)));
+    });
 
     let pos = Coord(0, 0);
     widget.set_rect(tk, Rect { pos, size });

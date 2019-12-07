@@ -15,6 +15,7 @@
 //! [winit]: https://github.com/rust-windowing/winit
 
 use crate::layout;
+use crate::theme::SizeHandle;
 use crate::{event, Widget, WidgetId};
 
 /// Toolkit actions needed after event handling, if any.
@@ -37,9 +38,7 @@ pub enum TkAction {
 
 /// Toolkit-specific window management and style interface.
 ///
-/// This is implemented by a KAS toolkit on a window handle. Since each window
-/// is assumed to have uniform styling and this styling is provided by the
-/// toolkit, this interface includes widget styling ([`TkWindow::size_rules`]).
+/// This is implemented by a KAS toolkit on a window handle.
 ///
 /// Users interact with this trait in a few cases, such as implementing widget
 /// event handling. In these cases the user is *always* given an existing
@@ -53,19 +52,15 @@ pub trait TkWindow {
     /// The closure should return true if this update may require a redraw.
     fn update_data(&mut self, f: &mut dyn FnMut(&mut event::Manager) -> bool);
 
+    /// Construct a [`SizeHandle`] and call the closure on it
+    fn with_size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
+
     /// Margin sizes
     ///
     /// May be called multiple times during a resize operation.
     ///
     /// See documentation of [`layout::Margins`].
     fn margins(&mut self, widget: &dyn Widget) -> layout::Margins;
-
-    /// Widget size preferences
-    ///
-    /// Widgets should expect this to be called at least once for each axis.
-    ///
-    /// See documentation of [`layout::SizeRules`].
-    fn size_rules(&mut self, widget: &dyn Widget, axis: layout::AxisInfo) -> layout::SizeRules;
 
     /// Notify that a widget must be redrawn
     fn redraw(&mut self, id: WidgetId);

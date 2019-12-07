@@ -34,7 +34,7 @@ pub(crate) fn derive(
         let fns = quote! {
             fn size_rules(
                 &mut self,
-                tk: &mut dyn kas::TkWindow,
+                size_handle: &mut dyn kas::theme::SizeHandle,
                 axis: kas::layout::AxisInfo
             )
                 -> kas::layout::SizeRules
@@ -62,12 +62,12 @@ pub(crate) fn derive(
         let fns = quote! {
             fn size_rules(
                 &mut self,
-                tk: &mut dyn kas::TkWindow,
+                size_handle: &mut dyn kas::theme::SizeHandle,
                 axis: kas::layout::AxisInfo
             )
                 -> kas::layout::SizeRules
             {
-                self.#ident.size_rules(tk, axis) + tk.margins(self).size_rules(axis, 0, 0)
+                self.#ident.size_rules(size_handle, axis) + size_handle.margins(self).size_rules(axis, 0, 0)
             }
 
             fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, rect: kas::geom::Rect) {
@@ -201,7 +201,7 @@ impl<'a> ImplLayout<'a> {
             solver.for_child(
                 &mut self.#data,
                 #child_info,
-                |axis| child.size_rules(tk, axis)
+                |axis| child.size_rules(size_handle, axis)
             );
         });
 
@@ -340,7 +340,13 @@ impl<'a> ImplLayout<'a> {
         };
 
         let fns = quote! {
-            fn size_rules(&mut self, tk: &mut dyn kas::TkWindow, mut axis: kas::layout::AxisInfo) -> kas::layout::SizeRules {
+            fn size_rules(
+                &mut self,
+                size_handle: &mut dyn kas::theme::SizeHandle,
+                mut axis: kas::layout::AxisInfo
+            )
+                -> kas::layout::SizeRules
+            {
                 use std::iter;
                 use kas::Core;
                 use kas::layout::RulesSolver;
@@ -352,7 +358,7 @@ impl<'a> ImplLayout<'a> {
                 #size
                 #size_post
 
-                rules + tk.margins(self).size_rules(axis, #cols as u32, #rows as u32)
+                rules + size_handle.margins(self).size_rules(axis, #cols as u32, #rows as u32)
             }
 
             fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, mut rect: kas::geom::Rect) {

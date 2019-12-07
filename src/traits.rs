@@ -10,6 +10,7 @@ use std::fmt;
 use crate::event::{Callback, EmptyMsg, Handler};
 use crate::geom::{Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
+use crate::theme::SizeHandle;
 use crate::toolkit::TkWindow;
 use crate::{CoreData, WidgetId};
 
@@ -51,7 +52,7 @@ pub trait Layout: Core + fmt::Debug {
     /// parameter is used for the fixed dimension. Additionally, one may assume
     /// that `size_rules` has previously been called on the fixed axis with the
     /// current widget configuration.
-    fn size_rules(&mut self, tk: &mut dyn TkWindow, axis: AxisInfo) -> SizeRules;
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules;
 
     /// Adjust to the given size.
     ///
