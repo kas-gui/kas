@@ -41,28 +41,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let class = args.widget.class;
     let count = args.children.len();
 
-    let layout_impl;
-    if let Some(ref layout) = args.widget.layout {
-        let (fns, dt) = match layout::derive(&args.children, layout, &args.layout_data) {
-            Ok(res) => res,
-            Err(err) => return err.to_compile_error().into(),
-        };
-        layout_impl = quote! {
-            impl #impl_generics kas::Widget
-                    for #name #ty_generics #where_clause
-            {
-                #fns
-            }
-            impl #impl_generics kas::LayoutData
-                    for #name #ty_generics #where_clause
-            {
-                #dt
-            }
-        };
-    } else {
-        layout_impl = quote! {};
-    };
-
     let mut get_rules = quote! {};
     let mut get_mut_rules = quote! {};
     let mut walk_rules = quote! {};
@@ -87,8 +65,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 &mut self.#core
             }
         }
-
-        #layout_impl
 
         impl #impl_generics kas::WidgetAuto
                 for #name #ty_generics #where_clause
@@ -123,6 +99,25 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
         }
     };
+
+    if let Some(ref layout) = args.widget.layout {
+        let (fns, dt) = match layout::derive(&args.children, layout, &args.layout_data) {
+            Ok(res) => res,
+            Err(err) => return err.to_compile_error().into(),
+        };
+        toks.append_all(quote! {
+            impl #impl_generics kas::Widget
+                    for #name #ty_generics #where_clause
+            {
+                #fns
+            }
+            impl #impl_generics kas::LayoutData
+                    for #name #ty_generics #where_clause
+            {
+                #dt
+            }
+        });
+    }
 
     if let Some(handler) = args.handler {
         let msg = handler.msg;
