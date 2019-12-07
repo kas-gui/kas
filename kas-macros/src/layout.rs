@@ -9,7 +9,6 @@ use crate::args::{Child, WidgetAttrArgs};
 use proc_macro2::TokenStream;
 use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Result};
-use syn::spanned::Spanned;
 use syn::{Ident, Member};
 
 pub(crate) fn derive(
@@ -17,44 +16,7 @@ pub(crate) fn derive(
     layout: &Ident,
     data_field: &Option<Member>,
 ) -> Result<(TokenStream, TokenStream)> {
-    if layout == "empty" {
-        if !children.is_empty() {
-            layout
-                .span()
-                .unwrap()
-                .warning("`layout = empty` is inappropriate ...")
-                .emit();
-            children[0]
-                .ident
-                .span()
-                .unwrap()
-                .warning("... when a child widget is present")
-                .emit();
-        }
-        let fns = quote! {
-            fn size_rules(
-                &mut self,
-                size_handle: &mut dyn kas::theme::SizeHandle,
-                axis: kas::layout::AxisInfo
-            )
-                -> kas::layout::SizeRules
-            {
-                (0, 0)
-            }
-
-            fn draw(
-                &self,
-                draw_handle: &mut dyn kas::theme::DrawHandle,
-                ev_mgr: &kas::event::Manager
-            ) {}
-        };
-        let ty = quote! {
-            type Data = ();
-            type Solver = ();
-            type Setter = ();
-        };
-        Ok((fns, ty))
-    } else if layout == "single" {
+    if layout == "single" {
         if !children.len() == 1 {
             return Err(Error::new(
                 layout.span(),
@@ -119,7 +81,7 @@ pub(crate) fn derive(
             return Err(Error::new(
                 layout.span(),
                 format_args!(
-                    "expected one of: empty, single, horizontal, vertical, grid; found {}",
+                    "expected one of: single, horizontal, vertical, grid; found {}",
                     layout
                 ),
             ));

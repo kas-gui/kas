@@ -73,10 +73,6 @@
 //! implemented manually. If present, this trait will be implemented depending
 //! on the `layout` argument's value:
 //!
-//! -   `empty` — the widget displays no content and has zero size,
-//!     except when expanded to fill empty space
-//! -   `derive` — this is a simple widget with no children; content and
-//!     dimensions are derived from the toolkit based on the widget's class
 //! -   `single` — the widget wraps a single child, with no border or margin
 //! -   `vertical` — child widgets are arranged in a vertical column
 //! -   `horizontal` — child widgets are arranged in a horizontal row
