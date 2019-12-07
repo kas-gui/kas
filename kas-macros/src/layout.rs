@@ -16,6 +16,13 @@ pub(crate) fn derive(
     layout: &Ident,
     data_field: &Option<Member>,
 ) -> Result<(TokenStream, TokenStream)> {
+    let data = data_field.as_ref().ok_or_else(|| {
+        Error::new(
+            layout.span(),
+            "data field marked with #[layout_data] required when deriving Layout",
+        )
+    })?;
+
     if layout == "single" {
         if !children.len() == 1 {
             return Err(Error::new(
@@ -86,13 +93,6 @@ pub(crate) fn derive(
                 ),
             ));
         };
-
-        let data = data_field.as_ref().ok_or_else(|| {
-            Error::new(
-                layout.span(),
-                "data field marked with #[layout_data] required for this layout",
-            )
-        })?;
 
         // TODO: this could be rewritten
         let mut impl_layout = ImplLayout::new(lay, data);

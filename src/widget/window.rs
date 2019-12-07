@@ -12,7 +12,7 @@ use crate::event::{Callback, EmptyMsg, Event, Handler};
 use crate::geom::Size;
 use crate::layout::{self};
 use crate::macros::Widget;
-use crate::{CoreData, TkWindow, Widget};
+use crate::{CoreData, LayoutData, TkWindow, Widget};
 
 /// The main instantiation of the [`Window`] trait.
 #[widget(class = Class::Container, layout = single)]
@@ -20,6 +20,8 @@ use crate::{CoreData, TkWindow, Widget};
 pub struct Window<W: Widget + 'static> {
     #[core]
     core: CoreData,
+    #[layout_data]
+    layout_data: <Self as LayoutData>::Data,
     min_size: Size,
     #[widget]
     w: W,
@@ -48,6 +50,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
     fn clone(&self) -> Self {
         Window {
             core: self.core.clone(),
+            layout_data: self.layout_data.clone(),
             min_size: self.min_size,
             w: self.w.clone(),
             fns: self.fns.clone(),
@@ -60,6 +63,7 @@ impl<W: Widget> Window<W> {
     pub fn new(w: W) -> Window<W> {
         Window {
             core: Default::default(),
+            layout_data: Default::default(),
             min_size: Size::ZERO,
             w,
             fns: Vec::new(),

@@ -106,12 +106,13 @@ pub trait LayoutData {
 /// ```
 /// use kas::class::Class;
 /// use kas::macros::Widget;
-/// use kas::{Widget, CoreData};
+/// use kas::{CoreData, LayoutData, Widget};
 ///
 /// #[widget(class = Class::Frame, layout = single)]
 /// #[derive(Clone, Debug, Widget)]
 /// pub struct Frame<W: Widget> {
 ///     #[core] core: CoreData,
+///     #[layout_data] layout_data: <Self as LayoutData>::Data,
 ///     #[widget] child: W,
 /// }
 /// ```

@@ -128,12 +128,13 @@
 //! ```
 //! use kas::class::Class;
 //! use kas::macros::Widget;
-//! use kas::{Widget, CoreData};
+//! use kas::{CoreData, LayoutData, Widget};
 //!
 //! #[widget(class = Class::Container, layout = single)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
 //!     #[core] core: CoreData,
+//!     #[layout_data] layout_data: <Self as LayoutData>::Data,
 //!     #[widget] child: W,
 //! }
 //! ```
@@ -144,7 +145,7 @@
 //! use kas::class::Class;
 //! use kas::event::{Handler, err_unhandled};
 //! use kas::macros::{Widget, EmptyMsg};
-//! use kas::{Widget, CoreData, TkWindow};
+//! use kas::{CoreData, LayoutData, TkWindow, Widget};
 //!
 //! #[derive(Debug, EmptyMsg)]
 //! enum ChildMessage { None, A }
@@ -158,6 +159,7 @@
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
 //!     #[core] core: CoreData,
+//!     #[layout_data] layout_data: <Self as LayoutData>::Data,
 //!     #[widget(handler = handler)] child: W,
 //! }
 //!
