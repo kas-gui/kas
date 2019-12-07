@@ -13,7 +13,7 @@ use clipboard::{ClipboardContext, ClipboardProvider};
 use kas::event::Callback;
 use kas::geom::Size;
 use kas::theme::SizeHandle;
-use kas::{event, layout, theme, TkAction, Widget, WidgetId};
+use kas::{event, theme, TkAction, WidgetId};
 use winit::dpi::LogicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
@@ -296,11 +296,6 @@ impl<TW: theme::Window<DrawPipe>> kas::TkWindow for TkWindow<TW> {
         // can't represent (hence why theme::Window::size_handle is unsafe).
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
         f(&mut size_handle);
-    }
-
-    fn margins(&mut self, widget: &dyn Widget) -> layout::Margins {
-        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
-        size_handle.margins(widget)
     }
 
     #[inline]

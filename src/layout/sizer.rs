@@ -60,13 +60,13 @@ pub fn solve<L: Layout>(widget: &mut L, tk: &mut dyn TkWindow, size: Size) {
     tk.with_size_handle(&mut |size_handle| {
         let _w = widget.size_rules(size_handle, AxisInfo::new(false, None));
         let _h = widget.size_rules(size_handle, AxisInfo::new(true, Some(size.0)));
+
+        let pos = Coord(0, 0);
+        widget.set_rect(size_handle, Rect { pos, size });
+
+        // println!("Window size:\t{:?}", size);
+        // println!("Width rules:\t{:?}", _w);
+        // println!("Height rules:\t{:?}", _h);
+        // widget.print_hierarchy(0);
     });
-
-    let pos = Coord(0, 0);
-    widget.set_rect(tk, Rect { pos, size });
-
-    // println!("Window size:\t{:?}", size);
-    // println!("Width rules:\t{:?}", _w);
-    // println!("Height rules:\t{:?}", _h);
-    // self.w.print_hierarchy(0);
 }

@@ -14,9 +14,8 @@
 //!
 //! [winit]: https://github.com/rust-windowing/winit
 
-use crate::layout;
 use crate::theme::SizeHandle;
-use crate::{event, Widget, WidgetId};
+use crate::{event, WidgetId};
 
 /// Toolkit actions needed after event handling, if any.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
@@ -54,13 +53,6 @@ pub trait TkWindow {
 
     /// Construct a [`SizeHandle`] and call the closure on it
     fn with_size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
-
-    /// Margin sizes
-    ///
-    /// May be called multiple times during a resize operation.
-    ///
-    /// See documentation of [`layout::Margins`].
-    fn margins(&mut self, widget: &dyn Widget) -> layout::Margins;
 
     /// Notify that a widget must be redrawn
     fn redraw(&mut self, id: WidgetId);

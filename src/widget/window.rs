@@ -61,9 +61,9 @@ impl<W: Widget> Layout for Window<W> {
         self.w.size_rules(size_handle, axis)
     }
 
-    fn set_rect(&mut self, tk: &mut dyn TkWindow, rect: Rect) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
         self.core_data_mut().rect = rect;
-        self.w.set_rect(tk, rect);
+        self.w.set_rect(size_handle, rect);
     }
 }
 

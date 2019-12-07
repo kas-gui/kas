@@ -70,17 +70,21 @@ pub(crate) fn derive(
                 self.#ident.size_rules(size_handle, axis) + size_handle.margins(self).size_rules(axis, 0, 0)
             }
 
-            fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, rect: kas::geom::Rect) {
+            fn set_rect(
+                &mut self,
+                size_handle: &mut dyn kas::theme::SizeHandle,
+                rect: kas::geom::Rect)
+            {
                 use kas::Core;
                 use kas::layout::RulesSetter;
                 self.core_data_mut().rect = rect;
 
                 let mut setter = <Self as kas::LayoutData>::Setter::new(
                     rect,
-                    tk.margins(self),
+                    size_handle.margins(self),
                     &mut (),
                 );
-                self.#ident.set_rect(tk, setter.child_rect(()));
+                self.#ident.set_rect(size_handle, setter.child_rect(()));
             }
         };
         let ty = quote! {
@@ -206,7 +210,7 @@ impl<'a> ImplLayout<'a> {
         });
 
         self.set_rect.append_all(quote! {
-            self.#ident.set_rect(tk, setter.child_rect(#child_info));
+            self.#ident.set_rect(size_handle, setter.child_rect(#child_info));
         });
 
         Ok(())
@@ -361,14 +365,18 @@ impl<'a> ImplLayout<'a> {
                 rules + size_handle.margins(self).size_rules(axis, #cols as u32, #rows as u32)
             }
 
-            fn set_rect(&mut self, tk: &mut dyn kas::TkWindow, mut rect: kas::geom::Rect) {
+            fn set_rect(
+                &mut self,
+                size_handle: &mut dyn kas::theme::SizeHandle,
+                rect: kas::geom::Rect)
+            {
                 use kas::Core;
                 use kas::layout::RulesSetter;
                 self.core_data_mut().rect = rect;
 
                 let mut setter = <Self as kas::LayoutData>::Setter::new(
                     rect,
-                    tk.margins(self),
+                    size_handle.margins(self),
                     &mut self.#data,
                 );
                 #set_rect
