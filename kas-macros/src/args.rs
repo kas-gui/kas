@@ -167,6 +167,7 @@ mod kw {
     custom_keyword!(handler);
     custom_keyword!(msg);
     custom_keyword!(generics);
+    custom_keyword!(frame);
 }
 
 #[derive(Debug)]
@@ -315,6 +316,7 @@ impl ToTokens for GridPos {
 pub struct WidgetArgs {
     pub class: Expr,
     pub layout: Option<Ident>,
+    pub is_frame: bool,
 }
 
 impl Parse for WidgetArgs {
@@ -331,6 +333,7 @@ impl Parse for WidgetArgs {
 
         let mut class = None;
         let mut layout = None;
+        let mut is_frame = false;
 
         loop {
             let lookahead = content.lookahead1();
@@ -343,6 +346,9 @@ impl Parse for WidgetArgs {
                 let _: kw::layout = content.parse()?;
                 let _: Eq = content.parse()?;
                 layout = Some(content.parse()?);
+            } else if !is_frame && lookahead.peek(kw::frame) {
+                let _: kw::frame = content.parse()?;
+                is_frame = true;
             } else {
                 return Err(lookahead.error());
             }
@@ -356,6 +362,7 @@ impl Parse for WidgetArgs {
         Ok(WidgetArgs {
             class: class.ok_or_else(|| content.error("expected `class = ...`"))?,
             layout,
+            is_frame,
         })
     }
 }
@@ -403,11 +410,6 @@ impl Parse for HandlerArgs {
     }
 }
 
-pub enum Class {
-    Container(Ident),
-    Frame,
-}
-
 pub enum ChildType {
     Fixed(Type), // fixed type
     // Generic, optionally with specified handler msg type,
@@ -423,8 +425,8 @@ pub struct WidgetField {
 }
 
 pub struct MakeWidget {
-    // widget class
-    pub class: Class,
+    // widget layout
+    pub layout: Ident,
     // msg type
     pub msg: Type,
     // child widgets and data fields
@@ -435,19 +437,8 @@ pub struct MakeWidget {
 
 impl Parse for MakeWidget {
     fn parse(input: ParseStream) -> Result<Self> {
-        let class_name: Ident = input.parse()?;
-        let class = if class_name == "container" {
-            let content;
-            let _ = parenthesized!(content in input);
-            Class::Container(content.parse()?)
-        } else if class_name == "frame" {
-            Class::Frame
-        } else {
-            return Err(Error::new(
-                class_name.span(),
-                "make_widget only supports the following classes: container, frame",
-            ));
-        };
+        let layout: Ident = input.parse()?;
+        crate::layout::validate_layout(&layout)?;
 
         let _: FatArrow = input.parse()?;
         let msg: Type = input.parse()?;
@@ -489,7 +480,7 @@ impl Parse for MakeWidget {
         }
 
         Ok(MakeWidget {
-            class,
+            layout,
             msg,
             fields,
             impls,

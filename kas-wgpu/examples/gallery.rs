@@ -21,7 +21,7 @@ enum Item {
 
 fn main() -> Result<(), winit::error::OsError> {
     let widgets = make_widget! {
-        container(grid) => Item;
+        grid => Item;
         struct {
             #[widget(row=0, col=0)] _ = Label::from("Label"),
             #[widget(row=0, col=1)] _ = Label::from("Hello world"),
@@ -40,7 +40,7 @@ fn main() -> Result<(), winit::error::OsError> {
     };
 
     let window = Window::new(make_widget! {
-        container(vertical) => EmptyMsg;
+        vertical => EmptyMsg;
         struct {
             #[widget] _ = make_widget! {
                 frame => EmptyMsg;

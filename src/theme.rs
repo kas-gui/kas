@@ -19,6 +19,7 @@ use rusttype::Font;
 
 use crate::layout;
 use kas::draw::Colour;
+use kas::geom::{Rect, Size};
 use kas::{event, Widget};
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -131,19 +132,17 @@ pub trait Window<Draw> {
 
 /// Handle passed to objects during draw and sizing operations
 pub trait SizeHandle {
-    /// Margin sizes
-    ///
-    /// May be called multiple times during a resize operation.
-    ///
-    /// See documentation of [`layout::Margins`].
-    fn margins(&mut self, widget: &dyn Widget) -> layout::Margins;
-
     /// Widget size preferences
     ///
     /// Widgets should expect this to be called at least once for each axis.
     ///
     /// See documentation of [`layout::SizeRules`].
     fn size_rules(&mut self, widget: &dyn Widget, axis: layout::AxisInfo) -> layout::SizeRules;
+
+    /// Get size of a frame
+    ///
+    /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
+    fn frame_size(&self) -> (Size, Size);
 }
 
 /// Handle passed to objects during draw and sizing operations
@@ -153,4 +152,9 @@ pub trait DrawHandle {
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
     fn draw(&mut self, ev_mgr: &event::Manager, widget: &dyn kas::Widget);
+
+    /// Draw a frame in the given [`Rect`]
+    ///
+    /// The frame dimensions should equal those of [`SizeHandle::frame_size`].
+    fn draw_frame(&mut self, rect: Rect);
 }

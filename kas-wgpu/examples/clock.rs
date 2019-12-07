@@ -20,7 +20,7 @@ use kas::{Core, TkWindow};
 
 fn main() {
     let mut window = Window::new(make_widget! {
-        container(vertical) => EmptyMsg;
+        vertical => EmptyMsg;
         struct {
             #[widget] date: Label = Label::new(""),
             #[widget] time: Label = Label::new("")

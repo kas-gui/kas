@@ -32,7 +32,6 @@ pub enum Class<'a> {
     Entry(&'a dyn Editable),
     Button(&'a dyn HasText),
     CheckBox(&'a dyn HasBoolText),
-    Frame,
 }
 
 impl<'a> fmt::Debug for Class<'a> {
@@ -46,7 +45,6 @@ impl<'a> fmt::Debug for Class<'a> {
                 Class::Entry(_) => "Entry",
                 Class::Button(_) => "Button",
                 Class::CheckBox(_) => "CheckBox",
-                Class::Frame => "Frame",
             }
         )
     }
@@ -61,7 +59,6 @@ impl<'a> Class<'a> {
             Class::Entry(cls) => Some(cls.get_text()),
             Class::Button(cls) => Some(cls.get_text()),
             Class::CheckBox(cls) => Some(cls.get_text()),
-            Class::Frame => None,
         }
     }
 
@@ -69,7 +66,7 @@ impl<'a> Class<'a> {
     // TODO: allow customisation?
     pub fn alignments(&'a self) -> (Align, Align) {
         match self {
-            Class::Container | Class::Frame => (Align::Justify, Align::Justify),
+            Class::Container => (Align::Justify, Align::Justify),
             Class::Label(_) => (Align::Begin, Align::Center),
             Class::Entry(_) => (Align::Begin, Align::Begin),
             Class::Button(_) | Class::CheckBox(_) => (Align::Center, Align::Center),
@@ -79,7 +76,7 @@ impl<'a> Class<'a> {
     /// Does this widget allow keyboard focus?
     pub fn allow_focus(&self) -> bool {
         match self {
-            Class::Container | Class::Label(_) | Class::Frame => false,
+            Class::Container | Class::Label(_) => false,
             Class::Entry(_) | Class::Button(_) | Class::CheckBox(_) => true,
         }
     }

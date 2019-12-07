@@ -182,7 +182,6 @@
 //! This macro supports widgets of the following classes:
 //!
 //! -   Container
-//! -   Frame
 //!
 //! This exists purely to save you some typing. You could instead make your own
 //! struct, derive `Widget` (with attributes to enable Core, Layout and Widget
@@ -192,9 +191,8 @@
 //! Syntax should match the following Backus-Naur Form:
 //!
 //! ```bnf
-//! <input>     ::= <class> "=>" <msg> ";" <fields> ";" <funcs>
-//! <class>     ::= "container" "(" <layout> ")" | "frame"
-//! <layout>    ::= "empty" | "derive" | "single" | "horizontal" | "vertical" | "grid"
+//! <input>     ::= <layout> "=>" <msg> ";" <fields> ";" <funcs>
+//! <layout>    ::= "frame" | "single" | "horizontal" | "vertical" | "grid"
 //! <msg>  ::= <type>
 //! <fields>    ::= "" | <field> | <field> "," <fields>
 //! <field>     ::= <w_attr> <opt_ident> <field_ty> = <expr>

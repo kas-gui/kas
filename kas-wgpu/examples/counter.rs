@@ -21,14 +21,14 @@ enum Message {
 
 fn main() -> Result<(), winit::error::OsError> {
     let buttons = make_widget! {
-        container(horizontal) => Message;
+        horizontal => Message;
         struct {
             #[widget] _ = TextButton::new("−", Message::Decr),
             #[widget] _ = TextButton::new("+", Message::Incr),
         }
     };
     let window = Window::new(make_widget! {
-        container(vertical) => EmptyMsg;
+        vertical => EmptyMsg;
         struct {
             #[widget] display: Label = Label::from("0"),
             #[widget(handler = handle_button)] buttons -> Message = buttons,

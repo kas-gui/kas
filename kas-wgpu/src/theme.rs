@@ -14,7 +14,8 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use kas::class::{Align, Class};
 use kas::draw::*;
-use kas::layout::{AxisInfo, Margins, SizeRules};
+use kas::geom::{Rect, Size};
+use kas::layout::{AxisInfo, SizeRules};
 use kas::{event, theme, Widget};
 
 use crate::draw::*;
@@ -103,13 +104,6 @@ impl theme::Window<DrawPipe> for SampleWindow {
 }
 
 impl<'a> theme::SizeHandle for SampleHandle<'a> {
-    fn margins(&mut self, widget: &dyn Widget) -> Margins {
-        match widget.class() {
-            Class::Frame => Margins::uniform(self.window.frame_size as u32, 0),
-            _ => Margins::ZERO,
-        }
-    }
-
     fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules {
         let font_scale = self.window.font_scale;
         let line_height = font_scale as u32;
@@ -145,7 +139,7 @@ impl<'a> theme::SizeHandle for SampleHandle<'a> {
         };
 
         let inner = match widget.class() {
-            Class::Frame | Class::Container => return SizeRules::EMPTY,
+            Class::Container => return SizeRules::EMPTY,
             Class::Label(_) => {
                 if !axis.vertical() {
                     let min = 3 * line_height;
@@ -181,6 +175,14 @@ impl<'a> theme::SizeHandle for SampleHandle<'a> {
         };
         let margin = SizeRules::fixed(2 * self.window.margin as u32);
         inner + margin
+    }
+
+    /// Get size of a frame
+    ///
+    /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
+    fn frame_size(&self) -> (Size, Size) {
+        let f = self.window.frame_size as u32;
+        (Size::uniform(f), Size::uniform(f))
     }
 }
 
@@ -301,13 +303,6 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
                 // let text = if cls.get_bool() { "✓" } else { "" };
                 text = Some((cls.get_text(), TEXT));
             }
-            Class::Frame => {
-                let outer = quad;
-                quad.shrink(f);
-                let style = Style::Round(Vec2(0.6, -0.6));
-                self.draw.draw_frame(outer, quad, style, FRAME);
-                return;
-            }
         }
 
         if let Some((text, colour)) = text {
@@ -363,5 +358,18 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         if let Some(background) = background {
             self.draw.draw_quad(quad, Style::Flat, background.into());
         }
+    }
+
+    /// Draw a frame in the given [`Rect`]
+    ///
+    /// The frame dimensions should equal those of [`SizeHandle::frame_size`].
+    fn draw_frame(&mut self, rect: Rect) {
+        let p = Vec2::from(rect.pos_f32());
+        let size = Vec2::from(rect.size_f32());
+        let mut quad = Quad(p, p + size);
+        let outer = quad;
+        quad.shrink(self.window.frame_size);
+        let style = Style::Round(Vec2(0.6, -0.6));
+        self.draw.draw_frame(outer, quad, style, FRAME);
     }
 }

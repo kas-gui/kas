@@ -11,6 +11,25 @@ use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Result};
 use syn::{Ident, Member};
 
+pub(crate) fn validate_layout(layout: &Ident) -> Result<()> {
+    if layout == "frame"
+        || layout == "single"
+        || layout == "horizontal"
+        || layout == "vertical"
+        || layout == "grid"
+    {
+        Ok(())
+    } else {
+        Err(Error::new(
+            layout.span(),
+            format_args!(
+                "expected one of: frame, single, horizontal, vertical, grid; found {}",
+                layout
+            ),
+        ))
+    }
+}
+
 pub(crate) fn derive(
     children: &Vec<Child>,
     layout: &Ident,
@@ -23,12 +42,14 @@ pub(crate) fn derive(
         )
     })?;
 
-    if layout == "single" {
+    let is_frame = layout == "frame";
+    let is_single = layout == "single";
+    if is_frame || is_single {
         if !children.len() == 1 {
             return Err(Error::new(
                 layout.span(),
                 format_args!(
-                    "expected 1 child when using `layout = single`; found {}",
+                    "expected 1 child when using layout 'single' or 'frame'; found {}",
                     children.len()
                 ),
             ));
@@ -42,7 +63,16 @@ pub(crate) fn derive(
             )
                 -> kas::layout::SizeRules
             {
-                self.#ident.size_rules(size_handle, axis) + size_handle.margins(self).size_rules(axis, 0, 0)
+                use kas::geom::Size;
+                let frame_size = if #is_frame {
+                    size_handle.frame_size()
+                } else {
+                    (Size::ZERO, Size::ZERO)
+                };
+                self.#data = frame_size;
+                self.#ident.size_rules(size_handle, axis)
+                    + axis.extract_size(frame_size.0)
+                    + axis.extract_size(frame_size.1)
             }
 
             fn set_rect(
@@ -56,7 +86,7 @@ pub(crate) fn derive(
 
                 let mut setter = <Self as kas::LayoutData>::Setter::new(
                     rect,
-                    size_handle.margins(self),
+                    self.#data,
                     &mut (),
                 );
                 self.#ident.set_rect(size_handle, setter.child_rect(()));
@@ -67,12 +97,15 @@ pub(crate) fn derive(
                 draw_handle: &mut dyn kas::theme::DrawHandle,
                 ev_mgr: &kas::event::Manager
             ) {
-                draw_handle.draw(ev_mgr, self);
+                use kas::Core;
+                if #is_frame {
+                    draw_handle.draw_frame(self.core_data().rect);
+                }
                 self.#ident.draw(draw_handle, ev_mgr);
             }
         };
         let ty = quote! {
-            type Data = ();
+            type Data = (kas::geom::Size, kas::geom::Size);
             type Solver = ();
             type Setter = kas::layout::SingleSetter;
         };
@@ -85,13 +118,7 @@ pub(crate) fn derive(
         } else if layout == "grid" {
             Layout::Grid
         } else {
-            return Err(Error::new(
-                layout.span(),
-                format_args!(
-                    "expected one of: single, horizontal, vertical, grid; found {}",
-                    layout
-                ),
-            ));
+            panic!("invalid layout (already excluded by validate_layout)");
         };
 
         // TODO: this could be rewritten
@@ -346,7 +373,7 @@ impl<'a> ImplLayout<'a> {
                 #size
                 #size_post
 
-                rules + size_handle.margins(self).size_rules(axis, #cols as u32, #rows as u32)
+                rules
             }
 
             fn set_rect(
@@ -355,12 +382,12 @@ impl<'a> ImplLayout<'a> {
                 rect: kas::geom::Rect)
             {
                 use kas::Core;
-                use kas::layout::RulesSetter;
+                use kas::layout::{Margins, RulesSetter};
                 self.core_data_mut().rect = rect;
 
                 let mut setter = <Self as kas::LayoutData>::Setter::new(
                     rect,
-                    size_handle.margins(self),
+                    Margins::ZERO,
                     &mut self.#data,
                 );
                 #set_rect

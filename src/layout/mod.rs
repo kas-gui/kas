@@ -13,6 +13,8 @@ mod row_solver;
 mod size_rules;
 mod sizer;
 
+use kas::geom::Size;
+
 pub use grid_solver::{FixedGridSetter, FixedGridSolver, FixedGridStorage, GridChildInfo};
 pub use misc_solver::SingleSetter;
 pub use row_solver::{FixedRowSetter, FixedRowSolver, FixedRowStorage};
@@ -51,6 +53,16 @@ impl AxisInfo {
             Some(self.other_axis)
         } else {
             None
+        }
+    }
+
+    /// Extract horizontal or vertical component of a [`Size`]
+    #[inline]
+    pub fn extract_size(&self, size: Size) -> u32 {
+        if !self.vertical {
+            size.0
+        } else {
+            size.1
         }
     }
 }

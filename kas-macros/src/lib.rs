@@ -19,7 +19,7 @@ use syn::token::Comma;
 use syn::{parse_macro_input, parse_quote};
 use syn::{DeriveInput, FnArg, Ident, ImplItemMethod, Type, TypePath};
 
-use self::args::{ChildType, Class};
+use self::args::ChildType;
 
 mod layout;
 
@@ -314,15 +314,8 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let msg = &args.msg;
 
-    let widget_args = match args.class {
-        Class::Container(layout) => {
-            quote! { class = kas::class::Class::Container, layout = #layout }
-        }
-        Class::Frame => quote! {
-            // TODO: include frame dimensions
-            class = kas::class::Class::Frame, layout = single
-        },
-    };
+    let layout = args.layout;
+    let widget_args = quote! { class = kas::class::Class::Container, layout = #layout };
 
     for (index, field) in args.fields.drain(..).enumerate() {
         let attr = field.widget_attr;

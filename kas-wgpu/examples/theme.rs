@@ -89,7 +89,7 @@ enum Item {
 
 fn main() -> Result<(), winit::error::OsError> {
     let widgets = make_widget! {
-        container(grid) => Item;
+        grid => Item;
         struct {
             #[widget(row=1, col=1)] _ = Label::from("Custom theme demo\nChoose your colour!"),
             #[widget(row=0, col=1)] _ = TextButton::new("White", Item::White),
@@ -102,7 +102,7 @@ fn main() -> Result<(), winit::error::OsError> {
     let theme = ColouredTheme::new();
 
     let window = Window::new(make_widget! {
-        container(single) => EmptyMsg;
+        single => EmptyMsg;
         struct {
             #[widget(handler = handler)] _ = widgets,
         }

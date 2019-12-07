@@ -30,7 +30,7 @@ enum Key {
 
 fn main() -> Result<(), winit::error::OsError> {
     let buttons = make_widget! {
-        container(grid) => Key;
+        grid => Key;
         struct {
             #[widget(col = 0, row = 0)]
             _ = TextButton::new("clear", Key::Clear).with_keys(&[VK::Delete]),
@@ -70,7 +70,7 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     };
     let content = make_widget! {
-        container(vertical) => EmptyMsg;
+        vertical => EmptyMsg;
         struct {
             #[widget] display: impl HasText = Entry::new("0").editable(false),
             #[widget(handler = handle_button)] buttons -> Key = buttons,

@@ -108,7 +108,7 @@ pub trait LayoutData {
 /// use kas::macros::Widget;
 /// use kas::{CoreData, LayoutData, Widget};
 ///
-/// #[widget(class = Class::Frame, layout = single)]
+/// #[widget(class = Class::Container, layout = frame)]
 /// #[derive(Clone, Debug, Widget)]
 /// pub struct Frame<W: Widget> {
 ///     #[core] core: CoreData,
