@@ -9,17 +9,24 @@ use std::fmt::{self, Debug};
 
 use crate::class::{Class, Editable, HasText};
 use crate::event::{Action, EmptyMsg, Handler};
+use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Core, CoreData, TkWindow};
+use crate::{Core, CoreData, Layout, TkWindow};
 
 /// A simple text label
-#[widget(class = Class::Label(self), layout = derive)]
+#[widget(class = Class::Label(self))]
 #[handler]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Label {
     #[core]
     core: CoreData,
     text: String,
+}
+
+impl Layout for Label {
+    fn size_rules(&mut self, tk: &mut dyn TkWindow, axis: AxisInfo) -> SizeRules {
+        tk.size_rules(self, axis)
+    }
 }
 
 impl Label {
@@ -71,7 +78,7 @@ impl Default for LastEdit {
 }
 
 /// An editable, single-line text box.
-#[widget(class = Class::Entry(self), layout = derive)]
+#[widget(class = Class::Entry(self))]
 #[derive(Clone, Default, Widget)]
 pub struct Entry<H: 'static> {
     #[core]
@@ -90,6 +97,12 @@ impl<H> Debug for Entry<H> {
             "Entry {{ core: {:?}, editable: {:?}, text: {:?}, ... }}",
             self.core, self.editable, self.text
         )
+    }
+}
+
+impl<H: 'static> Layout for Entry<H> {
+    fn size_rules(&mut self, tk: &mut dyn TkWindow, axis: AxisInfo) -> SizeRules {
+        tk.size_rules(self, axis)
     }
 }
 

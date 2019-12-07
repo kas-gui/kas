@@ -10,11 +10,12 @@ use std::fmt::{self, Debug};
 
 use crate::class::{Class, HasBool, HasText};
 use crate::event::{err_unhandled, Action, EmptyMsg, Handler, VirtualKeyCode};
+use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Core, CoreData, TkWindow};
+use crate::{Core, CoreData, Layout, TkWindow};
 
 /// A checkable box with optional label
-#[widget(class = Class::CheckBox(self), layout = derive)]
+#[widget(class = Class::CheckBox(self))]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<OT: 'static> {
     #[core]
@@ -31,6 +32,12 @@ impl<H> Debug for CheckBox<H> {
             "CheckBox {{ core: {:?}, state: {:?}, label: {:?}, ... }}",
             self.core, self.state, self.label
         )
+    }
+}
+
+impl<OT: 'static> Layout for CheckBox<OT> {
+    fn size_rules(&mut self, tk: &mut dyn TkWindow, axis: AxisInfo) -> SizeRules {
+        tk.size_rules(self, axis)
     }
 }
 
@@ -154,13 +161,19 @@ impl<M: From<EmptyMsg>, H: Fn(bool) -> M> Handler for CheckBox<H> {
 
 /// A push-button with a text label
 // TODO: abstract out text part?
-#[widget(class = Class::Button(self), layout = derive)]
+#[widget(class = Class::Button(self))]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug + From<EmptyMsg>> {
     #[core]
     core: CoreData,
     label: String,
     msg: M,
+}
+
+impl<M: Clone + Debug + From<EmptyMsg>> Layout for TextButton<M> {
+    fn size_rules(&mut self, tk: &mut dyn TkWindow, axis: AxisInfo) -> SizeRules {
+        tk.size_rules(self, axis)
+    }
 }
 
 impl<M: Clone + Debug + From<EmptyMsg>> TextButton<M> {

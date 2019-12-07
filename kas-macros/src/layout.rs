@@ -48,37 +48,6 @@ pub(crate) fn derive(
             type Setter = ();
         };
         Ok((fns, ty))
-    } else if layout == "derive" {
-        if !children.is_empty() {
-            layout
-                .span()
-                .unwrap()
-                .warning("`layout = derive` is inappropriate ...")
-                .emit();
-            children[0]
-                .ident
-                .span()
-                .unwrap()
-                .warning("... when a child widget is present")
-                .emit();
-        }
-        let fns = quote! {
-            fn size_rules(
-                &mut self,
-                tk: &mut dyn kas::TkWindow,
-                axis: kas::layout::AxisInfo
-            )
-                -> kas::layout::SizeRules
-            {
-                tk.size_rules(self, axis)
-            }
-        };
-        let ty = quote! {
-            type Data = ();
-            type Solver = ();
-            type Setter = ();
-        };
-        Ok((fns, ty))
     } else if layout == "single" {
         if !children.len() == 1 {
             return Err(Error::new(
@@ -131,7 +100,7 @@ pub(crate) fn derive(
             return Err(Error::new(
                 layout.span(),
                 format_args!(
-                    "expected one of: empty, derive, single, horizontal, vertical, grid; found {}",
+                    "expected one of: empty, single, horizontal, vertical, grid; found {}",
                     layout
                 ),
             ));
