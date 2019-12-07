@@ -7,7 +7,7 @@
 
 use super::{AxisInfo, SizeRules};
 use crate::geom::{Coord, Rect, Size};
-use crate::{Layout, TkWindow};
+use crate::{TkWindow, Widget};
 
 pub trait Storage {}
 
@@ -54,7 +54,7 @@ pub trait RulesSetter {
 }
 
 /// Solve `widget` for `SizeRules` on both axes, horizontal first.
-pub fn solve<L: Layout>(widget: &mut L, tk: &mut dyn TkWindow, size: Size) {
+pub fn solve<L: Widget>(widget: &mut L, tk: &mut dyn TkWindow, size: Size) {
     // We call size_rules not because we want the result, but because our
     // spec requires that we do so before calling set_rect.
     tk.with_size_handle(&mut |size_handle| {

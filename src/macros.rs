@@ -10,7 +10,7 @@
 //!
 //! This module provides two important macros:
 //!
-//! -   [`derive(Widget)`] implements the [`Widget`] trait (including super-traits
+//! -   [`derive(Widget)`] implements the [`WidgetAuto`] trait (including super-traits
 //!     like [`Core`] and optionally [`Handler`])
 //! -   [`make_widget`] is a convenience macro to create a single instance of a
 //!     custom widget type
@@ -41,7 +41,7 @@
 //! Most users should prefer to use the [`make_widget`] macro.
 //!
 //! The [`Widget`] trait requires multiple base traits to be implemented:
-//! [`Core`] and [`Layout`]. These base traits should be considered
+//! [`Core`] and [`WidgetAuto`]. These base traits should be considered
 //! implementation details and not used directly; this macro therefore
 //! implements both base traits and [`Widget`] directly.
 //!
@@ -69,7 +69,7 @@
 //! -   `class = ...` (required) — an expression yielding the widget's [`Class`]
 //! -   `layout = ...` (optional) — see below
 //!
-//! If the `layout` argument is missing, the [`Layout`] trait must be
+//! If the `layout` argument is missing, the [`Widget`] trait must be
 //! implemented manually. If present, this trait will be implemented depending
 //! on the `layout` argument's value:
 //!
@@ -79,7 +79,7 @@
 //! -   `grid` — child widgets are arranged in a grid; see `#[widget]`
 //!     attribute on fields and its arguments
 //!
-//! When deriving [`Layout`] with non-trivial layouts an extra data field is
+//! When deriving [`Widget`] with non-trivial layouts an extra data field is
 //! required on the struct. This field should be specified as follows:
 //! ```none
 //! #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
@@ -184,7 +184,7 @@
 //! -   Container
 //!
 //! This exists purely to save you some typing. You could instead make your own
-//! struct, derive `Widget` (with attributes to enable Core, Layout and Widget
+//! struct, derive `Widget` (with attributes to enable Core, WidgetAuto and Widget
 //! implementation), manually implement `event::Handler`, and instantiate an
 //! object.
 //!
@@ -211,7 +211,7 @@
 //! `<func>` is a Rust method definition. `""` is the empty string (i.e. nothing).
 //!
 //! The effect of this macro is to create an anonymous struct with the above
-//! fields (plus an implicit `core`), implement [`Core`], [`Layout`], [`Widget`]
+//! fields (plus an implicit `core`), implement [`Core`], [`WidgetAuto`], [`Widget`]
 //! and [`Handler`] (with the specified `<msg>` type), implement the
 //! additional `<funcs>` listed on this type, then construct and return an
 //! instance using the given value expressions to initialise each field.
@@ -278,7 +278,7 @@
 //! ```
 //!
 //! [`Core`]: crate::Core
-//! [`Layout`]: crate::Layout
+//! [`WidgetAuto`]: crate::WidgetAuto
 //! [`Widget`]: crate::Widget
 //! [`Handler`]: crate::event::Handler
 //! [`Class`]: crate::class::Class

@@ -48,7 +48,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             Err(err) => return err.to_compile_error().into(),
         };
         layout_impl = quote! {
-            impl #impl_generics kas::Layout
+            impl #impl_generics kas::Widget
                     for #name #ty_generics #where_clause
             {
                 #fns
@@ -90,7 +90,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         #layout_impl
 
-        impl #impl_generics kas::Widget
+        impl #impl_generics kas::WidgetAuto
                 for #name #ty_generics #where_clause
         {
             fn as_widget(&self) -> &dyn kas::Widget { self }

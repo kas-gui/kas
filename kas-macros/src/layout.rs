@@ -38,7 +38,7 @@ pub(crate) fn derive(
     let data = data_field.as_ref().ok_or_else(|| {
         Error::new(
             layout.span(),
-            "data field marked with #[layout_data] required when deriving Layout",
+            "data field marked with #[layout_data] required when deriving Widget",
         )
     })?;
 

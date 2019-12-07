@@ -42,7 +42,7 @@ pub trait Core {
 }
 
 /// Widget sizing and drawing
-pub trait Layout: Core + fmt::Debug {
+pub trait Widget: WidgetAuto {
     /// Get size rules for the given axis.
     ///
     /// This method takes `&mut self` to allow local caching of child widget
@@ -74,9 +74,9 @@ pub trait Layout: Core + fmt::Debug {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager);
 }
 
-/// Trait to describe the type needed by the [`Layout`] implementation.
+/// Trait to describe the type needed by the layout implementation.
 ///
-/// To allow the `derive(Widget)` macro to implement [`Layout`], we use an
+/// To allow the `derive(Widget)` macro to implement [`Widget`], we use an
 /// associated type to describe a data field of the following form:
 /// ```none
 /// #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
@@ -84,7 +84,7 @@ pub trait Layout: Core + fmt::Debug {
 ///
 /// Ideally we would use an inherent associated type on the struct in question,
 /// but until rust-lang#8995 is implemented that is not possible. We also cannot
-/// place this associated type on the [`Layout`] trait itself, since then uses
+/// place this associated type on the [`Widget`] trait itself, since then uses
 /// of the trait would require parameterisation. Thus, this trait.
 pub trait LayoutData {
     type Data: Clone + fmt::Debug + Default;
@@ -100,7 +100,7 @@ pub trait LayoutData {
 ///
 /// This trait should *only* be implemented by using the `derive(Widget)` macro.
 /// This macro additionally implements the [`Core`] trait, and optionally also
-/// the [`Layout`] and [`Handler`] traits. See documentation in the
+/// the [`WidgetAuto`] and [`Handler`] traits. See documentation in the
 /// [`kas::macros`] module.
 ///
 /// ```
@@ -118,7 +118,7 @@ pub trait LayoutData {
 /// ```
 ///
 /// [`Handler`]: crate::event::Handler
-pub trait Widget: Layout {
+pub trait WidgetAuto: Core + fmt::Debug {
     /// Erase type
     fn as_widget(&self) -> &dyn Widget;
     /// Erase type

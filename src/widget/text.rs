@@ -12,7 +12,7 @@ use crate::event::{self, Action, EmptyMsg, Handler};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{Core, CoreData, Layout, TkWindow};
+use crate::{Core, CoreData, TkWindow, Widget};
 
 /// A simple text label
 #[widget(class = Class::Label(self))]
@@ -24,7 +24,7 @@ pub struct Label {
     text: String,
 }
 
-impl Layout for Label {
+impl Widget for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         size_handle.size_rules(self, axis)
     }
@@ -105,7 +105,7 @@ impl<H> Debug for Entry<H> {
     }
 }
 
-impl<H: 'static> Layout for Entry<H> {
+impl<H: 'static> Widget for Entry<H> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         size_handle.size_rules(self, axis)
     }
