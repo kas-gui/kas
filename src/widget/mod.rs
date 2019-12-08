@@ -5,12 +5,14 @@
 
 //! Widgets
 
-mod control;
+mod button;
+mod checkbox;
 mod dialog;
 mod text;
 mod window;
 
-pub use control::{CheckBox, TextButton};
+pub use button::TextButton;
+pub use checkbox::CheckBox;
 pub use dialog::MessageBox;
 pub use text::{Entry, Label};
 pub use window::Window;

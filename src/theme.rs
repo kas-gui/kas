@@ -207,7 +207,7 @@ pub trait SizeHandle {
     /// Includes each side (as in `outer_frame`), minus the content area (to be added separately).
     fn edit_surround(&self) -> (Size, Size);
 
-    /// Size of the element drawn by [`DrawHandle::draw_checkbox`].
+    /// Size of the element drawn by [`DrawHandle::checkbox`].
     ///
     /// This element is not scalable (except by DPI).
     fn checkbox(&self) -> Size;
@@ -217,7 +217,7 @@ pub trait SizeHandle {
 pub trait DrawHandle {
     /// Draw a frame in the given [`Rect`]
     ///
-    /// The frame dimensions should equal those of [`SizeHandle::frame_size`].
+    /// The frame dimensions should equal those of [`SizeHandle::outer_frame`].
     fn outer_frame(&mut self, rect: Rect);
 
     /// Draw some text using the standard font
@@ -237,7 +237,7 @@ pub trait DrawHandle {
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
     ///
-    /// Size is fixed as [`SizeHandle::size_of_checkbox`], thus only the `pos`
+    /// Size is fixed as [`SizeHandle::checkbox`], thus only the `pos`
     /// and state are needed here.
     fn checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState);
 }
