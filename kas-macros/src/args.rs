@@ -157,7 +157,6 @@ fn member(index: usize, ident: Option<Ident>) -> Member {
 mod kw {
     use syn::custom_keyword;
 
-    custom_keyword!(class);
     custom_keyword!(layout);
     custom_keyword!(col);
     custom_keyword!(row);
@@ -314,35 +313,25 @@ impl ToTokens for GridPos {
 }
 
 pub struct WidgetArgs {
-    pub class: Expr,
     pub layout: Option<Ident>,
     pub is_frame: bool,
 }
 
 impl Parse for WidgetArgs {
     fn parse(input: ParseStream) -> Result<Self> {
+        let mut layout = None;
+        let mut is_frame = false;
+
         if input.is_empty() {
-            return Err(Error::new(
-                Span::call_site(),
-                "expected #[widget(class = ...)]; found #[widget]",
-            ));
+            return Ok(WidgetArgs { layout, is_frame });
         }
 
         let content;
         let _ = parenthesized!(content in input);
 
-        let mut class = None;
-        let mut layout = None;
-        let mut is_frame = false;
-
         loop {
             let lookahead = content.lookahead1();
-            if class.is_none() && lookahead.peek(kw::class) {
-                let _: kw::class = content.parse()?;
-                let _: Eq = content.parse()?;
-                let expr: Expr = content.parse()?;
-                class = Some(expr);
-            } else if layout.is_none() && lookahead.peek(kw::layout) {
+            if layout.is_none() && lookahead.peek(kw::layout) {
                 let _: kw::layout = content.parse()?;
                 let _: Eq = content.parse()?;
                 layout = Some(content.parse()?);
@@ -359,11 +348,7 @@ impl Parse for WidgetArgs {
             let _: Comma = content.parse()?;
         }
 
-        Ok(WidgetArgs {
-            class: class.ok_or_else(|| content.error("expected `class = ...`"))?,
-            layout,
-            is_frame,
-        })
+        Ok(WidgetArgs { layout, is_frame })
     }
 }
 

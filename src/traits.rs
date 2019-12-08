@@ -48,11 +48,6 @@ pub trait WidgetCore: fmt::Debug {
     /// Erase type
     fn as_widget_mut(&mut self) -> &mut dyn Widget;
 
-    /// Get the widget's classification
-    ///
-    /// This includes access to additional class-specific interfaces.
-    fn class(&self) -> crate::class::Class;
-
     /// Get the number of child widgets
     fn len(&self) -> usize;
 
@@ -100,13 +95,7 @@ pub trait WidgetCore: fmt::Debug {
 
     /// Debug tool: print the widget hierarchy
     fn print_hierarchy(&self, depth: usize) {
-        println!(
-            "{}W[{}]\t{:?}\t{:?}",
-            "- ".repeat(depth),
-            self.id(),
-            self.class(),
-            self.rect()
-        );
+        println!("{}\t{:?}\t{:?}", "- ".repeat(depth), self.id(), self.rect());
         for i in 0..self.len() {
             self.get(i).unwrap().print_hierarchy(depth + 1);
         }
@@ -126,11 +115,10 @@ pub trait WidgetCore: fmt::Debug {
 /// Example of a simple widget which draws a frame around its child:
 ///
 /// ```
-/// use kas::class::Class;
 /// use kas::macros::Widget;
 /// use kas::{CoreData, LayoutData, Widget};
 ///
-/// #[widget(class = Class::Container, layout = frame)]
+/// #[widget(layout = frame)]
 /// #[derive(Clone, Debug, Widget)]
 /// pub struct Frame<W: Widget> {
 ///     #[core] core: CoreData,
@@ -143,7 +131,7 @@ pub trait WidgetCore: fmt::Debug {
 pub trait Widget: WidgetCore {
     /// Is this widget navigable via Tab key?
     fn allow_focus(&self) -> bool {
-        self.class().allow_focus()
+        false
     }
 
     /// Get size rules for the given axis.

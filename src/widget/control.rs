@@ -8,7 +8,7 @@
 use std::any::TypeId;
 use std::fmt::{self, Debug};
 
-use crate::class::{Class, HasBool, HasText};
+use crate::class::{HasBool, HasText};
 use crate::event::{self, err_unhandled, Action, EmptyMsg, Handler, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
@@ -17,7 +17,7 @@ use crate::{CoreData, TkWindow, Widget, WidgetCore};
 use kas::geom::{Coord, Rect};
 
 /// A checkable box with optional label
-#[widget(class = Class::None)]
+#[widget]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<OT: 'static> {
     #[core]
@@ -211,7 +211,7 @@ impl<M: From<EmptyMsg>, H: Fn(bool) -> M> Handler for CheckBox<H> {
 
 /// A push-button with a text label
 // TODO: abstract out text part?
-#[widget(class = Class::None)]
+#[widget]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug + From<EmptyMsg>> {
     #[core]

@@ -7,7 +7,7 @@
 
 use std::fmt::{self, Debug};
 
-use crate::class::{Class, Editable, HasText};
+use crate::class::{Editable, HasText};
 use crate::event::{self, Action, EmptyMsg, Handler};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
@@ -16,7 +16,7 @@ use crate::{CoreData, TkWindow, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A simple text label
-#[widget(class = Class::None)]
+#[widget]
 #[handler]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Label {
@@ -90,7 +90,7 @@ impl Default for LastEdit {
 }
 
 /// An editable, single-line text box.
-#[widget(class = Class::None)]
+#[widget]
 #[derive(Clone, Default, Widget)]
 pub struct Entry<H: 'static> {
     #[core]

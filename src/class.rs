@@ -10,36 +10,6 @@
 //! functionality (usually on itself).
 
 use crate::TkWindow;
-use std::fmt;
-
-/// Widget classifications
-pub enum Class {
-    None, // temporary
-    Container,
-    // Dialog,
-}
-
-impl fmt::Debug for Class {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "Class::{}",
-            match self {
-                Class::None => "None",
-                Class::Container => "Container",
-            }
-        )
-    }
-}
-
-impl Class {
-    /// Does this widget allow keyboard focus?
-    pub fn allow_focus(&self) -> bool {
-        match self {
-            Class::None | Class::Container => false,
-        }
-    }
-}
 
 /// Functionality for widgets which can be toggled or selected: check boxes,
 /// radio buttons, toggle switches.

@@ -18,7 +18,7 @@ use kas::{TkWindow, WidgetCore};
 
 fn main() {
     let mut window = Window::new({
-        #[widget (class = kas :: class :: Class :: Container, layout = vertical)]
+        #[widget (layout = vertical)]
         #[handler]
         #[derive(Clone, Debug, kas :: macros :: Widget)]
         struct AnonWidget {

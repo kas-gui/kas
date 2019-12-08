@@ -7,7 +7,6 @@
 
 use std::fmt::{self, Debug};
 
-use crate::class::Class;
 use crate::event::{Callback, EmptyMsg, Event, Handler};
 use crate::geom::Size;
 use crate::layout::{self};
@@ -15,7 +14,7 @@ use crate::macros::Widget;
 use crate::{CoreData, LayoutData, TkWindow, Widget};
 
 /// The main instantiation of the [`Window`] trait.
-#[widget(class = Class::Container, layout = single)]
+#[widget(layout = single)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
     #[core]

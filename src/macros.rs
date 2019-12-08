@@ -47,7 +47,7 @@
 //! a `#[widget]` attribute and may have a `#[handler]` attribute, as follows.
 //!
 //! ```notest
-//! #[widget(class = Class::X, ...)]
+//! #[widget(...)]
 //! #[handler]
 //! #[derive(Clone, Debug, Widget)]
 //! struct MyWidget {
@@ -57,7 +57,6 @@
 //!
 //! The `#[widget]` attribute on the struct supports the following arguments:
 //!
-//! -   `class = ...` (required) — an expression yielding the widget's [`Class`]
 //! -   `layout = ...` (optional) — see below
 //!
 //! If the `layout` argument is missing, the [`Widget`] trait must be
@@ -117,11 +116,10 @@
 //! still be implemented separately):
 //!
 //! ```
-//! use kas::class::Class;
 //! use kas::macros::Widget;
 //! use kas::{CoreData, LayoutData, Widget};
 //!
-//! #[widget(class = Class::Container, layout = single)]
+//! #[widget(layout = single)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
 //!     #[core] core: CoreData,
@@ -133,7 +131,6 @@
 //! A longer example, including derivation of the [`Handler`] trait:
 //!
 //! ```
-//! use kas::class::Class;
 //! use kas::event::{Handler, err_unhandled};
 //! use kas::macros::{Widget, EmptyMsg};
 //! use kas::{CoreData, LayoutData, TkWindow, Widget};
@@ -144,7 +141,7 @@
 //! #[derive(EmptyMsg)]
 //! enum MyMessage { None }
 //!
-//! #[widget(class = Class::Container, layout = single)]
+//! #[widget(layout = single)]
 //! #[handler(msg = MyMessage,
 //!         generics = <> where W: Handler<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
@@ -268,7 +265,6 @@
 //! [`WidgetCore`]: crate::WidgetCore
 //! [`Widget`]: crate::Widget
 //! [`Handler`]: crate::event::Handler
-//! [`Class`]: crate::class::Class
 //! [`CoreData`]: crate::CoreData
 //! [`Handler::Msg`]: ../kas/event/trait.Handler.html#associatedtype.Msg
 

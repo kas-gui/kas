@@ -38,7 +38,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let name = &ast.ident;
 
     let core = args.core;
-    let class = args.widget.class;
     let count = args.children.len();
 
     let mut get_rules = quote! {};
@@ -67,8 +66,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
             fn as_widget(&self) -> &dyn kas::Widget { self }
             fn as_widget_mut(&mut self) -> &mut dyn kas::Widget { self }
-
-            fn class(&self) -> kas::class::Class { #class }
 
             fn len(&self) -> usize {
                 #count
@@ -306,7 +303,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let msg = &args.msg;
 
     let layout = args.layout;
-    let widget_args = quote! { class = kas::class::Class::Container, layout = #layout };
+    let widget_args = quote! { layout = #layout };
 
     for (index, field) in args.fields.drain(..).enumerate() {
         let attr = field.widget_attr;
