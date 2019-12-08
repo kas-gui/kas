@@ -97,6 +97,7 @@ pub struct Entry<H: 'static> {
     core: CoreData,
     text_rect: Rect,
     editable: bool,
+    multi_line: bool,
     text: String,
     old_state: Option<String>,
     last_edit: LastEdit,
@@ -121,7 +122,7 @@ impl<H: 'static> Widget for Entry<H> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.edit_surround();
         SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
-            + size_handle.text_bound(&self.text, TextClass::Edit, false, axis)
+            + size_handle.text_bound(&self.text, TextClass::Edit, self.multi_line, axis)
     }
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
@@ -138,7 +139,7 @@ impl<H: 'static> Widget for Entry<H> {
         draw_handle.edit_box(self.core.rect, highlights);
         let props = TextProperties {
             class: TextClass::Edit,
-            multi_line: false,
+            multi_line: self.multi_line,
             horiz: Align::Begin,
             vert: Align::Begin,
         };
@@ -160,6 +161,7 @@ impl Entry<()> {
             core: Default::default(),
             text_rect: Default::default(),
             editable: true,
+            multi_line: false,
             text: text.into(),
             old_state: None,
             last_edit: LastEdit::None,
@@ -179,6 +181,7 @@ impl Entry<()> {
             core: self.core,
             text_rect: self.text_rect,
             editable: self.editable,
+            multi_line: self.multi_line,
             text: self.text,
             old_state: self.old_state,
             last_edit: self.last_edit,
@@ -191,6 +194,12 @@ impl<H> Entry<H> {
     /// Set whether this `Entry` is editable.
     pub fn editable(mut self, editable: bool) -> Self {
         self.editable = editable;
+        self
+    }
+
+    /// Set whether this `Entry` shows multiple text lines
+    pub fn multi_line(mut self, multi_line: bool) -> Self {
+        self.multi_line = multi_line;
         self
     }
 

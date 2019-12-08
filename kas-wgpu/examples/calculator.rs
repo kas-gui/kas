@@ -72,7 +72,7 @@ fn main() -> Result<(), winit::error::OsError> {
     let content = make_widget! {
         vertical => EmptyMsg;
         struct {
-            #[widget] display: impl HasText = Entry::new("0").editable(false),
+            #[widget] display: impl HasText = Entry::new("0").editable(false).multi_line(true),
             #[widget(handler = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),
         }
