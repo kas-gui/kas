@@ -7,6 +7,7 @@
 //!
 //! For drawing operations, all dimensions use the `f32` type.
 
+use kas::geom::{Coord, Size};
 use std::ops::{Add, Neg, Sub};
 
 /// Axis-aligned 2D cuboid, specified via two corners
@@ -129,5 +130,19 @@ impl From<Vec2> for (f32, f32) {
     #[inline]
     fn from(v: Vec2) -> Self {
         (v.0, v.1)
+    }
+}
+
+impl From<Coord> for Vec2 {
+    #[inline]
+    fn from(arg: Coord) -> Self {
+        Vec2(arg.0 as f32, arg.1 as f32)
+    }
+}
+
+impl From<Size> for Vec2 {
+    #[inline]
+    fn from(arg: Size) -> Self {
+        Vec2(arg.0 as f32, arg.1 as f32)
     }
 }

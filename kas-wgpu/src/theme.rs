@@ -230,8 +230,8 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
 
         // Note: coordinates place the origin at the top-left.
         let rect = widget.rect();
-        let p = Vec2::from(rect.pos_f32());
-        let size = Vec2::from(rect.size_f32());
+        let p = Vec2::from(rect.pos);
+        let size = Vec2::from(rect.size);
         let mut quad = Quad(p, p + size);
 
         let mut background = None;
@@ -364,8 +364,8 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
     ///
     /// The frame dimensions should equal those of [`SizeHandle::frame_size`].
     fn draw_frame(&mut self, rect: Rect) {
-        let p = Vec2::from(rect.pos_f32());
-        let size = Vec2::from(rect.size_f32());
+        let p = Vec2::from(rect.pos);
+        let size = Vec2::from(rect.size);
         let mut quad = Quad(p, p + size);
         let outer = quad;
         quad.shrink(self.window.frame_size);
