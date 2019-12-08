@@ -19,10 +19,9 @@ use rusttype::Font;
 
 use kas::class::Align;
 use kas::draw::Colour;
-use kas::event::{HighlightState, Manager};
+use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
-use kas::Widget;
 
 /// Class of text drawn
 pub enum TextClass {
@@ -30,6 +29,8 @@ pub enum TextClass {
     Label,
     /// Button text is drawn over a button
     Button,
+    /// Class of text drawn in an edit (entry) box
+    Edit,
 }
 
 /// Text alignment, class, etc.
@@ -155,13 +156,6 @@ pub trait Window<Draw> {
 
 /// Handle passed to objects during draw and sizing operations
 pub trait SizeHandle {
-    /// Widget size preferences
-    ///
-    /// Widgets should expect this to be called at least once for each axis.
-    ///
-    /// See documentation of [`layout::SizeRules`].
-    fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules;
-
     /// Size of a frame around child widget(s)
     ///
     /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
@@ -197,6 +191,11 @@ pub trait SizeHandle {
     /// Includes each side (as in `outer_frame`), minus the content area (to be added separately).
     fn button_surround(&self) -> (Size, Size);
 
+    /// Size of the sides of an edit box.
+    ///
+    /// Includes each side (as in `outer_frame`), minus the content area (to be added separately).
+    fn edit_surround(&self) -> (Size, Size);
+
     /// Size of the element drawn by [`DrawHandle::draw_checkbox`].
     ///
     /// This element is not scalable (except by DPI).
@@ -205,12 +204,6 @@ pub trait SizeHandle {
 
 /// Handle passed to objects during draw and sizing operations
 pub trait DrawHandle {
-    /// Draw a widget
-    ///
-    /// This method is called to draw each visible widget (and should not
-    /// attempt recursion on child widgets).
-    fn draw(&mut self, ev_mgr: &Manager, widget: &dyn kas::Widget);
-
     /// Draw a frame in the given [`Rect`]
     ///
     /// The frame dimensions should equal those of [`SizeHandle::frame_size`].
@@ -223,6 +216,9 @@ pub trait DrawHandle {
 
     /// Draw button sides, background and margin-area highlight
     fn button(&mut self, rect: Rect, highlights: HighlightState);
+
+    /// Draw edit box sides, background and margin-area highlight
+    fn edit_box(&mut self, rect: Rect, highlights: HighlightState);
 
     /// Draw UI element: checkbox
     ///

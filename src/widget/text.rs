@@ -13,6 +13,7 @@ use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
 use crate::{CoreData, TkWindow, Widget, WidgetCore};
+use kas::geom::Rect;
 
 /// A simple text label
 #[widget(class = Class::None)]
@@ -89,11 +90,12 @@ impl Default for LastEdit {
 }
 
 /// An editable, single-line text box.
-#[widget(class = Class::Entry(self))]
+#[widget(class = Class::None)]
 #[derive(Clone, Default, Widget)]
 pub struct Entry<H: 'static> {
     #[core]
     core: CoreData,
+    text_rect: Rect,
     editable: bool,
     text: String,
     old_state: Option<String>,
@@ -112,12 +114,42 @@ impl<H> Debug for Entry<H> {
 }
 
 impl<H: 'static> Widget for Entry<H> {
+    fn allow_focus(&self) -> bool {
+        true
+    }
+
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        size_handle.size_rules(self, axis)
+        let sides = size_handle.edit_surround();
+        SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
+            + size_handle.text_bound(&self.text, TextClass::Edit, false, axis)
+    }
+
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+        let sides = size_handle.edit_surround();
+        self.text_rect = Rect {
+            pos: rect.pos + sides.0,
+            size: rect.size - (sides.0 + sides.1),
+        };
+        self.core_data_mut().rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
-        draw_handle.draw(ev_mgr, self)
+        let highlights = ev_mgr.highlight_state(self.id());
+        draw_handle.edit_box(self.core.rect, highlights);
+        let props = TextProperties {
+            class: TextClass::Edit,
+            multi_line: false,
+            horiz: Align::Begin,
+            vert: Align::Begin,
+        };
+        let mut text = &self.text;
+        let mut _string;
+        if highlights.char_focus {
+            _string = self.text.clone();
+            _string.push('|');
+            text = &_string;
+        }
+        draw_handle.text(self.text_rect, text, props);
     }
 }
 
@@ -126,6 +158,7 @@ impl Entry<()> {
     pub fn new<S: Into<String>>(text: S) -> Self {
         Entry {
             core: Default::default(),
+            text_rect: Default::default(),
             editable: true,
             text: text.into(),
             old_state: None,
@@ -144,6 +177,7 @@ impl Entry<()> {
     pub fn on_activate<R, H: Fn(&str) -> R>(self, f: H) -> Entry<H> {
         Entry {
             core: self.core,
+            text_rect: self.text_rect,
             editable: self.editable,
             text: self.text,
             old_state: self.old_state,

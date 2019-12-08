@@ -398,7 +398,6 @@ impl<'a> ImplLayout<'a> {
                 draw_handle: &mut dyn kas::theme::DrawHandle,
                 ev_mgr: &kas::event::Manager
             ) {
-                draw_handle.draw(ev_mgr, self);
                 #draw
             }
         };

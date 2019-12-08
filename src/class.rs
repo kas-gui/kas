@@ -25,14 +25,13 @@ pub enum Align {
 }
 
 /// Widget classifications
-pub enum Class<'a> {
+pub enum Class {
     None, // temporary
     Container,
     // Dialog,
-    Entry(&'a dyn Editable),
 }
 
-impl<'a> fmt::Debug for Class<'a> {
+impl fmt::Debug for Class {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -40,36 +39,16 @@ impl<'a> fmt::Debug for Class<'a> {
             match self {
                 Class::None => "None",
                 Class::Container => "Container",
-                Class::Entry(_) => "Entry",
             }
         )
     }
 }
 
-impl<'a> Class<'a> {
-    /// Get widget text, if any
-    pub fn text(&'a self) -> Option<&'a str> {
-        match self {
-            Class::None => None,
-            Class::Container => None,
-            Class::Entry(cls) => Some(cls.get_text()),
-        }
-    }
-
-    /// Get widget alignment for horizontal and vertical axes respectively
-    // TODO: allow customisation?
-    pub fn alignments(&'a self) -> (Align, Align) {
-        match self {
-            Class::None | Class::Container => (Align::Justify, Align::Justify),
-            Class::Entry(_) => (Align::Begin, Align::Begin),
-        }
-    }
-
+impl Class {
     /// Does this widget allow keyboard focus?
     pub fn allow_focus(&self) -> bool {
         match self {
             Class::None | Class::Container => false,
-            Class::Entry(_) => true,
         }
     }
 }
