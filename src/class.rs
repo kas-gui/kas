@@ -30,7 +30,6 @@ pub enum Class<'a> {
     Container,
     // Dialog,
     Entry(&'a dyn Editable),
-    Button(&'a dyn HasText),
 }
 
 impl<'a> fmt::Debug for Class<'a> {
@@ -42,7 +41,6 @@ impl<'a> fmt::Debug for Class<'a> {
                 Class::None => "None",
                 Class::Container => "Container",
                 Class::Entry(_) => "Entry",
-                Class::Button(_) => "Button",
             }
         )
     }
@@ -55,7 +53,6 @@ impl<'a> Class<'a> {
             Class::None => None,
             Class::Container => None,
             Class::Entry(cls) => Some(cls.get_text()),
-            Class::Button(cls) => Some(cls.get_text()),
         }
     }
 
@@ -65,7 +62,6 @@ impl<'a> Class<'a> {
         match self {
             Class::None | Class::Container => (Align::Justify, Align::Justify),
             Class::Entry(_) => (Align::Begin, Align::Begin),
-            Class::Button(_) => (Align::Center, Align::Center),
         }
     }
 
@@ -73,7 +69,7 @@ impl<'a> Class<'a> {
     pub fn allow_focus(&self) -> bool {
         match self {
             Class::None | Class::Container => false,
-            Class::Entry(_) | Class::Button(_) => true,
+            Class::Entry(_) => true,
         }
     }
 }

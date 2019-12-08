@@ -172,16 +172,6 @@ impl<'a> theme::SizeHandle for SampleHandle<'a> {
                     SizeRules::variable(min, bound(true).max(min))
                 }
             }
-            Class::Button(_) => {
-                let f = 2 * self.window.button_frame as u32;
-                if !axis.vertical() {
-                    let min = 3 * line_height + f;
-                    SizeRules::variable(min, bound(false).max(min))
-                } else {
-                    let min = f + line_height;
-                    SizeRules::variable(min, bound(true).max(min))
-                }
-            }
         };
         let margin = SizeRules::fixed(2 * self.window.margin as u32);
         inner + margin
@@ -253,6 +243,11 @@ impl<'a> theme::SizeHandle for SampleHandle<'a> {
         inner + margin
     }
 
+    fn button_surround(&self) -> (Size, Size) {
+        let s = Size::uniform(self.window.button_frame as u32);
+        (s, s)
+    }
+
     fn checkbox(&self) -> Size {
         Size::uniform(
             (2.0 * (self.window.frame_size + self.window.margin) + self.window.font_scale) as u32,
@@ -319,7 +314,7 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
 
         let mut _string; // Entry needs this to give a valid lifetime
         let text: Option<(&str, Colour)>;
-        let mut layout = Layout::default_wrap();
+        let layout;
 
         match widget.class() {
             Class::Container | Class::None => {
@@ -342,19 +337,6 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
                     _string.push('|');
                 }
                 text = Some((&_string, TEXT));
-            }
-            Class::Button(cls) => {
-                background = button_colour(highlights, true);
-
-                let f = self.window.button_frame;
-                let outer = quad;
-                quad.shrink(f);
-                let style = Style::Round(Vec2(0.0, 0.6));
-                self.draw
-                    .draw_frame(outer, quad, style, background.unwrap());
-                bounds = bounds - 2.0 * f;
-
-                text = Some((cls.get_text(), BUTTON_TEXT));
             }
         }
 
@@ -414,6 +396,11 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         let quad = Quad(pos, pos + size);
         let bounds = size - 2.0 * self.window.margin;
 
+        let col = match props.class {
+            TextClass::Label => LABEL_TEXT,
+            TextClass::Button => BUTTON_TEXT,
+        };
+
         // TODO: support justified alignment
         let (h_align, h_offset) = match props.horiz {
             Align::Begin | Align::Justify => (HorizontalAlign::Left, 0.0),
@@ -438,12 +425,35 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         self.draw.draw_text(Section {
             text,
             screen_position: text_pos.into(),
-            color: LABEL_TEXT.into(),
+            color: col.into(),
             scale: Scale::uniform(self.window.font_scale),
             bounds: bounds.into(),
             layout,
             ..Section::default()
         });
+    }
+
+    fn button(&mut self, rect: Rect, highlights: HighlightState) {
+        let pos = Vec2::from(rect.pos);
+        let size = Vec2::from(rect.size);
+        let mut quad = Quad(pos, pos + size);
+
+        let col = button_colour(highlights, true).unwrap();
+
+        let f = self.window.button_frame;
+        let outer = quad;
+        quad.shrink(f);
+        let style = Style::Round(Vec2(0.0, 0.6));
+        self.draw.draw_frame(outer, quad, style, col);
+
+        if highlights.key_focus {
+            let outer = quad;
+            quad.shrink(self.window.margin);
+            let col = nav_colour(highlights).unwrap();
+            self.draw.draw_frame(outer, quad, Style::Flat, col);
+        }
+
+        self.draw.draw_quad(quad, Style::Flat, col);
     }
 
     fn checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState) {

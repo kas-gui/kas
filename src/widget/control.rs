@@ -211,22 +211,45 @@ impl<M: From<EmptyMsg>, H: Fn(bool) -> M> Handler for CheckBox<H> {
 
 /// A push-button with a text label
 // TODO: abstract out text part?
-#[widget(class = Class::Button(self))]
+#[widget(class = Class::None)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug + From<EmptyMsg>> {
     #[core]
     core: CoreData,
+    text_rect: Rect,
     label: String,
     msg: M,
 }
 
 impl<M: Clone + Debug + From<EmptyMsg>> Widget for TextButton<M> {
+    fn allow_focus(&self) -> bool {
+        true
+    }
+
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        size_handle.size_rules(self, axis)
+        let sides = size_handle.button_surround();
+        SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
+            + size_handle.text_bound(&self.label, TextClass::Button, false, axis)
+    }
+
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+        let sides = size_handle.button_surround();
+        self.text_rect = Rect {
+            pos: rect.pos + sides.0,
+            size: rect.size - (sides.0 + sides.1),
+        };
+        self.core_data_mut().rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
-        draw_handle.draw(ev_mgr, self)
+        draw_handle.button(self.core.rect, ev_mgr.highlight_state(self.id()));
+        let props = TextProperties {
+            class: TextClass::Button,
+            multi_line: false,
+            horiz: Align::Center,
+            vert: Align::Center,
+        };
+        draw_handle.text(self.text_rect, &self.label, props);
     }
 }
 
@@ -240,6 +263,7 @@ impl<M: Clone + Debug + From<EmptyMsg>> TextButton<M> {
     pub fn new<S: Into<String>>(label: S, msg: M) -> Self {
         TextButton {
             core: Default::default(),
+            text_rect: Default::default(),
             label: label.into(),
             msg,
         }

@@ -28,6 +28,8 @@ use kas::Widget;
 pub enum TextClass {
     /// Label text is drawn over the background colour
     Label,
+    /// Button text is drawn over a button
+    Button,
 }
 
 /// Text alignment, class, etc.
@@ -190,6 +192,11 @@ pub trait SizeHandle {
         axis: AxisInfo,
     ) -> SizeRules;
 
+    /// Size of the sides of a button.
+    ///
+    /// Includes each side (as in `outer_frame`), minus the content area (to be added separately).
+    fn button_surround(&self) -> (Size, Size);
+
     /// Size of the element drawn by [`DrawHandle::draw_checkbox`].
     ///
     /// This element is not scalable (except by DPI).
@@ -213,6 +220,9 @@ pub trait DrawHandle {
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties);
+
+    /// Draw button sides, background and margin-area highlight
+    fn button(&mut self, rect: Rect, highlights: HighlightState);
 
     /// Draw UI element: checkbox
     ///
