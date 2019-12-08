@@ -11,7 +11,7 @@ use crate::class::{Align, Class, Editable, HasText};
 use crate::event::{self, Action, EmptyMsg, Handler};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{DrawHandle, SizeHandle, TextAlignments};
+use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
 use crate::{CoreData, TkWindow, Widget, WidgetCore};
 
 /// A simple text label
@@ -26,17 +26,17 @@ pub struct Label {
 
 impl Widget for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        size_handle.label_bound(&self.text, true, axis)
+        size_handle.text_bound(&self.text, TextClass::Label, true, axis)
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
-        let alignments = TextAlignments {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::Manager) {
+        let props = TextProperties {
+            class: TextClass::Label,
             multi_line: true,
             horiz: Align::Begin,
             vert: Align::Center,
         };
-        let highlights = ev_mgr.highlight_state(self.id());
-        draw_handle.draw_label(self.core.rect, &self.text, alignments, highlights);
+        draw_handle.text(self.core.rect, &self.text, props);
     }
 }
 

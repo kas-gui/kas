@@ -12,7 +12,7 @@ use crate::class::{Align, Class, HasBool, HasText};
 use crate::event::{self, err_unhandled, Action, EmptyMsg, Handler, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{DrawHandle, SizeHandle, TextAlignments};
+use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
 use crate::{CoreData, TkWindow, Widget, WidgetCore};
 use kas::geom::{Coord, Rect};
 
@@ -45,37 +45,42 @@ impl<OT: 'static> Widget for CheckBox<OT> {
     }
 
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let mut r = SizeRules::fixed(axis.extract_size(size_handle.size_of_checkbox()));
+        let mut r = SizeRules::fixed(axis.extract_size(size_handle.checkbox()));
         if !self.label.is_empty() {
-            r += size_handle.label_bound(&self.label, true, axis);
+            if !axis.vertical() {
+                r += SizeRules::fixed(size_handle.outer_margin().0);
+            }
+            r += size_handle.text_bound(&self.label, TextClass::Label, true, axis);
         }
         r
     }
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
         // We center the box vertically and align to the left
-        let box_size = size_handle.size_of_checkbox();
+        let box_size = size_handle.checkbox();
         let mut pos = rect.pos;
         let extra_height = rect.size.1 as i32 - box_size.1 as i32;
         pos.1 += extra_height / 2;
         self.box_pos = pos;
         // Text is drawn in the area to the right of this
-        self.text_pos_x = pos.0 + box_size.0 as i32;
+        let margin = size_handle.outer_margin().0;
+        self.text_pos_x = pos.0 + (margin + box_size.0) as i32;
         self.core_data_mut().rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
         let highlights = ev_mgr.highlight_state(self.id());
-        draw_handle.draw_checkbox(self.box_pos, self.state, highlights);
+        draw_handle.checkbox(self.box_pos, self.state, highlights);
         let mut text_rect = self.core.rect;
         text_rect.pos.0 = self.text_pos_x;
         if !self.label.is_empty() {
-            let alignments = TextAlignments {
+            let props = TextProperties {
+                class: TextClass::Label,
                 multi_line: true,
                 horiz: Align::Begin,
                 vert: Align::Center,
             };
-            draw_handle.draw_label(text_rect, &self.label, alignments, highlights);
+            draw_handle.text(text_rect, &self.label, props);
         }
     }
 }

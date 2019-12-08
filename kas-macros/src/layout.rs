@@ -65,7 +65,7 @@ pub(crate) fn derive(
             {
                 use kas::geom::Size;
                 let frame_size = if #is_frame {
-                    size_handle.frame_size()
+                    size_handle.outer_frame()
                 } else {
                     (Size::ZERO, Size::ZERO)
                 };
@@ -99,7 +99,7 @@ pub(crate) fn derive(
             ) {
                 use kas::WidgetCore;
                 if #is_frame {
-                    draw_handle.draw_frame(self.core_data().rect);
+                    draw_handle.outer_frame(self.core_data().rect);
                 }
                 self.#ident.draw(draw_handle, ev_mgr);
             }

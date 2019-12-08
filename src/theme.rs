@@ -24,14 +24,23 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::Widget;
 
-/// Text alignment
-pub struct TextAlignments {
+/// Class of text drawn
+pub enum TextClass {
+    /// Label text is drawn over the background colour
+    Label,
+}
+
+/// Text alignment, class, etc.
+pub struct TextProperties {
+    /// Class of text
+    pub class: TextClass,
     /// Does this use line breaks?
     pub multi_line: bool,
     /// Horizontal alignment
     pub horiz: Align,
     /// Vertical alignment
     pub vert: Align,
+    // Note: do we want to add HighlightState?
 }
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -151,30 +160,40 @@ pub trait SizeHandle {
     /// See documentation of [`layout::SizeRules`].
     fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules;
 
-    /// Get size of a frame
+    /// Size of a frame around child widget(s)
     ///
     /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
-    fn frame_size(&self) -> (Size, Size);
+    fn outer_frame(&self) -> (Size, Size);
 
     /// The margin around content within a widget
     ///
     /// This area may be used to draw focus indicators.
     fn inner_margin(&self) -> Size;
 
-    /// The height of a standard line of text
-    ///
-    /// (Very likely to see API adjustment in the future.)
-    fn line_height(&self) -> u32;
+    /// The margin between UI elements, where desired
+    fn outer_margin(&self) -> Size;
+
+    /// The height of a line of text
+    fn line_height(&self, class: TextClass) -> u32;
 
     /// Get a text label size bound
     ///
-    /// This corresponds to [`DrawHandle::draw_label`].
-    fn label_bound(&mut self, text: &str, multi_line: bool, axis: AxisInfo) -> SizeRules;
+    /// Sizing requirements of [`DrawHandle::text`].
+    ///
+    /// Since only a subset of [`TextProperties`] fields are required, these are
+    /// passed directly.
+    fn text_bound(
+        &mut self,
+        text: &str,
+        class: TextClass,
+        multi_line: bool,
+        axis: AxisInfo,
+    ) -> SizeRules;
 
     /// Size of the element drawn by [`DrawHandle::draw_checkbox`].
     ///
     /// This element is not scalable (except by DPI).
-    fn size_of_checkbox(&self) -> Size;
+    fn checkbox(&self) -> Size;
 }
 
 /// Handle passed to objects during draw and sizing operations
@@ -188,18 +207,12 @@ pub trait DrawHandle {
     /// Draw a frame in the given [`Rect`]
     ///
     /// The frame dimensions should equal those of [`SizeHandle::frame_size`].
-    fn draw_frame(&mut self, rect: Rect);
+    fn outer_frame(&mut self, rect: Rect);
 
     /// Draw some text using the standard font
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn draw_label(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        alignments: TextAlignments,
-        highlights: HighlightState,
-    );
+    fn text(&mut self, rect: Rect, text: &str, props: TextProperties);
 
     /// Draw UI element: checkbox
     ///
@@ -209,5 +222,5 @@ pub trait DrawHandle {
     ///
     /// Size is fixed as [`SizeHandle::size_of_checkbox`], thus only the `pos`
     /// and state are needed here.
-    fn draw_checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState);
+    fn checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState);
 }
