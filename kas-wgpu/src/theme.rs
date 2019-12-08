@@ -14,9 +14,10 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use kas::class::{Align, Class};
 use kas::draw::*;
+use kas::event::{HighlightState, Manager};
 use kas::geom::{Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
-use kas::{event, theme, Widget};
+use kas::{theme, Widget};
 
 use crate::draw::*;
 
@@ -62,6 +63,26 @@ pub const TEXT: Colour = Colour::grey(0.0);
 pub const LABEL_TEXT: Colour = Colour::grey(0.0);
 /// Text on button
 pub const BUTTON_TEXT: Colour = Colour::grey(1.0);
+
+fn nav_colour(highlights: HighlightState) -> Option<Colour> {
+    if highlights.key_focus {
+        Some(Colour::new(1.0, 0.7, 0.5))
+    } else {
+        None
+    }
+}
+
+fn button_colour(highlights: HighlightState, show: bool) -> Option<Colour> {
+    if highlights.depress {
+        Some(Colour::new(0.2, 0.6, 0.8))
+    } else if show && highlights.hover {
+        Some(Colour::new(0.25, 0.8, 1.0))
+    } else if show {
+        Some(Colour::new(0.2, 0.7, 1.0))
+    } else {
+        None
+    }
+}
 
 impl SampleWindow {
     fn new(dpi_factor: f32) -> Self {
@@ -224,9 +245,10 @@ impl theme::Theme<DrawPipe> for SampleTheme {
 }
 
 impl<'a> theme::DrawHandle for SampleHandle<'a> {
-    fn draw(&mut self, ev_mgr: &event::Manager, widget: &dyn kas::Widget) {
+    fn draw(&mut self, ev_mgr: &Manager, widget: &dyn kas::Widget) {
         // This is a hacky draw routine just to show where widgets are.
         let w_id = widget.id();
+        let highlights = ev_mgr.highlight_state(w_id);
 
         // Note: coordinates place the origin at the top-left.
         let rect = widget.rect();
@@ -272,20 +294,14 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
                 text = Some((&_string, TEXT));
             }
             Class::Button(cls) => {
-                let c = if ev_mgr.is_depressed(w_id) {
-                    Colour::new(0.2, 0.6, 0.8)
-                } else if ev_mgr.is_hovered(w_id) {
-                    Colour::new(0.25, 0.8, 1.0)
-                } else {
-                    Colour::new(0.2, 0.7, 1.0)
-                };
-                background = Some(c);
+                background = button_colour(highlights, true);
 
                 let f = self.window.button_frame;
                 let outer = quad;
                 quad.shrink(f);
                 let style = Style::Round(Vec2(0.0, 0.6));
-                self.draw.draw_frame(outer, quad, style, c);
+                self.draw
+                    .draw_frame(outer, quad, style, background.unwrap());
                 bounds = bounds - 2.0 * f;
 
                 text = Some((cls.get_text(), BUTTON_TEXT));
@@ -332,26 +348,11 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
             });
         }
 
-        // draw any highlights within the margin area
-        // note: may be disabled via 'false &&' prefix
-        let hover = false && ev_mgr.is_hovered(w_id);
-        let key_focus = ev_mgr.key_focus(w_id);
-        let char_focus = ev_mgr.char_focus(w_id);
-        if hover || key_focus || char_focus {
-            let mut col = Colour::new(0.7, 0.7, 0.7);
-            if hover {
-                col.g = 1.0;
-            }
-            if key_focus {
-                col.r = 1.0;
-            }
-            if char_focus {
-                col.b = 1.0;
-            }
-
+        if highlights.any() {
             let outer = quad;
             quad.shrink(margin);
             let style = Style::Flat;
+            let col = nav_colour(highlights).unwrap_or(TEXT_AREA);
             self.draw.draw_frame(outer, quad, style, col);
         }
 

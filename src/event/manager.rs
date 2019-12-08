@@ -10,6 +10,35 @@ use std::collections::HashMap;
 use super::*;
 use crate::{TkWindow, Widget, WidgetId};
 
+/// Highlighting state of a widget
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
+pub struct HighlightState {
+    /// "Hover" is true if the mouse is over this element or if an active touch
+    /// event is over the element.
+    pub hover: bool,
+    /// Elements such as buttons may be depressed (visually pushed) by a click
+    /// or touch event, but in this state the action can still be cancelled.
+    /// Elements can also be depressed by keyboard activation.
+    ///
+    /// If true, this likely implies `hover` is also true.
+    pub depress: bool,
+    /// Keyboard navigation of UIs moves a "focus" from widget to widget.
+    pub key_focus: bool,
+    /// "Character focus" implies this widget is ready to receive text input
+    /// (e.g. typing into an input field).
+    ///
+    /// If true, this likely implies `key_focus` is also true.
+    pub char_focus: bool,
+}
+
+impl HighlightState {
+    /// True if any part of the state is true
+    #[inline]
+    pub fn any(self) -> bool {
+        self.hover || self.depress || self.key_focus || self.char_focus
+    }
+}
+
 /// Window event manager
 ///
 /// Encapsulation of per-window event state plus supporting methods.
@@ -66,6 +95,16 @@ impl Manager {
     #[inline]
     pub fn set_dpi_factor(&mut self, dpi_factor: f64) {
         self.dpi_factor = dpi_factor;
+    }
+
+    /// Get the complete highlight state
+    pub fn highlight_state(&self, w_id: WidgetId) -> HighlightState {
+        HighlightState {
+            hover: self.is_hovered(w_id),
+            depress: self.is_depressed(w_id),
+            key_focus: self.key_focus(w_id),
+            char_focus: self.char_focus(w_id),
+        }
     }
 
     /// Get whether this widget has a grab on character input
