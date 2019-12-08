@@ -278,6 +278,17 @@ impl Manager {
                             if let Some(id) = tk.data().key_focus {
                                 let ev = EventChild::Action(Action::Activate);
                                 widget.handle(tk, Event::ToChild(id, ev));
+
+                                // Add to key_events for visual feedback
+                                tk.update_data(&mut |data| {
+                                    for item in &data.key_events {
+                                        if item.1 == id {
+                                            return false;
+                                        }
+                                    }
+                                    data.key_events.push((scancode, id));
+                                    true
+                                });
                             }
                         }
                         VirtualKeyCode::Escape => {
