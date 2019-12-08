@@ -25,8 +25,8 @@ fn main() -> Result<(), winit::error::OsError> {
         struct {
             #[widget(row=0, col=0)] _ = Label::from("Label"),
             #[widget(row=0, col=1)] _ = Label::from("Hello world"),
-            #[widget(row=1, col=0)] _ = Label::from("Entry"),
-            #[widget(row=1, col=1)] _ = Entry::new("edit me")
+            #[widget(row=1, col=0)] _ = Label::from("EditBox"),
+            #[widget(row=1, col=1)] _ = EditBox::new("edit me")
                 .on_activate(|entry| Item::Edit(entry.to_string())),
             #[widget(row=2, col=0)] _ = Label::from("TextButton"),
             #[widget(row=2, col=1)] _ = TextButton::new("Press me", Item::Button),

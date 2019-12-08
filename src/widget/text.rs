@@ -92,7 +92,7 @@ impl Default for LastEdit {
 /// An editable, single-line text box.
 #[widget]
 #[derive(Clone, Default, Widget)]
-pub struct Entry<H: 'static> {
+pub struct EditBox<H: 'static> {
     #[core]
     core: CoreData,
     text_rect: Rect,
@@ -104,17 +104,17 @@ pub struct Entry<H: 'static> {
     on_activate: H,
 }
 
-impl<H> Debug for Entry<H> {
+impl<H> Debug for EditBox<H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Entry {{ core: {:?}, editable: {:?}, text: {:?}, ... }}",
+            "EditBox {{ core: {:?}, editable: {:?}, text: {:?}, ... }}",
             self.core, self.editable, self.text
         )
     }
 }
 
-impl<H: 'static> Widget for Entry<H> {
+impl<H: 'static> Widget for EditBox<H> {
     fn allow_focus(&self) -> bool {
         true
     }
@@ -154,10 +154,10 @@ impl<H: 'static> Widget for Entry<H> {
     }
 }
 
-impl Entry<()> {
-    /// Construct an `Entry` with the given inital `text`.
+impl EditBox<()> {
+    /// Construct an `EditBox` with the given inital `text`.
     pub fn new<S: Into<String>>(text: S) -> Self {
-        Entry {
+        EditBox {
             core: Default::default(),
             text_rect: Default::default(),
             editable: true,
@@ -171,13 +171,13 @@ impl Entry<()> {
 
     /// Set the event handler to be called on activation.
     ///
-    /// The closure `f` is called when the `Entry` is activated (when the
+    /// The closure `f` is called when the `EditBox` is activated (when the
     /// "enter" key is pressed). Its result is returned from the event handler.
     ///
-    /// Technically, this consumes `self` and reconstructs another `Entry`
+    /// Technically, this consumes `self` and reconstructs another `EditBox`
     /// with a different parameterisation.
-    pub fn on_activate<R, H: Fn(&str) -> R>(self, f: H) -> Entry<H> {
-        Entry {
+    pub fn on_activate<R, H: Fn(&str) -> R>(self, f: H) -> EditBox<H> {
+        EditBox {
             core: self.core,
             text_rect: self.text_rect,
             editable: self.editable,
@@ -190,14 +190,14 @@ impl Entry<()> {
     }
 }
 
-impl<H> Entry<H> {
-    /// Set whether this `Entry` is editable.
+impl<H> EditBox<H> {
+    /// Set whether this `EditBox` is editable.
     pub fn editable(mut self, editable: bool) -> Self {
         self.editable = editable;
         self
     }
 
-    /// Set whether this `Entry` shows multiple text lines
+    /// Set whether this `EditBox` shows multiple text lines
     pub fn multi_line(mut self, multi_line: bool) -> Self {
         self.multi_line = multi_line;
         self
@@ -278,7 +278,7 @@ impl<H> Entry<H> {
     }
 }
 
-impl<H> HasText for Entry<H> {
+impl<H> HasText for EditBox<H> {
     fn get_text(&self) -> &str {
         &self.text
     }
@@ -289,7 +289,7 @@ impl<H> HasText for Entry<H> {
     }
 }
 
-impl<H> Editable for Entry<H> {
+impl<H> Editable for EditBox<H> {
     fn is_editable(&self) -> bool {
         self.editable
     }
@@ -299,7 +299,7 @@ impl<H> Editable for Entry<H> {
     }
 }
 
-impl Handler for Entry<()> {
+impl Handler for EditBox<()> {
     type Msg = EmptyMsg;
 
     fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> EmptyMsg {
@@ -313,7 +313,7 @@ impl Handler for Entry<()> {
     }
 }
 
-impl<M: From<EmptyMsg>, H: Fn(&str) -> M> Handler for Entry<H> {
+impl<M: From<EmptyMsg>, H: Fn(&str) -> M> Handler for EditBox<H> {
     type Msg = M;
 
     fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> M {

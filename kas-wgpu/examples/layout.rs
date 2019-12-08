@@ -8,7 +8,7 @@
 
 use kas::event::EmptyMsg;
 use kas::macros::make_widget;
-use kas::widget::{CheckBox, Entry, Label, Window};
+use kas::widget::{CheckBox, EditBox, Label, Window};
 
 fn main() -> Result<(), winit::error::OsError> {
     let lipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi nunc mi, consequat eget urna ut, auctor luctus mi. Sed molestie mi est. Sed non ligula ante. Curabitur ac molestie ante, nec sodales eros. In non arcu at turpis euismod bibendum ut tincidunt eros. Suspendisse blandit maximus nisi, viverra hendrerit elit efficitur et. Morbi ut facilisis eros. Vivamus dignissim, sapien sed mattis consectetur, libero leo imperdiet turpis, ac pulvinar libero purus eu lorem. Etiam quis sollicitudin urna. Integer vitae erat vel neque gravida blandit ac non quam.";
@@ -22,7 +22,7 @@ fn main() -> Result<(), winit::error::OsError> {
             #[widget(row=1, col=4)] _ = CheckBox::new(""),
             #[widget(row=2, col=0)] _ = Label::from("Text"),
             #[widget(row=2, col=2, cspan=2, rspan=2)] _ = Label::from(crasit),
-            #[widget(row=3, col=1)] _ = Entry::new("edit"),
+            #[widget(row=3, col=1)] _ = EditBox::new("edit"),
             #[widget(row=0, col=3)] _ = Label::from("<->"),
         }
     });

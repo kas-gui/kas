@@ -47,7 +47,7 @@ pub trait HasText {
     fn set_string(&mut self, tk: &mut dyn TkWindow, text: String);
 }
 
-/// Additional functionality required by the `Entry` class.
+/// Additional functionality required by the `EditBox` widget.
 pub trait Editable: HasText {
     /// Get whether this input field is editable.
     fn is_editable(&self) -> bool;

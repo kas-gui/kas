@@ -13,7 +13,7 @@ use kas::class::HasText;
 use kas::event::EmptyMsg;
 use kas::event::VirtualKeyCode as VK;
 use kas::macros::{make_widget, EmptyMsg};
-use kas::widget::{Entry, TextButton, Window};
+use kas::widget::{EditBox, TextButton, Window};
 use kas::TkWindow;
 
 #[derive(Clone, Debug, EmptyMsg)]
@@ -72,7 +72,7 @@ fn main() -> Result<(), winit::error::OsError> {
     let content = make_widget! {
         vertical => EmptyMsg;
         struct {
-            #[widget] display: impl HasText = Entry::new("0").editable(false).multi_line(true),
+            #[widget] display: impl HasText = EditBox::new("0").editable(false).multi_line(true),
             #[widget(handler = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),
         }
