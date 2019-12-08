@@ -12,18 +12,6 @@
 use crate::TkWindow;
 use std::fmt;
 
-/// Alignment of contents
-pub enum Align {
-    /// Align to top or left (for left-to-right text)
-    Begin,
-    /// Align to centre
-    Center,
-    /// Align to bottom or right (for left-to-right text)
-    End,
-    /// Attempt to align to both margins, padding with space
-    Justify,
-}
-
 /// Widget classifications
 pub enum Class {
     None, // temporary

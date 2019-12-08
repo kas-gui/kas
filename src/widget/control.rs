@@ -8,11 +8,11 @@
 use std::any::TypeId;
 use std::fmt::{self, Debug};
 
-use crate::class::{Align, Class, HasBool, HasText};
+use crate::class::{Class, HasBool, HasText};
 use crate::event::{self, err_unhandled, Action, EmptyMsg, Handler, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
+use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
 use crate::{CoreData, TkWindow, Widget, WidgetCore};
 use kas::geom::{Coord, Rect};
 
@@ -78,7 +78,7 @@ impl<OT: 'static> Widget for CheckBox<OT> {
                 class: TextClass::Label,
                 multi_line: true,
                 horiz: Align::Begin,
-                vert: Align::Center,
+                vert: Align::Centre,
             };
             draw_handle.text(text_rect, &self.label, props);
         }
@@ -246,8 +246,8 @@ impl<M: Clone + Debug + From<EmptyMsg>> Widget for TextButton<M> {
         let props = TextProperties {
             class: TextClass::Button,
             multi_line: false,
-            horiz: Align::Center,
-            vert: Align::Center,
+            horiz: Align::Centre,
+            vert: Align::Centre,
         };
         draw_handle.text(self.text_rect, &self.label, props);
     }

@@ -12,12 +12,11 @@ use std::f32;
 
 use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
-use kas::class::Align;
 use kas::draw::*;
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
-use kas::theme::{self, TextClass, TextProperties};
+use kas::theme::{self, Align, TextClass, TextProperties};
 
 use crate::draw::*;
 
@@ -271,12 +270,12 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         // TODO: support justified alignment
         let (h_align, h_offset) = match props.horiz {
             Align::Begin | Align::Justify => (HorizontalAlign::Left, 0.0),
-            Align::Center => (HorizontalAlign::Center, 0.5 * bounds.0),
+            Align::Centre => (HorizontalAlign::Center, 0.5 * bounds.0),
             Align::End => (HorizontalAlign::Right, bounds.0),
         };
         let (v_align, v_offset) = match props.vert {
             Align::Begin | Align::Justify => (VerticalAlign::Top, 0.0),
-            Align::Center => (VerticalAlign::Center, 0.5 * bounds.1),
+            Align::Centre => (VerticalAlign::Center, 0.5 * bounds.1),
             Align::End => (VerticalAlign::Bottom, bounds.1),
         };
 

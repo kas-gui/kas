@@ -7,11 +7,11 @@
 
 use std::fmt::{self, Debug};
 
-use crate::class::{Align, Class, Editable, HasText};
+use crate::class::{Class, Editable, HasText};
 use crate::event::{self, Action, EmptyMsg, Handler};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
+use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
 use crate::{CoreData, TkWindow, Widget, WidgetCore};
 use kas::geom::Rect;
 
@@ -35,7 +35,7 @@ impl Widget for Label {
             class: TextClass::Label,
             multi_line: true,
             horiz: Align::Begin,
-            vert: Align::Center,
+            vert: Align::Centre,
         };
         draw_handle.text(self.core.rect, &self.text, props);
     }

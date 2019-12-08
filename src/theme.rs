@@ -17,11 +17,22 @@ use std::any::Any;
 
 use rusttype::Font;
 
-use kas::class::Align;
 use kas::draw::Colour;
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
+
+/// Alignment of contents
+pub enum Align {
+    /// Align to top or left (for left-to-right text)
+    Begin,
+    /// Align to centre
+    Centre,
+    /// Align to bottom or right (for left-to-right text)
+    End,
+    /// Attempt to align to both margins, padding with space
+    Justify,
+}
 
 /// Class of text drawn
 pub enum TextClass {
