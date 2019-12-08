@@ -29,7 +29,6 @@ pub enum Class<'a> {
     None, // temporary
     Container,
     // Dialog,
-    Label(&'a dyn HasText),
     Entry(&'a dyn Editable),
     Button(&'a dyn HasText),
 }
@@ -42,7 +41,6 @@ impl<'a> fmt::Debug for Class<'a> {
             match self {
                 Class::None => "None",
                 Class::Container => "Container",
-                Class::Label(_) => "Label",
                 Class::Entry(_) => "Entry",
                 Class::Button(_) => "Button",
             }
@@ -56,7 +54,6 @@ impl<'a> Class<'a> {
         match self {
             Class::None => None,
             Class::Container => None,
-            Class::Label(cls) => Some(cls.get_text()),
             Class::Entry(cls) => Some(cls.get_text()),
             Class::Button(cls) => Some(cls.get_text()),
         }
@@ -67,7 +64,6 @@ impl<'a> Class<'a> {
     pub fn alignments(&'a self) -> (Align, Align) {
         match self {
             Class::None | Class::Container => (Align::Justify, Align::Justify),
-            Class::Label(_) => (Align::Begin, Align::Center),
             Class::Entry(_) => (Align::Begin, Align::Begin),
             Class::Button(_) => (Align::Center, Align::Center),
         }
@@ -76,7 +72,7 @@ impl<'a> Class<'a> {
     /// Does this widget allow keyboard focus?
     pub fn allow_focus(&self) -> bool {
         match self {
-            Class::None | Class::Container | Class::Label(_) => false,
+            Class::None | Class::Container => false,
             Class::Entry(_) | Class::Button(_) => true,
         }
     }

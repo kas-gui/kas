@@ -162,14 +162,6 @@ impl<'a> theme::SizeHandle for SampleHandle<'a> {
 
         let inner = match widget.class() {
             Class::Container | Class::None => return SizeRules::EMPTY,
-            Class::Label(_) => {
-                if !axis.vertical() {
-                    let min = 3 * line_height;
-                    SizeRules::variable(min, bound(false).max(min))
-                } else {
-                    SizeRules::variable(line_height, bound(true).max(line_height))
-                }
-            }
             Class::Entry(_) => {
                 let frame = 2 * self.window.frame_size as u32;
                 if !axis.vertical() {
@@ -307,7 +299,7 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         let size = Vec2::from(rect.size);
         let mut quad = Quad(p, p + size);
 
-        let mut background = None;
+        let background;
 
         let margin = self.window.margin;
         let scale = Scale::uniform(self.window.font_scale);
@@ -323,9 +315,6 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
             Class::Container | Class::None => {
                 // do not draw containers
                 return;
-            }
-            Class::Label(cls) => {
-                text = Some((cls.get_text(), LABEL_TEXT));
             }
             Class::Entry(cls) => {
                 let outer = quad;
@@ -362,7 +351,7 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         if let Some((text, colour)) = text {
             let alignments = widget.class().alignments();
             // TODO: support justified alignment
-            let (h_align, h_offset) = match alignments.1 {
+            let (h_align, h_offset) = match alignments.0 {
                 Align::Begin | Align::Justify => (HorizontalAlign::Left, 0.0),
                 Align::Center => (HorizontalAlign::Center, 0.5 * bounds.0),
                 Align::End => (HorizontalAlign::Right, bounds.0),

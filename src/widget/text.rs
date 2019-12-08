@@ -7,15 +7,15 @@
 
 use std::fmt::{self, Debug};
 
-use crate::class::{Class, Editable, HasText};
+use crate::class::{Align, Class, Editable, HasText};
 use crate::event::{self, Action, EmptyMsg, Handler};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{DrawHandle, SizeHandle};
+use crate::theme::{DrawHandle, SizeHandle, TextAlignments};
 use crate::{CoreData, TkWindow, Widget, WidgetCore};
 
 /// A simple text label
-#[widget(class = Class::Label(self))]
+#[widget(class = Class::None)]
 #[handler]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Label {
@@ -26,11 +26,17 @@ pub struct Label {
 
 impl Widget for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        size_handle.size_rules(self, axis)
+        size_handle.label_bound(&self.text, true, axis)
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
-        draw_handle.draw(ev_mgr, self)
+        let alignments = TextAlignments {
+            multi_line: true,
+            horiz: Align::Begin,
+            vert: Align::Center,
+        };
+        let highlights = ev_mgr.highlight_state(self.id());
+        draw_handle.draw_label(self.core.rect, &self.text, alignments, highlights);
     }
 }
 
