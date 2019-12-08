@@ -26,12 +26,12 @@ pub enum Align {
 
 /// Widget classifications
 pub enum Class<'a> {
+    None, // temporary
     Container,
     // Dialog,
     Label(&'a dyn HasText),
     Entry(&'a dyn Editable),
     Button(&'a dyn HasText),
-    CheckBox(&'a dyn HasBoolText),
 }
 
 impl<'a> fmt::Debug for Class<'a> {
@@ -40,11 +40,11 @@ impl<'a> fmt::Debug for Class<'a> {
             f,
             "Class::{}",
             match self {
+                Class::None => "None",
                 Class::Container => "Container",
                 Class::Label(_) => "Label",
                 Class::Entry(_) => "Entry",
                 Class::Button(_) => "Button",
-                Class::CheckBox(_) => "CheckBox",
             }
         )
     }
@@ -54,11 +54,11 @@ impl<'a> Class<'a> {
     /// Get widget text, if any
     pub fn text(&'a self) -> Option<&'a str> {
         match self {
+            Class::None => None,
             Class::Container => None,
             Class::Label(cls) => Some(cls.get_text()),
             Class::Entry(cls) => Some(cls.get_text()),
             Class::Button(cls) => Some(cls.get_text()),
-            Class::CheckBox(cls) => Some(cls.get_text()),
         }
     }
 
@@ -66,18 +66,18 @@ impl<'a> Class<'a> {
     // TODO: allow customisation?
     pub fn alignments(&'a self) -> (Align, Align) {
         match self {
-            Class::Container => (Align::Justify, Align::Justify),
+            Class::None | Class::Container => (Align::Justify, Align::Justify),
             Class::Label(_) => (Align::Begin, Align::Center),
             Class::Entry(_) => (Align::Begin, Align::Begin),
-            Class::Button(_) | Class::CheckBox(_) => (Align::Center, Align::Center),
+            Class::Button(_) => (Align::Center, Align::Center),
         }
     }
 
     /// Does this widget allow keyboard focus?
     pub fn allow_focus(&self) -> bool {
         match self {
-            Class::Container | Class::Label(_) => false,
-            Class::Entry(_) | Class::Button(_) | Class::CheckBox(_) => true,
+            Class::None | Class::Container | Class::Label(_) => false,
+            Class::Entry(_) | Class::Button(_) => true,
         }
     }
 }

@@ -15,7 +15,7 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 use kas::class::{Align, Class};
 use kas::draw::*;
 use kas::event::{HighlightState, Manager};
-use kas::geom::{Rect, Size};
+use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::{theme, Widget};
 
@@ -160,7 +160,7 @@ impl<'a> theme::SizeHandle for SampleHandle<'a> {
         };
 
         let inner = match widget.class() {
-            Class::Container => return SizeRules::EMPTY,
+            Class::Container | Class::None => return SizeRules::EMPTY,
             Class::Label(_) => {
                 if !axis.vertical() {
                     let min = 3 * line_height;
@@ -189,21 +189,28 @@ impl<'a> theme::SizeHandle for SampleHandle<'a> {
                     SizeRules::variable(min, bound(true).max(min))
                 }
             }
-            Class::CheckBox(_) => {
-                let frame = 2 * self.window.frame_size as u32;
-                SizeRules::fixed(line_height + frame)
-            }
         };
         let margin = SizeRules::fixed(2 * self.window.margin as u32);
         inner + margin
     }
 
-    /// Get size of a frame
-    ///
-    /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
     fn frame_size(&self) -> (Size, Size) {
         let f = self.window.frame_size as u32;
         (Size::uniform(f), Size::uniform(f))
+    }
+
+    fn inner_margin(&self) -> Size {
+        Size::uniform(self.window.margin as u32)
+    }
+
+    fn line_height(&self) -> u32 {
+        self.window.font_scale as u32
+    }
+
+    fn size_of_checkbox(&self) -> Size {
+        Size::uniform(
+            (2.0 * (self.window.frame_size + self.window.margin) + self.window.font_scale) as u32,
+        )
     }
 }
 
@@ -269,7 +276,7 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         let mut layout = Layout::default_wrap();
 
         match widget.class() {
-            Class::Container => {
+            Class::Container | Class::None => {
                 // do not draw containers
                 return;
             }
@@ -305,19 +312,6 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
                 bounds = bounds - 2.0 * f;
 
                 text = Some((cls.get_text(), BUTTON_TEXT));
-            }
-            Class::CheckBox(cls) => {
-                let outer = quad;
-                quad.shrink(f);
-                let style = Style::Square(Vec2(0.0, -0.8));
-                self.draw.draw_frame(outer, quad, style, FRAME);
-                bounds = bounds - 2.0 * f;
-
-                background = Some(TEXT_AREA);
-
-                // TODO: draw check mark *and* optional text
-                // let text = if cls.get_bool() { "✓" } else { "" };
-                text = Some((cls.get_text(), TEXT));
             }
         }
 
@@ -361,9 +355,6 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         }
     }
 
-    /// Draw a frame in the given [`Rect`]
-    ///
-    /// The frame dimensions should equal those of [`SizeHandle::frame_size`].
     fn draw_frame(&mut self, rect: Rect) {
         let p = Vec2::from(rect.pos);
         let size = Vec2::from(rect.size);
@@ -372,5 +363,27 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         quad.shrink(self.window.frame_size);
         let style = Style::Round(Vec2(0.6, -0.6));
         self.draw.draw_frame(outer, quad, style, FRAME);
+    }
+
+    fn draw_checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState) {
+        let pos = Vec2::from(pos);
+        let size = 2.0 * (self.window.frame_size + self.window.margin) + self.window.font_scale;
+        let size = Vec2::splat(size);
+        let mut quad = Quad(pos, pos + size);
+
+        let outer = quad;
+        quad.shrink(self.window.frame_size);
+        let style = Style::Square(Vec2(0.0, -0.8));
+        self.draw.draw_frame(outer, quad, style, FRAME);
+
+        if checked || highlights.any() {
+            let outer = quad;
+            quad.shrink(self.window.margin);
+            let col = nav_colour(highlights).unwrap_or(TEXT_AREA);
+            self.draw.draw_frame(outer, quad, Style::Flat, col);
+        }
+
+        let col = button_colour(highlights, checked).unwrap_or(TEXT_AREA);
+        self.draw.draw_quad(quad, Style::Flat, col);
     }
 }

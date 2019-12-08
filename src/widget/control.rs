@@ -14,13 +14,15 @@ use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
 use crate::{CoreData, TkWindow, Widget, WidgetCore};
+use kas::geom::{Coord, Rect};
 
 /// A checkable box with optional label
-#[widget(class = Class::CheckBox(self))]
+#[widget(class = Class::None)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<OT: 'static> {
     #[core]
     core: CoreData,
+    box_pos: Coord,
     label: String,
     state: bool,
     on_toggle: OT,
@@ -37,12 +39,30 @@ impl<H> Debug for CheckBox<H> {
 }
 
 impl<OT: 'static> Widget for CheckBox<OT> {
+    fn allow_focus(&self) -> bool {
+        true
+    }
+
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        size_handle.size_rules(self, axis)
+        let box_size = size_handle.size_of_checkbox();
+        // TODO: add text label
+        SizeRules::fixed(axis.extract_size(box_size))
+    }
+
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+        // We center the box vertically and align to the left
+        let box_size = size_handle.size_of_checkbox();
+        let mut pos = rect.pos;
+        let extra_height = rect.size.1 as i32 - box_size.1 as i32;
+        pos.1 += extra_height / 2;
+        self.box_pos = pos;
+        self.core_data_mut().rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
-        draw_handle.draw(ev_mgr, self)
+        let highlights = ev_mgr.highlight_state(self.id());
+        draw_handle.draw_checkbox(self.box_pos, self.state, highlights);
+        // TODO: also draw label
     }
 }
 
@@ -59,6 +79,7 @@ impl<M, OT: Fn(bool) -> M> CheckBox<OT> {
     pub fn new_on<S: Into<String>>(label: S, f: OT) -> Self {
         CheckBox {
             core: Default::default(),
+            box_pos: Default::default(),
             label: label.into(),
             state: false,
             on_toggle: f,
@@ -74,6 +95,7 @@ impl CheckBox<()> {
     pub fn new<S: Into<String>>(label: S) -> Self {
         CheckBox {
             core: Default::default(),
+            box_pos: Default::default(),
             label: label.into(),
             state: false,
             on_toggle: (),
@@ -87,6 +109,7 @@ impl CheckBox<()> {
     pub fn on_toggle<M, OT: Fn(bool) -> M>(self, f: OT) -> CheckBox<OT> {
         CheckBox {
             core: self.core,
+            box_pos: self.box_pos,
             label: self.label,
             state: self.state,
             on_toggle: f,

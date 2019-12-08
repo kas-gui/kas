@@ -141,6 +141,11 @@ pub trait WidgetCore: fmt::Debug {
 ///
 /// [`Handler`]: crate::event::Handler
 pub trait Widget: WidgetCore {
+    /// Is this widget navigable via Tab key?
+    fn allow_focus(&self) -> bool {
+        self.class().allow_focus()
+    }
+
     /// Get size rules for the given axis.
     ///
     /// This method takes `&mut self` to allow local caching of child widget

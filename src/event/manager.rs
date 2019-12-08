@@ -208,7 +208,7 @@ impl Manager {
         while id <= end {
             if widget
                 .get_by_id(id)
-                .map(|w| w.class().allow_focus())
+                .map(|w| w.allow_focus())
                 .unwrap_or(false)
             {
                 self.key_focus = Some(id);

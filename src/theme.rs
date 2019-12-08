@@ -19,8 +19,9 @@ use rusttype::Font;
 
 use crate::layout;
 use kas::draw::Colour;
-use kas::geom::{Rect, Size};
-use kas::{event, Widget};
+use kas::event::{HighlightState, Manager};
+use kas::geom::{Coord, Rect, Size};
+use kas::Widget;
 
 /// A *theme* provides widget sizing and drawing implementations.
 ///
@@ -143,6 +144,21 @@ pub trait SizeHandle {
     ///
     /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
     fn frame_size(&self) -> (Size, Size);
+
+    /// The margin around content within a widget
+    ///
+    /// This area may be used to draw focus indicators.
+    fn inner_margin(&self) -> Size;
+
+    /// The height of a standard line of text
+    ///
+    /// (Very likely to see API adjustment in the future.)
+    fn line_height(&self) -> u32;
+
+    /// Size of the element drawn by [`DrawHandle::draw_checkbox`].
+    ///
+    /// This element is not scalable (except by DPI).
+    fn size_of_checkbox(&self) -> Size;
 }
 
 /// Handle passed to objects during draw and sizing operations
@@ -151,10 +167,20 @@ pub trait DrawHandle {
     ///
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
-    fn draw(&mut self, ev_mgr: &event::Manager, widget: &dyn kas::Widget);
+    fn draw(&mut self, ev_mgr: &Manager, widget: &dyn kas::Widget);
 
     /// Draw a frame in the given [`Rect`]
     ///
     /// The frame dimensions should equal those of [`SizeHandle::frame_size`].
     fn draw_frame(&mut self, rect: Rect);
+
+    /// Draw UI element: checkbox
+    ///
+    /// The checkbox is a small, usually square, box with or without a check
+    /// mark. A checkbox widget may include a text label, but that label is not
+    /// part of this element.
+    ///
+    /// Size is fixed as [`SizeHandle::size_of_checkbox`], thus only the `pos`
+    /// and state are needed here.
+    fn draw_checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState);
 }
