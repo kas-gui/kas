@@ -17,7 +17,8 @@ use kas::draw::*;
 use kas::event::{HighlightState, Manager};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
-use kas::{theme, Widget};
+use kas::theme::{self, TextAlignments};
+use kas::Widget;
 
 use crate::draw::*;
 
@@ -207,6 +208,49 @@ impl<'a> theme::SizeHandle for SampleHandle<'a> {
         self.window.font_scale as u32
     }
 
+    fn label_bound(&mut self, text: &str, multi_line: bool, axis: AxisInfo) -> SizeRules {
+        let font_scale = self.window.font_scale;
+        let line_height = font_scale as u32;
+        let draw = &mut self.draw;
+        let mut bound = |vert: bool| -> u32 {
+            let layout = match multi_line {
+                false => Layout::default_single_line(),
+                true => Layout::default_wrap(),
+            };
+            let mut bounds = (f32::INFINITY, f32::INFINITY);
+            if let Some(size) = axis.fixed(false) {
+                bounds.1 = size as f32;
+            } else if let Some(size) = axis.fixed(true) {
+                bounds.0 = size as f32;
+            }
+
+            let bounds = draw.glyph_bounds(Section {
+                text,
+                screen_position: (0.0, 0.0),
+                scale: Scale::uniform(font_scale),
+                bounds,
+                layout,
+                ..Section::default()
+            });
+
+            bounds
+                .map(|(min, max)| match vert {
+                    false => (max - min).0,
+                    true => (max - min).1,
+                } as u32)
+                .unwrap_or(0)
+        };
+
+        let inner = if !axis.vertical() {
+            let min = 3 * line_height;
+            SizeRules::variable(min, bound(false).max(min))
+        } else {
+            SizeRules::variable(line_height, bound(true).max(line_height))
+        };
+        let margin = SizeRules::fixed(2 * self.window.margin as u32);
+        inner + margin
+    }
+
     fn size_of_checkbox(&self) -> Size {
         Size::uniform(
             (2.0 * (self.window.frame_size + self.window.margin) + self.window.font_scale) as u32,
@@ -363,6 +407,50 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         quad.shrink(self.window.frame_size);
         let style = Style::Round(Vec2(0.6, -0.6));
         self.draw.draw_frame(outer, quad, style, FRAME);
+    }
+
+    fn draw_label(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        alignments: TextAlignments,
+        _: HighlightState,
+    ) {
+        let pos = Vec2::from(rect.pos);
+        let size = Vec2::from(rect.size);
+        let quad = Quad(pos, pos + size);
+        let bounds = size - 2.0 * self.window.margin;
+
+        // TODO: support justified alignment
+        let (h_align, h_offset) = match alignments.horiz {
+            Align::Begin | Align::Justify => (HorizontalAlign::Left, 0.0),
+            Align::Center => (HorizontalAlign::Center, 0.5 * bounds.0),
+            Align::End => (HorizontalAlign::Right, bounds.0),
+        };
+        let (v_align, v_offset) = match alignments.vert {
+            Align::Begin | Align::Justify => (VerticalAlign::Top, 0.0),
+            Align::Center => (VerticalAlign::Center, 0.5 * bounds.1),
+            Align::End => (VerticalAlign::Bottom, bounds.1),
+        };
+
+        let text_pos = quad.0 + self.window.margin + Vec2(h_offset, v_offset);
+
+        let layout = match alignments.multi_line {
+            true => Layout::default_wrap(),
+            false => Layout::default_single_line(),
+        }
+        .h_align(h_align)
+        .v_align(v_align);
+
+        self.draw.draw_text(Section {
+            text,
+            screen_position: text_pos.into(),
+            color: LABEL_TEXT.into(),
+            scale: Scale::uniform(self.window.font_scale),
+            bounds: bounds.into(),
+            layout,
+            ..Section::default()
+        });
     }
 
     fn draw_checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState) {

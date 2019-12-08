@@ -17,11 +17,22 @@ use std::any::Any;
 
 use rusttype::Font;
 
-use crate::layout;
+use kas::class::Align;
 use kas::draw::Colour;
 use kas::event::{HighlightState, Manager};
 use kas::geom::{Coord, Rect, Size};
+use kas::layout::{AxisInfo, SizeRules};
 use kas::Widget;
+
+/// Text alignment
+pub struct TextAlignments {
+    /// Does this use line breaks?
+    pub multi_line: bool,
+    /// Horizontal alignment
+    pub horiz: Align,
+    /// Vertical alignment
+    pub vert: Align,
+}
 
 /// A *theme* provides widget sizing and drawing implementations.
 ///
@@ -138,7 +149,7 @@ pub trait SizeHandle {
     /// Widgets should expect this to be called at least once for each axis.
     ///
     /// See documentation of [`layout::SizeRules`].
-    fn size_rules(&mut self, widget: &dyn Widget, axis: layout::AxisInfo) -> layout::SizeRules;
+    fn size_rules(&mut self, widget: &dyn Widget, axis: AxisInfo) -> SizeRules;
 
     /// Get size of a frame
     ///
@@ -154,6 +165,11 @@ pub trait SizeHandle {
     ///
     /// (Very likely to see API adjustment in the future.)
     fn line_height(&self) -> u32;
+
+    /// Get a text label size bound
+    ///
+    /// This corresponds to [`DrawHandle::draw_label`].
+    fn label_bound(&mut self, text: &str, multi_line: bool, axis: AxisInfo) -> SizeRules;
 
     /// Size of the element drawn by [`DrawHandle::draw_checkbox`].
     ///
@@ -173,6 +189,17 @@ pub trait DrawHandle {
     ///
     /// The frame dimensions should equal those of [`SizeHandle::frame_size`].
     fn draw_frame(&mut self, rect: Rect);
+
+    /// Draw some text using the standard font
+    ///
+    /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
+    fn draw_label(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        alignments: TextAlignments,
+        highlights: HighlightState,
+    );
 
     /// Draw UI element: checkbox
     ///

@@ -8,11 +8,11 @@
 use std::any::TypeId;
 use std::fmt::{self, Debug};
 
-use crate::class::{Class, HasBool, HasText};
+use crate::class::{Align, Class, HasBool, HasText};
 use crate::event::{self, err_unhandled, Action, EmptyMsg, Handler, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{DrawHandle, SizeHandle};
+use crate::theme::{DrawHandle, SizeHandle, TextAlignments};
 use crate::{CoreData, TkWindow, Widget, WidgetCore};
 use kas::geom::{Coord, Rect};
 
@@ -23,6 +23,7 @@ pub struct CheckBox<OT: 'static> {
     #[core]
     core: CoreData,
     box_pos: Coord,
+    text_pos_x: i32,
     label: String,
     state: bool,
     on_toggle: OT,
@@ -44,9 +45,11 @@ impl<OT: 'static> Widget for CheckBox<OT> {
     }
 
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let box_size = size_handle.size_of_checkbox();
-        // TODO: add text label
-        SizeRules::fixed(axis.extract_size(box_size))
+        let mut r = SizeRules::fixed(axis.extract_size(size_handle.size_of_checkbox()));
+        if !self.label.is_empty() {
+            r += size_handle.label_bound(&self.label, true, axis);
+        }
+        r
     }
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
@@ -56,13 +59,24 @@ impl<OT: 'static> Widget for CheckBox<OT> {
         let extra_height = rect.size.1 as i32 - box_size.1 as i32;
         pos.1 += extra_height / 2;
         self.box_pos = pos;
+        // Text is drawn in the area to the right of this
+        self.text_pos_x = pos.0 + box_size.0 as i32;
         self.core_data_mut().rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
         let highlights = ev_mgr.highlight_state(self.id());
         draw_handle.draw_checkbox(self.box_pos, self.state, highlights);
-        // TODO: also draw label
+        let mut text_rect = self.core.rect;
+        text_rect.pos.0 = self.text_pos_x;
+        if !self.label.is_empty() {
+            let alignments = TextAlignments {
+                multi_line: true,
+                horiz: Align::Begin,
+                vert: Align::Center,
+            };
+            draw_handle.draw_label(text_rect, &self.label, alignments, highlights);
+        }
     }
 }
 
@@ -80,6 +94,7 @@ impl<M, OT: Fn(bool) -> M> CheckBox<OT> {
         CheckBox {
             core: Default::default(),
             box_pos: Default::default(),
+            text_pos_x: 0,
             label: label.into(),
             state: false,
             on_toggle: f,
@@ -96,6 +111,7 @@ impl CheckBox<()> {
         CheckBox {
             core: Default::default(),
             box_pos: Default::default(),
+            text_pos_x: 0,
             label: label.into(),
             state: false,
             on_toggle: (),
@@ -110,6 +126,7 @@ impl CheckBox<()> {
         CheckBox {
             core: self.core,
             box_pos: self.box_pos,
+            text_pos_x: self.text_pos_x,
             label: self.label,
             state: self.state,
             on_toggle: f,
