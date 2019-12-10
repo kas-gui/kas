@@ -22,7 +22,7 @@ pub struct RoundPipe {
     bind_group: wgpu::BindGroup,
     scale_buf: wgpu::Buffer,
     render_pipeline: wgpu::RenderPipeline,
-    v: Vec<Vertex>,
+    passes: Vec<Vec<Vertex>>,
 }
 
 impl RoundPipe {
@@ -154,7 +154,7 @@ impl RoundPipe {
             bind_group,
             scale_buf,
             render_pipeline,
-            v: vec![],
+            passes: vec![],
         }
     }
 
@@ -175,22 +175,30 @@ impl RoundPipe {
     }
 
     /// Render queued triangles and clear the queue
-    pub fn render(&mut self, device: &wgpu::Device, rpass: &mut wgpu::RenderPass) {
+    pub fn render(&mut self, device: &wgpu::Device, pass: usize, rpass: &mut wgpu::RenderPass) {
+        let v = &mut self.passes[pass];
         let buffer = device
-            .create_buffer_mapped(self.v.len(), wgpu::BufferUsage::VERTEX)
-            .fill_from_slice(&self.v);
-        let count = self.v.len() as u32;
+            .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
+            .fill_from_slice(&v);
+        let count = v.len() as u32;
 
         rpass.set_pipeline(&self.render_pipeline);
         rpass.set_bind_group(0, &self.bind_group, &[]);
         rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
         rpass.draw(0..count, 0..1);
 
-        self.v.clear();
+        v.clear();
     }
 
     /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
-    pub fn add_frame(&mut self, outer: Quad, inner: Quad, mut norm: Vec2, col: Colour) {
+    pub fn add_frame(
+        &mut self,
+        pass: usize,
+        outer: Quad,
+        inner: Quad,
+        mut norm: Vec2,
+        col: Colour,
+    ) {
         let (aa, bb) = (outer.0, outer.1);
         let (mut cc, mut dd) = (inner.0, inner.1);
 
@@ -247,7 +255,7 @@ impl RoundPipe {
         let dd = Vertex(dd, col, n0, adjust);
 
         #[rustfmt::skip]
-        self.v.extend_from_slice(&[
+        self.add_vertices(pass, &[
             // top bar: ba - dc - cc - aa
             ba, dc, da,
             da, dc, ca,
@@ -269,5 +277,14 @@ impl RoundPipe {
             bd, dc, bc,
             bc, dc, ba,
         ]);
+    }
+
+    fn add_vertices(&mut self, pass: usize, slice: &[Vertex]) {
+        if self.passes.len() <= pass {
+            // We only need one more, but no harm in adding extra
+            self.passes.resize(pass + 8, vec![]);
+        }
+
+        self.passes[pass].extend_from_slice(slice);
     }
 }

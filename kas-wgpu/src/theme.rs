@@ -100,6 +100,7 @@ impl SampleWindow {
 pub struct SampleHandle<'a> {
     draw: &'a mut DrawPipe,
     window: &'a mut SampleWindow,
+    pass: usize,
 }
 
 impl theme::Window<DrawPipe> for SampleWindow {
@@ -111,6 +112,7 @@ impl theme::Window<DrawPipe> for SampleWindow {
         SampleHandle {
             draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
             window: transmute::<&'a mut Self, &'static mut Self>(self),
+            pass: 0,
         }
     }
 
@@ -228,6 +230,7 @@ impl theme::Theme<DrawPipe> for SampleTheme {
         SampleHandle {
             draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
             window: transmute::<&'a mut Self::Window, &'static mut Self::Window>(window),
+            pass: 0,
         }
     }
 
@@ -245,6 +248,16 @@ impl theme::Theme<DrawPipe> for SampleTheme {
 }
 
 impl<'a> theme::DrawHandle for SampleHandle<'a> {
+    fn clip_to(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn theme::DrawHandle)) {
+        let pass = self.draw.add_clip_region(rect);
+        let mut handle = SampleHandle {
+            draw: self.draw,
+            window: self.window,
+            pass,
+        };
+        f(&mut handle);
+    }
+
     fn outer_frame(&mut self, rect: Rect) {
         let p = Vec2::from(rect.pos);
         let size = Vec2::from(rect.size);
@@ -252,7 +265,7 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         let outer = quad;
         quad.shrink(self.window.frame_size);
         let style = Style::Round(Vec2(0.6, -0.6));
-        self.draw.draw_frame(outer, quad, style, FRAME);
+        self.draw.draw_frame(self.pass, outer, quad, style, FRAME);
     }
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
@@ -309,16 +322,17 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         let outer = quad;
         quad.shrink(self.window.button_frame);
         let style = Style::Round(Vec2(0.0, 0.6));
-        self.draw.draw_frame(outer, quad, style, col);
+        self.draw.draw_frame(self.pass, outer, quad, style, col);
 
         if highlights.key_focus {
             let outer = quad;
             quad.shrink(self.window.margin);
             let col = nav_colour(highlights).unwrap();
-            self.draw.draw_frame(outer, quad, Style::Flat, col);
+            self.draw
+                .draw_frame(self.pass, outer, quad, Style::Flat, col);
         }
 
-        self.draw.draw_quad(quad, Style::Flat, col);
+        self.draw.draw_quad(self.pass, quad, Style::Flat, col);
     }
 
     fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
@@ -329,16 +343,17 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         let outer = quad;
         quad.shrink(self.window.frame_size);
         let style = Style::Square(Vec2(0.0, -0.8));
-        self.draw.draw_frame(outer, quad, style, FRAME);
+        self.draw.draw_frame(self.pass, outer, quad, style, FRAME);
 
         if highlights.key_focus {
             let outer = quad;
             quad.shrink(self.window.margin);
             let col = nav_colour(highlights).unwrap();
-            self.draw.draw_frame(outer, quad, Style::Flat, col);
+            self.draw
+                .draw_frame(self.pass, outer, quad, Style::Flat, col);
         }
 
-        self.draw.draw_quad(quad, Style::Flat, TEXT_AREA);
+        self.draw.draw_quad(self.pass, quad, Style::Flat, TEXT_AREA);
     }
 
     fn checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState) {
@@ -350,16 +365,17 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
         let outer = quad;
         quad.shrink(self.window.frame_size);
         let style = Style::Square(Vec2(0.0, -0.8));
-        self.draw.draw_frame(outer, quad, style, FRAME);
+        self.draw.draw_frame(self.pass, outer, quad, style, FRAME);
 
         if checked || highlights.any() {
             let outer = quad;
             quad.shrink(self.window.margin);
             let col = nav_colour(highlights).unwrap_or(TEXT_AREA);
-            self.draw.draw_frame(outer, quad, Style::Flat, col);
+            self.draw
+                .draw_frame(self.pass, outer, quad, Style::Flat, col);
         }
 
         let col = button_colour(highlights, checked).unwrap_or(TEXT_AREA);
-        self.draw.draw_quad(quad, Style::Flat, col);
+        self.draw.draw_quad(self.pass, quad, Style::Flat, col);
     }
 }

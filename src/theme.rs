@@ -215,6 +215,12 @@ pub trait SizeHandle {
 
 /// Handle passed to objects during draw and sizing operations
 pub trait DrawHandle {
+    /// Construct a new draw-handle on a given region and pass to a callback.
+    ///
+    /// This allows rendering of child objects (say, of a scroll region) to be
+    /// clipped to the given region.
+    fn clip_to(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn DrawHandle));
+
     /// Draw a frame in the given [`Rect`]
     ///
     /// The frame dimensions should equal those of [`SizeHandle::outer_frame`].

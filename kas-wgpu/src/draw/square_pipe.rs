@@ -22,7 +22,7 @@ pub struct SquarePipe {
     bind_group: wgpu::BindGroup,
     scale_buf: wgpu::Buffer,
     render_pipeline: wgpu::RenderPipeline,
-    v: Vec<Vertex>,
+    passes: Vec<Vec<Vertex>>,
 }
 
 impl SquarePipe {
@@ -149,7 +149,7 @@ impl SquarePipe {
             bind_group,
             scale_buf,
             render_pipeline,
-            v: vec![],
+            passes: vec![],
         }
     }
 
@@ -170,25 +170,26 @@ impl SquarePipe {
     }
 
     /// Render queued triangles and clear the queue
-    pub fn render(&mut self, device: &wgpu::Device, rpass: &mut wgpu::RenderPass) {
+    pub fn render(&mut self, device: &wgpu::Device, pass: usize, rpass: &mut wgpu::RenderPass) {
+        let v = &mut self.passes[pass];
         let buffer = device
-            .create_buffer_mapped(self.v.len(), wgpu::BufferUsage::VERTEX)
-            .fill_from_slice(&self.v);
-        let count = self.v.len() as u32;
+            .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
+            .fill_from_slice(&v);
+        let count = v.len() as u32;
 
         rpass.set_pipeline(&self.render_pipeline);
         rpass.set_bind_group(0, &self.bind_group, &[]);
         rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
         rpass.draw(0..count, 0..1);
 
-        self.v.clear();
+        v.clear();
     }
 
     /// Add a rectangle to the buffer defined by two corners, `aa` and `bb`
     /// with colour `col`.
     ///
     /// Bounds on input: `aa < bb`.
-    pub fn add_quad(&mut self, quad: Quad, col: Colour) {
+    pub fn add_quad(&mut self, pass: usize, quad: Quad, col: Colour) {
         let (aa, bb) = (quad.0, quad.1);
         if !aa.lt(bb) {
             // zero / negative size: nothing to draw
@@ -202,7 +203,7 @@ impl SquarePipe {
         let t = Vec2(0.0, 0.0);
 
         #[rustfmt::skip]
-        self.v.extend_from_slice(&[
+        self.add_vertices(pass, &[
             Vertex(aa, col, t), Vertex(ba, col, t), Vertex(ab, col, t),
             Vertex(ab, col, t), Vertex(ba, col, t), Vertex(bb, col, t),
         ]);
@@ -212,7 +213,14 @@ impl SquarePipe {
     /// and two inner corners, `cc` and `dd` with colour `col`.
     ///
     /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
-    pub fn add_frame(&mut self, outer: Quad, inner: Quad, mut norm: Vec2, col: Colour) {
+    pub fn add_frame(
+        &mut self,
+        pass: usize,
+        outer: Quad,
+        inner: Quad,
+        mut norm: Vec2,
+        col: Colour,
+    ) {
         let (aa, bb) = (outer.0, outer.1);
         let (mut cc, mut dd) = (inner.0, inner.1);
 
@@ -245,7 +253,7 @@ impl SquarePipe {
         let tr = (Vec2(norm.0, 0.0), Vec2(norm.1, 0.0));
 
         #[rustfmt::skip]
-        self.v.extend_from_slice(&[
+        self.add_vertices(pass, &[
             // top bar: ba - dc - cc - aa
             Vertex(ba, col, tt.0), Vertex(dc, col, tt.1), Vertex(aa, col, tt.0),
             Vertex(aa, col, tt.0), Vertex(dc, col, tt.1), Vertex(cc, col, tt.1),
@@ -259,5 +267,14 @@ impl SquarePipe {
             Vertex(bb, col, tr.0), Vertex(dd, col, tr.1), Vertex(ba, col, tr.0),
             Vertex(ba, col, tr.0), Vertex(dd, col, tr.1), Vertex(dc, col, tr.1),
         ]);
+    }
+
+    fn add_vertices(&mut self, pass: usize, slice: &[Vertex]) {
+        if self.passes.len() <= pass {
+            // We only need one more, but no harm in adding extra
+            self.passes.resize(pass + 8, vec![]);
+        }
+
+        self.passes[pass].extend_from_slice(slice);
     }
 }
