@@ -95,13 +95,14 @@ pub(crate) fn derive(
             fn draw(
                 &self,
                 draw_handle: &mut dyn kas::theme::DrawHandle,
+                offset: kas::geom::Coord,
                 ev_mgr: &kas::event::Manager
             ) {
                 use kas::WidgetCore;
                 if #is_frame {
-                    draw_handle.outer_frame(self.core_data().rect);
+                    draw_handle.outer_frame(self.core_data().rect + offset);
                 }
-                self.#ident.draw(draw_handle, ev_mgr);
+                self.#ident.draw(draw_handle, offset, ev_mgr);
             }
         };
         let ty = quote! {
@@ -220,7 +221,7 @@ impl<'a> ImplLayout<'a> {
         });
 
         self.draw.append_all(quote! {
-            self.#ident.draw(draw_handle, ev_mgr);
+            self.#ident.draw(draw_handle, offset, ev_mgr);
         });
 
         Ok(())
@@ -396,6 +397,7 @@ impl<'a> ImplLayout<'a> {
             fn draw(
                 &self,
                 draw_handle: &mut dyn kas::theme::DrawHandle,
+                offset: kas::geom::Coord,
                 ev_mgr: &kas::event::Manager
             ) {
                 #draw

@@ -68,9 +68,14 @@ impl<OT: 'static> Widget for CheckBox<OT> {
         self.core_data_mut().rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
+    fn draw(
+        &self,
+        draw_handle: &mut dyn DrawHandle,
+        offset: kas::geom::Coord,
+        ev_mgr: &event::Manager,
+    ) {
         let highlights = ev_mgr.highlight_state(self.id());
-        draw_handle.checkbox(self.box_pos, self.state, highlights);
+        draw_handle.checkbox(self.box_pos + offset, self.state, highlights);
         let mut text_rect = self.core.rect;
         text_rect.pos.0 = self.text_pos_x;
         if !self.label.is_empty() {
@@ -80,7 +85,7 @@ impl<OT: 'static> Widget for CheckBox<OT> {
                 horiz: Align::Begin,
                 vert: Align::Centre,
             };
-            draw_handle.text(text_rect, &self.label, props);
+            draw_handle.text(text_rect + offset, &self.label, props);
         }
     }
 }

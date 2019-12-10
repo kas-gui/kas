@@ -161,3 +161,16 @@ impl Rect {
             && c.1 < self.pos.1 + (self.size.1 as i32)
     }
 }
+
+impl std::ops::Add<Coord> for Rect {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, offset: Coord) -> Self {
+        let pos = self.pos + offset;
+        Rect {
+            pos,
+            size: self.size,
+        }
+    }
+}

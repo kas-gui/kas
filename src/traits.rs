@@ -8,7 +8,7 @@
 use std::fmt;
 
 use crate::event::{self, Callback, EmptyMsg, Handler};
-use crate::geom::{Rect, Size};
+use crate::geom::{Coord, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
 use crate::toolkit::TkWindow;
@@ -162,7 +162,7 @@ pub trait Widget: WidgetCore {
     ///
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager);
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, offset: Coord, ev_mgr: &event::Manager);
 }
 
 /// Trait to describe the type needed by the layout implementation.

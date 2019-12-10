@@ -46,7 +46,12 @@ impl<M: Clone + Debug + From<EmptyMsg>> Widget for TextButton<M> {
         self.core_data_mut().rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
+    fn draw(
+        &self,
+        draw_handle: &mut dyn DrawHandle,
+        offset: kas::geom::Coord,
+        ev_mgr: &event::Manager,
+    ) {
         draw_handle.button(self.core.rect, ev_mgr.highlight_state(self.id()));
         let props = TextProperties {
             class: TextClass::Button,
@@ -54,7 +59,7 @@ impl<M: Clone + Debug + From<EmptyMsg>> Widget for TextButton<M> {
             horiz: Align::Centre,
             vert: Align::Centre,
         };
-        draw_handle.text(self.text_rect, &self.label, props);
+        draw_handle.text(self.text_rect + offset, &self.label, props);
     }
 }
 

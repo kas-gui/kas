@@ -30,14 +30,14 @@ impl Widget for Label {
         size_handle.text_bound(&self.text, TextClass::Label, true, axis)
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::Manager) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, offset: kas::geom::Coord, _: &event::Manager) {
         let props = TextProperties {
             class: TextClass::Label,
             multi_line: true,
             horiz: Align::Begin,
             vert: Align::Centre,
         };
-        draw_handle.text(self.core.rect, &self.text, props);
+        draw_handle.text(self.core.rect + offset, &self.text, props);
     }
 }
 
@@ -134,9 +134,14 @@ impl<H: 'static> Widget for EditBox<H> {
         self.core_data_mut().rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
+    fn draw(
+        &self,
+        draw_handle: &mut dyn DrawHandle,
+        offset: kas::geom::Coord,
+        ev_mgr: &event::Manager,
+    ) {
         let highlights = ev_mgr.highlight_state(self.id());
-        draw_handle.edit_box(self.core.rect, highlights);
+        draw_handle.edit_box(self.core.rect + offset, highlights);
         let props = TextProperties {
             class: TextClass::Edit,
             multi_line: self.multi_line,
@@ -150,7 +155,7 @@ impl<H: 'static> Widget for EditBox<H> {
             _string.push('|');
             text = &_string;
         }
-        draw_handle.text(self.text_rect, text, props);
+        draw_handle.text(self.text_rect + offset, text, props);
     }
 }
 
