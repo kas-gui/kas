@@ -94,25 +94,29 @@ impl SampleWindow {
     }
 }
 
-// This theme does not need shared resources, hence we can use the same type for
-// theme::Theme::DrawHandle and theme::Window::SizeHandle.
 #[doc(hidden)]
-pub struct SampleHandle<'a> {
+pub struct SizeHandle<'a> {
     draw: &'a mut DrawPipe,
     window: &'a mut SampleWindow,
+}
+
+#[doc(hidden)]
+pub struct DrawHandle<'a> {
+    draw: &'a mut DrawPipe,
+    window: &'a mut SampleWindow,
+    offset: Coord,
     pass: usize,
 }
 
 impl theme::Window<DrawPipe> for SampleWindow {
-    type SizeHandle = SampleHandle<'static>;
+    type SizeHandle = SizeHandle<'static>;
 
     unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
         use std::mem::transmute;
-        SampleHandle {
+        SizeHandle {
             draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
             window: transmute::<&'a mut Self, &'static mut Self>(self),
-            pass: 0,
         }
     }
 
@@ -125,7 +129,7 @@ impl theme::Window<DrawPipe> for SampleWindow {
     }
 }
 
-impl<'a> theme::SizeHandle for SampleHandle<'a> {
+impl<'a> theme::SizeHandle for SizeHandle<'a> {
     fn outer_frame(&self) -> (Size, Size) {
         let f = self.window.frame_size as u32;
         (Size::uniform(f), Size::uniform(f))
@@ -211,7 +215,7 @@ impl<'a> theme::SizeHandle for SampleHandle<'a> {
 
 impl theme::Theme<DrawPipe> for SampleTheme {
     type Window = SampleWindow;
-    type DrawHandle = SampleHandle<'static>;
+    type DrawHandle = DrawHandle<'static>;
 
     /// Construct per-window storage
     ///
@@ -227,9 +231,10 @@ impl theme::Theme<DrawPipe> for SampleTheme {
     ) -> Self::DrawHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
         use std::mem::transmute;
-        SampleHandle {
+        DrawHandle {
             draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
             window: transmute::<&'a mut Self::Window, &'static mut Self::Window>(window),
+            offset: Coord::ZERO,
             pass: 0,
         }
     }
@@ -247,21 +252,27 @@ impl theme::Theme<DrawPipe> for SampleTheme {
     }
 }
 
-impl<'a> theme::DrawHandle for SampleHandle<'a> {
-    fn clip_to(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn theme::DrawHandle)) {
+impl<'a> theme::DrawHandle for DrawHandle<'a> {
+    fn clip_region(
+        &mut self,
+        rect: Rect,
+        offset: Coord,
+        f: &mut dyn FnMut(&mut dyn theme::DrawHandle),
+    ) {
         let pass = self.draw.add_clip_region(rect);
-        let mut handle = SampleHandle {
+        let mut handle = DrawHandle {
             draw: self.draw,
             window: self.window,
+            offset: self.offset + offset,
             pass,
         };
         f(&mut handle);
     }
 
     fn outer_frame(&mut self, rect: Rect) {
-        let p = Vec2::from(rect.pos);
+        let pos = Vec2::from(rect.pos + self.offset);
         let size = Vec2::from(rect.size);
-        let mut quad = Quad(p, p + size);
+        let mut quad = Quad(pos, pos + size);
         let outer = quad;
         quad.shrink(self.window.frame_size);
         let style = Style::Round(Vec2(0.6, -0.6));
@@ -269,7 +280,7 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
     }
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
-        let pos = Vec2::from(rect.pos);
+        let pos = Vec2::from(rect.pos + self.offset);
         let size = Vec2::from(rect.size);
         let quad = Quad(pos, pos + size);
         let bounds = size - 2.0 * self.window.margin;
@@ -313,7 +324,7 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
     }
 
     fn button(&mut self, rect: Rect, highlights: HighlightState) {
-        let pos = Vec2::from(rect.pos);
+        let pos = Vec2::from(rect.pos + self.offset);
         let size = Vec2::from(rect.size);
         let mut quad = Quad(pos, pos + size);
 
@@ -336,7 +347,7 @@ impl<'a> theme::DrawHandle for SampleHandle<'a> {
     }
 
     fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
-        let pos = Vec2::from(rect.pos);
+        let pos = Vec2::from(rect.pos + self.offset);
         let size = Vec2::from(rect.size);
         let mut quad = Quad(pos, pos + size);
 

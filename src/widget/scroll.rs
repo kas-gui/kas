@@ -56,15 +56,9 @@ impl<W: Widget> Widget for ScrollRegion<W> {
         self.offset = self.offset.min(Coord::ZERO).max(self.min_offset);
     }
 
-    fn draw(
-        &self,
-        draw_handle: &mut dyn DrawHandle,
-        mut offset: kas::geom::Coord,
-        ev_mgr: &Manager,
-    ) {
-        offset = offset + self.offset;
-        draw_handle.clip_to(self.core.rect, &mut |handle| {
-            self.child.draw(handle, offset, ev_mgr)
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &Manager) {
+        draw_handle.clip_region(self.core.rect, self.offset, &mut |handle| {
+            self.child.draw(handle, ev_mgr)
         });
     }
 }

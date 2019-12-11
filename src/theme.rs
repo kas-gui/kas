@@ -217,9 +217,9 @@ pub trait SizeHandle {
 pub trait DrawHandle {
     /// Construct a new draw-handle on a given region and pass to a callback.
     ///
-    /// This allows rendering of child objects (say, of a scroll region) to be
-    /// clipped to the given region.
-    fn clip_to(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn DrawHandle));
+    /// This new region has contents translated by `offset` and then clipped to
+    /// the given `rect`, as required by a scrollable window.
+    fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle));
 
     /// Draw a frame in the given [`Rect`]
     ///
