@@ -15,6 +15,18 @@ pub struct Coord(pub i32, pub i32);
 impl Coord {
     /// A coord of `(0, 0)`
     pub const ZERO: Coord = Coord(0, 0);
+
+    /// Return the minimum, componentwise
+    #[inline]
+    pub fn min(self, other: Self) -> Self {
+        Coord(self.0.min(other.0), self.1.min(other.1))
+    }
+
+    /// Return the maximum, componentwise
+    #[inline]
+    pub fn max(self, other: Self) -> Self {
+        Coord(self.0.max(other.0), self.1.max(other.1))
+    }
 }
 
 impl From<(i32, i32)> for Coord {
@@ -24,12 +36,28 @@ impl From<(i32, i32)> for Coord {
     }
 }
 
+impl From<Size> for Coord {
+    #[inline]
+    fn from(size: Size) -> Coord {
+        Coord(size.0 as i32, size.1 as i32)
+    }
+}
+
 impl std::ops::Add for Coord {
     type Output = Self;
 
     #[inline]
     fn add(self, other: Self) -> Self {
         Coord(self.0 + other.0, self.1 + other.1)
+    }
+}
+
+impl std::ops::Sub for Coord {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, other: Self) -> Self {
+        Coord(self.0 - other.0, self.1 - other.1)
     }
 }
 
@@ -84,6 +112,18 @@ impl Size {
     #[inline]
     pub const fn uniform(v: u32) -> Self {
         Size(v, v)
+    }
+
+    /// Return the minimum, componentwise
+    #[inline]
+    pub fn min(self, other: Self) -> Self {
+        Size(self.0.min(other.0), self.1.min(other.1))
+    }
+
+    /// Return the maximum, componentwise
+    #[inline]
+    pub fn max(self, other: Self) -> Self {
+        Size(self.0.max(other.0), self.1.max(other.1))
     }
 }
 

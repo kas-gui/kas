@@ -48,7 +48,7 @@ fn main() -> Result<(), winit::error::OsError> {
                     #[widget] _ = Label::from("Widget Gallery"),
                 }
             },
-            #[widget(handler = activations)] _ = widgets,
+            #[widget(handler = activations)] _ = ScrollRegion::new(widgets),
         }
         impl {
             fn activations(&mut self, _: &mut dyn TkWindow, item: Item)

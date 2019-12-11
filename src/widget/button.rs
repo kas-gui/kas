@@ -52,7 +52,7 @@ impl<M: Clone + Debug + From<EmptyMsg>> Widget for TextButton<M> {
         offset: kas::geom::Coord,
         ev_mgr: &event::Manager,
     ) {
-        draw_handle.button(self.core.rect, ev_mgr.highlight_state(self.id()));
+        draw_handle.button(self.core.rect + offset, ev_mgr.highlight_state(self.id()));
         let props = TextProperties {
             class: TextClass::Button,
             multi_line: false,

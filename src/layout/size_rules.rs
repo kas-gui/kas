@@ -98,6 +98,12 @@ impl SizeRules {
         }
     }
 
+    /// Get the minimum size
+    #[inline]
+    pub fn min_size(self) -> u32 {
+        self.a
+    }
+
     /// Like `self = self.max(x - y)` but handling negative values correctly
     // TODO: switch to i32?
     pub fn set_at_least_op_sub(&mut self, x: Self, y: Self) {
@@ -107,6 +113,12 @@ impl SizeRules {
         if x.b > y.b {
             self.b = self.b.max(x.b - y.b);
         }
+    }
+
+    /// Reduce the minimum size
+    #[inline]
+    pub fn reduce_min_to(&mut self, a: u32) {
+        self.a = a;
     }
 
     #[doc(hidden)]

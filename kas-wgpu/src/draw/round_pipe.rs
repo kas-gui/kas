@@ -176,6 +176,9 @@ impl RoundPipe {
 
     /// Render queued triangles and clear the queue
     pub fn render(&mut self, device: &wgpu::Device, pass: usize, rpass: &mut wgpu::RenderPass) {
+        if pass >= self.passes.len() {
+            return;
+        }
         let v = &mut self.passes[pass];
         let buffer = device
             .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
