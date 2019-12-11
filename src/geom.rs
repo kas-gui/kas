@@ -103,11 +103,6 @@ impl Size {
     /// A size of `(0, 0)`
     pub const ZERO: Size = Size(0, 0);
 
-    /// Maximum possible size
-    // TODO: what value do we want to use here? Note that current layout logic
-    // can add together multiple copies of this value.
-    pub const MAX: Size = Size(0xFFFF, 0xFFFF);
-
     /// Uniform size in each dimension
     #[inline]
     pub const fn uniform(v: u32) -> Self {
@@ -188,7 +183,7 @@ impl std::ops::SubAssign for Size {
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Rect {
     pub pos: Coord,
-    pub size: Size, // TODO: more efficient to store pos+size ?
+    pub size: Size,
 }
 
 impl Rect {

@@ -234,7 +234,6 @@ impl Manager {
     /// Note that some event types are not *does not* handled, since for these
     /// events the toolkit must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
-    // TODO: use widget.handle() return value?
     #[cfg(feature = "winit")]
     pub fn handle_winit<W>(widget: &mut W, tk: &mut dyn TkWindow, event: winit::event::WindowEvent)
     where
@@ -243,7 +242,6 @@ impl Manager {
         use crate::TkAction;
         use winit::event::{MouseScrollDelta, TouchPhase, WindowEvent::*};
 
-        // TODO: bind tk.data()
         match event {
             // Resized(size) [handled by toolkit]
             // Moved(position)
