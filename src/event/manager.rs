@@ -179,7 +179,9 @@ impl Manager {
                 return true;
             }
         }
-        assert!(false);
+
+        // We get here if start_touch was never called (e.g. if the touch
+        // started over unused space).
         false
     }
     fn touch_start(&self, id: u64) -> Option<WidgetId> {
