@@ -239,7 +239,8 @@ impl Manager {
         W: Widget + Handler<Msg = EmptyMsg> + ?Sized,
     {
         use crate::TkAction;
-        use winit::event::{TouchPhase, WindowEvent::*};
+        use winit::event::{MouseScrollDelta, TouchPhase, WindowEvent::*};
+
         // TODO: bind tk.data()
         match event {
             // Resized(size) [handled by toolkit]
@@ -350,7 +351,17 @@ impl Manager {
             CursorLeft { .. } => {
                 tk.update_data(&mut |data| data.set_hover(None));
             }
-            // MouseWheel { delta: MouseScrollDelta, phase: TouchPhase, modifiers: ModifiersState, .. },
+            MouseWheel { delta, phase, modifiers, .. } => {
+                let _ = (phase, modifiers); // TODO: do we have a use for these?
+                let ev = EventChild::Scroll(match delta {
+                    MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
+                    MouseScrollDelta::PixelDelta(logical_position) =>
+                        ScrollDelta::PixelDelta(logical_position.to_physical(tk.data().dpi_factor).into()),
+                });
+                if let Some(id) = tk.data().hover {
+                    widget.handle(tk, Event::ToChild(id, ev));
+                }
+            }
             MouseInput {
                 state,
                 button,
@@ -449,6 +460,8 @@ impl Manager {
                         EmptyMsg.into()
                     }
                 }
+                // Currently only handled when intercepted by scroll widgets:
+                EventChild::Scroll(_) => EmptyMsg.into(),
             },
             Event::ToCoord(_, ev) => {
                 match ev {

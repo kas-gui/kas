@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use crate::event::{Event, Handler, Manager};
+use crate::event::{EmptyMsg, Event, EventChild, Handler, Manager, ScrollDelta};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
@@ -23,6 +23,7 @@ pub struct ScrollRegion<W: Widget> {
     offset: Coord,
     min_child_size: Size,
     min_offset: Coord,
+    scroll_rate: f32,
     #[widget]
     child: W,
 }
@@ -35,7 +36,9 @@ impl<W: Widget> Widget for ScrollRegion<W> {
         } else {
             self.min_child_size.1 = rules.min_size();
         }
-        rules.reduce_min_to(size_handle.line_height(TextClass::Label));
+        let line_height = size_handle.line_height(TextClass::Label);
+        self.scroll_rate = 3.0 * line_height as f32;
+        rules.reduce_min_to(line_height);
         rules
     }
 
@@ -74,6 +77,7 @@ impl<W: Widget> ScrollRegion<W> {
             offset: Coord::ZERO,
             min_offset: Coord::ZERO,
             min_child_size: Size::ZERO,
+            scroll_rate: 30.0,
             child,
         }
     }
@@ -84,7 +88,26 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
 
     fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Self::Msg {
         match event {
-            event @ Event::ToChild(..) => self.child.handle(tk, event),
+            Event::ToChild(id, event) => {
+                // Intercept scroll events.
+                // TODO: we may want to revise this later, e.g. pass through to
+                // inner-most widget then handle through the return value.
+                match event {
+                    EventChild::Scroll(delta) => {
+                        let delta = match delta {
+                            ScrollDelta::LineDelta(x, y) => Coord(
+                                (-self.scroll_rate * x) as i32,
+                                (self.scroll_rate * y) as i32,
+                            ),
+                            ScrollDelta::PixelDelta(delta) => delta,
+                        };
+                        self.offset = (self.offset + delta).min(Coord::ZERO).max(self.min_offset);
+                        tk.redraw(self.id());
+                        EmptyMsg.into()
+                    }
+                    ev @ _ => self.child.handle(tk, Event::ToChild(id, ev)),
+                }
+            }
             Event::ToCoord(coord, event) => self
                 .child
                 .handle(tk, Event::ToCoord(coord - self.offset, event)),
