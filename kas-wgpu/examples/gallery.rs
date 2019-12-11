@@ -36,6 +36,11 @@ fn main() -> Result<(), winit::error::OsError> {
             #[widget(row=4, col=0)] _ = Label::from("CheckBox"),
             #[widget(row=4, col=1)] _ = CheckBox::new("").state(true)
                 .on_toggle(|check| Item::Check(check)),
+            #[widget(row=5)] _ = Label::from("A"),
+            #[widget(row=6)] _ = Label::from("few"),
+            #[widget(row=7)] _ = Label::from("more"),
+            #[widget(row=8)] _ = Label::from("rows"),
+            #[widget(row=8, col = 1)] _ = TextButton::new("Another button", Item::Button),
         }
     };
 
