@@ -81,30 +81,34 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
     type Msg = <W as Handler>::Msg;
 
     fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
-        match event {
-            Event::ToChild(id, event) => {
-                // Intercept scroll events.
-                // TODO: we may want to revise this later, e.g. pass through to
-                // inner-most widget then handle through the return value.
-                match event {
-                    EventChild::Scroll(delta) => {
-                        let delta = match delta {
-                            ScrollDelta::LineDelta(x, y) => Coord(
-                                (-self.scroll_rate * x) as i32,
-                                (self.scroll_rate * y) as i32,
-                            ),
-                            ScrollDelta::PixelDelta(delta) => delta,
-                        };
-                        self.offset = (self.offset + delta).min(Coord::ZERO).max(self.min_offset);
+        let event = match event {
+            e @ Event::ToChild(..) => e,
+            Event::ToCoord(coord, e) => Event::ToCoord(coord - self.offset, e),
+        };
+
+        match self.child.handle(tk, event) {
+            Response::None => Response::None,
+            Response::Unhandled(event) => match event {
+                EventChild::Scroll(delta) => {
+                    let d = match delta {
+                        ScrollDelta::LineDelta(x, y) => Coord(
+                            (-self.scroll_rate * x) as i32,
+                            (self.scroll_rate * y) as i32,
+                        ),
+                        ScrollDelta::PixelDelta(d) => d,
+                    };
+                    let offset = (self.offset + d).min(Coord::ZERO).max(self.min_offset);
+                    if offset != self.offset {
+                        self.offset = offset;
                         tk.redraw(self.id());
                         Response::None
+                    } else {
+                        Response::Unhandled(EventChild::Scroll(delta))
                     }
-                    ev @ _ => self.child.handle(tk, Event::ToChild(id, ev)),
                 }
-            }
-            Event::ToCoord(coord, event) => self
-                .child
-                .handle(tk, Event::ToCoord(coord - self.offset, event)),
+                e @ _ => Response::Unhandled(e),
+            },
+            e @ _ => e,
         }
     }
 }
