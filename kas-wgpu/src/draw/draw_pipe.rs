@@ -14,7 +14,7 @@ use std::f32::consts::FRAC_PI_2;
 use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder, GlyphCruncher, VariedSection};
 
 use kas::draw::{Colour, Draw, Quad, Style, Vec2};
-use kas::geom::Size;
+use kas::geom::{Coord, Rect, Size};
 use kas::theme;
 
 use super::round_pipe::RoundPipe;
@@ -51,7 +51,7 @@ pub trait DrawText {
 
 /// Manager of draw pipes and implementor of [`Draw`]
 pub struct DrawPipe {
-    size: Size,
+    clip_regions: Vec<Rect>,
     round_pipe: RoundPipe,
     square_pipe: SquarePipe,
     glyph_brush: GlyphBrush<'static, ()>,
@@ -76,8 +76,12 @@ impl DrawPipe {
         let glyph_brush =
             GlyphBrushBuilder::using_fonts(theme.get_fonts()).build(device, tex_format);
 
-        DrawPipe {
+        let region = Rect {
+            pos: Coord::ZERO,
             size,
+        };
+        DrawPipe {
+            clip_regions: vec![region],
             square_pipe: SquarePipe::new(device, size, norm),
             round_pipe: RoundPipe::new(device, size, norm),
             glyph_brush,
@@ -86,7 +90,7 @@ impl DrawPipe {
 
     /// Process window resize
     pub fn resize(&mut self, device: &wgpu::Device, size: Size) -> wgpu::CommandBuffer {
-        self.size = size;
+        self.clip_regions[0].size = size;
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
         self.square_pipe.resize(device, &mut encoder, size);
@@ -101,29 +105,44 @@ impl DrawPipe {
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) -> wgpu::CommandBuffer {
-        let rpass_color_attachment = wgpu::RenderPassColorAttachmentDescriptor {
-            attachment: frame_view,
-            resolve_target: None,
-            load_op: wgpu::LoadOp::Clear,
-            store_op: wgpu::StoreOp::Store,
-            clear_color,
-        };
-
         let desc = wgpu::CommandEncoderDescriptor { todo: 0 };
         let mut encoder = device.create_command_encoder(&desc);
+        let mut load_op = wgpu::LoadOp::Clear;
 
-        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            color_attachments: &[rpass_color_attachment],
-            depth_stencil_attachment: None,
-        });
+        // We use a separate render pass for each clipped region.
+        for (pass, region) in self.clip_regions.iter().enumerate() {
+            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                    attachment: frame_view,
+                    resolve_target: None,
+                    load_op: load_op,
+                    store_op: wgpu::StoreOp::Store,
+                    clear_color,
+                }],
+                depth_stencil_attachment: None,
+            });
+            rpass.set_scissor_rect(
+                region.pos.0 as u32,
+                region.pos.1 as u32,
+                region.size.0,
+                region.size.1,
+            );
 
-        self.square_pipe.render(device, &mut rpass);
-        self.round_pipe.render(device, &mut rpass);
-        drop(rpass);
+            self.square_pipe.render(device, pass, &mut rpass);
+            self.round_pipe.render(device, pass, &mut rpass);
+            drop(rpass);
 
+            load_op = wgpu::LoadOp::Load;
+        }
+
+        // Fonts use their own render pass(es).
+        let size = self.clip_regions[0].size;
         self.glyph_brush
-            .draw_queued(device, &mut encoder, frame_view, self.size.0, self.size.1)
+            .draw_queued(device, &mut encoder, frame_view, size.0, size.1)
             .expect("glyph_brush.draw_queued");
+
+        // Keep only first clip region (which is the entire window)
+        self.clip_regions.truncate(1);
 
         encoder.finish()
     }
@@ -135,21 +154,27 @@ impl Draw for DrawPipe {
         self
     }
 
-    #[inline]
-    fn draw_quad(&mut self, quad: Quad, style: Style, col: Colour) {
-        // TODO: support styles
-        let _ = style;
-        self.square_pipe.add_quad(quad, col)
+    fn add_clip_region(&mut self, region: Rect) -> usize {
+        let pass = self.clip_regions.len();
+        self.clip_regions.push(region);
+        pass
     }
 
     #[inline]
-    fn draw_frame(&mut self, outer: Quad, inner: Quad, style: Style, col: Colour) {
+    fn draw_quad(&mut self, pass: usize, quad: Quad, style: Style, col: Colour) {
+        // TODO: support styles
+        let _ = style;
+        self.square_pipe.add_quad(pass, quad, col)
+    }
+
+    #[inline]
+    fn draw_frame(&mut self, pass: usize, outer: Quad, inner: Quad, style: Style, col: Colour) {
         match style {
             Style::Flat => self
                 .square_pipe
-                .add_frame(outer, inner, Vec2::splat(0.0), col),
-            Style::Square(norm) => self.square_pipe.add_frame(outer, inner, norm, col),
-            Style::Round(norm) => self.round_pipe.add_frame(outer, inner, norm, col),
+                .add_frame(pass, outer, inner, Vec2::splat(0.0), col),
+            Style::Square(norm) => self.square_pipe.add_frame(pass, outer, inner, norm, col),
+            Style::Round(norm) => self.round_pipe.add_frame(pass, outer, inner, norm, col),
         }
     }
 }

@@ -150,12 +150,6 @@ impl<OT: 'static> CheckBox<OT> {
         self.state = state;
         self
     }
-
-    /// Whether this checkbox has a handler set on toggle actions.
-    // TODO: this needs to be defined on a trait that the toolkit can access
-    pub fn has_on_toggle(&self) -> bool {
-        TypeId::of::<OT>() != TypeId::of::<()>()
-    }
 }
 
 impl<H> HasBool for CheckBox<H> {

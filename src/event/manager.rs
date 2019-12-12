@@ -179,7 +179,9 @@ impl Manager {
                 return true;
             }
         }
-        assert!(false);
+
+        // We get here if start_touch was never called (e.g. if the touch
+        // started over unused space).
         false
     }
     fn touch_start(&self, id: u64) -> Option<WidgetId> {
@@ -232,15 +234,14 @@ impl Manager {
     /// Note that some event types are not *does not* handled, since for these
     /// events the toolkit must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
-    // TODO: use widget.handle() return value?
     #[cfg(feature = "winit")]
     pub fn handle_winit<W>(widget: &mut W, tk: &mut dyn TkWindow, event: winit::event::WindowEvent)
     where
         W: Widget + Handler<Msg = EmptyMsg> + ?Sized,
     {
         use crate::TkAction;
-        use winit::event::{TouchPhase, WindowEvent::*};
-        // TODO: bind tk.data()
+        use winit::event::{MouseScrollDelta, TouchPhase, WindowEvent::*};
+
         match event {
             // Resized(size) [handled by toolkit]
             // Moved(position)
@@ -350,7 +351,17 @@ impl Manager {
             CursorLeft { .. } => {
                 tk.update_data(&mut |data| data.set_hover(None));
             }
-            // MouseWheel { delta: MouseScrollDelta, phase: TouchPhase, modifiers: ModifiersState, .. },
+            MouseWheel { delta, phase, modifiers, .. } => {
+                let _ = (phase, modifiers); // TODO: do we have a use for these?
+                let ev = EventChild::Scroll(match delta {
+                    MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
+                    MouseScrollDelta::PixelDelta(logical_position) =>
+                        ScrollDelta::PixelDelta(logical_position.to_physical(tk.data().dpi_factor).into()),
+                });
+                if let Some(id) = tk.data().hover {
+                    widget.handle(tk, Event::ToChild(id, ev));
+                }
+            }
             MouseInput {
                 state,
                 button,
@@ -449,6 +460,8 @@ impl Manager {
                         EmptyMsg.into()
                     }
                 }
+                // Currently only handled when intercepted by scroll widgets:
+                EventChild::Scroll(_) => EmptyMsg.into(),
             },
             Event::ToCoord(_, ev) => {
                 match ev {

@@ -51,6 +51,7 @@ pub enum EventChild {
         button: MouseButton,
         modifiers: ModifiersState,
     },
+    Scroll(ScrollDelta),
 }
 
 /// Events addressed by coordinate
@@ -60,4 +61,13 @@ pub enum EventCoord {
     TouchStart(u64),
     TouchMove(u64),
     TouchEnd(u64),
+}
+
+/// Type used by [`EventChild::Scroll`]
+#[derive(Clone, Copy, Debug)]
+pub enum ScrollDelta {
+    /// Scroll a given number of lines
+    LineDelta(f32, f32),
+    /// Scroll a given number of pixels
+    PixelDelta(Coord),
 }

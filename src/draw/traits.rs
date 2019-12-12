@@ -8,6 +8,7 @@
 use std::any::Any;
 
 use super::{Colour, Quad, Vec2};
+use kas::geom::Rect;
 
 /// Style of drawing
 pub enum Style {
@@ -43,14 +44,28 @@ pub trait Draw {
     /// toolkit-specific API.
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
+    /// Add a clip region
+    ///
+    /// Clip regions are cleared each frame and so must be recreated on demand.
+    /// Returns the pass number for this clip region.
+    fn add_clip_region(&mut self, region: Rect) -> usize;
+
     /// Add a rectangle to the draw buffer.
     ///
+    /// The `pass` number indicates in which pass this is drawn. In general,
+    /// only pass `0` is guaranteed to exist; other passes must be explicitly
+    /// created (e.g. through [`Draw::add_clip_region`]).
+    ///
     /// Expected componentwise bounds on input: `q.0 < q.1`.
-    fn draw_quad(&mut self, quad: Quad, style: Style, col: Colour);
+    fn draw_quad(&mut self, pass: usize, quad: Quad, style: Style, col: Colour);
 
     /// Add a frame to the draw buffer.
     ///
+    /// The `pass` number indicates in which pass this is drawn. In general,
+    /// only pass `0` is guaranteed to exist; other passes must be explicitly
+    /// created (e.g. through [`Draw::add_clip_region`]).
+    ///
     /// Expected componentwise bounds on input:
     /// `outer.0 < inner.0 < inner.1 < outer.1` and `-1 ≤ norm ≤ 1`.
-    fn draw_frame(&mut self, outer: Quad, inner: Quad, style: Style, col: Colour);
+    fn draw_frame(&mut self, pass: usize, outer: Quad, inner: Quad, style: Style, col: Colour);
 }

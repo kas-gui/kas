@@ -1,0 +1,110 @@
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License in the LICENSE-APACHE file or at:
+//     https://www.apache.org/licenses/LICENSE-2.0
+
+//! Scroll region
+
+use std::fmt::Debug;
+
+use crate::event::{EmptyMsg, Event, EventChild, Handler, Manager, ScrollDelta};
+use crate::layout::{AxisInfo, SizeRules};
+use crate::macros::Widget;
+use crate::theme::{DrawHandle, SizeHandle, TextClass};
+use crate::{CoreData, TkWindow, Widget, WidgetCore};
+use kas::geom::{Coord, Rect, Size};
+
+/// A scrollable region
+#[widget]
+#[derive(Clone, Debug, Default, Widget)]
+pub struct ScrollRegion<W: Widget> {
+    #[core]
+    core: CoreData,
+    offset: Coord,
+    min_child_size: Size,
+    min_offset: Coord,
+    scroll_rate: f32,
+    #[widget]
+    child: W,
+}
+
+impl<W: Widget> Widget for ScrollRegion<W> {
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        let mut rules = self.child.size_rules(size_handle, axis);
+        if !axis.vertical() {
+            self.min_child_size.0 = rules.min_size();
+        } else {
+            self.min_child_size.1 = rules.min_size();
+        }
+        let line_height = size_handle.line_height(TextClass::Label);
+        self.scroll_rate = 3.0 * line_height as f32;
+        rules.reduce_min_to(line_height);
+        rules
+    }
+
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+        self.core_data_mut().rect = rect;
+        let size = rect.size.max(self.min_child_size);
+        self.child.set_rect(
+            size_handle,
+            Rect {
+                pos: rect.pos,
+                size,
+            },
+        );
+        self.min_offset = Coord::from(rect.size) - Coord::from(size);
+        self.offset = self.offset.min(Coord::ZERO).max(self.min_offset);
+    }
+
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &Manager) {
+        draw_handle.clip_region(self.core.rect, self.offset, &mut |handle| {
+            self.child.draw(handle, ev_mgr)
+        });
+    }
+}
+
+impl<W: Widget> ScrollRegion<W> {
+    /// Construct a new scroll region around a child widget
+    pub fn new(child: W) -> Self {
+        ScrollRegion {
+            core: Default::default(),
+            offset: Coord::ZERO,
+            min_offset: Coord::ZERO,
+            min_child_size: Size::ZERO,
+            scroll_rate: 30.0,
+            child,
+        }
+    }
+}
+
+impl<W: Widget + Handler> Handler for ScrollRegion<W> {
+    type Msg = <W as Handler>::Msg;
+
+    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Self::Msg {
+        match event {
+            Event::ToChild(id, event) => {
+                // Intercept scroll events.
+                // TODO: we may want to revise this later, e.g. pass through to
+                // inner-most widget then handle through the return value.
+                match event {
+                    EventChild::Scroll(delta) => {
+                        let delta = match delta {
+                            ScrollDelta::LineDelta(x, y) => Coord(
+                                (-self.scroll_rate * x) as i32,
+                                (self.scroll_rate * y) as i32,
+                            ),
+                            ScrollDelta::PixelDelta(delta) => delta,
+                        };
+                        self.offset = (self.offset + delta).min(Coord::ZERO).max(self.min_offset);
+                        tk.redraw(self.id());
+                        EmptyMsg.into()
+                    }
+                    ev @ _ => self.child.handle(tk, Event::ToChild(id, ev)),
+                }
+            }
+            Event::ToCoord(coord, event) => self
+                .child
+                .handle(tk, Event::ToCoord(coord - self.offset, event)),
+        }
+    }
+}

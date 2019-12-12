@@ -15,9 +15,9 @@ default = ["clipboard"]
 [dependencies]
 kas = { path = "..", version = "0.0.2", features = ["winit"] }
 glsl-to-spirv = "0.1"
-winit = "=0.20.0-alpha4"
+winit = "=0.20.0-alpha5"
 wgpu = "0.4.0"
-wgpu_glyph = "0.5.0"
+wgpu_glyph = "0.6.0"
 font-kit = { version = "0.4.0", optional = true }
 lazy_static = "1.4.0"
 

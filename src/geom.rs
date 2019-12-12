@@ -15,6 +15,18 @@ pub struct Coord(pub i32, pub i32);
 impl Coord {
     /// A coord of `(0, 0)`
     pub const ZERO: Coord = Coord(0, 0);
+
+    /// Return the minimum, componentwise
+    #[inline]
+    pub fn min(self, other: Self) -> Self {
+        Coord(self.0.min(other.0), self.1.min(other.1))
+    }
+
+    /// Return the maximum, componentwise
+    #[inline]
+    pub fn max(self, other: Self) -> Self {
+        Coord(self.0.max(other.0), self.1.max(other.1))
+    }
 }
 
 impl From<(i32, i32)> for Coord {
@@ -24,12 +36,28 @@ impl From<(i32, i32)> for Coord {
     }
 }
 
+impl From<Size> for Coord {
+    #[inline]
+    fn from(size: Size) -> Coord {
+        Coord(size.0 as i32, size.1 as i32)
+    }
+}
+
 impl std::ops::Add for Coord {
     type Output = Self;
 
     #[inline]
     fn add(self, other: Self) -> Self {
         Coord(self.0 + other.0, self.1 + other.1)
+    }
+}
+
+impl std::ops::Sub for Coord {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, other: Self) -> Self {
+        Coord(self.0 - other.0, self.1 - other.1)
     }
 }
 
@@ -75,15 +103,22 @@ impl Size {
     /// A size of `(0, 0)`
     pub const ZERO: Size = Size(0, 0);
 
-    /// Maximum possible size
-    // TODO: what value do we want to use here? Note that current layout logic
-    // can add together multiple copies of this value.
-    pub const MAX: Size = Size(0xFFFF, 0xFFFF);
-
     /// Uniform size in each dimension
     #[inline]
     pub const fn uniform(v: u32) -> Self {
         Size(v, v)
+    }
+
+    /// Return the minimum, componentwise
+    #[inline]
+    pub fn min(self, other: Self) -> Self {
+        Size(self.0.min(other.0), self.1.min(other.1))
+    }
+
+    /// Return the maximum, componentwise
+    #[inline]
+    pub fn max(self, other: Self) -> Self {
+        Size(self.0.max(other.0), self.1.max(other.1))
     }
 }
 
@@ -148,7 +183,7 @@ impl std::ops::SubAssign for Size {
 #[derive(Clone, Copy, Default, Debug)]
 pub struct Rect {
     pub pos: Coord,
-    pub size: Size, // TODO: more efficient to store pos+size ?
+    pub size: Size,
 }
 
 impl Rect {
@@ -159,5 +194,18 @@ impl Rect {
             && c.0 < self.pos.0 + (self.size.0 as i32)
             && c.1 >= self.pos.1
             && c.1 < self.pos.1 + (self.size.1 as i32)
+    }
+}
+
+impl std::ops::Add<Coord> for Rect {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, offset: Coord) -> Self {
+        let pos = self.pos + offset;
+        Rect {
+            pos,
+            size: self.size,
+        }
     }
 }
