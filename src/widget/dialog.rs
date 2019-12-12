@@ -8,16 +8,15 @@
 //! KAS dialog boxes are pre-configured windows, usually allowing some
 //! customisation.
 
-use crate::event::{Callback, EmptyMsg};
+use crate::event::{Callback, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout;
-use crate::macros::{EmptyMsg, Widget};
+use crate::macros::{VoidMsg, Widget};
 use crate::widget::{Label, TextButton};
 use crate::{CoreData, TkAction, TkWindow, Window};
 
-#[derive(Clone, Debug, EmptyMsg)]
+#[derive(Clone, Debug, VoidMsg)]
 enum DialogButton {
-    None,
     Close,
 }
 
@@ -46,12 +45,11 @@ impl MessageBox {
         }
     }
 
-    fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: DialogButton) -> EmptyMsg {
+    fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: DialogButton) -> Response<VoidMsg> {
         match msg {
-            DialogButton::None => (),
             DialogButton::Close => tk.send_action(TkAction::Close),
         };
-        EmptyMsg
+        Response::None
     }
 }
 

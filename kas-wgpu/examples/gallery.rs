@@ -6,14 +6,13 @@
 //! Gallery of all widgets
 #![feature(proc_macro_hygiene)]
 
-use kas::event::EmptyMsg;
-use kas::macros::{make_widget, EmptyMsg};
+use kas::event::{VoidMsg, VoidResponse};
+use kas::macros::{make_widget, VoidMsg};
 use kas::widget::*;
 use kas::TkWindow;
 
-#[derive(Clone, Debug, EmptyMsg)]
+#[derive(Clone, Debug, VoidMsg)]
 enum Item {
-    None,
     Button,
     Check(bool),
     Edit(String),
@@ -45,10 +44,10 @@ fn main() -> Result<(), winit::error::OsError> {
     };
 
     let window = Window::new(make_widget! {
-        vertical => EmptyMsg;
+        vertical => VoidMsg;
         struct {
             #[widget] _ = make_widget! {
-                frame => EmptyMsg;
+                frame => VoidMsg;
                 struct {
                     #[widget] _ = Label::from("Widget Gallery"),
                 }
@@ -57,15 +56,14 @@ fn main() -> Result<(), winit::error::OsError> {
         }
         impl {
             fn activations(&mut self, _: &mut dyn TkWindow, item: Item)
-                -> EmptyMsg
+                -> VoidResponse
             {
                 match item {
-                    Item::None => (),
                     Item::Button => println!("Clicked!"),
                     Item::Check(b) => println!("Checkbox: {}", b),
                     Item::Edit(s) => println!("Edited: {}", s),
                 };
-                EmptyMsg
+                VoidResponse::None
             }
         }
     });

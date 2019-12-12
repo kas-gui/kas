@@ -7,7 +7,7 @@
 
 use std::fmt::{self, Debug};
 
-use crate::event::{Callback, EmptyMsg, Event, Handler};
+use crate::event::{Callback, Event, Handler, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout::{self};
 use crate::macros::Widget;
@@ -80,22 +80,16 @@ impl<W: Widget> Window<W> {
     }
 }
 
-impl<W> Handler for Window<W>
-where
-    W: Widget + Handler<Msg = EmptyMsg> + 'static,
-{
-    type Msg = EmptyMsg;
+impl<W: Widget + Handler<Msg = VoidMsg> + 'static> Handler for Window<W> {
+    type Msg = VoidMsg;
 
-    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> EmptyMsg {
+    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
         // The window itself doesn't handle events, so we can just pass through
         self.w.handle(tk, event)
     }
 }
 
-impl<W> kas::Window for Window<W>
-where
-    W: Widget + Handler<Msg = EmptyMsg> + 'static,
-{
+impl<W: Widget + Handler<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
         layout::solve(self, tk, size);
     }

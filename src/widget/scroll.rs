@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use crate::event::{EmptyMsg, Event, EventChild, Handler, Manager, ScrollDelta};
+use crate::event::{Event, EventChild, Handler, Manager, Response, ScrollDelta};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
@@ -80,7 +80,7 @@ impl<W: Widget> ScrollRegion<W> {
 impl<W: Widget + Handler> Handler for ScrollRegion<W> {
     type Msg = <W as Handler>::Msg;
 
-    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Self::Msg {
+    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
         match event {
             Event::ToChild(id, event) => {
                 // Intercept scroll events.
@@ -97,7 +97,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                         };
                         self.offset = (self.offset + delta).min(Coord::ZERO).max(self.min_offset);
                         tk.redraw(self.id());
-                        EmptyMsg.into()
+                        Response::None
                     }
                     ev @ _ => self.child.handle(tk, Event::ToChild(id, ev)),
                 }

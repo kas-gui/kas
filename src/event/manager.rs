@@ -237,16 +237,17 @@ impl Manager {
     #[cfg(feature = "winit")]
     pub fn handle_winit<W>(widget: &mut W, tk: &mut dyn TkWindow, event: winit::event::WindowEvent)
     where
-        W: Widget + Handler<Msg = EmptyMsg> + ?Sized,
+        W: Widget + Handler<Msg = VoidMsg> + ?Sized,
     {
         use crate::TkAction;
         use winit::event::{MouseScrollDelta, TouchPhase, WindowEvent::*};
 
-        match event {
+        let response = match event {
             // Resized(size) [handled by toolkit]
             // Moved(position)
             CloseRequested => {
                 tk.send_action(TkAction::Close);
+                Response::None
             }
             // Destroyed
             // DroppedFile(PathBuf),
@@ -255,7 +256,9 @@ impl Manager {
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = tk.data().char_focus {
                     let ev = EventChild::Action(Action::ReceivedCharacter(c));
-                    widget.handle(tk, Event::ToChild(id, ev));
+                    widget.handle(tk, Event::ToChild(id, ev))
+                } else {
+                    Response::None
                 }
             }
             // Focused(bool),
@@ -268,17 +271,19 @@ impl Manager {
                                 data.char_focus = None;
                                 true
                             });
+                            Response::None
                         }
-                        _ => (),
+                        _ => Response::None,
                     },
                     (scancode, ElementState::Pressed, Some(vkey)) if !char_focus => match vkey {
                         VirtualKeyCode::Tab => {
                             tk.update_data(&mut |data| data.next_key_focus(widget.as_widget_mut()));
+                            Response::None
                         }
                         VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
                             if let Some(id) = tk.data().key_focus {
                                 let ev = EventChild::Action(Action::Activate);
-                                widget.handle(tk, Event::ToChild(id, ev));
+                                let r = widget.handle(tk, Event::ToChild(id, ev));
 
                                 // Add to key_events for visual feedback
                                 tk.update_data(&mut |data| {
@@ -290,7 +295,8 @@ impl Manager {
                                     data.key_events.push((scancode, id));
                                     true
                                 });
-                            }
+                                r
+                            } else { Response::None }
                         }
                         VirtualKeyCode::Escape => {
                             tk.update_data(&mut |data| {
@@ -301,11 +307,12 @@ impl Manager {
                                     false
                                 }
                             });
+                            Response::None
                         }
                         vkey @ _ => {
                             if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
                                 let ev = EventChild::Action(Action::Activate);
-                                widget.handle(tk, Event::ToChild(id, ev));
+                              let r =  widget.handle(tk, Event::ToChild(id, ev));
 
                                 tk.update_data(&mut |data| {
                                     for item in &data.key_events {
@@ -316,7 +323,8 @@ impl Manager {
                                     data.key_events.push((scancode, id));
                                     true
                                 });
-                            }
+                                r
+                            } else { Response::None }
                         }
                     },
                     (scancode, ElementState::Released, _) => {
@@ -334,8 +342,9 @@ impl Manager {
                             data.key_events.remove(r);
                             true
                         });
+                        Response::None
                     }
-                    _ => (),
+                    _ => Response::None,
                 }
             }
             CursorMoved {
@@ -345,11 +354,12 @@ impl Manager {
             } => {
                 let coord = position.to_physical(tk.data().dpi_factor).into();
                 let ev = EventCoord::CursorMoved { modifiers };
-                widget.handle(tk, Event::ToCoord(coord, ev));
+                widget.handle(tk, Event::ToCoord(coord, ev))
             }
             // CursorEntered { .. },
             CursorLeft { .. } => {
                 tk.update_data(&mut |data| data.set_hover(None));
+                Response::None
             }
             MouseWheel { delta, phase, modifiers, .. } => {
                 let _ = (phase, modifiers); // TODO: do we have a use for these?
@@ -359,7 +369,9 @@ impl Manager {
                         ScrollDelta::PixelDelta(logical_position.to_physical(tk.data().dpi_factor).into()),
                 });
                 if let Some(id) = tk.data().hover {
-                    widget.handle(tk, Event::ToChild(id, ev));
+                    widget.handle(tk, Event::ToChild(id, ev))
+                } else {
+                    Response::None
                 }
             }
             MouseInput {
@@ -382,13 +394,14 @@ impl Manager {
                     }
                 });
                 if let Some(id) = tk.data().hover {
-                    widget.handle(tk, Event::ToChild(id, ev));
+                    widget.handle(tk, Event::ToChild(id, ev))
                 } else {
                     // This happens for example on click-release when the
                     // cursor is no longer over the window.
                     if button == MouseButton::Left && state == ElementState::Released {
                         tk.update_data(&mut |data| data.set_click_start(None));
                     }
+                    Response::None
                 }
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
@@ -399,11 +412,11 @@ impl Manager {
                 match touch.phase {
                     TouchPhase::Started => {
                         let ev = EventCoord::TouchStart(touch.id);
-                        widget.handle(tk, Event::ToCoord(coord, ev));
+                        widget.handle(tk, Event::ToCoord(coord, ev))
                     }
                     TouchPhase::Moved => {
                         let ev = EventCoord::TouchMove(touch.id);
-                        widget.handle(tk, Event::ToCoord(coord, ev));
+                        widget.handle(tk, Event::ToCoord(coord, ev))
                     }
                     TouchPhase::Ended => {
                         tk.update_data(&mut |data| {
@@ -412,18 +425,25 @@ impl Manager {
                             r
                         });
                         let ev = EventCoord::TouchEnd(touch.id);
-                        widget.handle(tk, Event::ToCoord(coord, ev));
+                        widget.handle(tk, Event::ToCoord(coord, ev))
                     }
                     TouchPhase::Cancelled => {
                         tk.update_data(&mut |data| data.clear_touch(touch.id));
+                        Response::None
                     }
                 }
             }
             // HiDpiFactorChanged(factor) [handled by toolkit]
             _ => {
                 // println!("Unhandled window event: {:?}", event);
+                Response::None
             }
-        }
+        };
+
+        match response {
+            Response::None => (),
+            Response::Msg(_) => unreachable!(),
+        };
     }
 
     /// Generic handler for low-level events
@@ -431,7 +451,7 @@ impl Manager {
         widget: &mut W,
         tk: &mut dyn TkWindow,
         event: Event,
-    ) -> <W as Handler>::Msg
+    ) -> Response<<W as Handler>::Msg>
     where
         W: Handler + ?Sized,
     {
@@ -444,45 +464,45 @@ impl Manager {
                         match state {
                             ElementState::Pressed => {
                                 tk.update_data(&mut |data| data.set_click_start(Some(w_id)));
-                                EmptyMsg.into()
+                                Response::None
                             }
                             ElementState::Released => {
                                 let r = if tk.data().click_start == Some(w_id) {
                                     widget.handle_action(tk, Action::Activate)
                                 } else {
-                                    EmptyMsg.into()
+                                    Response::None
                                 };
                                 tk.update_data(&mut |data| data.set_click_start(None));
                                 r
                             }
                         }
                     } else {
-                        EmptyMsg.into()
+                        Response::None
                     }
                 }
                 // Currently only handled when intercepted by scroll widgets:
-                EventChild::Scroll(_) => EmptyMsg.into(),
+                EventChild::Scroll(_) => Response::None,
             },
             Event::ToCoord(_, ev) => {
                 match ev {
                     EventCoord::CursorMoved { .. } => {
                         // We can assume the pointer is over this widget
                         tk.update_data(&mut |data| data.set_hover(Some(w_id)));
-                        EmptyMsg.into()
+                        Response::None
                     }
                     EventCoord::TouchStart(id) => {
                         tk.update_data(&mut |data| data.start_touch(id, w_id));
-                        EmptyMsg.into()
+                        Response::None
                     }
                     EventCoord::TouchMove(id) => {
                         tk.update_data(&mut |data| data.touch_move(id, w_id));
-                        EmptyMsg.into()
+                        Response::None
                     }
                     EventCoord::TouchEnd(id) => {
                         let r = if tk.data().touch_start(id) == Some(w_id) {
                             widget.handle_action(tk, Action::Activate)
                         } else {
-                            EmptyMsg.into()
+                            Response::None
                         };
                         tk.update_data(&mut |data| data.clear_touch(id));
                         r
