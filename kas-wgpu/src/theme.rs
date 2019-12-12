@@ -368,7 +368,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     }
 
     fn checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState) {
-        let pos = Vec2::from(pos);
+        let pos = Vec2::from(pos + self.offset);
         let size = 2.0 * (self.window.frame_size + self.window.margin) + self.window.font_scale;
         let size = Vec2::splat(size);
         let mut quad = Quad(pos, pos + size);
