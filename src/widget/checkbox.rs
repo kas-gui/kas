@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{HasBool, HasText};
-use crate::event::{self, err_unhandled, Action, Handler, Response, VoidMsg};
+use crate::event::{self, unhandled_action, Action, Handler, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
@@ -182,7 +182,7 @@ impl Handler for CheckBox<()> {
                 tk.redraw(self.id());
                 Response::None
             }
-            a @ _ => err_unhandled(a),
+            a @ _ => unhandled_action(a),
         }
     }
 }
@@ -197,7 +197,7 @@ impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
                 tk.redraw(self.id());
                 ((self.on_toggle)(self.state)).into()
             }
-            a @ _ => err_unhandled(a),
+            a @ _ => unhandled_action(a),
         }
     }
 }

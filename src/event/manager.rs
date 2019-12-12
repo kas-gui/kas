@@ -442,6 +442,9 @@ impl Manager {
 
         match response {
             Response::None => (),
+            Response::Unhandled(_) => {
+                // we can safely ignore unhandled events here
+            }
             Response::Msg(_) => unreachable!(),
         };
     }
@@ -459,7 +462,11 @@ impl Manager {
         match event {
             Event::ToChild(_, ev) => match ev {
                 EventChild::Action(action) => widget.handle_action(tk, action),
-                EventChild::MouseInput { state, button, .. } => {
+                EventChild::MouseInput {
+                    state,
+                    button,
+                    modifiers,
+                } => {
                     if button == MouseButton::Left {
                         match state {
                             ElementState::Pressed => {
@@ -470,18 +477,26 @@ impl Manager {
                                 let r = if tk.data().click_start == Some(w_id) {
                                     widget.handle_action(tk, Action::Activate)
                                 } else {
-                                    Response::None
+                                    Response::Unhandled(EventChild::MouseInput {
+                                        state,
+                                        button,
+                                        modifiers,
+                                    })
                                 };
                                 tk.update_data(&mut |data| data.set_click_start(None));
                                 r
                             }
                         }
                     } else {
-                        Response::None
+                        Response::Unhandled(EventChild::MouseInput {
+                            state,
+                            button,
+                            modifiers,
+                        })
                     }
                 }
                 // Currently only handled when intercepted by scroll widgets:
-                EventChild::Scroll(_) => Response::None,
+                e @ EventChild::Scroll(_) => Response::Unhandled(e),
             },
             Event::ToCoord(_, ev) => {
                 match ev {

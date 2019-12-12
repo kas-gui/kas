@@ -131,7 +131,7 @@
 //! A longer example, including derivation of the [`Handler`] trait:
 //!
 //! ```
-//! use kas::event::{Handler, VoidResponse, VoidMsg, err_unhandled};
+//! use kas::event::{Handler, VoidResponse, VoidMsg};
 //! use kas::macros::Widget;
 //! use kas::{CoreData, LayoutData, TkWindow, Widget};
 //!

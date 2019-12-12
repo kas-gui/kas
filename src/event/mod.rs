@@ -47,31 +47,13 @@ pub struct VoidMsg;
 /// Alias for `Response<VoidMsg>`
 pub type VoidResponse = Response<VoidMsg>;
 
-/// Mark explicitly ignored events.
+/// Consume an unhandled [`Action`] and return `Response::None`.
 ///
 /// This is an error, meaning somehow an event has been sent to a widget which
 /// does not support events of that type.
 /// It is safe to ignore this error, but this function panics in debug builds.
-pub fn err_unhandled<M: Debug, N>(m: M) -> Response<N> {
-    debug_assert!(
-        false,
-        "Handler::handle: event not handled by widget: {:?}",
-        m
-    );
-    println!("Handler::handle: event not handled by widget: {:?}", m);
-    Response::None
-}
-
-/// Notify of an incorrect widget identifier.
-///
-/// This is an error, meaning somehow an event has been sent to a
-/// [`WidgetId`] which is not a child of the initial window/widget.
-/// It is safe to ignore this error, but this function panics in debug builds.
-///
-/// [`WidgetId`]: crate::WidgetId
-pub fn err_num<N>() -> Response<N> {
-    debug_assert!(false, "Handler::handle: bad WidgetId");
-    println!("Handler::handle: bad widget WidgetId");
+pub fn unhandled_action<A: Debug, N>(a: A) -> Response<N> {
+    debug_assert!(false, "unhandled_action: {:?}", a);
     Response::None
 }
 

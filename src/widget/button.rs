@@ -8,7 +8,7 @@
 use std::fmt::Debug;
 
 use crate::class::HasText;
-use crate::event::{self, err_unhandled, Action, Handler, Response, VirtualKeyCode};
+use crate::event::{self, unhandled_action, Action, Handler, Response, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
@@ -108,7 +108,7 @@ impl<M: Clone + Debug> Handler for TextButton<M> {
     fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<M> {
         match action {
             Action::Activate => self.msg.clone().into(),
-            a @ _ => err_unhandled(a),
+            a @ _ => unhandled_action(a),
         }
     }
 }

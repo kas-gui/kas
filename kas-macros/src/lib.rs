@@ -146,10 +146,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             };
             // TODO(opt): it is possible to code more efficient search strategies
             ev_to_num.append_all(quote! {
-                else if *id <= self.#ident.id() {
+                if *id <= self.#ident.id() {
                     let r = self.#ident.handle(_tk, event);
                     #handler
-                }
+                } else
             });
             ev_to_coord.append_all(quote! {
                 if self.#ident.rect().contains(*coord) {
@@ -169,14 +169,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 {
                     use kas::{WidgetCore, event::{Event, Response}};
                     match &event {
-                        Event::ToChild(id, ..) => {
-                            if *id == self.id() {
-                                // we may want to allow custom handlers on self here?
-                                kas::event::err_unhandled(event)
-                            }
-                            #ev_to_num
-                            else {
-                                kas::event::err_num()
+                        Event::ToChild(id, e) => {
+                            #ev_to_num {
+                                debug_assert!(*id == self.id(), "Handler::handle: bad WidgetId");
+                                Response::Unhandled(e.clone())
                             }
                         }
                         Event::ToCoord(coord, ..) => {

@@ -5,6 +5,8 @@
 
 //! Event handling: Response type
 
+use super::EventChild;
+
 /// Response type from [`Handler::handle`].
 ///
 /// This type wraps [`Handler::Msg`] allowing both custom messages and toolkit
@@ -12,11 +14,13 @@
 ///
 /// [`Handler::handle`]: super::Handler::handle
 /// [`Handler::Msg`]: super::Handler::Msg
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 #[must_use]
 pub enum Response<M> {
     /// No action
     None,
+    /// Unhandled input events get returned back up the widget tree
+    Unhandled(EventChild),
     /// Custom message type
     Msg(M),
 }
@@ -33,7 +37,8 @@ impl<M> Response<M> {
     where
         M: From<N>,
     {
-        r.try_into().unwrap_or_else(|msg| Response::Msg(M::from(msg)))
+        r.try_into()
+            .unwrap_or_else(|msg| Response::Msg(M::from(msg)))
     }
 
     /// Map one `Response` type into another
@@ -54,6 +59,7 @@ impl<M> Response<M> {
         use Response::*;
         match r {
             None => Ok(None),
+            Unhandled(e) => Ok(Unhandled(e)),
             Msg(m) => Err(m),
         }
     }

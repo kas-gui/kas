@@ -17,7 +17,7 @@ use crate::geom::Coord;
 use crate::WidgetId;
 
 /// High-level actions supported by widgets
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Action {
     /// Widget activation, for example clicking a button or toggling a check-box
     Activate,
@@ -29,7 +29,7 @@ pub enum Action {
 /// unknown.
 ///
 /// These events are segregated by delivery method.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Event {
     /* NOTE: it's tempting to add this, but we have no model for returning a
      * response from multiple recipients and no use-case.
@@ -43,7 +43,7 @@ pub enum Event {
 }
 
 /// Events addressed to a child by [`WidgetId`]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum EventChild {
     Action(Action),
     MouseInput {
@@ -55,7 +55,7 @@ pub enum EventChild {
 }
 
 /// Events addressed by coordinate
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum EventCoord {
     CursorMoved { modifiers: ModifiersState },
     TouchStart(u64),
@@ -64,7 +64,7 @@ pub enum EventCoord {
 }
 
 /// Type used by [`EventChild::Scroll`]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum ScrollDelta {
     /// Scroll a given number of lines
     LineDelta(f32, f32),
