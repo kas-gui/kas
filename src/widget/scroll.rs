@@ -156,7 +156,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                 }
             }
             Response::Unhandled(Event::PressStart { source, coord }) if source.is_primary() => {
-                tk.update_data(&mut |data| data.request_press_grab(source, self.id(), coord));
+                tk.update_data(&mut |data| data.request_press_grab(source, self, coord));
                 Response::None
             }
             e @ _ => e,

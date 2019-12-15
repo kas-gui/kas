@@ -187,6 +187,8 @@ impl Manager {
 
     /// Request a mouse grab on the given input source
     ///
+    /// Also adjusts keyboard focus
+    ///
     /// If successful, corresponding move/end events will be forwarded to the
     /// given `w_id`. The grab automatically ends after the end event. Since
     /// these events are *requested*, the widget should consume them even if
@@ -198,9 +200,17 @@ impl Manager {
     pub fn request_press_grab(
         &mut self,
         source: PressSource,
-        w_id: WidgetId,
+        widget: &dyn Widget,
         coord: Coord,
     ) -> bool {
+        let w_id = widget.id();
+        if widget.allow_focus() {
+            if self.key_focus.is_some() {
+                self.key_focus = Some(w_id);
+            }
+            self.char_focus = None;
+        }
+
         match source {
             PressSource::Mouse(button) => {
                 if self.mouse_grab.is_none() {
@@ -280,6 +290,9 @@ impl Manager {
     }
 
     pub(crate) fn set_char_focus(&mut self, id: WidgetId) -> bool {
+        if self.key_focus.is_some() {
+            self.key_focus = Some(id);
+        }
         self.char_focus = Some(id);
         true
     }
@@ -459,16 +472,6 @@ impl Manager {
                 let coord = tk.data().last_mouse_coord();
                 let source = PressSource::Mouse(button);
 
-                // Release character grab
-                tk.update_data(&mut |data| {
-                    if data.char_focus.is_some() && data.char_focus != data.hover {
-                        data.char_focus = None;
-                        true
-                    } else {
-                        false
-                    }
-                });
-
                 let r = if let Some((grab_id, _)) = tk.data().mouse_grab() {
                     // Mouse grab active: send events there
                     let ev = match state {
@@ -488,7 +491,6 @@ impl Manager {
                 } else {
                     // This happens for example on click-release when the
                     // cursor is no longer over the window.
-                    // TODO: issue Event::PressEnd or PressCancel?
                     Response::None
                 };
                 if state == ElementState::Released {
@@ -522,12 +524,6 @@ impl Manager {
                         }
                     }
                     TouchPhase::Ended => {
-                        // TODO: when to remove char focus?
-                        tk.update_data(&mut |data| {
-                            let r = data.char_focus.is_some();
-                            data.char_focus = None;
-                            r
-                        });
                         if let Some(PressEvent { start_id, cur_id, .. }) = tk.data().touch_grab(touch.id) {
                             let action = Event::PressEnd {
                                 source,

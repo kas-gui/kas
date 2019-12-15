@@ -75,7 +75,9 @@ impl Manager {
             Event::Action(action) => widget.handle_action(tk, action),
             Event::Identify => Response::Identify(widget.id()),
             Event::PressStart { source, coord } if activable && source.is_primary() => {
-                tk.update_data(&mut |data| data.request_press_grab(source, widget.id(), coord));
+                tk.update_data(&mut |data| {
+                    data.request_press_grab(source, widget.as_widget(), coord)
+                });
                 Response::None
             }
             Event::PressMove { .. } if activable => {
