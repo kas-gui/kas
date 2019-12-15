@@ -56,6 +56,7 @@ mod callback;
 #[cfg(not(feature = "winit"))]
 mod enums;
 mod events;
+mod handler;
 mod manager;
 mod response;
 
@@ -65,12 +66,11 @@ use std::fmt::Debug;
 #[cfg(feature = "winit")]
 pub use winit::event::{MouseButton, VirtualKeyCode};
 
-use crate::{TkWindow, Widget};
-
 pub use callback::Callback;
 #[cfg(not(feature = "winit"))]
 pub use enums::{MouseButton, VirtualKeyCode};
 pub use events::*;
+pub use handler::Handler;
 pub use manager::{HighlightState, Manager};
 pub use response::Response;
 
@@ -87,46 +87,3 @@ pub struct VoidMsg;
 
 /// Alias for `Response<VoidMsg>`
 pub type VoidResponse = Response<VoidMsg>;
-
-/// Event-handling aspect of a widget.
-///
-/// This is a companion trait to [`Widget`]. It can (optionally) be implemented
-/// by the `derive(Widget)` macro, or can be implemented manually.
-///
-/// [`Widget`]: crate::Widget
-pub trait Handler: Widget {
-    /// Type of message returned by this handler.
-    ///
-    /// This mechanism allows type-safe handling of user-defined responses to handled actions.
-    /// For example, a user may define a control panel where each button returns a unique code,
-    /// or a configuration editor may return a full copy of the new configuration on completion.
-    type Msg;
-
-    /// Handle a high-level "action" and return a user-defined message.
-    ///
-    /// Widgets should handle any events applicable to themselves here, and
-    /// return all other events via [`Response::Unhandled`].
-    #[inline]
-    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<Self::Msg> {
-        Response::Unhandled(EventChild::Action(action))
-    }
-
-    /// Handle a low-level event.
-    ///
-    /// Most non-parent widgets will not need to implement this method manually.
-    /// The default implementation (which wraps [`Manager::handle_generic`])
-    /// forwards high-level events via [`Handler::handle_action`].
-    ///
-    /// Parent widgets should forward events to the appropriate child widget,
-    /// translating event coordinates where applicable. Unused events should be
-    /// handled (directly or through [`Manager::handle_generic`]) or returned
-    /// via [`Response::Unhandled`]. The return-value from child handlers may
-    /// be intercepted in order to handle as-yet-unhandled events.
-    ///
-    /// Additionally, this method allows lower-level interpretation of some
-    /// events, e.g. more direct access to mouse inputs.
-    #[inline]
-    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
-        Manager::handle_generic(self, tk, event)
-    }
-}

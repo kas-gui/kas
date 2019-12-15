@@ -9,7 +9,7 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use super::*;
 use crate::geom::Coord;
-use crate::{TkWindow, Widget, WidgetId};
+use crate::{Widget, WidgetId};
 
 /// Highlighting state of a widget
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
@@ -289,8 +289,11 @@ impl Manager {
     /// events the toolkit must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(feature = "winit")]
-    pub fn handle_winit<W>(widget: &mut W, tk: &mut dyn TkWindow, event: winit::event::WindowEvent)
-    where
+    pub fn handle_winit<W>(
+        widget: &mut W,
+        tk: &mut dyn crate::TkWindow,
+        event: winit::event::WindowEvent,
+    ) where
         W: Widget + Handler<Msg = VoidMsg> + ?Sized,
     {
         use crate::TkAction;
@@ -560,50 +563,5 @@ impl Manager {
             }
             Response::Msg(_) => unreachable!(),
         };
-    }
-
-    /// Generic handler for low-level events passed to leaf widgets
-    pub fn handle_generic<W>(
-        widget: &mut W,
-        tk: &mut dyn TkWindow,
-        event: Event,
-    ) -> Response<<W as Handler>::Msg>
-    where
-        W: Handler + ?Sized,
-    {
-        match event {
-            Event::ToChild(_, ev) | Event::ToCoord(_, ev) => match ev {
-                EventChild::Action(action) => widget.handle_action(tk, action),
-                EventChild::Identify => Response::Identify(widget.id()),
-                ev @ _ => Response::Unhandled(ev),
-            },
-        }
-    }
-
-    /// Handler for low-level events passed to leaf widgets, supporting
-    /// activation via mouse and touch.
-    // TODO: this will likely be replaced with some more generic handler
-    pub fn handle_activable<W>(
-        widget: &mut W,
-        tk: &mut dyn TkWindow,
-        event: Event,
-    ) -> Response<<W as Handler>::Msg>
-    where
-        W: Handler + ?Sized,
-    {
-        match event {
-            Event::ToChild(_, ev) | Event::ToCoord(_, ev) => match ev {
-                EventChild::Action(action) => widget.handle_action(tk, action),
-                EventChild::Identify => Response::Identify(widget.id()),
-                EventChild::PressStart { source, coord } if source.is_primary() => {
-                    tk.update_data(&mut |data| data.request_press_grab(source, widget.id(), coord));
-                    Response::None
-                }
-                EventChild::PressEnd { start_id, .. } if start_id == Some(widget.id()) => {
-                    widget.handle_action(tk, Action::Activate)
-                }
-                ev @ _ => Response::Unhandled(ev),
-            },
-        }
     }
 }
