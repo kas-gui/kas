@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{HasBool, HasText};
-use crate::event::{self, Action, Address, Event, Handler, Manager, Response, VoidMsg};
+use crate::event::{self, Action, Handler, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
@@ -175,6 +175,11 @@ impl<H> HasText for CheckBox<H> {
 impl Handler for CheckBox<()> {
     type Msg = VoidMsg;
 
+    #[inline]
+    fn activation_via_press(&self) -> bool {
+        true
+    }
+
     fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<VoidMsg> {
         match action {
             Action::Activate => {
@@ -185,15 +190,15 @@ impl Handler for CheckBox<()> {
             a @ _ => Response::unhandled_action(a),
         }
     }
-
-    #[inline]
-    fn handle(&mut self, tk: &mut dyn TkWindow, _: Address, event: Event) -> Response<Self::Msg> {
-        Manager::handle_activable(self, tk, event)
-    }
 }
 
 impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
     type Msg = M;
+
+    #[inline]
+    fn activation_via_press(&self) -> bool {
+        true
+    }
 
     fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<M> {
         match action {
@@ -204,10 +209,5 @@ impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
             }
             a @ _ => Response::unhandled_action(a),
         }
-    }
-
-    #[inline]
-    fn handle(&mut self, tk: &mut dyn TkWindow, _: Address, event: Event) -> Response<Self::Msg> {
-        Manager::handle_activable(self, tk, event)
     }
 }
