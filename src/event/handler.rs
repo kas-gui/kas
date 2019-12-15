@@ -82,7 +82,9 @@ impl Manager {
                 // We don't need these events, but they should not be considered *unhandled*
                 Response::None
             }
-            Event::PressEnd { start_id, .. } if activable && start_id == Some(widget.id()) => {
+            Event::PressEnd {
+                start_id, end_id, ..
+            } if activable && start_id == Some(widget.id()) && start_id == end_id => {
                 widget.handle_action(tk, Action::Activate)
             }
             ev @ _ => Response::Unhandled(ev),

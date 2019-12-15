@@ -73,7 +73,7 @@ fn nav_colour(highlights: HighlightState) -> Option<Colour> {
 
 fn button_colour(highlights: HighlightState, show: bool) -> Option<Colour> {
     if highlights.depress {
-        Some(Colour::new(0.2, 0.6, 0.8))
+        Some(Colour::new(0.15, 0.525, 0.75))
     } else if show && highlights.hover {
         Some(Colour::new(0.25, 0.8, 1.0))
     } else if show {

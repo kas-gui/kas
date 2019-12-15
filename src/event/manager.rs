@@ -475,14 +475,14 @@ impl Manager {
                         // TODO: using grab_id as start_id is incorrect when
                         // multiple buttons are pressed simultaneously
                         ElementState::Pressed => Event::PressStart { source, coord },
-                        ElementState::Released => Event::PressEnd { source, start_id: Some(grab_id), coord },
+                        ElementState::Released => Event::PressEnd { source, start_id: Some(grab_id), end_id: tk.data().hover, coord },
                     };
                     widget.handle(tk, Address::Id(grab_id), ev)
                 } else if let Some(id) = tk.data().hover {
                     // No mouse grab, but we have a hover target
                     let ev = match state {
                         ElementState::Pressed => Event::PressStart { source, coord },
-                        ElementState::Released => Event::PressEnd { source, start_id: None, coord },
+                        ElementState::Released => Event::PressEnd { source, start_id: None, end_id: Some(id), coord },
                     };
                     widget.handle(tk, Address::Id(id), ev)
                 } else {
@@ -528,10 +528,11 @@ impl Manager {
                             data.char_focus = None;
                             r
                         });
-                        if let Some(PressEvent { start_id, .. }) = tk.data().touch_grab(touch.id) {
+                        if let Some(PressEvent { start_id, cur_id, .. }) = tk.data().touch_grab(touch.id) {
                             let action = Event::PressEnd {
                                 source,
                                 start_id: Some(start_id),
+                                end_id: Some(cur_id),
                                 coord,
                             };
                             let r = widget.handle(tk, Address::Id(start_id), action);
@@ -541,6 +542,7 @@ impl Manager {
                             let action = Event::PressEnd {
                                 source,
                                 start_id: None,
+                                end_id: None,
                                 coord,
                             };
                             widget.handle(tk, Address::Coord(coord), action)

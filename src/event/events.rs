@@ -52,6 +52,7 @@ pub enum Event {
     PressEnd {
         source: PressSource,
         start_id: Option<WidgetId>,
+        end_id: Option<WidgetId>,
         coord: Coord,
     },
 }
