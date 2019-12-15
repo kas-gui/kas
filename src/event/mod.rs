@@ -10,6 +10,47 @@
 //! commonly used by GUI frameworks: widgets do not need a pointer to their
 //! parent and any result is pushed back up the call stack. The model allows
 //! type-safety while allowing user-defined result types.
+//!
+//! We deliver events only on a "need to know" basis: typically, only one widget
+//! will receive an event.
+//!
+//! ## Event delivery
+//!
+//! Events are processed from root to leaf, targetted either at a coordinate or
+//! at a [`WidgetId`]. Events targetted at coordinates are translated to a
+//! [`WidgetId`] by [`Manager::handle_generic`]; events targetted at a
+//! [`WidgetId`] are handled by widget-specific code or returned via
+//! [`Response::Unhandled`], in which case any caller may handle the event.
+//!
+//! ## Mouse and touch events
+//!
+//! Mouse events and touch events are unified: both have a "press" which starts
+//! somewhere, moves, and ends somewhere. The main difference concerns move
+//! events, which may occur with any number of mouse buttons pressed.
+//!
+//! Each touch event is considered independent, allowing multiple fingers to
+//! interact with a UI simultaneously; only where the same widget receives
+//! multiple events can multi-finger gestures be processed. In contrast, mouse
+//! events are considered to come from a single mouse, and when a mouse-grab is
+//! in effect, all mouse events are delivered to the grabbing widget.
+//!
+//! Press-start events are delivered to the widget at the cursor/touch location,
+//! with the exception of mouse events when a mouse grab is already in effect.
+//! If unhandled, the event is passed up to parent widgets who may choose to
+//! handle the event. The first widget processing the event may request a grab
+//! on the touch/mouse event in order to receive motion and press-end events.
+//! The grab automatically ends after the corresponding press-end event.
+//!
+//! Motion events are delivered to whichever widget has a grab on the touch
+//! event or the mouse. If no grab is enabled, such events are not delivered.
+//!
+//! Press-end events are delivered to whichever widget has a grab on the touch
+//! event or the mouse; otherwise (if no grab affects this event), the event is
+//! delivered to the widget at the event coordinates.
+//!
+//! Widgets should not normally need internal tracking of mouse/touch events.
+//! Highlighting information can be obtained directly in the `draw` method, and
+//! press events provide information on their start and end widget.
 
 mod callback;
 #[cfg(not(feature = "winit"))]
@@ -22,13 +63,13 @@ use std::fmt::Debug;
 // use std::path::PathBuf;
 
 #[cfg(feature = "winit")]
-pub use winit::event::{ElementState, ModifiersState, MouseButton, VirtualKeyCode};
+pub use winit::event::{MouseButton, VirtualKeyCode};
 
 use crate::{TkWindow, Widget};
 
 pub use callback::Callback;
 #[cfg(not(feature = "winit"))]
-pub use enums::*;
+pub use enums::{MouseButton, VirtualKeyCode};
 pub use events::*;
 pub use manager::{HighlightState, Manager};
 pub use response::Response;
@@ -47,16 +88,6 @@ pub struct VoidMsg;
 /// Alias for `Response<VoidMsg>`
 pub type VoidResponse = Response<VoidMsg>;
 
-/// Consume an unhandled [`Action`] and return `Response::None`.
-///
-/// This is an error, meaning somehow an event has been sent to a widget which
-/// does not support events of that type.
-/// It is safe to ignore this error, but this function panics in debug builds.
-pub fn unhandled_action<A: Debug, N>(a: A) -> Response<N> {
-    debug_assert!(false, "unhandled_action: {:?}", a);
-    Response::None
-}
-
 /// Event-handling aspect of a widget.
 ///
 /// This is a companion trait to [`Widget`]. It can (optionally) be implemented
@@ -71,18 +102,29 @@ pub trait Handler: Widget {
     /// or a configuration editor may return a full copy of the new configuration on completion.
     type Msg;
 
-    /// Handle a high-level event and return a user-defined msg.
+    /// Handle a high-level "action" and return a user-defined message.
+    ///
+    /// Widgets should handle any events applicable to themselves here, and
+    /// return all other events via [`Response::Unhandled`].
     #[inline]
-    fn handle_action(&mut self, _: &mut dyn TkWindow, _: Action) -> Response<Self::Msg> {
-        Response::None
+    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<Self::Msg> {
+        Response::Unhandled(EventChild::Action(action))
     }
 
     /// Handle a low-level event.
     ///
-    /// Usually the user has no reason to override the default implementation of
-    /// this function. If this is required, it is recommended to handle only the
-    /// cases requiring custom handling, and use
-    /// [`Manager::handle_generic`] for all other cases.
+    /// Most non-parent widgets will not need to implement this method manually.
+    /// The default implementation (which wraps [`Manager::handle_generic`])
+    /// forwards high-level events via [`Handler::handle_action`].
+    ///
+    /// Parent widgets should forward events to the appropriate child widget,
+    /// translating event coordinates where applicable. Unused events should be
+    /// handled (directly or through [`Manager::handle_generic`]) or returned
+    /// via [`Response::Unhandled`]. The return-value from child handlers may
+    /// be intercepted in order to handle as-yet-unhandled events.
+    ///
+    /// Additionally, this method allows lower-level interpretation of some
+    /// events, e.g. more direct access to mouse inputs.
     #[inline]
     fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
         Manager::handle_generic(self, tk, event)

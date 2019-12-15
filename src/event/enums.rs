@@ -7,6 +7,8 @@
 //!
 //! These are simply copied from winit.
 
+#![allow(unused)]
+
 /// Describes the input state of a key.
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]

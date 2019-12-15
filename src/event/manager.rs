@@ -5,9 +5,10 @@
 
 //! Event manager
 
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 
 use super::*;
+use crate::geom::Coord;
 use crate::{TkWindow, Widget, WidgetId};
 
 /// Highlighting state of a widget
@@ -39,6 +40,13 @@ impl HighlightState {
     }
 }
 
+#[derive(Clone, Debug)]
+struct PressEvent {
+    start_id: WidgetId,
+    cur_id: WidgetId,
+    last_coord: Coord,
+}
+
 /// Window event manager
 ///
 /// Encapsulation of per-window event state plus supporting methods.
@@ -48,9 +56,11 @@ pub struct Manager {
     char_focus: Option<WidgetId>,
     key_focus: Option<WidgetId>,
     hover: Option<WidgetId>,
-    click_start: Option<WidgetId>,
     key_events: Vec<(u32, WidgetId)>,
-    touch_events: Vec<(u64, WidgetId, WidgetId)>,
+    last_mouse_coord: Coord,
+    mouse_grab: Option<(WidgetId, MouseButton)>,
+    // TODO: would a VecMap be faster?
+    touch_grab: HashMap<u64, PressEvent>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
 }
 
@@ -67,9 +77,10 @@ impl Manager {
             char_focus: None,
             key_focus: None,
             hover: None,
-            click_start: None,
             key_events: Vec::with_capacity(4),
-            touch_events: Vec::with_capacity(10),
+            last_mouse_coord: Coord::ZERO,
+            mouse_grab: None,
+            touch_grab: HashMap::new(),
             accel_keys: HashMap::new(),
         }
     }
@@ -125,8 +136,8 @@ impl Manager {
         if self.hover == Some(w_id) {
             return true;
         }
-        for start in &self.touch_events {
-            if start.2 == w_id {
+        for touch in self.touch_grab.values() {
+            if touch.cur_id == w_id {
                 return true;
             }
         }
@@ -136,22 +147,25 @@ impl Manager {
     /// Check whether the given widget is visually depressed
     #[inline]
     pub fn is_depressed(&self, w_id: WidgetId) -> bool {
-        if self.click_start == Some(w_id) && self.hover == Some(w_id) {
-            return true;
-        }
         for (_, id) in &self.key_events {
             if *id == w_id {
                 return true;
             }
         }
-        for start in &self.touch_events {
-            if start.1 == w_id && start.2 == w_id {
+        if let Some(grab) = self.mouse_grab {
+            if grab.0 == w_id && self.hover == Some(w_id) {
+                return true;
+            }
+        }
+        for touch in self.touch_grab.values() {
+            if touch.start_id == w_id && touch.cur_id == w_id {
                 return true;
             }
         }
         false
     }
 
+    #[cfg(feature = "winit")]
     fn set_hover(&mut self, w_id: Option<WidgetId>) -> bool {
         if self.hover != w_id {
             self.hover = w_id;
@@ -159,47 +173,87 @@ impl Manager {
         }
         false
     }
-    fn set_click_start(&mut self, w_id: Option<WidgetId>) -> bool {
-        if self.click_start != w_id {
-            self.click_start = w_id;
-            return true;
-        }
+
+    #[inline]
+    pub fn last_mouse_coord(&self) -> Coord {
+        self.last_mouse_coord
+    }
+
+    #[cfg(feature = "winit")]
+    fn set_last_mouse_coord(&mut self, coord: Coord) -> bool {
+        self.last_mouse_coord = coord;
         false
     }
 
-    fn start_touch(&mut self, id: u64, w_id: WidgetId) -> bool {
-        assert!(self.clear_touch(id) == false);
-        self.touch_events.push((id, w_id, w_id));
-        true
-    }
-    fn touch_move(&mut self, id: u64, w_id: WidgetId) -> bool {
-        for start in &mut self.touch_events {
-            if start.0 == id {
-                start.2 = w_id;
-                return true;
+    /// Request a mouse grab on the given input source
+    ///
+    /// If successful, corresponding move/end events will be forwarded to the
+    /// given `w_id`. The grab automatically ends after the end event.
+    ///
+    /// In the case that multiple widgets attempt to grab the same source, only
+    /// the first will be successful.
+    pub fn request_press_grab(
+        &mut self,
+        source: PressSource,
+        w_id: WidgetId,
+        coord: Coord,
+    ) -> bool {
+        match source {
+            PressSource::Mouse(button) => {
+                if self.mouse_grab.is_none() {
+                    self.mouse_grab = Some((w_id, button));
+                    true
+                } else {
+                    false
+                }
             }
+            PressSource::Touch(touch_id) => match self.touch_grab.entry(touch_id) {
+                Entry::Occupied(_) => false,
+                Entry::Vacant(v) => {
+                    v.insert(PressEvent {
+                        start_id: w_id,
+                        cur_id: w_id,
+                        last_coord: coord,
+                    });
+                    true
+                }
+            },
         }
+    }
 
-        // We get here if start_touch was never called (e.g. if the touch
-        // started over unused space).
-        false
+    #[cfg(feature = "winit")]
+    fn mouse_grab(&self) -> Option<(WidgetId, MouseButton)> {
+        self.mouse_grab
     }
-    fn touch_start(&self, id: u64) -> Option<WidgetId> {
-        for start in &self.touch_events {
-            if start.0 == id {
-                return Some(start.1);
-            }
+
+    #[cfg(feature = "winit")]
+    fn end_mouse_grab(&mut self, button: MouseButton) -> bool {
+        if self.mouse_grab.map(|g| g.1 == button).unwrap_or(false) {
+            self.mouse_grab = None;
+            true
+        } else {
+            false
         }
-        None
     }
-    fn clear_touch(&mut self, id: u64) -> bool {
-        for (i, start) in self.touch_events.iter().enumerate() {
-            if start.0 == id {
-                self.touch_events.remove(i);
-                return true;
-            }
+
+    #[cfg(feature = "winit")]
+    fn touch_grab(&self, touch_id: u64) -> Option<PressEvent> {
+        self.touch_grab.get(&touch_id).cloned()
+    }
+
+    #[cfg(feature = "winit")]
+    fn update_touch_coord(&mut self, touch_id: u64, coord: Coord) -> bool {
+        if let Some(v) = self.touch_grab.get_mut(&touch_id) {
+            v.last_coord = coord;
+            true
+        } else {
+            false
         }
-        false
+    }
+
+    #[cfg(feature = "winit")]
+    fn end_touch_grab(&mut self, touch_id: u64) -> bool {
+        self.touch_grab.remove(&touch_id).is_some()
     }
 
     #[cfg(feature = "winit")]
@@ -240,7 +294,7 @@ impl Manager {
         W: Widget + Handler<Msg = VoidMsg> + ?Sized,
     {
         use crate::TkAction;
-        use winit::event::{MouseScrollDelta, TouchPhase, WindowEvent::*};
+        use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
 
         let response = match event {
             // Resized(size) [handled by toolkit]
@@ -283,7 +337,7 @@ impl Manager {
                         VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
                             if let Some(id) = tk.data().key_focus {
                                 let ev = EventChild::Action(Action::Activate);
-                                let r = widget.handle(tk, Event::ToChild(id, ev));
+                                let r =  widget.handle(tk, Event::ToChild(id, ev));
 
                                 // Add to key_events for visual feedback
                                 tk.update_data(&mut |data| {
@@ -312,7 +366,7 @@ impl Manager {
                         vkey @ _ => {
                             if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
                                 let ev = EventChild::Action(Action::Activate);
-                              let r =  widget.handle(tk, Event::ToChild(id, ev));
+                                let r =  widget.handle(tk, Event::ToChild(id, ev));
 
                                 tk.update_data(&mut |data| {
                                     for item in &data.key_events {
@@ -349,12 +403,29 @@ impl Manager {
             }
             CursorMoved {
                 position,
-                modifiers,
                 ..
             } => {
                 let coord = position.to_physical(tk.data().dpi_factor).into();
-                let ev = EventCoord::CursorMoved { modifiers };
-                widget.handle(tk, Event::ToCoord(coord, ev))
+
+                // Update hovered widget
+                let w_id = match widget.handle(tk, Event::ToCoord(coord, EventChild::Identify)) {
+                    Response::Identify(w_id) => Some(w_id),
+                    _ => None,
+                };
+                tk.update_data(&mut |data| data.set_hover(w_id));
+
+                let r = if let Some((grab_id, button)) = tk.data().mouse_grab() {
+                    let source = PressSource::Mouse(button);
+                    let delta = coord - tk.data().last_mouse_coord();
+                    let ev = EventChild::PressMove { source, coord, delta };
+                    widget.handle(tk, Event::ToChild(grab_id, ev))
+                } else {
+                    // We don't forward move events without a grab
+                    Response::None
+                };
+
+                tk.update_data(&mut |data| data.set_last_mouse_coord(coord));
+                r
             }
             // CursorEntered { .. },
             CursorLeft { .. } => {
@@ -363,13 +434,13 @@ impl Manager {
             }
             MouseWheel { delta, phase, modifiers, .. } => {
                 let _ = (phase, modifiers); // TODO: do we have a use for these?
-                let ev = EventChild::Scroll(match delta {
+                let action = Action::Scroll(match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
                     MouseScrollDelta::PixelDelta(logical_position) =>
                         ScrollDelta::PixelDelta(logical_position.to_physical(tk.data().dpi_factor).into()),
                 });
                 if let Some(id) = tk.data().hover {
-                    widget.handle(tk, Event::ToChild(id, ev))
+                    widget.handle(tk, Event::ToChild(id, EventChild::Action(action)))
                 } else {
                     Response::None
                 }
@@ -377,14 +448,12 @@ impl Manager {
             MouseInput {
                 state,
                 button,
-                modifiers,
                 ..
             } => {
-                let ev = EventChild::MouseInput {
-                    state,
-                    button,
-                    modifiers,
-                };
+                let coord = tk.data().last_mouse_coord();
+                let source = PressSource::Mouse(button);
+
+                // Release character grab
                 tk.update_data(&mut |data| {
                     if data.char_focus.is_some() && data.char_focus != data.hover {
                         data.char_focus = None;
@@ -393,42 +462,86 @@ impl Manager {
                         false
                     }
                 });
-                if let Some(id) = tk.data().hover {
+
+                let r = if let Some((grab_id, _)) = tk.data().mouse_grab() {
+                    // Mouse grab active: send events there
+                    let ev = match state {
+                        // TODO: using grab_id as start_id is incorrect when
+                        // multiple buttons are pressed simultaneously
+                        ElementState::Pressed => EventChild::PressStart { source, coord },
+                        ElementState::Released => EventChild::PressEnd { source, start_id: Some(grab_id), coord },
+                    };
+                    widget.handle(tk, Event::ToChild(grab_id, ev))
+                } else if let Some(id) = tk.data().hover {
+                    // No mouse grab, but we have a hover target
+                    let ev = match state {
+                        ElementState::Pressed => EventChild::PressStart { source, coord },
+                        ElementState::Released => EventChild::PressEnd { source, start_id: None, coord },
+                    };
                     widget.handle(tk, Event::ToChild(id, ev))
                 } else {
                     // This happens for example on click-release when the
                     // cursor is no longer over the window.
-                    if button == MouseButton::Left && state == ElementState::Released {
-                        tk.update_data(&mut |data| data.set_click_start(None));
-                    }
+                    // TODO: issue EventChild::PressEnd or PressCancel?
                     Response::None
+                };
+                if state == ElementState::Released {
+                    tk.update_data(&mut |data| data.end_mouse_grab(button));
                 }
+                r
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
             // AxisMotion { axis: AxisId, value: f64, },
             // RedrawRequested [handled by toolkit]
             Touch(touch) => {
+                let source = PressSource::Touch(touch.id);
                 let coord = touch.location.to_physical(tk.data().dpi_factor).into();
                 match touch.phase {
                     TouchPhase::Started => {
-                        let ev = EventCoord::TouchStart(touch.id);
+                        let ev = EventChild::PressStart { source, coord };
                         widget.handle(tk, Event::ToCoord(coord, ev))
                     }
                     TouchPhase::Moved => {
-                        let ev = EventCoord::TouchMove(touch.id);
-                        widget.handle(tk, Event::ToCoord(coord, ev))
+                        if let Some(PressEvent { start_id, last_coord, .. }) = tk.data().touch_grab(touch.id) {
+                            let action = EventChild::PressMove {
+                                source,
+                                coord,
+                                delta: coord - last_coord,
+                            };
+                            let r = widget.handle(tk, Event::ToChild(start_id, action));
+                            tk.update_data(&mut |data| data.update_touch_coord(touch.id, coord));
+                            r
+                        } else {
+                            Response::None
+                        }
                     }
                     TouchPhase::Ended => {
+                        // TODO: when to remove char focus?
                         tk.update_data(&mut |data| {
                             let r = data.char_focus.is_some();
                             data.char_focus = None;
                             r
                         });
-                        let ev = EventCoord::TouchEnd(touch.id);
-                        widget.handle(tk, Event::ToCoord(coord, ev))
+                        if let Some(PressEvent { start_id, .. }) = tk.data().touch_grab(touch.id) {
+                            let action = EventChild::PressEnd {
+                                source,
+                                start_id: Some(start_id),
+                                coord,
+                            };
+                            let r = widget.handle(tk, Event::ToChild(start_id, action));
+                            tk.update_data(&mut |data| data.end_touch_grab(touch.id));
+                            r
+                        } else {
+                            let action = EventChild::PressEnd {
+                                source,
+                                start_id: None,
+                                coord,
+                            };
+                            widget.handle(tk, Event::ToCoord(coord, action))
+                        }
                     }
                     TouchPhase::Cancelled => {
-                        tk.update_data(&mut |data| data.clear_touch(touch.id));
+                        tk.update_data(&mut |data| data.end_touch_grab(touch.id));
                         Response::None
                     }
                 }
@@ -441,7 +554,7 @@ impl Manager {
         };
 
         match response {
-            Response::None => (),
+            Response::None | Response::Identify(_) => (),
             Response::Unhandled(_) => {
                 // we can safely ignore unhandled events here
             }
@@ -449,7 +562,7 @@ impl Manager {
         };
     }
 
-    /// Generic handler for low-level events
+    /// Generic handler for low-level events passed to leaf widgets
     pub fn handle_generic<W>(
         widget: &mut W,
         tk: &mut dyn TkWindow,
@@ -458,72 +571,39 @@ impl Manager {
     where
         W: Handler + ?Sized,
     {
-        let w_id = widget.id();
         match event {
-            Event::ToChild(_, ev) => match ev {
+            Event::ToChild(_, ev) | Event::ToCoord(_, ev) => match ev {
                 EventChild::Action(action) => widget.handle_action(tk, action),
-                EventChild::MouseInput {
-                    state,
-                    button,
-                    modifiers,
-                } => {
-                    if button == MouseButton::Left {
-                        match state {
-                            ElementState::Pressed => {
-                                tk.update_data(&mut |data| data.set_click_start(Some(w_id)));
-                                Response::None
-                            }
-                            ElementState::Released => {
-                                let r = if tk.data().click_start == Some(w_id) {
-                                    widget.handle_action(tk, Action::Activate)
-                                } else {
-                                    Response::Unhandled(EventChild::MouseInput {
-                                        state,
-                                        button,
-                                        modifiers,
-                                    })
-                                };
-                                tk.update_data(&mut |data| data.set_click_start(None));
-                                r
-                            }
-                        }
-                    } else {
-                        Response::Unhandled(EventChild::MouseInput {
-                            state,
-                            button,
-                            modifiers,
-                        })
-                    }
-                }
-                // Currently only handled when intercepted by scroll widgets:
-                e @ EventChild::Scroll(_) => Response::Unhandled(e),
+                EventChild::Identify => Response::Identify(widget.id()),
+                ev @ _ => Response::Unhandled(ev),
             },
-            Event::ToCoord(_, ev) => {
-                match ev {
-                    EventCoord::CursorMoved { .. } => {
-                        // We can assume the pointer is over this widget
-                        tk.update_data(&mut |data| data.set_hover(Some(w_id)));
-                        Response::None
-                    }
-                    EventCoord::TouchStart(id) => {
-                        tk.update_data(&mut |data| data.start_touch(id, w_id));
-                        Response::None
-                    }
-                    EventCoord::TouchMove(id) => {
-                        tk.update_data(&mut |data| data.touch_move(id, w_id));
-                        Response::None
-                    }
-                    EventCoord::TouchEnd(id) => {
-                        let r = if tk.data().touch_start(id) == Some(w_id) {
-                            widget.handle_action(tk, Action::Activate)
-                        } else {
-                            Response::None
-                        };
-                        tk.update_data(&mut |data| data.clear_touch(id));
-                        r
-                    }
+        }
+    }
+
+    /// Handler for low-level events passed to leaf widgets, supporting
+    /// activation via mouse and touch.
+    // TODO: this will likely be replaced with some more generic handler
+    pub fn handle_activable<W>(
+        widget: &mut W,
+        tk: &mut dyn TkWindow,
+        event: Event,
+    ) -> Response<<W as Handler>::Msg>
+    where
+        W: Handler + ?Sized,
+    {
+        match event {
+            Event::ToChild(_, ev) | Event::ToCoord(_, ev) => match ev {
+                EventChild::Action(action) => widget.handle_action(tk, action),
+                EventChild::Identify => Response::Identify(widget.id()),
+                EventChild::PressStart { source, coord } if source.is_primary() => {
+                    tk.update_data(&mut |data| data.request_press_grab(source, widget.id(), coord));
+                    Response::None
                 }
-            }
+                EventChild::PressEnd { start_id, .. } if start_id == Some(widget.id()) => {
+                    widget.handle_action(tk, Action::Activate)
+                }
+                ev @ _ => Response::Unhandled(ev),
+            },
         }
     }
 }

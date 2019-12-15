@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use crate::event::{Event, EventChild, Handler, Manager, Response, ScrollDelta};
+use crate::event::{Action, Event, EventChild, Handler, Manager, Response, ScrollDelta};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
@@ -81,33 +81,55 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
     type Msg = <W as Handler>::Msg;
 
     fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
+        let translate_event = |event| match event {
+            a @ EventChild::Action(_) | a @ EventChild::Identify => a,
+            EventChild::PressStart { source, coord } => EventChild::PressStart {
+                source,
+                coord: coord - self.offset,
+            },
+            EventChild::PressMove {
+                source,
+                coord,
+                delta,
+            } => EventChild::PressMove {
+                source,
+                coord: coord - self.offset,
+                delta,
+            },
+            EventChild::PressEnd {
+                source,
+                start_id,
+                coord,
+            } => EventChild::PressEnd {
+                source,
+                start_id,
+                coord: coord - self.offset,
+            },
+        };
         let event = match event {
-            e @ Event::ToChild(..) => e,
-            Event::ToCoord(coord, e) => Event::ToCoord(coord - self.offset, e),
+            Event::ToChild(id, e) => Event::ToChild(id, translate_event(e)),
+            Event::ToCoord(coord, e) => Event::ToCoord(coord - self.offset, translate_event(e)),
         };
 
         match self.child.handle(tk, event) {
             Response::None => Response::None,
-            Response::Unhandled(event) => match event {
-                EventChild::Scroll(delta) => {
-                    let d = match delta {
-                        ScrollDelta::LineDelta(x, y) => Coord(
-                            (-self.scroll_rate * x) as i32,
-                            (self.scroll_rate * y) as i32,
-                        ),
-                        ScrollDelta::PixelDelta(d) => d,
-                    };
-                    let offset = (self.offset + d).min(Coord::ZERO).max(self.min_offset);
-                    if offset != self.offset {
-                        self.offset = offset;
-                        tk.redraw(self.id());
-                        Response::None
-                    } else {
-                        Response::Unhandled(EventChild::Scroll(delta))
-                    }
+            Response::Unhandled(EventChild::Action(Action::Scroll(delta))) => {
+                let d = match delta {
+                    ScrollDelta::LineDelta(x, y) => Coord(
+                        (-self.scroll_rate * x) as i32,
+                        (self.scroll_rate * y) as i32,
+                    ),
+                    ScrollDelta::PixelDelta(d) => d,
+                };
+                let offset = (self.offset + d).min(Coord::ZERO).max(self.min_offset);
+                if offset != self.offset {
+                    self.offset = offset;
+                    tk.redraw(self.id());
+                    Response::None
+                } else {
+                    Response::Unhandled(EventChild::Action(Action::Scroll(delta)))
                 }
-                e @ _ => Response::Unhandled(e),
-            },
+            }
             e @ _ => e,
         }
     }

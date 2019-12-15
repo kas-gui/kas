@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{HasBool, HasText};
-use crate::event::{self, unhandled_action, Action, Handler, Response, VoidMsg};
+use crate::event::{self, Action, Event, EventChild, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
@@ -182,8 +182,13 @@ impl Handler for CheckBox<()> {
                 tk.redraw(self.id());
                 Response::None
             }
-            a @ _ => unhandled_action(a),
+            a @ _ => Response::Unhandled(EventChild::Action(a)),
         }
+    }
+
+    #[inline]
+    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
+        Manager::handle_activable(self, tk, event)
     }
 }
 
@@ -197,7 +202,12 @@ impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
                 tk.redraw(self.id());
                 ((self.on_toggle)(self.state)).into()
             }
-            a @ _ => unhandled_action(a),
+            a @ _ => Response::Unhandled(EventChild::Action(a)),
         }
+    }
+
+    #[inline]
+    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
+        Manager::handle_activable(self, tk, event)
     }
 }

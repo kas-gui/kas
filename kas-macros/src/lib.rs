@@ -146,14 +146,14 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             };
             // TODO(opt): it is possible to code more efficient search strategies
             ev_to_num.append_all(quote! {
-                if *id <= self.#ident.id() {
-                    let r = self.#ident.handle(_tk, event);
+                if id <= self.#ident.id() {
+                    let r = self.#ident.handle(_tk, Event::ToChild(id, e));
                     #handler
                 } else
             });
             ev_to_coord.append_all(quote! {
-                if self.#ident.rect().contains(*coord) {
-                    let r = self.#ident.handle(_tk, event);
+                if self.#ident.rect().contains(coord) {
+                    let r = self.#ident.handle(_tk, Event::ToCoord(coord, e));
                     #handler
                 } else
             });
@@ -168,17 +168,16 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 -> kas::event::Response<Self::Msg>
                 {
                     use kas::{WidgetCore, event::{Event, Response}};
-                    match &event {
+                    match event {
                         Event::ToChild(id, e) => {
                             #ev_to_num {
-                                debug_assert!(*id == self.id(), "Handler::handle: bad WidgetId");
-                                Response::Unhandled(e.clone())
+                                debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
+                                Response::Unhandled(e)
                             }
                         }
-                        Event::ToCoord(coord, ..) => {
+                        Event::ToCoord(coord, e) => {
                             #ev_to_coord {
-                                // we may want to allow custom handlers on self here?
-                                Response::None
+                                kas::event::Manager::handle_generic(self, _tk, Event::ToCoord(coord, e))
                             }
                         }
                     }

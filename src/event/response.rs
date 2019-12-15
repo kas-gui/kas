@@ -6,6 +6,7 @@
 //! Event handling: Response type
 
 use super::EventChild;
+use crate::WidgetId;
 
 /// Response type from [`Handler::handle`].
 ///
@@ -19,6 +20,8 @@ use super::EventChild;
 pub enum Response<M> {
     /// No action
     None,
+    /// Identification of a widget
+    Identify(WidgetId),
     /// Unhandled input events get returned back up the widget tree
     Unhandled(EventChild),
     /// Custom message type
@@ -28,6 +31,15 @@ pub enum Response<M> {
 // Unfortunately we cannot write generic `From` / `TryFrom` impls
 // due to trait coherence rules, so we impl `from` etc. directly.
 impl<M> Response<M> {
+    /// True if variant is `None`
+    #[inline]
+    pub fn is_none(&self) -> bool {
+        match self {
+            &Response::None => true,
+            _ => false,
+        }
+    }
+
     /// Map from one `Response` type to another
     ///
     /// Once Rust supports specialisation, this will likely be replaced with a
@@ -59,6 +71,7 @@ impl<M> Response<M> {
         use Response::*;
         match r {
             None => Ok(None),
+            Identify(id) => Ok(Identify(id)),
             Unhandled(e) => Ok(Unhandled(e)),
             Msg(m) => Err(m),
         }
