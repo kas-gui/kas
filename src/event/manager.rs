@@ -312,8 +312,8 @@ impl Manager {
             // HoveredFileCancelled,
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = tk.data().char_focus {
-                    let ev = EventChild::Action(Action::ReceivedCharacter(c));
-                    widget.handle(tk, Event::ToChild(id, ev))
+                    let ev = Event::Action(Action::ReceivedCharacter(c));
+                    widget.handle(tk, Address::Id(id), ev)
                 } else {
                     Response::None
                 }
@@ -339,8 +339,8 @@ impl Manager {
                         }
                         VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
                             if let Some(id) = tk.data().key_focus {
-                                let ev = EventChild::Action(Action::Activate);
-                                let r =  widget.handle(tk, Event::ToChild(id, ev));
+                                let ev = Event::Action(Action::Activate);
+                                let r =  widget.handle(tk, Address::Id(id), ev);
 
                                 // Add to key_events for visual feedback
                                 tk.update_data(&mut |data| {
@@ -368,8 +368,8 @@ impl Manager {
                         }
                         vkey @ _ => {
                             if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
-                                let ev = EventChild::Action(Action::Activate);
-                                let r =  widget.handle(tk, Event::ToChild(id, ev));
+                                let ev = Event::Action(Action::Activate);
+                                let r =  widget.handle(tk, Address::Id(id), ev);
 
                                 tk.update_data(&mut |data| {
                                     for item in &data.key_events {
@@ -411,7 +411,7 @@ impl Manager {
                 let coord = position.to_physical(tk.data().dpi_factor).into();
 
                 // Update hovered widget
-                let w_id = match widget.handle(tk, Event::ToCoord(coord, EventChild::Identify)) {
+                let w_id = match widget.handle(tk, Address::Coord(coord), Event::Identify) {
                     Response::Identify(w_id) => Some(w_id),
                     _ => None,
                 };
@@ -420,8 +420,8 @@ impl Manager {
                 let r = if let Some((grab_id, button)) = tk.data().mouse_grab() {
                     let source = PressSource::Mouse(button);
                     let delta = coord - tk.data().last_mouse_coord();
-                    let ev = EventChild::PressMove { source, coord, delta };
-                    widget.handle(tk, Event::ToChild(grab_id, ev))
+                    let ev = Event::PressMove { source, coord, delta };
+                    widget.handle(tk, Address::Id(grab_id), ev)
                 } else {
                     // We don't forward move events without a grab
                     Response::None
@@ -443,7 +443,7 @@ impl Manager {
                         ScrollDelta::PixelDelta(logical_position.to_physical(tk.data().dpi_factor).into()),
                 });
                 if let Some(id) = tk.data().hover {
-                    widget.handle(tk, Event::ToChild(id, EventChild::Action(action)))
+                    widget.handle(tk, Address::Id(id), Event::Action(action))
                 } else {
                     Response::None
                 }
@@ -471,21 +471,21 @@ impl Manager {
                     let ev = match state {
                         // TODO: using grab_id as start_id is incorrect when
                         // multiple buttons are pressed simultaneously
-                        ElementState::Pressed => EventChild::PressStart { source, coord },
-                        ElementState::Released => EventChild::PressEnd { source, start_id: Some(grab_id), coord },
+                        ElementState::Pressed => Event::PressStart { source, coord },
+                        ElementState::Released => Event::PressEnd { source, start_id: Some(grab_id), coord },
                     };
-                    widget.handle(tk, Event::ToChild(grab_id, ev))
+                    widget.handle(tk, Address::Id(grab_id), ev)
                 } else if let Some(id) = tk.data().hover {
                     // No mouse grab, but we have a hover target
                     let ev = match state {
-                        ElementState::Pressed => EventChild::PressStart { source, coord },
-                        ElementState::Released => EventChild::PressEnd { source, start_id: None, coord },
+                        ElementState::Pressed => Event::PressStart { source, coord },
+                        ElementState::Released => Event::PressEnd { source, start_id: None, coord },
                     };
-                    widget.handle(tk, Event::ToChild(id, ev))
+                    widget.handle(tk, Address::Id(id), ev)
                 } else {
                     // This happens for example on click-release when the
                     // cursor is no longer over the window.
-                    // TODO: issue EventChild::PressEnd or PressCancel?
+                    // TODO: issue Event::PressEnd or PressCancel?
                     Response::None
                 };
                 if state == ElementState::Released {
@@ -501,17 +501,17 @@ impl Manager {
                 let coord = touch.location.to_physical(tk.data().dpi_factor).into();
                 match touch.phase {
                     TouchPhase::Started => {
-                        let ev = EventChild::PressStart { source, coord };
-                        widget.handle(tk, Event::ToCoord(coord, ev))
+                        let ev = Event::PressStart { source, coord };
+                        widget.handle(tk, Address::Coord(coord), ev)
                     }
                     TouchPhase::Moved => {
                         if let Some(PressEvent { start_id, last_coord, .. }) = tk.data().touch_grab(touch.id) {
-                            let action = EventChild::PressMove {
+                            let action = Event::PressMove {
                                 source,
                                 coord,
                                 delta: coord - last_coord,
                             };
-                            let r = widget.handle(tk, Event::ToChild(start_id, action));
+                            let r = widget.handle(tk, Address::Id(start_id), action);
                             tk.update_data(&mut |data| data.update_touch_coord(touch.id, coord));
                             r
                         } else {
@@ -526,21 +526,21 @@ impl Manager {
                             r
                         });
                         if let Some(PressEvent { start_id, .. }) = tk.data().touch_grab(touch.id) {
-                            let action = EventChild::PressEnd {
+                            let action = Event::PressEnd {
                                 source,
                                 start_id: Some(start_id),
                                 coord,
                             };
-                            let r = widget.handle(tk, Event::ToChild(start_id, action));
+                            let r = widget.handle(tk, Address::Id(start_id), action);
                             tk.update_data(&mut |data| data.end_touch_grab(touch.id));
                             r
                         } else {
-                            let action = EventChild::PressEnd {
+                            let action = Event::PressEnd {
                                 source,
                                 start_id: None,
                                 coord,
                             };
-                            widget.handle(tk, Event::ToCoord(coord, action))
+                            widget.handle(tk, Address::Coord(coord), action)
                         }
                     }
                     TouchPhase::Cancelled => {

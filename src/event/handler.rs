@@ -5,7 +5,7 @@
 
 //! Event handling - handler
 
-use crate::event::{Action, Event, EventChild, Manager, Response};
+use crate::event::{Action, Address, Event, Manager, Response};
 use crate::{TkWindow, Widget};
 
 /// Event-handling aspect of a widget.
@@ -28,7 +28,7 @@ pub trait Handler: Widget {
     /// return all other events via [`Response::Unhandled`].
     #[inline]
     fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<Self::Msg> {
-        Response::Unhandled(EventChild::Action(action))
+        Response::Unhandled(Event::Action(action))
     }
 
     /// Handle a low-level event.
@@ -46,7 +46,7 @@ pub trait Handler: Widget {
     /// Additionally, this method allows lower-level interpretation of some
     /// events, e.g. more direct access to mouse inputs.
     #[inline]
-    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, tk: &mut dyn TkWindow, _: Address, event: Event) -> Response<Self::Msg> {
         Manager::handle_generic(self, tk, event)
     }
 }
@@ -62,11 +62,9 @@ impl Manager {
         W: Handler + ?Sized,
     {
         match event {
-            Event::ToChild(_, ev) | Event::ToCoord(_, ev) => match ev {
-                EventChild::Action(action) => widget.handle_action(tk, action),
-                EventChild::Identify => Response::Identify(widget.id()),
-                ev @ _ => Response::Unhandled(ev),
-            },
+            Event::Action(action) => widget.handle_action(tk, action),
+            Event::Identify => Response::Identify(widget.id()),
+            ev @ _ => Response::Unhandled(ev),
         }
     }
 
@@ -82,18 +80,16 @@ impl Manager {
         W: Handler + ?Sized,
     {
         match event {
-            Event::ToChild(_, ev) | Event::ToCoord(_, ev) => match ev {
-                EventChild::Action(action) => widget.handle_action(tk, action),
-                EventChild::Identify => Response::Identify(widget.id()),
-                EventChild::PressStart { source, coord } if source.is_primary() => {
-                    tk.update_data(&mut |data| data.request_press_grab(source, widget.id(), coord));
-                    Response::None
-                }
-                EventChild::PressEnd { start_id, .. } if start_id == Some(widget.id()) => {
-                    widget.handle_action(tk, Action::Activate)
-                }
-                ev @ _ => Response::Unhandled(ev),
-            },
+            Event::Action(action) => widget.handle_action(tk, action),
+            Event::Identify => Response::Identify(widget.id()),
+            Event::PressStart { source, coord } if source.is_primary() => {
+                tk.update_data(&mut |data| data.request_press_grab(source, widget.id(), coord));
+                Response::None
+            }
+            Event::PressEnd { start_id, .. } if start_id == Some(widget.id()) => {
+                widget.handle_action(tk, Action::Activate)
+            }
+            ev @ _ => Response::Unhandled(ev),
         }
     }
 }

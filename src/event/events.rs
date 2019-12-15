@@ -10,6 +10,13 @@ use super::MouseButton;
 use crate::geom::Coord;
 use crate::WidgetId;
 
+/// Delivery address of an [`Event`]
+#[derive(Clone, Copy, Debug)]
+pub enum Address {
+    Id(WidgetId),
+    Coord(Coord),
+}
+
 /// High-level events addressed to a widget by [`WidgetId`]
 #[derive(Clone, Debug)]
 pub enum Action {
@@ -21,26 +28,9 @@ pub enum Action {
     Scroll(ScrollDelta),
 }
 
-/// Input events: these are low-level messages where the destination widget is
-/// unknown.
-///
-/// These events are segregated by delivery method.
+/// Low-level events addressed to a widget by [`WidgetId`] or coordinate.
 #[derive(Clone, Debug)]
 pub enum Event {
-    /* NOTE: it's tempting to add this, but we have no model for returning a
-     * response from multiple recipients and no use-case.
-    /// Events to be addressed to all descendents
-    ToAll(EventAll),
-    */
-    /// Events addressed to a child by [`WidgetId`]
-    ToChild(WidgetId, EventChild),
-    /// Events addressed by coordinate
-    ToCoord(Coord, EventChild),
-}
-
-/// Low-level events addressed to a widget by [`WidgetId`]
-#[derive(Clone, Debug)]
-pub enum EventChild {
     Action(Action),
     Identify,
     /// A mouse button was pressed or touch event started

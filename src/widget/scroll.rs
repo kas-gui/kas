@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use crate::event::{Action, Event, EventChild, Handler, Manager, Response, ScrollDelta};
+use crate::event::{Action, Address, Event, Handler, Manager, Response, ScrollDelta};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
@@ -80,40 +80,45 @@ impl<W: Widget> ScrollRegion<W> {
 impl<W: Widget + Handler> Handler for ScrollRegion<W> {
     type Msg = <W as Handler>::Msg;
 
-    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
-        let translate_event = |event| match event {
-            a @ EventChild::Action(_) | a @ EventChild::Identify => a,
-            EventChild::PressStart { source, coord } => EventChild::PressStart {
-                source,
-                coord: coord - self.offset,
-            },
-            EventChild::PressMove {
-                source,
-                coord,
-                delta,
-            } => EventChild::PressMove {
-                source,
-                coord: coord - self.offset,
-                delta,
-            },
-            EventChild::PressEnd {
-                source,
-                start_id,
-                coord,
-            } => EventChild::PressEnd {
-                source,
-                start_id,
-                coord: coord - self.offset,
-            },
+    fn handle(
+        &mut self,
+        tk: &mut dyn TkWindow,
+        addr: Address,
+        event: Event,
+    ) -> Response<Self::Msg> {
+        let addr = match addr {
+            a @ Address::Id(_) => a,
+            Address::Coord(coord) => Address::Coord(coord - self.offset),
         };
         let event = match event {
-            Event::ToChild(id, e) => Event::ToChild(id, translate_event(e)),
-            Event::ToCoord(coord, e) => Event::ToCoord(coord - self.offset, translate_event(e)),
+            a @ Event::Action(_) | a @ Event::Identify => a,
+            Event::PressStart { source, coord } => Event::PressStart {
+                source,
+                coord: coord - self.offset,
+            },
+            Event::PressMove {
+                source,
+                coord,
+                delta,
+            } => Event::PressMove {
+                source,
+                coord: coord - self.offset,
+                delta,
+            },
+            Event::PressEnd {
+                source,
+                start_id,
+                coord,
+            } => Event::PressEnd {
+                source,
+                start_id,
+                coord: coord - self.offset,
+            },
         };
 
-        match self.child.handle(tk, event) {
+        match self.child.handle(tk, addr, event) {
             Response::None => Response::None,
-            Response::Unhandled(EventChild::Action(Action::Scroll(delta))) => {
+            Response::Unhandled(Event::Action(Action::Scroll(delta))) => {
                 let d = match delta {
                     ScrollDelta::LineDelta(x, y) => Coord(
                         (-self.scroll_rate * x) as i32,
@@ -127,7 +132,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                     tk.redraw(self.id());
                     Response::None
                 } else {
-                    Response::Unhandled(EventChild::Action(Action::Scroll(delta)))
+                    Response::Unhandled(Event::Action(Action::Scroll(delta)))
                 }
             }
             e @ _ => e,

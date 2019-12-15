@@ -7,7 +7,7 @@
 
 use std::fmt::{self, Debug};
 
-use crate::event::{Callback, Event, Handler, Response, VoidMsg};
+use crate::event::{Address, Callback, Event, Handler, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout::{self};
 use crate::macros::Widget;
@@ -83,9 +83,14 @@ impl<W: Widget> Window<W> {
 impl<W: Widget + Handler<Msg = VoidMsg> + 'static> Handler for Window<W> {
     type Msg = VoidMsg;
 
-    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Response<Self::Msg> {
+    fn handle(
+        &mut self,
+        tk: &mut dyn TkWindow,
+        addr: Address,
+        event: Event,
+    ) -> Response<Self::Msg> {
         // The window itself doesn't handle events, so we can just pass through
-        self.w.handle(tk, event)
+        self.w.handle(tk, addr, event)
     }
 }
 

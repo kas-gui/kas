@@ -5,7 +5,7 @@
 
 //! Event handling: Response type
 
-use super::EventChild;
+use super::Event;
 use crate::WidgetId;
 
 /// Response type from [`Handler::handle`].
@@ -23,7 +23,7 @@ pub enum Response<M> {
     /// Identification of a widget
     Identify(WidgetId),
     /// Unhandled input events get returned back up the widget tree
-    Unhandled(EventChild),
+    Unhandled(Event),
     /// Custom message type
     Msg(M),
 }
