@@ -10,7 +10,7 @@ categories = ["gui"]
 repository = "https://github.com/dhardy/kas"
 
 [features]
-default = ["clipboard"]
+default = ["clipboard", "font-kit"]
 
 [dependencies]
 kas = { path = "..", version = "0.0.2", features = ["winit"] }

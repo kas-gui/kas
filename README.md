@@ -38,8 +38,8 @@ Current development & test targets:
 -   Linux / X11
 -   Linux / Wayland
 
-It *should* work fine on other platforms, though font-loading may fail.
-Try passing `--features font-kit` in this case. Feedback & fixes welcome.
+It *should* work fine on other platforms, although this is largely untested.
+Feedback & fixes welcome.
 
 
 Features

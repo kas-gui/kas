@@ -7,7 +7,9 @@ Toolkit rendering over the [wgpu](https://crates.io/crates/wgpu) lib.
 Optional features
 -------
 
--   `font-kit` uses the library of the same name to locate a suitable font
+-   `clipboard` (enabled by default): clipboard integration
+-   `font-kit` (enabled by default): uses the `font-kit` crate to locate a
+    suitable system font; otherwise a hard-coded font path is used
 
 
 Copyright and Licence
