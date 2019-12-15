@@ -312,7 +312,7 @@ impl Handler for EditBox<()> {
                 self.received_char(tk, c);
                 Response::None
             }
-            a @ _ => Response::Unhandled(Event::Action(a)),
+            a @ _ => Response::unhandled_action(a),
         }
     }
 
@@ -338,7 +338,7 @@ impl<M, H: Fn(&str) -> M> Handler for EditBox<H> {
                     Response::None
                 }
             }
-            a @ _ => Response::Unhandled(Event::Action(a)),
+            a @ _ => Response::unhandled_action(a),
         }
     }
 

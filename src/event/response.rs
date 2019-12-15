@@ -5,7 +5,7 @@
 
 //! Event handling: Response type
 
-use super::Event;
+use super::{Action, Event};
 use crate::WidgetId;
 
 /// Response type from [`Handler::handle`].
@@ -38,6 +38,14 @@ impl<M> Response<M> {
             &Response::None => true,
             _ => false,
         }
+    }
+
+    /// Produce [`Response::Unhandled`] variant from an [`Action`]
+    ///
+    /// Convenience function for common usage.
+    #[inline]
+    pub fn unhandled_action(action: Action) -> Self {
+        Response::Unhandled(Event::Action(action))
     }
 
     /// Map from one `Response` type to another

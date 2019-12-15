@@ -182,7 +182,7 @@ impl Handler for CheckBox<()> {
                 tk.redraw(self.id());
                 Response::None
             }
-            a @ _ => Response::Unhandled(Event::Action(a)),
+            a @ _ => Response::unhandled_action(a),
         }
     }
 
@@ -202,7 +202,7 @@ impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
                 tk.redraw(self.id());
                 ((self.on_toggle)(self.state)).into()
             }
-            a @ _ => Response::Unhandled(Event::Action(a)),
+            a @ _ => Response::unhandled_action(a),
         }
     }
 

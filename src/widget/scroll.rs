@@ -132,7 +132,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                     tk.redraw(self.id());
                     Response::None
                 } else {
-                    Response::Unhandled(Event::Action(Action::Scroll(delta)))
+                    Response::unhandled_action(Action::Scroll(delta))
                 }
             }
             e @ _ => e,

@@ -108,7 +108,7 @@ impl<M: Clone + Debug> Handler for TextButton<M> {
     fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<M> {
         match action {
             Action::Activate => self.msg.clone().into(),
-            a @ _ => Response::Unhandled(Event::Action(a)),
+            a @ _ => Response::unhandled_action(a),
         }
     }
 
