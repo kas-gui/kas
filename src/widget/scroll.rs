@@ -87,6 +87,24 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
         event: Event,
     ) -> Response<Self::Msg> {
         let addr = match addr {
+            Address::Id(id) if id == self.id() => {
+                let r = match event {
+                    Event::PressMove { delta, .. } => {
+                        let offset = (self.offset + delta).min(Coord::ZERO).max(self.min_offset);
+                        if offset != self.offset {
+                            self.offset = offset;
+                            tk.redraw(self.id());
+                        }
+                        Response::None
+                    }
+                    Event::PressEnd { .. } => {
+                        // consume due to request
+                        Response::None
+                    }
+                    e @ _ => Response::Unhandled(e),
+                };
+                return r;
+            }
             a @ Address::Id(_) => a,
             Address::Coord(coord) => Address::Coord(coord - self.offset),
         };
@@ -134,6 +152,10 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                 } else {
                     Response::unhandled_action(Action::Scroll(delta))
                 }
+            }
+            Response::Unhandled(Event::PressStart { source, coord }) if source.is_primary() => {
+                tk.update_data(&mut |data| data.request_press_grab(source, self.id(), coord));
+                Response::None
             }
             e @ _ => e,
         }
