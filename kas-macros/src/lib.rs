@@ -140,20 +140,20 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         for child in args.children.iter() {
             let ident = &child.ident;
             let handler = if let Some(ref h) = child.args.handler {
-                quote! { self.#h(_tk, r) }
+                quote! { r.try_into().unwrap_or_else(|msg| self.#h(_tk, msg)) }
             } else {
                 quote! { r.into() }
             };
             // TODO(opt): it is possible to code more efficient search strategies
             ev_to_num.append_all(quote! {
-                else if *id <= self.#ident.id() {
-                    let r = self.#ident.handle(_tk, event);
+                if id <= self.#ident.id() {
+                    let r = self.#ident.handle(_tk, addr, event);
                     #handler
-                }
+                } else
             });
             ev_to_coord.append_all(quote! {
-                if self.#ident.rect().contains(*coord) {
-                    let r = self.#ident.handle(_tk, event);
+                if self.#ident.rect().contains(coord) {
+                    let r = self.#ident.handle(_tk, addr, event);
                     #handler
                 } else
             });
@@ -164,25 +164,20 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             quote! {}
         } else {
             quote! {
-                fn handle(&mut self, _tk: &mut dyn kas::TkWindow, event: kas::event::Event)
-                -> Self::Msg
+                fn handle(&mut self, _tk: &mut dyn kas::TkWindow, addr: kas::event::Address, event: kas::event::Event)
+                -> kas::event::Response<Self::Msg>
                 {
-                    use kas::{WidgetCore, event::Event};
-                    match &event {
-                        Event::ToChild(id, ..) => {
-                            if *id == self.id() {
-                                // we may want to allow custom handlers on self here?
-                                kas::event::err_unhandled(event)
-                            }
-                            #ev_to_num
-                            else {
-                                kas::event::err_num()
+                    use kas::{WidgetCore, event::{Event, Response}};
+                    match addr {
+                        kas::event::Address::Id(id) => {
+                            #ev_to_num {
+                                debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
+                                Response::Unhandled(event)
                             }
                         }
-                        Event::ToCoord(coord, ..) => {
+                        kas::event::Address::Coord(coord) => {
                             #ev_to_coord {
-                                // we may want to allow custom handlers on self here?
-                                kas::event::EmptyMsg.into()
+                                kas::event::Manager::handle_generic(self, _tk, event)
                             }
                         }
                     }
@@ -346,7 +341,6 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             let tyr = Ident::new(&name_buf, Span::call_site());
                             handler_extra.push(tyr.clone());
                             handler_clauses.push(quote! { #ty: kas::event::Handler<Msg = #tyr> });
-                            handler_clauses.push(quote! { #tyr: From<kas::event::EmptyMsg> });
                             handler_clauses.push(quote! { #msg: From<#tyr> });
                         }
                     }
@@ -422,24 +416,21 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     toks
 }
 
-/// Macro to derive `From<EmptyMsg>`
+/// Macro to derive `From<VoidMsg>`
 ///
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
-///
-/// This macro assumes the type is an enum with a simple variant named `None`.
-// TODO: add diagnostics to check against mis-use?
-#[proc_macro_derive(EmptyMsg)]
+#[proc_macro_derive(VoidMsg)]
 pub fn derive_empty_msg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let name = &ast.ident;
 
     let toks = quote! {
-        impl #impl_generics From<kas::event::EmptyMsg>
+        impl #impl_generics From<kas::event::VoidMsg>
             for #name #ty_generics #where_clause
         {
-            fn from(_: kas::event::EmptyMsg) -> Self {
-                #name::None
+            fn from(_: kas::event::VoidMsg) -> Self {
+                unreachable!()
             }
         }
     };

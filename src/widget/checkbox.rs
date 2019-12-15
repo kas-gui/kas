@@ -5,11 +5,10 @@
 
 //! Toggle widgets
 
-use std::any::TypeId;
 use std::fmt::{self, Debug};
 
 use crate::class::{HasBool, HasText};
-use crate::event::{self, err_unhandled, Action, EmptyMsg, Handler};
+use crate::event::{self, Action, Handler, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
@@ -174,31 +173,41 @@ impl<H> HasText for CheckBox<H> {
 }
 
 impl Handler for CheckBox<()> {
-    type Msg = EmptyMsg;
+    type Msg = VoidMsg;
 
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> EmptyMsg {
+    #[inline]
+    fn activation_via_press(&self) -> bool {
+        true
+    }
+
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<VoidMsg> {
         match action {
             Action::Activate => {
                 self.state = !self.state;
                 tk.redraw(self.id());
-                EmptyMsg
+                Response::None
             }
-            a @ _ => err_unhandled(a),
+            a @ _ => Response::unhandled_action(a),
         }
     }
 }
 
-impl<M: From<EmptyMsg>, H: Fn(bool) -> M> Handler for CheckBox<H> {
+impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
     type Msg = M;
 
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> M {
+    #[inline]
+    fn activation_via_press(&self) -> bool {
+        true
+    }
+
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<M> {
         match action {
             Action::Activate => {
                 self.state = !self.state;
                 tk.redraw(self.id());
                 ((self.on_toggle)(self.state)).into()
             }
-            a @ _ => err_unhandled(a),
+            a @ _ => Response::unhandled_action(a),
         }
     }
 }

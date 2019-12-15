@@ -104,7 +104,7 @@ let window = Window::new(make_widget! {
     }
     impl {
         fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Message)
-            -> EmptyMsg
+            -> VoidResponse
         {
             match msg {
                 Message::Decr => {
@@ -116,7 +116,7 @@ let window = Window::new(make_widget! {
                     self.display.set_text(tk, self.counter.to_string());
                 }
             };
-            EmptyMsg
+            VoidResponse::None
         }
     }
 });

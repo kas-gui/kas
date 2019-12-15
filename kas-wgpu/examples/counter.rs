@@ -7,14 +7,13 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::class::HasText;
-use kas::event::EmptyMsg;
-use kas::macros::{make_widget, EmptyMsg};
+use kas::event::{VoidMsg, VoidResponse};
+use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};
 use kas::TkWindow;
 
-#[derive(Clone, Debug, EmptyMsg)]
+#[derive(Clone, Debug, VoidMsg)]
 enum Message {
-    None,
     Decr,
     Incr,
 }
@@ -28,7 +27,7 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     };
     let window = Window::new(make_widget! {
-        vertical => EmptyMsg;
+        vertical => VoidMsg;
         struct {
             #[widget] display: Label = Label::from("0"),
             #[widget(handler = handle_button)] buttons -> Message = buttons,
@@ -36,10 +35,9 @@ fn main() -> Result<(), winit::error::OsError> {
         }
         impl {
             fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Message)
-                -> EmptyMsg
+                -> VoidResponse
             {
                 match msg {
-                    Message::None => (),
                     Message::Decr => {
                         self.counter = self.counter.saturating_sub(1);
                         self.display.set_text(tk, self.counter.to_string());
@@ -49,7 +47,7 @@ fn main() -> Result<(), winit::error::OsError> {
                         self.display.set_text(tk, self.counter.to_string());
                     }
                 };
-                EmptyMsg
+                VoidResponse::None
             }
         }
     });

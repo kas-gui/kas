@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{Editable, HasText};
-use crate::event::{self, Action, EmptyMsg, Handler};
+use crate::event::{self, Action, Handler, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
@@ -300,35 +300,50 @@ impl<H> Editable for EditBox<H> {
 }
 
 impl Handler for EditBox<()> {
-    type Msg = EmptyMsg;
+    type Msg = VoidMsg;
 
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> EmptyMsg {
-        match action {
-            Action::Activate => tk.update_data(&mut |data| data.set_char_focus(self.id())),
-            Action::ReceivedCharacter(c) => {
-                self.received_char(tk, c);
-            }
-        }
-        EmptyMsg
+    #[inline]
+    fn activation_via_press(&self) -> bool {
+        true
     }
-}
 
-impl<M: From<EmptyMsg>, H: Fn(&str) -> M> Handler for EditBox<H> {
-    type Msg = M;
-
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> M {
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<VoidMsg> {
         match action {
             Action::Activate => {
                 tk.update_data(&mut |data| data.set_char_focus(self.id()));
-                EmptyMsg.into()
+                Response::None
+            }
+            Action::ReceivedCharacter(c) => {
+                self.received_char(tk, c);
+                Response::None
+            }
+            a @ _ => Response::unhandled_action(a),
+        }
+    }
+}
+
+impl<M, H: Fn(&str) -> M> Handler for EditBox<H> {
+    type Msg = M;
+
+    #[inline]
+    fn activation_via_press(&self) -> bool {
+        true
+    }
+
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<M> {
+        match action {
+            Action::Activate => {
+                tk.update_data(&mut |data| data.set_char_focus(self.id()));
+                Response::None
             }
             Action::ReceivedCharacter(c) => {
                 if self.received_char(tk, c) {
                     ((self.on_activate)(&self.text)).into()
                 } else {
-                    EmptyMsg.into()
+                    Response::None
                 }
             }
+            a @ _ => Response::unhandled_action(a),
         }
     }
 }

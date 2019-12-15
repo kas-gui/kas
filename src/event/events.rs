@@ -3,64 +3,78 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Event handling
-//!
-//! Event handling uses *event* messages, passed from the parent into a widget,
-//! with responses passed back to the parent. This model is simpler than that
-//! commonly used by GUI frameworks: widgets do not need a pointer to their
-//! parent and any result is pushed back up the call stack. The model allows
-//! type-safety while allowing user-defined result types.
+//! Event handling: events
 
-use super::{ElementState, ModifiersState, MouseButton};
+use super::MouseButton;
 
 use crate::geom::Coord;
 use crate::WidgetId;
 
-/// High-level actions supported by widgets
-#[derive(Debug)]
+/// Delivery address of an [`Event`]
+#[derive(Clone, Copy, Debug)]
+pub enum Address {
+    Id(WidgetId),
+    Coord(Coord),
+}
+
+/// High-level events addressed to a widget by [`WidgetId`]
+#[derive(Clone, Debug)]
 pub enum Action {
     /// Widget activation, for example clicking a button or toggling a check-box
     Activate,
     /// Widget receives a character of text input
     ReceivedCharacter(char),
-}
-
-/// Input events: these are low-level messages where the destination widget is
-/// unknown.
-///
-/// These events are segregated by delivery method.
-#[derive(Debug)]
-pub enum Event {
-    /* NOTE: it's tempting to add this, but we have no model for returning a
-     * response from multiple recipients and no use-case.
-    /// Events to be addressed to all descendents
-    ToAll(EventAll),
-    */
-    /// Events addressed to a child by [`WidgetId`]
-    ToChild(WidgetId, EventChild),
-    /// Events addressed by coordinate
-    ToCoord(Coord, EventCoord),
-}
-
-/// Events addressed to a child by [`WidgetId`]
-#[derive(Debug)]
-pub enum EventChild {
-    Action(Action),
-    MouseInput {
-        state: ElementState,
-        button: MouseButton,
-        modifiers: ModifiersState,
-    },
+    /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
 }
 
-/// Events addressed by coordinate
-#[derive(Debug)]
-pub enum EventCoord {
-    CursorMoved { modifiers: ModifiersState },
-    TouchStart(u64),
-    TouchMove(u64),
-    TouchEnd(u64),
+/// Low-level events addressed to a widget by [`WidgetId`] or coordinate.
+#[derive(Clone, Debug)]
+pub enum Event {
+    Action(Action),
+    Identify,
+    /// A mouse button was pressed or touch event started
+    PressStart {
+        source: PressSource,
+        coord: Coord,
+    },
+    /// Movement of mouse or a
+    ///
+    /// Received only if a mouse grab is enabled
+    PressMove {
+        source: PressSource,
+        coord: Coord,
+        delta: Coord,
+    },
+    /// End of a click/touch press
+    ///
+    /// Received if a mouse grab is enabled; otherwise received if on self
+    PressEnd {
+        source: PressSource,
+        start_id: Option<WidgetId>,
+        end_id: Option<WidgetId>,
+        coord: Coord,
+    },
+}
+
+/// Source of `EventChild::Press`
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PressSource {
+    /// A mouse click
+    Mouse(MouseButton),
+    /// A touch event (with given `id`)
+    Touch(u64),
+}
+
+impl PressSource {
+    /// Returns true if this represents the left mouse button or a touch event
+    #[inline]
+    pub fn is_primary(self) -> bool {
+        match self {
+            PressSource::Mouse(button) => button == MouseButton::Left,
+            PressSource::Touch(_) => true,
+        }
+    }
 }
 
 /// Type used by [`EventChild::Scroll`]

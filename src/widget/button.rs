@@ -8,7 +8,7 @@
 use std::fmt::Debug;
 
 use crate::class::HasText;
-use crate::event::{self, err_unhandled, Action, EmptyMsg, Handler, VirtualKeyCode};
+use crate::event::{self, Action, Handler, Response, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
@@ -18,7 +18,7 @@ use kas::geom::Rect;
 /// A push-button with a text label
 #[widget]
 #[derive(Clone, Debug, Default, Widget)]
-pub struct TextButton<M: Clone + Debug + From<EmptyMsg>> {
+pub struct TextButton<M: Clone + Debug> {
     #[core]
     core: CoreData,
     text_rect: Rect,
@@ -26,7 +26,7 @@ pub struct TextButton<M: Clone + Debug + From<EmptyMsg>> {
     msg: M,
 }
 
-impl<M: Clone + Debug + From<EmptyMsg>> Widget for TextButton<M> {
+impl<M: Clone + Debug> Widget for TextButton<M> {
     fn allow_focus(&self) -> bool {
         true
     }
@@ -58,7 +58,7 @@ impl<M: Clone + Debug + From<EmptyMsg>> Widget for TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug + From<EmptyMsg>> TextButton<M> {
+impl<M: Clone + Debug> TextButton<M> {
     /// Construct a button with a given `label` and `msg`
     ///
     /// The message `msg` is returned to the parent widget on activation. Any
@@ -91,7 +91,7 @@ impl<M: Clone + Debug + From<EmptyMsg>> TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug + From<EmptyMsg>> HasText for TextButton<M> {
+impl<M: Clone + Debug> HasText for TextButton<M> {
     fn get_text(&self) -> &str {
         &self.label
     }
@@ -102,13 +102,18 @@ impl<M: Clone + Debug + From<EmptyMsg>> HasText for TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug + From<EmptyMsg>> Handler for TextButton<M> {
+impl<M: Clone + Debug> Handler for TextButton<M> {
     type Msg = M;
 
-    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> M {
+    #[inline]
+    fn activation_via_press(&self) -> bool {
+        true
+    }
+
+    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<M> {
         match action {
             Action::Activate => self.msg.clone().into(),
-            a @ _ => err_unhandled(a),
+            a @ _ => Response::unhandled_action(a),
         }
     }
 }

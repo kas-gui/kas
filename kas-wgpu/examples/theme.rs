@@ -9,8 +9,8 @@
 use std::cell::Cell;
 
 use kas::draw::Colour;
-use kas::event::EmptyMsg;
-use kas::macros::{make_widget, EmptyMsg};
+use kas::event::{VoidMsg, VoidResponse};
+use kas::macros::{make_widget, VoidMsg};
 use kas::theme::Theme;
 use kas::widget::*;
 use kas::TkWindow;
@@ -78,9 +78,8 @@ impl Theme<DrawPipe> for ColouredTheme {
     }
 }
 
-#[derive(Clone, Debug, EmptyMsg)]
+#[derive(Clone, Debug, VoidMsg)]
 enum Item {
-    None,
     White,
     Red,
     Green,
@@ -102,22 +101,21 @@ fn main() -> Result<(), winit::error::OsError> {
     let theme = ColouredTheme::new();
 
     let window = Window::new(make_widget! {
-        single => EmptyMsg;
+        single => VoidMsg;
         struct {
             #[widget(handler = handler)] _ = widgets,
         }
         impl {
             fn handler(&mut self, _: &mut dyn TkWindow, item: Item)
-                -> EmptyMsg
+                -> VoidResponse
             {
                 match item {
-                    Item::None => (),
                     Item::White => BACKGROUND.with(|b| b.set(Colour::grey(1.0))),
                     Item::Red => BACKGROUND.with(|b| b.set(Colour::new(0.9, 0.2, 0.2))),
                     Item::Green => BACKGROUND.with(|b| b.set(Colour::new(0.2, 0.9, 0.2))),
                     Item::Yellow => BACKGROUND.with(|b| b.set(Colour::new(0.9, 0.9, 0.2))),
                 };
-                EmptyMsg
+                VoidResponse::None
             }
         }
     });

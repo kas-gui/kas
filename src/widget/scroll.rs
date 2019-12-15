@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use crate::event::{EmptyMsg, Event, EventChild, Handler, Manager, ScrollDelta};
+use crate::event::{Action, Address, Event, Handler, Manager, Response, ScrollDelta};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
@@ -80,31 +80,86 @@ impl<W: Widget> ScrollRegion<W> {
 impl<W: Widget + Handler> Handler for ScrollRegion<W> {
     type Msg = <W as Handler>::Msg;
 
-    fn handle(&mut self, tk: &mut dyn TkWindow, event: Event) -> Self::Msg {
-        match event {
-            Event::ToChild(id, event) => {
-                // Intercept scroll events.
-                // TODO: we may want to revise this later, e.g. pass through to
-                // inner-most widget then handle through the return value.
-                match event {
-                    EventChild::Scroll(delta) => {
-                        let delta = match delta {
-                            ScrollDelta::LineDelta(x, y) => Coord(
-                                (-self.scroll_rate * x) as i32,
-                                (self.scroll_rate * y) as i32,
-                            ),
-                            ScrollDelta::PixelDelta(delta) => delta,
-                        };
-                        self.offset = (self.offset + delta).min(Coord::ZERO).max(self.min_offset);
-                        tk.redraw(self.id());
-                        EmptyMsg.into()
+    fn handle(
+        &mut self,
+        tk: &mut dyn TkWindow,
+        addr: Address,
+        event: Event,
+    ) -> Response<Self::Msg> {
+        let addr = match addr {
+            Address::Id(id) if id == self.id() => {
+                let r = match event {
+                    Event::PressMove { delta, .. } => {
+                        let offset = (self.offset + delta).min(Coord::ZERO).max(self.min_offset);
+                        if offset != self.offset {
+                            self.offset = offset;
+                            tk.redraw(self.id());
+                        }
+                        Response::None
                     }
-                    ev @ _ => self.child.handle(tk, Event::ToChild(id, ev)),
+                    Event::PressEnd { .. } => {
+                        // consume due to request
+                        Response::None
+                    }
+                    e @ _ => Response::Unhandled(e),
+                };
+                return r;
+            }
+            a @ Address::Id(_) => a,
+            Address::Coord(coord) => Address::Coord(coord - self.offset),
+        };
+        let event = match event {
+            a @ Event::Action(_) | a @ Event::Identify => a,
+            Event::PressStart { source, coord } => Event::PressStart {
+                source,
+                coord: coord - self.offset,
+            },
+            Event::PressMove {
+                source,
+                coord,
+                delta,
+            } => Event::PressMove {
+                source,
+                coord: coord - self.offset,
+                delta,
+            },
+            Event::PressEnd {
+                source,
+                start_id,
+                end_id,
+                coord,
+            } => Event::PressEnd {
+                source,
+                start_id,
+                end_id,
+                coord: coord - self.offset,
+            },
+        };
+
+        match self.child.handle(tk, addr, event) {
+            Response::None => Response::None,
+            Response::Unhandled(Event::Action(Action::Scroll(delta))) => {
+                let d = match delta {
+                    ScrollDelta::LineDelta(x, y) => Coord(
+                        (-self.scroll_rate * x) as i32,
+                        (self.scroll_rate * y) as i32,
+                    ),
+                    ScrollDelta::PixelDelta(d) => d,
+                };
+                let offset = (self.offset + d).min(Coord::ZERO).max(self.min_offset);
+                if offset != self.offset {
+                    self.offset = offset;
+                    tk.redraw(self.id());
+                    Response::None
+                } else {
+                    Response::unhandled_action(Action::Scroll(delta))
                 }
             }
-            Event::ToCoord(coord, event) => self
-                .child
-                .handle(tk, Event::ToCoord(coord - self.offset, event)),
+            Response::Unhandled(Event::PressStart { source, coord }) if source.is_primary() => {
+                tk.update_data(&mut |data| data.request_press_grab(source, self, coord));
+                Response::None
+            }
+            e @ _ => e,
         }
     }
 }

@@ -73,7 +73,7 @@ fn nav_colour(highlights: HighlightState) -> Option<Colour> {
 
 fn button_colour(highlights: HighlightState, show: bool) -> Option<Colour> {
     if highlights.depress {
-        Some(Colour::new(0.2, 0.6, 0.8))
+        Some(Colour::new(0.15, 0.525, 0.75))
     } else if show && highlights.hover {
         Some(Colour::new(0.25, 0.8, 1.0))
     } else if show {
@@ -368,7 +368,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     }
 
     fn checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState) {
-        let pos = Vec2::from(pos);
+        let pos = Vec2::from(pos + self.offset);
         let size = 2.0 * (self.window.frame_size + self.window.margin) + self.window.font_scale;
         let size = Vec2::splat(size);
         let mut quad = Quad(pos, pos + size);
