@@ -78,6 +78,10 @@ impl Manager {
                 tk.update_data(&mut |data| data.request_press_grab(source, widget.id(), coord));
                 Response::None
             }
+            Event::PressMove { .. } if activable => {
+                // We don't need these events, but they should not be considered *unhandled*
+                Response::None
+            }
             Event::PressEnd { start_id, .. } if activable && start_id == Some(widget.id()) => {
                 widget.handle_action(tk, Action::Activate)
             }

@@ -188,7 +188,10 @@ impl Manager {
     /// Request a mouse grab on the given input source
     ///
     /// If successful, corresponding move/end events will be forwarded to the
-    /// given `w_id`. The grab automatically ends after the end event.
+    /// given `w_id`. The grab automatically ends after the end event. Since
+    /// these events are *requested*, the widget should consume them even if
+    /// e.g. the move events are not needed (although in practice this only
+    /// affects parents intercepting [`Response::Unhandled`] events).
     ///
     /// In the case that multiple widgets attempt to grab the same source, only
     /// the first will be successful.
