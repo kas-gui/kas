@@ -275,12 +275,12 @@ impl<'a> ImplLayout<'a> {
                 type Data = kas::layout::FixedRowStorage::<
                     [kas::layout::SizeRules; #cols + 1]
                 >;
-                type Solver = kas::layout::FixedRowSolver::<
+                type Solver = kas::layout::RowSolver::<
                     kas::layout::Horizontal,
                     Self::Data,
                     [u32; #cols],
                 >;
-                type Setter = kas::layout::FixedRowSetter::<
+                type Setter = kas::layout::RowSetter::<
                     kas::layout::Horizontal,
                     Self::Data,
                     [u32; #cols],
@@ -290,12 +290,12 @@ impl<'a> ImplLayout<'a> {
                 type Data = kas::layout::FixedRowStorage::<
                     [kas::layout::SizeRules; #rows + 1],
                 >;
-                type Solver = kas::layout::FixedRowSolver::<
+                type Solver = kas::layout::RowSolver::<
                     kas::layout::Vertical,
                     Self::Data,
                     [u32; #rows],
                 >;
-                type Setter = kas::layout::FixedRowSetter::<
+                type Setter = kas::layout::RowSetter::<
                     kas::layout::Vertical,
                     Self::Data,
                     [u32; #rows],

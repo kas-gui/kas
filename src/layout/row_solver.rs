@@ -52,9 +52,33 @@ where
     }
 }
 
+/// Variable-length row storage
+#[derive(Clone, Debug, Default)]
+pub struct DynRowStorage {
+    rules: Vec<SizeRules>,
+}
+
+impl Storage for DynRowStorage {}
+
+impl RowStorage for DynRowStorage {
+    fn as_ref(&self) -> &[SizeRules] {
+        self.rules.as_ref()
+    }
+    fn as_mut(&mut self) -> &mut [SizeRules] {
+        self.rules.as_mut()
+    }
+    fn assert_len(&mut self, len: usize) {
+        assert_eq!(self.rules.len(), len);
+    }
+    fn set_len(&mut self, len: usize) {
+        self.rules.resize(len, SizeRules::EMPTY);
+    }
+}
+
 mod sealed {
     pub trait Sealed {}
     impl<R: Clone> Sealed for super::FixedRowStorage<R> {}
+    impl Sealed for super::DynRowStorage {}
 }
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
@@ -63,7 +87,7 @@ mod sealed {
 ///
 /// NOTE: ideally this would use const-generics, but those aren't stable (or
 /// even usable) yet. This will likely be implemented in the future.
-pub struct FixedRowSolver<D, R: RowStorage, T> {
+pub struct RowSolver<D, R: RowStorage, T> {
     // Generalisation implies that axis.vert() is incorrect
     axis: AxisInfo,
     axis_is_vertical: bool,
@@ -73,7 +97,7 @@ pub struct FixedRowSolver<D, R: RowStorage, T> {
     _r: PhantomData<R>,
 }
 
-impl<D: Direction, R: RowStorage, T> FixedRowSolver<D, R, T>
+impl<D: Direction, R: RowStorage, T> RowSolver<D, R, T>
 where
     T: Default + AsRef<[u32]> + AsMut<[u32]>,
 {
@@ -93,7 +117,7 @@ where
             SizeRules::solve_seq(widths.as_mut(), storage.as_ref(), axis.other_axis);
         }
 
-        FixedRowSolver {
+        RowSolver {
             axis,
             axis_is_vertical,
             rules: SizeRules::EMPTY,
@@ -104,7 +128,7 @@ where
     }
 }
 
-impl<D, R: RowStorage, T> RulesSolver for FixedRowSolver<D, R, T>
+impl<D, R: RowStorage, T> RulesSolver for RowSolver<D, R, T>
 where
     T: AsRef<[u32]>,
 {
@@ -148,7 +172,7 @@ where
     }
 }
 
-pub struct FixedRowSetter<D, R: RowStorage, T> {
+pub struct RowSetter<D, R: RowStorage, T> {
     crect: Rect,
     inter: u32,
     widths: T,
@@ -156,7 +180,7 @@ pub struct FixedRowSetter<D, R: RowStorage, T> {
     _r: PhantomData<R>,
 }
 
-impl<D: Direction, R: RowStorage, T> FixedRowSetter<D, R, T>
+impl<D: Direction, R: RowStorage, T> RowSetter<D, R, T>
 where
     T: Default + AsRef<[u32]> + AsMut<[u32]>,
 {
@@ -178,7 +202,7 @@ where
 
         SizeRules::solve_seq(widths.as_mut(), storage.as_ref(), width);
 
-        FixedRowSetter {
+        RowSetter {
             crect,
             inter,
             widths,
@@ -188,7 +212,7 @@ where
     }
 }
 
-impl<D: Direction, R: RowStorage, T> RulesSetter for FixedRowSetter<D, R, T>
+impl<D: Direction, R: RowStorage, T> RulesSetter for RowSetter<D, R, T>
 where
     T: AsRef<[u32]>,
 {
