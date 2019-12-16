@@ -277,13 +277,13 @@ impl<'a> ImplLayout<'a> {
                 >;
                 type Solver = kas::layout::RowSolver::<
                     kas::layout::Horizontal,
-                    Self::Data,
                     [u32; #cols],
+                    Self::Data,
                 >;
                 type Setter = kas::layout::RowSetter::<
                     kas::layout::Horizontal,
-                    Self::Data,
                     [u32; #cols],
+                    Self::Data,
                 >;
             },
             Layout::Vertical => quote! {
@@ -292,13 +292,13 @@ impl<'a> ImplLayout<'a> {
                 >;
                 type Solver = kas::layout::RowSolver::<
                     kas::layout::Vertical,
-                    Self::Data,
                     [u32; #rows],
+                    Self::Data,
                 >;
                 type Setter = kas::layout::RowSetter::<
                     kas::layout::Vertical,
-                    Self::Data,
                     [u32; #rows],
+                    Self::Data,
                 >;
             },
             Layout::Grid => quote! {

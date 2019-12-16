@@ -87,7 +87,7 @@ mod sealed {
 ///
 /// NOTE: ideally this would use const-generics, but those aren't stable (or
 /// even usable) yet. This will likely be implemented in the future.
-pub struct RowSolver<D, R: RowStorage, T> {
+pub struct RowSolver<D, T, R: RowStorage> {
     // Generalisation implies that axis.vert() is incorrect
     axis: AxisInfo,
     axis_is_vertical: bool,
@@ -97,7 +97,7 @@ pub struct RowSolver<D, R: RowStorage, T> {
     _r: PhantomData<R>,
 }
 
-impl<D: Direction, R: RowStorage, T> RowSolver<D, R, T>
+impl<D: Direction, T, R: RowStorage> RowSolver<D, T, R>
 where
     T: Default + AsRef<[u32]> + AsMut<[u32]>,
 {
@@ -128,7 +128,7 @@ where
     }
 }
 
-impl<D, R: RowStorage, T> RulesSolver for RowSolver<D, R, T>
+impl<D, T, R: RowStorage> RulesSolver for RowSolver<D, T, R>
 where
     T: AsRef<[u32]>,
 {
@@ -172,7 +172,7 @@ where
     }
 }
 
-pub struct RowSetter<D, R: RowStorage, T> {
+pub struct RowSetter<D, T, R: RowStorage> {
     crect: Rect,
     inter: u32,
     widths: T,
@@ -180,7 +180,7 @@ pub struct RowSetter<D, R: RowStorage, T> {
     _r: PhantomData<R>,
 }
 
-impl<D: Direction, R: RowStorage, T> RowSetter<D, R, T>
+impl<D: Direction, T, R: RowStorage> RowSetter<D, T, R>
 where
     T: Default + AsRef<[u32]> + AsMut<[u32]>,
 {
@@ -212,7 +212,7 @@ where
     }
 }
 
-impl<D: Direction, R: RowStorage, T> RulesSetter for RowSetter<D, R, T>
+impl<D: Direction, T, R: RowStorage> RulesSetter for RowSetter<D, T, R>
 where
     T: AsRef<[u32]>,
 {
