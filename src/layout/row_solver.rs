@@ -10,6 +10,23 @@ use std::marker::PhantomData;
 use super::{AxisInfo, Direction, Margins, RulesSetter, RulesSolver, SizeRules, Storage};
 use crate::geom::Rect;
 
+/// Requirements of row solver storage type
+///
+/// Details are hidden (for internal use only).
+pub trait RowStorage: sealed::Sealed + Clone {
+    #[doc(hidden)]
+    fn as_ref(&self) -> &[SizeRules];
+    #[doc(hidden)]
+    fn as_mut(&mut self) -> &mut [SizeRules];
+    #[doc(hidden)]
+    fn assert_len(&mut self, len: usize);
+    #[doc(hidden)]
+    fn set_len(&mut self, len: usize);
+}
+
+/// Fixed-length row storage
+///
+/// Argument type is expected to be `[SizeRules; n]` where `n = rows + 1`.
 #[derive(Clone, Debug, Default)]
 pub struct FixedRowStorage<R: Clone> {
     rules: R,
@@ -17,13 +34,36 @@ pub struct FixedRowStorage<R: Clone> {
 
 impl<R: Clone> Storage for FixedRowStorage<R> {}
 
+impl<R> RowStorage for FixedRowStorage<R>
+where
+    R: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
+{
+    fn as_ref(&self) -> &[SizeRules] {
+        self.rules.as_ref()
+    }
+    fn as_mut(&mut self) -> &mut [SizeRules] {
+        self.rules.as_mut()
+    }
+    fn assert_len(&mut self, len: usize) {
+        assert_eq!(self.rules.as_ref().len(), len);
+    }
+    fn set_len(&mut self, len: usize) {
+        self.assert_len(len);
+    }
+}
+
+mod sealed {
+    pub trait Sealed {}
+    impl<R: Clone> Sealed for super::FixedRowStorage<R> {}
+}
+
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
 /// This implementation relies on the caller to provide storage for solver data.
 ///
 /// NOTE: ideally this would use const-generics, but those aren't stable (or
 /// even usable) yet. This will likely be implemented in the future.
-pub struct FixedRowSolver<D, R: Clone, T> {
+pub struct FixedRowSolver<D, R: RowStorage, T> {
     // Generalisation implies that axis.vert() is incorrect
     axis: AxisInfo,
     axis_is_vertical: bool,
@@ -33,25 +73,24 @@ pub struct FixedRowSolver<D, R: Clone, T> {
     _r: PhantomData<R>,
 }
 
-impl<D: Direction, R, T> FixedRowSolver<D, R, T>
+impl<D: Direction, R: RowStorage, T> FixedRowSolver<D, R, T>
 where
-    R: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
     T: Default + AsRef<[u32]> + AsMut<[u32]>,
 {
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `storage`: reference to persistent storage
-    pub fn new(axis: AxisInfo, storage: &mut FixedRowStorage<R>) -> Self {
+    pub fn new(axis: AxisInfo, storage: &mut R) -> Self {
         let mut widths = T::default();
-        assert!(widths.as_ref().len() + 1 == storage.rules.as_ref().len());
+        storage.set_len(widths.as_ref().len() + 1);
         assert!(widths.as_ref().iter().all(|w| *w == 0));
 
         let axis_is_vertical = axis.vertical ^ D::is_vertical();
 
         if axis.has_fixed && axis_is_vertical {
             // TODO: cache this for use by set_rect?
-            SizeRules::solve_seq(widths.as_mut(), storage.rules.as_ref(), axis.other_axis);
+            SizeRules::solve_seq(widths.as_mut(), storage.as_ref(), axis.other_axis);
         }
 
         FixedRowSolver {
@@ -65,12 +104,11 @@ where
     }
 }
 
-impl<D, R, T> RulesSolver for FixedRowSolver<D, R, T>
+impl<D, R: RowStorage, T> RulesSolver for FixedRowSolver<D, R, T>
 where
-    R: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
     T: AsRef<[u32]>,
 {
-    type Storage = FixedRowStorage<R>;
+    type Storage = R;
     type ChildInfo = usize;
 
     fn for_child<CR: FnOnce(AxisInfo) -> SizeRules>(
@@ -84,7 +122,7 @@ where
         }
         let child_rules = child_rules(self.axis);
         if !self.axis_is_vertical {
-            storage.rules.as_mut()[child_info] = child_rules;
+            storage.as_mut()[child_info] = child_rules;
             self.rules += child_rules;
         } else {
             self.rules = self.rules.max(child_rules);
@@ -101,16 +139,16 @@ where
         ColIter: Iterator<Item = (usize, usize, usize)>,
         RowIter: Iterator<Item = (usize, usize, usize)>,
     {
-        let cols = storage.rules.as_ref().len() - 1;
+        let cols = storage.as_ref().len() - 1;
         if !self.axis_is_vertical {
-            storage.rules.as_mut()[cols] = self.rules;
+            storage.as_mut()[cols] = self.rules;
         }
 
         self.rules
     }
 }
 
-pub struct FixedRowSetter<D, R: Clone, T> {
+pub struct FixedRowSetter<D, R: RowStorage, T> {
     crect: Rect,
     inter: u32,
     widths: T,
@@ -118,14 +156,13 @@ pub struct FixedRowSetter<D, R: Clone, T> {
     _r: PhantomData<R>,
 }
 
-impl<D: Direction, R, T> FixedRowSetter<D, R, T>
+impl<D: Direction, R: RowStorage, T> FixedRowSetter<D, R, T>
 where
-    R: Clone + AsRef<[SizeRules]>,
     T: Default + AsRef<[u32]> + AsMut<[u32]>,
 {
-    pub fn new(mut rect: Rect, margins: Margins, storage: &mut FixedRowStorage<R>) -> Self {
+    pub fn new(mut rect: Rect, margins: Margins, storage: &mut R) -> Self {
         let mut widths = T::default();
-        assert!(widths.as_ref().len() + 1 == storage.rules.as_ref().len());
+        storage.assert_len(widths.as_ref().len() + 1);
 
         rect.pos += margins.first;
         rect.size -= margins.first + margins.last;
@@ -139,7 +176,7 @@ where
             (rect.size.1, margins.inter.1)
         };
 
-        SizeRules::solve_seq(widths.as_mut(), storage.rules.as_ref(), width);
+        SizeRules::solve_seq(widths.as_mut(), storage.as_ref(), width);
 
         FixedRowSetter {
             crect,
@@ -151,12 +188,11 @@ where
     }
 }
 
-impl<D: Direction, R, T> RulesSetter for FixedRowSetter<D, R, T>
+impl<D: Direction, R: RowStorage, T> RulesSetter for FixedRowSetter<D, R, T>
 where
-    R: Clone,
     T: AsRef<[u32]>,
 {
-    type Storage = FixedRowStorage<R>;
+    type Storage = R;
     type ChildInfo = usize;
 
     fn child_rect(&mut self, child_info: Self::ChildInfo) -> Rect {
