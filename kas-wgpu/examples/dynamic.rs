@@ -10,7 +10,7 @@ use kas::class::HasText;
 use kas::event::{Callback, Response, VoidMsg};
 use kas::layout::Vertical;
 use kas::macros::{make_widget, VoidMsg};
-use kas::widget::{DynList, EditBox, Label, ScrollRegion, TextButton, Window};
+use kas::widget::{DynVec, EditBox, Label, ScrollRegion, TextButton, Window};
 use kas::TkWindow;
 
 #[derive(Clone, Debug, VoidMsg)]
@@ -65,14 +65,14 @@ fn main() -> Result<(), winit::error::OsError> {
         struct {
             #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
             #[widget(handler = handler)] controls -> Message = controls,
-            #[widget] list: ScrollRegion<DynList<Vertical>> = ScrollRegion::new(DynList::new(Vertical, vec![])),
+            #[widget] list: ScrollRegion<DynVec<Vertical, Label>> = ScrollRegion::new(DynVec::new(Vertical, vec![])),
         }
         impl {
             fn handler(&mut self, tk: &mut dyn TkWindow, msg: Message) -> Response<VoidMsg>
             {
                 match msg {
                     Message::Set(n) => {
-                        self.list.inner_mut().resize_with(tk, n, |i| Box::new(Label::new(i.to_string())));
+                        self.list.inner_mut().resize_with(tk, n, |i| Label::new(i.to_string()));
                     }
                 };
                 Response::None
