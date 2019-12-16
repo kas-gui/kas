@@ -7,10 +7,10 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::class::HasText;
-use kas::event::{Response, VoidMsg};
+use kas::event::{Callback, Response, VoidMsg};
 use kas::layout::Vertical;
 use kas::macros::{make_widget, VoidMsg};
-use kas::widget::{DynList, EditBox, Label, TextButton, Window};
+use kas::widget::{DynList, EditBox, Label, ScrollRegion, TextButton, Window};
 use kas::TkWindow;
 
 #[derive(Clone, Debug, VoidMsg)]
@@ -30,7 +30,7 @@ fn main() -> Result<(), winit::error::OsError> {
         horizontal => Message;
         struct {
             #[widget] _ = Label::new("Number of rows:"),
-            #[widget(handler = handler)] edit: impl HasText = EditBox::new("0").on_activate(|_| Control::Set),
+            #[widget(handler = handler)] edit: impl HasText = EditBox::new("3").on_activate(|_| Control::Set),
             #[widget(handler = handler)] _ = TextButton::new("Set", Control::Set),
             #[widget(handler = handler)] _ = TextButton::new("−", Control::Decr),
             #[widget(handler = handler)] _ = TextButton::new("+", Control::Incr),
@@ -60,24 +60,28 @@ fn main() -> Result<(), winit::error::OsError> {
             }
         }
     };
-    let window = Window::new(make_widget! {
+    let mut window = Window::new(make_widget! {
         vertical => VoidMsg;
         struct {
             #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
             #[widget(handler = handler)] controls -> Message = controls,
-            #[widget] list: DynList<Vertical> = DynList::new(Vertical, vec![]),
+            #[widget] list: ScrollRegion<DynList<Vertical>> = ScrollRegion::new(DynList::new(Vertical, vec![])),
         }
         impl {
             fn handler(&mut self, tk: &mut dyn TkWindow, msg: Message) -> Response<VoidMsg>
             {
                 match msg {
                     Message::Set(n) => {
-                        self.list.resize_with(tk, n, |i| Box::new(Label::new(i.to_string())));
+                        self.list.inner_mut().resize_with(tk, n, |i| Box::new(Label::new(i.to_string())));
                     }
                 };
                 Response::None
             }
         }
+    });
+
+    window.add_callback(Callback::Start, &|w, tk| {
+        let _ = w.handler(tk, Message::Set(3));
     });
 
     let theme = kas_wgpu::SampleTheme::new();
