@@ -12,16 +12,18 @@ mod misc_solver;
 mod row_solver;
 mod size_rules;
 mod sizer;
+mod storage;
 
 use kas::geom::Size;
 
-pub use grid_solver::{FixedGridStorage, GridChildInfo, GridSetter, GridSolver, GridStorage};
+pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use misc_solver::SingleSetter;
-pub use row_solver::{
-    DynRowStorage, FixedRowStorage, RowSetter, RowSolver, RowStorage, RowTemporary,
-};
+pub use row_solver::{RowSetter, RowSolver};
 pub use size_rules::{Margins, SizeRules};
-pub use sizer::{solve, RulesSetter, RulesSolver, Storage};
+pub use sizer::{solve, RulesSetter, RulesSolver};
+pub use storage::{
+    DynRowStorage, FixedGridStorage, FixedRowStorage, GridStorage, RowStorage, RowTemp, Storage,
+};
 
 /// Information on which axis is being resized
 ///

@@ -7,7 +7,7 @@
 
 use std::marker::PhantomData;
 
-use super::{AxisInfo, Margins, RulesSetter, RulesSolver, SizeRules, Storage};
+use super::{AxisInfo, GridStorage, Margins, RowTemp, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::{Coord, Rect, Size};
 
 /// Per-child information
@@ -28,100 +28,38 @@ pub struct GridChildInfo {
     pub row_span_index: usize,
 }
 
-/// Requirements of grid solver storage type
-///
-/// Details are hidden (for internal use only).
-///
-/// NOTE: ideally this would use const-generics, but those aren't stable (or
-/// even usable) yet. This will likely be implemented in the future.
-pub trait GridStorage: sealed::Sealed + Clone {
-    #[doc(hidden)]
-    fn width_ref(&self) -> &[SizeRules];
-    #[doc(hidden)]
-    fn width_mut(&mut self) -> &mut [SizeRules];
-    #[doc(hidden)]
-    fn set_width_len(&mut self, len: usize);
-    #[doc(hidden)]
-    fn height_ref(&self) -> &[SizeRules];
-    #[doc(hidden)]
-    fn height_mut(&mut self) -> &mut [SizeRules];
-    #[doc(hidden)]
-    fn set_height_len(&mut self, len: usize);
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct FixedGridStorage<WR: Clone, HR: Clone> {
-    width_rules: WR,
-    height_rules: HR,
-}
-
-impl<WR: Clone, HR: Clone> Storage for FixedGridStorage<WR, HR> {}
-
-impl<WR, HR> GridStorage for FixedGridStorage<WR, HR>
-where
-    WR: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
-    HR: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
-{
-    fn width_ref(&self) -> &[SizeRules] {
-        self.width_rules.as_ref()
-    }
-    fn width_mut(&mut self) -> &mut [SizeRules] {
-        self.width_rules.as_mut()
-    }
-    fn set_width_len(&mut self, len: usize) {
-        assert_eq!(self.width_rules.as_ref().len(), len);
-    }
-    fn height_ref(&self) -> &[SizeRules] {
-        self.height_rules.as_ref()
-    }
-    fn height_mut(&mut self) -> &mut [SizeRules] {
-        self.height_rules.as_mut()
-    }
-    fn set_height_len(&mut self, len: usize) {
-        assert_eq!(self.height_rules.as_ref().len(), len);
-    }
-}
-
-mod sealed {
-    pub trait Sealed {}
-    impl<WR: Clone, HR: Clone> Sealed for super::FixedGridStorage<WR, HR> {}
-}
-
 /// A [`RulesSolver`] for grids supporting cell-spans
 ///
 /// This implementation relies on the caller to provide storage for solver data.
-pub struct GridSolver<S: GridStorage, W, H, CSR, RSR> {
+pub struct GridSolver<RT, CT, CSR, RSR, S: GridStorage> {
     axis: AxisInfo,
-    widths: W,
-    heights: H,
+    widths: RT,
+    heights: CT,
     col_span_rules: CSR,
     row_span_rules: RSR,
     _s: PhantomData<S>,
 }
 
-impl<S: GridStorage, W, H, CSR, RSR> GridSolver<S, W, H, CSR, RSR>
-where
-    W: Default + AsRef<[u32]> + AsMut<[u32]>,
-    H: Default + AsRef<[u32]> + AsMut<[u32]>,
-    CSR: Default,
-    RSR: Default,
+impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
+    GridSolver<RT, CT, CSR, RSR, S>
 {
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `storage`: reference to persistent storage
-    pub fn new(axis: AxisInfo, dim: (usize, usize), storage: &mut S) -> Self {
-        let widths = W::default();
-        let heights = H::default();
+    pub fn new(axis: AxisInfo, (cols, rows): (usize, usize), storage: &mut S) -> Self {
+        let mut widths = RT::default();
+        let mut heights = CT::default();
+        widths.set_len(cols);
+        heights.set_len(rows);
+        assert!(widths.as_ref().iter().all(|w| *w == 0));
+        assert!(heights.as_ref().iter().all(|w| *w == 0));
+
         let col_span_rules = CSR::default();
         let row_span_rules = RSR::default();
 
-        assert_eq!(widths.as_ref().len(), dim.0);
-        assert_eq!(heights.as_ref().len(), dim.1);
-        storage.set_width_len(dim.0 + 1);
-        storage.set_height_len(dim.1 + 1);
-        assert!(widths.as_ref().iter().all(|w| *w == 0));
-        assert!(heights.as_ref().iter().all(|w| *w == 0));
+        storage.set_width_len(cols + 1);
+        storage.set_height_len(rows + 1);
 
         let mut solver = GridSolver {
             axis,
@@ -165,10 +103,9 @@ where
     }
 }
 
-impl<S: GridStorage, W, H, CSR, RSR> RulesSolver for GridSolver<S, W, H, CSR, RSR>
+impl<RT: RowTemp, CT: RowTemp, CSR, RSR, S: GridStorage> RulesSolver
+    for GridSolver<RT, CT, CSR, RSR, S>
 where
-    W: AsRef<[u32]>,
-    H: AsRef<[u32]>,
     CSR: AsRef<[SizeRules]> + AsMut<[SizeRules]>,
     RSR: AsRef<[SizeRules]> + AsMut<[SizeRules]>,
 {
@@ -267,21 +204,17 @@ where
     }
 }
 
-pub struct GridSetter<S: GridStorage, W, H> {
-    widths: W,
-    heights: H,
-    col_pos: W,
-    row_pos: H,
+pub struct GridSetter<RT: RowTemp, CT: RowTemp, S: GridStorage> {
+    widths: RT,
+    heights: CT,
+    col_pos: RT,
+    row_pos: CT,
     pos: Coord,
     inter: Size,
     _s: PhantomData<S>,
 }
 
-impl<S: GridStorage, W, H> GridSetter<S, W, H>
-where
-    W: Default + AsRef<[u32]> + AsMut<[u32]>,
-    H: Default + AsRef<[u32]> + AsMut<[u32]>,
-{
+impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
@@ -293,10 +226,11 @@ where
         (cols, rows): (usize, usize),
         storage: &mut S,
     ) -> Self {
-        let mut widths = W::default();
-        let mut heights = H::default();
-        assert_eq!(widths.as_ref().len(), cols);
-        assert_eq!(heights.as_ref().len(), rows);
+        let mut widths = RT::default();
+        let mut heights = CT::default();
+        widths.set_len(cols);
+        heights.set_len(rows);
+
         storage.set_width_len(cols + 1);
         storage.set_height_len(rows + 1);
 
@@ -307,8 +241,10 @@ where
         SizeRules::solve_seq(widths.as_mut(), storage.width_ref(), rect.size.0);
         SizeRules::solve_seq(heights.as_mut(), storage.height_ref(), rect.size.1);
 
-        let mut col_pos = W::default();
-        let mut row_pos = H::default();
+        let mut col_pos = RT::default();
+        let mut row_pos = CT::default();
+        col_pos.set_len(cols);
+        row_pos.set_len(rows);
         let mut pos = 0;
         for n in 0..cols {
             col_pos.as_mut()[n] = pos;
@@ -332,11 +268,7 @@ where
     }
 }
 
-impl<S: GridStorage, W, H> RulesSetter for GridSetter<S, W, H>
-where
-    W: Default + AsRef<[u32]>,
-    H: Default + AsRef<[u32]>,
-{
+impl<RT: RowTemp, CT: RowTemp, S: GridStorage> RulesSetter for GridSetter<RT, CT, S> {
     type Storage = S;
     type ChildInfo = GridChildInfo;
 

@@ -7,131 +7,18 @@
 
 use std::marker::PhantomData;
 
-use super::{AxisInfo, Direction, Margins, RulesSetter, RulesSolver, SizeRules, Storage};
+use super::{
+    AxisInfo, Direction, Margins, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules,
+};
 use crate::geom::Rect;
-
-/// Requirements of row solver storage type
-///
-/// Details are hidden (for internal use only).
-///
-/// NOTE: ideally this would use const-generics, but those aren't stable (or
-/// even usable) yet. This will likely be implemented in the future.
-pub trait RowStorage: sealed::Sealed + Clone {
-    #[doc(hidden)]
-    fn as_ref(&self) -> &[SizeRules];
-    #[doc(hidden)]
-    fn as_mut(&mut self) -> &mut [SizeRules];
-    #[doc(hidden)]
-    fn set_len(&mut self, len: usize);
-}
-
-/// Fixed-length row storage
-///
-/// Argument type is expected to be `[SizeRules; n]` where `n = rows + 1`.
-#[derive(Clone, Debug, Default)]
-pub struct FixedRowStorage<S: Clone> {
-    rules: S,
-}
-
-impl<S: Clone> Storage for FixedRowStorage<S> {}
-
-impl<S> RowStorage for FixedRowStorage<S>
-where
-    S: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
-{
-    fn as_ref(&self) -> &[SizeRules] {
-        self.rules.as_ref()
-    }
-    fn as_mut(&mut self) -> &mut [SizeRules] {
-        self.rules.as_mut()
-    }
-    fn set_len(&mut self, len: usize) {
-        assert_eq!(self.rules.as_ref().len(), len);
-    }
-}
-
-/// Variable-length row storage
-#[derive(Clone, Debug, Default)]
-pub struct DynRowStorage {
-    rules: Vec<SizeRules>,
-}
-
-impl Storage for DynRowStorage {}
-
-impl RowStorage for DynRowStorage {
-    fn as_ref(&self) -> &[SizeRules] {
-        self.rules.as_ref()
-    }
-    fn as_mut(&mut self) -> &mut [SizeRules] {
-        self.rules.as_mut()
-    }
-    fn set_len(&mut self, len: usize) {
-        self.rules.resize(len, SizeRules::EMPTY);
-    }
-}
-
-/// Temporary storage type.
-///
-/// For dynamic-length rows and fixed-length rows with more than 16 items use
-/// `Vec<u32>`. For fixed-length rows up to 16 items, use `[u32; rows]`.
-pub trait RowTemporary: Default + sealed::Sealed {
-    #[doc(hidden)]
-    fn as_ref(&self) -> &[u32];
-    #[doc(hidden)]
-    fn as_mut(&mut self) -> &mut [u32];
-    #[doc(hidden)]
-    fn set_len(&mut self, len: usize);
-}
-
-impl RowTemporary for Vec<u32> {
-    fn as_ref(&self) -> &[u32] {
-        self
-    }
-    fn as_mut(&mut self) -> &mut [u32] {
-        self
-    }
-    fn set_len(&mut self, len: usize) {
-        self.resize(len, 0);
-    }
-}
-
-// TODO: use const generics
-macro_rules! impl_row_temporary {
-    ($n:literal) => {
-        impl RowTemporary for [u32; $n] {
-            fn as_ref(&self) -> &[u32] {
-                self
-            }
-            fn as_mut(&mut self) -> &mut [u32] {
-                self
-            }
-            fn set_len(&mut self, len: usize) {
-                assert_eq!(self.len(), len);
-            }
-        }
-        impl sealed::Sealed for [u32; $n] {}
-    };
-    ($n:literal $($more:literal)*) => {
-        impl_row_temporary!($n);
-        impl_row_temporary!($($more)*);
-    };
-}
-impl_row_temporary!(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16);
-
-mod sealed {
-    pub trait Sealed {}
-    impl<S: Clone> Sealed for super::FixedRowStorage<S> {}
-    impl Sealed for super::DynRowStorage {}
-    impl Sealed for Vec<u32> {}
-}
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
 /// This is parameterised over:
 ///
-/// -   `T:` [`RowTemporary`] — temporary storage type
+/// -   `T:` [`RowTemp`] — temporary storage type
 /// -   `S:` [`RowStorage`] — persistent storage type
-pub struct RowSolver<T: RowTemporary, S: RowStorage> {
+pub struct RowSolver<T: RowTemp, S: RowStorage> {
     // Generalisation implies that axis.vert() is incorrect
     axis: AxisInfo,
     axis_is_vertical: bool,
@@ -140,7 +27,7 @@ pub struct RowSolver<T: RowTemporary, S: RowStorage> {
     _s: PhantomData<S>,
 }
 
-impl<T: RowTemporary, S: RowStorage> RowSolver<T, S> {
+impl<T: RowTemp, S: RowStorage> RowSolver<T, S> {
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
@@ -169,7 +56,7 @@ impl<T: RowTemporary, S: RowStorage> RowSolver<T, S> {
     }
 }
 
-impl<T: RowTemporary, S: RowStorage> RulesSolver for RowSolver<T, S> {
+impl<T: RowTemp, S: RowStorage> RulesSolver for RowSolver<T, S> {
     type Storage = S;
     type ChildInfo = usize;
 
@@ -215,9 +102,9 @@ impl<T: RowTemporary, S: RowStorage> RulesSolver for RowSolver<T, S> {
 /// This is parameterised over:
 ///
 /// -   `D:` [`Direction`] — whether this represents a row or a column
-/// -   `T:` [`RowTemporary`] — temporary storage type
+/// -   `T:` [`RowTemp`] — temporary storage type
 /// -   `S:` [`RowStorage`] — persistent storage type
-pub struct RowSetter<D, T: RowTemporary, S: RowStorage> {
+pub struct RowSetter<D, T: RowTemp, S: RowStorage> {
     crect: Rect,
     inter: u32,
     widths: T,
@@ -225,7 +112,7 @@ pub struct RowSetter<D, T: RowTemporary, S: RowStorage> {
     _s: PhantomData<S>,
 }
 
-impl<D: Direction, T: RowTemporary, S: RowStorage> RowSetter<D, T, S> {
+impl<D: Direction, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     pub fn new(mut rect: Rect, margins: Margins, dim: (D, usize), storage: &mut S) -> Self {
         let mut widths = T::default();
         widths.set_len(dim.1);
@@ -255,7 +142,7 @@ impl<D: Direction, T: RowTemporary, S: RowStorage> RowSetter<D, T, S> {
     }
 }
 
-impl<D: Direction, T: RowTemporary, S: RowStorage> RulesSetter for RowSetter<D, T, S> {
+impl<D: Direction, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, S> {
     type Storage = S;
     type ChildInfo = usize;
 

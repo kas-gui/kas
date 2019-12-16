@@ -322,16 +322,16 @@ impl<'a> ImplLayout<'a> {
                     [kas::layout::SizeRules; #rows + 1],
                 >;
                 type Solver = kas::layout::GridSolver::<
-                    Self::Data,
-                    [u32; #cols],
-                    [u32; #rows],
+                    #col_temp,
+                    #row_temp,
                     [kas::layout::SizeRules; #num_col_spans],
                     [kas::layout::SizeRules; #num_row_spans],
+                    Self::Data,
                 >;
                 type Setter = kas::layout::GridSetter::<
+                    #col_temp,
+                    #row_temp,
                     Self::Data,
-                    [u32; #cols],
-                    [u32; #rows],
                 >;
             },
         };

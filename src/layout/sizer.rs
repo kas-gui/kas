@@ -9,8 +9,6 @@ use super::{AxisInfo, SizeRules};
 use crate::geom::{Coord, Rect, Size};
 use crate::{TkWindow, Widget};
 
-pub trait Storage {}
-
 /// A [`SizeRules`] solver for layouts
 ///
 /// Typically, a solver is invoked twice, once for each axis, before the
