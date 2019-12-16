@@ -22,7 +22,8 @@ pub use row_solver::{RowSetter, RowSolver};
 pub use size_rules::{Margins, SizeRules};
 pub use sizer::{solve, RulesSetter, RulesSolver};
 pub use storage::{
-    DynRowStorage, FixedGridStorage, FixedRowStorage, GridStorage, RowStorage, RowTemp, Storage,
+    DynGridStorage, DynRowStorage, FixedGridStorage, FixedRowStorage, GridStorage, RowStorage,
+    RowTemp, Storage,
 };
 
 /// Information on which axis is being resized

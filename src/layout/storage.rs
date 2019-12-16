@@ -172,10 +172,41 @@ where
     }
 }
 
+/// Variable-length row storage
+#[derive(Clone, Debug, Default)]
+pub struct DynGridStorage {
+    width_rules: Vec<SizeRules>,
+    height_rules: Vec<SizeRules>,
+}
+
+impl Storage for DynGridStorage {}
+
+impl GridStorage for DynGridStorage {
+    fn width_ref(&self) -> &[SizeRules] {
+        self.width_rules.as_ref()
+    }
+    fn width_mut(&mut self) -> &mut [SizeRules] {
+        self.width_rules.as_mut()
+    }
+    fn set_width_len(&mut self, len: usize) {
+        self.width_rules.resize(len, SizeRules::EMPTY);
+    }
+    fn height_ref(&self) -> &[SizeRules] {
+        self.height_rules.as_ref()
+    }
+    fn height_mut(&mut self) -> &mut [SizeRules] {
+        self.height_rules.as_mut()
+    }
+    fn set_height_len(&mut self, len: usize) {
+        self.height_rules.resize(len, SizeRules::EMPTY);
+    }
+}
+
 mod sealed {
     pub trait Sealed {}
     impl<S: Clone> Sealed for super::FixedRowStorage<S> {}
     impl Sealed for super::DynRowStorage {}
     impl Sealed for Vec<u32> {}
     impl<WR: Clone, HR: Clone> Sealed for super::FixedGridStorage<WR, HR> {}
+    impl Sealed for super::DynGridStorage {}
 }
