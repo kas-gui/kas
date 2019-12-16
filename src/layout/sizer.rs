@@ -12,6 +12,13 @@ use crate::{TkWindow, Widget};
 pub trait Storage {}
 
 /// A [`SizeRules`] solver for layouts
+///
+/// Typically, a solver is invoked twice, once for each axis, before the
+/// corresponding [`RulesSetter`] is invoked. This is managed by [`solve`].
+///
+/// Implementations require access to storage able to persist between multiple
+/// solver runs and a subsequent setter run. This storage is of type
+/// [`RulesSolver::Storage`] and is passed via reference to the constructor.
 pub trait RulesSolver {
     /// Type of storage
     type Storage: Clone;
@@ -41,7 +48,7 @@ pub trait RulesSolver {
         RowIter: Iterator<Item = (usize, usize, usize)>;
 }
 
-/// Tool to solve for a `Rect` over child widgets
+/// Resolves a [`RulesSolver`] solution for each child
 pub trait RulesSetter {
     /// Type of storage
     type Storage: Clone;

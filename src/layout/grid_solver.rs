@@ -62,7 +62,11 @@ where
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `storage`: reference to persistent storage
-    pub fn new(axis: AxisInfo, storage: &mut FixedGridStorage<WR, HR>) -> Self {
+    pub fn new(
+        axis: AxisInfo,
+        _dim: (usize, usize),
+        storage: &mut FixedGridStorage<WR, HR>,
+    ) -> Self {
         let widths = W::default();
         let heights = H::default();
         let col_span_rules = CSR::default();
@@ -243,7 +247,12 @@ where
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `margins`: margin sizes
     /// - `storage`: reference to persistent storage
-    pub fn new(mut rect: Rect, margins: Margins, storage: &mut FixedGridStorage<WR, HR>) -> Self {
+    pub fn new(
+        mut rect: Rect,
+        margins: Margins,
+        _dim: (usize, usize),
+        storage: &mut FixedGridStorage<WR, HR>,
+    ) -> Self {
         let mut widths = W::default();
         let mut heights = H::default();
         let cols = widths.as_ref().len();

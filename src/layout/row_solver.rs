@@ -13,13 +13,14 @@ use crate::geom::Rect;
 /// Requirements of row solver storage type
 ///
 /// Details are hidden (for internal use only).
+///
+/// NOTE: ideally this would use const-generics, but those aren't stable (or
+/// even usable) yet. This will likely be implemented in the future.
 pub trait RowStorage: sealed::Sealed + Clone {
     #[doc(hidden)]
     fn as_ref(&self) -> &[SizeRules];
     #[doc(hidden)]
     fn as_mut(&mut self) -> &mut [SizeRules];
-    #[doc(hidden)]
-    fn assert_len(&mut self, len: usize);
     #[doc(hidden)]
     fn set_len(&mut self, len: usize);
 }
@@ -44,11 +45,8 @@ where
     fn as_mut(&mut self) -> &mut [SizeRules] {
         self.rules.as_mut()
     }
-    fn assert_len(&mut self, len: usize) {
-        assert_eq!(self.rules.as_ref().len(), len);
-    }
     fn set_len(&mut self, len: usize) {
-        self.assert_len(len);
+        assert_eq!(self.rules.as_ref().len(), len);
     }
 }
 
@@ -67,27 +65,74 @@ impl RowStorage for DynRowStorage {
     fn as_mut(&mut self) -> &mut [SizeRules] {
         self.rules.as_mut()
     }
-    fn assert_len(&mut self, len: usize) {
-        assert_eq!(self.rules.len(), len);
-    }
     fn set_len(&mut self, len: usize) {
         self.rules.resize(len, SizeRules::EMPTY);
     }
 }
 
+/// Temporary storage type.
+///
+/// For dynamic-length rows and fixed-length rows with more than 16 items use
+/// `Vec<u32>`. For fixed-length rows up to 16 items, use `[u32; rows]`.
+pub trait RowTemporary: Default + sealed::Sealed {
+    #[doc(hidden)]
+    fn as_ref(&self) -> &[u32];
+    #[doc(hidden)]
+    fn as_mut(&mut self) -> &mut [u32];
+    #[doc(hidden)]
+    fn set_len(&mut self, len: usize);
+}
+
+impl RowTemporary for Vec<u32> {
+    fn as_ref(&self) -> &[u32] {
+        self
+    }
+    fn as_mut(&mut self) -> &mut [u32] {
+        self
+    }
+    fn set_len(&mut self, len: usize) {
+        self.resize(len, 0);
+    }
+}
+
+// TODO: use const generics
+macro_rules! impl_row_temporary {
+    ($n:literal) => {
+        impl RowTemporary for [u32; $n] {
+            fn as_ref(&self) -> &[u32] {
+                self
+            }
+            fn as_mut(&mut self) -> &mut [u32] {
+                self
+            }
+            fn set_len(&mut self, len: usize) {
+                assert_eq!(self.len(), len);
+            }
+        }
+        impl sealed::Sealed for [u32; $n] {}
+    };
+    ($n:literal $($more:literal)*) => {
+        impl_row_temporary!($n);
+        impl_row_temporary!($($more)*);
+    };
+}
+impl_row_temporary!(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16);
+
 mod sealed {
     pub trait Sealed {}
     impl<R: Clone> Sealed for super::FixedRowStorage<R> {}
     impl Sealed for super::DynRowStorage {}
+    impl Sealed for Vec<u32> {}
 }
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
-/// This implementation relies on the caller to provide storage for solver data.
+/// This is parameterised over:
 ///
-/// NOTE: ideally this would use const-generics, but those aren't stable (or
-/// even usable) yet. This will likely be implemented in the future.
-pub struct RowSolver<D, T, R: RowStorage> {
+/// -   `D:` [`Direction`] — whether this represents a row or a column
+/// -   `T:` [`RowTemporary`] — temporary storage type
+/// -   `R:` [`RowStorage`] — persistent storage type
+pub struct RowSolver<D, T: RowTemporary, R: RowStorage> {
     // Generalisation implies that axis.vert() is incorrect
     axis: AxisInfo,
     axis_is_vertical: bool,
@@ -97,18 +142,16 @@ pub struct RowSolver<D, T, R: RowStorage> {
     _r: PhantomData<R>,
 }
 
-impl<D: Direction, T, R: RowStorage> RowSolver<D, T, R>
-where
-    T: Default + AsRef<[u32]> + AsMut<[u32]>,
-{
+impl<D: Direction, T: RowTemporary, R: RowStorage> RowSolver<D, T, R> {
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `storage`: reference to persistent storage
-    pub fn new(axis: AxisInfo, storage: &mut R) -> Self {
+    pub fn new(axis: AxisInfo, n: usize, storage: &mut R) -> Self {
         let mut widths = T::default();
-        storage.set_len(widths.as_ref().len() + 1);
+        widths.set_len(n);
         assert!(widths.as_ref().iter().all(|w| *w == 0));
+        storage.set_len(n + 1);
 
         let axis_is_vertical = axis.vertical ^ D::is_vertical();
 
@@ -128,10 +171,7 @@ where
     }
 }
 
-impl<D, T, R: RowStorage> RulesSolver for RowSolver<D, T, R>
-where
-    T: AsRef<[u32]>,
-{
+impl<D, T: RowTemporary, R: RowStorage> RulesSolver for RowSolver<D, T, R> {
     type Storage = R;
     type ChildInfo = usize;
 
@@ -172,7 +212,14 @@ where
     }
 }
 
-pub struct RowSetter<D, T, R: RowStorage> {
+/// A [`RulesSetter`] for rows (and, without loss of generality, for columns).
+///
+/// This is parameterised over:
+///
+/// -   `D:` [`Direction`] — whether this represents a row or a column
+/// -   `T:` [`RowTemporary`] — temporary storage type
+/// -   `R:` [`RowStorage`] — persistent storage type
+pub struct RowSetter<D, T: RowTemporary, R: RowStorage> {
     crect: Rect,
     inter: u32,
     widths: T,
@@ -180,13 +227,11 @@ pub struct RowSetter<D, T, R: RowStorage> {
     _r: PhantomData<R>,
 }
 
-impl<D: Direction, T, R: RowStorage> RowSetter<D, T, R>
-where
-    T: Default + AsRef<[u32]> + AsMut<[u32]>,
-{
-    pub fn new(mut rect: Rect, margins: Margins, storage: &mut R) -> Self {
+impl<D: Direction, T: RowTemporary, R: RowStorage> RowSetter<D, T, R> {
+    pub fn new(mut rect: Rect, margins: Margins, n: usize, storage: &mut R) -> Self {
         let mut widths = T::default();
-        storage.assert_len(widths.as_ref().len() + 1);
+        widths.set_len(n);
+        storage.set_len(n + 1);
 
         rect.pos += margins.first;
         rect.size -= margins.first + margins.last;
@@ -212,10 +257,7 @@ where
     }
 }
 
-impl<D: Direction, T, R: RowStorage> RulesSetter for RowSetter<D, T, R>
-where
-    T: AsRef<[u32]>,
-{
+impl<D: Direction, T: RowTemporary, R: RowStorage> RulesSetter for RowSetter<D, T, R> {
     type Storage = R;
     type ChildInfo = usize;
 

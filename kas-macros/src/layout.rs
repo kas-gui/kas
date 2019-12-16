@@ -270,6 +270,23 @@ impl<'a> ImplLayout<'a> {
             o @ _ => o,
         });
 
+        let dim = match self.layout {
+            Layout::Horizontal => quote! { #cols },
+            Layout::Vertical => quote! { #rows },
+            Layout::Grid => quote! { (#cols, #rows) },
+        };
+
+        let col_temp = if cols > 16 {
+            quote! { Vec<u32> }
+        } else {
+            quote! { [u32; #cols] }
+        };
+        let row_temp = if rows > 16 {
+            quote! { Vec<u32> }
+        } else {
+            quote! { [u32; #rows] }
+        };
+
         let data_type = match self.layout {
             Layout::Horizontal => quote! {
                 type Data = kas::layout::FixedRowStorage::<
@@ -277,12 +294,12 @@ impl<'a> ImplLayout<'a> {
                 >;
                 type Solver = kas::layout::RowSolver::<
                     kas::layout::Horizontal,
-                    [u32; #cols],
+                    #col_temp,
                     Self::Data,
                 >;
                 type Setter = kas::layout::RowSetter::<
                     kas::layout::Horizontal,
-                    [u32; #cols],
+                    #col_temp,
                     Self::Data,
                 >;
             },
@@ -292,12 +309,12 @@ impl<'a> ImplLayout<'a> {
                 >;
                 type Solver = kas::layout::RowSolver::<
                     kas::layout::Vertical,
-                    [u32; #rows],
+                    #row_temp,
                     Self::Data,
                 >;
                 type Setter = kas::layout::RowSetter::<
                     kas::layout::Vertical,
-                    [u32; #rows],
+                    #row_temp,
                     Self::Data,
                 >;
             },
@@ -368,6 +385,7 @@ impl<'a> ImplLayout<'a> {
 
                 let mut solver = <Self as kas::LayoutData>::Solver::new(
                     axis,
+                    #dim,
                     &mut self.#data,
                 );
                 #size
@@ -388,6 +406,7 @@ impl<'a> ImplLayout<'a> {
                 let mut setter = <Self as kas::LayoutData>::Setter::new(
                     rect,
                     Margins::ZERO,
+                    #dim,
                     &mut self.#data,
                 );
                 #set_rect
