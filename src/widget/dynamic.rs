@@ -8,38 +8,40 @@
 use std::iter;
 
 use crate::event::Manager;
-use crate::layout::{self, AxisInfo, Margins, RulesSetter, RulesSolver, SizeRules};
+use crate::layout::{self, AxisInfo, Direction, Margins, RulesSetter, RulesSolver, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
 use crate::{CoreData, TkAction, TkWindow, Widget};
 use kas::geom::Rect;
 
-/// A dynamic column widget
+/// A dynamic row/column widget
 #[widget]
 #[handler]
 #[derive(Default, Debug, Widget)]
-pub struct DynamicColumn {
+pub struct DynList<D: Direction> {
     #[core]
     core: CoreData,
     widgets: Vec<Box<dyn Widget>>,
     data: layout::DynRowStorage,
+    direction: D,
 }
 
-impl Clone for DynamicColumn {
+impl<D: Direction> Clone for DynList<D> {
     fn clone(&self) -> Self {
-        DynamicColumn {
+        DynList {
             core: self.core.clone(),
             widgets: vec![],
             data: self.data.clone(),
+            direction: self.direction,
         }
     }
 }
 
-impl Widget for DynamicColumn {
+impl<D: Direction> Widget for DynList<D> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let mut solver = layout::RowSolver::<layout::Vertical, Vec<u32>, _>::new(
+        let mut solver = layout::RowSolver::<Vec<u32>, _>::new(
             axis,
-            self.widgets.len(),
+            (self.direction, self.widgets.len()),
             &mut self.data,
         );
         for (n, child) in self.widgets.iter_mut().enumerate() {
@@ -52,10 +54,10 @@ impl Widget for DynamicColumn {
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
         self.core.rect = rect;
-        let mut setter = layout::RowSetter::<layout::Vertical, Vec<u32>, _>::new(
+        let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(
             rect,
             Margins::ZERO,
-            self.widgets.len(),
+            (self.direction, self.widgets.len()),
             &mut self.data,
         );
 
@@ -71,13 +73,14 @@ impl Widget for DynamicColumn {
     }
 }
 
-impl DynamicColumn {
+impl<D: Direction> DynList<D> {
     /// Construct a new instance
-    pub fn new(widgets: Vec<Box<dyn Widget>>) -> Self {
-        DynamicColumn {
+    pub fn new(direction: D, widgets: Vec<Box<dyn Widget>>) -> Self {
+        DynList {
             core: Default::default(),
             widgets,
             data: Default::default(),
+            direction,
         }
     }
 

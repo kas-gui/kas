@@ -8,8 +8,9 @@
 
 use kas::class::HasText;
 use kas::event::{Response, VoidMsg};
+use kas::layout::Vertical;
 use kas::macros::{make_widget, VoidMsg};
-use kas::widget::{DynamicColumn, EditBox, Label, TextButton, Window};
+use kas::widget::{DynList, EditBox, Label, TextButton, Window};
 use kas::TkWindow;
 
 #[derive(Clone, Debug, VoidMsg)]
@@ -64,7 +65,7 @@ fn main() -> Result<(), winit::error::OsError> {
         struct {
             #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
             #[widget(handler = handler)] controls -> Message = controls,
-            #[widget] list: DynamicColumn = DynamicColumn::new(vec![]),
+            #[widget] list: DynList<Vertical> = DynList::new(Vertical, vec![]),
         }
         impl {
             fn handler(&mut self, tk: &mut dyn TkWindow, msg: Message) -> Response<VoidMsg>

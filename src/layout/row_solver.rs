@@ -129,31 +129,30 @@ mod sealed {
 ///
 /// This is parameterised over:
 ///
-/// -   `D:` [`Direction`] — whether this represents a row or a column
 /// -   `T:` [`RowTemporary`] — temporary storage type
 /// -   `R:` [`RowStorage`] — persistent storage type
-pub struct RowSolver<D, T: RowTemporary, R: RowStorage> {
+pub struct RowSolver<T: RowTemporary, R: RowStorage> {
     // Generalisation implies that axis.vert() is incorrect
     axis: AxisInfo,
     axis_is_vertical: bool,
     rules: SizeRules,
     widths: T,
-    _d: PhantomData<D>,
     _r: PhantomData<R>,
 }
 
-impl<D: Direction, T: RowTemporary, R: RowStorage> RowSolver<D, T, R> {
+impl<T: RowTemporary, R: RowStorage> RowSolver<T, R> {
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
+    /// - `dim`: direction and number of items
     /// - `storage`: reference to persistent storage
-    pub fn new(axis: AxisInfo, n: usize, storage: &mut R) -> Self {
+    pub fn new<D: Direction>(axis: AxisInfo, dim: (D, usize), storage: &mut R) -> Self {
         let mut widths = T::default();
-        widths.set_len(n);
+        widths.set_len(dim.1);
         assert!(widths.as_ref().iter().all(|w| *w == 0));
-        storage.set_len(n + 1);
+        storage.set_len(dim.1 + 1);
 
-        let axis_is_vertical = axis.vertical ^ D::is_vertical();
+        let axis_is_vertical = axis.vertical ^ dim.0.is_vertical();
 
         if axis.has_fixed && axis_is_vertical {
             // TODO: cache this for use by set_rect?
@@ -165,13 +164,12 @@ impl<D: Direction, T: RowTemporary, R: RowStorage> RowSolver<D, T, R> {
             axis_is_vertical,
             rules: SizeRules::EMPTY,
             widths,
-            _d: Default::default(),
             _r: Default::default(),
         }
     }
 }
 
-impl<D, T: RowTemporary, R: RowStorage> RulesSolver for RowSolver<D, T, R> {
+impl<T: RowTemporary, R: RowStorage> RulesSolver for RowSolver<T, R> {
     type Storage = R;
     type ChildInfo = usize;
 
@@ -223,21 +221,21 @@ pub struct RowSetter<D, T: RowTemporary, R: RowStorage> {
     crect: Rect,
     inter: u32,
     widths: T,
-    _d: PhantomData<D>,
+    direction: D,
     _r: PhantomData<R>,
 }
 
 impl<D: Direction, T: RowTemporary, R: RowStorage> RowSetter<D, T, R> {
-    pub fn new(mut rect: Rect, margins: Margins, n: usize, storage: &mut R) -> Self {
+    pub fn new(mut rect: Rect, margins: Margins, dim: (D, usize), storage: &mut R) -> Self {
         let mut widths = T::default();
-        widths.set_len(n);
-        storage.set_len(n + 1);
+        widths.set_len(dim.1);
+        storage.set_len(dim.1 + 1);
 
         rect.pos += margins.first;
         rect.size -= margins.first + margins.last;
         let mut crect = rect;
 
-        let (width, inter) = if !D::is_vertical() {
+        let (width, inter) = if dim.0.is_horizontal() {
             crect.size.0 = 0; // hack to get correct first offset
             (rect.size.0, margins.inter.0)
         } else {
@@ -251,7 +249,7 @@ impl<D: Direction, T: RowTemporary, R: RowStorage> RowSetter<D, T, R> {
             crect,
             inter,
             widths,
-            _d: Default::default(),
+            direction: dim.0,
             _r: Default::default(),
         }
     }
@@ -262,7 +260,7 @@ impl<D: Direction, T: RowTemporary, R: RowStorage> RulesSetter for RowSetter<D, 
     type ChildInfo = usize;
 
     fn child_rect(&mut self, child_info: Self::ChildInfo) -> Rect {
-        if !D::is_vertical() {
+        if self.direction.is_horizontal() {
             self.crect.pos.0 += (self.crect.size.0 + self.inter) as i32;
             self.crect.size.0 = self.widths.as_ref()[child_info];
         } else {

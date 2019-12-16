@@ -16,7 +16,7 @@ mod window;
 pub use button::TextButton;
 pub use checkbox::CheckBox;
 pub use dialog::MessageBox;
-pub use dynamic::DynamicColumn;
+pub use dynamic::DynList;
 pub use scroll::ScrollRegion;
 pub use text::{EditBox, Label};
 pub use window::Window;

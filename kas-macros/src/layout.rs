@@ -271,8 +271,8 @@ impl<'a> ImplLayout<'a> {
         });
 
         let dim = match self.layout {
-            Layout::Horizontal => quote! { #cols },
-            Layout::Vertical => quote! { #rows },
+            Layout::Horizontal => quote! { (kas::layout::Horizontal, #cols) },
+            Layout::Vertical => quote! { (kas::layout::Vertical, #rows) },
             Layout::Grid => quote! { (#cols, #rows) },
         };
 
@@ -293,7 +293,6 @@ impl<'a> ImplLayout<'a> {
                     [kas::layout::SizeRules; #cols + 1]
                 >;
                 type Solver = kas::layout::RowSolver::<
-                    kas::layout::Horizontal,
                     #col_temp,
                     Self::Data,
                 >;
@@ -308,7 +307,6 @@ impl<'a> ImplLayout<'a> {
                     [kas::layout::SizeRules; #rows + 1],
                 >;
                 type Solver = kas::layout::RowSolver::<
-                    kas::layout::Vertical,
                     #row_temp,
                     Self::Data,
                 >;
