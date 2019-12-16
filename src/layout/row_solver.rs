@@ -29,15 +29,15 @@ pub trait RowStorage: sealed::Sealed + Clone {
 ///
 /// Argument type is expected to be `[SizeRules; n]` where `n = rows + 1`.
 #[derive(Clone, Debug, Default)]
-pub struct FixedRowStorage<R: Clone> {
-    rules: R,
+pub struct FixedRowStorage<S: Clone> {
+    rules: S,
 }
 
-impl<R: Clone> Storage for FixedRowStorage<R> {}
+impl<S: Clone> Storage for FixedRowStorage<S> {}
 
-impl<R> RowStorage for FixedRowStorage<R>
+impl<S> RowStorage for FixedRowStorage<S>
 where
-    R: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
+    S: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
 {
     fn as_ref(&self) -> &[SizeRules] {
         self.rules.as_ref()
@@ -120,7 +120,7 @@ impl_row_temporary!(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16);
 
 mod sealed {
     pub trait Sealed {}
-    impl<R: Clone> Sealed for super::FixedRowStorage<R> {}
+    impl<S: Clone> Sealed for super::FixedRowStorage<S> {}
     impl Sealed for super::DynRowStorage {}
     impl Sealed for Vec<u32> {}
 }
@@ -130,23 +130,23 @@ mod sealed {
 /// This is parameterised over:
 ///
 /// -   `T:` [`RowTemporary`] — temporary storage type
-/// -   `R:` [`RowStorage`] — persistent storage type
-pub struct RowSolver<T: RowTemporary, R: RowStorage> {
+/// -   `S:` [`RowStorage`] — persistent storage type
+pub struct RowSolver<T: RowTemporary, S: RowStorage> {
     // Generalisation implies that axis.vert() is incorrect
     axis: AxisInfo,
     axis_is_vertical: bool,
     rules: SizeRules,
     widths: T,
-    _r: PhantomData<R>,
+    _s: PhantomData<S>,
 }
 
-impl<T: RowTemporary, R: RowStorage> RowSolver<T, R> {
+impl<T: RowTemporary, S: RowStorage> RowSolver<T, S> {
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `dim`: direction and number of items
     /// - `storage`: reference to persistent storage
-    pub fn new<D: Direction>(axis: AxisInfo, dim: (D, usize), storage: &mut R) -> Self {
+    pub fn new<D: Direction>(axis: AxisInfo, dim: (D, usize), storage: &mut S) -> Self {
         let mut widths = T::default();
         widths.set_len(dim.1);
         assert!(widths.as_ref().iter().all(|w| *w == 0));
@@ -164,13 +164,13 @@ impl<T: RowTemporary, R: RowStorage> RowSolver<T, R> {
             axis_is_vertical,
             rules: SizeRules::EMPTY,
             widths,
-            _r: Default::default(),
+            _s: Default::default(),
         }
     }
 }
 
-impl<T: RowTemporary, R: RowStorage> RulesSolver for RowSolver<T, R> {
-    type Storage = R;
+impl<T: RowTemporary, S: RowStorage> RulesSolver for RowSolver<T, S> {
+    type Storage = S;
     type ChildInfo = usize;
 
     fn for_child<CR: FnOnce(AxisInfo) -> SizeRules>(
@@ -216,17 +216,17 @@ impl<T: RowTemporary, R: RowStorage> RulesSolver for RowSolver<T, R> {
 ///
 /// -   `D:` [`Direction`] — whether this represents a row or a column
 /// -   `T:` [`RowTemporary`] — temporary storage type
-/// -   `R:` [`RowStorage`] — persistent storage type
-pub struct RowSetter<D, T: RowTemporary, R: RowStorage> {
+/// -   `S:` [`RowStorage`] — persistent storage type
+pub struct RowSetter<D, T: RowTemporary, S: RowStorage> {
     crect: Rect,
     inter: u32,
     widths: T,
     direction: D,
-    _r: PhantomData<R>,
+    _s: PhantomData<S>,
 }
 
-impl<D: Direction, T: RowTemporary, R: RowStorage> RowSetter<D, T, R> {
-    pub fn new(mut rect: Rect, margins: Margins, dim: (D, usize), storage: &mut R) -> Self {
+impl<D: Direction, T: RowTemporary, S: RowStorage> RowSetter<D, T, S> {
+    pub fn new(mut rect: Rect, margins: Margins, dim: (D, usize), storage: &mut S) -> Self {
         let mut widths = T::default();
         widths.set_len(dim.1);
         storage.set_len(dim.1 + 1);
@@ -250,13 +250,13 @@ impl<D: Direction, T: RowTemporary, R: RowStorage> RowSetter<D, T, R> {
             inter,
             widths,
             direction: dim.0,
-            _r: Default::default(),
+            _s: Default::default(),
         }
     }
 }
 
-impl<D: Direction, T: RowTemporary, R: RowStorage> RulesSetter for RowSetter<D, T, R> {
-    type Storage = R;
+impl<D: Direction, T: RowTemporary, S: RowStorage> RulesSetter for RowSetter<D, T, S> {
+    type Storage = S;
     type ChildInfo = usize;
 
     fn child_rect(&mut self, child_info: Self::ChildInfo) -> Rect {

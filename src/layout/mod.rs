@@ -15,7 +15,7 @@ mod sizer;
 
 use kas::geom::Size;
 
-pub use grid_solver::{FixedGridSetter, FixedGridSolver, FixedGridStorage, GridChildInfo};
+pub use grid_solver::{FixedGridStorage, GridChildInfo, GridSetter, GridSolver, GridStorage};
 pub use misc_solver::SingleSetter;
 pub use row_solver::{
     DynRowStorage, FixedRowStorage, RowSetter, RowSolver, RowStorage, RowTemporary,

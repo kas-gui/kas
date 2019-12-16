@@ -321,17 +321,15 @@ impl<'a> ImplLayout<'a> {
                     [kas::layout::SizeRules; #cols + 1],
                     [kas::layout::SizeRules; #rows + 1],
                 >;
-                type Solver = kas::layout::FixedGridSolver::<
-                    [kas::layout::SizeRules; #cols + 1],
-                    [kas::layout::SizeRules; #rows + 1],
+                type Solver = kas::layout::GridSolver::<
+                    Self::Data,
                     [u32; #cols],
                     [u32; #rows],
                     [kas::layout::SizeRules; #num_col_spans],
                     [kas::layout::SizeRules; #num_row_spans],
                 >;
-                type Setter = kas::layout::FixedGridSetter::<
-                    [kas::layout::SizeRules; #cols + 1],
-                    [kas::layout::SizeRules; #rows + 1],
+                type Setter = kas::layout::GridSetter::<
+                    Self::Data,
                     [u32; #cols],
                     [u32; #rows],
                 >;
