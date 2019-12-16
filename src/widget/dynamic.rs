@@ -15,29 +15,26 @@ use crate::{CoreData, TkAction, TkWindow, Widget};
 use kas::geom::Rect;
 
 /// A dynamic row/column widget
+///
+/// This is simply a parameterisation of [`DynVec`] which uses `Box<dyn Widget>`
+/// as the parameter type.
+pub type DynList<D> = DynVec<D, Box<dyn Widget>>;
+
+/// A dynamic row/column widget
+///
+/// Generic over a single `Sized` child widget type.
 #[widget]
 #[handler]
-#[derive(Default, Debug, Widget)]
-pub struct DynList<D: Direction> {
+#[derive(Clone, Default, Debug, Widget)]
+pub struct DynVec<D: Direction, W: Widget> {
     #[core]
     core: CoreData,
-    widgets: Vec<Box<dyn Widget>>,
+    widgets: Vec<W>,
     data: layout::DynRowStorage,
     direction: D,
 }
 
-impl<D: Direction> Clone for DynList<D> {
-    fn clone(&self) -> Self {
-        DynList {
-            core: self.core.clone(),
-            widgets: vec![],
-            data: self.data.clone(),
-            direction: self.direction,
-        }
-    }
-}
-
-impl<D: Direction> Widget for DynList<D> {
+impl<D: Direction, W: Widget> Widget for DynVec<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut solver = layout::RowSolver::<Vec<u32>, _>::new(
             axis,
@@ -73,10 +70,10 @@ impl<D: Direction> Widget for DynList<D> {
     }
 }
 
-impl<D: Direction> DynList<D> {
+impl<D: Direction, W: Widget> DynVec<D, W> {
     /// Construct a new instance
-    pub fn new(direction: D, widgets: Vec<Box<dyn Widget>>) -> Self {
-        DynList {
+    pub fn new(direction: D, widgets: Vec<W>) -> Self {
+        DynVec {
             core: Default::default(),
             widgets,
             data: Default::default(),
@@ -85,18 +82,13 @@ impl<D: Direction> DynList<D> {
     }
 
     /// Add a child widget
-    pub fn push(&mut self, tk: &mut dyn TkWindow, child: Box<dyn Widget>) {
+    pub fn push(&mut self, tk: &mut dyn TkWindow, child: W) {
         self.widgets.push(child);
         tk.send_action(TkAction::Reconfigure);
     }
 
     /// Resize, using the given closure to construct new widgets
-    pub fn resize_with<F: Fn(usize) -> Box<dyn Widget>>(
-        &mut self,
-        tk: &mut dyn TkWindow,
-        len: usize,
-        f: F,
-    ) {
+    pub fn resize_with<F: Fn(usize) -> W>(&mut self, tk: &mut dyn TkWindow, len: usize, f: F) {
         let l0 = self.widgets.len();
         if l0 == len {
             return;
