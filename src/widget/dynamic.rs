@@ -7,11 +7,10 @@
 
 use std::iter;
 
-use crate::event::Manager;
+use crate::event::{Address, Event, Handler, Manager, Response};
 use crate::layout::{self, AxisInfo, Direction, Margins, RulesSetter, RulesSolver, SizeRules};
-use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, TkAction, TkWindow, Widget};
+use crate::{CoreData, TkAction, TkWindow, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A dynamic row/column widget
@@ -23,15 +22,53 @@ pub type DynList<D> = DynVec<D, Box<dyn Widget>>;
 /// A dynamic row/column widget
 ///
 /// Generic over a single `Sized` child widget type.
-#[widget]
-#[handler]
-#[derive(Clone, Default, Debug, Widget)]
+#[derive(Clone, Default, Debug)]
 pub struct DynVec<D: Direction, W: Widget> {
-    #[core]
     core: CoreData,
     widgets: Vec<W>,
     data: layout::DynRowStorage,
     direction: D,
+}
+
+// We implement this manually, because the derive implementation cannot handle
+// vectors of child widgets.
+impl<D: Direction, W: Widget> WidgetCore for DynVec<D, W> {
+    fn core_data(&self) -> &CoreData {
+        &self.core
+    }
+    fn core_data_mut(&mut self) -> &mut CoreData {
+        &mut self.core
+    }
+
+    fn as_widget(&self) -> &dyn Widget {
+        self
+    }
+    fn as_widget_mut(&mut self) -> &mut dyn Widget {
+        self
+    }
+
+    fn len(&self) -> usize {
+        self.widgets.len()
+    }
+    fn get(&self, index: usize) -> Option<&dyn Widget> {
+        self.widgets.get(index).map(|w| w.as_widget())
+    }
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+        self.widgets.get_mut(index).map(|w| w.as_widget_mut())
+    }
+
+    fn walk(&self, f: &mut dyn FnMut(&dyn Widget)) {
+        for child in &self.widgets {
+            child.walk(f);
+        }
+        f(self)
+    }
+    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
+        for child in &mut self.widgets {
+            child.walk_mut(f);
+        }
+        f(self)
+    }
 }
 
 impl<D: Direction, W: Widget> Widget for DynVec<D, W> {
@@ -67,6 +104,36 @@ impl<D: Direction, W: Widget> Widget for DynVec<D, W> {
         for child in &self.widgets {
             child.draw(draw_handle, ev_mgr);
         }
+    }
+}
+
+impl<D: Direction, W: Widget + Handler> Handler for DynVec<D, W> {
+    type Msg = <W as Handler>::Msg;
+
+    fn handle(
+        &mut self,
+        tk: &mut dyn TkWindow,
+        addr: Address,
+        event: Event,
+    ) -> Response<Self::Msg> {
+        match addr {
+            kas::event::Address::Id(id) => {
+                for child in &mut self.widgets {
+                    if id <= child.id() {
+                        return child.handle(tk, addr, event);
+                    }
+                }
+                debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
+            }
+            kas::event::Address::Coord(coord) => {
+                for child in &mut self.widgets {
+                    if child.rect().contains(coord) {
+                        return child.handle(tk, addr, event);
+                    }
+                }
+            }
+        }
+        Response::Unhandled(event)
     }
 }
 
