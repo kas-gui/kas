@@ -47,7 +47,7 @@
 //! a `#[widget]` attribute and may have a `#[handler]` attribute, as follows.
 //!
 //! ```notest
-//! #[widget(...)]
+//! #[widget]
 //! #[handler]
 //! #[derive(Clone, Debug, Widget)]
 //! struct MyWidget {
@@ -55,7 +55,7 @@
 //! }
 //! ```
 //!
-//! The `#[widget]` attribute on the struct supports the following arguments:
+//! The `#[widget(..)]` attribute on the struct supports the following arguments:
 //!
 //! -   `layout = ...` (optional) — see below
 //!
@@ -93,8 +93,7 @@
 //!
 //! ### Fields
 //!
-//! One struct field must be marked with `#[core]` and implement the [`Core`]
-//! trait; usually this field has the specification `#[core] core: CoreData`.
+//! One struct field with specification `#[core] core: CoreData` is required.
 //!
 //! A `#[widget]` attribute is used to denote fields as child widgets. This
 //! attribute accepts the following optional arguments, for use with `grid`
@@ -252,11 +251,10 @@
 //! enum MyMessage { A, B };
 //! ```
 //!
-//! [`Core`]: crate::Core
-//! [`WidgetCore`]: crate::WidgetCore
-//! [`Widget`]: crate::Widget
-//! [`Handler`]: crate::event::Handler
 //! [`CoreData`]: crate::CoreData
-//! [`Handler::Msg`]: ../kas/event/trait.Handler.html#associatedtype.Msg
+//! [`Widget`]: crate::Widget
+//! [`WidgetCore`]: crate::WidgetCore
+//! [`Handler`]: crate::event::Handler
+//! [`Handler::Msg`]: crate::event::Handler::Msg
 
 pub use kas_macros::{make_widget, VoidMsg, Widget};

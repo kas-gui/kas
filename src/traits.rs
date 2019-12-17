@@ -230,11 +230,18 @@ impl Widget for Box<dyn Widget> {
 
 impl Clone for Box<dyn Widget> {
     fn clone(&self) -> Self {
+        #[cfg(feature = "nightly")]
         unsafe {
             let mut x = Box::new_uninit();
             self.clone_to(x.as_mut_ptr());
             x.assume_init()
         }
+
+        // Run-time failure is not ideal — but we would hit compile-issues which
+        // don't necessarily correspond to actual usage otherwise due to
+        // `derive(Clone)` on any widget produced by `make_widget!`.
+        #[cfg(not(feature = "nightly"))]
+        panic!("Clone for Box<dyn Widget> only supported on nightly");
     }
 }
 
@@ -263,6 +270,9 @@ pub trait LayoutData {
 // trait or (2) allow any Widget to derive Window (i.e. implement required
 // functionality with macros instead of the generic code below).
 pub trait Window: Widget + Handler<Msg = VoidMsg> {
+    /// Get the window title
+    fn title(&self) -> &str;
+
     /// Adjust the size of the window, repositioning widgets.
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size);
 

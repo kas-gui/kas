@@ -43,30 +43,33 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     };
 
-    let window = Window::new(make_widget! {
-        vertical => VoidMsg;
-        struct {
-            #[widget] _ = make_widget! {
-                frame => VoidMsg;
-                struct {
-                    #[widget] _ = Label::from("Widget Gallery"),
-                }
-            },
-            #[widget(handler = activations)] _ = ScrollRegion::new(widgets),
-        }
-        impl {
-            fn activations(&mut self, _: &mut dyn TkWindow, item: Item)
-                -> VoidResponse
-            {
-                match item {
-                    Item::Button => println!("Clicked!"),
-                    Item::Check(b) => println!("Checkbox: {}", b),
-                    Item::Edit(s) => println!("Edited: {}", s),
-                };
-                VoidResponse::None
+    let window = Window::new(
+        "Widget Gallery",
+        make_widget! {
+            vertical => VoidMsg;
+            struct {
+                #[widget] _ = make_widget! {
+                    frame => VoidMsg;
+                    struct {
+                        #[widget] _ = Label::from("Widget Gallery"),
+                    }
+                },
+                #[widget(handler = activations)] _ = ScrollRegion::new(widgets),
             }
-        }
-    });
+            impl {
+                fn activations(&mut self, _: &mut dyn TkWindow, item: Item)
+                    -> VoidResponse
+                {
+                    match item {
+                        Item::Button => println!("Clicked!"),
+                        Item::Check(b) => println!("Checkbox: {}", b),
+                        Item::Edit(s) => println!("Edited: {}", s),
+                    };
+                    VoidResponse::None
+                }
+            }
+        },
+    );
 
     let theme = kas_wgpu::SampleTheme::new();
     let mut toolkit = kas_wgpu::Toolkit::new(theme);

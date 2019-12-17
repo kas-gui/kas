@@ -10,13 +10,8 @@ use crate::geom::Size;
 
 /// Margin sizes
 ///
-/// Return value of [`kas::TkWindow::margins`].
-///
 /// Used by the layout system for margins around child widgets. Margins may be
 /// drawn in and handle events like any other widget area.
-///
-/// This is *only* used for container widgets; for all other widgets the
-/// [`kas::TkWindow::margins`] method is never called.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Margins {
     /// Size of top/left margin

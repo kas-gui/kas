@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.0.2"
+version = "0.1.0-pre.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -9,8 +9,12 @@ keywords = ["gui"]
 categories = ["gui"]
 repository = "https://github.com/dhardy/kas"
 
+[features]
+# Enables usage of unstable Rust features
+nightly = []
+
 [dependencies.kas-macros]
-version = "=0.0.2"
+version = "0.1.0-pre.1"
 path = "kas-macros"
 
 [dependencies.rusttype]
@@ -25,3 +29,6 @@ optional = true
 
 [workspace]
 members = ["kas-macros", "kas-wgpu"]
+
+[package.metadata.docs.rs]
+all-features = true

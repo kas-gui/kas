@@ -23,11 +23,15 @@ and run the UI.
 Examples
 ---------
 
-Several examples are available for the `kas_wgpu` sub-crate. Try e.g.
+Several examples are available on the `kas_wgpu` sub-crate. Try e.g.
 
 ```
+cd kas-wgpu
 cargo run --example calculator
 ```
+
+![Calculator](screenshots/calculator.png) ![Gallery](screenshots/gallery.png) ![Theme](screenshots/theme.png)
+![Stopwatch](screenshots/stopwatch.png) ![Layout](screenshots/layout.png) ![Dynamic](screenshots/dynamic.png)
 
 Cross-platform
 ------------
@@ -45,25 +49,19 @@ Feedback & fixes welcome.
 Features
 ----------
 
--   Type-safe event handler allowing user data to be embedded in the widget tree
--   Built-in widget selection (currently limited)
--   Row / column layouts
--   Flexible grid layouts
--   Draw-command abstraction (currently limited to required features)
+-   Custom parent widgets with embedded state (at in Qt)
+-   Type-safe event handlers from the context of these widgets
+-   Custom widgets over high- or low-level event API
+-   Custom widgets over high-level draw API (TODO: low level option)
+-   Flexible grid layouts with spans
+-   Width-for-height calculations
 -   Custom themes (with full control of sizing and rendering)
 -   Touch-screen support
 -   Keyboard navigation & accelerator keys
 -   Fully scalable (hidpi)
 -   Mult-window support
--   Fast and low CPU usage
-
-### Planned features
-
--   Dynamic layouts
--   Custom widgets
--   Better support for custom event handling
--   Allow direct access to wgpu when using `kas_wgpu` (custom shaders)
--   Animations
+-   GPU-accelerated
+-   Very memory and CPU efficient (aside from some pending optimisations)
 
 
 Data model and specification
@@ -82,45 +80,6 @@ KAS takes some inspiration from Qt (but using macros in place of language
 extensions), in that custom widget structs may combine user state and UI
 components. Most of KAS is inspired by finding a maximally-type-safe, flexible
 "Rustic" solution to the problem at hand.
-
-### Example
-
-The following is extracted from the `counter` example:
-
-```rust
-let buttons = make_widget! {
-    container(horizontal) => Message;
-    struct {
-        #[widget] _ = TextButton::new("−", Message::Decr),
-        #[widget] _ = TextButton::new("+", Message::Incr),
-    }
-};
-let window = Window::new(make_widget! {
-    container(vertical) => ();
-    struct {
-        #[widget] display: Label = Label::from("0"),
-        #[widget(handler = handle_button)] buttons -> Message = buttons,
-        counter: usize = 0,
-    }
-    impl {
-        fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Message)
-            -> VoidResponse
-        {
-            match msg {
-                Message::Decr => {
-                    self.counter = self.counter.saturating_sub(1);
-                    self.display.set_text(tk, self.counter.to_string());
-                }
-                Message::Incr => {
-                    self.counter = self.counter.saturating_add(1);
-                    self.display.set_text(tk, self.counter.to_string());
-                }
-            };
-            VoidResponse::None
-        }
-    }
-});
-```
 
 
 Drawing and themes

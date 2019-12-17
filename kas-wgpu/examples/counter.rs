@@ -26,33 +26,37 @@ fn main() -> Result<(), winit::error::OsError> {
             #[widget] _ = TextButton::new("+", Message::Incr),
         }
     };
-    let window = Window::new(make_widget! {
-        vertical => VoidMsg;
-        struct {
-            #[widget] display: Label = Label::from("0"),
-            #[widget(handler = handle_button)] buttons -> Message = buttons,
-            counter: usize = 0,
-        }
-        impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Message)
-                -> VoidResponse
-            {
-                match msg {
-                    Message::Decr => {
-                        self.counter = self.counter.saturating_sub(1);
-                        self.display.set_text(tk, self.counter.to_string());
-                    }
-                    Message::Incr => {
-                        self.counter = self.counter.saturating_add(1);
-                        self.display.set_text(tk, self.counter.to_string());
-                    }
-                };
-                VoidResponse::None
+    let window = Window::new(
+        "Counter",
+        make_widget! {
+            vertical => VoidMsg;
+            struct {
+                #[widget] display: Label = Label::from("0"),
+                #[widget(handler = handle_button)] buttons -> Message = buttons,
+                counter: usize = 0,
             }
-        }
-    });
+            impl {
+                fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Message)
+                    -> VoidResponse
+                {
+                    match msg {
+                        Message::Decr => {
+                            self.counter = self.counter.saturating_sub(1);
+                            self.display.set_text(tk, self.counter.to_string());
+                        }
+                        Message::Incr => {
+                            self.counter = self.counter.saturating_add(1);
+                            self.display.set_text(tk, self.counter.to_string());
+                        }
+                    };
+                    VoidResponse::None
+                }
+            }
+        },
+    );
 
-    let theme = kas_wgpu::SampleTheme::new();
+    let mut theme = kas_wgpu::SampleTheme::new();
+    theme.set_font_size(24.0);
     let mut toolkit = kas_wgpu::Toolkit::new(theme);
     toolkit.add(window)?;
     toolkit.run()

@@ -22,25 +22,31 @@ use crate::draw::*;
 
 /// A simple, inflexible theme providing a sample implementation.
 #[derive(Copy, Clone, Debug, Default)]
-pub struct SampleTheme;
+pub struct SampleTheme {
+    font_size: f32,
+}
 
 impl SampleTheme {
     /// Construct
     pub fn new() -> Self {
-        SampleTheme
+        SampleTheme { font_size: 18.0 }
+    }
+
+    /// Set font size. Default is 18.
+    pub fn set_font_size(&mut self, size: f32) {
+        self.font_size = size;
     }
 }
 
 #[doc(hidden)]
 pub struct SampleWindow {
+    font_size: f32,
     font_scale: f32,
     margin: f32,
     frame_size: f32,
     button_frame: f32,
 }
 
-/// Font size (units are half-point sizes?)
-const FONT_SIZE: f32 = 20.0;
 /// Inner margin; this is multiplied by the DPI factor then rounded to nearest
 /// integer, e.g. `(2.0 * 1.25).round() == 3.0`.
 const MARGIN: f32 = 2.0;
@@ -84,9 +90,10 @@ fn button_colour(highlights: HighlightState, show: bool) -> Option<Colour> {
 }
 
 impl SampleWindow {
-    fn new(dpi_factor: f32) -> Self {
+    fn new(font_size: f32, dpi_factor: f32) -> Self {
         SampleWindow {
-            font_scale: (FONT_SIZE * dpi_factor).round(),
+            font_size,
+            font_scale: (font_size * dpi_factor).round(),
             margin: (MARGIN * dpi_factor).round(),
             frame_size: (FRAME_SIZE * dpi_factor).round(),
             button_frame: (BUTTON_FRAME * dpi_factor).round(),
@@ -125,7 +132,7 @@ impl theme::Window<DrawPipe> for SampleWindow {
     }
 
     fn set_dpi_factor(&mut self, factor: f32) {
-        *self = SampleWindow::new(factor)
+        *self = SampleWindow::new(self.font_size, factor)
     }
 }
 
@@ -221,7 +228,7 @@ impl theme::Theme<DrawPipe> for SampleTheme {
     ///
     /// See also documentation on [`ThemeWindow::set_dpi_factor`].
     fn new_window(&self, _draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
-        SampleWindow::new(dpi_factor)
+        SampleWindow::new(self.font_size, dpi_factor)
     }
 
     unsafe fn draw_handle<'a>(

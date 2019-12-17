@@ -77,7 +77,7 @@ impl PressSource {
     }
 }
 
-/// Type used by [`EventChild::Scroll`]
+/// Type used by [`Action::Scroll`]
 #[derive(Clone, Copy, Debug)]
 pub enum ScrollDelta {
     /// Scroll a given number of lines

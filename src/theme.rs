@@ -10,8 +10,13 @@
 //!
 //! A theme is implemented in multiple parts: the [`Theme`] object is shared
 //! by all windows and may provide shared resources (e.g. fonts and textures).
-//! It is also responsible for creating a per-window [`ThemeWindow`] object and
-//! draw handles ([`DrawHandle`]).
+//! It is also responsible for creating a per-window [`Window`] object.
+//!
+//! Finally, the [`SizeHandle`] and [`DrawHandle`] traits provide actual sizing
+//! and drawing information for widgets. Widgets are provided implementations of
+//! these traits within calls to the appropriate [`Widget`] methods.
+//!
+//! [`Widget`]: crate::Widget
 
 use std::any::Any;
 
@@ -64,7 +69,7 @@ pub struct TextProperties {
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
 pub trait Theme<Draw> {
-    /// The associated [`ThemeWindow`] implementation.
+    /// The associated [`Window`] implementation.
     type Window: Window<Draw> + 'static;
 
     /// The associated [`DrawHandle`] implementation.
@@ -74,7 +79,7 @@ pub trait Theme<Draw> {
     ///
     /// A reference to the draw backend is provided allowing configuration.
     ///
-    /// See also documentation on [`ThemeWindow::set_dpi_factor`].
+    /// See also documentation on [`Window::set_dpi_factor`].
     fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window;
 
     /// Construct a [`DrawHandle`] object
