@@ -30,8 +30,8 @@ cd kas-wgpu
 cargo run --example calculator
 ```
 
-![Calculator](screenshots/calculator.png) ![Gallery](screenshots/gallery.png) ![Theme](screenshots/theme.png) ![Dynamic](screenshots/dynamic.png)
-![Stopwatch](screenshots/stopwatch.png)
+![Calculator](screenshots/calculator.png) ![Dynamic](screenshots/dynamic.png)
+![Theme](screenshots/theme.png) ![Gallery](screenshots/gallery.png)
 ![Layout](screenshots/layout.png)
 
 Cross-platform
