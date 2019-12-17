@@ -63,6 +63,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                 if core.is_none() {
                     core = Some(member(i, field.ident.clone()));
                 } else {
+                    #[cfg(feature = "nightly")]
                     attr.span()
                         .unwrap()
                         .error("multiple fields marked with #[core]")
@@ -73,6 +74,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                     if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
                         && field.ty != parse_quote! { <Self as LayoutData>::Data }
                     {
+                        #[cfg(feature = "nightly")]
                         field
                             .ty
                             .span()
@@ -82,6 +84,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                     }
                     layout_data = Some(member(i, field.ident.clone()));
                 } else {
+                    #[cfg(feature = "nightly")]
                     attr.span()
                         .unwrap()
                         .error("multiple fields marked with #[layout_data]")
@@ -103,6 +106,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
             if widget.is_none() {
                 widget = Some(syn::parse2(attr.tokens)?);
             } else {
+                #[cfg(feature = "nightly")]
                 attr.span()
                     .unwrap()
                     .error("multiple #[widget(..)] attributes on type")
@@ -112,6 +116,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
             if handler.is_none() {
                 handler = Some(syn::parse2(attr.tokens)?);
             } else {
+                #[cfg(feature = "nightly")]
                 attr.span()
                     .unwrap()
                     .error("multiple #[handler(..)] attributes on type")

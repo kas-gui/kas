@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 #![recursion_limit = "128"]
-#![feature(proc_macro_diagnostic)]
+#![cfg_attr(feature = "nightly", feature(proc_macro_diagnostic))]
 
 extern crate proc_macro;
 
@@ -14,6 +14,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, TokenStreamExt};
 use std::fmt::Write;
 use syn::punctuated::Punctuated;
+#[cfg(feature = "nightly")]
 use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::{parse_macro_input, parse_quote};
@@ -222,16 +223,19 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         for impl_block in impls {
             for f in &impl_block.1 {
                 if f.sig.ident == *handler {
-                    if let Some(x) = x {
+                    if let Some(_x) = x {
+                        #[cfg(feature = "nightly")]
                         handler
                             .span()
                             .unwrap()
                             .error("multiple methods with this name")
                             .emit();
-                        x.0.span()
+                        #[cfg(feature = "nightly")]
+                        _x.0.span()
                             .unwrap()
                             .error("first method with this name")
                             .emit();
+                        #[cfg(feature = "nightly")]
                         f.sig
                             .ident
                             .span()
@@ -241,6 +245,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         return None;
                     }
                     if f.sig.inputs.len() != 3 {
+                        #[cfg(feature = "nightly")]
                         f.sig.span()
                             .unwrap()
                             .error("handler functions must have signature: fn handler(&mut self, tk: &mut dyn TkWindow, msg: T)")
@@ -260,6 +265,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             find_handler_ty_buf.push((handler.clone(), x.1.clone()));
             Some(x.1)
         } else {
+            #[cfg(feature = "nightly")]
             handler
                 .span()
                 .unwrap()
