@@ -89,7 +89,18 @@ impl Manager {
     ///
     /// This should be called by the toolkit on the widget tree when the window
     /// is created (before or after resizing).
+    ///
+    /// Since re-assigning widget identifiers may invalidate internal storage
+    /// regarding keyboard focus and in-progress events, those are cleared; as
+    /// a side-effect keyboard focus and in-progress events are lost.
     pub fn configure(&mut self, widget: &mut dyn Widget) {
+        self.char_focus = None;
+        self.key_focus = None;
+        self.hover = None;
+        self.key_events.clear();
+        self.mouse_grab = None;
+        self.touch_grab.clear();
+
         let mut id = WidgetId::FIRST;
         self.accel_keys.clear();
         widget.walk_mut(&mut |widget| {
