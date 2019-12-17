@@ -92,6 +92,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
 
     /// Recompute layout of widgets and redraw
     pub fn reconfigure(&mut self) {
+        self.tk_window.ev_mgr.configure(self.widget.as_widget_mut());
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         self.widget.resize(&mut self.tk_window, size);
         self.window.request_redraw();
