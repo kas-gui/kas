@@ -29,6 +29,9 @@ Several examples are available for the `kas_wgpu` sub-crate. Try e.g.
 cargo run --example calculator
 ```
 
+![Calculator](screenshots/calculator.png) ![Gallery](screenshots/gallery.png) ![Theme](screenshots/theme.png)
+![Stopwatch](screenshots/stopwatch.png) ![Layout](screenshots/layout.png) ![Dynamic](screenshots/dynamic.png)
+
 Cross-platform
 ------------
 
