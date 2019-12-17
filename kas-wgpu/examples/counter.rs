@@ -52,7 +52,8 @@ fn main() -> Result<(), winit::error::OsError> {
         }
     });
 
-    let theme = kas_wgpu::SampleTheme::new();
+    let mut theme = kas_wgpu::SampleTheme::new();
+    theme.set_font_size(24.0);
     let mut toolkit = kas_wgpu::Toolkit::new(theme);
     toolkit.add(window)?;
     toolkit.run()
