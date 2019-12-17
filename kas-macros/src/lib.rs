@@ -11,6 +11,7 @@ extern crate proc_macro;
 mod args;
 
 use proc_macro2::{Span, TokenStream};
+use proc_macro_hack::proc_macro_hack;
 use quote::{quote, TokenStreamExt};
 use std::fmt::Write;
 use syn::punctuated::Punctuated;
@@ -202,9 +203,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// Macro to create a widget with anonymous type
 ///
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
-///
-/// Currently usage of this macro requires `#![feature(proc_macro_hygiene)]`.
-#[proc_macro]
+#[proc_macro_hack]
 pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
     // find type of handler's message; return None on error

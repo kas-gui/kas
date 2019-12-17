@@ -4,7 +4,6 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Clock example, with the make_widget macro expanded
-#![feature(proc_macro_hygiene)]
 
 extern crate chrono;
 

@@ -27,6 +27,10 @@ version = "0.8"
 version = "0.20.0-alpha5"
 optional = true
 
+[dependencies]
+proc-macro-hack = "0.5"
+proc-macro-nested = "0.1"
+
 [workspace]
 members = ["kas-macros", "kas-wgpu"]
 

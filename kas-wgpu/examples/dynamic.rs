@@ -4,14 +4,14 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Dynamic widget example
-#![feature(proc_macro_hygiene)]
+#![recursion_limit = "256"]
 
 use kas::class::HasText;
 use kas::event::{Callback, Response, VoidMsg};
 use kas::layout::Vertical;
-use kas::macros::{make_widget, VoidMsg};
+use kas::macros::VoidMsg;
 use kas::widget::{DynVec, EditBox, Label, ScrollRegion, TextButton, Window};
-use kas::TkWindow;
+use kas::{make_widget, TkWindow};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {

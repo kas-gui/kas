@@ -4,12 +4,12 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Gallery of all widgets
-#![feature(proc_macro_hygiene)]
+#![recursion_limit = "512"]
 
 use kas::event::{VoidMsg, VoidResponse};
-use kas::macros::{make_widget, VoidMsg};
+use kas::macros::VoidMsg;
 use kas::widget::*;
-use kas::TkWindow;
+use kas::{make_widget, TkWindow};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Item {

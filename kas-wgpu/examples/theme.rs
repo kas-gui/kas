@@ -4,16 +4,16 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Custom theme demo
-#![feature(proc_macro_hygiene)]
+#![recursion_limit = "256"]
 
 use std::cell::Cell;
 
 use kas::draw::Colour;
 use kas::event::{VoidMsg, VoidResponse};
-use kas::macros::{make_widget, VoidMsg};
+use kas::macros::VoidMsg;
 use kas::theme::Theme;
 use kas::widget::*;
-use kas::TkWindow;
+use kas::{make_widget, TkWindow};
 
 use kas_wgpu::draw::*;
 use kas_wgpu::glyph::Font;

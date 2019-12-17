@@ -21,12 +21,6 @@
 //! because procedural macros must be defined in a special crate. The
 //! `kas-macros` crate should not be used directly.
 //!
-//! Note further that these macros require gated functionality only available
-//! in nightly `rustc` builds:
-//! ```
-//! #![feature(proc_macro_hygiene)]
-//! ```
-//!
 //! [`make_widget`]: #the-make_widget-macro
 //! [`derive(Widget)`]: #the-derivewidget-macro
 //! [`derive(VoidMsg)`]: #the-derivevoidmsg-macro
@@ -215,9 +209,7 @@
 //! ### Example
 //!
 //! ```
-//! #![feature(proc_macro_hygiene)]
-//!
-//! use kas::macros::{make_widget};
+//! use kas::make_widget;
 //! use kas::widget::TextButton;
 //!
 //! #[derive(Copy, Clone, Debug)]
@@ -257,4 +249,4 @@
 //! [`Handler`]: crate::event::Handler
 //! [`Handler::Msg`]: crate::event::Handler::Msg
 
-pub use kas_macros::{make_widget, VoidMsg, Widget};
+pub use kas_macros::{VoidMsg, Widget};

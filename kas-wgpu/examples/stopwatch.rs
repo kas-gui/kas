@@ -4,16 +4,16 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Counter example (simple button)
-#![feature(proc_macro_hygiene)]
+#![recursion_limit = "512"]
 
 use std::fmt::Write;
 use std::time::{Duration, Instant};
 
 use kas::class::HasText;
 use kas::event::{Callback, Response, VoidMsg};
-use kas::macros::{make_widget, VoidMsg};
+use kas::macros::VoidMsg;
 use kas::widget::{Label, TextButton, Window};
-use kas::TkWindow;
+use kas::{make_widget, TkWindow};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {

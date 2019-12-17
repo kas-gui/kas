@@ -4,10 +4,10 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Gallery of all widgets
-#![feature(proc_macro_hygiene)]
+#![recursion_limit = "256"]
 
 use kas::event::VoidMsg;
-use kas::macros::make_widget;
+use kas::make_widget;
 use kas::widget::{CheckBox, EditBox, Label, Window};
 
 fn main() -> Result<(), winit::error::OsError> {

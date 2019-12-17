@@ -45,3 +45,9 @@ pub mod macros;
 pub use crate::data::*;
 pub use crate::toolkit::*;
 pub use crate::traits::*;
+
+use proc_macro_hack::proc_macro_hack;
+
+/// See [The `make_widget` macro]: #the-make_widget-macro
+#[proc_macro_hack(support_nested)]
+pub use kas_macros::make_widget;

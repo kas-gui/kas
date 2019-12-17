@@ -4,7 +4,6 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Clock example (simple periodically updated display)
-#![feature(proc_macro_hygiene)]
 
 extern crate chrono;
 
@@ -13,9 +12,8 @@ use std::time::Duration;
 
 use kas::class::HasText;
 use kas::event::{Callback, VoidMsg};
-use kas::macros::make_widget;
 use kas::widget::{Label, Window};
-use kas::{TkWindow, WidgetCore};
+use kas::{make_widget, TkWindow, WidgetCore};
 
 fn main() {
     let mut window = Window::new(

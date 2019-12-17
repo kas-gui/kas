@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Simple calculator example (lots of buttons, grid layout)
-#![feature(proc_macro_hygiene)]
+#![recursion_limit = "1024"]
 
 use std::num::ParseFloatError;
 use std::str::FromStr;
@@ -12,9 +12,9 @@ use std::str::FromStr;
 use kas::class::HasText;
 use kas::event::VirtualKeyCode as VK;
 use kas::event::{Response, VoidMsg};
-use kas::macros::{make_widget, VoidMsg};
+use kas::macros::VoidMsg;
 use kas::widget::{EditBox, TextButton, Window};
-use kas::TkWindow;
+use kas::{make_widget, TkWindow};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Key {
