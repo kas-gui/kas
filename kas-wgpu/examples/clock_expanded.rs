@@ -17,7 +17,7 @@ use kas::widget::{Label, Window};
 use kas::{TkWindow, WidgetCore};
 
 fn main() {
-    let mut window = Window::new({
+    let mut window = Window::new("Clock", {
         #[widget (layout = vertical)]
         #[handler]
         #[derive(Clone, Debug, kas :: macros :: Widget)]

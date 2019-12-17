@@ -60,25 +60,28 @@ fn main() -> Result<(), winit::error::OsError> {
             }
         }
     };
-    let mut window = Window::new(make_widget! {
-        vertical => VoidMsg;
-        struct {
-            #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
-            #[widget(handler = handler)] controls -> Message = controls,
-            #[widget] list: ScrollRegion<DynVec<Vertical, EditBox<()>>> = ScrollRegion::new(DynVec::new(Vertical, vec![])),
-        }
-        impl {
-            fn handler(&mut self, tk: &mut dyn TkWindow, msg: Message) -> Response<VoidMsg>
-            {
-                match msg {
-                    Message::Set(n) => {
-                        self.list.inner_mut().resize_with(tk, n, |i| EditBox::new(i.to_string()));
-                    }
-                };
-                Response::None
+    let mut window = Window::new(
+        "Dynamic widget demo",
+        make_widget! {
+            vertical => VoidMsg;
+            struct {
+                #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
+                #[widget(handler = handler)] controls -> Message = controls,
+                #[widget] list: ScrollRegion<DynVec<Vertical, EditBox<()>>> = ScrollRegion::new(DynVec::new(Vertical, vec![])),
             }
-        }
-    });
+            impl {
+                fn handler(&mut self, tk: &mut dyn TkWindow, msg: Message) -> Response<VoidMsg>
+                {
+                    match msg {
+                        Message::Set(n) => {
+                            self.list.inner_mut().resize_with(tk, n, |i| EditBox::new(i.to_string()));
+                        }
+                    };
+                    Response::None
+                }
+            }
+        },
+    );
 
     window.add_callback(Callback::Start, &|w, tk| {
         let _ = w.handler(tk, Message::Set(3));

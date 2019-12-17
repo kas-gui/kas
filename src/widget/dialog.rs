@@ -29,6 +29,7 @@ pub struct MessageBox {
     core: CoreData,
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,
+    title: String,
     #[widget]
     label: Label,
     #[widget(handler = handle_button)]
@@ -36,10 +37,11 @@ pub struct MessageBox {
 }
 
 impl MessageBox {
-    pub fn new<T: ToString>(message: T) -> Self {
+    pub fn new<T: ToString, M: ToString>(title: T, message: M) -> Self {
         MessageBox {
             core: Default::default(),
             layout_data: Default::default(),
+            title: title.to_string(),
             label: Label::new(message),
             button: TextButton::new("Ok", DialogButton::Close),
         }
@@ -54,6 +56,10 @@ impl MessageBox {
 }
 
 impl Window for MessageBox {
+    fn title(&self) -> &str {
+        &self.title
+    }
+
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
         layout::solve(self, tk, size);
     }

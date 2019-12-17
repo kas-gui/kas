@@ -82,7 +82,7 @@ fn make_window() -> Box<dyn kas::Window> {
         }
     };
 
-    let mut window = Window::new(stopwatch);
+    let mut window = Window::new("Stopwatch", stopwatch);
 
     window.add_callback(Callback::Repeat(Duration::from_millis(16)), &|w, tk| {
         w.on_tick(tk)

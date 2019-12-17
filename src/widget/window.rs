@@ -22,6 +22,7 @@ pub struct Window<W: Widget + 'static> {
     #[layout_data]
     layout_data: <Self as LayoutData>::Data,
     min_size: Size,
+    title: String,
     #[widget]
     w: W,
     fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut dyn TkWindow))>,
@@ -51,6 +52,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
             core: self.core.clone(),
             layout_data: self.layout_data.clone(),
             min_size: self.min_size,
+            title: self.title.clone(),
             w: self.w.clone(),
             fns: self.fns.clone(),
         }
@@ -59,11 +61,12 @@ impl<W: Widget + Clone> Clone for Window<W> {
 
 impl<W: Widget> Window<W> {
     /// Create
-    pub fn new(w: W) -> Window<W> {
+    pub fn new<T: ToString>(title: T, w: W) -> Window<W> {
         Window {
             core: Default::default(),
             layout_data: Default::default(),
             min_size: Size::ZERO,
+            title: title.to_string(),
             w,
             fns: Vec::new(),
         }
@@ -95,6 +98,10 @@ impl<W: Widget + Handler<Msg = VoidMsg> + 'static> Handler for Window<W> {
 }
 
 impl<W: Widget + Handler<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
+    fn title(&self) -> &str {
+        &self.title
+    }
+
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
         layout::solve(self, tk, size);
     }

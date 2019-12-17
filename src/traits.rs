@@ -270,6 +270,9 @@ pub trait LayoutData {
 // trait or (2) allow any Widget to derive Window (i.e. implement required
 // functionality with macros instead of the generic code below).
 pub trait Window: Widget + Handler<Msg = VoidMsg> {
+    /// Get the window title
+    fn title(&self) -> &str;
+
     /// Adjust the size of the window, repositioning widgets.
     fn resize(&mut self, tk: &mut dyn TkWindow, size: Size);
 

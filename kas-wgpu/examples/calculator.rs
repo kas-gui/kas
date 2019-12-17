@@ -84,7 +84,7 @@ fn main() -> Result<(), winit::error::OsError> {
             }
         }
     };
-    let window = Window::new(content);
+    let window = Window::new("Calculator", content);
 
     let mut theme = kas_wgpu::SampleTheme::new();
     theme.set_font_size(24.0);

@@ -100,25 +100,28 @@ fn main() -> Result<(), winit::error::OsError> {
 
     let theme = ColouredTheme::new();
 
-    let window = Window::new(make_widget! {
-        single => VoidMsg;
-        struct {
-            #[widget(handler = handler)] _ = widgets,
-        }
-        impl {
-            fn handler(&mut self, _: &mut dyn TkWindow, item: Item)
-                -> VoidResponse
-            {
-                match item {
-                    Item::White => BACKGROUND.with(|b| b.set(Colour::grey(1.0))),
-                    Item::Red => BACKGROUND.with(|b| b.set(Colour::new(0.9, 0.2, 0.2))),
-                    Item::Green => BACKGROUND.with(|b| b.set(Colour::new(0.2, 0.9, 0.2))),
-                    Item::Yellow => BACKGROUND.with(|b| b.set(Colour::new(0.9, 0.9, 0.2))),
-                };
-                VoidResponse::None
+    let window = Window::new(
+        "Theme demo",
+        make_widget! {
+            single => VoidMsg;
+            struct {
+                #[widget(handler = handler)] _ = widgets,
             }
-        }
-    });
+            impl {
+                fn handler(&mut self, _: &mut dyn TkWindow, item: Item)
+                    -> VoidResponse
+                {
+                    match item {
+                        Item::White => BACKGROUND.with(|b| b.set(Colour::grey(1.0))),
+                        Item::Red => BACKGROUND.with(|b| b.set(Colour::new(0.9, 0.2, 0.2))),
+                        Item::Green => BACKGROUND.with(|b| b.set(Colour::new(0.2, 0.9, 0.2))),
+                        Item::Yellow => BACKGROUND.with(|b| b.set(Colour::new(0.9, 0.9, 0.2))),
+                    };
+                    VoidResponse::None
+                }
+            }
+        },
+    );
 
     let mut toolkit = kas_wgpu::Toolkit::new(theme);
     toolkit.add(window)?;
