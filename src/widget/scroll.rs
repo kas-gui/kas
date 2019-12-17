@@ -75,6 +75,16 @@ impl<W: Widget> ScrollRegion<W> {
             child,
         }
     }
+
+    /// Access inner widget directly
+    pub fn inner(&self) -> &W {
+        &self.child
+    }
+
+    /// Access inner widget directly
+    pub fn inner_mut(&mut self) -> &mut W {
+        &mut self.child
+    }
 }
 
 impl<W: Widget + Handler> Handler for ScrollRegion<W> {

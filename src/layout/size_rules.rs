@@ -113,12 +113,15 @@ impl SizeRules {
         if x.b > y.b {
             self.b = self.b.max(x.b - y.b);
         }
+        self.b = self.a.max(self.b);
     }
 
     /// Reduce the minimum size
+    ///
+    /// If `min` is greater than the current minimum size, this has no effect.
     #[inline]
-    pub fn reduce_min_to(&mut self, a: u32) {
-        self.a = a;
+    pub fn reduce_min_to(&mut self, min: u32) {
+        self.a = self.a.min(min);
     }
 
     #[doc(hidden)]

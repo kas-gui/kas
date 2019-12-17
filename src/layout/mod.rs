@@ -12,14 +12,19 @@ mod misc_solver;
 mod row_solver;
 mod size_rules;
 mod sizer;
+mod storage;
 
 use kas::geom::Size;
 
-pub use grid_solver::{FixedGridSetter, FixedGridSolver, FixedGridStorage, GridChildInfo};
+pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use misc_solver::SingleSetter;
-pub use row_solver::{FixedRowSetter, FixedRowSolver, FixedRowStorage};
+pub use row_solver::{RowSetter, RowSolver};
 pub use size_rules::{Margins, SizeRules};
-pub use sizer::{solve, RulesSetter, RulesSolver, Storage};
+pub use sizer::{solve, RulesSetter, RulesSolver};
+pub use storage::{
+    DynGridStorage, DynRowStorage, FixedGridStorage, FixedRowStorage, GridStorage, RowStorage,
+    RowTemp, Storage,
+};
 
 /// Information on which axis is being resized
 ///
@@ -67,20 +72,37 @@ impl AxisInfo {
     }
 }
 
-pub trait Direction {
-    fn is_vertical() -> bool;
+pub trait Direction: Copy + Sized + std::fmt::Debug {
+    fn is_vertical(self) -> bool;
+    fn is_horizontal(self) -> bool {
+        !self.is_vertical()
+    }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct Horizontal;
 impl Direction for Horizontal {
-    fn is_vertical() -> bool {
+    fn is_vertical(self) -> bool {
         false
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct Vertical;
 impl Direction for Vertical {
-    fn is_vertical() -> bool {
+    fn is_vertical(self) -> bool {
         true
     }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct DynDirection(bool);
+impl Direction for DynDirection {
+    fn is_vertical(self) -> bool {
+        self.0
+    }
+}
+impl DynDirection {
+    pub const HORIZONTAL: DynDirection = DynDirection(false);
+    pub const VERTICAL: DynDirection = DynDirection(true);
 }

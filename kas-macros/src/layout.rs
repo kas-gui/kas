@@ -270,35 +270,50 @@ impl<'a> ImplLayout<'a> {
             o @ _ => o,
         });
 
+        let dim = match self.layout {
+            Layout::Horizontal => quote! { (kas::layout::Horizontal, #cols) },
+            Layout::Vertical => quote! { (kas::layout::Vertical, #rows) },
+            Layout::Grid => quote! { (#cols, #rows) },
+        };
+
+        let col_temp = if cols > 16 {
+            quote! { Vec<u32> }
+        } else {
+            quote! { [u32; #cols] }
+        };
+        let row_temp = if rows > 16 {
+            quote! { Vec<u32> }
+        } else {
+            quote! { [u32; #rows] }
+        };
+
         let data_type = match self.layout {
             Layout::Horizontal => quote! {
                 type Data = kas::layout::FixedRowStorage::<
                     [kas::layout::SizeRules; #cols + 1]
                 >;
-                type Solver = kas::layout::FixedRowSolver::<
-                    kas::layout::Horizontal,
-                    [kas::layout::SizeRules; #cols + 1],
-                    [u32; #cols],
+                type Solver = kas::layout::RowSolver::<
+                    #col_temp,
+                    Self::Data,
                 >;
-                type Setter = kas::layout::FixedRowSetter::<
+                type Setter = kas::layout::RowSetter::<
                     kas::layout::Horizontal,
-                    [kas::layout::SizeRules; #cols + 1],
-                    [u32; #cols],
+                    #col_temp,
+                    Self::Data,
                 >;
             },
             Layout::Vertical => quote! {
                 type Data = kas::layout::FixedRowStorage::<
                     [kas::layout::SizeRules; #rows + 1],
                 >;
-                type Solver = kas::layout::FixedRowSolver::<
-                    kas::layout::Vertical,
-                    [kas::layout::SizeRules; #rows + 1],
-                    [u32; #rows],
+                type Solver = kas::layout::RowSolver::<
+                    #row_temp,
+                    Self::Data,
                 >;
-                type Setter = kas::layout::FixedRowSetter::<
+                type Setter = kas::layout::RowSetter::<
                     kas::layout::Vertical,
-                    [kas::layout::SizeRules; #rows + 1],
-                    [u32; #rows],
+                    #row_temp,
+                    Self::Data,
                 >;
             },
             Layout::Grid => quote! {
@@ -306,19 +321,17 @@ impl<'a> ImplLayout<'a> {
                     [kas::layout::SizeRules; #cols + 1],
                     [kas::layout::SizeRules; #rows + 1],
                 >;
-                type Solver = kas::layout::FixedGridSolver::<
-                    [kas::layout::SizeRules; #cols + 1],
-                    [kas::layout::SizeRules; #rows + 1],
-                    [u32; #cols],
-                    [u32; #rows],
+                type Solver = kas::layout::GridSolver::<
+                    #col_temp,
+                    #row_temp,
                     [kas::layout::SizeRules; #num_col_spans],
                     [kas::layout::SizeRules; #num_row_spans],
+                    Self::Data,
                 >;
-                type Setter = kas::layout::FixedGridSetter::<
-                    [kas::layout::SizeRules; #cols + 1],
-                    [kas::layout::SizeRules; #rows + 1],
-                    [u32; #cols],
-                    [u32; #rows],
+                type Setter = kas::layout::GridSetter::<
+                    #col_temp,
+                    #row_temp,
+                    Self::Data,
                 >;
             },
         };
@@ -368,6 +381,7 @@ impl<'a> ImplLayout<'a> {
 
                 let mut solver = <Self as kas::LayoutData>::Solver::new(
                     axis,
+                    #dim,
                     &mut self.#data,
                 );
                 #size
@@ -388,6 +402,7 @@ impl<'a> ImplLayout<'a> {
                 let mut setter = <Self as kas::LayoutData>::Setter::new(
                     rect,
                     Margins::ZERO,
+                    #dim,
                     &mut self.#data,
                 );
                 #set_rect
