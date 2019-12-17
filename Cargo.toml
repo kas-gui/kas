@@ -9,6 +9,10 @@ keywords = ["gui"]
 categories = ["gui"]
 repository = "https://github.com/dhardy/kas"
 
+[features]
+# Enables usage of unstable Rust features
+nightly = []
+
 [dependencies.kas-macros]
 version = "=0.0.2"
 path = "kas-macros"
