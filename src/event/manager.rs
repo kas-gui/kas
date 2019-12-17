@@ -89,27 +89,36 @@ impl Manager {
     ///
     /// This should be called by the toolkit on the widget tree when the window
     /// is created (before or after resizing).
-    ///
-    /// Since re-assigning widget identifiers may invalidate internal storage
-    /// regarding keyboard focus and in-progress events, those are cleared; as
-    /// a side-effect keyboard focus and in-progress events are lost.
     pub fn configure(&mut self, widget: &mut dyn Widget) {
-        self.char_focus = None;
-        self.key_focus = None;
-        self.hover = None;
-        self.key_events.clear();
-        self.mouse_grab = None;
-        self.touch_grab.clear();
-
+        // Re-assigning WidgetIds might invalidate state; to avoid this we map
+        // existing ids to new ids
+        let mut map = HashMap::new();
         let mut id = WidgetId::FIRST;
+
         self.accel_keys.clear();
         widget.walk_mut(&mut |widget| {
+            map.insert(widget.id(), id);
             widget.core_data_mut().id = id;
+
             for key in widget.core_data().keys() {
                 self.accel_keys.insert(key, id);
             }
             id = id.next();
         });
+
+        self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
+        self.key_focus = self.key_focus.and_then(|id| map.get(&id).cloned());
+        self.hover = self.hover.and_then(|id| map.get(&id).cloned());
+        for event in &mut self.key_events {
+            event.1 = map.get(&event.1).cloned().unwrap();
+        }
+        self.mouse_grab = self
+            .mouse_grab
+            .and_then(|(id, b)| map.get(&id).map(|id| (*id, b)));
+        for event in &mut self.touch_grab {
+            event.1.start_id = map.get(&event.1.start_id).cloned().unwrap();
+            event.1.cur_id = map.get(&event.1.cur_id).cloned().unwrap();
+        }
     }
 
     /// Set the DPI factor. Must be updated for correct event translation by
