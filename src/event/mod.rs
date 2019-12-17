@@ -51,6 +51,8 @@
 //! Widgets should not normally need internal tracking of mouse/touch events.
 //! Highlighting information can be obtained directly in the `draw` method, and
 //! press events provide information on their start and end widget.
+//!
+//! [`WidgetId`]: crate::WidgetId
 
 mod callback;
 #[cfg(not(feature = "winit"))]

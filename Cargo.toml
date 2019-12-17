@@ -29,3 +29,6 @@ optional = true
 
 [workspace]
 members = ["kas-macros", "kas-wgpu"]
+
+[package.metadata.docs.rs]
+all-features = true
