@@ -34,8 +34,26 @@ cargo run --example calculator
 ![Theme](screenshots/theme.png) ![Gallery](screenshots/gallery.png)
 ![Layout](screenshots/layout.png)
 
-Cross-platform
-------------
+Installation and Testing
+------------------------
+
+First, ensure that [CMake](https://cmake.org/) is installed. On Linux this should be
+available in your package manager. This is required by the GLSL compiler.
+
+Next, clone the repository and run the examples as follows:
+
+```
+git clone https://github.com/dhardy/kas.git
+cd kas
+cargo test
+cd kas-wgpu
+cargo test
+cargo run --example gallery
+```
+
+Instructions/testing on non-Linux platforms: TODO (please report back if you did this)!
+
+### Cross-platform
 
 KAS uses cross-platform libraries, allowing it to target all major platforms.
 Current development & test targets:
