@@ -25,7 +25,7 @@ enum Message {
     Set(usize),
 }
 
-fn main() -> Result<(), winit::error::OsError> {
+fn main() -> Result<(), kas_wgpu::Error> {
     let controls = make_widget! {
         horizontal => Message;
         struct {
@@ -88,7 +88,7 @@ fn main() -> Result<(), winit::error::OsError> {
     });
 
     let theme = kas_wgpu::SampleTheme::new();
-    let mut toolkit = kas_wgpu::Toolkit::new(theme);
+    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
     toolkit.run()
 }

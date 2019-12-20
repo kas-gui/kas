@@ -17,7 +17,7 @@ use kas::macros::make_widget;
 use kas::widget::{Label, Window};
 use kas::{TkWindow, WidgetCore};
 
-fn main() {
+fn main() -> Result<(), kas_wgpu::Error> {
     let mut window = Window::new(
         "Clock",
         make_widget! {
@@ -43,7 +43,7 @@ fn main() {
 
     let mut theme = kas_wgpu::SampleTheme::new();
     theme.set_font_size(32.0);
-    let mut toolkit = kas_wgpu::Toolkit::new(theme);
-    toolkit.add(window).unwrap();
+    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
+    toolkit.add(window)?;
     toolkit.run()
 }

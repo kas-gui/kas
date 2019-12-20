@@ -18,7 +18,7 @@ enum Item {
     Edit(String),
 }
 
-fn main() -> Result<(), winit::error::OsError> {
+fn main() -> Result<(), kas_wgpu::Error> {
     let widgets = make_widget! {
         grid => Item;
         struct {
@@ -72,7 +72,7 @@ fn main() -> Result<(), winit::error::OsError> {
     );
 
     let theme = kas_wgpu::SampleTheme::new();
-    let mut toolkit = kas_wgpu::Toolkit::new(theme);
+    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
     toolkit.run()
 }

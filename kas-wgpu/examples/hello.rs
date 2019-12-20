@@ -7,14 +7,14 @@
 
 use kas::widget::MessageBox;
 
-fn main() -> Result<(), winit::error::OsError> {
+fn main() -> Result<(), kas_wgpu::Error> {
     // Build widgets.
     // Message is a Window with an "Ok" button and notification status.
     // Each Window::new method creates objects then solves constraints.
     let window = MessageBox::new(/*Notify::Info,*/ "Message", "Hello world");
 
     let theme = kas_wgpu::SampleTheme::new();
-    let mut toolkit = kas_wgpu::Toolkit::new(theme);
+    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
     toolkit.run()
 }

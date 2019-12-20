@@ -27,7 +27,7 @@ enum Key {
     Char(char),
 }
 
-fn main() -> Result<(), winit::error::OsError> {
+fn main() -> Result<(), kas_wgpu::Error> {
     let buttons = make_widget! {
         grid => Key;
         struct {
@@ -88,7 +88,7 @@ fn main() -> Result<(), winit::error::OsError> {
 
     let mut theme = kas_wgpu::SampleTheme::new();
     theme.set_font_size(24.0);
-    let mut toolkit = kas_wgpu::Toolkit::new(theme);
+    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
     toolkit.run()
 }
