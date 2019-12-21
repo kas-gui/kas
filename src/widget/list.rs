@@ -9,23 +9,48 @@ use std::iter;
 
 use crate::event::{Address, Event, Handler, Manager, Response};
 use crate::layout::{
-    self, AxisInfo, Direction, Margins, RowPositionSolver, RulesSetter, RulesSolver, SizeRules,
+    self, AxisInfo, Direction, Horizontal, Margins, RowPositionSolver, RulesSetter, RulesSolver,
+    SizeRules, Vertical,
 };
 use crate::theme::{DrawHandle, SizeHandle};
 use crate::{CoreData, TkAction, TkWindow, Widget, WidgetCore};
 use kas::geom::Rect;
 
-/// A dynamic row/column widget
-///
-/// This is simply a parameterisation of [`DynVec`] which uses `Box<dyn Widget>`
-/// as the parameter type.
-pub type DynList<D> = DynVec<D, Box<dyn Widget>>;
+/// A generic row widget
+pub type Row<W> = List<Horizontal, W>;
 
-/// A dynamic row/column widget
+/// A generic column widget
+pub type Column<W> = List<Vertical, W>;
+
+/// A row of boxed widgets
+pub type BoxRow = BoxList<Horizontal>;
+
+/// A column of boxed widgets
+pub type BoxColumn = BoxList<Vertical>;
+
+/// A row/column of boxed widgets
+pub type BoxList<D> = List<D, Box<dyn Widget>>;
+
+/// A generic row/column widget
 ///
-/// Generic over a single `Sized` child widget type.
+/// This type is generic over both directionality and the type of child widgets.
+/// As with [`Vec`], elements of a common type can be stored without individual
+/// allocation and can be accessed with static dispatch. Alternatively,
+/// [`BoxList`] can be used with a list of boxed widgets using dynamic dispatch.
+///
+/// Configuring and resizing elements is O(n) in the number of children.
+/// Drawing and event handling is O(log n) in the number of children (assuming
+/// only a small number are visible at any one time).
+///
+/// For fixed configurations of child widgets, [`make_widget`] can be used
+/// instead. [`make_widget`] has the advantage that it can support child widgets
+/// of multiple types without allocation and via static dispatch, but the
+/// disadvantage that drawing and event handling are O(n) in the number of
+/// children.
+///
+/// [`make_widget`]: ../macros/index.html#the-make_widget-macro
 #[derive(Clone, Default, Debug)]
-pub struct DynVec<D: Direction, W: Widget> {
+pub struct List<D: Direction, W: Widget> {
     core: CoreData,
     widgets: Vec<W>,
     data: layout::DynRowStorage,
@@ -34,27 +59,34 @@ pub struct DynVec<D: Direction, W: Widget> {
 
 // We implement this manually, because the derive implementation cannot handle
 // vectors of child widgets.
-impl<D: Direction, W: Widget> WidgetCore for DynVec<D, W> {
+impl<D: Direction, W: Widget> WidgetCore for List<D, W> {
+    #[inline]
     fn core_data(&self) -> &CoreData {
         &self.core
     }
+    #[inline]
     fn core_data_mut(&mut self) -> &mut CoreData {
         &mut self.core
     }
 
+    #[inline]
     fn as_widget(&self) -> &dyn Widget {
         self
     }
+    #[inline]
     fn as_widget_mut(&mut self) -> &mut dyn Widget {
         self
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.widgets.len()
     }
+    #[inline]
     fn get(&self, index: usize) -> Option<&dyn Widget> {
         self.widgets.get(index).map(|w| w.as_widget())
     }
+    #[inline]
     fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
         self.widgets.get_mut(index).map(|w| w.as_widget_mut())
     }
@@ -73,7 +105,7 @@ impl<D: Direction, W: Widget> WidgetCore for DynVec<D, W> {
     }
 }
 
-impl<D: Direction, W: Widget> Widget for DynVec<D, W> {
+impl<D: Direction, W: Widget> Widget for List<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut solver = layout::RowSolver::<Vec<u32>, _>::new(
             axis,
@@ -108,7 +140,7 @@ impl<D: Direction, W: Widget> Widget for DynVec<D, W> {
     }
 }
 
-impl<D: Direction, W: Widget + Handler> Handler for DynVec<D, W> {
+impl<D: Direction, W: Widget + Handler> Handler for List<D, W> {
     type Msg = <W as Handler>::Msg;
 
     fn handle(
@@ -137,10 +169,26 @@ impl<D: Direction, W: Widget + Handler> Handler for DynVec<D, W> {
     }
 }
 
-impl<D: Direction, W: Widget> DynVec<D, W> {
+impl<D: Direction + Default, W: Widget> List<D, W> {
     /// Construct a new instance
-    pub fn new(direction: D, widgets: Vec<W>) -> Self {
-        DynVec {
+    ///
+    /// This constructor is available where the direction is determined by the
+    /// type: for `D: Direction + Default`. In other cases, use
+    /// [`List::new_with_direction`].
+    pub fn new(widgets: Vec<W>) -> Self {
+        List {
+            core: Default::default(),
+            widgets,
+            data: Default::default(),
+            direction: Default::default(),
+        }
+    }
+}
+
+impl<D: Direction, W: Widget> List<D, W> {
+    /// Construct a new instance with explicit direction
+    pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
+        List {
             core: Default::default(),
             widgets,
             data: Default::default(),

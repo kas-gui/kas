@@ -79,7 +79,7 @@ pub trait Direction: Copy + Sized + std::fmt::Debug {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct Horizontal;
 impl Direction for Horizontal {
     fn is_vertical(self) -> bool {
@@ -87,7 +87,7 @@ impl Direction for Horizontal {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct Vertical;
 impl Direction for Vertical {
     fn is_vertical(self) -> bool {

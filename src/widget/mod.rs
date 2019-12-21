@@ -8,7 +8,7 @@
 mod button;
 mod checkbox;
 mod dialog;
-mod dynamic;
+mod list;
 mod scroll;
 mod text;
 mod window;
@@ -16,7 +16,7 @@ mod window;
 pub use button::TextButton;
 pub use checkbox::CheckBox;
 pub use dialog::MessageBox;
-pub use dynamic::{DynList, DynVec};
+pub use list::{BoxColumn, BoxList, BoxRow, Column, List, Row};
 pub use scroll::ScrollRegion;
 pub use text::{EditBox, Label};
 pub use window::Window;

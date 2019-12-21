@@ -15,6 +15,8 @@ use crate::{CoreData, TkWindow, Widget, WidgetCore};
 use kas::geom::{Coord, Rect, Size};
 
 /// A scrollable region
+///
+/// This has no scroll bars. It supports scrolling via mouse wheel and drag.
 #[widget]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
