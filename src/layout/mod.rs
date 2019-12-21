@@ -18,7 +18,7 @@ use kas::geom::Size;
 
 pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use misc_solver::SingleSetter;
-pub use row_solver::{RowSetter, RowSolver};
+pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
 pub use size_rules::{Margins, SizeRules};
 pub use sizer::{solve, RulesSetter, RulesSolver};
 pub use storage::{

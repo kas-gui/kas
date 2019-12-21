@@ -10,7 +10,10 @@ use std::marker::PhantomData;
 use super::{
     AxisInfo, Direction, Margins, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules,
 };
-use crate::geom::Rect;
+use crate::event::Manager;
+use crate::geom::{Coord, Rect};
+use crate::theme::DrawHandle;
+use crate::Widget;
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
@@ -155,5 +158,90 @@ impl<D: Direction, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, S>
             self.crect.size.1 = self.widths.as_ref()[child_info];
         }
         self.crect
+    }
+}
+
+/// Allows efficient implementations of `draw` / event handlers based on the
+/// layout representation.
+///
+/// This is only applicable where child widgets are contained in a slice of type
+/// `W: Widget` (which may be `Box<dyn Widget>`). In other cases, the naive
+/// implementation (test all items) must be used.
+#[derive(Clone, Copy, Debug)]
+pub struct RowPositionSolver<D: Direction> {
+    direction: D,
+}
+
+impl<D: Direction> RowPositionSolver<D> {
+    /// Construct with given directionality
+    pub fn new(direction: D) -> Self {
+        RowPositionSolver { direction }
+    }
+
+    fn binary_search<W: Widget>(self, widgets: &[W], coord: Coord) -> Result<usize, usize> {
+        if self.direction.is_horizontal() {
+            widgets.binary_search_by_key(&coord.0, |w| w.rect().pos.0)
+        } else {
+            widgets.binary_search_by_key(&coord.1, |w| w.rect().pos.1)
+        }
+    }
+
+    /// Find the child containing the given coordinates
+    ///
+    /// Returns `None` when the coordinates lie within the margin area or
+    /// outside of the parent widget.
+    pub fn find_child<'a, W: Widget>(
+        self,
+        widgets: &'a mut [W],
+        coord: Coord,
+    ) -> Option<&'a mut W> {
+        let index = match self.binary_search(widgets, coord) {
+            Ok(i) => i,
+            Err(i) => {
+                let j = i - 1;
+                if !widgets[j].rect().contains(coord) {
+                    return None;
+                }
+                j
+            }
+        };
+        Some(&mut widgets[index])
+    }
+
+    /// Draw children within the `draw_handle`'s target rect
+    pub fn draw_children<W: Widget>(
+        self,
+        widgets: &[W],
+        draw_handle: &mut dyn DrawHandle,
+        ev_mgr: &Manager,
+    ) {
+        let rect = draw_handle.target_rect();
+        let start = match self.binary_search(widgets, rect.pos) {
+            Ok(i) => i,
+            Err(i) => {
+                let j = i - 1;
+                if widgets[j].rect().contains(rect.pos) {
+                    j
+                } else {
+                    i
+                }
+            }
+        };
+
+        let end = rect.pos + Coord::from(rect.size);
+
+        for i in start..widgets.len() {
+            let child = &widgets[i];
+            if self.direction.is_horizontal() {
+                if child.rect().pos.0 >= end.0 {
+                    break;
+                }
+            } else {
+                if child.rect().pos.1 >= end.1 {
+                    break;
+                }
+            }
+            child.draw(draw_handle, ev_mgr);
+        }
     }
 }

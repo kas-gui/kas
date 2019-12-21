@@ -8,7 +8,9 @@
 use std::iter;
 
 use crate::event::{Address, Event, Handler, Manager, Response};
-use crate::layout::{self, AxisInfo, Direction, Margins, RulesSetter, RulesSolver, SizeRules};
+use crate::layout::{
+    self, AxisInfo, Direction, Margins, RowPositionSolver, RulesSetter, RulesSolver, SizeRules,
+};
 use crate::theme::{DrawHandle, SizeHandle};
 use crate::{CoreData, TkAction, TkWindow, Widget, WidgetCore};
 use kas::geom::Rect;
@@ -101,9 +103,8 @@ impl<D: Direction, W: Widget> Widget for DynVec<D, W> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &Manager) {
-        for child in &self.widgets {
-            child.draw(draw_handle, ev_mgr);
-        }
+        let solver = RowPositionSolver::new(self.direction);
+        solver.draw_children(&self.widgets, draw_handle, ev_mgr);
     }
 }
 
@@ -126,10 +127,9 @@ impl<D: Direction, W: Widget + Handler> Handler for DynVec<D, W> {
                 debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
             }
             kas::event::Address::Coord(coord) => {
-                for child in &mut self.widgets {
-                    if child.rect().contains(coord) {
-                        return child.handle(tk, addr, event);
-                    }
+                let solver = RowPositionSolver::new(self.direction);
+                if let Some(child) = solver.find_child(&mut self.widgets, coord) {
+                    return child.handle(tk, addr, event);
                 }
             }
         }
