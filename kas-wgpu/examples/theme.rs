@@ -10,6 +10,7 @@ use std::cell::Cell;
 
 use kas::draw::Colour;
 use kas::event::{VoidMsg, VoidResponse};
+use kas::geom::Rect;
 use kas::macros::{make_widget, VoidMsg};
 use kas::theme::Theme;
 use kas::widget::*;
@@ -61,8 +62,9 @@ impl Theme<DrawPipe> for ColouredTheme {
         &self,
         draw: &mut DrawPipe,
         theme_window: &mut Self::Window,
+        rect: Rect,
     ) -> Self::DrawHandle {
-        self.inner.draw_handle(draw, theme_window)
+        self.inner.draw_handle(draw, theme_window, rect)
     }
 
     fn get_fonts<'a>(&self) -> Vec<Font<'a>> {

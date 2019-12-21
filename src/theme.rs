@@ -96,6 +96,7 @@ pub trait Theme<Draw> {
         &self,
         draw: &mut Draw,
         theme_window: &mut Self::Window,
+        rect: Rect,
     ) -> Self::DrawHandle;
 
     /// Get the list of available fonts
@@ -225,6 +226,9 @@ pub trait DrawHandle {
     /// This new region has contents translated by `offset` and then clipped to
     /// the given `rect`, as required by a scrollable window.
     fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle));
+
+    /// Target rect
+    fn target_rect(&self) -> Rect;
 
     /// Draw a frame in the given [`Rect`]
     ///

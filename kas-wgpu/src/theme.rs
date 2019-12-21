@@ -107,14 +107,6 @@ pub struct SizeHandle<'a> {
     window: &'a mut SampleWindow,
 }
 
-#[doc(hidden)]
-pub struct DrawHandle<'a> {
-    draw: &'a mut DrawPipe,
-    window: &'a mut SampleWindow,
-    offset: Coord,
-    pass: usize,
-}
-
 impl theme::Window<DrawPipe> for SampleWindow {
     type SizeHandle = SizeHandle<'static>;
 
@@ -220,6 +212,15 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
     }
 }
 
+#[doc(hidden)]
+pub struct DrawHandle<'a> {
+    draw: &'a mut DrawPipe,
+    window: &'a mut SampleWindow,
+    rect: Rect,
+    offset: Coord,
+    pass: usize,
+}
+
 impl theme::Theme<DrawPipe> for SampleTheme {
     type Window = SampleWindow;
     type DrawHandle = DrawHandle<'static>;
@@ -235,12 +236,14 @@ impl theme::Theme<DrawPipe> for SampleTheme {
         &'a self,
         draw: &'a mut DrawPipe,
         window: &'a mut Self::Window,
+        rect: Rect,
     ) -> Self::DrawHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
         use std::mem::transmute;
         DrawHandle {
             draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
             window: transmute::<&'a mut Self::Window, &'static mut Self::Window>(window),
+            rect,
             offset: Coord::ZERO,
             pass: 0,
         }
@@ -266,14 +269,22 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         offset: Coord,
         f: &mut dyn FnMut(&mut dyn theme::DrawHandle),
     ) {
+        // TODO: mutli-scroll example works or we need to offset rect?
+        let rect = rect + self.offset;
         let pass = self.draw.add_clip_region(rect);
         let mut handle = DrawHandle {
             draw: self.draw,
             window: self.window,
+            rect,
             offset: self.offset + offset,
             pass,
         };
         f(&mut handle);
+    }
+
+    fn target_rect(&self) -> Rect {
+        // Translate to local coordinates
+        self.rect - self.offset
     }
 
     fn outer_frame(&mut self, rect: Rect) {

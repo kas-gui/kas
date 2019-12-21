@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 use clipboard::{ClipboardContext, ClipboardProvider};
 
 use kas::event::Callback;
-use kas::geom::Size;
+use kas::geom::{Coord, Rect, Size};
 use kas::theme::SizeHandle;
 use kas::{event, theme, TkAction, WidgetId};
 use winit::dpi::LogicalSize;
@@ -182,11 +182,17 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     }
 
     fn do_draw<T: theme::Theme<DrawPipe, Window = TW>>(&mut self, shared: &mut SharedState<T>) {
+        let size = Size(self.sc_desc.width, self.sc_desc.height);
+        let rect = Rect {
+            pos: Coord::ZERO,
+            size,
+        };
         let frame = self.swap_chain.get_next_texture();
         let mut draw_handle = unsafe {
             shared.theme.draw_handle(
                 &mut self.tk_window.draw_pipe,
                 &mut self.tk_window.theme_window,
+                rect,
             )
         };
         self.widget.draw(&mut draw_handle, &self.tk_window.ev_mgr);
