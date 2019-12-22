@@ -72,6 +72,11 @@ pub trait WidgetCore: fmt::Debug {
     fn get(&self, index: usize) -> Option<&dyn Widget>;
 
     /// Mutable variant of get
+    ///
+    /// Warning: directly adjusting a widget without requiring reconfigure or
+    /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
+    /// be requested. This can be done via [`TkWindow::send_action`].
+    /// This method may be removed in the future.
     fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
 
     /// Find a child widget by identifier

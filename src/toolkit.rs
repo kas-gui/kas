@@ -27,7 +27,10 @@ pub enum TkAction {
     /// Note that [`TkWindow::redraw`] can instead be used for more selective
     /// redrawing, if supported by the toolkit.
     Redraw,
-    /// Whole window requires reconfigure *and* redrawing
+    /// Whole window requires reconfiguring (implies redrawing)
+    ///
+    /// *Configuring* widgets assigns [`WidgetId`] identifiers, updates
+    /// [`event::Manager`] state and resizes all widgets.
     Reconfigure,
     /// Window should be closed
     Close,
@@ -59,7 +62,11 @@ pub trait TkWindow {
 
     /// Notify that a toolkit action should happen
     ///
-    /// Allows signalling application exit, etc.
+    /// This causes the given action to happen after event handling.
+    ///
+    /// Whenever a widget is added, removed or replaced, a reconfigure action is
+    /// required. Should a widget's size requirements change, these will only
+    /// affect the UI after a reconfigure action.
     fn send_action(&mut self, action: TkAction);
 
     /// Attempt to get clipboard contents
