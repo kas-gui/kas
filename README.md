@@ -37,8 +37,9 @@ cargo run --example calculator
 Installation and Testing
 ------------------------
 
-First, ensure that [CMake](https://cmake.org/) is installed. On Linux this should be
+On Linux, ensure that [CMake](https://cmake.org/) is installed. On Linux this should be
 available in your package manager. This is required by the GLSL compiler.
+On Windows 10 it does not need to be installed explicitly.
 
 Next, clone the repository and run the examples as follows:
 
@@ -51,8 +52,6 @@ cargo test
 cargo run --example gallery
 ```
 
-Instructions/testing on non-Linux platforms: TODO (please report back if you did this)!
-
 ### Cross-platform
 
 KAS uses cross-platform libraries, allowing it to target all major platforms.
@@ -60,9 +59,12 @@ Current development & test targets:
 
 -   Linux / X11
 -   Linux / Wayland
+-   Windows 10
 
-It *should* work fine on other platforms, although this is largely untested.
-Feedback & fixes welcome.
+### Graphics requirement
+
+KAS uses [WebGPU](https://github.com/gfx-rs/wgpu) for rendering. This currently supports
+DX11, DX12, Vulkan and Metal, but not OpenGL or unaccelerated rendering. See [issue 33](https://github.com/dhardy/kas/issues/33).
 
 
 Features
