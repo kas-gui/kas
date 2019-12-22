@@ -28,18 +28,24 @@ pub type Column<W> = List<Vertical, W>;
 
 /// A row of boxed widgets
 ///
+/// This is parameterised over handler message type.
+///
 /// See documentation of [`List`] type.
-pub type BoxRow = BoxList<Horizontal>;
+pub type BoxRow<M> = BoxList<Horizontal, M>;
 
 /// A column of boxed widgets
 ///
+/// This is parameterised over handler message type.
+///
 /// See documentation of [`List`] type.
-pub type BoxColumn = BoxList<Vertical>;
+pub type BoxColumn<M> = BoxList<Vertical, M>;
 
 /// A row/column of boxed widgets
 ///
+/// This is parameterised over directionality and handler message type.
+///
 /// See documentation of [`List`] type.
-pub type BoxList<D> = List<D, Box<dyn Widget>>;
+pub type BoxList<D, M> = List<D, Box<dyn Handler<Msg = M>>>;
 
 /// A generic row/column widget
 ///

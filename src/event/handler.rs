@@ -6,7 +6,10 @@
 //! Event handling - handler
 
 use crate::event::{Action, Address, Event, Manager, Response};
-use crate::{TkWindow, Widget};
+use crate::geom::Rect;
+use crate::layout::{AxisInfo, SizeRules};
+use crate::theme::{DrawHandle, SizeHandle};
+use crate::{CoreData, TkWindow, Widget, WidgetCore};
 
 /// Event-handling aspect of a widget.
 ///
@@ -27,6 +30,7 @@ pub trait Handler: Widget {
     /// If this returns true, then click/touch events get translated to
     /// [`Action::Activate`] as appropriate (on primary mouse button only).
     // NOTE: not an associated constant because these are not object-safe
+    #[inline]
     fn activation_via_press(&self) -> bool {
         false
     }
@@ -57,6 +61,100 @@ pub trait Handler: Widget {
     #[inline]
     fn handle(&mut self, tk: &mut dyn TkWindow, _: Address, event: Event) -> Response<Self::Msg> {
         Manager::handle_generic(self, tk, event)
+    }
+}
+
+// These implementations are somewhat redundant with Box<dyn Widget>.
+// TODO: do we want to keep both?
+impl<M> Handler for Box<dyn Handler<Msg = M>> {
+    type Msg = M;
+
+    #[inline]
+    fn activation_via_press(&self) -> bool {
+        self.as_ref().activation_via_press()
+    }
+
+    #[inline]
+    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<Self::Msg> {
+        self.as_mut().handle_action(tk, action)
+    }
+
+    #[inline]
+    fn handle(
+        &mut self,
+        tk: &mut dyn TkWindow,
+        addr: Address,
+        event: Event,
+    ) -> Response<Self::Msg> {
+        self.as_mut().handle(tk, addr, event)
+    }
+}
+
+impl<M> Widget for Box<dyn Handler<Msg = M>> {
+    fn allow_focus(&self) -> bool {
+        self.as_ref().allow_focus()
+    }
+
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        self.as_mut().size_rules(size_handle, axis)
+    }
+
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+        self.as_mut().set_rect(size_handle, rect);
+    }
+
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &Manager) {
+        self.as_ref().draw(draw_handle, ev_mgr);
+    }
+}
+
+impl<M> WidgetCore for Box<dyn Handler<Msg = M>> {
+    fn core_data(&self) -> &CoreData {
+        self.as_ref().core_data()
+    }
+    fn core_data_mut(&mut self) -> &mut CoreData {
+        self.as_mut().core_data_mut()
+    }
+
+    fn as_widget(&self) -> &dyn Widget {
+        self.as_ref().as_widget()
+    }
+    fn as_widget_mut(&mut self) -> &mut dyn Widget {
+        self.as_mut().as_widget_mut()
+    }
+
+    fn len(&self) -> usize {
+        self.as_ref().len()
+    }
+    fn get(&self, index: usize) -> Option<&dyn Widget> {
+        self.as_ref().get(index)
+    }
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+        self.as_mut().get_mut(index)
+    }
+
+    fn walk(&self, f: &mut dyn FnMut(&dyn Widget)) {
+        self.as_ref().walk(f);
+    }
+    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
+        self.as_mut().walk_mut(f);
+    }
+}
+
+impl<M> Clone for Box<dyn Handler<Msg = M>> {
+    fn clone(&self) -> Self {
+        #[cfg(feature = "nightly")]
+        unsafe {
+            let mut x = Box::new_uninit();
+            self.clone_to(x.as_mut_ptr());
+            x.assume_init()
+        }
+
+        // Run-time failure is not ideal — but we would hit compile-issues which
+        // don't necessarily correspond to actual usage otherwise due to
+        // `derive(Clone)` on any widget produced by `make_widget!`.
+        #[cfg(not(feature = "nightly"))]
+        panic!("Clone for Box<dyn Widget> only supported on nightly");
     }
 }
 
