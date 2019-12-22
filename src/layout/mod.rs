@@ -18,7 +18,7 @@ use kas::geom::Size;
 
 pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use misc_solver::SingleSetter;
-pub use row_solver::{RowSetter, RowSolver};
+pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
 pub use size_rules::{Margins, SizeRules};
 pub use sizer::{solve, RulesSetter, RulesSolver};
 pub use storage::{
@@ -79,7 +79,7 @@ pub trait Direction: Copy + Sized + std::fmt::Debug {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct Horizontal;
 impl Direction for Horizontal {
     fn is_vertical(self) -> bool {
@@ -87,7 +87,7 @@ impl Direction for Horizontal {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Default, Debug)]
 pub struct Vertical;
 impl Direction for Vertical {
     fn is_vertical(self) -> bool {

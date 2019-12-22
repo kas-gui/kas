@@ -209,3 +209,16 @@ impl std::ops::Add<Coord> for Rect {
         }
     }
 }
+
+impl std::ops::Sub<Coord> for Rect {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, offset: Coord) -> Self {
+        let pos = self.pos - offset;
+        Rect {
+            pos,
+            size: self.size,
+        }
+    }
+}

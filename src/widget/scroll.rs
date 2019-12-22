@@ -15,6 +15,8 @@ use crate::{CoreData, TkWindow, Widget, WidgetCore};
 use kas::geom::{Coord, Rect, Size};
 
 /// A scrollable region
+///
+/// This has no scroll bars. It supports scrolling via mouse wheel and drag.
 #[widget]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
@@ -44,14 +46,9 @@ impl<W: Widget> Widget for ScrollRegion<W> {
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
         self.core_data_mut().rect = rect;
+        let pos = rect.pos;
         let size = rect.size.max(self.min_child_size);
-        self.child.set_rect(
-            size_handle,
-            Rect {
-                pos: rect.pos,
-                size,
-            },
-        );
+        self.child.set_rect(size_handle, Rect { pos, size });
         self.min_offset = Coord::from(rect.size) - Coord::from(size);
         self.offset = self.offset.min(Coord::ZERO).max(self.min_offset);
     }

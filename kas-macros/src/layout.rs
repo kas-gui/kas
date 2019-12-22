@@ -220,7 +220,11 @@ impl<'a> ImplLayout<'a> {
         });
 
         self.draw.append_all(quote! {
-            self.#ident.draw(draw_handle, ev_mgr);
+            let c0 = self.#ident.rect().pos;
+            let c1 = c0 + Coord::from(self.#ident.rect().size);
+            if c0.0 <= pos1.0 && c1.0 >= pos0.0 && c0.1 <= pos1.1 && c1.1 >= pos0.1 {
+                self.#ident.draw(draw_handle, ev_mgr);
+            }
         });
 
         Ok(())
@@ -413,6 +417,10 @@ impl<'a> ImplLayout<'a> {
                 draw_handle: &mut dyn kas::theme::DrawHandle,
                 ev_mgr: &kas::event::Manager
             ) {
+                use kas::{geom::Coord, WidgetCore};
+                let rect = draw_handle.target_rect();
+                let pos0 = rect.pos;
+                let pos1 = rect.pos + Coord::from(rect.size);
                 #draw
             }
         };
