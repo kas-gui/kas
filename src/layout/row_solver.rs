@@ -10,9 +10,7 @@ use std::marker::PhantomData;
 use super::{
     AxisInfo, Direction, Margins, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules,
 };
-use crate::event::Manager;
 use crate::geom::{Coord, Rect};
-use crate::theme::DrawHandle;
 use crate::Widget;
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
@@ -208,14 +206,8 @@ impl<D: Direction> RowPositionSolver<D> {
         Some(&mut widgets[index])
     }
 
-    /// Draw children within the `draw_handle`'s target rect
-    pub fn draw_children<W: Widget>(
-        self,
-        widgets: &[W],
-        draw_handle: &mut dyn DrawHandle,
-        ev_mgr: &Manager,
-    ) {
-        let rect = draw_handle.target_rect();
+    /// Call `f` on each child intersecting the given `rect`
+    pub fn for_children<W: Widget, F: FnMut(&W)>(self, widgets: &[W], rect: Rect, mut f: F) {
         let start = match self.binary_search(widgets, rect.pos) {
             Ok(i) => i,
             Err(i) => {
@@ -241,7 +233,7 @@ impl<D: Direction> RowPositionSolver<D> {
                     break;
                 }
             }
-            child.draw(draw_handle, ev_mgr);
+            f(child);
         }
     }
 }

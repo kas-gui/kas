@@ -151,7 +151,9 @@ impl<D: Direction, W: Widget> Widget for List<D, W> {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &Manager) {
         let solver = RowPositionSolver::new(self.direction);
-        solver.draw_children(&self.widgets, draw_handle, ev_mgr);
+        solver.for_children(&self.widgets, draw_handle.target_rect(), |w| {
+            w.draw(draw_handle, ev_mgr)
+        });
     }
 }
 
