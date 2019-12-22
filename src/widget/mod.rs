@@ -4,6 +4,9 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Widgets
+//!
+//! KAS provides these common widget types for convenience.
+//! All these widgets can be implemented in user-code.
 
 mod button;
 mod checkbox;

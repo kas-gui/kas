@@ -17,26 +17,41 @@ use crate::{CoreData, TkAction, TkWindow, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A generic row widget
+///
+/// See documentation of [`List`] type.
 pub type Row<W> = List<Horizontal, W>;
 
 /// A generic column widget
+///
+/// See documentation of [`List`] type.
 pub type Column<W> = List<Vertical, W>;
 
 /// A row of boxed widgets
+///
+/// See documentation of [`List`] type.
 pub type BoxRow = BoxList<Horizontal>;
 
 /// A column of boxed widgets
+///
+/// See documentation of [`List`] type.
 pub type BoxColumn = BoxList<Vertical>;
 
 /// A row/column of boxed widgets
+///
+/// See documentation of [`List`] type.
 pub type BoxList<D> = List<D, Box<dyn Widget>>;
 
 /// A generic row/column widget
 ///
 /// This type is generic over both directionality and the type of child widgets.
-/// As with [`Vec`], elements of a common type can be stored without individual
-/// allocation and can be accessed with static dispatch. Alternatively,
-/// [`BoxList`] can be used with a list of boxed widgets using dynamic dispatch.
+/// Essentially, it is a [`Vec`] which also implements the [`Widget`] trait.
+///
+/// [`Row`] and [`Column`] are parameterisations with set directionality.
+///
+/// [`BoxList`] (and its derivatives [`BoxRow`], [`BoxColumn`]) parameterise
+/// `W = Box<dyn Widget>`, thus supporting individually boxed child widgets.
+/// This allows use of multiple types of child widget at the cost of extra
+/// allocation, and requires dynamic dispatch of methods.
 ///
 /// Configuring and resizing elements is O(n) in the number of children.
 /// Drawing and event handling is O(log n) in the number of children (assuming
