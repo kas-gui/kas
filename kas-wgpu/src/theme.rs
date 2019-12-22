@@ -269,7 +269,6 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         offset: Coord,
         f: &mut dyn FnMut(&mut dyn theme::DrawHandle),
     ) {
-        // TODO: mutli-scroll example works or we need to offset rect?
         let rect = rect + self.offset;
         let pass = self.draw.add_clip_region(rect);
         let mut handle = DrawHandle {
