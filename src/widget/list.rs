@@ -211,13 +211,110 @@ impl<D: Direction, W: Widget> List<D, W> {
         }
     }
 
-    /// Add a child widget
-    pub fn push(&mut self, tk: &mut dyn TkWindow, child: W) {
-        self.widgets.push(child);
+    /// True if there are no child widgets
+    pub fn is_empty(&self) -> bool {
+        self.widgets.is_empty()
+    }
+
+    /// Returns the number of child widgets
+    pub fn len(&self) -> usize {
+        self.widgets.len()
+    }
+
+    /// Returns the number of elements the vector can hold without reallocating.
+    pub fn capacity(&self) -> usize {
+        self.widgets.capacity()
+    }
+
+    /// Reserves capacity for at least `additional` more elements to be inserted
+    /// into the list. See documentation of [`Vec::reserve`].
+    pub fn reserve(&mut self, additional: usize) {
+        self.widgets.reserve(additional);
+    }
+
+    /// Remove all child widgets
+    ///
+    /// Triggers a [reconfigure action](TkWindow::send_action) if any widget is
+    /// removed.
+    pub fn clear(&mut self, tk: &mut dyn TkWindow) {
+        if !self.widgets.is_empty() {
+            tk.send_action(TkAction::Reconfigure);
+        }
+        self.widgets.clear();
+    }
+
+    /// Append a child widget
+    ///
+    /// Triggers a [reconfigure action](TkWindow::send_action).
+    pub fn push(&mut self, tk: &mut dyn TkWindow, widget: W) {
+        self.widgets.push(widget);
         tk.send_action(TkAction::Reconfigure);
     }
 
+    /// Remove the last child widget
+    ///
+    /// Returns `None` if there are no children. Otherwise, this
+    /// triggers a reconfigure before the next draw operation.
+    ///
+    /// Triggers a [reconfigure action](TkWindow::send_action) if any widget is
+    /// removed.
+    pub fn pop(&mut self, tk: &mut dyn TkWindow) -> Option<W> {
+        if !self.widgets.is_empty() {
+            tk.send_action(TkAction::Reconfigure);
+        }
+        self.widgets.pop()
+    }
+
+    /// Inserts a child widget position `index`
+    ///
+    /// Panics if `index > len`.
+    ///
+    /// Triggers a [reconfigure action](TkWindow::send_action).
+    pub fn insert(&mut self, tk: &mut dyn TkWindow, index: usize, widget: W) {
+        self.widgets.insert(index, widget);
+        tk.send_action(TkAction::Reconfigure);
+    }
+
+    /// Removes the child widget at position `index`
+    ///
+    /// Panics if `index` is out of bounds.
+    ///
+    /// Triggers a [reconfigure action](TkWindow::send_action).
+    pub fn remove(&mut self, tk: &mut dyn TkWindow, index: usize) -> W {
+        let r = self.widgets.remove(index);
+        tk.send_action(TkAction::Reconfigure);
+        r
+    }
+
+    /// Replace the child at `index`
+    ///
+    /// Panics if `index` is out of bounds.
+    ///
+    /// Triggers a [reconfigure action](TkWindow::send_action).
+    // TODO: in theory it is possible to avoid a reconfigure where both widgets
+    // have no children and have compatible size. Is this a good idea and can
+    // we somehow test "has compatible size"?
+    pub fn replace(&mut self, tk: &mut dyn TkWindow, index: usize, mut widget: W) -> W {
+        std::mem::swap(&mut widget, &mut self.widgets[index]);
+        tk.send_action(TkAction::Reconfigure);
+        widget
+    }
+
+    /// Append child widgets from an iterator
+    ///
+    /// Triggers a [reconfigure action](TkWindow::send_action) if any widgets
+    /// are added.
+    pub fn extend<T: IntoIterator<Item = W>>(&mut self, tk: &mut dyn TkWindow, iter: T) {
+        let len = self.widgets.len();
+        self.widgets.extend(iter);
+        if len != self.widgets.len() {
+            tk.send_action(TkAction::Reconfigure);
+        }
+    }
+
     /// Resize, using the given closure to construct new widgets
+    ///
+    /// Triggers a [reconfigure action](TkWindow::send_action).
     pub fn resize_with<F: Fn(usize) -> W>(&mut self, tk: &mut dyn TkWindow, len: usize, f: F) {
         let l0 = self.widgets.len();
         if l0 == len {
@@ -231,5 +328,19 @@ impl<D: Direction, W: Widget> List<D, W> {
             }
         }
         tk.send_action(TkAction::Reconfigure);
+    }
+
+    /// Retain only widgets satisfying predicate `f`
+    ///
+    /// See documentation of [`Vec::retain`].
+    ///
+    /// Triggers a [reconfigure action](TkWindow::send_action) if any widgets
+    /// are removed.
+    pub fn retain<F: FnMut(&W) -> bool>(&mut self, tk: &mut dyn TkWindow, f: F) {
+        let len = self.widgets.len();
+        self.widgets.retain(f);
+        if len != self.widgets.len() {
+            tk.send_action(TkAction::Reconfigure);
+        }
     }
 }
