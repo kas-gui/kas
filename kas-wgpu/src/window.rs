@@ -6,6 +6,7 @@
 //! `Window` and `WindowList` types
 
 use log::{debug, info, trace, warn};
+use std::mem::replace;
 use std::time::{Duration, Instant};
 
 #[cfg(feature = "clipboard")]
@@ -109,7 +110,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         &mut self,
         shared: &mut SharedState<T>,
         event: WindowEvent,
-    ) -> TkAction {
+    ) -> (TkAction, Vec<Box<dyn kas::Window>>) {
         // Note: resize must be handled here to update self.swap_chain.
         match event {
             WindowEvent::Resized(size) => self.do_resize(shared, size),
@@ -122,7 +123,8 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 event::Manager::handle_winit(&mut *self.widget, &mut self.tk_window, event)
             }
         }
-        self.tk_window.pop_action()
+        let new_windows = replace(&mut self.tk_window.new_windows, vec![]);
+        (self.tk_window.pop_action(), new_windows)
     }
 
     pub(crate) fn timer_resume(&mut self, instant: Instant) -> (TkAction, Option<Instant>) {
@@ -215,6 +217,7 @@ pub(crate) struct TkWindow<TW> {
     action: TkAction,
     pub(crate) ev_mgr: event::Manager,
     theme_window: TW,
+    new_windows: Vec<Box<dyn kas::Window>>,
 }
 
 impl<TW: theme::Window<DrawPipe> + 'static> TkWindow<TW> {
@@ -243,6 +246,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> TkWindow<TW> {
             action: TkAction::None,
             ev_mgr: event::Manager::new(dpi_factor),
             theme_window,
+            new_windows: vec![],
         }
     }
 
@@ -276,6 +280,16 @@ impl<TW: theme::Window<DrawPipe> + 'static> TkWindow<TW> {
 }
 
 impl<TW: theme::Window<DrawPipe>> kas::TkWindow for TkWindow<TW> {
+    fn add_window(&mut self, widget: Box<dyn kas::Window>) {
+        // By far the simplest way to implement this is to let our call
+        // anscestor, event::Loop::handle, do the work.
+        //
+        // In theory we could pass the EventLoopWindowTarget for *each* event
+        // handled to create the winit window here or use statics to generate
+        // errors now, but user code can't do much with this error anyway.
+        self.new_windows.push(widget);
+    }
+
     fn data(&self) -> &event::Manager {
         &self.ev_mgr
     }

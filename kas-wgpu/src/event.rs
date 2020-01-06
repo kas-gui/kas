@@ -5,11 +5,11 @@
 
 //! Event handling
 
-use log::{debug, trace};
+use log::{debug, error, trace};
 use std::time::Instant;
 
 use winit::event::{Event, StartCause};
-use winit::event_loop::ControlFlow;
+use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 
 use kas::{theme, TkAction};
 
@@ -31,9 +31,14 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
         }
     }
 
-    pub(crate) fn handle<U>(&mut self, event: Event<U>, control_flow: &mut ControlFlow) {
+    pub(crate) fn handle<U>(
+        &mut self,
+        event: Event<U>,
+        elwt: &EventLoopWindowTarget<U>,
+        control_flow: &mut ControlFlow,
+    ) {
         use Event::*;
-        let (i, action) = match event {
+        let (i, (action, new_windows)) = match event {
             WindowEvent { window_id, event } => 'outer: loop {
                 for (i, window) in self.windows.iter_mut().enumerate() {
                     if window.window.id() == window_id {
@@ -70,7 +75,7 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                             self.resumes.remove(0);
                         }
 
-                        (item.1, action)
+                        (item.1, (action, vec![]))
                     }
 
                     StartCause::Init => {
@@ -96,6 +101,35 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
 
             EventsCleared | LoopDestroyed | Suspended | Resumed => return,
         };
+
+        // Create and init() any new windows.
+        let mut have_new_resumes = false;
+        for widget in new_windows {
+            debug!("Adding window {}", widget.title());
+            match winit::window::Window::new(elwt) {
+                Ok(window) => {
+                    window.set_title(widget.title());
+                    let mut win = Window::new(&mut self.shared, window, widget);
+                    if let Some(instant) = win.init() {
+                        self.resumes.push((instant, self.windows.len()));
+                        have_new_resumes = true;
+                    }
+                    self.windows.push(win);
+                }
+                Err(e) => {
+                    error!("Unable to create window: {}", e);
+                }
+            };
+        }
+        if have_new_resumes {
+            self.resumes.sort_by_key(|item| item.0);
+            if let Some(first) = self.resumes.first() {
+                trace!("Requesting resume at {:?}", first.0);
+                *control_flow = ControlFlow::WaitUntil(first.0);
+            } else {
+                *control_flow = ControlFlow::Wait;
+            }
+        }
 
         match action {
             TkAction::None => (),

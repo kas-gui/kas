@@ -143,6 +143,6 @@ impl<T: kas::theme::Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
     pub fn run(self) -> ! {
         let mut el = event::Loop::new(self.windows, self.shared);
         self.el
-            .run(move |event, _, control_flow| el.handle(event, control_flow))
+            .run(move |event, elwt, control_flow| el.handle(event, elwt, control_flow))
     }
 }

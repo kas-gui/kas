@@ -16,6 +16,7 @@ enum Item {
     Button,
     Check(bool),
     Edit(String),
+    Popup,
 }
 
 fn main() -> Result<(), kas_wgpu::Error> {
@@ -37,11 +38,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=4, col=0)] _ = Label::from("CheckBox"),
             #[widget(row=4, col=1)] _ = CheckBox::new("").state(true)
                 .on_toggle(|check| Item::Check(check)),
-            #[widget(row=5)] _ = Label::from("A"),
-            #[widget(row=6)] _ = Label::from("few"),
-            #[widget(row=7)] _ = Label::from("more"),
-            #[widget(row=8)] _ = Label::from("rows"),
-            #[widget(row=8, col = 1)] _ = TextButton::new("Another button", Item::Button),
+            #[widget(row=8)] _ = Label::from("Child window"),
+            #[widget(row=8, col = 1)] _ = TextButton::new("Open", Item::Popup),
         }
     };
 
@@ -59,13 +57,17 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget(handler = activations)] _ = ScrollRegion::new(widgets),
             }
             impl {
-                fn activations(&mut self, _: &mut dyn TkWindow, item: Item)
+                fn activations(&mut self, tk: &mut dyn TkWindow, item: Item)
                     -> VoidResponse
                 {
                     match item {
                         Item::Button => println!("Clicked!"),
                         Item::Check(b) => println!("Checkbox: {}", b),
                         Item::Edit(s) => println!("Edited: {}", s),
+                        Item::Popup => {
+                            let window = MessageBox::new("Popup", "Hello!");
+                            tk.add_window(Box::new(window));
+                        }
                     };
                     VoidResponse::None
                 }
