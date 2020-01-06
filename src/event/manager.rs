@@ -5,6 +5,7 @@
 
 //! Event manager
 
+use log::trace;
 use std::collections::{hash_map::Entry, HashMap};
 
 use super::*;
@@ -572,7 +573,7 @@ impl Manager {
             }
             // HiDpiFactorChanged(factor) [handled by toolkit]
             _ => {
-                // println!("Unhandled window event: {:?}", event);
+                trace!("Unhandled window event: {:?}", event);
                 Response::None
             }
         };

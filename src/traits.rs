@@ -111,6 +111,7 @@ pub trait WidgetCore: fmt::Debug {
     fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget));
 
     /// Debug tool: print the widget hierarchy
+    #[deprecated(since = "0.2.0")]
     fn print_hierarchy(&self, depth: usize) {
         println!("{}\t{:?}\t{:?}", "- ".repeat(depth), self.id(), self.rect());
         for i in 0..self.len() {

@@ -18,6 +18,8 @@ use kas::widget::{Label, Window};
 use kas::{TkWindow, WidgetCore};
 
 fn main() -> Result<(), kas_wgpu::Error> {
+    env_logger::init();
+
     let mut window = Window::new(
         "Clock",
         make_widget! {

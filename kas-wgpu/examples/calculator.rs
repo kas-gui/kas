@@ -28,6 +28,8 @@ enum Key {
 }
 
 fn main() -> Result<(), kas_wgpu::Error> {
+    env_logger::init();
+
     let buttons = make_widget! {
         grid => Key;
         struct {

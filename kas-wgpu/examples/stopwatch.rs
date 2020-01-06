@@ -92,6 +92,8 @@ fn make_window() -> Box<dyn kas::Window> {
 }
 
 fn main() -> Result<(), kas_wgpu::Error> {
+    env_logger::init();
+
     let theme = kas_wgpu::SampleTheme::new();
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add_boxed(make_window())?;

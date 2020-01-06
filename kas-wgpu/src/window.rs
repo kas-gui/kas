@@ -5,6 +5,7 @@
 
 //! `Window` and `WindowList` types
 
+use log::warn;
 use std::time::{Duration, Instant};
 
 #[cfg(feature = "clipboard")]
@@ -222,8 +223,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> TkWindow<TW> {
         let clipboard = match ClipboardContext::new() {
             Ok(cb) => Some(cb),
             Err(e) => {
-                // TODO: use log
-                println!("Warning: unable to open clipboard: {:?}", e);
+                warn!("Unable to open clipboard: {:?}", e);
                 None
             }
         };
@@ -313,8 +313,7 @@ impl<TW: theme::Window<DrawPipe>> kas::TkWindow for TkWindow<TW> {
             .and_then(|cb| match cb.get_contents() {
                 Ok(c) => Some(c),
                 Err(e) => {
-                    // TODO: use log
-                    println!("Warning: failed to get clipboard contents: {:?}", e);
+                    warn!("Failed to get clipboard contents: {:?}", e);
                     None
                 }
             })
@@ -327,9 +326,8 @@ impl<TW: theme::Window<DrawPipe>> kas::TkWindow for TkWindow<TW> {
     #[cfg(feature = "clipboard")]
     fn set_clipboard(&mut self, content: String) {
         self.clipboard.as_mut().map(|cb| {
-            cb.set_contents(content).unwrap_or_else(|e|
-                // TODO: use log
-                println!("Warning: failed to set clipboard contents: {:?}", e))
+            cb.set_contents(content)
+                .unwrap_or_else(|e| warn!("Failed to set clipboard contents: {:?}", e))
         });
     }
 }

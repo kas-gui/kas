@@ -19,6 +19,8 @@ enum Message {
 }
 
 fn main() -> Result<(), kas_wgpu::Error> {
+    env_logger::init();
+
     let buttons = make_widget! {
         horizontal => Message;
         struct {

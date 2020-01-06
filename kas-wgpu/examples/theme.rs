@@ -89,6 +89,8 @@ enum Item {
 }
 
 fn main() -> Result<(), kas_wgpu::Error> {
+    env_logger::init();
+
     let widgets = make_widget! {
         grid => Item;
         struct {

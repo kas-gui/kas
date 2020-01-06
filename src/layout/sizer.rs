@@ -5,6 +5,9 @@
 
 //! Layout solver
 
+use log::trace;
+use std::fmt;
+
 use super::{AxisInfo, SizeRules};
 use crate::geom::{Coord, Rect, Size};
 use crate::{TkWindow, Widget};
@@ -63,15 +66,36 @@ pub fn solve<L: Widget>(widget: &mut L, tk: &mut dyn TkWindow, size: Size) {
     // We call size_rules not because we want the result, but because our
     // spec requires that we do so before calling set_rect.
     tk.with_size_handle(&mut |size_handle| {
-        let _w = widget.size_rules(size_handle, AxisInfo::new(false, None));
-        let _h = widget.size_rules(size_handle, AxisInfo::new(true, Some(size.0)));
+        let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
+        let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(size.0)));
 
         let pos = Coord(0, 0);
         widget.set_rect(size_handle, Rect { pos, size });
 
-        // println!("Window size:\t{:?}", size);
-        // println!("Width rules:\t{:?}", _w);
-        // println!("Height rules:\t{:?}", _h);
-        // widget.print_hierarchy(0);
+        trace!(
+            "Layout solution for size={:?} has rules {:?}, {:?} and hierarchy:{}",
+            size,
+            w,
+            h,
+            WidgetHeirarchy(widget, 0),
+        );
     });
+}
+
+struct WidgetHeirarchy<'a>(&'a dyn Widget, usize);
+impl<'a> fmt::Display for WidgetHeirarchy<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(
+            f,
+            "\n{}\t{:?}\t{:?}",
+            "- ".repeat(self.1),
+            self.0.id(),
+            self.0.rect()
+        )?;
+
+        for i in 0..self.0.len() {
+            WidgetHeirarchy(self.0.get(i).unwrap(), self.1 + 1).fmt(f)?;
+        }
+        Ok(())
+    }
 }

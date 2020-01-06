@@ -13,6 +13,9 @@ repository = "https://github.com/dhardy/kas"
 # Enables usage of unstable Rust features
 nightly = []
 
+[dependencies]
+log = "0.4"
+
 [dependencies.kas-macros]
 version = "0.1.0"
 path = "kas-macros"
