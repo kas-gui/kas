@@ -5,6 +5,7 @@
 
 //! Event handling
 
+use log::{debug, trace};
 use std::time::Instant;
 
 use winit::event::{Event, StartCause};
@@ -50,6 +51,8 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                     StartCause::ResumeTimeReached {
                         requested_resume, ..
                     } => {
+                        debug!("Wakeup: timer (requested: {:?})", requested_resume);
+
                         let item = self
                             .resumes
                             .first()
@@ -61,6 +64,7 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         if let Some(instant) = resume {
                             self.resumes[0].0 = instant;
                             self.resumes.sort_by_key(|item| item.0);
+                            trace!("Requesting resume at {:?}", self.resumes[0].0);
                             *control_flow = ControlFlow::WaitUntil(self.resumes[0].0);
                         } else {
                             self.resumes.remove(0);
@@ -70,6 +74,8 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                     }
 
                     StartCause::Init => {
+                        debug!("Wakeup: init");
+
                         for (i, window) in self.windows.iter_mut().enumerate() {
                             if let Some(instant) = window.init() {
                                 self.resumes.push((instant, i));
@@ -77,6 +83,7 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         }
                         self.resumes.sort_by_key(|item| item.0);
                         if let Some(first) = self.resumes.first() {
+                            trace!("Requesting resume at {:?}", first.0);
                             *control_flow = ControlFlow::WaitUntil(first.0);
                         } else {
                             *control_flow = ControlFlow::Wait;

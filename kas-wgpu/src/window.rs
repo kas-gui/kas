@@ -5,7 +5,7 @@
 
 //! `Window` and `WindowList` types
 
-use log::warn;
+use log::{debug, info, trace, warn};
 use std::time::{Duration, Instant};
 
 #[cfg(feature = "clipboard")]
@@ -43,6 +43,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     ) -> Self {
         let dpi_factor = window.hidpi_factor();
         let size: Size = window.inner_size().to_physical(dpi_factor).into();
+        info!("Constucted new window with size {:?}", size);
 
         let surface = wgpu::Surface::create(&window);
 
@@ -93,8 +94,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
 
     /// Recompute layout of widgets and redraw
     pub fn reconfigure(&mut self) {
-        self.tk_window.ev_mgr.configure(self.widget.as_widget_mut());
         let size = Size(self.sc_desc.width, self.sc_desc.height);
+        debug!("Reconfiguring window (size = {:?})", size);
+
+        self.tk_window.ev_mgr.configure(self.widget.as_widget_mut());
         self.widget.resize(&mut self.tk_window, size);
         self.window.request_redraw();
     }
@@ -170,6 +173,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         if size == Size(self.sc_desc.width, self.sc_desc.height) {
             return;
         }
+        debug!("Resizing window to size={:?}", size);
         self.widget.resize(&mut self.tk_window, size);
 
         let buf = self.tk_window.resize(&shared.device, size);
@@ -183,6 +187,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     }
 
     fn do_draw<T: theme::Theme<DrawPipe, Window = TW>>(&mut self, shared: &mut SharedState<T>) {
+        trace!("Drawing window");
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         let rect = Rect {
             pos: Coord::ZERO,

@@ -11,6 +11,7 @@ mod font;
 mod theme;
 mod window;
 
+use log::info;
 use std::{error, fmt};
 
 use winit::error::OsError;
@@ -102,6 +103,7 @@ impl<T: kas::theme::Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
             Some(a) => a,
             None => return Err(Error::NoAdapter),
         };
+        info!("Using graphics adapter: {}", adapter.get_info().name);
 
         let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
             extensions: wgpu::Extensions {

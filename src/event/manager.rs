@@ -335,6 +335,7 @@ impl Manager {
     {
         use crate::TkAction;
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
+        trace!("Event: {:?}", event);
 
         let response = match event {
             // Resized(size) [handled by toolkit]
@@ -572,10 +573,7 @@ impl Manager {
                 }
             }
             // HiDpiFactorChanged(factor) [handled by toolkit]
-            _ => {
-                trace!("Unhandled window event: {:?}", event);
-                Response::None
-            }
+            _ => Response::None,
         };
 
         match response {
