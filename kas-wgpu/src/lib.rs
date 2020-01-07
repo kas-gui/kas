@@ -123,7 +123,9 @@ impl<T: kas::theme::Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
         })
     }
 
-    /// Assume ownership of and display a window.
+    /// Assume ownership of and display a window
+    ///
+    /// This is a convenience wrapper around [`Toolkit::add_boxed`].
     ///
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
     pub fn add<W: kas::Window + 'static>(&mut self, window: W) -> Result<(), Error> {

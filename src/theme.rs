@@ -84,6 +84,8 @@ pub trait Theme<Draw> {
 
     /// Construct a [`DrawHandle`] object
     ///
+    /// Drawing via this [`DrawHandle`] is restricted to the specified `rect`.
+    ///
     /// The `theme_window` is guaranteed to be one created by a call to
     /// [`Theme::new_window`] on `self`, and the `draw` reference is guaranteed
     /// to be identical to the one passed to [`Theme::new_window`].
@@ -227,7 +229,10 @@ pub trait DrawHandle {
     /// the given `rect`, as required by a scrollable window.
     fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle));
 
-    /// Target rect
+    /// Target area for drawing
+    ///
+    /// This is the `Rect` passed to [`Theme::draw_handle`] or
+    /// [`DrawHandle::clip_region`], minus any offsets.
     fn target_rect(&self) -> Rect;
 
     /// Draw a frame in the given [`Rect`]

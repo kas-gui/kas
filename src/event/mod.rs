@@ -55,7 +55,8 @@
 //! [`WidgetId`]: crate::WidgetId
 
 mod callback;
-#[cfg(not(feature = "winit"))] mod enums;
+#[cfg(not(feature = "winit"))]
+mod enums;
 mod events;
 mod handler;
 mod manager;
