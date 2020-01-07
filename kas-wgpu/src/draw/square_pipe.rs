@@ -8,6 +8,8 @@
 use std::f32;
 use std::mem::size_of;
 
+use lazy_static::lazy_static;
+
 use kas::draw::*;
 use kas::geom::Size;
 
@@ -25,20 +27,22 @@ pub struct SquarePipe {
     passes: Vec<Vec<Vertex>>,
 }
 
+lazy_static! {
+    static ref VS_BYTES: Vec<u32> = super::read_glsl(
+        include_str!("shaders/square.vert"),
+        glsl_to_spirv::ShaderType::Vertex,
+    );
+    static ref FS_BYTES: Vec<u32> = super::read_glsl(
+        include_str!("shaders/square.frag"),
+        glsl_to_spirv::ShaderType::Fragment,
+    );
+}
+
 impl SquarePipe {
     /// Construct
     pub fn new(device: &wgpu::Device, size: Size, light_norm: [f32; 3]) -> Self {
-        let vs_bytes = super::read_glsl(
-            include_str!("shaders/square.vert"),
-            glsl_to_spirv::ShaderType::Vertex,
-        );
-        let fs_bytes = super::read_glsl(
-            include_str!("shaders/square.frag"),
-            glsl_to_spirv::ShaderType::Fragment,
-        );
-
-        let vs_module = device.create_shader_module(&vs_bytes);
-        let fs_module = device.create_shader_module(&fs_bytes);
+        let vs_module = device.create_shader_module(&VS_BYTES);
+        let fs_module = device.create_shader_module(&FS_BYTES);
 
         type Scale = [f32; 2];
         let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];

@@ -59,6 +59,8 @@ pub struct DrawPipe {
 
 impl DrawPipe {
     /// Construct
+    // TODO: do we want to share state across windows? With glyph_brush this is
+    // not trivial but with our "pipes" it shouldn't be difficult.
     pub fn new<D: theme::Theme<Self>>(
         device: &mut wgpu::Device,
         tex_format: wgpu::TextureFormat,

@@ -46,6 +46,15 @@ pub enum TkAction {
 /// event handling. In these cases the user is *always* given an existing
 /// reference to a `TkWindow`. Mostly this trait is only used internally.
 pub trait TkWindow {
+    /// Add a window
+    ///
+    /// Toolkits typically allow windows to be added directly, before start of
+    /// the event loop (e.g. `kas_wgpu::Toolkit::add`).
+    ///
+    /// This method is an alternative allowing a window to be added via event
+    /// processing, albeit without error handling.
+    fn add_window(&mut self, widget: Box<dyn kas::Window>);
+
     /// Read access to the event manager state
     fn data(&self) -> &event::Manager;
 
