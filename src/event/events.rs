@@ -38,9 +38,9 @@ pub enum Event {
         source: PressSource,
         coord: Coord,
     },
-    /// Movement of mouse or a
+    /// Movement of mouse or a touch press
     ///
-    /// Received only if a mouse grab is enabled
+    /// Received only if a mouse grab is enabled.
     PressMove {
         source: PressSource,
         coord: Coord,
@@ -48,7 +48,9 @@ pub enum Event {
     },
     /// End of a click/touch press
     ///
-    /// Received if a mouse grab is enabled; otherwise received if on self
+    /// Received if a mouse grab is enabled; otherwise received if on self.
+    /// When `end_id == None`, this is a "cancelled press": the end of the press
+    /// is outside the application window.
     PressEnd {
         source: PressSource,
         start_id: Option<WidgetId>,

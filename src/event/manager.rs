@@ -5,7 +5,6 @@
 
 //! Event manager
 
-use log::trace;
 use std::collections::{hash_map::Entry, HashMap};
 
 use super::*;
@@ -334,6 +333,7 @@ impl Manager {
         W: Widget + Handler<Msg = VoidMsg> + ?Sized,
     {
         use crate::TkAction;
+        use log::trace;
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
         trace!("Event: {:?}", event);
 
@@ -500,19 +500,29 @@ impl Manager {
                         // TODO: using grab_id as start_id is incorrect when
                         // multiple buttons are pressed simultaneously
                         ElementState::Pressed => Event::PressStart { source, coord },
-                        ElementState::Released => Event::PressEnd { source, start_id: Some(grab_id), end_id: tk.data().hover, coord },
+                        ElementState::Released => Event::PressEnd {
+                            source,
+                            start_id: Some(grab_id),
+                            end_id: tk.data().hover,
+                            coord,
+                        },
                     };
                     widget.handle(tk, Address::Id(grab_id), ev)
                 } else if let Some(id) = tk.data().hover {
                     // No mouse grab, but we have a hover target
                     let ev = match state {
                         ElementState::Pressed => Event::PressStart { source, coord },
-                        ElementState::Released => Event::PressEnd { source, start_id: None, end_id: Some(id), coord },
+                        ElementState::Released => Event::PressEnd {
+                            source,
+                            start_id: None,
+                            end_id: Some(id),
+                            coord,
+                        },
                     };
                     widget.handle(tk, Address::Id(id), ev)
                 } else {
-                    // This happens for example on click-release when the
-                    // cursor is no longer over the window.
+                    // This happens when there is no widget and on click-release
+                    // when the cursor is no longer over the window.
                     Response::None
                 };
                 if state == ElementState::Released {
@@ -567,8 +577,19 @@ impl Manager {
                         }
                     }
                     TouchPhase::Cancelled => {
-                        tk.update_data(&mut |data| data.end_touch_grab(touch.id));
-                        Response::None
+                        if let Some(PressEvent { start_id, .. }) = tk.data().touch_grab(touch.id) {
+                            let action = Event::PressEnd {
+                                source,
+                                start_id: Some(start_id),
+                                end_id: None,
+                                coord,
+                            };
+                            let r = widget.handle(tk, Address::Id(start_id), action);
+                            tk.update_data(&mut |data| data.end_touch_grab(touch.id));
+                            r
+                        } else {
+                            Response::None
+                        }
                     }
                 }
             }
