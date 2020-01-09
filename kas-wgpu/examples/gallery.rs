@@ -6,7 +6,8 @@
 //! Gallery of all widgets
 #![feature(proc_macro_hygiene)]
 
-use kas::event::{VoidMsg, VoidResponse};
+use kas::event::{Response, VoidMsg, VoidResponse};
+use kas::layout::Horizontal;
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::*;
 use kas::TkWindow;
@@ -16,6 +17,7 @@ enum Item {
     Button,
     Check(bool),
     Edit(String),
+    Scroll(u32),
     Popup,
 }
 
@@ -38,8 +40,16 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=4, col=0)] _ = Label::from("CheckBox"),
             #[widget(row=4, col=1)] _ = CheckBox::new("").state(true)
                 .on_toggle(|check| Item::Check(check)),
+            #[widget(row=5, col=0)] _ = Label::from("ScrollBar"),
+            #[widget(row=5, col=1, handler = handle_scroll)] _ =
+                ScrollBar::<Horizontal>::new().with_length(7, 2),
             #[widget(row=8)] _ = Label::from("Child window"),
             #[widget(row=8, col = 1)] _ = TextButton::new("Open", Item::Popup),
+        }
+        impl {
+            fn handle_scroll(&mut self, _: &mut dyn TkWindow, msg: u32) -> Response<Item> {
+                Response::Msg(Item::Scroll(msg))
+            }
         }
     };
 
@@ -64,6 +74,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         Item::Button => println!("Clicked!"),
                         Item::Check(b) => println!("Checkbox: {}", b),
                         Item::Edit(s) => println!("Edited: {}", s),
+                        Item::Scroll(p) => println!("ScrollBar: {}", p),
                         Item::Popup => {
                             let window = MessageBox::new("Popup", "Hello!");
                             tk.add_window(Box::new(window));

@@ -45,6 +45,7 @@ pub struct SampleWindow {
     margin: f32,
     frame_size: f32,
     button_frame: f32,
+    scrollbar_size: f32,
 }
 
 /// Inner margin; this is multiplied by the DPI factor then rounded to nearest
@@ -54,6 +55,8 @@ const MARGIN: f32 = 2.0;
 const FRAME_SIZE: f32 = 5.0;
 /// Button frame size (non-flat outer region)
 const BUTTON_FRAME: f32 = 5.0;
+/// Scrollbar width & min length
+const SCROLLBAR_SIZE: f32 = 8.0;
 
 /// Background colour
 pub const BACKGROUND: Colour = Colour::grey(0.7);
@@ -97,6 +100,7 @@ impl SampleWindow {
             margin: (MARGIN * dpi_factor).round(),
             frame_size: (FRAME_SIZE * dpi_factor).round(),
             button_frame: (BUTTON_FRAME * dpi_factor).round(),
+            scrollbar_size: (SCROLLBAR_SIZE * dpi_factor).round(),
         }
     }
 }
@@ -209,6 +213,11 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
         Size::uniform(
             (2.0 * (self.window.frame_size + self.window.margin) + self.window.font_scale) as u32,
         )
+    }
+
+    fn scrollbar(&self) -> (u32, u32, u32) {
+        let s = self.window.scrollbar_size as u32;
+        (s, s, 2 * s)
     }
 }
 
@@ -404,6 +413,38 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         }
 
         let col = button_colour(highlights, checked).unwrap_or(TEXT_AREA);
+        self.draw.draw_quad(self.pass, quad, Style::Flat, col);
+    }
+
+    fn scrollbar(
+        &mut self,
+        rect: Rect,
+        dir: bool,
+        h_len: u32,
+        h_pos: u32,
+        highlights: HighlightState,
+    ) {
+        let pos = Vec2::from(rect.pos + self.offset);
+        let size = Vec2::from(rect.size);
+        let mut quad = Quad(pos, pos + size);
+
+        // TODO: also draw slider behind handle: needs an extra layer?
+
+        let half_width = if !dir {
+            (quad.0).0 += h_pos as f32;
+            (quad.1).0 = (quad.0).0 + h_len as f32;
+            (0.5 * size.1).floor()
+        } else {
+            (quad.0).1 += h_pos as f32;
+            (quad.1).1 = (quad.0).1 + h_len as f32;
+            (0.5 * size.0).floor()
+        };
+
+        let outer = quad;
+        quad.shrink(half_width);
+        let style = Style::Round(Vec2(0.0, 0.6));
+        let col = button_colour(highlights, true).unwrap();
+        self.draw.draw_frame(self.pass, outer, quad, style, col);
         self.draw.draw_quad(self.pass, quad, Style::Flat, col);
     }
 }

@@ -13,6 +13,7 @@ mod checkbox;
 mod dialog;
 mod list;
 mod scroll;
+mod scrollbar;
 mod text;
 mod window;
 
@@ -21,5 +22,6 @@ pub use checkbox::CheckBox;
 pub use dialog::MessageBox;
 pub use list::{BoxColumn, BoxList, BoxRow, Column, List, Row};
 pub use scroll::ScrollRegion;
+pub use scrollbar::ScrollBar;
 pub use text::{EditBox, Label};
 pub use window::Window;

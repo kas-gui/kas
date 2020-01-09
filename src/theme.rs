@@ -219,6 +219,19 @@ pub trait SizeHandle {
     ///
     /// This element is not scalable (except by DPI).
     fn checkbox(&self) -> Size;
+
+    /// Dimensions for a scrollbar
+    ///
+    /// Returns three components:
+    ///
+    /// -   `thickness`: scroll-bar width (for vertical scroll bars)
+    /// -   `min_handle_len`: minimum length for the handle
+    /// -   `min_len`: minimum length for the whole bar
+    ///
+    /// Generally, one expects `min_len` is significantly greater than
+    /// `min_handle_len` (so that some movement is always possible).
+    /// It is required that `min_len >= min_handle_len`.
+    fn scrollbar(&self) -> (u32, u32, u32);
 }
 
 /// Handle passed to objects during draw and sizing operations
@@ -260,4 +273,13 @@ pub trait DrawHandle {
     /// Size is fixed as [`SizeHandle::checkbox`], thus only the `pos`
     /// and state are needed here.
     fn checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState);
+
+    /// Draw UI element: scrollbar
+    ///
+    /// -   `rect`: target area
+    /// -   `dir`: true for a vertical bar, false for horizontal
+    /// -   `len`: length of handle in pixels
+    /// -   `pos`: offset of handle from start in pixels
+    /// -   `highlights`: highlighting information
+    fn scrollbar(&mut self, rect: Rect, dir: bool, len: u32, pos: u32, highlights: HighlightState);
 }
