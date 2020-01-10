@@ -42,7 +42,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 .on_toggle(|check| Item::Check(check)),
             #[widget(row=5, col=0)] _ = Label::from("ScrollBar"),
             #[widget(row=5, col=1, handler = handle_scroll)] _ =
-                ScrollBar::<Horizontal>::new().with_lengths(7, 2),
+                ScrollBar::<Horizontal>::new().with_limits(5, 2),
             #[widget(row=8)] _ = Label::from("Child window"),
             #[widget(row=8, col = 1)] _ = TextButton::new("Open", Item::Popup),
         }

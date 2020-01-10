@@ -17,7 +17,8 @@ use crate::{CoreData, TkWindow, Widget, WidgetCore};
 
 /// A scroll bar
 ///
-/// Scroll bars allow user-input of a value between 0 and a defined maximum.
+/// Scroll bars allow user-input of a value between 0 and a defined maximum,
+/// and allow the size of the handle to be specified.
 #[widget]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollBar<D: Direction> {
@@ -28,7 +29,7 @@ pub struct ScrollBar<D: Direction> {
     width: u32,
     min_handle_len: u32,
     handle_len: u32,
-    page_length: u32, // contract: > 0
+    handle_value: u32, // contract: > 0
     max_value: u32,
     value: u32,
     press_source: Option<PressSource>,
@@ -56,7 +57,7 @@ impl<D: Direction> ScrollBar<D> {
             width: 0,
             min_handle_len: 0,
             handle_len: 0,
-            page_length: 1,
+            handle_value: 1,
             max_value: 0,
             value: 0,
             press_source: None,
@@ -66,30 +67,32 @@ impl<D: Direction> ScrollBar<D> {
 
     /// Set the page length
     ///
-    /// See [`ScrollBar::set_lengths`].
+    /// See [`ScrollBar::set_limits`].
     #[inline]
-    pub fn with_lengths(mut self, page_length: u32, page_visible: u32) -> Self {
-        self.set_lengths(page_length, page_visible);
+    pub fn with_limits(mut self, max_value: u32, handle_value: u32) -> Self {
+        self.set_limits(max_value, handle_value);
         self
     }
 
-    /// Set the page length
+    /// Set the page limits
     ///
-    /// These values control both the visible length of the scroll bar and the
-    /// maximum position possible.
+    /// The `max_value` parameter specifies the maximum possible value.
+    /// (The minimum is always 0.) For a scroll region, this should correspond
+    /// to the maximum possible offset.
     ///
-    /// Scroll bars are optimised for navigating a page of length `page_length`
-    /// where a portion, `page_visible`, is visible. The value (page position)
-    /// is rectricted to the range `[0, page_length - page_visible]`
-    /// (inclusive). The length of the scroll bar is proportional to
-    /// `page_visible / page_length` (with a minimum value).
+    /// The `handle_value` parameter specifies the size of the handle relative to
+    /// the maximum value: the handle size relative to the length of the scroll
+    /// bar is `handle_value / (max_value + handle_value)`. For a scroll region,
+    /// this should correspond to the size of the visible region.
+    /// The minimum value is 1.
     ///
-    /// Any units may be used (e.g. pixels or lines).
-    /// If `page_visible > page_length` then it is clamped to the latter value.
-    pub fn set_lengths(&mut self, page_length: u32, page_visible: u32) {
-        assert!(page_length > 0);
-        self.page_length = page_length;
-        self.max_value = page_length.saturating_sub(page_visible);
+    /// The choice of units is not important (e.g. can be pixels or lines),
+    /// so long as both parameters use the same units.
+    pub fn set_limits(&mut self, max_value: u32, handle_value: u32) {
+        debug_assert!(handle_value > 0);
+        self.handle_value = handle_value.max(1);
+
+        self.max_value = max_value;
         self.value = self.value.min(self.max_value);
         self.update_handle();
     }
@@ -119,10 +122,8 @@ impl<D: Direction> ScrollBar<D> {
 
     fn update_handle(&mut self) {
         let len = self.len();
-        let page_len = self.page_length;
-        let page_vis = page_len - self.max_value;
-
-        let handle_len = page_vis as u64 * len as u64 / page_len as u64;
+        let total = self.max_value as u64 + self.handle_value as u64;
+        let handle_len = self.handle_value as u64 * len as u64 / total;
         self.handle_len = (handle_len as u32).max(self.min_handle_len).min(len);
         self.value = self.value.min(self.max_value);
     }
@@ -326,17 +327,13 @@ impl<W: Widget> Widget for ScrollBarRegion<W> {
             let pos = Coord(rect.pos.0, rect.pos.1 + rect.size.1 as i32);
             let size = Size(rect.size.0, self.horiz_bar.width);
             self.horiz_bar.set_rect(size_handle, Rect { pos, size });
-
-            let total = inner_size.0 + max_offset.0 as u32;
-            self.horiz_bar.set_lengths(total, inner_size.0);
+            self.horiz_bar.set_limits(max_offset.0 as u32, inner_size.0);
         }
         if self.show.1 {
             let pos = Coord(rect.pos.0 + rect.size.0 as i32, rect.pos.1);
             let size = Size(self.vert_bar.width, rect.size.1);
             self.vert_bar.set_rect(size_handle, Rect { pos, size });
-
-            let total = inner_size.1 + max_offset.1 as u32;
-            self.vert_bar.set_lengths(total, inner_size.1);
+            self.vert_bar.set_limits(max_offset.1 as u32, inner_size.1);
         }
     }
 
