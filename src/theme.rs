@@ -238,8 +238,11 @@ pub trait SizeHandle {
 pub trait DrawHandle {
     /// Construct a new draw-handle on a given region and pass to a callback.
     ///
-    /// This new region has contents translated by `offset` and then clipped to
-    /// the given `rect`, as required by a scrollable window.
+    /// This new region uses coordinates relative to `offset` (i.e. coordinates
+    /// are subtracted by `offset`).
+    ///
+    /// All content drawn by the new region is clipped to the given `rect`
+    /// (in the current coordinate space, i.e. not translated by `offset`).
     fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle));
 
     /// Target area for drawing

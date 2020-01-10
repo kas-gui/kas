@@ -8,15 +8,19 @@
 use std::fmt::Debug;
 
 use crate::event::{Action, Address, Event, Handler, Manager, Response, ScrollDelta};
+use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
 use crate::{CoreData, TkWindow, Widget, WidgetCore};
-use kas::geom::{Coord, Rect, Size};
 
 /// A scrollable region
 ///
 /// This has no scroll bars. It supports scrolling via mouse wheel and drag.
+///
+/// Scroll regions translate their contents by an `offset`, which has a
+/// minimum value of [`Coord::ZERO`] and a maximum value of
+/// [`ScrollRegion::max_offset`].
 #[widget]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
@@ -24,10 +28,63 @@ pub struct ScrollRegion<W: Widget> {
     core: CoreData,
     offset: Coord,
     min_child_size: Size,
-    min_offset: Coord,
+    max_offset: Coord,
     scroll_rate: f32,
     #[widget]
     child: W,
+}
+
+impl<W: Widget> ScrollRegion<W> {
+    /// Construct a new scroll region around a child widget
+    #[inline]
+    pub fn new(child: W) -> Self {
+        ScrollRegion {
+            core: Default::default(),
+            offset: Coord::ZERO,
+            max_offset: Coord::ZERO,
+            min_child_size: Size::ZERO,
+            scroll_rate: 30.0,
+            child,
+        }
+    }
+
+    /// Access inner widget directly
+    #[inline]
+    pub fn inner(&self) -> &W {
+        &self.child
+    }
+
+    /// Access inner widget directly
+    #[inline]
+    pub fn inner_mut(&mut self) -> &mut W {
+        &mut self.child
+    }
+
+    /// Get the maximum offset
+    #[inline]
+    pub fn max_offset(&self) -> Coord {
+        self.max_offset
+    }
+
+    /// Get the current offset
+    #[inline]
+    pub fn offset(&self) -> Coord {
+        self.offset
+    }
+
+    /// Set the scroll offset
+    ///
+    /// Returns true if the offset is not identical to the old offset.
+    #[inline]
+    pub fn set_offset(&mut self, tk: &mut dyn TkWindow, offset: Coord) -> bool {
+        let offset = offset.max(Coord::ZERO).min(self.max_offset);
+        if offset != self.offset {
+            self.offset = offset;
+            tk.redraw(self.id());
+            return true;
+        }
+        false
+    }
 }
 
 impl<W: Widget> Widget for ScrollRegion<W> {
@@ -49,38 +106,14 @@ impl<W: Widget> Widget for ScrollRegion<W> {
         let pos = rect.pos;
         let size = rect.size.max(self.min_child_size);
         self.child.set_rect(size_handle, Rect { pos, size });
-        self.min_offset = Coord::from(rect.size) - Coord::from(size);
-        self.offset = self.offset.min(Coord::ZERO).max(self.min_offset);
+        self.max_offset = Coord::from(size) - Coord::from(rect.size);
+        self.offset = self.offset.max(Coord::ZERO).min(self.max_offset);
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &Manager) {
         draw_handle.clip_region(self.core.rect, self.offset, &mut |handle| {
             self.child.draw(handle, ev_mgr)
         });
-    }
-}
-
-impl<W: Widget> ScrollRegion<W> {
-    /// Construct a new scroll region around a child widget
-    pub fn new(child: W) -> Self {
-        ScrollRegion {
-            core: Default::default(),
-            offset: Coord::ZERO,
-            min_offset: Coord::ZERO,
-            min_child_size: Size::ZERO,
-            scroll_rate: 30.0,
-            child,
-        }
-    }
-
-    /// Access inner widget directly
-    pub fn inner(&self) -> &W {
-        &self.child
-    }
-
-    /// Access inner widget directly
-    pub fn inner_mut(&mut self) -> &mut W {
-        &mut self.child
     }
 }
 
@@ -97,11 +130,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
             Address::Id(id) if id == self.id() => {
                 let r = match event {
                     Event::PressMove { delta, .. } => {
-                        let offset = (self.offset + delta).min(Coord::ZERO).max(self.min_offset);
-                        if offset != self.offset {
-                            self.offset = offset;
-                            tk.redraw(self.id());
-                        }
+                        self.set_offset(tk, self.offset - delta);
                         Response::None
                     }
                     Event::PressEnd { .. } => {
@@ -113,13 +142,13 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                 return r;
             }
             a @ Address::Id(_) => a,
-            Address::Coord(coord) => Address::Coord(coord - self.offset),
+            Address::Coord(coord) => Address::Coord(coord + self.offset),
         };
         let event = match event {
             a @ Event::Action(_) | a @ Event::Identify => a,
             Event::PressStart { source, coord } => Event::PressStart {
                 source,
-                coord: coord - self.offset,
+                coord: coord + self.offset,
             },
             Event::PressMove {
                 source,
@@ -127,7 +156,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                 delta,
             } => Event::PressMove {
                 source,
-                coord: coord - self.offset,
+                coord: coord + self.offset,
                 delta,
             },
             Event::PressEnd {
@@ -139,7 +168,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                 source,
                 start_id,
                 end_id,
-                coord: coord - self.offset,
+                coord: coord + self.offset,
             },
         };
 
@@ -153,10 +182,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                     ),
                     ScrollDelta::PixelDelta(d) => d,
                 };
-                let offset = (self.offset + d).min(Coord::ZERO).max(self.min_offset);
-                if offset != self.offset {
-                    self.offset = offset;
-                    tk.redraw(self.id());
+                if self.set_offset(tk, self.offset - d) {
                     Response::None
                 } else {
                     Response::unhandled_action(Action::Scroll(delta))

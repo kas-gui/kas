@@ -284,7 +284,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
             draw: self.draw,
             window: self.window,
             rect,
-            offset: self.offset + offset,
+            offset: self.offset - offset,
             pass,
         };
         f(&mut handle);
