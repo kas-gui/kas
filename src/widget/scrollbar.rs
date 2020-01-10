@@ -359,6 +359,15 @@ impl<W: Widget + Handler> Handler for ScrollBarRegion<W> {
     ) -> Response<Self::Msg> {
         let do_horiz = |w: &mut Self, tk: &mut dyn TkWindow, addr, event| {
             match Response::<Self::Msg>::try_from(w.horiz_bar.handle(tk, addr, event)) {
+                Ok(Response::Unhandled(Event::Action(action))) => {
+                    let old_offset = w.inner.offset().0;
+                    let r = w.inner.unhandled_action(tk, action).into();
+                    let offset = w.inner.offset().0;
+                    if old_offset != offset {
+                        w.horiz_bar.set_value(tk, offset as u32);
+                    }
+                    r
+                }
                 Ok(r) => r,
                 Err(msg) => {
                     let mut offset = w.inner.offset();
@@ -370,6 +379,15 @@ impl<W: Widget + Handler> Handler for ScrollBarRegion<W> {
         };
         let do_vert = |w: &mut Self, tk: &mut dyn TkWindow, addr, event| {
             match Response::<Self::Msg>::try_from(w.vert_bar.handle(tk, addr, event)) {
+                Ok(Response::Unhandled(Event::Action(action))) => {
+                    let old_offset = w.inner.offset().1;
+                    let r = w.inner.unhandled_action(tk, action).into();
+                    let offset = w.inner.offset().1;
+                    if old_offset != offset {
+                        w.vert_bar.set_value(tk, offset as u32);
+                    }
+                    r
+                }
                 Ok(r) => r,
                 Err(msg) => {
                     let mut offset = w.inner.offset();

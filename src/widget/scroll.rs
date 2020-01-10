@@ -87,6 +87,32 @@ impl<W: Widget> ScrollRegion<W> {
     }
 }
 
+impl<W: Widget + Handler> ScrollRegion<W> {
+    pub(crate) fn unhandled_action(
+        &mut self,
+        tk: &mut dyn TkWindow,
+        action: Action,
+    ) -> Response<<W as Handler>::Msg> {
+        match action {
+            Action::Scroll(delta) => {
+                let d = match delta {
+                    ScrollDelta::LineDelta(x, y) => Coord(
+                        (-self.scroll_rate * x) as i32,
+                        (self.scroll_rate * y) as i32,
+                    ),
+                    ScrollDelta::PixelDelta(d) => d,
+                };
+                if self.set_offset(tk, self.offset - d) {
+                    Response::None
+                } else {
+                    Response::unhandled_action(Action::Scroll(delta))
+                }
+            }
+            a @ _ => Response::unhandled_action(a),
+        }
+    }
+}
+
 impl<W: Widget> Widget for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut rules = self.child.size_rules(size_handle, axis);
@@ -174,20 +200,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
 
         match self.child.handle(tk, addr, event) {
             Response::None => Response::None,
-            Response::Unhandled(Event::Action(Action::Scroll(delta))) => {
-                let d = match delta {
-                    ScrollDelta::LineDelta(x, y) => Coord(
-                        (-self.scroll_rate * x) as i32,
-                        (self.scroll_rate * y) as i32,
-                    ),
-                    ScrollDelta::PixelDelta(d) => d,
-                };
-                if self.set_offset(tk, self.offset - d) {
-                    Response::None
-                } else {
-                    Response::unhandled_action(Action::Scroll(delta))
-                }
-            }
+            Response::Unhandled(Event::Action(action)) => self.unhandled_action(tk, action),
             Response::Unhandled(Event::PressStart { source, coord }) if source.is_primary() => {
                 tk.update_data(&mut |data| data.request_press_grab(source, self, coord));
                 Response::None
