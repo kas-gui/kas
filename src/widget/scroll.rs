@@ -29,10 +29,12 @@ use crate::{CoreData, TkWindow, Widget, WidgetCore};
 pub struct ScrollRegion<W: Widget> {
     #[core]
     core: CoreData,
-    offset: Coord,
     min_child_size: Size,
+    inner_size: Size,
     max_offset: Coord,
+    offset: Coord,
     scroll_rate: f32,
+    auto_bars: bool,
     show_bars: (bool, bool),
     #[widget]
     horiz_bar: ScrollBar<Horizontal>,
@@ -48,15 +50,27 @@ impl<W: Widget> ScrollRegion<W> {
     pub fn new(child: W) -> Self {
         ScrollRegion {
             core: Default::default(),
-            offset: Coord::ZERO,
-            max_offset: Coord::ZERO,
             min_child_size: Size::ZERO,
+            inner_size: Size::ZERO,
+            max_offset: Coord::ZERO,
+            offset: Coord::ZERO,
             scroll_rate: 30.0,
+            auto_bars: false,
             show_bars: (false, false),
             horiz_bar: ScrollBar::new(),
             vert_bar: ScrollBar::new(),
             child,
         }
+    }
+
+    /// Auto-enable bars
+    ///
+    /// If enabled, this automatically enables/disables scroll bars when
+    /// resized.
+    #[inline]
+    pub fn with_auto_bars(mut self, enable: bool) -> Self {
+        self.auto_bars = enable;
+        self
     }
 
     /// Set which scroll bars are visible
@@ -132,32 +146,47 @@ impl<W: Widget> Widget for ScrollRegion<W> {
         }
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, mut rect: Rect) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
         // We use simplified layout code here
-        self.core.rect = rect;
-        if self.show_bars.0 {
-            rect.size.1 -= self.horiz_bar.width();
-        }
-        if self.show_bars.1 {
-            rect.size.0 -= self.vert_bar.width();
+        let pos = rect.pos;
+        let mut size = rect.size;
+        if self.auto_bars {
+            self.show_bars = (
+                self.min_child_size.0 > size.0,
+                self.min_child_size.1 > size.1,
+            );
         }
 
-        let pos = rect.pos;
-        let size = rect.size.max(self.min_child_size);
-        self.child.set_rect(size_handle, Rect { pos, size });
-        self.max_offset = Coord::from(size) - Coord::from(rect.size);
+        self.core.rect = rect;
+        if self.show_bars.0 {
+            size.1 -= self.horiz_bar.width();
+        }
+        if self.show_bars.1 {
+            size.0 -= self.vert_bar.width();
+        }
+        self.inner_size = size;
+
+        let child_size = size.max(self.min_child_size);
+        self.child.set_rect(
+            size_handle,
+            Rect {
+                pos,
+                size: child_size,
+            },
+        );
+        self.max_offset = Coord::from(child_size) - Coord::from(rect.size);
         self.offset = self.offset.max(Coord::ZERO).min(self.max_offset);
 
         if self.show_bars.0 {
-            let pos = Coord(rect.pos.0, rect.pos.1 + rect.size.1 as i32);
-            let size = Size(rect.size.0, self.horiz_bar.width());
+            let pos = Coord(pos.0, pos.1 + size.1 as i32);
+            let size = Size(size.0, self.horiz_bar.width());
             self.horiz_bar.set_rect(size_handle, Rect { pos, size });
             self.horiz_bar
                 .set_limits(self.max_offset.0 as u32, rect.size.0);
         }
         if self.show_bars.1 {
-            let pos = Coord(rect.pos.0 + rect.size.0 as i32, rect.pos.1);
-            let size = Size(self.vert_bar.width(), rect.size.1);
+            let pos = Coord(pos.0 + size.0 as i32, pos.1);
+            let size = Size(self.vert_bar.width(), size.1);
             self.vert_bar.set_rect(size_handle, Rect { pos, size });
             self.vert_bar
                 .set_limits(self.max_offset.1 as u32, rect.size.1);
@@ -171,7 +200,11 @@ impl<W: Widget> Widget for ScrollRegion<W> {
         if self.show_bars.1 {
             self.vert_bar.draw(draw_handle, ev_mgr);
         }
-        draw_handle.clip_region(self.core.rect, self.offset, &mut |handle| {
+        let rect = Rect {
+            pos: self.core.rect.pos,
+            size: self.inner_size,
+        };
+        draw_handle.clip_region(rect, self.offset, &mut |handle| {
             self.child.draw(handle, ev_mgr)
         });
     }

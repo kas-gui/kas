@@ -64,7 +64,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         #[widget] _ = Label::from("Widget Gallery"),
                     }
                 },
-                #[widget(handler = activations)] _ = ScrollRegion::new(widgets),
+                #[widget(handler = activations)] _ = ScrollRegion::new(widgets).with_auto_bars(true),
             }
             impl {
                 fn activations(&mut self, tk: &mut dyn TkWindow, item: Item)
