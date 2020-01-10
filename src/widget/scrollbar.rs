@@ -47,6 +47,7 @@ impl<D: Direction> ScrollBar<D> {
     /// Construct a scroll bar with the given direction
     ///
     /// Default values are assumed for all parameters.
+    #[inline]
     pub fn new_with_direction(direction: D) -> Self {
         ScrollBar {
             core: Default::default(),
@@ -64,9 +65,10 @@ impl<D: Direction> ScrollBar<D> {
 
     /// Set the page length
     ///
-    /// See [`ScrollBar::set_length`].
-    pub fn with_length(mut self, page_length: u32, page_visible: u32) -> Self {
-        self.set_length(page_length, page_visible);
+    /// See [`ScrollBar::set_lengths`].
+    #[inline]
+    pub fn with_lengths(mut self, page_length: u32, page_visible: u32) -> Self {
+        self.set_lengths(page_length, page_visible);
         self
     }
 
@@ -83,7 +85,7 @@ impl<D: Direction> ScrollBar<D> {
     ///
     /// Any units may be used (e.g. pixels or lines).
     /// If `page_visible > page_length` then it is clamped to the latter value.
-    pub fn set_length(&mut self, page_length: u32, page_visible: u32) {
+    pub fn set_lengths(&mut self, page_length: u32, page_visible: u32) {
         assert!(page_length > 0);
         self.page_length = page_length;
         self.max_value = page_length.saturating_sub(page_visible);
@@ -91,6 +93,22 @@ impl<D: Direction> ScrollBar<D> {
         self.update_handle();
     }
 
+    /// Get the current value
+    #[inline]
+    pub fn value(&self) -> u32 {
+        self.value
+    }
+
+    /// Set the value
+    pub fn set_value(&mut self, tk: &mut dyn TkWindow, value: u32) {
+        let value = value.min(self.max_value);
+        if value != self.value {
+            self.value = value;
+            tk.redraw(self.id());
+        }
+    }
+
+    #[inline]
     fn len(&self) -> u32 {
         match self.direction.is_vertical() {
             false => self.core.rect.size.0,
@@ -110,23 +128,33 @@ impl<D: Direction> ScrollBar<D> {
 
     // translate value to position in local coordinates
     fn position(&self) -> u32 {
-        let len = self.len();
+        let len = self.len() - self.handle_len;
         let lhs = self.value as u64 * len as u64;
-        let rhs = self.page_length as u64;
+        let rhs = self.max_value as u64;
+        if rhs == 0 {
+            return 0;
+        }
         let pos = ((lhs + (rhs / 2)) / rhs) as u32;
-        pos.min(len - 1)
+        pos.min(len)
     }
 
     // true if not equal to old value
-    fn set_position(&mut self, position: u32) -> bool {
-        let len = self.len();
-        let lhs = position as u64 * self.page_length as u64;
+    fn set_position(&mut self, tk: &mut dyn TkWindow, position: u32) -> bool {
+        let len = self.len() - self.handle_len;
+        let lhs = position as u64 * self.max_value as u64;
         let rhs = len as u64;
+        if rhs == 0 {
+            debug_assert_eq!(self.value, 0);
+            return false;
+        }
         let value = ((lhs + (rhs / 2)) / rhs) as u32;
         let value = value.min(self.max_value);
-        let r = value != self.value;
-        self.value = value;
-        r
+        if value != self.value {
+            self.value = value;
+            tk.redraw(self.id());
+            return true;
+        }
+        false
     }
 }
 
@@ -168,19 +196,26 @@ impl<D: Direction> Handler for ScrollBar<D> {
                 tk.update_data(&mut |data| data.request_press_grab(source, self, coord));
 
                 // Event delivery implies coord is over the scrollbar.
-                // Two cases: on handle, not on handle.
                 let (pointer, offset) = match self.direction.is_vertical() {
                     false => (coord.0, self.core.rect.pos.0),
                     true => (coord.1, self.core.rect.pos.1),
                 };
                 let position = self.position() as i32;
                 let h_start = offset + position;
+
                 if pointer >= h_start && pointer < h_start + self.handle_len as i32 {
+                    // coord is on the scroll handle
                     self.press_offset = position - pointer;
+                    Response::None
                 } else {
+                    // coord is not on the handle; we move the bar immediately
                     self.press_offset = -offset - (self.handle_len / 2) as i32;
+                    let position = (pointer + self.press_offset).max(0) as u32;
+                    let moved = self.set_position(tk, position);
+                    debug_assert!(moved);
+                    tk.redraw(self.id());
+                    Response::Msg(self.value)
                 }
-                Response::None
             }
             Event::PressMove { source, coord, .. } if Some(source) == self.press_source => {
                 let pointer = match self.direction.is_vertical() {
@@ -188,7 +223,7 @@ impl<D: Direction> Handler for ScrollBar<D> {
                     true => coord.1,
                 };
                 let position = (pointer + self.press_offset).max(0) as u32;
-                if self.set_position(position) {
+                if self.set_position(tk, position) {
                     tk.redraw(self.id());
                     Response::Msg(self.value)
                 } else {
