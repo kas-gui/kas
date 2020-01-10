@@ -55,6 +55,9 @@ pub trait WidgetCore: fmt::Debug {
         self.core_data().rect
     }
 
+    /// Get the name of the widget struct
+    fn widget_name(&self) -> &'static str;
+
     /// Erase type
     fn as_widget(&self) -> &dyn Widget;
     /// Erase type
@@ -121,33 +124,47 @@ pub trait WidgetCore: fmt::Debug {
 }
 
 impl WidgetCore for Box<dyn Widget> {
+    #[inline]
     fn core_data(&self) -> &CoreData {
         self.as_ref().core_data()
     }
+    #[inline]
     fn core_data_mut(&mut self) -> &mut CoreData {
         self.as_mut().core_data_mut()
     }
 
+    #[inline]
+    fn widget_name(&self) -> &'static str {
+        self.as_ref().widget_name()
+    }
+
+    #[inline]
     fn as_widget(&self) -> &dyn Widget {
         self.as_ref().as_widget()
     }
+    #[inline]
     fn as_widget_mut(&mut self) -> &mut dyn Widget {
         self.as_mut().as_widget_mut()
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.as_ref().len()
     }
+    #[inline]
     fn get(&self, index: usize) -> Option<&dyn Widget> {
         self.as_ref().get(index)
     }
+    #[inline]
     fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
         self.as_mut().get_mut(index)
     }
 
+    #[inline]
     fn walk(&self, f: &mut dyn FnMut(&dyn Widget)) {
         self.as_ref().walk(f);
     }
+    #[inline]
     fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
         self.as_mut().walk_mut(f);
     }

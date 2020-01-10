@@ -31,6 +31,12 @@ impl WidgetId {
     pub(crate) fn next(self) -> Self {
         WidgetId(NonZeroU32::new(self.0.get() + 1).unwrap())
     }
+
+    /// Get identifier as a `u32`
+    #[inline]
+    pub fn get(self) -> u32 {
+        self.0.get()
+    }
 }
 
 impl Default for WidgetId {
@@ -41,7 +47,7 @@ impl Default for WidgetId {
 
 impl fmt::Display for WidgetId {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.0)
+        write!(f, "#{}", self.0)
     }
 }
 

@@ -91,6 +91,11 @@ impl<D: Direction, W: Widget> WidgetCore for List<D, W> {
     }
 
     #[inline]
+    fn widget_name(&self) -> &'static str {
+        "List"
+    }
+
+    #[inline]
     fn as_widget(&self) -> &dyn Widget {
         self
     }

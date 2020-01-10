@@ -36,6 +36,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     };
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let name = &ast.ident;
+    let widget_name = name.to_string();
 
     let core = args.core;
     let count = args.children.len();
@@ -62,6 +63,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
             fn core_data_mut(&mut self) -> &mut kas::CoreData {
                 &mut self.#core
+            }
+
+            fn widget_name(&self) -> &'static str {
+                #widget_name
             }
 
             fn as_widget(&self) -> &dyn kas::Widget { self }
