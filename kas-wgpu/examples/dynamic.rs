@@ -9,7 +9,7 @@
 use kas::class::HasText;
 use kas::event::{Callback, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
-use kas::widget::{Column, EditBox, Label, ScrollBarRegion, TextButton, Window};
+use kas::widget::{Column, EditBox, Label, ScrollRegion, TextButton, Window};
 use kas::TkWindow;
 
 #[derive(Clone, Debug, VoidMsg)]
@@ -68,8 +68,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
                 #[widget(handler = handler)] controls -> Message = controls,
-                #[widget] list: ScrollBarRegion<Column<EditBox<()>>> =
-                    ScrollBarRegion::new(Column::new(vec![])),
+                #[widget] list: ScrollRegion<Column<EditBox<()>>> =
+                    ScrollRegion::new(Column::new(vec![])).with_bars(false, true),
             }
             impl {
                 fn handler(&mut self, tk: &mut dyn TkWindow, msg: Message) -> Response<VoidMsg>
