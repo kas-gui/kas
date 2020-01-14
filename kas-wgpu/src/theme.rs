@@ -234,9 +234,6 @@ impl theme::Theme<DrawPipe> for SampleTheme {
     type Window = SampleWindow;
     type DrawHandle = DrawHandle<'static>;
 
-    /// Construct per-window storage
-    ///
-    /// See also documentation on [`ThemeWindow::set_dpi_factor`].
     fn new_window(&self, _draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         SampleWindow::new(self.font_size, dpi_factor)
     }

@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Event handling
+//! Event loop and handling
 
 use log::{debug, error, trace};
 use std::time::Instant;
@@ -16,9 +16,13 @@ use kas::{theme, TkAction};
 use crate::draw::DrawPipe;
 use crate::{SharedState, Window};
 
+/// Event-loop data structure (i.e. all run-time state)
 pub(crate) struct Loop<T: theme::Theme<DrawPipe>> {
+    /// Window states
     windows: Vec<Window<T::Window>>,
+    /// Shared data passed from Toolkit
     shared: SharedState<T>,
+    /// Timer resumes: (time, window index)
     resumes: Vec<(Instant, usize)>,
 }
 
