@@ -63,6 +63,13 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
 
             DeviceEvent { .. } => return, // windows handle local input; we do not handle global input
             UserEvent(action) => match action {
+                ProxyAction::Close(id) => {
+                    if let Some(id) = self.id_map.get(&id) {
+                        (*id, TkAction::Close)
+                    } else {
+                        return; // window already closed
+                    }
+                }
                 ProxyAction::CloseAll => {
                     *control_flow = ControlFlow::Exit;
                     return;

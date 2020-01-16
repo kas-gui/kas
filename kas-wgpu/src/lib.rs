@@ -134,8 +134,15 @@ pub struct ToolkitProxy {
 pub struct ClosedError;
 
 impl ToolkitProxy {
-    /// Terminate the UI.
-    pub fn close(&self) -> Result<(), ClosedError> {
+    /// Close a specific window.
+    pub fn close(&self, id: WindowId) -> Result<(), ClosedError> {
+        self.proxy
+            .send_event(ProxyAction::Close(id))
+            .map_err(|_| ClosedError)
+    }
+
+    /// Close all windows and terminate the UI.
+    pub fn close_all(&self) -> Result<(), ClosedError> {
         self.proxy
             .send_event(ProxyAction::CloseAll)
             .map_err(|_| ClosedError)
@@ -144,4 +151,5 @@ impl ToolkitProxy {
 
 enum ProxyAction {
     CloseAll,
+    Close(WindowId),
 }
