@@ -5,11 +5,8 @@
 
 //! `Window` and `WindowList` types
 
-use log::{debug, info, trace, warn};
+use log::{debug, info, trace};
 use std::time::{Duration, Instant};
-
-#[cfg(feature = "clipboard")]
-use clipboard::ClipboardProvider;
 
 use kas::event::Callback;
 use kas::geom::{Coord, Rect, Size};
@@ -18,7 +15,7 @@ use winit::dpi::LogicalSize;
 use winit::event::WindowEvent;
 
 use crate::draw::DrawPipe;
-use crate::{PendingAction, SharedState};
+use crate::shared::{PendingAction, SharedState};
 
 /// Per-window data
 pub(crate) struct Window<TW> {
@@ -280,36 +277,14 @@ impl<'a, T> kas::TkWindow for TkWindow<'a, T> {
         self.action = self.action.max(action);
     }
 
-    #[cfg(not(feature = "clipboard"))]
     #[inline]
     fn get_clipboard(&mut self) -> Option<String> {
-        None
+        self.shared.get_clipboard()
     }
 
-    #[cfg(feature = "clipboard")]
-    fn get_clipboard(&mut self) -> Option<String> {
-        self.shared
-            .clipboard
-            .as_mut()
-            .and_then(|cb| match cb.get_contents() {
-                Ok(c) => Some(c),
-                Err(e) => {
-                    warn!("Failed to get clipboard contents: {:?}", e);
-                    None
-                }
-            })
-    }
-
-    #[cfg(not(feature = "clipboard"))]
     #[inline]
-    fn set_clipboard(&mut self, _content: String) {}
-
-    #[cfg(feature = "clipboard")]
     fn set_clipboard(&mut self, content: String) {
-        self.shared.clipboard.as_mut().map(|cb| {
-            cb.set_contents(content)
-                .unwrap_or_else(|e| warn!("Failed to set clipboard contents: {:?}", e))
-        });
+        self.shared.set_clipboard(content);
     }
 }
 

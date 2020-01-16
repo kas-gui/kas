@@ -14,7 +14,8 @@ use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 use kas::{theme, TkAction};
 
 use crate::draw::DrawPipe;
-use crate::{PendingAction, SharedState, Window};
+use crate::shared::{PendingAction, SharedState};
+use crate::Window;
 
 /// Event-loop data structure (i.e. all run-time state)
 pub(crate) struct Loop<T: theme::Theme<DrawPipe>> {

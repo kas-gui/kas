@@ -8,39 +8,23 @@
 pub mod draw;
 mod event_loop;
 mod font;
+mod shared;
 mod theme;
 mod window;
 
-use log::{info, warn};
 use std::{error, fmt};
-
-#[cfg(feature = "clipboard")]
-use clipboard::{ClipboardContext, ClipboardProvider};
 
 use winit::error::OsError;
 use winit::event_loop::EventLoop;
 
 use crate::draw::DrawPipe;
+use crate::shared::SharedState;
 use window::Window;
 
 pub use theme::SampleTheme;
 
 pub use kas;
 pub use wgpu_glyph as glyph;
-
-/// State shared between windows
-struct SharedState<T> {
-    #[cfg(feature = "clipboard")]
-    clipboard: Option<ClipboardContext>,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    theme: T,
-    pending: Vec<PendingAction>,
-}
-
-enum PendingAction {
-    AddWindow(Box<dyn kas::Window>),
-}
 
 /// Possible failures from constructing a [`Toolkit`]
 #[non_exhaustive]
@@ -105,43 +89,10 @@ impl<T: kas::theme::Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
         theme: T,
         adapter_options: Option<&wgpu::RequestAdapterOptions>,
     ) -> Result<Self, Error> {
-        let adapter_options = adapter_options.unwrap_or(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            backends: wgpu::BackendBit::PRIMARY,
-        });
-        let adapter = match wgpu::Adapter::request(adapter_options) {
-            Some(a) => a,
-            None => return Err(Error::NoAdapter),
-        };
-        info!("Using graphics adapter: {}", adapter.get_info().name);
-
-        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
-            extensions: wgpu::Extensions {
-                anisotropic_filtering: false,
-            },
-            limits: wgpu::Limits::default(),
-        });
-
-        #[cfg(feature = "clipboard")]
-        let clipboard = match ClipboardContext::new() {
-            Ok(cb) => Some(cb),
-            Err(e) => {
-                warn!("Unable to open clipboard: {:?}", e);
-                None
-            }
-        };
-
         Ok(Toolkit {
             el: EventLoop::with_user_event(),
             windows: vec![],
-            shared: SharedState {
-                #[cfg(feature = "clipboard")]
-                clipboard,
-                device,
-                queue,
-                theme,
-                pending: vec![],
-            },
+            shared: SharedState::new(theme, adapter_options)?,
         })
     }
 
