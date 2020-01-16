@@ -68,6 +68,9 @@ pub trait TkWindow {
     /// processing, albeit without error handling.
     fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId;
 
+    /// Close a window
+    fn close_window(&mut self, id: WindowId);
+
     /// Read access to the event manager state
     fn data(&self) -> &event::Manager;
 

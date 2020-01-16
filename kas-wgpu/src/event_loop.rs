@@ -156,6 +156,14 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         }
                     };
                 }
+                PendingAction::CloseWindow(id) => {
+                    if let Some(id) = self.id_map.get(&id) {
+                        self.windows.remove(id);
+                        if self.windows.is_empty() {
+                            *control_flow = ControlFlow::Exit;
+                        }
+                    }
+                }
             }
         }
         if have_new_resumes {

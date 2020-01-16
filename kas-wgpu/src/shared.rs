@@ -107,4 +107,5 @@ impl<T> SharedState<T> {
 
 pub enum PendingAction {
     AddWindow(WindowId, Box<dyn kas::Window>),
+    CloseWindow(WindowId),
 }

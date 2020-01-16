@@ -261,6 +261,10 @@ impl<'a, T> kas::TkWindow for TkWindow<'a, T> {
         id
     }
 
+    fn close_window(&mut self, id: WindowId) {
+        self.shared.pending.push(PendingAction::CloseWindow(id));
+    }
+
     fn data(&self) -> &event::Manager {
         &self.ev_mgr
     }
