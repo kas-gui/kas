@@ -6,8 +6,9 @@
 //! Shared state
 
 use log::{info, warn};
+use std::num::NonZeroU32;
 
-use crate::Error;
+use crate::{Error, WindowId};
 
 #[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
@@ -20,6 +21,7 @@ pub struct SharedState<T> {
     pub queue: wgpu::Queue,
     pub theme: T,
     pub pending: Vec<PendingAction>,
+    window_id: u32,
 }
 
 impl<T> SharedState<T> {
@@ -62,7 +64,13 @@ impl<T> SharedState<T> {
             queue,
             theme,
             pending: vec![],
+            window_id: 0,
         })
+    }
+
+    pub fn next_window_id(&mut self) -> WindowId {
+        self.window_id += 1;
+        kas::make_window_id(NonZeroU32::new(self.window_id).unwrap())
     }
 
     #[cfg(not(feature = "clipboard"))]
@@ -98,5 +106,5 @@ impl<T> SharedState<T> {
 }
 
 pub enum PendingAction {
-    AddWindow(Box<dyn kas::Window>),
+    AddWindow(WindowId, Box<dyn kas::Window>),
 }

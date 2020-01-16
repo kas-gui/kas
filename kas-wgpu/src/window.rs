@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 use kas::event::Callback;
 use kas::geom::{Coord, Rect, Size};
-use kas::{event, theme, TkAction, WidgetId};
+use kas::{event, theme, TkAction, WidgetId, WindowId};
 use winit::dpi::LogicalSize;
 use winit::event::WindowEvent;
 
@@ -247,14 +247,18 @@ struct TkWindow<'a, T> {
 }
 
 impl<'a, T> kas::TkWindow for TkWindow<'a, T> {
-    fn add_window(&mut self, widget: Box<dyn kas::Window>) {
+    fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.
         //
         // In theory we could pass the EventLoopWindowTarget for *each* event
         // handled to create the winit window here or use statics to generate
         // errors now, but user code can't do much with this error anyway.
-        self.shared.pending.push(PendingAction::AddWindow(widget));
+        let id = self.shared.next_window_id();
+        self.shared
+            .pending
+            .push(PendingAction::AddWindow(id, widget));
+        id
     }
 
     fn data(&self) -> &event::Manager {

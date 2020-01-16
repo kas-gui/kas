@@ -6,31 +6,40 @@
 //! Event loop and handling
 
 use log::{debug, error, trace};
+use std::collections::HashMap;
 use std::time::Instant;
 
 use winit::event::{Event, StartCause};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+use winit::window as ww;
 
 use kas::{theme, TkAction};
 
 use crate::draw::DrawPipe;
 use crate::shared::{PendingAction, SharedState};
-use crate::{ProxyAction, Window};
+use crate::{ProxyAction, Window, WindowId};
 
 /// Event-loop data structure (i.e. all run-time state)
 pub(crate) struct Loop<T: theme::Theme<DrawPipe>> {
     /// Window states
-    windows: Vec<Window<T::Window>>,
+    windows: HashMap<ww::WindowId, Window<T::Window>>,
+    /// Translates our WindowId to winit's
+    id_map: HashMap<WindowId, ww::WindowId>,
     /// Shared data passed from Toolkit
     shared: SharedState<T>,
     /// Timer resumes: (time, window index)
-    resumes: Vec<(Instant, usize)>,
+    resumes: Vec<(Instant, ww::WindowId)>,
 }
 
 impl<T: theme::Theme<DrawPipe>> Loop<T> {
-    pub(crate) fn new(windows: Vec<Window<T::Window>>, shared: SharedState<T>) -> Self {
+    pub(crate) fn new(
+        mut windows: Vec<(WindowId, Window<T::Window>)>,
+        shared: SharedState<T>,
+    ) -> Self {
+        let id_map = windows.iter().map(|(id, w)| (*id, w.window.id())).collect();
         Loop {
-            windows,
+            windows: windows.drain(..).map(|(_, w)| (w.window.id(), w)).collect(),
+            id_map,
             shared,
             resumes: vec![],
         }
@@ -43,19 +52,21 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
         control_flow: &mut ControlFlow,
     ) {
         use Event::*;
-        let (i, action) = match event {
-            WindowEvent { window_id, event } => 'outer: loop {
-                for (i, window) in self.windows.iter_mut().enumerate() {
-                    if window.window.id() == window_id {
-                        break 'outer (i, window.handle_event(&mut self.shared, event));
-                    }
+        let (id, action) = match event {
+            WindowEvent { window_id, event } => {
+                if let Some(window) = self.windows.get_mut(&window_id) {
+                    (window_id, window.handle_event(&mut self.shared, event))
+                } else {
+                    return;
                 }
-                return;
-            },
+            }
 
             DeviceEvent { .. } => return, // windows handle local input; we do not handle global input
             UserEvent(action) => match action {
-                ProxyAction::CloseAll => (0, TkAction::CloseAll),
+                ProxyAction::CloseAll => {
+                    *control_flow = ControlFlow::Exit;
+                    return;
+                }
             },
 
             NewEvents(cause) => {
@@ -72,8 +83,13 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                             .unwrap_or_else(|| panic!("timer wakeup without resume"));
                         assert_eq!(item.0, requested_resume);
 
-                        let (action, resume) =
-                            self.windows[item.1].timer_resume(&mut self.shared, requested_resume);
+                        let (action, resume) = if let Some(w) = self.windows.get_mut(&item.1) {
+                            w.timer_resume(&mut self.shared, requested_resume)
+                        } else {
+                            // presumably, some window with active timers was removed
+                            self.resumes.remove(0);
+                            return;
+                        };
                         if let Some(instant) = resume {
                             self.resumes[0].0 = instant;
                             self.resumes.sort_by_key(|item| item.0);
@@ -89,9 +105,9 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                     StartCause::Init => {
                         debug!("Wakeup: init");
 
-                        for (i, window) in self.windows.iter_mut().enumerate() {
+                        for (id, window) in self.windows.iter_mut() {
                             if let Some(instant) = window.init(&mut self.shared) {
-                                self.resumes.push((instant, i));
+                                self.resumes.push((instant, *id));
                             }
                         }
                         self.resumes.sort_by_key(|item| item.0);
@@ -114,17 +130,19 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
         let mut have_new_resumes = false;
         while let Some(pending) = self.shared.pending.pop() {
             match pending {
-                PendingAction::AddWindow(widget) => {
+                PendingAction::AddWindow(id, widget) => {
                     debug!("Adding window {}", widget.title());
                     match winit::window::Window::new(elwt) {
                         Ok(window) => {
                             window.set_title(widget.title());
                             let mut win = Window::new(&mut self.shared, window, widget);
+                            let wid = win.window.id();
                             if let Some(instant) = win.init(&mut self.shared) {
-                                self.resumes.push((instant, self.windows.len()));
+                                self.resumes.push((instant, wid));
                                 have_new_resumes = true;
                             }
-                            self.windows.push(win);
+                            self.id_map.insert(id, wid);
+                            self.windows.insert(wid, win);
                         }
                         Err(e) => {
                             error!("Unable to create window: {}", e);
@@ -145,19 +163,16 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
 
         match action {
             TkAction::None => (),
-            TkAction::Redraw => self.windows[i].window.request_redraw(),
-            TkAction::Reconfigure => self.windows[i].reconfigure(),
+            TkAction::Redraw => {
+                self.windows.get(&id).map(|w| w.window.request_redraw());
+            }
+            TkAction::Reconfigure => {
+                self.windows.get_mut(&id).map(|w| w.reconfigure());
+            }
             TkAction::Close => {
-                self.windows.remove(i);
+                self.windows.remove(&id);
                 if self.windows.is_empty() {
                     *control_flow = ControlFlow::Exit;
-                } else {
-                    // update window indices in self.resumes!
-                    for resume in &mut self.resumes {
-                        if resume.1 >= i {
-                            resume.1 -= 1;
-                        }
-                    }
                 }
             }
             TkAction::CloseAll => *control_flow = ControlFlow::Exit,

@@ -14,7 +14,21 @@
 //!
 //! [winit]: https://github.com/rust-windowing/winit
 
+use std::num::NonZeroU32;
+
 use crate::{event, WidgetId};
+
+/// Identifier for a window added to a toolkit
+///
+/// Identifiers should always be unique.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct WindowId(NonZeroU32);
+
+// Only for toolkit use!
+#[doc(hidden)]
+pub fn make_window_id(n: NonZeroU32) -> WindowId {
+    WindowId(n)
+}
 
 /// Toolkit actions needed after event handling, if any.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
@@ -52,7 +66,7 @@ pub trait TkWindow {
     ///
     /// This method is an alternative allowing a window to be added via event
     /// processing, albeit without error handling.
-    fn add_window(&mut self, widget: Box<dyn kas::Window>);
+    fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId;
 
     /// Read access to the event manager state
     fn data(&self) -> &event::Manager;

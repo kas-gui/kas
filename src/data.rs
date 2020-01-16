@@ -19,7 +19,7 @@ use crate::geom::Rect;
 ///
 /// Note: identifiers are first assigned when a window is instantiated by the
 /// toolkit.
-#[derive(Debug, Clone, Copy, Hash, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct WidgetId(NonZeroU32);
 
 impl WidgetId {

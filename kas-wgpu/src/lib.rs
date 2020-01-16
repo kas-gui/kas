@@ -14,6 +14,7 @@ mod window;
 
 use std::{error, fmt};
 
+use kas::WindowId;
 use winit::error::OsError;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
@@ -59,7 +60,7 @@ impl From<OsError> for Error {
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
 pub struct Toolkit<T: kas::theme::Theme<DrawPipe>> {
     el: EventLoop<ProxyAction>,
-    windows: Vec<Window<T::Window>>,
+    windows: Vec<(WindowId, Window<T::Window>)>,
     shared: SharedState<T>,
 }
 
@@ -91,17 +92,18 @@ impl<T: kas::theme::Theme<DrawPipe> + 'static> Toolkit<T> {
     /// This is a convenience wrapper around [`Toolkit::add_boxed`].
     ///
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
-    pub fn add<W: kas::Window + 'static>(&mut self, window: W) -> Result<(), Error> {
+    pub fn add<W: kas::Window + 'static>(&mut self, window: W) -> Result<WindowId, Error> {
         self.add_boxed(Box::new(window))
     }
 
     /// Add a boxed window directly
-    pub fn add_boxed(&mut self, widget: Box<dyn kas::Window>) -> Result<(), Error> {
+    pub fn add_boxed(&mut self, widget: Box<dyn kas::Window>) -> Result<WindowId, Error> {
         let window = winit::window::Window::new(&self.el)?;
         window.set_title(widget.title());
         let win = Window::new(&mut self.shared, window, widget);
-        self.windows.push(win);
-        Ok(())
+        let id = self.shared.next_window_id();
+        self.windows.push((id, win));
+        Ok(id)
     }
 
     /// Create a proxy which can be used to update the UI from another thread
