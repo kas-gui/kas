@@ -6,7 +6,7 @@
 //! Toolkit for kas
 
 pub mod draw;
-mod event;
+mod event_loop;
 mod font;
 mod theme;
 mod window;
@@ -143,7 +143,7 @@ impl<T: kas::theme::Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
 
     /// Run the main loop.
     pub fn run(self) -> ! {
-        let mut el = event::Loop::new(self.windows, self.shared);
+        let mut el = event_loop::Loop::new(self.windows, self.shared);
         self.el
             .run(move |event, elwt, control_flow| el.handle(event, elwt, control_flow))
     }
