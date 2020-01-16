@@ -6,11 +6,10 @@
 //! `Window` and `WindowList` types
 
 use log::{debug, info, trace, warn};
-use std::mem::replace;
 use std::time::{Duration, Instant};
 
 #[cfg(feature = "clipboard")]
-use clipboard::{ClipboardContext, ClipboardProvider};
+use clipboard::ClipboardProvider;
 
 use kas::event::Callback;
 use kas::geom::{Coord, Rect, Size};
@@ -19,11 +18,12 @@ use winit::dpi::LogicalSize;
 use winit::event::WindowEvent;
 
 use crate::draw::DrawPipe;
-use crate::SharedState;
+use crate::{PendingAction, SharedState};
 
 /// Per-window data
 pub(crate) struct Window<TW> {
     widget: Box<dyn kas::Window>,
+    ev_mgr: event::Manager,
     /// The winit window
     pub(crate) window: winit::window::Window,
     surface: wgpu::Surface,
@@ -31,7 +31,6 @@ pub(crate) struct Window<TW> {
     swap_chain: wgpu::SwapChain,
     draw_pipe: DrawPipe,
     timeouts: Vec<(usize, Instant, Option<Duration>)>,
-    tk_window: TkWindow,
     theme_window: TW,
 }
 
@@ -61,37 +60,43 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         let mut draw_pipe = DrawPipe::new(&mut shared.device, sc_desc.format, size, &shared.theme);
         let mut theme_window = shared.theme.new_window(&mut draw_pipe, dpi_factor as f32);
 
-        let mut tk_window = TkWindow::new(dpi_factor);
-        tk_window.ev_mgr.configure(widget.as_widget_mut());
+        let mut ev_mgr = event::Manager::new(dpi_factor);
+        ev_mgr.configure(widget.as_widget_mut());
 
         let mut size_handle = unsafe { theme_window.size_handle(&mut draw_pipe) };
         widget.resize(&mut size_handle, size);
 
         Window {
             widget,
+            ev_mgr,
             window,
             surface,
             sc_desc,
             swap_chain,
             draw_pipe,
             timeouts: vec![],
-            tk_window,
             theme_window,
         }
     }
 
     /// Called by the `Toolkit` when the event loop starts to initialise
     /// windows. Optionally returns a callback time.
-    pub fn init(&mut self) -> Option<Instant> {
+    pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> Option<Instant> {
         self.window.request_redraw();
+
+        let mut tk_window = TkWindow {
+            action: TkAction::None,
+            ev_mgr: &mut self.ev_mgr,
+            shared,
+        };
 
         for (i, condition) in self.widget.callbacks() {
             match condition {
                 Callback::Start => {
-                    self.widget.trigger_callback(i, &mut self.tk_window);
+                    self.widget.trigger_callback(i, &mut tk_window);
                 }
                 Callback::Repeat(dur) => {
-                    self.widget.trigger_callback(i, &mut self.tk_window);
+                    self.widget.trigger_callback(i, &mut tk_window);
                     self.timeouts.push((i, Instant::now() + dur, Some(dur)));
                 }
             }
@@ -105,7 +110,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         debug!("Reconfiguring window (size = {:?})", size);
 
-        self.tk_window.ev_mgr.configure(self.widget.as_widget_mut());
+        self.ev_mgr.configure(self.widget.as_widget_mut());
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
         self.widget.resize(&mut size_handle, size);
         self.window.request_redraw();
@@ -118,31 +123,48 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         &mut self,
         shared: &mut SharedState<T>,
         event: WindowEvent,
-    ) -> (TkAction, Vec<Box<dyn kas::Window>>) {
+    ) -> TkAction {
         // Note: resize must be handled here to update self.swap_chain.
         match event {
             WindowEvent::Resized(size) => self.do_resize(shared, size),
             WindowEvent::RedrawRequested => self.do_draw(shared),
             WindowEvent::HiDpiFactorChanged(factor) => {
                 self.theme_window.set_dpi_factor(factor as f32);
-                self.tk_window.set_dpi_factor(factor);
+                self.ev_mgr.set_dpi_factor(factor);
+                // Note: we rely on caller to resize widget
                 self.do_resize(shared, self.window.inner_size());
             }
             event @ _ => {
-                event::Manager::handle_winit(&mut *self.widget, &mut self.tk_window, event)
+                let mut tk_window = TkWindow {
+                    action: TkAction::None,
+                    ev_mgr: &mut self.ev_mgr,
+                    shared,
+                };
+                event::Manager::handle_winit(&mut *self.widget, &mut tk_window, event);
+                return tk_window.action;
             }
         }
-        let new_windows = replace(&mut self.tk_window.new_windows, vec![]);
-        (self.tk_window.pop_action(), new_windows)
+
+        TkAction::None
     }
 
-    pub(crate) fn timer_resume(&mut self, instant: Instant) -> (TkAction, Option<Instant>) {
+    pub(crate) fn timer_resume<T>(
+        &mut self,
+        shared: &mut SharedState<T>,
+        instant: Instant,
+    ) -> (TkAction, Option<Instant>) {
+        let mut tk_window = TkWindow {
+            action: TkAction::None,
+            ev_mgr: &mut self.ev_mgr,
+            shared,
+        };
+
         // Iterate over loop, mutating some elements, removing others.
         let mut i = 0;
         while i < self.timeouts.len() {
             for timeout in &mut self.timeouts[i..] {
                 if timeout.1 == instant {
-                    self.widget.trigger_callback(timeout.0, &mut self.tk_window);
+                    self.widget.trigger_callback(timeout.0, &mut tk_window);
                     if let Some(dur) = timeout.2 {
                         while timeout.1 <= Instant::now() {
                             timeout.1 += dur;
@@ -158,7 +180,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             }
         }
 
-        (self.tk_window.pop_action(), self.next_resume())
+        (tk_window.action, self.next_resume())
     }
 
     fn next_resume(&self) -> Option<Instant> {
@@ -211,7 +233,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 .theme
                 .draw_handle(&mut self.draw_pipe, &mut self.theme_window, rect)
         };
-        self.widget.draw(&mut draw_handle, &self.tk_window.ev_mgr);
+        self.widget.draw(&mut draw_handle, &self.ev_mgr);
         let clear_color = to_wgpu_color(shared.theme.clear_colour());
         let buf = self
             .draw_pipe
@@ -221,48 +243,13 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
 }
 
 /// Implementation of [`kas::TkWindow`]
-pub(crate) struct TkWindow {
-    #[cfg(feature = "clipboard")]
-    clipboard: Option<ClipboardContext>,
+struct TkWindow<'a, T> {
     action: TkAction,
-    pub(crate) ev_mgr: event::Manager,
-    new_windows: Vec<Box<dyn kas::Window>>,
+    ev_mgr: &'a mut event::Manager,
+    shared: &'a mut SharedState<T>,
 }
 
-impl TkWindow {
-    pub fn new(dpi_factor: f64) -> Self {
-        #[cfg(feature = "clipboard")]
-        let clipboard = match ClipboardContext::new() {
-            Ok(cb) => Some(cb),
-            Err(e) => {
-                warn!("Unable to open clipboard: {:?}", e);
-                None
-            }
-        };
-
-        TkWindow {
-            #[cfg(feature = "clipboard")]
-            clipboard,
-            action: TkAction::None,
-            ev_mgr: event::Manager::new(dpi_factor),
-            new_windows: vec![],
-        }
-    }
-
-    pub fn set_dpi_factor(&mut self, dpi_factor: f64) {
-        self.ev_mgr.set_dpi_factor(dpi_factor);
-        // Note: we rely on caller to resize widget
-    }
-
-    #[inline]
-    pub fn pop_action(&mut self) -> TkAction {
-        let action = self.action;
-        self.action = TkAction::None;
-        action
-    }
-}
-
-impl kas::TkWindow for TkWindow {
+impl<'a, T> kas::TkWindow for TkWindow<'a, T> {
     fn add_window(&mut self, widget: Box<dyn kas::Window>) {
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.
@@ -270,7 +257,7 @@ impl kas::TkWindow for TkWindow {
         // In theory we could pass the EventLoopWindowTarget for *each* event
         // handled to create the winit window here or use statics to generate
         // errors now, but user code can't do much with this error anyway.
-        self.new_windows.push(widget);
+        self.shared.pending.push(PendingAction::AddWindow(widget));
     }
 
     fn data(&self) -> &event::Manager {
@@ -301,7 +288,8 @@ impl kas::TkWindow for TkWindow {
 
     #[cfg(feature = "clipboard")]
     fn get_clipboard(&mut self) -> Option<String> {
-        self.clipboard
+        self.shared
+            .clipboard
             .as_mut()
             .and_then(|cb| match cb.get_contents() {
                 Ok(c) => Some(c),
@@ -318,7 +306,7 @@ impl kas::TkWindow for TkWindow {
 
     #[cfg(feature = "clipboard")]
     fn set_clipboard(&mut self, content: String) {
-        self.clipboard.as_mut().map(|cb| {
+        self.shared.clipboard.as_mut().map(|cb| {
             cb.set_contents(content)
                 .unwrap_or_else(|e| warn!("Failed to set clipboard contents: {:?}", e))
         });

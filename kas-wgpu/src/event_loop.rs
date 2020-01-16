@@ -14,7 +14,7 @@ use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 use kas::{theme, TkAction};
 
 use crate::draw::DrawPipe;
-use crate::{SharedState, Window};
+use crate::{PendingAction, SharedState, Window};
 
 /// Event-loop data structure (i.e. all run-time state)
 pub(crate) struct Loop<T: theme::Theme<DrawPipe>> {
@@ -42,7 +42,7 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
         control_flow: &mut ControlFlow,
     ) {
         use Event::*;
-        let (i, (action, new_windows)) = match event {
+        let (i, action) = match event {
             WindowEvent { window_id, event } => 'outer: loop {
                 for (i, window) in self.windows.iter_mut().enumerate() {
                     if window.window.id() == window_id {
@@ -69,7 +69,8 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                             .unwrap_or_else(|| panic!("timer wakeup without resume"));
                         assert_eq!(item.0, requested_resume);
 
-                        let (action, resume) = self.windows[item.1].timer_resume(requested_resume);
+                        let (action, resume) =
+                            self.windows[item.1].timer_resume(&mut self.shared, requested_resume);
                         if let Some(instant) = resume {
                             self.resumes[0].0 = instant;
                             self.resumes.sort_by_key(|item| item.0);
@@ -79,14 +80,14 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                             self.resumes.remove(0);
                         }
 
-                        (item.1, (action, vec![]))
+                        (item.1, action)
                     }
 
                     StartCause::Init => {
                         debug!("Wakeup: init");
 
                         for (i, window) in self.windows.iter_mut().enumerate() {
-                            if let Some(instant) = window.init() {
+                            if let Some(instant) = window.init(&mut self.shared) {
                                 self.resumes.push((instant, i));
                             }
                         }
@@ -108,22 +109,26 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
 
         // Create and init() any new windows.
         let mut have_new_resumes = false;
-        for widget in new_windows {
-            debug!("Adding window {}", widget.title());
-            match winit::window::Window::new(elwt) {
-                Ok(window) => {
-                    window.set_title(widget.title());
-                    let mut win = Window::new(&mut self.shared, window, widget);
-                    if let Some(instant) = win.init() {
-                        self.resumes.push((instant, self.windows.len()));
-                        have_new_resumes = true;
-                    }
-                    self.windows.push(win);
+        while let Some(pending) = self.shared.pending.pop() {
+            match pending {
+                PendingAction::AddWindow(widget) => {
+                    debug!("Adding window {}", widget.title());
+                    match winit::window::Window::new(elwt) {
+                        Ok(window) => {
+                            window.set_title(widget.title());
+                            let mut win = Window::new(&mut self.shared, window, widget);
+                            if let Some(instant) = win.init(&mut self.shared) {
+                                self.resumes.push((instant, self.windows.len()));
+                                have_new_resumes = true;
+                            }
+                            self.windows.push(win);
+                        }
+                        Err(e) => {
+                            error!("Unable to create window: {}", e);
+                        }
+                    };
                 }
-                Err(e) => {
-                    error!("Unable to create window: {}", e);
-                }
-            };
+            }
         }
         if have_new_resumes {
             self.resumes.sort_by_key(|item| item.0);

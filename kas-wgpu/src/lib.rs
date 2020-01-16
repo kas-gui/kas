@@ -11,8 +11,11 @@ mod font;
 mod theme;
 mod window;
 
-use log::info;
+use log::{info, warn};
 use std::{error, fmt};
+
+#[cfg(feature = "clipboard")]
+use clipboard::{ClipboardContext, ClipboardProvider};
 
 use winit::error::OsError;
 use winit::event_loop::EventLoop;
@@ -27,9 +30,16 @@ pub use wgpu_glyph as glyph;
 
 /// State shared between windows
 struct SharedState<T> {
+    #[cfg(feature = "clipboard")]
+    clipboard: Option<ClipboardContext>,
     device: wgpu::Device,
     queue: wgpu::Queue,
     theme: T,
+    pending: Vec<PendingAction>,
+}
+
+enum PendingAction {
+    AddWindow(Box<dyn kas::Window>),
 }
 
 /// Possible failures from constructing a [`Toolkit`]
@@ -112,13 +122,25 @@ impl<T: kas::theme::Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
             limits: wgpu::Limits::default(),
         });
 
+        #[cfg(feature = "clipboard")]
+        let clipboard = match ClipboardContext::new() {
+            Ok(cb) => Some(cb),
+            Err(e) => {
+                warn!("Unable to open clipboard: {:?}", e);
+                None
+            }
+        };
+
         Ok(Toolkit {
             el: EventLoop::with_user_event(),
             windows: vec![],
             shared: SharedState {
+                #[cfg(feature = "clipboard")]
+                clipboard,
                 device,
                 queue,
                 theme,
+                pending: vec![],
             },
         })
     }
