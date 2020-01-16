@@ -29,8 +29,10 @@ pub(crate) struct Window<TW> {
     surface: wgpu::Surface,
     sc_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
+    draw_pipe: DrawPipe,
     timeouts: Vec<(usize, Instant, Option<Duration>)>,
-    tk_window: TkWindow<TW>,
+    tk_window: TkWindow,
+    theme_window: TW,
 }
 
 // Public functions, for use by the toolkit
@@ -56,11 +58,13 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
-        let mut tk_window = TkWindow::new(shared, sc_desc.format, size, dpi_factor);
+        let mut draw_pipe = DrawPipe::new(&mut shared.device, sc_desc.format, size, &shared.theme);
+        let mut theme_window = shared.theme.new_window(&mut draw_pipe, dpi_factor as f32);
+
+        let mut tk_window = TkWindow::new(dpi_factor);
         tk_window.ev_mgr.configure(widget.as_widget_mut());
 
-        let mut size_handle =
-            unsafe { tk_window.theme_window.size_handle(&mut tk_window.draw_pipe) };
+        let mut size_handle = unsafe { theme_window.size_handle(&mut draw_pipe) };
         widget.resize(&mut size_handle, size);
 
         Window {
@@ -69,8 +73,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             surface,
             sc_desc,
             swap_chain,
+            draw_pipe,
             timeouts: vec![],
             tk_window,
+            theme_window,
         }
     }
 
@@ -100,11 +106,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         debug!("Reconfiguring window (size = {:?})", size);
 
         self.tk_window.ev_mgr.configure(self.widget.as_widget_mut());
-        let mut size_handle = unsafe {
-            self.tk_window
-                .theme_window
-                .size_handle(&mut self.tk_window.draw_pipe)
-        };
+        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
         self.widget.resize(&mut size_handle, size);
         self.window.request_redraw();
     }
@@ -122,6 +124,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             WindowEvent::Resized(size) => self.do_resize(shared, size),
             WindowEvent::RedrawRequested => self.do_draw(shared),
             WindowEvent::HiDpiFactorChanged(factor) => {
+                self.theme_window.set_dpi_factor(factor as f32);
                 self.tk_window.set_dpi_factor(factor);
                 self.do_resize(shared, self.window.inner_size());
             }
@@ -182,14 +185,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             return;
         }
         debug!("Resizing window to size={:?}", size);
-        let mut size_handle = unsafe {
-            self.tk_window
-                .theme_window
-                .size_handle(&mut self.tk_window.draw_pipe)
-        };
+        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
         self.widget.resize(&mut size_handle, size);
 
-        let buf = self.tk_window.resize(&shared.device, size);
+        let buf = self.draw_pipe.resize(&shared.device, size);
         shared.queue.submit(&[buf]);
 
         self.sc_desc.width = size.0;
@@ -208,36 +207,30 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         };
         let frame = self.swap_chain.get_next_texture();
         let mut draw_handle = unsafe {
-            shared.theme.draw_handle(
-                &mut self.tk_window.draw_pipe,
-                &mut self.tk_window.theme_window,
-                rect,
-            )
+            shared
+                .theme
+                .draw_handle(&mut self.draw_pipe, &mut self.theme_window, rect)
         };
         self.widget.draw(&mut draw_handle, &self.tk_window.ev_mgr);
-        let buf = self.tk_window.render(shared, &frame.view);
+        let clear_color = to_wgpu_color(shared.theme.clear_colour());
+        let buf = self
+            .draw_pipe
+            .render(&mut shared.device, &frame.view, clear_color);
         shared.queue.submit(&[buf]);
     }
 }
 
 /// Implementation of [`kas::TkWindow`]
-pub(crate) struct TkWindow<TW> {
+pub(crate) struct TkWindow {
     #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
-    draw_pipe: DrawPipe,
     action: TkAction,
     pub(crate) ev_mgr: event::Manager,
-    theme_window: TW,
     new_windows: Vec<Box<dyn kas::Window>>,
 }
 
-impl<TW: theme::Window<DrawPipe> + 'static> TkWindow<TW> {
-    pub fn new<T: theme::Theme<DrawPipe, Window = TW>>(
-        shared: &mut SharedState<T>,
-        tex_format: wgpu::TextureFormat,
-        size: Size,
-        dpi_factor: f64,
-    ) -> Self {
+impl TkWindow {
+    pub fn new(dpi_factor: f64) -> Self {
         #[cfg(feature = "clipboard")]
         let clipboard = match ClipboardContext::new() {
             Ok(cb) => Some(cb),
@@ -247,28 +240,18 @@ impl<TW: theme::Window<DrawPipe> + 'static> TkWindow<TW> {
             }
         };
 
-        let mut draw_pipe = DrawPipe::new(&mut shared.device, tex_format, size, &shared.theme);
-        let theme_window = shared.theme.new_window(&mut draw_pipe, dpi_factor as f32);
-
         TkWindow {
             #[cfg(feature = "clipboard")]
             clipboard,
-            draw_pipe,
             action: TkAction::None,
             ev_mgr: event::Manager::new(dpi_factor),
-            theme_window,
             new_windows: vec![],
         }
     }
 
     pub fn set_dpi_factor(&mut self, dpi_factor: f64) {
         self.ev_mgr.set_dpi_factor(dpi_factor);
-        self.theme_window.set_dpi_factor(dpi_factor as f32);
         // Note: we rely on caller to resize widget
-    }
-
-    pub fn resize(&mut self, device: &wgpu::Device, size: Size) -> wgpu::CommandBuffer {
-        self.draw_pipe.resize(device, size)
     }
 
     #[inline]
@@ -277,20 +260,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> TkWindow<TW> {
         self.action = TkAction::None;
         action
     }
-
-    /// Render all queued drawables
-    pub fn render<T: theme::Theme<DrawPipe, Window = TW>>(
-        &mut self,
-        shared: &mut SharedState<T>,
-        frame_view: &wgpu::TextureView,
-    ) -> wgpu::CommandBuffer {
-        let clear_color = to_wgpu_color(shared.theme.clear_colour());
-        self.draw_pipe
-            .render(&mut shared.device, frame_view, clear_color)
-    }
 }
 
-impl<TW: theme::Window<DrawPipe>> kas::TkWindow for TkWindow<TW> {
+impl kas::TkWindow for TkWindow {
     fn add_window(&mut self, widget: Box<dyn kas::Window>) {
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.
