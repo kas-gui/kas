@@ -14,7 +14,6 @@
 //!
 //! [winit]: https://github.com/rust-windowing/winit
 
-use crate::theme::SizeHandle;
 use crate::{event, WidgetId};
 
 /// Toolkit actions needed after event handling, if any.
@@ -62,9 +61,6 @@ pub trait TkWindow {
     ///
     /// The closure should return true if this update may require a redraw.
     fn update_data(&mut self, f: &mut dyn FnMut(&mut event::Manager) -> bool);
-
-    /// Construct a [`SizeHandle`] and call the closure on it
-    fn with_size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
 
     /// Notify that a widget must be redrawn
     fn redraw(&mut self, id: WidgetId);

@@ -297,7 +297,7 @@ pub trait Window: Widget + Handler<Msg = VoidMsg> {
     fn title(&self) -> &str;
 
     /// Adjust the size of the window, repositioning widgets.
-    fn resize(&mut self, tk: &mut dyn TkWindow, size: Size);
+    fn resize(&mut self, size_handle: &mut dyn SizeHandle, size: Size);
 
     /// Get a list of available callbacks.
     ///

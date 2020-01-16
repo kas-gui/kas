@@ -12,6 +12,7 @@ use crate::event::{Callback, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout;
 use crate::macros::{VoidMsg, Widget};
+use crate::theme::SizeHandle;
 use crate::widget::{Label, TextButton};
 use crate::{CoreData, TkAction, TkWindow, Window};
 
@@ -60,8 +61,8 @@ impl Window for MessageBox {
         &self.title
     }
 
-    fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
-        layout::solve(self, tk, size);
+    fn resize(&mut self, size_handle: &mut dyn SizeHandle, size: Size) {
+        layout::solve(self, size_handle, size);
     }
 
     // doesn't support callbacks, so doesn't need to do anything here

@@ -11,6 +11,7 @@ use crate::event::{Address, Callback, Event, Handler, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout::{self};
 use crate::macros::Widget;
+use crate::theme::SizeHandle;
 use crate::{CoreData, LayoutData, TkWindow, Widget};
 
 /// The main instantiation of the [`Window`] trait.
@@ -102,8 +103,8 @@ impl<W: Widget + Handler<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         &self.title
     }
 
-    fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
-        layout::solve(self, tk, size);
+    fn resize(&mut self, size_handle: &mut dyn SizeHandle, size: Size) {
+        layout::solve(self, size_handle, size);
     }
 
     fn callbacks(&self) -> Vec<(usize, Callback)> {

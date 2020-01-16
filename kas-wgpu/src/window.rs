@@ -14,7 +14,6 @@ use clipboard::{ClipboardContext, ClipboardProvider};
 
 use kas::event::Callback;
 use kas::geom::{Coord, Rect, Size};
-use kas::theme::SizeHandle;
 use kas::{event, theme, TkAction, WidgetId};
 use winit::dpi::LogicalSize;
 use winit::event::WindowEvent;
@@ -60,7 +59,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         let mut tk_window = TkWindow::new(shared, sc_desc.format, size, dpi_factor);
         tk_window.ev_mgr.configure(widget.as_widget_mut());
 
-        widget.resize(&mut tk_window, size);
+        let mut size_handle =
+            unsafe { tk_window.theme_window.size_handle(&mut tk_window.draw_pipe) };
+        widget.resize(&mut size_handle, size);
 
         Window {
             widget,
@@ -99,7 +100,12 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         debug!("Reconfiguring window (size = {:?})", size);
 
         self.tk_window.ev_mgr.configure(self.widget.as_widget_mut());
-        self.widget.resize(&mut self.tk_window, size);
+        let mut size_handle = unsafe {
+            self.tk_window
+                .theme_window
+                .size_handle(&mut self.tk_window.draw_pipe)
+        };
+        self.widget.resize(&mut size_handle, size);
         self.window.request_redraw();
     }
 
@@ -176,7 +182,12 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             return;
         }
         debug!("Resizing window to size={:?}", size);
-        self.widget.resize(&mut self.tk_window, size);
+        let mut size_handle = unsafe {
+            self.tk_window
+                .theme_window
+                .size_handle(&mut self.tk_window.draw_pipe)
+        };
+        self.widget.resize(&mut size_handle, size);
 
         let buf = self.tk_window.resize(&shared.device, size);
         shared.queue.submit(&[buf]);
@@ -298,15 +309,6 @@ impl<TW: theme::Window<DrawPipe>> kas::TkWindow for TkWindow<TW> {
         if f(&mut self.ev_mgr) {
             self.send_action(TkAction::Redraw);
         }
-    }
-
-    fn with_size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
-        // The reason we take a closure instead of returning the size handle is
-        // because (a) the result is unsized (without use of generics on widgets)
-        // and (b) because its lifetime is tied to the borrow on self, which we
-        // can't represent (hence why theme::Window::size_handle is unsafe).
-        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
-        f(&mut size_handle);
     }
 
     #[inline]
