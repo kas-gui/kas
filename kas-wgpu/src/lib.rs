@@ -15,7 +15,7 @@ mod window;
 use std::{error, fmt};
 
 use winit::error::OsError;
-use winit::event_loop::EventLoop;
+use winit::event_loop::{EventLoop, EventLoopProxy};
 
 use crate::draw::DrawPipe;
 use crate::shared::SharedState;
@@ -57,34 +57,24 @@ impl From<OsError> for Error {
 }
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
-pub struct Toolkit<T: kas::theme::Theme<DrawPipe>, U: 'static> {
-    el: EventLoop<U>,
+pub struct Toolkit<T: kas::theme::Theme<DrawPipe>> {
+    el: EventLoop<ProxyAction>,
     windows: Vec<Window<T::Window>>,
     shared: SharedState<T>,
 }
 
-impl<T: kas::theme::Theme<DrawPipe> + 'static> Toolkit<T, ()> {
+impl<T: kas::theme::Theme<DrawPipe> + 'static> Toolkit<T> {
     /// Construct a new instance with default options.
     ///
     /// This chooses a low-power graphics adapter by preference.
     pub fn new(theme: T) -> Result<Self, Error> {
-        Toolkit::<T, ()>::new_custom(theme, None)
+        Self::new_custom(theme, None)
     }
-}
 
-impl<T: kas::theme::Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
     /// Construct an instance with custom options
     ///
     /// The graphics adapter is chosen according to the given options. If `None`
     /// is supplied, a low-power adapter will be chosen.
-    ///
-    /// The event loop supports user events of type `T`. Refer to winit's
-    /// documentation of `EventLoop::with_user_event` for details.
-    /// If not using user events, it may be necessary to force this type:
-    /// ```
-    /// let theme = kas_wgpu::SampleTheme::new();
-    /// let toolkit = kas_wgpu::Toolkit::<_, ()>::new_custom(theme, None);
-    /// ```
     pub fn new_custom(
         theme: T,
         adapter_options: Option<&wgpu::RequestAdapterOptions>,
@@ -114,10 +104,42 @@ impl<T: kas::theme::Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
         Ok(())
     }
 
+    /// Create a proxy which can be used to update the UI from another thread
+    pub fn create_proxy(&self) -> ToolkitProxy {
+        ToolkitProxy {
+            proxy: self.el.create_proxy(),
+        }
+    }
+
     /// Run the main loop.
     pub fn run(self) -> ! {
         let mut el = event_loop::Loop::new(self.windows, self.shared);
         self.el
             .run(move |event, elwt, control_flow| el.handle(event, elwt, control_flow))
     }
+}
+
+/// A proxy allowing control of a [`Toolkit`] from another thread.
+///
+/// Created by [`Toolkit::create_proxy`].
+pub struct ToolkitProxy {
+    proxy: EventLoopProxy<ProxyAction>,
+}
+
+/// Error type returned by [`ToolkitProxy`] functions.
+///
+/// This error occurs only if the [`Toolkit`] already terminated.
+pub struct ClosedError;
+
+impl ToolkitProxy {
+    /// Terminate the UI.
+    pub fn close(&self) -> Result<(), ClosedError> {
+        self.proxy
+            .send_event(ProxyAction::CloseAll)
+            .map_err(|_| ClosedError)
+    }
+}
+
+enum ProxyAction {
+    CloseAll,
 }

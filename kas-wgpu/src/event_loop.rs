@@ -15,7 +15,7 @@ use kas::{theme, TkAction};
 
 use crate::draw::DrawPipe;
 use crate::shared::{PendingAction, SharedState};
-use crate::Window;
+use crate::{ProxyAction, Window};
 
 /// Event-loop data structure (i.e. all run-time state)
 pub(crate) struct Loop<T: theme::Theme<DrawPipe>> {
@@ -36,10 +36,10 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
         }
     }
 
-    pub(crate) fn handle<U>(
+    pub(crate) fn handle(
         &mut self,
-        event: Event<U>,
-        elwt: &EventLoopWindowTarget<U>,
+        event: Event<ProxyAction>,
+        elwt: &EventLoopWindowTarget<ProxyAction>,
         control_flow: &mut ControlFlow,
     ) {
         use Event::*;
@@ -54,7 +54,9 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
             },
 
             DeviceEvent { .. } => return, // windows handle local input; we do not handle global input
-            UserEvent(_) => return,       // we have no handler for user events
+            UserEvent(action) => match action {
+                ProxyAction::CloseAll => (0, TkAction::CloseAll),
+            },
 
             NewEvents(cause) => {
                 match cause {
