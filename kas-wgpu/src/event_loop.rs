@@ -158,7 +158,9 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                 }
                 PendingAction::CloseWindow(id) => {
                     if let Some(id) = self.id_map.get(&id) {
-                        self.windows.remove(id);
+                        if let Some(window) = self.windows.remove(&id) {
+                            window.handle_closure(&mut self.shared);
+                        }
                         if self.windows.is_empty() {
                             *control_flow = ControlFlow::Exit;
                         }
@@ -185,7 +187,9 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                 self.windows.get_mut(&id).map(|w| w.reconfigure());
             }
             TkAction::Close => {
-                self.windows.remove(&id);
+                if let Some(window) = self.windows.remove(&id) {
+                    window.handle_closure(&mut self.shared);
+                }
                 if self.windows.is_empty() {
                     *control_flow = ControlFlow::Exit;
                 }

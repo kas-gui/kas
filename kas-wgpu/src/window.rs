@@ -96,6 +96,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                     self.widget.trigger_callback(i, &mut tk_window);
                     self.timeouts.push((i, Instant::now() + dur, Some(dur)));
                 }
+                Callback::Close => (),
             }
         }
 
@@ -143,6 +144,26 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         }
 
         TkAction::None
+    }
+
+    pub fn handle_closure<T>(mut self, shared: &mut SharedState<T>) {
+        let mut tk_window = TkWindow {
+            action: TkAction::None,
+            ev_mgr: &mut self.ev_mgr,
+            shared,
+        };
+
+        for (i, condition) in self.widget.callbacks() {
+            match condition {
+                Callback::Start | Callback::Repeat(_) => (),
+                Callback::Close => {
+                    self.widget.trigger_callback(i, &mut tk_window);
+                }
+            }
+        }
+        if let Some(final_cb) = self.widget.final_callback() {
+            final_cb(self.widget, &mut tk_window);
+        }
     }
 
     pub(crate) fn timer_resume<T>(

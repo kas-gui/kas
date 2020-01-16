@@ -69,5 +69,8 @@ impl Window for MessageBox {
     fn callbacks(&self) -> Vec<(usize, Callback)> {
         Vec::new()
     }
+    fn final_callback(&self) -> Option<&'static dyn Fn(Box<dyn kas::Window>, &mut dyn TkWindow)> {
+        None
+    }
     fn trigger_callback(&mut self, _index: usize, _tk: &mut dyn TkWindow) {}
 }

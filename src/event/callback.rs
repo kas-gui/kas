@@ -21,4 +21,6 @@ pub enum Callback {
     // Note: do we want to auto-suspend timeouts for minimised windows? Perhaps
     // make this optional?
     Repeat(Duration),
+    /// Call on window closure
+    Close,
 }
