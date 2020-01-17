@@ -210,7 +210,7 @@ impl<D: Direction> RowPositionSolver<D> {
     pub fn for_children<W: Widget, F: FnMut(&W)>(self, widgets: &[W], rect: Rect, mut f: F) {
         let start = match self.binary_search(widgets, rect.pos) {
             Ok(i) => i,
-            Err(i) => {
+            Err(i) if i > 0 => {
                 let j = i - 1;
                 if widgets[j].rect().contains(rect.pos) {
                     j
@@ -218,6 +218,7 @@ impl<D: Direction> RowPositionSolver<D> {
                     i
                 }
             }
+            Err(_) => 0,
         };
 
         let end = rect.pos + Coord::from(rect.size);
