@@ -6,31 +6,26 @@
 //! Toolkit for kas
 
 pub mod draw;
-mod event;
+mod event_loop;
 mod font;
+mod shared;
 mod theme;
 mod window;
 
-use log::info;
 use std::{error, fmt};
 
+use kas::WindowId;
 use winit::error::OsError;
-use winit::event_loop::EventLoop;
+use winit::event_loop::{EventLoop, EventLoopProxy};
 
 use crate::draw::DrawPipe;
+use crate::shared::SharedState;
 use window::Window;
 
 pub use theme::SampleTheme;
 
 pub use kas;
 pub use wgpu_glyph as glyph;
-
-/// State shared between windows
-struct SharedState<T> {
-    device: wgpu::Device,
-    queue: wgpu::Queue,
-    theme: T,
-}
 
 /// Possible failures from constructing a [`Toolkit`]
 #[non_exhaustive]
@@ -63,63 +58,32 @@ impl From<OsError> for Error {
 }
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
-pub struct Toolkit<T: kas::theme::Theme<DrawPipe>, U: 'static> {
-    el: EventLoop<U>,
-    windows: Vec<Window<T::Window>>,
+pub struct Toolkit<T: kas::theme::Theme<DrawPipe>> {
+    el: EventLoop<ProxyAction>,
+    windows: Vec<(WindowId, Window<T::Window>)>,
     shared: SharedState<T>,
 }
 
-impl<T: kas::theme::Theme<DrawPipe> + 'static> Toolkit<T, ()> {
+impl<T: kas::theme::Theme<DrawPipe> + 'static> Toolkit<T> {
     /// Construct a new instance with default options.
     ///
     /// This chooses a low-power graphics adapter by preference.
     pub fn new(theme: T) -> Result<Self, Error> {
-        Toolkit::<T, ()>::new_custom(theme, None)
+        Self::new_custom(theme, None)
     }
-}
 
-impl<T: kas::theme::Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
     /// Construct an instance with custom options
     ///
     /// The graphics adapter is chosen according to the given options. If `None`
     /// is supplied, a low-power adapter will be chosen.
-    ///
-    /// The event loop supports user events of type `T`. Refer to winit's
-    /// documentation of `EventLoop::with_user_event` for details.
-    /// If not using user events, it may be necessary to force this type:
-    /// ```
-    /// let theme = kas_wgpu::SampleTheme::new();
-    /// let toolkit = kas_wgpu::Toolkit::<_, ()>::new_custom(theme, None);
-    /// ```
     pub fn new_custom(
         theme: T,
         adapter_options: Option<&wgpu::RequestAdapterOptions>,
     ) -> Result<Self, Error> {
-        let adapter_options = adapter_options.unwrap_or(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            backends: wgpu::BackendBit::PRIMARY,
-        });
-        let adapter = match wgpu::Adapter::request(adapter_options) {
-            Some(a) => a,
-            None => return Err(Error::NoAdapter),
-        };
-        info!("Using graphics adapter: {}", adapter.get_info().name);
-
-        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
-            extensions: wgpu::Extensions {
-                anisotropic_filtering: false,
-            },
-            limits: wgpu::Limits::default(),
-        });
-
         Ok(Toolkit {
             el: EventLoop::with_user_event(),
             windows: vec![],
-            shared: SharedState {
-                device,
-                queue,
-                theme,
-            },
+            shared: SharedState::new(theme, adapter_options)?,
         })
     }
 
@@ -128,23 +92,64 @@ impl<T: kas::theme::Theme<DrawPipe> + 'static, U: 'static> Toolkit<T, U> {
     /// This is a convenience wrapper around [`Toolkit::add_boxed`].
     ///
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
-    pub fn add<W: kas::Window + 'static>(&mut self, window: W) -> Result<(), Error> {
+    pub fn add<W: kas::Window + 'static>(&mut self, window: W) -> Result<WindowId, Error> {
         self.add_boxed(Box::new(window))
     }
 
     /// Add a boxed window directly
-    pub fn add_boxed(&mut self, widget: Box<dyn kas::Window>) -> Result<(), Error> {
+    pub fn add_boxed(&mut self, widget: Box<dyn kas::Window>) -> Result<WindowId, Error> {
         let window = winit::window::Window::new(&self.el)?;
         window.set_title(widget.title());
         let win = Window::new(&mut self.shared, window, widget);
-        self.windows.push(win);
-        Ok(())
+        let id = self.shared.next_window_id();
+        self.windows.push((id, win));
+        Ok(id)
+    }
+
+    /// Create a proxy which can be used to update the UI from another thread
+    pub fn create_proxy(&self) -> ToolkitProxy {
+        ToolkitProxy {
+            proxy: self.el.create_proxy(),
+        }
     }
 
     /// Run the main loop.
     pub fn run(self) -> ! {
-        let mut el = event::Loop::new(self.windows, self.shared);
+        let mut el = event_loop::Loop::new(self.windows, self.shared);
         self.el
             .run(move |event, elwt, control_flow| el.handle(event, elwt, control_flow))
     }
+}
+
+/// A proxy allowing control of a [`Toolkit`] from another thread.
+///
+/// Created by [`Toolkit::create_proxy`].
+pub struct ToolkitProxy {
+    proxy: EventLoopProxy<ProxyAction>,
+}
+
+/// Error type returned by [`ToolkitProxy`] functions.
+///
+/// This error occurs only if the [`Toolkit`] already terminated.
+pub struct ClosedError;
+
+impl ToolkitProxy {
+    /// Close a specific window.
+    pub fn close(&self, id: WindowId) -> Result<(), ClosedError> {
+        self.proxy
+            .send_event(ProxyAction::Close(id))
+            .map_err(|_| ClosedError)
+    }
+
+    /// Close all windows and terminate the UI.
+    pub fn close_all(&self) -> Result<(), ClosedError> {
+        self.proxy
+            .send_event(ProxyAction::CloseAll)
+            .map_err(|_| ClosedError)
+    }
+}
+
+enum ProxyAction {
+    CloseAll,
+    Close(WindowId),
 }

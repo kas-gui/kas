@@ -10,7 +10,8 @@ use std::fmt;
 
 use super::{AxisInfo, SizeRules};
 use crate::geom::{Coord, Rect, Size};
-use crate::{TkWindow, Widget};
+use crate::theme::SizeHandle;
+use crate::Widget;
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -62,24 +63,22 @@ pub trait RulesSetter {
 }
 
 /// Solve `widget` for `SizeRules` on both axes, horizontal first.
-pub fn solve<L: Widget>(widget: &mut L, tk: &mut dyn TkWindow, size: Size) {
-    tk.with_size_handle(&mut |size_handle| {
-        // We call size_rules not because we want the result, but because our
-        // spec requires that we do so before calling set_rect.
-        let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
-        let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(size.0)));
+pub fn solve<L: Widget>(widget: &mut L, size_handle: &mut dyn SizeHandle, size: Size) {
+    // We call size_rules not because we want the result, but because our
+    // spec requires that we do so before calling set_rect.
+    let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
+    let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(size.0)));
 
-        let pos = Coord(0, 0);
-        widget.set_rect(size_handle, Rect { pos, size });
+    let pos = Coord(0, 0);
+    widget.set_rect(size_handle, Rect { pos, size });
 
-        trace!(
-            "Layout solution for size={:?} has rules {:?}, {:?} and hierarchy:{}",
-            size,
-            w,
-            h,
-            WidgetHeirarchy(widget, 0),
-        );
-    });
+    trace!(
+        "Layout solution for size={:?} has rules {:?}, {:?} and hierarchy:{}",
+        size,
+        w,
+        h,
+        WidgetHeirarchy(widget, 0),
+    );
 }
 
 struct WidgetHeirarchy<'a>(&'a dyn Widget, usize);

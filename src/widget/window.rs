@@ -11,6 +11,7 @@ use crate::event::{Address, Callback, Event, Handler, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout::{self};
 use crate::macros::Widget;
+use crate::theme::SizeHandle;
 use crate::{CoreData, LayoutData, TkWindow, Widget};
 
 /// The main instantiation of the [`Window`] trait.
@@ -26,6 +27,7 @@ pub struct Window<W: Widget + 'static> {
     #[widget]
     w: W,
     fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut dyn TkWindow))>,
+    final_callback: Option<&'static dyn Fn(Box<dyn kas::Window>, &mut dyn TkWindow)>,
 }
 
 impl<W: Widget> Debug for Window<W> {
@@ -55,6 +57,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
             title: self.title.clone(),
             w: self.w.clone(),
             fns: self.fns.clone(),
+            final_callback: self.final_callback.clone(),
         }
     }
 }
@@ -69,6 +72,7 @@ impl<W: Widget> Window<W> {
             title: title.to_string(),
             w,
             fns: Vec::new(),
+            final_callback: None,
         }
     }
 
@@ -80,6 +84,20 @@ impl<W: Widget> Window<W> {
         f: &'static dyn Fn(&mut W, &mut dyn TkWindow),
     ) {
         self.fns.push((condition, f));
+    }
+
+    /// Set a callback to be called when the window is closed.
+    ///
+    /// This callback assumes ownership of self, with the advantages and
+    /// disadvantages (type erasure) that this implies. Alternatively, one can
+    /// use [`Window::add_callback`] with [`Callback::Close`].
+    ///
+    /// Only a single callback is allowed; if another exists it is replaced.
+    pub fn set_final_callback(
+        &mut self,
+        f: &'static dyn Fn(Box<dyn kas::Window>, &mut dyn TkWindow),
+    ) {
+        self.final_callback = Some(f);
     }
 }
 
@@ -102,12 +120,16 @@ impl<W: Widget + Handler<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         &self.title
     }
 
-    fn resize(&mut self, tk: &mut dyn TkWindow, size: Size) {
-        layout::solve(self, tk, size);
+    fn resize(&mut self, size_handle: &mut dyn SizeHandle, size: Size) {
+        layout::solve(self, size_handle, size);
     }
 
     fn callbacks(&self) -> Vec<(usize, Callback)> {
         self.fns.iter().map(|(cond, _)| *cond).enumerate().collect()
+    }
+
+    fn final_callback(&self) -> Option<&'static dyn Fn(Box<dyn kas::Window>, &mut dyn TkWindow)> {
+        self.final_callback
     }
 
     /// Trigger a callback (see `iter_callbacks`).

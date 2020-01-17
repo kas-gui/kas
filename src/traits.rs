@@ -297,13 +297,16 @@ pub trait Window: Widget + Handler<Msg = VoidMsg> {
     fn title(&self) -> &str;
 
     /// Adjust the size of the window, repositioning widgets.
-    fn resize(&mut self, tk: &mut dyn TkWindow, size: Size);
+    fn resize(&mut self, size_handle: &mut dyn SizeHandle, size: Size);
 
     /// Get a list of available callbacks.
     ///
     /// This returns a sequence of `(index, condition)` values. The toolkit
     /// should call `trigger_callback(index, tk)` whenever the condition is met.
     fn callbacks(&self) -> Vec<(usize, Callback)>;
+
+    /// Get the callback used on window closure.
+    fn final_callback(&self) -> Option<&'static dyn Fn(Box<dyn kas::Window>, &mut dyn TkWindow)>;
 
     /// Trigger a callback (see `iter_callbacks`).
     fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWindow);

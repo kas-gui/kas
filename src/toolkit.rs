@@ -14,10 +14,24 @@
 //!
 //! [winit]: https://github.com/rust-windowing/winit
 
-use crate::theme::SizeHandle;
+use std::num::NonZeroU32;
+
 use crate::{event, WidgetId};
 
+/// Identifier for a window added to a toolkit
+///
+/// Identifiers should always be unique.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct WindowId(NonZeroU32);
+
+// Only for toolkit use!
+#[doc(hidden)]
+pub fn make_window_id(n: NonZeroU32) -> WindowId {
+    WindowId(n)
+}
+
 /// Toolkit actions needed after event handling, if any.
+#[must_use]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub enum TkAction {
     /// No action needed
@@ -53,7 +67,10 @@ pub trait TkWindow {
     ///
     /// This method is an alternative allowing a window to be added via event
     /// processing, albeit without error handling.
-    fn add_window(&mut self, widget: Box<dyn kas::Window>);
+    fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId;
+
+    /// Close a window
+    fn close_window(&mut self, id: WindowId);
 
     /// Read access to the event manager state
     fn data(&self) -> &event::Manager;
@@ -62,9 +79,6 @@ pub trait TkWindow {
     ///
     /// The closure should return true if this update may require a redraw.
     fn update_data(&mut self, f: &mut dyn FnMut(&mut event::Manager) -> bool);
-
-    /// Construct a [`SizeHandle`] and call the closure on it
-    fn with_size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
 
     /// Notify that a widget must be redrawn
     fn redraw(&mut self, id: WidgetId);
@@ -86,4 +100,17 @@ pub trait TkWindow {
 
     /// Attempt to set clipboard contents
     fn set_clipboard(&mut self, content: String);
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn action_precedence() {
+        assert!(TkAction::None < TkAction::Redraw);
+        assert!(TkAction::Redraw < TkAction::Reconfigure);
+        assert!(TkAction::Reconfigure < TkAction::Close);
+        assert!(TkAction::Close < TkAction::CloseAll);
+    }
 }
