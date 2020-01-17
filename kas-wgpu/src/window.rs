@@ -130,7 +130,6 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             WindowEvent::HiDpiFactorChanged(factor) => {
                 self.theme_window.set_dpi_factor(factor as f32);
                 self.ev_mgr.set_dpi_factor(factor);
-                // Note: we rely on caller to resize widget
                 self.do_resize(shared, self.window.inner_size());
             }
             event @ _ => {
