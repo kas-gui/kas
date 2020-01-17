@@ -6,6 +6,7 @@
 //! Event loop and handling
 
 use log::{debug, error, trace};
+use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -53,8 +54,8 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
     ) {
         use Event::*;
 
-        // TODO: use a "small vec" with some initial capacity; usual case is 1 action
-        let mut actions = vec![];
+        // In most cases actions.len() is 0 or 1.
+        let mut actions = SmallVec::<[_; 2]>::new();
         let mut have_new_resumes = false;
 
         match event {
