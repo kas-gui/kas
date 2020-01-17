@@ -31,6 +31,7 @@ pub fn make_window_id(n: NonZeroU32) -> WindowId {
 }
 
 /// Toolkit actions needed after event handling, if any.
+#[must_use]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub enum TkAction {
     /// No action needed
@@ -99,4 +100,17 @@ pub trait TkWindow {
 
     /// Attempt to set clipboard contents
     fn set_clipboard(&mut self, content: String);
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn action_precedence() {
+        assert!(TkAction::None < TkAction::Redraw);
+        assert!(TkAction::Redraw < TkAction::Reconfigure);
+        assert!(TkAction::Reconfigure < TkAction::Close);
+        assert!(TkAction::Close < TkAction::CloseAll);
+    }
 }

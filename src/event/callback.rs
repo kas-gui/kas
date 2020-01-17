@@ -16,6 +16,9 @@ use std::time::Duration;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Callback {
     /// Call once immediately on start.
+    ///
+    /// Note that reconfigure always happens after `Start` callbacks, so there
+    /// is no need to request a redraw / reconfigure from this callback.
     Start,
     /// Call on start and repeatedly with the given period. Precise timing is not guaranteed.
     // Note: do we want to auto-suspend timeouts for minimised windows? Perhaps

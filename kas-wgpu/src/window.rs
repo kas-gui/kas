@@ -37,7 +37,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     pub fn new<T: theme::Theme<DrawPipe, Window = TW>>(
         shared: &mut SharedState<T>,
         window: winit::window::Window,
-        mut widget: Box<dyn kas::Window>,
+        widget: Box<dyn kas::Window>,
     ) -> Self {
         let dpi_factor = window.hidpi_factor();
         let size: Size = window.inner_size().to_physical(dpi_factor).into();
@@ -55,13 +55,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
         let mut draw_pipe = DrawPipe::new(&mut shared.device, sc_desc.format, size, &shared.theme);
-        let mut theme_window = shared.theme.new_window(&mut draw_pipe, dpi_factor as f32);
+        let theme_window = shared.theme.new_window(&mut draw_pipe, dpi_factor as f32);
 
-        let mut ev_mgr = event::Manager::new(dpi_factor);
-        ev_mgr.configure(widget.as_widget_mut());
-
-        let mut size_handle = unsafe { theme_window.size_handle(&mut draw_pipe) };
-        widget.resize(&mut size_handle, size);
+        let ev_mgr = event::Manager::new(dpi_factor);
 
         Window {
             widget,
@@ -78,7 +74,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
 
     /// Called by the `Toolkit` when the event loop starts to initialise
     /// windows. Optionally returns a callback time.
-    pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> Option<Instant> {
+    ///
+    /// `init` should always return an action of at least `TkAction::Reconfigure`.
+    pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
         self.window.request_redraw();
 
         let mut tk_window = TkWindow {
@@ -100,7 +98,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             }
         }
 
-        self.next_resume()
+        (
+            tk_window.action.max(TkAction::Reconfigure),
+            self.next_resume(),
+        )
     }
 
     /// Recompute layout of widgets and redraw
@@ -146,7 +147,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         TkAction::None
     }
 
-    pub fn handle_closure<T>(mut self, shared: &mut SharedState<T>) {
+    pub fn handle_closure<T>(mut self, shared: &mut SharedState<T>) -> TkAction {
         let mut tk_window = TkWindow {
             action: TkAction::None,
             ev_mgr: &mut self.ev_mgr,
@@ -164,6 +165,8 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         if let Some(final_cb) = self.widget.final_callback() {
             final_cb(self.widget, &mut tk_window);
         }
+
+        tk_window.action
     }
 
     pub(crate) fn timer_resume<T>(

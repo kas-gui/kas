@@ -52,12 +52,16 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
         control_flow: &mut ControlFlow,
     ) {
         use Event::*;
-        let (id, action) = match event {
+
+        // TODO: use a "small vec" with some initial capacity; usual case is 1 action
+        let mut actions = vec![];
+        let mut have_new_resumes = false;
+
+        match event {
             WindowEvent { window_id, event } => {
                 if let Some(window) = self.windows.get_mut(&window_id) {
-                    (window_id, window.handle_event(&mut self.shared, event))
-                } else {
-                    return;
+                    let action = window.handle_event(&mut self.shared, event);
+                    actions.push((window_id, action));
                 }
             }
 
@@ -65,14 +69,14 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
             UserEvent(action) => match action {
                 ProxyAction::Close(id) => {
                     if let Some(id) = self.id_map.get(&id) {
-                        (*id, TkAction::Close)
-                    } else {
-                        return; // window already closed
+                        actions.push((*id, TkAction::Close));
                     }
                 }
                 ProxyAction::CloseAll => {
-                    *control_flow = ControlFlow::Exit;
-                    return;
+                    if let Some(id) = self.windows.keys().next() {
+                        // Any id will do; if we have no windows we close anyway!
+                        actions.push((*id, TkAction::CloseAll));
+                    }
                 }
             },
 
@@ -90,13 +94,16 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                             .unwrap_or_else(|| panic!("timer wakeup without resume"));
                         assert_eq!(item.0, requested_resume);
 
-                        let (action, resume) = if let Some(w) = self.windows.get_mut(&item.1) {
-                            w.timer_resume(&mut self.shared, requested_resume)
+                        let resume = if let Some(w) = self.windows.get_mut(&item.1) {
+                            let (action, resume) =
+                                w.timer_resume(&mut self.shared, requested_resume);
+                            actions.push((item.1, action));
+                            resume
                         } else {
                             // presumably, some window with active timers was removed
-                            self.resumes.remove(0);
-                            return;
+                            None
                         };
+
                         if let Some(instant) = resume {
                             self.resumes[0].0 = instant;
                             self.resumes.sort_by_key(|item| item.0);
@@ -105,28 +112,33 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         } else {
                             self.resumes.remove(0);
                         }
-
-                        (item.1, action)
                     }
-
+                    StartCause::WaitCancelled { .. } => {
+                        debug!("Wakeup: WaitCancelled (ignoring)");
+                    }
+                    StartCause::Poll => {
+                        // We use this to check pending actions after removing windows
+                        *control_flow = if self.windows.is_empty() {
+                            ControlFlow::Exit
+                        } else if let Some((instant, _)) = self.resumes.first() {
+                            ControlFlow::WaitUntil(*instant)
+                        } else {
+                            ControlFlow::Wait
+                        };
+                    }
                     StartCause::Init => {
                         debug!("Wakeup: init");
 
                         for (id, window) in self.windows.iter_mut() {
-                            if let Some(instant) = window.init(&mut self.shared) {
+                            let (action, opt_instant) = window.init(&mut self.shared);
+                            actions.push((*id, action));
+                            if let Some(instant) = opt_instant {
                                 self.resumes.push((instant, *id));
                             }
                         }
-                        self.resumes.sort_by_key(|item| item.0);
-                        if let Some(first) = self.resumes.first() {
-                            trace!("Requesting resume at {:?}", first.0);
-                            *control_flow = ControlFlow::WaitUntil(first.0);
-                        } else {
-                            *control_flow = ControlFlow::Wait;
-                        }
-                        return;
+
+                        have_new_resumes = true;
                     }
-                    _ => return, // we can ignore these events
                 }
             }
 
@@ -134,22 +146,25 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
         };
 
         // Create and init() any new windows.
-        let mut have_new_resumes = false;
         while let Some(pending) = self.shared.pending.pop() {
             match pending {
                 PendingAction::AddWindow(id, widget) => {
                     debug!("Adding window {}", widget.title());
                     match winit::window::Window::new(elwt) {
-                        Ok(window) => {
-                            window.set_title(widget.title());
-                            let mut win = Window::new(&mut self.shared, window, widget);
-                            let wid = win.window.id();
-                            if let Some(instant) = win.init(&mut self.shared) {
+                        Ok(wwin) => {
+                            wwin.set_title(widget.title());
+                            let mut window = Window::new(&mut self.shared, wwin, widget);
+                            let wid = window.window.id();
+
+                            let (action, opt_instant) = window.init(&mut self.shared);
+                            actions.push((wid, action));
+                            if let Some(instant) = opt_instant {
                                 self.resumes.push((instant, wid));
                                 have_new_resumes = true;
                             }
+
                             self.id_map.insert(id, wid);
-                            self.windows.insert(wid, win);
+                            self.windows.insert(wid, window);
                         }
                         Err(e) => {
                             error!("Unable to create window: {}", e);
@@ -158,16 +173,12 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                 }
                 PendingAction::CloseWindow(id) => {
                     if let Some(id) = self.id_map.get(&id) {
-                        if let Some(window) = self.windows.remove(&id) {
-                            window.handle_closure(&mut self.shared);
-                        }
-                        if self.windows.is_empty() {
-                            *control_flow = ControlFlow::Exit;
-                        }
+                        actions.push((*id, TkAction::Close));
                     }
                 }
             }
         }
+
         if have_new_resumes {
             self.resumes.sort_by_key(|item| item.0);
             if let Some(first) = self.resumes.first() {
@@ -178,23 +189,33 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
             }
         }
 
-        match action {
-            TkAction::None => (),
-            TkAction::Redraw => {
-                self.windows.get(&id).map(|w| w.window.request_redraw());
-            }
-            TkAction::Reconfigure => {
-                self.windows.get_mut(&id).map(|w| w.reconfigure());
-            }
-            TkAction::Close => {
-                if let Some(window) = self.windows.remove(&id) {
-                    window.handle_closure(&mut self.shared);
+        for (id, action) in actions.pop() {
+            match action {
+                TkAction::None => (),
+                TkAction::Redraw => {
+                    self.windows.get(&id).map(|w| w.window.request_redraw());
                 }
-                if self.windows.is_empty() {
+                TkAction::Reconfigure => {
+                    self.windows.get_mut(&id).map(|w| w.reconfigure());
+                }
+                TkAction::Close => {
+                    if let Some(window) = self.windows.remove(&id) {
+                        if window.handle_closure(&mut self.shared) == TkAction::CloseAll {
+                            actions.push((id, TkAction::CloseAll));
+                        }
+                        // Wake immediately in order to evaluate pending actions:
+                        *control_flow = ControlFlow::Poll;
+                    }
+                }
+                TkAction::CloseAll => {
+                    for (_id, window) in self.windows.drain() {
+                        let _ = window.handle_closure(&mut self.shared);
+                        // Pending actions are not evaluated; this is ok.
+                    }
+                    self.id_map.clear();
                     *control_flow = ControlFlow::Exit;
                 }
             }
-            TkAction::CloseAll => *control_flow = ControlFlow::Exit,
         }
     }
 }
