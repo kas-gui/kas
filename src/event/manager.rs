@@ -108,10 +108,17 @@ impl Manager {
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.key_focus = self.key_focus.and_then(|id| map.get(&id).cloned());
-        self.hover = self.hover.and_then(|id| map.get(&id).cloned());
         for event in &mut self.key_events {
             event.1 = map.get(&event.1).cloned().unwrap();
         }
+
+        // TODO: this widget may no longer be under the mouse pointer!
+        // We have addr = Address::Coord(self.last_mouse_coord), but cannot use
+        // widget.handle(tk, addr, Event::Identify) because we don't have tk
+        // (and the caller cannot construct this: ev_mgr is already borrowed).
+        // Solution: add some other method to resolve a widget from a coord.
+        self.hover = self.hover.and_then(|id| map.get(&id).cloned());
+
         self.mouse_grab = self
             .mouse_grab
             .and_then(|(id, b)| map.get(&id).map(|id| (*id, b)));
