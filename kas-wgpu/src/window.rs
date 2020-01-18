@@ -77,8 +77,6 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     ///
     /// `init` should always return an action of at least `TkAction::Reconfigure`.
     pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
-        self.window.request_redraw();
-
         let mut tk_window = TkWindow {
             action: TkAction::None,
             ev_mgr: &mut self.ev_mgr,
