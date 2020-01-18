@@ -16,6 +16,10 @@ A user depends on `kas` to write their complete UI specification, and then
 pastes a few lines of code to initialise `kas_wgpu::Toolkit`, add the window
 and run the UI.
 
+**Status is alpha-quality:** limited features, sub-optimal layouts,
+proof-of-concept artwork, *probably* not too buggy, limited portability,
+requires nightly Rust.
+
 [`winit`]: https://github.com/rust-windowing/winit/
 [`wgpu`]: https://github.com/gfx-rs/wgpu-rs
 
