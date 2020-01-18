@@ -6,7 +6,7 @@
 //! Geometry data types
 
 #[cfg(feature = "winit")]
-use winit::dpi::{PhysicalPosition, PhysicalSize};
+use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize, Pixel};
 
 /// An `(x, y)` coordinate.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
@@ -26,6 +26,13 @@ impl Coord {
     #[inline]
     pub fn max(self, other: Self) -> Self {
         Coord(self.0.max(other.0), self.1.max(other.1))
+    }
+
+    /// Convert from a logical position
+    pub fn from_logical<X: Pixel>(logical: LogicalPosition<X>, dpi_factor: f64) -> Self {
+        let pos = PhysicalPosition::<i32>::from_logical(logical, dpi_factor);
+        let pos: (i32, i32) = pos.into();
+        Coord(pos.0, pos.1)
     }
 }
 
@@ -71,19 +78,20 @@ impl std::ops::Add<Size> for Coord {
 }
 
 #[cfg(feature = "winit")]
-impl From<PhysicalPosition> for Coord {
+impl<X: Pixel> From<PhysicalPosition<X>> for Coord {
     #[inline]
-    fn from(pos: PhysicalPosition) -> Coord {
-        let pos: (i32, i32) = pos.into();
+    fn from(pos: PhysicalPosition<X>) -> Coord {
+        let pos: (i32, i32) = pos.cast::<i32>().into();
         Coord(pos.0, pos.1)
     }
 }
 
 #[cfg(feature = "winit")]
-impl From<Coord> for PhysicalPosition {
+impl<X: Pixel> From<Coord> for PhysicalPosition<X> {
     #[inline]
-    fn from(coord: Coord) -> PhysicalPosition {
-        (coord.0, coord.1).into()
+    fn from(coord: Coord) -> PhysicalPosition<X> {
+        let pos: PhysicalPosition<i32> = (coord.0, coord.1).into();
+        pos.cast()
     }
 }
 
@@ -129,19 +137,20 @@ impl From<(u32, u32)> for Size {
 }
 
 #[cfg(feature = "winit")]
-impl From<PhysicalSize> for Size {
+impl<X: Pixel> From<PhysicalSize<X>> for Size {
     #[inline]
-    fn from(size: PhysicalSize) -> Size {
-        let size: (u32, u32) = size.into();
+    fn from(size: PhysicalSize<X>) -> Size {
+        let size: (u32, u32) = size.cast::<u32>().into();
         Size(size.0, size.1)
     }
 }
 
 #[cfg(feature = "winit")]
-impl From<Size> for PhysicalSize {
+impl<X: Pixel> From<Size> for PhysicalSize<X> {
     #[inline]
-    fn from(size: Size) -> PhysicalSize {
-        (size.0, size.1).into()
+    fn from(size: Size) -> PhysicalSize<X> {
+        let pos: PhysicalSize<u32> = (size.0, size.1).into();
+        pos.cast()
     }
 }
 

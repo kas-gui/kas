@@ -143,7 +143,13 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                 }
             }
 
-            EventsCleared | LoopDestroyed | Suspended | Resumed => return,
+            RedrawRequested(id) => {
+                if let Some(window) = self.windows.get_mut(&id) {
+                    window.do_draw(&mut self.shared);
+                }
+            }
+
+            MainEventsCleared | RedrawEventsCleared | LoopDestroyed | Suspended | Resumed => return,
         };
 
         // Create and init() any new windows.

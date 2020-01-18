@@ -453,7 +453,7 @@ impl Manager {
                 position,
                 ..
             } => {
-                let coord = position.to_physical(tk.data().dpi_factor).into();
+                let coord = position.into();
 
                 // Update hovered widget
                 let w_id = match widget.handle(tk, Address::Coord(coord), Event::Identify) {
@@ -480,12 +480,11 @@ impl Manager {
                 tk.update_data(&mut |data| data.set_hover(None));
                 Response::None
             }
-            MouseWheel { delta, phase, modifiers, .. } => {
-                let _ = (phase, modifiers); // TODO: do we have a use for these?
+            MouseWheel { delta, .. } => {
                 let action = Action::Scroll(match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
-                    MouseScrollDelta::PixelDelta(logical_position) =>
-                        ScrollDelta::PixelDelta(logical_position.to_physical(tk.data().dpi_factor).into()),
+                    MouseScrollDelta::PixelDelta(pos) =>
+                        ScrollDelta::PixelDelta(Coord::from_logical(pos, tk.data().dpi_factor)),
                 });
                 if let Some(id) = tk.data().hover {
                     widget.handle(tk, Address::Id(id), Event::Action(action))
@@ -542,7 +541,7 @@ impl Manager {
             // RedrawRequested [handled by toolkit]
             Touch(touch) => {
                 let source = PressSource::Touch(touch.id);
-                let coord = touch.location.to_physical(tk.data().dpi_factor).into();
+                let coord = touch.location.into();
                 match touch.phase {
                     TouchPhase::Started => {
                         let ev = Event::PressStart { source, coord };
