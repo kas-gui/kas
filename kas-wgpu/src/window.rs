@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 use kas::event::Callback;
 use kas::geom::{Coord, Rect, Size};
 use kas::{event, theme, TkAction, WidgetId, WindowId};
-use winit::dpi::LogicalSize;
+use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 
 use crate::draw::DrawPipe;
@@ -39,8 +39,8 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         window: winit::window::Window,
         widget: Box<dyn kas::Window>,
     ) -> Self {
-        let dpi_factor = window.hidpi_factor();
-        let size: Size = window.inner_size().to_physical(dpi_factor).into();
+        let dpi_factor = window.scale_factor();
+        let size: Size = window.inner_size().into();
         info!("Constucted new window with size {:?}", size);
 
         let surface = wgpu::Surface::create(&window);
@@ -77,8 +77,6 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     ///
     /// `init` should always return an action of at least `TkAction::Reconfigure`.
     pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
-        self.window.request_redraw();
-
         let mut tk_window = TkWindow {
             action: TkAction::None,
             ev_mgr: &mut self.ev_mgr,
@@ -126,11 +124,14 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         // Note: resize must be handled here to update self.swap_chain.
         match event {
             WindowEvent::Resized(size) => self.do_resize(shared, size),
-            WindowEvent::RedrawRequested => self.do_draw(shared),
-            WindowEvent::HiDpiFactorChanged(factor) => {
-                self.theme_window.set_dpi_factor(factor as f32);
-                self.ev_mgr.set_dpi_factor(factor);
-                self.do_resize(shared, self.window.inner_size());
+            WindowEvent::ScaleFactorChanged {
+                scale_factor,
+                new_inner_size,
+            } => {
+                // Note: API allows us to set new window size here.
+                self.theme_window.set_dpi_factor(scale_factor as f32);
+                self.ev_mgr.set_dpi_factor(scale_factor);
+                self.do_resize(shared, *new_inner_size);
             }
             event @ _ => {
                 let mut tk_window = TkWindow {
@@ -220,9 +221,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     fn do_resize<T: theme::Theme<DrawPipe, Window = TW>>(
         &mut self,
         shared: &mut SharedState<T>,
-        size: LogicalSize,
+        size: PhysicalSize<u32>,
     ) {
-        let size = size.to_physical(self.window.hidpi_factor()).into();
+        let size = size.into();
         if size == Size(self.sc_desc.width, self.sc_desc.height) {
             return;
         }
@@ -240,7 +241,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             .create_swap_chain(&self.surface, &self.sc_desc);
     }
 
-    fn do_draw<T: theme::Theme<DrawPipe, Window = TW>>(&mut self, shared: &mut SharedState<T>) {
+    pub(crate) fn do_draw<T: theme::Theme<DrawPipe, Window = TW>>(
+        &mut self,
+        shared: &mut SharedState<T>,
+    ) {
         trace!("Drawing window");
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         let rect = Rect {

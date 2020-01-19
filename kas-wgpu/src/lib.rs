@@ -149,6 +149,7 @@ impl ToolkitProxy {
     }
 }
 
+#[derive(Debug)]
 enum ProxyAction {
     CloseAll,
     Close(WindowId),
