@@ -21,7 +21,8 @@ log = "0.4"
 smallvec = "1.1"
 wgpu = "0.4.0"
 wgpu_glyph = "0.6.0"
-winit = "0.20.0"
+# we require a patch not in winit 0.20.0 (for X11 at least):
+winit = { version = "0.20.0", git = "https://github.com/rust-windowing/winit.git" }
 
 [dependencies.clipboard]
 # Provides clipboard support
