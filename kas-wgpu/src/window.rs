@@ -54,7 +54,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
-        let mut draw_pipe = DrawPipe::new(&mut shared.device, sc_desc.format, size, &shared.theme);
+        let mut draw_pipe = DrawPipe::new(shared, sc_desc.format, size);
         let theme_window = shared.theme.new_window(&mut draw_pipe, dpi_factor as f32);
 
         let ev_mgr = event::Manager::new(dpi_factor);

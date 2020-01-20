@@ -8,6 +8,7 @@
 use log::{info, warn};
 use std::num::NonZeroU32;
 
+use crate::draw::ShaderManager;
 use crate::{Error, WindowId};
 
 #[cfg(feature = "clipboard")]
@@ -19,6 +20,7 @@ pub struct SharedState<T> {
     clipboard: Option<ClipboardContext>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
+    pub shaders: ShaderManager,
     pub theme: T,
     pub pending: Vec<PendingAction>,
     window_id: u32,
@@ -57,11 +59,14 @@ impl<T> SharedState<T> {
             limits: wgpu::Limits::default(),
         });
 
+        let shaders = ShaderManager::new(&device)?;
+
         Ok(SharedState {
             #[cfg(feature = "clipboard")]
             clipboard,
             device,
             queue,
+            shaders,
             theme,
             pending: vec![],
             window_id: 0,

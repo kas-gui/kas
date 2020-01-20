@@ -28,6 +28,9 @@ pub use kas;
 pub use wgpu_glyph as glyph;
 
 /// Possible failures from constructing a [`Toolkit`]
+///
+/// Some variants are undocumented. Users should not match these variants since
+/// they are not considered part of the public API.
 #[non_exhaustive]
 #[derive(Debug)]
 pub enum Error {
@@ -36,6 +39,9 @@ pub enum Error {
     /// This can be a driver/configuration issue or hardware limitation. Note
     /// that for now, `wgpu` only supports DX11, DX12, Vulkan and Metal.
     NoAdapter,
+    #[doc(hidden)]
+    /// Shaders failed to compile (likely internal issue)
+    ShaderCompilation(shaderc::Error),
     /// OS error during window creation
     Window(OsError),
 }
@@ -44,6 +50,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
             Error::NoAdapter => write!(f, "no suitable graphics adapter found"),
+            Error::ShaderCompilation(e) => write!(f, "shader compilation failed: {}", e),
             Error::Window(e) => write!(f, "window creation error: {}", e),
         }
     }
@@ -54,6 +61,12 @@ impl error::Error for Error {}
 impl From<OsError> for Error {
     fn from(ose: OsError) -> Self {
         Error::Window(ose)
+    }
+}
+
+impl From<shaderc::Error> for Error {
+    fn from(e: shaderc::Error) -> Self {
+        Error::ShaderCompilation(e)
     }
 }
 

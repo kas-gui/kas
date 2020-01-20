@@ -8,12 +8,11 @@
 use std::f32::consts::FRAC_PI_2;
 use std::mem::size_of;
 
-use lazy_static::lazy_static;
-
 use kas::draw::*;
 use kas::geom::Size;
 
 use super::Rgb;
+use crate::shared::SharedState;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -27,22 +26,10 @@ pub struct RoundPipe {
     passes: Vec<Vec<Vertex>>,
 }
 
-lazy_static! {
-    static ref VS_BYTES: Vec<u32> = super::read_glsl(
-        include_str!("shaders/round.vert"),
-        glsl_to_spirv::ShaderType::Vertex,
-    );
-    static ref FS_BYTES: Vec<u32> = super::read_glsl(
-        include_str!("shaders/round.frag"),
-        glsl_to_spirv::ShaderType::Fragment,
-    );
-}
-
 impl RoundPipe {
     /// Construct
-    pub fn new(device: &wgpu::Device, size: Size, light_norm: [f32; 3]) -> Self {
-        let vs_module = device.create_shader_module(&VS_BYTES);
-        let fs_module = device.create_shader_module(&FS_BYTES);
+    pub fn new<T>(shared: &SharedState<T>, size: Size, light_norm: [f32; 3]) -> Self {
+        let device = &shared.device;
 
         type Scale = [f32; 2];
         let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
@@ -100,11 +87,11 @@ impl RoundPipe {
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             layout: &pipeline_layout,
             vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &vs_module,
+                module: &shared.shaders.round_vertex,
                 entry_point: "main",
             },
             fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
-                module: &fs_module,
+                module: &shared.shaders.round_fragment,
                 entry_point: "main",
             }),
             rasterization_state: Some(wgpu::RasterizationStateDescriptor {

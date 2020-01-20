@@ -19,6 +19,7 @@ use kas::theme;
 
 use super::round_pipe::RoundPipe;
 use super::square_pipe::SquarePipe;
+use crate::shared::SharedState;
 
 /// Abstraction over text rendering
 ///
@@ -61,13 +62,12 @@ impl DrawPipe {
     /// Construct
     // TODO: do we want to share state across windows? With glyph_brush this is
     // not trivial but with our "pipes" it shouldn't be difficult.
-    pub fn new<D: theme::Theme<Self>>(
-        device: &mut wgpu::Device,
+    pub fn new<T: theme::Theme<Self>>(
+        shared: &mut SharedState<T>,
         tex_format: wgpu::TextureFormat,
         size: Size,
-        theme: &D,
     ) -> Self {
-        let dir = theme.light_direction();
+        let dir = shared.theme.light_direction();
         assert!(dir.0 >= 0.0);
         assert!(dir.0 < FRAC_PI_2);
         let a = (dir.0.sin(), dir.0.cos());
@@ -75,8 +75,8 @@ impl DrawPipe {
         let f = a.0 / a.1;
         let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
 
-        let glyph_brush =
-            GlyphBrushBuilder::using_fonts(theme.get_fonts()).build(device, tex_format);
+        let glyph_brush = GlyphBrushBuilder::using_fonts(shared.theme.get_fonts())
+            .build(&mut shared.device, tex_format);
 
         let region = Rect {
             pos: Coord::ZERO,
@@ -84,8 +84,8 @@ impl DrawPipe {
         };
         DrawPipe {
             clip_regions: vec![region],
-            square_pipe: SquarePipe::new(device, size, norm),
-            round_pipe: RoundPipe::new(device, size, norm),
+            square_pipe: SquarePipe::new(shared, size, norm),
+            round_pipe: RoundPipe::new(shared, size, norm),
             glyph_brush,
         }
     }
