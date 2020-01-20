@@ -29,6 +29,7 @@ impl Coord {
     }
 
     /// Convert from a logical position
+    #[cfg(feature = "winit")]
     pub fn from_logical<X: Pixel>(logical: LogicalPosition<X>, dpi_factor: f64) -> Self {
         let pos = PhysicalPosition::<i32>::from_logical(logical, dpi_factor);
         let pos: (i32, i32) = pos.into();
