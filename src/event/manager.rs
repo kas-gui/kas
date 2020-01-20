@@ -12,6 +12,7 @@ use crate::geom::Coord;
 use crate::{Widget, WidgetId};
 
 /// Highlighting state of a widget
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
 pub struct HighlightState {
     /// "Hover" is true if the mouse is over this element or if an active touch
@@ -67,9 +68,8 @@ pub struct Manager {
 impl Manager {
     /// Construct an event manager per-window data struct
     ///
-    /// (For toolkit use.)
-    ///
     /// The DPI factor may be required for event coordinate translation.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[inline]
     pub fn new(dpi_factor: f64) -> Self {
         Manager {
@@ -89,6 +89,7 @@ impl Manager {
     ///
     /// This should be called by the toolkit on the widget tree when the window
     /// is created (before or after resizing).
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     pub fn configure(&mut self, widget: &mut dyn Widget) {
         // Re-assigning WidgetIds might invalidate state; to avoid this we map
         // existing ids to new ids
@@ -126,6 +127,7 @@ impl Manager {
 
     /// Set the DPI factor. Must be updated for correct event translation by
     /// [`Manager::handle_winit`].
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[inline]
     pub fn set_dpi_factor(&mut self, dpi_factor: f64) {
         self.dpi_factor = dpi_factor;
@@ -195,11 +197,6 @@ impl Manager {
             return true;
         }
         false
-    }
-
-    #[inline]
-    pub fn last_mouse_coord(&self) -> Coord {
-        self.last_mouse_coord
     }
 
     #[cfg(feature = "winit")]
@@ -469,7 +466,7 @@ impl Manager {
 
                 let r = if let Some((grab_id, button)) = tk.data().mouse_grab() {
                     let source = PressSource::Mouse(button);
-                    let delta = coord - tk.data().last_mouse_coord();
+                    let delta = coord - tk.data().last_mouse_coord;
                     let ev = Event::PressMove { source, coord, delta };
                     widget.handle(tk, Address::Id(grab_id), ev)
                 } else {
@@ -502,7 +499,7 @@ impl Manager {
                 button,
                 ..
             } => {
-                let coord = tk.data().last_mouse_coord();
+                let coord = tk.data().last_mouse_coord;
                 let source = PressSource::Mouse(button);
 
                 let r = if let Some((grab_id, _)) = tk.data().mouse_grab() {

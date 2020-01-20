@@ -12,6 +12,11 @@ repository = "https://github.com/dhardy/kas"
 [features]
 # Enables usage of unstable Rust features
 nightly = []
+# Enables documentation of APIs for toolkits and internal use.
+# This API is not intended for use by end-user applications and
+# thus is omitted from built documentation by default.
+# This flag does not change the API, only built documentation.
+internal_doc = []
 
 [dependencies]
 log = "0.4"
@@ -36,4 +41,4 @@ optional = true
 members = ["kas-macros", "kas-wgpu"]
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["nightly"]

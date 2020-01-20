@@ -119,12 +119,12 @@ impl SizeRules {
         self.a = self.a.min(min);
     }
 
-    #[doc(hidden)]
     /// Solve a sequence of rules
     ///
     /// Given a sequence of width / height `rules` from children (including a
     /// final value which is the total) and a `target` size, find an appropriate
     /// size for each child width / height.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     // TODO (const generics):
     // fn solve_seq<const N: usize>(out: &mut [u32; N], rules: &[Self; N + 1], target: u32)
     pub fn solve_seq(out: &mut [u32], rules: &[Self], target: u32) {

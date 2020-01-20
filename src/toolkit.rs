@@ -25,7 +25,7 @@ use crate::{event, WidgetId};
 pub struct WindowId(NonZeroU32);
 
 // Only for toolkit use!
-#[doc(hidden)]
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub fn make_window_id(n: NonZeroU32) -> WindowId {
     WindowId(n)
 }

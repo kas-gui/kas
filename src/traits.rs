@@ -40,7 +40,7 @@ pub trait WidgetCore: fmt::Debug {
     /// Get mutable access to the [`CoreData`] providing property storage.
     ///
     /// This should not normally be needed by user code.
-    #[doc(hidden)]
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     fn core_data_mut(&mut self) -> &mut CoreData;
 
     /// Get the widget's numeric identifier
