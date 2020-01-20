@@ -15,6 +15,7 @@ nightly = []
 
 [dependencies]
 log = "0.4"
+smallvec = "1.1"
 
 [dependencies.kas-macros]
 version = "0.1.0"

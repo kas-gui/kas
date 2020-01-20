@@ -5,6 +5,7 @@
 
 //! Push-buttons
 
+use smallvec::SmallVec;
 use std::fmt::Debug;
 
 use crate::class::HasText;
@@ -12,7 +13,7 @@ use crate::event::{self, Action, Handler, Response, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{CoreData, TkWindow, Widget, WidgetCore};
+use crate::{CoreData, TkWindow, Widget, WidgetCore, WidgetId};
 use kas::geom::Rect;
 
 /// A push-button with a text label
@@ -21,12 +22,20 @@ use kas::geom::Rect;
 pub struct TextButton<M: Clone + Debug> {
     #[core]
     core: CoreData,
+    keys: SmallVec<[VirtualKeyCode; 4]>,
     text_rect: Rect,
     label: String,
     msg: M,
 }
 
 impl<M: Clone + Debug> Widget for TextButton<M> {
+    fn configure(&mut self, id: WidgetId, mgr: &mut event::Manager) {
+        self.core_data_mut().id = id;
+        for key in &self.keys {
+            mgr.add_accel_key(*key, id);
+        }
+    }
+
     fn allow_focus(&self) -> bool {
         true
     }
@@ -68,6 +77,7 @@ impl<M: Clone + Debug> TextButton<M> {
     pub fn new<S: Into<String>>(label: S, msg: M) -> Self {
         TextButton {
             core: Default::default(),
+            keys: SmallVec::new(),
             text_rect: Default::default(),
             label: label.into(),
             msg,
@@ -87,7 +97,7 @@ impl<M: Clone + Debug> TextButton<M> {
 
     /// Set accelerator keys
     pub fn set_keys(&mut self, keys: &[VirtualKeyCode]) {
-        self.core.set_keys(keys);
+        self.keys = SmallVec::from_slice(keys);
     }
 }
 

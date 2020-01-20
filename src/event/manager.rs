@@ -98,11 +98,7 @@ impl Manager {
         self.accel_keys.clear();
         widget.walk_mut(&mut |widget| {
             map.insert(widget.id(), id);
-            widget.core_data_mut().id = id;
-
-            for key in widget.core_data().keys() {
-                self.accel_keys.insert(key, id);
-            }
+            widget.configure(id, self);
             id = id.next();
         });
 
@@ -210,6 +206,15 @@ impl Manager {
     fn set_last_mouse_coord(&mut self, coord: Coord) -> bool {
         self.last_mouse_coord = coord;
         false
+    }
+
+    /// Adds an accelerator key for a widget
+    ///
+    /// If this key is pressed when the window has focus and no widget has a
+    /// key-grab, the given widget will receive an [`Action::Activate`] event.
+    #[inline]
+    pub fn add_accel_key(&mut self, key: VirtualKeyCode, id: WidgetId) {
+        self.accel_keys.insert(key, id);
     }
 
     /// Request a mouse grab on the given input source

@@ -197,6 +197,18 @@ impl WidgetCore for Box<dyn Widget> {
 ///
 /// [`Handler`]: crate::event::Handler
 pub trait Widget: WidgetCore {
+    /// Configure widget
+    ///
+    /// Widgets are *configured* on window creation and when
+    /// [`kas::TkAction::Reconfigure`] is sent.
+    ///
+    /// *All* implementations *must* set `self.core.id` to the given `id`.
+    /// Widgets only need to implement this manually when they need to perform
+    /// additional configuration.
+    fn configure(&mut self, id: WidgetId, _mgr: &mut event::Manager) {
+        self.core_data_mut().id = id;
+    }
+
     /// Is this widget navigable via Tab key?
     fn allow_focus(&self) -> bool {
         false

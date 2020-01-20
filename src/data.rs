@@ -9,7 +9,6 @@ use std::fmt;
 use std::num::NonZeroU32;
 use std::u32;
 
-use crate::event::VirtualKeyCode;
 use crate::geom::Rect;
 
 /// Widget identifier
@@ -58,34 +57,4 @@ impl fmt::Display for WidgetId {
 pub struct CoreData {
     pub rect: Rect,
     pub id: WidgetId,
-    // variable-length list; None may not preceed Some(_)
-    keys: [Option<VirtualKeyCode>; 4],
-}
-
-impl CoreData {
-    /// Set shortcut keys
-    pub fn set_keys(&mut self, keys: &[VirtualKeyCode]) {
-        if keys.len() > self.keys.len() {
-            panic!(
-                "CoreData::set_keys: found {} keys; max supported is {}",
-                keys.len(),
-                self.keys.len()
-            );
-        }
-        for (source, dest) in keys.iter().copied().zip(&mut self.keys) {
-            *dest = Some(source);
-        }
-        for dest in &mut self.keys[keys.len()..] {
-            *dest = None;
-        }
-    }
-
-    /// Get shortcut keys
-    pub fn keys<'a>(&'a self) -> impl Iterator<Item = VirtualKeyCode> + 'a {
-        self.keys
-            .iter()
-            .take_while(|x| x.is_some())
-            .fuse()
-            .map(|x| x.unwrap())
-    }
 }
