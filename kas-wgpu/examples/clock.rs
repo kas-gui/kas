@@ -15,7 +15,7 @@ use kas::class::HasText;
 use kas::event::{Callback, VoidMsg};
 use kas::macros::make_widget;
 use kas::widget::{Label, Window};
-use kas::{TkWindow, WidgetCore};
+use kas::TkWindow;
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
@@ -31,9 +31,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
             impl {
                 fn on_tick(&mut self, tk: &mut dyn TkWindow) {
                     let now = Local::now();
-                    self.date.set_text(tk, now.format("%Y %m %d").to_string());
+                    self.date.set_text(tk, now.format("%Y-%m-%d").to_string());
                     self.time.set_text(tk, now.format("%H:%M:%S").to_string());
-                    tk.redraw(self.id());
                 }
             }
         },
