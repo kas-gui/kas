@@ -310,7 +310,7 @@ impl Handler for EditBox<()> {
     fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<VoidMsg> {
         match action {
             Action::Activate => {
-                tk.update_data(&mut |data| data.set_char_focus(self.id()));
+                tk.update_data(&mut |data| data.request_char_focus(self.id()));
                 Response::None
             }
             Action::ReceivedCharacter(c) => {
@@ -333,7 +333,7 @@ impl<M, H: Fn(&str) -> M> Handler for EditBox<H> {
     fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<M> {
         match action {
             Action::Activate => {
-                tk.update_data(&mut |data| data.set_char_focus(self.id()));
+                tk.update_data(&mut |data| data.request_char_focus(self.id()));
                 Response::None
             }
             Action::ReceivedCharacter(c) => {

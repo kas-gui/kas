@@ -214,9 +214,21 @@ impl Manager {
         self.accel_keys.insert(key, id);
     }
 
-    /// Request a mouse grab on the given input source
+    /// Request character-input focus
     ///
-    /// Also adjusts keyboard focus
+    /// If successful, [`Action::ReceivedCharacter`] events are sent to this
+    /// widget when character data is received.
+    ///
+    /// Returns true on success. Currently, this method always succeeds.
+    pub fn request_char_focus(&mut self, id: WidgetId) -> bool {
+        if self.key_focus.is_some() {
+            self.key_focus = Some(id);
+        }
+        self.char_focus = Some(id);
+        true
+    }
+
+    /// Request a mouse grab on the given `source`
     ///
     /// If successful, corresponding move/end events will be forwarded to the
     /// given `w_id`. The grab automatically ends after the end event. Since
@@ -224,8 +236,12 @@ impl Manager {
     /// e.g. the move events are not needed (although in practice this only
     /// affects parents intercepting [`Response::Unhandled`] events).
     ///
-    /// In the case that multiple widgets attempt to grab the same source, only
-    /// the first will be successful.
+    /// Returns true on success. This method normally succeeds, but fails when
+    /// multiple widgets attempt a grab the same press source simultaneously
+    /// (only the first grab is successful).
+    ///
+    /// This method automatically cancels any active char grab
+    /// and updates keyboard navigation focus.
     pub fn request_press_grab(
         &mut self,
         source: PressSource,
@@ -233,6 +249,26 @@ impl Manager {
         coord: Coord,
     ) -> bool {
         let w_id = widget.id();
+        match source {
+            PressSource::Mouse(button) => {
+                if self.mouse_grab.is_none() {
+                    self.mouse_grab = Some((w_id, button));
+                } else {
+                    return false;
+                }
+            }
+            PressSource::Touch(touch_id) => match self.touch_grab.entry(touch_id) {
+                Entry::Occupied(_) => return false,
+                Entry::Vacant(v) => {
+                    v.insert(PressEvent {
+                        start_id: w_id,
+                        cur_id: w_id,
+                        last_coord: coord,
+                    });
+                }
+            },
+        }
+
         if widget.allow_focus() {
             if self.key_focus.is_some() {
                 self.key_focus = Some(w_id);
@@ -240,27 +276,7 @@ impl Manager {
             self.char_focus = None;
         }
 
-        match source {
-            PressSource::Mouse(button) => {
-                if self.mouse_grab.is_none() {
-                    self.mouse_grab = Some((w_id, button));
-                    true
-                } else {
-                    false
-                }
-            }
-            PressSource::Touch(touch_id) => match self.touch_grab.entry(touch_id) {
-                Entry::Occupied(_) => false,
-                Entry::Vacant(v) => {
-                    v.insert(PressEvent {
-                        start_id: w_id,
-                        cur_id: w_id,
-                        last_coord: coord,
-                    });
-                    true
-                }
-            },
-        }
+        true
     }
 
     #[cfg(feature = "winit")]
@@ -316,14 +332,6 @@ impl Manager {
         }
         self.key_focus = None;
         start != None
-    }
-
-    pub(crate) fn set_char_focus(&mut self, id: WidgetId) -> bool {
-        if self.key_focus.is_some() {
-            self.key_focus = Some(id);
-        }
-        self.char_focus = Some(id);
-        true
     }
 }
 
