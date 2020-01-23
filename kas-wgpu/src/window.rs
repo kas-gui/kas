@@ -20,7 +20,7 @@ use crate::shared::{PendingAction, SharedState};
 /// Per-window data
 pub(crate) struct Window<TW> {
     widget: Box<dyn kas::Window>,
-    ev_mgr: event::Manager,
+    ev_mgr: event::ManagerState,
     /// The winit window
     pub(crate) window: winit::window::Window,
     surface: wgpu::Surface,
@@ -57,7 +57,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         let mut draw_pipe = DrawPipe::new(shared, sc_desc.format, size);
         let theme_window = shared.theme.new_window(&mut draw_pipe, dpi_factor as f32);
 
-        let ev_mgr = event::Manager::new(dpi_factor);
+        let ev_mgr = event::ManagerState::new(dpi_factor);
 
         Window {
             widget,
@@ -77,11 +77,11 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     ///
     /// `init` should always return an action of at least `TkAction::Reconfigure`.
     pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
-        self.ev_mgr.send_action(TkAction::Reconfigure);
         let mut tk_window = TkWindow {
-            ev_mgr: &mut self.ev_mgr,
+            ev_mgr: self.ev_mgr.manager(),
             shared,
         };
+        tk_window.ev_mgr.send_action(TkAction::Reconfigure);
 
         for (i, condition) in self.widget.callbacks() {
             match condition {
@@ -96,7 +96,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             }
         }
 
-        (self.ev_mgr.take_action(), self.next_resume())
+        (tk_window.ev_mgr.unwrap_action(), self.next_resume())
     }
 
     /// Recompute layout of widgets and redraw
@@ -132,18 +132,18 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             }
             event @ _ => {
                 let mut tk_window = TkWindow {
-                    ev_mgr: &mut self.ev_mgr,
+                    ev_mgr: self.ev_mgr.manager(),
                     shared,
                 };
                 event::Manager::handle_winit(&mut *self.widget, &mut tk_window, event);
-                tk_window.ev_mgr.take_action()
+                tk_window.ev_mgr.unwrap_action()
             }
         }
     }
 
     pub fn handle_closure<T>(mut self, shared: &mut SharedState<T>) -> TkAction {
         let mut tk_window = TkWindow {
-            ev_mgr: &mut self.ev_mgr,
+            ev_mgr: self.ev_mgr.manager(),
             shared,
         };
 
@@ -159,7 +159,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             final_cb(self.widget, &mut tk_window);
         }
 
-        self.ev_mgr.take_action()
+        tk_window.ev_mgr.unwrap_action()
     }
 
     pub(crate) fn timer_resume<T>(
@@ -168,7 +168,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         instant: Instant,
     ) -> (TkAction, Option<Instant>) {
         let mut tk_window = TkWindow {
-            ev_mgr: &mut self.ev_mgr,
+            ev_mgr: self.ev_mgr.manager(),
             shared,
         };
 
@@ -193,7 +193,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             }
         }
 
-        (self.ev_mgr.take_action(), self.next_resume())
+        (tk_window.ev_mgr.unwrap_action(), self.next_resume())
     }
 
     fn next_resume(&self) -> Option<Instant> {
@@ -252,7 +252,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 .theme
                 .draw_handle(&mut self.draw_pipe, &mut self.theme_window, rect)
         };
-        self.widget.draw(&mut draw_handle, &self.ev_mgr);
+        self.widget.draw(&mut draw_handle, &self.ev_mgr.manager());
         let clear_color = to_wgpu_color(shared.theme.clear_colour());
         let buf = self
             .draw_pipe
@@ -263,7 +263,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
 
 /// Implementation of [`kas::TkWindow`]
 struct TkWindow<'a, T> {
-    ev_mgr: &'a mut event::Manager,
+    ev_mgr: event::Manager<'a>,
     shared: &'a mut SharedState<T>,
 }
 

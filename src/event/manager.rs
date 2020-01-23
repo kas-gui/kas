@@ -50,9 +50,9 @@ struct PressEvent {
 /// Window event manager
 ///
 /// Encapsulation of per-window event state plus supporting methods.
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[derive(Clone, Debug)]
-pub struct Manager {
-    action: TkAction,
+pub struct ManagerState {
     dpi_factor: f64,
     char_focus: Option<WidgetId>,
     key_focus: Option<WidgetId>,
@@ -67,14 +67,13 @@ pub struct Manager {
 
 /// Toolkit API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-impl Manager {
+impl ManagerState {
     /// Construct an event manager per-window data struct
     ///
     /// The DPI factor may be required for event coordinate translation.
     #[inline]
     pub fn new(dpi_factor: f64) -> Self {
-        Manager {
-            action: TkAction::None,
+        ManagerState {
             dpi_factor,
             char_focus: None,
             key_focus: None,
@@ -100,7 +99,7 @@ impl Manager {
         self.accel_keys.clear();
         widget.walk_mut(&mut |widget| {
             map.insert(widget.id(), id);
-            widget.configure(id, self);
+            widget.configure(id, &mut self.manager());
             id = id.next();
         });
 
@@ -126,23 +125,40 @@ impl Manager {
         }
     }
 
-    /// Take the current [`TkAction`], resetting to `None`.
-    pub fn take_action(&mut self) -> TkAction {
-        let action = self.action;
-        self.action = TkAction::None;
-        action
-    }
-
     /// Set the DPI factor. Must be updated for correct event translation by
     /// [`Manager::handle_winit`].
     #[inline]
     pub fn set_dpi_factor(&mut self, dpi_factor: f64) {
         self.dpi_factor = dpi_factor;
     }
+
+    /// Construct a [`Manager`] referring to this state
+    #[inline]
+    pub fn manager(&mut self) -> Manager {
+        Manager {
+            action: TkAction::None,
+            mgr: self,
+        }
+    }
+}
+
+/// Manager of event-handling and toolkit actions
+pub struct Manager<'a> {
+    action: TkAction,
+    mgr: &'a mut ManagerState,
+}
+
+/// Toolkit API
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+impl<'a> Manager<'a> {
+    /// Extract the [`TkAction`].
+    pub fn unwrap_action(&mut self) -> TkAction {
+        self.action
+    }
 }
 
 /// Public API
-impl Manager {
+impl<'a> Manager<'a> {
     /// Notify that a [`TkAction`] action should happen
     ///
     /// This causes the given action to happen after event handling.
@@ -168,22 +184,22 @@ impl Manager {
     /// Get whether this widget has a grab on character input
     #[inline]
     pub fn char_focus(&self, w_id: WidgetId) -> bool {
-        self.char_focus == Some(w_id)
+        self.mgr.char_focus == Some(w_id)
     }
 
     /// Get whether this widget has keyboard focus
     #[inline]
     pub fn key_focus(&self, w_id: WidgetId) -> bool {
-        self.key_focus == Some(w_id)
+        self.mgr.key_focus == Some(w_id)
     }
 
     /// Get whether the widget is under the mouse or finger
     #[inline]
     pub fn is_hovered(&self, w_id: WidgetId) -> bool {
-        if self.hover == Some(w_id) {
+        if self.mgr.hover == Some(w_id) {
             return true;
         }
-        for touch in self.touch_grab.values() {
+        for touch in self.mgr.touch_grab.values() {
             if touch.cur_id == w_id {
                 return true;
             }
@@ -194,17 +210,17 @@ impl Manager {
     /// Check whether the given widget is visually depressed
     #[inline]
     pub fn is_depressed(&self, w_id: WidgetId) -> bool {
-        for (_, id) in &self.key_events {
+        for (_, id) in &self.mgr.key_events {
             if *id == w_id {
                 return true;
             }
         }
-        if let Some(grab) = self.mouse_grab {
-            if grab.0 == w_id && self.hover == Some(w_id) {
+        if let Some(grab) = self.mgr.mouse_grab {
+            if grab.0 == w_id && self.mgr.hover == Some(w_id) {
                 return true;
             }
         }
-        for touch in self.touch_grab.values() {
+        for touch in self.mgr.touch_grab.values() {
             if touch.start_id == w_id && touch.cur_id == w_id {
                 return true;
             }
@@ -218,7 +234,7 @@ impl Manager {
     /// key-grab, the given widget will receive an [`Action::Activate`] event.
     #[inline]
     pub fn add_accel_key(&mut self, key: VirtualKeyCode, id: WidgetId) {
-        self.accel_keys.insert(key, id);
+        self.mgr.accel_keys.insert(key, id);
     }
 
     /// Request character-input focus
@@ -228,10 +244,10 @@ impl Manager {
     ///
     /// Returns true on success. Currently, this method always succeeds.
     pub fn request_char_focus(&mut self, id: WidgetId) -> bool {
-        if self.key_focus.is_some() {
-            self.key_focus = Some(id);
+        if self.mgr.key_focus.is_some() {
+            self.mgr.key_focus = Some(id);
         }
-        self.char_focus = Some(id);
+        self.mgr.char_focus = Some(id);
         true
     }
 
@@ -258,13 +274,13 @@ impl Manager {
         let w_id = widget.id();
         match source {
             PressSource::Mouse(button) => {
-                if self.mouse_grab.is_none() {
-                    self.mouse_grab = Some((w_id, button));
+                if self.mgr.mouse_grab.is_none() {
+                    self.mgr.mouse_grab = Some((w_id, button));
                 } else {
                     return false;
                 }
             }
-            PressSource::Touch(touch_id) => match self.touch_grab.entry(touch_id) {
+            PressSource::Touch(touch_id) => match self.mgr.touch_grab.entry(touch_id) {
                 Entry::Occupied(_) => return false,
                 Entry::Vacant(v) => {
                     v.insert(PressEvent {
@@ -277,10 +293,10 @@ impl Manager {
         }
 
         if widget.allow_focus() {
-            if self.key_focus.is_some() {
-                self.key_focus = Some(w_id);
+            if self.mgr.key_focus.is_some() {
+                self.mgr.key_focus = Some(w_id);
             }
-            self.char_focus = None;
+            self.mgr.char_focus = None;
         }
 
         true
@@ -288,11 +304,11 @@ impl Manager {
 }
 
 /// Internal methods
-impl Manager {
+impl<'a> Manager<'a> {
     #[cfg(feature = "winit")]
     fn set_hover(&mut self, w_id: Option<WidgetId>) -> bool {
-        if self.hover != w_id {
-            self.hover = w_id;
+        if self.mgr.hover != w_id {
+            self.mgr.hover = w_id;
             return true;
         }
         false
@@ -300,19 +316,19 @@ impl Manager {
 
     #[cfg(feature = "winit")]
     fn set_last_mouse_coord(&mut self, coord: Coord) -> bool {
-        self.last_mouse_coord = coord;
+        self.mgr.last_mouse_coord = coord;
         false
     }
 
     #[cfg(feature = "winit")]
     fn mouse_grab(&self) -> Option<(WidgetId, MouseButton)> {
-        self.mouse_grab
+        self.mgr.mouse_grab
     }
 
     #[cfg(feature = "winit")]
     fn end_mouse_grab(&mut self, button: MouseButton) -> bool {
-        if self.mouse_grab.map(|g| g.1 == button).unwrap_or(false) {
-            self.mouse_grab = None;
+        if self.mgr.mouse_grab.map(|g| g.1 == button).unwrap_or(false) {
+            self.mgr.mouse_grab = None;
             true
         } else {
             false
@@ -321,12 +337,12 @@ impl Manager {
 
     #[cfg(feature = "winit")]
     fn touch_grab(&self, touch_id: u64) -> Option<PressEvent> {
-        self.touch_grab.get(&touch_id).cloned()
+        self.mgr.touch_grab.get(&touch_id).cloned()
     }
 
     #[cfg(feature = "winit")]
     fn update_touch_coord(&mut self, touch_id: u64, coord: Coord) -> bool {
-        if let Some(v) = self.touch_grab.get_mut(&touch_id) {
+        if let Some(v) = self.mgr.touch_grab.get_mut(&touch_id) {
             v.last_coord = coord;
             true
         } else {
@@ -336,12 +352,12 @@ impl Manager {
 
     #[cfg(feature = "winit")]
     fn end_touch_grab(&mut self, touch_id: u64) -> bool {
-        self.touch_grab.remove(&touch_id).is_some()
+        self.mgr.touch_grab.remove(&touch_id).is_some()
     }
 
     #[cfg(feature = "winit")]
     fn next_key_focus(&mut self, widget: &mut dyn Widget) -> bool {
-        let start = self.key_focus;
+        let start = self.mgr.key_focus;
         let mut id = start.map(|id| id.next()).unwrap_or(WidgetId::FIRST);
         let end = widget.id();
         while id <= end {
@@ -350,17 +366,17 @@ impl Manager {
                 .map(|w| w.allow_focus())
                 .unwrap_or(false)
             {
-                self.key_focus = Some(id);
+                self.mgr.key_focus = Some(id);
                 return start != Some(id);
             }
             id = id.next();
         }
-        self.key_focus = None;
+        self.mgr.key_focus = None;
         start != None
     }
 }
 
-impl Manager {
+impl<'a> Manager<'a> {
     /// Handle a winit `WindowEvent`.
     ///
     /// Note that some event types are not *does not* handled, since for these
@@ -390,7 +406,7 @@ impl Manager {
             // HoveredFile(PathBuf),
             // HoveredFileCancelled,
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
-                if let Some(id) = tk.data().char_focus {
+                if let Some(id) = tk.data().mgr.char_focus {
                     let ev = Event::Action(Action::ReceivedCharacter(c));
                     widget.handle(tk, Address::Id(id), ev)
                 } else {
@@ -399,12 +415,12 @@ impl Manager {
             }
             // Focused(bool),
             KeyboardInput { input, .. } => {
-                let char_focus = tk.data().char_focus.is_some();
+                let char_focus = tk.data().mgr.char_focus.is_some();
                 match (input.scancode, input.state, input.virtual_keycode) {
                     (_, ElementState::Pressed, Some(vkey)) if char_focus => match vkey {
                         VirtualKeyCode::Escape => {
                             tk.update_data(&mut |data| {
-                                data.char_focus = None;
+                                data.mgr.char_focus = None;
                                 true
                             });
                             Response::None
@@ -417,18 +433,18 @@ impl Manager {
                             Response::None
                         }
                         VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
-                            if let Some(id) = tk.data().key_focus {
+                            if let Some(id) = tk.data().mgr.key_focus {
                                 let ev = Event::Action(Action::Activate);
                                 let r =  widget.handle(tk, Address::Id(id), ev);
 
                                 // Add to key_events for visual feedback
                                 tk.update_data(&mut |data| {
-                                    for item in &data.key_events {
+                                    for item in &data.mgr.key_events {
                                         if item.1 == id {
                                             return false;
                                         }
                                     }
-                                    data.key_events.push((scancode, id));
+                                    data.mgr.key_events.push((scancode, id));
                                     true
                                 });
                                 r
@@ -436,8 +452,8 @@ impl Manager {
                         }
                         VirtualKeyCode::Escape => {
                             tk.update_data(&mut |data| {
-                                if data.key_focus.is_some() {
-                                    data.key_focus = None;
+                                if data.mgr.key_focus.is_some() {
+                                    data.mgr.key_focus = None;
                                     true
                                 } else {
                                     false
@@ -446,17 +462,17 @@ impl Manager {
                             Response::None
                         }
                         vkey @ _ => {
-                            if let Some(id) = tk.data().accel_keys.get(&vkey).cloned() {
+                            if let Some(id) = tk.data().mgr.accel_keys.get(&vkey).cloned() {
                                 let ev = Event::Action(Action::Activate);
                                 let r =  widget.handle(tk, Address::Id(id), ev);
 
                                 tk.update_data(&mut |data| {
-                                    for item in &data.key_events {
+                                    for item in &data.mgr.key_events {
                                         if item.1 == id {
                                             return false;
                                         }
                                     }
-                                    data.key_events.push((scancode, id));
+                                    data.mgr.key_events.push((scancode, id));
                                     true
                                 });
                                 r
@@ -466,7 +482,7 @@ impl Manager {
                     (scancode, ElementState::Released, _) => {
                         tk.update_data(&mut |data| {
                             let r = 'outer: loop {
-                                for (i, item) in data.key_events.iter().enumerate() {
+                                for (i, item) in data.mgr.key_events.iter().enumerate() {
                                     // We must match scancode not vkey since the
                                     // latter may have changed due to modifiers
                                     if item.0 == scancode {
@@ -475,7 +491,7 @@ impl Manager {
                                 }
                                 return false;
                             };
-                            data.key_events.remove(r);
+                            data.mgr.key_events.remove(r);
                             true
                         });
                         Response::None
@@ -498,7 +514,7 @@ impl Manager {
 
                 let r = if let Some((grab_id, button)) = tk.data().mouse_grab() {
                     let source = PressSource::Mouse(button);
-                    let delta = coord - tk.data().last_mouse_coord;
+                    let delta = coord - tk.data().mgr.last_mouse_coord;
                     let ev = Event::PressMove { source, coord, delta };
                     widget.handle(tk, Address::Id(grab_id), ev)
                 } else {
@@ -518,9 +534,9 @@ impl Manager {
                 let action = Action::Scroll(match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
                     MouseScrollDelta::PixelDelta(pos) =>
-                        ScrollDelta::PixelDelta(Coord::from_logical(pos, tk.data().dpi_factor)),
+                        ScrollDelta::PixelDelta(Coord::from_logical(pos, tk.data().mgr.dpi_factor)),
                 });
-                if let Some(id) = tk.data().hover {
+                if let Some(id) = tk.data().mgr.hover {
                     widget.handle(tk, Address::Id(id), Event::Action(action))
                 } else {
                     Response::None
@@ -531,7 +547,7 @@ impl Manager {
                 button,
                 ..
             } => {
-                let coord = tk.data().last_mouse_coord;
+                let coord = tk.data().mgr.last_mouse_coord;
                 let source = PressSource::Mouse(button);
 
                 let r = if let Some((grab_id, _)) = tk.data().mouse_grab() {
@@ -543,12 +559,12 @@ impl Manager {
                         ElementState::Released => Event::PressEnd {
                             source,
                             start_id: Some(grab_id),
-                            end_id: tk.data().hover,
+                            end_id: tk.data().mgr.hover,
                             coord,
                         },
                     };
                     widget.handle(tk, Address::Id(grab_id), ev)
-                } else if let Some(id) = tk.data().hover {
+                } else if let Some(id) = tk.data().mgr.hover {
                     // No mouse grab, but we have a hover target
                     let ev = match state {
                         ElementState::Pressed => Event::PressStart { source, coord },

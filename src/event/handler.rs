@@ -172,7 +172,7 @@ impl<M> Clone for Box<dyn Handler<Msg = M>> {
     }
 }
 
-impl Manager {
+impl<'a> Manager<'a> {
     /// Generic handler for low-level events passed to leaf widgets
     pub fn handle_generic<W>(
         widget: &mut W,
