@@ -485,10 +485,10 @@ impl<'a> Manager<'a> {
                 }
             }
             // Focused(bool),
-            KeyboardInput { input, .. } => {
+            KeyboardInput { input, is_synthetic, .. } => {
                 let char_focus = self.mgr.char_focus.is_some();
                 match (input.scancode, input.state, input.virtual_keycode) {
-                    (_, ElementState::Pressed, Some(vkey)) if char_focus => match vkey {
+                    (_, ElementState::Pressed, Some(vkey)) if char_focus && !is_synthetic => match vkey {
                         VirtualKeyCode::Escape => {
                             if let Some(id) = self.mgr.char_focus {
                                 self.redraw(id);
@@ -498,7 +498,7 @@ impl<'a> Manager<'a> {
                         }
                         _ => Response::None,
                     },
-                    (scancode, ElementState::Pressed, Some(vkey)) if !char_focus => match vkey {
+                    (scancode, ElementState::Pressed, Some(vkey)) if !char_focus && !is_synthetic => match vkey {
                         VirtualKeyCode::Tab => {
                             self.next_key_focus(widget.as_widget_mut());
                             Response::None
