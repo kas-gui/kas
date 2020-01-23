@@ -9,7 +9,7 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use super::*;
 use crate::geom::Coord;
-use crate::{Widget, WidgetId};
+use crate::{TkAction, Widget, WidgetId};
 
 /// Highlighting state of a widget
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
@@ -52,6 +52,7 @@ struct PressEvent {
 /// Encapsulation of per-window event state plus supporting methods.
 #[derive(Clone, Debug)]
 pub struct Manager {
+    action: TkAction,
     dpi_factor: f64,
     char_focus: Option<WidgetId>,
     key_focus: Option<WidgetId>,
@@ -73,6 +74,7 @@ impl Manager {
     #[inline]
     pub fn new(dpi_factor: f64) -> Self {
         Manager {
+            action: TkAction::None,
             dpi_factor,
             char_focus: None,
             key_focus: None,
@@ -124,6 +126,13 @@ impl Manager {
         }
     }
 
+    /// Take the current [`TkAction`], resetting to `None`.
+    pub fn take_action(&mut self) -> TkAction {
+        let action = self.action;
+        self.action = TkAction::None;
+        action
+    }
+
     /// Set the DPI factor. Must be updated for correct event translation by
     /// [`Manager::handle_winit`].
     #[inline]
@@ -134,6 +143,18 @@ impl Manager {
 
 /// Public API
 impl Manager {
+    /// Notify that a [`TkAction`] action should happen
+    ///
+    /// This causes the given action to happen after event handling.
+    ///
+    /// Whenever a widget is added, removed or replaced, a reconfigure action is
+    /// required. Should a widget's size requirements change, these will only
+    /// affect the UI after a reconfigure action.
+    #[inline]
+    pub fn send_action(&mut self, action: TkAction) {
+        self.action = self.action.max(action);
+    }
+
     /// Get the complete highlight state
     pub fn highlight_state(&self, w_id: WidgetId) -> HighlightState {
         HighlightState {
@@ -353,7 +374,6 @@ impl Manager {
     ) where
         W: Widget + Handler<Msg = VoidMsg> + ?Sized,
     {
-        use crate::TkAction;
         use log::trace;
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
         trace!("Event: {:?}", event);

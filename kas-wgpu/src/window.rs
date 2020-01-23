@@ -77,8 +77,8 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     ///
     /// `init` should always return an action of at least `TkAction::Reconfigure`.
     pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
+        self.ev_mgr.send_action(TkAction::Reconfigure);
         let mut tk_window = TkWindow {
-            action: TkAction::None,
             ev_mgr: &mut self.ev_mgr,
             shared,
         };
@@ -96,10 +96,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             }
         }
 
-        (
-            tk_window.action.max(TkAction::Reconfigure),
-            self.next_resume(),
-        )
+        (self.ev_mgr.take_action(), self.next_resume())
     }
 
     /// Recompute layout of widgets and redraw
@@ -131,25 +128,21 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 // Note: API allows us to set new window size here.
                 self.theme_window.set_dpi_factor(scale_factor as f32);
                 self.ev_mgr.set_dpi_factor(scale_factor);
-                self.do_resize(shared, *new_inner_size);
+                self.do_resize(shared, *new_inner_size)
             }
             event @ _ => {
                 let mut tk_window = TkWindow {
-                    action: TkAction::None,
                     ev_mgr: &mut self.ev_mgr,
                     shared,
                 };
                 event::Manager::handle_winit(&mut *self.widget, &mut tk_window, event);
-                return tk_window.action;
+                tk_window.ev_mgr.take_action()
             }
         }
-
-        TkAction::None
     }
 
     pub fn handle_closure<T>(mut self, shared: &mut SharedState<T>) -> TkAction {
         let mut tk_window = TkWindow {
-            action: TkAction::None,
             ev_mgr: &mut self.ev_mgr,
             shared,
         };
@@ -166,7 +159,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             final_cb(self.widget, &mut tk_window);
         }
 
-        tk_window.action
+        self.ev_mgr.take_action()
     }
 
     pub(crate) fn timer_resume<T>(
@@ -175,7 +168,6 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         instant: Instant,
     ) -> (TkAction, Option<Instant>) {
         let mut tk_window = TkWindow {
-            action: TkAction::None,
             ev_mgr: &mut self.ev_mgr,
             shared,
         };
@@ -201,7 +193,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             }
         }
 
-        (tk_window.action, self.next_resume())
+        (self.ev_mgr.take_action(), self.next_resume())
     }
 
     fn next_resume(&self) -> Option<Instant> {
@@ -222,11 +214,12 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         &mut self,
         shared: &mut SharedState<T>,
         size: PhysicalSize<u32>,
-    ) {
+    ) -> TkAction {
         let size = size.into();
         if size == Size(self.sc_desc.width, self.sc_desc.height) {
-            return;
+            return TkAction::None;
         }
+
         debug!("Resizing window to size={:?}", size);
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
         self.widget.resize(&mut size_handle, size);
@@ -239,6 +232,8 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         self.swap_chain = shared
             .device
             .create_swap_chain(&self.surface, &self.sc_desc);
+
+        TkAction::Redraw
     }
 
     pub(crate) fn do_draw<T: theme::Theme<DrawPipe, Window = TW>>(
@@ -268,7 +263,6 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
 
 /// Implementation of [`kas::TkWindow`]
 struct TkWindow<'a, T> {
-    action: TkAction,
     ev_mgr: &'a mut event::Manager,
     shared: &'a mut SharedState<T>,
 }
@@ -309,7 +303,7 @@ impl<'a, T> kas::TkWindow for TkWindow<'a, T> {
 
     #[inline]
     fn send_action(&mut self, action: TkAction) {
-        self.action = self.action.max(action);
+        self.ev_mgr.send_action(action);
     }
 
     #[inline]
