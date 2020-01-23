@@ -24,10 +24,14 @@ use crate::{event, WidgetId};
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct WindowId(NonZeroU32);
 
-// Only for toolkit use!
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-pub fn make_window_id(n: NonZeroU32) -> WindowId {
-    WindowId(n)
+impl WindowId {
+    /// Construct a [`WindowId`]
+    ///
+    /// Only for toolkit use!
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    pub fn new(n: NonZeroU32) -> WindowId {
+        WindowId(n)
+    }
 }
 
 /// Toolkit actions needed after event handling, if any.

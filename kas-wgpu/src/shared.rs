@@ -75,7 +75,7 @@ impl<T> SharedState<T> {
 
     pub fn next_window_id(&mut self) -> WindowId {
         self.window_id += 1;
-        kas::make_window_id(NonZeroU32::new(self.window_id).unwrap())
+        WindowId::new(NonZeroU32::new(self.window_id).unwrap())
     }
 
     #[cfg(not(feature = "clipboard"))]

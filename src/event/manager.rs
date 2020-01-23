@@ -12,7 +12,6 @@ use crate::geom::Coord;
 use crate::{Widget, WidgetId};
 
 /// Highlighting state of a widget
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
 pub struct HighlightState {
     /// "Hover" is true if the mouse is over this element or if an active touch
@@ -65,11 +64,12 @@ pub struct Manager {
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
 }
 
+/// Toolkit API
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl Manager {
     /// Construct an event manager per-window data struct
     ///
     /// The DPI factor may be required for event coordinate translation.
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[inline]
     pub fn new(dpi_factor: f64) -> Self {
         Manager {
@@ -89,7 +89,6 @@ impl Manager {
     ///
     /// This should be called by the toolkit on the widget tree when the window
     /// is created (before or after resizing).
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     pub fn configure(&mut self, widget: &mut dyn Widget) {
         // Re-assigning WidgetIds might invalidate state; to avoid this we map
         // existing ids to new ids
@@ -127,12 +126,14 @@ impl Manager {
 
     /// Set the DPI factor. Must be updated for correct event translation by
     /// [`Manager::handle_winit`].
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[inline]
     pub fn set_dpi_factor(&mut self, dpi_factor: f64) {
         self.dpi_factor = dpi_factor;
     }
+}
 
+/// Public API
+impl Manager {
     /// Get the complete highlight state
     pub fn highlight_state(&self, w_id: WidgetId) -> HighlightState {
         HighlightState {
@@ -187,21 +188,6 @@ impl Manager {
                 return true;
             }
         }
-        false
-    }
-
-    #[cfg(feature = "winit")]
-    fn set_hover(&mut self, w_id: Option<WidgetId>) -> bool {
-        if self.hover != w_id {
-            self.hover = w_id;
-            return true;
-        }
-        false
-    }
-
-    #[cfg(feature = "winit")]
-    fn set_last_mouse_coord(&mut self, coord: Coord) -> bool {
-        self.last_mouse_coord = coord;
         false
     }
 
@@ -277,6 +263,24 @@ impl Manager {
         }
 
         true
+    }
+}
+
+/// Internal methods
+impl Manager {
+    #[cfg(feature = "winit")]
+    fn set_hover(&mut self, w_id: Option<WidgetId>) -> bool {
+        if self.hover != w_id {
+            self.hover = w_id;
+            return true;
+        }
+        false
+    }
+
+    #[cfg(feature = "winit")]
+    fn set_last_mouse_coord(&mut self, coord: Coord) -> bool {
+        self.last_mouse_coord = coord;
+        false
     }
 
     #[cfg(feature = "winit")]
