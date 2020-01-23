@@ -90,31 +90,34 @@ impl ManagerState {
     ///
     /// This should be called by the toolkit on the widget tree when the window
     /// is created (before or after resizing).
-    pub fn configure(&mut self, tkw: &mut dyn TkWindow, widget: &mut dyn Widget) {
+    pub fn configure<W>(&mut self, tkw: &mut dyn TkWindow, widget: &mut W)
+    where
+        W: Widget + Handler<Msg = VoidMsg> + ?Sized,
+    {
         // Re-assigning WidgetIds might invalidate state; to avoid this we map
         // existing ids to new ids
         let mut map = HashMap::new();
         let mut id = WidgetId::FIRST;
 
         self.accel_keys.clear();
+        let addr = Address::Coord(self.last_mouse_coord);
+        let mut mgr = self.manager(tkw);
         widget.walk_mut(&mut |widget| {
             map.insert(widget.id(), id);
-            widget.configure(id, &mut self.manager(tkw));
+            widget.configure(id, &mut mgr);
             id = id.next();
         });
+
+        self.hover = match widget.handle(&mut mgr, addr, Event::Identify) {
+            Response::Identify(id) => Some(id),
+            _ => None,
+        };
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.key_focus = self.key_focus.and_then(|id| map.get(&id).cloned());
         for event in &mut self.key_events {
             event.1 = map.get(&event.1).cloned().unwrap();
         }
-
-        // TODO: this widget may no longer be under the mouse pointer!
-        // We have addr = Address::Coord(self.last_mouse_coord), but cannot use
-        // widget.handle(mgr, addr, Event::Identify) because we don't have mgr
-        // (and the caller cannot construct this: mgr is already borrowed).
-        // Solution: add some other method to resolve a widget from a coord.
-        self.hover = self.hover.and_then(|id| map.get(&id).cloned());
 
         self.mouse_grab = self
             .mouse_grab
