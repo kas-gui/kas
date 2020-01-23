@@ -203,7 +203,9 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                     self.windows.get(&id).map(|w| w.window.request_redraw());
                 }
                 TkAction::Reconfigure => {
-                    self.windows.get_mut(&id).map(|w| w.reconfigure());
+                    if let Some(window) = self.windows.get_mut(&id) {
+                        window.reconfigure(&mut self.shared);
+                    }
                 }
                 TkAction::Close => {
                     if let Some(window) = self.windows.remove(&id) {

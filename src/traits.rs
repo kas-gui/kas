@@ -7,11 +7,10 @@
 
 use std::fmt;
 
-use crate::event::{self, Callback, Handler, VoidMsg};
+use crate::event::{Callback, Handler, Manager, VoidMsg};
 use crate::geom::{Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::toolkit::TkWindow;
 use crate::{CoreData, WidgetId};
 
 pub trait CloneTo {
@@ -78,14 +77,14 @@ pub trait WidgetCore: fmt::Debug {
     ///
     /// Warning: directly adjusting a widget without requiring reconfigure or
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
-    /// be requested. This can be done via [`TkWindow::send_action`].
+    /// be requested. This can be done via [`Manager::send_action`].
     /// This method may be removed in the future.
     fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
 
     /// Find a child widget by identifier
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`crate::event::Manager::configure`].
+    /// [`crate::Manager::configure`].
     fn get_by_id(&self, id: WidgetId) -> Option<&dyn Widget> {
         if id == self.id() {
             return Some(self.as_widget());
@@ -205,7 +204,7 @@ pub trait Widget: WidgetCore {
     /// *All* implementations *must* set `self.core.id` to the given `id`.
     /// Widgets only need to implement this manually when they need to perform
     /// additional configuration.
-    fn configure(&mut self, id: WidgetId, _mgr: &mut event::Manager) {
+    fn configure(&mut self, id: WidgetId, _: &mut Manager) {
         self.core_data_mut().id = id;
     }
 
@@ -242,7 +241,7 @@ pub trait Widget: WidgetCore {
     ///
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager);
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager);
 }
 
 impl Widget for Box<dyn Widget> {
@@ -258,8 +257,8 @@ impl Widget for Box<dyn Widget> {
         self.as_mut().set_rect(size_handle, rect);
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
-        self.as_ref().draw(draw_handle, ev_mgr);
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+        self.as_ref().draw(draw_handle, mgr);
     }
 }
 
@@ -314,12 +313,12 @@ pub trait Window: Widget + Handler<Msg = VoidMsg> {
     /// Get a list of available callbacks.
     ///
     /// This returns a sequence of `(index, condition)` values. The toolkit
-    /// should call `trigger_callback(index, tk)` whenever the condition is met.
+    /// should call `trigger_callback(index, mgr)` whenever the condition is met.
     fn callbacks(&self) -> Vec<(usize, Callback)>;
 
     /// Get the callback used on window closure.
-    fn final_callback(&self) -> Option<&'static dyn Fn(Box<dyn kas::Window>, &mut dyn TkWindow)>;
+    fn final_callback(&self) -> Option<&'static dyn Fn(Box<dyn kas::Window>, &mut Manager)>;
 
     /// Trigger a callback (see `iter_callbacks`).
-    fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWindow);
+    fn trigger_callback(&mut self, index: usize, mgr: &mut Manager);
 }

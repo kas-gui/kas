@@ -9,11 +9,11 @@ use smallvec::SmallVec;
 use std::fmt::Debug;
 
 use crate::class::HasText;
-use crate::event::{self, Action, Handler, Response, VirtualKeyCode};
+use crate::event::{Action, Handler, Manager, Response, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{CoreData, TkWindow, Widget, WidgetCore, WidgetId};
+use crate::{CoreData, Widget, WidgetCore, WidgetId};
 use kas::geom::Rect;
 
 /// A push-button with a text label
@@ -29,7 +29,7 @@ pub struct TextButton<M: Clone + Debug> {
 }
 
 impl<M: Clone + Debug> Widget for TextButton<M> {
-    fn configure(&mut self, id: WidgetId, mgr: &mut event::Manager) {
+    fn configure(&mut self, id: WidgetId, mgr: &mut Manager) {
         self.core_data_mut().id = id;
         for key in &self.keys {
             mgr.add_accel_key(*key, id);
@@ -55,8 +55,8 @@ impl<M: Clone + Debug> Widget for TextButton<M> {
         self.core_data_mut().rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
-        draw_handle.button(self.core.rect, ev_mgr.highlight_state(self.id()));
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+        draw_handle.button(self.core.rect, mgr.highlight_state(self.id()));
         let props = TextProperties {
             class: TextClass::Button,
             multi_line: false,
@@ -106,9 +106,9 @@ impl<M: Clone + Debug> HasText for TextButton<M> {
         &self.label
     }
 
-    fn set_string(&mut self, tk: &mut dyn TkWindow, text: String) {
+    fn set_string(&mut self, mgr: &mut Manager, text: String) {
         self.label = text;
-        tk.redraw(self.id());
+        mgr.redraw(self.id());
     }
 }
 
@@ -120,7 +120,7 @@ impl<M: Clone + Debug> Handler for TextButton<M> {
         true
     }
 
-    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<M> {
+    fn handle_action(&mut self, _: &mut Manager, action: Action) -> Response<M> {
         match action {
             Action::Activate => self.msg.clone().into(),
             a @ _ => Response::unhandled_action(a),

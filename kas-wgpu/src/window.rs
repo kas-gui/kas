@@ -8,19 +8,19 @@
 use log::{debug, info, trace};
 use std::time::{Duration, Instant};
 
-use kas::event::Callback;
+use kas::event::{Callback, ManagerState};
 use kas::geom::{Coord, Rect, Size};
-use kas::{event, theme, TkAction, WidgetId, WindowId};
+use kas::{theme, TkAction};
 use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 
 use crate::draw::DrawPipe;
-use crate::shared::{PendingAction, SharedState};
+use crate::shared::SharedState;
 
 /// Per-window data
 pub(crate) struct Window<TW> {
     widget: Box<dyn kas::Window>,
-    ev_mgr: event::ManagerState,
+    mgr: ManagerState,
     /// The winit window
     pub(crate) window: winit::window::Window,
     surface: wgpu::Surface,
@@ -57,11 +57,11 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         let mut draw_pipe = DrawPipe::new(shared, sc_desc.format, size);
         let theme_window = shared.theme.new_window(&mut draw_pipe, dpi_factor as f32);
 
-        let ev_mgr = event::ManagerState::new(dpi_factor);
+        let mgr = ManagerState::new(dpi_factor);
 
         Window {
             widget,
-            ev_mgr,
+            mgr,
             window,
             surface,
             sc_desc,
@@ -77,34 +77,31 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     ///
     /// `init` should always return an action of at least `TkAction::Reconfigure`.
     pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
-        let mut tk_window = TkWindow {
-            ev_mgr: self.ev_mgr.manager(),
-            shared,
-        };
-        tk_window.ev_mgr.send_action(TkAction::Reconfigure);
+        let mut mgr = self.mgr.manager(shared);
+        mgr.send_action(TkAction::Reconfigure);
 
         for (i, condition) in self.widget.callbacks() {
             match condition {
                 Callback::Start => {
-                    self.widget.trigger_callback(i, &mut tk_window);
+                    self.widget.trigger_callback(i, &mut mgr);
                 }
                 Callback::Repeat(dur) => {
-                    self.widget.trigger_callback(i, &mut tk_window);
+                    self.widget.trigger_callback(i, &mut mgr);
                     self.timeouts.push((i, Instant::now() + dur, Some(dur)));
                 }
                 Callback::Close => (),
             }
         }
 
-        (tk_window.ev_mgr.unwrap_action(), self.next_resume())
+        (mgr.unwrap_action(), self.next_resume())
     }
 
     /// Recompute layout of widgets and redraw
-    pub fn reconfigure(&mut self) {
+    pub fn reconfigure<T>(&mut self, shared: &mut SharedState<T>) {
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         debug!("Reconfiguring window (size = {:?})", size);
 
-        self.ev_mgr.configure(self.widget.as_widget_mut());
+        self.mgr.configure(shared, self.widget.as_widget_mut());
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
         self.widget.resize(&mut size_handle, size);
         self.window.request_redraw();
@@ -127,39 +124,32 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             } => {
                 // Note: API allows us to set new window size here.
                 self.theme_window.set_dpi_factor(scale_factor as f32);
-                self.ev_mgr.set_dpi_factor(scale_factor);
+                self.mgr.set_dpi_factor(scale_factor);
                 self.do_resize(shared, *new_inner_size)
             }
-            event @ _ => {
-                let mut tk_window = TkWindow {
-                    ev_mgr: self.ev_mgr.manager(),
-                    shared,
-                };
-                event::Manager::handle_winit(&mut *self.widget, &mut tk_window, event);
-                tk_window.ev_mgr.unwrap_action()
-            }
+            event @ _ => self
+                .mgr
+                .manager(shared)
+                .handle_winit(&mut *self.widget, event),
         }
     }
 
     pub fn handle_closure<T>(mut self, shared: &mut SharedState<T>) -> TkAction {
-        let mut tk_window = TkWindow {
-            ev_mgr: self.ev_mgr.manager(),
-            shared,
-        };
+        let mut mgr = self.mgr.manager(shared);
 
         for (i, condition) in self.widget.callbacks() {
             match condition {
                 Callback::Start | Callback::Repeat(_) => (),
                 Callback::Close => {
-                    self.widget.trigger_callback(i, &mut tk_window);
+                    self.widget.trigger_callback(i, &mut mgr);
                 }
             }
         }
         if let Some(final_cb) = self.widget.final_callback() {
-            final_cb(self.widget, &mut tk_window);
+            final_cb(self.widget, &mut mgr);
         }
 
-        tk_window.ev_mgr.unwrap_action()
+        mgr.unwrap_action()
     }
 
     pub(crate) fn timer_resume<T>(
@@ -167,17 +157,14 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         shared: &mut SharedState<T>,
         instant: Instant,
     ) -> (TkAction, Option<Instant>) {
-        let mut tk_window = TkWindow {
-            ev_mgr: self.ev_mgr.manager(),
-            shared,
-        };
+        let mut mgr = self.mgr.manager(shared);
 
         // Iterate over loop, mutating some elements, removing others.
         let mut i = 0;
         while i < self.timeouts.len() {
             for timeout in &mut self.timeouts[i..] {
                 if timeout.1 == instant {
-                    self.widget.trigger_callback(timeout.0, &mut tk_window);
+                    self.widget.trigger_callback(timeout.0, &mut mgr);
                     if let Some(dur) = timeout.2 {
                         while timeout.1 <= Instant::now() {
                             timeout.1 += dur;
@@ -193,7 +180,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             }
         }
 
-        (tk_window.ev_mgr.unwrap_action(), self.next_resume())
+        (mgr.unwrap_action(), self.next_resume())
     }
 
     fn next_resume(&self) -> Option<Instant> {
@@ -252,68 +239,13 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 .theme
                 .draw_handle(&mut self.draw_pipe, &mut self.theme_window, rect)
         };
-        self.widget.draw(&mut draw_handle, &self.ev_mgr.manager());
+        self.widget
+            .draw(&mut draw_handle, &self.mgr.manager(shared));
         let clear_color = to_wgpu_color(shared.theme.clear_colour());
         let buf = self
             .draw_pipe
             .render(&mut shared.device, &frame.view, clear_color);
         shared.queue.submit(&[buf]);
-    }
-}
-
-/// Implementation of [`kas::TkWindow`]
-struct TkWindow<'a, T> {
-    ev_mgr: event::Manager<'a>,
-    shared: &'a mut SharedState<T>,
-}
-
-impl<'a, T> kas::TkWindow for TkWindow<'a, T> {
-    fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
-        // By far the simplest way to implement this is to let our call
-        // anscestor, event::Loop::handle, do the work.
-        //
-        // In theory we could pass the EventLoopWindowTarget for *each* event
-        // handled to create the winit window here or use statics to generate
-        // errors now, but user code can't do much with this error anyway.
-        let id = self.shared.next_window_id();
-        self.shared
-            .pending
-            .push(PendingAction::AddWindow(id, widget));
-        id
-    }
-
-    fn close_window(&mut self, id: WindowId) {
-        self.shared.pending.push(PendingAction::CloseWindow(id));
-    }
-
-    fn data(&self) -> &event::Manager {
-        &self.ev_mgr
-    }
-
-    fn update_data(&mut self, f: &mut dyn FnMut(&mut event::Manager) -> bool) {
-        if f(&mut self.ev_mgr) {
-            self.send_action(TkAction::Redraw);
-        }
-    }
-
-    #[inline]
-    fn redraw(&mut self, _id: WidgetId) {
-        self.send_action(TkAction::Redraw);
-    }
-
-    #[inline]
-    fn send_action(&mut self, action: TkAction) {
-        self.ev_mgr.send_action(action);
-    }
-
-    #[inline]
-    fn get_clipboard(&mut self) -> Option<String> {
-        self.shared.get_clipboard()
-    }
-
-    #[inline]
-    fn set_clipboard(&mut self, content: String) {
-        self.shared.set_clipboard(content);
     }
 }
 

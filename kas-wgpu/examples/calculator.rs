@@ -11,10 +11,9 @@ use std::str::FromStr;
 
 use kas::class::HasText;
 use kas::event::VirtualKeyCode as VK;
-use kas::event::{Response, VoidMsg};
+use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{EditBox, TextButton, Window};
-use kas::TkWindow;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Key {
@@ -78,9 +77,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
             calc: Calculator = Calculator::new(),
         }
         impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Key) -> Response<VoidMsg> {
+            fn handle_button(&mut self, mgr: &mut Manager, msg: Key) -> Response<VoidMsg> {
                 if self.calc.handle(msg) {
-                    self.display.set_text(tk, self.calc.display());
+                    self.display.set_text(mgr, self.calc.display());
                 }
                 Response::None
             }

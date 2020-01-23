@@ -12,9 +12,8 @@ use chrono::prelude::*;
 use std::time::Duration;
 
 use kas::class::HasText;
-use kas::event::Callback;
+use kas::event::{Callback, Manager};
 use kas::widget::{Label, Window};
-use kas::TkWindow;
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
@@ -34,10 +33,10 @@ fn main() -> Result<(), kas_wgpu::Error> {
             time: Label,
         }
         impl AnonWidget {
-            fn on_tick(&mut self, tk: &mut dyn TkWindow) {
+            fn on_tick(&mut self, mgr: &mut Manager) {
                 let now = Local::now();
-                self.date.set_text(tk, now.format("%Y-%m-%d").to_string());
-                self.time.set_text(tk, now.format("%H:%M:%S").to_string());
+                self.date.set_text(mgr, now.format("%Y-%m-%d").to_string());
+                self.time.set_text(mgr, now.format("%H:%M:%S").to_string());
             }
         }
         AnonWidget {
@@ -48,8 +47,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     });
 
-    window.add_callback(Callback::Repeat(Duration::from_secs(1)), &|w, tk| {
-        w.on_tick(tk)
+    window.add_callback(Callback::Repeat(Duration::from_secs(1)), &|w, mgr| {
+        w.on_tick(mgr)
     });
 
     let mut theme = kas_wgpu::SampleTheme::new();

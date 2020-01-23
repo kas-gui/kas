@@ -9,7 +9,7 @@ use crate::event::{Action, Address, Event, Manager, Response};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, TkWindow, Widget, WidgetCore};
+use crate::{CoreData, Widget, WidgetCore};
 
 /// Event-handling aspect of a widget.
 ///
@@ -40,7 +40,7 @@ pub trait Handler: Widget {
     /// Widgets should handle any events applicable to themselves here, and
     /// return all other events via [`Response::Unhandled`].
     #[inline]
-    fn handle_action(&mut self, _: &mut dyn TkWindow, action: Action) -> Response<Self::Msg> {
+    fn handle_action(&mut self, _: &mut Manager, action: Action) -> Response<Self::Msg> {
         Response::Unhandled(Event::Action(action))
     }
 
@@ -59,8 +59,8 @@ pub trait Handler: Widget {
     /// Additionally, this method allows lower-level interpretation of some
     /// events, e.g. more direct access to mouse inputs.
     #[inline]
-    fn handle(&mut self, tk: &mut dyn TkWindow, _: Address, event: Event) -> Response<Self::Msg> {
-        Manager::handle_generic(self, tk, event)
+    fn handle(&mut self, mgr: &mut Manager, _: Address, event: Event) -> Response<Self::Msg> {
+        Manager::handle_generic(self, mgr, event)
     }
 }
 
@@ -75,18 +75,13 @@ impl<M> Handler for Box<dyn Handler<Msg = M>> {
     }
 
     #[inline]
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<Self::Msg> {
-        self.as_mut().handle_action(tk, action)
+    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
+        self.as_mut().handle_action(mgr, action)
     }
 
     #[inline]
-    fn handle(
-        &mut self,
-        tk: &mut dyn TkWindow,
-        addr: Address,
-        event: Event,
-    ) -> Response<Self::Msg> {
-        self.as_mut().handle(tk, addr, event)
+    fn handle(&mut self, mgr: &mut Manager, addr: Address, event: Event) -> Response<Self::Msg> {
+        self.as_mut().handle(mgr, addr, event)
     }
 }
 
@@ -103,8 +98,8 @@ impl<M> Widget for Box<dyn Handler<Msg = M>> {
         self.as_mut().set_rect(size_handle, rect);
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &Manager) {
-        self.as_ref().draw(draw_handle, ev_mgr);
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+        self.as_ref().draw(draw_handle, mgr);
     }
 }
 
@@ -176,7 +171,7 @@ impl<'a> Manager<'a> {
     /// Generic handler for low-level events passed to leaf widgets
     pub fn handle_generic<W>(
         widget: &mut W,
-        tk: &mut dyn TkWindow,
+        mgr: &mut Manager,
         event: Event,
     ) -> Response<<W as Handler>::Msg>
     where
@@ -184,12 +179,10 @@ impl<'a> Manager<'a> {
     {
         let activable = widget.activation_via_press();
         match event {
-            Event::Action(action) => widget.handle_action(tk, action),
+            Event::Action(action) => widget.handle_action(mgr, action),
             Event::Identify => Response::Identify(widget.id()),
             Event::PressStart { source, coord } if activable && source.is_primary() => {
-                tk.update_data(&mut |data| {
-                    data.request_press_grab(source, widget.as_widget(), coord)
-                });
+                mgr.request_press_grab(source, widget.as_widget(), coord);
                 Response::None
             }
             Event::PressMove { .. } if activable => {
@@ -199,7 +192,7 @@ impl<'a> Manager<'a> {
             Event::PressEnd {
                 start_id, end_id, ..
             } if activable && start_id == Some(widget.id()) && start_id == end_id => {
-                widget.handle_action(tk, Action::Activate)
+                widget.handle_action(mgr, Action::Activate)
             }
             ev @ _ => Response::Unhandled(ev),
         }

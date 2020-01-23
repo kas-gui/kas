@@ -8,11 +8,11 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{Editable, HasText};
-use crate::event::{self, Action, Handler, Response, VoidMsg};
+use crate::event::{Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{CoreData, TkWindow, Widget, WidgetCore};
+use crate::{CoreData, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A simple text label
@@ -30,7 +30,7 @@ impl Widget for Label {
         size_handle.text_bound(&self.text, TextClass::Label, true, axis)
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::Manager) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &Manager) {
         let props = TextProperties {
             class: TextClass::Label,
             multi_line: true,
@@ -68,9 +68,9 @@ impl HasText for Label {
         &self.text
     }
 
-    fn set_string(&mut self, tk: &mut dyn TkWindow, text: String) {
+    fn set_string(&mut self, mgr: &mut Manager, text: String) {
         self.text = text;
-        tk.redraw(self.id());
+        mgr.redraw(self.id());
     }
 }
 
@@ -134,8 +134,8 @@ impl<H: 'static> Widget for EditBox<H> {
         self.core_data_mut().rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
-        let highlights = ev_mgr.highlight_state(self.id());
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+        let highlights = mgr.highlight_state(self.id());
         draw_handle.edit_box(self.core.rect, highlights);
         let props = TextProperties {
             class: TextClass::Edit,
@@ -203,7 +203,7 @@ impl<H> EditBox<H> {
         self
     }
 
-    fn received_char(&mut self, tk: &mut dyn TkWindow, c: char) -> bool {
+    fn received_char(&mut self, mgr: &mut Manager, c: char) -> bool {
         if !self.editable {
             return false;
         }
@@ -215,7 +215,7 @@ impl<H> EditBox<H> {
             match c {
                 '\u{03}' /* copy */ => {
                     // we don't yet have selection support, so just copy everything
-                    tk.set_clipboard(self.text.clone());
+                    mgr.set_clipboard(self.text.clone());
                 }
                 '\u{08}' /* backspace */  => {
                     if self.last_edit != LastEdit::Backspace {
@@ -234,7 +234,7 @@ impl<H> EditBox<H> {
                         self.old_state = Some(self.text.clone());
                         self.last_edit = LastEdit::Paste;
                     }
-                    if let Some(content) = tk.get_clipboard() {
+                    if let Some(content) = mgr.get_clipboard() {
                         // We cut the content short on control characters and
                         // ignore them (preventing line-breaks and ignoring any
                         // actions such as recursive-paste).
@@ -273,7 +273,7 @@ impl<H> EditBox<H> {
             }
             self.text.push(c);
         }
-        tk.redraw(self.id());
+        mgr.redraw(self.id());
         false
     }
 }
@@ -283,9 +283,9 @@ impl<H> HasText for EditBox<H> {
         &self.text
     }
 
-    fn set_string(&mut self, tk: &mut dyn TkWindow, text: String) {
+    fn set_string(&mut self, mgr: &mut Manager, text: String) {
         self.text = text;
-        tk.redraw(self.id());
+        mgr.redraw(self.id());
     }
 }
 
@@ -307,14 +307,14 @@ impl Handler for EditBox<()> {
         true
     }
 
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<VoidMsg> {
+    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<VoidMsg> {
         match action {
             Action::Activate => {
-                tk.update_data(&mut |data| data.request_char_focus(self.id()));
+                mgr.request_char_focus(self.id());
                 Response::None
             }
             Action::ReceivedCharacter(c) => {
-                self.received_char(tk, c);
+                self.received_char(mgr, c);
                 Response::None
             }
             a @ _ => Response::unhandled_action(a),
@@ -330,14 +330,14 @@ impl<M, H: Fn(&str) -> M> Handler for EditBox<H> {
         true
     }
 
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<M> {
+    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
         match action {
             Action::Activate => {
-                tk.update_data(&mut |data| data.request_char_focus(self.id()));
+                mgr.request_char_focus(self.id());
                 Response::None
             }
             Action::ReceivedCharacter(c) => {
-                if self.received_char(tk, c) {
+                if self.received_char(mgr, c) {
                     ((self.on_activate)(&self.text)).into()
                 } else {
                     Response::None

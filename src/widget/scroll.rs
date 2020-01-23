@@ -13,7 +13,7 @@ use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, Horizontal, SizeRules, Vertical};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
-use crate::{CoreData, TkWindow, Widget, WidgetCore};
+use crate::{CoreData, Widget, WidgetCore};
 
 /// A scrollable region
 ///
@@ -114,11 +114,11 @@ impl<W: Widget> ScrollRegion<W> {
     ///
     /// Returns true if the offset is not identical to the old offset.
     #[inline]
-    pub fn set_offset(&mut self, tk: &mut dyn TkWindow, offset: Coord) -> bool {
+    pub fn set_offset(&mut self, mgr: &mut Manager, offset: Coord) -> bool {
         let offset = offset.max(Coord::ZERO).min(self.max_offset);
         if offset != self.offset {
             self.offset = offset;
-            tk.redraw(self.id());
+            mgr.redraw(self.id());
             return true;
         }
         false
@@ -193,19 +193,19 @@ impl<W: Widget> Widget for ScrollRegion<W> {
         }
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &Manager) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
         if self.show_bars.0 {
-            self.horiz_bar.draw(draw_handle, ev_mgr);
+            self.horiz_bar.draw(draw_handle, mgr);
         }
         if self.show_bars.1 {
-            self.vert_bar.draw(draw_handle, ev_mgr);
+            self.vert_bar.draw(draw_handle, mgr);
         }
         let rect = Rect {
             pos: self.core.rect.pos,
             size: self.inner_size,
         };
         draw_handle.clip_region(rect, self.offset, &mut |handle| {
-            self.child.draw(handle, ev_mgr)
+            self.child.draw(handle, mgr)
         });
     }
 }
@@ -213,13 +213,8 @@ impl<W: Widget> Widget for ScrollRegion<W> {
 impl<W: Widget + Handler> Handler for ScrollRegion<W> {
     type Msg = <W as Handler>::Msg;
 
-    fn handle(
-        &mut self,
-        tk: &mut dyn TkWindow,
-        addr: Address,
-        event: Event,
-    ) -> Response<Self::Msg> {
-        let unhandled_action = |w: &mut Self, tk: &mut dyn TkWindow, action| match action {
+    fn handle(&mut self, mgr: &mut Manager, addr: Address, event: Event) -> Response<Self::Msg> {
+        let unhandled_action = |w: &mut Self, mgr: &mut Manager, action| match action {
             Action::Scroll(delta) => {
                 let d = match delta {
                     ScrollDelta::LineDelta(x, y) => {
@@ -227,9 +222,9 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                     }
                     ScrollDelta::PixelDelta(d) => d,
                 };
-                if w.set_offset(tk, w.offset - d) {
-                    w.horiz_bar.set_value(tk, w.offset.0 as u32);
-                    w.vert_bar.set_value(tk, w.offset.1 as u32);
+                if w.set_offset(mgr, w.offset - d) {
+                    w.horiz_bar.set_value(mgr, w.offset.0 as u32);
+                    w.vert_bar.set_value(mgr, w.offset.1 as u32);
                     Response::None
                 } else {
                     Response::unhandled_action(Action::Scroll(delta))
@@ -238,36 +233,40 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
             a @ _ => Response::unhandled_action(a),
         };
 
-        let do_horiz = |w: &mut Self, tk: &mut dyn TkWindow, addr, event| {
-            match Response::<Self::Msg>::try_from(w.horiz_bar.handle(tk, addr, event)) {
-                Ok(Response::Unhandled(Event::Action(action))) => unhandled_action(w, tk, action),
+        let do_horiz =
+            |w: &mut Self, mgr: &mut Manager, addr, event| match Response::<Self::Msg>::try_from(
+                w.horiz_bar.handle(mgr, addr, event),
+            ) {
+                Ok(Response::Unhandled(Event::Action(action))) => unhandled_action(w, mgr, action),
                 Ok(r) => r,
                 Err(msg) => {
-                    w.set_offset(tk, Coord(msg as i32, w.offset.1));
+                    w.set_offset(mgr, Coord(msg as i32, w.offset.1));
                     Response::None
                 }
-            }
-        };
-        let do_vert = |w: &mut Self, tk: &mut dyn TkWindow, addr, event| {
-            match Response::<Self::Msg>::try_from(w.vert_bar.handle(tk, addr, event)) {
-                Ok(Response::Unhandled(Event::Action(action))) => unhandled_action(w, tk, action),
+            };
+        let do_vert =
+            |w: &mut Self, mgr: &mut Manager, addr, event| match Response::<Self::Msg>::try_from(
+                w.vert_bar.handle(mgr, addr, event),
+            ) {
+                Ok(Response::Unhandled(Event::Action(action))) => unhandled_action(w, mgr, action),
                 Ok(r) => r,
                 Err(msg) => {
-                    w.set_offset(tk, Coord(w.offset.0, msg as i32));
+                    w.set_offset(mgr, Coord(w.offset.0, msg as i32));
                     Response::None
                 }
-            }
-        };
+            };
 
         let addr = match addr {
-            Address::Id(id) if id <= self.horiz_bar.id() => return do_horiz(self, tk, addr, event),
-            Address::Id(id) if id <= self.vert_bar.id() => return do_vert(self, tk, addr, event),
+            Address::Id(id) if id <= self.horiz_bar.id() => {
+                return do_horiz(self, mgr, addr, event)
+            }
+            Address::Id(id) if id <= self.vert_bar.id() => return do_vert(self, mgr, addr, event),
             Address::Id(id) if id == self.id() => {
                 let r = match event {
                     Event::PressMove { delta, .. } => {
-                        if self.set_offset(tk, self.offset - delta) {
-                            self.horiz_bar.set_value(tk, self.offset.0 as u32);
-                            self.vert_bar.set_value(tk, self.offset.1 as u32);
+                        if self.set_offset(mgr, self.offset - delta) {
+                            self.horiz_bar.set_value(mgr, self.offset.0 as u32);
+                            self.vert_bar.set_value(mgr, self.offset.1 as u32);
                         }
                         Response::None
                     }
@@ -281,10 +280,10 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
             }
             a @ Address::Id(_) => a,
             Address::Coord(coord) if self.horiz_bar.rect().contains(coord) => {
-                return do_horiz(self, tk, addr, event);
+                return do_horiz(self, mgr, addr, event);
             }
             Address::Coord(coord) if self.vert_bar.rect().contains(coord) => {
-                return do_vert(self, tk, addr, event);
+                return do_vert(self, mgr, addr, event);
             }
             Address::Coord(coord) => Address::Coord(coord + self.offset),
         };
@@ -316,11 +315,11 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
             },
         };
 
-        match self.child.handle(tk, addr, event) {
+        match self.child.handle(mgr, addr, event) {
             Response::None => Response::None,
-            Response::Unhandled(Event::Action(action)) => unhandled_action(self, tk, action),
+            Response::Unhandled(Event::Action(action)) => unhandled_action(self, mgr, action),
             Response::Unhandled(Event::PressStart { source, coord }) if source.is_primary() => {
-                tk.update_data(&mut |data| data.request_press_grab(source, self, coord));
+                mgr.request_press_grab(source, self, coord);
                 Response::None
             }
             e @ _ => e,

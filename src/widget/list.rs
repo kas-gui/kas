@@ -13,7 +13,7 @@ use crate::layout::{
     SizeRules, Vertical,
 };
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, TkAction, TkWindow, Widget, WidgetCore};
+use crate::{CoreData, TkAction, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A generic row widget
@@ -160,10 +160,10 @@ impl<D: Direction, W: Widget> Widget for List<D, W> {
         }
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &Manager) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
         let solver = RowPositionSolver::new(self.direction);
         solver.for_children(&self.widgets, draw_handle.target_rect(), |w| {
-            w.draw(draw_handle, ev_mgr)
+            w.draw(draw_handle, mgr)
         });
     }
 }
@@ -171,17 +171,12 @@ impl<D: Direction, W: Widget> Widget for List<D, W> {
 impl<D: Direction, W: Widget + Handler> Handler for List<D, W> {
     type Msg = <W as Handler>::Msg;
 
-    fn handle(
-        &mut self,
-        tk: &mut dyn TkWindow,
-        addr: Address,
-        event: Event,
-    ) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut Manager, addr: Address, event: Event) -> Response<Self::Msg> {
         match addr {
             kas::event::Address::Id(id) => {
                 for child in &mut self.widgets {
                     if id <= child.id() {
-                        return child.handle(tk, addr, event);
+                        return child.handle(mgr, addr, event);
                     }
                 }
                 debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
@@ -189,7 +184,7 @@ impl<D: Direction, W: Widget + Handler> Handler for List<D, W> {
             kas::event::Address::Coord(coord) => {
                 let solver = RowPositionSolver::new(self.direction);
                 if let Some(child) = solver.find_child(&mut self.widgets, coord) {
-                    return child.handle(tk, addr, event);
+                    return child.handle(mgr, addr, event);
                 }
             }
         }
@@ -247,21 +242,21 @@ impl<D: Direction, W: Widget> List<D, W> {
 
     /// Remove all child widgets
     ///
-    /// Triggers a [reconfigure action](TkWindow::send_action) if any widget is
+    /// Triggers a [reconfigure action](Manager::send_action) if any widget is
     /// removed.
-    pub fn clear(&mut self, tk: &mut dyn TkWindow) {
+    pub fn clear(&mut self, mgr: &mut Manager) {
         if !self.widgets.is_empty() {
-            tk.send_action(TkAction::Reconfigure);
+            mgr.send_action(TkAction::Reconfigure);
         }
         self.widgets.clear();
     }
 
     /// Append a child widget
     ///
-    /// Triggers a [reconfigure action](TkWindow::send_action).
-    pub fn push(&mut self, tk: &mut dyn TkWindow, widget: W) {
+    /// Triggers a [reconfigure action](Manager::send_action).
+    pub fn push(&mut self, mgr: &mut Manager, widget: W) {
         self.widgets.push(widget);
-        tk.send_action(TkAction::Reconfigure);
+        mgr.send_action(TkAction::Reconfigure);
     }
 
     /// Remove the last child widget
@@ -269,11 +264,11 @@ impl<D: Direction, W: Widget> List<D, W> {
     /// Returns `None` if there are no children. Otherwise, this
     /// triggers a reconfigure before the next draw operation.
     ///
-    /// Triggers a [reconfigure action](TkWindow::send_action) if any widget is
+    /// Triggers a [reconfigure action](Manager::send_action) if any widget is
     /// removed.
-    pub fn pop(&mut self, tk: &mut dyn TkWindow) -> Option<W> {
+    pub fn pop(&mut self, mgr: &mut Manager) -> Option<W> {
         if !self.widgets.is_empty() {
-            tk.send_action(TkAction::Reconfigure);
+            mgr.send_action(TkAction::Reconfigure);
         }
         self.widgets.pop()
     }
@@ -282,20 +277,20 @@ impl<D: Direction, W: Widget> List<D, W> {
     ///
     /// Panics if `index > len`.
     ///
-    /// Triggers a [reconfigure action](TkWindow::send_action).
-    pub fn insert(&mut self, tk: &mut dyn TkWindow, index: usize, widget: W) {
+    /// Triggers a [reconfigure action](Manager::send_action).
+    pub fn insert(&mut self, mgr: &mut Manager, index: usize, widget: W) {
         self.widgets.insert(index, widget);
-        tk.send_action(TkAction::Reconfigure);
+        mgr.send_action(TkAction::Reconfigure);
     }
 
     /// Removes the child widget at position `index`
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers a [reconfigure action](TkWindow::send_action).
-    pub fn remove(&mut self, tk: &mut dyn TkWindow, index: usize) -> W {
+    /// Triggers a [reconfigure action](Manager::send_action).
+    pub fn remove(&mut self, mgr: &mut Manager, index: usize) -> W {
         let r = self.widgets.remove(index);
-        tk.send_action(TkAction::Reconfigure);
+        mgr.send_action(TkAction::Reconfigure);
         r
     }
 
@@ -303,32 +298,32 @@ impl<D: Direction, W: Widget> List<D, W> {
     ///
     /// Panics if `index` is out of bounds.
     ///
-    /// Triggers a [reconfigure action](TkWindow::send_action).
+    /// Triggers a [reconfigure action](Manager::send_action).
     // TODO: in theory it is possible to avoid a reconfigure where both widgets
     // have no children and have compatible size. Is this a good idea and can
     // we somehow test "has compatible size"?
-    pub fn replace(&mut self, tk: &mut dyn TkWindow, index: usize, mut widget: W) -> W {
+    pub fn replace(&mut self, mgr: &mut Manager, index: usize, mut widget: W) -> W {
         std::mem::swap(&mut widget, &mut self.widgets[index]);
-        tk.send_action(TkAction::Reconfigure);
+        mgr.send_action(TkAction::Reconfigure);
         widget
     }
 
     /// Append child widgets from an iterator
     ///
-    /// Triggers a [reconfigure action](TkWindow::send_action) if any widgets
+    /// Triggers a [reconfigure action](Manager::send_action) if any widgets
     /// are added.
-    pub fn extend<T: IntoIterator<Item = W>>(&mut self, tk: &mut dyn TkWindow, iter: T) {
+    pub fn extend<T: IntoIterator<Item = W>>(&mut self, mgr: &mut Manager, iter: T) {
         let len = self.widgets.len();
         self.widgets.extend(iter);
         if len != self.widgets.len() {
-            tk.send_action(TkAction::Reconfigure);
+            mgr.send_action(TkAction::Reconfigure);
         }
     }
 
     /// Resize, using the given closure to construct new widgets
     ///
-    /// Triggers a [reconfigure action](TkWindow::send_action).
-    pub fn resize_with<F: Fn(usize) -> W>(&mut self, tk: &mut dyn TkWindow, len: usize, f: F) {
+    /// Triggers a [reconfigure action](Manager::send_action).
+    pub fn resize_with<F: Fn(usize) -> W>(&mut self, mgr: &mut Manager, len: usize, f: F) {
         let l0 = self.widgets.len();
         if l0 == len {
             return;
@@ -340,20 +335,20 @@ impl<D: Direction, W: Widget> List<D, W> {
                 self.widgets.push(f(i));
             }
         }
-        tk.send_action(TkAction::Reconfigure);
+        mgr.send_action(TkAction::Reconfigure);
     }
 
     /// Retain only widgets satisfying predicate `f`
     ///
     /// See documentation of [`Vec::retain`].
     ///
-    /// Triggers a [reconfigure action](TkWindow::send_action) if any widgets
+    /// Triggers a [reconfigure action](Manager::send_action) if any widgets
     /// are removed.
-    pub fn retain<F: FnMut(&W) -> bool>(&mut self, tk: &mut dyn TkWindow, f: F) {
+    pub fn retain<F: FnMut(&W) -> bool>(&mut self, mgr: &mut Manager, f: F) {
         let len = self.widgets.len();
         self.widgets.retain(f);
         if len != self.widgets.len() {
-            tk.send_action(TkAction::Reconfigure);
+            mgr.send_action(TkAction::Reconfigure);
         }
     }
 }

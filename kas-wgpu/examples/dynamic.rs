@@ -7,10 +7,9 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::class::HasText;
-use kas::event::{Callback, Response, VoidMsg};
+use kas::event::{Callback, Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Column, EditBox, Label, ScrollRegion, TextButton, Window};
-use kas::TkWindow;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {
@@ -37,24 +36,24 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(handler = handler)] _ = TextButton::new("+", Control::Incr),
         }
         impl {
-            fn handler(&mut self, tk: &mut dyn TkWindow, msg: Control) -> Response<Message> {
+            fn handler(&mut self, mgr: &mut Manager, msg: Control) -> Response<Message> {
                 match self.edit.get_text().parse::<usize>() {
                     Ok(mut n) => {
                         match msg {
                             Control::Decr => {
                                 n = n.saturating_sub(1);
-                                self.edit.set_string(tk, n.to_string());
+                                self.edit.set_string(mgr, n.to_string());
                             },
                             Control::Incr => {
                                 n = n.saturating_add(1);
-                                self.edit.set_string(tk, n.to_string());
+                                self.edit.set_string(mgr, n.to_string());
                             },
                             Control::Set => ()
                         }
                         Message::Set(n).into()
                     }
                     _ => {
-                        self.edit.set_string(tk, "0".to_string());
+                        self.edit.set_string(mgr, "0".to_string());
                         Message::Set(0).into()
                     }
                 }
@@ -72,11 +71,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     ScrollRegion::new(Column::new(vec![])).with_bars(false, true),
             }
             impl {
-                fn handler(&mut self, tk: &mut dyn TkWindow, msg: Message) -> Response<VoidMsg>
+                fn handler(&mut self, mgr: &mut Manager, msg: Message) -> Response<VoidMsg>
                 {
                     match msg {
                         Message::Set(n) => {
-                            self.list.inner_mut().resize_with(tk, n, |i| EditBox::new(i.to_string()));
+                            self.list.inner_mut().resize_with(mgr, n, |i| EditBox::new(i.to_string()));
                         }
                     };
                     Response::None
@@ -85,8 +84,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
         },
     );
 
-    window.add_callback(Callback::Start, &|w, tk| {
-        let _ = w.handler(tk, Message::Set(3));
+    window.add_callback(Callback::Start, &|w, mgr| {
+        let _ = w.handler(mgr, Message::Set(3));
     });
 
     let theme = kas_wgpu::SampleTheme::new();
