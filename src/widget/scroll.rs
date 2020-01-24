@@ -214,8 +214,8 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
     type Msg = <W as Handler>::Msg;
 
     fn handle(&mut self, mgr: &mut Manager, addr: Address, event: Event) -> Response<Self::Msg> {
-        let unhandled_action = |w: &mut Self, mgr: &mut Manager, action| match action {
-            Action::Scroll(delta) => {
+        let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
+            Event::Action(Action::Scroll(delta)) => {
                 let d = match delta {
                     ScrollDelta::LineDelta(x, y) => {
                         Coord((-w.scroll_rate * x) as i32, (w.scroll_rate * y) as i32)
@@ -230,14 +230,18 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                     Response::unhandled_action(Action::Scroll(delta))
                 }
             }
-            a @ _ => Response::unhandled_action(a),
+            Event::PressStart { source, coord } if source.is_primary() => {
+                mgr.request_press_grab(source, w, coord);
+                Response::None
+            }
+            e @ _ => Response::Unhandled(e),
         };
 
         let do_horiz =
             |w: &mut Self, mgr: &mut Manager, addr, event| match Response::<Self::Msg>::try_from(
                 w.horiz_bar.handle(mgr, addr, event),
             ) {
-                Ok(Response::Unhandled(Event::Action(action))) => unhandled_action(w, mgr, action),
+                Ok(Response::Unhandled(event)) => unhandled(w, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
                     w.set_offset(mgr, Coord(msg as i32, w.offset.1));
@@ -248,7 +252,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
             |w: &mut Self, mgr: &mut Manager, addr, event| match Response::<Self::Msg>::try_from(
                 w.vert_bar.handle(mgr, addr, event),
             ) {
-                Ok(Response::Unhandled(Event::Action(action))) => unhandled_action(w, mgr, action),
+                Ok(Response::Unhandled(event)) => unhandled(w, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
                     w.set_offset(mgr, Coord(w.offset.0, msg as i32));
@@ -317,11 +321,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
 
         match self.child.handle(mgr, addr, event) {
             Response::None => Response::None,
-            Response::Unhandled(Event::Action(action)) => unhandled_action(self, mgr, action),
-            Response::Unhandled(Event::PressStart { source, coord }) if source.is_primary() => {
-                mgr.request_press_grab(source, self, coord);
-                Response::None
-            }
+            Response::Unhandled(event) => unhandled(self, mgr, event),
             e @ _ => e,
         }
     }
