@@ -7,12 +7,12 @@
 
 use std::fmt::Debug;
 
-use crate::event::{self, Address, Event, Handler, Manager, PressSource, Response};
+use crate::event::{Address, Event, Handler, Manager, PressSource, Response};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, Direction, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, TkWindow, Widget, WidgetCore};
+use crate::{CoreData, Widget, WidgetCore};
 
 /// A scroll bar
 ///
@@ -103,11 +103,11 @@ impl<D: Direction> ScrollBar<D> {
     }
 
     /// Set the value
-    pub fn set_value(&mut self, tk: &mut dyn TkWindow, value: u32) {
+    pub fn set_value(&mut self, mgr: &mut Manager, value: u32) {
         let value = value.min(self.max_value);
         if value != self.value {
             self.value = value;
-            tk.redraw(self.id());
+            mgr.redraw(self.id());
         }
     }
 
@@ -144,7 +144,7 @@ impl<D: Direction> ScrollBar<D> {
     }
 
     // true if not equal to old value
-    fn set_position(&mut self, tk: &mut dyn TkWindow, position: u32) -> bool {
+    fn set_position(&mut self, mgr: &mut Manager, position: u32) -> bool {
         let len = self.len() - self.handle_len;
         let lhs = position as u64 * self.max_value as u64;
         let rhs = len as u64;
@@ -156,7 +156,7 @@ impl<D: Direction> ScrollBar<D> {
         let value = value.min(self.max_value);
         if value != self.value {
             self.value = value;
-            tk.redraw(self.id());
+            mgr.redraw(self.id());
             return true;
         }
         false
@@ -182,9 +182,9 @@ impl<D: Direction> Widget for ScrollBar<D> {
         self.update_handle();
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
         let dir = self.direction.is_vertical();
-        let hl = ev_mgr.highlight_state(self.id());
+        let hl = mgr.highlight_state(self.id());
         draw_handle.scrollbar(self.core.rect, dir, self.handle_len, self.position(), hl);
     }
 }
@@ -192,14 +192,14 @@ impl<D: Direction> Widget for ScrollBar<D> {
 impl<D: Direction> Handler for ScrollBar<D> {
     type Msg = u32;
 
-    fn handle(&mut self, tk: &mut dyn TkWindow, _: Address, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut Manager, _: Address, event: Event) -> Response<Self::Msg> {
         match event {
             Event::PressStart { source, coord, .. } => {
                 // Interacting with a scrollbar with multiple presses
                 // does not make sense. Any other gets aborted.
                 // TODO: only if request_press_grab succeeds
                 self.press_source = Some(source);
-                tk.update_data(&mut |data| data.request_press_grab(source, self, coord));
+                mgr.request_press_grab(source, self, coord);
 
                 // Event delivery implies coord is over the scrollbar.
                 let (pointer, offset) = match self.direction.is_vertical() {
@@ -217,9 +217,9 @@ impl<D: Direction> Handler for ScrollBar<D> {
                     // coord is not on the handle; we move the bar immediately
                     self.press_offset = -offset - (self.handle_len / 2) as i32;
                     let position = (pointer + self.press_offset).max(0) as u32;
-                    let moved = self.set_position(tk, position);
+                    let moved = self.set_position(mgr, position);
                     debug_assert!(moved);
-                    tk.redraw(self.id());
+                    mgr.redraw(self.id());
                     Response::Msg(self.value)
                 }
             }
@@ -229,8 +229,8 @@ impl<D: Direction> Handler for ScrollBar<D> {
                     true => coord.1,
                 };
                 let position = (pointer + self.press_offset).max(0) as u32;
-                if self.set_position(tk, position) {
-                    tk.redraw(self.id());
+                if self.set_position(mgr, position) {
+                    mgr.redraw(self.id());
                     Response::Msg(self.value)
                 } else {
                     Response::None
@@ -240,7 +240,7 @@ impl<D: Direction> Handler for ScrollBar<D> {
                 self.press_source = None;
                 Response::None
             }
-            e @ _ => Manager::handle_generic(self, tk, e),
+            e @ _ => Manager::handle_generic(self, mgr, e),
         }
     }
 }

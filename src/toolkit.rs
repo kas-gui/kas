@@ -16,18 +16,20 @@
 
 use std::num::NonZeroU32;
 
-use crate::{event, WidgetId};
-
 /// Identifier for a window added to a toolkit
 ///
 /// Identifiers should always be unique.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct WindowId(NonZeroU32);
 
-// Only for toolkit use!
-#[doc(hidden)]
-pub fn make_window_id(n: NonZeroU32) -> WindowId {
-    WindowId(n)
+impl WindowId {
+    /// Construct a [`WindowId`]
+    ///
+    /// Only for toolkit use!
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    pub fn new(n: NonZeroU32) -> WindowId {
+        WindowId(n)
+    }
 }
 
 /// Toolkit actions needed after event handling, if any.
@@ -38,7 +40,7 @@ pub enum TkAction {
     None,
     /// Whole window requires redrawing
     ///
-    /// Note that [`TkWindow::redraw`] can instead be used for more selective
+    /// Note that [`Manager::redraw`] can instead be used for more selective
     /// redrawing, if supported by the toolkit.
     Redraw,
     /// Whole window requires reconfiguring (implies redrawing)
@@ -55,10 +57,6 @@ pub enum TkAction {
 /// Toolkit-specific window management and style interface.
 ///
 /// This is implemented by a KAS toolkit on a window handle.
-///
-/// Users interact with this trait in a few cases, such as implementing widget
-/// event handling. In these cases the user is *always* given an existing
-/// reference to a `TkWindow`. Mostly this trait is only used internally.
 pub trait TkWindow {
     /// Add a window
     ///
@@ -71,26 +69,6 @@ pub trait TkWindow {
 
     /// Close a window
     fn close_window(&mut self, id: WindowId);
-
-    /// Read access to the event manager state
-    fn data(&self) -> &event::Manager;
-
-    /// Update event manager data with a closure
-    ///
-    /// The closure should return true if this update may require a redraw.
-    fn update_data(&mut self, f: &mut dyn FnMut(&mut event::Manager) -> bool);
-
-    /// Notify that a widget must be redrawn
-    fn redraw(&mut self, id: WidgetId);
-
-    /// Notify that a toolkit action should happen
-    ///
-    /// This causes the given action to happen after event handling.
-    ///
-    /// Whenever a widget is added, removed or replaced, a reconfigure action is
-    /// required. Should a widget's size requirements change, these will only
-    /// affect the UI after a reconfigure action.
-    fn send_action(&mut self, action: TkAction);
 
     /// Attempt to get clipboard contents
     ///

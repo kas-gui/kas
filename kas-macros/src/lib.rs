@@ -145,20 +145,20 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         for child in args.children.iter() {
             let ident = &child.ident;
             let handler = if let Some(ref h) = child.args.handler {
-                quote! { r.try_into().unwrap_or_else(|msg| self.#h(_tk, msg)) }
+                quote! { r.try_into().unwrap_or_else(|msg| self.#h(mgr, msg)) }
             } else {
                 quote! { r.into() }
             };
             // TODO(opt): it is possible to code more efficient search strategies
             ev_to_num.append_all(quote! {
                 if id <= self.#ident.id() {
-                    let r = self.#ident.handle(_tk, addr, event);
+                    let r = self.#ident.handle(mgr, addr, event);
                     #handler
                 } else
             });
             ev_to_coord.append_all(quote! {
                 if self.#ident.rect().contains(coord) {
-                    let r = self.#ident.handle(_tk, addr, event);
+                    let r = self.#ident.handle(mgr, addr, event);
                     #handler
                 } else
             });
@@ -169,7 +169,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             quote! {}
         } else {
             quote! {
-                fn handle(&mut self, _tk: &mut dyn kas::TkWindow, addr: kas::event::Address, event: kas::event::Event)
+                fn handle(&mut self, mgr: &mut kas::event::Manager, addr: kas::event::Address, event: kas::event::Event)
                 -> kas::event::Response<Self::Msg>
                 {
                     use kas::{WidgetCore, event::{Event, Response}};
@@ -182,7 +182,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         }
                         kas::event::Address::Coord(coord) => {
                             #ev_to_coord {
-                                kas::event::Manager::handle_generic(self, _tk, event)
+                                kas::event::Manager::handle_generic(self, mgr, event)
                             }
                         }
                     }
@@ -248,7 +248,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     if f.sig.inputs.len() != 3 {
                         f.sig.span()
                             .unwrap()
-                            .error("handler functions must have signature: fn handler(&mut self, tk: &mut dyn TkWindow, msg: T)")
+                            .error("handler functions must have signature: fn handler(&mut self, mgr: &mut Manager, msg: T)")
                             .emit();
                         return None;
                     }

@@ -73,7 +73,7 @@ pub use callback::Callback;
 pub use enums::{MouseButton, VirtualKeyCode};
 pub use events::*;
 pub use handler::Handler;
-pub use manager::{HighlightState, Manager};
+pub use manager::{HighlightState, Manager, ManagerState};
 pub use response::Response;
 
 /// A void message

@@ -10,10 +10,9 @@ use std::fmt::Write;
 use std::time::{Duration, Instant};
 
 use kas::class::HasText;
-use kas::event::{Callback, Response, VoidMsg};
+use kas::event::{Callback, Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};
-use kas::TkWindow;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {
@@ -36,8 +35,8 @@ fn make_window() -> Box<dyn kas::Window> {
                     fn get_text(&self) -> &str {
                         self.display.get_text()
                     }
-                    fn set_string(&mut self, tk: &mut dyn TkWindow, text: String) {
-                        self.display.set_text(tk, text);
+                    fn set_string(&mut self, mgr: &mut Manager, text: String) {
+                        self.display.set_text(mgr, text);
                     }
                 }
             },
@@ -48,12 +47,12 @@ fn make_window() -> Box<dyn kas::Window> {
             dur_buf: String = String::default(),
         }
         impl {
-            fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Control) -> Response<VoidMsg> {
+            fn handle_button(&mut self, mgr: &mut Manager, msg: Control) -> Response<VoidMsg> {
                 match msg {
                     Control::Reset => {
                         self.saved = Duration::default();
                         self.start = None;
-                        self.display.set_text(tk, "0.000");
+                        self.display.set_text(mgr, "0.000");
                     }
                     Control::Start => {
                         if let Some(start) = self.start {
@@ -67,7 +66,7 @@ fn make_window() -> Box<dyn kas::Window> {
                 Response::None
             }
 
-            fn on_tick(&mut self, tk: &mut dyn TkWindow) {
+            fn on_tick(&mut self, mgr: &mut Manager) {
                 if let Some(start) = self.start {
                     let dur = self.saved + (Instant::now() - start);
                     self.dur_buf.clear();
@@ -76,7 +75,7 @@ fn make_window() -> Box<dyn kas::Window> {
                         dur.as_secs(),
                         dur.subsec_millis()
                     )).unwrap();
-                    self.display.set_text(tk, &self.dur_buf);
+                    self.display.set_text(mgr, &self.dur_buf);
                 }
             }
         }
@@ -84,8 +83,8 @@ fn make_window() -> Box<dyn kas::Window> {
 
     let mut window = Window::new("Stopwatch", stopwatch);
 
-    window.add_callback(Callback::Repeat(Duration::from_millis(16)), &|w, tk| {
-        w.on_tick(tk)
+    window.add_callback(Callback::Repeat(Duration::from_millis(16)), &|w, mgr| {
+        w.on_tick(mgr)
     });
 
     Box::new(window)

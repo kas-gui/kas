@@ -8,11 +8,11 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{HasBool, HasText};
-use crate::event::{self, Action, Handler, Response, VoidMsg};
+use crate::event::{Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{CoreData, TkWindow, Widget, WidgetCore};
+use crate::{CoreData, Widget, WidgetCore};
 use kas::geom::{Coord, Rect};
 
 /// A checkable box with optional label
@@ -67,8 +67,8 @@ impl<OT: 'static> Widget for CheckBox<OT> {
         self.core_data_mut().rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, ev_mgr: &event::Manager) {
-        let highlights = ev_mgr.highlight_state(self.id());
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+        let highlights = mgr.highlight_state(self.id());
         draw_handle.checkbox(self.box_pos, self.state, highlights);
         let mut text_rect = self.core.rect;
         text_rect.pos.0 = self.text_pos_x;
@@ -156,7 +156,7 @@ impl<H> HasBool for CheckBox<H> {
         self.state
     }
 
-    fn set_bool(&mut self, _tk: &mut dyn TkWindow, state: bool) {
+    fn set_bool(&mut self, _: &mut Manager, state: bool) {
         self.state = state;
     }
 }
@@ -166,9 +166,9 @@ impl<H> HasText for CheckBox<H> {
         &self.label
     }
 
-    fn set_string(&mut self, tk: &mut dyn TkWindow, text: String) {
+    fn set_string(&mut self, mgr: &mut Manager, text: String) {
         self.label = text;
-        tk.redraw(self.id());
+        mgr.redraw(self.id());
     }
 }
 
@@ -180,11 +180,11 @@ impl Handler for CheckBox<()> {
         true
     }
 
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<VoidMsg> {
+    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<VoidMsg> {
         match action {
             Action::Activate => {
                 self.state = !self.state;
-                tk.redraw(self.id());
+                mgr.redraw(self.id());
                 Response::None
             }
             a @ _ => Response::unhandled_action(a),
@@ -200,11 +200,11 @@ impl<M, H: Fn(bool) -> M> Handler for CheckBox<H> {
         true
     }
 
-    fn handle_action(&mut self, tk: &mut dyn TkWindow, action: Action) -> Response<M> {
+    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
         match action {
             Action::Activate => {
                 self.state = !self.state;
-                tk.redraw(self.id());
+                mgr.redraw(self.id());
                 ((self.on_toggle)(self.state)).into()
             }
             a @ _ => Response::unhandled_action(a),

@@ -8,13 +8,13 @@
 //! KAS dialog boxes are pre-configured windows, usually allowing some
 //! customisation.
 
-use crate::event::{Callback, Response, VoidMsg};
+use crate::event::{Callback, Manager, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout;
 use crate::macros::{VoidMsg, Widget};
 use crate::theme::SizeHandle;
 use crate::widget::{Label, TextButton};
-use crate::{CoreData, TkAction, TkWindow, Window};
+use crate::{CoreData, TkAction, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum DialogButton {
@@ -48,9 +48,9 @@ impl MessageBox {
         }
     }
 
-    fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: DialogButton) -> Response<VoidMsg> {
+    fn handle_button(&mut self, mgr: &mut Manager, msg: DialogButton) -> Response<VoidMsg> {
         match msg {
-            DialogButton::Close => tk.send_action(TkAction::Close),
+            DialogButton::Close => mgr.send_action(TkAction::Close),
         };
         Response::None
     }
@@ -69,8 +69,8 @@ impl Window for MessageBox {
     fn callbacks(&self) -> Vec<(usize, Callback)> {
         Vec::new()
     }
-    fn final_callback(&self) -> Option<&'static dyn Fn(Box<dyn kas::Window>, &mut dyn TkWindow)> {
+    fn final_callback(&self) -> Option<&'static dyn Fn(Box<dyn kas::Window>, &mut Manager)> {
         None
     }
-    fn trigger_callback(&mut self, _index: usize, _tk: &mut dyn TkWindow) {}
+    fn trigger_callback(&mut self, _index: usize, _: &mut Manager) {}
 }

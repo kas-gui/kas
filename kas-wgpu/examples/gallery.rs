@@ -6,11 +6,10 @@
 //! Gallery of all widgets
 #![feature(proc_macro_hygiene)]
 
-use kas::event::{Response, VoidMsg, VoidResponse};
+use kas::event::{Manager, Response, VoidMsg, VoidResponse};
 use kas::layout::Horizontal;
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::*;
-use kas::TkWindow;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Item {
@@ -47,7 +46,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=8, col = 1)] _ = TextButton::new("Open", Item::Popup),
         }
         impl {
-            fn handle_scroll(&mut self, _: &mut dyn TkWindow, msg: u32) -> Response<Item> {
+            fn handle_scroll(&mut self, _: &mut Manager, msg: u32) -> Response<Item> {
                 Response::Msg(Item::Scroll(msg))
             }
         }
@@ -67,7 +66,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget(handler = activations)] _ = ScrollRegion::new(widgets).with_auto_bars(true),
             }
             impl {
-                fn activations(&mut self, tk: &mut dyn TkWindow, item: Item)
+                fn activations(&mut self, mgr: &mut Manager, item: Item)
                     -> VoidResponse
                 {
                     match item {
@@ -77,7 +76,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         Item::Scroll(p) => println!("ScrollBar: {}", p),
                         Item::Popup => {
                             let window = MessageBox::new("Popup", "Hello!");
-                            tk.add_window(Box::new(window));
+                            mgr.add_window(Box::new(window));
                         }
                     };
                     VoidResponse::None

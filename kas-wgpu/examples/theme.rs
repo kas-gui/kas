@@ -9,12 +9,11 @@
 use std::cell::Cell;
 
 use kas::draw::Colour;
-use kas::event::{VoidMsg, VoidResponse};
+use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::geom::Rect;
 use kas::macros::{make_widget, VoidMsg};
 use kas::theme::Theme;
 use kas::widget::*;
-use kas::TkWindow;
 
 use kas_wgpu::draw::*;
 use kas_wgpu::glyph::Font;
@@ -112,7 +111,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget(handler = handler)] _ = widgets,
             }
             impl {
-                fn handler(&mut self, _: &mut dyn TkWindow, item: Item)
+                fn handler(&mut self, _: &mut Manager, item: Item)
                     -> VoidResponse
                 {
                     match item {

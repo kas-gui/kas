@@ -75,7 +75,7 @@ impl<T> SharedState<T> {
 
     pub fn next_window_id(&mut self) -> WindowId {
         self.window_id += 1;
-        kas::make_window_id(NonZeroU32::new(self.window_id).unwrap())
+        WindowId::new(NonZeroU32::new(self.window_id).unwrap())
     }
 
     #[cfg(not(feature = "clipboard"))]
@@ -107,6 +107,38 @@ impl<T> SharedState<T> {
             cb.set_contents(content)
                 .unwrap_or_else(|e| warn!("Failed to set clipboard contents: {:?}", e))
         });
+    }
+}
+
+// For some implementations this may need to be implemented on a
+// window-specific handle; for us this is unnecessary.
+//
+// NOTE: Correct clipboard handling on Wayland requires a window handle.
+impl<T> kas::TkWindow for SharedState<T> {
+    fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
+        // By far the simplest way to implement this is to let our call
+        // anscestor, event::Loop::handle, do the work.
+        //
+        // In theory we could pass the EventLoopWindowTarget for *each* event
+        // handled to create the winit window here or use statics to generate
+        // errors now, but user code can't do much with this error anyway.
+        let id = self.next_window_id();
+        self.pending.push(PendingAction::AddWindow(id, widget));
+        id
+    }
+
+    fn close_window(&mut self, id: WindowId) {
+        self.pending.push(PendingAction::CloseWindow(id));
+    }
+
+    #[inline]
+    fn get_clipboard(&mut self) -> Option<String> {
+        self.get_clipboard()
+    }
+
+    #[inline]
+    fn set_clipboard(&mut self, content: String) {
+        self.set_clipboard(content);
     }
 }
 

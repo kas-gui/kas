@@ -7,10 +7,9 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::class::HasText;
-use kas::event::{VoidMsg, VoidResponse};
+use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};
-use kas::TkWindow;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {
@@ -38,17 +37,17 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 counter: usize = 0,
             }
             impl {
-                fn handle_button(&mut self, tk: &mut dyn TkWindow, msg: Message)
+                fn handle_button(&mut self, mgr: &mut Manager, msg: Message)
                     -> VoidResponse
                 {
                     match msg {
                         Message::Decr => {
                             self.counter = self.counter.saturating_sub(1);
-                            self.display.set_text(tk, self.counter.to_string());
+                            self.display.set_text(mgr, self.counter.to_string());
                         }
                         Message::Incr => {
                             self.counter = self.counter.saturating_add(1);
-                            self.display.set_text(tk, self.counter.to_string());
+                            self.display.set_text(mgr, self.counter.to_string());
                         }
                     };
                     VoidResponse::None

@@ -7,12 +7,12 @@
 
 use std::fmt::{self, Debug};
 
-use crate::event::{Address, Callback, Event, Handler, Response, VoidMsg};
+use crate::event::{Address, Callback, Event, Handler, Manager, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout::{self};
 use crate::macros::Widget;
 use crate::theme::SizeHandle;
-use crate::{CoreData, LayoutData, TkWindow, Widget};
+use crate::{CoreData, LayoutData, Widget};
 
 /// The main instantiation of the [`Window`] trait.
 #[widget(layout = single)]
@@ -26,8 +26,8 @@ pub struct Window<W: Widget + 'static> {
     title: String,
     #[widget]
     w: W,
-    fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut dyn TkWindow))>,
-    final_callback: Option<&'static dyn Fn(Box<dyn kas::Window>, &mut dyn TkWindow)>,
+    fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut Manager))>,
+    final_callback: Option<&'static dyn Fn(Box<dyn kas::Window>, &mut Manager)>,
 }
 
 impl<W: Widget> Debug for Window<W> {
@@ -78,11 +78,7 @@ impl<W: Widget> Window<W> {
 
     /// Add a closure to be called, with a reference to self, on the given
     /// condition. The closure must be passed by reference.
-    pub fn add_callback(
-        &mut self,
-        condition: Callback,
-        f: &'static dyn Fn(&mut W, &mut dyn TkWindow),
-    ) {
+    pub fn add_callback(&mut self, condition: Callback, f: &'static dyn Fn(&mut W, &mut Manager)) {
         self.fns.push((condition, f));
     }
 
@@ -93,10 +89,7 @@ impl<W: Widget> Window<W> {
     /// use [`Window::add_callback`] with [`Callback::Close`].
     ///
     /// Only a single callback is allowed; if another exists it is replaced.
-    pub fn set_final_callback(
-        &mut self,
-        f: &'static dyn Fn(Box<dyn kas::Window>, &mut dyn TkWindow),
-    ) {
+    pub fn set_final_callback(&mut self, f: &'static dyn Fn(Box<dyn kas::Window>, &mut Manager)) {
         self.final_callback = Some(f);
     }
 }
@@ -104,14 +97,9 @@ impl<W: Widget> Window<W> {
 impl<W: Widget + Handler<Msg = VoidMsg> + 'static> Handler for Window<W> {
     type Msg = VoidMsg;
 
-    fn handle(
-        &mut self,
-        tk: &mut dyn TkWindow,
-        addr: Address,
-        event: Event,
-    ) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut Manager, addr: Address, event: Event) -> Response<Self::Msg> {
         // The window itself doesn't handle events, so we can just pass through
-        self.w.handle(tk, addr, event)
+        self.w.handle(mgr, addr, event)
     }
 }
 
@@ -128,13 +116,13 @@ impl<W: Widget + Handler<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         self.fns.iter().map(|(cond, _)| *cond).enumerate().collect()
     }
 
-    fn final_callback(&self) -> Option<&'static dyn Fn(Box<dyn kas::Window>, &mut dyn TkWindow)> {
+    fn final_callback(&self) -> Option<&'static dyn Fn(Box<dyn kas::Window>, &mut Manager)> {
         self.final_callback
     }
 
     /// Trigger a callback (see `iter_callbacks`).
-    fn trigger_callback(&mut self, index: usize, tk: &mut dyn TkWindow) {
+    fn trigger_callback(&mut self, index: usize, mgr: &mut Manager) {
         let cb = &mut self.fns[index].1;
-        cb(&mut self.w, tk);
+        cb(&mut self.w, mgr);
     }
 }
