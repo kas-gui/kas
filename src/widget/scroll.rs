@@ -147,6 +147,7 @@ impl<W: Widget> Widget for ScrollRegion<W> {
     }
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+        self.core.rect = rect;
         // We use simplified layout code here
         let pos = rect.pos;
         let mut size = rect.size;
@@ -157,7 +158,6 @@ impl<W: Widget> Widget for ScrollRegion<W> {
             );
         }
 
-        self.core.rect = rect;
         if self.show_bars.0 {
             size.1 -= self.horiz_bar.width();
         }
@@ -186,7 +186,7 @@ impl<W: Widget> Widget for ScrollRegion<W> {
         }
         if self.show_bars.1 {
             let pos = Coord(pos.0 + size.0 as i32, pos.1);
-            let size = Size(self.vert_bar.width(), size.1);
+            let size = Size(self.vert_bar.width(), self.core.rect.size.1);
             self.vert_bar.set_rect(size_handle, Rect { pos, size });
             self.vert_bar
                 .set_limits(self.max_offset.1 as u32, rect.size.1);
