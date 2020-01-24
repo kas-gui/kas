@@ -4,21 +4,35 @@ KAS GUI
 [![home](https://img.shields.io/badge/GitHub-home-blue)](https://github.com/dhardy/kas)
 [![old-home](https://img.shields.io/badge/GitLab-old--home-blueviolet)](https://gitlab.com/dhardy/kas)
 
-KAS is the *toolKit Abstraction System*. It comprises:
+KAS, the *toolKit Abstraction System*, is a general-purpose GUI toolkit.
+**Goals** of the project are:
 
--   `kas`: the *core* of the GUI library, providing core interfaces and types,
-    standard widgets, widget layout and event handling
+-   Fully-functional, intuitive GUIs
+-   Embeddable within games or any window manager
+-   Fancy/highly flexible hardware-accelerated rendering
+    (but in theory software rendering could be supported too)
+-   Easy, expressive specification within code (currently impeded by
+    Rust language limitations which will hopefully be solved in the future)
+-   Custom widgets in user code without limitations
+-   Bug-free, with an API facilitating compiler correctness lints
+-   High performance / low resource usage, other than optional fancy graphics
+
+**Status** of the project is **alpha**: progress has been made towards all
+goals, with signficiant limitations to features and goofy graphics.
+Portability is somewhat limited, requiring nightly Rust and [`wgpu`] support.
+
+**Crates:**
+
+-   `kas`: the *core* of the GUI library, providing most interfaces and logic
+    along with a selection of common widgets
 -   `kas_macros`: a helper crate providing the procedural macros used by `kas`
--   `kas_wgpu`: an interface to [`winit`] and [`wgpu`], providing windowing and
-    hardware-accelerated rendering
+-   `kas_wgpu`: provides windowing via [`winit`] and rendering via [`wgpu`]
+-   `kas_widgets`: (unrealised) - providing extra widgets
+-   `kas_graphs`: (unrealised) - plotting widgets
 
 A user depends on `kas` to write their complete UI specification, and then
-pastes a few lines of code to initialise `kas_wgpu::Toolkit`, add the window
-and run the UI.
-
-**Status is alpha-quality:** limited features, sub-optimal layouts,
-proof-of-concept artwork, *probably* not too buggy, limited portability,
-requires nightly Rust.
+pastes a few lines of code to initialise `kas_wgpu::Toolkit`, choose a theme,
+add window(s), and run the UI.
 
 [`winit`]: https://github.com/rust-windowing/winit/
 [`wgpu`]: https://github.com/gfx-rs/wgpu-rs
@@ -27,23 +41,19 @@ requires nightly Rust.
 Examples
 ---------
 
-Several examples are available on the `kas_wgpu` sub-crate. Try e.g.
-
-```
-cd kas-wgpu
-cargo run --example calculator
-```
-
 ![Calculator](screenshots/calculator.png) ![Dynamic](screenshots/dynamic.png)
 ![Theme](screenshots/theme.png) ![Gallery](screenshots/gallery.png)
 ![Layout](screenshots/layout.png)
 
+
 Installation and Testing
 ------------------------
 
-On Linux, ensure that [CMake](https://cmake.org/) is installed. On Linux this should be
-available in your package manager. This is required by the GLSL compiler.
-On Windows 10 it does not need to be installed explicitly.
+For the most part, Cargo should take care of dependencies, but note:
+
+-   [shaderc may require some setup](https://github.com/google/shaderc-rs#setup)
+-   [wgpu](https://github.com/gfx-rs/wgpu-rs) requires DirectX 11/12, Vulkan or
+    Metal (in the future it may support OpenGL)
 
 Next, clone the repository and run the examples as follows:
 
@@ -56,20 +66,6 @@ cargo test
 cargo run --example gallery
 ```
 
-### Cross-platform
-
-KAS uses cross-platform libraries, allowing it to target all major platforms.
-Current development & test targets:
-
--   Linux / X11
--   Linux / Wayland
--   Windows 10
-
-### Graphics requirement
-
-KAS uses [WebGPU](https://github.com/gfx-rs/wgpu) for rendering. This currently supports
-DX11, DX12, Vulkan and Metal, but not OpenGL or unaccelerated rendering. See [issue 33](https://github.com/dhardy/kas/issues/33).
-
 
 Features
 ----------
@@ -78,61 +74,13 @@ Features
 -   Type-safe event handlers from the context of these widgets
 -   Custom widgets over high- or low-level event API
 -   Custom widgets over high-level draw API (TODO: low level option)
--   Flexible grid layouts with spans
--   Width-for-height calculations
+-   Column / row / grid+span layouts (TODO: flow boxes, manual positioning)
+-   Width-for-height sizing
 -   Custom themes (with full control of sizing and rendering)
 -   Touch-screen support
 -   Keyboard navigation & accelerator keys
--   Fully scalable (hidpi)
--   Mult-window support
--   GPU-accelerated
--   Very memory and CPU efficient (aside from some pending optimisations)
-
-
-Data model and specification
---------------
-
-KAS is in part motivated by some of the common limitations of UIs:
-
--   specification is often redundant, requiring widgets to be created, added
-    to a parent, sometimes forcing elements to be named when *any* custom
-    properties are required
--   declarative specifications may need to be recreated frequently
--   user state (data) and UI models are often separated, making event handling
-    and data transfer more difficult than ought be necessary
-
-KAS takes some inspiration from Qt (but using macros in place of language
-extensions), in that custom widget structs may combine user state and UI
-components. Most of KAS is inspired by finding a maximally-type-safe, flexible
-"Rustic" solution to the problem at hand.
-
-
-Drawing and themes
---------
-
-One of the key problems to solve in a UI is the question of *how are widgets
-drawn?* Already, multiple approaches have been tried and abandoned:
-
--   `kas_gtk` used GTK to do the rendering; in practice this meant using GTK
-    for event handling and widget layout too, and made building the desired API
-    around GTK very difficult; an additional issue with this approach is that
-    GTK libs can be difficult to install on some platforms
--   `kas_rgx` used RGX as a rendering API allowing custom widget rendering
-    with a "mid-level graphics API"; ultimately this proved less flexible than
-    desired while also lacking high-level drawing routines (e.g. pretty frames)
-
-Thus, KAS has now moved to direct use of `wgpu` and `wgpu_glyph` for rendering,
-providing its own high-level abstractions (the `Draw*` traits provided by
-`kas` and `kas_wgpu`). This still needs fleshing out (more drawing primitives,
-a better text API, and support for custom pipes & shaders), but looks to be a
-viable path forward.
-
-### Themes
-
-A "theme" provides widget sizing and drawing implementations over the above
-`Draw*` traits as well as a choice of fonts (and eventually icons).
-
-Currently a single `SampleTheme` is provided, along with a custom theme example.
+-   Scalable (HiDPI) including fractional scaling
+-   Memory and CPU efficient
 
 
 Copyright and Licence
