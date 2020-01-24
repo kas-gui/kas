@@ -24,10 +24,12 @@ enum Control {
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
 fn make_window() -> Box<dyn kas::Window> {
     let stopwatch = make_widget! {
-        horizontal => VoidMsg;
+        #[widget(layout = horizontal)]
+        #[handler(msg = VoidMsg)]
         struct {
             #[widget] display: impl HasText = make_widget!{
-                frame => VoidMsg;
+                #[widget(layout = frame)]
+                #[handler(msg = VoidMsg)]
                 struct {
                     #[widget] display: Label = Label::from("0.000"),
                 }

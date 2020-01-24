@@ -7,13 +7,11 @@ use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::token::{
-    Brace, Colon, Comma, Eq, FatArrow, Impl, Paren, Pound, RArrow, Semi, Struct, Underscore, Where,
-};
+use syn::token::{Brace, Colon, Comma, Eq, Impl, Paren, Pound, RArrow, Struct, Underscore, Where};
 use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{
-    Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, ImplItemMethod,
-    Index, Lit, Member, Type, TypePath, TypeTraitObject,
+    Attribute, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident,
+    ImplItemMethod, Index, Lit, Member, Type, TypePath, TypeTraitObject,
 };
 
 #[derive(Debug)]
@@ -409,11 +407,27 @@ pub struct WidgetField {
     pub value: Expr,
 }
 
+struct HandlerAttrToks {
+    msg: Type,
+}
+
+impl Parse for HandlerAttrToks {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let content;
+        let _ = parenthesized!(content in input);
+        let _: kw::msg = content.parse()?;
+        let _: Eq = content.parse()?;
+        let msg = content.parse()?;
+
+        Ok(HandlerAttrToks { msg })
+    }
+}
+
 pub struct MakeWidget {
-    // widget layout
-    pub layout: Ident,
-    // msg type
-    pub msg: Type,
+    // handler: Msg type
+    pub handler_msg: Type,
+    // additional attributes
+    pub extra_attrs: TokenStream,
     // child widgets and data fields
     pub fields: Vec<WidgetField>,
     // impl blocks on the widget
@@ -422,12 +436,29 @@ pub struct MakeWidget {
 
 impl Parse for MakeWidget {
     fn parse(input: ParseStream) -> Result<Self> {
-        let layout: Ident = input.parse()?;
-        crate::layout::validate_layout(&layout)?;
+        let mut handler_msg = None;
+        let mut extra_attrs = TokenStream::new();
+        let mut attrs = input.call(Attribute::parse_outer)?;
+        for attr in attrs.drain(..) {
+            if attr.path == parse_quote! { handler } {
+                if handler_msg.is_some() {
+                    return Err(Error::new(attr.span(), "duplicate `handler` attribute"));
+                }
+                let hat: HandlerAttrToks = syn::parse2(attr.tokens)?;
+                handler_msg = Some(hat.msg);
+            } else {
+                extra_attrs.append_all(quote! { #attr });
+            }
+        }
 
-        let _: FatArrow = input.parse()?;
-        let msg: Type = input.parse()?;
-        let _: Semi = input.parse()?;
+        let handler_msg = if let Some(path) = handler_msg {
+            path
+        } else {
+            return Err(Error::new(
+                input.span(),
+                "expected `#[handler ..]` attribute",
+            ));
+        };
 
         let _: Struct = input.parse()?;
         let content;
@@ -465,8 +496,8 @@ impl Parse for MakeWidget {
         }
 
         Ok(MakeWidget {
-            layout,
-            msg,
+            handler_msg,
+            extra_attrs,
             fields,
             impls,
         })

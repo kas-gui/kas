@@ -21,7 +21,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let buttons = make_widget! {
-        horizontal => Message;
+        #[widget(layout = horizontal)]
+        #[handler(msg = Message)]
         struct {
             #[widget] _ = TextButton::new("−", Message::Decr),
             #[widget] _ = TextButton::new("+", Message::Incr),
@@ -30,7 +31,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new(
         "Counter",
         make_widget! {
-            vertical => VoidMsg;
+            #[widget(layout = vertical)]
+            #[handler(msg = VoidMsg)]
             struct {
                 #[widget] display: Label = Label::from("0"),
                 #[widget(handler = handle_button)] buttons -> Message = buttons,

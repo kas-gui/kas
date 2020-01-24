@@ -11,25 +11,6 @@ use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Result};
 use syn::{Ident, Member};
 
-pub(crate) fn validate_layout(layout: &Ident) -> Result<()> {
-    if layout == "frame"
-        || layout == "single"
-        || layout == "horizontal"
-        || layout == "vertical"
-        || layout == "grid"
-    {
-        Ok(())
-    } else {
-        Err(Error::new(
-            layout.span(),
-            format_args!(
-                "expected one of: frame, single, horizontal, vertical, grid; found {}",
-                layout
-            ),
-        ))
-    }
-}
-
 pub(crate) fn derive(
     children: &Vec<Child>,
     layout: &Ident,
@@ -118,7 +99,13 @@ pub(crate) fn derive(
         } else if layout == "grid" {
             Layout::Grid
         } else {
-            panic!("invalid layout (already excluded by validate_layout)");
+            return Err(Error::new(
+                layout.span(),
+                format_args!(
+                    "expected one of: frame, single, horizontal, vertical, grid; found {}",
+                    layout
+                ),
+            ));
         };
 
         // TODO: this could be rewritten

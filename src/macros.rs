@@ -164,53 +164,102 @@
 //! literal and adding the additional fields and implementations required by all
 //! widgets.
 //!
-//! Syntax should match the following Backus-Naur Form:
+//! Syntax is similar to a Rust type definition, but with most of the types and
+//! identifiers omitted. It's easiest to study an example:
 //!
-//! ```bnf
-//! <input>     ::= <layout> "=>" <msg> ";" <fields> ";" <funcs>
-//! <layout>    ::= "frame" | "single" | "horizontal" | "vertical" | "grid"
-//! <msg>  ::= <type>
-//! <fields>    ::= "" | <field> | <field> "," <fields>
-//! <field>     ::= <w_attr> <opt_ident> <field_ty> = <expr>
-//! <opt_ident> ::= "_" | <ident>
-//! <field_ty>  ::= "" | ":" <type> | ":" impl <bound> | "->" <type> | ":" impl <bound> "->" <type>
-//! <w_attr>    ::= "" | "#" "[" <widget> <w_params> "]"
-//! <w_params>  ::= "" | "(" <w_args> ")"
-//! <w_args>    ::= <w_arg> | <w_arg> "," <w_args>
-//! <w_arg>     ::= <pos_arg> "=" <lit> | "handler" = <ident>
-//! <pos_arg>   ::= "col" | "row" | "cspan" | "rspan"
-//! <funcs>     ::= "" | <func> <funcs>
+//! ```rust
+//! # #![feature(proc_macro_hygiene)]
+//! # use kas::event::{VoidResponse, VoidMsg, Manager};
+//! # use kas::macros::make_widget;
+//! # use kas::widget::Label;
+//! # let inner_widgets = Label::new("");
+//! #[derive(Clone, Copy, Debug)]
+//! enum Item {
+//!     Button,
+//!     Check(bool),
+//! }
+//! let widget = make_widget! {
+//!     #[widget(layout = vertical)]
+//!     #[handler(msg = VoidMsg)]
+//!     struct {
+//!         #[widget] _ = Label::from("Widget Gallery"),
+//!         #[widget(handler = activations)] _ = inner_widgets,
+//!         last_item: Item = Item::Button,
+//!     }
+//!     impl {
+//!         fn activations(&mut self, mgr: &mut Manager, item: Item)
+//!             -> VoidResponse
+//!         {
+//!             match item {
+//!                 Item::Button => println!("Clicked!"),
+//!                 Item::Check(b) => println!("Checkbox: {}", b),
+//!             };
+//!             self.last_item = item;
+//!             VoidResponse::None
+//!         }
+//!     }
+//! };
 //! ```
-//! where `<type>` is a type expression, `<expr>` is a (value) expression,
-//! `<ident>` is an identifier, `<lit>` is a literal, `<path>` is a path,
-//! `<bound>` is a trait object bound, and
-//! `<func>` is a Rust method definition. `""` is the empty string (i.e. nothing).
 //!
-//! The effect of this macro is to create an anonymous struct with the above
-//! fields (plus an implicit `core`), implement [`WidgetCore`], [`Widget`]
-//! and [`Handler`] (with the specified `<msg>` type), implement the
-//! additional `<funcs>` listed on this type, then construct and return an
-//! instance using the given value expressions to initialise each field.
+//! ### Struct and fields
 //!
-//! Each field is considered a child widget if the `#[widget]` attribute is
-//! present, or a simple data field otherwise. The specification of this
-//! attribute is identical to that used when deriving `Widget`.
+//! Starting from the middle, we have a `struct` definition, though two things
+//! are unusual here: (1) the type is anonymous (unnamed), and (2) fields are
+//! simultaneously given both type and value.
 //!
-//! The `layout` specifier is as [above](#type-attributes).
+//! Field specifications can get more unusual too, since both the field name and
+//! the field type are optional. For example, all of the following are equivalent:
 //!
-//! Fields may have an identifier or may be anonymous (via usage of `_`). This
-//! is often convenient for child widgets which don't need to be referred to.
+//! ```nocompile
+//! #[widget] l1: Label = Label::new("label 1"),
+//! #[widget] _: Label = Label::new("label 2"),
+//! #[widget] l3 = Label::new("label 3"),
+//! #[widget] _ = Label::new("label 4"),
+//! ```
 //!
-//! Fields may have an explicit type (`ident : type = ...`), or the type may be
-//! skipped, or (for widgets only) just the message type can be specified via
-//! `ident -> type = ...`. Note that some type specification is usually needed
-//! when referring to the field later.
+//! Omitting field names is fine, so long as you don't need to refer to them.
+//! Omitting types, however, comes at a small cost: Rust does not support fields
+//! of unspecified types, thus this must be emulated with generics. The macro
+//! deals with the necessary type arguments to implementations, however macro
+//! expansions (as sometimes seen in error messages) are ugly and, perhaps worst
+//! of all, the field will have opaque type (making methods and inner fields
+//! inaccessible). The latter can be partially remedied via trait bounds:
 //!
-//! Optionally, a message handler may be specified for child widgets via
-//! `#[widget(handler = f)] ident = value` where `f` is a method defined on the
-//! anonymous struct with signature `fn f(&mut self, mgr: &mut Manager, msg: M) -> R`
-//! where `M` is the type of response received from the child widget, and `R` is
-//! the type of response sent from this widget.
+//! ```nocompile
+//! #[widget] display: impl HasText = EditBox::new("editable"),
+//! ```
+//!
+//! ### Implementations
+//!
+//! Now, back to the example above, we see attributes and an `impl` block:
+//!
+//! ```nocompile
+//! let widget = make_widget! {
+//!     #[widget(layout = vertical)]
+//!     #[handler(msg = VoidMsg)]
+//!     struct {
+//!         ...
+//!     }
+//!     impl {
+//!         fn on_tick(&mut self, mgr: &mut Manager) {
+//!             ...
+//!         }
+//!     }
+//! };
+//! ```
+//!
+//! Attributes may be applied to the anonymous struct like normal, with two
+//! exceptions:
+//!
+//! 1.  `#[derive(Clone, Debug, kas::macros::Widget)]` is implied
+//! 2.  `#[handler(msg = ..)]` is required and most only have an `msg` parameter
+//!
+//! `impl` blocks work like usual except that the struct name and type
+//! parameters are omitted. Traits may also be implemented this way:
+//!
+//! ```nocompile
+//! impl Trait { ... }
+//! ```
 //!
 //! ### Example
 //!
@@ -227,7 +276,8 @@
 //! }
 //!
 //! let button_box = make_widget!{
-//!     horizontal => OkCancel;
+//!     #[handler(msg = OkCancel)]
+//!     #[widget(layout = horizontal)]
 //!     struct {
 //!         #[widget] _ = TextButton::new("Ok", OkCancel::Ok),
 //!         #[widget] _ = TextButton::new("Cancel", OkCancel::Cancel),

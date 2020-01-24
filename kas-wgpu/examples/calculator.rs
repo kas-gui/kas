@@ -30,7 +30,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let buttons = make_widget! {
-        grid => Key;
+        #[widget(layout = grid)]
+        #[handler(msg = Key)]
         struct {
             #[widget(col = 0, row = 0)]
             _ = TextButton::new("clear", Key::Clear).with_keys(&[VK::Delete]),
@@ -70,7 +71,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
     let content = make_widget! {
-        vertical => VoidMsg;
+        #[widget(layout = vertical)]
+        #[handler(msg = VoidMsg)]
         struct {
             #[widget] display: impl HasText = EditBox::new("0").editable(false).multi_line(true),
             #[widget(handler = handle_button)] buttons -> Key = buttons,

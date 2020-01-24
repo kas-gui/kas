@@ -300,10 +300,8 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut handler_extra = Punctuated::<_, Comma>::new();
     let mut handler_clauses = Punctuated::<_, Comma>::new();
 
-    let msg = &args.msg;
-
-    let layout = args.layout;
-    let widget_args = quote! { layout = #layout };
+    let msg = &args.handler_msg;
+    let extra_attrs = args.extra_attrs;
 
     for (index, field) in args.fields.drain(..).enumerate() {
         let attr = field.widget_attr;
@@ -403,8 +401,8 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote! { {
-        #[widget(#widget_args)]
         #[handler(msg = #msg, generics = < #handler_extra > #handler_where)]
+        #extra_attrs
         #[derive(Clone, Debug, kas::macros::Widget)]
         struct AnonWidget<#gen_ptrs> {
             #field_toks

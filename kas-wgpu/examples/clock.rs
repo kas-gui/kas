@@ -22,7 +22,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let mut window = Window::new(
         "Clock",
         make_widget! {
-            vertical => VoidMsg;
+            #[widget(layout = vertical)]
+            #[handler(msg = VoidMsg)]
             struct {
                 #[widget] date: Label = Label::new(""),
                 #[widget] time: Label = Label::new("")
