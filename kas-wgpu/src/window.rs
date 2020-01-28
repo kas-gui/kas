@@ -6,7 +6,7 @@
 //! `Window` and `WindowList` types
 
 use log::{debug, info, trace};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use kas::event::{Callback, ManagerState};
 use kas::geom::{Coord, Rect, Size};
@@ -27,7 +27,6 @@ pub(crate) struct Window<TW> {
     sc_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
     draw_pipe: DrawPipe,
-    timeouts: Vec<(usize, Instant, Option<Duration>)>,
     theme_window: TW,
 }
 
@@ -67,7 +66,6 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             sc_desc,
             swap_chain,
             draw_pipe,
-            timeouts: vec![],
             theme_window,
         }
     }
@@ -84,10 +82,6 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             match condition {
                 Callback::Start => {
                     self.widget.trigger_callback(i, &mut mgr);
-                }
-                Callback::Repeat(dur) => {
-                    self.widget.trigger_callback(i, &mut mgr);
-                    self.timeouts.push((i, Instant::now() + dur, Some(dur)));
                 }
                 Callback::Close => (),
             }
@@ -106,7 +100,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         self.mgr.configure(shared, &mut *self.widget);
         self.window.request_redraw();
 
-        self.next_resume()
+        self.mgr.next_resume()
     }
 
     /// Handle an event
@@ -135,7 +129,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 .handle_winit(&mut *self.widget, event),
         };
 
-        (action, self.next_resume())
+        (action, self.mgr.next_resume())
     }
 
     pub fn handle_closure<T>(mut self, shared: &mut SharedState<T>) -> TkAction {
@@ -143,7 +137,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
 
         for (i, condition) in self.widget.callbacks() {
             match condition {
-                Callback::Start | Callback::Repeat(_) => (),
+                Callback::Start => (),
                 Callback::Close => {
                     self.widget.trigger_callback(i, &mut mgr);
                 }
@@ -156,47 +150,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         mgr.unwrap_action()
     }
 
-    pub(crate) fn timer_resume<T>(
-        &mut self,
-        shared: &mut SharedState<T>,
-        instant: Instant,
-    ) -> (TkAction, Option<Instant>) {
+    pub(crate) fn update<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
         let mut mgr = self.mgr.manager(shared);
-
-        // Iterate over loop, mutating some elements, removing others.
-        let mut i = 0;
-        while i < self.timeouts.len() {
-            for timeout in &mut self.timeouts[i..] {
-                if timeout.1 == instant {
-                    self.widget.trigger_callback(timeout.0, &mut mgr);
-                    if let Some(dur) = timeout.2 {
-                        while timeout.1 <= Instant::now() {
-                            timeout.1 += dur;
-                        }
-                    } else {
-                        break; // remove
-                    }
-                }
-                i += 1;
-            }
-            if i < self.timeouts.len() {
-                self.timeouts.remove(i);
-            }
-        }
-
         mgr.update_widgets(&mut *self.widget);
-        (mgr.unwrap_action(), self.next_resume())
-    }
-
-    fn next_resume(&self) -> Option<Instant> {
-        let mut next = self.mgr.next_resume();
-        for timeout in &self.timeouts {
-            next = match next {
-                None => Some(timeout.1),
-                Some(t) => Some(t.min(timeout.1)),
-            }
-        }
-        next
+        (mgr.unwrap_action(), self.mgr.next_resume())
     }
 }
 

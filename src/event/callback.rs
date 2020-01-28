@@ -10,8 +10,6 @@
 //!
 //! [`Window`]: crate::Window
 
-use std::time::Duration;
-
 /// Specifies under which condition a callback is called.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Callback {
@@ -20,10 +18,6 @@ pub enum Callback {
     /// Note that reconfigure always happens after `Start` callbacks, so there
     /// is no need to request a redraw / reconfigure from this callback.
     Start,
-    /// Call on start and repeatedly with the given period. Precise timing is not guaranteed.
-    // Note: do we want to auto-suspend timeouts for minimised windows? Perhaps
-    // make this optional?
-    Repeat(Duration),
     /// Call on window closure
     Close,
 }

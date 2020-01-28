@@ -114,8 +114,7 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         assert_eq!(item.0, requested_resume);
 
                         let resume = if let Some(w) = self.windows.get_mut(&item.1) {
-                            let (action, resume) =
-                                w.timer_resume(&mut self.shared, requested_resume);
+                            let (action, resume) = w.update(&mut self.shared);
                             actions.push((item.1, action));
                             resume
                         } else {
