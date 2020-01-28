@@ -182,11 +182,12 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             }
         }
 
+        mgr.update_widgets(&mut *self.widget);
         (mgr.unwrap_action(), self.next_resume())
     }
 
     fn next_resume(&self) -> Option<Instant> {
-        let mut next = None;
+        let mut next = self.mgr.next_resume();
         for timeout in &self.timeouts {
             next = match next {
                 None => Some(timeout.1),

@@ -9,17 +9,18 @@
 extern crate chrono;
 
 use chrono::prelude::*;
+use log::info;
 use std::time::Duration;
 
 use kas::class::HasText;
-use kas::event::{Callback, Manager};
+use kas::event::Manager;
 use kas::widget::{Label, Window};
+use kas::{Widget, WidgetCore, WidgetId};
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let mut window = Window::new("Clock", {
-        #[widget]
+    let window = Window::new("Clock", {
         #[layout(vertical)]
         #[handler]
         #[derive(Clone, Debug, kas :: macros :: Widget)]
@@ -33,11 +34,19 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget]
             time: Label,
         }
-        impl AnonWidget {
-            fn on_tick(&mut self, mgr: &mut Manager) {
+        impl Widget for AnonWidget {
+            fn configure(&mut self, id: WidgetId, mgr: &mut Manager) {
+                self.core_data_mut().id = id;
+                mgr.schedule_update(Duration::new(0, 0), id);
+            }
+
+            fn update(&mut self, mgr: &mut Manager) -> Option<Duration> {
                 let now = Local::now();
                 self.date.set_text(mgr, now.format("%Y-%m-%d").to_string());
                 self.time.set_text(mgr, now.format("%H:%M:%S").to_string());
+                let ns = 1_000_000_000 - (now.time().nanosecond() % 1_000_000_000);
+                info!("Requesting update in {}ns", ns);
+                Some(Duration::new(0, ns))
             }
         }
         AnonWidget {
@@ -46,10 +55,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
             date: Label::new(""),
             time: Label::new(""),
         }
-    });
-
-    window.add_callback(Callback::Repeat(Duration::from_secs(1)), &|w, mgr| {
-        w.on_tick(mgr)
     });
 
     let mut theme = kas_wgpu::SampleTheme::new();

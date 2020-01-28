@@ -6,6 +6,7 @@
 //! Widget traits
 
 use std::fmt;
+use std::time::Duration;
 
 use crate::event::{Callback, Handler, Manager, VoidMsg};
 use crate::geom::{Rect, Size};
@@ -270,6 +271,21 @@ pub trait Widget: Layout {
     /// additional configuration.
     fn configure(&mut self, id: WidgetId, _: &mut Manager) {
         self.core_data_mut().id = id;
+    }
+
+    /// Update the widget
+    ///
+    /// This method is called on scheduled updates: see [`schedule_update`].
+    ///
+    /// When some [`Duration`] is returned, another update is scheduled as if
+    /// [`schedule_update`] were called with this duration.
+    /// Required: `duration > 0`.
+    ///
+    /// This method being called does not imply a redraw.
+    ///
+    /// [`schedule_update`]: Manager::schedule_update
+    fn update(&mut self, _: &mut Manager) -> Option<Duration> {
+        None
     }
 
     /// Is this widget navigable via Tab key?
