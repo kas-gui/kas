@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Clock example, with the make_widget macro expanded
+//! Clock example
 #![feature(proc_macro_hygiene)]
 
 extern crate chrono;
@@ -24,7 +24,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[layout(vertical)]
         #[handler]
         #[derive(Clone, Debug, kas :: macros :: Widget)]
-        struct AnonWidget {
+        struct Clock {
             #[core]
             core: kas::CoreData,
             #[layout_data]
@@ -34,7 +34,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget]
             time: Label,
         }
-        impl Widget for AnonWidget {
+        impl Widget for Clock {
             fn configure(&mut self, id: WidgetId, mgr: &mut Manager) {
                 self.core_data_mut().id = id;
                 mgr.schedule_update(Duration::new(0, 0), id);
@@ -49,7 +49,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 Some(Duration::new(0, ns))
             }
         }
-        AnonWidget {
+        Clock {
             core: Default::default(),
             layout_data: Default::default(),
             date: Label::new(""),
