@@ -76,7 +76,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     /// windows. Optionally returns a callback time.
     ///
     /// `init` should always return an action of at least `TkAction::Reconfigure`.
-    pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
+    pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> TkAction {
         let mut mgr = self.mgr.manager(shared);
         mgr.send_action(TkAction::Reconfigure);
 
@@ -93,11 +93,11 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             }
         }
 
-        (mgr.unwrap_action(), self.next_resume())
+        mgr.unwrap_action()
     }
 
     /// Recompute layout of widgets and redraw
-    pub fn reconfigure<T>(&mut self, shared: &mut SharedState<T>) {
+    pub fn reconfigure<T>(&mut self, shared: &mut SharedState<T>) -> Option<Instant> {
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         debug!("Reconfiguring window (size = {:?})", size);
 
@@ -105,6 +105,8 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         self.widget.resize(&mut size_handle, size);
         self.mgr.configure(shared, &mut *self.widget);
         self.window.request_redraw();
+
+        self.next_resume()
     }
 
     /// Handle an event
