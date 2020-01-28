@@ -19,7 +19,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let mut window = Window::new("Clock", {
-        #[widget (layout = vertical)]
+        #[widget]
+        #[layout(vertical)]
         #[handler]
         #[derive(Clone, Debug, kas :: macros :: Widget)]
         struct AnonWidget {

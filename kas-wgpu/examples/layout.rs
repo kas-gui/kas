@@ -19,7 +19,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new(
         "Layout demo",
         make_widget! {
-            #[widget(layout = grid)]
+            #[widget]
+            #[layout(grid)]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(row=0, col=2)] _ = Label::from("Layout demo"),

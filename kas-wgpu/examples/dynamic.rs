@@ -27,7 +27,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let controls = make_widget! {
-        #[widget(layout = horizontal)]
+        #[widget]
+        #[layout(horizontal)]
         #[handler(msg = Message)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
@@ -64,7 +65,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let mut window = Window::new(
         "Dynamic widget demo",
         make_widget! {
-            #[widget(layout = vertical)]
+            #[widget]
+            #[layout(vertical)]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),

@@ -13,11 +13,10 @@ use crate::event::{Action, Handler, Manager, Response, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{CoreData, Widget, WidgetCore, WidgetId};
+use crate::{CoreData, Layout, Widget, WidgetCore, WidgetId};
 use kas::geom::Rect;
 
 /// A push-button with a text label
-#[widget]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug> {
     #[core]
@@ -39,7 +38,9 @@ impl<M: Clone + Debug> Widget for TextButton<M> {
     fn allow_focus(&self) -> bool {
         true
     }
+}
 
+impl<M: Clone + Debug> Layout for TextButton<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.button_surround();
         SizeRules::fixed(axis.extract_size(sides.0 + sides.1))

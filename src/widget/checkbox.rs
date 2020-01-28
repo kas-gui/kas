@@ -12,11 +12,10 @@ use crate::event::{Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{CoreData, Widget, WidgetCore};
+use crate::{CoreData, Layout, Widget, WidgetCore};
 use kas::geom::{Coord, Rect};
 
 /// A checkable box with optional label
-#[widget]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<OT: 'static> {
     #[core]
@@ -42,7 +41,9 @@ impl<OT: 'static> Widget for CheckBox<OT> {
     fn allow_focus(&self) -> bool {
         true
     }
+}
 
+impl<OT: 'static> Layout for CheckBox<OT> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut r = SizeRules::fixed(axis.extract_size(size_handle.checkbox()));
         if !self.label.is_empty() {

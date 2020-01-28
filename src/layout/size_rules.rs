@@ -51,7 +51,7 @@ impl Margins {
 
 /// Widget sizing information
 ///
-/// Return value of [`kas::Widget::size_rules`].
+/// Return value of [`kas::Layout::size_rules`].
 ///
 /// This struct conveys properties such as the minimum size and preferred size
 /// of the widgets being queried.

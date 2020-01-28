@@ -26,7 +26,7 @@ mod layout;
 /// Macro to derive widget traits
 ///
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
-#[proc_macro_derive(Widget, attributes(core, widget, handler, layout_data))]
+#[proc_macro_derive(Widget, attributes(core, widget, layout, handler, layout_data))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
 
@@ -98,13 +98,13 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     };
 
-    if let Some(ref layout) = args.widget.layout {
+    if let Some(layout) = args.layout {
         let (fns, dt) = match layout::derive(&args.children, layout, &args.layout_data) {
             Ok(res) => res,
             Err(err) => return err.to_compile_error().into(),
         };
         toks.append_all(quote! {
-            impl #impl_generics kas::Widget
+            impl #impl_generics kas::Layout
                     for #name #ty_generics #where_clause
             {
                 #fns
@@ -113,6 +113,15 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     for #name #ty_generics #where_clause
             {
                 #dt
+            }
+        });
+    }
+
+    if let Some(_) = args.widget {
+        toks.append_all(quote! {
+            impl #impl_generics kas::Widget
+                    for #name #ty_generics #where_clause
+            {
             }
         });
     }

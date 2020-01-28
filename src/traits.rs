@@ -84,7 +84,7 @@ pub trait WidgetCore: fmt::Debug {
     /// Find a child widget by identifier
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`crate::Manager::configure`].
+    /// [`crate::event::ManagerState::configure`].
     fn find(&self, id: WidgetId) -> Option<&dyn Widget> {
         if id == self.id() {
             return Some(self.as_widget());
@@ -107,7 +107,7 @@ pub trait WidgetCore: fmt::Debug {
     /// Find a child widget by identifier
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`crate::Manager::configure`].
+    /// [`crate::event::ManagerState::configure`].
     fn find_mut(&mut self, id: WidgetId) -> Option<&mut dyn Widget> {
         if id == self.id() {
             return Some(self.as_widget_mut());
@@ -196,50 +196,11 @@ impl WidgetCore for Box<dyn Widget> {
     }
 }
 
-/// A widget is a UI element.
+/// Positioning and drawing routines for widgets
 ///
-/// Widgets usually occupy space within the UI and are drawable. Widgets may
-/// respond to user events. Widgets may have child widgets.
-///
-/// Widgets must implement the child trait [`WidgetCore`] and the
-/// [`Handler`] trait, besides this trait.
-/// It is recommended to use the `derive(Widget)` macro to generate some of the
-/// required implementations. See documentation in the [`kas::macros`] module.
-///
-/// Example of a simple widget which draws a frame around its child:
-///
-/// ```
-/// use kas::macros::Widget;
-/// use kas::{CoreData, LayoutData, Widget};
-///
-/// #[widget(layout = frame)]
-/// #[derive(Clone, Debug, Widget)]
-/// pub struct Frame<W: Widget> {
-///     #[core] core: CoreData,
-///     #[layout_data] layout_data: <Self as LayoutData>::Data,
-///     #[widget] child: W,
-/// }
-/// ```
-///
-/// [`Handler`]: crate::event::Handler
-pub trait Widget: WidgetCore {
-    /// Configure widget
-    ///
-    /// Widgets are *configured* on window creation and when
-    /// [`kas::TkAction::Reconfigure`] is sent.
-    ///
-    /// *All* implementations *must* set `self.core.id` to the given `id`.
-    /// Widgets only need to implement this manually when they need to perform
-    /// additional configuration.
-    fn configure(&mut self, id: WidgetId, _: &mut Manager) {
-        self.core_data_mut().id = id;
-    }
-
-    /// Is this widget navigable via Tab key?
-    fn allow_focus(&self) -> bool {
-        false
-    }
-
+/// These methods are often implemented via a derive trait, hence live in their
+/// own trait. (This may be revised in the future.)
+pub trait Layout: WidgetCore {
     /// Get size rules for the given axis.
     ///
     /// This method takes `&mut self` to allow local caching of child widget
@@ -269,6 +230,52 @@ pub trait Widget: WidgetCore {
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager);
+}
+
+/// A widget is a UI element.
+///
+/// Widgets usually occupy space within the UI and are drawable. Widgets may
+/// respond to user events. Widgets may have child widgets.
+///
+/// Widgets must implement the child trait [`WidgetCore`] and the
+/// [`Handler`] trait, besides this trait.
+/// It is recommended to use the `derive(Widget)` macro to generate some of the
+/// required implementations. See documentation in the [`kas::macros`] module.
+///
+/// Example of a simple widget which draws a frame around its child:
+///
+/// ```
+/// use kas::macros::Widget;
+/// use kas::{CoreData, LayoutData, Widget};
+///
+/// #[widget]
+/// #[layout(single, frame)]
+/// #[derive(Clone, Debug, Widget)]
+/// pub struct Frame<W: Widget> {
+///     #[core] core: CoreData,
+///     #[layout_data] layout_data: <Self as LayoutData>::Data,
+///     #[widget] child: W,
+/// }
+/// ```
+///
+/// [`Handler`]: crate::event::Handler
+pub trait Widget: Layout {
+    /// Configure widget
+    ///
+    /// Widgets are *configured* on window creation and when
+    /// [`kas::TkAction::Reconfigure`] is sent.
+    ///
+    /// *All* implementations *must* set `self.core.id` to the given `id`.
+    /// Widgets only need to implement this manually when they need to perform
+    /// additional configuration.
+    fn configure(&mut self, id: WidgetId, _: &mut Manager) {
+        self.core_data_mut().id = id;
+    }
+
+    /// Is this widget navigable via Tab key?
+    fn allow_focus(&self) -> bool {
+        false
+    }
 }
 
 /// Trait to describe the type needed by the layout implementation.

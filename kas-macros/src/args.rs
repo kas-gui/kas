@@ -23,7 +23,8 @@ pub struct Child {
 pub struct Args {
     pub core: Member,
     pub layout_data: Option<Member>,
-    pub widget: WidgetArgs,
+    pub widget: Option<WidgetArgs>,
+    pub layout: Option<LayoutArgs>,
     pub handler: Option<HandlerArgs>,
     pub children: Vec<Child>,
 }
@@ -94,6 +95,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
     }
 
     let mut widget = None;
+    let mut layout = None;
     let mut handler = None;
 
     for attr in ast.attrs.drain(..) {
@@ -104,6 +106,15 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                 attr.span()
                     .unwrap()
                     .error("multiple #[widget(..)] attributes on type")
+                    .emit()
+            }
+        } else if attr.path == parse_quote! { layout } {
+            if layout.is_none() {
+                layout = Some(syn::parse2(attr.tokens)?);
+            } else {
+                attr.span()
+                    .unwrap()
+                    .error("multiple #[layout(..)] attributes on type")
                     .emit()
             }
         } else if attr.path == parse_quote! { handler } {
@@ -119,20 +130,14 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
     }
 
     if let Some(core) = core {
-        if let Some(widget) = widget {
-            Ok(Args {
-                core,
-                layout_data,
-                widget,
-                handler,
-                children,
-            })
-        } else {
-            Err(Error::new(
-                *span,
-                "a type deriving Widget must be annotated with the #[widget]` attribute",
-            ))
-        }
+        Ok(Args {
+            core,
+            layout_data,
+            widget,
+            layout,
+            handler,
+            children,
+        })
     } else {
         Err(Error::new(
             *span,
@@ -165,6 +170,10 @@ mod kw {
     custom_keyword!(msg);
     custom_keyword!(generics);
     custom_keyword!(frame);
+    custom_keyword!(single);
+    custom_keyword!(horizontal);
+    custom_keyword!(vertical);
+    custom_keyword!(grid);
 }
 
 #[derive(Debug)]
@@ -310,43 +319,92 @@ impl ToTokens for GridPos {
     }
 }
 
-pub struct WidgetArgs {
-    pub layout: Option<Ident>,
-    pub is_frame: bool,
-}
+pub struct WidgetArgs {}
 
 impl Parse for WidgetArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut layout = None;
-        let mut is_frame = false;
-
         if input.is_empty() {
-            return Ok(WidgetArgs { layout, is_frame });
+            return Ok(WidgetArgs {});
         }
 
         let content;
         let _ = parenthesized!(content in input);
 
+        if !content.is_empty() {
+            return Err(Error::new(content.span(), "unexpected content"));
+        }
+
+        Ok(WidgetArgs {})
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum LayoutType {
+    Single,
+    Horizontal,
+    Vertical,
+    Grid,
+}
+
+pub struct LayoutArgs {
+    pub layout: LayoutType,
+    pub is_frame: bool,
+    pub span: Span,
+}
+
+impl Parse for LayoutArgs {
+    fn parse(input: ParseStream) -> Result<Self> {
+        if input.is_empty() {
+            return Err(Error::new(
+                input.span(),
+                "expected attribute parameters: `(..)`",
+            ));
+        }
+
+        let span = input.span();
+
+        let content;
+        let _ = parenthesized!(content in input);
+
+        let lookahead = content.lookahead1();
+        let layout = if lookahead.peek(kw::single) {
+            let _: kw::single = content.parse()?;
+            LayoutType::Single
+        } else if lookahead.peek(kw::horizontal) {
+            let _: kw::horizontal = content.parse()?;
+            LayoutType::Horizontal
+        } else if lookahead.peek(kw::vertical) {
+            let _: kw::vertical = content.parse()?;
+            LayoutType::Vertical
+        } else if lookahead.peek(kw::grid) {
+            let _: kw::grid = content.parse()?;
+            LayoutType::Grid
+        } else {
+            return Err(lookahead.error());
+        };
+
+        let mut is_frame = false;
+
         loop {
+            if content.is_empty() {
+                break;
+            }
+            let _: Comma = content.parse()?;
+
             let lookahead = content.lookahead1();
-            if layout.is_none() && lookahead.peek(kw::layout) {
-                let _: kw::layout = content.parse()?;
-                let _: Eq = content.parse()?;
-                layout = Some(content.parse()?);
-            } else if !is_frame && lookahead.peek(kw::frame) {
+            if !is_frame && lookahead.peek(kw::frame) {
                 let _: kw::frame = content.parse()?;
                 is_frame = true;
             } else {
                 return Err(lookahead.error());
             }
-
-            if content.is_empty() {
-                break;
-            }
-            let _: Comma = content.parse()?;
         }
 
-        Ok(WidgetArgs { layout, is_frame })
+        Ok(LayoutArgs {
+            layout,
+            is_frame,
+            span,
+        })
     }
 }
 

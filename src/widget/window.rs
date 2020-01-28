@@ -15,7 +15,8 @@ use crate::theme::SizeHandle;
 use crate::{CoreData, LayoutData, Widget};
 
 /// The main instantiation of the [`Window`] trait.
-#[widget(layout = single)]
+#[widget]
+#[layout(single)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
     #[core]
