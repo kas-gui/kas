@@ -85,17 +85,44 @@ pub trait WidgetCore: fmt::Debug {
     ///
     /// This requires that the widget tree has already been configured by
     /// [`crate::Manager::configure`].
-    fn get_by_id(&self, id: WidgetId) -> Option<&dyn Widget> {
+    fn find(&self, id: WidgetId) -> Option<&dyn Widget> {
         if id == self.id() {
             return Some(self.as_widget());
-        } else if id < self.id() {
-            for i in 0..self.len() {
-                if let Some(w) = self.get(i) {
-                    if id <= w.id() {
-                        return w.get_by_id(id);
-                    }
+        } else if id > self.id() {
+            return None;
+        }
+
+        for i in 0..self.len() {
+            if let Some(w) = self.get(i) {
+                if id > w.id() {
+                    continue;
                 }
+                return w.find(id);
             }
+            break;
+        }
+        None
+    }
+
+    /// Find a child widget by identifier
+    ///
+    /// This requires that the widget tree has already been configured by
+    /// [`crate::Manager::configure`].
+    fn find_mut(&mut self, id: WidgetId) -> Option<&mut dyn Widget> {
+        if id == self.id() {
+            return Some(self.as_widget_mut());
+        } else if id > self.id() {
+            return None;
+        }
+
+        for i in 0..self.len() {
+            if self.get(i).map(|w| id > w.id()).unwrap_or(true) {
+                continue;
+            }
+            if let Some(w) = self.get_mut(i) {
+                return w.find_mut(id);
+            }
+            break;
         }
         None
     }

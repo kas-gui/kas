@@ -422,11 +422,8 @@ impl<'a> Manager<'a> {
                 return self.unset_key_focus();
             }
 
-            if widget
-                .get_by_id(id)
-                .map(|w| w.allow_focus())
-                .unwrap_or(false)
-            {
+            // TODO(opt): incorporate walk/find logic
+            if widget.find(id).map(|w| w.allow_focus()).unwrap_or(false) {
                 self.send_action(TkAction::Redraw);
                 self.mgr.key_focus = Some(id);
                 return;
