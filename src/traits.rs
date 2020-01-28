@@ -271,41 +271,6 @@ pub trait Widget: WidgetCore {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager);
 }
 
-impl Widget for Box<dyn Widget> {
-    fn allow_focus(&self) -> bool {
-        self.as_ref().allow_focus()
-    }
-
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.as_mut().size_rules(size_handle, axis)
-    }
-
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
-        self.as_mut().set_rect(size_handle, rect);
-    }
-
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
-        self.as_ref().draw(draw_handle, mgr);
-    }
-}
-
-impl Clone for Box<dyn Widget> {
-    fn clone(&self) -> Self {
-        #[cfg(feature = "nightly")]
-        unsafe {
-            let mut x = Box::new_uninit();
-            self.clone_to(x.as_mut_ptr());
-            x.assume_init()
-        }
-
-        // Run-time failure is not ideal — but we would hit compile-issues which
-        // don't necessarily correspond to actual usage otherwise due to
-        // `derive(Clone)` on any widget produced by `make_widget!`.
-        #[cfg(not(feature = "nightly"))]
-        panic!("Clone for Box<dyn Widget> only supported on nightly");
-    }
-}
-
 /// Trait to describe the type needed by the layout implementation.
 ///
 /// To allow the `derive(Widget)` macro to implement [`Widget`], we use an

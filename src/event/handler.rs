@@ -9,7 +9,7 @@ use crate::event::{Action, Address, Event, Manager, Response};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Widget, WidgetCore};
+use crate::{CoreData, Widget, WidgetCore, WidgetId};
 
 /// Event-handling aspect of a widget.
 ///
@@ -64,8 +64,6 @@ pub trait Handler: Widget {
     }
 }
 
-// These implementations are somewhat redundant with Box<dyn Widget>.
-// TODO: do we want to keep both?
 impl<M> Handler for Box<dyn Handler<Msg = M>> {
     type Msg = M;
 
@@ -86,6 +84,10 @@ impl<M> Handler for Box<dyn Handler<Msg = M>> {
 }
 
 impl<M> Widget for Box<dyn Handler<Msg = M>> {
+    fn configure(&mut self, id: WidgetId, mgr: &mut Manager) {
+        self.as_mut().configure(id, mgr);
+    }
+
     fn allow_focus(&self) -> bool {
         self.as_ref().allow_focus()
     }
