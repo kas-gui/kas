@@ -10,9 +10,10 @@ use std::fmt::Write;
 use std::time::{Duration, Instant};
 
 use kas::class::HasText;
-use kas::event::{Callback, Manager, Response, VoidMsg};
+use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};
+use kas::{Widget, WidgetCore};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {
@@ -24,7 +25,6 @@ enum Control {
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
 fn make_window() -> Box<dyn kas::Window> {
     let stopwatch = make_widget! {
-        #[widget]
         #[layout(horizontal)]
         #[handler(msg = VoidMsg)]
         struct {
@@ -64,13 +64,15 @@ fn make_window() -> Box<dyn kas::Window> {
                             self.start = None;
                         } else {
                             self.start = Some(Instant::now());
+                            mgr.schedule_update(Duration::new(0, 0), self.id());
                         }
                     }
                 }
                 Response::None
             }
-
-            fn on_tick(&mut self, mgr: &mut Manager) {
+        }
+        impl Widget {
+            fn update(&mut self, mgr: &mut Manager) -> Option<Duration> {
                 if let Some(start) = self.start {
                     let dur = self.saved + (Instant::now() - start);
                     self.dur_buf.clear();
@@ -80,17 +82,15 @@ fn make_window() -> Box<dyn kas::Window> {
                         dur.subsec_millis()
                     )).unwrap();
                     self.display.set_text(mgr, &self.dur_buf);
+                    Some(Duration::new(0, 1))
+                } else {
+                    None
                 }
             }
         }
     };
 
-    let mut window = Window::new("Stopwatch", stopwatch);
-
-    window.add_callback(Callback::Repeat(Duration::from_millis(16)), &|w, mgr| {
-        w.on_tick(mgr)
-    });
-
+    let window = Window::new("Stopwatch", stopwatch);
     Box::new(window)
 }
 

@@ -61,8 +61,22 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
         match event {
             WindowEvent { window_id, event } => {
                 if let Some(window) = self.windows.get_mut(&window_id) {
-                    let action = window.handle_event(&mut self.shared, event);
+                    let (action, resume) = window.handle_event(&mut self.shared, event);
                     actions.push((window_id, action));
+                    if let Some(instant) = resume {
+                        if let Some(i) = self
+                            .resumes
+                            .iter()
+                            .enumerate()
+                            .find(|item| (item.1).1 == window_id)
+                            .map(|item| item.0)
+                        {
+                            self.resumes[i].0 = instant;
+                        } else {
+                            self.resumes.push((instant, window_id));
+                        }
+                        have_new_resumes = true;
+                    }
                 }
             }
 

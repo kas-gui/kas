@@ -116,9 +116,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         &mut self,
         shared: &mut SharedState<T>,
         event: WindowEvent,
-    ) -> TkAction {
+    ) -> (TkAction, Option<Instant>) {
         // Note: resize must be handled here to update self.swap_chain.
-        match event {
+        let action = match event {
             WindowEvent::Resized(size) => self.do_resize(shared, size),
             WindowEvent::ScaleFactorChanged {
                 scale_factor,
@@ -133,7 +133,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 .mgr
                 .manager(shared)
                 .handle_winit(&mut *self.widget, event),
-        }
+        };
+
+        (action, self.next_resume())
     }
 
     pub fn handle_closure<T>(mut self, shared: &mut SharedState<T>) -> TkAction {
