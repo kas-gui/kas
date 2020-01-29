@@ -184,7 +184,7 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
             }
         }
 
-        for (id, action) in actions.pop() {
+        while let Some((id, action)) = actions.pop() {
             match action {
                 TkAction::None => (),
                 TkAction::Redraw => {

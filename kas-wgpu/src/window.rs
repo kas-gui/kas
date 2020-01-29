@@ -75,6 +75,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     ///
     /// `init` should always return an action of at least `TkAction::Reconfigure`.
     pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> TkAction {
+        debug!("Window::init");
         let mut mgr = self.mgr.manager(shared);
         mgr.send_action(TkAction::Reconfigure);
 
