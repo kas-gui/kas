@@ -13,7 +13,7 @@ use crate::layout::{
     SizeRules, Vertical,
 };
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, TkAction, Widget, WidgetCore};
+use crate::{CoreData, Layout, TkAction, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A generic row widget
@@ -131,7 +131,9 @@ impl<D: Direction, W: Widget> WidgetCore for List<D, W> {
     }
 }
 
-impl<D: Direction, W: Widget> Widget for List<D, W> {
+impl<D: Direction, W: Widget> Widget for List<D, W> {}
+
+impl<D: Direction, W: Widget> Layout for List<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut solver = layout::RowSolver::<Vec<u32>, _>::new(
             axis,

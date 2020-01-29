@@ -13,7 +13,7 @@ use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, Horizontal, SizeRules, Vertical};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
-use crate::{CoreData, Widget, WidgetCore};
+use crate::{CoreData, Layout, Widget, WidgetCore};
 
 /// A scrollable region
 ///
@@ -125,7 +125,7 @@ impl<W: Widget> ScrollRegion<W> {
     }
 }
 
-impl<W: Widget> Widget for ScrollRegion<W> {
+impl<W: Widget> Layout for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut rules = self.child.size_rules(size_handle, axis);
         if !axis.vertical() {

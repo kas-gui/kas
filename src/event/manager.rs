@@ -5,7 +5,9 @@
 
 //! Event manager
 
+use log::trace;
 use std::collections::{hash_map::Entry, HashMap};
+use std::time::{Duration, Instant};
 
 use super::*;
 use crate::geom::Coord;
@@ -50,6 +52,9 @@ struct PressEvent {
 /// Window event manager
 ///
 /// Encapsulation of per-window event state plus supporting methods.
+///
+/// This structure additionally tracks animated widgets (those requiring
+/// periodic update).
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[derive(Clone, Debug)]
 pub struct ManagerState {
@@ -63,6 +68,9 @@ pub struct ManagerState {
     // TODO: would a VecMap be faster?
     touch_grab: HashMap<u64, PressEvent>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
+
+    time_start: Instant,
+    time_updates: Vec<(Instant, WidgetId)>,
 }
 
 /// Toolkit API
@@ -83,6 +91,9 @@ impl ManagerState {
             mouse_grab: None,
             touch_grab: HashMap::new(),
             accel_keys: HashMap::new(),
+
+            time_start: Instant::now(),
+            time_updates: vec![],
         }
     }
 
@@ -135,6 +146,11 @@ impl ManagerState {
         self.dpi_factor = dpi_factor;
     }
 
+    /// Get the next resume time
+    pub fn next_resume(&self) -> Option<Instant> {
+        self.time_updates.first().map(|time| time.0)
+    }
+
     /// Construct a [`Manager`] referring to this state
     #[inline]
     pub fn manager<'a>(&'a mut self, tkw: &'a mut dyn TkWindow) -> Manager<'a> {
@@ -155,6 +171,36 @@ pub struct Manager<'a> {
 
 /// Public API (around toolkit functionality)
 impl<'a> Manager<'a> {
+    /// Schedule an update
+    ///
+    /// Widgets requiring animation should schedule an update; as a result,
+    /// their `update` method will be called at roughly time `now + duration`.
+    ///
+    /// Timings may be a few ms out, but should be sufficient for e.g. updating
+    /// a clock each second. Very short positive durations (e.g. 1ns) may be
+    /// used to schedule an update on the next frame. Frames should in any case
+    /// be limited by vsync, avoiding excessive frame rates.
+    pub fn schedule_update(&mut self, duration: Duration, w_id: WidgetId) {
+        let time = Instant::now() + duration;
+        'outer: loop {
+            for row in &mut self.mgr.time_updates {
+                if row.1 == w_id {
+                    if row.0 <= time {
+                        return;
+                    } else {
+                        row.0 = time;
+                        break 'outer;
+                    }
+                }
+            }
+
+            self.mgr.time_updates.push((time, w_id));
+            break;
+        }
+
+        self.mgr.time_updates.sort_by_key(|row| row.0);
+    }
+
     /// Notify that a widget must be redrawn
     #[inline]
     pub fn redraw(&mut self, _id: WidgetId) {
@@ -422,11 +468,8 @@ impl<'a> Manager<'a> {
                 return self.unset_key_focus();
             }
 
-            if widget
-                .get_by_id(id)
-                .map(|w| w.allow_focus())
-                .unwrap_or(false)
-            {
+            // TODO(opt): incorporate walk/find logic
+            if widget.find(id).map(|w| w.allow_focus()).unwrap_or(false) {
                 self.send_action(TkAction::Redraw);
                 self.mgr.key_focus = Some(id);
                 return;
@@ -451,6 +494,32 @@ impl<'a> Manager<'a> {
         self.action
     }
 
+    /// Update widgets
+    pub fn update_widgets<W: Widget + ?Sized>(&mut self, widget: &mut W) {
+        let now = Instant::now();
+
+        // assumption: time_updates are sorted
+        let mut i = 0;
+        while i < self.mgr.time_updates.len() {
+            if self.mgr.time_updates[i].0 > now {
+                break;
+            }
+
+            let w_id = self.mgr.time_updates[i].1;
+            trace!("Updating widget {}", w_id);
+            let dur = widget.find_mut(w_id).and_then(|w| w.update(self));
+            if let Some(dur) = dur {
+                assert!(dur > Duration::new(0, 0));
+                self.mgr.time_updates[i].0 = now + dur;
+                i += 1;
+            } else {
+                self.mgr.time_updates.remove(i);
+            }
+        }
+
+        self.mgr.time_updates.sort_by_key(|row| row.0);
+    }
+
     /// Handle a winit `WindowEvent`.
     ///
     /// Note that some event types are not *does not* handled, since for these
@@ -461,7 +530,6 @@ impl<'a> Manager<'a> {
     where
         W: Widget + Handler<Msg = VoidMsg> + ?Sized,
     {
-        use log::trace;
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
         trace!("Event: {:?}", event);
 

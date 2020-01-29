@@ -61,8 +61,22 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
         match event {
             WindowEvent { window_id, event } => {
                 if let Some(window) = self.windows.get_mut(&window_id) {
-                    let action = window.handle_event(&mut self.shared, event);
+                    let (action, resume) = window.handle_event(&mut self.shared, event);
                     actions.push((window_id, action));
+                    if let Some(instant) = resume {
+                        if let Some(i) = self
+                            .resumes
+                            .iter()
+                            .enumerate()
+                            .find(|item| (item.1).1 == window_id)
+                            .map(|item| item.0)
+                        {
+                            self.resumes[i].0 = instant;
+                        } else {
+                            self.resumes.push((instant, window_id));
+                        }
+                        have_new_resumes = true;
+                    }
                 }
             }
 
@@ -82,6 +96,10 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
             },
 
             NewEvents(cause) => {
+                // In all cases, we reset control_flow at end of this fn
+                *control_flow = ControlFlow::Wait;
+                have_new_resumes = true;
+
                 match cause {
                     StartCause::ResumeTimeReached {
                         requested_resume, ..
@@ -96,8 +114,7 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         assert_eq!(item.0, requested_resume);
 
                         let resume = if let Some(w) = self.windows.get_mut(&item.1) {
-                            let (action, resume) =
-                                w.timer_resume(&mut self.shared, requested_resume);
+                            let (action, resume) = w.update(&mut self.shared);
                             actions.push((item.1, action));
                             resume
                         } else {
@@ -107,9 +124,6 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
 
                         if let Some(instant) = resume {
                             self.resumes[0].0 = instant;
-                            self.resumes.sort_by_key(|item| item.0);
-                            trace!("Requesting resume at {:?}", self.resumes[0].0);
-                            *control_flow = ControlFlow::WaitUntil(self.resumes[0].0);
                         } else {
                             self.resumes.remove(0);
                         }
@@ -119,26 +133,14 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                     }
                     StartCause::Poll => {
                         // We use this to check pending actions after removing windows
-                        *control_flow = if self.windows.is_empty() {
-                            ControlFlow::Exit
-                        } else if let Some((instant, _)) = self.resumes.first() {
-                            ControlFlow::WaitUntil(*instant)
-                        } else {
-                            ControlFlow::Wait
-                        };
                     }
                     StartCause::Init => {
                         debug!("Wakeup: init");
 
                         for (id, window) in self.windows.iter_mut() {
-                            let (action, opt_instant) = window.init(&mut self.shared);
+                            let action = window.init(&mut self.shared);
                             actions.push((*id, action));
-                            if let Some(instant) = opt_instant {
-                                self.resumes.push((instant, *id));
-                            }
                         }
-
-                        have_new_resumes = true;
                     }
                 }
             }
@@ -163,12 +165,8 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                             let mut window = Window::new(&mut self.shared, wwin, widget);
                             let wid = window.window.id();
 
-                            let (action, opt_instant) = window.init(&mut self.shared);
+                            let action = window.init(&mut self.shared);
                             actions.push((wid, action));
-                            if let Some(instant) = opt_instant {
-                                self.resumes.push((instant, wid));
-                                have_new_resumes = true;
-                            }
 
                             self.id_map.insert(id, wid);
                             self.windows.insert(wid, window);
@@ -186,16 +184,6 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
             }
         }
 
-        if have_new_resumes {
-            self.resumes.sort_by_key(|item| item.0);
-            if let Some(first) = self.resumes.first() {
-                trace!("Requesting resume at {:?}", first.0);
-                *control_flow = ControlFlow::WaitUntil(first.0);
-            } else {
-                *control_flow = ControlFlow::Wait;
-            }
-        }
-
         for (id, action) in actions.pop() {
             match action {
                 TkAction::None => (),
@@ -204,7 +192,11 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                 }
                 TkAction::Reconfigure => {
                     if let Some(window) = self.windows.get_mut(&id) {
-                        window.reconfigure(&mut self.shared);
+                        self.resumes.retain(|resume| resume.1 != id);
+                        if let Some(t) = window.reconfigure(&mut self.shared) {
+                            self.resumes.push((t, id));
+                            have_new_resumes = true;
+                        }
                     }
                 }
                 TkAction::Close => {
@@ -225,6 +217,21 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                     *control_flow = ControlFlow::Exit;
                 }
             }
+        }
+
+        if have_new_resumes {
+            self.resumes.sort_by_key(|item| item.0);
+
+            *control_flow = if *control_flow == ControlFlow::Exit || self.windows.is_empty() {
+                ControlFlow::Exit
+            } else if *control_flow == ControlFlow::Poll {
+                ControlFlow::Poll
+            } else if let Some((instant, _)) = self.resumes.first() {
+                trace!("Requesting resume at {:?}", *instant);
+                ControlFlow::WaitUntil(*instant)
+            } else {
+                ControlFlow::Wait
+            };
         }
     }
 }

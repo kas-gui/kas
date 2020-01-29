@@ -5,51 +5,31 @@
 
 use std::cmp::Ordering;
 
-use crate::args::{Child, WidgetAttrArgs};
+use crate::args::{Child, LayoutArgs, LayoutType, WidgetAttrArgs};
 use proc_macro2::TokenStream;
 use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Result};
-use syn::{Ident, Member};
-
-pub(crate) fn validate_layout(layout: &Ident) -> Result<()> {
-    if layout == "frame"
-        || layout == "single"
-        || layout == "horizontal"
-        || layout == "vertical"
-        || layout == "grid"
-    {
-        Ok(())
-    } else {
-        Err(Error::new(
-            layout.span(),
-            format_args!(
-                "expected one of: frame, single, horizontal, vertical, grid; found {}",
-                layout
-            ),
-        ))
-    }
-}
+use syn::Member;
 
 pub(crate) fn derive(
     children: &Vec<Child>,
-    layout: &Ident,
+    layout: LayoutArgs,
     data_field: &Option<Member>,
 ) -> Result<(TokenStream, TokenStream)> {
     let data = data_field.as_ref().ok_or_else(|| {
         Error::new(
-            layout.span(),
+            layout.span,
             "data field marked with #[layout_data] required when deriving Widget",
         )
     })?;
 
-    let is_frame = layout == "frame";
-    let is_single = layout == "single";
-    if is_frame || is_single {
+    let is_frame = layout.is_frame;
+    if layout.layout == LayoutType::Single {
         if !children.len() == 1 {
             return Err(Error::new(
-                layout.span(),
+                layout.span,
                 format_args!(
-                    "expected 1 child when using layout 'single' or 'frame'; found {}",
+                    "expected 1 child when using layout 'single'; found {}",
                     children.len()
                 ),
             ));
@@ -111,18 +91,16 @@ pub(crate) fn derive(
         };
         Ok((fns, ty))
     } else {
-        let lay = if layout == "horizontal" {
-            Layout::Horizontal
-        } else if layout == "vertical" {
-            Layout::Vertical
-        } else if layout == "grid" {
-            Layout::Grid
-        } else {
-            panic!("invalid layout (already excluded by validate_layout)");
-        };
+        if is_frame {
+            // TODO: support?
+            return Err(Error::new(
+                layout.span,
+                "frame is (currently) only allowed for layout = single",
+            ));
+        }
 
         // TODO: this could be rewritten
-        let mut impl_layout = ImplLayout::new(lay, data);
+        let mut impl_layout = ImplLayout::new(layout.layout, data);
         for child in children.iter() {
             impl_layout.child(&child.ident, &child.args)?;
         }
@@ -130,15 +108,8 @@ pub(crate) fn derive(
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum Layout {
-    Horizontal,
-    Vertical,
-    Grid,
-}
-
 pub(crate) struct ImplLayout<'a> {
-    layout: Layout,
+    layout: LayoutType,
     cols: u32,
     rows: u32,
     col_spans: Vec<(u32, u32, u32)>,
@@ -150,7 +121,7 @@ pub(crate) struct ImplLayout<'a> {
 }
 
 impl<'a> ImplLayout<'a> {
-    pub fn new(layout: Layout, data: &'a Member) -> Self {
+    pub fn new(layout: LayoutType, data: &'a Member) -> Self {
         ImplLayout {
             layout,
             cols: 0,
@@ -168,21 +139,21 @@ impl<'a> ImplLayout<'a> {
         let data = self.data;
 
         let child_info = match self.layout {
-            Layout::Horizontal => {
+            LayoutType::Horizontal => {
                 let col = self.cols as usize;
                 self.cols += 1;
                 self.rows = 1;
 
                 quote! { #col }
             }
-            Layout::Vertical => {
+            LayoutType::Vertical => {
                 let row = self.rows as usize;
                 self.cols = 1;
                 self.rows += 1;
 
                 quote! { #row }
             }
-            Layout::Grid => {
+            LayoutType::Grid => {
                 let pos = args.as_pos()?;
                 let (c0, c1) = (pos.0, pos.0 + pos.2);
                 let (r0, r1) = (pos.1, pos.1 + pos.3);
@@ -204,6 +175,7 @@ impl<'a> ImplLayout<'a> {
                     }
                 }
             }
+            LayoutType::Single => unreachable!(),
         };
 
         self.size.append_all(quote! {
@@ -275,9 +247,10 @@ impl<'a> ImplLayout<'a> {
         });
 
         let dim = match self.layout {
-            Layout::Horizontal => quote! { (kas::layout::Horizontal, #cols) },
-            Layout::Vertical => quote! { (kas::layout::Vertical, #rows) },
-            Layout::Grid => quote! { (#cols, #rows) },
+            LayoutType::Horizontal => quote! { (kas::layout::Horizontal, #cols) },
+            LayoutType::Vertical => quote! { (kas::layout::Vertical, #rows) },
+            LayoutType::Grid => quote! { (#cols, #rows) },
+            LayoutType::Single => unreachable!(),
         };
 
         let col_temp = if cols > 16 {
@@ -292,7 +265,7 @@ impl<'a> ImplLayout<'a> {
         };
 
         let data_type = match self.layout {
-            Layout::Horizontal => quote! {
+            LayoutType::Horizontal => quote! {
                 type Data = kas::layout::FixedRowStorage::<
                     [kas::layout::SizeRules; #cols + 1]
                 >;
@@ -306,7 +279,7 @@ impl<'a> ImplLayout<'a> {
                     Self::Data,
                 >;
             },
-            Layout::Vertical => quote! {
+            LayoutType::Vertical => quote! {
                 type Data = kas::layout::FixedRowStorage::<
                     [kas::layout::SizeRules; #rows + 1],
                 >;
@@ -320,7 +293,7 @@ impl<'a> ImplLayout<'a> {
                     Self::Data,
                 >;
             },
-            Layout::Grid => quote! {
+            LayoutType::Grid => quote! {
                 type Data = kas::layout::FixedGridStorage::<
                     [kas::layout::SizeRules; #cols + 1],
                     [kas::layout::SizeRules; #rows + 1],
@@ -338,13 +311,14 @@ impl<'a> ImplLayout<'a> {
                     Self::Data,
                 >;
             },
+            LayoutType::Single => unreachable!(),
         };
 
         let size_post = match self.layout {
-            Layout::Horizontal | Layout::Vertical => quote! {
+            LayoutType::Horizontal | LayoutType::Vertical => quote! {
                 let rules = solver.finish(&mut self.#data, iter::empty(), iter::empty());
             },
-            Layout::Grid => {
+            LayoutType::Grid => {
                 let mut horiz = quote! {};
                 let mut vert = quote! {};
                 for span in &col_spans {
@@ -369,6 +343,7 @@ impl<'a> ImplLayout<'a> {
                         iter::empty() #horiz, iter::empty() # vert);
                 }
             }
+            LayoutType::Single => unreachable!(),
         };
 
         let fns = quote! {

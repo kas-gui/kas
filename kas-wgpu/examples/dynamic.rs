@@ -27,7 +27,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let controls = make_widget! {
-        horizontal => Message;
+        #[widget]
+        #[layout(horizontal)]
+        #[handler(msg = Message)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
             #[widget(handler = handler)] edit: impl HasText = EditBox::new("3").on_activate(|_| Control::Set),
@@ -63,7 +65,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let mut window = Window::new(
         "Dynamic widget demo",
         make_widget! {
-            vertical => VoidMsg;
+            #[widget]
+            #[layout(vertical)]
+            #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
                 #[widget(handler = handler)] controls -> Message = controls,

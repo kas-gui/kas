@@ -24,7 +24,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let widgets = make_widget! {
-        grid => Item;
+        #[widget]
+        #[layout(grid)]
+        #[handler(msg = Item)]
         struct {
             #[widget(row=0, col=0)] _ = Label::from("Label"),
             #[widget(row=0, col=1)] _ = Label::from("Hello world"),
@@ -55,10 +57,14 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new(
         "Widget Gallery",
         make_widget! {
-            vertical => VoidMsg;
+            #[widget]
+            #[layout(vertical)]
+            #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = make_widget! {
-                    frame => VoidMsg;
+                    #[widget]
+                    #[layout(single, frame)]
+                    #[handler(msg = VoidMsg)]
                     struct {
                         #[widget] _ = Label::from("Widget Gallery"),
                     }

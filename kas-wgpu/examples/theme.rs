@@ -91,7 +91,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let widgets = make_widget! {
-        grid => Item;
+        #[widget]
+        #[layout(grid)]
+        #[handler(msg = Item)]
         struct {
             #[widget(row=1, col=1)] _ = Label::from("Custom theme demo\nChoose your colour!"),
             #[widget(row=0, col=1)] _ = TextButton::new("White", Item::White),
@@ -106,7 +108,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new(
         "Theme demo",
         make_widget! {
-            single => VoidMsg;
+            #[widget]
+            #[layout(single)]
+            #[handler(msg = VoidMsg)]
             struct {
                 #[widget(handler = handler)] _ = widgets,
             }

@@ -6,7 +6,7 @@
 //! `Window` and `WindowList` types
 
 use log::{debug, info, trace};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use kas::event::{Callback, ManagerState};
 use kas::geom::{Coord, Rect, Size};
@@ -27,7 +27,6 @@ pub(crate) struct Window<TW> {
     sc_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
     draw_pipe: DrawPipe,
-    timeouts: Vec<(usize, Instant, Option<Duration>)>,
     theme_window: TW,
 }
 
@@ -67,7 +66,6 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             sc_desc,
             swap_chain,
             draw_pipe,
-            timeouts: vec![],
             theme_window,
         }
     }
@@ -76,7 +74,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     /// windows. Optionally returns a callback time.
     ///
     /// `init` should always return an action of at least `TkAction::Reconfigure`.
-    pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
+    pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> TkAction {
         let mut mgr = self.mgr.manager(shared);
         mgr.send_action(TkAction::Reconfigure);
 
@@ -85,19 +83,15 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 Callback::Start => {
                     self.widget.trigger_callback(i, &mut mgr);
                 }
-                Callback::Repeat(dur) => {
-                    self.widget.trigger_callback(i, &mut mgr);
-                    self.timeouts.push((i, Instant::now() + dur, Some(dur)));
-                }
                 Callback::Close => (),
             }
         }
 
-        (mgr.unwrap_action(), self.next_resume())
+        mgr.unwrap_action()
     }
 
     /// Recompute layout of widgets and redraw
-    pub fn reconfigure<T>(&mut self, shared: &mut SharedState<T>) {
+    pub fn reconfigure<T>(&mut self, shared: &mut SharedState<T>) -> Option<Instant> {
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         debug!("Reconfiguring window (size = {:?})", size);
 
@@ -105,6 +99,8 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         self.widget.resize(&mut size_handle, size);
         self.mgr.configure(shared, &mut *self.widget);
         self.window.request_redraw();
+
+        self.mgr.next_resume()
     }
 
     /// Handle an event
@@ -114,9 +110,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         &mut self,
         shared: &mut SharedState<T>,
         event: WindowEvent,
-    ) -> TkAction {
+    ) -> (TkAction, Option<Instant>) {
         // Note: resize must be handled here to update self.swap_chain.
-        match event {
+        let action = match event {
             WindowEvent::Resized(size) => self.do_resize(shared, size),
             WindowEvent::ScaleFactorChanged {
                 scale_factor,
@@ -131,7 +127,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 .mgr
                 .manager(shared)
                 .handle_winit(&mut *self.widget, event),
-        }
+        };
+
+        (action, self.mgr.next_resume())
     }
 
     pub fn handle_closure<T>(mut self, shared: &mut SharedState<T>) -> TkAction {
@@ -139,7 +137,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
 
         for (i, condition) in self.widget.callbacks() {
             match condition {
-                Callback::Start | Callback::Repeat(_) => (),
+                Callback::Start => (),
                 Callback::Close => {
                     self.widget.trigger_callback(i, &mut mgr);
                 }
@@ -152,46 +150,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         mgr.unwrap_action()
     }
 
-    pub(crate) fn timer_resume<T>(
-        &mut self,
-        shared: &mut SharedState<T>,
-        instant: Instant,
-    ) -> (TkAction, Option<Instant>) {
+    pub(crate) fn update<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
         let mut mgr = self.mgr.manager(shared);
-
-        // Iterate over loop, mutating some elements, removing others.
-        let mut i = 0;
-        while i < self.timeouts.len() {
-            for timeout in &mut self.timeouts[i..] {
-                if timeout.1 == instant {
-                    self.widget.trigger_callback(timeout.0, &mut mgr);
-                    if let Some(dur) = timeout.2 {
-                        while timeout.1 <= Instant::now() {
-                            timeout.1 += dur;
-                        }
-                    } else {
-                        break; // remove
-                    }
-                }
-                i += 1;
-            }
-            if i < self.timeouts.len() {
-                self.timeouts.remove(i);
-            }
-        }
-
-        (mgr.unwrap_action(), self.next_resume())
-    }
-
-    fn next_resume(&self) -> Option<Instant> {
-        let mut next = None;
-        for timeout in &self.timeouts {
-            next = match next {
-                None => Some(timeout.1),
-                Some(t) => Some(t.min(timeout.1)),
-            }
-        }
-        next
+        mgr.update_widgets(&mut *self.widget);
+        (mgr.unwrap_action(), self.mgr.next_resume())
     }
 }
 

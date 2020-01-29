@@ -3,42 +3,58 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Clock example (simple periodically updated display)
+//! Clock example
 #![feature(proc_macro_hygiene)]
 
 extern crate chrono;
 
 use chrono::prelude::*;
+use log::info;
 use std::time::Duration;
 
 use kas::class::HasText;
-use kas::event::{Callback, Manager, VoidMsg};
-use kas::macros::make_widget;
+use kas::event::Manager;
 use kas::widget::{Label, Window};
+use kas::{Widget, WidgetCore, WidgetId};
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let mut window = Window::new(
-        "Clock",
-        make_widget! {
-            vertical => VoidMsg;
-            struct {
-                #[widget] date: Label = Label::new(""),
-                #[widget] time: Label = Label::new("")
+    let window = Window::new("Clock", {
+        #[layout(vertical)]
+        #[handler]
+        #[derive(Clone, Debug, kas :: macros :: Widget)]
+        struct Clock {
+            #[core]
+            core: kas::CoreData,
+            #[layout_data]
+            layout_data: <Self as kas::LayoutData>::Data,
+            #[widget]
+            date: Label,
+            #[widget]
+            time: Label,
+        }
+        impl Widget for Clock {
+            fn configure(&mut self, id: WidgetId, mgr: &mut Manager) {
+                self.core_data_mut().id = id;
+                mgr.schedule_update(Duration::new(0, 0), id);
             }
-            impl {
-                fn on_tick(&mut self, mgr: &mut Manager) {
-                    let now = Local::now();
-                    self.date.set_text(mgr, now.format("%Y-%m-%d").to_string());
-                    self.time.set_text(mgr, now.format("%H:%M:%S").to_string());
-                }
-            }
-        },
-    );
 
-    window.add_callback(Callback::Repeat(Duration::from_secs(1)), &|w, mgr| {
-        w.on_tick(mgr)
+            fn update(&mut self, mgr: &mut Manager) -> Option<Duration> {
+                let now = Local::now();
+                self.date.set_text(mgr, now.format("%Y-%m-%d").to_string());
+                self.time.set_text(mgr, now.format("%H:%M:%S").to_string());
+                let ns = 1_000_000_000 - (now.time().nanosecond() % 1_000_000_000);
+                info!("Requesting update in {}ns", ns);
+                Some(Duration::new(0, ns))
+            }
+        }
+        Clock {
+            core: Default::default(),
+            layout_data: Default::default(),
+            date: Label::new(""),
+            time: Label::new(""),
+        }
     });
 
     let mut theme = kas_wgpu::SampleTheme::new();

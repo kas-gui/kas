@@ -12,7 +12,7 @@ use crate::event::{Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{CoreData, Widget, WidgetCore};
+use crate::{CoreData, Layout, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A simple text label
@@ -25,7 +25,7 @@ pub struct Label {
     text: String,
 }
 
-impl Widget for Label {
+impl Layout for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         size_handle.text_bound(&self.text, TextClass::Label, true, axis)
     }
@@ -90,7 +90,6 @@ impl Default for LastEdit {
 }
 
 /// An editable, single-line text box.
-#[widget]
 #[derive(Clone, Default, Widget)]
 pub struct EditBox<H: 'static> {
     #[core]
@@ -118,7 +117,9 @@ impl<H: 'static> Widget for EditBox<H> {
     fn allow_focus(&self) -> bool {
         true
     }
+}
 
+impl<H: 'static> Layout for EditBox<H> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.edit_surround();
         SizeRules::fixed(axis.extract_size(sides.0 + sides.1))

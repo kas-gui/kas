@@ -42,11 +42,16 @@ pub enum TkAction {
     ///
     /// Note that [`Manager::redraw`] can instead be used for more selective
     /// redrawing, if supported by the toolkit.
+    ///
+    /// [`Manager::redraw`]: crate::event::Manager::redraw
     Redraw,
     /// Whole window requires reconfiguring (implies redrawing)
     ///
     /// *Configuring* widgets assigns [`WidgetId`] identifiers, updates
     /// [`event::Manager`] state and resizes all widgets.
+    ///
+    /// [`WidgetId`]: crate::WidgetId
+    /// [`event::Manager`]: crate::event::Manager
     Reconfigure,
     /// Window should be closed
     Close,

@@ -6,6 +6,7 @@
 //! Widget traits
 
 use std::fmt;
+use std::time::Duration;
 
 use crate::event::{Callback, Handler, Manager, VoidMsg};
 use crate::geom::{Rect, Size};
@@ -84,18 +85,45 @@ pub trait WidgetCore: fmt::Debug {
     /// Find a child widget by identifier
     ///
     /// This requires that the widget tree has already been configured by
-    /// [`crate::Manager::configure`].
-    fn get_by_id(&self, id: WidgetId) -> Option<&dyn Widget> {
+    /// [`crate::event::ManagerState::configure`].
+    fn find(&self, id: WidgetId) -> Option<&dyn Widget> {
         if id == self.id() {
             return Some(self.as_widget());
-        } else if id < self.id() {
-            for i in 0..self.len() {
-                if let Some(w) = self.get(i) {
-                    if id <= w.id() {
-                        return w.get_by_id(id);
-                    }
+        } else if id > self.id() {
+            return None;
+        }
+
+        for i in 0..self.len() {
+            if let Some(w) = self.get(i) {
+                if id > w.id() {
+                    continue;
                 }
+                return w.find(id);
             }
+            break;
+        }
+        None
+    }
+
+    /// Find a child widget by identifier
+    ///
+    /// This requires that the widget tree has already been configured by
+    /// [`crate::event::ManagerState::configure`].
+    fn find_mut(&mut self, id: WidgetId) -> Option<&mut dyn Widget> {
+        if id == self.id() {
+            return Some(self.as_widget_mut());
+        } else if id > self.id() {
+            return None;
+        }
+
+        for i in 0..self.len() {
+            if self.get(i).map(|w| id > w.id()).unwrap_or(true) {
+                continue;
+            }
+            if let Some(w) = self.get_mut(i) {
+                return w.find_mut(id);
+            }
+            break;
         }
         None
     }
@@ -169,50 +197,11 @@ impl WidgetCore for Box<dyn Widget> {
     }
 }
 
-/// A widget is a UI element.
+/// Positioning and drawing routines for widgets
 ///
-/// Widgets usually occupy space within the UI and are drawable. Widgets may
-/// respond to user events. Widgets may have child widgets.
-///
-/// Widgets must implement the child trait [`WidgetCore`] and the
-/// [`Handler`] trait, besides this trait.
-/// It is recommended to use the `derive(Widget)` macro to generate some of the
-/// required implementations. See documentation in the [`kas::macros`] module.
-///
-/// Example of a simple widget which draws a frame around its child:
-///
-/// ```
-/// use kas::macros::Widget;
-/// use kas::{CoreData, LayoutData, Widget};
-///
-/// #[widget(layout = frame)]
-/// #[derive(Clone, Debug, Widget)]
-/// pub struct Frame<W: Widget> {
-///     #[core] core: CoreData,
-///     #[layout_data] layout_data: <Self as LayoutData>::Data,
-///     #[widget] child: W,
-/// }
-/// ```
-///
-/// [`Handler`]: crate::event::Handler
-pub trait Widget: WidgetCore {
-    /// Configure widget
-    ///
-    /// Widgets are *configured* on window creation and when
-    /// [`kas::TkAction::Reconfigure`] is sent.
-    ///
-    /// *All* implementations *must* set `self.core.id` to the given `id`.
-    /// Widgets only need to implement this manually when they need to perform
-    /// additional configuration.
-    fn configure(&mut self, id: WidgetId, _: &mut Manager) {
-        self.core_data_mut().id = id;
-    }
-
-    /// Is this widget navigable via Tab key?
-    fn allow_focus(&self) -> bool {
-        false
-    }
-
+/// These methods are often implemented via a derive trait, hence live in their
+/// own trait. (This may be revised in the future.)
+pub trait Layout: WidgetCore {
     /// Get size rules for the given axis.
     ///
     /// This method takes `&mut self` to allow local caching of child widget
@@ -244,38 +233,64 @@ pub trait Widget: WidgetCore {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager);
 }
 
-impl Widget for Box<dyn Widget> {
+/// A widget is a UI element.
+///
+/// Widgets usually occupy space within the UI and are drawable. Widgets may
+/// respond to user events. Widgets may have child widgets.
+///
+/// Widgets must implement the child trait [`WidgetCore`] and the
+/// [`Handler`] trait, besides this trait.
+/// It is recommended to use the `derive(Widget)` macro to generate some of the
+/// required implementations. See documentation in the [`kas::macros`] module.
+///
+/// Example of a simple widget which draws a frame around its child:
+///
+/// ```
+/// use kas::macros::Widget;
+/// use kas::{CoreData, LayoutData, Widget};
+///
+/// #[widget]
+/// #[layout(single, frame)]
+/// #[derive(Clone, Debug, Widget)]
+/// pub struct Frame<W: Widget> {
+///     #[core] core: CoreData,
+///     #[layout_data] layout_data: <Self as LayoutData>::Data,
+///     #[widget] child: W,
+/// }
+/// ```
+///
+/// [`Handler`]: crate::event::Handler
+pub trait Widget: Layout {
+    /// Configure widget
+    ///
+    /// Widgets are *configured* on window creation and when
+    /// [`kas::TkAction::Reconfigure`] is sent.
+    ///
+    /// *All* implementations *must* set `self.core.id` to the given `id`.
+    /// Widgets only need to implement this manually when they need to perform
+    /// additional configuration.
+    fn configure(&mut self, id: WidgetId, _: &mut Manager) {
+        self.core_data_mut().id = id;
+    }
+
+    /// Update the widget
+    ///
+    /// This method is called on scheduled updates: see [`schedule_update`].
+    ///
+    /// When some [`Duration`] is returned, another update is scheduled as if
+    /// [`schedule_update`] were called with this duration.
+    /// Required: `duration > 0`.
+    ///
+    /// This method being called does not imply a redraw.
+    ///
+    /// [`schedule_update`]: Manager::schedule_update
+    fn update(&mut self, _: &mut Manager) -> Option<Duration> {
+        None
+    }
+
+    /// Is this widget navigable via Tab key?
     fn allow_focus(&self) -> bool {
-        self.as_ref().allow_focus()
-    }
-
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.as_mut().size_rules(size_handle, axis)
-    }
-
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
-        self.as_mut().set_rect(size_handle, rect);
-    }
-
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
-        self.as_ref().draw(draw_handle, mgr);
-    }
-}
-
-impl Clone for Box<dyn Widget> {
-    fn clone(&self) -> Self {
-        #[cfg(feature = "nightly")]
-        unsafe {
-            let mut x = Box::new_uninit();
-            self.clone_to(x.as_mut_ptr());
-            x.assume_init()
-        }
-
-        // Run-time failure is not ideal — but we would hit compile-issues which
-        // don't necessarily correspond to actual usage otherwise due to
-        // `derive(Clone)` on any widget produced by `make_widget!`.
-        #[cfg(not(feature = "nightly"))]
-        panic!("Clone for Box<dyn Widget> only supported on nightly");
+        false
     }
 }
 
