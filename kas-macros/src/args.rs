@@ -486,6 +486,7 @@ pub struct MakeWidget {
     pub handler_msg: Type,
     // additional attributes
     pub extra_attrs: TokenStream,
+    pub generics: Generics,
     // child widgets and data fields
     pub fields: Vec<WidgetField>,
     // impl blocks on the widget
@@ -519,6 +520,12 @@ impl Parse for MakeWidget {
         };
 
         let _: Struct = input.parse()?;
+
+        let mut generics: syn::Generics = input.parse()?;
+        if input.peek(syn::token::Where) {
+            generics.where_clause = Some(input.parse()?);
+        }
+
         let content;
         let _ = braced!(content in input);
         let mut fields = vec![];
@@ -556,6 +563,7 @@ impl Parse for MakeWidget {
         Ok(MakeWidget {
             handler_msg,
             extra_attrs,
+            generics,
             fields,
             impls,
         })

@@ -301,10 +301,6 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // debug impl
     let mut debug_fields = TokenStream::new();
 
-    // generic types on struct, without constraints:
-    let mut gen_tys = Punctuated::<_, Comma>::new();
-    // generic types on struct, with constraints:
-    let mut gen_ptrs = Punctuated::<_, Comma>::new();
     // extra generic types and where clause for handler impl
     let mut handler_extra = Punctuated::<_, Comma>::new();
     let mut handler_clauses = Punctuated::<_, Comma>::new();
@@ -333,7 +329,6 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 name_buf.write_fmt(format_args!("MWAnon{}", index)).unwrap();
                 let ty = Ident::new(&name_buf, Span::call_site());
 
-                gen_tys.push(ty.clone());
                 if let Some(ref wattr) = attr {
                     if let Some(tyr) = gen_msg {
                         handler_clauses.push(quote! { #ty: kas::event::Handler<Msg = #tyr> });
@@ -359,12 +354,12 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                     if let Some(mut bound) = gen_bound {
                         bound.bounds.push(parse_quote! { kas::Widget });
-                        gen_ptrs.push(quote! { #ty: #bound });
+                        args.generics.params.push(parse_quote! { #ty: #bound });
                     } else {
-                        gen_ptrs.push(quote! { #ty: kas::Widget });
+                        args.generics.params.push(parse_quote! { #ty: kas::Widget });
                     }
                 } else {
-                    gen_ptrs.push(quote! { #ty });
+                    args.generics.params.push(parse_quote! { #ty });
                 }
 
                 Type::Path(TypePath {
@@ -382,11 +377,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             .append_all(quote! { write!(f, ", {}: {:?}", stringify!(#ident), self.#ident)?; });
     }
 
-    let handler_where = if handler_clauses.is_empty() {
-        quote! {}
-    } else {
-        quote! { where #handler_clauses }
-    };
+    let (impl_generics, ty_generics, where_clause) = args.generics.split_for_impl();
 
     let mut impls = quote! {};
 
@@ -401,11 +392,17 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             quote! {}
         };
         impls.append_all(quote! {
-            impl<#gen_ptrs> #target AnonWidget<#gen_tys> {
+            impl #impl_generics #target AnonWidget #ty_generics #where_clause {
                 #contents
             }
         });
     }
+
+    let handler_where = if handler_clauses.is_empty() {
+        quote! {}
+    } else {
+        quote! { where #handler_clauses }
+    };
 
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
@@ -413,7 +410,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         #[handler(msg = #msg, generics = < #handler_extra > #handler_where)]
         #extra_attrs
         #[derive(Clone, Debug, kas::macros::Widget)]
-        struct AnonWidget<#gen_ptrs> {
+        struct AnonWidget #impl_generics #where_clause {
             #field_toks
         }
 
