@@ -45,8 +45,8 @@ impl HighlightState {
 #[derive(Clone, Debug)]
 struct PressEvent {
     start_id: WidgetId,
-    cur_id: WidgetId,
-    last_coord: Coord,
+    cur_id: Option<WidgetId>,
+    coord: Coord,
 }
 
 /// Window event manager
@@ -140,7 +140,9 @@ impl ManagerState {
             .and_then(|(id, b)| map.get(&id).map(|id| (*id, b)));
         for event in &mut self.touch_grab {
             event.1.start_id = map.get(&event.1.start_id).cloned().unwrap();
-            event.1.cur_id = map.get(&event.1.cur_id).cloned().unwrap();
+            if let Some(cur_id) = event.1.cur_id {
+                event.1.cur_id = Some(map.get(&cur_id).cloned().unwrap());
+            }
         }
 
         // FIXME: update ids in time_updates and handle_updates
@@ -316,7 +318,7 @@ impl<'a> Manager<'a> {
             return true;
         }
         for touch in self.mgr.touch_grab.values() {
-            if touch.cur_id == w_id {
+            if touch.cur_id == Some(w_id) {
                 return true;
             }
         }
@@ -337,7 +339,7 @@ impl<'a> Manager<'a> {
             }
         }
         for touch in self.mgr.touch_grab.values() {
-            if touch.start_id == w_id && touch.cur_id == w_id {
+            if touch.start_id == w_id && touch.cur_id == Some(w_id) {
                 return true;
             }
         }
@@ -396,8 +398,8 @@ impl<'a> Manager<'a> {
                 Entry::Vacant(v) => {
                     v.insert(PressEvent {
                         start_id: w_id,
-                        cur_id: w_id,
-                        last_coord: coord,
+                        cur_id: Some(w_id),
+                        coord,
                     });
                 }
             },
@@ -468,23 +470,11 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn touch_grab(&self, touch_id: u64) -> Option<PressEvent> {
-        self.mgr.touch_grab.get(&touch_id).cloned()
-    }
-
-    #[cfg(feature = "winit")]
-    fn update_touch_coord(&mut self, touch_id: u64, coord: Coord) {
-        if let Some(v) = self.mgr.touch_grab.get_mut(&touch_id) {
-            v.last_coord = coord;
-            // TODO: update cur_id (currently not calculated)
-            // self.redraw(v.cur_id);
-        }
-    }
-
-    #[cfg(feature = "winit")]
     fn end_touch_grab(&mut self, touch_id: u64) {
         if let Some(grab) = self.mgr.touch_grab.remove(&touch_id) {
-            self.redraw(grab.cur_id);
+            if let Some(cur_id) = grab.cur_id {
+                self.redraw(cur_id);
+            }
         }
     }
 
@@ -743,28 +733,47 @@ impl<'a> Manager<'a> {
                         widget.handle(&mut self, Address::Coord(coord), ev)
                     }
                     TouchPhase::Moved => {
-                        if let Some(PressEvent { start_id, last_coord, .. }) = self.touch_grab(touch.id) {
+                        // NOTE: calling widget.handle twice appears
+                        // to be unavoidable (as with CursorMoved)
+                        let addr = Address::Coord(coord);
+                        let cur_id = match widget.handle(&mut self, addr, Event::Identify) {
+                            Response::Identify(id) => Some(id),
+                            _ => None,
+                        };
+
+                        let r = self.mgr.touch_grab.get_mut(&touch.id).map(|grab| {
+                            let addr = Address::Id(grab.start_id);
                             let action = Event::PressMove {
                                 source,
                                 coord,
-                                delta: coord - last_coord,
+                                delta: coord - grab.coord,
                             };
-                            let r = widget.handle(&mut self, Address::Id(start_id), action);
-                            self.update_touch_coord(touch.id, coord);
-                            r
+                            let redraw = grab.cur_id != cur_id;
+
+                            grab.cur_id = cur_id;
+                            grab.coord = coord;
+
+                            (addr, action, redraw)
+                        });
+
+                        if let Some((addr, action, redraw)) = r {
+                            if redraw {
+                                self.send_action(TkAction::Redraw);
+                            }
+                            widget.handle(&mut self, addr, action)
                         } else {
                             Response::None
                         }
                     }
                     TouchPhase::Ended => {
-                        if let Some(PressEvent { start_id, cur_id, .. }) = self.touch_grab(touch.id) {
+                        if let Some(grab) = self.mgr.touch_grab.get(&touch.id).cloned() {
                             let action = Event::PressEnd {
                                 source,
-                                start_id: Some(start_id),
-                                end_id: Some(cur_id),
+                                start_id: Some(grab.start_id),
+                                end_id: grab.cur_id,
                                 coord,
                             };
-                            let r = widget.handle(&mut self, Address::Id(start_id), action);
+                            let r = widget.handle(&mut self, Address::Id(grab.start_id), action);
                             self.end_touch_grab(touch.id);
                             r
                         } else {
@@ -778,14 +787,14 @@ impl<'a> Manager<'a> {
                         }
                     }
                     TouchPhase::Cancelled => {
-                        if let Some(PressEvent { start_id, .. }) = self.touch_grab(touch.id) {
+                        if let Some(grab) = self.mgr.touch_grab.get(&touch.id).cloned() {
                             let action = Event::PressEnd {
                                 source,
-                                start_id: Some(start_id),
+                                start_id: Some(grab.start_id),
                                 end_id: None,
                                 coord,
                             };
-                            let r = widget.handle(&mut self, Address::Id(start_id), action);
+                            let r = widget.handle(&mut self, Address::Id(grab.start_id), action);
                             self.end_touch_grab(touch.id);
                             r
                         } else {
