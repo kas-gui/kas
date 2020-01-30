@@ -57,6 +57,18 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
         // In most cases actions.len() is 0 or 1.
         let mut actions = SmallVec::<[_; 2]>::new();
         let mut have_new_resumes = false;
+        let add_resume = |resumes: &mut Vec<(Instant, ww::WindowId)>, instant, window_id| {
+            if let Some(i) = resumes
+                .iter()
+                .enumerate()
+                .find(|item| (item.1).1 == window_id)
+                .map(|item| item.0)
+            {
+                resumes[i].0 = instant;
+            } else {
+                resumes.push((instant, window_id));
+            }
+        };
 
         match event {
             WindowEvent { window_id, event } => {
@@ -64,17 +76,7 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                     let (action, resume) = window.handle_event(&mut self.shared, event);
                     actions.push((window_id, action));
                     if let Some(instant) = resume {
-                        if let Some(i) = self
-                            .resumes
-                            .iter()
-                            .enumerate()
-                            .find(|item| (item.1).1 == window_id)
-                            .map(|item| item.0)
-                        {
-                            self.resumes[i].0 = instant;
-                        } else {
-                            self.resumes.push((instant, window_id));
-                        }
+                        add_resume(&mut self.resumes, instant, window_id);
                         have_new_resumes = true;
                     }
                 }
@@ -198,9 +200,8 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                 }
                 TkAction::Reconfigure => {
                     if let Some(window) = self.windows.get_mut(&id) {
-                        self.resumes.retain(|resume| resume.1 != id);
-                        if let Some(t) = window.reconfigure(&mut self.shared) {
-                            self.resumes.push((t, id));
+                        if let Some(instant) = window.reconfigure(&mut self.shared) {
+                            add_resume(&mut self.resumes, instant, id);
                             have_new_resumes = true;
                         }
                     }
