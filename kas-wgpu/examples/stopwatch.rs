@@ -64,7 +64,7 @@ fn make_window() -> Box<dyn kas::Window> {
                             self.start = None;
                         } else {
                             self.start = Some(Instant::now());
-                            mgr.schedule_update(Duration::new(0, 0), self.id());
+                            mgr.update_on_timer(Duration::new(0, 0), self.id());
                         }
                     }
                 }
@@ -72,7 +72,7 @@ fn make_window() -> Box<dyn kas::Window> {
             }
         }
         impl Widget {
-            fn update(&mut self, mgr: &mut Manager) -> Option<Duration> {
+            fn update_timer(&mut self, mgr: &mut Manager) -> Option<Duration> {
                 if let Some(start) = self.start {
                     let dur = self.saved + (Instant::now() - start);
                     self.dur_buf.clear();

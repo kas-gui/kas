@@ -5,11 +5,13 @@
 
 //! Event handling - handler
 
-use crate::event::{Action, Address, Event, Manager, Response};
+use std::time::Duration;
+
+use crate::event::{Action, Address, Event, Manager, Response, UpdateHandle};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, Widget, WidgetCore, WidgetId};
+use crate::{CoreData, Layout, Widget, WidgetCore};
 
 /// Event-handling aspect of a widget.
 ///
@@ -84,8 +86,16 @@ impl<M> Handler for Box<dyn Handler<Msg = M>> {
 }
 
 impl<M> Widget for Box<dyn Handler<Msg = M>> {
-    fn configure(&mut self, id: WidgetId, mgr: &mut Manager) {
-        self.as_mut().configure(id, mgr);
+    fn configure(&mut self, mgr: &mut Manager) {
+        self.as_mut().configure(mgr);
+    }
+
+    fn update_timer(&mut self, mgr: &mut Manager) -> Option<Duration> {
+        self.as_mut().update_timer(mgr)
+    }
+
+    fn update_handle(&mut self, mgr: &mut Manager, handle: UpdateHandle) {
+        self.as_mut().update_handle(mgr, handle);
     }
 
     fn allow_focus(&self) -> bool {

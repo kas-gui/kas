@@ -8,7 +8,7 @@
 use log::{debug, info, trace};
 use std::time::Instant;
 
-use kas::event::{Callback, ManagerState};
+use kas::event::{Callback, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::{theme, TkAction};
 use winit::dpi::PhysicalSize;
@@ -75,6 +75,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     ///
     /// `init` should always return an action of at least `TkAction::Reconfigure`.
     pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> TkAction {
+        debug!("Window::init");
         let mut mgr = self.mgr.manager(shared);
         mgr.send_action(TkAction::Reconfigure);
 
@@ -150,10 +151,20 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         mgr.unwrap_action()
     }
 
-    pub(crate) fn update<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
+    pub fn update_timer<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
         let mut mgr = self.mgr.manager(shared);
-        mgr.update_widgets(&mut *self.widget);
+        mgr.update_timer(&mut *self.widget);
         (mgr.unwrap_action(), self.mgr.next_resume())
+    }
+
+    pub fn update_handle<T>(
+        &mut self,
+        shared: &mut SharedState<T>,
+        handle: UpdateHandle,
+    ) -> TkAction {
+        let mut mgr = self.mgr.manager(shared);
+        mgr.update_handle(handle, &mut *self.widget);
+        mgr.unwrap_action()
     }
 }
 

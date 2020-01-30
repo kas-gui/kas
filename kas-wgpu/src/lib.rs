@@ -14,6 +14,7 @@ mod window;
 
 use std::{error, fmt};
 
+use kas::event::UpdateHandle;
 use kas::WindowId;
 use winit::error::OsError;
 use winit::event_loop::{EventLoop, EventLoopProxy};
@@ -160,10 +161,18 @@ impl ToolkitProxy {
             .send_event(ProxyAction::CloseAll)
             .map_err(|_| ClosedError)
     }
+
+    /// Trigger an update handle
+    pub fn trigger_update(&self, handle: UpdateHandle) -> Result<(), ClosedError> {
+        self.proxy
+            .send_event(ProxyAction::Update(handle))
+            .map_err(|_| ClosedError)
+    }
 }
 
 #[derive(Debug)]
 enum ProxyAction {
     CloseAll,
     Close(WindowId),
+    Update(UpdateHandle),
 }

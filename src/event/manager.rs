@@ -45,8 +45,8 @@ impl HighlightState {
 #[derive(Clone, Debug)]
 struct PressEvent {
     start_id: WidgetId,
-    cur_id: WidgetId,
-    last_coord: Coord,
+    cur_id: Option<WidgetId>,
+    coord: Coord,
 }
 
 /// Window event manager
@@ -71,6 +71,9 @@ pub struct ManagerState {
 
     time_start: Instant,
     time_updates: Vec<(Instant, WidgetId)>,
+    // TODO: consider other containers, e.g. C++ multimap
+    // or sorted Vec with binary search yielding a range
+    handle_updates: HashMap<UpdateHandle, Vec<WidgetId>>,
 }
 
 /// Toolkit API
@@ -94,6 +97,7 @@ impl ManagerState {
 
             time_start: Instant::now(),
             time_updates: vec![],
+            handle_updates: HashMap::new(),
         }
     }
 
@@ -115,7 +119,8 @@ impl ManagerState {
         let mut mgr = self.manager(tkw);
         widget.walk_mut(&mut |widget| {
             map.insert(widget.id(), id);
-            widget.configure(id, &mut mgr);
+            widget.core_data_mut().id = id;
+            widget.configure(&mut mgr);
             id = id.next();
         });
 
@@ -126,16 +131,49 @@ impl ManagerState {
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.key_focus = self.key_focus.and_then(|id| map.get(&id).cloned());
-        for event in &mut self.key_events {
-            event.1 = map.get(&event.1).cloned().unwrap();
-        }
-
         self.mouse_grab = self
             .mouse_grab
             .and_then(|(id, b)| map.get(&id).map(|id| (*id, b)));
-        for event in &mut self.touch_grab {
-            event.1.start_id = map.get(&event.1.start_id).cloned().unwrap();
-            event.1.cur_id = map.get(&event.1.cur_id).cloned().unwrap();
+
+        let mut to_remove = vec![];
+        for (id, grab) in &mut self.touch_grab {
+            grab.start_id = match map.get(&grab.start_id) {
+                Some(id) => *id,
+                None => {
+                    to_remove.push(id);
+                    continue;
+                }
+            };
+            if let Some(cur_id) = grab.cur_id {
+                grab.cur_id = map.get(&cur_id).cloned();
+            }
+        }
+
+        fn do_map<X, F: Fn(&mut X) -> &mut WidgetId>(
+            map: &HashMap<WidgetId, WidgetId>,
+            seq: &mut Vec<X>,
+            f: F,
+        ) {
+            let mut i = 0;
+            let mut j = seq.len();
+            while i < j {
+                // invariant: seq[0..i] have been updated
+                // invariant: seq[j..len] are rejected
+                if let Some(id) = map.get(f(&mut seq[i])) {
+                    *f(&mut seq[i]) = *id;
+                    i += 1;
+                } else {
+                    j -= 1;
+                    seq.swap(i, j);
+                }
+            }
+            seq.truncate(j);
+        }
+
+        do_map(&map, &mut self.key_events, |x| &mut x.1);
+        do_map(&map, &mut self.time_updates, |x| &mut x.1);
+        for ids in self.handle_updates.values_mut() {
+            do_map(&map, ids, |x| x);
         }
     }
 
@@ -174,13 +212,14 @@ impl<'a> Manager<'a> {
     /// Schedule an update
     ///
     /// Widgets requiring animation should schedule an update; as a result,
-    /// their `update` method will be called at roughly time `now + duration`.
+    /// their [`Widget::update_timer`] method will be called, roughly at time
+    /// `now + duration`.
     ///
     /// Timings may be a few ms out, but should be sufficient for e.g. updating
     /// a clock each second. Very short positive durations (e.g. 1ns) may be
     /// used to schedule an update on the next frame. Frames should in any case
     /// be limited by vsync, avoiding excessive frame rates.
-    pub fn schedule_update(&mut self, duration: Duration, w_id: WidgetId) {
+    pub fn update_on_timer(&mut self, duration: Duration, w_id: WidgetId) {
         let time = Instant::now() + duration;
         'outer: loop {
             for row in &mut self.mgr.time_updates {
@@ -199,6 +238,19 @@ impl<'a> Manager<'a> {
         }
 
         self.mgr.time_updates.sort_by_key(|row| row.0);
+    }
+
+    /// Subscribe to an update handle
+    ///
+    /// All widgets subscribed to an update handle will have their
+    /// [`Widget::update_handle`] method called when [`Manager::trigger_update`]
+    /// is called with the corresponding handle.
+    pub fn update_on_handle(&mut self, handle: UpdateHandle, w_id: WidgetId) {
+        self.mgr
+            .handle_updates
+            .entry(handle)
+            .or_insert(Vec::new())
+            .push(w_id);
     }
 
     /// Notify that a widget must be redrawn
@@ -237,6 +289,15 @@ impl<'a> Manager<'a> {
     #[inline]
     pub fn close_window(&mut self, id: WindowId) {
         self.tkw.close_window(id);
+    }
+
+    /// Updates all subscribed widgets
+    ///
+    /// All widgets subscribed to the given [`UpdateHandle`], across all
+    /// windows, will receive an update.
+    #[inline]
+    pub fn trigger_update(&mut self, handle: UpdateHandle) {
+        self.tkw.trigger_update(handle);
     }
 
     /// Attempt to get clipboard contents
@@ -286,7 +347,7 @@ impl<'a> Manager<'a> {
             return true;
         }
         for touch in self.mgr.touch_grab.values() {
-            if touch.cur_id == w_id {
+            if touch.cur_id == Some(w_id) {
                 return true;
             }
         }
@@ -307,7 +368,7 @@ impl<'a> Manager<'a> {
             }
         }
         for touch in self.mgr.touch_grab.values() {
-            if touch.start_id == w_id && touch.cur_id == w_id {
+            if touch.start_id == w_id && touch.cur_id == Some(w_id) {
                 return true;
             }
         }
@@ -366,8 +427,8 @@ impl<'a> Manager<'a> {
                 Entry::Vacant(v) => {
                     v.insert(PressEvent {
                         start_id: w_id,
-                        cur_id: w_id,
-                        last_coord: coord,
+                        cur_id: Some(w_id),
+                        coord,
                     });
                 }
             },
@@ -438,23 +499,11 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn touch_grab(&self, touch_id: u64) -> Option<PressEvent> {
-        self.mgr.touch_grab.get(&touch_id).cloned()
-    }
-
-    #[cfg(feature = "winit")]
-    fn update_touch_coord(&mut self, touch_id: u64, coord: Coord) {
-        if let Some(v) = self.mgr.touch_grab.get_mut(&touch_id) {
-            v.last_coord = coord;
-            // TODO: update cur_id (currently not calculated)
-            // self.redraw(v.cur_id);
-        }
-    }
-
-    #[cfg(feature = "winit")]
     fn end_touch_grab(&mut self, touch_id: u64) {
         if let Some(grab) = self.mgr.touch_grab.remove(&touch_id) {
-            self.redraw(grab.cur_id);
+            if let Some(cur_id) = grab.cur_id {
+                self.redraw(cur_id);
+            }
         }
     }
 
@@ -494,8 +543,8 @@ impl<'a> Manager<'a> {
         self.action
     }
 
-    /// Update widgets
-    pub fn update_widgets<W: Widget + ?Sized>(&mut self, widget: &mut W) {
+    /// Update widgets due to timer
+    pub fn update_timer<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         let now = Instant::now();
 
         // assumption: time_updates are sorted
@@ -506,8 +555,8 @@ impl<'a> Manager<'a> {
             }
 
             let w_id = self.mgr.time_updates[i].1;
-            trace!("Updating widget {}", w_id);
-            let dur = widget.find_mut(w_id).and_then(|w| w.update(self));
+            trace!("Updating widget {} via timer", w_id);
+            let dur = widget.find_mut(w_id).and_then(|w| w.update_timer(self));
             if let Some(dur) = dur {
                 assert!(dur > Duration::new(0, 0));
                 self.mgr.time_updates[i].0 = now + dur;
@@ -518,6 +567,19 @@ impl<'a> Manager<'a> {
         }
 
         self.mgr.time_updates.sort_by_key(|row| row.0);
+    }
+
+    /// Update widgets due to timer
+    pub fn update_handle<W: Widget + ?Sized>(&mut self, handle: UpdateHandle, widget: &mut W) {
+        // NOTE: to avoid borrow conflict, we must clone values!
+        if let Some(mut values) = self.mgr.handle_updates.get(&handle).cloned() {
+            for w_id in values.drain(..) {
+                trace!("Updating widget {} via {:?}", w_id, handle);
+                if let Some(w) = widget.find_mut(w_id) {
+                    w.update_handle(self, handle);
+                }
+            }
+        }
     }
 
     /// Handle a winit `WindowEvent`.
@@ -700,28 +762,47 @@ impl<'a> Manager<'a> {
                         widget.handle(&mut self, Address::Coord(coord), ev)
                     }
                     TouchPhase::Moved => {
-                        if let Some(PressEvent { start_id, last_coord, .. }) = self.touch_grab(touch.id) {
+                        // NOTE: calling widget.handle twice appears
+                        // to be unavoidable (as with CursorMoved)
+                        let addr = Address::Coord(coord);
+                        let cur_id = match widget.handle(&mut self, addr, Event::Identify) {
+                            Response::Identify(id) => Some(id),
+                            _ => None,
+                        };
+
+                        let r = self.mgr.touch_grab.get_mut(&touch.id).map(|grab| {
+                            let addr = Address::Id(grab.start_id);
                             let action = Event::PressMove {
                                 source,
                                 coord,
-                                delta: coord - last_coord,
+                                delta: coord - grab.coord,
                             };
-                            let r = widget.handle(&mut self, Address::Id(start_id), action);
-                            self.update_touch_coord(touch.id, coord);
-                            r
+                            let redraw = grab.cur_id != cur_id;
+
+                            grab.cur_id = cur_id;
+                            grab.coord = coord;
+
+                            (addr, action, redraw)
+                        });
+
+                        if let Some((addr, action, redraw)) = r {
+                            if redraw {
+                                self.send_action(TkAction::Redraw);
+                            }
+                            widget.handle(&mut self, addr, action)
                         } else {
                             Response::None
                         }
                     }
                     TouchPhase::Ended => {
-                        if let Some(PressEvent { start_id, cur_id, .. }) = self.touch_grab(touch.id) {
+                        if let Some(grab) = self.mgr.touch_grab.get(&touch.id).cloned() {
                             let action = Event::PressEnd {
                                 source,
-                                start_id: Some(start_id),
-                                end_id: Some(cur_id),
+                                start_id: Some(grab.start_id),
+                                end_id: grab.cur_id,
                                 coord,
                             };
-                            let r = widget.handle(&mut self, Address::Id(start_id), action);
+                            let r = widget.handle(&mut self, Address::Id(grab.start_id), action);
                             self.end_touch_grab(touch.id);
                             r
                         } else {
@@ -735,14 +816,14 @@ impl<'a> Manager<'a> {
                         }
                     }
                     TouchPhase::Cancelled => {
-                        if let Some(PressEvent { start_id, .. }) = self.touch_grab(touch.id) {
+                        if let Some(grab) = self.mgr.touch_grab.get(&touch.id).cloned() {
                             let action = Event::PressEnd {
                                 source,
-                                start_id: Some(start_id),
+                                start_id: Some(grab.start_id),
                                 end_id: None,
                                 coord,
                             };
-                            let r = widget.handle(&mut self, Address::Id(start_id), action);
+                            let r = widget.handle(&mut self, Address::Id(grab.start_id), action);
                             self.end_touch_grab(touch.id);
                             r
                         } else {
