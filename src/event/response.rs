@@ -6,7 +6,6 @@
 //! Event handling: Response type
 
 use super::{Action, Event};
-use crate::WidgetId;
 
 /// Response type from [`Handler::handle`].
 ///
@@ -20,8 +19,6 @@ use crate::WidgetId;
 pub enum Response<M> {
     /// No action
     None,
-    /// Identification of a widget
-    Identify(WidgetId),
     /// Unhandled input events get returned back up the widget tree
     Unhandled(Event),
     /// Custom message type
@@ -79,7 +76,6 @@ impl<M> Response<M> {
         use Response::*;
         match r {
             None => Ok(None),
-            Identify(id) => Ok(Identify(id)),
             Unhandled(e) => Ok(Unhandled(e)),
             Msg(m) => Err(m),
         }

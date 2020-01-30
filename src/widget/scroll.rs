@@ -292,7 +292,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
             Address::Coord(coord) => Address::Coord(coord + self.offset),
         };
         let event = match event {
-            a @ Event::Action(_) | a @ Event::Identify => a,
+            a @ Event::Action(_) => a,
             Event::PressStart { source, coord } => Event::PressStart {
                 source,
                 coord: coord + self.offset,

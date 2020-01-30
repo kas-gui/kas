@@ -32,7 +32,6 @@ pub enum Action {
 #[derive(Clone, Debug)]
 pub enum Event {
     Action(Action),
-    Identify,
     /// A mouse button was pressed or touch event started
     PressStart {
         source: PressSource,

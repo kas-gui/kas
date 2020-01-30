@@ -115,7 +115,7 @@ impl ManagerState {
         let mut id = WidgetId::FIRST;
 
         self.accel_keys.clear();
-        let addr = Address::Coord(self.last_mouse_coord);
+        let coord = self.last_mouse_coord;
         let mut mgr = self.manager(tkw);
         widget.walk_mut(&mut |widget| {
             map.insert(widget.id(), id);
@@ -124,10 +124,7 @@ impl ManagerState {
             id = id.next();
         });
 
-        self.hover = match widget.handle(&mut mgr, addr, Event::Identify) {
-            Response::Identify(id) => Some(id),
-            _ => None,
-        };
+        self.hover = widget.find_coord_mut(coord).map(|w| w.id());
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.key_focus = self.key_focus.and_then(|id| map.get(&id).cloned());
@@ -670,11 +667,7 @@ impl<'a> Manager<'a> {
                 let coord = position.into();
 
                 // Update hovered widget
-                let w_id = match widget.handle(&mut self, Address::Coord(coord), Event::Identify) {
-                    Response::Identify(w_id) => Some(w_id),
-                    _ => None,
-                };
-                self.set_hover(w_id);
+                self.set_hover(widget.find_coord_mut(coord).map(|w| w.id()));
 
                 let r = if let Some((grab_id, button)) = self.mouse_grab() {
                     let source = PressSource::Mouse(button);
@@ -691,6 +684,8 @@ impl<'a> Manager<'a> {
             }
             // CursorEntered { .. },
             CursorLeft { .. } => {
+                // Set a fake coordinate off the window
+                self.mgr.last_mouse_coord = Coord(-1, -1);
                 self.set_hover(None);
                 Response::None
             }
@@ -764,11 +759,7 @@ impl<'a> Manager<'a> {
                     TouchPhase::Moved => {
                         // NOTE: calling widget.handle twice appears
                         // to be unavoidable (as with CursorMoved)
-                        let addr = Address::Coord(coord);
-                        let cur_id = match widget.handle(&mut self, addr, Event::Identify) {
-                            Response::Identify(id) => Some(id),
-                            _ => None,
-                        };
+                        let cur_id = widget.find_coord_mut(coord).map(|w| w.id());
 
                         let r = self.mgr.touch_grab.get_mut(&touch.id).map(|grab| {
                             let addr = Address::Id(grab.start_id);
@@ -837,7 +828,7 @@ impl<'a> Manager<'a> {
         };
 
         match response {
-            Response::None | Response::Identify(_) => (),
+            Response::None => (),
             Response::Unhandled(_) => {
                 // we can safely ignore unhandled events here
             }

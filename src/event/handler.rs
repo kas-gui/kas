@@ -188,7 +188,6 @@ impl<'a> Manager<'a> {
         let activable = widget.activation_via_press();
         match event {
             Event::Action(action) => widget.handle_action(mgr, action),
-            Event::Identify => Response::Identify(widget.id()),
             Event::PressStart { source, coord } if activable && source.is_primary() => {
                 mgr.request_press_grab(source, widget.as_widget(), coord);
                 Response::None
