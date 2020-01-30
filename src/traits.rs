@@ -146,7 +146,9 @@ pub trait WidgetCore: fmt::Debug {
     ///
     /// In the case of an empty grid cell, the parent widget is returned
     /// (same behaviour as with events addressed by coordinate).
-    fn find_coord_mut(&mut self, coord: Coord) -> &mut dyn Widget;
+    /// The only case `None` should be expected is when `coord` is outside the
+    /// initial widget's region; however this is not guaranteed.
+    fn find_coord_mut(&mut self, coord: Coord) -> Option<&mut dyn Widget>;
 
     /// Debug tool: print the widget hierarchy
     #[deprecated(since = "0.2.0")]

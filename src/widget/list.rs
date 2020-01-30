@@ -131,14 +131,15 @@ impl<D: Direction, W: Widget> WidgetCore for List<D, W> {
         f(self)
     }
 
-    fn find_coord_mut(&mut self, coord: Coord) -> &mut dyn Widget {
+    fn find_coord_mut(&mut self, coord: Coord) -> Option<&mut dyn Widget> {
         let solver = RowPositionSolver::new(self.direction);
         if let Some(child) = solver.find_child(&mut self.widgets, coord) {
-            return child.as_widget_mut();
+            return Some(child.as_widget_mut());
         }
 
-        // For a panic-free alternative, return self — but has borrow error.
-        unreachable!()
+        // We should return Some(self), but hit a borrow check error.
+        // This should however be unreachable anyway.
+        None
     }
 }
 

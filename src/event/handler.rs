@@ -153,7 +153,7 @@ impl<M> WidgetCore for Box<dyn Handler<Msg = M>> {
         self.as_mut().walk_mut(f);
     }
 
-    fn find_coord_mut(&mut self, coord: Coord) -> &mut dyn Widget {
+    fn find_coord_mut(&mut self, coord: Coord) -> Option<&mut dyn Widget> {
         self.as_mut().find_coord_mut(coord)
     }
 }

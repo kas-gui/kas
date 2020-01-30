@@ -102,9 +102,11 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 f(self);
             }
 
-            fn find_coord_mut(&mut self, coord: kas::geom::Coord) -> &mut dyn kas::Widget {
-                #find_coord_mut {
-                    self
+            fn find_coord_mut(&mut self, coord: kas::geom::Coord) -> Option<&mut dyn kas::Widget> {
+                #find_coord_mut if self.#core.rect.contains(coord) {
+                    Some(self)
+                } else {
+                    None
                 }
             }
         }
