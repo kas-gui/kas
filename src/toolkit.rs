@@ -16,6 +16,8 @@
 
 use std::num::NonZeroU32;
 
+use crate::event::UpdateHandle;
+
 /// Identifier for a window added to a toolkit
 ///
 /// Identifiers should always be unique.
@@ -74,6 +76,12 @@ pub trait TkWindow {
 
     /// Close a window
     fn close_window(&mut self, id: WindowId);
+
+    /// Updates all subscribed widgets
+    ///
+    /// All widgets subscribed to the given [`UpdateHandle`], across all
+    /// windows, will receive an update.
+    fn trigger_update(&mut self, handle: UpdateHandle);
 
     /// Attempt to get clipboard contents
     ///

@@ -71,6 +71,9 @@ pub struct ManagerState {
 
     time_start: Instant,
     time_updates: Vec<(Instant, WidgetId)>,
+    // TODO: consider other containers, e.g. C++ multimap
+    // or sorted Vec with binary search yielding a range
+    handle_updates: HashMap<UpdateHandle, Vec<WidgetId>>,
 }
 
 /// Toolkit API
@@ -94,6 +97,7 @@ impl ManagerState {
 
             time_start: Instant::now(),
             time_updates: vec![],
+            handle_updates: HashMap::new(),
         }
     }
 
@@ -137,6 +141,8 @@ impl ManagerState {
             event.1.start_id = map.get(&event.1.start_id).cloned().unwrap();
             event.1.cur_id = map.get(&event.1.cur_id).cloned().unwrap();
         }
+
+        // FIXME: update ids in time_updates and handle_updates
     }
 
     /// Set the DPI factor. Must be updated for correct event translation by
@@ -174,13 +180,14 @@ impl<'a> Manager<'a> {
     /// Schedule an update
     ///
     /// Widgets requiring animation should schedule an update; as a result,
-    /// their `update` method will be called at roughly time `now + duration`.
+    /// their [`Widget::update_timer`] method will be called, roughly at time
+    /// `now + duration`.
     ///
     /// Timings may be a few ms out, but should be sufficient for e.g. updating
     /// a clock each second. Very short positive durations (e.g. 1ns) may be
     /// used to schedule an update on the next frame. Frames should in any case
     /// be limited by vsync, avoiding excessive frame rates.
-    pub fn schedule_update(&mut self, duration: Duration, w_id: WidgetId) {
+    pub fn update_on_timer(&mut self, duration: Duration, w_id: WidgetId) {
         let time = Instant::now() + duration;
         'outer: loop {
             for row in &mut self.mgr.time_updates {
@@ -199,6 +206,19 @@ impl<'a> Manager<'a> {
         }
 
         self.mgr.time_updates.sort_by_key(|row| row.0);
+    }
+
+    /// Subscribe to an update handle
+    ///
+    /// All widgets subscribed to an update handle will have their
+    /// [`Widget::update_handle`] method called when [`Manager::trigger_update`]
+    /// is called with the corresponding handle.
+    pub fn update_on_handle(&mut self, handle: UpdateHandle, w_id: WidgetId) {
+        self.mgr
+            .handle_updates
+            .entry(handle)
+            .or_insert(Vec::new())
+            .push(w_id);
     }
 
     /// Notify that a widget must be redrawn
@@ -237,6 +257,15 @@ impl<'a> Manager<'a> {
     #[inline]
     pub fn close_window(&mut self, id: WindowId) {
         self.tkw.close_window(id);
+    }
+
+    /// Updates all subscribed widgets
+    ///
+    /// All widgets subscribed to the given [`UpdateHandle`], across all
+    /// windows, will receive an update.
+    #[inline]
+    pub fn trigger_update(&mut self, handle: UpdateHandle) {
+        self.tkw.trigger_update(handle);
     }
 
     /// Attempt to get clipboard contents
@@ -494,8 +523,8 @@ impl<'a> Manager<'a> {
         self.action
     }
 
-    /// Update widgets
-    pub fn update_widgets<W: Widget + ?Sized>(&mut self, widget: &mut W) {
+    /// Update widgets due to timer
+    pub fn update_timer<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         let now = Instant::now();
 
         // assumption: time_updates are sorted
@@ -506,8 +535,8 @@ impl<'a> Manager<'a> {
             }
 
             let w_id = self.mgr.time_updates[i].1;
-            trace!("Updating widget {}", w_id);
-            let dur = widget.find_mut(w_id).and_then(|w| w.update(self));
+            trace!("Updating widget {} via timer", w_id);
+            let dur = widget.find_mut(w_id).and_then(|w| w.update_timer(self));
             if let Some(dur) = dur {
                 assert!(dur > Duration::new(0, 0));
                 self.mgr.time_updates[i].0 = now + dur;
@@ -518,6 +547,19 @@ impl<'a> Manager<'a> {
         }
 
         self.mgr.time_updates.sort_by_key(|row| row.0);
+    }
+
+    /// Update widgets due to timer
+    pub fn update_handle<W: Widget + ?Sized>(&mut self, handle: UpdateHandle, widget: &mut W) {
+        // NOTE: to avoid borrow conflict, we must clone values!
+        if let Some(mut values) = self.mgr.handle_updates.get(&handle).cloned() {
+            for w_id in values.drain(..) {
+                trace!("Updating widget {} via {:?}", w_id, handle);
+                if let Some(w) = widget.find_mut(w_id) {
+                    w.update_handle(self, handle);
+                }
+            }
+        }
     }
 
     /// Handle a winit `WindowEvent`.

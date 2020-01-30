@@ -8,7 +8,7 @@
 use std::fmt;
 use std::time::Duration;
 
-use crate::event::{Callback, Handler, Manager, VoidMsg};
+use crate::event::{Callback, Handler, Manager, UpdateHandle, VoidMsg};
 use crate::geom::{Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
@@ -273,20 +273,31 @@ pub trait Widget: Layout {
         self.core_data_mut().id = id;
     }
 
-    /// Update the widget
+    /// Update the widget via a timer
     ///
-    /// This method is called on scheduled updates: see [`schedule_update`].
+    /// This method is called on scheduled updates (see [`update_on_timer`]).
     ///
-    /// When some [`Duration`] is returned, another update is scheduled as if
-    /// [`schedule_update`] were called with this duration.
-    /// Required: `duration > 0`.
+    /// When some [`Duration`] is returned, another timed update is scheduled
+    /// at approximately this duration from now (but without blocking redraws;
+    /// usage of 1ns effectively enables per-frame update with FPS limited via
+    /// VSync). Required: `duration > 0`.
     ///
     /// This method being called does not imply a redraw.
     ///
-    /// [`schedule_update`]: Manager::schedule_update
-    fn update(&mut self, _: &mut Manager) -> Option<Duration> {
+    /// [`update_on_timer`]: Manager::update_on_timer
+    fn update_timer(&mut self, _: &mut Manager) -> Option<Duration> {
         None
     }
+
+    /// Update the widget via an update handle
+    ///
+    /// This method is called on triggered updates (see [`update_on_handle`]).
+    /// The source handle is specified via the [`UpdateHandle`] parameter.
+    ///
+    /// This method being called does not imply a redraw.
+    ///
+    /// [`update_on_handle`]: Manager::update_on_handle
+    fn update_handle(&mut self, _: &mut Manager, _: UpdateHandle) {}
 
     /// Is this widget navigable via Tab key?
     fn allow_focus(&self) -> bool {

@@ -37,10 +37,10 @@ fn main() -> Result<(), kas_wgpu::Error> {
         impl Widget for Clock {
             fn configure(&mut self, id: WidgetId, mgr: &mut Manager) {
                 self.core_data_mut().id = id;
-                mgr.schedule_update(Duration::new(0, 0), id);
+                mgr.update_on_timer(Duration::new(0, 0), id);
             }
 
-            fn update(&mut self, mgr: &mut Manager) -> Option<Duration> {
+            fn update_timer(&mut self, mgr: &mut Manager) -> Option<Duration> {
                 let now = Local::now();
                 self.date.set_text(mgr, now.format("%Y-%m-%d").to_string());
                 self.time.set_text(mgr, now.format("%H:%M:%S").to_string());

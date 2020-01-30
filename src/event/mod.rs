@@ -61,6 +61,7 @@ mod events;
 mod handler;
 mod manager;
 mod response;
+mod update;
 
 use std::fmt::Debug;
 // use std::path::PathBuf;
@@ -75,6 +76,7 @@ pub use events::*;
 pub use handler::Handler;
 pub use manager::{HighlightState, Manager, ManagerState};
 pub use response::Response;
+pub use update::UpdateHandle;
 
 /// A void message
 ///

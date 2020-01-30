@@ -9,9 +9,10 @@
 use std::cell::RefCell;
 
 use kas::class::HasText;
-use kas::event::{Manager, VoidMsg, VoidResponse};
+use kas::event::{Manager, UpdateHandle, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};
+use kas::{Widget, WidgetCore, WidgetId};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {
@@ -36,30 +37,42 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget] _ = TextButton::new("+", Message::Incr),
         }
     };
+
+    let handle = UpdateHandle::new();
+
     let window = Window::new(
         "Counter",
         make_widget! {
-            #[widget]
             #[layout(vertical)]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] display: Label = Label::from("0"),
                 #[widget(handler = handle_button)] buttons -> Message = buttons,
+                handle: UpdateHandle = handle,
+            }
+            impl Widget {
+                fn configure(&mut self, id: WidgetId, mgr: &mut Manager) {
+                    self.core_data_mut().id = id;
+                    mgr.update_on_handle(self.handle, id);
+                }
+
+                fn update_handle(&mut self, mgr: &mut Manager, _: UpdateHandle) {
+                    let c = COUNTER.with(|c| *c.borrow());
+                    self.display.set_text(mgr, c.to_string());
+                }
             }
             impl {
                 fn handle_button(&mut self, mgr: &mut Manager, msg: Message)
                     -> VoidResponse
                 {
-                    // TODO: this needs to notify the other window to update itself
-                    let c = COUNTER.with(|c| {
+                    COUNTER.with(|c| {
                         let mut c = c.borrow_mut();
                         *c += match msg {
                             Message::Decr => -1,
                             Message::Incr => 1,
                         };
-                        *c
                     });
-                    self.display.set_text(mgr, c.to_string());
+                    mgr.trigger_update(self.handle);
                     VoidResponse::None
                 }
             }

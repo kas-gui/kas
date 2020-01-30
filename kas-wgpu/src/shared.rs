@@ -10,6 +10,7 @@ use std::num::NonZeroU32;
 
 use crate::draw::ShaderManager;
 use crate::{Error, WindowId};
+use kas::event::UpdateHandle;
 
 #[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
@@ -131,6 +132,10 @@ impl<T> kas::TkWindow for SharedState<T> {
         self.pending.push(PendingAction::CloseWindow(id));
     }
 
+    fn trigger_update(&mut self, handle: UpdateHandle) {
+        self.pending.push(PendingAction::Update(handle));
+    }
+
     #[inline]
     fn get_clipboard(&mut self) -> Option<String> {
         self.get_clipboard()
@@ -145,4 +150,5 @@ impl<T> kas::TkWindow for SharedState<T> {
 pub enum PendingAction {
     AddWindow(WindowId, Box<dyn kas::Window>),
     CloseWindow(WindowId),
+    Update(UpdateHandle),
 }

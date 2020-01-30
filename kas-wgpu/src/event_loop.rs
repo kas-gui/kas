@@ -114,7 +114,7 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         assert_eq!(item.0, requested_resume);
 
                         let resume = if let Some(w) = self.windows.get_mut(&item.1) {
-                            let (action, resume) = w.update(&mut self.shared);
+                            let (action, resume) = w.update_timer(&mut self.shared);
                             actions.push((item.1, action));
                             resume
                         } else {
@@ -179,6 +179,12 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                 PendingAction::CloseWindow(id) => {
                     if let Some(id) = self.id_map.get(&id) {
                         actions.push((*id, TkAction::Close));
+                    }
+                }
+                PendingAction::Update(handle) => {
+                    for (id, window) in self.windows.iter_mut() {
+                        let action = window.update_handle(&mut self.shared, handle);
+                        actions.push((*id, action));
                     }
                 }
             }
