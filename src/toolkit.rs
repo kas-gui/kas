@@ -64,6 +64,7 @@ pub enum TkAction {
 /// Toolkit-specific window management and style interface.
 ///
 /// This is implemented by a KAS toolkit on a window handle.
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub trait TkWindow {
     /// Add a window
     ///
