@@ -95,6 +95,9 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         actions.push((*id, TkAction::CloseAll));
                     }
                 }
+                ProxyAction::Update(handle) => {
+                    self.shared.pending.push(PendingAction::Update(handle));
+                }
             },
 
             NewEvents(cause) => {
