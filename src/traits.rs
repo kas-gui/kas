@@ -266,12 +266,8 @@ pub trait Widget: Layout {
     /// Widgets are *configured* on window creation and when
     /// [`kas::TkAction::Reconfigure`] is sent.
     ///
-    /// *All* implementations *must* set `self.core.id` to the given `id`.
-    /// Widgets only need to implement this manually when they need to perform
-    /// additional configuration.
-    fn configure(&mut self, id: WidgetId, _: &mut Manager) {
-        self.core_data_mut().id = id;
-    }
+    /// This method is called immediately after assigning `self.core_data().id`.
+    fn configure(&mut self, _: &mut Manager) {}
 
     /// Update the widget via a timer
     ///

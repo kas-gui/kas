@@ -15,7 +15,7 @@ use std::time::Duration;
 use kas::class::HasText;
 use kas::event::Manager;
 use kas::widget::{Label, Window};
-use kas::{Widget, WidgetCore, WidgetId};
+use kas::{Widget, WidgetCore};
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
@@ -35,9 +35,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
             time: Label,
         }
         impl Widget for Clock {
-            fn configure(&mut self, id: WidgetId, mgr: &mut Manager) {
-                self.core_data_mut().id = id;
-                mgr.update_on_timer(Duration::new(0, 0), id);
+            fn configure(&mut self, mgr: &mut Manager) {
+                mgr.update_on_timer(Duration::new(0, 0), self.id());
             }
 
             fn update_timer(&mut self, mgr: &mut Manager) -> Option<Duration> {

@@ -119,7 +119,8 @@ impl ManagerState {
         let mut mgr = self.manager(tkw);
         widget.walk_mut(&mut |widget| {
             map.insert(widget.id(), id);
-            widget.configure(id, &mut mgr);
+            widget.core_data_mut().id = id;
+            widget.configure(&mut mgr);
             id = id.next();
         });
 

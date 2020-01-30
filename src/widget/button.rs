@@ -13,7 +13,7 @@ use crate::event::{Action, Handler, Manager, Response, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{CoreData, Layout, Widget, WidgetCore, WidgetId};
+use crate::{CoreData, Layout, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A push-button with a text label
@@ -28,10 +28,9 @@ pub struct TextButton<M: Clone + Debug> {
 }
 
 impl<M: Clone + Debug> Widget for TextButton<M> {
-    fn configure(&mut self, id: WidgetId, mgr: &mut Manager) {
-        self.core_data_mut().id = id;
+    fn configure(&mut self, mgr: &mut Manager) {
         for key in &self.keys {
-            mgr.add_accel_key(*key, id);
+            mgr.add_accel_key(*key, self.id());
         }
     }
 

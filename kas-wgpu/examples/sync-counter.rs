@@ -12,7 +12,7 @@ use kas::class::HasText;
 use kas::event::{Manager, UpdateHandle, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};
-use kas::{Widget, WidgetCore, WidgetId};
+use kas::{Widget, WidgetCore};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {
@@ -51,9 +51,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 handle: UpdateHandle = handle,
             }
             impl Widget {
-                fn configure(&mut self, id: WidgetId, mgr: &mut Manager) {
-                    self.core_data_mut().id = id;
-                    mgr.update_on_handle(self.handle, id);
+                fn configure(&mut self, mgr: &mut Manager) {
+                    mgr.update_on_handle(self.handle, self.id());
                 }
 
                 fn update_handle(&mut self, mgr: &mut Manager, _: UpdateHandle) {
