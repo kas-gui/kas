@@ -201,6 +201,12 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                 TkAction::Redraw => {
                     self.windows.get(&id).map(|w| w.window.request_redraw());
                 }
+                TkAction::RegionMoved => {
+                    if let Some(window) = self.windows.get_mut(&id) {
+                        window.handle_moved();
+                        window.window.request_redraw();
+                    }
+                }
                 TkAction::Reconfigure => {
                     if let Some(window) = self.windows.get_mut(&id) {
                         if let Some(instant) = window.reconfigure(&mut self.shared) {

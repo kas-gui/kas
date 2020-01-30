@@ -12,7 +12,7 @@ use crate::event::{Action, Address, Event, Handler, Manager, Response, ScrollDel
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, Horizontal, SizeRules, Vertical};
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
-use crate::{CoreData, Layout, Widget, WidgetCore};
+use crate::{CoreData, Layout, TkAction, Widget, WidgetCore};
 
 /// A scrollable region
 ///
@@ -112,7 +112,7 @@ impl<W: Widget> ScrollRegion<W> {
         let offset = offset.max(Coord::ZERO).min(self.max_offset);
         if offset != self.offset {
             self.offset = offset;
-            mgr.redraw(self.id());
+            mgr.send_action(TkAction::RegionMoved);
             return true;
         }
         false

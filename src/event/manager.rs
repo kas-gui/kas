@@ -174,6 +174,17 @@ impl ManagerState {
         }
     }
 
+    pub fn region_moved<W: Widget + ?Sized>(&mut self, widget: &mut W) {
+        // Note: redraw is already implied.
+
+        // Update hovered widget
+        self.hover = widget.find_coord_mut(self.last_mouse_coord).map(|w| w.id());
+
+        for touch in self.touch_grab.values_mut() {
+            touch.cur_id = widget.find_coord_mut(touch.coord).map(|w| w.id());
+        }
+    }
+
     /// Set the DPI factor. Must be updated for correct event translation by
     /// [`Manager::handle_winit`].
     #[inline]
