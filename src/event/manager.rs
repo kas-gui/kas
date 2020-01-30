@@ -131,21 +131,50 @@ impl ManagerState {
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.key_focus = self.key_focus.and_then(|id| map.get(&id).cloned());
-        for event in &mut self.key_events {
-            event.1 = map.get(&event.1).cloned().unwrap();
-        }
-
         self.mouse_grab = self
             .mouse_grab
             .and_then(|(id, b)| map.get(&id).map(|id| (*id, b)));
-        for event in &mut self.touch_grab {
-            event.1.start_id = map.get(&event.1.start_id).cloned().unwrap();
-            if let Some(cur_id) = event.1.cur_id {
-                event.1.cur_id = Some(map.get(&cur_id).cloned().unwrap());
+
+        let mut to_remove = vec![];
+        for (id, grab) in &mut self.touch_grab {
+            grab.start_id = match map.get(&grab.start_id) {
+                Some(id) => *id,
+                None => {
+                    to_remove.push(id);
+                    continue;
+                }
+            };
+            if let Some(cur_id) = grab.cur_id {
+                grab.cur_id = map.get(&cur_id).cloned();
             }
         }
 
-        // FIXME: update ids in time_updates and handle_updates
+        fn do_map<X, F: Fn(&mut X) -> &mut WidgetId>(
+            map: &HashMap<WidgetId, WidgetId>,
+            seq: &mut Vec<X>,
+            f: F,
+        ) {
+            let mut i = 0;
+            let mut j = seq.len();
+            while i < j {
+                // invariant: seq[0..i] have been updated
+                // invariant: seq[j..len] are rejected
+                if let Some(id) = map.get(f(&mut seq[i])) {
+                    *f(&mut seq[i]) = *id;
+                    i += 1;
+                } else {
+                    j -= 1;
+                    seq.swap(i, j);
+                }
+            }
+            seq.truncate(j);
+        }
+
+        do_map(&map, &mut self.key_events, |x| &mut x.1);
+        do_map(&map, &mut self.time_updates, |x| &mut x.1);
+        for ids in self.handle_updates.values_mut() {
+            do_map(&map, ids, |x| x);
+        }
     }
 
     /// Set the DPI factor. Must be updated for correct event translation by
