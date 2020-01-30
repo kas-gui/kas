@@ -9,7 +9,7 @@ use std::fmt;
 use std::time::Duration;
 
 use crate::event::{Callback, Handler, Manager, UpdateHandle, VoidMsg};
-use crate::geom::{Rect, Size};
+use crate::geom::{Coord, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
 use crate::{CoreData, WidgetId};
@@ -140,6 +140,14 @@ pub trait WidgetCore: fmt::Debug {
     /// `f` on self *after* walking through all children.
     fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget));
 
+    /// Find a child widget by coordinate
+    ///
+    /// This requires that widget layout has been set.
+    ///
+    /// In the case of an empty grid cell, the parent widget is returned
+    /// (same behaviour as with events addressed by coordinate).
+    fn find_coord_mut(&mut self, coord: Coord) -> &mut dyn Widget;
+
     /// Debug tool: print the widget hierarchy
     #[deprecated(since = "0.2.0")]
     fn print_hierarchy(&self, depth: usize) {
@@ -147,53 +155,6 @@ pub trait WidgetCore: fmt::Debug {
         for i in 0..self.len() {
             self.get(i).unwrap().print_hierarchy(depth + 1);
         }
-    }
-}
-
-impl WidgetCore for Box<dyn Widget> {
-    #[inline]
-    fn core_data(&self) -> &CoreData {
-        self.as_ref().core_data()
-    }
-    #[inline]
-    fn core_data_mut(&mut self) -> &mut CoreData {
-        self.as_mut().core_data_mut()
-    }
-
-    #[inline]
-    fn widget_name(&self) -> &'static str {
-        self.as_ref().widget_name()
-    }
-
-    #[inline]
-    fn as_widget(&self) -> &dyn Widget {
-        self.as_ref().as_widget()
-    }
-    #[inline]
-    fn as_widget_mut(&mut self) -> &mut dyn Widget {
-        self.as_mut().as_widget_mut()
-    }
-
-    #[inline]
-    fn len(&self) -> usize {
-        self.as_ref().len()
-    }
-    #[inline]
-    fn get(&self, index: usize) -> Option<&dyn Widget> {
-        self.as_ref().get(index)
-    }
-    #[inline]
-    fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-        self.as_mut().get_mut(index)
-    }
-
-    #[inline]
-    fn walk(&self, f: &mut dyn FnMut(&dyn Widget)) {
-        self.as_ref().walk(f);
-    }
-    #[inline]
-    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
-        self.as_mut().walk_mut(f);
     }
 }
 

@@ -45,12 +45,18 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut get_mut_rules = quote! {};
     let mut walk_rules = quote! {};
     let mut walk_mut_rules = quote! {};
+    let mut find_coord_mut = TokenStream::new();
     for (i, child) in args.children.iter().enumerate() {
         let ident = &child.ident;
         get_rules.append_all(quote! { #i => Some(&self.#ident), });
         get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
         walk_rules.append_all(quote! { self.#ident.walk(f); });
         walk_mut_rules.append_all(quote! { self.#ident.walk_mut(f); });
+        find_coord_mut.append_all(quote! {
+            if self.#ident.rect().contains(coord) {
+                self.#ident.find_coord_mut(coord)
+            } else
+        });
     }
 
     let mut toks = quote! {
@@ -94,6 +100,12 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn kas::Widget)) {
                 #walk_mut_rules
                 f(self);
+            }
+
+            fn find_coord_mut(&mut self, coord: kas::geom::Coord) -> &mut dyn kas::Widget {
+                #find_coord_mut {
+                    self
+                }
             }
         }
     };
