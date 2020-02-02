@@ -3,7 +3,44 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.2.0] — 2020-02-02
+### Examples
+-   New `sync-counter` example (#46)
 
+### Widgets
+-   Add a `ScrollBar` widget; add scroll bars to `ScrollRegion`
+-   Re-added separate `Layout` trait (#42)
+-   Widget configure now happens on init and may run user-defined code (#36)
+-   Widgets can now directly schedule updates on timer (#42)
+-   Widgets updates can now be triggerred via an `UpdateHandle` (#46)
+-   Rename `WidgetCore::get_by_id` → `find` and add `find_mut` (#42)
+-   Add `WidgetCore::find_coord_mut` (#47)
+
+### Event handling
+-   `Manager` renamed to `ManagerState`; new `Manager` wrapper type added (#39)
+-   Event handlers take a `&mut Manager` parameter instead of `&mut dyn TkWindow` (#39)
+-   `Manager::set_char_focus` renamed to `request_char_focus`
+-   Remove `Event::Identify` (#47)
+-   Several fixes for subtle event-handling issues
+
+### Macros
+-   `make_widget!` macro now uses attributes instead of `layout => Msg` parameter (#42)
+-   Support generics within `make_widget!` macro (#46)
+
+### Other KAS changes
+-   Add `kas::WindowId` type
+-   Add `TkAction::RegionMoved` to update `ManagerState` after scroll region move (#47)
+
+### Dependencies
+-   Use `log` crate for logging; improved log messages
+-   Use `shaderc` to compile shaders
+-   Use `smallvec` for some optimisations
+-   Update to `winit` version 0.20.0 (from pre-release version)
+
+### Toolkit
+-   Support creation of new windows from event handlers (#34)
+-   Add `ToolkitProxy`, allowing some control from other threads (#36)
+-   Add `kas_wgpu::shared` private module
+-   Rename `event` module to `event_loop`; refactor code (#36, #42, #46)
 
 ## [0.1.0] — 2019-12-22
 -   Add install/testing section to README
