@@ -351,15 +351,7 @@ impl<'a> Manager<'a> {
     /// Get whether the widget is under the mouse or finger
     #[inline]
     pub fn is_hovered(&self, w_id: WidgetId) -> bool {
-        if self.mgr.hover == Some(w_id) {
-            return true;
-        }
-        for touch in self.mgr.touch_grab.values() {
-            if touch.cur_id == Some(w_id) {
-                return true;
-            }
-        }
-        false
+        self.mgr.hover == Some(w_id)
     }
 
     /// Check whether the given widget is visually depressed
@@ -770,7 +762,9 @@ impl<'a> Manager<'a> {
                                 coord,
                                 delta: coord - grab.coord,
                             };
-                            let redraw = grab.cur_id != cur_id;
+                            // Only when 'depressed' status changes:
+                            let redraw = grab.cur_id != cur_id &&
+                                (grab.cur_id == Some(grab.start_id) || cur_id == Some(grab.start_id));
 
                             grab.cur_id = cur_id;
                             grab.coord = coord;
