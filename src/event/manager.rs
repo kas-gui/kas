@@ -507,15 +507,6 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn end_touch_grab(&mut self, touch_id: u64) {
-        if let Some(grab) = self.mgr.touch_grab.remove(&touch_id) {
-            if let Some(cur_id) = grab.cur_id {
-                self.redraw(cur_id);
-            }
-        }
-    }
-
-    #[cfg(feature = "winit")]
     fn next_key_focus(&mut self, widget: &mut dyn Widget) {
         let mut id = self.mgr.key_focus.unwrap_or(WidgetId::FIRST);
         let end = widget.id();
@@ -797,16 +788,17 @@ impl<'a> Manager<'a> {
                         }
                     }
                     TouchPhase::Ended => {
-                        if let Some(grab) = self.mgr.touch_grab.get(&touch.id).cloned() {
+                        if let Some(grab) = self.mgr.touch_grab.remove(&touch.id) {
                             let action = Event::PressEnd {
                                 source,
                                 start_id: Some(grab.start_id),
                                 end_id: grab.cur_id,
                                 coord,
                             };
-                            let r = widget.handle(&mut self, Address::Id(grab.start_id), action);
-                            self.end_touch_grab(touch.id);
-                            r
+                            if let Some(cur_id) = grab.cur_id {
+                                self.redraw(cur_id);
+                            }
+                            widget.handle(&mut self, Address::Id(grab.start_id), action)
                         } else {
                             let action = Event::PressEnd {
                                 source,
@@ -818,16 +810,17 @@ impl<'a> Manager<'a> {
                         }
                     }
                     TouchPhase::Cancelled => {
-                        if let Some(grab) = self.mgr.touch_grab.get(&touch.id).cloned() {
+                        if let Some(grab) = self.mgr.touch_grab.remove(&touch.id) {
                             let action = Event::PressEnd {
                                 source,
                                 start_id: Some(grab.start_id),
                                 end_id: None,
                                 coord,
                             };
-                            let r = widget.handle(&mut self, Address::Id(grab.start_id), action);
-                            self.end_touch_grab(touch.id);
-                            r
+                            if let Some(cur_id) = grab.cur_id {
+                                self.redraw(cur_id);
+                            }
+                            widget.handle(&mut self, Address::Id(grab.start_id), action)
                         } else {
                             Response::None
                         }
