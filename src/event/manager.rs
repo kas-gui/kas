@@ -136,47 +136,46 @@ impl ManagerState {
             .mouse_grab
             .and_then(|(id, b)| map.get(&id).map(|id| (*id, b)));
 
-        let mut i = 0;
-        let mut j = self.touch_grab.len();
-        while i < j {
-            if let Some(id) = map.get(&self.touch_grab[i].start_id) {
-                self.touch_grab[i].start_id = *id;
-                if let Some(cur_id) = self.touch_grab[i].cur_id {
-                    self.touch_grab[i].cur_id = map.get(&cur_id).cloned();
+        macro_rules! do_map {
+            ($seq:expr, $update:expr) => {
+                let update = $update;
+                let mut i = 0;
+                let mut j = $seq.len();
+                while i < j {
+                    // invariant: $seq[0..i] have been updated
+                    // invariant: $seq[j..len] are rejected
+                    if let Some(elt) = update($seq[i].clone()) {
+                        $seq[i] = elt;
+                        i += 1;
+                    } else {
+                        j -= 1;
+                        $seq.swap(i, j);
+                    }
                 }
-                i += 1;
-            } else {
-                j -= 1;
-                self.touch_grab.swap(i, j);
+                $seq.truncate(j);
             };
         }
-        self.touch_grab.truncate(j);
 
-        fn do_map<X, F: Fn(&mut X) -> &mut WidgetId>(
-            map: &HashMap<WidgetId, WidgetId>,
-            seq: &mut Vec<X>,
-            f: F,
-        ) {
-            let mut i = 0;
-            let mut j = seq.len();
-            while i < j {
-                // invariant: seq[0..i] have been updated
-                // invariant: seq[j..len] are rejected
-                if let Some(id) = map.get(f(&mut seq[i])) {
-                    *f(&mut seq[i]) = *id;
-                    i += 1;
-                } else {
-                    j -= 1;
-                    seq.swap(i, j);
+        do_map!(self.touch_grab, |mut elt: TouchEvent| map
+            .get(&elt.start_id)
+            .map(|id| {
+                elt.start_id = *id;
+                if let Some(cur_id) = elt.cur_id {
+                    elt.cur_id = map.get(&cur_id).cloned();
                 }
-            }
-            seq.truncate(j);
-        }
+                elt
+            }));
 
-        do_map(&map, &mut self.key_events, |x| &mut x.1);
-        do_map(&map, &mut self.time_updates, |x| &mut x.1);
+        do_map!(self.key_events, |elt: (u32, WidgetId)| map
+            .get(&elt.1)
+            .map(|id| (elt.0, *id)));
+
+        do_map!(self.time_updates, |elt: (Instant, WidgetId)| map
+            .get(&elt.1)
+            .map(|id| (elt.0, *id)));
+
         for ids in self.handle_updates.values_mut() {
-            do_map(&map, ids, |x| x);
+            do_map!(ids, |elt: WidgetId| map.get(&elt).cloned());
         }
     }
 
