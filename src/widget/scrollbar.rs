@@ -88,7 +88,7 @@ impl<D: Direction> ScrollBar<D> {
     /// The choice of units is not important (e.g. can be pixels or lines),
     /// so long as both parameters use the same units.
     pub fn set_limits(&mut self, max_value: u32, handle_value: u32) {
-        debug_assert!(handle_value > 0);
+        // We should gracefully handle zero, though appearance may be wrong.
         self.handle_value = handle_value.max(1);
 
         self.max_value = max_value;
