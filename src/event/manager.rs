@@ -6,6 +6,7 @@
 //! Event manager
 
 use log::trace;
+use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
@@ -59,7 +60,7 @@ struct TouchEvent {
 //
 // Note that the most frequent usage of fields is to check highlighting states
 // drawing redraw, which requires iterating all grab & key events.
-// Thus for these collections, the preferred container is Vec.
+// Thus for these collections, the preferred container is SmallVec.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[derive(Clone, Debug)]
 pub struct ManagerState {
@@ -67,10 +68,10 @@ pub struct ManagerState {
     char_focus: Option<WidgetId>,
     key_focus: Option<WidgetId>,
     hover: Option<WidgetId>,
-    key_events: Vec<(u32, WidgetId)>,
+    key_events: SmallVec<[(u32, WidgetId); 10]>,
     last_mouse_coord: Coord,
     mouse_grab: Option<(WidgetId, MouseButton)>,
-    touch_grab: Vec<TouchEvent>,
+    touch_grab: SmallVec<[TouchEvent; 10]>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
 
     time_start: Instant,
@@ -93,10 +94,10 @@ impl ManagerState {
             char_focus: None,
             key_focus: None,
             hover: None,
-            key_events: Vec::with_capacity(4),
+            key_events: Default::default(),
             last_mouse_coord: Coord::ZERO,
             mouse_grab: None,
-            touch_grab: Vec::new(),
+            touch_grab: Default::default(),
             accel_keys: HashMap::new(),
 
             time_start: Instant::now(),
