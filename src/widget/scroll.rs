@@ -11,9 +11,8 @@ use super::ScrollBar;
 use crate::event::{Action, Address, Event, Handler, Manager, Response, ScrollDelta};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, Horizontal, SizeRules, Vertical};
-use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
-use crate::{CoreData, Layout, Widget, WidgetCore};
+use crate::{CoreData, Layout, TkAction, Widget, WidgetCore};
 
 /// A scrollable region
 ///
@@ -24,10 +23,8 @@ use crate::{CoreData, Layout, Widget, WidgetCore};
 /// Scroll regions translate their contents by an `offset`, which has a
 /// minimum value of [`Coord::ZERO`] and a maximum value of
 /// [`ScrollRegion::max_offset`].
-#[widget]
-#[derive(Clone, Debug, Default, Widget)]
+#[derive(Clone, Debug, Default)]
 pub struct ScrollRegion<W: Widget> {
-    #[core]
     core: CoreData,
     min_child_size: Size,
     inner_size: Size,
@@ -36,11 +33,8 @@ pub struct ScrollRegion<W: Widget> {
     scroll_rate: f32,
     auto_bars: bool,
     show_bars: (bool, bool),
-    #[widget]
     horiz_bar: ScrollBar<Horizontal>,
-    #[widget]
     vert_bar: ScrollBar<Vertical>,
-    #[widget]
     child: W,
 }
 
@@ -118,12 +112,87 @@ impl<W: Widget> ScrollRegion<W> {
         let offset = offset.max(Coord::ZERO).min(self.max_offset);
         if offset != self.offset {
             self.offset = offset;
-            mgr.redraw(self.id());
+            mgr.send_action(TkAction::RegionMoved);
             return true;
         }
         false
     }
 }
+
+// TODO: we should use the derive implementation, but find_coord_mut needs a
+// manual offset! Can we find a less tedious workaround?
+impl<W: Widget> WidgetCore for ScrollRegion<W> {
+    #[inline]
+    fn core_data(&self) -> &CoreData {
+        &self.core
+    }
+    #[inline]
+    fn core_data_mut(&mut self) -> &mut CoreData {
+        &mut self.core
+    }
+
+    #[inline]
+    fn widget_name(&self) -> &'static str {
+        "ScrollRegion"
+    }
+
+    #[inline]
+    fn as_widget(&self) -> &dyn Widget {
+        self
+    }
+    #[inline]
+    fn as_widget_mut(&mut self) -> &mut dyn Widget {
+        self
+    }
+
+    #[inline]
+    fn len(&self) -> usize {
+        3
+    }
+    #[inline]
+    fn get(&self, index: usize) -> Option<&dyn Widget> {
+        match index {
+            0 => Some(&self.horiz_bar),
+            1 => Some(&self.vert_bar),
+            2 => Some(&self.child),
+            _ => None,
+        }
+    }
+    #[inline]
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+        match index {
+            0 => Some(&mut self.horiz_bar),
+            1 => Some(&mut self.vert_bar),
+            2 => Some(&mut self.child),
+            _ => None,
+        }
+    }
+
+    fn walk(&self, f: &mut dyn FnMut(&dyn Widget)) {
+        self.horiz_bar.walk(f);
+        self.vert_bar.walk(f);
+        self.child.walk(f);
+        f(self)
+    }
+    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
+        self.horiz_bar.walk_mut(f);
+        self.vert_bar.walk_mut(f);
+        self.child.walk_mut(f);
+        f(self)
+    }
+
+    fn find_coord_mut(&mut self, coord: Coord) -> Option<&mut dyn Widget> {
+        if self.horiz_bar.rect().contains(coord) {
+            self.horiz_bar.find_coord_mut(coord)
+        } else if self.vert_bar.rect().contains(coord) {
+            self.vert_bar.find_coord_mut(coord)
+        } else {
+            self.child.find_coord_mut(coord + self.offset)
+        }
+    }
+}
+
+impl<W: Widget> Widget for ScrollRegion<W> {}
 
 impl<W: Widget> Layout for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
@@ -292,7 +361,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
             Address::Coord(coord) => Address::Coord(coord + self.offset),
         };
         let event = match event {
-            a @ Event::Action(_) | a @ Event::Identify => a,
+            a @ Event::Action(_) => a,
             Event::PressStart { source, coord } => Event::PressStart {
                 source,
                 coord: coord + self.offset,

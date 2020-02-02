@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use crate::event::{Action, Address, Event, Manager, Response, UpdateHandle};
-use crate::geom::Rect;
+use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
 use crate::{CoreData, Layout, Widget, WidgetCore};
@@ -118,49 +118,43 @@ impl<M> Layout for Box<dyn Handler<Msg = M>> {
 }
 
 impl<M> WidgetCore for Box<dyn Handler<Msg = M>> {
-    #[inline]
     fn core_data(&self) -> &CoreData {
         self.as_ref().core_data()
     }
-    #[inline]
     fn core_data_mut(&mut self) -> &mut CoreData {
         self.as_mut().core_data_mut()
     }
 
-    #[inline]
     fn widget_name(&self) -> &'static str {
         self.as_ref().widget_name()
     }
 
-    #[inline]
     fn as_widget(&self) -> &dyn Widget {
         self.as_ref().as_widget()
     }
-    #[inline]
     fn as_widget_mut(&mut self) -> &mut dyn Widget {
         self.as_mut().as_widget_mut()
     }
 
-    #[inline]
     fn len(&self) -> usize {
         self.as_ref().len()
     }
-    #[inline]
     fn get(&self, index: usize) -> Option<&dyn Widget> {
         self.as_ref().get(index)
     }
-    #[inline]
     fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
         self.as_mut().get_mut(index)
     }
 
-    #[inline]
     fn walk(&self, f: &mut dyn FnMut(&dyn Widget)) {
         self.as_ref().walk(f);
     }
-    #[inline]
     fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
         self.as_mut().walk_mut(f);
+    }
+
+    fn find_coord_mut(&mut self, coord: Coord) -> Option<&mut dyn Widget> {
+        self.as_mut().find_coord_mut(coord)
     }
 }
 
@@ -194,7 +188,6 @@ impl<'a> Manager<'a> {
         let activable = widget.activation_via_press();
         match event {
             Event::Action(action) => widget.handle_action(mgr, action),
-            Event::Identify => Response::Identify(widget.id()),
             Event::PressStart { source, coord } if activable && source.is_primary() => {
                 mgr.request_press_grab(source, widget.as_widget(), coord);
                 Response::None

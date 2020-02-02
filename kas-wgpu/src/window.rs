@@ -133,6 +133,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         (action, self.mgr.next_resume())
     }
 
+    pub fn handle_moved(&mut self) {
+        self.mgr.region_moved(&mut *self.widget);
+    }
+
     pub fn handle_closure<T>(mut self, shared: &mut SharedState<T>) -> TkAction {
         let mut mgr = self.mgr.manager(shared);
 

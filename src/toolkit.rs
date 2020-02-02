@@ -47,6 +47,15 @@ pub enum TkAction {
     ///
     /// [`Manager::redraw`]: crate::event::Manager::redraw
     Redraw,
+    /// Some widgets within a region moved
+    ///
+    /// This action should be emitted when e.g. a scroll-region is moved or
+    /// widget layout is adjusted to allow for the fact that coordinates
+    /// (e.g. mouse position) have changed relative to widgets.
+    ///
+    /// This implies that a redraw is required.
+    // NOTE: one could specify a Rect here, but there's not much advantage
+    RegionMoved,
     /// Whole window requires reconfiguring (implies redrawing)
     ///
     /// *Configuring* widgets assigns [`WidgetId`] identifiers, updates
