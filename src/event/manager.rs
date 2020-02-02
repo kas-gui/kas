@@ -76,7 +76,7 @@ pub struct ManagerState {
 
     time_start: Instant,
     time_updates: Vec<(Instant, WidgetId)>,
-    // TODO: consider other containers, e.g. C++ multimap
+    // TODO(opt): consider other containers, e.g. C++ multimap
     // or sorted Vec with binary search yielding a range
     handle_updates: HashMap<UpdateHandle, Vec<WidgetId>>,
 }
@@ -418,19 +418,24 @@ impl<'a> Manager<'a> {
     ///
     /// This method automatically cancels any active char grab
     /// and updates keyboard navigation focus.
-    pub fn request_press_grab(&mut self, source: PressSource, widget: &dyn Widget, coord: Coord) {
+    pub fn request_press_grab(
+        &mut self,
+        source: PressSource,
+        widget: &dyn Widget,
+        coord: Coord,
+    ) -> bool {
         let w_id = widget.id();
         match source {
             PressSource::Mouse(button) => {
                 if self.mgr.mouse_grab.is_none() {
                     self.mgr.mouse_grab = Some((w_id, button));
                 } else {
-                    return;
+                    return false;
                 }
             }
             PressSource::Touch(touch_id) => {
                 if self.get_touch(touch_id).is_some() {
-                    return;
+                    return false;
                 }
                 self.mgr.touch_grab.push(TouchEvent {
                     touch_id,
@@ -449,6 +454,7 @@ impl<'a> Manager<'a> {
         }
 
         self.redraw(w_id);
+        true
     }
 }
 

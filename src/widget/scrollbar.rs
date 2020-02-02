@@ -195,11 +195,12 @@ impl<D: Direction> Handler for ScrollBar<D> {
     fn handle(&mut self, mgr: &mut Manager, _: Address, event: Event) -> Response<Self::Msg> {
         match event {
             Event::PressStart { source, coord, .. } => {
+                if !mgr.request_press_grab(source, self, coord) {
+                    return Response::None;
+                }
                 // Interacting with a scrollbar with multiple presses
                 // does not make sense. Any other gets aborted.
-                // TODO: only if request_press_grab succeeds
                 self.press_source = Some(source);
-                mgr.request_press_grab(source, self, coord);
 
                 // Event delivery implies coord is over the scrollbar.
                 let (pointer, offset) = match self.direction.is_vertical() {
