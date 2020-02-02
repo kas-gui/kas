@@ -17,7 +17,7 @@ quote = "1.0"
 proc-macro2 = { version = "1.0", features = ["nightly"] }
 
 [dependencies.syn]
-version = "1.0"
+version = "1.0.14"
 # We need 'extra-traits' for equality testing
 # We need 'full' for parsing macros within macro arguments
 features = ["extra-traits", "full"]

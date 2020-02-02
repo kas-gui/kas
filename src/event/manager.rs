@@ -6,7 +6,8 @@
 //! Event manager
 
 use log::trace;
-use std::collections::{hash_map::Entry, HashMap};
+use smallvec::SmallVec;
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use super::*;
@@ -43,7 +44,8 @@ impl HighlightState {
 }
 
 #[derive(Clone, Debug)]
-struct PressEvent {
+struct TouchEvent {
+    touch_id: u64,
     start_id: WidgetId,
     cur_id: Option<WidgetId>,
     coord: Coord,
@@ -55,6 +57,10 @@ struct PressEvent {
 ///
 /// This structure additionally tracks animated widgets (those requiring
 /// periodic update).
+//
+// Note that the most frequent usage of fields is to check highlighting states
+// drawing redraw, which requires iterating all grab & key events.
+// Thus for these collections, the preferred container is SmallVec.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[derive(Clone, Debug)]
 pub struct ManagerState {
@@ -62,16 +68,15 @@ pub struct ManagerState {
     char_focus: Option<WidgetId>,
     key_focus: Option<WidgetId>,
     hover: Option<WidgetId>,
-    key_events: Vec<(u32, WidgetId)>,
+    key_events: SmallVec<[(u32, WidgetId); 10]>,
     last_mouse_coord: Coord,
     mouse_grab: Option<(WidgetId, MouseButton)>,
-    // TODO: would a VecMap be faster?
-    touch_grab: HashMap<u64, PressEvent>,
+    touch_grab: SmallVec<[TouchEvent; 10]>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
 
     time_start: Instant,
     time_updates: Vec<(Instant, WidgetId)>,
-    // TODO: consider other containers, e.g. C++ multimap
+    // TODO(opt): consider other containers, e.g. C++ multimap
     // or sorted Vec with binary search yielding a range
     handle_updates: HashMap<UpdateHandle, Vec<WidgetId>>,
 }
@@ -89,10 +94,10 @@ impl ManagerState {
             char_focus: None,
             key_focus: None,
             hover: None,
-            key_events: Vec::with_capacity(4),
+            key_events: Default::default(),
             last_mouse_coord: Coord::ZERO,
             mouse_grab: None,
-            touch_grab: HashMap::new(),
+            touch_grab: Default::default(),
             accel_keys: HashMap::new(),
 
             time_start: Instant::now(),
@@ -132,45 +137,46 @@ impl ManagerState {
             .mouse_grab
             .and_then(|(id, b)| map.get(&id).map(|id| (*id, b)));
 
-        let mut to_remove = vec![];
-        for (id, grab) in &mut self.touch_grab {
-            grab.start_id = match map.get(&grab.start_id) {
-                Some(id) => *id,
-                None => {
-                    to_remove.push(id);
-                    continue;
+        macro_rules! do_map {
+            ($seq:expr, $update:expr) => {
+                let update = $update;
+                let mut i = 0;
+                let mut j = $seq.len();
+                while i < j {
+                    // invariant: $seq[0..i] have been updated
+                    // invariant: $seq[j..len] are rejected
+                    if let Some(elt) = update($seq[i].clone()) {
+                        $seq[i] = elt;
+                        i += 1;
+                    } else {
+                        j -= 1;
+                        $seq.swap(i, j);
+                    }
                 }
+                $seq.truncate(j);
             };
-            if let Some(cur_id) = grab.cur_id {
-                grab.cur_id = map.get(&cur_id).cloned();
-            }
         }
 
-        fn do_map<X, F: Fn(&mut X) -> &mut WidgetId>(
-            map: &HashMap<WidgetId, WidgetId>,
-            seq: &mut Vec<X>,
-            f: F,
-        ) {
-            let mut i = 0;
-            let mut j = seq.len();
-            while i < j {
-                // invariant: seq[0..i] have been updated
-                // invariant: seq[j..len] are rejected
-                if let Some(id) = map.get(f(&mut seq[i])) {
-                    *f(&mut seq[i]) = *id;
-                    i += 1;
-                } else {
-                    j -= 1;
-                    seq.swap(i, j);
+        do_map!(self.touch_grab, |mut elt: TouchEvent| map
+            .get(&elt.start_id)
+            .map(|id| {
+                elt.start_id = *id;
+                if let Some(cur_id) = elt.cur_id {
+                    elt.cur_id = map.get(&cur_id).cloned();
                 }
-            }
-            seq.truncate(j);
-        }
+                elt
+            }));
 
-        do_map(&map, &mut self.key_events, |x| &mut x.1);
-        do_map(&map, &mut self.time_updates, |x| &mut x.1);
+        do_map!(self.key_events, |elt: (u32, WidgetId)| map
+            .get(&elt.1)
+            .map(|id| (elt.0, *id)));
+
+        do_map!(self.time_updates, |elt: (Instant, WidgetId)| map
+            .get(&elt.1)
+            .map(|id| (elt.0, *id)));
+
         for ids in self.handle_updates.values_mut() {
-            do_map(&map, ids, |x| x);
+            do_map!(ids, |elt: WidgetId| map.get(&elt).cloned());
         }
     }
 
@@ -180,7 +186,7 @@ impl ManagerState {
         // Update hovered widget
         self.hover = widget.find_coord_mut(self.last_mouse_coord).map(|w| w.id());
 
-        for touch in self.touch_grab.values_mut() {
+        for touch in &mut self.touch_grab {
             touch.cur_id = widget.find_coord_mut(touch.coord).map(|w| w.id());
         }
     }
@@ -351,15 +357,7 @@ impl<'a> Manager<'a> {
     /// Get whether the widget is under the mouse or finger
     #[inline]
     pub fn is_hovered(&self, w_id: WidgetId) -> bool {
-        if self.mgr.hover == Some(w_id) {
-            return true;
-        }
-        for touch in self.mgr.touch_grab.values() {
-            if touch.cur_id == Some(w_id) {
-                return true;
-            }
-        }
-        false
+        self.mgr.hover == Some(w_id)
     }
 
     /// Check whether the given widget is visually depressed
@@ -375,7 +373,7 @@ impl<'a> Manager<'a> {
                 return true;
             }
         }
-        for touch in self.mgr.touch_grab.values() {
+        for touch in &self.mgr.touch_grab {
             if touch.start_id == w_id && touch.cur_id == Some(w_id) {
                 return true;
             }
@@ -420,26 +418,32 @@ impl<'a> Manager<'a> {
     ///
     /// This method automatically cancels any active char grab
     /// and updates keyboard navigation focus.
-    pub fn request_press_grab(&mut self, source: PressSource, widget: &dyn Widget, coord: Coord) {
+    pub fn request_press_grab(
+        &mut self,
+        source: PressSource,
+        widget: &dyn Widget,
+        coord: Coord,
+    ) -> bool {
         let w_id = widget.id();
         match source {
             PressSource::Mouse(button) => {
                 if self.mgr.mouse_grab.is_none() {
                     self.mgr.mouse_grab = Some((w_id, button));
                 } else {
-                    return;
+                    return false;
                 }
             }
-            PressSource::Touch(touch_id) => match self.mgr.touch_grab.entry(touch_id) {
-                Entry::Occupied(_) => return,
-                Entry::Vacant(v) => {
-                    v.insert(PressEvent {
-                        start_id: w_id,
-                        cur_id: Some(w_id),
-                        coord,
-                    });
+            PressSource::Touch(touch_id) => {
+                if self.get_touch(touch_id).is_some() {
+                    return false;
                 }
-            },
+                self.mgr.touch_grab.push(TouchEvent {
+                    touch_id,
+                    start_id: w_id,
+                    cur_id: Some(w_id),
+                    coord,
+                });
+            }
         }
 
         if widget.allow_focus() {
@@ -450,6 +454,7 @@ impl<'a> Manager<'a> {
         }
 
         self.redraw(w_id);
+        true
     }
 }
 
@@ -506,13 +511,29 @@ impl<'a> Manager<'a> {
         }
     }
 
+    #[inline]
+    fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchEvent> {
+        self.mgr.touch_grab.iter_mut().find_map(|grab| {
+            if grab.touch_id == touch_id {
+                Some(grab)
+            } else {
+                None
+            }
+        })
+    }
+
     #[cfg(feature = "winit")]
-    fn end_touch_grab(&mut self, touch_id: u64) {
-        if let Some(grab) = self.mgr.touch_grab.remove(&touch_id) {
-            if let Some(cur_id) = grab.cur_id {
-                self.redraw(cur_id);
+    fn remove_touch(&mut self, touch_id: u64) -> Option<TouchEvent> {
+        let len = self.mgr.touch_grab.len();
+        for i in 0..len {
+            if self.mgr.touch_grab[i].touch_id == touch_id {
+                let grab = self.mgr.touch_grab[i].clone();
+                self.mgr.touch_grab[i] = self.mgr.touch_grab[len - 1].clone();
+                self.mgr.touch_grab.truncate(len - 1);
+                return Some(grab);
             }
         }
+        None
     }
 
     #[cfg(feature = "winit")]
@@ -772,14 +793,16 @@ impl<'a> Manager<'a> {
                         // to be unavoidable (as with CursorMoved)
                         let cur_id = widget.find_coord_mut(coord).map(|w| w.id());
 
-                        let r = self.mgr.touch_grab.get_mut(&touch.id).map(|grab| {
+                        let r = self.get_touch(touch.id).map(|grab| {
                             let addr = Address::Id(grab.start_id);
                             let action = Event::PressMove {
                                 source,
                                 coord,
                                 delta: coord - grab.coord,
                             };
-                            let redraw = grab.cur_id != cur_id;
+                            // Only when 'depressed' status changes:
+                            let redraw = grab.cur_id != cur_id &&
+                                (grab.cur_id == Some(grab.start_id) || cur_id == Some(grab.start_id));
 
                             grab.cur_id = cur_id;
                             grab.coord = coord;
@@ -797,16 +820,17 @@ impl<'a> Manager<'a> {
                         }
                     }
                     TouchPhase::Ended => {
-                        if let Some(grab) = self.mgr.touch_grab.get(&touch.id).cloned() {
+                        if let Some(grab) = self.remove_touch(touch.id) {
                             let action = Event::PressEnd {
                                 source,
                                 start_id: Some(grab.start_id),
                                 end_id: grab.cur_id,
                                 coord,
                             };
-                            let r = widget.handle(&mut self, Address::Id(grab.start_id), action);
-                            self.end_touch_grab(touch.id);
-                            r
+                            if let Some(cur_id) = grab.cur_id {
+                                self.redraw(cur_id);
+                            }
+                            widget.handle(&mut self, Address::Id(grab.start_id), action)
                         } else {
                             let action = Event::PressEnd {
                                 source,
@@ -818,16 +842,17 @@ impl<'a> Manager<'a> {
                         }
                     }
                     TouchPhase::Cancelled => {
-                        if let Some(grab) = self.mgr.touch_grab.get(&touch.id).cloned() {
+                        if let Some(grab) = self.remove_touch(touch.id) {
                             let action = Event::PressEnd {
                                 source,
                                 start_id: Some(grab.start_id),
                                 end_id: None,
                                 coord,
                             };
-                            let r = widget.handle(&mut self, Address::Id(grab.start_id), action);
-                            self.end_touch_grab(touch.id);
-                            r
+                            if let Some(cur_id) = grab.cur_id {
+                                self.redraw(cur_id);
+                            }
+                            widget.handle(&mut self, Address::Id(grab.start_id), action)
                         } else {
                             Response::None
                         }
