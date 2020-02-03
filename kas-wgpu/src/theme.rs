@@ -12,13 +12,13 @@ use std::f32;
 
 use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
-use kas::draw::*;
+use kas::draw::{Colour, Draw};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::theme::{self, Align, TextClass, TextProperties};
 
-use crate::draw::*;
+use crate::draw::{DrawPipe, DrawShaded, DrawText, ShadeStyle, Vec2};
 
 /// A simple, inflexible theme providing a sample implementation.
 #[derive(Copy, Clone, Debug, Default)]
@@ -293,7 +293,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     fn outer_frame(&mut self, rect: Rect) {
         let outer = rect + self.offset;
         let inner = outer.shrink(self.window.frame_size);
-        let style = Style::Round(Vec2(0.6, -0.6));
+        let style = ShadeStyle::Round(Vec2(0.6, -0.6));
         self.draw
             .draw_frame(self.pass, outer.into(), inner.into(), style, FRAME);
     }
@@ -346,7 +346,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let col = button_colour(highlights, true).unwrap();
 
         let mut inner = outer.shrink(self.window.button_frame);
-        let style = Style::Round(Vec2(0.0, 0.6));
+        let style = ShadeStyle::Round(Vec2(0.0, 0.6));
         self.draw
             .draw_frame(self.pass, outer.into(), inner.into(), style, col);
 
@@ -364,7 +364,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let mut outer = rect + self.offset;
 
         let mut inner = outer.shrink(self.window.frame_size);
-        let style = Style::Square(Vec2(0.0, -0.8));
+        let style = ShadeStyle::Square(Vec2(0.0, -0.8));
         self.draw
             .draw_frame(self.pass, outer.into(), inner.into(), style, FRAME);
 
@@ -385,7 +385,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let mut outer = Rect { pos, size };
 
         let mut inner = outer.shrink(self.window.frame_size);
-        let style = Style::Square(Vec2(0.0, -0.8));
+        let style = ShadeStyle::Square(Vec2(0.0, -0.8));
         self.draw
             .draw_frame(self.pass, outer.into(), inner.into(), style, FRAME);
 
@@ -423,7 +423,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         };
 
         let inner = outer.shrink(half_width);
-        let style = Style::Round(Vec2(0.0, 0.6));
+        let style = ShadeStyle::Round(Vec2(0.0, 0.6));
         let col = button_colour(highlights, true).unwrap();
         self.draw
             .draw_frame(self.pass, outer.into(), inner.into(), style, col);

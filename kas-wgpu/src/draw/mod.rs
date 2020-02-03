@@ -13,9 +13,13 @@ mod draw_pipe;
 mod round_pipe;
 mod shaders;
 mod square_pipe;
+mod vector;
 
-pub use draw_pipe::{DrawPipe, DrawText};
+pub use kas::draw::{Colour, Draw};
+
+pub use draw_pipe::{DrawPipe, DrawShaded, DrawText, ShadeStyle};
 pub(crate) use shaders::ShaderManager;
+pub use vector::{Quad, Vec2};
 
 /// 3-part colour data
 #[repr(C)]

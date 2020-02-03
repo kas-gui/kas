@@ -8,7 +8,7 @@
 use std::f32;
 use std::mem::size_of;
 
-use kas::draw::*;
+use crate::draw::{Colour, Quad, Vec2};
 use kas::geom::{Rect, Size};
 
 use super::Rgb;

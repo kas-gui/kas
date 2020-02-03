@@ -13,13 +13,50 @@ use std::f32::consts::FRAC_PI_2;
 
 use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder, GlyphCruncher, VariedSection};
 
-use kas::draw::{Colour, Draw, Quad, Style, Vec2};
+use super::{Colour, Draw, Quad, Vec2};
 use kas::geom::{Coord, Rect, Size};
 use kas::theme;
 
 use super::round_pipe::RoundPipe;
 use super::square_pipe::SquarePipe;
 use crate::shared::SharedState;
+
+/// Style of drawing
+pub enum ShadeStyle {
+    /// Square corners, shading according to the given normals
+    ///
+    /// Normal has two components, `(outer, inner)`, interpreted as the
+    /// horizontal component of the direction vector outwards from the drawn
+    /// feature. Both values are constrained to the closed range `[-1, 1]`.
+    Square(Vec2),
+    /// Round corners, shading according to the given normals
+    ///
+    /// Normal has two components, `(outer, inner)`, interpreted as the
+    /// horizontal component of the direction vector outwards from the drawn
+    /// feature. Both values are constrained to the closed range `[-1, 1]`.
+    Round(Vec2),
+}
+
+/// Abstraction over drawing commands
+///
+/// Implementations may support drawing each feature with multiple styles, but
+/// do not guarantee an exact match in each case.
+///
+/// Certain bounds on input are expected in each case. In case these are not met
+/// the implementation may tweak parameters to ensure valid drawing. In the case
+/// that the outer region does not have positive size or has reversed
+/// coordinates, drawing may not occur at all.
+pub trait DrawShaded: Draw {
+    /// Add a rounded shaded frame to the draw buffer.
+    fn draw_frame(
+        &mut self,
+        region: Self::Region,
+        outer: Quad,
+        inner: Quad,
+        style: ShadeStyle,
+        col: Colour,
+    );
+}
 
 /// Abstraction over text rendering
 ///
@@ -173,15 +210,21 @@ impl Draw for DrawPipe {
     fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour) {
         self.square_pipe.frame(region, outer, inner, col);
     }
+}
 
+impl DrawShaded for DrawPipe {
     #[inline]
-    fn draw_frame(&mut self, pass: usize, outer: Quad, inner: Quad, style: Style, col: Colour) {
+    fn draw_frame(
+        &mut self,
+        pass: usize,
+        outer: Quad,
+        inner: Quad,
+        style: ShadeStyle,
+        col: Colour,
+    ) {
         match style {
-            Style::Flat => self
-                .square_pipe
-                .add_frame(pass, outer, inner, Vec2::splat(0.0), col),
-            Style::Square(norm) => self.square_pipe.add_frame(pass, outer, inner, norm, col),
-            Style::Round(norm) => self.round_pipe.add_frame(pass, outer, inner, norm, col),
+            ShadeStyle::Square(norm) => self.square_pipe.add_frame(pass, outer, inner, norm, col),
+            ShadeStyle::Round(norm) => self.round_pipe.add_frame(pass, outer, inner, norm, col),
         }
     }
 }
