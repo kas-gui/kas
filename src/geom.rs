@@ -16,6 +16,12 @@ impl Coord {
     /// A coord of `(0, 0)`
     pub const ZERO: Coord = Coord(0, 0);
 
+    /// A `Coord` with uniform value `n` on both axes
+    #[inline]
+    pub fn uniform(n: i32) -> Self {
+        Coord(n, n)
+    }
+
     /// Return the minimum, componentwise
     #[inline]
     pub fn min(self, other: Self) -> Self {
@@ -204,6 +210,15 @@ impl Rect {
             && c.0 < self.pos.0 + (self.size.0 as i32)
             && c.1 >= self.pos.1
             && c.1 < self.pos.1 + (self.size.1 as i32)
+    }
+
+    /// Shrink self in all directions by the given `n`
+    #[inline]
+    pub fn shrink(&self, n: u32) -> Rect {
+        Rect {
+            pos: self.pos + Coord::uniform(n as i32),
+            size: self.size - Size::uniform(n + n),
+        }
     }
 }
 
