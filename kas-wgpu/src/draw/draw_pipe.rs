@@ -13,7 +13,7 @@ use std::f32::consts::FRAC_PI_2;
 
 use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder, GlyphCruncher, VariedSection};
 
-use super::{Colour, Draw, Quad, Vec2};
+use super::{Colour, Draw, Vec2};
 use kas::geom::{Coord, Rect, Size};
 use kas::theme;
 
@@ -48,11 +48,11 @@ pub enum ShadeStyle {
 /// coordinates, drawing may not occur at all.
 pub trait DrawShaded: Draw {
     /// Add a rounded shaded frame to the draw buffer.
-    fn draw_frame(
+    fn shaded_frame(
         &mut self,
         region: Self::Region,
-        outer: Quad,
-        inner: Quad,
+        outer: Rect,
+        inner: Rect,
         style: ShadeStyle,
         col: Colour,
     );
@@ -214,17 +214,17 @@ impl Draw for DrawPipe {
 
 impl DrawShaded for DrawPipe {
     #[inline]
-    fn draw_frame(
+    fn shaded_frame(
         &mut self,
         pass: usize,
-        outer: Quad,
-        inner: Quad,
+        outer: Rect,
+        inner: Rect,
         style: ShadeStyle,
         col: Colour,
     ) {
         match style {
-            ShadeStyle::Square(norm) => self.square_pipe.add_frame(pass, outer, inner, norm, col),
-            ShadeStyle::Round(norm) => self.round_pipe.add_frame(pass, outer, inner, norm, col),
+            ShadeStyle::Square(norm) => self.square_pipe.shaded_frame(pass, outer, inner, norm, col),
+            ShadeStyle::Round(norm) => self.round_pipe.shaded_frame(pass, outer, inner, norm, col),
         }
     }
 }

@@ -8,8 +8,8 @@
 use std::f32::consts::FRAC_PI_2;
 use std::mem::size_of;
 
-use crate::draw::{Colour, Quad, Vec2};
-use kas::geom::Size;
+use crate::draw::{Colour, Vec2};
+use kas::geom::{Rect, Size};
 
 use super::Rgb;
 use crate::shared::SharedState;
@@ -185,16 +185,18 @@ impl RoundPipe {
     }
 
     /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
-    pub fn add_frame(
+    pub fn shaded_frame(
         &mut self,
         pass: usize,
-        outer: Quad,
-        inner: Quad,
+        outer: Rect,
+        inner: Rect,
         mut norm: Vec2,
         col: Colour,
     ) {
-        let (aa, bb) = (outer.0, outer.1);
-        let (mut cc, mut dd) = (inner.0, inner.1);
+        let aa = Vec2::from(outer.pos);
+        let bb = aa + Vec2::from(outer.size);
+        let mut cc = Vec2::from(inner.pos);
+        let mut dd = cc + Vec2::from(inner.size);
 
         if !aa.lt(bb) {
             // zero / negative size: nothing to draw

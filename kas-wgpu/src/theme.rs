@@ -294,8 +294,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let outer = rect + self.offset;
         let inner = outer.shrink(self.window.frame_size);
         let style = ShadeStyle::Round(Vec2(0.6, -0.6));
-        self.draw
-            .draw_frame(self.pass, outer.into(), inner.into(), style, FRAME);
+        self.draw.shaded_frame(self.pass, outer, inner, style, FRAME);
     }
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
@@ -347,8 +346,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         let mut inner = outer.shrink(self.window.button_frame);
         let style = ShadeStyle::Round(Vec2(0.0, 0.6));
-        self.draw
-            .draw_frame(self.pass, outer.into(), inner.into(), style, col);
+        self.draw.shaded_frame(self.pass, outer, inner, style, col);
 
         if highlights.key_focus {
             outer = inner;
@@ -365,8 +363,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         let mut inner = outer.shrink(self.window.frame_size);
         let style = ShadeStyle::Square(Vec2(0.0, -0.8));
-        self.draw
-            .draw_frame(self.pass, outer.into(), inner.into(), style, FRAME);
+        self.draw.shaded_frame(self.pass, outer, inner, style, FRAME);
 
         if highlights.key_focus {
             outer = inner;
@@ -386,8 +383,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         let mut inner = outer.shrink(self.window.frame_size);
         let style = ShadeStyle::Square(Vec2(0.0, -0.8));
-        self.draw
-            .draw_frame(self.pass, outer.into(), inner.into(), style, FRAME);
+        self.draw.shaded_frame(self.pass, outer, inner, style, FRAME);
 
         if checked || highlights.any() {
             outer = inner;
@@ -425,8 +421,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let inner = outer.shrink(half_width);
         let style = ShadeStyle::Round(Vec2(0.0, 0.6));
         let col = button_colour(highlights, true).unwrap();
-        self.draw
-            .draw_frame(self.pass, outer.into(), inner.into(), style, col);
+        self.draw.shaded_frame(self.pass, outer, inner, style, col);
         self.draw.rect(self.pass, inner, col);
     }
 }

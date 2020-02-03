@@ -8,7 +8,7 @@
 use std::f32;
 use std::mem::size_of;
 
-use crate::draw::{Colour, Quad, Vec2};
+use crate::draw::{Colour, Vec2};
 use kas::geom::{Rect, Size};
 
 use super::Rgb;
@@ -202,33 +202,28 @@ impl SquarePipe {
         ]);
     }
 
+    #[inline]
     pub fn frame(&mut self, pass: usize, outer: Rect, inner: Rect, col: Colour) {
-        let pos = Vec2::from(outer.pos);
-        let size = Vec2::from(outer.size);
-        let quad1 = Quad(pos, pos + size);
-
-        let pos = Vec2::from(inner.pos);
-        let size = Vec2::from(inner.size);
-        let quad2 = Quad(pos, pos + size);
-
         let norm = Vec2::splat(0.0);
-        self.add_frame(pass, quad1, quad2, norm, col);
+        self.shaded_frame(pass, outer, inner, norm, col);
     }
 
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
     /// and two inner corners, `cc` and `dd` with colour `col`.
     ///
     /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
-    pub fn add_frame(
+    pub fn shaded_frame(
         &mut self,
         pass: usize,
-        outer: Quad,
-        inner: Quad,
+        outer: Rect,
+        inner: Rect,
         mut norm: Vec2,
         col: Colour,
     ) {
-        let (aa, bb) = (outer.0, outer.1);
-        let (mut cc, mut dd) = (inner.0, inner.1);
+        let aa = Vec2::from(outer.pos);
+        let bb = aa + Vec2::from(outer.size);
+        let mut cc = Vec2::from(inner.pos);
+        let mut dd = cc + Vec2::from(inner.size);
 
         if !aa.lt(bb) {
             // zero / negative size: nothing to draw
