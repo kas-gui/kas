@@ -151,6 +151,8 @@ impl DrawPipe {
 }
 
 impl Draw for DrawPipe {
+    type Region = usize;
+
     #[inline]
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self

@@ -38,6 +38,11 @@ pub enum Style {
 /// that the outer region does not have positive size or has reversed
 /// coordinates, drawing may not occur at all.
 pub trait Draw {
+    /// Type returned by [`Draw::add_clip_region`].
+    ///
+    /// Supports [`Default`], which may be used to target the root region.
+    type Region: Copy + Clone + Default;
+
     /// Cast self to [`std::any::Any`] reference.
     ///
     /// A downcast on this value may be used to obtain a reference to a
@@ -47,25 +52,23 @@ pub trait Draw {
     /// Add a clip region
     ///
     /// Clip regions are cleared each frame and so must be recreated on demand.
-    /// Returns the pass number for this clip region.
-    fn add_clip_region(&mut self, region: Rect) -> usize;
+    fn add_clip_region(&mut self, region: Rect) -> Self::Region;
 
     /// Add a rectangle to the draw buffer.
     ///
-    /// The `pass` number indicates in which pass this is drawn. In general,
-    /// only pass `0` is guaranteed to exist; other passes must be explicitly
-    /// created (e.g. through [`Draw::add_clip_region`]).
-    ///
     /// Expected componentwise bounds on input: `q.0 < q.1`.
-    fn draw_quad(&mut self, pass: usize, quad: Quad, style: Style, col: Colour);
+    fn draw_quad(&mut self, region: Self::Region, quad: Quad, style: Style, col: Colour);
 
     /// Add a frame to the draw buffer.
     ///
-    /// The `pass` number indicates in which pass this is drawn. In general,
-    /// only pass `0` is guaranteed to exist; other passes must be explicitly
-    /// created (e.g. through [`Draw::add_clip_region`]).
-    ///
     /// Expected componentwise bounds on input:
     /// `outer.0 < inner.0 < inner.1 < outer.1` and `-1 ≤ norm ≤ 1`.
-    fn draw_frame(&mut self, pass: usize, outer: Quad, inner: Quad, style: Style, col: Colour);
+    fn draw_frame(
+        &mut self,
+        region: Self::Region,
+        outer: Quad,
+        inner: Quad,
+        style: Style,
+        col: Colour,
+    );
 }
