@@ -83,9 +83,10 @@ pub struct Toolkit<T: kas::theme::Theme<DrawPipe>> {
 impl<T: kas::theme::Theme<DrawPipe> + 'static> Toolkit<T> {
     /// Construct a new instance with default options.
     ///
-    /// This chooses a low-power graphics adapter by preference.
+    /// Environment variables may affect option selection; see documentation
+    /// of [`Options::from_env`].
     pub fn new(theme: T) -> Result<Self, Error> {
-        Self::new_custom(theme, Options::new())
+        Self::new_custom(theme, Options::from_env())
     }
 
     /// Construct an instance with custom options
