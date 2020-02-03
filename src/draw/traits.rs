@@ -54,6 +54,15 @@ pub trait Draw {
     /// Clip regions are cleared each frame and so must be recreated on demand.
     fn add_clip_region(&mut self, region: Rect) -> Self::Region;
 
+    /// Add a rectangle with flat shading to the draw buffer.
+    fn rect(&mut self, region: Self::Region, rect: Rect, col: Colour);
+
+    /// Add a frame with flat shading to the draw buffer.
+    ///
+    /// It is expected that the `outer` rect contains the `inner` rect.
+    /// Failure may result in graphical glitches.
+    fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour);
+
     /// Add a rectangle to the draw buffer.
     ///
     /// Expected componentwise bounds on input: `q.0 < q.1`.

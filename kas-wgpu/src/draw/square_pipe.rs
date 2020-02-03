@@ -9,7 +9,7 @@ use std::f32;
 use std::mem::size_of;
 
 use kas::draw::*;
-use kas::geom::Size;
+use kas::geom::{Rect, Size};
 
 use super::Rgb;
 use crate::shared::SharedState;
@@ -178,6 +178,14 @@ impl SquarePipe {
         v.clear();
     }
 
+    /// Add a rectangle to the buffer
+    pub fn rect(&mut self, pass: usize, rect: Rect, col: Colour) {
+        let pos = Vec2::from(rect.pos);
+        let size = Vec2::from(rect.size);
+        let quad = Quad(pos, pos + size);
+        self.add_quad(pass, quad, col);
+    }
+
     /// Add a rectangle to the buffer defined by two corners, `aa` and `bb`
     /// with colour `col`.
     ///
@@ -200,6 +208,19 @@ impl SquarePipe {
             Vertex(aa, col, t), Vertex(ba, col, t), Vertex(ab, col, t),
             Vertex(ab, col, t), Vertex(ba, col, t), Vertex(bb, col, t),
         ]);
+    }
+
+    pub fn frame(&mut self, pass: usize, outer: Rect, inner: Rect, col: Colour) {
+        let pos = Vec2::from(outer.pos);
+        let size = Vec2::from(outer.size);
+        let quad1 = Quad(pos, pos + size);
+
+        let pos = Vec2::from(inner.pos);
+        let size = Vec2::from(inner.size);
+        let quad2 = Quad(pos, pos + size);
+
+        let norm = Vec2::splat(0.0);
+        self.add_frame(pass, quad1, quad2, norm, col);
     }
 
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,

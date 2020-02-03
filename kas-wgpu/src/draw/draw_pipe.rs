@@ -165,6 +165,16 @@ impl Draw for DrawPipe {
     }
 
     #[inline]
+    fn rect(&mut self, region: Self::Region, rect: Rect, col: Colour) {
+        self.square_pipe.rect(region, rect, col);
+    }
+
+    #[inline]
+    fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour) {
+        self.square_pipe.frame(region, outer, inner, col);
+    }
+
+    #[inline]
     fn draw_quad(&mut self, pass: usize, quad: Quad, style: Style, col: Colour) {
         // TODO: support styles
         let _ = style;
