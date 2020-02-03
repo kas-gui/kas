@@ -9,7 +9,7 @@ use log::{info, warn};
 use std::num::NonZeroU32;
 
 use crate::draw::ShaderManager;
-use crate::{Error, WindowId};
+use crate::{Error, Options, WindowId};
 use kas::event::UpdateHandle;
 
 #[cfg(feature = "clipboard")]
@@ -29,10 +29,7 @@ pub struct SharedState<T> {
 
 impl<T> SharedState<T> {
     /// Construct
-    pub fn new(
-        theme: T,
-        adapter_options: Option<&wgpu::RequestAdapterOptions>,
-    ) -> Result<Self, Error> {
+    pub fn new(theme: T, options: Options) -> Result<Self, Error> {
         #[cfg(feature = "clipboard")]
         let clipboard = match ClipboardContext::new() {
             Ok(cb) => Some(cb),
@@ -42,12 +39,9 @@ impl<T> SharedState<T> {
             }
         };
 
-        let adapter_options = adapter_options.unwrap_or(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::LowPower,
-            backends: wgpu::BackendBit::PRIMARY,
-        });
+        let adapter_options = options.adapter_options();
 
-        let adapter = match wgpu::Adapter::request(adapter_options) {
+        let adapter = match wgpu::Adapter::request(&adapter_options) {
             Some(a) => a,
             None => return Err(Error::NoAdapter),
         };
