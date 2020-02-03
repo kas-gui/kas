@@ -149,15 +149,6 @@ pub trait WidgetCore: fmt::Debug {
     /// The only case `None` should be expected is when `coord` is outside the
     /// initial widget's region; however this is not guaranteed.
     fn find_coord_mut(&mut self, coord: Coord) -> Option<&mut dyn Widget>;
-
-    /// Debug tool: print the widget hierarchy
-    #[deprecated(since = "0.2.0")]
-    fn print_hierarchy(&self, depth: usize) {
-        println!("{}\t{:?}\t{:?}", "- ".repeat(depth), self.id(), self.rect());
-        for i in 0..self.len() {
-            self.get(i).unwrap().print_hierarchy(depth + 1);
-        }
-    }
 }
 
 /// Positioning and drawing routines for widgets
