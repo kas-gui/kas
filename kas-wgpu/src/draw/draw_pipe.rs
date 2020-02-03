@@ -175,13 +175,6 @@ impl Draw for DrawPipe {
     }
 
     #[inline]
-    fn draw_quad(&mut self, pass: usize, quad: Quad, style: Style, col: Colour) {
-        // TODO: support styles
-        let _ = style;
-        self.square_pipe.add_quad(pass, quad, col)
-    }
-
-    #[inline]
     fn draw_frame(&mut self, pass: usize, outer: Quad, inner: Quad, style: Style, col: Colour) {
         match style {
             Style::Flat => self

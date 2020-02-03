@@ -215,10 +215,11 @@ impl Rect {
     /// Shrink self in all directions by the given `n`
     #[inline]
     pub fn shrink(&self, n: u32) -> Rect {
-        Rect {
-            pos: self.pos + Coord::uniform(n as i32),
-            size: self.size - Size::uniform(n + n),
-        }
+        let pos = self.pos + Coord::uniform(n as i32);
+        let w = self.size.0.saturating_sub(n + n);
+        let h = self.size.1.saturating_sub(n + n);
+        let size = Size(w, h);
+        Rect { pos, size }
     }
 }
 

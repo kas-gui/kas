@@ -182,16 +182,8 @@ impl SquarePipe {
     pub fn rect(&mut self, pass: usize, rect: Rect, col: Colour) {
         let pos = Vec2::from(rect.pos);
         let size = Vec2::from(rect.size);
-        let quad = Quad(pos, pos + size);
-        self.add_quad(pass, quad, col);
-    }
 
-    /// Add a rectangle to the buffer defined by two corners, `aa` and `bb`
-    /// with colour `col`.
-    ///
-    /// Bounds on input: `aa < bb`.
-    pub fn add_quad(&mut self, pass: usize, quad: Quad, col: Colour) {
-        let (aa, bb) = (quad.0, quad.1);
+        let (aa, bb) = (pos, pos + size);
         if !aa.lt(bb) {
             // zero / negative size: nothing to draw
             return;

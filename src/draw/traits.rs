@@ -63,11 +63,6 @@ pub trait Draw {
     /// Failure may result in graphical glitches.
     fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour);
 
-    /// Add a rectangle to the draw buffer.
-    ///
-    /// Expected componentwise bounds on input: `q.0 < q.1`.
-    fn draw_quad(&mut self, region: Self::Region, quad: Quad, style: Style, col: Colour);
-
     /// Add a frame to the draw buffer.
     ///
     /// Expected componentwise bounds on input:
