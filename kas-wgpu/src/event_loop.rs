@@ -164,10 +164,8 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
             match pending {
                 PendingAction::AddWindow(id, widget) => {
                     debug!("Adding window {}", widget.title());
-                    match winit::window::Window::new(elwt) {
-                        Ok(wwin) => {
-                            wwin.set_title(widget.title());
-                            let mut window = Window::new(&mut self.shared, wwin, widget);
+                    match Window::new(&mut self.shared, elwt, widget) {
+                        Ok(mut window) => {
                             let wid = window.window.id();
 
                             let action = window.init(&mut self.shared);

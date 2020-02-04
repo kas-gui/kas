@@ -109,9 +109,7 @@ impl<T: kas::theme::Theme<DrawPipe> + 'static> Toolkit<T> {
 
     /// Add a boxed window directly
     pub fn add_boxed(&mut self, widget: Box<dyn kas::Window>) -> Result<WindowId, Error> {
-        let window = winit::window::Window::new(&self.el)?;
-        window.set_title(widget.title());
-        let win = Window::new(&mut self.shared, window, widget);
+        let win = Window::new(&mut self.shared, &self.el, widget)?;
         let id = self.shared.next_window_id();
         self.windows.push((id, win));
         Ok(id)

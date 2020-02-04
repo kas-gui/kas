@@ -12,10 +12,13 @@ use kas::event::{Callback, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::{theme, TkAction};
 use winit::dpi::PhysicalSize;
+use winit::error::OsError;
 use winit::event::WindowEvent;
+use winit::event_loop::EventLoopWindowTarget;
 
 use crate::draw::DrawPipe;
 use crate::shared::SharedState;
+use crate::ProxyAction;
 
 /// Per-window data
 pub(crate) struct Window<TW> {
@@ -35,9 +38,12 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     /// Construct a window
     pub fn new<T: theme::Theme<DrawPipe, Window = TW>>(
         shared: &mut SharedState<T>,
-        window: winit::window::Window,
+        elwt: &EventLoopWindowTarget<ProxyAction>,
         widget: Box<dyn kas::Window>,
-    ) -> Self {
+    ) -> Result<Self, OsError> {
+        let window = winit::window::Window::new(elwt)?;
+        window.set_title(widget.title());
+
         let dpi_factor = window.scale_factor();
         let size: Size = window.inner_size().into();
         info!("Constucted new window with size {:?}", size);
@@ -58,7 +64,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
 
         let mgr = ManagerState::new(dpi_factor);
 
-        Window {
+        Ok(Window {
             widget,
             mgr,
             window,
@@ -67,7 +73,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             swap_chain,
             draw_pipe,
             theme_window,
-        }
+        })
     }
 
     /// Called by the `Toolkit` when the event loop starts to initialise
