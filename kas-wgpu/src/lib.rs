@@ -8,6 +8,7 @@
 pub mod draw;
 mod event_loop;
 mod font;
+mod options;
 mod shared;
 mod theme;
 mod window;
@@ -23,6 +24,7 @@ use crate::draw::DrawPipe;
 use crate::shared::SharedState;
 use window::Window;
 
+pub use options::Options;
 pub use theme::SampleTheme;
 
 pub use kas;
@@ -81,23 +83,18 @@ pub struct Toolkit<T: kas::theme::Theme<DrawPipe>> {
 impl<T: kas::theme::Theme<DrawPipe> + 'static> Toolkit<T> {
     /// Construct a new instance with default options.
     ///
-    /// This chooses a low-power graphics adapter by preference.
+    /// Environment variables may affect option selection; see documentation
+    /// of [`Options::from_env`].
     pub fn new(theme: T) -> Result<Self, Error> {
-        Self::new_custom(theme, None)
+        Self::new_custom(theme, Options::from_env())
     }
 
     /// Construct an instance with custom options
-    ///
-    /// The graphics adapter is chosen according to the given options. If `None`
-    /// is supplied, a low-power adapter will be chosen.
-    pub fn new_custom(
-        theme: T,
-        adapter_options: Option<&wgpu::RequestAdapterOptions>,
-    ) -> Result<Self, Error> {
+    pub fn new_custom(theme: T, options: Options) -> Result<Self, Error> {
         Ok(Toolkit {
             el: EventLoop::with_user_event(),
             windows: vec![],
-            shared: SharedState::new(theme, adapter_options)?,
+            shared: SharedState::new(theme, options)?,
         })
     }
 

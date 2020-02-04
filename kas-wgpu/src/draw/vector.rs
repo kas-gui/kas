@@ -7,7 +7,7 @@
 //!
 //! For drawing operations, all dimensions use the `f32` type.
 
-use kas::geom::{Coord, Size};
+use kas::geom::{Coord, Rect, Size};
 use std::ops::{Add, Neg, Sub};
 
 /// Axis-aligned 2D cuboid, specified via two corners
@@ -24,6 +24,15 @@ impl Quad {
     pub fn shrink(&mut self, value: f32) {
         self.0 = self.0 + value;
         self.1 = self.1 - value;
+    }
+}
+
+impl From<Rect> for Quad {
+    #[inline]
+    fn from(rect: Rect) -> Quad {
+        let pos = Vec2::from(rect.pos);
+        let size = Vec2::from(rect.size);
+        Quad(pos, pos + size)
     }
 }
 

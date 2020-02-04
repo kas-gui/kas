@@ -12,13 +12,13 @@ use std::f32;
 
 use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
-use kas::draw::*;
+use kas::draw::{Colour, Draw};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::theme::{self, Align, TextClass, TextProperties};
 
-use crate::draw::*;
+use crate::draw::{DrawPipe, DrawShaded, DrawText, ShadeStyle, Vec2};
 
 /// A simple, inflexible theme providing a sample implementation.
 #[derive(Copy, Clone, Debug, Default)]
@@ -41,11 +41,11 @@ impl SampleTheme {
 #[doc(hidden)]
 pub struct SampleWindow {
     font_size: f32,
-    font_scale: f32,
-    margin: f32,
-    frame_size: f32,
-    button_frame: f32,
-    scrollbar_size: f32,
+    font_scale: u32,
+    margin: u32,
+    frame_size: u32,
+    button_frame: u32,
+    scrollbar_size: u32,
 }
 
 /// Inner margin; this is multiplied by the DPI factor then rounded to nearest
@@ -96,11 +96,11 @@ impl SampleWindow {
     fn new(font_size: f32, dpi_factor: f32) -> Self {
         SampleWindow {
             font_size,
-            font_scale: (font_size * dpi_factor).round(),
-            margin: (MARGIN * dpi_factor).round(),
-            frame_size: (FRAME_SIZE * dpi_factor).round(),
-            button_frame: (BUTTON_FRAME * dpi_factor).round(),
-            scrollbar_size: (SCROLLBAR_SIZE * dpi_factor).round(),
+            font_scale: (font_size * dpi_factor).round() as u32,
+            margin: (MARGIN * dpi_factor).round() as u32,
+            frame_size: (FRAME_SIZE * dpi_factor).round() as u32,
+            button_frame: (BUTTON_FRAME * dpi_factor).round() as u32,
+            scrollbar_size: (SCROLLBAR_SIZE * dpi_factor).round() as u32,
         }
     }
 }
@@ -147,7 +147,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
     }
 
     fn line_height(&self, _: TextClass) -> u32 {
-        self.window.font_scale as u32
+        self.window.font_scale
     }
 
     fn text_bound(
@@ -158,7 +158,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
         axis: AxisInfo,
     ) -> SizeRules {
         let font_scale = self.window.font_scale;
-        let line_height = font_scale as u32;
+        let line_height = font_scale;
         let draw = &mut self.draw;
         let mut bound = |vert: bool| -> u32 {
             let layout = match multi_line {
@@ -175,7 +175,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
             let bounds = draw.glyph_bounds(Section {
                 text,
                 screen_position: (0.0, 0.0),
-                scale: Scale::uniform(font_scale),
+                scale: Scale::uniform(font_scale as f32),
                 bounds,
                 layout,
                 ..Section::default()
@@ -200,7 +200,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
     }
 
     fn button_surround(&self) -> (Size, Size) {
-        let s = Size::uniform(self.window.button_frame as u32);
+        let s = Size::uniform(self.window.button_frame);
         (s, s)
     }
 
@@ -210,9 +210,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
     }
 
     fn checkbox(&self) -> Size {
-        Size::uniform(
-            (2.0 * (self.window.frame_size + self.window.margin) + self.window.font_scale) as u32,
-        )
+        Size::uniform(2 * (self.window.frame_size + self.window.margin) + self.window.font_scale)
     }
 
     fn scrollbar(&self) -> (u32, u32, u32) {
@@ -293,20 +291,15 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     }
 
     fn outer_frame(&mut self, rect: Rect) {
-        let pos = Vec2::from(rect.pos + self.offset);
-        let size = Vec2::from(rect.size);
-        let mut quad = Quad(pos, pos + size);
-        let outer = quad;
-        quad.shrink(self.window.frame_size);
-        let style = Style::Round(Vec2(0.6, -0.6));
-        self.draw.draw_frame(self.pass, outer, quad, style, FRAME);
+        let outer = rect + self.offset;
+        let inner = outer.shrink(self.window.frame_size);
+        let style = ShadeStyle::Round(Vec2(0.6, -0.6));
+        self.draw.shaded_frame(self.pass, outer, inner, style, FRAME);
     }
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
-        let pos = Vec2::from(rect.pos + self.offset);
-        let size = Vec2::from(rect.size);
-        let quad = Quad(pos, pos + size);
-        let bounds = size - 2.0 * self.window.margin;
+        let outer = rect + self.offset;
+        let bounds = Coord::from(rect.size) - Coord::uniform(2 * self.window.margin as i32);
 
         let col = match props.class {
             TextClass::Label => LABEL_TEXT,
@@ -316,17 +309,18 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         // TODO: support justified alignment
         let (h_align, h_offset) = match props.horiz {
-            Align::Begin | Align::Justify => (HorizontalAlign::Left, 0.0),
-            Align::Centre => (HorizontalAlign::Center, 0.5 * bounds.0),
+            Align::Begin | Align::Justify => (HorizontalAlign::Left, 0),
+            Align::Centre => (HorizontalAlign::Center, bounds.0 / 2),
             Align::End => (HorizontalAlign::Right, bounds.0),
         };
         let (v_align, v_offset) = match props.vert {
-            Align::Begin | Align::Justify => (VerticalAlign::Top, 0.0),
-            Align::Centre => (VerticalAlign::Center, 0.5 * bounds.1),
+            Align::Begin | Align::Justify => (VerticalAlign::Top, 0),
+            Align::Centre => (VerticalAlign::Center, bounds.1 / 2),
             Align::End => (VerticalAlign::Bottom, bounds.1),
         };
 
-        let text_pos = quad.0 + self.window.margin + Vec2(h_offset, v_offset);
+        let text_pos =
+            outer.pos + Coord::uniform(self.window.margin as i32) + Coord(h_offset, v_offset);
 
         let layout = match props.multi_line {
             true => Layout::default_wrap(),
@@ -337,80 +331,69 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         self.draw.draw_text(Section {
             text,
-            screen_position: text_pos.into(),
+            screen_position: Vec2::from(text_pos).into(),
             color: col.into(),
-            scale: Scale::uniform(self.window.font_scale),
-            bounds: bounds.into(),
+            scale: Scale::uniform(self.window.font_scale as f32),
+            bounds: Vec2::from(bounds).into(),
             layout,
             ..Section::default()
         });
     }
 
     fn button(&mut self, rect: Rect, highlights: HighlightState) {
-        let pos = Vec2::from(rect.pos + self.offset);
-        let size = Vec2::from(rect.size);
-        let mut quad = Quad(pos, pos + size);
-
+        let mut outer = rect + self.offset;
         let col = button_colour(highlights, true).unwrap();
 
-        let outer = quad;
-        quad.shrink(self.window.button_frame);
-        let style = Style::Round(Vec2(0.0, 0.6));
-        self.draw.draw_frame(self.pass, outer, quad, style, col);
+        let mut inner = outer.shrink(self.window.button_frame);
+        let style = ShadeStyle::Round(Vec2(0.0, 0.6));
+        self.draw.shaded_frame(self.pass, outer, inner, style, col);
 
         if highlights.key_focus {
-            let outer = quad;
-            quad.shrink(self.window.margin);
+            outer = inner;
+            inner = outer.shrink(self.window.margin);
             let col = nav_colour(highlights).unwrap();
-            self.draw
-                .draw_frame(self.pass, outer, quad, Style::Flat, col);
+            self.draw.frame(self.pass, outer, inner, col);
         }
 
-        self.draw.draw_quad(self.pass, quad, Style::Flat, col);
+        self.draw.rect(self.pass, inner, col);
     }
 
     fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
-        let pos = Vec2::from(rect.pos + self.offset);
-        let size = Vec2::from(rect.size);
-        let mut quad = Quad(pos, pos + size);
+        let mut outer = rect + self.offset;
 
-        let outer = quad;
-        quad.shrink(self.window.frame_size);
-        let style = Style::Square(Vec2(0.0, -0.8));
-        self.draw.draw_frame(self.pass, outer, quad, style, FRAME);
+        let mut inner = outer.shrink(self.window.frame_size);
+        let style = ShadeStyle::Square(Vec2(0.0, -0.8));
+        self.draw.shaded_frame(self.pass, outer, inner, style, FRAME);
 
         if highlights.key_focus {
-            let outer = quad;
-            quad.shrink(self.window.margin);
+            outer = inner;
+            inner = outer.shrink(self.window.margin);
             let col = nav_colour(highlights).unwrap();
-            self.draw
-                .draw_frame(self.pass, outer, quad, Style::Flat, col);
+            self.draw.frame(self.pass, outer, inner, col);
         }
 
-        self.draw.draw_quad(self.pass, quad, Style::Flat, TEXT_AREA);
+        self.draw.rect(self.pass, inner, TEXT_AREA);
     }
 
     fn checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState) {
-        let pos = Vec2::from(pos + self.offset);
-        let size = 2.0 * (self.window.frame_size + self.window.margin) + self.window.font_scale;
-        let size = Vec2::splat(size);
-        let mut quad = Quad(pos, pos + size);
+        let pos = pos + self.offset;
+        let size =
+            Size::uniform(self.window.frame_size + self.window.margin + self.window.font_scale);
+        let mut outer = Rect { pos, size };
 
-        let outer = quad;
-        quad.shrink(self.window.frame_size);
-        let style = Style::Square(Vec2(0.0, -0.8));
-        self.draw.draw_frame(self.pass, outer, quad, style, FRAME);
+        let mut inner = outer.shrink(self.window.frame_size);
+        let style = ShadeStyle::Square(Vec2(0.0, -0.8));
+        self.draw.shaded_frame(self.pass, outer, inner, style, FRAME);
 
         if checked || highlights.any() {
-            let outer = quad;
-            quad.shrink(self.window.margin);
+            outer = inner;
+            inner = outer.shrink(self.window.margin);
             let col = nav_colour(highlights).unwrap_or(TEXT_AREA);
-            self.draw
-                .draw_frame(self.pass, outer, quad, Style::Flat, col);
+            self.draw.frame(self.pass, outer, inner, col);
         }
 
         let col = button_colour(highlights, checked).unwrap_or(TEXT_AREA);
-        self.draw.draw_quad(self.pass, quad, Style::Flat, col);
+        self.draw.rect(self.pass, inner, col);
     }
 
     fn scrollbar(
@@ -421,27 +404,24 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         h_pos: u32,
         highlights: HighlightState,
     ) {
-        let pos = Vec2::from(rect.pos + self.offset);
-        let size = Vec2::from(rect.size);
-        let mut quad = Quad(pos, pos + size);
+        let mut outer = rect + self.offset;
 
         // TODO: also draw slider behind handle: needs an extra layer?
 
         let half_width = if !dir {
-            (quad.0).0 += h_pos as f32;
-            (quad.1).0 = (quad.0).0 + h_len as f32;
-            (0.5 * size.1).floor()
+            outer.pos.0 += h_pos as i32;
+            outer.size.0 = h_len;
+            outer.size.1 / 2
         } else {
-            (quad.0).1 += h_pos as f32;
-            (quad.1).1 = (quad.0).1 + h_len as f32;
-            (0.5 * size.0).floor()
+            outer.pos.1 += h_pos as i32;
+            outer.size.1 = h_len;
+            outer.size.0 / 2
         };
 
-        let outer = quad;
-        quad.shrink(half_width);
-        let style = Style::Round(Vec2(0.0, 0.6));
+        let inner = outer.shrink(half_width);
+        let style = ShadeStyle::Round(Vec2(0.0, 0.6));
         let col = button_colour(highlights, true).unwrap();
-        self.draw.draw_frame(self.pass, outer, quad, style, col);
-        self.draw.draw_quad(self.pass, quad, Style::Flat, col);
+        self.draw.shaded_frame(self.pass, outer, inner, style, col);
+        self.draw.rect(self.pass, inner, col);
     }
 }
