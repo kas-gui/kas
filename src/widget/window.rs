@@ -109,8 +109,8 @@ impl<W: Widget + Handler<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         &self.title
     }
 
-    fn resize(&mut self, size_handle: &mut dyn SizeHandle, size: Size) {
-        layout::solve(self, size_handle, size);
+    fn resize(&mut self, size_handle: &mut dyn SizeHandle, size: Size) -> (Size, Size) {
+        layout::solve(self, size_handle, size)
     }
 
     fn callbacks(&self) -> Vec<(usize, Callback)> {

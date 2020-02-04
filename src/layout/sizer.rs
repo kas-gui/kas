@@ -63,7 +63,13 @@ pub trait RulesSetter {
 }
 
 /// Solve `widget` for `SizeRules` on both axes, horizontal first.
-pub fn solve<L: Widget>(widget: &mut L, size_handle: &mut dyn SizeHandle, size: Size) {
+///
+/// Return min an max size.
+pub fn solve<L: Widget>(
+    widget: &mut L,
+    size_handle: &mut dyn SizeHandle,
+    size: Size,
+) -> (Size, Size) {
     // We call size_rules not because we want the result, but because our
     // spec requires that we do so before calling set_rect.
     let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
@@ -79,6 +85,11 @@ pub fn solve<L: Widget>(widget: &mut L, size_handle: &mut dyn SizeHandle, size: 
         h,
         WidgetHeirarchy(widget, 0),
     );
+
+    (
+        Size(w.min_size(), h.min_size()),
+        Size(w.max_size(), h.max_size()),
+    )
 }
 
 struct WidgetHeirarchy<'a>(&'a dyn Widget, usize);

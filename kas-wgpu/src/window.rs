@@ -103,7 +103,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         debug!("Reconfiguring window (size = {:?})", size);
 
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
-        self.widget.resize(&mut size_handle, size);
+        let (min, max) = self.widget.resize(&mut size_handle, size);
+        self.window.set_min_inner_size(Some(min));
+        self.window.set_max_inner_size(Some(max));
         self.mgr.configure(shared, &mut *self.widget);
         self.window.request_redraw();
 

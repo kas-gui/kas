@@ -161,6 +161,14 @@ impl<X: Pixel> From<Size> for PhysicalSize<X> {
     }
 }
 
+#[cfg(feature = "winit")]
+impl From<Size> for winit::dpi::Size {
+    #[inline]
+    fn from(size: Size) -> winit::dpi::Size {
+        winit::dpi::Size::Physical((size.0, size.1).into())
+    }
+}
+
 impl std::ops::Add for Size {
     type Output = Self;
 
