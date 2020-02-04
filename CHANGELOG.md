@@ -2,6 +2,9 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] — 2020-02-04
+Fix `sync-counter` and `clock` examples.
+
 ## [0.2.0] — 2020-02-02
 ### Examples
 -   New `sync-counter` example (#46)
