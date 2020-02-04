@@ -62,8 +62,13 @@ impl Window for MessageBox {
         &self.title
     }
 
-    fn resize(&mut self, size_handle: &mut dyn SizeHandle, size: Size) -> (Size, Size) {
-        layout::solve(self, size_handle, size)
+    fn resize(
+        &mut self,
+        size_handle: &mut dyn SizeHandle,
+        size: Size,
+    ) -> (Option<Size>, Option<Size>) {
+        let (min, max) = layout::solve(self, size_handle, size);
+        (Some(min), Some(max))
     }
 
     // doesn't support callbacks, so doesn't need to do anything here
