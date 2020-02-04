@@ -119,7 +119,11 @@ impl ManagerState {
         let mut map = HashMap::new();
         let mut id = WidgetId::FIRST;
 
+        // We re-set these instead of remapping:
         self.accel_keys.clear();
+        self.time_updates.clear();
+        self.handle_updates.clear();
+
         let coord = self.last_mouse_coord;
         let mut mgr = self.manager(tkw);
         widget.walk_mut(&mut |widget| {
@@ -170,14 +174,6 @@ impl ManagerState {
         do_map!(self.key_events, |elt: (u32, WidgetId)| map
             .get(&elt.1)
             .map(|id| (elt.0, *id)));
-
-        do_map!(self.time_updates, |elt: (Instant, WidgetId)| map
-            .get(&elt.1)
-            .map(|id| (elt.0, *id)));
-
-        for ids in self.handle_updates.values_mut() {
-            do_map!(ids, |elt: WidgetId| map.get(&elt).cloned());
-        }
     }
 
     pub fn region_moved<W: Widget + ?Sized>(&mut self, widget: &mut W) {
@@ -233,6 +229,9 @@ impl<'a> Manager<'a> {
     /// a clock each second. Very short positive durations (e.g. 1ns) may be
     /// used to schedule an update on the next frame. Frames should in any case
     /// be limited by vsync, avoiding excessive frame rates.
+    ///
+    /// This should be called from [`Widget::configure`] or from an event
+    /// handler. Note that scheduled updates are cleared if reconfigured.
     pub fn update_on_timer(&mut self, duration: Duration, w_id: WidgetId) {
         let time = Instant::now() + duration;
         'outer: loop {
@@ -259,6 +258,8 @@ impl<'a> Manager<'a> {
     /// All widgets subscribed to an update handle will have their
     /// [`Widget::update_handle`] method called when [`Manager::trigger_update`]
     /// is called with the corresponding handle.
+    ///
+    /// This should be called from [`Widget::configure`].
     pub fn update_on_handle(&mut self, handle: UpdateHandle, w_id: WidgetId) {
         self.mgr
             .handle_updates
@@ -385,6 +386,8 @@ impl<'a> Manager<'a> {
     ///
     /// If this key is pressed when the window has focus and no widget has a
     /// key-grab, the given widget will receive an [`Action::Activate`] event.
+    ///
+    /// This should be set from [`Widget::configure`].
     #[inline]
     pub fn add_accel_key(&mut self, key: VirtualKeyCode, id: WidgetId) {
         self.mgr.accel_keys.insert(key, id);
