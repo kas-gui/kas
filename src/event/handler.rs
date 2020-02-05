@@ -7,11 +7,11 @@
 
 use std::time::Duration;
 
-use crate::event::{Action, Address, Event, Manager, Response, UpdateHandle};
+use crate::event::{Action, Event, Manager, Response, UpdateHandle};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, Widget, WidgetCore};
+use crate::{CoreData, Layout, Widget, WidgetCore, WidgetId};
 
 /// Event-handling aspect of a widget.
 ///
@@ -61,7 +61,7 @@ pub trait Handler: Widget {
     /// Additionally, this method allows lower-level interpretation of some
     /// events, e.g. more direct access to mouse inputs.
     #[inline]
-    fn handle(&mut self, mgr: &mut Manager, _: Address, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         Manager::handle_generic(self, mgr, event)
     }
 }
@@ -80,8 +80,8 @@ impl<M> Handler for Box<dyn Handler<Msg = M>> {
     }
 
     #[inline]
-    fn handle(&mut self, mgr: &mut Manager, addr: Address, event: Event) -> Response<Self::Msg> {
-        self.as_mut().handle(mgr, addr, event)
+    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        self.as_mut().handle(mgr, id, event)
     }
 }
 

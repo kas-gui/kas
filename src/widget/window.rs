@@ -7,12 +7,12 @@
 
 use std::fmt::{self, Debug};
 
-use crate::event::{Address, Callback, Event, Handler, Manager, Response, VoidMsg};
+use crate::event::{Callback, Event, Handler, Manager, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout::{self};
 use crate::macros::Widget;
 use crate::theme::SizeHandle;
-use crate::{CoreData, LayoutData, Widget};
+use crate::{CoreData, LayoutData, Widget, WidgetId};
 
 /// The main instantiation of the [`Window`] trait.
 #[widget]
@@ -109,9 +109,9 @@ impl<W: Widget> Window<W> {
 impl<W: Widget + Handler<Msg = VoidMsg> + 'static> Handler for Window<W> {
     type Msg = VoidMsg;
 
-    fn handle(&mut self, mgr: &mut Manager, addr: Address, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         // The window itself doesn't handle events, so we can just pass through
-        self.w.handle(mgr, addr, event)
+        self.w.handle(mgr, id, event)
     }
 }
 

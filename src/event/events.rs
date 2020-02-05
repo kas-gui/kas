@@ -10,13 +10,6 @@ use super::MouseButton;
 use crate::geom::Coord;
 use crate::WidgetId;
 
-/// Delivery address of an [`Event`]
-#[derive(Clone, Copy, Debug)]
-pub enum Address {
-    Id(WidgetId),
-    Coord(Coord),
-}
-
 /// High-level events addressed to a widget by [`WidgetId`]
 #[derive(Clone, Debug)]
 pub enum Action {

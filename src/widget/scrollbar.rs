@@ -7,12 +7,12 @@
 
 use std::fmt::Debug;
 
-use crate::event::{Address, Event, Handler, Manager, PressSource, Response};
+use crate::event::{Event, Handler, Manager, PressSource, Response};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, Direction, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, WidgetCore};
+use crate::{CoreData, Layout, WidgetCore, WidgetId};
 
 /// A scroll bar
 ///
@@ -192,7 +192,7 @@ impl<D: Direction> Layout for ScrollBar<D> {
 impl<D: Direction> Handler for ScrollBar<D> {
     type Msg = u32;
 
-    fn handle(&mut self, mgr: &mut Manager, _: Address, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::PressStart { source, coord, .. } => {
                 if !mgr.request_press_grab(source, self, coord) {

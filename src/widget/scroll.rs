@@ -8,11 +8,11 @@
 use std::fmt::Debug;
 
 use super::ScrollBar;
-use crate::event::{Action, Address, Event, Handler, Manager, Response, ScrollDelta};
+use crate::event::{Action, Event, Handler, Manager, Response, ScrollDelta};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, Horizontal, SizeRules, Vertical};
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
-use crate::{CoreData, Layout, TkAction, Widget, WidgetCore};
+use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
 
 /// A scrollable region
 ///
@@ -282,7 +282,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
 impl<W: Widget + Handler> Handler for ScrollRegion<W> {
     type Msg = <W as Handler>::Msg;
 
-    fn handle(&mut self, mgr: &mut Manager, addr: Address, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
             Event::Action(Action::Scroll(delta)) => {
                 let d = match delta {
@@ -306,60 +306,41 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
             e @ _ => Response::Unhandled(e),
         };
 
-        let do_horiz =
-            |w: &mut Self, mgr: &mut Manager, addr, event| match Response::<Self::Msg>::try_from(
-                w.horiz_bar.handle(mgr, addr, event),
-            ) {
-                Ok(Response::Unhandled(event)) => unhandled(w, mgr, event),
+        if id <= self.horiz_bar.id() {
+            return match Response::<Self::Msg>::try_from(self.horiz_bar.handle(mgr, id, event)) {
+                Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
-                    w.set_offset(mgr, Coord(msg as i32, w.offset.1));
+                    self.set_offset(mgr, Coord(msg as i32, self.offset.1));
                     Response::None
                 }
             };
-        let do_vert =
-            |w: &mut Self, mgr: &mut Manager, addr, event| match Response::<Self::Msg>::try_from(
-                w.vert_bar.handle(mgr, addr, event),
-            ) {
-                Ok(Response::Unhandled(event)) => unhandled(w, mgr, event),
+        } else if id <= self.vert_bar.id() {
+            return match Response::<Self::Msg>::try_from(self.vert_bar.handle(mgr, id, event)) {
+                Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
-                    w.set_offset(mgr, Coord(w.offset.0, msg as i32));
+                    self.set_offset(mgr, Coord(self.offset.0, msg as i32));
                     Response::None
                 }
             };
+        } else if id == self.id() {
+            return match event {
+                Event::PressMove { delta, .. } => {
+                    if self.set_offset(mgr, self.offset - delta) {
+                        self.horiz_bar.set_value(mgr, self.offset.0 as u32);
+                        self.vert_bar.set_value(mgr, self.offset.1 as u32);
+                    }
+                    Response::None
+                }
+                Event::PressEnd { .. } => {
+                    // consume due to request
+                    Response::None
+                }
+                e @ _ => Response::Unhandled(e),
+            };
+        }
 
-        let addr = match addr {
-            Address::Id(id) if id <= self.horiz_bar.id() => {
-                return do_horiz(self, mgr, addr, event)
-            }
-            Address::Id(id) if id <= self.vert_bar.id() => return do_vert(self, mgr, addr, event),
-            Address::Id(id) if id == self.id() => {
-                let r = match event {
-                    Event::PressMove { delta, .. } => {
-                        if self.set_offset(mgr, self.offset - delta) {
-                            self.horiz_bar.set_value(mgr, self.offset.0 as u32);
-                            self.vert_bar.set_value(mgr, self.offset.1 as u32);
-                        }
-                        Response::None
-                    }
-                    Event::PressEnd { .. } => {
-                        // consume due to request
-                        Response::None
-                    }
-                    e @ _ => Response::Unhandled(e),
-                };
-                return r;
-            }
-            a @ Address::Id(_) => a,
-            Address::Coord(coord) if self.horiz_bar.rect().contains(coord) => {
-                return do_horiz(self, mgr, addr, event);
-            }
-            Address::Coord(coord) if self.vert_bar.rect().contains(coord) => {
-                return do_vert(self, mgr, addr, event);
-            }
-            Address::Coord(coord) => Address::Coord(coord + self.offset),
-        };
         let event = match event {
             a @ Event::Action(_) => a,
             Event::PressStart { source, coord } => Event::PressStart {
@@ -386,7 +367,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
             },
         };
 
-        match self.child.handle(mgr, addr, event) {
+        match self.child.handle(mgr, id, event) {
             Response::None => Response::None,
             Response::Unhandled(event) => unhandled(self, mgr, event),
             e @ _ => e,

@@ -164,7 +164,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let (impl_generics, _, where_clause) = generics.split_for_impl();
 
         let mut ev_to_num = TokenStream::new();
-        let mut ev_to_coord = TokenStream::new();
         for child in args.children.iter() {
             let ident = &child.ident;
             let handler = if let Some(ref h) = child.args.handler {
@@ -172,16 +171,9 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             } else {
                 quote! { r.into() }
             };
-            // TODO(opt): it is possible to code more efficient search strategies
             ev_to_num.append_all(quote! {
                 if id <= self.#ident.id() {
-                    let r = self.#ident.handle(mgr, addr, event);
-                    #handler
-                } else
-            });
-            ev_to_coord.append_all(quote! {
-                if self.#ident.rect().contains(coord) {
-                    let r = self.#ident.handle(mgr, addr, event);
+                    let r = self.#ident.handle(mgr, id, event);
                     #handler
                 } else
             });
@@ -192,22 +184,13 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             quote! {}
         } else {
             quote! {
-                fn handle(&mut self, mgr: &mut kas::event::Manager, addr: kas::event::Address, event: kas::event::Event)
+                fn handle(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
                 -> kas::event::Response<Self::Msg>
                 {
                     use kas::{WidgetCore, event::{Event, Response}};
-                    match addr {
-                        kas::event::Address::Id(id) => {
-                            #ev_to_num {
-                                debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
-                                Response::Unhandled(event)
-                            }
-                        }
-                        kas::event::Address::Coord(coord) => {
-                            #ev_to_coord {
-                                kas::event::Manager::handle_generic(self, mgr, event)
-                            }
-                        }
+                    #ev_to_num {
+                        debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
+                        Response::Unhandled(event)
                     }
                 }
             }

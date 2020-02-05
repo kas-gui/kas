@@ -646,7 +646,7 @@ impl<'a> Manager<'a> {
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = self.mgr.char_focus {
                     let ev = Event::Action(Action::ReceivedCharacter(c));
-                    widget.handle(&mut self, Address::Id(id), ev)
+                    widget.handle(&mut self, id, ev)
                 } else {
                     Response::None
                 }
@@ -676,7 +676,7 @@ impl<'a> Manager<'a> {
                                 self.add_key_event(scancode, id);
 
                                 let ev = Event::Action(Action::Activate);
-                                widget.handle(&mut self, Address::Id(id), ev)
+                                widget.handle(&mut self, id, ev)
                             } else { Response::None }
                         }
                         VirtualKeyCode::Escape => {
@@ -689,7 +689,7 @@ impl<'a> Manager<'a> {
                                 self.add_key_event(scancode, id);
 
                                 let ev = Event::Action(Action::Activate);
-                                widget.handle(&mut self, Address::Id(id), ev)
+                                widget.handle(&mut self, id, ev)
                             } else { Response::None }
                         }
                     },
@@ -713,7 +713,7 @@ impl<'a> Manager<'a> {
                     let source = PressSource::Mouse(button);
                     let delta = coord - self.mgr.last_mouse_coord;
                     let ev = Event::PressMove { source, coord, delta };
-                    widget.handle(&mut self, Address::Id(grab_id), ev)
+                    widget.handle(&mut self, grab_id, ev)
                 } else {
                     // We don't forward move events without a grab
                     Response::None
@@ -736,7 +736,7 @@ impl<'a> Manager<'a> {
                         ScrollDelta::PixelDelta(Coord::from_logical(pos, self.mgr.dpi_factor)),
                 });
                 if let Some(id) = self.mgr.hover {
-                    widget.handle(&mut self, Address::Id(id), Event::Action(action))
+                    widget.handle(&mut self, id, Event::Action(action))
                 } else {
                     Response::None
                 }
@@ -759,7 +759,7 @@ impl<'a> Manager<'a> {
                             coord,
                         },
                     };
-                    let r = widget.handle(&mut self, Address::Id(grab_id), ev);
+                    let r = widget.handle(&mut self, grab_id, ev);
                     if state == ElementState::Released {
                         self.end_mouse_grab(button);
                     }
@@ -768,7 +768,7 @@ impl<'a> Manager<'a> {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
                         let ev = Event::PressStart { source, coord };
-                        widget.handle(&mut self, Address::Id(id), ev)
+                        widget.handle(&mut self, id, ev)
                     } else {
                         Response::None
                     }
@@ -786,7 +786,7 @@ impl<'a> Manager<'a> {
                     TouchPhase::Started => {
                         if let Some(id) = widget.find_coord_mut(coord).map(|w| w.id()) {
                             let ev = Event::PressStart { source, coord };
-                            widget.handle(&mut self, Address::Id(id), ev)
+                            widget.handle(&mut self, id, ev)
                         } else {
                             Response::None
                         }
@@ -797,7 +797,7 @@ impl<'a> Manager<'a> {
                         let cur_id = widget.find_coord_mut(coord).map(|w| w.id());
 
                         let r = self.get_touch(touch.id).map(|grab| {
-                            let addr = Address::Id(grab.start_id);
+                            let id = grab.start_id;
                             let action = Event::PressMove {
                                 source,
                                 coord,
@@ -810,14 +810,14 @@ impl<'a> Manager<'a> {
                             grab.cur_id = cur_id;
                             grab.coord = coord;
 
-                            (addr, action, redraw)
+                            (id, action, redraw)
                         });
 
-                        if let Some((addr, action, redraw)) = r {
+                        if let Some((id, action, redraw)) = r {
                             if redraw {
                                 self.send_action(TkAction::Redraw);
                             }
-                            widget.handle(&mut self, addr, action)
+                            widget.handle(&mut self, id, action)
                         } else {
                             Response::None
                         }
@@ -832,7 +832,7 @@ impl<'a> Manager<'a> {
                             if let Some(cur_id) = grab.cur_id {
                                 self.redraw(cur_id);
                             }
-                            widget.handle(&mut self, Address::Id(grab.start_id), action)
+                            widget.handle(&mut self, grab.start_id, action)
                         } else {
                             Response::None
                         }
@@ -847,7 +847,7 @@ impl<'a> Manager<'a> {
                             if let Some(cur_id) = grab.cur_id {
                                 self.redraw(cur_id);
                             }
-                            widget.handle(&mut self, Address::Id(grab.start_id), action)
+                            widget.handle(&mut self, grab.start_id, action)
                         } else {
                             Response::None
                         }
