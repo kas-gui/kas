@@ -784,8 +784,12 @@ impl<'a> Manager<'a> {
                 let coord = touch.location.into();
                 match touch.phase {
                     TouchPhase::Started => {
-                        let ev = Event::PressStart { source, coord };
-                        widget.handle(&mut self, Address::Coord(coord), ev)
+                        if let Some(id) = widget.find_coord_mut(coord).map(|w| w.id()) {
+                            let ev = Event::PressStart { source, coord };
+                            widget.handle(&mut self, Address::Id(id), ev)
+                        } else {
+                            Response::None
+                        }
                     }
                     TouchPhase::Moved => {
                         // NOTE: calling widget.handle twice appears
