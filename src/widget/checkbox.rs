@@ -47,8 +47,7 @@ impl<OT: 'static> Layout for CheckBoxBare<OT> {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
         let highlights = mgr.highlight_state(self.id());
-        // TODO: should pass rect
-        draw_handle.checkbox(self.core.rect.pos, self.state, highlights);
+        draw_handle.checkbox(self.core.rect, self.state, highlights);
     }
 }
 

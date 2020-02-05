@@ -272,10 +272,7 @@ pub trait DrawHandle {
     /// The checkbox is a small, usually square, box with or without a check
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
-    ///
-    /// Size is fixed as [`SizeHandle::checkbox`], thus only the `pos`
-    /// and state are needed here.
-    fn checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState);
+    fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState);
 
     /// Draw UI element: scrollbar
     ///

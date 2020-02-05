@@ -377,11 +377,20 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         self.draw.rect(self.pass, inner, TEXT_AREA);
     }
 
-    fn checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState) {
-        let pos = pos + self.offset;
-        let size =
-            Size::uniform(self.window.frame_size + self.window.margin + self.window.font_scale);
-        let mut outer = Rect { pos, size };
+    fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
+        let mut outer = rect + self.offset;
+
+        // TODO: remove this hack when the layout engine can align instead of stretch
+        let pref_size = Size::uniform(
+            2 * (self.window.frame_size + self.window.margin) + self.window.font_scale,
+        );
+        if outer.size.0 > pref_size.0 {
+            outer.size.0 = pref_size.0;
+        }
+        if outer.size.1 > pref_size.1 {
+            outer.pos.1 += ((outer.size.1 - pref_size.1) / 2) as i32;
+            outer.size.1 = pref_size.1;
+        }
 
         let mut inner = outer.shrink(self.window.frame_size);
         let style = ShadeStyle::Square(Vec2(0.0, -0.8));
