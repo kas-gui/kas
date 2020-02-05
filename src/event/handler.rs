@@ -94,8 +94,8 @@ impl<M> Widget for Box<dyn Handler<Msg = M>> {
         self.as_mut().update_timer(mgr)
     }
 
-    fn update_handle(&mut self, mgr: &mut Manager, handle: UpdateHandle) {
-        self.as_mut().update_handle(mgr, handle);
+    fn update_handle(&mut self, mgr: &mut Manager, handle: UpdateHandle, payload: u64) {
+        self.as_mut().update_handle(mgr, handle, payload);
     }
 
     fn allow_focus(&self) -> bool {

@@ -311,8 +311,8 @@ impl<'a> Manager<'a> {
     /// All widgets subscribed to the given [`UpdateHandle`], across all
     /// windows, will receive an update.
     #[inline]
-    pub fn trigger_update(&mut self, handle: UpdateHandle) {
-        self.tkw.trigger_update(handle);
+    pub fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
+        self.tkw.trigger_update(handle, payload);
     }
 
     /// Attempt to get clipboard contents
@@ -601,14 +601,19 @@ impl<'a> Manager<'a> {
         self.mgr.time_updates.sort_by_key(|row| row.0);
     }
 
-    /// Update widgets due to timer
-    pub fn update_handle<W: Widget + ?Sized>(&mut self, handle: UpdateHandle, widget: &mut W) {
+    /// Update widgets due to handle
+    pub fn update_handle<W: Widget + ?Sized>(
+        &mut self,
+        widget: &mut W,
+        handle: UpdateHandle,
+        payload: u64,
+    ) {
         // NOTE: to avoid borrow conflict, we must clone values!
         if let Some(mut values) = self.mgr.handle_updates.get(&handle).cloned() {
             for w_id in values.drain(..) {
                 trace!("Updating widget {} via {:?}", w_id, handle);
                 if let Some(w) = widget.find_mut(w_id) {
-                    w.update_handle(self, handle);
+                    w.update_handle(self, handle, payload);
                 }
             }
         }

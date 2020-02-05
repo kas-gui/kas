@@ -244,10 +244,13 @@ pub trait Widget: Layout {
     /// This method is called on triggered updates (see [`update_on_handle`]).
     /// The source handle is specified via the [`UpdateHandle`] parameter.
     ///
+    /// A user-defined payload is passed. Interpretation of this payload is
+    /// user-defined and unfortunately not type safe.
+    ///
     /// This method being called does not imply a redraw.
     ///
     /// [`update_on_handle`]: Manager::update_on_handle
-    fn update_handle(&mut self, _: &mut Manager, _: UpdateHandle) {}
+    fn update_handle(&mut self, _mgr: &mut Manager, _handle: UpdateHandle, _payload: u64) {}
 
     /// Is this widget navigable via Tab key?
     fn allow_focus(&self) -> bool {

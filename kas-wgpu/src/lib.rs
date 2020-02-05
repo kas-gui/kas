@@ -158,9 +158,9 @@ impl ToolkitProxy {
     }
 
     /// Trigger an update handle
-    pub fn trigger_update(&self, handle: UpdateHandle) -> Result<(), ClosedError> {
+    pub fn trigger_update(&self, handle: UpdateHandle, payload: u64) -> Result<(), ClosedError> {
         self.proxy
-            .send_event(ProxyAction::Update(handle))
+            .send_event(ProxyAction::Update(handle, payload))
             .map_err(|_| ClosedError)
     }
 }
@@ -169,5 +169,5 @@ impl ToolkitProxy {
 enum ProxyAction {
     CloseAll,
     Close(WindowId),
-    Update(UpdateHandle),
+    Update(UpdateHandle, u64),
 }

@@ -55,7 +55,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     mgr.update_on_handle(self.handle, self.id());
                 }
 
-                fn update_handle(&mut self, mgr: &mut Manager, _: UpdateHandle) {
+                fn update_handle(&mut self, mgr: &mut Manager, _: UpdateHandle, _: u64) {
                     let c = COUNTER.with(|c| *c.borrow());
                     self.display.set_text(mgr, c.to_string());
                 }
@@ -71,7 +71,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                             Message::Incr => 1,
                         };
                     });
-                    mgr.trigger_update(self.handle);
+                    mgr.trigger_update(self.handle, 0);
                     VoidResponse::None
                 }
             }

@@ -173,9 +173,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         &mut self,
         shared: &mut SharedState<T>,
         handle: UpdateHandle,
+        payload: u64,
     ) -> TkAction {
         let mut mgr = self.mgr.manager(shared);
-        mgr.update_handle(handle, &mut *self.widget);
+        mgr.update_handle(&mut *self.widget, handle, payload);
         mgr.unwrap_action()
     }
 }

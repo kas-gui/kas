@@ -95,8 +95,10 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         actions.push((*id, TkAction::CloseAll));
                     }
                 }
-                ProxyAction::Update(handle) => {
-                    self.shared.pending.push(PendingAction::Update(handle));
+                ProxyAction::Update(handle, payload) => {
+                    self.shared
+                        .pending
+                        .push(PendingAction::Update(handle, payload));
                 }
             },
 
@@ -184,9 +186,9 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         actions.push((*id, TkAction::Close));
                     }
                 }
-                PendingAction::Update(handle) => {
+                PendingAction::Update(handle, payload) => {
                     for (id, window) in self.windows.iter_mut() {
-                        let action = window.update_handle(&mut self.shared, handle);
+                        let action = window.update_handle(&mut self.shared, handle, payload);
                         actions.push((*id, action));
                     }
                 }
