@@ -133,7 +133,7 @@ impl ManagerState {
             id = id.next();
         });
 
-        self.hover = widget.find_coord_mut(coord).map(|w| w.id());
+        self.hover = widget.find_id(coord);
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.key_focus = self.key_focus.and_then(|id| map.get(&id).cloned());
@@ -180,10 +180,10 @@ impl ManagerState {
         // Note: redraw is already implied.
 
         // Update hovered widget
-        self.hover = widget.find_coord_mut(self.last_mouse_coord).map(|w| w.id());
+        self.hover = widget.find_id(self.last_mouse_coord);
 
         for touch in &mut self.touch_grab {
-            touch.cur_id = widget.find_coord_mut(touch.coord).map(|w| w.id());
+            touch.cur_id = widget.find_id(touch.coord);
         }
     }
 
@@ -707,7 +707,7 @@ impl<'a> Manager<'a> {
                 let coord = position.into();
 
                 // Update hovered widget
-                self.set_hover(widget.find_coord_mut(coord).map(|w| w.id()));
+                self.set_hover(widget.find_id(coord));
 
                 let r = if let Some((grab_id, button)) = self.mouse_grab() {
                     let source = PressSource::Mouse(button);
@@ -784,7 +784,7 @@ impl<'a> Manager<'a> {
                 let coord = touch.location.into();
                 match touch.phase {
                     TouchPhase::Started => {
-                        if let Some(id) = widget.find_coord_mut(coord).map(|w| w.id()) {
+                        if let Some(id) = widget.find_id(coord) {
                             let ev = Event::PressStart { source, coord };
                             widget.handle(&mut self, id, ev)
                         } else {
@@ -794,7 +794,7 @@ impl<'a> Manager<'a> {
                     TouchPhase::Moved => {
                         // NOTE: calling widget.handle twice appears
                         // to be unavoidable (as with CursorMoved)
-                        let cur_id = widget.find_coord_mut(coord).map(|w| w.id());
+                        let cur_id = widget.find_id(coord);
 
                         let r = self.get_touch(touch.id).map(|grab| {
                             let id = grab.start_id;

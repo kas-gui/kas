@@ -139,16 +139,6 @@ pub trait WidgetCore: fmt::Debug {
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
     fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget));
-
-    /// Find a child widget by coordinate
-    ///
-    /// This requires that widget layout has been set.
-    ///
-    /// In the case of an empty grid cell, the parent widget is returned
-    /// (same behaviour as with events addressed by coordinate).
-    /// The only case `None` should be expected is when `coord` is outside the
-    /// initial widget's region; however this is not guaranteed.
-    fn find_coord_mut(&mut self, coord: Coord) -> Option<&mut dyn Widget>;
 }
 
 /// Positioning and drawing routines for widgets
@@ -178,6 +168,24 @@ pub trait Layout: WidgetCore {
     #[inline]
     fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect) {
         self.core_data_mut().rect = rect;
+    }
+
+    /// Find a child widget by coordinate
+    ///
+    /// This is used by the event manager to target the correct widget given an
+    /// event from a coordinate source (mouse pointer, touch event).
+    /// Widgets may return their own Id over that of children in order to steal
+    /// events (e.g. a button using an inner label widget).
+    ///
+    /// This must not be called before [`Layout::set_rect`].
+    ///
+    /// In the case of an empty grid cell, the parent widget is returned
+    /// (same behaviour as with events addressed by coordinate).
+    /// The only case `None` should be expected is when `coord` is outside the
+    /// initial widget's region; however this is not guaranteed.
+    #[inline]
+    fn find_id(&self, _coord: Coord) -> Option<WidgetId> {
+        Some(self.id())
     }
 
     /// Draw a widget

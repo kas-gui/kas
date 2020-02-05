@@ -69,17 +69,14 @@ pub trait Handler: Widget {
 impl<M> Handler for Box<dyn Handler<Msg = M>> {
     type Msg = M;
 
-    #[inline]
     fn activation_via_press(&self) -> bool {
         self.as_ref().activation_via_press()
     }
 
-    #[inline]
     fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
         self.as_mut().handle_action(mgr, action)
     }
 
-    #[inline]
     fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         self.as_mut().handle(mgr, id, event)
     }
@@ -110,6 +107,10 @@ impl<M> Layout for Box<dyn Handler<Msg = M>> {
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
         self.as_mut().set_rect(size_handle, rect);
+    }
+
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        self.as_ref().find_id(coord)
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
@@ -151,10 +152,6 @@ impl<M> WidgetCore for Box<dyn Handler<Msg = M>> {
     }
     fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
         self.as_mut().walk_mut(f);
-    }
-
-    fn find_coord_mut(&mut self, coord: Coord) -> Option<&mut dyn Widget> {
-        self.as_mut().find_coord_mut(coord)
     }
 }
 

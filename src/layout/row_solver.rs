@@ -188,11 +188,7 @@ impl<D: Direction> RowPositionSolver<D> {
     ///
     /// Returns `None` when the coordinates lie within the margin area or
     /// outside of the parent widget.
-    pub fn find_child<'a, W: Widget>(
-        self,
-        widgets: &'a mut [W],
-        coord: Coord,
-    ) -> Option<&'a mut W> {
+    pub fn find_child<'a, W: Widget>(self, widgets: &'a [W], coord: Coord) -> Option<&'a W> {
         let index = match self.binary_search(widgets, coord) {
             Ok(i) => i,
             Err(i) => {
@@ -203,7 +199,7 @@ impl<D: Direction> RowPositionSolver<D> {
                 j
             }
         };
-        Some(&mut widgets[index])
+        Some(&widgets[index])
     }
 
     /// Call `f` on each child intersecting the given `rect`

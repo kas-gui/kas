@@ -72,6 +72,18 @@ pub(crate) fn derive(
                 self.#ident.set_rect(size_handle, setter.child_rect(()));
             }
 
+            fn find_id(&self, coord: kas::geom::Coord) -> Option<kas::WidgetId> {
+                use kas::WidgetCore;
+
+                if self.#ident.rect().contains(coord) {
+                    self.#ident.find_id(coord)
+                } else if self.rect().contains(coord) {
+                    Some(self.id())
+                } else {
+                    None
+                }
+            }
+
             fn draw(
                 &self,
                 draw_handle: &mut dyn kas::theme::DrawHandle,
@@ -118,6 +130,7 @@ pub(crate) struct ImplLayout<'a> {
     size: TokenStream,
     set_rect: TokenStream,
     draw: TokenStream,
+    find_id_else: TokenStream,
 }
 
 impl<'a> ImplLayout<'a> {
@@ -132,6 +145,7 @@ impl<'a> ImplLayout<'a> {
             size: quote! {},
             set_rect: quote! {},
             draw: quote! {},
+            find_id_else: quote! {},
         }
     }
 
@@ -199,6 +213,13 @@ impl<'a> ImplLayout<'a> {
             }
         });
 
+        // TODO: more efficient search strategy?
+        self.find_id_else.append_all(quote! {
+            if self.#ident.rect().contains(coord) {
+                self.#ident.find_id(coord)
+            } else
+        });
+
         Ok(())
     }
     // dir: horiz (false) or vert (true)
@@ -235,6 +256,7 @@ impl<'a> ImplLayout<'a> {
         let size = self.size;
         let set_rect = self.set_rect;
         let draw = self.draw;
+        let find_id_else = self.find_id_else;
 
         // sort by end column, then by start column in reverse order
         col_spans.sort_by(|a, b| match a.1.cmp(&b.1) {
@@ -385,6 +407,16 @@ impl<'a> ImplLayout<'a> {
                     &mut self.#data,
                 );
                 #set_rect
+            }
+
+            fn find_id(&self, coord: kas::geom::Coord) -> Option<kas::WidgetId> {
+                use kas::WidgetCore;
+
+                #find_id_else if self.rect().contains(coord) {
+                    Some(self.id())
+                } else {
+                    None
+                }
             }
 
             fn draw(
