@@ -75,6 +75,9 @@
 //!
 //! -   (first position): one of `single`, `horizontal`, `vertical`, `grid`
 //! -   (optional): `frame`
+//! -   (optional): `area=FIELD` where `FIELD` is a child widget; if specified,
+//!     the area of self is considered to refer to child `FIELD`. This causes
+//!     the [`Layout::find_id`] function to directly return the child's Id.
 //!
 //! Child widgets are arranged as specified by the first parameter:
 //!

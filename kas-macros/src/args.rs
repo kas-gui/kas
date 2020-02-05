@@ -160,6 +160,7 @@ fn member(index: usize, ident: Option<Ident>) -> Member {
 mod kw {
     use syn::custom_keyword;
 
+    custom_keyword!(area);
     custom_keyword!(layout);
     custom_keyword!(col);
     custom_keyword!(row);
@@ -347,9 +348,10 @@ pub enum LayoutType {
 }
 
 pub struct LayoutArgs {
+    pub span: Span,
     pub layout: LayoutType,
     pub is_frame: bool,
-    pub span: Span,
+    pub area: Option<Ident>,
 }
 
 impl Parse for LayoutArgs {
@@ -384,6 +386,7 @@ impl Parse for LayoutArgs {
         };
 
         let mut is_frame = false;
+        let mut area = None;
 
         loop {
             if content.is_empty() {
@@ -395,15 +398,20 @@ impl Parse for LayoutArgs {
             if !is_frame && lookahead.peek(kw::frame) {
                 let _: kw::frame = content.parse()?;
                 is_frame = true;
+            } else if area.is_none() && lookahead.peek(kw::area) {
+                let _: kw::area = content.parse()?;
+                let _: Eq = content.parse()?;
+                area = Some(content.parse()?);
             } else {
                 return Err(lookahead.error());
             }
         }
 
         Ok(LayoutArgs {
+            span,
             layout,
             is_frame,
-            span,
+            area,
         })
     }
 }

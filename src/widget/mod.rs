@@ -18,7 +18,7 @@ mod text;
 mod window;
 
 pub use button::TextButton;
-pub use checkbox::CheckBox;
+pub use checkbox::{CheckBox, CheckBoxBare};
 pub use dialog::MessageBox;
 pub use list::{BoxColumn, BoxList, BoxRow, Column, List, Row};
 pub use scroll::ScrollRegion;
