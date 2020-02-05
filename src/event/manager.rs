@@ -749,41 +749,32 @@ impl<'a> Manager<'a> {
                 let coord = self.mgr.last_mouse_coord;
                 let source = PressSource::Mouse(button);
 
-                let r = if let Some((grab_id, _)) = self.mouse_grab() {
+                if let Some((grab_id, _)) = self.mouse_grab() {
                     // Mouse grab active: send events there
                     let ev = match state {
-                        // TODO: using grab_id as start_id is incorrect when
-                        // multiple buttons are pressed simultaneously
                         ElementState::Pressed => Event::PressStart { source, coord },
                         ElementState::Released => Event::PressEnd {
                             source,
-                            start_id: Some(grab_id),
                             end_id: self.mgr.hover,
                             coord,
                         },
                     };
-                    widget.handle(&mut self, Address::Id(grab_id), ev)
+                    let r = widget.handle(&mut self, Address::Id(grab_id), ev);
+                    if state == ElementState::Released {
+                        self.end_mouse_grab(button);
+                    }
+                    r
                 } else if let Some(id) = self.mgr.hover {
-                    // No mouse grab, but we have a hover target
-                    let ev = match state {
-                        ElementState::Pressed => Event::PressStart { source, coord },
-                        ElementState::Released => Event::PressEnd {
-                            source,
-                            start_id: None,
-                            end_id: Some(id),
-                            coord,
-                        },
-                    };
-                    widget.handle(&mut self, Address::Id(id), ev)
+                    // No mouse grab but have a hover target
+                    if state == ElementState::Pressed {
+                        let ev = Event::PressStart { source, coord };
+                        widget.handle(&mut self, Address::Id(id), ev)
+                    } else {
+                        Response::None
+                    }
                 } else {
-                    // This happens when there is no widget and on click-release
-                    // when the cursor is no longer over the window.
                     Response::None
-                };
-                if state == ElementState::Released {
-                    self.end_mouse_grab(button);
                 }
-                r
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
             // AxisMotion { axis: AxisId, value: f64, },
@@ -831,7 +822,6 @@ impl<'a> Manager<'a> {
                         if let Some(grab) = self.remove_touch(touch.id) {
                             let action = Event::PressEnd {
                                 source,
-                                start_id: Some(grab.start_id),
                                 end_id: grab.cur_id,
                                 coord,
                             };
@@ -840,20 +830,13 @@ impl<'a> Manager<'a> {
                             }
                             widget.handle(&mut self, Address::Id(grab.start_id), action)
                         } else {
-                            let action = Event::PressEnd {
-                                source,
-                                start_id: None,
-                                end_id: None,
-                                coord,
-                            };
-                            widget.handle(&mut self, Address::Coord(coord), action)
+                            Response::None
                         }
                     }
                     TouchPhase::Cancelled => {
                         if let Some(grab) = self.remove_touch(touch.id) {
                             let action = Event::PressEnd {
                                 source,
-                                start_id: Some(grab.start_id),
                                 end_id: None,
                                 coord,
                             };

@@ -377,12 +377,10 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
             },
             Event::PressEnd {
                 source,
-                start_id,
                 end_id,
                 coord,
             } => Event::PressEnd {
                 source,
-                start_id,
                 end_id,
                 coord: coord + self.offset,
             },
