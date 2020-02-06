@@ -213,6 +213,11 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
         Size::uniform(2 * (self.window.frame_size + self.window.margin) + self.window.font_scale)
     }
 
+    #[inline]
+    fn radiobox(&self) -> Size {
+        self.checkbox()
+    }
+
     fn scrollbar(&self) -> (u32, u32, u32) {
         let s = self.window.scrollbar_size as u32;
         (s, s, 2 * s)
@@ -406,6 +411,12 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         let col = button_colour(highlights, checked).unwrap_or(TEXT_AREA);
         self.draw.rect(self.pass, inner, col);
+    }
+
+    #[inline]
+    fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
+        // TODO: distinct
+        self.checkbox(rect, checked, highlights);
     }
 
     fn scrollbar(

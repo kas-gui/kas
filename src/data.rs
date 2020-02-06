@@ -5,6 +5,7 @@
 
 //! Data types
 
+use std::convert::TryFrom;
 use std::fmt;
 use std::num::NonZeroU32;
 use std::u32;
@@ -28,11 +29,31 @@ impl WidgetId {
     pub(crate) fn next(self) -> Self {
         WidgetId(NonZeroU32::new(self.0.get() + 1).unwrap())
     }
+}
 
-    /// Get identifier as a `u32`
+impl TryFrom<u64> for WidgetId {
+    type Error = ();
+    fn try_from(x: u64) -> Result<WidgetId, ()> {
+        if x <= u32::MAX as u64 {
+            if let Some(nz) = NonZeroU32::new(x as u32) {
+                return Ok(WidgetId(nz));
+            }
+        }
+        Err(())
+    }
+}
+
+impl From<WidgetId> for u32 {
     #[inline]
-    pub fn get(self) -> u32 {
-        self.0.get()
+    fn from(id: WidgetId) -> u32 {
+        id.0.get()
+    }
+}
+
+impl From<WidgetId> for u64 {
+    #[inline]
+    fn from(id: WidgetId) -> u64 {
+        id.0.get() as u64
     }
 }
 

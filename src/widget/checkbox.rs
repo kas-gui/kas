@@ -154,7 +154,7 @@ impl<M, H: Fn(bool) -> M> Handler for CheckBoxBare<H> {
 }
 
 /// A checkable box with optional label
-// TODO: can we make this type of wrapper more generic?
+// TODO: use a generic wrapper for CheckBox and RadioBox?
 #[layout(horizontal, area=checkbox)]
 #[widget]
 #[handler(substitutions = (OT = ()))]
@@ -192,7 +192,7 @@ impl<M, OT: Fn(bool) -> M> CheckBox<OT> {
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn new_on<T: ToString>(label: T, f: OT) -> Self {
+    pub fn new_on<T: ToString>(f: OT, label: T) -> Self {
         CheckBox {
             core: Default::default(),
             layout_data: Default::default(),

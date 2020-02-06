@@ -6,15 +6,17 @@
 //! Gallery of all widgets
 #![feature(proc_macro_hygiene)]
 
-use kas::event::{Manager, Response, VoidMsg, VoidResponse};
+use kas::event::{Manager, Response, UpdateHandle, VoidMsg, VoidResponse};
 use kas::layout::Horizontal;
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::*;
+use kas::WidgetId;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Item {
     Button,
     Check(bool),
+    Radio(WidgetId),
     Edit(String),
     Scroll(u32),
     Popup,
@@ -23,6 +25,7 @@ enum Item {
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
+    let radio = UpdateHandle::new();
     let widgets = make_widget! {
         #[widget]
         #[layout(grid)]
@@ -38,11 +41,14 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=3, col=0)] _ = Label::from("CheckBox"),
             #[widget(row=3, col=1)] _ = CheckBox::new("Check me")
                 .on_toggle(|check| Item::Check(check)),
-            #[widget(row=4, col=0)] _ = Label::from("CheckBox"),
-            #[widget(row=4, col=1)] _ = CheckBox::new("").state(true)
-                .on_toggle(|check| Item::Check(check)),
-            #[widget(row=5, col=0)] _ = Label::from("ScrollBar"),
-            #[widget(row=5, col=1, handler = handle_scroll)] _ =
+            #[widget(row=4, col=0)] _ = Label::from("RadioBox"),
+            #[widget(row=4, col=1)] _ = RadioBox::new(radio, "radio box 1").state(true)
+                .on_activate(|id| Item::Radio(id)),
+            #[widget(row=5, col=0)] _ = Label::from("RadioBox"),
+            #[widget(row=5, col=1)] _ = RadioBox::new(radio, "radio box 2")
+                .on_activate(|id| Item::Radio(id)),
+            #[widget(row=6, col=0)] _ = Label::from("ScrollBar"),
+            #[widget(row=6, col=1, handler = handle_scroll)] _ =
                 ScrollBar::<Horizontal>::new().with_limits(5, 2),
             #[widget(row=8)] _ = Label::from("Child window"),
             #[widget(row=8, col = 1)] _ = TextButton::new("Open", Item::Popup),
@@ -78,6 +84,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     match item {
                         Item::Button => println!("Clicked!"),
                         Item::Check(b) => println!("Checkbox: {}", b),
+                        Item::Radio(id) => println!("Radiobox: {}", id),
                         Item::Edit(s) => println!("Edited: {}", s),
                         Item::Scroll(p) => println!("ScrollBar: {}", p),
                         Item::Popup => {
