@@ -9,11 +9,11 @@ use std::fmt::{self, Debug};
 
 use super::Label;
 use crate::class::HasBool;
-use crate::event::{Action, Event, Handler, Manager, Response, VoidMsg};
+use crate::event::{Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, Widget, WidgetCore, WidgetId};
+use crate::{CoreData, Layout, Widget, WidgetCore};
 
 /// A bare checkbox (no label)
 #[derive(Clone, Default, Widget)]
@@ -158,6 +158,8 @@ impl<M, H: Fn(bool) -> M> Handler for CheckBoxBare<H> {
 // TODO: can we make this type of wrapper more generic?
 #[layout(horizontal, area=checkbox)]
 #[widget]
+#[handler(substitutions = (OT = ()))]
+#[handler(msg = M, generics = <M: From<VoidMsg>> where OT: Fn(bool) -> M)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<OT: 'static> {
     #[core]
@@ -248,40 +250,5 @@ impl<H> HasBool for CheckBox<H> {
 
     fn set_bool(&mut self, mgr: &mut Manager, state: bool) {
         self.checkbox.set_bool(mgr, state);
-    }
-}
-
-// TODO: can we autogenerate both variants?
-impl Handler for CheckBox<()> {
-    type Msg = VoidMsg;
-
-    #[inline]
-    fn activation_via_press(&self) -> bool {
-        true
-    }
-
-    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if id <= self.checkbox.id() {
-            self.checkbox.handle(mgr, id, event)
-        } else {
-            Response::Unhandled(event)
-        }
-    }
-}
-
-impl<M: From<VoidMsg>, H: Fn(bool) -> M> Handler for CheckBox<H> {
-    type Msg = M;
-
-    #[inline]
-    fn activation_via_press(&self) -> bool {
-        true
-    }
-
-    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if id <= self.checkbox.id() {
-            self.checkbox.handle(mgr, id, event)
-        } else {
-            Response::Unhandled(event)
-        }
     }
 }
