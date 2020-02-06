@@ -58,6 +58,7 @@ impl<M, OT: Fn(bool) -> M> CheckBoxBare<OT> {
     ///
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
+    #[inline]
     pub fn new_on(f: OT) -> Self {
         CheckBoxBare {
             core: Default::default(),
@@ -69,6 +70,7 @@ impl<M, OT: Fn(bool) -> M> CheckBoxBare<OT> {
 
 impl CheckBoxBare<()> {
     /// Construct a checkbox
+    #[inline]
     pub fn new() -> Self {
         CheckBoxBare {
             core: Default::default(),
@@ -81,6 +83,7 @@ impl CheckBoxBare<()> {
     ///
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
+    #[inline]
     pub fn on_toggle<M, OT: Fn(bool) -> M>(self, f: OT) -> CheckBoxBare<OT> {
         CheckBoxBare {
             core: self.core,
@@ -92,11 +95,7 @@ impl CheckBoxBare<()> {
 
 impl<OT: 'static> CheckBoxBare<OT> {
     /// Set the initial state of the checkbox.
-    pub fn set_state(&mut self, state: bool) {
-        self.state = state;
-    }
-
-    /// Set the initial state of the checkbox.
+    #[inline]
     pub fn state(mut self, state: bool) -> Self {
         self.state = state;
         self
@@ -192,6 +191,7 @@ impl<M, OT: Fn(bool) -> M> CheckBox<OT> {
     ///
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
+    #[inline]
     pub fn new_on<T: ToString>(label: T, f: OT) -> Self {
         CheckBox {
             core: Default::default(),
@@ -207,6 +207,7 @@ impl CheckBox<()> {
     ///
     /// CheckBox labels are optional; if no label is desired, use an empty
     /// string.
+    #[inline]
     pub fn new<T: ToString>(label: T) -> Self {
         CheckBox {
             core: Default::default(),
@@ -220,6 +221,7 @@ impl CheckBox<()> {
     ///
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
+    #[inline]
     pub fn on_toggle<M, OT: Fn(bool) -> M>(self, f: OT) -> CheckBox<OT> {
         CheckBox {
             core: self.core,
@@ -232,22 +234,20 @@ impl CheckBox<()> {
 
 impl<OT: 'static> CheckBox<OT> {
     /// Set the initial state of the checkbox.
-    pub fn set_state(&mut self, state: bool) {
-        self.checkbox.set_state(state);
-    }
-
-    /// Set the initial state of the checkbox.
+    #[inline]
     pub fn state(mut self, state: bool) -> Self {
-        self.checkbox.set_state(state);
+        self.checkbox = self.checkbox.state(state);
         self
     }
 }
 
 impl<H> HasBool for CheckBox<H> {
+    #[inline]
     fn get_bool(&self) -> bool {
         self.checkbox.get_bool()
     }
 
+    #[inline]
     fn set_bool(&mut self, mgr: &mut Manager, state: bool) {
         self.checkbox.set_bool(mgr, state);
     }
