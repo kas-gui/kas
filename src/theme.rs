@@ -26,20 +26,7 @@ use kas::draw::Colour;
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
-use kas::Direction;
-
-/// Alignment of contents
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum Align {
-    /// Align to top or left (for left-to-right text)
-    Begin,
-    /// Align to centre
-    Centre,
-    /// Align to bottom or right (for left-to-right text)
-    End,
-    /// Attempt to align to both margins, padding with space
-    Justify,
-}
+use kas::{Align, Direction};
 
 /// Class of text drawn
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]

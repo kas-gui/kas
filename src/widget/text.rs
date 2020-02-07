@@ -11,8 +11,8 @@ use crate::class::{Editable, HasText};
 use crate::event::{Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{CoreData, Layout, Widget, WidgetCore};
+use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
+use crate::{Align, CoreData, Layout, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A simple text label

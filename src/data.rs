@@ -78,6 +78,21 @@ pub struct CoreData {
     pub id: WidgetId,
 }
 
+/// Alignment of contents
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum Align {
+    /// Align to top or left (for left-to-right text)
+    Begin,
+    /// Align to centre
+    Centre,
+    /// Align to bottom or right (for left-to-right text)
+    End,
+    /// Attempt to align to both margins
+    ///
+    /// For text, this is known as "justified alignment".
+    Stretch,
+}
+
 /// Trait over directional types
 ///
 /// Using a generic `<D: Directional>` over [`Direction`] allows compile-time

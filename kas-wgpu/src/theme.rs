@@ -16,7 +16,8 @@ use kas::draw::{Colour, Draw};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
-use kas::theme::{self, Align, TextClass, TextProperties};
+use kas::theme::{self, TextClass, TextProperties};
+use kas::Align;
 use kas::Direction::{self, Horizontal, Vertical};
 
 use crate::draw::{DrawPipe, DrawShaded, DrawText, ShadeStyle, Vec2};
@@ -335,12 +336,12 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         // TODO: support justified alignment
         let (h_align, h_offset) = match props.horiz {
-            Align::Begin | Align::Justify => (HorizontalAlign::Left, 0),
+            Align::Begin | Align::Stretch => (HorizontalAlign::Left, 0),
             Align::Centre => (HorizontalAlign::Center, bounds.0 / 2),
             Align::End => (HorizontalAlign::Right, bounds.0),
         };
         let (v_align, v_offset) = match props.vert {
-            Align::Begin | Align::Justify => (VerticalAlign::Top, 0),
+            Align::Begin | Align::Stretch => (VerticalAlign::Top, 0),
             Align::Centre => (VerticalAlign::Center, bounds.1 / 2),
             Align::End => (VerticalAlign::Bottom, bounds.1),
         };
