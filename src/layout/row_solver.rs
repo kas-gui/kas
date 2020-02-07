@@ -191,11 +191,10 @@ impl<D: Directional> RowPositionSolver<D> {
         let index = match self.binary_search(widgets, coord) {
             Ok(i) => i,
             Err(i) => {
-                let j = i - 1;
-                if !widgets[j].rect().contains(coord) {
+                if i == 0 || !widgets[i - 1].rect().contains(coord) {
                     return None;
                 }
-                j
+                i - 1
             }
         };
         Some(&widgets[index])
