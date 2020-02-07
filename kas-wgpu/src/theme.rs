@@ -159,7 +159,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
     fn text_bound(
         &mut self,
         text: &str,
-        _: TextClass,
+        class: TextClass,
         multi_line: bool,
         axis: AxisInfo,
     ) -> SizeRules {
@@ -197,17 +197,23 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
 
         let inner = if axis.is_horizontal() {
             let bound = bound(Horizontal);
-            SizeRules::new(
-                bound.min(self.window.min_line_length),
-                bound.min(self.window.max_line_length),
-                StretchPolicy::LowUtility,
-            )
+            let min = match class {
+                TextClass::Edit => self.window.min_line_length,
+                _ => bound.min(self.window.min_line_length),
+            };
+            let ideal = bound.min(self.window.max_line_length);
+            SizeRules::new(min, ideal, StretchPolicy::LowUtility)
         } else {
-            SizeRules::new(
-                line_height,
-                bound(Vertical).max(line_height),
-                StretchPolicy::Filler,
-            )
+            let min = match (class, multi_line) {
+                (TextClass::Edit, true) => line_height * 3,
+                _ => line_height,
+            };
+            let ideal = bound(Vertical).max(line_height);
+            let stretch = match class {
+                TextClass::Button => StretchPolicy::Fixed,
+                _ => StretchPolicy::Filler,
+            };
+            SizeRules::new(min, ideal, stretch)
         };
         let margin = SizeRules::fixed(2 * self.window.margin as u32);
         inner + margin

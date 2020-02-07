@@ -106,15 +106,12 @@ impl SizeRules {
     /// Region size should meet the given `min`-imum size and has a given
     /// `ideal` size, plus a given `stretch` policy.
     ///
-    /// Required: `ideal >= min`.
+    /// Required: `ideal >= min` (if not, ideal is clamped to min).
     #[inline]
     pub fn new(min: u32, ideal: u32, stretch: StretchPolicy) -> Self {
-        if min > ideal {
-            panic!("SizeRules::variable(min, pref): min > pref !");
-        }
         SizeRules {
             a: min,
-            b: ideal,
+            b: ideal.max(min),
             stretch,
         }
     }

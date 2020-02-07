@@ -29,6 +29,7 @@ use kas::layout::{AxisInfo, SizeRules};
 use kas::Direction;
 
 /// Alignment of contents
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum Align {
     /// Align to top or left (for left-to-right text)
     Begin,
@@ -41,6 +42,7 @@ pub enum Align {
 }
 
 /// Class of text drawn
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum TextClass {
     /// Label text is drawn over the background colour
     Label,
@@ -51,6 +53,7 @@ pub enum TextClass {
 }
 
 /// Text alignment, class, etc.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TextProperties {
     /// Class of text
     pub class: TextClass,
