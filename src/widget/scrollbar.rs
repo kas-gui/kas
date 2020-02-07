@@ -9,7 +9,7 @@ use std::fmt::Debug;
 
 use crate::event::{Event, Handler, Manager, PressSource, Response};
 use crate::geom::Rect;
-use crate::layout::{AxisInfo, Direction, SizeRules};
+use crate::layout::{AxisInfo, Directional, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
 use crate::{CoreData, Layout, WidgetCore, WidgetId};
@@ -20,7 +20,7 @@ use crate::{CoreData, Layout, WidgetCore, WidgetId};
 /// and allow the size of the handle to be specified.
 #[widget]
 #[derive(Clone, Debug, Default, Widget)]
-pub struct ScrollBar<D: Direction> {
+pub struct ScrollBar<D: Directional> {
     #[core]
     core: CoreData,
     direction: D,
@@ -35,7 +35,7 @@ pub struct ScrollBar<D: Direction> {
     press_offset: i32,
 }
 
-impl<D: Direction + Default> ScrollBar<D> {
+impl<D: Directional + Default> ScrollBar<D> {
     /// Construct a scroll bar
     ///
     /// Default values are assumed for all parameters.
@@ -44,7 +44,7 @@ impl<D: Direction + Default> ScrollBar<D> {
     }
 }
 
-impl<D: Direction> ScrollBar<D> {
+impl<D: Directional> ScrollBar<D> {
     /// Construct a scroll bar with the given direction
     ///
     /// Default values are assumed for all parameters.
@@ -163,7 +163,7 @@ impl<D: Direction> ScrollBar<D> {
     }
 }
 
-impl<D: Direction> Layout for ScrollBar<D> {
+impl<D: Directional> Layout for ScrollBar<D> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let (thickness, _, min_len) = size_handle.scrollbar();
         self.width = thickness;
@@ -189,7 +189,7 @@ impl<D: Direction> Layout for ScrollBar<D> {
     }
 }
 
-impl<D: Direction> Handler for ScrollBar<D> {
+impl<D: Directional> Handler for ScrollBar<D> {
     type Msg = u32;
 
     fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {

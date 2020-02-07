@@ -10,7 +10,7 @@ use std::iter;
 use crate::event::{Event, Handler, Manager, Response};
 use crate::geom::Coord;
 use crate::layout::{
-    self, AxisInfo, Direction, Horizontal, Margins, RowPositionSolver, RulesSetter, RulesSolver,
+    self, AxisInfo, Directional, Horizontal, Margins, RowPositionSolver, RulesSetter, RulesSolver,
     SizeRules, Vertical,
 };
 use crate::theme::{DrawHandle, SizeHandle};
@@ -72,7 +72,7 @@ pub type BoxList<D, M> = List<D, Box<dyn Handler<Msg = M>>>;
 ///
 /// [`make_widget`]: ../macros/index.html#the-make_widget-macro
 #[derive(Clone, Default, Debug)]
-pub struct List<D: Direction, W: Widget> {
+pub struct List<D: Directional, W: Widget> {
     core: CoreData,
     widgets: Vec<W>,
     data: layout::DynRowStorage,
@@ -81,7 +81,7 @@ pub struct List<D: Direction, W: Widget> {
 
 // We implement this manually, because the derive implementation cannot handle
 // vectors of child widgets.
-impl<D: Direction, W: Widget> WidgetCore for List<D, W> {
+impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
     #[inline]
     fn core_data(&self) -> &CoreData {
         &self.core
@@ -132,9 +132,9 @@ impl<D: Direction, W: Widget> WidgetCore for List<D, W> {
     }
 }
 
-impl<D: Direction, W: Widget> Widget for List<D, W> {}
+impl<D: Directional, W: Widget> Widget for List<D, W> {}
 
-impl<D: Direction, W: Widget> Layout for List<D, W> {
+impl<D: Directional, W: Widget> Layout for List<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut solver = layout::RowSolver::<Vec<u32>, _>::new(
             axis,
@@ -182,7 +182,7 @@ impl<D: Direction, W: Widget> Layout for List<D, W> {
     }
 }
 
-impl<D: Direction, W: Widget + Handler> Handler for List<D, W> {
+impl<D: Directional, W: Widget + Handler> Handler for List<D, W> {
     type Msg = <W as Handler>::Msg;
 
     fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
@@ -196,11 +196,11 @@ impl<D: Direction, W: Widget + Handler> Handler for List<D, W> {
     }
 }
 
-impl<D: Direction + Default, W: Widget> List<D, W> {
+impl<D: Directional + Default, W: Widget> List<D, W> {
     /// Construct a new instance
     ///
     /// This constructor is available where the direction is determined by the
-    /// type: for `D: Direction + Default`. In other cases, use
+    /// type: for `D: Directional + Default`. In other cases, use
     /// [`List::new_with_direction`].
     pub fn new(widgets: Vec<W>) -> Self {
         List {
@@ -212,7 +212,7 @@ impl<D: Direction + Default, W: Widget> List<D, W> {
     }
 }
 
-impl<D: Direction, W: Widget> List<D, W> {
+impl<D: Directional, W: Widget> List<D, W> {
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
         List {

@@ -8,7 +8,7 @@
 use std::marker::PhantomData;
 
 use super::{
-    AxisInfo, Direction, Margins, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules,
+    AxisInfo, Directional, Margins, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules,
 };
 use crate::geom::{Coord, Rect};
 use crate::Widget;
@@ -34,7 +34,7 @@ impl<T: RowTemp, S: RowStorage> RowSolver<T, S> {
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `dim`: direction and number of items
     /// - `storage`: reference to persistent storage
-    pub fn new<D: Direction>(axis: AxisInfo, dim: (D, usize), storage: &mut S) -> Self {
+    pub fn new<D: Directional>(axis: AxisInfo, dim: (D, usize), storage: &mut S) -> Self {
         let mut widths = T::default();
         widths.set_len(dim.1);
         assert!(widths.as_ref().iter().all(|w| *w == 0));
@@ -102,7 +102,7 @@ impl<T: RowTemp, S: RowStorage> RulesSolver for RowSolver<T, S> {
 ///
 /// This is parameterised over:
 ///
-/// -   `D:` [`Direction`] — whether this represents a row or a column
+/// -   `D:` [`Directional`] — whether this represents a row or a column
 /// -   `T:` [`RowTemp`] — temporary storage type
 /// -   `S:` [`RowStorage`] — persistent storage type
 pub struct RowSetter<D, T: RowTemp, S: RowStorage> {
@@ -113,7 +113,7 @@ pub struct RowSetter<D, T: RowTemp, S: RowStorage> {
     _s: PhantomData<S>,
 }
 
-impl<D: Direction, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
+impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     pub fn new(mut rect: Rect, margins: Margins, dim: (D, usize), storage: &mut S) -> Self {
         let mut widths = T::default();
         widths.set_len(dim.1);
@@ -143,7 +143,7 @@ impl<D: Direction, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     }
 }
 
-impl<D: Direction, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, S> {
+impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, S> {
     type Storage = S;
     type ChildInfo = usize;
 
@@ -166,11 +166,11 @@ impl<D: Direction, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, S>
 /// `W: Widget` (which may be `Box<dyn Widget>`). In other cases, the naive
 /// implementation (test all items) must be used.
 #[derive(Clone, Copy, Debug)]
-pub struct RowPositionSolver<D: Direction> {
+pub struct RowPositionSolver<D: Directional> {
     direction: D,
 }
 
-impl<D: Direction> RowPositionSolver<D> {
+impl<D: Directional> RowPositionSolver<D> {
     /// Construct with given directionality
     pub fn new(direction: D) -> Self {
         RowPositionSolver { direction }

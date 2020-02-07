@@ -72,8 +72,10 @@ impl AxisInfo {
     }
 }
 
-pub trait Direction: Copy + Sized + std::fmt::Debug {
+pub trait Directional: Copy + Sized + std::fmt::Debug {
     fn is_vertical(self) -> bool;
+
+    #[inline]
     fn is_horizontal(self) -> bool {
         !self.is_vertical()
     }
@@ -81,7 +83,7 @@ pub trait Direction: Copy + Sized + std::fmt::Debug {
 
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Horizontal;
-impl Direction for Horizontal {
+impl Directional for Horizontal {
     fn is_vertical(self) -> bool {
         false
     }
@@ -89,7 +91,7 @@ impl Direction for Horizontal {
 
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Vertical;
-impl Direction for Vertical {
+impl Directional for Vertical {
     fn is_vertical(self) -> bool {
         true
     }
@@ -97,7 +99,7 @@ impl Direction for Vertical {
 
 #[derive(Copy, Clone, Debug)]
 pub struct DynDirection(bool);
-impl Direction for DynDirection {
+impl Directional for DynDirection {
     fn is_vertical(self) -> bool {
         self.0
     }
