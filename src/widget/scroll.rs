@@ -128,7 +128,7 @@ impl<W: Widget> ScrollRegion<W> {
 impl<W: Widget> Layout for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut rules = self.child.size_rules(size_handle, axis);
-        if !axis.vertical() {
+        if axis.is_horizontal() {
             self.min_child_size.0 = rules.min_size();
         } else {
             self.min_child_size.1 = rules.min_size();
@@ -137,9 +137,9 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         self.scroll_rate = 3.0 * line_height as f32;
         rules.reduce_min_to(line_height);
 
-        if !axis.vertical() && self.show_bars.1 {
+        if axis.is_horizontal() && self.show_bars.1 {
             rules + self.vert_bar.size_rules(size_handle, axis)
-        } else if axis.vertical() && self.show_bars.0 {
+        } else if axis.is_vertical() && self.show_bars.0 {
             rules + self.horiz_bar.size_rules(size_handle, axis)
         } else {
             rules

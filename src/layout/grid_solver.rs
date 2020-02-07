@@ -76,7 +76,7 @@ impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
     fn prepare(&mut self, storage: &mut S) {
         if self.axis.has_fixed {
             // TODO: cache this for use by set_rect?
-            if self.axis.vertical {
+            if self.axis.is_vertical() {
                 SizeRules::solve_seq(
                     self.widths.as_mut(),
                     storage.width_ref(),
@@ -91,7 +91,7 @@ impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
             }
         }
 
-        if !self.axis.vertical {
+        if self.axis.is_horizontal() {
             for n in 0..storage.width_ref().len() {
                 storage.width_mut()[n] = SizeRules::EMPTY;
             }
@@ -119,7 +119,7 @@ where
         child_rules: CR,
     ) {
         if self.axis.has_fixed {
-            if !self.axis.vertical {
+            if self.axis.is_horizontal() {
                 self.axis.other_axis = ((child_info.row + 1)..child_info.row_end)
                     .fold(self.heights.as_ref()[child_info.row], |h, i| {
                         h + self.heights.as_ref()[i]
@@ -132,7 +132,7 @@ where
             }
         }
         let child_rules = child_rules(self.axis);
-        let rules = if !self.axis.vertical {
+        let rules = if self.axis.is_horizontal() {
             if child_info.col_span_index == std::usize::MAX {
                 &mut storage.width_mut()[child_info.col]
             } else {
@@ -162,7 +162,7 @@ where
         let rows = storage.height_ref().len() - 1;
 
         let rules;
-        if !self.axis.vertical {
+        if self.axis.is_horizontal() {
             for span in col_spans {
                 let start = span.0 as usize;
                 let end = span.1 as usize;

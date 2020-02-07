@@ -45,13 +45,19 @@ impl AxisInfo {
         }
     }
 
-    /// True if the current axis is vertical, false if horizontal
+    /// True if the current axis is vertical
     #[inline]
-    pub fn vertical(&self) -> bool {
+    pub fn is_vertical(&self) -> bool {
         self.vertical
     }
 
-    /// Size of other axis, if fixed and `vertical == self.vertical()`.
+    /// True if the current axis is horizontal
+    #[inline]
+    pub fn is_horizontal(self) -> bool {
+        !self.vertical
+    }
+
+    /// Size of other axis, if fixed and `vertical == self.is_vertical()`.
     #[inline]
     pub fn fixed(&self, vertical: bool) -> Option<u32> {
         if vertical == self.vertical && self.has_fixed {

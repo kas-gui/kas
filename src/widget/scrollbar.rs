@@ -167,7 +167,7 @@ impl<D: Directional> Layout for ScrollBar<D> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let (thickness, _, min_len) = size_handle.scrollbar();
         self.width = thickness;
-        if self.direction.is_vertical() == axis.vertical() {
+        if self.direction.is_vertical() == axis.is_vertical() {
             SizeRules::fixed(min_len)
         } else {
             SizeRules::fixed(thickness)

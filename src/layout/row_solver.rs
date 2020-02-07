@@ -40,7 +40,7 @@ impl<T: RowTemp, S: RowStorage> RowSolver<T, S> {
         assert!(widths.as_ref().iter().all(|w| *w == 0));
         storage.set_len(dim.1 + 1);
 
-        let axis_is_vertical = axis.vertical ^ dim.0.is_vertical();
+        let axis_is_vertical = axis.is_vertical() ^ dim.0.is_vertical();
 
         if axis.has_fixed && axis_is_vertical {
             // TODO: cache this for use by set_rect?

@@ -189,7 +189,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
                 .unwrap_or(0)
         };
 
-        let inner = if !axis.vertical() {
+        let inner = if axis.is_horizontal() {
             let min = 3 * line_height;
             SizeRules::variable(min, bound(false).max(min))
         } else {

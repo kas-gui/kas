@@ -41,7 +41,7 @@ impl Margins {
     ///
     /// Requires the number of child columns and rows.
     pub fn size_rules(&self, axis_info: AxisInfo, columns: u32, rows: u32) -> SizeRules {
-        SizeRules::fixed(if !axis_info.vertical {
+        SizeRules::fixed(if axis_info.is_horizontal() {
             self.first.0 + self.last.0 + self.inter.0 * columns.saturating_sub(1)
         } else {
             self.first.1 + self.last.1 + self.inter.1 * rows.saturating_sub(1)
