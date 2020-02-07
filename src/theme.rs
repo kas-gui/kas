@@ -25,7 +25,8 @@ use rusttype::Font;
 use kas::draw::Colour;
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
-use kas::layout::{AxisInfo, Direction, SizeRules};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::Direction;
 
 /// Alignment of contents
 pub enum Align {

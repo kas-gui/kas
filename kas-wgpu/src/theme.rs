@@ -15,8 +15,9 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 use kas::draw::{Colour, Draw};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
-use kas::layout::{AxisInfo, Direction, SizeRules};
+use kas::layout::{AxisInfo, SizeRules};
 use kas::theme::{self, Align, TextClass, TextProperties};
+use kas::{Direction, Directional};
 
 use crate::draw::{DrawPipe, DrawShaded, DrawText, ShadeStyle, Vec2};
 

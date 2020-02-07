@@ -10,11 +10,11 @@ use std::iter;
 use crate::event::{Event, Handler, Manager, Response};
 use crate::geom::Coord;
 use crate::layout::{
-    self, AxisInfo, Directional, Horizontal, Margins, RowPositionSolver, RulesSetter, RulesSolver,
-    SizeRules, Vertical,
+    self, AxisInfo, Margins, RowPositionSolver, RulesSetter, RulesSolver, SizeRules,
 };
 use crate::theme::{DrawHandle, SizeHandle};
 use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
+use crate::{Directional, Horizontal, Vertical};
 use kas::geom::Rect;
 
 /// A generic row widget

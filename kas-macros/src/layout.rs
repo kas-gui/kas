@@ -284,8 +284,8 @@ impl<'a> ImplLayout<'a> {
         });
 
         let dim = match self.layout {
-            LayoutType::Horizontal => quote! { (kas::layout::Horizontal, #cols) },
-            LayoutType::Vertical => quote! { (kas::layout::Vertical, #rows) },
+            LayoutType::Horizontal => quote! { (kas::Horizontal, #cols) },
+            LayoutType::Vertical => quote! { (kas::Vertical, #rows) },
             LayoutType::Grid => quote! { (#cols, #rows) },
             LayoutType::Single => unreachable!(),
         };
@@ -311,7 +311,7 @@ impl<'a> ImplLayout<'a> {
                     Self::Data,
                 >;
                 type Setter = kas::layout::RowSetter::<
-                    kas::layout::Horizontal,
+                    kas::Horizontal,
                     #col_temp,
                     Self::Data,
                 >;
@@ -325,7 +325,7 @@ impl<'a> ImplLayout<'a> {
                     Self::Data,
                 >;
                 type Setter = kas::layout::RowSetter::<
-                    kas::layout::Vertical,
+                    kas::Vertical,
                     #row_temp,
                     Self::Data,
                 >;

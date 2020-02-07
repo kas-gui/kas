@@ -9,10 +9,10 @@ use std::fmt::Debug;
 
 use crate::event::{Event, Handler, Manager, PressSource, Response};
 use crate::geom::Rect;
-use crate::layout::{AxisInfo, Directional, SizeRules};
+use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, WidgetCore, WidgetId};
+use crate::{CoreData, Directional, Layout, WidgetCore, WidgetId};
 
 /// A scroll bar
 ///

@@ -77,3 +77,57 @@ pub struct CoreData {
     pub rect: Rect,
     pub id: WidgetId,
 }
+
+/// Trait over directional types
+///
+/// Using a generic `<D: Directional>` over [`Direction`] allows compile-time
+/// substitution via the [`Horizontal`] and [`Vertical`] instantiations.
+pub trait Directional: Copy + Sized + std::fmt::Debug {
+    fn as_direction(self) -> Direction;
+
+    #[inline]
+    fn is_vertical(self) -> bool {
+        self.as_direction() == Direction::Vertical
+    }
+
+    #[inline]
+    fn is_horizontal(self) -> bool {
+        self.as_direction() == Direction::Horizontal
+    }
+}
+
+/// Fixed instantiation of [`Directional`]
+#[derive(Copy, Clone, Default, Debug)]
+pub struct Horizontal;
+impl Directional for Horizontal {
+    #[inline]
+    fn as_direction(self) -> Direction {
+        Direction::Horizontal
+    }
+}
+
+/// Fixed instantiation of [`Directional`]
+#[derive(Copy, Clone, Default, Debug)]
+pub struct Vertical;
+impl Directional for Vertical {
+    #[inline]
+    fn as_direction(self) -> Direction {
+        Direction::Vertical
+    }
+}
+
+/// Horizontal / vertical direction
+///
+/// This is a variable instantiation of [`Directional`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub enum Direction {
+    Horizontal = 0,
+    Vertical = 1,
+}
+
+impl Directional for Direction {
+    #[inline]
+    fn as_direction(self) -> Direction {
+        self
+    }
+}

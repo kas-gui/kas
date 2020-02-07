@@ -7,10 +7,9 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::event::{Manager, Response, UpdateHandle, VoidMsg, VoidResponse};
-use kas::layout::Horizontal;
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::*;
-use kas::WidgetId;
+use kas::{Horizontal, WidgetId};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Item {

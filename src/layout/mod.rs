@@ -14,7 +14,8 @@ mod size_rules;
 mod sizer;
 mod storage;
 
-use kas::geom::Size;
+use crate::geom::Size;
+use crate::{Direction, Directional};
 
 pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use misc_solver::SingleSetter;
@@ -75,50 +76,5 @@ impl AxisInfo {
         } else {
             size.1
         }
-    }
-}
-
-pub trait Directional: Copy + Sized + std::fmt::Debug {
-    fn as_direction(self) -> Direction;
-
-    #[inline]
-    fn is_vertical(self) -> bool {
-        self.as_direction() == Direction::Vertical
-    }
-
-    #[inline]
-    fn is_horizontal(self) -> bool {
-        self.as_direction() == Direction::Horizontal
-    }
-}
-
-#[derive(Copy, Clone, Default, Debug)]
-pub struct Horizontal;
-impl Directional for Horizontal {
-    #[inline]
-    fn as_direction(self) -> Direction {
-        Direction::Horizontal
-    }
-}
-
-#[derive(Copy, Clone, Default, Debug)]
-pub struct Vertical;
-impl Directional for Vertical {
-    #[inline]
-    fn as_direction(self) -> Direction {
-        Direction::Vertical
-    }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub enum Direction {
-    Horizontal = 0,
-    Vertical = 1,
-}
-
-impl Directional for Direction {
-    #[inline]
-    fn as_direction(self) -> Direction {
-        self
     }
 }

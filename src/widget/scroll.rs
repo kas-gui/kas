@@ -10,10 +10,11 @@ use std::fmt::Debug;
 use super::ScrollBar;
 use crate::event::{Action, Event, Handler, Manager, Response, ScrollDelta};
 use crate::geom::{Coord, Rect, Size};
-use crate::layout::{AxisInfo, Horizontal, SizeRules, Vertical};
+use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
 use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
+use crate::{Horizontal, Vertical};
 
 /// A scrollable region
 ///

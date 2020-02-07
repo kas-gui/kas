@@ -8,14 +8,13 @@
 use log::trace;
 use std::fmt;
 
-use super::{
-    AxisInfo,
-    Direction::{Horizontal, Vertical},
-    SizeRules,
-};
+use super::{AxisInfo, SizeRules};
 use crate::geom::{Coord, Rect, Size};
 use crate::theme::SizeHandle;
-use crate::Widget;
+use crate::{
+    Direction::{Horizontal, Vertical},
+    Widget,
+};
 
 /// A [`SizeRules`] solver for layouts
 ///

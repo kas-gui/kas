@@ -7,11 +7,9 @@
 
 use std::marker::PhantomData;
 
-use super::{
-    AxisInfo, Directional, Margins, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules,
-};
+use super::{AxisInfo, Margins, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::{Coord, Rect};
-use crate::Widget;
+use crate::{Directional, Widget};
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
