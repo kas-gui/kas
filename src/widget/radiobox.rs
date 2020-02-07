@@ -14,7 +14,7 @@ use crate::event::{Action, Handler, Manager, Response, UpdateHandle, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, Widget, WidgetCore, WidgetId};
+use crate::{Align, Alignment, CoreData, Layout, Widget, WidgetCore, WidgetId};
 
 /// A bare radiobox (no label)
 #[derive(Clone, Widget)]
@@ -37,6 +37,14 @@ impl<H> Debug for RadioBoxBare<H> {
 }
 
 impl<OT: 'static> Widget for RadioBoxBare<OT> {
+    fn alignment(&self) -> Alignment {
+        Alignment {
+            halign: Align::Centre,
+            valign: Align::Centre,
+            ideal: self.rect().size,
+        }
+    }
+
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.update_on_handle(self.handle, self.id());
     }
@@ -57,7 +65,9 @@ impl<OT: 'static> Widget for RadioBoxBare<OT> {
 
 impl<OT: 'static> Layout for RadioBoxBare<OT> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        SizeRules::fixed(axis.extract_size(size_handle.radiobox()))
+        let size = size_handle.radiobox();
+        self.core_data_mut().rect.size = size;
+        SizeRules::fixed(axis.extract_size(size))
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {

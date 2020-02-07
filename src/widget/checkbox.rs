@@ -13,7 +13,7 @@ use crate::event::{Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, Widget, WidgetCore};
+use crate::{Align, Alignment, CoreData, Layout, Widget, WidgetCore};
 
 /// A bare checkbox (no label)
 #[derive(Clone, Default, Widget)]
@@ -35,6 +35,14 @@ impl<H> Debug for CheckBoxBare<H> {
 }
 
 impl<OT: 'static> Widget for CheckBoxBare<OT> {
+    fn alignment(&self) -> Alignment {
+        Alignment {
+            halign: Align::Centre,
+            valign: Align::Centre,
+            ideal: self.rect().size,
+        }
+    }
+
     fn allow_focus(&self) -> bool {
         true
     }
@@ -42,7 +50,9 @@ impl<OT: 'static> Widget for CheckBoxBare<OT> {
 
 impl<OT: 'static> Layout for CheckBoxBare<OT> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        SizeRules::fixed(axis.extract_size(size_handle.checkbox()))
+        let size = size_handle.checkbox();
+        self.core_data_mut().rect.size = size;
+        SizeRules::fixed(axis.extract_size(size))
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {

@@ -62,6 +62,7 @@ pub(crate) fn derive(
             )
                 -> kas::layout::SizeRules
             {
+                use kas::WidgetCore;
                 use kas::geom::Size;
                 let frame_size = if #is_frame {
                     size_handle.outer_frame()
@@ -69,9 +70,16 @@ pub(crate) fn derive(
                     (Size::ZERO, Size::ZERO)
                 };
                 self.#data = frame_size;
-                self.#ident.size_rules(size_handle, axis)
+                let rules = self.#ident.size_rules(size_handle, axis)
                     + axis.extract_size(frame_size.0)
-                    + axis.extract_size(frame_size.1)
+                    + axis.extract_size(frame_size.1);
+
+                if axis.is_horizontal() {
+                    self.core_data_mut().rect.size.0 = rules.ideal_size();
+                } else {
+                    self.core_data_mut().rect.size.1 = rules.ideal_size();
+                }
+                rules
             }
 
             fn set_rect(
@@ -411,6 +419,11 @@ impl<'a> ImplLayout<'a> {
                 #size
                 #size_post
 
+                if axis.is_horizontal() {
+                    self.core_data_mut().rect.size.0 = rules.ideal_size();
+                } else {
+                    self.core_data_mut().rect.size.1 = rules.ideal_size();
+                }
                 rules
             }
 

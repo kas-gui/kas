@@ -10,7 +10,7 @@ use std::fmt;
 use std::num::NonZeroU32;
 use std::u32;
 
-use crate::geom::Rect;
+use crate::geom::{Rect, Size};
 
 /// Widget identifier
 ///
@@ -91,6 +91,15 @@ pub enum Align {
     ///
     /// For text, this is known as "justified alignment".
     Stretch,
+}
+
+/// Provides alignment information on both axes along with ideal size
+///
+/// Note that the `ideal` size detail is only used for non-stretch alignment.
+pub struct Alignment {
+    pub halign: Align,
+    pub valign: Align,
+    pub ideal: Size,
 }
 
 /// Trait over directional types

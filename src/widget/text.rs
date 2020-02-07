@@ -12,7 +12,7 @@ use crate::event::{Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{Align, CoreData, Layout, Widget, WidgetCore};
+use crate::{Align, Alignment, CoreData, Layout, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A simple text label
@@ -27,7 +27,13 @@ pub struct Label {
 
 impl Layout for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        size_handle.text_bound(&self.text, TextClass::Label, true, axis)
+        let rules = size_handle.text_bound(&self.text, TextClass::Label, true, axis);
+        if axis.is_horizontal() {
+            self.core_data_mut().rect.size.0 = rules.ideal_size();
+        } else {
+            self.core_data_mut().rect.size.1 = rules.ideal_size();
+        }
+        rules
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &Manager) {
@@ -114,6 +120,18 @@ impl<H> Debug for EditBox<H> {
 }
 
 impl<H: 'static> Widget for EditBox<H> {
+    fn alignment(&self) -> Alignment {
+        Alignment {
+            halign: Align::Stretch,
+            valign: if self.multi_line {
+                Align::Stretch
+            } else {
+                Align::Centre
+            },
+            ideal: self.rect().size,
+        }
+    }
+
     fn allow_focus(&self) -> bool {
         true
     }
@@ -122,8 +140,14 @@ impl<H: 'static> Widget for EditBox<H> {
 impl<H: 'static> Layout for EditBox<H> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.edit_surround();
-        SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
-            + size_handle.text_bound(&self.text, TextClass::Edit, self.multi_line, axis)
+        let rules = SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
+            + size_handle.text_bound(&self.text, TextClass::Edit, self.multi_line, axis);
+        if axis.is_horizontal() {
+            self.core_data_mut().rect.size.0 = rules.ideal_size();
+        } else {
+            self.core_data_mut().rect.size.1 = rules.ideal_size();
+        }
+        rules
     }
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {

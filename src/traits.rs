@@ -12,7 +12,7 @@ use crate::event::{Callback, Handler, Manager, UpdateHandle, VoidMsg};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, WidgetId};
+use crate::{Align, Alignment, CoreData, WidgetId};
 
 pub trait CloneTo {
     unsafe fn clone_to(&self, out: *mut Self);
@@ -150,6 +150,8 @@ pub trait Layout: WidgetCore {
     ///
     /// This method takes `&mut self` to allow local caching of child widget
     /// configuration for future `size_rules` and `set_rect` calls.
+    /// It is expected to set `self.rect().size` to the widget's ideal size,
+    /// at least for the `axis` in question.
     ///
     /// If operating on one axis and the other is fixed, then the `other`
     /// parameter is used for the fixed dimension. Additionally, one may assume
@@ -223,6 +225,22 @@ pub trait Layout: WidgetCore {
 ///
 /// [`Handler`]: crate::event::Handler
 pub trait Widget: Layout {
+    /// Default alignment of widget
+    ///
+    /// The default implementation is [`Align::Stretch`] on both axes,
+    /// in which case the `ideal` size field is unimportant. In general, one
+    /// may assume that [`Layout::size_rules`] sets `self.rect().size` to the
+    /// ideal size.
+    ///
+    /// Note that alignment may be overridden by the parent widget.
+    fn alignment(&self) -> Alignment {
+        Alignment {
+            halign: Align::Stretch,
+            valign: Align::Stretch,
+            ideal: self.rect().size,
+        }
+    }
+
     /// Configure widget
     ///
     /// Widgets are *configured* on window creation and when
