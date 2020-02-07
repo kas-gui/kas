@@ -37,9 +37,9 @@ pub struct AxisInfo {
 }
 
 impl AxisInfo {
-    fn new(vertical: bool, fixed: Option<u32>) -> Self {
+    fn new(dir: Direction, fixed: Option<u32>) -> Self {
         AxisInfo {
-            vertical: vertical,
+            vertical: dir.is_vertical(),
             has_fixed: fixed.is_some(),
             other_axis: fixed.unwrap_or(0),
         }

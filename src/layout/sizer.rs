@@ -8,7 +8,11 @@
 use log::trace;
 use std::fmt;
 
-use super::{AxisInfo, SizeRules};
+use super::{
+    AxisInfo,
+    Direction::{Horizontal, Vertical},
+    SizeRules,
+};
 use crate::geom::{Coord, Rect, Size};
 use crate::theme::SizeHandle;
 use crate::Widget;
@@ -72,8 +76,8 @@ pub fn solve<L: Widget>(
 ) -> (Size, Size) {
     // We call size_rules not because we want the result, but because our
     // spec requires that we do so before calling set_rect.
-    let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
-    let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(size.0)));
+    let w = widget.size_rules(size_handle, AxisInfo::new(Horizontal, None));
+    let h = widget.size_rules(size_handle, AxisInfo::new(Vertical, Some(size.0)));
 
     let pos = Coord(0, 0);
     widget.set_rect(size_handle, Rect { pos, size });

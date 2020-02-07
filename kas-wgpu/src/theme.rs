@@ -422,7 +422,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     fn scrollbar(
         &mut self,
         rect: Rect,
-        dir: bool,
+        dir: Direction,
         h_len: u32,
         h_pos: u32,
         highlights: HighlightState,
@@ -431,7 +431,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         // TODO: also draw slider behind handle: needs an extra layer?
 
-        let half_width = if !dir {
+        let half_width = if dir.is_horizontal() {
             outer.pos.0 += h_pos as i32;
             outer.size.0 = h_len;
             outer.size.1 / 2

@@ -25,7 +25,7 @@ use rusttype::Font;
 use kas::draw::Colour;
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::layout::{AxisInfo, Direction, SizeRules};
 
 /// Alignment of contents
 pub enum Align {
@@ -287,5 +287,12 @@ pub trait DrawHandle {
     /// -   `len`: length of handle in pixels
     /// -   `pos`: offset of handle from start in pixels
     /// -   `highlights`: highlighting information
-    fn scrollbar(&mut self, rect: Rect, dir: bool, len: u32, pos: u32, highlights: HighlightState);
+    fn scrollbar(
+        &mut self,
+        rect: Rect,
+        dir: Direction,
+        len: u32,
+        pos: u32,
+        highlights: HighlightState,
+    );
 }
