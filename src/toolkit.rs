@@ -91,7 +91,7 @@ pub trait TkWindow {
     ///
     /// All widgets subscribed to the given [`UpdateHandle`], across all
     /// windows, will receive an update.
-    fn trigger_update(&mut self, handle: UpdateHandle);
+    fn trigger_update(&mut self, handle: UpdateHandle, payload: u64);
 
     /// Attempt to get clipboard contents
     ///

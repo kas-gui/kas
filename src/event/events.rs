@@ -10,13 +10,6 @@ use super::MouseButton;
 use crate::geom::Coord;
 use crate::WidgetId;
 
-/// Delivery address of an [`Event`]
-#[derive(Clone, Copy, Debug)]
-pub enum Address {
-    Id(WidgetId),
-    Coord(Coord),
-}
-
 /// High-level events addressed to a widget by [`WidgetId`]
 #[derive(Clone, Debug)]
 pub enum Action {
@@ -39,7 +32,7 @@ pub enum Event {
     },
     /// Movement of mouse or a touch press
     ///
-    /// Received only if a mouse grab is enabled.
+    /// Received only given a [press grab](super::Manager::request_press_grab).
     PressMove {
         source: PressSource,
         coord: Coord,
@@ -47,12 +40,12 @@ pub enum Event {
     },
     /// End of a click/touch press
     ///
-    /// Received if a mouse grab is enabled; otherwise received if on self.
+    /// Received only given a [press grab](super::Manager::request_press_grab).
+    ///
     /// When `end_id == None`, this is a "cancelled press": the end of the press
     /// is outside the application window.
     PressEnd {
         source: PressSource,
-        start_id: Option<WidgetId>,
         end_id: Option<WidgetId>,
         coord: Coord,
     },

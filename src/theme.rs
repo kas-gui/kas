@@ -216,9 +216,10 @@ pub trait SizeHandle {
     fn edit_surround(&self) -> (Size, Size);
 
     /// Size of the element drawn by [`DrawHandle::checkbox`].
-    ///
-    /// This element is not scalable (except by DPI).
     fn checkbox(&self) -> Size;
+
+    /// Size of the element drawn by [`DrawHandle::radiobox`].
+    fn radiobox(&self) -> Size;
 
     /// Dimensions for a scrollbar
     ///
@@ -272,10 +273,12 @@ pub trait DrawHandle {
     /// The checkbox is a small, usually square, box with or without a check
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
+    fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState);
+
+    /// Draw UI element: radiobox
     ///
-    /// Size is fixed as [`SizeHandle::checkbox`], thus only the `pos`
-    /// and state are needed here.
-    fn checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState);
+    /// This is similar in appearance to a checkbox.
+    fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState);
 
     /// Draw UI element: scrollbar
     ///

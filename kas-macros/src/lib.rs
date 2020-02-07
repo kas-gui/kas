@@ -10,18 +10,77 @@ extern crate proc_macro;
 
 mod args;
 
+use std::collections::HashMap;
+
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, TokenStreamExt};
+use quote::{quote, ToTokens, TokenStreamExt};
 use std::fmt::Write;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::token::Comma;
+use syn::Token;
 use syn::{parse_macro_input, parse_quote};
-use syn::{DeriveInput, FnArg, Ident, ImplItemMethod, Type, TypePath};
+use syn::{
+    DeriveInput, FnArg, GenericParam, Generics, Ident, ImplItemMethod, Type, TypeParam, TypePath,
+};
 
 use self::args::ChildType;
 
 mod layout;
+
+struct SubstTyGenerics<'a>(&'a Generics, HashMap<Ident, Type>);
+
+// impl copied from syn, with modifications
+impl<'a> ToTokens for SubstTyGenerics<'a> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        if self.0.params.is_empty() {
+            return;
+        }
+
+        <Token![<]>::default().to_tokens(tokens);
+
+        // Print lifetimes before types and consts, regardless of their
+        // order in self.params.
+        //
+        // TODO: ordering rules for const parameters vs type parameters have
+        // not been settled yet. https://github.com/rust-lang/rust/issues/44580
+        let mut trailing_or_empty = true;
+        for param in self.0.params.pairs() {
+            if let GenericParam::Lifetime(def) = *param.value() {
+                // Leave off the lifetime bounds and attributes
+                def.lifetime.to_tokens(tokens);
+                param.punct().to_tokens(tokens);
+                trailing_or_empty = param.punct().is_some();
+            }
+        }
+        for param in self.0.params.pairs() {
+            if let GenericParam::Lifetime(_) = **param.value() {
+                continue;
+            }
+            if !trailing_or_empty {
+                <Token![,]>::default().to_tokens(tokens);
+                trailing_or_empty = true;
+            }
+            match *param.value() {
+                GenericParam::Lifetime(_) => unreachable!(),
+                GenericParam::Type(param) => {
+                    if let Some(result) = self.1.get(&param.ident) {
+                        result.to_tokens(tokens);
+                    } else {
+                        param.ident.to_tokens(tokens);
+                    }
+                }
+                GenericParam::Const(param) => {
+                    // Leave off the const parameter defaults
+                    param.ident.to_tokens(tokens);
+                }
+            }
+            param.punct().to_tokens(tokens);
+        }
+
+        <Token![>]>::default().to_tokens(tokens);
+    }
+}
 
 /// Macro to derive widget traits
 ///
@@ -30,7 +89,7 @@ mod layout;
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
 
-    let args = match args::read_attrs(&mut ast) {
+    let mut args = match args::read_attrs(&mut ast) {
         Ok(w) => w,
         Err(err) => return err.to_compile_error().into(),
     };
@@ -45,18 +104,12 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut get_mut_rules = quote! {};
     let mut walk_rules = quote! {};
     let mut walk_mut_rules = quote! {};
-    let mut find_coord_mut = TokenStream::new();
     for (i, child) in args.children.iter().enumerate() {
         let ident = &child.ident;
         get_rules.append_all(quote! { #i => Some(&self.#ident), });
         get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
         walk_rules.append_all(quote! { self.#ident.walk(f); });
         walk_mut_rules.append_all(quote! { self.#ident.walk_mut(f); });
-        find_coord_mut.append_all(quote! {
-            if self.#ident.rect().contains(coord) {
-                self.#ident.find_coord_mut(coord)
-            } else
-        });
     }
 
     let mut toks = quote! {
@@ -101,14 +154,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 #walk_mut_rules
                 f(self);
             }
-
-            fn find_coord_mut(&mut self, coord: kas::geom::Coord) -> Option<&mut dyn kas::Widget> {
-                #find_coord_mut if self.#core.rect.contains(coord) {
-                    Some(self)
-                } else {
-                    None
-                }
-            }
         }
     };
 
@@ -140,9 +185,30 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         });
     }
 
-    if let Some(handler) = args.handler {
+    for handler in args.handler.drain(..) {
         let msg = handler.msg;
+        let subs = handler.substitutions;
         let mut generics = ast.generics.clone();
+        generics.params = generics
+            .params
+            .into_pairs()
+            .filter(|pair| match pair.value() {
+                &GenericParam::Type(TypeParam { ref ident, .. }) => !subs.contains_key(ident),
+                _ => true,
+            })
+            .collect();
+        /* Problem: bounded_ty is too generic with no way to extract the Ident
+        if let Some(clause) = &mut generics.where_clause {
+            clause.predicates = clause.predicates
+                .into_pairs()
+                .filter(|pair| match pair.value() {
+                    &WherePredicate::Type(PredicateType { ref bounded_ty, .. }) =>
+                        subs.iter().all(|pair| &pair.0 != ident),
+                    _ => true,
+                })
+                .collect();
+        }
+        */
         if !handler.generics.params.is_empty() {
             if !generics.params.empty_or_trailing() {
                 generics.params.push_punct(Default::default());
@@ -162,9 +228,9 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         // Note: we may have extra generic types used in where clauses, but we
         // don't want these in ty_generics.
         let (impl_generics, _, where_clause) = generics.split_for_impl();
+        let ty_generics = SubstTyGenerics(&ast.generics, subs);
 
         let mut ev_to_num = TokenStream::new();
-        let mut ev_to_coord = TokenStream::new();
         for child in args.children.iter() {
             let ident = &child.ident;
             let handler = if let Some(ref h) = child.args.handler {
@@ -172,16 +238,9 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             } else {
                 quote! { r.into() }
             };
-            // TODO(opt): it is possible to code more efficient search strategies
             ev_to_num.append_all(quote! {
                 if id <= self.#ident.id() {
-                    let r = self.#ident.handle(mgr, addr, event);
-                    #handler
-                } else
-            });
-            ev_to_coord.append_all(quote! {
-                if self.#ident.rect().contains(coord) {
-                    let r = self.#ident.handle(mgr, addr, event);
+                    let r = self.#ident.handle(mgr, id, event);
                     #handler
                 } else
             });
@@ -192,22 +251,13 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             quote! {}
         } else {
             quote! {
-                fn handle(&mut self, mgr: &mut kas::event::Manager, addr: kas::event::Address, event: kas::event::Event)
+                fn handle(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
                 -> kas::event::Response<Self::Msg>
                 {
                     use kas::{WidgetCore, event::{Event, Response}};
-                    match addr {
-                        kas::event::Address::Id(id) => {
-                            #ev_to_num {
-                                debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
-                                Response::Unhandled(event)
-                            }
-                        }
-                        kas::event::Address::Coord(coord) => {
-                            #ev_to_coord {
-                                kas::event::Manager::handle_generic(self, mgr, event)
-                            }
-                        }
+                    #ev_to_num {
+                        debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
+                        Response::Unhandled(event)
                     }
                 }
             }
@@ -221,7 +271,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 #handler
             }
         });
-    };
+    }
 
     toks.into()
 }

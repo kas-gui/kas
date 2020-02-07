@@ -8,11 +8,12 @@
 use std::fmt::Debug;
 
 use super::ScrollBar;
-use crate::event::{Action, Address, Event, Handler, Manager, Response, ScrollDelta};
+use crate::event::{Action, Event, Handler, Manager, Response, ScrollDelta};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, Horizontal, SizeRules, Vertical};
+use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
-use crate::{CoreData, Layout, TkAction, Widget, WidgetCore};
+use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
 
 /// A scrollable region
 ///
@@ -23,8 +24,10 @@ use crate::{CoreData, Layout, TkAction, Widget, WidgetCore};
 /// Scroll regions translate their contents by an `offset`, which has a
 /// minimum value of [`Coord::ZERO`] and a maximum value of
 /// [`ScrollRegion::max_offset`].
-#[derive(Clone, Debug, Default)]
+#[widget]
+#[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
+    #[core]
     core: CoreData,
     min_child_size: Size,
     inner_size: Size,
@@ -33,8 +36,11 @@ pub struct ScrollRegion<W: Widget> {
     scroll_rate: f32,
     auto_bars: bool,
     show_bars: (bool, bool),
+    #[widget]
     horiz_bar: ScrollBar<Horizontal>,
+    #[widget]
     vert_bar: ScrollBar<Vertical>,
+    #[widget]
     child: W,
 }
 
@@ -119,81 +125,6 @@ impl<W: Widget> ScrollRegion<W> {
     }
 }
 
-// TODO: we should use the derive implementation, but find_coord_mut needs a
-// manual offset! Can we find a less tedious workaround?
-impl<W: Widget> WidgetCore for ScrollRegion<W> {
-    #[inline]
-    fn core_data(&self) -> &CoreData {
-        &self.core
-    }
-    #[inline]
-    fn core_data_mut(&mut self) -> &mut CoreData {
-        &mut self.core
-    }
-
-    #[inline]
-    fn widget_name(&self) -> &'static str {
-        "ScrollRegion"
-    }
-
-    #[inline]
-    fn as_widget(&self) -> &dyn Widget {
-        self
-    }
-    #[inline]
-    fn as_widget_mut(&mut self) -> &mut dyn Widget {
-        self
-    }
-
-    #[inline]
-    fn len(&self) -> usize {
-        3
-    }
-    #[inline]
-    fn get(&self, index: usize) -> Option<&dyn Widget> {
-        match index {
-            0 => Some(&self.horiz_bar),
-            1 => Some(&self.vert_bar),
-            2 => Some(&self.child),
-            _ => None,
-        }
-    }
-    #[inline]
-    fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
-        match index {
-            0 => Some(&mut self.horiz_bar),
-            1 => Some(&mut self.vert_bar),
-            2 => Some(&mut self.child),
-            _ => None,
-        }
-    }
-
-    fn walk(&self, f: &mut dyn FnMut(&dyn Widget)) {
-        self.horiz_bar.walk(f);
-        self.vert_bar.walk(f);
-        self.child.walk(f);
-        f(self)
-    }
-    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
-        self.horiz_bar.walk_mut(f);
-        self.vert_bar.walk_mut(f);
-        self.child.walk_mut(f);
-        f(self)
-    }
-
-    fn find_coord_mut(&mut self, coord: Coord) -> Option<&mut dyn Widget> {
-        if self.horiz_bar.rect().contains(coord) {
-            self.horiz_bar.find_coord_mut(coord)
-        } else if self.vert_bar.rect().contains(coord) {
-            self.vert_bar.find_coord_mut(coord)
-        } else {
-            self.child.find_coord_mut(coord + self.offset)
-        }
-    }
-}
-
-impl<W: Widget> Widget for ScrollRegion<W> {}
-
 impl<W: Widget> Layout for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut rules = self.child.size_rules(size_handle, axis);
@@ -262,6 +193,16 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         }
     }
 
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if self.horiz_bar.rect().contains(coord) {
+            self.horiz_bar.find_id(coord)
+        } else if self.vert_bar.rect().contains(coord) {
+            self.vert_bar.find_id(coord)
+        } else {
+            self.child.find_id(coord + self.offset)
+        }
+    }
+
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
         if self.show_bars.0 {
             self.horiz_bar.draw(draw_handle, mgr);
@@ -282,7 +223,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
 impl<W: Widget + Handler> Handler for ScrollRegion<W> {
     type Msg = <W as Handler>::Msg;
 
-    fn handle(&mut self, mgr: &mut Manager, addr: Address, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
             Event::Action(Action::Scroll(delta)) => {
                 let d = match delta {
@@ -306,60 +247,41 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
             e @ _ => Response::Unhandled(e),
         };
 
-        let do_horiz =
-            |w: &mut Self, mgr: &mut Manager, addr, event| match Response::<Self::Msg>::try_from(
-                w.horiz_bar.handle(mgr, addr, event),
-            ) {
-                Ok(Response::Unhandled(event)) => unhandled(w, mgr, event),
+        if id <= self.horiz_bar.id() {
+            return match Response::<Self::Msg>::try_from(self.horiz_bar.handle(mgr, id, event)) {
+                Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
-                    w.set_offset(mgr, Coord(msg as i32, w.offset.1));
+                    self.set_offset(mgr, Coord(msg as i32, self.offset.1));
                     Response::None
                 }
             };
-        let do_vert =
-            |w: &mut Self, mgr: &mut Manager, addr, event| match Response::<Self::Msg>::try_from(
-                w.vert_bar.handle(mgr, addr, event),
-            ) {
-                Ok(Response::Unhandled(event)) => unhandled(w, mgr, event),
+        } else if id <= self.vert_bar.id() {
+            return match Response::<Self::Msg>::try_from(self.vert_bar.handle(mgr, id, event)) {
+                Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
-                    w.set_offset(mgr, Coord(w.offset.0, msg as i32));
+                    self.set_offset(mgr, Coord(self.offset.0, msg as i32));
                     Response::None
                 }
             };
+        } else if id == self.id() {
+            return match event {
+                Event::PressMove { delta, .. } => {
+                    if self.set_offset(mgr, self.offset - delta) {
+                        self.horiz_bar.set_value(mgr, self.offset.0 as u32);
+                        self.vert_bar.set_value(mgr, self.offset.1 as u32);
+                    }
+                    Response::None
+                }
+                Event::PressEnd { .. } => {
+                    // consume due to request
+                    Response::None
+                }
+                e @ _ => Response::Unhandled(e),
+            };
+        }
 
-        let addr = match addr {
-            Address::Id(id) if id <= self.horiz_bar.id() => {
-                return do_horiz(self, mgr, addr, event)
-            }
-            Address::Id(id) if id <= self.vert_bar.id() => return do_vert(self, mgr, addr, event),
-            Address::Id(id) if id == self.id() => {
-                let r = match event {
-                    Event::PressMove { delta, .. } => {
-                        if self.set_offset(mgr, self.offset - delta) {
-                            self.horiz_bar.set_value(mgr, self.offset.0 as u32);
-                            self.vert_bar.set_value(mgr, self.offset.1 as u32);
-                        }
-                        Response::None
-                    }
-                    Event::PressEnd { .. } => {
-                        // consume due to request
-                        Response::None
-                    }
-                    e @ _ => Response::Unhandled(e),
-                };
-                return r;
-            }
-            a @ Address::Id(_) => a,
-            Address::Coord(coord) if self.horiz_bar.rect().contains(coord) => {
-                return do_horiz(self, mgr, addr, event);
-            }
-            Address::Coord(coord) if self.vert_bar.rect().contains(coord) => {
-                return do_vert(self, mgr, addr, event);
-            }
-            Address::Coord(coord) => Address::Coord(coord + self.offset),
-        };
         let event = match event {
             a @ Event::Action(_) => a,
             Event::PressStart { source, coord } => Event::PressStart {
@@ -377,18 +299,16 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
             },
             Event::PressEnd {
                 source,
-                start_id,
                 end_id,
                 coord,
             } => Event::PressEnd {
                 source,
-                start_id,
                 end_id,
                 coord: coord + self.offset,
             },
         };
 
-        match self.child.handle(mgr, addr, event) {
+        match self.child.handle(mgr, id, event) {
             Response::None => Response::None,
             Response::Unhandled(event) => unhandled(self, mgr, event),
             e @ _ => e,

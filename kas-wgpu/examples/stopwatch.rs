@@ -90,7 +90,8 @@ fn make_window() -> Box<dyn kas::Window> {
         }
     };
 
-    let window = Window::new("Stopwatch", stopwatch);
+    let mut window = Window::new("Stopwatch", stopwatch);
+    window.set_enforce_size(true, true);
     Box::new(window)
 }
 

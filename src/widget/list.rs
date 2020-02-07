@@ -7,14 +7,14 @@
 
 use std::iter;
 
-use crate::event::{Address, Event, Handler, Manager, Response};
+use crate::event::{Event, Handler, Manager, Response};
 use crate::geom::Coord;
 use crate::layout::{
     self, AxisInfo, Direction, Horizontal, Margins, RowPositionSolver, RulesSetter, RulesSolver,
     SizeRules, Vertical,
 };
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, TkAction, Widget, WidgetCore};
+use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
 use kas::geom::Rect;
 
 /// A generic row widget
@@ -130,17 +130,6 @@ impl<D: Direction, W: Widget> WidgetCore for List<D, W> {
         }
         f(self)
     }
-
-    fn find_coord_mut(&mut self, coord: Coord) -> Option<&mut dyn Widget> {
-        let solver = RowPositionSolver::new(self.direction);
-        if let Some(child) = solver.find_child(&mut self.widgets, coord) {
-            return Some(child.as_widget_mut());
-        }
-
-        // We should return Some(self), but hit a borrow check error.
-        // This should however be unreachable anyway.
-        None
-    }
 }
 
 impl<D: Direction, W: Widget> Widget for List<D, W> {}
@@ -174,6 +163,17 @@ impl<D: Direction, W: Widget> Layout for List<D, W> {
         }
     }
 
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        let solver = RowPositionSolver::new(self.direction);
+        if let Some(child) = solver.find_child(&self.widgets, coord) {
+            return child.find_id(coord);
+        }
+
+        // We should return Some(self), but hit a borrow check error.
+        // This should however be unreachable anyway.
+        None
+    }
+
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
         let solver = RowPositionSolver::new(self.direction);
         solver.for_children(&self.widgets, draw_handle.target_rect(), |w| {
@@ -185,23 +185,13 @@ impl<D: Direction, W: Widget> Layout for List<D, W> {
 impl<D: Direction, W: Widget + Handler> Handler for List<D, W> {
     type Msg = <W as Handler>::Msg;
 
-    fn handle(&mut self, mgr: &mut Manager, addr: Address, event: Event) -> Response<Self::Msg> {
-        match addr {
-            kas::event::Address::Id(id) => {
-                for child in &mut self.widgets {
-                    if id <= child.id() {
-                        return child.handle(mgr, addr, event);
-                    }
-                }
-                debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
-            }
-            kas::event::Address::Coord(coord) => {
-                let solver = RowPositionSolver::new(self.direction);
-                if let Some(child) = solver.find_child(&mut self.widgets, coord) {
-                    return child.handle(mgr, addr, event);
-                }
+    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        for child in &mut self.widgets {
+            if id <= child.id() {
+                return child.handle(mgr, id, event);
             }
         }
+        debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
         Response::Unhandled(event)
     }
 }

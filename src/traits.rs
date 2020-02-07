@@ -139,16 +139,6 @@ pub trait WidgetCore: fmt::Debug {
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
     fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget));
-
-    /// Find a child widget by coordinate
-    ///
-    /// This requires that widget layout has been set.
-    ///
-    /// In the case of an empty grid cell, the parent widget is returned
-    /// (same behaviour as with events addressed by coordinate).
-    /// The only case `None` should be expected is when `coord` is outside the
-    /// initial widget's region; however this is not guaranteed.
-    fn find_coord_mut(&mut self, coord: Coord) -> Option<&mut dyn Widget>;
 }
 
 /// Positioning and drawing routines for widgets
@@ -178,6 +168,24 @@ pub trait Layout: WidgetCore {
     #[inline]
     fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect) {
         self.core_data_mut().rect = rect;
+    }
+
+    /// Find a child widget by coordinate
+    ///
+    /// This is used by the event manager to target the correct widget given an
+    /// event from a coordinate source (mouse pointer, touch event).
+    /// Widgets may return their own Id over that of children in order to steal
+    /// events (e.g. a button using an inner label widget).
+    ///
+    /// This must not be called before [`Layout::set_rect`].
+    ///
+    /// In the case of an empty grid cell, the parent widget is returned
+    /// (same behaviour as with events addressed by coordinate).
+    /// The only case `None` should be expected is when `coord` is outside the
+    /// initial widget's region; however this is not guaranteed.
+    #[inline]
+    fn find_id(&self, _coord: Coord) -> Option<WidgetId> {
+        Some(self.id())
     }
 
     /// Draw a widget
@@ -244,10 +252,13 @@ pub trait Widget: Layout {
     /// This method is called on triggered updates (see [`update_on_handle`]).
     /// The source handle is specified via the [`UpdateHandle`] parameter.
     ///
+    /// A user-defined payload is passed. Interpretation of this payload is
+    /// user-defined and unfortunately not type safe.
+    ///
     /// This method being called does not imply a redraw.
     ///
     /// [`update_on_handle`]: Manager::update_on_handle
-    fn update_handle(&mut self, _: &mut Manager, _: UpdateHandle) {}
+    fn update_handle(&mut self, _mgr: &mut Manager, _handle: UpdateHandle, _payload: u64) {}
 
     /// Is this widget navigable via Tab key?
     fn allow_focus(&self) -> bool {
@@ -284,7 +295,11 @@ pub trait Window: Widget + Handler<Msg = VoidMsg> {
     fn title(&self) -> &str;
 
     /// Adjust the size of the window, repositioning widgets.
-    fn resize(&mut self, size_handle: &mut dyn SizeHandle, size: Size);
+    fn resize(
+        &mut self,
+        size_handle: &mut dyn SizeHandle,
+        size: Size,
+    ) -> (Option<Size>, Option<Size>);
 
     /// Get a list of available callbacks.
     ///

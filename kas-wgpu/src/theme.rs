@@ -213,6 +213,11 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
         Size::uniform(2 * (self.window.frame_size + self.window.margin) + self.window.font_scale)
     }
 
+    #[inline]
+    fn radiobox(&self) -> Size {
+        self.checkbox()
+    }
+
     fn scrollbar(&self) -> (u32, u32, u32) {
         let s = self.window.scrollbar_size as u32;
         (s, s, 2 * s)
@@ -294,7 +299,8 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let outer = rect + self.offset;
         let inner = outer.shrink(self.window.frame_size);
         let style = ShadeStyle::Round(Vec2(0.6, -0.6));
-        self.draw.shaded_frame(self.pass, outer, inner, style, FRAME);
+        self.draw
+            .shaded_frame(self.pass, outer, inner, style, FRAME);
     }
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
@@ -363,7 +369,8 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         let mut inner = outer.shrink(self.window.frame_size);
         let style = ShadeStyle::Square(Vec2(0.0, -0.8));
-        self.draw.shaded_frame(self.pass, outer, inner, style, FRAME);
+        self.draw
+            .shaded_frame(self.pass, outer, inner, style, FRAME);
 
         if highlights.key_focus {
             outer = inner;
@@ -375,15 +382,25 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         self.draw.rect(self.pass, inner, TEXT_AREA);
     }
 
-    fn checkbox(&mut self, pos: Coord, checked: bool, highlights: HighlightState) {
-        let pos = pos + self.offset;
-        let size =
-            Size::uniform(self.window.frame_size + self.window.margin + self.window.font_scale);
-        let mut outer = Rect { pos, size };
+    fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
+        let mut outer = rect + self.offset;
+
+        // TODO: remove this hack when the layout engine can align instead of stretch
+        let pref_size = Size::uniform(
+            2 * (self.window.frame_size + self.window.margin) + self.window.font_scale,
+        );
+        if outer.size.0 > pref_size.0 {
+            outer.size.0 = pref_size.0;
+        }
+        if outer.size.1 > pref_size.1 {
+            outer.pos.1 += ((outer.size.1 - pref_size.1) / 2) as i32;
+            outer.size.1 = pref_size.1;
+        }
 
         let mut inner = outer.shrink(self.window.frame_size);
         let style = ShadeStyle::Square(Vec2(0.0, -0.8));
-        self.draw.shaded_frame(self.pass, outer, inner, style, FRAME);
+        self.draw
+            .shaded_frame(self.pass, outer, inner, style, FRAME);
 
         if checked || highlights.any() {
             outer = inner;
@@ -394,6 +411,12 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         let col = button_colour(highlights, checked).unwrap_or(TEXT_AREA);
         self.draw.rect(self.pass, inner, col);
+    }
+
+    #[inline]
+    fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
+        // TODO: distinct
+        self.checkbox(rect, checked, highlights);
     }
 
     fn scrollbar(

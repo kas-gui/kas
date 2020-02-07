@@ -119,7 +119,11 @@ impl ManagerState {
         let mut map = HashMap::new();
         let mut id = WidgetId::FIRST;
 
+        // We re-set these instead of remapping:
         self.accel_keys.clear();
+        self.time_updates.clear();
+        self.handle_updates.clear();
+
         let coord = self.last_mouse_coord;
         let mut mgr = self.manager(tkw);
         widget.walk_mut(&mut |widget| {
@@ -129,7 +133,7 @@ impl ManagerState {
             id = id.next();
         });
 
-        self.hover = widget.find_coord_mut(coord).map(|w| w.id());
+        self.hover = widget.find_id(coord);
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.key_focus = self.key_focus.and_then(|id| map.get(&id).cloned());
@@ -170,24 +174,16 @@ impl ManagerState {
         do_map!(self.key_events, |elt: (u32, WidgetId)| map
             .get(&elt.1)
             .map(|id| (elt.0, *id)));
-
-        do_map!(self.time_updates, |elt: (Instant, WidgetId)| map
-            .get(&elt.1)
-            .map(|id| (elt.0, *id)));
-
-        for ids in self.handle_updates.values_mut() {
-            do_map!(ids, |elt: WidgetId| map.get(&elt).cloned());
-        }
     }
 
     pub fn region_moved<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         // Note: redraw is already implied.
 
         // Update hovered widget
-        self.hover = widget.find_coord_mut(self.last_mouse_coord).map(|w| w.id());
+        self.hover = widget.find_id(self.last_mouse_coord);
 
         for touch in &mut self.touch_grab {
-            touch.cur_id = widget.find_coord_mut(touch.coord).map(|w| w.id());
+            touch.cur_id = widget.find_id(touch.coord);
         }
     }
 
@@ -233,6 +229,9 @@ impl<'a> Manager<'a> {
     /// a clock each second. Very short positive durations (e.g. 1ns) may be
     /// used to schedule an update on the next frame. Frames should in any case
     /// be limited by vsync, avoiding excessive frame rates.
+    ///
+    /// This should be called from [`Widget::configure`] or from an event
+    /// handler. Note that scheduled updates are cleared if reconfigured.
     pub fn update_on_timer(&mut self, duration: Duration, w_id: WidgetId) {
         let time = Instant::now() + duration;
         'outer: loop {
@@ -259,6 +258,8 @@ impl<'a> Manager<'a> {
     /// All widgets subscribed to an update handle will have their
     /// [`Widget::update_handle`] method called when [`Manager::trigger_update`]
     /// is called with the corresponding handle.
+    ///
+    /// This should be called from [`Widget::configure`].
     pub fn update_on_handle(&mut self, handle: UpdateHandle, w_id: WidgetId) {
         self.mgr
             .handle_updates
@@ -310,8 +311,8 @@ impl<'a> Manager<'a> {
     /// All widgets subscribed to the given [`UpdateHandle`], across all
     /// windows, will receive an update.
     #[inline]
-    pub fn trigger_update(&mut self, handle: UpdateHandle) {
-        self.tkw.trigger_update(handle);
+    pub fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
+        self.tkw.trigger_update(handle, payload);
     }
 
     /// Attempt to get clipboard contents
@@ -385,6 +386,8 @@ impl<'a> Manager<'a> {
     ///
     /// If this key is pressed when the window has focus and no widget has a
     /// key-grab, the given widget will receive an [`Action::Activate`] event.
+    ///
+    /// This should be set from [`Widget::configure`].
     #[inline]
     pub fn add_accel_key(&mut self, key: VirtualKeyCode, id: WidgetId) {
         self.mgr.accel_keys.insert(key, id);
@@ -598,14 +601,19 @@ impl<'a> Manager<'a> {
         self.mgr.time_updates.sort_by_key(|row| row.0);
     }
 
-    /// Update widgets due to timer
-    pub fn update_handle<W: Widget + ?Sized>(&mut self, handle: UpdateHandle, widget: &mut W) {
+    /// Update widgets due to handle
+    pub fn update_handle<W: Widget + ?Sized>(
+        &mut self,
+        widget: &mut W,
+        handle: UpdateHandle,
+        payload: u64,
+    ) {
         // NOTE: to avoid borrow conflict, we must clone values!
         if let Some(mut values) = self.mgr.handle_updates.get(&handle).cloned() {
             for w_id in values.drain(..) {
                 trace!("Updating widget {} via {:?}", w_id, handle);
                 if let Some(w) = widget.find_mut(w_id) {
-                    w.update_handle(self, handle);
+                    w.update_handle(self, handle, payload);
                 }
             }
         }
@@ -638,7 +646,7 @@ impl<'a> Manager<'a> {
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = self.mgr.char_focus {
                     let ev = Event::Action(Action::ReceivedCharacter(c));
-                    widget.handle(&mut self, Address::Id(id), ev)
+                    widget.handle(&mut self, id, ev)
                 } else {
                     Response::None
                 }
@@ -668,7 +676,7 @@ impl<'a> Manager<'a> {
                                 self.add_key_event(scancode, id);
 
                                 let ev = Event::Action(Action::Activate);
-                                widget.handle(&mut self, Address::Id(id), ev)
+                                widget.handle(&mut self, id, ev)
                             } else { Response::None }
                         }
                         VirtualKeyCode::Escape => {
@@ -681,7 +689,7 @@ impl<'a> Manager<'a> {
                                 self.add_key_event(scancode, id);
 
                                 let ev = Event::Action(Action::Activate);
-                                widget.handle(&mut self, Address::Id(id), ev)
+                                widget.handle(&mut self, id, ev)
                             } else { Response::None }
                         }
                     },
@@ -699,13 +707,13 @@ impl<'a> Manager<'a> {
                 let coord = position.into();
 
                 // Update hovered widget
-                self.set_hover(widget.find_coord_mut(coord).map(|w| w.id()));
+                self.set_hover(widget.find_id(coord));
 
                 let r = if let Some((grab_id, button)) = self.mouse_grab() {
                     let source = PressSource::Mouse(button);
                     let delta = coord - self.mgr.last_mouse_coord;
                     let ev = Event::PressMove { source, coord, delta };
-                    widget.handle(&mut self, Address::Id(grab_id), ev)
+                    widget.handle(&mut self, grab_id, ev)
                 } else {
                     // We don't forward move events without a grab
                     Response::None
@@ -728,7 +736,7 @@ impl<'a> Manager<'a> {
                         ScrollDelta::PixelDelta(Coord::from_logical(pos, self.mgr.dpi_factor)),
                 });
                 if let Some(id) = self.mgr.hover {
-                    widget.handle(&mut self, Address::Id(id), Event::Action(action))
+                    widget.handle(&mut self, id, Event::Action(action))
                 } else {
                     Response::None
                 }
@@ -741,41 +749,32 @@ impl<'a> Manager<'a> {
                 let coord = self.mgr.last_mouse_coord;
                 let source = PressSource::Mouse(button);
 
-                let r = if let Some((grab_id, _)) = self.mouse_grab() {
+                if let Some((grab_id, _)) = self.mouse_grab() {
                     // Mouse grab active: send events there
                     let ev = match state {
-                        // TODO: using grab_id as start_id is incorrect when
-                        // multiple buttons are pressed simultaneously
                         ElementState::Pressed => Event::PressStart { source, coord },
                         ElementState::Released => Event::PressEnd {
                             source,
-                            start_id: Some(grab_id),
                             end_id: self.mgr.hover,
                             coord,
                         },
                     };
-                    widget.handle(&mut self, Address::Id(grab_id), ev)
+                    let r = widget.handle(&mut self, grab_id, ev);
+                    if state == ElementState::Released {
+                        self.end_mouse_grab(button);
+                    }
+                    r
                 } else if let Some(id) = self.mgr.hover {
-                    // No mouse grab, but we have a hover target
-                    let ev = match state {
-                        ElementState::Pressed => Event::PressStart { source, coord },
-                        ElementState::Released => Event::PressEnd {
-                            source,
-                            start_id: None,
-                            end_id: Some(id),
-                            coord,
-                        },
-                    };
-                    widget.handle(&mut self, Address::Id(id), ev)
+                    // No mouse grab but have a hover target
+                    if state == ElementState::Pressed {
+                        let ev = Event::PressStart { source, coord };
+                        widget.handle(&mut self, id, ev)
+                    } else {
+                        Response::None
+                    }
                 } else {
-                    // This happens when there is no widget and on click-release
-                    // when the cursor is no longer over the window.
                     Response::None
-                };
-                if state == ElementState::Released {
-                    self.end_mouse_grab(button);
                 }
-                r
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
             // AxisMotion { axis: AxisId, value: f64, },
@@ -785,16 +784,20 @@ impl<'a> Manager<'a> {
                 let coord = touch.location.into();
                 match touch.phase {
                     TouchPhase::Started => {
-                        let ev = Event::PressStart { source, coord };
-                        widget.handle(&mut self, Address::Coord(coord), ev)
+                        if let Some(id) = widget.find_id(coord) {
+                            let ev = Event::PressStart { source, coord };
+                            widget.handle(&mut self, id, ev)
+                        } else {
+                            Response::None
+                        }
                     }
                     TouchPhase::Moved => {
                         // NOTE: calling widget.handle twice appears
                         // to be unavoidable (as with CursorMoved)
-                        let cur_id = widget.find_coord_mut(coord).map(|w| w.id());
+                        let cur_id = widget.find_id(coord);
 
                         let r = self.get_touch(touch.id).map(|grab| {
-                            let addr = Address::Id(grab.start_id);
+                            let id = grab.start_id;
                             let action = Event::PressMove {
                                 source,
                                 coord,
@@ -807,14 +810,14 @@ impl<'a> Manager<'a> {
                             grab.cur_id = cur_id;
                             grab.coord = coord;
 
-                            (addr, action, redraw)
+                            (id, action, redraw)
                         });
 
-                        if let Some((addr, action, redraw)) = r {
+                        if let Some((id, action, redraw)) = r {
                             if redraw {
                                 self.send_action(TkAction::Redraw);
                             }
-                            widget.handle(&mut self, addr, action)
+                            widget.handle(&mut self, id, action)
                         } else {
                             Response::None
                         }
@@ -823,36 +826,28 @@ impl<'a> Manager<'a> {
                         if let Some(grab) = self.remove_touch(touch.id) {
                             let action = Event::PressEnd {
                                 source,
-                                start_id: Some(grab.start_id),
                                 end_id: grab.cur_id,
                                 coord,
                             };
                             if let Some(cur_id) = grab.cur_id {
                                 self.redraw(cur_id);
                             }
-                            widget.handle(&mut self, Address::Id(grab.start_id), action)
+                            widget.handle(&mut self, grab.start_id, action)
                         } else {
-                            let action = Event::PressEnd {
-                                source,
-                                start_id: None,
-                                end_id: None,
-                                coord,
-                            };
-                            widget.handle(&mut self, Address::Coord(coord), action)
+                            Response::None
                         }
                     }
                     TouchPhase::Cancelled => {
                         if let Some(grab) = self.remove_touch(touch.id) {
                             let action = Event::PressEnd {
                                 source,
-                                start_id: Some(grab.start_id),
                                 end_id: None,
                                 coord,
                             };
                             if let Some(cur_id) = grab.cur_id {
                                 self.redraw(cur_id);
                             }
-                            widget.handle(&mut self, Address::Id(grab.start_id), action)
+                            widget.handle(&mut self, grab.start_id, action)
                         } else {
                             Response::None
                         }

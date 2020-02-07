@@ -223,7 +223,9 @@ impl DrawShaded for DrawPipe {
         col: Colour,
     ) {
         match style {
-            ShadeStyle::Square(norm) => self.square_pipe.shaded_frame(pass, outer, inner, norm, col),
+            ShadeStyle::Square(norm) => {
+                self.square_pipe.shaded_frame(pass, outer, inner, norm, col)
+            }
             ShadeStyle::Round(norm) => self.round_pipe.shaded_frame(pass, outer, inner, norm, col),
         }
     }

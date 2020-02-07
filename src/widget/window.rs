@@ -7,12 +7,12 @@
 
 use std::fmt::{self, Debug};
 
-use crate::event::{Address, Callback, Event, Handler, Manager, Response, VoidMsg};
+use crate::event::{Callback, Event, Handler, Manager, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout::{self};
 use crate::macros::Widget;
 use crate::theme::SizeHandle;
-use crate::{CoreData, LayoutData, Widget};
+use crate::{CoreData, LayoutData, Widget, WidgetId};
 
 /// The main instantiation of the [`Window`] trait.
 #[widget]
@@ -23,7 +23,8 @@ pub struct Window<W: Widget + 'static> {
     core: CoreData,
     #[layout_data]
     layout_data: <Self as LayoutData>::Data,
-    min_size: Size,
+    enforce_min: bool,
+    enforce_max: bool,
     title: String,
     #[widget]
     w: W,
@@ -35,8 +36,8 @@ impl<W: Widget> Debug for Window<W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Window {{ core: {:?}, min_size: {:?}, solver: <omitted>, w: {:?}, fns: [",
-            self.core, self.min_size, self.w
+            "Window {{ core: {:?}, solver: <omitted>, w: {:?}, fns: [",
+            self.core, self.w
         )?;
         let mut iter = self.fns.iter();
         if let Some(first) = iter.next() {
@@ -54,7 +55,8 @@ impl<W: Widget + Clone> Clone for Window<W> {
         Window {
             core: self.core.clone(),
             layout_data: self.layout_data.clone(),
-            min_size: self.min_size,
+            enforce_min: self.enforce_min,
+            enforce_max: self.enforce_max,
             title: self.title.clone(),
             w: self.w.clone(),
             fns: self.fns.clone(),
@@ -69,12 +71,21 @@ impl<W: Widget> Window<W> {
         Window {
             core: Default::default(),
             layout_data: Default::default(),
-            min_size: Size::ZERO,
+            enforce_min: true,
+            enforce_max: false,
             title: title.to_string(),
             w,
             fns: Vec::new(),
             final_callback: None,
         }
+    }
+
+    /// Configure whether min/max dimensions are forced
+    ///
+    /// By default, the min size is enforced but not the max.
+    pub fn set_enforce_size(&mut self, min: bool, max: bool) {
+        self.enforce_min = min;
+        self.enforce_max = max;
     }
 
     /// Add a closure to be called, with a reference to self, on the given
@@ -98,9 +109,9 @@ impl<W: Widget> Window<W> {
 impl<W: Widget + Handler<Msg = VoidMsg> + 'static> Handler for Window<W> {
     type Msg = VoidMsg;
 
-    fn handle(&mut self, mgr: &mut Manager, addr: Address, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         // The window itself doesn't handle events, so we can just pass through
-        self.w.handle(mgr, addr, event)
+        self.w.handle(mgr, id, event)
     }
 }
 
@@ -109,8 +120,16 @@ impl<W: Widget + Handler<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         &self.title
     }
 
-    fn resize(&mut self, size_handle: &mut dyn SizeHandle, size: Size) {
-        layout::solve(self, size_handle, size);
+    fn resize(
+        &mut self,
+        size_handle: &mut dyn SizeHandle,
+        size: Size,
+    ) -> (Option<Size>, Option<Size>) {
+        let (min, max) = layout::solve(self, size_handle, size);
+        (
+            if self.enforce_min { Some(min) } else { None },
+            if self.enforce_max { Some(max) } else { None },
+        )
     }
 
     fn callbacks(&self) -> Vec<(usize, Callback)> {

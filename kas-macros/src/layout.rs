@@ -23,6 +23,14 @@ pub(crate) fn derive(
         )
     })?;
 
+    let find_id_area = layout.area.map(|area_widget| {
+        quote! {
+            if self.rect().contains(coord) {
+                Some(self.#area_widget.id())
+            }
+        }
+    });
+
     let is_frame = layout.is_frame;
     if layout.layout == LayoutType::Single {
         if !children.len() == 1 {
@@ -35,6 +43,17 @@ pub(crate) fn derive(
             ));
         }
         let ident = &children[0].ident;
+
+        let find_id_body = find_id_area.unwrap_or_else(|| {
+            quote! {
+                if self.#ident.rect().contains(coord) {
+                    self.#ident.find_id(coord)
+                } else if self.rect().contains(coord) {
+                    Some(self.id())
+                }
+            }
+        });
+
         let fns = quote! {
             fn size_rules(
                 &mut self,
@@ -72,6 +91,14 @@ pub(crate) fn derive(
                 self.#ident.set_rect(size_handle, setter.child_rect(()));
             }
 
+            fn find_id(&self, coord: kas::geom::Coord) -> Option<kas::WidgetId> {
+                use kas::WidgetCore;
+
+                #find_id_body else {
+                    None
+                }
+            }
+
             fn draw(
                 &self,
                 draw_handle: &mut dyn kas::theme::DrawHandle,
@@ -104,7 +131,7 @@ pub(crate) fn derive(
         for child in children.iter() {
             impl_layout.child(&child.ident, &child.args)?;
         }
-        Ok(impl_layout.finish())
+        Ok(impl_layout.finish(find_id_area))
     }
 }
 
@@ -118,6 +145,7 @@ pub(crate) struct ImplLayout<'a> {
     size: TokenStream,
     set_rect: TokenStream,
     draw: TokenStream,
+    find_id_else: TokenStream,
 }
 
 impl<'a> ImplLayout<'a> {
@@ -132,6 +160,7 @@ impl<'a> ImplLayout<'a> {
             size: quote! {},
             set_rect: quote! {},
             draw: quote! {},
+            find_id_else: quote! {},
         }
     }
 
@@ -199,6 +228,13 @@ impl<'a> ImplLayout<'a> {
             }
         });
 
+        // TODO: more efficient search strategy?
+        self.find_id_else.append_all(quote! {
+            if self.#ident.rect().contains(coord) {
+                self.#ident.find_id(coord)
+            } else
+        });
+
         Ok(())
     }
     // dir: horiz (false) or vert (true)
@@ -224,7 +260,7 @@ impl<'a> ImplLayout<'a> {
         i
     }
 
-    pub fn finish(self) -> (TokenStream, TokenStream) {
+    pub fn finish(self, find_id_area: Option<TokenStream>) -> (TokenStream, TokenStream) {
         let data = self.data;
         let cols = self.cols as usize;
         let rows = self.rows as usize;
@@ -235,6 +271,7 @@ impl<'a> ImplLayout<'a> {
         let size = self.size;
         let set_rect = self.set_rect;
         let draw = self.draw;
+        let find_id_else = self.find_id_else;
 
         // sort by end column, then by start column in reverse order
         col_spans.sort_by(|a, b| match a.1.cmp(&b.1) {
@@ -346,6 +383,14 @@ impl<'a> ImplLayout<'a> {
             LayoutType::Single => unreachable!(),
         };
 
+        let find_id_body = find_id_area.unwrap_or_else(|| {
+            quote! {
+                #find_id_else if self.rect().contains(coord) {
+                    Some(self.id())
+                }
+            }
+        });
+
         let fns = quote! {
             fn size_rules(
                 &mut self,
@@ -385,6 +430,14 @@ impl<'a> ImplLayout<'a> {
                     &mut self.#data,
                 );
                 #set_rect
+            }
+
+            fn find_id(&self, coord: kas::geom::Coord) -> Option<kas::WidgetId> {
+                use kas::WidgetCore;
+
+                #find_id_body else {
+                    None
+                }
             }
 
             fn draw(

@@ -12,10 +12,13 @@ use kas::event::{Callback, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::{theme, TkAction};
 use winit::dpi::PhysicalSize;
+use winit::error::OsError;
 use winit::event::WindowEvent;
+use winit::event_loop::EventLoopWindowTarget;
 
 use crate::draw::DrawPipe;
 use crate::shared::SharedState;
+use crate::ProxyAction;
 
 /// Per-window data
 pub(crate) struct Window<TW> {
@@ -35,9 +38,12 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     /// Construct a window
     pub fn new<T: theme::Theme<DrawPipe, Window = TW>>(
         shared: &mut SharedState<T>,
-        window: winit::window::Window,
+        elwt: &EventLoopWindowTarget<ProxyAction>,
         widget: Box<dyn kas::Window>,
-    ) -> Self {
+    ) -> Result<Self, OsError> {
+        let window = winit::window::Window::new(elwt)?;
+        window.set_title(widget.title());
+
         let dpi_factor = window.scale_factor();
         let size: Size = window.inner_size().into();
         info!("Constucted new window with size {:?}", size);
@@ -58,7 +64,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
 
         let mgr = ManagerState::new(dpi_factor);
 
-        Window {
+        Ok(Window {
             widget,
             mgr,
             window,
@@ -67,7 +73,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             swap_chain,
             draw_pipe,
             theme_window,
-        }
+        })
     }
 
     /// Called by the `Toolkit` when the event loop starts to initialise
@@ -97,7 +103,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         debug!("Reconfiguring window (size = {:?})", size);
 
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
-        self.widget.resize(&mut size_handle, size);
+        let (min, max) = self.widget.resize(&mut size_handle, size);
+        self.window.set_min_inner_size(min);
+        self.window.set_max_inner_size(max);
         self.mgr.configure(shared, &mut *self.widget);
         self.window.request_redraw();
 
@@ -165,9 +173,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         &mut self,
         shared: &mut SharedState<T>,
         handle: UpdateHandle,
+        payload: u64,
     ) -> TkAction {
         let mut mgr = self.mgr.manager(shared);
-        mgr.update_handle(handle, &mut *self.widget);
+        mgr.update_handle(&mut *self.widget, handle, payload);
         mgr.unwrap_action()
     }
 }

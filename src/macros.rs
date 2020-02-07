@@ -75,6 +75,9 @@
 //!
 //! -   (first position): one of `single`, `horizontal`, `vertical`, `grid`
 //! -   (optional): `frame`
+//! -   (optional): `area=FIELD` where `FIELD` is a child widget; if specified,
+//!     the area of self is considered to refer to child `FIELD`. This causes
+//!     the [`kas::Layout::find_id`] function to directly return the child's Id.
 //!
 //! Child widgets are arranged as specified by the first parameter:
 //!
@@ -98,18 +101,31 @@
 //!
 //! #### Handler
 //!
-//! If the `#[handler]` attribute is present, then the [`Handler`] trait is
-//! derived. This attribute accepts the following arguments:
+//! If one or more `#[handler]` attributes are present, then the [`Handler`]
+//! trait is implemented (potentially multiple times with different
+//! substitutions of generic parameters).
+//! This attribute accepts the following arguments:
 //!
-//! -   (optional) `msg = ...` — the [`Handler::Msg`] associated type; if not
+//! -   (optional) `msg = TYPE` — the [`Handler::Msg`] associated type; if not
 //!     specified, this type defaults to [`kas::event::VoidMsg`]
-//! -   (last position, optional): `generics = < X, Y, ... > where CONDS`
+//! -   (optional) `substitutions = TUPLE` — a tuple of subsitutions for type
+//!     generics, for example: `(T1 = MyType, T2 = some::other::Type)`
+//! -   (optional): `generics = < X, Y, ... > where CONDS`
+//!     (`where CONDS` is optional, and if present must be the last argument)
 //!
 //! Commonly the [`Handler`] implementation requires extra bounds on generic
 //! types, and sometimes also additional type parameters; the `generics`
 //! argument allows this. This argument is optional and if present must be the
 //! last argument. Note that the generic types and bounds given are *added to*
 //! the generics defined on the struct itself.
+//!
+//! If you need to substitute generic parameters on the struct with concrete
+//! types for the [`Handler`] implementation, use the `substitutions` argument.
+//! Be aware that this behaviour is a hack which only supports type generics
+//! on parameters without where clause constraints.
+//! (Note that ideally we would use equality constraints in `where` predicates
+//! instead of adding special parameter substitution support, but type equality
+//! constraints are not supported by Rust yet: #20041.)
 //!
 //! ### Fields
 //!

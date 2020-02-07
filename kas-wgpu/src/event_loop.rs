@@ -95,8 +95,10 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         actions.push((*id, TkAction::CloseAll));
                     }
                 }
-                ProxyAction::Update(handle) => {
-                    self.shared.pending.push(PendingAction::Update(handle));
+                ProxyAction::Update(handle, payload) => {
+                    self.shared
+                        .pending
+                        .push(PendingAction::Update(handle, payload));
                 }
             },
 
@@ -164,10 +166,8 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
             match pending {
                 PendingAction::AddWindow(id, widget) => {
                     debug!("Adding window {}", widget.title());
-                    match winit::window::Window::new(elwt) {
-                        Ok(wwin) => {
-                            wwin.set_title(widget.title());
-                            let mut window = Window::new(&mut self.shared, wwin, widget);
+                    match Window::new(&mut self.shared, elwt, widget) {
+                        Ok(mut window) => {
                             let wid = window.window.id();
 
                             let action = window.init(&mut self.shared);
@@ -186,9 +186,9 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         actions.push((*id, TkAction::Close));
                     }
                 }
-                PendingAction::Update(handle) => {
+                PendingAction::Update(handle, payload) => {
                     for (id, window) in self.windows.iter_mut() {
-                        let action = window.update_handle(&mut self.shared, handle);
+                        let action = window.update_handle(&mut self.shared, handle, payload);
                         actions.push((*id, action));
                     }
                 }

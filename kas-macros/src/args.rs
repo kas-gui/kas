@@ -3,6 +3,8 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
+use std::collections::HashMap;
+
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
@@ -25,7 +27,7 @@ pub struct Args {
     pub layout_data: Option<Member>,
     pub widget: Option<WidgetArgs>,
     pub layout: Option<LayoutArgs>,
-    pub handler: Option<HandlerArgs>,
+    pub handler: Vec<HandlerArgs>,
     pub children: Vec<Child>,
 }
 
@@ -96,7 +98,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
 
     let mut widget = None;
     let mut layout = None;
-    let mut handler = None;
+    let mut handler = vec![];
 
     for attr in ast.attrs.drain(..) {
         if attr.path == parse_quote! { widget } {
@@ -118,14 +120,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                     .emit()
             }
         } else if attr.path == parse_quote! { handler } {
-            if handler.is_none() {
-                handler = Some(syn::parse2(attr.tokens)?);
-            } else {
-                attr.span()
-                    .unwrap()
-                    .error("multiple #[handler(..)] attributes on type")
-                    .emit()
-            }
+            handler.push(syn::parse2(attr.tokens)?);
         }
     }
 
@@ -160,6 +155,7 @@ fn member(index: usize, ident: Option<Ident>) -> Member {
 mod kw {
     use syn::custom_keyword;
 
+    custom_keyword!(area);
     custom_keyword!(layout);
     custom_keyword!(col);
     custom_keyword!(row);
@@ -174,6 +170,7 @@ mod kw {
     custom_keyword!(horizontal);
     custom_keyword!(vertical);
     custom_keyword!(grid);
+    custom_keyword!(substitutions);
 }
 
 #[derive(Debug)]
@@ -347,9 +344,10 @@ pub enum LayoutType {
 }
 
 pub struct LayoutArgs {
+    pub span: Span,
     pub layout: LayoutType,
     pub is_frame: bool,
-    pub span: Span,
+    pub area: Option<Ident>,
 }
 
 impl Parse for LayoutArgs {
@@ -383,71 +381,121 @@ impl Parse for LayoutArgs {
             return Err(lookahead.error());
         };
 
-        let mut is_frame = false;
-
-        loop {
-            if content.is_empty() {
-                break;
-            }
+        if content.peek(Comma) {
             let _: Comma = content.parse()?;
+        }
 
+        let mut is_frame = false;
+        let mut area = None;
+
+        while !content.is_empty() {
             let lookahead = content.lookahead1();
             if !is_frame && lookahead.peek(kw::frame) {
                 let _: kw::frame = content.parse()?;
                 is_frame = true;
+            } else if area.is_none() && lookahead.peek(kw::area) {
+                let _: kw::area = content.parse()?;
+                let _: Eq = content.parse()?;
+                area = Some(content.parse()?);
             } else {
                 return Err(lookahead.error());
             }
-        }
-
-        Ok(LayoutArgs {
-            layout,
-            is_frame,
-            span,
-        })
-    }
-}
-
-pub struct HandlerArgs {
-    pub msg: Type,
-    pub generics: Generics,
-}
-
-impl Parse for HandlerArgs {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let mut msg = parse_quote! { kas::event::VoidMsg };
-        let mut generics = Generics::default();
-
-        if input.is_empty() {
-            return Ok(HandlerArgs { msg, generics });
-        }
-
-        let content;
-        let _ = parenthesized!(content in input);
-
-        // If we have a where clause, that will greedily consume remaining
-        // input. Because of this, `msg = ...` must come first.
-
-        if content.peek(kw::msg) {
-            let _: kw::msg = content.parse()?;
-            let _: Eq = content.parse()?;
-            msg = content.parse()?;
 
             if content.peek(Comma) {
                 let _: Comma = content.parse()?;
             }
         }
 
-        if content.peek(kw::generics) {
-            let _: kw::generics = content.parse()?;
-            let _: Eq = content.parse()?;
-            generics = content.parse()?;
-            if content.peek(Where) {
-                generics.where_clause = content.parse()?;
+        Ok(LayoutArgs {
+            span,
+            layout,
+            is_frame,
+            area,
+        })
+    }
+}
+
+pub struct HandlerArgs {
+    pub msg: Type,
+    pub substitutions: HashMap<Ident, Type>,
+    pub generics: Generics,
+}
+
+impl Parse for HandlerArgs {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let (mut have_msg, mut have_subs, mut have_gen) = (false, false, false);
+        let mut msg = parse_quote! { kas::event::VoidMsg };
+        let mut substitutions = HashMap::new();
+        let mut generics = Generics::default();
+
+        if input.is_empty() {
+            return Ok(HandlerArgs {
+                msg,
+                substitutions,
+                generics,
+            });
+        }
+
+        let content;
+        let _ = parenthesized!(content in input);
+
+        // If we have a where clause, that will greedily consume remaining
+        // input. Because of this, `generics = ...` must come last.
+
+        while !content.is_empty() {
+            let lookahead = content.lookahead1();
+            if !have_msg && lookahead.peek(kw::msg) {
+                have_msg = true;
+                let _: kw::msg = content.parse()?;
+                let _: Eq = content.parse()?;
+                msg = content.parse()?;
+            } else if !have_subs && lookahead.peek(kw::substitutions) {
+                have_subs = true;
+                let _: kw::substitutions = content.parse()?;
+                let _: Eq = content.parse()?;
+                let content2;
+                let _ = parenthesized!(content2 in content);
+                while !content2.is_empty() {
+                    // TODO: ideally we should support substitution of lifetime and
+                    // const generic parameters too.
+                    let ident: Ident = content2.parse()?;
+                    let _: Eq = content2.parse()?;
+                    let ty: Type = content2.parse()?;
+                    if content2.peek(Comma) {
+                        let _: Comma = content2.parse()?;
+                    }
+                    substitutions.insert(ident, ty);
+                }
+            } else if !have_gen && lookahead.peek(kw::generics) {
+                have_gen = true;
+                let _: kw::generics = content.parse()?;
+                let _: Eq = content.parse()?;
+                generics = content.parse()?;
+                if content.peek(Where) {
+                    generics.where_clause = content.parse()?;
+                    // Last pass should consume all content
+                    if !content.is_empty() {
+                        return Err(Error::new(
+                            content.span(),
+                            "no content expected after where clause",
+                        ));
+                    }
+                    break;
+                }
+            } else {
+                return Err(lookahead.error());
+            }
+
+            if content.peek(Comma) {
+                let _: Comma = content.parse()?;
             }
         }
 
-        Ok(HandlerArgs { msg, generics })
+        Ok(HandlerArgs {
+            msg,
+            substitutions,
+            generics,
+        })
     }
 }
 

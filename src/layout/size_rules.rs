@@ -99,6 +99,12 @@ impl SizeRules {
         self.a
     }
 
+    /// Get the maximum size
+    #[inline]
+    pub fn max_size(self) -> u32 {
+        self.b
+    }
+
     /// Like `self = self.max(x - y)` but handling negative values correctly
     // TODO: switch to i32?
     pub fn set_at_least_op_sub(&mut self, x: Self, y: Self) {

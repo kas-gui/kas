@@ -126,8 +126,8 @@ impl<T> kas::TkWindow for SharedState<T> {
         self.pending.push(PendingAction::CloseWindow(id));
     }
 
-    fn trigger_update(&mut self, handle: UpdateHandle) {
-        self.pending.push(PendingAction::Update(handle));
+    fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
+        self.pending.push(PendingAction::Update(handle, payload));
     }
 
     #[inline]
@@ -144,5 +144,5 @@ impl<T> kas::TkWindow for SharedState<T> {
 pub enum PendingAction {
     AddWindow(WindowId, Box<dyn kas::Window>),
     CloseWindow(WindowId),
-    Update(UpdateHandle),
+    Update(UpdateHandle, u64),
 }
