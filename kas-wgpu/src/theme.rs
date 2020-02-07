@@ -43,6 +43,8 @@ impl SampleTheme {
 pub struct SampleWindow {
     font_size: f32,
     font_scale: u32,
+    min_line_length: u32,
+    max_line_length: u32,
     margin: u32,
     frame_size: u32,
     button_frame: u32,
@@ -95,9 +97,12 @@ fn button_colour(highlights: HighlightState, show: bool) -> Option<Colour> {
 
 impl SampleWindow {
     fn new(font_size: f32, dpi_factor: f32) -> Self {
+        let font_scale = (font_size * dpi_factor).round() as u32;
         SampleWindow {
             font_size,
-            font_scale: (font_size * dpi_factor).round() as u32,
+            font_scale,
+            min_line_length: font_scale * 10,
+            max_line_length: font_scale * 40,
             margin: (MARGIN * dpi_factor).round() as u32,
             frame_size: (FRAME_SIZE * dpi_factor).round() as u32,
             button_frame: (BUTTON_FRAME * dpi_factor).round() as u32,
@@ -191,13 +196,17 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
         };
 
         let inner = if axis.is_horizontal() {
-            let min = 3 * line_height;
-            SizeRules::new(min, bound(Horizontal).max(min), StretchPolicy::LowUtility)
+            let bound = bound(Horizontal);
+            SizeRules::new(
+                bound.min(self.window.min_line_length),
+                bound.min(self.window.max_line_length),
+                StretchPolicy::LowUtility,
+            )
         } else {
             SizeRules::new(
                 line_height,
                 bound(Vertical).max(line_height),
-                StretchPolicy::LowUtility,
+                StretchPolicy::Filler,
             )
         };
         let margin = SizeRules::fixed(2 * self.window.margin as u32);
