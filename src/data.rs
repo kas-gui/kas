@@ -102,6 +102,32 @@ pub struct Alignment {
     pub ideal: Size,
 }
 
+impl Alignment {
+    /// Adjust the given `rect` according to alignment, returning the result
+    pub fn apply(&self, rect: Rect) -> Rect {
+        let ideal = self.ideal;
+        let mut pos = rect.pos;
+        let mut size = rect.size;
+        if self.halign != Align::Stretch && ideal.0 < size.0 {
+            pos.0 += match self.halign {
+                Align::Centre => (size.0 - ideal.0) / 2,
+                Align::End => size.0 - ideal.0,
+                Align::Begin | Align::Stretch => 0,
+            } as i32;
+            size.0 = ideal.0;
+        }
+        if self.valign != Align::Stretch && ideal.1 < size.1 {
+            pos.1 += match self.valign {
+                Align::Centre => (size.1 - ideal.1) / 2,
+                Align::End => size.1 - ideal.1,
+                Align::Begin | Align::Stretch => 0,
+            } as i32;
+            size.1 = ideal.1;
+        }
+        Rect { pos, size }
+    }
+}
+
 /// Trait over directional types
 ///
 /// Using a generic `<D: Directional>` over [`Direction`] allows compile-time

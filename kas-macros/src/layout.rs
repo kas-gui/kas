@@ -225,7 +225,8 @@ impl<'a> ImplLayout<'a> {
         });
 
         self.set_rect.append_all(quote! {
-            self.#ident.set_rect(size_handle, setter.child_rect(#child_info));
+            let align = self.#ident.alignment();
+            self.#ident.set_rect(size_handle, setter.child_rect((#child_info, align)));
         });
 
         self.draw.append_all(quote! {
@@ -432,7 +433,7 @@ impl<'a> ImplLayout<'a> {
                 size_handle: &mut dyn kas::theme::SizeHandle,
                 rect: kas::geom::Rect)
             {
-                use kas::WidgetCore;
+                use kas::{WidgetCore, Widget};
                 use kas::layout::{Margins, RulesSetter};
                 self.core_data_mut().rect = rect;
 

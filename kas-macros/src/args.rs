@@ -175,6 +175,7 @@ mod kw {
 
 #[derive(Debug)]
 pub struct WidgetAttrArgs {
+    // TODO: add optional alignment
     pub col: Option<Lit>,
     pub row: Option<Lit>,
     pub cspan: Option<Lit>,

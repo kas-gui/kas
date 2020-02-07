@@ -9,6 +9,7 @@ use std::marker::PhantomData;
 
 use super::{AxisInfo, GridStorage, Margins, RowTemp, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::{Coord, Rect, Size};
+use crate::Alignment;
 
 /// Per-child information
 pub struct GridChildInfo {
@@ -270,26 +271,27 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
 
 impl<RT: RowTemp, CT: RowTemp, S: GridStorage> RulesSetter for GridSetter<RT, CT, S> {
     type Storage = S;
-    type ChildInfo = GridChildInfo;
+    type ChildInfo = (GridChildInfo, Alignment);
 
     fn child_rect(&mut self, child_info: Self::ChildInfo) -> Rect {
+        let (info, alignment) = child_info;
         let pos = self.pos
             + Coord(
-                self.col_pos.as_ref()[child_info.col] as i32,
-                self.row_pos.as_ref()[child_info.row] as i32,
+                self.col_pos.as_ref()[info.col] as i32,
+                self.row_pos.as_ref()[info.row] as i32,
             );
 
         let mut size = Size(
-            self.inter.0 * (child_info.col_end - child_info.col - 1) as u32,
-            self.inter.1 * (child_info.row_end - child_info.row - 1) as u32,
+            self.inter.0 * (info.col_end - info.col - 1) as u32,
+            self.inter.1 * (info.row_end - info.row - 1) as u32,
         );
-        for n in child_info.col..child_info.col_end {
+        for n in info.col..info.col_end {
             size.0 += self.widths.as_ref()[n];
         }
-        for n in child_info.row..child_info.row_end {
+        for n in info.row..info.row_end {
             size.1 += self.heights.as_ref()[n];
         }
 
-        Rect { pos, size }
+        alignment.apply(Rect { pos, size })
     }
 }

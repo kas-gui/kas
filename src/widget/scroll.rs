@@ -173,14 +173,10 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         }
         self.inner_size = size;
 
+        let alignment = self.child.alignment();
         let child_size = size.max(self.min_child_size);
-        self.child.set_rect(
-            size_handle,
-            Rect {
-                pos,
-                size: child_size,
-            },
-        );
+        let child_rect = alignment.apply(Rect::new(pos, child_size));
+        self.child.set_rect(size_handle, child_rect);
         self.max_offset = Coord::from(child_size) - Coord::from(rect.size);
         self.offset = self.offset.max(Coord::ZERO).min(self.max_offset);
 
