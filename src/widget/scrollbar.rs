@@ -9,7 +9,7 @@ use std::fmt::Debug;
 
 use crate::event::{Event, Handler, Manager, PressSource, Response};
 use crate::geom::Rect;
-use crate::layout::{AxisInfo, SizeRules};
+use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
 use crate::{CoreData, Directional, Layout, WidgetCore, WidgetId};
@@ -168,7 +168,7 @@ impl<D: Directional> Layout for ScrollBar<D> {
         let (thickness, _, min_len) = size_handle.scrollbar();
         self.width = thickness;
         if self.direction.is_vertical() == axis.is_vertical() {
-            SizeRules::fixed(min_len)
+            SizeRules::new(min_len, min_len, StretchPolicy::LowUtility)
         } else {
             SizeRules::fixed(thickness)
         }

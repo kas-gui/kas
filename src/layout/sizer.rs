@@ -91,7 +91,7 @@ pub fn solve<L: Widget>(
 
     (
         Size(w.min_size(), h.min_size()),
-        Size(w.max_size(), h.max_size()),
+        Size(w.ideal_size(), h.ideal_size()),
     )
 }
 

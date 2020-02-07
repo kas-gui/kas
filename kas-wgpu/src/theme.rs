@@ -15,7 +15,7 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 use kas::draw::{Colour, Draw};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::theme::{self, Align, TextClass, TextProperties};
 use kas::Direction::{self, Horizontal, Vertical};
 
@@ -192,9 +192,13 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
 
         let inner = if axis.is_horizontal() {
             let min = 3 * line_height;
-            SizeRules::variable(min, bound(Horizontal).max(min))
+            SizeRules::new(min, bound(Horizontal).max(min), StretchPolicy::LowUtility)
         } else {
-            SizeRules::variable(line_height, bound(Vertical).max(line_height))
+            SizeRules::new(
+                line_height,
+                bound(Vertical).max(line_height),
+                StretchPolicy::LowUtility,
+            )
         };
         let margin = SizeRules::fixed(2 * self.window.margin as u32);
         inner + margin

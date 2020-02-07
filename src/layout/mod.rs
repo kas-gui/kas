@@ -20,7 +20,7 @@ use crate::{Direction, Directional};
 pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use misc_solver::SingleSetter;
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
-pub use size_rules::{Margins, SizeRules};
+pub use size_rules::{Margins, SizeRules, StretchPolicy};
 pub use sizer::{solve, RulesSetter, RulesSolver};
 pub use storage::{
     DynGridStorage, DynRowStorage, FixedGridStorage, FixedRowStorage, GridStorage, RowStorage,
