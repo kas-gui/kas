@@ -15,7 +15,7 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 use kas::draw::{Colour, Draw};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::layout::{AxisInfo, Direction, SizeRules};
 use kas::theme::{self, Align, TextClass, TextProperties};
 
 use crate::draw::{DrawPipe, DrawShaded, DrawText, ShadeStyle, Vec2};
@@ -166,9 +166,9 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
                 true => Layout::default_wrap(),
             };
             let mut bounds = (f32::INFINITY, f32::INFINITY);
-            if let Some(size) = axis.fixed(false) {
+            if let Some(size) = axis.size_other_if_fixed(Direction::Horizontal) {
                 bounds.1 = size as f32;
-            } else if let Some(size) = axis.fixed(true) {
+            } else if let Some(size) = axis.size_other_if_fixed(Direction::Vertical) {
                 bounds.0 = size as f32;
             }
 

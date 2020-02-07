@@ -57,10 +57,10 @@ impl AxisInfo {
         !self.vertical
     }
 
-    /// Size of other axis, if fixed and `vertical == self.is_vertical()`.
+    /// Size of other axis, if fixed and `direction` matches this axis.
     #[inline]
-    pub fn fixed(&self, vertical: bool) -> Option<u32> {
-        if vertical == self.vertical && self.has_fixed {
+    pub fn size_other_if_fixed(&self, dir: Direction) -> Option<u32> {
+        if dir.is_vertical() == self.vertical && self.has_fixed {
             Some(self.other_axis)
         } else {
             None
