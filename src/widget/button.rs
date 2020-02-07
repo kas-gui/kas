@@ -51,7 +51,7 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.button_surround();
         let rules = SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
-            + size_handle.text_bound(&self.label, TextClass::Button, false, axis);
+            + size_handle.text_bound(&self.label, TextClass::Button, axis);
         if axis.is_horizontal() {
             self.core_data_mut().rect.size.0 = rules.ideal_size();
         } else {
@@ -73,7 +73,6 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
         draw_handle.button(self.core.rect, mgr.highlight_state(self.id()));
         let props = TextProperties {
             class: TextClass::Button,
-            multi_line: false,
             horiz: Align::Centre,
             vert: Align::Centre,
         };

@@ -157,20 +157,14 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
         self.window.font_scale
     }
 
-    fn text_bound(
-        &mut self,
-        text: &str,
-        class: TextClass,
-        multi_line: bool,
-        axis: AxisInfo,
-    ) -> SizeRules {
+    fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
         let font_scale = self.window.font_scale;
         let line_height = font_scale;
         let draw = &mut self.draw;
         let mut bound = |dir: Direction| -> u32 {
-            let layout = match multi_line {
-                false => Layout::default_single_line(),
-                true => Layout::default_wrap(),
+            let layout = match class {
+                TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
+                TextClass::Button | TextClass::Edit => Layout::default_single_line(),
             };
             let mut bounds = (f32::INFINITY, f32::INFINITY);
             if let Some(size) = axis.size_other_if_fixed(Horizontal) {
@@ -199,7 +193,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
         let inner = if axis.is_horizontal() {
             let bound = bound(Horizontal);
             let min = match class {
-                TextClass::Edit => self.window.min_line_length,
+                TextClass::Edit | TextClass::EditMulti => self.window.min_line_length,
                 _ => bound.min(self.window.min_line_length),
             };
             let ideal = bound.min(self.window.max_line_length);
@@ -207,13 +201,13 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
         } else
         /* vertical */
         {
-            let min = match (class, multi_line) {
-                (TextClass::Edit, true) => line_height * 3,
+            let min = match class {
+                TextClass::EditMulti => line_height * 3,
                 _ => line_height,
             };
             let ideal = bound(Vertical).max(line_height);
-            let stretch = match (class, multi_line) {
-                (TextClass::Button, _) | (TextClass::Edit, false) => StretchPolicy::Fixed,
+            let stretch = match class {
+                TextClass::Button | TextClass::Edit => StretchPolicy::Fixed,
                 _ => StretchPolicy::Filler,
             };
             SizeRules::new(min, ideal, stretch)
@@ -333,7 +327,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let col = match props.class {
             TextClass::Label => LABEL_TEXT,
             TextClass::Button => BUTTON_TEXT,
-            TextClass::Edit => TEXT,
+            TextClass::Edit | TextClass::EditMulti => TEXT,
         };
 
         // TODO: support justified alignment
@@ -351,12 +345,11 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let text_pos =
             outer.pos + Coord::uniform(self.window.margin as i32) + Coord(h_offset, v_offset);
 
-        let layout = match props.multi_line {
-            true => Layout::default_wrap(),
-            false => Layout::default_single_line(),
-        }
-        .h_align(h_align)
-        .v_align(v_align);
+        let layout = match props.class {
+            TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
+            TextClass::Button | TextClass::Edit => Layout::default_single_line(),
+        };
+        let layout = layout.h_align(h_align).v_align(v_align);
 
         self.draw.draw_text(Section {
             text,

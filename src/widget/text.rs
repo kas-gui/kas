@@ -27,7 +27,7 @@ pub struct Label {
 
 impl Layout for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let rules = size_handle.text_bound(&self.text, TextClass::Label, true, axis);
+        let rules = size_handle.text_bound(&self.text, TextClass::Label, axis);
         if axis.is_horizontal() {
             self.core_data_mut().rect.size.0 = rules.ideal_size();
         } else {
@@ -39,7 +39,6 @@ impl Layout for Label {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &Manager) {
         let props = TextProperties {
             class: TextClass::Label,
-            multi_line: true,
             horiz: Align::Begin,
             vert: Align::Centre,
         };
@@ -139,9 +138,14 @@ impl<H: 'static> Widget for EditBox<H> {
 
 impl<H: 'static> Layout for EditBox<H> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        let class = if self.multi_line {
+            TextClass::EditMulti
+        } else {
+            TextClass::Edit
+        };
         let sides = size_handle.edit_surround();
         let rules = SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
-            + size_handle.text_bound(&self.text, TextClass::Edit, self.multi_line, axis);
+            + size_handle.text_bound(&self.text, class, axis);
         if axis.is_horizontal() {
             self.core_data_mut().rect.size.0 = rules.ideal_size();
         } else {
@@ -160,11 +164,15 @@ impl<H: 'static> Layout for EditBox<H> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+        let class = if self.multi_line {
+            TextClass::EditMulti
+        } else {
+            TextClass::Edit
+        };
         let highlights = mgr.highlight_state(self.id());
         draw_handle.edit_box(self.core.rect, highlights);
         let props = TextProperties {
-            class: TextClass::Edit,
-            multi_line: self.multi_line,
+            class,
             horiz: Align::Begin,
             vert: Align::Begin,
         };
