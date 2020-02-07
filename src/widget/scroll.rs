@@ -68,6 +68,9 @@ impl<W: Widget> ScrollRegion<W> {
     ///
     /// If enabled, this automatically enables/disables scroll bars when
     /// resized.
+    ///
+    /// This has the side-effect of reserving enough space for scroll bars even
+    /// when not required.
     #[inline]
     pub fn with_auto_bars(mut self, enable: bool) -> Self {
         self.auto_bars = enable;
@@ -138,9 +141,9 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         self.scroll_rate = 3.0 * line_height as f32;
         rules.reduce_min_to(line_height);
 
-        rules = if axis.is_horizontal() && self.show_bars.1 {
+        rules = if axis.is_horizontal() && (self.auto_bars || self.show_bars.1) {
             rules + self.vert_bar.size_rules(size_handle, axis)
-        } else if axis.is_vertical() && self.show_bars.0 {
+        } else if axis.is_vertical() && (self.auto_bars || self.show_bars.0) {
             rules + self.horiz_bar.size_rules(size_handle, axis)
         } else {
             rules
@@ -157,39 +160,39 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         self.core.rect = rect;
         // We use simplified layout code here
         let pos = rect.pos;
-        let mut size = rect.size;
+        self.inner_size = rect.size;
+        let width = size_handle.scrollbar().0;
+
         if self.auto_bars {
             self.show_bars = (
-                self.min_child_size.0 > size.0,
-                self.min_child_size.1 > size.1,
+                self.min_child_size.0 + width > rect.size.0,
+                self.min_child_size.1 + width > rect.size.1,
             );
         }
-
         if self.show_bars.0 {
-            size.1 -= self.horiz_bar.width();
+            self.inner_size.1 -= width;
         }
         if self.show_bars.1 {
-            size.0 -= self.vert_bar.width();
+            self.inner_size.0 -= width;
         }
-        self.inner_size = size;
 
         let alignment = self.child.alignment();
-        let child_size = size.max(self.min_child_size);
+        let child_size = self.inner_size.max(self.min_child_size);
         let child_rect = alignment.apply(Rect::new(pos, child_size));
         self.child.set_rect(size_handle, child_rect);
-        self.max_offset = Coord::from(child_size) - Coord::from(rect.size);
+        self.max_offset = Coord::from(child_size) - Coord::from(self.inner_size);
         self.offset = self.offset.max(Coord::ZERO).min(self.max_offset);
 
         if self.show_bars.0 {
-            let pos = Coord(pos.0, pos.1 + size.1 as i32);
-            let size = Size(size.0, self.horiz_bar.width());
+            let pos = Coord(pos.0, pos.1 + self.inner_size.1 as i32);
+            let size = Size(self.core.rect.size.0, width);
             self.horiz_bar.set_rect(size_handle, Rect { pos, size });
             self.horiz_bar
                 .set_limits(self.max_offset.0 as u32, rect.size.0);
         }
         if self.show_bars.1 {
-            let pos = Coord(pos.0 + size.0 as i32, pos.1);
-            let size = Size(self.vert_bar.width(), self.core.rect.size.1);
+            let pos = Coord(pos.0 + self.inner_size.0 as i32, pos.1);
+            let size = Size(width, self.core.rect.size.1);
             self.vert_bar.set_rect(size_handle, Rect { pos, size });
             self.vert_bar
                 .set_limits(self.max_offset.1 as u32, rect.size.1);
