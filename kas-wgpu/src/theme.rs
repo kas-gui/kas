@@ -17,7 +17,7 @@ use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::theme::{self, Align, TextClass, TextProperties};
-use kas::{Direction, Directional};
+use kas::Direction::{self, Horizontal, Vertical};
 
 use crate::draw::{DrawPipe, DrawShaded, DrawText, ShadeStyle, Vec2};
 
@@ -161,15 +161,15 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
         let font_scale = self.window.font_scale;
         let line_height = font_scale;
         let draw = &mut self.draw;
-        let mut bound = |vert: bool| -> u32 {
+        let mut bound = |dir: Direction| -> u32 {
             let layout = match multi_line {
                 false => Layout::default_single_line(),
                 true => Layout::default_wrap(),
             };
             let mut bounds = (f32::INFINITY, f32::INFINITY);
-            if let Some(size) = axis.size_other_if_fixed(Direction::Horizontal) {
+            if let Some(size) = axis.size_other_if_fixed(Horizontal) {
                 bounds.1 = size as f32;
-            } else if let Some(size) = axis.size_other_if_fixed(Direction::Vertical) {
+            } else if let Some(size) = axis.size_other_if_fixed(Vertical) {
                 bounds.0 = size as f32;
             }
 
@@ -183,18 +183,18 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
             });
 
             bounds
-                .map(|(min, max)| match vert {
-                    false => (max - min).0,
-                    true => (max - min).1,
+                .map(|(min, max)| match dir {
+                    Horizontal => (max - min).0,
+                    Vertical => (max - min).1,
                 } as u32)
                 .unwrap_or(0)
         };
 
         let inner = if axis.is_horizontal() {
             let min = 3 * line_height;
-            SizeRules::variable(min, bound(false).max(min))
+            SizeRules::variable(min, bound(Horizontal).max(min))
         } else {
-            SizeRules::variable(line_height, bound(true).max(line_height))
+            SizeRules::variable(line_height, bound(Vertical).max(line_height))
         };
         let margin = SizeRules::fixed(2 * self.window.margin as u32);
         inner + margin
@@ -432,7 +432,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         // TODO: also draw slider behind handle: needs an extra layer?
 
-        let half_width = if dir.is_horizontal() {
+        let half_width = if dir == Horizontal {
             outer.pos.0 += h_pos as i32;
             outer.size.0 = h_len;
             outer.size.1 / 2
