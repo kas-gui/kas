@@ -16,13 +16,17 @@ pub(crate) fn derive(
     layout: LayoutArgs,
     data_field: &Option<Member>,
 ) -> Result<(TokenStream, TokenStream)> {
-    // TODO: we don't need this for single layouts
-    let data = data_field.as_ref().ok_or_else(|| {
-        Error::new(
-            layout.span,
-            "data field marked with #[layout_data] required when deriving Widget",
-        )
-    })?;
+    let data = if let Some(ref field) = data_field {
+        quote! { self.#field }
+    } else {
+        if layout.layout != LayoutType::Single {
+            return Err(Error::new(
+                layout.span,
+                "data field marked with #[layout_data] required when deriving Widget",
+            ));
+        }
+        quote! { () }
+    };
 
     let find_id_area = layout.area.map(|area_widget| {
         quote! {
@@ -100,7 +104,7 @@ pub(crate) fn derive(
         size.append_all(quote! {
             let child = &mut self.#ident;
             solver.for_child(
-                &mut self.#data,
+                &mut #data,
                 #child_info,
                 |axis| child.size_rules(size_handle, axis)
             );
@@ -220,7 +224,7 @@ pub(crate) fn derive(
 
     let size_post = match layout.layout {
         LayoutType::Single | LayoutType::Horizontal | LayoutType::Vertical => quote! {
-            let mut rules = solver.finish(&mut self.#data, iter::empty(), iter::empty());
+            let mut rules = solver.finish(&mut #data, iter::empty(), iter::empty());
         },
         LayoutType::Grid => {
             let mut horiz = quote! {};
@@ -243,7 +247,7 @@ pub(crate) fn derive(
             }
 
             quote! {
-                let mut rules = solver.finish(&mut self.#data,
+                let mut rules = solver.finish(&mut #data,
                     iter::empty() #horiz, iter::empty() # vert);
             }
         }
@@ -274,7 +278,7 @@ pub(crate) fn derive(
             let mut solver = <Self as kas::LayoutData>::Solver::new(
                 axis,
                 #dim,
-                &mut self.#data,
+                &mut #data,
             );
             #size
             #size_post
@@ -310,7 +314,7 @@ pub(crate) fn derive(
                 rect,
                 margins,
                 #dim,
-                &mut self.#data,
+                &mut #data,
             );
             #set_rect
         }

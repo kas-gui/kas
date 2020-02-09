@@ -56,7 +56,6 @@
 //! #[derive(Clone, Debug, Widget)]
 //! struct WrapperWidget<W: Widget> {
 //!     #[core] core: CoreData,
-//!     #[layout_data] layout_data: <Self as LayoutData>::Data,
 //!     #[widget] child: W,
 //! }
 //! ```
@@ -91,13 +90,14 @@
 //!
 //! If the `frame` parameter is given, a frame is drawn around child widgets.
 //!
-//! Derivation of [`Layout`] requires data storage be provided by the widget
-//! as follows (the [`LayoutData`] implementation is implicitly derived):
+//! Derivation of [`Layout`] for non-single layouts requires a data storage
+//! field as follows; for the `single` layout this field is optional:
 //! ```none
 //! #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
 //! ```
 //! This field is supports `Default` and `Clone`, thus may be constructed with
 //! `layout_data: Default::default()`.
+//! (Note: the [`LayoutData`] trait is also implemented by this macro.)
 //!
 //! #### Handler
 //!
