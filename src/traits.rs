@@ -150,8 +150,9 @@ pub trait Layout: WidgetCore {
     ///
     /// This method takes `&mut self` to allow local caching of child widget
     /// configuration for future `size_rules` and `set_rect` calls.
-    /// It is expected to set `self.rect().size` to the widget's ideal size,
-    /// at least for the `axis` in question.
+    ///
+    /// Optionally, this method may set `self.rect().size` to the widget's ideal
+    /// size for use by [`Layout::set_rect`] when setting alignment.
     ///
     /// If operating on one axis and the other is fixed, then the `other`
     /// parameter is used for the fixed dimension. Additionally, one may assume

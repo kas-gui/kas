@@ -146,13 +146,7 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
                 child.size_rules(size_handle, axis)
             });
         }
-        let rules = solver.finish(&mut self.data, iter::empty(), iter::empty());
-        if axis.is_horizontal() {
-            self.core_data_mut().rect.size.0 = rules.ideal_size();
-        } else {
-            self.core_data_mut().rect.size.1 = rules.ideal_size();
-        }
-        rules
+        solver.finish(&mut self.data, iter::empty(), iter::empty())
     }
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {

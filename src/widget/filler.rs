@@ -6,11 +6,10 @@
 //! Filler widget
 
 use crate::event::Manager;
-use crate::geom::Size;
 use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, WidgetCore};
+use crate::{CoreData, Layout};
 
 /// A space filler
 ///
@@ -27,7 +26,6 @@ pub struct Filler {
 
 impl Layout for Filler {
     fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
-        self.core_data_mut().rect.size = Size::ZERO;
         SizeRules::new(0, 0, self.policy)
     }
 

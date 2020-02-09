@@ -288,11 +288,6 @@ pub(crate) fn derive(
                 rules = rules + axis.extract_size(sizes.0) + axis.extract_size(sizes.1);
             }
 
-            if axis.is_horizontal() {
-                self.core_data_mut().rect.size.0 = rules.ideal_size();
-            } else {
-                self.core_data_mut().rect.size.1 = rules.ideal_size();
-            }
             rules
         }
 
