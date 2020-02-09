@@ -8,8 +8,8 @@
 //! This is only of interest if building a custom widget with children.
 
 mod grid_solver;
-mod misc_solver;
 mod row_solver;
+mod single_solver;
 mod size_rules;
 mod sizer;
 mod storage;
@@ -18,8 +18,8 @@ use crate::geom::Size;
 use crate::{Direction, Directional};
 
 pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
-pub use misc_solver::SingleSetter;
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
+pub use single_solver::{SingleSetter, SingleSolver};
 pub use size_rules::{Margins, SizeRules, StretchPolicy};
 pub use sizer::{solve, RulesSetter, RulesSolver};
 pub use storage::{

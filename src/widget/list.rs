@@ -166,7 +166,7 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
 
         for (n, child) in self.widgets.iter_mut().enumerate() {
             let align = child.alignment();
-            child.set_rect(size_handle, setter.child_rect((n, align)));
+            child.set_rect(size_handle, setter.child_rect(n, align));
         }
     }
 

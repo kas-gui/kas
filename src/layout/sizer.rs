@@ -12,6 +12,7 @@ use super::{AxisInfo, SizeRules};
 use crate::geom::{Coord, Rect, Size};
 use crate::theme::SizeHandle;
 use crate::{
+    Alignment,
     Direction::{Horizontal, Vertical},
     Widget,
 };
@@ -62,7 +63,7 @@ pub trait RulesSetter {
     type ChildInfo;
 
     /// Called once for each child. For most layouts the order is important.
-    fn child_rect(&mut self, child_info: Self::ChildInfo) -> Rect;
+    fn child_rect(&mut self, child_info: Self::ChildInfo, alignment: Alignment) -> Rect;
 }
 
 /// Solve `widget` for `SizeRules` on both axes, horizontal first.

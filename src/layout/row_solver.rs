@@ -143,10 +143,9 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
 
 impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, S> {
     type Storage = S;
-    type ChildInfo = (usize, Alignment);
+    type ChildInfo = usize;
 
-    fn child_rect(&mut self, child_info: Self::ChildInfo) -> Rect {
-        let (index, alignment) = child_info;
+    fn child_rect(&mut self, index: Self::ChildInfo, alignment: Alignment) -> Rect {
         if self.direction.is_horizontal() {
             self.crect.pos.0 += (self.crect.size.0 + self.inter) as i32;
             self.crect.size.0 = self.widths.as_ref()[index];

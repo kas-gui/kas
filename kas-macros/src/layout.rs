@@ -16,6 +16,7 @@ pub(crate) fn derive(
     layout: LayoutArgs,
     data_field: &Option<Member>,
 ) -> Result<(TokenStream, TokenStream)> {
+    // TODO: we don't need this for single layouts
     let data = data_field.as_ref().ok_or_else(|| {
         Error::new(
             layout.span,
@@ -31,7 +32,6 @@ pub(crate) fn derive(
         }
     });
 
-    let is_frame = layout.is_frame;
     if layout.layout == LayoutType::Single {
         if !children.len() == 1 {
             return Err(Error::new(
@@ -42,100 +42,14 @@ pub(crate) fn derive(
                 ),
             ));
         }
-        let ident = &children[0].ident;
-
-        let find_id_body = find_id_area.unwrap_or_else(|| {
-            quote! {
-                if self.#ident.rect().contains(coord) {
-                    self.#ident.find_id(coord)
-                } else if self.rect().contains(coord) {
-                    Some(self.id())
-                }
-            }
-        });
-
-        let fns = quote! {
-            fn size_rules(
-                &mut self,
-                size_handle: &mut dyn kas::theme::SizeHandle,
-                axis: kas::layout::AxisInfo
-            )
-                -> kas::layout::SizeRules
-            {
-                use kas::WidgetCore;
-                use kas::geom::Size;
-
-                let mut rules = self.#ident.size_rules(size_handle, axis);
-                if #is_frame {
-                    let sizes = size_handle.outer_frame();
-                    rules = rules + axis.extract_size(sizes.0) + axis.extract_size(sizes.1);
-                }
-
-                if axis.is_horizontal() {
-                    self.core_data_mut().rect.size.0 = rules.ideal_size();
-                } else {
-                    self.core_data_mut().rect.size.1 = rules.ideal_size();
-                }
-                rules
-            }
-
-            fn set_rect(
-                &mut self,
-                size_handle: &mut dyn kas::theme::SizeHandle,
-                rect: kas::geom::Rect)
-            {
-                use kas::WidgetCore;
-                use kas::geom::Size;
-                use kas::layout::{Margins, RulesSetter};
-                self.core_data_mut().rect = rect;
-
-                let margins = if #is_frame {
-                    Margins::outer_frame(size_handle.outer_frame())
-                } else {
-                    Margins::ZERO
-                };
-                let mut setter = <Self as kas::LayoutData>::Setter::new(
-                    rect,
-                    margins,
-                    &mut (),
-                );
-                self.#ident.set_rect(size_handle, setter.child_rect(()));
-            }
-
-            fn find_id(&self, coord: kas::geom::Coord) -> Option<kas::WidgetId> {
-                use kas::WidgetCore;
-
-                #find_id_body else {
-                    None
-                }
-            }
-
-            fn draw(
-                &self,
-                draw_handle: &mut dyn kas::theme::DrawHandle,
-                mgr: &kas::event::Manager
-            ) {
-                use kas::WidgetCore;
-                if #is_frame {
-                    draw_handle.outer_frame(self.core_data().rect);
-                }
-                self.#ident.draw(draw_handle, mgr);
-            }
-        };
-        let ty = quote! {
-            type Data = ();
-            type Solver = ();
-            type Setter = kas::layout::SingleSetter;
-        };
-        Ok((fns, ty))
-    } else {
-        // TODO: this could be rewritten
-        let mut impl_layout = ImplLayout::new(layout.layout, data);
-        for child in children.iter() {
-            impl_layout.child(&child.ident, &child.args)?;
-        }
-        Ok(impl_layout.finish(is_frame, find_id_area))
     }
+
+    // TODO: this could be rewritten
+    let mut impl_layout = ImplLayout::new(layout.layout, data);
+    for child in children.iter() {
+        impl_layout.child(&child.ident, &child.args)?;
+    }
+    Ok(impl_layout.finish(layout.is_frame, find_id_area))
 }
 
 pub(crate) struct ImplLayout<'a> {
@@ -171,6 +85,7 @@ impl<'a> ImplLayout<'a> {
         let data = self.data;
 
         let child_info = match self.layout {
+            LayoutType::Single => quote! { () },
             LayoutType::Horizontal => {
                 let col = self.cols as usize;
                 self.cols += 1;
@@ -207,7 +122,6 @@ impl<'a> ImplLayout<'a> {
                     }
                 }
             }
-            LayoutType::Single => unreachable!(),
         };
 
         self.size.append_all(quote! {
@@ -228,7 +142,7 @@ impl<'a> ImplLayout<'a> {
             self.set_rect.append_all(toks)
         }
         self.set_rect.append_all(quote! {
-            self.#ident.set_rect(size_handle, setter.child_rect((#child_info, align)));
+            self.#ident.set_rect(size_handle, setter.child_rect(#child_info, align));
         });
 
         self.draw.append_all(quote! {
@@ -299,10 +213,10 @@ impl<'a> ImplLayout<'a> {
         });
 
         let dim = match self.layout {
+            LayoutType::Single => quote! { () },
             LayoutType::Horizontal => quote! { (kas::Horizontal, #cols) },
             LayoutType::Vertical => quote! { (kas::Vertical, #rows) },
             LayoutType::Grid => quote! { (#cols, #rows) },
-            LayoutType::Single => unreachable!(),
         };
 
         let col_temp = if cols > 16 {
@@ -317,6 +231,11 @@ impl<'a> ImplLayout<'a> {
         };
 
         let data_type = match self.layout {
+            LayoutType::Single => quote! {
+                type Data = ();
+                type Solver = kas::layout::SingleSolver;
+                type Setter = kas::layout::SingleSetter;
+            },
             LayoutType::Horizontal => quote! {
                 type Data = kas::layout::FixedRowStorage::<
                     [kas::layout::SizeRules; #cols + 1]
@@ -363,11 +282,10 @@ impl<'a> ImplLayout<'a> {
                     Self::Data,
                 >;
             },
-            LayoutType::Single => unreachable!(),
         };
 
         let size_post = match self.layout {
-            LayoutType::Horizontal | LayoutType::Vertical => quote! {
+            LayoutType::Single | LayoutType::Horizontal | LayoutType::Vertical => quote! {
                 let mut rules = solver.finish(&mut self.#data, iter::empty(), iter::empty());
             },
             LayoutType::Grid => {
@@ -395,7 +313,6 @@ impl<'a> ImplLayout<'a> {
                         iter::empty() #horiz, iter::empty() # vert);
                 }
             }
-            LayoutType::Single => unreachable!(),
         };
 
         let find_id_body = find_id_area.unwrap_or_else(|| {
