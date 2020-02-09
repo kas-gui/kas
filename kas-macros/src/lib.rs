@@ -254,7 +254,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 fn handle(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
                 -> kas::event::Response<Self::Msg>
                 {
-                    use kas::{WidgetCore, event::{Event, Response}};
+                    use kas::{WidgetCore, event::Response};
                     #ev_to_num {
                         debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
                         Response::Unhandled(event)
