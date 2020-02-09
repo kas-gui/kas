@@ -280,7 +280,7 @@ impl Parse for WidgetAttrArgs {
             } else if args.valign.is_none() && lookahead.peek(kw::valign) {
                 let _: kw::valign = content.parse()?;
                 let _: Eq = content.parse()?;
-                args.halign = Some(content.parse()?);
+                args.valign = Some(content.parse()?);
             } else if args.handler.is_none() && lookahead.peek(kw::handler) {
                 let _: kw::handler = content.parse()?;
                 let _: Eq = content.parse()?;
@@ -305,6 +305,8 @@ impl ToTokens for WidgetAttrArgs {
             || self.row.is_some()
             || self.cspan.is_some()
             || self.rspan.is_some()
+            || self.halign.is_some()
+            || self.valign.is_some()
             || self.handler.is_some()
         {
             let comma = TokenTree::from(Punct::new(',', Spacing::Alone));
@@ -330,6 +332,18 @@ impl ToTokens for WidgetAttrArgs {
                 }
                 args.append_all(quote! { rspan = #lit });
             }
+            if let Some(ref ident) = self.halign {
+                if !args.is_empty() {
+                    args.append(comma.clone());
+                }
+                args.append_all(quote! { halign = #ident });
+            }
+            if let Some(ref ident) = self.valign {
+                if !args.is_empty() {
+                    args.append(comma.clone());
+                }
+                args.append_all(quote! { valign = #ident });
+            }
             if let Some(ref ident) = self.handler {
                 if !args.is_empty() {
                     args.append(comma);
@@ -341,6 +355,7 @@ impl ToTokens for WidgetAttrArgs {
     }
 }
 
+#[derive(Debug)]
 pub struct WidgetAttr {
     pub args: WidgetAttrArgs,
 }
@@ -378,7 +393,7 @@ impl Parse for WidgetArgs {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LayoutType {
     Single,
     Horizontal,

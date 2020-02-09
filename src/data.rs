@@ -93,11 +93,18 @@ pub enum Align {
     Stretch,
 }
 
+/// Default alignment: Stretch
+impl Default for Align {
+    fn default() -> Self {
+        Align::Stretch
+    }
+}
+
 /// Partial alignment information provided by the parent
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct AlignHints {
-    horiz: Option<Align>,
-    vert: Option<Align>,
+    pub horiz: Option<Align>,
+    pub vert: Option<Align>,
 }
 
 impl AlignHints {

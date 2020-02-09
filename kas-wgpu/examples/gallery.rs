@@ -71,7 +71,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     #[layout(single, frame)]
                     #[handler(msg = VoidMsg)]
                     struct {
-                        #[widget] _ = Label::from("Widget Gallery"),
+                        #[widget(halign=centre)] _ = Label::from("Widget Gallery"),
                     }
                 },
                 #[widget(handler = activations)] _ = ScrollRegion::new(widgets).with_auto_bars(true),

@@ -22,6 +22,8 @@ use kas::geom::Rect;
 pub struct Label {
     #[core]
     core: CoreData,
+    halign: Align,
+    valign: Align,
     text: String,
 }
 
@@ -36,11 +38,17 @@ impl Layout for Label {
         rules
     }
 
+    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+        self.halign = align.horiz.unwrap_or(Align::Begin);
+        self.valign = align.vert.unwrap_or(Align::Centre);
+        self.core_data_mut().rect = rect;
+    }
+
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &Manager) {
         let props = TextProperties {
             class: TextClass::Label,
-            horiz: Align::Begin,
-            vert: Align::Centre,
+            horiz: self.halign,
+            vert: self.valign,
         };
         draw_handle.text(self.core.rect, &self.text, props);
     }
@@ -51,6 +59,8 @@ impl Label {
     pub fn new<T: ToString>(text: T) -> Self {
         Label {
             core: Default::default(),
+            halign: Default::default(),
+            valign: Default::default(),
             text: text.to_string(),
         }
     }
@@ -63,6 +73,8 @@ where
     fn from(text: T) -> Self {
         Label {
             core: Default::default(),
+            halign: Default::default(),
+            valign: Default::default(),
             text: String::from(text),
         }
     }
