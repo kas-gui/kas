@@ -64,14 +64,12 @@ pub(crate) fn derive(
             {
                 use kas::WidgetCore;
                 use kas::geom::Size;
-                let frame_size = if #is_frame {
-                    size_handle.outer_frame()
-                } else {
-                    (Size::ZERO, Size::ZERO)
-                };
-                let rules = self.#ident.size_rules(size_handle, axis)
-                    + axis.extract_size(frame_size.0)
-                    + axis.extract_size(frame_size.1);
+
+                let mut rules = self.#ident.size_rules(size_handle, axis);
+                if #is_frame {
+                    let sizes = size_handle.outer_frame();
+                    rules = rules + axis.extract_size(sizes.0) + axis.extract_size(sizes.1);
+                }
 
                 if axis.is_horizontal() {
                     self.core_data_mut().rect.size.0 = rules.ideal_size();
@@ -88,17 +86,17 @@ pub(crate) fn derive(
             {
                 use kas::WidgetCore;
                 use kas::geom::Size;
-                use kas::layout::RulesSetter;
+                use kas::layout::{Margins, RulesSetter};
                 self.core_data_mut().rect = rect;
 
-                let frame_size = if #is_frame {
-                    size_handle.outer_frame()
+                let margins = if #is_frame {
+                    Margins::outer_frame(size_handle.outer_frame())
                 } else {
-                    (Size::ZERO, Size::ZERO)
+                    Margins::ZERO
                 };
                 let mut setter = <Self as kas::LayoutData>::Setter::new(
                     rect,
-                    frame_size,
+                    margins,
                     &mut (),
                 );
                 self.#ident.set_rect(size_handle, setter.child_rect(()));
@@ -131,20 +129,12 @@ pub(crate) fn derive(
         };
         Ok((fns, ty))
     } else {
-        if is_frame {
-            // TODO: support?
-            return Err(Error::new(
-                layout.span,
-                "frame is (currently) only allowed for layout = single",
-            ));
-        }
-
         // TODO: this could be rewritten
         let mut impl_layout = ImplLayout::new(layout.layout, data);
         for child in children.iter() {
             impl_layout.child(&child.ident, &child.args)?;
         }
-        Ok(impl_layout.finish(find_id_area))
+        Ok(impl_layout.finish(is_frame, find_id_area))
     }
 }
 
@@ -281,7 +271,11 @@ impl<'a> ImplLayout<'a> {
         i
     }
 
-    pub fn finish(self, find_id_area: Option<TokenStream>) -> (TokenStream, TokenStream) {
+    pub fn finish(
+        self,
+        is_frame: bool,
+        find_id_area: Option<TokenStream>,
+    ) -> (TokenStream, TokenStream) {
         let data = self.data;
         let cols = self.cols as usize;
         let rows = self.rows as usize;
@@ -374,7 +368,7 @@ impl<'a> ImplLayout<'a> {
 
         let size_post = match self.layout {
             LayoutType::Horizontal | LayoutType::Vertical => quote! {
-                let rules = solver.finish(&mut self.#data, iter::empty(), iter::empty());
+                let mut rules = solver.finish(&mut self.#data, iter::empty(), iter::empty());
             },
             LayoutType::Grid => {
                 let mut horiz = quote! {};
@@ -397,7 +391,7 @@ impl<'a> ImplLayout<'a> {
                 }
 
                 quote! {
-                    let rules = solver.finish(&mut self.#data,
+                    let mut rules = solver.finish(&mut self.#data,
                         iter::empty() #horiz, iter::empty() # vert);
                 }
             }
@@ -432,6 +426,11 @@ impl<'a> ImplLayout<'a> {
                 #size
                 #size_post
 
+                if #is_frame {
+                    let sizes = size_handle.outer_frame();
+                    rules = rules + axis.extract_size(sizes.0) + axis.extract_size(sizes.1);
+                }
+
                 if axis.is_horizontal() {
                     self.core_data_mut().rect.size.0 = rules.ideal_size();
                 } else {
@@ -449,9 +448,14 @@ impl<'a> ImplLayout<'a> {
                 use kas::layout::{Margins, RulesSetter};
                 self.core_data_mut().rect = rect;
 
+                let margins = if #is_frame {
+                    Margins::outer_frame(size_handle.outer_frame())
+                } else {
+                    Margins::ZERO
+                };
                 let mut setter = <Self as kas::LayoutData>::Setter::new(
                     rect,
-                    Margins::ZERO,
+                    margins,
                     #dim,
                     &mut self.#data,
                 );
@@ -472,6 +476,10 @@ impl<'a> ImplLayout<'a> {
                 mgr: &kas::event::Manager
             ) {
                 use kas::{geom::Coord, WidgetCore};
+                if #is_frame {
+                    draw_handle.outer_frame(self.core_data().rect);
+                }
+
                 let rect = draw_handle.target_rect();
                 let pos0 = rect.pos;
                 let pos1 = rect.pos + Coord::from(rect.size);

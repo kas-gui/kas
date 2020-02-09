@@ -35,6 +35,15 @@ impl Margins {
         }
     }
 
+    /// Construct from the output of [`kas::theme::SizeHandle::outer_frame`].
+    pub const fn outer_frame(sizes: (Size, Size)) -> Self {
+        Margins {
+            first: sizes.0,
+            last: sizes.1,
+            inter: Size::ZERO,
+        }
+    }
+
     /// Generate `SizeRules` from self
     ///
     /// Assumes zero-sized content (usually added separately).

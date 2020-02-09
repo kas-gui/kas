@@ -5,8 +5,8 @@
 
 //! Miscellaneous solvers
 
-use super::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
-use crate::geom::{Rect, Size};
+use super::{AxisInfo, Margins, RulesSetter, RulesSolver, SizeRules};
+use crate::geom::Rect;
 
 /// Dummy implementation
 impl RulesSolver for () {
@@ -60,9 +60,9 @@ impl SingleSetter {
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `margins`: margin sizes
     /// - `storage`: irrelevent, but included for consistency
-    pub fn new(mut rect: Rect, margins: (Size, Size), _storage: &mut ()) -> Self {
-        rect.pos += margins.0;
-        rect.size -= margins.0 + margins.1;
+    pub fn new(mut rect: Rect, margins: Margins, _storage: &mut ()) -> Self {
+        rect.pos += margins.first;
+        rect.size -= margins.first + margins.last;
         let crect = rect;
 
         SingleSetter { crect }
