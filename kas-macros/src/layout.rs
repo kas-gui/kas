@@ -69,7 +69,6 @@ pub(crate) fn derive(
                 } else {
                     (Size::ZERO, Size::ZERO)
                 };
-                self.#data = frame_size;
                 let rules = self.#ident.size_rules(size_handle, axis)
                     + axis.extract_size(frame_size.0)
                     + axis.extract_size(frame_size.1);
@@ -88,12 +87,18 @@ pub(crate) fn derive(
                 rect: kas::geom::Rect)
             {
                 use kas::WidgetCore;
+                use kas::geom::Size;
                 use kas::layout::RulesSetter;
                 self.core_data_mut().rect = rect;
 
+                let frame_size = if #is_frame {
+                    size_handle.outer_frame()
+                } else {
+                    (Size::ZERO, Size::ZERO)
+                };
                 let mut setter = <Self as kas::LayoutData>::Setter::new(
                     rect,
-                    self.#data,
+                    frame_size,
                     &mut (),
                 );
                 self.#ident.set_rect(size_handle, setter.child_rect(()));
@@ -120,7 +125,7 @@ pub(crate) fn derive(
             }
         };
         let ty = quote! {
-            type Data = (kas::geom::Size, kas::geom::Size);
+            type Data = ();
             type Solver = ();
             type Setter = kas::layout::SingleSetter;
         };
