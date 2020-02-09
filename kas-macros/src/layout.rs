@@ -224,8 +224,15 @@ impl<'a> ImplLayout<'a> {
             );
         });
 
+        self.set_rect
+            .append_all(quote! { let mut align = self.#ident.alignment(); });
+        if let Some(toks) = args.halign_toks()? {
+            self.set_rect.append_all(toks)
+        }
+        if let Some(toks) = args.valign_toks()? {
+            self.set_rect.append_all(toks)
+        }
         self.set_rect.append_all(quote! {
-            let align = self.#ident.alignment();
             self.#ident.set_rect(size_handle, setter.child_rect((#child_info, align)));
         });
 

@@ -171,15 +171,18 @@ mod kw {
     custom_keyword!(vertical);
     custom_keyword!(grid);
     custom_keyword!(substitutions);
+    custom_keyword!(halign);
+    custom_keyword!(valign);
 }
 
 #[derive(Debug)]
 pub struct WidgetAttrArgs {
-    // TODO: add optional alignment
     pub col: Option<Lit>,
     pub row: Option<Lit>,
     pub cspan: Option<Lit>,
     pub rspan: Option<Lit>,
+    pub halign: Option<Ident>,
+    pub valign: Option<Ident>,
     pub handler: Option<Ident>,
 }
 
@@ -203,6 +206,35 @@ impl WidgetAttrArgs {
             self.rspan.as_ref().map(parse_lit).unwrap_or(Ok(1))?,
         ))
     }
+
+    fn match_align(ident: &Ident) -> Result<TokenStream> {
+        Ok(match ident {
+            ident if ident == "begin" => quote! { kas::Align::Begin },
+            ident if ident == "centre" || ident == "center" => quote! { kas::Align::Centre },
+            ident if ident == "end" => quote! { kas::Align::End },
+            ident if ident == "stretch" => quote! { kas::Align::Stretch },
+            ident => {
+                return Err(Error::new(
+                    ident.span(),
+                    "expected one of `begin`, `centre`, `center`, `end`, `stretch`",
+                ));
+            }
+        })
+    }
+    pub fn halign_toks(&self) -> Result<Option<TokenStream>> {
+        if let Some(ref ident) = self.halign {
+            Ok(Some(Self::match_align(ident)?))
+        } else {
+            Ok(None)
+        }
+    }
+    pub fn valign_toks(&self) -> Result<Option<TokenStream>> {
+        if let Some(ref ident) = self.valign {
+            Ok(Some(Self::match_align(ident)?))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 impl Parse for WidgetAttrArgs {
@@ -212,6 +244,8 @@ impl Parse for WidgetAttrArgs {
             row: None,
             cspan: None,
             rspan: None,
+            halign: None,
+            valign: None,
             handler: None,
         };
         if input.is_empty() {
@@ -239,6 +273,14 @@ impl Parse for WidgetAttrArgs {
                 let _: kw::rspan = content.parse()?;
                 let _: Eq = content.parse()?;
                 args.rspan = Some(content.parse()?);
+            } else if args.halign.is_none() && lookahead.peek(kw::halign) {
+                let _: kw::halign = content.parse()?;
+                let _: Eq = content.parse()?;
+                args.halign = Some(content.parse()?);
+            } else if args.valign.is_none() && lookahead.peek(kw::valign) {
+                let _: kw::valign = content.parse()?;
+                let _: Eq = content.parse()?;
+                args.halign = Some(content.parse()?);
             } else if args.handler.is_none() && lookahead.peek(kw::handler) {
                 let _: kw::handler = content.parse()?;
                 let _: Eq = content.parse()?;
