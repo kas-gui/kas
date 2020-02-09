@@ -12,7 +12,7 @@ use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Directional, Layout, WidgetCore, WidgetId};
+use crate::{AlignHints, CoreData, Directional, Layout, WidgetCore, WidgetId};
 
 /// A scroll bar
 ///
@@ -173,7 +173,7 @@ impl<D: Directional> Layout for ScrollBar<D> {
         rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {
         let (_, min_handle_len, _) = size_handle.scrollbar();
         self.min_handle_len = min_handle_len;
         self.core.rect = rect;

@@ -148,8 +148,9 @@
 //! -   `rspan = ...` — number of rows to span (defaults to 1)
 //!
 //! These two affect alignment in the case that a widget finds itself within a
-//! cell larger than its ideal size. If not specified, alignment is defined by
-//! the child widget's [`Widget::alignment`] method (usually `stretch`).
+//! cell larger than its ideal size. Application of alignment is determined by
+//! the child widget's implementation of [`Layout::set_rect`], which may simply
+//! ignore these alignment hints.
 //!
 //! -   `halign = ...` — one of `begin`, `centre`, `end`, `stretch`
 //! -   `valign = ...` — one of `begin`, `centre`, `end`, `stretch`
@@ -352,8 +353,8 @@
 //! [`CoreData`]: crate::CoreData
 //! [`WidgetCore`]: crate::WidgetCore
 //! [`Widget`]: crate::Widget
-//! [`Widget::alignment`]: crate::Widget::alignment
 //! [`Layout`]: crate::Layout
+//! [`Layout::set_rect`]: crate::Layout::set_rect
 //! [`LayoutData`]: crate::LayoutData
 //! [`Handler`]: crate::event::Handler
 //! [`Handler::Msg`]: crate::event::Handler::Msg

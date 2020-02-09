@@ -110,15 +110,15 @@ pub(crate) fn derive(
             );
         });
 
-        set_rect.append_all(quote! { let mut align = self.#ident.alignment(); });
+        set_rect.append_all(quote! { let mut align = kas::AlignHints::NONE; });
         if let Some(toks) = args.halign_toks()? {
-            set_rect.append_all(toks)
+            set_rect.append_all(quote! { align.horiz = Some(#toks); });
         }
         if let Some(toks) = args.valign_toks()? {
-            set_rect.append_all(toks)
+            set_rect.append_all(quote! { align.vert = Some(#toks); });
         }
         set_rect.append_all(quote! {
-            self.#ident.set_rect(size_handle, setter.child_rect(#child_info, align));
+            self.#ident.set_rect(size_handle, setter.child_rect(#child_info), align);
         });
 
         draw.append_all(quote! {
@@ -299,8 +299,9 @@ pub(crate) fn derive(
         fn set_rect(
             &mut self,
             size_handle: &mut dyn kas::theme::SizeHandle,
-            rect: kas::geom::Rect)
-        {
+            rect: kas::geom::Rect,
+            _: kas::AlignHints,
+        ) {
             use kas::{WidgetCore, Widget};
             use kas::layout::{Margins, RulesSetter};
             self.core_data_mut().rect = rect;

@@ -12,7 +12,7 @@ use crate::event::{Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{Align, Alignment, CoreData, Layout, Widget, WidgetCore};
+use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A simple text label
@@ -119,18 +119,6 @@ impl<H> Debug for EditBox<H> {
 }
 
 impl<H: 'static> Widget for EditBox<H> {
-    fn alignment(&self) -> Alignment {
-        Alignment {
-            halign: Align::Stretch,
-            valign: if self.multi_line {
-                Align::Stretch
-            } else {
-                Align::Centre
-            },
-            ideal: self.rect().size,
-        }
-    }
-
     fn allow_focus(&self) -> bool {
         true
     }
@@ -154,7 +142,16 @@ impl<H: 'static> Layout for EditBox<H> {
         rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+        let valign = if self.multi_line {
+            Align::Stretch
+        } else {
+            Align::Centre
+        };
+        let rect = align
+            .complete(Align::Stretch, valign, self.rect().size)
+            .apply(rect);
+
         let sides = size_handle.edit_surround();
         self.text_rect = Rect {
             pos: rect.pos + sides.0,

@@ -13,8 +13,8 @@ use crate::layout::{
     self, AxisInfo, Margins, RowPositionSolver, RulesSetter, RulesSolver, SizeRules,
 };
 use crate::theme::{DrawHandle, SizeHandle};
+use crate::{AlignHints, Directional, Horizontal, Vertical};
 use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
-use crate::{Directional, Horizontal, Vertical};
 use kas::geom::Rect;
 
 /// A generic row widget
@@ -155,7 +155,7 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
         rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {
         self.core.rect = rect;
         let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(
             rect,
@@ -165,8 +165,8 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
         );
 
         for (n, child) in self.widgets.iter_mut().enumerate() {
-            let align = child.alignment();
-            child.set_rect(size_handle, setter.child_rect(n, align));
+            let align = AlignHints::default();
+            child.set_rect(size_handle, setter.child_rect(n), align);
         }
     }
 

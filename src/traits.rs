@@ -12,7 +12,7 @@ use crate::event::{Callback, Handler, Manager, UpdateHandle, VoidMsg};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{Align, Alignment, CoreData, WidgetId};
+use crate::{AlignHints, CoreData, WidgetId};
 
 pub trait CloneTo {
     unsafe fn clone_to(&self, out: *mut Self);
@@ -161,14 +161,21 @@ pub trait Layout: WidgetCore {
 
     /// Adjust to the given size.
     ///
-    /// For many widgets this operation is trivial and the default
-    /// implementation will suffice. For layout widgets (those with children),
-    /// this operation is more complex.
+    /// For widgets with children, this is usually implemented via the derive
+    /// [macro](kas::macros). For non-parent widgets which stretch to fill
+    /// available space, the default implementation suffices. For non-parent
+    /// widgets which react to alignment, this is a little more complex to
+    /// implement, and can be done in one of two ways:
+    ///
+    /// 1.  Shrinking to ideal area and aligning within available space (e.g.
+    ///     `CheckBoxBare` widget)
+    /// 2.  Filling available space and applying alignment to contents (e.g.
+    ///     `Label` widget)
     ///
     /// One may assume that `size_rules` has been called for each axis with the
     /// current widget configuration.
     #[inline]
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect) {
+    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
         self.core_data_mut().rect = rect;
     }
 
@@ -225,22 +232,6 @@ pub trait Layout: WidgetCore {
 ///
 /// [`Handler`]: crate::event::Handler
 pub trait Widget: Layout {
-    /// Default alignment of widget
-    ///
-    /// The default implementation is [`Align::Stretch`] on both axes,
-    /// in which case the `ideal` size field is unimportant. In general, one
-    /// may assume that [`Layout::size_rules`] sets `self.rect().size` to the
-    /// ideal size.
-    ///
-    /// Note that alignment may be overridden by the parent widget.
-    fn alignment(&self) -> Alignment {
-        Alignment {
-            halign: Align::Stretch,
-            valign: Align::Stretch,
-            ideal: self.rect().size,
-        }
-    }
-
     /// Configure widget
     ///
     /// Widgets are *configured* on window creation and when

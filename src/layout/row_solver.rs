@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 
 use super::{AxisInfo, Margins, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::{Coord, Rect};
-use crate::{Alignment, Directional, Widget};
+use crate::{Directional, Widget};
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
@@ -145,7 +145,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, 
     type Storage = S;
     type ChildInfo = usize;
 
-    fn child_rect(&mut self, index: Self::ChildInfo, alignment: Alignment) -> Rect {
+    fn child_rect(&mut self, index: Self::ChildInfo) -> Rect {
         if self.direction.is_horizontal() {
             self.crect.pos.0 += (self.crect.size.0 + self.inter) as i32;
             self.crect.size.0 = self.widths.as_ref()[index];
@@ -153,7 +153,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, 
             self.crect.pos.1 += (self.crect.size.1 + self.inter) as i32;
             self.crect.size.1 = self.widths.as_ref()[index];
         }
-        alignment.apply(self.crect)
+        self.crect
     }
 }
 

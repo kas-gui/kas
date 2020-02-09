@@ -13,7 +13,7 @@ use crate::event::{Action, Handler, Manager, Response, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{Align, Alignment, CoreData, Layout, Widget, WidgetCore};
+use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A push-button with a text label
@@ -28,14 +28,6 @@ pub struct TextButton<M: Clone + Debug> {
 }
 
 impl<M: Clone + Debug> Widget for TextButton<M> {
-    fn alignment(&self) -> Alignment {
-        Alignment {
-            halign: Align::Stretch,
-            valign: Align::Centre,
-            ideal: self.rect().size,
-        }
-    }
-
     fn configure(&mut self, mgr: &mut Manager) {
         for key in &self.keys {
             mgr.add_accel_key(*key, self.id());
@@ -60,7 +52,11 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
         rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+        let rect = align
+            .complete(Align::Stretch, Align::Centre, self.rect().size)
+            .apply(rect);
+
         let sides = size_handle.button_surround();
         self.text_rect = Rect {
             pos: rect.pos + sides.0,

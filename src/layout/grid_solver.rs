@@ -9,7 +9,6 @@ use std::marker::PhantomData;
 
 use super::{AxisInfo, GridStorage, Margins, RowTemp, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::{Coord, Rect, Size};
-use crate::Alignment;
 
 /// Per-child information
 pub struct GridChildInfo {
@@ -273,7 +272,7 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> RulesSetter for GridSetter<RT, CT
     type Storage = S;
     type ChildInfo = GridChildInfo;
 
-    fn child_rect(&mut self, info: Self::ChildInfo, alignment: Alignment) -> Rect {
+    fn child_rect(&mut self, info: Self::ChildInfo) -> Rect {
         let pos = self.pos
             + Coord(
                 self.col_pos.as_ref()[info.col] as i32,
@@ -291,6 +290,6 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> RulesSetter for GridSetter<RT, CT
             size.1 += self.heights.as_ref()[n];
         }
 
-        alignment.apply(Rect { pos, size })
+        Rect { pos, size }
     }
 }

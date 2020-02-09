@@ -93,16 +93,42 @@ pub enum Align {
     Stretch,
 }
 
+/// Partial alignment information provided by the parent
+#[derive(Default)]
+pub struct AlignHints {
+    horiz: Option<Align>,
+    vert: Option<Align>,
+}
+
+impl AlignHints {
+    /// No hints
+    pub const NONE: AlignHints = AlignHints::new(None, None);
+
+    /// Construct with optional horiz. and vert. alignment
+    pub const fn new(horiz: Option<Align>, vert: Option<Align>) -> Self {
+        Self { horiz, vert }
+    }
+
+    /// Complete via defaults and ideal size information
+    pub fn complete(&self, horiz: Align, vert: Align, ideal: Size) -> CompleteAlignment {
+        CompleteAlignment {
+            halign: self.horiz.unwrap_or(horiz),
+            valign: self.vert.unwrap_or(vert),
+            ideal,
+        }
+    }
+}
+
 /// Provides alignment information on both axes along with ideal size
 ///
 /// Note that the `ideal` size detail is only used for non-stretch alignment.
-pub struct Alignment {
-    pub halign: Align,
-    pub valign: Align,
-    pub ideal: Size,
+pub struct CompleteAlignment {
+    halign: Align,
+    valign: Align,
+    ideal: Size,
 }
 
-impl Alignment {
+impl CompleteAlignment {
     /// Adjust the given `rect` according to alignment, returning the result
     pub fn apply(&self, rect: Rect) -> Rect {
         let ideal = self.ideal;

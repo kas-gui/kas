@@ -7,7 +7,6 @@
 
 use super::{AxisInfo, Margins, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::Rect;
-use crate::Alignment;
 
 /// [`RulesSolver`] implementation for a fixed single-child layout
 pub struct SingleSolver {
@@ -80,7 +79,7 @@ impl RulesSetter for SingleSetter {
     type Storage = ();
     type ChildInfo = ();
 
-    fn child_rect(&mut self, _child_info: Self::ChildInfo, alignment: Alignment) -> Rect {
-        alignment.apply(self.crect)
+    fn child_rect(&mut self, _child_info: Self::ChildInfo) -> Rect {
+        self.crect
     }
 }

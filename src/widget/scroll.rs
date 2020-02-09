@@ -13,8 +13,8 @@ use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass};
+use crate::{AlignHints, Horizontal, Vertical};
 use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
-use crate::{Horizontal, Vertical};
 
 /// A scrollable region
 ///
@@ -156,7 +156,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {
         self.core.rect = rect;
         // We use simplified layout code here
         let pos = rect.pos;
@@ -176,24 +176,26 @@ impl<W: Widget> Layout for ScrollRegion<W> {
             self.inner_size.0 -= width;
         }
 
-        let alignment = self.child.alignment();
         let child_size = self.inner_size.max(self.min_child_size);
-        let child_rect = alignment.apply(Rect::new(pos, child_size));
-        self.child.set_rect(size_handle, child_rect);
+        let child_rect = Rect::new(pos, child_size);
+        self.child
+            .set_rect(size_handle, child_rect, AlignHints::NONE);
         self.max_offset = Coord::from(child_size) - Coord::from(self.inner_size);
         self.offset = self.offset.max(Coord::ZERO).min(self.max_offset);
 
         if self.show_bars.0 {
             let pos = Coord(pos.0, pos.1 + self.inner_size.1 as i32);
             let size = Size(self.core.rect.size.0, width);
-            self.horiz_bar.set_rect(size_handle, Rect { pos, size });
+            self.horiz_bar
+                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
             self.horiz_bar
                 .set_limits(self.max_offset.0 as u32, rect.size.0);
         }
         if self.show_bars.1 {
             let pos = Coord(pos.0 + self.inner_size.0 as i32, pos.1);
             let size = Size(width, self.core.rect.size.1);
-            self.vert_bar.set_rect(size_handle, Rect { pos, size });
+            self.vert_bar
+                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
             self.vert_bar
                 .set_limits(self.max_offset.1 as u32, rect.size.1);
         }
