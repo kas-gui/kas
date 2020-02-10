@@ -21,6 +21,7 @@ use kas::Align;
 use kas::Direction::{self, Horizontal, Vertical};
 
 use crate::draw::{DrawPipe, DrawShaded, DrawText, ShadeStyle, Vec2};
+use crate::resources::colours::ThemeColours;
 
 /// A simple, inflexible theme providing a sample implementation.
 #[derive(Clone, Debug)]
@@ -63,20 +64,6 @@ struct ThemeDimensions {
     scrollbar: u32,
 }
 
-#[derive(Clone, Debug)]
-struct ThemeColours {
-    background: Colour,
-    frame: Colour,
-    text_area: Colour,
-    text: Colour,
-    label_text: Colour,
-    button_text: Colour,
-    key_nav_focus: Colour,
-    button: Colour,
-    button_highlighted: Colour,
-    button_depressed: Colour,
-}
-
 /// Inner margin; this is multiplied by the DPI factor then rounded to nearest
 /// integer, e.g. `(2.0 * 1.25).round() == 3.0`.
 const MARGIN: f32 = 2.0;
@@ -86,43 +73,6 @@ const FRAME_SIZE: f32 = 5.0;
 const BUTTON_FRAME: f32 = 5.0;
 /// Scrollbar width & min length
 const SCROLLBAR_SIZE: f32 = 8.0;
-
-impl ThemeColours {
-    fn new() -> Self {
-        ThemeColours {
-            background: Colour::grey(0.7),
-            frame: Colour::grey(0.7),
-            text_area: Colour::grey(1.0),
-            text: Colour::grey(0.0),
-            label_text: Colour::grey(0.0),
-            button_text: Colour::grey(1.0),
-            key_nav_focus: Colour::new(1.0, 0.7, 0.5),
-            button: Colour::new(0.2, 0.7, 1.0),
-            button_highlighted: Colour::new(0.25, 0.8, 1.0),
-            button_depressed: Colour::new(0.15, 0.525, 0.75),
-        }
-    }
-
-    fn nav_colour(&self, highlights: HighlightState) -> Option<Colour> {
-        if highlights.key_focus {
-            Some(self.key_nav_focus)
-        } else {
-            None
-        }
-    }
-
-    fn button_colour(&self, highlights: HighlightState, show: bool) -> Option<Colour> {
-        if highlights.depress {
-            Some(self.button_depressed)
-        } else if show && highlights.hover {
-            Some(self.button_highlighted)
-        } else if show {
-            Some(self.button)
-        } else {
-            None
-        }
-    }
-}
 
 impl SampleWindow {
     fn new(font_size: f32, dpi_factor: f32) -> Self {
@@ -408,16 +358,15 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
     fn button(&mut self, rect: Rect, highlights: HighlightState) {
         let mut outer = rect + self.offset;
-        let col = self.cols.button_colour(highlights, true).unwrap();
+        let col = self.cols.button_state(highlights);
 
         let mut inner = outer.shrink(self.window.dims.button_frame);
         let style = ShadeStyle::Round(Vec2(0.0, 0.6));
         self.draw.shaded_frame(self.pass, outer, inner, style, col);
 
-        if highlights.key_focus {
+        if let Some(col) = self.cols.nav_region(highlights) {
             outer = inner;
             inner = outer.shrink(self.window.dims.margin);
-            let col = self.cols.nav_colour(highlights).unwrap();
             self.draw.frame(self.pass, outer, inner, col);
         }
 
@@ -432,10 +381,9 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         self.draw
             .shaded_frame(self.pass, outer, inner, style, self.cols.frame);
 
-        if highlights.key_focus {
+        if let Some(col) = self.cols.nav_region(highlights) {
             outer = inner;
             inner = outer.shrink(self.window.dims.margin);
-            let col = self.cols.nav_colour(highlights).unwrap();
             self.draw.frame(self.pass, outer, inner, col);
         }
 
@@ -455,14 +403,14 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
             inner = outer.shrink(self.window.dims.margin);
             let col = self
                 .cols
-                .nav_colour(highlights)
+                .nav_region(highlights)
                 .unwrap_or(self.cols.text_area);
             self.draw.frame(self.pass, outer, inner, col);
         }
 
         let col = self
             .cols
-            .button_colour(highlights, checked)
+            .check_mark_state(highlights, checked)
             .unwrap_or(self.cols.text_area);
         self.draw.rect(self.pass, inner, col);
     }
@@ -497,7 +445,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         let inner = outer.shrink(half_width);
         let style = ShadeStyle::Round(Vec2(0.0, 0.6));
-        let col = self.cols.button_colour(highlights, true).unwrap();
+        let col = self.cols.scrollbar_state(highlights);
         self.draw.shaded_frame(self.pass, outer, inner, style, col);
         self.draw.rect(self.pass, inner, col);
     }
