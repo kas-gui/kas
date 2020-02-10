@@ -23,6 +23,7 @@ pub struct ThemeColours {
     pub button: Colour,
     pub button_highlighted: Colour,
     pub button_depressed: Colour,
+    pub checkbox: Colour,
 }
 
 impl ThemeColours {
@@ -52,6 +53,7 @@ impl ThemeColours {
             button: Colour::new(0.2, 0.7, 1.0),
             button_highlighted: Colour::new(0.25, 0.8, 1.0),
             button_depressed: Colour::new(0.15, 0.525, 0.75),
+            checkbox: Colour::new(0.2, 0.7, 1.0),
         }
     }
 
@@ -65,9 +67,10 @@ impl ThemeColours {
             label_text: Colour::grey(0.0),
             button_text: Colour::grey(0.0),
             key_nav_focus: Colour::new(1.0, 0.7, 0.5),
-            button: Colour::grey(0.6),
-            button_highlighted: Colour::grey(0.7),
-            button_depressed: Colour::grey(0.5),
+            button: Colour::new(1.0, 1.0, 0.8),
+            button_highlighted: Colour::new(1.0, 1.0, 0.6),
+            button_depressed: Colour::new(0.8, 0.8, 0.6),
+            checkbox: Colour::grey(0.4),
         }
     }
 
@@ -82,8 +85,9 @@ impl ThemeColours {
             button_text: Colour::grey(1.0),
             key_nav_focus: Colour::new(1.0, 0.7, 0.5),
             button: Colour::new(0.5, 0.1, 0.1),
-            button_highlighted: Colour::new(0.6, 0.5, 0.1),
+            button_highlighted: Colour::new(0.6, 0.3, 0.1),
             button_depressed: Colour::new(0.3, 0.1, 0.1),
+            checkbox: Colour::new(0.5, 0.1, 0.1),
         }
     }
 
@@ -114,7 +118,7 @@ impl ThemeColours {
         } else if checked && highlights.hover {
             Some(self.button_highlighted)
         } else if checked {
-            Some(self.button)
+            Some(self.checkbox)
         } else {
             None
         }
