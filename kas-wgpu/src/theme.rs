@@ -43,15 +43,19 @@ impl SampleTheme {
 #[doc(hidden)]
 pub struct SampleWindow {
     font_size: f32, // unscaled by DPI
+    dims: ThemeDimensions,
+}
+
+struct ThemeDimensions {
     font_scale: f32,
     line_height: u32,
     min_line_length: u32,
     max_line_length: u32,
     margin: u32,
-    frame_size: u32,
+    frame: u32,
     button_frame: u32,
     checkbox: u32,
-    scrollbar_size: u32,
+    scrollbar: u32,
 }
 
 /// Inner margin; this is multiplied by the DPI factor then rounded to nearest
@@ -100,21 +104,29 @@ fn button_colour(highlights: HighlightState, show: bool) -> Option<Colour> {
 
 impl SampleWindow {
     fn new(font_size: f32, dpi_factor: f32) -> Self {
+        SampleWindow {
+            font_size,
+            dims: ThemeDimensions::new(font_size, dpi_factor),
+        }
+    }
+}
+
+impl ThemeDimensions {
+    fn new(font_size: f32, dpi_factor: f32) -> Self {
         let font_scale = font_size * dpi_factor;
         let line_height = font_scale.round() as u32;
         let margin = (MARGIN * dpi_factor).round() as u32;
-        let frame_size = (FRAME_SIZE * dpi_factor).round() as u32;
-        SampleWindow {
-            font_size,
+        let frame = (FRAME_SIZE * dpi_factor).round() as u32;
+        ThemeDimensions {
             font_scale,
             line_height,
             min_line_length: line_height * 10,
             max_line_length: line_height * 40,
             margin,
-            frame_size,
+            frame,
             button_frame: (BUTTON_FRAME * dpi_factor).round() as u32,
-            checkbox: (font_scale * 0.7).round() as u32 + 2 * (margin + frame_size),
-            scrollbar_size: (SCROLLBAR_SIZE * dpi_factor).round() as u32,
+            checkbox: (font_scale * 0.7).round() as u32 + 2 * (margin + frame),
+            scrollbar: (SCROLLBAR_SIZE * dpi_factor).round() as u32,
         }
     }
 }
@@ -141,32 +153,32 @@ impl theme::Window<DrawPipe> for SampleWindow {
         self
     }
 
-    fn set_dpi_factor(&mut self, factor: f32) {
-        *self = SampleWindow::new(self.font_size, factor)
+    fn set_dpi_factor(&mut self, dpi_factor: f32) {
+        self.dims = ThemeDimensions::new(self.font_size, dpi_factor)
     }
 }
 
 impl<'a> theme::SizeHandle for SizeHandle<'a> {
     fn outer_frame(&self) -> (Size, Size) {
-        let f = self.window.frame_size as u32;
+        let f = self.window.dims.frame as u32;
         (Size::uniform(f), Size::uniform(f))
     }
 
     fn inner_margin(&self) -> Size {
-        Size::uniform(self.window.margin as u32)
+        Size::uniform(self.window.dims.margin as u32)
     }
 
     fn outer_margin(&self) -> Size {
-        Size::uniform(self.window.margin as u32)
+        Size::uniform(self.window.dims.margin as u32)
     }
 
     fn line_height(&self, _: TextClass) -> u32 {
-        self.window.line_height
+        self.window.dims.line_height
     }
 
     fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
-        let font_scale = self.window.font_scale;
-        let line_height = self.window.line_height;
+        let font_scale = self.window.dims.font_scale;
+        let line_height = self.window.dims.line_height;
         let draw = &mut self.draw;
         let mut bound = |dir: Direction| -> u32 {
             let layout = match class {
@@ -200,10 +212,10 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
         let inner = if axis.is_horizontal() {
             let bound = bound(Horizontal);
             let min = match class {
-                TextClass::Edit | TextClass::EditMulti => self.window.min_line_length,
-                _ => bound.min(self.window.min_line_length),
+                TextClass::Edit | TextClass::EditMulti => self.window.dims.min_line_length,
+                _ => bound.min(self.window.dims.min_line_length),
             };
-            let ideal = bound.min(self.window.max_line_length);
+            let ideal = bound.min(self.window.dims.max_line_length);
             SizeRules::new(min, ideal, StretchPolicy::LowUtility)
         } else
         /* vertical */
@@ -219,22 +231,22 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
             };
             SizeRules::new(min, ideal, stretch)
         };
-        let margin = SizeRules::fixed(2 * self.window.margin as u32);
+        let margin = SizeRules::fixed(2 * self.window.dims.margin as u32);
         inner + margin
     }
 
     fn button_surround(&self) -> (Size, Size) {
-        let s = Size::uniform(self.window.button_frame);
+        let s = Size::uniform(self.window.dims.button_frame);
         (s, s)
     }
 
     fn edit_surround(&self) -> (Size, Size) {
-        let s = Size::uniform(self.window.frame_size as u32);
+        let s = Size::uniform(self.window.dims.frame as u32);
         (s, s)
     }
 
     fn checkbox(&self) -> Size {
-        Size::uniform(self.window.checkbox)
+        Size::uniform(self.window.dims.checkbox)
     }
 
     #[inline]
@@ -243,7 +255,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
     }
 
     fn scrollbar(&self) -> (u32, u32, u32) {
-        let s = self.window.scrollbar_size as u32;
+        let s = self.window.dims.scrollbar as u32;
         (s, s, 2 * s)
     }
 }
@@ -321,7 +333,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
     fn outer_frame(&mut self, rect: Rect) {
         let outer = rect + self.offset;
-        let inner = outer.shrink(self.window.frame_size);
+        let inner = outer.shrink(self.window.dims.frame);
         let style = ShadeStyle::Round(Vec2(0.6, -0.6));
         self.draw
             .shaded_frame(self.pass, outer, inner, style, FRAME);
@@ -329,7 +341,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
         let outer = rect + self.offset;
-        let bounds = Coord::from(rect.size) - Coord::uniform(2 * self.window.margin as i32);
+        let bounds = Coord::from(rect.size) - Coord::uniform(2 * self.window.dims.margin as i32);
 
         let col = match props.class {
             TextClass::Label => LABEL_TEXT,
@@ -350,7 +362,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         };
 
         let text_pos =
-            outer.pos + Coord::uniform(self.window.margin as i32) + Coord(h_offset, v_offset);
+            outer.pos + Coord::uniform(self.window.dims.margin as i32) + Coord(h_offset, v_offset);
 
         let layout = match props.class {
             TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
@@ -362,7 +374,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
             text,
             screen_position: Vec2::from(text_pos).into(),
             color: col.into(),
-            scale: Scale::uniform(self.window.font_scale),
+            scale: Scale::uniform(self.window.dims.font_scale),
             bounds: Vec2::from(bounds).into(),
             layout,
             ..Section::default()
@@ -373,13 +385,13 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let mut outer = rect + self.offset;
         let col = button_colour(highlights, true).unwrap();
 
-        let mut inner = outer.shrink(self.window.button_frame);
+        let mut inner = outer.shrink(self.window.dims.button_frame);
         let style = ShadeStyle::Round(Vec2(0.0, 0.6));
         self.draw.shaded_frame(self.pass, outer, inner, style, col);
 
         if highlights.key_focus {
             outer = inner;
-            inner = outer.shrink(self.window.margin);
+            inner = outer.shrink(self.window.dims.margin);
             let col = nav_colour(highlights).unwrap();
             self.draw.frame(self.pass, outer, inner, col);
         }
@@ -390,14 +402,14 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
         let mut outer = rect + self.offset;
 
-        let mut inner = outer.shrink(self.window.frame_size);
+        let mut inner = outer.shrink(self.window.dims.frame);
         let style = ShadeStyle::Square(Vec2(0.0, -0.8));
         self.draw
             .shaded_frame(self.pass, outer, inner, style, FRAME);
 
         if highlights.key_focus {
             outer = inner;
-            inner = outer.shrink(self.window.margin);
+            inner = outer.shrink(self.window.dims.margin);
             let col = nav_colour(highlights).unwrap();
             self.draw.frame(self.pass, outer, inner, col);
         }
@@ -408,14 +420,14 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
         let mut outer = rect + self.offset;
 
-        let mut inner = outer.shrink(self.window.frame_size);
+        let mut inner = outer.shrink(self.window.dims.frame);
         let style = ShadeStyle::Square(Vec2(0.0, -0.8));
         self.draw
             .shaded_frame(self.pass, outer, inner, style, FRAME);
 
         if checked || highlights.any() {
             outer = inner;
-            inner = outer.shrink(self.window.margin);
+            inner = outer.shrink(self.window.dims.margin);
             let col = nav_colour(highlights).unwrap_or(TEXT_AREA);
             self.draw.frame(self.pass, outer, inner, col);
         }
