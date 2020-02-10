@@ -124,6 +124,9 @@ pub trait Theme<Draw> {
 
     /// Background colour
     fn clear_colour(&self) -> Colour;
+
+    /// Change the colour scheme. Returns true if successful.
+    fn set_colours(&mut self, scheme: &str) -> bool;
 }
 
 /// Per-window storage for the theme

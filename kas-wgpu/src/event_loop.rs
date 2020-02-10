@@ -187,6 +187,11 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         actions.push((*id, TkAction::Close));
                     }
                 }
+                PendingAction::RedrawAll => {
+                    for (_, window) in self.windows.iter_mut() {
+                        window.window.request_redraw();
+                    }
+                }
                 PendingAction::Update(handle, payload) => {
                     for (id, window) in self.windows.iter_mut() {
                         let action = window.update_handle(&mut self.shared, handle, payload);

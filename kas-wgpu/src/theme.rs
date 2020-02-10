@@ -279,6 +279,15 @@ impl theme::Theme<DrawPipe> for SampleTheme {
     fn clear_colour(&self) -> Colour {
         self.cols.background
     }
+
+    fn set_colours(&mut self, scheme: &str) -> bool {
+        if let Some(scheme) = ThemeColours::open(scheme) {
+            self.cols = scheme;
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl<'a> theme::DrawHandle for DrawHandle<'a> {

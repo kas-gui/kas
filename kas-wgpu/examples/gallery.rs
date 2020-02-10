@@ -68,10 +68,29 @@ fn main() -> Result<(), kas_wgpu::Error> {
             struct {
                 #[widget] _ = make_widget! {
                     #[widget]
-                    #[layout(single, frame)]
+                    #[layout(vertical, frame)]
                     #[handler(msg = VoidMsg)]
                     struct {
                         #[widget(halign=centre)] _ = Label::from("Widget Gallery"),
+                        #[widget(handler=set_colour)] _ = make_widget! {
+                            #[widget]
+                            #[layout(horizontal)]
+                            #[handler(msg = &'static str)]
+                            struct {
+                                #[widget] _ = TextButton::new("Default", "default"),
+                                #[widget] _ = TextButton::new("Light", "light"),
+                                #[widget] _ = TextButton::new("Dark", "dark"),
+                            }
+                        },
+                    }
+                    impl {
+                        fn set_colour(&mut self, mgr: &mut Manager, scheme: &'static str)
+                            -> VoidResponse
+                        {
+                            println!("Colour scheme: {:?}", scheme);
+                            mgr.set_colours(scheme);
+                            VoidResponse::None
+                        }
                     }
                 },
                 #[widget(handler = activations)] _ = ScrollRegion::new(widgets).with_auto_bars(true),

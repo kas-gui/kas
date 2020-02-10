@@ -329,6 +329,14 @@ impl<'a> Manager<'a> {
     pub fn set_clipboard(&mut self, content: String) {
         self.tkw.set_clipboard(content)
     }
+
+    /// Change the colour scheme
+    ///
+    /// If no theme by this name is found, the theme is unchanged.
+    #[inline]
+    pub fn set_colours(&mut self, scheme: &str) {
+        self.tkw.set_colours(scheme);
+    }
 }
 
 /// Public API (around event manager state)

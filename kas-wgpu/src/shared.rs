@@ -8,7 +8,7 @@
 use log::{info, warn};
 use std::num::NonZeroU32;
 
-use crate::draw::ShaderManager;
+use crate::draw::{DrawPipe, ShaderManager};
 use crate::{Error, Options, WindowId};
 use kas::event::UpdateHandle;
 
@@ -109,7 +109,7 @@ impl<T> SharedState<T> {
 // window-specific handle; for us this is unnecessary.
 //
 // NOTE: Correct clipboard handling on Wayland requires a window handle.
-impl<T> kas::TkWindow for SharedState<T> {
+impl<T: kas::theme::Theme<DrawPipe>> kas::TkWindow for SharedState<T> {
     fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.
@@ -139,10 +139,17 @@ impl<T> kas::TkWindow for SharedState<T> {
     fn set_clipboard(&mut self, content: String) {
         self.set_clipboard(content);
     }
+
+    fn set_colours(&mut self, scheme: &str) {
+        if self.theme.set_colours(scheme) {
+            self.pending.push(PendingAction::RedrawAll);
+        }
+    }
 }
 
 pub enum PendingAction {
     AddWindow(WindowId, Box<dyn kas::Window>),
     CloseWindow(WindowId),
+    RedrawAll,
     Update(UpdateHandle, u64),
 }

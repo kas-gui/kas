@@ -5,6 +5,8 @@
 
 //! Colour schemes
 
+use log::warn;
+
 use kas::draw::Colour;
 use kas::event::HighlightState;
 
@@ -24,7 +26,20 @@ pub struct ThemeColours {
 }
 
 impl ThemeColours {
-    /// Construct a default instance
+    /// Open the given scheme, if found
+    pub fn open(scheme: &str) -> Option<Self> {
+        Some(match scheme {
+            "default" => Self::new(),
+            "light" => Self::light(),
+            "dark" => Self::dark(),
+            other => {
+                warn!("ThemeColours::open: scheme \"{}\" not found", other);
+                return None;
+            }
+        })
+    }
+
+    /// Default theme: grey with blue activable items
     pub fn new() -> Self {
         ThemeColours {
             background: Colour::grey(0.7),
@@ -37,6 +52,38 @@ impl ThemeColours {
             button: Colour::new(0.2, 0.7, 1.0),
             button_highlighted: Colour::new(0.25, 0.8, 1.0),
             button_depressed: Colour::new(0.15, 0.525, 0.75),
+        }
+    }
+
+    /// Light scheme
+    pub fn light() -> Self {
+        ThemeColours {
+            background: Colour::grey(0.9),
+            frame: Colour::grey(0.9),
+            text_area: Colour::grey(1.0),
+            text: Colour::grey(0.0),
+            label_text: Colour::grey(0.0),
+            button_text: Colour::grey(0.0),
+            key_nav_focus: Colour::new(1.0, 0.7, 0.5),
+            button: Colour::grey(0.6),
+            button_highlighted: Colour::grey(0.7),
+            button_depressed: Colour::grey(0.5),
+        }
+    }
+
+    /// Dark scheme
+    pub fn dark() -> Self {
+        ThemeColours {
+            background: Colour::grey(0.2),
+            frame: Colour::grey(0.2),
+            text_area: Colour::grey(0.1),
+            text: Colour::grey(1.0),
+            label_text: Colour::grey(1.0),
+            button_text: Colour::grey(1.0),
+            key_nav_focus: Colour::new(1.0, 0.7, 0.5),
+            button: Colour::new(0.5, 0.1, 0.1),
+            button_highlighted: Colour::new(0.6, 0.5, 0.1),
+            button_depressed: Colour::new(0.3, 0.1, 0.1),
         }
     }
 

@@ -80,7 +80,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     /// windows. Optionally returns a callback time.
     ///
     /// `init` should always return an action of at least `TkAction::Reconfigure`.
-    pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> TkAction {
+    pub fn init<T: kas::theme::Theme<DrawPipe>>(
+        &mut self,
+        shared: &mut SharedState<T>,
+    ) -> TkAction {
         debug!("Window::init");
         let mut mgr = self.mgr.manager(shared);
         mgr.send_action(TkAction::Reconfigure);
@@ -98,7 +101,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     }
 
     /// Recompute layout of widgets and redraw
-    pub fn reconfigure<T>(&mut self, shared: &mut SharedState<T>) -> Option<Instant> {
+    pub fn reconfigure<T: kas::theme::Theme<DrawPipe>>(
+        &mut self,
+        shared: &mut SharedState<T>,
+    ) -> Option<Instant> {
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         debug!("Reconfiguring window (size = {:?})", size);
 
@@ -145,7 +151,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         self.mgr.region_moved(&mut *self.widget);
     }
 
-    pub fn handle_closure<T>(mut self, shared: &mut SharedState<T>) -> TkAction {
+    pub fn handle_closure<T: kas::theme::Theme<DrawPipe>>(
+        mut self,
+        shared: &mut SharedState<T>,
+    ) -> TkAction {
         let mut mgr = self.mgr.manager(shared);
 
         for (i, condition) in self.widget.callbacks() {
@@ -163,13 +172,16 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         mgr.unwrap_action()
     }
 
-    pub fn update_timer<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
+    pub fn update_timer<T: kas::theme::Theme<DrawPipe>>(
+        &mut self,
+        shared: &mut SharedState<T>,
+    ) -> (TkAction, Option<Instant>) {
         let mut mgr = self.mgr.manager(shared);
         mgr.update_timer(&mut *self.widget);
         (mgr.unwrap_action(), self.mgr.next_resume())
     }
 
-    pub fn update_handle<T>(
+    pub fn update_handle<T: kas::theme::Theme<DrawPipe>>(
         &mut self,
         shared: &mut SharedState<T>,
         handle: UpdateHandle,

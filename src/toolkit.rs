@@ -101,6 +101,12 @@ pub trait TkWindow {
 
     /// Attempt to set clipboard contents
     fn set_clipboard(&mut self, content: String);
+
+    /// Change the colour scheme
+    ///
+    /// If no theme by this name is found, the theme is unchanged.
+    // TODO: revise scheme identification and error handling?
+    fn set_colours(&mut self, scheme: &str);
 }
 
 #[cfg(test)]
