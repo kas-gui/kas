@@ -9,10 +9,10 @@ use std::fmt::Debug;
 
 use crate::event::{Event, Handler, Manager, PressSource, Response};
 use crate::geom::Rect;
-use crate::layout::{AxisInfo, Direction, SizeRules};
+use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, WidgetCore, WidgetId};
+use crate::{AlignHints, CoreData, Directional, Layout, WidgetCore, WidgetId};
 
 /// A scroll bar
 ///
@@ -20,12 +20,11 @@ use crate::{CoreData, Layout, WidgetCore, WidgetId};
 /// and allow the size of the handle to be specified.
 #[widget]
 #[derive(Clone, Debug, Default, Widget)]
-pub struct ScrollBar<D: Direction> {
+pub struct ScrollBar<D: Directional> {
     #[core]
     core: CoreData,
     direction: D,
     // Terminology assumes vertical orientation:
-    width: u32,
     min_handle_len: u32,
     handle_len: u32,
     handle_value: u32, // contract: > 0
@@ -35,7 +34,7 @@ pub struct ScrollBar<D: Direction> {
     press_offset: i32,
 }
 
-impl<D: Direction + Default> ScrollBar<D> {
+impl<D: Directional + Default> ScrollBar<D> {
     /// Construct a scroll bar
     ///
     /// Default values are assumed for all parameters.
@@ -44,7 +43,7 @@ impl<D: Direction + Default> ScrollBar<D> {
     }
 }
 
-impl<D: Direction> ScrollBar<D> {
+impl<D: Directional> ScrollBar<D> {
     /// Construct a scroll bar with the given direction
     ///
     /// Default values are assumed for all parameters.
@@ -53,7 +52,6 @@ impl<D: Direction> ScrollBar<D> {
         ScrollBar {
             core: Default::default(),
             direction,
-            width: 0,
             min_handle_len: 0,
             handle_len: 0,
             handle_value: 1,
@@ -111,10 +109,6 @@ impl<D: Direction> ScrollBar<D> {
         }
     }
 
-    pub(crate) fn width(&self) -> u32 {
-        self.width
-    }
-
     #[inline]
     fn len(&self) -> u32 {
         match self.direction.is_vertical() {
@@ -163,33 +157,31 @@ impl<D: Direction> ScrollBar<D> {
     }
 }
 
-impl<D: Direction> Layout for ScrollBar<D> {
+impl<D: Directional> Layout for ScrollBar<D> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let (thickness, _, min_len) = size_handle.scrollbar();
-        self.width = thickness;
-        if self.direction.is_vertical() == axis.vertical() {
-            SizeRules::fixed(min_len)
+        if self.direction.is_vertical() == axis.is_vertical() {
+            SizeRules::new(min_len, min_len, StretchPolicy::LowUtility)
         } else {
             SizeRules::fixed(thickness)
         }
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
-        let (thickness, min_handle_len, _) = size_handle.scrollbar();
-        self.width = thickness;
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {
+        let (_, min_handle_len, _) = size_handle.scrollbar();
         self.min_handle_len = min_handle_len;
         self.core.rect = rect;
         self.update_handle();
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
-        let dir = self.direction.is_vertical();
+        let dir = self.direction.as_direction();
         let hl = mgr.highlight_state(self.id());
         draw_handle.scrollbar(self.core.rect, dir, self.handle_len, self.position(), hl);
     }
 }
 
-impl<D: Direction> Handler for ScrollBar<D> {
+impl<D: Directional> Handler for ScrollBar<D> {
     type Msg = u32;
 
     fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {

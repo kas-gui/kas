@@ -10,10 +10,11 @@ use std::fmt::{self, Debug};
 use super::Label;
 use crate::class::HasBool;
 use crate::event::{Action, Handler, Manager, Response, VoidMsg};
+use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, Widget, WidgetCore};
+use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
 
 /// A bare checkbox (no label)
 #[derive(Clone, Default, Widget)]
@@ -42,7 +43,16 @@ impl<OT: 'static> Widget for CheckBoxBare<OT> {
 
 impl<OT: 'static> Layout for CheckBoxBare<OT> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        SizeRules::fixed(axis.extract_size(size_handle.checkbox()))
+        let size = size_handle.checkbox();
+        self.core_data_mut().rect.size = size;
+        SizeRules::fixed(axis.extract_size(size))
+    }
+
+    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+        let rect = align
+            .complete(Align::Centre, Align::Centre, self.rect().size)
+            .apply(rect);
+        self.core_data_mut().rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {

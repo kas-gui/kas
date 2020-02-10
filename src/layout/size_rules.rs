@@ -35,17 +35,45 @@ impl Margins {
         }
     }
 
+    /// Construct from the output of [`kas::theme::SizeHandle::outer_frame`].
+    pub const fn outer_frame(sizes: (Size, Size)) -> Self {
+        Margins {
+            first: sizes.0,
+            last: sizes.1,
+            inter: Size::ZERO,
+        }
+    }
+
     /// Generate `SizeRules` from self
     ///
     /// Assumes zero-sized content (usually added separately).
     ///
     /// Requires the number of child columns and rows.
     pub fn size_rules(&self, axis_info: AxisInfo, columns: u32, rows: u32) -> SizeRules {
-        SizeRules::fixed(if !axis_info.vertical {
+        SizeRules::fixed(if axis_info.is_horizontal() {
             self.first.0 + self.last.0 + self.inter.0 * columns.saturating_sub(1)
         } else {
             self.first.1 + self.last.1 + self.inter.1 * rows.saturating_sub(1)
         })
+    }
+}
+
+/// Policy for stretching widgets beyond ideal size
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum StretchPolicy {
+    /// Do not exceed ideal size
+    Fixed,
+    /// Can be stretched to fill space but without utility
+    Filler,
+    /// Extra space has low utility
+    LowUtility,
+    /// Greedily consume as much space as possible
+    Maximise,
+}
+
+impl Default for StretchPolicy {
+    fn default() -> Self {
+        StretchPolicy::Fixed
     }
 }
 
@@ -57,31 +85,44 @@ impl Margins {
 /// of the widgets being queried.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct SizeRules {
-    // minimum size
+    // minimum good size
     a: u32,
-    // maximum size; b >= a
+    // ideal size; b >= a
     b: u32,
+    stretch: StretchPolicy,
 }
 
 impl SizeRules {
     /// Empty (zero size)
-    pub const EMPTY: Self = SizeRules { a: 0, b: 0 };
+    pub const EMPTY: Self = SizeRules {
+        a: 0,
+        b: 0,
+        stretch: StretchPolicy::Fixed,
+    };
 
     /// A fixed size
     #[inline]
     pub fn fixed(size: u32) -> Self {
-        SizeRules { a: size, b: size }
+        SizeRules {
+            a: size,
+            b: size,
+            stretch: StretchPolicy::Fixed,
+        }
     }
 
-    /// A variable size with given `min`-imum and `pref`-erred values.
+    /// Construct with custom rules
     ///
-    /// Required: `pref >= min`.
+    /// Region size should meet the given `min`-imum size and has a given
+    /// `ideal` size, plus a given `stretch` policy.
+    ///
+    /// Required: `ideal >= min` (if not, ideal is clamped to min).
     #[inline]
-    pub fn variable(min: u32, pref: u32) -> Self {
-        if min > pref {
-            panic!("SizeRules::variable(min, pref): min > pref !");
+    pub fn new(min: u32, ideal: u32, stretch: StretchPolicy) -> Self {
+        SizeRules {
+            a: min,
+            b: ideal.max(min),
+            stretch,
         }
-        SizeRules { a: min, b: pref }
     }
 
     /// Use the maximum size of `self` and `rhs`.
@@ -90,6 +131,7 @@ impl SizeRules {
         SizeRules {
             a: self.a.max(rhs.a),
             b: self.b.max(rhs.b),
+            stretch: self.stretch.max(rhs.stretch),
         }
     }
 
@@ -99,9 +141,9 @@ impl SizeRules {
         self.a
     }
 
-    /// Get the maximum size
+    /// Get the ideal size
     #[inline]
-    pub fn max_size(self) -> u32 {
+    pub fn ideal_size(self) -> u32 {
         self.b
     }
 
@@ -141,7 +183,31 @@ impl SizeRules {
             return;
         }
 
-        if target >= rules[N].a {
+        if target > rules[N].b {
+            // Over the ideal size
+            for i in 0..N {
+                out[i] = rules[i].b;
+            }
+
+            let highest_stretch = rules[N].stretch;
+            if highest_stretch > StretchPolicy::Fixed {
+                let count = (0..N)
+                    .filter(|i| rules[*i].stretch == highest_stretch)
+                    .count() as u32;
+                let excess = target - rules[N].b;
+                let per_elt = excess / count;
+                let mut extra = excess - count * per_elt;
+                for i in 0..N {
+                    if rules[i].stretch == highest_stretch {
+                        out[i] += per_elt;
+                        if extra > 0 {
+                            out[i] += 1;
+                            extra -= 1;
+                        }
+                    }
+                }
+            }
+        } else if target >= rules[N].a {
             // At or over minimum: distribute extra relative to preferences.
             // TODO: perhaps this should not use the minimum except as a minimum?
 
@@ -243,6 +309,7 @@ impl std::ops::Add<SizeRules> for SizeRules {
         SizeRules {
             a: self.a + rhs.a,
             b: self.b + rhs.b,
+            stretch: self.stretch.max(rhs.stretch),
         }
     }
 }
@@ -255,6 +322,7 @@ impl std::ops::Add<u32> for SizeRules {
         SizeRules {
             a: self.a + rhs,
             b: self.b + rhs,
+            stretch: self.stretch,
         }
     }
 }
@@ -265,6 +333,7 @@ impl std::ops::AddAssign for SizeRules {
         *self = Self {
             a: self.a + rhs.a,
             b: self.b + rhs.b,
+            stretch: self.stretch.max(rhs.stretch),
         };
     }
 }

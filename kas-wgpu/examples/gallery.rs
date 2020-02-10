@@ -7,10 +7,9 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::event::{Manager, Response, UpdateHandle, VoidMsg, VoidResponse};
-use kas::layout::Horizontal;
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::*;
-use kas::WidgetId;
+use kas::{Horizontal, WidgetId};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Item {
@@ -72,7 +71,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     #[layout(single, frame)]
                     #[handler(msg = VoidMsg)]
                     struct {
-                        #[widget] _ = Label::from("Widget Gallery"),
+                        #[widget(halign=centre)] _ = Label::from("Widget Gallery"),
                     }
                 },
                 #[widget(handler = activations)] _ = ScrollRegion::new(widgets).with_auto_bars(true),

@@ -11,7 +11,11 @@ use std::fmt;
 use super::{AxisInfo, SizeRules};
 use crate::geom::{Coord, Rect, Size};
 use crate::theme::SizeHandle;
-use crate::Widget;
+use crate::{
+    AlignHints,
+    Direction::{Horizontal, Vertical},
+    Widget,
+};
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -72,11 +76,11 @@ pub fn solve<L: Widget>(
 ) -> (Size, Size) {
     // We call size_rules not because we want the result, but because our
     // spec requires that we do so before calling set_rect.
-    let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
-    let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(size.0)));
+    let w = widget.size_rules(size_handle, AxisInfo::new(Horizontal, None));
+    let h = widget.size_rules(size_handle, AxisInfo::new(Vertical, Some(size.0)));
 
     let pos = Coord(0, 0);
-    widget.set_rect(size_handle, Rect { pos, size });
+    widget.set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
 
     trace!(
         "Layout solution for size={:?} has rules {:?}, {:?} and hierarchy:{}",
@@ -88,7 +92,7 @@ pub fn solve<L: Widget>(
 
     (
         Size(w.min_size(), h.min_size()),
-        Size(w.max_size(), h.max_size()),
+        Size(w.ideal_size(), h.ideal_size()),
     )
 }
 

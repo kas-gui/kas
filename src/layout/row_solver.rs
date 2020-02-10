@@ -7,11 +7,9 @@
 
 use std::marker::PhantomData;
 
-use super::{
-    AxisInfo, Direction, Margins, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules,
-};
+use super::{AxisInfo, Margins, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::{Coord, Rect};
-use crate::Widget;
+use crate::{Directional, Widget};
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
@@ -34,13 +32,13 @@ impl<T: RowTemp, S: RowStorage> RowSolver<T, S> {
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `dim`: direction and number of items
     /// - `storage`: reference to persistent storage
-    pub fn new<D: Direction>(axis: AxisInfo, dim: (D, usize), storage: &mut S) -> Self {
+    pub fn new<D: Directional>(axis: AxisInfo, dim: (D, usize), storage: &mut S) -> Self {
         let mut widths = T::default();
         widths.set_len(dim.1);
         assert!(widths.as_ref().iter().all(|w| *w == 0));
         storage.set_len(dim.1 + 1);
 
-        let axis_is_vertical = axis.vertical ^ dim.0.is_vertical();
+        let axis_is_vertical = axis.is_vertical() ^ dim.0.is_vertical();
 
         if axis.has_fixed && axis_is_vertical {
             // TODO: cache this for use by set_rect?
@@ -102,7 +100,7 @@ impl<T: RowTemp, S: RowStorage> RulesSolver for RowSolver<T, S> {
 ///
 /// This is parameterised over:
 ///
-/// -   `D:` [`Direction`] — whether this represents a row or a column
+/// -   `D:` [`Directional`] — whether this represents a row or a column
 /// -   `T:` [`RowTemp`] — temporary storage type
 /// -   `S:` [`RowStorage`] — persistent storage type
 pub struct RowSetter<D, T: RowTemp, S: RowStorage> {
@@ -113,7 +111,7 @@ pub struct RowSetter<D, T: RowTemp, S: RowStorage> {
     _s: PhantomData<S>,
 }
 
-impl<D: Direction, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
+impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     pub fn new(mut rect: Rect, margins: Margins, dim: (D, usize), storage: &mut S) -> Self {
         let mut widths = T::default();
         widths.set_len(dim.1);
@@ -143,17 +141,17 @@ impl<D: Direction, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     }
 }
 
-impl<D: Direction, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, S> {
+impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, S> {
     type Storage = S;
     type ChildInfo = usize;
 
-    fn child_rect(&mut self, child_info: Self::ChildInfo) -> Rect {
+    fn child_rect(&mut self, index: Self::ChildInfo) -> Rect {
         if self.direction.is_horizontal() {
             self.crect.pos.0 += (self.crect.size.0 + self.inter) as i32;
-            self.crect.size.0 = self.widths.as_ref()[child_info];
+            self.crect.size.0 = self.widths.as_ref()[index];
         } else {
             self.crect.pos.1 += (self.crect.size.1 + self.inter) as i32;
-            self.crect.size.1 = self.widths.as_ref()[child_info];
+            self.crect.size.1 = self.widths.as_ref()[index];
         }
         self.crect
     }
@@ -166,11 +164,11 @@ impl<D: Direction, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, S>
 /// `W: Widget` (which may be `Box<dyn Widget>`). In other cases, the naive
 /// implementation (test all items) must be used.
 #[derive(Clone, Copy, Debug)]
-pub struct RowPositionSolver<D: Direction> {
+pub struct RowPositionSolver<D: Directional> {
     direction: D,
 }
 
-impl<D: Direction> RowPositionSolver<D> {
+impl<D: Directional> RowPositionSolver<D> {
     /// Construct with given directionality
     pub fn new(direction: D) -> Self {
         RowPositionSolver { direction }
@@ -192,11 +190,10 @@ impl<D: Direction> RowPositionSolver<D> {
         let index = match self.binary_search(widgets, coord) {
             Ok(i) => i,
             Err(i) => {
-                let j = i - 1;
-                if !widgets[j].rect().contains(coord) {
+                if i == 0 || !widgets[i - 1].rect().contains(coord) {
                     return None;
                 }
-                j
+                i - 1
             }
         };
         Some(&widgets[index])

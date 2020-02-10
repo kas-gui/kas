@@ -211,6 +211,12 @@ pub struct Rect {
 }
 
 impl Rect {
+    /// Construct from a [`Coord`] and [`Size`]
+    #[inline]
+    pub fn new(pos: Coord, size: Size) -> Self {
+        Rect { pos, size }
+    }
+
     /// Check whether the given coordinate is contained within this rect
     #[inline]
     pub fn contains(&self, c: Coord) -> bool {

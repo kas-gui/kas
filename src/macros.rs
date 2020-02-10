@@ -56,7 +56,6 @@
 //! #[derive(Clone, Debug, Widget)]
 //! struct WrapperWidget<W: Widget> {
 //!     #[core] core: CoreData,
-//!     #[layout_data] layout_data: <Self as LayoutData>::Data,
 //!     #[widget] child: W,
 //! }
 //! ```
@@ -91,13 +90,14 @@
 //!
 //! If the `frame` parameter is given, a frame is drawn around child widgets.
 //!
-//! Derivation of [`Layout`] requires data storage be provided by the widget
-//! as follows (the [`LayoutData`] implementation is implicitly derived):
+//! Derivation of [`Layout`] for non-single layouts requires a data storage
+//! field as follows; for the `single` layout this field is optional:
 //! ```none
 //! #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
 //! ```
 //! This field is supports `Default` and `Clone`, thus may be constructed with
 //! `layout_data: Default::default()`.
+//! (Note: the [`LayoutData`] trait is also implemented by this macro.)
 //!
 //! #### Handler
 //!
@@ -137,17 +137,34 @@
 //! implementation of derived [`WidgetCore`], [`Layout`] and [`Handler`]
 //! methods.
 //!
-//! The `#[widget]` attribute accepts the following parameters. All are
-//! optional, and the first four are only useful with the `grid` layout.
+//! The `#[widget]` attribute accepts several parameters affecting both layout
+//! and event-handling. All are optional.
+//!
+//! The first four affect positioning are only used by the `grid` layout:
 //!
 //! -   `col = ...` — grid column, from left (defaults to 0)
 //! -   `row = ...` — grid row, from top (defaults to 0)
 //! -   `cspan = ...` — number of columns to span (defaults to 1)
 //! -   `rspan = ...` — number of rows to span (defaults to 1)
-//! -   `handler = ...` — the name (`f`) of a method defined on this type which
-//!     handles a message from the child (type `M`) and converts it to the
-//!     appropriate response type for this widget (`R`); this method should have
-//!     signature `fn f(&mut self, mgr: &mut Manager, msg: M) -> R`.
+//!
+//! These two affect alignment in the case that a widget finds itself within a
+//! cell larger than its ideal size. Application of alignment is determined by
+//! the child widget's implementation of [`Layout::set_rect`], which may simply
+//! ignore these alignment hints.
+//!
+//! -   `halign = ...` — one of `begin`, `centre`, `end`, `stretch`
+//! -   `valign = ...` — one of `begin`, `centre`, `end`, `stretch`
+//!
+//! Finally, a parent widget may handle event-responses from a child widget
+//! (see [`Handler`]). The parent widget should implement a utility method
+//! with signautre `fn f(&mut self, mgr: &mut Manager, msg: M) -> R` where
+//! `M` is the type [`Handler::Msg`] in the child widget's implementation,
+//! then reference this method:
+//!
+//! -   `handler = f` — the name `f` of a utility method defined on this type
+//!
+//! If there is no `handler` parameter, the child widget's [`Handler::Msg`] type
+//! should convert into the parent's [`Handler::Msg`] type via `From`.
 //!
 //!
 //! ### Examples
@@ -337,6 +354,7 @@
 //! [`WidgetCore`]: crate::WidgetCore
 //! [`Widget`]: crate::Widget
 //! [`Layout`]: crate::Layout
+//! [`Layout::set_rect`]: crate::Layout::set_rect
 //! [`LayoutData`]: crate::LayoutData
 //! [`Handler`]: crate::event::Handler
 //! [`Handler::Msg`]: crate::event::Handler::Msg

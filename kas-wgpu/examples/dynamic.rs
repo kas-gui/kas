@@ -9,7 +9,7 @@
 use kas::class::HasText;
 use kas::event::{Callback, Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
-use kas::widget::{Column, EditBox, Label, ScrollRegion, TextButton, Window};
+use kas::widget::{Column, EditBox, Filler, Label, ScrollRegion, TextButton, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {
@@ -73,6 +73,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget(handler = handler)] controls -> Message = controls,
                 #[widget] list: ScrollRegion<Column<EditBox<()>>> =
                     ScrollRegion::new(Column::new(vec![])).with_bars(false, true),
+                #[widget] _ = Filler::maximise(),
             }
             impl {
                 fn handler(&mut self, mgr: &mut Manager, msg: Message) -> Response<VoidMsg>

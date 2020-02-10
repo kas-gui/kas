@@ -5,11 +5,30 @@
 
 //! Miscellaneous solvers
 
-use super::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
-use crate::geom::{Rect, Size};
+use super::{AxisInfo, Margins, RulesSetter, RulesSolver, SizeRules};
+use crate::geom::Rect;
 
-/// Dummy implementation
-impl RulesSolver for () {
+/// [`RulesSolver`] implementation for a fixed single-child layout
+pub struct SingleSolver {
+    axis: AxisInfo,
+    rules: SizeRules,
+}
+
+impl SingleSolver {
+    /// Construct.
+    ///
+    /// - `axis`: `AxisInfo` instance passed into `size_rules`
+    /// - `_dim`: direction and number of items
+    /// - `_storage`: reference to persistent storage
+    pub fn new(axis: AxisInfo, _dim: (), _storage: &mut ()) -> Self {
+        SingleSolver {
+            axis,
+            rules: SizeRules::EMPTY,
+        }
+    }
+}
+
+impl RulesSolver for SingleSolver {
     type Storage = ();
     type ChildInfo = ();
 
@@ -17,8 +36,9 @@ impl RulesSolver for () {
         &mut self,
         _storage: &mut Self::Storage,
         _child_info: Self::ChildInfo,
-        _child_rules: CR,
+        child_rules: CR,
     ) {
+        self.rules = child_rules(self.axis);
     }
 
     fn finish<ColIter, RowIter>(
@@ -31,25 +51,11 @@ impl RulesSolver for () {
         ColIter: Iterator<Item = (usize, usize, usize)>,
         RowIter: Iterator<Item = (usize, usize, usize)>,
     {
-        unimplemented!()
-    }
-}
-
-/// Dummy implementation
-impl RulesSetter for () {
-    type Storage = ();
-    type ChildInfo = ();
-
-    fn child_rect(&mut self, _child_info: Self::ChildInfo) -> Rect {
-        unimplemented!()
+        self.rules
     }
 }
 
 /// [`RulesSetter`] implementation for a fixed single-child layout
-///
-/// Note: there is no `SingleSolver` ([`RulesSolver`] implementation) for this
-/// case; such an implementation could not do anything more than returning the
-/// result of `self.child.size_rules(...)`.
 pub struct SingleSetter {
     crect: Rect,
 }
@@ -60,9 +66,9 @@ impl SingleSetter {
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `margins`: margin sizes
     /// - `storage`: irrelevent, but included for consistency
-    pub fn new(mut rect: Rect, margins: (Size, Size), _storage: &mut ()) -> Self {
-        rect.pos += margins.0;
-        rect.size -= margins.0 + margins.1;
+    pub fn new(mut rect: Rect, margins: Margins, _: (), _: &mut ()) -> Self {
+        rect.pos += margins.first;
+        rect.size -= margins.first + margins.last;
         let crect = rect;
 
         SingleSetter { crect }

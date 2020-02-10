@@ -11,10 +11,11 @@ use std::fmt::{self, Debug};
 use super::Label;
 use crate::class::HasBool;
 use crate::event::{Action, Handler, Manager, Response, UpdateHandle, VoidMsg};
+use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, Widget, WidgetCore, WidgetId};
+use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore, WidgetId};
 
 /// A bare radiobox (no label)
 #[derive(Clone, Widget)]
@@ -57,7 +58,16 @@ impl<OT: 'static> Widget for RadioBoxBare<OT> {
 
 impl<OT: 'static> Layout for RadioBoxBare<OT> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        SizeRules::fixed(axis.extract_size(size_handle.radiobox()))
+        let size = size_handle.radiobox();
+        self.core_data_mut().rect.size = size;
+        SizeRules::fixed(axis.extract_size(size))
+    }
+
+    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+        let rect = align
+            .complete(Align::Centre, Align::Centre, self.rect().size)
+            .apply(rect);
+        self.core_data_mut().rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {

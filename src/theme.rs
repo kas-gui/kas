@@ -26,35 +26,26 @@ use kas::draw::Colour;
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
-
-/// Alignment of contents
-pub enum Align {
-    /// Align to top or left (for left-to-right text)
-    Begin,
-    /// Align to centre
-    Centre,
-    /// Align to bottom or right (for left-to-right text)
-    End,
-    /// Attempt to align to both margins, padding with space
-    Justify,
-}
+use kas::{Align, Direction};
 
 /// Class of text drawn
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum TextClass {
     /// Label text is drawn over the background colour
     Label,
     /// Button text is drawn over a button
     Button,
-    /// Class of text drawn in an edit (entry) box
+    /// Class of text drawn in a single-line edit box
     Edit,
+    /// Class of text drawn in a multi-line edit box
+    EditMulti,
 }
 
 /// Text alignment, class, etc.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TextProperties {
     /// Class of text
     pub class: TextClass,
-    /// Does this use line breaks?
-    pub multi_line: bool,
     /// Horizontal alignment
     pub horiz: Align,
     /// Vertical alignment
@@ -197,13 +188,7 @@ pub trait SizeHandle {
     ///
     /// Since only a subset of [`TextProperties`] fields are required, these are
     /// passed directly.
-    fn text_bound(
-        &mut self,
-        text: &str,
-        class: TextClass,
-        multi_line: bool,
-        axis: AxisInfo,
-    ) -> SizeRules;
+    fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules;
 
     /// Size of the sides of a button.
     ///
@@ -287,5 +272,12 @@ pub trait DrawHandle {
     /// -   `len`: length of handle in pixels
     /// -   `pos`: offset of handle from start in pixels
     /// -   `highlights`: highlighting information
-    fn scrollbar(&mut self, rect: Rect, dir: bool, len: u32, pos: u32, highlights: HighlightState);
+    fn scrollbar(
+        &mut self,
+        rect: Rect,
+        dir: Direction,
+        len: u32,
+        pos: u32,
+        highlights: HighlightState,
+    );
 }

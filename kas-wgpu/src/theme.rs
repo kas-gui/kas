@@ -15,8 +15,10 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 use kas::draw::{Colour, Draw};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
-use kas::layout::{AxisInfo, SizeRules};
-use kas::theme::{self, Align, TextClass, TextProperties};
+use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
+use kas::theme::{self, TextClass, TextProperties};
+use kas::Align;
+use kas::Direction::{self, Horizontal, Vertical};
 
 use crate::draw::{DrawPipe, DrawShaded, DrawText, ShadeStyle, Vec2};
 
@@ -42,6 +44,8 @@ impl SampleTheme {
 pub struct SampleWindow {
     font_size: f32,
     font_scale: u32,
+    min_line_length: u32,
+    max_line_length: u32,
     margin: u32,
     frame_size: u32,
     button_frame: u32,
@@ -94,9 +98,12 @@ fn button_colour(highlights: HighlightState, show: bool) -> Option<Colour> {
 
 impl SampleWindow {
     fn new(font_size: f32, dpi_factor: f32) -> Self {
+        let font_scale = (font_size * dpi_factor).round() as u32;
         SampleWindow {
             font_size,
-            font_scale: (font_size * dpi_factor).round() as u32,
+            font_scale,
+            min_line_length: font_scale * 10,
+            max_line_length: font_scale * 40,
             margin: (MARGIN * dpi_factor).round() as u32,
             frame_size: (FRAME_SIZE * dpi_factor).round() as u32,
             button_frame: (BUTTON_FRAME * dpi_factor).round() as u32,
@@ -150,25 +157,19 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
         self.window.font_scale
     }
 
-    fn text_bound(
-        &mut self,
-        text: &str,
-        _: TextClass,
-        multi_line: bool,
-        axis: AxisInfo,
-    ) -> SizeRules {
+    fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
         let font_scale = self.window.font_scale;
         let line_height = font_scale;
         let draw = &mut self.draw;
-        let mut bound = |vert: bool| -> u32 {
-            let layout = match multi_line {
-                false => Layout::default_single_line(),
-                true => Layout::default_wrap(),
+        let mut bound = |dir: Direction| -> u32 {
+            let layout = match class {
+                TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
+                TextClass::Button | TextClass::Edit => Layout::default_single_line(),
             };
             let mut bounds = (f32::INFINITY, f32::INFINITY);
-            if let Some(size) = axis.fixed(false) {
+            if let Some(size) = axis.size_other_if_fixed(Horizontal) {
                 bounds.1 = size as f32;
-            } else if let Some(size) = axis.fixed(true) {
+            } else if let Some(size) = axis.size_other_if_fixed(Vertical) {
                 bounds.0 = size as f32;
             }
 
@@ -182,18 +183,34 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
             });
 
             bounds
-                .map(|(min, max)| match vert {
-                    false => (max - min).0,
-                    true => (max - min).1,
+                .map(|(min, max)| match dir {
+                    Horizontal => (max - min).0,
+                    Vertical => (max - min).1,
                 } as u32)
                 .unwrap_or(0)
         };
 
-        let inner = if !axis.vertical() {
-            let min = 3 * line_height;
-            SizeRules::variable(min, bound(false).max(min))
-        } else {
-            SizeRules::variable(line_height, bound(true).max(line_height))
+        let inner = if axis.is_horizontal() {
+            let bound = bound(Horizontal);
+            let min = match class {
+                TextClass::Edit | TextClass::EditMulti => self.window.min_line_length,
+                _ => bound.min(self.window.min_line_length),
+            };
+            let ideal = bound.min(self.window.max_line_length);
+            SizeRules::new(min, ideal, StretchPolicy::LowUtility)
+        } else
+        /* vertical */
+        {
+            let min = match class {
+                TextClass::EditMulti => line_height * 3,
+                _ => line_height,
+            };
+            let ideal = bound(Vertical).max(line_height);
+            let stretch = match class {
+                TextClass::Button | TextClass::Edit => StretchPolicy::Fixed,
+                _ => StretchPolicy::Filler,
+            };
+            SizeRules::new(min, ideal, stretch)
         };
         let margin = SizeRules::fixed(2 * self.window.margin as u32);
         inner + margin
@@ -310,17 +327,17 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let col = match props.class {
             TextClass::Label => LABEL_TEXT,
             TextClass::Button => BUTTON_TEXT,
-            TextClass::Edit => TEXT,
+            TextClass::Edit | TextClass::EditMulti => TEXT,
         };
 
         // TODO: support justified alignment
         let (h_align, h_offset) = match props.horiz {
-            Align::Begin | Align::Justify => (HorizontalAlign::Left, 0),
+            Align::Begin | Align::Stretch => (HorizontalAlign::Left, 0),
             Align::Centre => (HorizontalAlign::Center, bounds.0 / 2),
             Align::End => (HorizontalAlign::Right, bounds.0),
         };
         let (v_align, v_offset) = match props.vert {
-            Align::Begin | Align::Justify => (VerticalAlign::Top, 0),
+            Align::Begin | Align::Stretch => (VerticalAlign::Top, 0),
             Align::Centre => (VerticalAlign::Center, bounds.1 / 2),
             Align::End => (VerticalAlign::Bottom, bounds.1),
         };
@@ -328,12 +345,11 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let text_pos =
             outer.pos + Coord::uniform(self.window.margin as i32) + Coord(h_offset, v_offset);
 
-        let layout = match props.multi_line {
-            true => Layout::default_wrap(),
-            false => Layout::default_single_line(),
-        }
-        .h_align(h_align)
-        .v_align(v_align);
+        let layout = match props.class {
+            TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
+            TextClass::Button | TextClass::Edit => Layout::default_single_line(),
+        };
+        let layout = layout.h_align(h_align).v_align(v_align);
 
         self.draw.draw_text(Section {
             text,
@@ -385,18 +401,6 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
         let mut outer = rect + self.offset;
 
-        // TODO: remove this hack when the layout engine can align instead of stretch
-        let pref_size = Size::uniform(
-            2 * (self.window.frame_size + self.window.margin) + self.window.font_scale,
-        );
-        if outer.size.0 > pref_size.0 {
-            outer.size.0 = pref_size.0;
-        }
-        if outer.size.1 > pref_size.1 {
-            outer.pos.1 += ((outer.size.1 - pref_size.1) / 2) as i32;
-            outer.size.1 = pref_size.1;
-        }
-
         let mut inner = outer.shrink(self.window.frame_size);
         let style = ShadeStyle::Square(Vec2(0.0, -0.8));
         self.draw
@@ -422,7 +426,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     fn scrollbar(
         &mut self,
         rect: Rect,
-        dir: bool,
+        dir: Direction,
         h_len: u32,
         h_pos: u32,
         highlights: HighlightState,
@@ -431,7 +435,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         // TODO: also draw slider behind handle: needs an extra layer?
 
-        let half_width = if !dir {
+        let half_width = if dir == Horizontal {
             outer.pos.0 += h_pos as i32;
             outer.size.0 = h_len;
             outer.size.1 / 2

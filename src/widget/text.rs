@@ -11,8 +11,8 @@ use crate::class::{Editable, HasText};
 use crate::event::{Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{CoreData, Layout, Widget, WidgetCore};
+use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
+use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A simple text label
@@ -22,20 +22,33 @@ use kas::geom::Rect;
 pub struct Label {
     #[core]
     core: CoreData,
+    halign: Align,
+    valign: Align,
     text: String,
 }
 
 impl Layout for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        size_handle.text_bound(&self.text, TextClass::Label, true, axis)
+        let rules = size_handle.text_bound(&self.text, TextClass::Label, axis);
+        if axis.is_horizontal() {
+            self.core_data_mut().rect.size.0 = rules.ideal_size();
+        } else {
+            self.core_data_mut().rect.size.1 = rules.ideal_size();
+        }
+        rules
+    }
+
+    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+        self.halign = align.horiz.unwrap_or(Align::Begin);
+        self.valign = align.vert.unwrap_or(Align::Centre);
+        self.core_data_mut().rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &Manager) {
         let props = TextProperties {
             class: TextClass::Label,
-            multi_line: true,
-            horiz: Align::Begin,
-            vert: Align::Centre,
+            horiz: self.halign,
+            vert: self.valign,
         };
         draw_handle.text(self.core.rect, &self.text, props);
     }
@@ -46,6 +59,8 @@ impl Label {
     pub fn new<T: ToString>(text: T) -> Self {
         Label {
             core: Default::default(),
+            halign: Default::default(),
+            valign: Default::default(),
             text: text.to_string(),
         }
     }
@@ -58,6 +73,8 @@ where
     fn from(text: T) -> Self {
         Label {
             core: Default::default(),
+            halign: Default::default(),
+            valign: Default::default(),
             text: String::from(text),
         }
     }
@@ -121,12 +138,32 @@ impl<H: 'static> Widget for EditBox<H> {
 
 impl<H: 'static> Layout for EditBox<H> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        let class = if self.multi_line {
+            TextClass::EditMulti
+        } else {
+            TextClass::Edit
+        };
         let sides = size_handle.edit_surround();
-        SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
-            + size_handle.text_bound(&self.text, TextClass::Edit, self.multi_line, axis)
+        let rules = SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
+            + size_handle.text_bound(&self.text, class, axis);
+        if axis.is_horizontal() {
+            self.core_data_mut().rect.size.0 = rules.ideal_size();
+        } else {
+            self.core_data_mut().rect.size.1 = rules.ideal_size();
+        }
+        rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+        let valign = if self.multi_line {
+            Align::Stretch
+        } else {
+            Align::Centre
+        };
+        let rect = align
+            .complete(Align::Stretch, valign, self.rect().size)
+            .apply(rect);
+
         let sides = size_handle.edit_surround();
         self.text_rect = Rect {
             pos: rect.pos + sides.0,
@@ -136,11 +173,15 @@ impl<H: 'static> Layout for EditBox<H> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+        let class = if self.multi_line {
+            TextClass::EditMulti
+        } else {
+            TextClass::Edit
+        };
         let highlights = mgr.highlight_state(self.id());
         draw_handle.edit_box(self.core.rect, highlights);
         let props = TextProperties {
-            class: TextClass::Edit,
-            multi_line: self.multi_line,
+            class,
             horiz: Align::Begin,
             vert: Align::Begin,
         };

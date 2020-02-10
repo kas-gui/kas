@@ -11,6 +11,7 @@
 mod button;
 mod checkbox;
 mod dialog;
+mod filler;
 mod list;
 mod radiobox;
 mod scroll;
@@ -21,6 +22,7 @@ mod window;
 pub use button::TextButton;
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use dialog::MessageBox;
+pub use filler::Filler;
 pub use list::{BoxColumn, BoxList, BoxRow, Column, List, Row};
 pub use radiobox::{RadioBox, RadioBoxBare};
 pub use scroll::ScrollRegion;

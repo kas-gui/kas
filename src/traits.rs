@@ -12,7 +12,7 @@ use crate::event::{Callback, Handler, Manager, UpdateHandle, VoidMsg};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, WidgetId};
+use crate::{AlignHints, CoreData, WidgetId};
 
 pub trait CloneTo {
     unsafe fn clone_to(&self, out: *mut Self);
@@ -151,6 +151,9 @@ pub trait Layout: WidgetCore {
     /// This method takes `&mut self` to allow local caching of child widget
     /// configuration for future `size_rules` and `set_rect` calls.
     ///
+    /// Optionally, this method may set `self.rect().size` to the widget's ideal
+    /// size for use by [`Layout::set_rect`] when setting alignment.
+    ///
     /// If operating on one axis and the other is fixed, then the `other`
     /// parameter is used for the fixed dimension. Additionally, one may assume
     /// that `size_rules` has previously been called on the fixed axis with the
@@ -159,14 +162,21 @@ pub trait Layout: WidgetCore {
 
     /// Adjust to the given size.
     ///
-    /// For many widgets this operation is trivial and the default
-    /// implementation will suffice. For layout widgets (those with children),
-    /// this operation is more complex.
+    /// For widgets with children, this is usually implemented via the derive
+    /// [macro](kas::macros). For non-parent widgets which stretch to fill
+    /// available space, the default implementation suffices. For non-parent
+    /// widgets which react to alignment, this is a little more complex to
+    /// implement, and can be done in one of two ways:
+    ///
+    /// 1.  Shrinking to ideal area and aligning within available space (e.g.
+    ///     `CheckBoxBare` widget)
+    /// 2.  Filling available space and applying alignment to contents (e.g.
+    ///     `Label` widget)
     ///
     /// One may assume that `size_rules` has been called for each axis with the
     /// current widget configuration.
     #[inline]
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect) {
+    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
         self.core_data_mut().rect = rect;
     }
 

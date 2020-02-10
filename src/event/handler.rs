@@ -11,7 +11,7 @@ use crate::event::{Action, Event, Manager, Response, UpdateHandle};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
-use crate::{CoreData, Layout, Widget, WidgetCore, WidgetId};
+use crate::{AlignHints, CoreData, Layout, Widget, WidgetCore, WidgetId};
 
 /// Event-handling aspect of a widget.
 ///
@@ -105,8 +105,8 @@ impl<M> Layout for Box<dyn Handler<Msg = M>> {
         self.as_mut().size_rules(size_handle, axis)
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
-        self.as_mut().set_rect(size_handle, rect);
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+        self.as_mut().set_rect(size_handle, rect, align);
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {

@@ -10,7 +10,7 @@ use std::fmt;
 use std::num::NonZeroU32;
 use std::u32;
 
-use crate::geom::Rect;
+use crate::geom::{Rect, Size};
 
 /// Widget identifier
 ///
@@ -76,4 +76,141 @@ impl fmt::Display for WidgetId {
 pub struct CoreData {
     pub rect: Rect,
     pub id: WidgetId,
+}
+
+/// Alignment of contents
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum Align {
+    /// Align to top or left (for left-to-right text)
+    Begin,
+    /// Align to centre
+    Centre,
+    /// Align to bottom or right (for left-to-right text)
+    End,
+    /// Attempt to align to both margins
+    ///
+    /// For text, this is known as "justified alignment".
+    Stretch,
+}
+
+/// Default alignment: Stretch
+impl Default for Align {
+    fn default() -> Self {
+        Align::Stretch
+    }
+}
+
+/// Partial alignment information provided by the parent
+#[derive(Debug, Default)]
+pub struct AlignHints {
+    pub horiz: Option<Align>,
+    pub vert: Option<Align>,
+}
+
+impl AlignHints {
+    /// No hints
+    pub const NONE: AlignHints = AlignHints::new(None, None);
+
+    /// Construct with optional horiz. and vert. alignment
+    pub const fn new(horiz: Option<Align>, vert: Option<Align>) -> Self {
+        Self { horiz, vert }
+    }
+
+    /// Complete via defaults and ideal size information
+    pub fn complete(&self, horiz: Align, vert: Align, ideal: Size) -> CompleteAlignment {
+        CompleteAlignment {
+            halign: self.horiz.unwrap_or(horiz),
+            valign: self.vert.unwrap_or(vert),
+            ideal,
+        }
+    }
+}
+
+/// Provides alignment information on both axes along with ideal size
+///
+/// Note that the `ideal` size detail is only used for non-stretch alignment.
+pub struct CompleteAlignment {
+    halign: Align,
+    valign: Align,
+    ideal: Size,
+}
+
+impl CompleteAlignment {
+    /// Adjust the given `rect` according to alignment, returning the result
+    pub fn apply(&self, rect: Rect) -> Rect {
+        let ideal = self.ideal;
+        let mut pos = rect.pos;
+        let mut size = rect.size;
+        if self.halign != Align::Stretch && ideal.0 < size.0 {
+            pos.0 += match self.halign {
+                Align::Centre => (size.0 - ideal.0) / 2,
+                Align::End => size.0 - ideal.0,
+                Align::Begin | Align::Stretch => 0,
+            } as i32;
+            size.0 = ideal.0;
+        }
+        if self.valign != Align::Stretch && ideal.1 < size.1 {
+            pos.1 += match self.valign {
+                Align::Centre => (size.1 - ideal.1) / 2,
+                Align::End => size.1 - ideal.1,
+                Align::Begin | Align::Stretch => 0,
+            } as i32;
+            size.1 = ideal.1;
+        }
+        Rect { pos, size }
+    }
+}
+
+/// Trait over directional types
+///
+/// Using a generic `<D: Directional>` over [`Direction`] allows compile-time
+/// substitution via the [`Horizontal`] and [`Vertical`] instantiations.
+pub trait Directional: Copy + Sized + std::fmt::Debug {
+    fn as_direction(self) -> Direction;
+
+    #[inline]
+    fn is_vertical(self) -> bool {
+        self.as_direction() == Direction::Vertical
+    }
+
+    #[inline]
+    fn is_horizontal(self) -> bool {
+        self.as_direction() == Direction::Horizontal
+    }
+}
+
+/// Fixed instantiation of [`Directional`]
+#[derive(Copy, Clone, Default, Debug)]
+pub struct Horizontal;
+impl Directional for Horizontal {
+    #[inline]
+    fn as_direction(self) -> Direction {
+        Direction::Horizontal
+    }
+}
+
+/// Fixed instantiation of [`Directional`]
+#[derive(Copy, Clone, Default, Debug)]
+pub struct Vertical;
+impl Directional for Vertical {
+    #[inline]
+    fn as_direction(self) -> Direction {
+        Direction::Vertical
+    }
+}
+
+/// Horizontal / vertical direction
+///
+/// This is a variable instantiation of [`Directional`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub enum Direction {
+    Horizontal = 0,
+    Vertical = 1,
+}
+
+impl Directional for Direction {
+    #[inline]
+    fn as_direction(self) -> Direction {
+        self
+    }
 }

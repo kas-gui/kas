@@ -12,8 +12,8 @@ use crate::class::HasText;
 use crate::event::{Action, Handler, Manager, Response, VirtualKeyCode};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{Align, DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{CoreData, Layout, Widget, WidgetCore};
+use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
+use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
 use kas::geom::Rect;
 
 /// A push-button with a text label
@@ -42,11 +42,21 @@ impl<M: Clone + Debug> Widget for TextButton<M> {
 impl<M: Clone + Debug> Layout for TextButton<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.button_surround();
-        SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
-            + size_handle.text_bound(&self.label, TextClass::Button, false, axis)
+        let rules = SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
+            + size_handle.text_bound(&self.label, TextClass::Button, axis);
+        if axis.is_horizontal() {
+            self.core_data_mut().rect.size.0 = rules.ideal_size();
+        } else {
+            self.core_data_mut().rect.size.1 = rules.ideal_size();
+        }
+        rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+        let rect = align
+            .complete(Align::Stretch, Align::Centre, self.rect().size)
+            .apply(rect);
+
         let sides = size_handle.button_surround();
         self.text_rect = Rect {
             pos: rect.pos + sides.0,
@@ -59,7 +69,6 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
         draw_handle.button(self.core.rect, mgr.highlight_state(self.id()));
         let props = TextProperties {
             class: TextClass::Button,
-            multi_line: false,
             horiz: Align::Centre,
             vert: Align::Centre,
         };
