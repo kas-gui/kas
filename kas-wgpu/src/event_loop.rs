@@ -136,7 +136,8 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         }
                     }
                     StartCause::WaitCancelled { .. } => {
-                        debug!("Wakeup: WaitCancelled (ignoring)");
+                        // This event serves no purpose?
+                        // debug!("Wakeup: WaitCancelled (ignoring)");
                     }
                     StartCause::Poll => {
                         // We use this to check pending actions after removing windows
