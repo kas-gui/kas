@@ -42,13 +42,15 @@ impl SampleTheme {
 
 #[doc(hidden)]
 pub struct SampleWindow {
-    font_size: f32,
-    font_scale: u32,
+    font_size: f32, // unscaled by DPI
+    font_scale: f32,
+    line_height: u32,
     min_line_length: u32,
     max_line_length: u32,
     margin: u32,
     frame_size: u32,
     button_frame: u32,
+    checkbox: u32,
     scrollbar_size: u32,
 }
 
@@ -98,15 +100,20 @@ fn button_colour(highlights: HighlightState, show: bool) -> Option<Colour> {
 
 impl SampleWindow {
     fn new(font_size: f32, dpi_factor: f32) -> Self {
-        let font_scale = (font_size * dpi_factor).round() as u32;
+        let font_scale = font_size * dpi_factor;
+        let line_height = font_scale.round() as u32;
+        let margin = (MARGIN * dpi_factor).round() as u32;
+        let frame_size = (FRAME_SIZE * dpi_factor).round() as u32;
         SampleWindow {
             font_size,
             font_scale,
-            min_line_length: font_scale * 10,
-            max_line_length: font_scale * 40,
-            margin: (MARGIN * dpi_factor).round() as u32,
-            frame_size: (FRAME_SIZE * dpi_factor).round() as u32,
+            line_height,
+            min_line_length: line_height * 10,
+            max_line_length: line_height * 40,
+            margin,
+            frame_size,
             button_frame: (BUTTON_FRAME * dpi_factor).round() as u32,
+            checkbox: (font_scale * 0.7).round() as u32 + 2 * (margin + frame_size),
             scrollbar_size: (SCROLLBAR_SIZE * dpi_factor).round() as u32,
         }
     }
@@ -154,12 +161,12 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
     }
 
     fn line_height(&self, _: TextClass) -> u32 {
-        self.window.font_scale
+        self.window.line_height
     }
 
     fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
         let font_scale = self.window.font_scale;
-        let line_height = font_scale;
+        let line_height = self.window.line_height;
         let draw = &mut self.draw;
         let mut bound = |dir: Direction| -> u32 {
             let layout = match class {
@@ -176,7 +183,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
             let bounds = draw.glyph_bounds(Section {
                 text,
                 screen_position: (0.0, 0.0),
-                scale: Scale::uniform(font_scale as f32),
+                scale: Scale::uniform(font_scale),
                 bounds,
                 layout,
                 ..Section::default()
@@ -227,7 +234,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
     }
 
     fn checkbox(&self) -> Size {
-        Size::uniform(2 * (self.window.frame_size + self.window.margin) + self.window.font_scale)
+        Size::uniform(self.window.checkbox)
     }
 
     #[inline]
@@ -355,7 +362,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
             text,
             screen_position: Vec2::from(text_pos).into(),
             color: col.into(),
-            scale: Scale::uniform(self.window.font_scale as f32),
+            scale: Scale::uniform(self.window.font_scale),
             bounds: Vec2::from(bounds).into(),
             layout,
             ..Section::default()
