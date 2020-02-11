@@ -106,7 +106,7 @@ impl ThemeDimensions {
 #[doc(hidden)]
 pub struct SizeHandle<'a> {
     draw: &'a mut DrawPipe,
-    window: &'a mut SampleWindow,
+    dims: &'a ThemeDimensions,
 }
 
 impl theme::Window<DrawPipe> for SampleWindow {
@@ -117,7 +117,7 @@ impl theme::Window<DrawPipe> for SampleWindow {
         use std::mem::transmute;
         SizeHandle {
             draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
-            window: transmute::<&'a mut Self, &'static mut Self>(self),
+            dims: transmute::<&'a ThemeDimensions, &'static ThemeDimensions>(&self.dims),
         }
     }
 
@@ -132,25 +132,25 @@ impl theme::Window<DrawPipe> for SampleWindow {
 
 impl<'a> theme::SizeHandle for SizeHandle<'a> {
     fn outer_frame(&self) -> (Size, Size) {
-        let f = self.window.dims.frame as u32;
+        let f = self.dims.frame as u32;
         (Size::uniform(f), Size::uniform(f))
     }
 
     fn inner_margin(&self) -> Size {
-        Size::uniform(self.window.dims.margin as u32)
+        Size::uniform(self.dims.margin as u32)
     }
 
     fn outer_margin(&self) -> Size {
-        Size::uniform(self.window.dims.margin as u32)
+        Size::uniform(self.dims.margin as u32)
     }
 
     fn line_height(&self, _: TextClass) -> u32 {
-        self.window.dims.line_height
+        self.dims.line_height
     }
 
     fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
-        let font_scale = self.window.dims.font_scale;
-        let line_height = self.window.dims.line_height;
+        let font_scale = self.dims.font_scale;
+        let line_height = self.dims.line_height;
         let draw = &mut self.draw;
         let mut bound = |dir: Direction| -> u32 {
             let layout = match class {
@@ -184,14 +184,12 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
         let inner = if axis.is_horizontal() {
             let bound = bound(Horizontal);
             let min = match class {
-                TextClass::Edit | TextClass::EditMulti => self.window.dims.min_line_length,
-                _ => bound.min(self.window.dims.min_line_length),
+                TextClass::Edit | TextClass::EditMulti => self.dims.min_line_length,
+                _ => bound.min(self.dims.min_line_length),
             };
-            let ideal = bound.min(self.window.dims.max_line_length);
+            let ideal = bound.min(self.dims.max_line_length);
             SizeRules::new(min, ideal, StretchPolicy::LowUtility)
-        } else
-        /* vertical */
-        {
+        } else {
             let min = match class {
                 TextClass::EditMulti => line_height * 3,
                 _ => line_height,
@@ -203,22 +201,22 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
             };
             SizeRules::new(min, ideal, stretch)
         };
-        let margin = SizeRules::fixed(2 * self.window.dims.margin as u32);
+        let margin = SizeRules::fixed(2 * self.dims.margin as u32);
         inner + margin
     }
 
     fn button_surround(&self) -> (Size, Size) {
-        let s = Size::uniform(self.window.dims.button_frame);
+        let s = Size::uniform(self.dims.button_frame);
         (s, s)
     }
 
     fn edit_surround(&self) -> (Size, Size) {
-        let s = Size::uniform(self.window.dims.frame as u32);
+        let s = Size::uniform(self.dims.frame as u32);
         (s, s)
     }
 
     fn checkbox(&self) -> Size {
-        Size::uniform(self.window.dims.checkbox)
+        Size::uniform(self.dims.checkbox)
     }
 
     #[inline]
@@ -227,7 +225,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
     }
 
     fn scrollbar(&self) -> (u32, u32, u32) {
-        let s = self.window.dims.scrollbar as u32;
+        let s = self.dims.scrollbar as u32;
         (s, s, 2 * s)
     }
 }
