@@ -116,7 +116,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         },
     );
 
-    let theme = kas_wgpu::theme::SampleTheme::new();
+    let theme = kas_wgpu::theme::FlatTheme::new();
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
     toolkit.run()
