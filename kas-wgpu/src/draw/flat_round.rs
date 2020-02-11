@@ -13,7 +13,7 @@ use kas::geom::{Rect, Size};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec2, Rgb, Vec2);
+struct Vertex(Vec2, Rgb, Vec2, Vec2);
 
 /// A pipeline for rendering rounded shapes
 pub struct FlatRound {
@@ -61,7 +61,7 @@ impl FlatRound {
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             layout: &pipeline_layout,
             vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &shared.shaders.square_vertex,
+                module: &shared.shaders.round_vertex,
                 entry_point: "main",
             },
             fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
@@ -78,8 +78,16 @@ impl FlatRound {
             primitive_topology: wgpu::PrimitiveTopology::TriangleList,
             color_states: &[wgpu::ColorStateDescriptor {
                 format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                color_blend: wgpu::BlendDescriptor::REPLACE,
-                alpha_blend: wgpu::BlendDescriptor::REPLACE,
+                color_blend: wgpu::BlendDescriptor {
+                    src_factor: wgpu::BlendFactor::SrcAlpha,
+                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha_blend: wgpu::BlendDescriptor {
+                    src_factor: wgpu::BlendFactor::Zero,
+                    dst_factor: wgpu::BlendFactor::One,
+                    operation: wgpu::BlendOperation::Add,
+                },
                 write_mask: wgpu::ColorWrite::ALL,
             }],
             depth_stencil_state: None,
@@ -102,6 +110,11 @@ impl FlatRound {
                         format: wgpu::VertexFormat::Float2,
                         offset: (size_of::<Vec2>() + size_of::<Rgb>()) as u64,
                         shader_location: 2,
+                    },
+                    wgpu::VertexAttributeDescriptor {
+                        format: wgpu::VertexFormat::Float2,
+                        offset: (2 * size_of::<Vec2>() + size_of::<Rgb>()) as u64,
+                        shader_location: 3,
                     },
                 ],
             }],
@@ -176,6 +189,11 @@ impl FlatRound {
 
         let col = col.into();
 
+        let ab = Vec2(aa.0, bb.1);
+        let ba = Vec2(bb.0, aa.1);
+        let cd = Vec2(cc.0, dd.1);
+        let dc = Vec2(dd.0, cc.1);
+
         let n0 = Vec2::splat(0.0);
         let nbb = (bb - aa).sign();
         let naa = -nbb;
@@ -186,27 +204,35 @@ impl FlatRound {
         let n0a = Vec2(0.0, naa.1);
         let n0b = Vec2(0.0, nbb.1);
 
+        let off = 0.25;
+        let paa = naa / (aa - cc) * off;
+        let pab = nab / (ab - cd) * off;
+        let pba = nba / (ba - dc) * off;
+        let pbb = nbb / (bb - dd) * off;
+
         // We must add corners separately to ensure correct interpolation of dir
-        // values, hence need 12 points:
-        let ab = Vertex(Vec2(aa.0, bb.1), col, nab);
-        let ba = Vertex(Vec2(bb.0, aa.1), col, nba);
-        let cd = Vertex(Vec2(cc.0, dd.1), col, n0);
-        let dc = Vertex(Vec2(dd.0, cc.1), col, n0);
+        // values, hence need 16 points:
+        let ab = Vertex(ab, col, nab, pab);
+        let ba = Vertex(ba, col, nba, pba);
+        let cd = Vertex(cd, col, n0, pab);
+        let dc = Vertex(dc, col, n0, pba);
 
-        let ac = Vertex(Vec2(aa.0, cc.1), col, na0);
-        let ad = Vertex(Vec2(aa.0, dd.1), col, na0);
-        let bc = Vertex(Vec2(bb.0, cc.1), col, nb0);
-        let bd = Vertex(Vec2(bb.0, dd.1), col, nb0);
+        let ac = Vertex(Vec2(aa.0, cc.1), col, na0, paa);
+        let ad = Vertex(Vec2(aa.0, dd.1), col, na0, pab);
+        let bc = Vertex(Vec2(bb.0, cc.1), col, nb0, pba);
+        let bd = Vertex(Vec2(bb.0, dd.1), col, nb0, pbb);
 
-        let ca = Vertex(Vec2(cc.0, aa.1), col, n0a);
-        let cb = Vertex(Vec2(cc.0, bb.1), col, n0b);
-        let da = Vertex(Vec2(dd.0, aa.1), col, n0a);
-        let db = Vertex(Vec2(dd.0, bb.1), col, n0b);
+        let ca = Vertex(Vec2(cc.0, aa.1), col, n0a, paa);
+        let cb = Vertex(Vec2(cc.0, bb.1), col, n0b, pab);
+        let da = Vertex(Vec2(dd.0, aa.1), col, n0a, pba);
+        let db = Vertex(Vec2(dd.0, bb.1), col, n0b, pbb);
 
-        let aa = Vertex(aa, col, naa);
-        let bb = Vertex(bb, col, nbb);
-        let cc = Vertex(cc, col, n0);
-        let dd = Vertex(dd, col, n0);
+        let aa = Vertex(aa, col, naa, paa);
+        let bb = Vertex(bb, col, nbb, pbb);
+        let cc = Vertex(cc, col, n0, paa);
+        let dd = Vertex(dd, col, n0, pbb);
+
+        // TODO: the four sides are simple rectangles, hence could use simpler rendering
 
         #[rustfmt::skip]
         self.add_vertices(pass, &[

@@ -227,7 +227,7 @@ impl ShadedRound {
         let n0b = Vec2(0.0, nbb.1);
 
         // We must add corners separately to ensure correct interpolation of dir
-        // values, hence need 12 points:
+        // values, hence need 16 points:
         let ab = Vertex(Vec2(aa.0, bb.1), col, nab, adjust);
         let ba = Vertex(Vec2(bb.0, aa.1), col, nba, adjust);
         let cd = Vertex(Vec2(cc.0, dd.1), col, n0, adjust);
