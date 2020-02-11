@@ -17,7 +17,7 @@ use kas::widget::*;
 
 use kas_wgpu::draw::*;
 use kas_wgpu::glyph::Font;
-use kas_wgpu::SampleTheme;
+use kas_wgpu::theme::SampleTheme;
 
 /// A demo theme
 ///

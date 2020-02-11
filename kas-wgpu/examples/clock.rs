@@ -56,7 +56,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     });
 
-    let mut theme = kas_wgpu::SampleTheme::new();
+    let mut theme = kas_wgpu::theme::SampleTheme::new();
     theme.set_font_size(32.0);
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
