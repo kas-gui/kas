@@ -270,17 +270,9 @@ pub trait DrawHandle {
 
     /// Draw UI element: scrollbar
     ///
-    /// -   `rect`: target area
-    /// -   `dir`: true for a vertical bar, false for horizontal
-    /// -   `len`: length of handle in pixels
-    /// -   `pos`: offset of handle from start in pixels
+    /// -   `rect`: area of whole widget (slider track)
+    /// -   `h_rect`: area of slider handle
+    /// -   `dir`: direction of bar
     /// -   `highlights`: highlighting information
-    fn scrollbar(
-        &mut self,
-        rect: Rect,
-        dir: Direction,
-        len: u32,
-        pos: u32,
-        highlights: HighlightState,
-    );
+    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState);
 }

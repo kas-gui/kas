@@ -176,8 +176,19 @@ impl<D: Directional> Layout for ScrollBar<D> {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
         let dir = self.direction.as_direction();
+        let h_pos = self.position() as i32;
+        let mut h_rect = self.core.rect;
+
+        if dir.is_horizontal() {
+            h_rect.pos.0 += h_pos;
+            h_rect.size.0 = self.handle_len;
+        } else {
+            h_rect.pos.1 += h_pos;
+            h_rect.size.1 = self.handle_len;
+        };
+
         let hl = mgr.highlight_state(self.id());
-        draw_handle.scrollbar(self.core.rect, dir, self.handle_len, self.position(), hl);
+        draw_handle.scrollbar(self.core.rect, h_rect, dir, hl);
     }
 }
 

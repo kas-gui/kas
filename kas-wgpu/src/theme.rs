@@ -432,26 +432,15 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
     fn scrollbar(
         &mut self,
-        rect: Rect,
-        dir: Direction,
-        h_len: u32,
-        h_pos: u32,
+        _rect: Rect,
+        h_rect: Rect,
+        _dir: Direction,
         highlights: HighlightState,
     ) {
-        let mut outer = rect + self.offset;
-
         // TODO: also draw slider behind handle: needs an extra layer?
 
-        let half_width = if dir == Horizontal {
-            outer.pos.0 += h_pos as i32;
-            outer.size.0 = h_len;
-            outer.size.1 / 2
-        } else {
-            outer.pos.1 += h_pos as i32;
-            outer.size.1 = h_len;
-            outer.size.0 / 2
-        };
-
+        let outer = h_rect + self.offset;
+        let half_width = outer.size.0.min(outer.size.1) / 2;
         let inner = outer.shrink(half_width);
         let style = ShadeStyle::Round(Vec2(0.0, 0.6));
         let col = self.cols.scrollbar_state(highlights);
