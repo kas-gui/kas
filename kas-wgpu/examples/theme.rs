@@ -17,20 +17,20 @@ use kas::widget::*;
 
 use kas_wgpu::draw::*;
 use kas_wgpu::glyph::Font;
-use kas_wgpu::theme::SampleTheme;
+use kas_wgpu::theme::ShadedTheme;
 
 /// A demo theme
 ///
-/// We set a custom background colour and use `SampleTheme` for everything else.
+/// We set a custom background colour and use `ShadedTheme` for everything else.
 pub struct ColouredTheme {
-    inner: SampleTheme,
+    inner: ShadedTheme,
 }
 
 impl ColouredTheme {
     /// Construct
     pub fn new() -> Self {
         ColouredTheme {
-            inner: SampleTheme::new(),
+            inner: ShadedTheme::new(),
         }
     }
 }
@@ -50,8 +50,8 @@ thread_local! {
 }
 
 impl Theme<DrawPipe> for ColouredTheme {
-    type Window = <SampleTheme as Theme<DrawPipe>>::Window;
-    type DrawHandle = <SampleTheme as Theme<DrawPipe>>::DrawHandle;
+    type Window = <ShadedTheme as Theme<DrawPipe>>::Window;
+    type DrawHandle = <ShadedTheme as Theme<DrawPipe>>::DrawHandle;
 
     fn new_window(&self, draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         Theme::<DrawPipe>::new_window(&self.inner, draw, dpi_factor)

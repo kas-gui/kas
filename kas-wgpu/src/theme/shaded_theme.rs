@@ -24,15 +24,15 @@ use crate::resources::colours::ThemeColours;
 
 /// A simple, inflexible theme providing a sample implementation.
 #[derive(Clone, Debug)]
-pub struct SampleTheme {
+pub struct ShadedTheme {
     font_size: f32,
     cols: ThemeColours,
 }
 
-impl SampleTheme {
+impl ShadedTheme {
     /// Construct
     pub fn new() -> Self {
-        SampleTheme {
+        ShadedTheme {
             font_size: 18.0,
             cols: ThemeColours::new(),
         }
@@ -92,7 +92,7 @@ pub struct DrawHandle<'a> {
     pass: usize,
 }
 
-impl theme::Theme<DrawPipe> for SampleTheme {
+impl theme::Theme<DrawPipe> for ShadedTheme {
     type Window = SampleWindow;
     type DrawHandle = DrawHandle<'static>;
 
@@ -131,7 +131,7 @@ impl theme::Theme<DrawPipe> for SampleTheme {
     }
 }
 
-impl ThemeApi for SampleTheme {
+impl ThemeApi for ShadedTheme {
     fn set_colours(&mut self, scheme: &str) -> ThemeAction {
         if let Some(scheme) = ThemeColours::open(scheme) {
             self.cols = scheme;

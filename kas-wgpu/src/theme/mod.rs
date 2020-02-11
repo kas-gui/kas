@@ -6,10 +6,10 @@
 //! Themes
 
 mod flat_theme;
-mod sample_theme;
+mod shaded_theme;
 mod size_handle;
 
 pub(crate) use size_handle::{Dimensions, DimensionsParams, SizeHandle};
 
 pub use flat_theme::FlatTheme;
-pub use sample_theme::SampleTheme;
+pub use shaded_theme::ShadedTheme;
