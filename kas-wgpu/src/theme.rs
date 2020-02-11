@@ -48,57 +48,70 @@ impl SampleTheme {
 #[doc(hidden)]
 pub struct SampleWindow {
     font_size: f32, // unscaled by DPI
-    dims: ThemeDimensions,
+    dims: Dimensions,
+}
+
+/// Parameterisation of [`Dimensions`]
+///
+/// All dimensions are multiplied by the DPI factor, then rounded to the
+/// nearest integer. Example: `(2.0 * 1.25).round() = 3.0`.
+#[derive(Clone, Debug)]
+pub struct DimensionsParams {
+    /// Inner margin
+    pub margin: f32,
+    /// Frame size
+    pub frame_size: f32,
+    /// Button frame size (non-flat outer region)
+    pub button_frame: f32,
+    /// Scrollbar width & min length
+    pub scrollbar_size: f32,
 }
 
 #[derive(Clone, Debug)]
-struct ThemeDimensions {
-    font_scale: f32,
-    line_height: u32,
-    min_line_length: u32,
-    max_line_length: u32,
-    margin: u32,
-    frame: u32,
-    button_frame: u32,
-    checkbox: u32,
-    scrollbar: u32,
+pub struct Dimensions {
+    pub font_scale: f32,
+    pub line_height: u32,
+    pub min_line_length: u32,
+    pub max_line_length: u32,
+    pub margin: u32,
+    pub frame: u32,
+    pub button_frame: u32,
+    pub checkbox: u32,
+    pub scrollbar: u32,
 }
 
-/// Inner margin; this is multiplied by the DPI factor then rounded to nearest
-/// integer, e.g. `(2.0 * 1.25).round() == 3.0`.
-const MARGIN: f32 = 2.0;
-/// Frame size (adjusted as above)
-const FRAME_SIZE: f32 = 5.0;
-/// Button frame size (non-flat outer region)
-const BUTTON_FRAME: f32 = 5.0;
-/// Scrollbar width & min length
-const SCROLLBAR_SIZE: f32 = 8.0;
+const DIMS: DimensionsParams = DimensionsParams {
+    margin: 2.0,
+    frame_size: 5.0,
+    button_frame: 5.0,
+    scrollbar_size: 8.0,
+};
 
 impl SampleWindow {
     fn new(font_size: f32, dpi_factor: f32) -> Self {
         SampleWindow {
             font_size,
-            dims: ThemeDimensions::new(font_size, dpi_factor),
+            dims: Dimensions::new(DIMS, font_size, dpi_factor),
         }
     }
 }
 
-impl ThemeDimensions {
-    fn new(font_size: f32, dpi_factor: f32) -> Self {
+impl Dimensions {
+    pub fn new(params: DimensionsParams, font_size: f32, dpi_factor: f32) -> Self {
         let font_scale = font_size * dpi_factor;
         let line_height = font_scale.round() as u32;
-        let margin = (MARGIN * dpi_factor).round() as u32;
-        let frame = (FRAME_SIZE * dpi_factor).round() as u32;
-        ThemeDimensions {
+        let margin = (params.margin * dpi_factor).round() as u32;
+        let frame = (params.frame_size * dpi_factor).round() as u32;
+        Dimensions {
             font_scale,
             line_height,
             min_line_length: line_height * 10,
             max_line_length: line_height * 40,
             margin,
             frame,
-            button_frame: (BUTTON_FRAME * dpi_factor).round() as u32,
+            button_frame: (params.button_frame * dpi_factor).round() as u32,
             checkbox: (font_scale * 0.7).round() as u32 + 2 * (margin + frame),
-            scrollbar: (SCROLLBAR_SIZE * dpi_factor).round() as u32,
+            scrollbar: (params.scrollbar_size * dpi_factor).round() as u32,
         }
     }
 }
@@ -106,7 +119,13 @@ impl ThemeDimensions {
 #[doc(hidden)]
 pub struct SizeHandle<'a> {
     draw: &'a mut DrawPipe,
-    dims: &'a ThemeDimensions,
+    dims: &'a Dimensions,
+}
+
+impl<'a> SizeHandle<'a> {
+    pub fn new(draw: &'a mut DrawPipe, dims: &'a Dimensions) -> Self {
+        SizeHandle { draw, dims }
+    }
 }
 
 impl theme::Window<DrawPipe> for SampleWindow {
@@ -114,11 +133,8 @@ impl theme::Window<DrawPipe> for SampleWindow {
 
     unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        use std::mem::transmute;
-        SizeHandle {
-            draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
-            dims: transmute::<&'a ThemeDimensions, &'static ThemeDimensions>(&self.dims),
-        }
+        let handle = SizeHandle::new(draw, &self.dims);
+        std::mem::transmute::<SizeHandle<'a>, SizeHandle<'static>>(handle)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
@@ -126,7 +142,7 @@ impl theme::Window<DrawPipe> for SampleWindow {
     }
 
     fn set_dpi_factor(&mut self, dpi_factor: f32) {
-        self.dims = ThemeDimensions::new(self.font_size, dpi_factor)
+        self.dims = Dimensions::new(DIMS, self.font_size, dpi_factor)
     }
 }
 
