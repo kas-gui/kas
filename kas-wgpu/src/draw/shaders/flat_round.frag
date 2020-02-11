@@ -18,11 +18,14 @@ layout(location = 0) out vec4 outColor;
 float sample_off(vec2 dir) {
     vec2 dir2 = dir * dir;
     float ss = dir2.x + dir2.y;
-    return (ss <= 1.0) ? 0.5 : 0.0;
+    return (ss <= 1.0) ? 0.25 : 0.0;
 }
 
 void main() {
-    float avg = sample_off(dir + off) + sample_off(dir - off);
+    vec2 off1 = vec2(off.x, 3.0 * off.y);
+    vec2 off2 = vec2(3.0 * off.x, off.y);
+    float avg = sample_off(dir + off1) + sample_off(dir - off1)
+        + sample_off(dir + off2) + sample_off(dir - off2);
     
     outColor = vec4(fragColor, avg);
 }

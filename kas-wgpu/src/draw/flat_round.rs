@@ -204,7 +204,7 @@ impl FlatRound {
         let n0a = Vec2(0.0, naa.1);
         let n0b = Vec2(0.0, nbb.1);
 
-        let off = 0.25;
+        let off = 0.125;
         let paa = naa / (aa - cc) * off;
         let pab = nab / (ab - cd) * off;
         let pba = nba / (ba - dc) * off;
