@@ -22,21 +22,21 @@ use kas_wgpu::theme::ShadedTheme;
 /// A demo theme
 ///
 /// We set a custom background colour and use `ShadedTheme` for everything else.
-pub struct ColouredTheme {
+pub struct CustomTheme {
     inner: ShadedTheme,
 }
 
-impl ColouredTheme {
+impl CustomTheme {
     /// Construct
     pub fn new() -> Self {
-        ColouredTheme {
+        CustomTheme {
             inner: ShadedTheme::new(),
         }
     }
 }
 
 // manual impl because derive macro applies incorrect bounds
-impl Clone for ColouredTheme {
+impl Clone for CustomTheme {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
@@ -49,7 +49,7 @@ thread_local! {
     static BACKGROUND: Cell<Colour> = Cell::new(Colour::grey(1.0));
 }
 
-impl Theme<DrawPipe> for ColouredTheme {
+impl Theme<DrawPipe> for CustomTheme {
     type Window = <ShadedTheme as Theme<DrawPipe>>::Window;
     type DrawHandle = <ShadedTheme as Theme<DrawPipe>>::DrawHandle;
 
@@ -79,7 +79,7 @@ impl Theme<DrawPipe> for ColouredTheme {
     }
 }
 
-impl ThemeApi for ColouredTheme {
+impl ThemeApi for CustomTheme {
     fn set_colours(&mut self, scheme: &str) -> ThemeAction {
         ThemeApi::set_colours(&mut self.inner, scheme)
     }
@@ -109,7 +109,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
-    let theme = ColouredTheme::new();
+    let theme = CustomTheme::new();
 
     let window = Window::new(
         "Theme demo",
