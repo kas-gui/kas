@@ -11,7 +11,7 @@ use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
 use wgpu_glyph::GlyphBrushBuilder;
 
-use super::{Colour, Draw, DrawPipe, ShadedRound, ShadedSquare, Vec2};
+use super::{Colour, Draw, DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
 use crate::shared::SharedState;
 use kas::geom::{Coord, Rect, Size};
 use kas::theme;
@@ -32,16 +32,11 @@ pub enum ShadeStyle {
     Round(Vec2),
 }
 
-/// Abstraction over drawing commands
-///
-/// Implementations may support drawing each feature with multiple styles, but
-/// do not guarantee an exact match in each case.
-///
-/// Certain bounds on input are expected in each case. In case these are not met
-/// the implementation may tweak parameters to ensure valid drawing. In the case
-/// that the outer region does not have positive size or has reversed
-/// coordinates, drawing may not occur at all.
-pub trait DrawShaded: Draw {
+/// Abstraction over drawing commands specific to `kas_wgpu`
+pub trait DrawExt: Draw {
+    /// Add a rounded flat frame to the draw buffer.
+    fn rounded_frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour);
+
     /// Add a rounded shaded frame to the draw buffer.
     fn shaded_frame(
         &mut self,
@@ -79,6 +74,7 @@ impl DrawPipe {
         };
         DrawPipe {
             clip_regions: vec![region],
+            flat_round: FlatRound::new(shared, size),
             shaded_square: ShadedSquare::new(shared, size, norm),
             shaded_round: ShadedRound::new(shared, size, norm),
             glyph_brush,
@@ -90,6 +86,7 @@ impl DrawPipe {
         self.clip_regions[0].size = size;
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+        self.flat_round.resize(device, &mut encoder, size);
         self.shaded_square.resize(device, &mut encoder, size);
         self.shaded_round.resize(device, &mut encoder, size);
         encoder.finish()
@@ -125,6 +122,7 @@ impl DrawPipe {
                 region.size.1,
             );
 
+            self.flat_round.render(device, pass, &mut rpass);
             self.shaded_square.render(device, pass, &mut rpass);
             self.shaded_round.render(device, pass, &mut rpass);
             drop(rpass);
@@ -170,7 +168,12 @@ impl Draw for DrawPipe {
     }
 }
 
-impl DrawShaded for DrawPipe {
+impl DrawExt for DrawPipe {
+    #[inline]
+    fn rounded_frame(&mut self, pass: usize, outer: Rect, inner: Rect, col: Colour) {
+        self.flat_round.rounded_frame(pass, outer, inner, col);
+    }
+
     #[inline]
     fn shaded_frame(
         &mut self,

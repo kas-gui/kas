@@ -19,6 +19,7 @@ pub struct ShaderManager {
     pub square_fragment: ShaderModule,
     pub round_vertex: ShaderModule,
     pub round_fragment: ShaderModule,
+    pub flat_round_fragment: ShaderModule,
 }
 
 impl ShaderManager {
@@ -45,11 +46,17 @@ impl ShaderManager {
         let artifact = compiler.compile_into_spirv(source, Fragment, fname, "main", None)?;
         let round_fragment = device.create_shader_module(&artifact.as_binary());
 
+        let fname = "shaders/flat_round.frag";
+        let source = include_str!("shaders/flat_round.frag");
+        let artifact = compiler.compile_into_spirv(source, Fragment, fname, "main", None)?;
+        let flat_round_fragment = device.create_shader_module(&artifact.as_binary());
+
         Ok(ShaderManager {
             square_vertex,
             square_fragment,
             round_vertex,
             round_fragment,
+            flat_round_fragment,
         })
     }
 }

@@ -19,7 +19,7 @@ use kas::Align;
 use kas::Direction;
 
 use super::{Dimensions, DimensionsParams, SizeHandle};
-use crate::draw::{DrawPipe, DrawShaded, DrawText, ShadeStyle, Vec2};
+use crate::draw::{DrawExt, DrawPipe, DrawText, ShadeStyle, Vec2};
 use crate::resources::colours::ThemeColours;
 
 /// A simple, inflexible theme providing a sample implementation.

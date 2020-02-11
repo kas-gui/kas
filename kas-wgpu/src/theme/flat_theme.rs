@@ -19,7 +19,7 @@ use kas::Align;
 use kas::Direction;
 
 use super::{Dimensions, DimensionsParams, SizeHandle};
-use crate::draw::{DrawPipe, DrawText, Vec2};
+use crate::draw::{DrawExt, DrawPipe, DrawText, Vec2};
 use crate::resources::colours::ThemeColours;
 
 /// A simple flat theme.
@@ -168,7 +168,8 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     fn outer_frame(&mut self, rect: Rect) {
         let outer = rect + self.offset;
         let inner = outer.shrink(self.window.dims.frame);
-        self.draw.frame(self.pass, outer, inner, self.cols.frame);
+        self.draw
+            .rounded_frame(self.pass, outer, inner, self.cols.frame);
     }
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
@@ -218,7 +219,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let col = self.cols.button_state(highlights);
 
         let mut inner = outer.shrink(self.window.dims.button_frame);
-        self.draw.frame(self.pass, outer, inner, col);
+        self.draw.rounded_frame(self.pass, outer, inner, col);
 
         if let Some(col) = self.cols.nav_region(highlights) {
             outer = inner;
@@ -233,7 +234,8 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let mut outer = rect + self.offset;
 
         let mut inner = outer.shrink(self.window.dims.frame);
-        self.draw.frame(self.pass, outer, inner, self.cols.frame);
+        self.draw
+            .rounded_frame(self.pass, outer, inner, self.cols.frame);
 
         if let Some(col) = self.cols.nav_region(highlights) {
             outer = inner;
@@ -248,7 +250,8 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let mut outer = rect + self.offset;
 
         let mut inner = outer.shrink(self.window.dims.frame);
-        self.draw.frame(self.pass, outer, inner, self.cols.frame);
+        self.draw
+            .rounded_frame(self.pass, outer, inner, self.cols.frame);
 
         if checked || highlights.any() {
             outer = inner;
@@ -286,7 +289,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let half_width = outer.size.0.min(outer.size.1) / 2;
         let inner = outer.shrink(half_width);
         let col = self.cols.scrollbar_state(highlights);
-        self.draw.frame(self.pass, outer, inner, col);
+        self.draw.rounded_frame(self.pass, outer, inner, col);
         self.draw.rect(self.pass, inner, col);
     }
 }
