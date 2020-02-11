@@ -17,14 +17,14 @@ use kas::geom::{Rect, Size};
 struct Vertex(Vec2, Rgb, Vec2, Vec2);
 
 /// A pipeline for rendering rounded shapes
-pub struct RoundPipe {
+pub struct ShadedRound {
     bind_group: wgpu::BindGroup,
     scale_buf: wgpu::Buffer,
     render_pipeline: wgpu::RenderPipeline,
     passes: Vec<Vec<Vertex>>,
 }
 
-impl RoundPipe {
+impl ShadedRound {
     /// Construct
     pub fn new<T>(shared: &SharedState<T>, size: Size, light_norm: [f32; 3]) -> Self {
         let device = &shared.device;
@@ -139,7 +139,7 @@ impl RoundPipe {
             alpha_to_coverage_enabled: false,
         });
 
-        RoundPipe {
+        ShadedRound {
             bind_group,
             scale_buf,
             render_pipeline,

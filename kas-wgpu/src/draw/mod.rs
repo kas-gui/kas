@@ -11,17 +11,17 @@
 
 mod draw_pipe;
 mod draw_text;
-mod round_pipe;
+mod shaded_round;
+mod shaded_square;
 mod shaders;
-mod square_pipe;
 mod vector;
 
 use kas::geom::Rect;
 use wgpu_glyph::GlyphBrush;
 
-pub(crate) use round_pipe::RoundPipe;
+pub(crate) use shaded_round::ShadedRound;
+pub(crate) use shaded_square::ShadedSquare;
 pub(crate) use shaders::ShaderManager;
-pub(crate) use square_pipe::SquarePipe;
 
 pub use draw_pipe::{DrawShaded, ShadeStyle};
 pub use draw_text::DrawText;
@@ -50,7 +50,7 @@ impl From<kas::draw::Colour> for Rgb {
 /// Manager of draw pipes and implementor of [`Draw`]
 pub struct DrawPipe {
     clip_regions: Vec<Rect>,
-    round_pipe: RoundPipe,
-    square_pipe: SquarePipe,
+    shaded_round: ShadedRound,
+    shaded_square: ShadedSquare,
     glyph_brush: GlyphBrush<'static, ()>,
 }

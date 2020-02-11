@@ -11,7 +11,7 @@ use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
 use wgpu_glyph::GlyphBrushBuilder;
 
-use super::{Colour, Draw, DrawPipe, RoundPipe, SquarePipe, Vec2};
+use super::{Colour, Draw, DrawPipe, ShadedRound, ShadedSquare, Vec2};
 use crate::shared::SharedState;
 use kas::geom::{Coord, Rect, Size};
 use kas::theme;
@@ -79,8 +79,8 @@ impl DrawPipe {
         };
         DrawPipe {
             clip_regions: vec![region],
-            square_pipe: SquarePipe::new(shared, size, norm),
-            round_pipe: RoundPipe::new(shared, size, norm),
+            shaded_square: ShadedSquare::new(shared, size, norm),
+            shaded_round: ShadedRound::new(shared, size, norm),
             glyph_brush,
         }
     }
@@ -90,8 +90,8 @@ impl DrawPipe {
         self.clip_regions[0].size = size;
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-        self.square_pipe.resize(device, &mut encoder, size);
-        self.round_pipe.resize(device, &mut encoder, size);
+        self.shaded_square.resize(device, &mut encoder, size);
+        self.shaded_round.resize(device, &mut encoder, size);
         encoder.finish()
     }
 
@@ -125,8 +125,8 @@ impl DrawPipe {
                 region.size.1,
             );
 
-            self.square_pipe.render(device, pass, &mut rpass);
-            self.round_pipe.render(device, pass, &mut rpass);
+            self.shaded_square.render(device, pass, &mut rpass);
+            self.shaded_round.render(device, pass, &mut rpass);
             drop(rpass);
 
             load_op = wgpu::LoadOp::Load;
@@ -161,12 +161,12 @@ impl Draw for DrawPipe {
 
     #[inline]
     fn rect(&mut self, region: Self::Region, rect: Rect, col: Colour) {
-        self.square_pipe.rect(region, rect, col);
+        self.shaded_square.rect(region, rect, col);
     }
 
     #[inline]
     fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour) {
-        self.square_pipe.frame(region, outer, inner, col);
+        self.shaded_square.frame(region, outer, inner, col);
     }
 }
 
@@ -181,10 +181,12 @@ impl DrawShaded for DrawPipe {
         col: Colour,
     ) {
         match style {
-            ShadeStyle::Square(norm) => {
-                self.square_pipe.shaded_frame(pass, outer, inner, norm, col)
-            }
-            ShadeStyle::Round(norm) => self.round_pipe.shaded_frame(pass, outer, inner, norm, col),
+            ShadeStyle::Square(norm) => self
+                .shaded_square
+                .shaded_frame(pass, outer, inner, norm, col),
+            ShadeStyle::Round(norm) => self
+                .shaded_round
+                .shaded_frame(pass, outer, inner, norm, col),
         }
     }
 }

@@ -17,14 +17,14 @@ use kas::geom::{Rect, Size};
 struct Vertex(Vec2, Rgb, Vec2);
 
 /// A pipeline for rendering with flat and square-corner shading
-pub struct SquarePipe {
+pub struct ShadedSquare {
     bind_group: wgpu::BindGroup,
     scale_buf: wgpu::Buffer,
     render_pipeline: wgpu::RenderPipeline,
     passes: Vec<Vec<Vertex>>,
 }
 
-impl SquarePipe {
+impl ShadedSquare {
     /// Construct
     pub fn new<T>(shared: &SharedState<T>, size: Size, light_norm: [f32; 3]) -> Self {
         let device = &shared.device;
@@ -133,7 +133,7 @@ impl SquarePipe {
             alpha_to_coverage_enabled: false,
         });
 
-        SquarePipe {
+        ShadedSquare {
             bind_group,
             scale_buf,
             render_pipeline,
