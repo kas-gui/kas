@@ -144,7 +144,8 @@ impl<H: 'static> Layout for EditBox<H> {
             TextClass::Edit
         };
         let sides = size_handle.edit_surround();
-        let rules = SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
+        let margin = size_handle.inner_margin();
+        let rules = SizeRules::fixed(axis.extract_size(sides.0 + sides.1 + margin))
             + size_handle.text_bound(&self.text, class, axis);
         if axis.is_horizontal() {
             self.core_data_mut().rect.size.0 = rules.ideal_size();

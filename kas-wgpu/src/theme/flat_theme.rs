@@ -51,8 +51,8 @@ pub struct SampleWindow {
 
 const DIMS: DimensionsParams = DimensionsParams {
     margin: 2.0,
-    frame_size: 5.0,
-    button_frame: 3.0,
+    frame_size: 4.0,
+    button_frame: 6.0,
     scrollbar_size: 8.0,
 };
 
@@ -173,8 +173,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     }
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
-        let outer = rect + self.offset;
-        let bounds = Coord::from(rect.size) - Coord::uniform(2 * self.window.dims.margin as i32);
+        let bounds = Coord::from(rect.size);
 
         let col = match props.class {
             TextClass::Label => self.cols.label_text,
@@ -194,8 +193,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
             Align::End => (VerticalAlign::Bottom, bounds.1),
         };
 
-        let text_pos =
-            outer.pos + Coord::uniform(self.window.dims.margin as i32) + Coord(h_offset, v_offset);
+        let text_pos = rect.pos + self.offset + Coord(h_offset, v_offset);
 
         let layout = match props.class {
             TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
@@ -218,12 +216,13 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let mut outer = rect + self.offset;
         let col = self.cols.button_state(highlights);
 
-        let mut inner = outer.shrink(self.window.dims.button_frame);
+        let inner = outer.shrink(self.window.dims.button_frame);
         self.draw.rounded_frame(self.pass, outer, inner, col);
 
         if let Some(col) = self.cols.nav_region(highlights) {
-            outer = inner;
-            inner = outer.shrink(self.window.dims.margin);
+            let diff = self.window.dims.button_frame - self.window.dims.margin;
+            outer = outer.shrink(diff);
+            // Note: we rely on this drawing *after* rounded_frame
             self.draw.frame(self.pass, outer, inner, col);
         }
 

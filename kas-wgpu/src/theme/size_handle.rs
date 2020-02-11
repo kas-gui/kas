@@ -129,7 +129,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
                 .unwrap_or(0)
         };
 
-        let inner = if axis.is_horizontal() {
+        if axis.is_horizontal() {
             let bound = bound(Horizontal);
             let min = match class {
                 TextClass::Edit | TextClass::EditMulti => self.dims.min_line_length,
@@ -148,9 +148,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
                 _ => StretchPolicy::Filler,
             };
             SizeRules::new(min, ideal, stretch)
-        };
-        let margin = SizeRules::fixed(2 * self.dims.margin as u32);
-        inner + margin
+        }
     }
 
     fn button_surround(&self) -> (Size, Size) {

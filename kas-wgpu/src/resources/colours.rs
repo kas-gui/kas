@@ -43,7 +43,7 @@ impl ThemeColours {
     /// Default theme: grey with blue activable items
     pub fn new() -> Self {
         ThemeColours {
-            background: Colour::grey(0.7),
+            background: Colour::grey(0.8),
             frame: Colour::grey(0.7),
             text_area: Colour::grey(1.0),
             text: Colour::grey(0.0),
@@ -61,7 +61,7 @@ impl ThemeColours {
     pub fn light() -> Self {
         ThemeColours {
             background: Colour::grey(0.9),
-            frame: Colour::grey(0.9),
+            frame: Colour::new(0.8, 0.8, 0.9),
             text_area: Colour::grey(1.0),
             text: Colour::grey(0.0),
             label_text: Colour::grey(0.0),
@@ -78,7 +78,7 @@ impl ThemeColours {
     pub fn dark() -> Self {
         ThemeColours {
             background: Colour::grey(0.2),
-            frame: Colour::grey(0.2),
+            frame: Colour::grey(0.4),
             text_area: Colour::grey(0.1),
             text: Colour::grey(1.0),
             label_text: Colour::grey(1.0),

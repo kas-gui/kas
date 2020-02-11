@@ -170,12 +170,11 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let inner = outer.shrink(self.window.dims.frame);
         let style = ShadeStyle::Round(Vec2(0.6, -0.6));
         self.draw
-            .shaded_frame(self.pass, outer, inner, style, self.cols.frame);
+            .shaded_frame(self.pass, outer, inner, style, self.cols.background);
     }
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
-        let outer = rect + self.offset;
-        let bounds = Coord::from(rect.size) - Coord::uniform(2 * self.window.dims.margin as i32);
+        let bounds = Coord::from(rect.size);
 
         let col = match props.class {
             TextClass::Label => self.cols.label_text,
@@ -195,8 +194,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
             Align::End => (VerticalAlign::Bottom, bounds.1),
         };
 
-        let text_pos =
-            outer.pos + Coord::uniform(self.window.dims.margin as i32) + Coord(h_offset, v_offset);
+        let text_pos = rect.pos + self.offset + Coord(h_offset, v_offset);
 
         let layout = match props.class {
             TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
@@ -238,7 +236,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let mut inner = outer.shrink(self.window.dims.frame);
         let style = ShadeStyle::Square(Vec2(0.0, -0.8));
         self.draw
-            .shaded_frame(self.pass, outer, inner, style, self.cols.frame);
+            .shaded_frame(self.pass, outer, inner, style, self.cols.background);
 
         if let Some(col) = self.cols.nav_region(highlights) {
             outer = inner;
@@ -255,7 +253,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let mut inner = outer.shrink(self.window.dims.frame);
         let style = ShadeStyle::Square(Vec2(0.0, -0.8));
         self.draw
-            .shaded_frame(self.pass, outer, inner, style, self.cols.frame);
+            .shaded_frame(self.pass, outer, inner, style, self.cols.background);
 
         if checked || highlights.any() {
             outer = inner;
