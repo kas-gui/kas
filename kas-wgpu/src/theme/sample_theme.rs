@@ -14,7 +14,7 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 use kas::draw::{Colour, Draw};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
-use kas::theme::{self, TextClass, TextProperties};
+use kas::theme::{self, TextClass, TextProperties, ThemeAction, ThemeApi};
 use kas::Align;
 use kas::Direction;
 
@@ -129,13 +129,15 @@ impl theme::Theme<DrawPipe> for SampleTheme {
     fn clear_colour(&self) -> Colour {
         self.cols.background
     }
+}
 
-    fn set_colours(&mut self, scheme: &str) -> bool {
+impl ThemeApi for SampleTheme {
+    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
         if let Some(scheme) = ThemeColours::open(scheme) {
             self.cols = scheme;
-            true
+            ThemeAction::RedrawAll
         } else {
-            false
+            ThemeAction::None
         }
     }
 }

@@ -53,13 +53,32 @@ pub struct TextProperties {
     // Note: do we want to add HighlightState?
 }
 
+/// Toolkit actions needed after theme adjustment, if any
+#[must_use]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+pub enum ThemeAction {
+    /// No action needed
+    None,
+    /// All windows require redrawing
+    RedrawAll,
+}
+
+/// Interface through which a theme can be adjusted at run-time
+pub trait ThemeApi {
+    /// Change the colour scheme
+    ///
+    /// If no theme by this name is found, the theme is unchanged.
+    // TODO: revise scheme identification and error handling?
+    fn set_colours(&mut self, scheme: &str) -> ThemeAction;
+}
+
 /// A *theme* provides widget sizing and drawing implementations.
 ///
 /// The theme is generic over some `Draw` type.
 ///
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
-pub trait Theme<Draw> {
+pub trait Theme<Draw>: ThemeApi {
     /// The associated [`Window`] implementation.
     type Window: Window<Draw> + 'static;
 
@@ -124,9 +143,6 @@ pub trait Theme<Draw> {
 
     /// Background colour
     fn clear_colour(&self) -> Colour;
-
-    /// Change the colour scheme. Returns true if successful.
-    fn set_colours(&mut self, scheme: &str) -> bool;
 }
 
 /// Per-window storage for the theme

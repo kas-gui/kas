@@ -12,7 +12,7 @@ use kas::draw::Colour;
 use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::geom::Rect;
 use kas::macros::{make_widget, VoidMsg};
-use kas::theme::Theme;
+use kas::theme::{Theme, ThemeAction, ThemeApi};
 use kas::widget::*;
 
 use kas_wgpu::draw::*;
@@ -77,9 +77,11 @@ impl Theme<DrawPipe> for ColouredTheme {
     fn clear_colour(&self) -> Colour {
         BACKGROUND.with(|b| b.get())
     }
+}
 
-    fn set_colours(&mut self, scheme: &str) -> bool {
-        Theme::<DrawPipe>::set_colours(&mut self.inner, scheme)
+impl ThemeApi for ColouredTheme {
+    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
+        ThemeApi::set_colours(&mut self.inner, scheme)
     }
 }
 

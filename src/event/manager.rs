@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 
 use super::*;
 use crate::geom::Coord;
+use crate::theme::{ThemeAction, ThemeApi};
 use crate::{TkAction, TkWindow, Widget, WidgetId, WindowId};
 
 /// Highlighting state of a widget
@@ -330,12 +331,10 @@ impl<'a> Manager<'a> {
         self.tkw.set_clipboard(content)
     }
 
-    /// Change the colour scheme
-    ///
-    /// If no theme by this name is found, the theme is unchanged.
+    /// Adjust the theme
     #[inline]
-    pub fn set_colours(&mut self, scheme: &str) {
-        self.tkw.set_colours(scheme);
+    pub fn adjust_theme<F: FnMut(&mut dyn ThemeApi) -> ThemeAction>(&mut self, mut f: F) {
+        self.tkw.adjust_theme(&mut f);
     }
 }
 

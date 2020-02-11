@@ -11,6 +11,7 @@ use std::num::NonZeroU32;
 use crate::draw::{DrawPipe, ShaderManager};
 use crate::{Error, Options, WindowId};
 use kas::event::UpdateHandle;
+use kas::theme::{ThemeAction, ThemeApi};
 
 #[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
@@ -140,9 +141,10 @@ impl<T: kas::theme::Theme<DrawPipe>> kas::TkWindow for SharedState<T> {
         self.set_clipboard(content);
     }
 
-    fn set_colours(&mut self, scheme: &str) {
-        if self.theme.set_colours(scheme) {
-            self.pending.push(PendingAction::RedrawAll);
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> ThemeAction) {
+        match f(&mut self.theme) {
+            ThemeAction::None => (),
+            ThemeAction::RedrawAll => self.pending.push(PendingAction::RedrawAll),
         }
     }
 }

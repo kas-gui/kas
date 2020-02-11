@@ -88,7 +88,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                             -> VoidResponse
                         {
                             println!("Colour scheme: {:?}", scheme);
-                            mgr.set_colours(scheme);
+                            mgr.adjust_theme(|theme| theme.set_colours(scheme));
                             VoidResponse::None
                         }
                     }
