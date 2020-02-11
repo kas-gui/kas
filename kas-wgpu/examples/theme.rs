@@ -77,6 +77,10 @@ impl Theme<DrawPipe> for ColouredTheme {
     fn clear_colour(&self) -> Colour {
         BACKGROUND.with(|b| b.get())
     }
+
+    fn set_colours(&mut self, scheme: &str) -> bool {
+        Theme::<DrawPipe>::set_colours(&mut self.inner, scheme)
+    }
 }
 
 #[derive(Clone, Debug, VoidMsg)]
