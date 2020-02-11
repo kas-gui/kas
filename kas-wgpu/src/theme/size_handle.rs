@@ -67,7 +67,6 @@ impl Dimensions {
     }
 }
 
-#[doc(hidden)]
 pub struct SizeHandle<'a> {
     draw: &'a mut DrawPipe,
     dims: &'a Dimensions,

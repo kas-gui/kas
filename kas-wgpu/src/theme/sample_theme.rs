@@ -44,7 +44,6 @@ impl SampleTheme {
     }
 }
 
-#[doc(hidden)]
 pub struct SampleWindow {
     font_size: f32, // unscaled by DPI
     dims: Dimensions,
@@ -84,7 +83,6 @@ impl theme::Window<DrawPipe> for SampleWindow {
     }
 }
 
-#[doc(hidden)]
 pub struct DrawHandle<'a> {
     draw: &'a mut DrawPipe,
     window: &'a mut SampleWindow,
