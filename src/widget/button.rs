@@ -10,11 +10,11 @@ use std::fmt::Debug;
 
 use crate::class::HasText;
 use crate::event::{Action, Handler, Manager, Response, VirtualKeyCode};
+use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
-use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
-use kas::geom::Rect;
+use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore, WidgetId};
 
 /// A push-button with a text label
 #[derive(Clone, Debug, Default, Widget)]
@@ -22,6 +22,7 @@ pub struct TextButton<M: Clone + Debug> {
     #[core]
     core: CoreData,
     keys: SmallVec<[VirtualKeyCode; 4]>,
+    b_rect: Rect,
     text_rect: Rect,
     label: String,
     msg: M,
@@ -41,8 +42,9 @@ impl<M: Clone + Debug> Widget for TextButton<M> {
 
 impl<M: Clone + Debug> Layout for TextButton<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        let margin = size_handle.outer_margin();
         let sides = size_handle.button_surround();
-        let rules = SizeRules::fixed(axis.extract_size(sides.0 + sides.1))
+        let rules = SizeRules::fixed(axis.extract_size(sides.0 + sides.1 + margin))
             + size_handle.text_bound(&self.label, TextClass::Button, axis);
         if axis.is_horizontal() {
             self.core_data_mut().rect.size.0 = rules.ideal_size();
@@ -56,17 +58,33 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
         let rect = align
             .complete(Align::Stretch, Align::Centre, self.rect().size)
             .apply(rect);
+        self.core_data_mut().rect = rect;
+
+        // Add a margin around the button.
+        // TODO: may be better to add margins in layout.
+        let margin = size_handle.outer_margin();
+        self.b_rect = Rect {
+            pos: rect.pos + margin,
+            size: rect.size - margin - margin,
+        };
 
         let sides = size_handle.button_surround();
         self.text_rect = Rect {
-            pos: rect.pos + sides.0,
-            size: rect.size - (sides.0 + sides.1),
+            pos: self.b_rect.pos + sides.0,
+            size: self.b_rect.size - (sides.0 + sides.1),
         };
-        self.core_data_mut().rect = rect;
+    }
+
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if self.b_rect.contains(coord) {
+            Some(self.id())
+        } else {
+            None
+        }
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
-        draw_handle.button(self.core.rect, mgr.highlight_state(self.id()));
+        draw_handle.button(self.b_rect, mgr.highlight_state(self.id()));
         let props = TextProperties {
             class: TextClass::Button,
             horiz: Align::Centre,
@@ -87,6 +105,7 @@ impl<M: Clone + Debug> TextButton<M> {
         TextButton {
             core: Default::default(),
             keys: SmallVec::new(),
+            b_rect: Default::default(),
             text_rect: Default::default(),
             label: label.into(),
             msg,
