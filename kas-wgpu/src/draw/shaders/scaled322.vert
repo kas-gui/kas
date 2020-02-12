@@ -6,14 +6,14 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(location = 0) in vec2 a_Pos;
-layout(location = 1) in vec3 a_Color;
-layout(location = 2) in vec2 a_Dir;
-layout(location = 3) in vec2 a_Adjust;
+layout(location = 0) in vec2 a_pos;
+layout(location = 1) in vec3 a_col;
+layout(location = 2) in vec2 a1;
+layout(location = 3) in vec2 a2;
 
-layout(location = 0) out vec3 fragColor;
-layout(location = 1) out vec2 dir;
-layout(location = 2) out vec2 adjust;
+layout(location = 0) out vec3 b_col;
+layout(location = 1) out vec2 b1;
+layout(location = 2) out vec2 b2;
 
 layout(set = 0, binding = 0) uniform Locals {
     vec2 scale;
@@ -22,8 +22,8 @@ layout(set = 0, binding = 0) uniform Locals {
 const vec2 offset = { 1.0, 1.0 };
 
 void main() {
-    gl_Position = vec4(scale * a_Pos - offset, 0.0, 1.0);
-    fragColor = a_Color;
-    dir = a_Dir;
-    adjust = a_Adjust;
+    gl_Position = vec4(scale * a_pos - offset, 0.0, 1.0);
+    b_col = a_col;
+    b1 = a1;
+    b2 = a2;
 }

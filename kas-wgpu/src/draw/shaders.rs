@@ -15,48 +15,49 @@ use wgpu::ShaderModule;
 /// Not really optimal (we could embed SPIR-V directly or load shaders from
 /// external resources), but simple to set up and use.
 pub struct ShaderManager {
-    pub square_vertex: ShaderModule,
-    pub square_fragment: ShaderModule,
-    pub round_vertex: ShaderModule,
-    pub round_fragment: ShaderModule,
-    pub flat_round_fragment: ShaderModule,
+    pub vert_32: ShaderModule,
+    pub vert_322: ShaderModule,
+    pub frag_flat_round: ShaderModule,
+    pub frag_shaded_square: ShaderModule,
+    pub frag_shaded_round: ShaderModule,
 }
 
 impl ShaderManager {
     pub fn new(device: &wgpu::Device) -> Result<Self, Error> {
         let mut compiler = Compiler::new().unwrap();
 
-        let fname = "shaders/square.vert";
-        let source = include_str!("shaders/square.vert");
+        let fname = "shaders/scaled32.vert";
+        let source = include_str!("shaders/scaled32.vert");
         let artifact = compiler.compile_into_spirv(source, Vertex, fname, "main", None)?;
-        let square_vertex = device.create_shader_module(&artifact.as_binary());
+        let vert_32 = device.create_shader_module(&artifact.as_binary());
 
-        let fname = "shaders/square.frag";
-        let source = include_str!("shaders/square.frag");
-        let artifact = compiler.compile_into_spirv(source, Fragment, fname, "main", None)?;
-        let square_fragment = device.create_shader_module(&artifact.as_binary());
-
-        let fname = "shaders/round.vert";
-        let source = include_str!("shaders/round.vert");
+        let fname = "shaders/scaled322.vert";
+        let source = include_str!("shaders/scaled322.vert");
         let artifact = compiler.compile_into_spirv(source, Vertex, fname, "main", None)?;
-        let round_vertex = device.create_shader_module(&artifact.as_binary());
+        let vert_322 = device.create_shader_module(&artifact.as_binary());
 
-        let fname = "shaders/round.frag";
-        let source = include_str!("shaders/round.frag");
-        let artifact = compiler.compile_into_spirv(source, Fragment, fname, "main", None)?;
-        let round_fragment = device.create_shader_module(&artifact.as_binary());
 
         let fname = "shaders/flat_round.frag";
         let source = include_str!("shaders/flat_round.frag");
         let artifact = compiler.compile_into_spirv(source, Fragment, fname, "main", None)?;
-        let flat_round_fragment = device.create_shader_module(&artifact.as_binary());
+        let frag_flat_round = device.create_shader_module(&artifact.as_binary());
+
+        let fname = "shaders/shaded_square.frag";
+        let source = include_str!("shaders/shaded_square.frag");
+        let artifact = compiler.compile_into_spirv(source, Fragment, fname, "main", None)?;
+        let frag_shaded_square = device.create_shader_module(&artifact.as_binary());
+
+        let fname = "shaders/shaded_round.frag";
+        let source = include_str!("shaders/shaded_round.frag");
+        let artifact = compiler.compile_into_spirv(source, Fragment, fname, "main", None)?;
+        let frag_shaded_round = device.create_shader_module(&artifact.as_binary());
 
         Ok(ShaderManager {
-            square_vertex,
-            square_fragment,
-            round_vertex,
-            round_fragment,
-            flat_round_fragment,
+            vert_32,
+            vert_322,
+            frag_flat_round,
+            frag_shaded_square,
+            frag_shaded_round,
         })
     }
 }
