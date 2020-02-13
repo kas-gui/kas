@@ -9,6 +9,7 @@
 use kas::class::HasText;
 use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
+use kas::theme::ThemeApi;
 use kas::widget::{Label, TextButton, Window};
 
 #[derive(Clone, Debug, VoidMsg)]

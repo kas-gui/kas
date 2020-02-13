@@ -40,12 +40,6 @@ impl MultiTheme {
             shaded: ShadedTheme::new(),
         }
     }
-
-    /// Set font size. Default is 18.
-    pub fn set_font_size(&mut self, size: f32) {
-        self.flat.set_font_size(size);
-        self.shaded.set_font_size(size);
-    }
 }
 
 pub enum WhichDrawHandle {
@@ -108,6 +102,13 @@ impl theme::Theme<DrawPipe> for MultiTheme {
 }
 
 impl ThemeApi for MultiTheme {
+    fn set_font_size(&mut self, size: f32) -> ThemeAction {
+        // Slightly inefficient, but sufficient: update both
+        // (Otherwise we would have to call set_colours in set_theme too.)
+        let _ = self.flat.set_font_size(size);
+        self.shaded.set_font_size(size)
+    }
+
     fn set_colours(&mut self, scheme: &str) -> ThemeAction {
         // Slightly inefficient, but sufficient: update both
         // (Otherwise we would have to call set_colours in set_theme too.)

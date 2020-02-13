@@ -54,7 +54,6 @@ pub struct TextProperties {
 }
 
 /// Toolkit actions needed after theme adjustment, if any
-#[must_use]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub enum ThemeAction {
     /// No action needed
@@ -67,15 +66,18 @@ pub enum ThemeAction {
 
 /// Interface through which a theme can be adjusted at run-time
 ///
-/// All methods have a default implementation which does nothing.
+/// All methods return a [`ThemeAction`] to enable correct action when a theme
+/// is updated via [`Manager::adjust_theme`]. When adjusting a theme before
+/// the UI is started, this return value can be safely ignored.
 pub trait ThemeApi {
+    /// Set font size. Default is 18. Units are unknown.
+    fn set_font_size(&mut self, size: f32) -> ThemeAction;
+
     /// Change the colour scheme
     ///
     /// If no theme by this name is found, the theme is unchanged.
     // TODO: revise scheme identification and error handling?
-    fn set_colours(&mut self, _scheme: &str) -> ThemeAction {
-        ThemeAction::None
-    }
+    fn set_colours(&mut self, _scheme: &str) -> ThemeAction;
 
     /// Change the theme itself
     ///

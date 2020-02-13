@@ -14,6 +14,7 @@ use std::time::Duration;
 
 use kas::class::HasText;
 use kas::event::Manager;
+use kas::theme::ThemeApi;
 use kas::widget::{Label, Window};
 use kas::{Widget, WidgetCore};
 
