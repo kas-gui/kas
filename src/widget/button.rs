@@ -23,7 +23,7 @@ pub struct TextButton<M: Clone + Debug> {
     core: CoreData,
     keys: SmallVec<[VirtualKeyCode; 4]>,
     b_rect: Rect,
-    text_rect: Rect,
+    // text_rect: Rect,
     label: String,
     msg: M,
 }
@@ -68,11 +68,15 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
             size: rect.size - margin - margin,
         };
 
-        let sides = size_handle.button_surround();
-        self.text_rect = Rect {
-            pos: self.b_rect.pos + sides.0,
-            size: self.b_rect.size - (sides.0 + sides.1),
-        };
+        // In theory, text rendering *should* be restricted to this rect. In
+        // practice, it sometimes overflows a tiny bit, and looks better if we
+        // do let it overflow. Since the text is centred this is okay
+        // (assuming the theme's frame is symmetric).
+        // let sides = size_handle.button_surround();
+        // self.text_rect = Rect {
+        //     pos: self.b_rect.pos + sides.0,
+        //     size: self.b_rect.size - (sides.0 + sides.1),
+        // };
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
@@ -90,7 +94,7 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
             horiz: Align::Centre,
             vert: Align::Centre,
         };
-        draw_handle.text(self.text_rect, &self.label, props);
+        draw_handle.text(self.b_rect, &self.label, props);
     }
 }
 
@@ -106,7 +110,7 @@ impl<M: Clone + Debug> TextButton<M> {
             core: Default::default(),
             keys: SmallVec::new(),
             b_rect: Default::default(),
-            text_rect: Default::default(),
+            // text_rect: Default::default(),
             label: label.into(),
             msg,
         }
