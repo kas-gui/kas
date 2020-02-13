@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{Editable, HasText};
-use crate::event::{Action, Handler, Manager, Response, VoidMsg};
+use crate::event::{Action, CursorIcon, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
@@ -133,6 +133,10 @@ impl<H> Debug for EditBox<H> {
 impl<H: 'static> Widget for EditBox<H> {
     fn allow_focus(&self) -> bool {
         true
+    }
+
+    fn cursor_icon(&self) -> CursorIcon {
+        CursorIcon::Text
     }
 }
 

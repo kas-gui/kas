@@ -69,6 +69,7 @@ pub struct ManagerState {
     char_focus: Option<WidgetId>,
     key_focus: Option<WidgetId>,
     hover: Option<WidgetId>,
+    hover_icon: CursorIcon,
     key_events: SmallVec<[(u32, WidgetId); 10]>,
     last_mouse_coord: Coord,
     mouse_grab: Option<(WidgetId, MouseButton)>,
@@ -95,6 +96,7 @@ impl ManagerState {
             char_focus: None,
             key_focus: None,
             hover: None,
+            hover_icon: CursorIcon::Default,
             key_events: Default::default(),
             last_mouse_coord: Coord::ZERO,
             mouse_grab: None,
@@ -475,10 +477,23 @@ impl<'a> Manager<'a> {
 /// Internal methods
 impl<'a> Manager<'a> {
     #[cfg(feature = "winit")]
-    fn set_hover(&mut self, w_id: Option<WidgetId>) {
+    fn set_hover<W: Widget + ?Sized>(&mut self, widget: &mut W, w_id: Option<WidgetId>) {
         if self.mgr.hover != w_id {
             self.mgr.hover = w_id;
             self.send_action(TkAction::Redraw);
+
+            if let Some(id) = w_id {
+                let icon = widget
+                    .find(id)
+                    .map(|w| w.cursor_icon())
+                    .unwrap_or(CursorIcon::Default);
+                if icon != self.mgr.hover_icon {
+                    self.mgr.hover_icon = icon;
+                    if self.mgr.mouse_grab.is_none() {
+                        self.tkw.set_cursor_icon(icon);
+                    }
+                }
+            }
         }
     }
 
@@ -520,7 +535,7 @@ impl<'a> Manager<'a> {
         if let Some(grab) = self.mgr.mouse_grab {
             if grab.1 == button {
                 self.mgr.mouse_grab = None;
-                self.tkw.set_cursor_icon(CursorIcon::Default);
+                self.tkw.set_cursor_icon(self.mgr.hover_icon);
                 self.redraw(grab.0);
             }
         }
@@ -719,7 +734,7 @@ impl<'a> Manager<'a> {
                 let coord = position.into();
 
                 // Update hovered widget
-                self.set_hover(widget.find_id(coord));
+                self.set_hover(widget, widget.find_id(coord));
 
                 let r = if let Some((grab_id, button)) = self.mouse_grab() {
                     let source = PressSource::Mouse(button);
@@ -738,7 +753,7 @@ impl<'a> Manager<'a> {
             CursorLeft { .. } => {
                 // Set a fake coordinate off the window
                 self.mgr.last_mouse_coord = Coord(-1, -1);
-                self.set_hover(None);
+                self.set_hover(widget, None);
                 Response::None
             }
             MouseWheel { delta, .. } => {
