@@ -16,7 +16,7 @@
 
 use std::num::NonZeroU32;
 
-use crate::event::UpdateHandle;
+use crate::event::{CursorIcon, UpdateHandle};
 use crate::theme::{ThemeAction, ThemeApi};
 
 /// Identifier for a window added to a toolkit
@@ -105,6 +105,9 @@ pub trait TkWindow {
 
     /// Adjust the theme
     fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> ThemeAction);
+
+    /// Set the mouse cursor
+    fn set_cursor_icon(&mut self, icon: CursorIcon);
 }
 
 #[cfg(test)]

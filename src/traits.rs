@@ -8,7 +8,7 @@
 use std::fmt;
 use std::time::Duration;
 
-use crate::event::{Callback, Handler, Manager, UpdateHandle, VoidMsg};
+use crate::event::{Callback, CursorIcon, Handler, Manager, UpdateHandle, VoidMsg};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
@@ -273,6 +273,13 @@ pub trait Widget: Layout {
     /// Is this widget navigable via Tab key?
     fn allow_focus(&self) -> bool {
         false
+    }
+
+    /// Which cursor icon should be used on hover?
+    ///
+    /// Where no specific icon should be used, return [`CursorIcon::Default`].
+    fn cursor_icon(&self) -> CursorIcon {
+        CursorIcon::Default
     }
 }
 

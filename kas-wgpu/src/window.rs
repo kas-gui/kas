@@ -8,16 +8,17 @@
 use log::{debug, info, trace};
 use std::time::Instant;
 
-use kas::event::{Callback, ManagerState, UpdateHandle};
+use kas::event::{Callback, CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
-use kas::{theme, TkAction};
+use kas::theme::{self, ThemeAction, ThemeApi};
+use kas::{TkAction, WindowId};
 use winit::dpi::PhysicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 
 use crate::draw::DrawPipe;
-use crate::shared::SharedState;
+use crate::shared::{PendingAction, SharedState};
 use crate::ProxyAction;
 
 /// Per-window data
@@ -85,7 +86,8 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         shared: &mut SharedState<T>,
     ) -> TkAction {
         debug!("Window::init");
-        let mut mgr = self.mgr.manager(shared);
+        let mut tkw = TkWindow::new(&self.window, shared);
+        let mut mgr = self.mgr.manager(&mut tkw);
         mgr.send_action(TkAction::Reconfigure);
 
         for (i, condition) in self.widget.callbacks() {
@@ -112,7 +114,8 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         let (min, max) = self.widget.resize(&mut size_handle, size);
         self.window.set_min_inner_size(min);
         self.window.set_max_inner_size(max);
-        self.mgr.configure(shared, &mut *self.widget);
+        let mut tkw = TkWindow::new(&self.window, shared);
+        self.mgr.configure(&mut tkw, &mut *self.widget);
         self.window.request_redraw();
 
         self.mgr.next_resume()
@@ -157,10 +160,12 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 self.mgr.set_dpi_factor(scale_factor);
                 self.do_resize(shared, *new_inner_size)
             }
-            event @ _ => self
-                .mgr
-                .manager(shared)
-                .handle_winit(&mut *self.widget, event),
+            event @ _ => {
+                let mut tkw = TkWindow::new(&self.window, shared);
+                self.mgr
+                    .manager(&mut tkw)
+                    .handle_winit(&mut *self.widget, event)
+            }
         };
 
         (action, self.mgr.next_resume())
@@ -174,7 +179,8 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         mut self,
         shared: &mut SharedState<T>,
     ) -> TkAction {
-        let mut mgr = self.mgr.manager(shared);
+        let mut tkw = TkWindow::new(&self.window, shared);
+        let mut mgr = self.mgr.manager(&mut tkw);
 
         for (i, condition) in self.widget.callbacks() {
             match condition {
@@ -195,7 +201,8 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         &mut self,
         shared: &mut SharedState<T>,
     ) -> (TkAction, Option<Instant>) {
-        let mut mgr = self.mgr.manager(shared);
+        let mut tkw = TkWindow::new(&self.window, shared);
+        let mut mgr = self.mgr.manager(&mut tkw);
         mgr.update_timer(&mut *self.widget);
         (mgr.unwrap_action(), self.mgr.next_resume())
     }
@@ -206,7 +213,8 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         handle: UpdateHandle,
         payload: u64,
     ) -> TkAction {
-        let mut mgr = self.mgr.manager(shared);
+        let mut tkw = TkWindow::new(&self.window, shared);
+        let mut mgr = self.mgr.manager(&mut tkw);
         mgr.update_handle(&mut *self.widget, handle, payload);
         mgr.unwrap_action()
     }
@@ -256,8 +264,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 .theme
                 .draw_handle(&mut self.draw_pipe, &mut self.theme_window, rect)
         };
+        let mut tkw = TkWindow::new(&self.window, shared);
         self.widget
-            .draw(&mut draw_handle, &self.mgr.manager(shared));
+            .draw(&mut draw_handle, &self.mgr.manager(&mut tkw));
         let clear_color = to_wgpu_color(shared.theme.clear_colour());
         let buf = self
             .draw_pipe
@@ -272,5 +281,65 @@ fn to_wgpu_color(c: kas::draw::Colour) -> wgpu::Color {
         g: c.g as f64,
         b: c.b as f64,
         a: c.a as f64,
+    }
+}
+
+struct TkWindow<'a, T> {
+    window: &'a winit::window::Window,
+    shared: &'a mut SharedState<T>,
+}
+
+impl<'a, T> TkWindow<'a, T> {
+    fn new(window: &'a winit::window::Window, shared: &'a mut SharedState<T>) -> Self {
+        TkWindow { window, shared }
+    }
+}
+
+impl<'a, T: kas::theme::Theme<DrawPipe>> kas::TkWindow for TkWindow<'a, T> {
+    fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
+        // By far the simplest way to implement this is to let our call
+        // anscestor, event::Loop::handle, do the work.
+        //
+        // In theory we could pass the EventLoopWindowTarget for *each* event
+        // handled to create the winit window here or use statics to generate
+        // errors now, but user code can't do much with this error anyway.
+        let id = self.shared.next_window_id();
+        self.shared
+            .pending
+            .push(PendingAction::AddWindow(id, widget));
+        id
+    }
+
+    fn close_window(&mut self, id: WindowId) {
+        self.shared.pending.push(PendingAction::CloseWindow(id));
+    }
+
+    fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
+        self.shared
+            .pending
+            .push(PendingAction::Update(handle, payload));
+    }
+
+    #[inline]
+    fn get_clipboard(&mut self) -> Option<String> {
+        self.shared.get_clipboard()
+    }
+
+    #[inline]
+    fn set_clipboard(&mut self, content: String) {
+        self.shared.set_clipboard(content);
+    }
+
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> ThemeAction) {
+        match f(&mut self.shared.theme) {
+            ThemeAction::None => (),
+            ThemeAction::RedrawAll => self.shared.pending.push(PendingAction::RedrawAll),
+            ThemeAction::ThemeResize => self.shared.pending.push(PendingAction::ThemeResize),
+        }
+    }
+
+    #[inline]
+    fn set_cursor_icon(&mut self, icon: CursorIcon) {
+        self.window.set_cursor_icon(icon);
     }
 }
