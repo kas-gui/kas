@@ -7,6 +7,7 @@
 //!
 //! Widget size and appearance can be modified through themes.
 
+use std::any::Any;
 use std::f32;
 
 use wgpu_glyph::{Layout, Scale, Section};
@@ -64,6 +65,32 @@ impl Dimensions {
             checkbox: (font_scale * 0.7).round() as u32 + 2 * (margin + frame),
             scrollbar: (params.scrollbar_size * dpi_factor).round() as u32,
         }
+    }
+}
+
+pub struct DimensionsWindow {
+    pub dims: Dimensions,
+}
+
+impl DimensionsWindow {
+    pub fn new(dims: DimensionsParams, font_size: f32, dpi_factor: f32) -> Self {
+        DimensionsWindow {
+            dims: Dimensions::new(dims, font_size, dpi_factor),
+        }
+    }
+}
+
+impl theme::Window<DrawPipe> for DimensionsWindow {
+    type SizeHandle = SizeHandle<'static>;
+
+    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle {
+        // We extend lifetimes (unsafe) due to the lack of associated type generics.
+        let handle = SizeHandle::new(draw, &self.dims);
+        std::mem::transmute::<SizeHandle<'a>, SizeHandle<'static>>(handle)
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
     }
 }
 

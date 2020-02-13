@@ -7,7 +7,6 @@
 //!
 //! Widget size and appearance can be modified through themes.
 
-use std::any::Any;
 use std::f32;
 use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
@@ -18,7 +17,7 @@ use kas::theme::{self, TextClass, TextProperties, ThemeAction, ThemeApi};
 use kas::Align;
 use kas::Direction;
 
-use super::{Dimensions, DimensionsParams, SizeHandle};
+use super::{Dimensions, DimensionsParams, DimensionsWindow};
 use crate::draw::{DrawExt, DrawPipe, DrawText, Vec2};
 use crate::resources::colours::ThemeColours;
 
@@ -44,10 +43,6 @@ impl FlatTheme {
     }
 }
 
-pub struct SampleWindow {
-    dims: Dimensions,
-}
-
 const DIMS: DimensionsParams = DimensionsParams {
     margin: 2.0,
     frame_size: 4.0,
@@ -55,31 +50,9 @@ const DIMS: DimensionsParams = DimensionsParams {
     scrollbar_size: 8.0,
 };
 
-impl SampleWindow {
-    fn new(font_size: f32, dpi_factor: f32) -> Self {
-        SampleWindow {
-            dims: Dimensions::new(DIMS, font_size, dpi_factor),
-        }
-    }
-}
-
-impl theme::Window<DrawPipe> for SampleWindow {
-    type SizeHandle = SizeHandle<'static>;
-
-    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle {
-        // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        let handle = SizeHandle::new(draw, &self.dims);
-        std::mem::transmute::<SizeHandle<'a>, SizeHandle<'static>>(handle)
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-}
-
 pub struct DrawHandle<'a> {
     draw: &'a mut DrawPipe,
-    window: &'a mut SampleWindow,
+    window: &'a mut DimensionsWindow,
     cols: &'a ThemeColours,
     rect: Rect,
     offset: Coord,
@@ -87,11 +60,11 @@ pub struct DrawHandle<'a> {
 }
 
 impl theme::Theme<DrawPipe> for FlatTheme {
-    type Window = SampleWindow;
+    type Window = DimensionsWindow;
     type DrawHandle = DrawHandle<'static>;
 
     fn new_window(&self, _draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
-        SampleWindow::new(self.font_size, dpi_factor)
+        DimensionsWindow::new(DIMS, self.font_size, dpi_factor)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
