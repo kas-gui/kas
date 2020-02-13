@@ -433,12 +433,16 @@ impl<'a> Manager<'a> {
         source: PressSource,
         widget: &dyn Widget,
         coord: Coord,
+        cursor: Option<CursorIcon>,
     ) -> bool {
         let w_id = widget.id();
         match source {
             PressSource::Mouse(button) => {
                 if self.mgr.mouse_grab.is_none() {
                     self.mgr.mouse_grab = Some((w_id, button));
+                    if let Some(icon) = cursor {
+                        self.tkw.set_cursor_icon(icon);
+                    }
                 } else {
                     return false;
                 }
@@ -516,6 +520,7 @@ impl<'a> Manager<'a> {
         if let Some(grab) = self.mgr.mouse_grab {
             if grab.1 == button {
                 self.mgr.mouse_grab = None;
+                self.tkw.set_cursor_icon(CursorIcon::Default);
                 self.redraw(grab.0);
             }
         }

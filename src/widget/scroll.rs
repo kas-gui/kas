@@ -8,7 +8,7 @@
 use std::fmt::Debug;
 
 use super::ScrollBar;
-use crate::event::{Action, Event, Handler, Manager, Response, ScrollDelta};
+use crate::event::{Action, CursorIcon, Event, Handler, Manager, Response, ScrollDelta};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
@@ -243,7 +243,7 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                 }
             }
             Event::PressStart { source, coord } if source.is_primary() => {
-                mgr.request_press_grab(source, w, coord);
+                mgr.request_press_grab(source, w, coord, Some(CursorIcon::Grabbing));
                 Response::None
             }
             e @ _ => Response::Unhandled(e),

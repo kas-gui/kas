@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use crate::event::{Event, Handler, Manager, PressSource, Response};
+use crate::event::{CursorIcon, Event, Handler, Manager, PressSource, Response};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
 use crate::macros::Widget;
@@ -198,7 +198,7 @@ impl<D: Directional> Handler for ScrollBar<D> {
     fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::PressStart { source, coord, .. } => {
-                if !mgr.request_press_grab(source, self, coord) {
+                if !mgr.request_press_grab(source, self, coord, Some(CursorIcon::Grabbing)) {
                     return Response::None;
                 }
                 // Interacting with a scrollbar with multiple presses

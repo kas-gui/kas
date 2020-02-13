@@ -8,7 +8,7 @@
 use log::{debug, info, trace};
 use std::time::Instant;
 
-use kas::event::{Callback, ManagerState, UpdateHandle};
+use kas::event::{Callback, CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::theme::{self, ThemeAction, ThemeApi};
 use kas::{TkAction, WindowId};
@@ -336,5 +336,10 @@ impl<'a, T: kas::theme::Theme<DrawPipe>> kas::TkWindow for TkWindow<'a, T> {
             ThemeAction::RedrawAll => self.shared.pending.push(PendingAction::RedrawAll),
             ThemeAction::ThemeResize => self.shared.pending.push(PendingAction::ThemeResize),
         }
+    }
+
+    #[inline]
+    fn set_cursor_icon(&mut self, icon: CursorIcon) {
+        self.window.set_cursor_icon(icon);
     }
 }

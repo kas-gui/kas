@@ -68,10 +68,12 @@ use std::fmt::Debug;
 
 #[cfg(feature = "winit")]
 pub use winit::event::{MouseButton, VirtualKeyCode};
+#[cfg(feature = "winit")]
+pub use winit::window::CursorIcon;
 
 pub use callback::Callback;
 #[cfg(not(feature = "winit"))]
-pub use enums::{MouseButton, VirtualKeyCode};
+pub use enums::{CursorIcon, MouseButton, VirtualKeyCode};
 pub use events::*;
 pub use handler::Handler;
 pub use manager::{HighlightState, Manager, ManagerState};
