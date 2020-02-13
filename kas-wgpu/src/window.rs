@@ -80,7 +80,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     /// windows. Optionally returns a callback time.
     ///
     /// `init` should always return an action of at least `TkAction::Reconfigure`.
-    pub fn init<T>(&mut self, shared: &mut SharedState<T>) -> TkAction {
+    pub fn init<T: kas::theme::Theme<DrawPipe>>(
+        &mut self,
+        shared: &mut SharedState<T>,
+    ) -> TkAction {
         debug!("Window::init");
         let mut mgr = self.mgr.manager(shared);
         mgr.send_action(TkAction::Reconfigure);
@@ -98,7 +101,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
     }
 
     /// Recompute layout of widgets and redraw
-    pub fn reconfigure<T>(&mut self, shared: &mut SharedState<T>) -> Option<Instant> {
+    pub fn reconfigure<T: kas::theme::Theme<DrawPipe>>(
+        &mut self,
+        shared: &mut SharedState<T>,
+    ) -> Option<Instant> {
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         debug!("Reconfiguring window (size = {:?})", size);
 
@@ -110,6 +116,23 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         self.window.request_redraw();
 
         self.mgr.next_resume()
+    }
+
+    pub fn theme_resize<T: kas::theme::Theme<DrawPipe, Window = TW>>(
+        &mut self,
+        shared: &SharedState<T>,
+    ) {
+        debug!("Applying theme resize");
+        let scale_factor = self.window.scale_factor() as f32;
+        shared
+            .theme
+            .update_window(&mut self.theme_window, scale_factor);
+        let size = Size(self.sc_desc.width, self.sc_desc.height);
+        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
+        let (min, max) = self.widget.resize(&mut size_handle, size);
+        self.window.set_min_inner_size(min);
+        self.window.set_max_inner_size(max);
+        self.window.request_redraw();
     }
 
     /// Handle an event
@@ -128,7 +151,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 new_inner_size,
             } => {
                 // Note: API allows us to set new window size here.
-                self.theme_window.set_dpi_factor(scale_factor as f32);
+                shared
+                    .theme
+                    .update_window(&mut self.theme_window, scale_factor as f32);
                 self.mgr.set_dpi_factor(scale_factor);
                 self.do_resize(shared, *new_inner_size)
             }
@@ -145,7 +170,10 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         self.mgr.region_moved(&mut *self.widget);
     }
 
-    pub fn handle_closure<T>(mut self, shared: &mut SharedState<T>) -> TkAction {
+    pub fn handle_closure<T: kas::theme::Theme<DrawPipe>>(
+        mut self,
+        shared: &mut SharedState<T>,
+    ) -> TkAction {
         let mut mgr = self.mgr.manager(shared);
 
         for (i, condition) in self.widget.callbacks() {
@@ -163,13 +191,16 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         mgr.unwrap_action()
     }
 
-    pub fn update_timer<T>(&mut self, shared: &mut SharedState<T>) -> (TkAction, Option<Instant>) {
+    pub fn update_timer<T: kas::theme::Theme<DrawPipe>>(
+        &mut self,
+        shared: &mut SharedState<T>,
+    ) -> (TkAction, Option<Instant>) {
         let mut mgr = self.mgr.manager(shared);
         mgr.update_timer(&mut *self.widget);
         (mgr.unwrap_action(), self.mgr.next_resume())
     }
 
-    pub fn update_handle<T>(
+    pub fn update_handle<T: kas::theme::Theme<DrawPipe>>(
         &mut self,
         shared: &mut SharedState<T>,
         handle: UpdateHandle,

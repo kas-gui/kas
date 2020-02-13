@@ -10,15 +10,24 @@
 //! All drawing operations are batched and do not happen immediately.
 
 mod draw_pipe;
-mod round_pipe;
+mod draw_text;
+mod flat_round;
+mod shaded_round;
+mod shaded_square;
 mod shaders;
-mod square_pipe;
 mod vector;
 
-pub use kas::draw::{Colour, Draw};
+use kas::geom::Rect;
+use wgpu_glyph::GlyphBrush;
 
-pub use draw_pipe::{DrawPipe, DrawShaded, DrawText, ShadeStyle};
+pub(crate) use flat_round::FlatRound;
+pub(crate) use shaded_round::ShadedRound;
+pub(crate) use shaded_square::ShadedSquare;
 pub(crate) use shaders::ShaderManager;
+
+pub use draw_pipe::{DrawExt, ShadeStyle};
+pub use draw_text::DrawText;
+pub use kas::draw::{Colour, Draw};
 pub use vector::{Quad, Vec2};
 
 /// 3-part colour data
@@ -38,4 +47,13 @@ impl From<kas::draw::Colour> for Rgb {
             b: c.b,
         }
     }
+}
+
+/// Manager of draw pipes and implementor of [`Draw`]
+pub struct DrawPipe {
+    clip_regions: Vec<Rect>,
+    flat_round: FlatRound,
+    shaded_round: ShadedRound,
+    shaded_square: ShadedSquare,
+    glyph_brush: GlyphBrush<'static, ()>,
 }

@@ -12,31 +12,31 @@ use kas::draw::Colour;
 use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::geom::Rect;
 use kas::macros::{make_widget, VoidMsg};
-use kas::theme::Theme;
+use kas::theme::{Theme, ThemeAction, ThemeApi};
 use kas::widget::*;
 
 use kas_wgpu::draw::*;
 use kas_wgpu::glyph::Font;
-use kas_wgpu::SampleTheme;
+use kas_wgpu::theme::ShadedTheme;
 
 /// A demo theme
 ///
-/// We set a custom background colour and use `SampleTheme` for everything else.
-pub struct ColouredTheme {
-    inner: SampleTheme,
+/// We set a custom background colour and use `ShadedTheme` for everything else.
+pub struct CustomTheme {
+    inner: ShadedTheme,
 }
 
-impl ColouredTheme {
+impl CustomTheme {
     /// Construct
     pub fn new() -> Self {
-        ColouredTheme {
-            inner: SampleTheme::new(),
+        CustomTheme {
+            inner: ShadedTheme::new(),
         }
     }
 }
 
 // manual impl because derive macro applies incorrect bounds
-impl Clone for ColouredTheme {
+impl Clone for CustomTheme {
     fn clone(&self) -> Self {
         Self {
             inner: self.inner.clone(),
@@ -49,12 +49,16 @@ thread_local! {
     static BACKGROUND: Cell<Colour> = Cell::new(Colour::grey(1.0));
 }
 
-impl Theme<DrawPipe> for ColouredTheme {
-    type Window = <SampleTheme as Theme<DrawPipe>>::Window;
-    type DrawHandle = <SampleTheme as Theme<DrawPipe>>::DrawHandle;
+impl Theme<DrawPipe> for CustomTheme {
+    type Window = <ShadedTheme as Theme<DrawPipe>>::Window;
+    type DrawHandle = <ShadedTheme as Theme<DrawPipe>>::DrawHandle;
 
     fn new_window(&self, draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         Theme::<DrawPipe>::new_window(&self.inner, draw, dpi_factor)
+    }
+
+    fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
+        Theme::<DrawPipe>::update_window(&self.inner, window, dpi_factor);
     }
 
     unsafe fn draw_handle(
@@ -76,6 +80,12 @@ impl Theme<DrawPipe> for ColouredTheme {
 
     fn clear_colour(&self) -> Colour {
         BACKGROUND.with(|b| b.get())
+    }
+}
+
+impl ThemeApi for CustomTheme {
+    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
+        ThemeApi::set_colours(&mut self.inner, scheme)
     }
 }
 
@@ -103,7 +113,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
-    let theme = ColouredTheme::new();
+    let theme = CustomTheme::new();
 
     let window = Window::new(
         "Theme demo",

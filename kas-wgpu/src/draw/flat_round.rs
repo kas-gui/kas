@@ -3,33 +3,31 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Simple pipeline for "square" shading
+//! Rounded flat pipeline
 
-use std::f32;
 use std::mem::size_of;
 
-use crate::draw::{Colour, Vec2};
-use kas::geom::{Rect, Size};
-
-use super::Rgb;
+use crate::draw::{Colour, Rgb, Vec2};
 use crate::shared::SharedState;
+use kas::geom::{Rect, Size};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec2, Rgb, Vec2);
+struct Vertex(Vec2, Rgb, Vec2, Vec2);
 
-/// A pipeline for rendering with flat and square-corner shading
-pub struct SquarePipe {
+/// A pipeline for rendering rounded shapes
+pub struct FlatRound {
     bind_group: wgpu::BindGroup,
     scale_buf: wgpu::Buffer,
     render_pipeline: wgpu::RenderPipeline,
     passes: Vec<Vec<Vertex>>,
 }
 
-impl SquarePipe {
+impl FlatRound {
     /// Construct
-    pub fn new<T>(shared: &SharedState<T>, size: Size, light_norm: [f32; 3]) -> Self {
+    pub fn new<T>(shared: &SharedState<T>, size: Size) -> Self {
         let device = &shared.device;
+
         type Scale = [f32; 2];
         let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
         let scale_buf = device
@@ -39,45 +37,22 @@ impl SquarePipe {
             )
             .fill_from_slice(&scale_factor);
 
-        let light_norm_buf = device
-            .create_buffer_mapped(
-                light_norm.len(),
-                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            )
-            .fill_from_slice(&light_norm);
-
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            bindings: &[
-                wgpu::BindGroupLayoutBinding {
-                    binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::UniformBuffer { dynamic: false },
-                },
-                wgpu::BindGroupLayoutBinding {
-                    binding: 1,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::UniformBuffer { dynamic: false },
-                },
-            ],
+            bindings: &[wgpu::BindGroupLayoutBinding {
+                binding: 0,
+                visibility: wgpu::ShaderStage::VERTEX,
+                ty: wgpu::BindingType::UniformBuffer { dynamic: false },
+            }],
         });
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &bind_group_layout,
-            bindings: &[
-                wgpu::Binding {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &scale_buf,
-                        range: 0..(size_of::<Scale>() as u64),
-                    },
+            bindings: &[wgpu::Binding {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer {
+                    buffer: &scale_buf,
+                    range: 0..(size_of::<Scale>() as u64),
                 },
-                wgpu::Binding {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &light_norm_buf,
-                        range: 0..(size_of::<[f32; 3]>() as u64),
-                    },
-                },
-            ],
+            }],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             bind_group_layouts: &[&bind_group_layout],
@@ -86,11 +61,11 @@ impl SquarePipe {
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             layout: &pipeline_layout,
             vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &shared.shaders.square_vertex,
+                module: &shared.shaders.vert_322,
                 entry_point: "main",
             },
             fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
-                module: &shared.shaders.square_fragment,
+                module: &shared.shaders.frag_flat_round,
                 entry_point: "main",
             }),
             rasterization_state: Some(wgpu::RasterizationStateDescriptor {
@@ -103,8 +78,16 @@ impl SquarePipe {
             primitive_topology: wgpu::PrimitiveTopology::TriangleList,
             color_states: &[wgpu::ColorStateDescriptor {
                 format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                color_blend: wgpu::BlendDescriptor::REPLACE,
-                alpha_blend: wgpu::BlendDescriptor::REPLACE,
+                color_blend: wgpu::BlendDescriptor {
+                    src_factor: wgpu::BlendFactor::SrcAlpha,
+                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha_blend: wgpu::BlendDescriptor {
+                    src_factor: wgpu::BlendFactor::Zero,
+                    dst_factor: wgpu::BlendFactor::One,
+                    operation: wgpu::BlendOperation::Add,
+                },
                 write_mask: wgpu::ColorWrite::ALL,
             }],
             depth_stencil_state: None,
@@ -128,6 +111,11 @@ impl SquarePipe {
                         offset: (size_of::<Vec2>() + size_of::<Rgb>()) as u64,
                         shader_location: 2,
                     },
+                    wgpu::VertexAttributeDescriptor {
+                        format: wgpu::VertexFormat::Float2,
+                        offset: (2 * size_of::<Vec2>() + size_of::<Rgb>()) as u64,
+                        shader_location: 3,
+                    },
                 ],
             }],
             sample_count: 1,
@@ -135,7 +123,7 @@ impl SquarePipe {
             alpha_to_coverage_enabled: false,
         });
 
-        SquarePipe {
+        FlatRound {
             bind_group,
             scale_buf,
             render_pipeline,
@@ -178,48 +166,8 @@ impl SquarePipe {
         v.clear();
     }
 
-    /// Add a rectangle to the buffer
-    pub fn rect(&mut self, pass: usize, rect: Rect, col: Colour) {
-        let pos = Vec2::from(rect.pos);
-        let size = Vec2::from(rect.size);
-
-        let (aa, bb) = (pos, pos + size);
-        if !aa.lt(bb) {
-            // zero / negative size: nothing to draw
-            return;
-        }
-
-        let ab = Vec2(aa.0, bb.1);
-        let ba = Vec2(bb.0, aa.1);
-
-        let col = col.into();
-        let t = Vec2(0.0, 0.0);
-
-        #[rustfmt::skip]
-        self.add_vertices(pass, &[
-            Vertex(aa, col, t), Vertex(ba, col, t), Vertex(ab, col, t),
-            Vertex(ab, col, t), Vertex(ba, col, t), Vertex(bb, col, t),
-        ]);
-    }
-
-    #[inline]
-    pub fn frame(&mut self, pass: usize, outer: Rect, inner: Rect, col: Colour) {
-        let norm = Vec2::splat(0.0);
-        self.shaded_frame(pass, outer, inner, norm, col);
-    }
-
-    /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
-    /// and two inner corners, `cc` and `dd` with colour `col`.
-    ///
-    /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
-    pub fn shaded_frame(
-        &mut self,
-        pass: usize,
-        outer: Rect,
-        inner: Rect,
-        mut norm: Vec2,
-        col: Colour,
-    ) {
+    /// Bounds on input: `aa < cc < dd < bb`.
+    pub fn rounded_frame(&mut self, pass: usize, outer: Rect, inner: Rect, col: Colour) {
         let aa = Vec2::from(outer.pos);
         let bb = aa + Vec2::from(outer.size);
         let mut cc = Vec2::from(inner.pos);
@@ -238,35 +186,76 @@ impl SquarePipe {
         if !cc.le(dd) {
             dd = cc;
         }
-        if !Vec2::splat(-1.0).le(norm) || !norm.le(Vec2::splat(1.0)) {
-            norm = Vec2::splat(0.0);
-        }
+
+        let col = col.into();
 
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
         let cd = Vec2(cc.0, dd.1);
         let dc = Vec2(dd.0, cc.1);
 
-        let col = col.into();
-        let tt = (Vec2(0.0, -norm.0), Vec2(0.0, -norm.1));
-        let tl = (Vec2(-norm.0, 0.0), Vec2(-norm.1, 0.0));
-        let tb = (Vec2(0.0, norm.0), Vec2(0.0, norm.1));
-        let tr = (Vec2(norm.0, 0.0), Vec2(norm.1, 0.0));
+        let n0 = Vec2::splat(0.0);
+        let nbb = (bb - aa).sign();
+        let naa = -nbb;
+        let nab = Vec2(naa.0, nbb.1);
+        let nba = Vec2(nbb.0, naa.1);
+        let na0 = Vec2(naa.0, 0.0);
+        let nb0 = Vec2(nbb.0, 0.0);
+        let n0a = Vec2(0.0, naa.1);
+        let n0b = Vec2(0.0, nbb.1);
+
+        let off = 0.125;
+        let paa = naa / (aa - cc) * off;
+        let pab = nab / (ab - cd) * off;
+        let pba = nba / (ba - dc) * off;
+        let pbb = nbb / (bb - dd) * off;
+
+        // We must add corners separately to ensure correct interpolation of dir
+        // values, hence need 16 points:
+        let ab = Vertex(ab, col, nab, pab);
+        let ba = Vertex(ba, col, nba, pba);
+        let cd = Vertex(cd, col, n0, pab);
+        let dc = Vertex(dc, col, n0, pba);
+
+        let ac = Vertex(Vec2(aa.0, cc.1), col, na0, paa);
+        let ad = Vertex(Vec2(aa.0, dd.1), col, na0, pab);
+        let bc = Vertex(Vec2(bb.0, cc.1), col, nb0, pba);
+        let bd = Vertex(Vec2(bb.0, dd.1), col, nb0, pbb);
+
+        let ca = Vertex(Vec2(cc.0, aa.1), col, n0a, paa);
+        let cb = Vertex(Vec2(cc.0, bb.1), col, n0b, pab);
+        let da = Vertex(Vec2(dd.0, aa.1), col, n0a, pba);
+        let db = Vertex(Vec2(dd.0, bb.1), col, n0b, pbb);
+
+        let aa = Vertex(aa, col, naa, paa);
+        let bb = Vertex(bb, col, nbb, pbb);
+        let cc = Vertex(cc, col, n0, paa);
+        let dd = Vertex(dd, col, n0, pbb);
+
+        // TODO: the four sides are simple rectangles, hence could use simpler rendering
 
         #[rustfmt::skip]
         self.add_vertices(pass, &[
             // top bar: ba - dc - cc - aa
-            Vertex(ba, col, tt.0), Vertex(dc, col, tt.1), Vertex(aa, col, tt.0),
-            Vertex(aa, col, tt.0), Vertex(dc, col, tt.1), Vertex(cc, col, tt.1),
+            ba, dc, da,
+            da, dc, ca,
+            dc, cc, ca,
+            ca, cc, aa,
             // left bar: aa - cc - cd - ab
-            Vertex(aa, col, tl.0), Vertex(cc, col, tl.1), Vertex(ab, col, tl.0),
-            Vertex(ab, col, tl.0), Vertex(cc, col, tl.1), Vertex(cd, col, tl.1),
+            aa, cc, ac,
+            ac, cc, cd,
+            ac, cd, ad,
+            ad, cd, ab,
             // bottom bar: ab - cd - dd - bb
-            Vertex(ab, col, tb.0), Vertex(cd, col, tb.1), Vertex(bb, col, tb.0),
-            Vertex(bb, col, tb.0), Vertex(cd, col, tb.1), Vertex(dd, col, tb.1),
+            ab, cd, cb,
+            cb, cd, dd,
+            cb, dd, db,
+            db, dd, bb,
             // right bar: bb - dd - dc - ba
-            Vertex(bb, col, tr.0), Vertex(dd, col, tr.1), Vertex(ba, col, tr.0),
-            Vertex(ba, col, tr.0), Vertex(dd, col, tr.1), Vertex(dc, col, tr.1),
+            bb, dd, bd,
+            bd, dd, dc,
+            bd, dc, bc,
+            bc, dc, ba,
         ]);
     }
 

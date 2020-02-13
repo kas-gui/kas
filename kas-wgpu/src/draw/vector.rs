@@ -8,7 +8,7 @@
 //! For drawing operations, all dimensions use the `f32` type.
 
 use kas::geom::{Coord, Rect, Size};
-use std::ops::{Add, Neg, Sub};
+use std::ops::{Add, Div, Mul, Neg, Sub};
 
 /// Axis-aligned 2D cuboid, specified via two corners
 ///
@@ -125,6 +125,38 @@ impl Sub<f32> for Vec2 {
     #[inline]
     fn sub(self, rhs: f32) -> Self::Output {
         Vec2(self.0 - rhs, self.1 - rhs)
+    }
+}
+
+impl Mul<Vec2> for Vec2 {
+    type Output = Vec2;
+    #[inline]
+    fn mul(self, rhs: Vec2) -> Self::Output {
+        Vec2(self.0 * rhs.0, self.1 * rhs.1)
+    }
+}
+
+impl Mul<f32> for Vec2 {
+    type Output = Vec2;
+    #[inline]
+    fn mul(self, rhs: f32) -> Self::Output {
+        Vec2(self.0 * rhs, self.1 * rhs)
+    }
+}
+
+impl Div<Vec2> for Vec2 {
+    type Output = Vec2;
+    #[inline]
+    fn div(self, rhs: Vec2) -> Self::Output {
+        Vec2(self.0 / rhs.0, self.1 / rhs.1)
+    }
+}
+
+impl Div<f32> for Vec2 {
+    type Output = Vec2;
+    #[inline]
+    fn div(self, rhs: f32) -> Self::Output {
+        Vec2(self.0 / rhs, self.1 / rhs)
     }
 }
 

@@ -8,18 +8,13 @@
 //! TODO: move traits up to kas?
 
 use std::any::Any;
-use std::borrow::Cow;
 use std::f32::consts::FRAC_PI_2;
+use wgpu_glyph::GlyphBrushBuilder;
 
-use wgpu_glyph::{GlyphBrush, GlyphBrushBuilder, GlyphCruncher, VariedSection};
-
-use super::{Colour, Draw, Vec2};
+use super::{Colour, Draw, DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
+use crate::shared::SharedState;
 use kas::geom::{Coord, Rect, Size};
 use kas::theme;
-
-use super::round_pipe::RoundPipe;
-use super::square_pipe::SquarePipe;
-use crate::shared::SharedState;
 
 /// Style of drawing
 pub enum ShadeStyle {
@@ -37,16 +32,11 @@ pub enum ShadeStyle {
     Round(Vec2),
 }
 
-/// Abstraction over drawing commands
-///
-/// Implementations may support drawing each feature with multiple styles, but
-/// do not guarantee an exact match in each case.
-///
-/// Certain bounds on input are expected in each case. In case these are not met
-/// the implementation may tweak parameters to ensure valid drawing. In the case
-/// that the outer region does not have positive size or has reversed
-/// coordinates, drawing may not occur at all.
-pub trait DrawShaded: Draw {
+/// Abstraction over drawing commands specific to `kas_wgpu`
+pub trait DrawExt: Draw {
+    /// Add a rounded flat frame to the draw buffer.
+    fn rounded_frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour);
+
     /// Add a rounded shaded frame to the draw buffer.
     fn shaded_frame(
         &mut self,
@@ -56,43 +46,6 @@ pub trait DrawShaded: Draw {
         style: ShadeStyle,
         col: Colour,
     );
-}
-
-/// Abstraction over text rendering
-///
-/// TODO: this API is heavily dependent on `glyph_brush`. Eventually we want our
-/// own API, encapsulating translation functionality and with more default
-/// values (e.g. scale). When we get there, we should be able to move
-/// `SampleTheme` to `kas`.
-pub trait DrawText {
-    /// Queues a text section/layout.
-    fn draw_text<'a, S>(&mut self, section: S)
-    where
-        S: Into<Cow<'a, VariedSection<'a>>>;
-
-    /// Returns a bounding box for the section glyphs calculated using each glyph's
-    /// vertical & horizontal metrics.
-    ///
-    /// If the section is empty or would result in no drawn glyphs will return `None`.
-    ///
-    /// Invisible glyphs, like spaces, are discarded during layout so trailing ones will
-    /// not affect the bounds.
-    ///
-    /// The bounds will always lay within the specified layout bounds, ie that returned
-    /// by the layout's `bounds_rect` function.
-    ///
-    /// Benefits from caching, see [caching behaviour](#caching-behaviour).
-    fn glyph_bounds<'a, S>(&mut self, section: S) -> Option<(Vec2, Vec2)>
-    where
-        S: Into<Cow<'a, VariedSection<'a>>>;
-}
-
-/// Manager of draw pipes and implementor of [`Draw`]
-pub struct DrawPipe {
-    clip_regions: Vec<Rect>,
-    round_pipe: RoundPipe,
-    square_pipe: SquarePipe,
-    glyph_brush: GlyphBrush<'static, ()>,
 }
 
 impl DrawPipe {
@@ -121,8 +74,9 @@ impl DrawPipe {
         };
         DrawPipe {
             clip_regions: vec![region],
-            square_pipe: SquarePipe::new(shared, size, norm),
-            round_pipe: RoundPipe::new(shared, size, norm),
+            flat_round: FlatRound::new(shared, size),
+            shaded_square: ShadedSquare::new(shared, size, norm),
+            shaded_round: ShadedRound::new(shared, size, norm),
             glyph_brush,
         }
     }
@@ -132,8 +86,9 @@ impl DrawPipe {
         self.clip_regions[0].size = size;
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-        self.square_pipe.resize(device, &mut encoder, size);
-        self.round_pipe.resize(device, &mut encoder, size);
+        self.flat_round.resize(device, &mut encoder, size);
+        self.shaded_square.resize(device, &mut encoder, size);
+        self.shaded_round.resize(device, &mut encoder, size);
         encoder.finish()
     }
 
@@ -167,8 +122,9 @@ impl DrawPipe {
                 region.size.1,
             );
 
-            self.square_pipe.render(device, pass, &mut rpass);
-            self.round_pipe.render(device, pass, &mut rpass);
+            self.flat_round.render(device, pass, &mut rpass);
+            self.shaded_square.render(device, pass, &mut rpass);
+            self.shaded_round.render(device, pass, &mut rpass);
             drop(rpass);
 
             load_op = wgpu::LoadOp::Load;
@@ -203,16 +159,21 @@ impl Draw for DrawPipe {
 
     #[inline]
     fn rect(&mut self, region: Self::Region, rect: Rect, col: Colour) {
-        self.square_pipe.rect(region, rect, col);
+        self.shaded_square.rect(region, rect, col);
     }
 
     #[inline]
     fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour) {
-        self.square_pipe.frame(region, outer, inner, col);
+        self.shaded_square.frame(region, outer, inner, col);
     }
 }
 
-impl DrawShaded for DrawPipe {
+impl DrawExt for DrawPipe {
+    #[inline]
+    fn rounded_frame(&mut self, pass: usize, outer: Rect, inner: Rect, col: Colour) {
+        self.flat_round.rounded_frame(pass, outer, inner, col);
+    }
+
     #[inline]
     fn shaded_frame(
         &mut self,
@@ -223,30 +184,12 @@ impl DrawShaded for DrawPipe {
         col: Colour,
     ) {
         match style {
-            ShadeStyle::Square(norm) => {
-                self.square_pipe.shaded_frame(pass, outer, inner, norm, col)
-            }
-            ShadeStyle::Round(norm) => self.round_pipe.shaded_frame(pass, outer, inner, norm, col),
+            ShadeStyle::Square(norm) => self
+                .shaded_square
+                .shaded_frame(pass, outer, inner, norm, col),
+            ShadeStyle::Round(norm) => self
+                .shaded_round
+                .shaded_frame(pass, outer, inner, norm, col),
         }
-    }
-}
-
-impl DrawText for DrawPipe {
-    #[inline]
-    fn draw_text<'a, S>(&mut self, section: S)
-    where
-        S: Into<Cow<'a, VariedSection<'a>>>,
-    {
-        self.glyph_brush.queue(section)
-    }
-
-    #[inline]
-    fn glyph_bounds<'a, S>(&mut self, section: S) -> Option<(Vec2, Vec2)>
-    where
-        S: Into<Cow<'a, VariedSection<'a>>>,
-    {
-        self.glyph_brush
-            .glyph_bounds(section)
-            .map(|rect| (Vec2(rect.min.x, rect.min.y), Vec2(rect.max.x, rect.max.y)))
     }
 }

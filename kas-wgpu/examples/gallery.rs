@@ -68,10 +68,45 @@ fn main() -> Result<(), kas_wgpu::Error> {
             struct {
                 #[widget] _ = make_widget! {
                     #[widget]
-                    #[layout(single, frame)]
+                    #[layout(vertical, frame)]
                     #[handler(msg = VoidMsg)]
                     struct {
                         #[widget(halign=centre)] _ = Label::from("Widget Gallery"),
+                        #[widget(handler=set_theme)] _ = make_widget! {
+                            #[widget]
+                            #[layout(horizontal)]
+                            #[handler(msg = &'static str)]
+                            struct {
+                                #[widget] _ = TextButton::new("Flat", "flat"),
+                                #[widget] _ = TextButton::new("Shaded", "shaded"),
+                            }
+                        },
+                        #[widget(handler=set_colour)] _ = make_widget! {
+                            #[widget]
+                            #[layout(horizontal)]
+                            #[handler(msg = &'static str)]
+                            struct {
+                                #[widget] _ = TextButton::new("Default", "default"),
+                                #[widget] _ = TextButton::new("Light", "light"),
+                                #[widget] _ = TextButton::new("Dark", "dark"),
+                            }
+                        },
+                    }
+                    impl {
+                        fn set_theme(&mut self, mgr: &mut Manager, name: &'static str)
+                            -> VoidResponse
+                        {
+                            println!("Theme: {:?}", name);
+                            mgr.adjust_theme(|theme| theme.set_theme(name));
+                            VoidResponse::None
+                        }
+                        fn set_colour(&mut self, mgr: &mut Manager, name: &'static str)
+                            -> VoidResponse
+                        {
+                            println!("Colour scheme: {:?}", name);
+                            mgr.adjust_theme(|theme| theme.set_colours(name));
+                            VoidResponse::None
+                        }
                     }
                 },
                 #[widget(handler = activations)] _ = ScrollRegion::new(widgets).with_auto_bars(true),
@@ -97,7 +132,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         },
     );
 
-    let theme = kas_wgpu::SampleTheme::new();
+    let theme = kas_wgpu::theme::MultiTheme::new();
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
     toolkit.run()

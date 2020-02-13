@@ -155,10 +155,11 @@ impl<M> WidgetCore for Box<dyn Handler<Msg = M>> {
     }
 }
 
-impl<M> Clone for Box<dyn Handler<Msg = M>> {
+impl<M: 'static> Clone for Box<dyn Handler<Msg = M>> {
     fn clone(&self) -> Self {
         #[cfg(feature = "nightly")]
         unsafe {
+            use crate::CloneTo;
             let mut x = Box::new_uninit();
             self.clone_to(x.as_mut_ptr());
             x.assume_init()

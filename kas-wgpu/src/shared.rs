@@ -8,9 +8,10 @@
 use log::{info, warn};
 use std::num::NonZeroU32;
 
-use crate::draw::ShaderManager;
+use crate::draw::{DrawPipe, ShaderManager};
 use crate::{Error, Options, WindowId};
 use kas::event::UpdateHandle;
+use kas::theme::{ThemeAction, ThemeApi};
 
 #[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
@@ -109,7 +110,7 @@ impl<T> SharedState<T> {
 // window-specific handle; for us this is unnecessary.
 //
 // NOTE: Correct clipboard handling on Wayland requires a window handle.
-impl<T> kas::TkWindow for SharedState<T> {
+impl<T: kas::theme::Theme<DrawPipe>> kas::TkWindow for SharedState<T> {
     fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.
@@ -139,10 +140,20 @@ impl<T> kas::TkWindow for SharedState<T> {
     fn set_clipboard(&mut self, content: String) {
         self.set_clipboard(content);
     }
+
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> ThemeAction) {
+        match f(&mut self.theme) {
+            ThemeAction::None => (),
+            ThemeAction::RedrawAll => self.pending.push(PendingAction::RedrawAll),
+            ThemeAction::ThemeResize => self.pending.push(PendingAction::ThemeResize),
+        }
+    }
 }
 
 pub enum PendingAction {
     AddWindow(WindowId, Box<dyn kas::Window>),
     CloseWindow(WindowId),
+    ThemeResize,
+    RedrawAll,
     Update(UpdateHandle, u64),
 }

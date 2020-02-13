@@ -17,6 +17,7 @@
 use std::num::NonZeroU32;
 
 use crate::event::UpdateHandle;
+use crate::theme::{ThemeAction, ThemeApi};
 
 /// Identifier for a window added to a toolkit
 ///
@@ -101,6 +102,9 @@ pub trait TkWindow {
 
     /// Attempt to set clipboard contents
     fn set_clipboard(&mut self, content: String);
+
+    /// Adjust the theme
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> ThemeAction);
 }
 
 #[cfg(test)]

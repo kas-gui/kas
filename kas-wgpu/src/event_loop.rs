@@ -136,7 +136,8 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         }
                     }
                     StartCause::WaitCancelled { .. } => {
-                        debug!("Wakeup: WaitCancelled (ignoring)");
+                        // This event serves no purpose?
+                        // debug!("Wakeup: WaitCancelled (ignoring)");
                     }
                     StartCause::Poll => {
                         // We use this to check pending actions after removing windows
@@ -184,6 +185,16 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                 PendingAction::CloseWindow(id) => {
                     if let Some(id) = self.id_map.get(&id) {
                         actions.push((*id, TkAction::Close));
+                    }
+                }
+                PendingAction::ThemeResize => {
+                    for (_, window) in self.windows.iter_mut() {
+                        window.theme_resize(&self.shared);
+                    }
+                }
+                PendingAction::RedrawAll => {
+                    for (_, window) in self.windows.iter_mut() {
+                        window.window.request_redraw();
                     }
                 }
                 PendingAction::Update(handle, payload) => {

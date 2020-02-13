@@ -9,8 +9,9 @@ pub mod draw;
 mod event_loop;
 mod font;
 mod options;
+mod resources;
 mod shared;
-mod theme;
+pub mod theme;
 mod window;
 
 use std::{error, fmt};
@@ -25,7 +26,6 @@ use crate::shared::SharedState;
 use window::Window;
 
 pub use options::Options;
-pub use theme::SampleTheme;
 
 pub use kas;
 pub use wgpu_glyph as glyph;
