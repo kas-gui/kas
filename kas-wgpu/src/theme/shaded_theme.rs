@@ -36,11 +36,6 @@ impl ShadedTheme {
             cols: ThemeColours::new(),
         }
     }
-
-    /// Set font size. Default is 18.
-    pub fn set_font_size(&mut self, size: f32) {
-        self.font_size = size;
-    }
 }
 
 const DIMS: DimensionsParams = DimensionsParams {
@@ -103,6 +98,11 @@ impl theme::Theme<DrawPipe> for ShadedTheme {
 }
 
 impl ThemeApi for ShadedTheme {
+    fn set_font_size(&mut self, size: f32) -> ThemeAction {
+        self.font_size = size;
+        ThemeAction::ThemeResize
+    }
+
     fn set_colours(&mut self, scheme: &str) -> ThemeAction {
         if let Some(scheme) = ThemeColours::open(scheme) {
             self.cols = scheme;

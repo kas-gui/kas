@@ -84,6 +84,10 @@ impl Theme<DrawPipe> for CustomTheme {
 }
 
 impl ThemeApi for CustomTheme {
+    fn set_font_size(&mut self, size: f32) -> ThemeAction {
+        ThemeApi::set_font_size(&mut self.inner, size)
+    }
+
     fn set_colours(&mut self, scheme: &str) -> ThemeAction {
         ThemeApi::set_colours(&mut self.inner, scheme)
     }
@@ -113,7 +117,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
-    let theme = CustomTheme::new();
+    let mut theme = CustomTheme::new();
+    let _ = theme.set_colours("light");
 
     let window = Window::new(
         "Theme demo",
