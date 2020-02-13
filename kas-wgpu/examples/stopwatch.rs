@@ -12,6 +12,7 @@ use std::time::{Duration, Instant};
 use kas::class::HasText;
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
+use kas::theme::ThemeApi;
 use kas::widget::{Label, TextButton, Window};
 use kas::{Widget, WidgetCore};
 
@@ -98,7 +99,8 @@ fn make_window() -> Box<dyn kas::Window> {
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let theme = kas_wgpu::theme::ShadedTheme::new();
+    let mut theme = kas_wgpu::theme::ShadedTheme::new();
+    let _ = theme.set_colours("dark");
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add_boxed(make_window())?;
     toolkit.run()
