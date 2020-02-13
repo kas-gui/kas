@@ -113,7 +113,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
-    let theme = CustomTheme::new();
+    let mut theme = CustomTheme::new();
+    let _ = theme.set_colours("light");
 
     let window = Window::new(
         "Theme demo",
