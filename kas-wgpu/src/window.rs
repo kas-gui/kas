@@ -118,6 +118,23 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         self.mgr.next_resume()
     }
 
+    pub fn theme_resize<T: kas::theme::Theme<DrawPipe, Window = TW>>(
+        &mut self,
+        shared: &SharedState<T>,
+    ) {
+        debug!("Applying theme resize");
+        let scale_factor = self.window.scale_factor() as f32;
+        shared
+            .theme
+            .update_window(&mut self.theme_window, scale_factor);
+        let size = Size(self.sc_desc.width, self.sc_desc.height);
+        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
+        let (min, max) = self.widget.resize(&mut size_handle, size);
+        self.window.set_min_inner_size(min);
+        self.window.set_max_inner_size(max);
+        self.window.request_redraw();
+    }
+
     /// Handle an event
     ///
     /// Return true to remove the window

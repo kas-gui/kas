@@ -187,6 +187,11 @@ impl<T: theme::Theme<DrawPipe>> Loop<T> {
                         actions.push((*id, TkAction::Close));
                     }
                 }
+                PendingAction::ThemeResize => {
+                    for (_, window) in self.windows.iter_mut() {
+                        window.theme_resize(&self.shared);
+                    }
+                }
                 PendingAction::RedrawAll => {
                     for (_, window) in self.windows.iter_mut() {
                         window.window.request_redraw();

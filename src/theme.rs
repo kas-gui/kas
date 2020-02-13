@@ -61,6 +61,8 @@ pub enum ThemeAction {
     None,
     /// All windows require redrawing
     RedrawAll,
+    /// Theme sizes changed: must call [`Theme::update_window`] and resize
+    ThemeResize,
 }
 
 /// Interface through which a theme can be adjusted at run-time
@@ -72,6 +74,14 @@ pub trait ThemeApi {
     /// If no theme by this name is found, the theme is unchanged.
     // TODO: revise scheme identification and error handling?
     fn set_colours(&mut self, _scheme: &str) -> ThemeAction {
+        ThemeAction::None
+    }
+
+    /// Change the theme itself
+    ///
+    /// Themes may do nothing, or may react according to their own
+    /// interpretation of this method.
+    fn set_theme(&mut self, _theme: &str) -> ThemeAction {
         ThemeAction::None
     }
 }

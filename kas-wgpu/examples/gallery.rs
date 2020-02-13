@@ -72,6 +72,15 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     #[handler(msg = VoidMsg)]
                     struct {
                         #[widget(halign=centre)] _ = Label::from("Widget Gallery"),
+                        #[widget(handler=set_theme)] _ = make_widget! {
+                            #[widget]
+                            #[layout(horizontal)]
+                            #[handler(msg = &'static str)]
+                            struct {
+                                #[widget] _ = TextButton::new("Flat", "flat"),
+                                #[widget] _ = TextButton::new("Shaded", "shaded"),
+                            }
+                        },
                         #[widget(handler=set_colour)] _ = make_widget! {
                             #[widget]
                             #[layout(horizontal)]
@@ -84,11 +93,18 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         },
                     }
                     impl {
-                        fn set_colour(&mut self, mgr: &mut Manager, scheme: &'static str)
+                        fn set_theme(&mut self, mgr: &mut Manager, name: &'static str)
                             -> VoidResponse
                         {
-                            println!("Colour scheme: {:?}", scheme);
-                            mgr.adjust_theme(|theme| theme.set_colours(scheme));
+                            println!("Theme: {:?}", name);
+                            mgr.adjust_theme(|theme| theme.set_theme(name));
+                            VoidResponse::None
+                        }
+                        fn set_colour(&mut self, mgr: &mut Manager, name: &'static str)
+                            -> VoidResponse
+                        {
+                            println!("Colour scheme: {:?}", name);
+                            mgr.adjust_theme(|theme| theme.set_colours(name));
                             VoidResponse::None
                         }
                     }
@@ -116,7 +132,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         },
     );
 
-    let theme = kas_wgpu::theme::ShadedTheme::new();
+    let theme = kas_wgpu::theme::MultiTheme::new();
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
     toolkit.run()

@@ -145,6 +145,7 @@ impl<T: kas::theme::Theme<DrawPipe>> kas::TkWindow for SharedState<T> {
         match f(&mut self.theme) {
             ThemeAction::None => (),
             ThemeAction::RedrawAll => self.pending.push(PendingAction::RedrawAll),
+            ThemeAction::ThemeResize => self.pending.push(PendingAction::ThemeResize),
         }
     }
 }
@@ -152,6 +153,7 @@ impl<T: kas::theme::Theme<DrawPipe>> kas::TkWindow for SharedState<T> {
 pub enum PendingAction {
     AddWindow(WindowId, Box<dyn kas::Window>),
     CloseWindow(WindowId),
+    ThemeResize,
     RedrawAll,
     Update(UpdateHandle, u64),
 }
