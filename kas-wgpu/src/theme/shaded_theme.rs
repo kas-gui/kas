@@ -45,7 +45,6 @@ impl ShadedTheme {
 }
 
 pub struct SampleWindow {
-    font_size: f32, // unscaled by DPI
     dims: Dimensions,
 }
 
@@ -59,7 +58,6 @@ const DIMS: DimensionsParams = DimensionsParams {
 impl SampleWindow {
     fn new(font_size: f32, dpi_factor: f32) -> Self {
         SampleWindow {
-            font_size,
             dims: Dimensions::new(DIMS, font_size, dpi_factor),
         }
     }
@@ -76,10 +74,6 @@ impl theme::Window<DrawPipe> for SampleWindow {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
-    }
-
-    fn set_dpi_factor(&mut self, dpi_factor: f32) {
-        self.dims = Dimensions::new(DIMS, self.font_size, dpi_factor)
     }
 }
 
@@ -98,6 +92,10 @@ impl theme::Theme<DrawPipe> for ShadedTheme {
 
     fn new_window(&self, _draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         SampleWindow::new(self.font_size, dpi_factor)
+    }
+
+    fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
+        window.dims = Dimensions::new(DIMS, self.font_size, dpi_factor);
     }
 
     unsafe fn draw_handle<'a>(

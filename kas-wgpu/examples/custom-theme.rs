@@ -57,6 +57,10 @@ impl Theme<DrawPipe> for CustomTheme {
         Theme::<DrawPipe>::new_window(&self.inner, draw, dpi_factor)
     }
 
+    fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
+        Theme::<DrawPipe>::update_window(&self.inner, window, dpi_factor);
+    }
+
     unsafe fn draw_handle(
         &self,
         draw: &mut DrawPipe,

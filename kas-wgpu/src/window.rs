@@ -134,7 +134,9 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 new_inner_size,
             } => {
                 // Note: API allows us to set new window size here.
-                self.theme_window.set_dpi_factor(scale_factor as f32);
+                shared
+                    .theme
+                    .update_window(&mut self.theme_window, scale_factor as f32);
                 self.mgr.set_dpi_factor(scale_factor);
                 self.do_resize(shared, *new_inner_size)
             }

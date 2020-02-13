@@ -64,12 +64,16 @@ pub enum ThemeAction {
 }
 
 /// Interface through which a theme can be adjusted at run-time
+///
+/// All methods have a default implementation which does nothing.
 pub trait ThemeApi {
     /// Change the colour scheme
     ///
     /// If no theme by this name is found, the theme is unchanged.
     // TODO: revise scheme identification and error handling?
-    fn set_colours(&mut self, scheme: &str) -> ThemeAction;
+    fn set_colours(&mut self, _scheme: &str) -> ThemeAction {
+        ThemeAction::None
+    }
 }
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -87,10 +91,21 @@ pub trait Theme<Draw>: ThemeApi {
 
     /// Construct per-window storage
     ///
-    /// A reference to the draw backend is provided allowing configuration.
+    /// On "standard" monitors, the `dpi_factor` is 1. High-DPI screens may
+    /// have a factor of 2 or higher. The factor may not be an integer; e.g.
+    /// `9/8 = 1.125` works well with many 1440p screens. It is recommended to
+    /// round dimensions to the nearest integer, and cache the result:
+    /// ```notest
+    /// self.margin = (MARGIN * factor).round() as u32;
+    /// ```
     ///
-    /// See also documentation on [`Window::set_dpi_factor`].
+    /// A reference to the draw backend is provided allowing configuration.
     fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window;
+
+    /// Update a window created by [`Theme::new_window`]
+    ///
+    /// This is called when the DPI factor changes or theme dimensions change.
+    fn update_window(&self, window: &mut Self::Window, dpi_factor: f32);
 
     /// Construct a [`DrawHandle`] object
     ///
@@ -167,20 +182,6 @@ pub trait Window<Draw> {
     unsafe fn size_handle(&mut self, draw: &mut Draw) -> Self::SizeHandle;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
-
-    /// Set the DPI factor.
-    ///
-    /// This method is called when the DPI changes (e.g. via system settings or
-    /// when a window is moved to a different screen).
-    ///
-    /// On "standard" monitors, the factor is 1. High-DPI screens may have a
-    /// factor of 2 or higher. The factor may not be an integer; e.g.
-    /// `9/8 = 1.125` works well with many 1440p screens. It is recommended to
-    /// round dimensions to the nearest integer, and cache the result:
-    /// ```notest
-    /// self.margin = (MARGIN * factor).round();
-    /// ```
-    fn set_dpi_factor(&mut self, factor: f32);
 }
 
 /// Handle passed to objects during draw and sizing operations
