@@ -14,7 +14,7 @@ use kas::geom::{Rect, Size};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec2, Rgb, Vec2, Vec2);
+struct Vertex(Vec2, Rgb, Vec2, Vec2, Vec2);
 
 /// A pipeline for rendering rounded shapes
 pub struct ShadedRound {
@@ -85,7 +85,7 @@ impl ShadedRound {
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             layout: &pipeline_layout,
             vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &shared.shaders.vert_322,
+                module: &shared.shaders.vert_3222,
                 entry_point: "main",
             },
             fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
@@ -102,8 +102,16 @@ impl ShadedRound {
             primitive_topology: wgpu::PrimitiveTopology::TriangleList,
             color_states: &[wgpu::ColorStateDescriptor {
                 format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                color_blend: wgpu::BlendDescriptor::REPLACE,
-                alpha_blend: wgpu::BlendDescriptor::REPLACE,
+                color_blend: wgpu::BlendDescriptor {
+                    src_factor: wgpu::BlendFactor::SrcAlpha,
+                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                    operation: wgpu::BlendOperation::Add,
+                },
+                alpha_blend: wgpu::BlendDescriptor {
+                    src_factor: wgpu::BlendFactor::Zero,
+                    dst_factor: wgpu::BlendFactor::One,
+                    operation: wgpu::BlendOperation::Add,
+                },
                 write_mask: wgpu::ColorWrite::ALL,
             }],
             depth_stencil_state: None,
@@ -131,6 +139,11 @@ impl ShadedRound {
                         format: wgpu::VertexFormat::Float2,
                         offset: (2 * size_of::<Vec2>() + size_of::<Rgb>()) as u64,
                         shader_location: 3,
+                    },
+                    wgpu::VertexAttributeDescriptor {
+                        format: wgpu::VertexFormat::Float2,
+                        offset: (3 * size_of::<Vec2>() + size_of::<Rgb>()) as u64,
+                        shader_location: 4,
                     },
                 ],
             }],
@@ -216,6 +229,11 @@ impl ShadedRound {
         let adjust = Vec2(FRAC_PI_2 * norm.0, norm.1 - norm.0);
         let col = col.into();
 
+        let ab = Vec2(aa.0, bb.1);
+        let ba = Vec2(bb.0, aa.1);
+        let cd = Vec2(cc.0, dd.1);
+        let dc = Vec2(dd.0, cc.1);
+
         let n0 = Vec2::splat(0.0);
         let nbb = (bb - aa).sign();
         let naa = -nbb;
@@ -226,27 +244,33 @@ impl ShadedRound {
         let n0a = Vec2(0.0, naa.1);
         let n0b = Vec2(0.0, nbb.1);
 
+        let off = 0.125;
+        let paa = naa / (aa - cc) * off;
+        let pab = nab / (ab - cd) * off;
+        let pba = nba / (ba - dc) * off;
+        let pbb = nbb / (bb - dd) * off;
+
         // We must add corners separately to ensure correct interpolation of dir
         // values, hence need 16 points:
-        let ab = Vertex(Vec2(aa.0, bb.1), col, nab, adjust);
-        let ba = Vertex(Vec2(bb.0, aa.1), col, nba, adjust);
-        let cd = Vertex(Vec2(cc.0, dd.1), col, n0, adjust);
-        let dc = Vertex(Vec2(dd.0, cc.1), col, n0, adjust);
+        let ab = Vertex(ab, col, nab, adjust, pab);
+        let ba = Vertex(ba, col, nba, adjust, pba);
+        let cd = Vertex(cd, col, n0, adjust, pab);
+        let dc = Vertex(dc, col, n0, adjust, pba);
 
-        let ac = Vertex(Vec2(aa.0, cc.1), col, na0, adjust);
-        let ad = Vertex(Vec2(aa.0, dd.1), col, na0, adjust);
-        let bc = Vertex(Vec2(bb.0, cc.1), col, nb0, adjust);
-        let bd = Vertex(Vec2(bb.0, dd.1), col, nb0, adjust);
+        let ac = Vertex(Vec2(aa.0, cc.1), col, na0, adjust, paa);
+        let ad = Vertex(Vec2(aa.0, dd.1), col, na0, adjust, pab);
+        let bc = Vertex(Vec2(bb.0, cc.1), col, nb0, adjust, pba);
+        let bd = Vertex(Vec2(bb.0, dd.1), col, nb0, adjust, pbb);
 
-        let ca = Vertex(Vec2(cc.0, aa.1), col, n0a, adjust);
-        let cb = Vertex(Vec2(cc.0, bb.1), col, n0b, adjust);
-        let da = Vertex(Vec2(dd.0, aa.1), col, n0a, adjust);
-        let db = Vertex(Vec2(dd.0, bb.1), col, n0b, adjust);
+        let ca = Vertex(Vec2(cc.0, aa.1), col, n0a, adjust, paa);
+        let cb = Vertex(Vec2(cc.0, bb.1), col, n0b, adjust, pab);
+        let da = Vertex(Vec2(dd.0, aa.1), col, n0a, adjust, pba);
+        let db = Vertex(Vec2(dd.0, bb.1), col, n0b, adjust, pbb);
 
-        let aa = Vertex(aa, col, naa, adjust);
-        let bb = Vertex(bb, col, nbb, adjust);
-        let cc = Vertex(cc, col, n0, adjust);
-        let dd = Vertex(dd, col, n0, adjust);
+        let aa = Vertex(aa, col, naa, adjust, paa);
+        let bb = Vertex(bb, col, nbb, adjust, pbb);
+        let cc = Vertex(cc, col, n0, adjust, paa);
+        let dd = Vertex(dd, col, n0, adjust, pbb);
 
         #[rustfmt::skip]
         self.add_vertices(pass, &[

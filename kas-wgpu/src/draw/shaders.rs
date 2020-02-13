@@ -17,6 +17,7 @@ use wgpu::ShaderModule;
 pub struct ShaderManager {
     pub vert_32: ShaderModule,
     pub vert_322: ShaderModule,
+    pub vert_3222: ShaderModule,
     pub frag_flat_round: ShaderModule,
     pub frag_shaded_square: ShaderModule,
     pub frag_shaded_round: ShaderModule,
@@ -36,6 +37,10 @@ impl ShaderManager {
         let artifact = compiler.compile_into_spirv(source, Vertex, fname, "main", None)?;
         let vert_322 = device.create_shader_module(&artifact.as_binary());
 
+        let fname = "shaders/scaled3222.vert";
+        let source = include_str!("shaders/scaled3222.vert");
+        let artifact = compiler.compile_into_spirv(source, Vertex, fname, "main", None)?;
+        let vert_3222 = device.create_shader_module(&artifact.as_binary());
 
         let fname = "shaders/flat_round.frag";
         let source = include_str!("shaders/flat_round.frag");
@@ -55,6 +60,7 @@ impl ShaderManager {
         Ok(ShaderManager {
             vert_32,
             vert_322,
+            vert_3222,
             frag_flat_round,
             frag_shaded_square,
             frag_shaded_round,
