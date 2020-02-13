@@ -190,20 +190,18 @@ impl SizeRules {
             }
 
             let highest_stretch = rules[N].stretch;
-            if highest_stretch > StretchPolicy::Fixed {
-                let count = (0..N)
-                    .filter(|i| rules[*i].stretch == highest_stretch)
-                    .count() as u32;
-                let excess = target - rules[N].b;
-                let per_elt = excess / count;
-                let mut extra = excess - count * per_elt;
-                for i in 0..N {
-                    if rules[i].stretch == highest_stretch {
-                        out[i] += per_elt;
-                        if extra > 0 {
-                            out[i] += 1;
-                            extra -= 1;
-                        }
+            let count = (0..N)
+                .filter(|i| rules[*i].stretch == highest_stretch)
+                .count() as u32;
+            let excess = target - rules[N].b;
+            let per_elt = excess / count;
+            let mut extra = excess - count * per_elt;
+            for i in 0..N {
+                if rules[i].stretch == highest_stretch {
+                    out[i] += per_elt;
+                    if extra > 0 {
+                        out[i] += 1;
+                        extra -= 1;
                     }
                 }
             }

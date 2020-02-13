@@ -56,7 +56,7 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
         let rect = align
-            .complete(Align::Stretch, Align::Centre, self.rect().size)
+            .complete(Align::Stretch, Align::Stretch, self.rect().size)
             .apply(rect);
         self.core_data_mut().rect = rect;
 
