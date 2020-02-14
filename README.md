@@ -42,7 +42,7 @@ Examples
 ---------
 
 ![Calculator](screenshots/calculator.png) ![Dynamic](screenshots/dynamic.png)
-![Theme](screenshots/theme.png) ![Gallery](screenshots/gallery.png)
+![Stopwatch and Custom-Theme](screenshots/stopwatch-and-theme.png) ![Gallery](screenshots/gallery.png)
 ![Layout](screenshots/layout.png)
 
 
