@@ -5,6 +5,8 @@
 
 //! Toolkit for kas
 
+#![feature(unsize)]
+
 pub mod draw;
 mod event_loop;
 mod font;

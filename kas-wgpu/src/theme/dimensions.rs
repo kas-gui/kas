@@ -6,6 +6,9 @@
 //! Widget styling
 //!
 //! Widget size and appearance can be modified through themes.
+//!
+//! TODO: it would be nice to move this and MultiTheme to KAS core,
+//! but doing so requires font shaping support in KAS.
 
 use std::any::Any;
 use std::f32;

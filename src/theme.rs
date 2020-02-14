@@ -19,6 +19,7 @@
 //! [`Widget`]: crate::Widget
 
 use std::any::Any;
+use std::ops::{Deref, DerefMut};
 
 use rusttype::Font;
 
@@ -310,4 +311,46 @@ pub trait DrawHandle {
     /// -   `dir`: direction of bar
     /// -   `highlights`: highlighting information
     fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState);
+}
+
+impl<T: ThemeApi> ThemeApi for Box<T> {
+    fn set_font_size(&mut self, size: f32) -> ThemeAction {
+        self.deref_mut().set_font_size(size)
+    }
+    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
+        self.deref_mut().set_colours(scheme)
+    }
+    fn set_theme(&mut self, theme: &str) -> ThemeAction {
+        self.deref_mut().set_theme(theme)
+    }
+}
+
+impl<T: Theme<Draw>, Draw> Theme<Draw> for Box<T> {
+    type Window = <T as Theme<Draw>>::Window;
+
+    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window {
+        self.deref().new_window(draw, dpi_factor)
+    }
+    fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
+        self.deref().update_window(window, dpi_factor);
+    }
+
+    unsafe fn draw_handle(
+        &self,
+        draw: &mut Draw,
+        theme_window: &mut Self::Window,
+        rect: Rect,
+    ) -> StackDST<dyn DrawHandle> {
+        self.deref().draw_handle(draw, theme_window, rect)
+    }
+
+    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
+        self.deref().get_fonts()
+    }
+    fn light_direction(&self) -> (f32, f32) {
+        self.deref().light_direction()
+    }
+    fn clear_colour(&self) -> Colour {
+        self.deref().clear_colour()
+    }
 }
