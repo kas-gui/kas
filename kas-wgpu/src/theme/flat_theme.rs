@@ -13,7 +13,7 @@ use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 use kas::draw::{Colour, Draw};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
-use kas::theme::{self, TextClass, TextProperties, ThemeAction, ThemeApi};
+use kas::theme::{self, StackDST, TextClass, TextProperties, ThemeAction, ThemeApi};
 use kas::Align;
 use kas::Direction;
 
@@ -56,7 +56,6 @@ pub struct DrawHandle<'a> {
 
 impl theme::Theme<DrawPipe> for FlatTheme {
     type Window = DimensionsWindow;
-    type DrawHandle = DrawHandle<'static>;
 
     fn new_window(&self, _draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         DimensionsWindow::new(DIMS, self.font_size, dpi_factor)
@@ -71,17 +70,18 @@ impl theme::Theme<DrawPipe> for FlatTheme {
         draw: &'a mut DrawPipe,
         window: &'a mut Self::Window,
         rect: Rect,
-    ) -> Self::DrawHandle {
+    ) -> StackDST<dyn theme::DrawHandle> {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
         use std::mem::transmute;
-        DrawHandle {
+        StackDST::new(DrawHandle {
             draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
             window: transmute::<&'a mut Self::Window, &'static mut Self::Window>(window),
             cols: transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
             rect,
             offset: Coord::ZERO,
             pass: 0,
-        }
+        })
+        .unwrap_or_else(|_| panic!("Insufficient space for <dyn DrawHandle>"))
     }
 
     fn get_fonts<'a>(&self) -> Vec<Font<'a>> {

@@ -12,7 +12,7 @@ use kas::draw::Colour;
 use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::geom::Rect;
 use kas::macros::{make_widget, VoidMsg};
-use kas::theme::{Theme, ThemeAction, ThemeApi};
+use kas::theme::{DrawHandle, StackDST, Theme, ThemeAction, ThemeApi};
 use kas::widget::*;
 
 use kas_wgpu::draw::*;
@@ -51,7 +51,6 @@ thread_local! {
 
 impl Theme<DrawPipe> for CustomTheme {
     type Window = <ShadedTheme as Theme<DrawPipe>>::Window;
-    type DrawHandle = <ShadedTheme as Theme<DrawPipe>>::DrawHandle;
 
     fn new_window(&self, draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         Theme::<DrawPipe>::new_window(&self.inner, draw, dpi_factor)
@@ -66,7 +65,7 @@ impl Theme<DrawPipe> for CustomTheme {
         draw: &mut DrawPipe,
         theme_window: &mut Self::Window,
         rect: Rect,
-    ) -> Self::DrawHandle {
+    ) -> StackDST<dyn DrawHandle> {
         self.inner.draw_handle(draw, theme_window, rect)
     }
 

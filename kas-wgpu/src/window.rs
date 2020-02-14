@@ -6,6 +6,7 @@
 //! `Window` and `WindowList` types
 
 use log::{debug, info, trace};
+use std::ops::DerefMut;
 use std::time::Instant;
 
 use kas::event::{Callback, CursorIcon, ManagerState, UpdateHandle};
@@ -266,7 +267,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         };
         let mut tkw = TkWindow::new(&self.window, shared);
         self.widget
-            .draw(&mut draw_handle, &self.mgr.manager(&mut tkw));
+            .draw(draw_handle.deref_mut(), &self.mgr.manager(&mut tkw));
         let clear_color = to_wgpu_color(shared.theme.clear_colour());
         let buf = self
             .draw_pipe

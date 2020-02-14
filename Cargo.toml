@@ -21,6 +21,7 @@ internal_doc = []
 [dependencies]
 log = "0.4"
 smallvec = "1.1"
+stack_dst = { version = "0.6", features = ["unsize"] }
 
 [dependencies.kas-macros]
 version = "0.2.0"

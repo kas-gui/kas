@@ -28,6 +28,14 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::{Align, Direction};
 
+/// Fixed-size object of `Unsized` type
+///
+/// This is a re-export of
+/// [`stack_dst::ValueA`](https://docs.rs/stack_dst/0.6.0/stack_dst/struct.ValueA.html)
+/// with a custom size. The `new` and `new_or_boxed` methods provide a
+/// convenient API.
+pub type StackDST<T> = stack_dst::ValueA<T, [usize; 8]>;
+
 /// Class of text drawn
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum TextClass {
@@ -98,9 +106,6 @@ pub trait Theme<Draw>: ThemeApi {
     /// The associated [`Window`] implementation.
     type Window: Window<Draw> + 'static;
 
-    /// The associated [`DrawHandle`] implementation.
-    type DrawHandle: DrawHandle;
-
     /// Construct per-window storage
     ///
     /// On "standard" monitors, the `dpi_factor` is 1. High-DPI screens may
@@ -127,16 +132,17 @@ pub trait Theme<Draw>: ThemeApi {
     /// [`Theme::new_window`] on `self`, and the `draw` reference is guaranteed
     /// to be identical to the one passed to [`Theme::new_window`].
     ///
-    /// Note: this function is marked **unsafe** because the returned object
-    /// requires a lifetime bound not exceeding that of all three pointers
-    /// passed in. This ought to be expressible using generic associated types
-    /// but currently is not: https://github.com/rust-lang/rust/issues/67089
+    /// The return value is [`StackDST`] to allow returning unsized types.
+    /// In most cases, `StackDST::new(MyDrawHandle { .. })` is sufficient.
+    ///
+    /// This function is **unsafe** because the returned object requires a
+    /// lifetime bound not exceeding that of all three pointers passed in.
     unsafe fn draw_handle(
         &self,
         draw: &mut Draw,
         theme_window: &mut Self::Window,
         rect: Rect,
-    ) -> Self::DrawHandle;
+    ) -> StackDST<dyn DrawHandle>;
 
     /// Get the list of available fonts
     ///
