@@ -99,7 +99,7 @@ pub trait Theme<Draw>: ThemeApi {
     type Window: Window<Draw> + 'static;
 
     /// The associated [`DrawHandle`] implementation.
-    type DrawHandle: DrawHandle;
+    type DrawHandle<'a>: DrawHandle;
 
     /// Construct per-window storage
     ///
@@ -126,17 +126,12 @@ pub trait Theme<Draw>: ThemeApi {
     /// The `theme_window` is guaranteed to be one created by a call to
     /// [`Theme::new_window`] on `self`, and the `draw` reference is guaranteed
     /// to be identical to the one passed to [`Theme::new_window`].
-    ///
-    /// Note: this function is marked **unsafe** because the returned object
-    /// requires a lifetime bound not exceeding that of all three pointers
-    /// passed in. This ought to be expressible using generic associated types
-    /// but currently is not: https://github.com/rust-lang/rust/issues/67089
-    unsafe fn draw_handle(
-        &self,
-        draw: &mut Draw,
-        theme_window: &mut Self::Window,
+    fn draw_handle<'a>(
+        &'a self,
+        draw: &'a mut Draw,
+        theme_window: &'a mut Self::Window,
         rect: Rect,
-    ) -> Self::DrawHandle;
+    ) -> Self::DrawHandle<'a>;
 
     /// Get the list of available fonts
     ///

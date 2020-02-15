@@ -56,7 +56,7 @@ pub struct DrawHandle<'a> {
 
 impl theme::Theme<DrawPipe> for ShadedTheme {
     type Window = DimensionsWindow;
-    type DrawHandle = DrawHandle<'static>;
+    type DrawHandle<'a> = DrawHandle<'a>;
 
     fn new_window(&self, _draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         DimensionsWindow::new(DIMS, self.font_size, dpi_factor)
@@ -66,18 +66,16 @@ impl theme::Theme<DrawPipe> for ShadedTheme {
         window.dims = Dimensions::new(DIMS, self.font_size, dpi_factor);
     }
 
-    unsafe fn draw_handle<'a>(
+    fn draw_handle<'a>(
         &'a self,
         draw: &'a mut DrawPipe,
         window: &'a mut Self::Window,
         rect: Rect,
-    ) -> Self::DrawHandle {
-        // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        use std::mem::transmute;
+    ) -> Self::DrawHandle<'a> {
         DrawHandle {
-            draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
-            window: transmute::<&'a mut Self::Window, &'static mut Self::Window>(window),
-            cols: transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
+            draw,
+            window,
+            cols: &self.cols,
             rect,
             offset: Coord::ZERO,
             pass: 0,

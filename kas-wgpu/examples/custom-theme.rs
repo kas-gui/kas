@@ -5,6 +5,7 @@
 
 //! Custom theme demo
 #![feature(proc_macro_hygiene)]
+#![feature(generic_associated_types)]
 
 use std::cell::Cell;
 
@@ -51,7 +52,7 @@ thread_local! {
 
 impl Theme<DrawPipe> for CustomTheme {
     type Window = <ShadedTheme as Theme<DrawPipe>>::Window;
-    type DrawHandle = <ShadedTheme as Theme<DrawPipe>>::DrawHandle;
+    type DrawHandle<'a> = <ShadedTheme as Theme<DrawPipe>>::DrawHandle<'a>;
 
     fn new_window(&self, draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         Theme::<DrawPipe>::new_window(&self.inner, draw, dpi_factor)
@@ -61,12 +62,12 @@ impl Theme<DrawPipe> for CustomTheme {
         Theme::<DrawPipe>::update_window(&self.inner, window, dpi_factor);
     }
 
-    unsafe fn draw_handle(
-        &self,
-        draw: &mut DrawPipe,
-        theme_window: &mut Self::Window,
+    fn draw_handle<'a>(
+        &'a self,
+        draw: &'a mut DrawPipe,
+        theme_window: &'a mut Self::Window,
         rect: Rect,
-    ) -> Self::DrawHandle {
+    ) -> Self::DrawHandle<'a> {
         self.inner.draw_handle(draw, theme_window, rect)
     }
 

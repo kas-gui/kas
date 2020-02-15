@@ -258,13 +258,14 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             pos: Coord::ZERO,
             size,
         };
-        let frame = self.swap_chain.get_next_texture();
-        let mut draw_handle = unsafe {
+        let mut draw_handle =
             shared
                 .theme
-                .draw_handle(&mut self.draw_pipe, &mut self.theme_window, rect)
-        };
+                .draw_handle(&mut self.draw_pipe, &mut self.theme_window, rect);
         self.widget.draw(&mut draw_handle, &self.mgr);
+        drop(draw_handle);
+
+        let frame = self.swap_chain.get_next_texture();
         let clear_color = to_wgpu_color(shared.theme.clear_colour());
         let buf = self
             .draw_pipe
