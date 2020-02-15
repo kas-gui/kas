@@ -326,7 +326,7 @@ pub(crate) fn derive(
         fn draw(
             &self,
             draw_handle: &mut dyn kas::theme::DrawHandle,
-            mgr: &kas::event::Manager
+            mgr: &kas::event::ManagerState
         ) {
             use kas::{geom::Coord, WidgetCore};
             if #is_frame {

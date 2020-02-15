@@ -264,9 +264,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
                 .theme
                 .draw_handle(&mut self.draw_pipe, &mut self.theme_window, rect)
         };
-        let mut tkw = TkWindow::new(&self.window, shared);
-        self.widget
-            .draw(&mut draw_handle, &self.mgr.manager(&mut tkw));
+        self.widget.draw(&mut draw_handle, &self.mgr);
         let clear_color = to_wgpu_color(shared.theme.clear_colour());
         let buf = self
             .draw_pipe

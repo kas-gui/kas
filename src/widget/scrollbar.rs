@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use crate::event::{CursorIcon, Event, Handler, Manager, PressSource, Response};
+use crate::event::{CursorIcon, Event, Handler, Manager, ManagerState, PressSource, Response};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
 use crate::macros::Widget;
@@ -174,7 +174,7 @@ impl<D: Directional> Layout for ScrollBar<D> {
         self.update_handle();
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
         let dir = self.direction.as_direction();
         let h_pos = self.position() as i32;
         let mut h_rect = self.core.rect;

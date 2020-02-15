@@ -5,7 +5,7 @@
 
 //! Filler widget
 
-use crate::event::Manager;
+use crate::event::ManagerState;
 use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle};
@@ -29,7 +29,7 @@ impl Layout for Filler {
         SizeRules::new(0, 0, self.policy)
     }
 
-    fn draw(&self, _: &mut dyn DrawHandle, _: &Manager) {}
+    fn draw(&self, _: &mut dyn DrawHandle, _: &ManagerState) {}
 }
 
 impl Filler {
