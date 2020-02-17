@@ -81,12 +81,10 @@ impl DimensionsWindow {
 }
 
 impl theme::Window<DrawPipe> for DimensionsWindow {
-    type SizeHandle = SizeHandle<'static>;
+    type SizeHandle<'a> = SizeHandle<'a>;
 
-    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle {
-        // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        let handle = SizeHandle::new(draw, &self.dims);
-        std::mem::transmute::<SizeHandle<'a>, SizeHandle<'static>>(handle)
+    fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle<'a> {
+        SizeHandle::new(draw, &self.dims)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {

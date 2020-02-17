@@ -175,18 +175,13 @@ pub trait Theme<Draw>: ThemeApi {
 /// multi-window applications across screens with differing DPIs.
 pub trait Window<Draw> {
     /// The associated [`SizeHandle`] implementation.
-    type SizeHandle: SizeHandle;
+    type SizeHandle<'a>: SizeHandle;
 
     /// Construct a [`SizeHandle`] object
     ///
     /// The `draw` reference is guaranteed to be identical to the one used to
     /// construct this object.
-    ///
-    /// Note: this function is marked **unsafe** because the returned object
-    /// requires a lifetime bound not exceeding that of all three pointers
-    /// passed in. This ought to be expressible using generic associated types
-    /// but currently is not: https://github.com/rust-lang/rust/issues/67089
-    unsafe fn size_handle(&mut self, draw: &mut Draw) -> Self::SizeHandle;
+    fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle<'a>;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
