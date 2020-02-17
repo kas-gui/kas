@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 #![cfg_attr(feature = "nightly", feature(new_uninit))]
-#![feature(generic_associated_types)]
+#![cfg_attr(feature = "gat", feature(generic_associated_types))]
 
 //! KAS, the toolKit Abstraction Library
 //!

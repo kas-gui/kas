@@ -99,6 +99,9 @@ pub trait Theme<Draw>: ThemeApi {
     type Window: Window<Draw> + 'static;
 
     /// The associated [`DrawHandle`] implementation.
+    #[cfg(not(feature = "gat"))]
+    type DrawHandle: DrawHandle;
+    #[cfg(feature = "gat")]
     type DrawHandle<'a>: DrawHandle;
 
     /// Construct per-window storage
@@ -126,6 +129,14 @@ pub trait Theme<Draw>: ThemeApi {
     /// The `theme_window` is guaranteed to be one created by a call to
     /// [`Theme::new_window`] on `self`, and the `draw` reference is guaranteed
     /// to be identical to the one passed to [`Theme::new_window`].
+    #[cfg(not(feature = "gat"))]
+    unsafe fn draw_handle(
+        &self,
+        draw: &mut Draw,
+        theme_window: &mut Self::Window,
+        rect: Rect,
+    ) -> Self::DrawHandle;
+    #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
         draw: &'a mut Draw,
@@ -175,12 +186,18 @@ pub trait Theme<Draw>: ThemeApi {
 /// multi-window applications across screens with differing DPIs.
 pub trait Window<Draw> {
     /// The associated [`SizeHandle`] implementation.
+    #[cfg(not(feature = "gat"))]
+    type SizeHandle: SizeHandle;
+    #[cfg(feature = "gat")]
     type SizeHandle<'a>: SizeHandle;
 
     /// Construct a [`SizeHandle`] object
     ///
     /// The `draw` reference is guaranteed to be identical to the one used to
     /// construct this object.
+    #[cfg(not(feature = "gat"))]
+    unsafe fn size_handle(&mut self, draw: &mut Draw) -> Self::SizeHandle;
+    #[cfg(feature = "gat")]
     fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle<'a>;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;

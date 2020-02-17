@@ -110,7 +110,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         debug!("Reconfiguring window (size = {:?})", size);
 
-        let mut size_handle = self.theme_window.size_handle(&mut self.draw_pipe);
+        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
         let (min, max) = self.widget.resize(&mut size_handle, size);
         self.window.set_min_inner_size(min);
         self.window.set_max_inner_size(max);
@@ -131,7 +131,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             .theme
             .update_window(&mut self.theme_window, scale_factor);
         let size = Size(self.sc_desc.width, self.sc_desc.height);
-        let mut size_handle = self.theme_window.size_handle(&mut self.draw_pipe);
+        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
         let (min, max) = self.widget.resize(&mut size_handle, size);
         self.window.set_min_inner_size(min);
         self.window.set_max_inner_size(max);
@@ -233,7 +233,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         }
 
         debug!("Resizing window to size={:?}", size);
-        let mut size_handle = self.theme_window.size_handle(&mut self.draw_pipe);
+        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
         self.widget.resize(&mut size_handle, size);
         drop(size_handle);
 
@@ -259,10 +259,11 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             pos: Coord::ZERO,
             size,
         };
-        let mut draw_handle =
+        let mut draw_handle = unsafe {
             shared
                 .theme
-                .draw_handle(&mut self.draw_pipe, &mut self.theme_window, rect);
+                .draw_handle(&mut self.draw_pipe, &mut self.theme_window, rect)
+        };
         self.widget.draw(&mut draw_handle, &self.mgr);
         drop(draw_handle);
 

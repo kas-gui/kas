@@ -81,8 +81,18 @@ impl DimensionsWindow {
 }
 
 impl theme::Window<DrawPipe> for DimensionsWindow {
+    #[cfg(not(feature = "gat"))]
+    type SizeHandle = SizeHandle<'static>;
+    #[cfg(feature = "gat")]
     type SizeHandle<'a> = SizeHandle<'a>;
 
+    #[cfg(not(feature = "gat"))]
+    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle {
+        // We extend lifetimes (unsafe) due to the lack of associated type generics.
+        let handle = SizeHandle::new(draw, &self.dims);
+        std::mem::transmute::<SizeHandle<'a>, SizeHandle<'static>>(handle)
+    }
+    #[cfg(feature = "gat")]
     fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle<'a> {
         SizeHandle::new(draw, &self.dims)
     }
