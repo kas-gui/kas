@@ -19,6 +19,7 @@
 //! [`Widget`]: crate::Widget
 
 use std::any::Any;
+use std::ops::{Deref, DerefMut};
 
 use rusttype::Font;
 
@@ -311,4 +312,147 @@ pub trait DrawHandle {
     /// -   `dir`: direction of bar
     /// -   `highlights`: highlighting information
     fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState);
+}
+
+impl<T: ThemeApi> ThemeApi for Box<T> {
+    fn set_font_size(&mut self, size: f32) -> ThemeAction {
+        self.deref_mut().set_font_size(size)
+    }
+    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
+        self.deref_mut().set_colours(scheme)
+    }
+    fn set_theme(&mut self, theme: &str) -> ThemeAction {
+        self.deref_mut().set_theme(theme)
+    }
+}
+
+impl<T: Theme<Draw>, Draw> Theme<Draw> for Box<T> {
+    type Window = <T as Theme<Draw>>::Window;
+
+    #[cfg(not(feature = "gat"))]
+    type DrawHandle = <T as Theme<Draw>>::DrawHandle;
+    #[cfg(feature = "gat")]
+    type DrawHandle<'a> = <T as Theme<Draw>>::DrawHandle<'a>;
+
+    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window {
+        self.deref().new_window(draw, dpi_factor)
+    }
+    fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
+        self.deref().update_window(window, dpi_factor);
+    }
+
+    #[cfg(not(feature = "gat"))]
+    unsafe fn draw_handle(
+        &self,
+        draw: &mut Draw,
+        theme_window: &mut Self::Window,
+        rect: Rect,
+    ) -> Self::DrawHandle {
+        self.deref().draw_handle(draw, theme_window, rect)
+    }
+    #[cfg(feature = "gat")]
+    fn draw_handle<'a>(
+        &'a self,
+        draw: &'a mut Draw,
+        theme_window: &'a mut Self::Window,
+        rect: Rect,
+    ) -> Self::DrawHandle<'a> {
+        self.deref().draw_handle(draw, theme_window, rect)
+    }
+
+    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
+        self.deref().get_fonts()
+    }
+    fn light_direction(&self) -> (f32, f32) {
+        self.deref().light_direction()
+    }
+    fn clear_colour(&self) -> Colour {
+        self.deref().clear_colour()
+    }
+}
+
+impl<W: Window<Draw>, Draw> Window<Draw> for Box<W> {
+    #[cfg(not(feature = "gat"))]
+    type SizeHandle = <W as Window<Draw>>::SizeHandle;
+    #[cfg(feature = "gat")]
+    type SizeHandle<'a> = <W as Window<Draw>>::SizeHandle<'a>;
+
+    #[cfg(not(feature = "gat"))]
+    unsafe fn size_handle(&mut self, draw: &mut Draw) -> Self::SizeHandle {
+        self.deref_mut().size_handle(draw)
+    }
+    #[cfg(feature = "gat")]
+    fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle<'a> {
+        self.deref_mut().size_handle(draw)
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self.deref_mut().as_any_mut()
+    }
+}
+
+impl<S: SizeHandle> SizeHandle for Box<S> {
+    fn outer_frame(&self) -> (Size, Size) {
+        self.deref().outer_frame()
+    }
+    fn inner_margin(&self) -> Size {
+        self.deref().inner_margin()
+    }
+    fn outer_margin(&self) -> Size {
+        self.deref().outer_margin()
+    }
+
+    fn line_height(&self, class: TextClass) -> u32 {
+        self.deref().line_height(class)
+    }
+    fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
+        self.deref_mut().text_bound(text, class, axis)
+    }
+
+    fn button_surround(&self) -> (Size, Size) {
+        self.deref().button_surround()
+    }
+    fn edit_surround(&self) -> (Size, Size) {
+        self.deref().edit_surround()
+    }
+
+    fn checkbox(&self) -> Size {
+        self.deref().checkbox()
+    }
+    fn radiobox(&self) -> Size {
+        self.deref().radiobox()
+    }
+    fn scrollbar(&self) -> (u32, u32, u32) {
+        self.deref().scrollbar()
+    }
+}
+
+impl<H: DrawHandle> DrawHandle for Box<H> {
+    fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
+        self.deref_mut().clip_region(rect, offset, f)
+    }
+    fn target_rect(&self) -> Rect {
+        self.deref().target_rect()
+    }
+    fn outer_frame(&mut self, rect: Rect) {
+        self.deref_mut().outer_frame(rect)
+    }
+    fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
+        self.deref_mut().text(rect, text, props)
+    }
+    fn button(&mut self, rect: Rect, highlights: HighlightState) {
+        self.deref_mut().button(rect, highlights)
+    }
+    fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
+        self.deref_mut().edit_box(rect, highlights)
+    }
+    fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
+        self.deref_mut().checkbox(rect, checked, highlights)
+    }
+    fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
+        self.deref_mut().radiobox(rect, checked, highlights)
+    }
+    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
+        self.deref_mut().scrollbar(rect, h_rect, dir, highlights)
+    }
 }
