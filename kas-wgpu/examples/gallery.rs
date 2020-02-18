@@ -97,6 +97,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
                             -> VoidResponse
                         {
                             println!("Theme: {:?}", name);
+                            #[cfg(not(feature = "stack_dst"))]
+                            println!("Warning: switching themes requires feature 'stack_dst'");
+
                             mgr.adjust_theme(|theme| theme.set_theme(name));
                             VoidResponse::None
                         }
@@ -132,7 +135,14 @@ fn main() -> Result<(), kas_wgpu::Error> {
         },
     );
 
-    let theme = kas_wgpu::theme::MultiTheme::new();
+    #[cfg(feature = "stack_dst")]
+    let theme = kas_wgpu::theme::MultiTheme::builder()
+        .add("shaded", kas_wgpu::theme::ShadedTheme::new())
+        .add("flat", kas_wgpu::theme::FlatTheme::new())
+        .build();
+    #[cfg(not(feature = "stack_dst"))]
+    let theme = kas_wgpu::theme::ShadedTheme::new();
+
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
     toolkit.run()

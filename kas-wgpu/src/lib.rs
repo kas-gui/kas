@@ -6,6 +6,10 @@
 //! Toolkit for kas
 
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
+#![feature(unsize)]
+
+#[cfg(all(feature = "gat", feature = "stack_dst"))]
+compile_error!("Crate features 'gat' and 'stack_dst' are incompatible.");
 
 pub mod draw;
 mod event_loop;
