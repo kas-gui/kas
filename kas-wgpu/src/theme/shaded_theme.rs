@@ -8,13 +8,12 @@
 //! Widget size and appearance can be modified through themes.
 
 use std::f32;
-use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
+use wgpu_glyph::Font;
 
 use kas::draw::{Colour, Draw};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
 use kas::theme::{self, TextClass, TextProperties, ThemeAction, ThemeApi};
-use kas::Align;
 use kas::Direction;
 
 use super::{Dimensions, DimensionsParams, DimensionsWindow};
@@ -168,43 +167,13 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     }
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
-        let bounds = Coord::from(rect.size);
-
+        let scale = self.window.dims.font_scale;
         let col = match props.class {
             TextClass::Label => self.cols.label_text,
             TextClass::Button => self.cols.button_text,
             TextClass::Edit | TextClass::EditMulti => self.cols.text,
         };
-
-        // TODO: support justified alignment
-        let (h_align, h_offset) = match props.horiz {
-            Align::Begin | Align::Stretch => (HorizontalAlign::Left, 0),
-            Align::Centre => (HorizontalAlign::Center, bounds.0 / 2),
-            Align::End => (HorizontalAlign::Right, bounds.0),
-        };
-        let (v_align, v_offset) = match props.vert {
-            Align::Begin | Align::Stretch => (VerticalAlign::Top, 0),
-            Align::Centre => (VerticalAlign::Center, bounds.1 / 2),
-            Align::End => (VerticalAlign::Bottom, bounds.1),
-        };
-
-        let text_pos = rect.pos + self.offset + Coord(h_offset, v_offset);
-
-        let layout = match props.class {
-            TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
-            TextClass::Button | TextClass::Edit => Layout::default_single_line(),
-        };
-        let layout = layout.h_align(h_align).v_align(v_align);
-
-        self.draw.draw_text(Section {
-            text,
-            screen_position: Vec2::from(text_pos).into(),
-            color: col.into(),
-            scale: Scale::uniform(self.window.dims.font_scale),
-            bounds: Vec2::from(bounds).into(),
-            layout,
-            ..Section::default()
-        });
+        self.draw.text(rect + self.offset, text, scale, props, col);
     }
 
     fn button(&mut self, rect: Rect, highlights: HighlightState) {

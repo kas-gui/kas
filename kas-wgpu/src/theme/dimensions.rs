@@ -10,12 +10,10 @@
 use std::any::Any;
 use std::f32;
 
-use wgpu_glyph::{Layout, Scale, Section};
-
 use kas::geom::Size;
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::theme::{self, TextClass};
-use kas::Direction::{self, Horizontal, Vertical};
+use kas::Direction::{Horizontal, Vertical};
 
 use crate::draw::{DrawPipe, DrawText};
 
@@ -134,38 +132,20 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
     fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
         let font_scale = self.dims.font_scale;
         let line_height = self.dims.line_height;
-        let draw = &mut self.draw;
-        let mut bound = |dir: Direction| -> u32 {
-            let layout = match class {
-                TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
-                TextClass::Button | TextClass::Edit => Layout::default_single_line(),
-            };
-            let mut bounds = (f32::INFINITY, f32::INFINITY);
-            if let Some(size) = axis.size_other_if_fixed(Horizontal) {
-                bounds.1 = size as f32;
-            } else if let Some(size) = axis.size_other_if_fixed(Vertical) {
-                bounds.0 = size as f32;
-            }
-
-            let bounds = draw.glyph_bounds(Section {
-                text,
-                screen_position: (0.0, 0.0),
-                scale: Scale::uniform(font_scale),
-                bounds,
-                layout,
-                ..Section::default()
-            });
-
-            bounds
-                .map(|(min, max)| match dir {
-                    Horizontal => (max - min).0,
-                    Vertical => (max - min).1,
-                } as u32)
-                .unwrap_or(0)
+        let mut bounds = (f32::INFINITY, f32::INFINITY);
+        if let Some(size) = axis.size_other_if_fixed(Horizontal) {
+            bounds.1 = size as f32;
+        } else if let Some(size) = axis.size_other_if_fixed(Vertical) {
+            bounds.0 = size as f32;
+        }
+        let line_wrap = match class {
+            TextClass::Label | TextClass::EditMulti => true,
+            TextClass::Button | TextClass::Edit => false,
         };
+        let bounds = self.draw.text_bound(text, font_scale, bounds, line_wrap);
 
         if axis.is_horizontal() {
-            let bound = bound(Horizontal);
+            let bound = bounds.0 as u32;
             let min = match class {
                 TextClass::Edit | TextClass::EditMulti => self.dims.min_line_length,
                 _ => bound.min(self.dims.min_line_length),
@@ -177,7 +157,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
                 TextClass::EditMulti => line_height * 3,
                 _ => line_height,
             };
-            let ideal = bound(Vertical).max(line_height);
+            let ideal = (bounds.1 as u32).max(line_height);
             let stretch = match class {
                 TextClass::Button | TextClass::Edit => StretchPolicy::Fixed,
                 _ => StretchPolicy::Filler,
