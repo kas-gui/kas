@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 
 use super::Label;
 use crate::class::HasBool;
-use crate::event::{Action, Handler, Manager, Response, VoidMsg};
+use crate::event::{Action, Handler, Manager, ManagerState, Response, VoidMsg};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
@@ -55,7 +55,7 @@ impl<OT: 'static> Layout for CheckBoxBare<OT> {
         self.core_data_mut().rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
         let highlights = mgr.highlight_state(self.id());
         draw_handle.checkbox(self.core.rect, self.state, highlights);
     }

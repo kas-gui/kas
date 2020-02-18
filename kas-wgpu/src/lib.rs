@@ -5,6 +5,8 @@
 
 //! Toolkit for kas
 
+#![cfg_attr(feature = "gat", feature(generic_associated_types))]
+
 pub mod draw;
 mod event_loop;
 mod font;

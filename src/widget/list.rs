@@ -7,7 +7,7 @@
 
 use std::iter;
 
-use crate::event::{Event, Handler, Manager, Response};
+use crate::event::{Event, Handler, Manager, ManagerState, Response};
 use crate::geom::Coord;
 use crate::layout::{
     self, AxisInfo, Margins, RowPositionSolver, RulesSetter, RulesSolver, SizeRules,
@@ -175,7 +175,7 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
         None
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
         let solver = RowPositionSolver::new(self.direction);
         solver.for_children(&self.widgets, draw_handle.target_rect(), |w| {
             w.draw(draw_handle, mgr)

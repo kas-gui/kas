@@ -213,6 +213,58 @@ impl ManagerState {
     }
 }
 
+/// Public API (around event manager state)
+impl ManagerState {
+    /// Get the complete highlight state
+    pub fn highlight_state(&self, w_id: WidgetId) -> HighlightState {
+        HighlightState {
+            hover: self.is_hovered(w_id),
+            depress: self.is_depressed(w_id),
+            key_focus: self.key_focus(w_id),
+            char_focus: self.char_focus(w_id),
+        }
+    }
+
+    /// Get whether this widget has a grab on character input
+    #[inline]
+    pub fn char_focus(&self, w_id: WidgetId) -> bool {
+        self.char_focus == Some(w_id)
+    }
+
+    /// Get whether this widget has keyboard focus
+    #[inline]
+    pub fn key_focus(&self, w_id: WidgetId) -> bool {
+        self.key_focus == Some(w_id)
+    }
+
+    /// Get whether the widget is under the mouse or finger
+    #[inline]
+    pub fn is_hovered(&self, w_id: WidgetId) -> bool {
+        self.hover == Some(w_id)
+    }
+
+    /// Check whether the given widget is visually depressed
+    #[inline]
+    pub fn is_depressed(&self, w_id: WidgetId) -> bool {
+        for (_, id) in &self.key_events {
+            if *id == w_id {
+                return true;
+            }
+        }
+        if let Some(grab) = self.mouse_grab {
+            if grab.0 == w_id && self.hover == Some(w_id) {
+                return true;
+            }
+        }
+        for touch in &self.touch_grab {
+            if touch.start_id == w_id && touch.cur_id == Some(w_id) {
+                return true;
+            }
+        }
+        false
+    }
+}
+
 /// Manager of event-handling and toolkit actions
 pub struct Manager<'a> {
     action: TkAction,
@@ -342,55 +394,6 @@ impl<'a> Manager<'a> {
 
 /// Public API (around event manager state)
 impl<'a> Manager<'a> {
-    /// Get the complete highlight state
-    pub fn highlight_state(&self, w_id: WidgetId) -> HighlightState {
-        HighlightState {
-            hover: self.is_hovered(w_id),
-            depress: self.is_depressed(w_id),
-            key_focus: self.key_focus(w_id),
-            char_focus: self.char_focus(w_id),
-        }
-    }
-
-    /// Get whether this widget has a grab on character input
-    #[inline]
-    pub fn char_focus(&self, w_id: WidgetId) -> bool {
-        self.mgr.char_focus == Some(w_id)
-    }
-
-    /// Get whether this widget has keyboard focus
-    #[inline]
-    pub fn key_focus(&self, w_id: WidgetId) -> bool {
-        self.mgr.key_focus == Some(w_id)
-    }
-
-    /// Get whether the widget is under the mouse or finger
-    #[inline]
-    pub fn is_hovered(&self, w_id: WidgetId) -> bool {
-        self.mgr.hover == Some(w_id)
-    }
-
-    /// Check whether the given widget is visually depressed
-    #[inline]
-    pub fn is_depressed(&self, w_id: WidgetId) -> bool {
-        for (_, id) in &self.mgr.key_events {
-            if *id == w_id {
-                return true;
-            }
-        }
-        if let Some(grab) = self.mgr.mouse_grab {
-            if grab.0 == w_id && self.mgr.hover == Some(w_id) {
-                return true;
-            }
-        }
-        for touch in &self.mgr.touch_grab {
-            if touch.start_id == w_id && touch.cur_id == Some(w_id) {
-                return true;
-            }
-        }
-        false
-    }
-
     /// Adds an accelerator key for a widget
     ///
     /// If this key is pressed when the window has focus and no widget has a

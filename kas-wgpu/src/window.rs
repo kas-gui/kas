@@ -235,6 +235,7 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
         debug!("Resizing window to size={:?}", size);
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw_pipe) };
         self.widget.resize(&mut size_handle, size);
+        drop(size_handle);
 
         let buf = self.draw_pipe.resize(&shared.device, size);
         shared.queue.submit(&[buf]);
@@ -258,15 +259,15 @@ impl<TW: theme::Window<DrawPipe> + 'static> Window<TW> {
             pos: Coord::ZERO,
             size,
         };
-        let frame = self.swap_chain.get_next_texture();
         let mut draw_handle = unsafe {
             shared
                 .theme
                 .draw_handle(&mut self.draw_pipe, &mut self.theme_window, rect)
         };
-        let mut tkw = TkWindow::new(&self.window, shared);
-        self.widget
-            .draw(&mut draw_handle, &self.mgr.manager(&mut tkw));
+        self.widget.draw(&mut draw_handle, &self.mgr);
+        drop(draw_handle);
+
+        let frame = self.swap_chain.get_next_texture();
         let clear_color = to_wgpu_color(shared.theme.clear_colour());
         let buf = self
             .draw_pipe

@@ -8,7 +8,9 @@
 use std::fmt::Debug;
 
 use super::ScrollBar;
-use crate::event::{Action, CursorIcon, Event, Handler, Manager, Response, ScrollDelta};
+use crate::event::{
+    Action, CursorIcon, Event, Handler, Manager, ManagerState, Response, ScrollDelta,
+};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
@@ -205,7 +207,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         }
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
         if self.show_bars.0 {
             self.horiz_bar.draw(draw_handle, mgr);
         }

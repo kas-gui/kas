@@ -8,7 +8,7 @@
 use std::fmt;
 use std::time::Duration;
 
-use crate::event::{Callback, CursorIcon, Handler, Manager, UpdateHandle, VoidMsg};
+use crate::event::{Callback, CursorIcon, Handler, Manager, ManagerState, UpdateHandle, VoidMsg};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
@@ -202,7 +202,7 @@ pub trait Layout: WidgetCore {
     ///
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager);
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState);
 }
 
 /// A widget is a UI element.

@@ -56,7 +56,11 @@ pub struct DrawHandle<'a> {
 
 impl theme::Theme<DrawPipe> for ShadedTheme {
     type Window = DimensionsWindow;
+
+    #[cfg(not(feature = "gat"))]
     type DrawHandle = DrawHandle<'static>;
+    #[cfg(feature = "gat")]
+    type DrawHandle<'a> = DrawHandle<'a>;
 
     fn new_window(&self, _draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         DimensionsWindow::new(DIMS, self.font_size, dpi_factor)
@@ -66,6 +70,7 @@ impl theme::Theme<DrawPipe> for ShadedTheme {
         window.dims = Dimensions::new(DIMS, self.font_size, dpi_factor);
     }
 
+    #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle<'a>(
         &'a self,
         draw: &'a mut DrawPipe,
@@ -78,6 +83,22 @@ impl theme::Theme<DrawPipe> for ShadedTheme {
             draw: transmute::<&'a mut DrawPipe, &'static mut DrawPipe>(draw),
             window: transmute::<&'a mut Self::Window, &'static mut Self::Window>(window),
             cols: transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
+            rect,
+            offset: Coord::ZERO,
+            pass: 0,
+        }
+    }
+    #[cfg(feature = "gat")]
+    fn draw_handle<'a>(
+        &'a self,
+        draw: &'a mut DrawPipe,
+        window: &'a mut Self::Window,
+        rect: Rect,
+    ) -> Self::DrawHandle<'a> {
+        DrawHandle {
+            draw,
+            window,
+            cols: &self.cols,
             rect,
             offset: Coord::ZERO,
             pass: 0,

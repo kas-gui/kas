@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{Editable, HasText};
-use crate::event::{Action, CursorIcon, Handler, Manager, Response, VoidMsg};
+use crate::event::{Action, CursorIcon, Handler, Manager, ManagerState, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
@@ -44,7 +44,7 @@ impl Layout for Label {
         self.core_data_mut().rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &Manager) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState) {
         let props = TextProperties {
             class: TextClass::Label,
             horiz: self.halign,
@@ -177,7 +177,7 @@ impl<H: 'static> Layout for EditBox<H> {
         self.core_data_mut().rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
         let class = if self.multi_line {
             TextClass::EditMulti
         } else {

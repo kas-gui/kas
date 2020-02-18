@@ -7,11 +7,9 @@
 
 mod dimensions;
 mod flat_theme;
-mod multi_theme;
 mod shaded_theme;
 
 pub(crate) use dimensions::{Dimensions, DimensionsParams, DimensionsWindow};
 
 pub use flat_theme::FlatTheme;
-pub use multi_theme::MultiTheme;
 pub use shaded_theme::ShadedTheme;

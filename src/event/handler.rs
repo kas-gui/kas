@@ -7,7 +7,7 @@
 
 use std::time::Duration;
 
-use crate::event::{Action, Event, Manager, Response, UpdateHandle};
+use crate::event::{Action, Event, Manager, ManagerState, Response, UpdateHandle};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::theme::{DrawHandle, SizeHandle};
@@ -113,7 +113,7 @@ impl<M> Layout for Box<dyn Handler<Msg = M>> {
         self.as_ref().find_id(coord)
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &Manager) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
         self.as_ref().draw(draw_handle, mgr);
     }
 }
