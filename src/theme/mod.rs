@@ -21,10 +21,14 @@
 use kas::Align;
 
 #[cfg(all(feature = "stack_dst", not(feature = "gat")))]
+mod multi_theme;
+#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
 mod theme_dst;
 mod theme_handle;
 mod theme_traits;
 
+#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
+pub use multi_theme::MultiTheme;
 #[cfg(all(feature = "stack_dst", not(feature = "gat")))]
 pub use theme_dst::{StackDst, ThemeDst, WindowDst};
 pub use theme_handle::{DrawHandle, SizeHandle};

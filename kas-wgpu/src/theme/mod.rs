@@ -7,13 +7,9 @@
 
 mod dimensions;
 mod flat_theme;
-#[cfg(feature = "stack_dst")]
-mod multi_theme;
 mod shaded_theme;
 
 pub(crate) use dimensions::{Dimensions, DimensionsParams, DimensionsWindow};
 
 pub use flat_theme::FlatTheme;
-#[cfg(feature = "stack_dst")]
-pub use multi_theme::MultiTheme;
 pub use shaded_theme::ShadedTheme;

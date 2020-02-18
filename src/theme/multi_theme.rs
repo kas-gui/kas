@@ -5,34 +5,29 @@
 
 //! Wrapper around mutliple themes, supporting run-time switching
 
+use rusttype::Font;
 use std::collections::HashMap;
 use std::marker::Unsize;
-use wgpu_glyph::Font;
 
 use kas::draw::Colour;
 use kas::geom::Rect;
 use kas::theme::{self, StackDst, Theme, ThemeAction, ThemeApi, ThemeDst};
 
-use crate::draw::DrawPipe;
-
-/// Supported theme type
-type DynTheme = dyn ThemeDst<DrawPipe>;
-
 /// Wrapper around mutliple themes, supporting run-time switching
-pub struct MultiTheme {
+pub struct MultiTheme<Draw> {
     names: HashMap<String, usize>,
-    themes: Vec<StackDst<DynTheme>>,
+    themes: Vec<StackDst<dyn ThemeDst<Draw>>>,
     active: usize,
 }
 
-pub struct MultiThemeBuilder {
+pub struct MultiThemeBuilder<Draw> {
     names: HashMap<String, usize>,
-    themes: Vec<StackDst<DynTheme>>,
+    themes: Vec<StackDst<dyn ThemeDst<Draw>>>,
 }
 
-impl MultiTheme {
+impl<Draw> MultiTheme<Draw> {
     /// Construct with builder pattern
-    pub fn builder() -> MultiThemeBuilder {
+    pub fn builder() -> MultiThemeBuilder<Draw> {
         MultiThemeBuilder {
             names: HashMap::new(),
             themes: vec![],
@@ -40,12 +35,12 @@ impl MultiTheme {
     }
 }
 
-impl MultiThemeBuilder {
+impl<Draw> MultiThemeBuilder<Draw> {
     /// Add a theme
     pub fn add<S: ToString, U>(mut self, name: S, theme: U) -> Self
     where
-        U: Unsize<DynTheme>,
-        Box<U>: Unsize<DynTheme>,
+        U: Unsize<dyn ThemeDst<Draw>>,
+        Box<U>: Unsize<dyn ThemeDst<Draw>>,
     {
         let index = self.themes.len();
         self.names.insert(name.to_string(), index);
@@ -56,7 +51,7 @@ impl MultiThemeBuilder {
     /// Build
     ///
     /// Fails if no themes were added.
-    pub fn try_build(self) -> Result<MultiTheme, ()> {
+    pub fn try_build(self) -> Result<MultiTheme<Draw>, ()> {
         if self.themes.len() == 0 {
             return Err(());
         }
@@ -70,17 +65,17 @@ impl MultiThemeBuilder {
     /// Build
     ///
     /// Panics if no themes were added.
-    pub fn build(self) -> MultiTheme {
+    pub fn build(self) -> MultiTheme<Draw> {
         self.try_build()
             .unwrap_or_else(|_| panic!("MultiThemeBuilder: no themes added"))
     }
 }
 
-impl Theme<DrawPipe> for MultiTheme {
-    type Window = StackDst<dyn theme::WindowDst<DrawPipe>>;
+impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
+    type Window = StackDst<dyn theme::WindowDst<Draw>>;
     type DrawHandle = StackDst<dyn theme::DrawHandle>;
 
-    fn new_window(&self, draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
+    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window {
         self.themes[self.active].new_window(draw, dpi_factor)
     }
 
@@ -90,7 +85,7 @@ impl Theme<DrawPipe> for MultiTheme {
 
     unsafe fn draw_handle<'a>(
         &'a self,
-        draw: &'a mut DrawPipe,
+        draw: &'a mut Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> StackDst<dyn theme::DrawHandle> {
@@ -110,7 +105,7 @@ impl Theme<DrawPipe> for MultiTheme {
     }
 }
 
-impl ThemeApi for MultiTheme {
+impl<Draw> ThemeApi for MultiTheme<Draw> {
     fn set_font_size(&mut self, size: f32) -> ThemeAction {
         // Slightly inefficient, but sufficient: update both
         // (Otherwise we would have to call set_colours in set_theme too.)

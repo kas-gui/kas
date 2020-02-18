@@ -5,10 +5,9 @@
 
 //! Theme traits
 
+use rusttype::Font;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
-
-use rusttype::Font;
 
 use super::{DrawHandle, SizeHandle, ThemeAction};
 use kas::draw::Colour;
