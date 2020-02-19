@@ -9,38 +9,10 @@ use std::f32;
 use wgpu_glyph::{GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use crate::draw::{DrawPipe, Vec2};
-use kas::draw::Colour;
+use kas::draw::{Colour, DrawText};
 use kas::geom::{Coord, Rect};
 use kas::theme::{TextClass, TextProperties};
 use kas::Align;
-
-/// Abstraction over text rendering
-///
-/// Note: the current API is designed to meet only current requirements since
-/// changes are expected to support external font shaping libraries.
-pub trait DrawText {
-    /// Simple text drawing
-    ///
-    /// This allows text to be drawn according to a high-level API, and should
-    /// satisfy most uses.
-    fn text(&mut self, rect: Rect, text: &str, font_scale: f32, props: TextProperties, col: Colour);
-
-    /// Calculate size bound on text
-    ///
-    /// This may be used with [`DrawText::text`] to calculate size requirements
-    /// within [`kas::Layout::size_rules`].
-    ///
-    /// Bounds of `(f32::INFINITY, f32::INFINITY)` may be used if there are no
-    /// constraints. This parameter allows forcing line-wrapping behaviour
-    /// within the given bounds.
-    fn text_bound(
-        &mut self,
-        text: &str,
-        font_scale: f32,
-        bounds: (f32, f32),
-        line_wrap: bool,
-    ) -> (f32, f32);
-}
 
 impl DrawText for DrawPipe {
     fn text(
