@@ -10,12 +10,11 @@
 use std::any::Any;
 use std::f32;
 
-use kas::geom::Size;
-use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
-use kas::theme::{self, TextClass};
-use kas::Direction::{Horizontal, Vertical};
-
-use crate::draw::{DrawPipe, DrawText};
+use crate::draw::DrawText;
+use crate::geom::Size;
+use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
+use crate::theme::{self, TextClass};
+use crate::Direction::{Horizontal, Vertical};
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -33,6 +32,7 @@ pub struct DimensionsParams {
     pub scrollbar_size: f32,
 }
 
+/// Dimensions available within [`DimensionsWindow`]
 #[derive(Clone, Debug)]
 pub struct Dimensions {
     pub font_scale: f32,
@@ -66,6 +66,7 @@ impl Dimensions {
     }
 }
 
+/// A convenient implementation of [`kas::theme::Window`]
 pub struct DimensionsWindow {
     pub dims: Dimensions,
 }
@@ -78,20 +79,20 @@ impl DimensionsWindow {
     }
 }
 
-impl theme::Window<DrawPipe> for DimensionsWindow {
+impl<Draw: DrawText + 'static> theme::Window<Draw> for DimensionsWindow {
     #[cfg(not(feature = "gat"))]
-    type SizeHandle = SizeHandle<'static>;
+    type SizeHandle = SizeHandle<'static, Draw>;
     #[cfg(feature = "gat")]
-    type SizeHandle<'a> = SizeHandle<'a>;
+    type SizeHandle<'a> = SizeHandle<'a, Draw>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle {
+    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        let handle = SizeHandle::new(draw, &self.dims);
-        std::mem::transmute::<SizeHandle<'a>, SizeHandle<'static>>(handle)
+        let h: SizeHandle<'a, Draw> = SizeHandle::new(draw, &self.dims);
+        std::mem::transmute(h)
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle<'a> {
+    fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle<'a> {
         SizeHandle::new(draw, &self.dims)
     }
 
@@ -100,18 +101,18 @@ impl theme::Window<DrawPipe> for DimensionsWindow {
     }
 }
 
-pub struct SizeHandle<'a> {
-    draw: &'a mut DrawPipe,
+pub struct SizeHandle<'a, Draw> {
+    draw: &'a mut Draw,
     dims: &'a Dimensions,
 }
 
-impl<'a> SizeHandle<'a> {
-    pub fn new(draw: &'a mut DrawPipe, dims: &'a Dimensions) -> Self {
+impl<'a, Draw> SizeHandle<'a, Draw> {
+    pub fn new(draw: &'a mut Draw, dims: &'a Dimensions) -> Self {
         SizeHandle { draw, dims }
     }
 }
 
-impl<'a> theme::SizeHandle for SizeHandle<'a> {
+impl<'a, Draw: DrawText> theme::SizeHandle for SizeHandle<'a, Draw> {
     fn outer_frame(&self) -> (Size, Size) {
         let f = self.dims.frame as u32;
         (Size::uniform(f), Size::uniform(f))

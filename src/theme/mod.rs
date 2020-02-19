@@ -20,6 +20,7 @@
 
 use kas::Align;
 
+mod dimensions;
 #[cfg(all(feature = "stack_dst", not(feature = "gat")))]
 mod multi_theme;
 #[cfg(all(feature = "stack_dst", not(feature = "gat")))]
@@ -27,6 +28,7 @@ mod theme_dst;
 mod theme_handle;
 mod theme_traits;
 
+pub use dimensions::{Dimensions, DimensionsParams, DimensionsWindow};
 #[cfg(all(feature = "stack_dst", not(feature = "gat")))]
 pub use multi_theme::MultiTheme;
 #[cfg(all(feature = "stack_dst", not(feature = "gat")))]
