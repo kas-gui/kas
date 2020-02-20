@@ -228,6 +228,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         // TODO: draw an X, not a square!
         if let Some(col) = self.cols.check_mark_state(highlights, checked) {
+            let inner = inner.shrink(self.window.dims.margin);
             self.draw.rect(self.pass, inner, col);
         }
     }
@@ -245,6 +246,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let inner = self.draw_edit_region(rect + self.offset, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(highlights, checked) {
+            let inner = inner.shrink(self.window.dims.margin);
             self.draw.circle(self.pass, inner, 0.3, col);
         }
     }

@@ -133,6 +133,26 @@ impl ThemeApi for ShadedTheme {
     }
 }
 
+impl<'a> DrawHandle<'a> {
+    /// Draw an edit region with optional navigation highlight.
+    /// Return the inner rect.
+    fn draw_edit_region(&mut self, mut outer: Rect, nav_col: Option<Colour>) -> Rect {
+        let mut inner = outer.shrink(self.window.dims.frame);
+        let style = ShadeStyle::Square(Vec2(0.0, -0.8));
+        self.draw
+            .shaded_frame(self.pass, outer, inner, style, self.cols.background);
+
+        if let Some(col) = nav_col {
+            outer = inner;
+            inner = outer.shrink(self.window.dims.margin);
+            self.draw.frame(self.pass, outer, inner, col);
+        }
+
+        self.draw.rect(self.pass, inner, self.cols.text_area);
+        inner
+    }
+}
+
 impl<'a> theme::DrawHandle for DrawHandle<'a> {
     fn clip_region(
         &mut self,
@@ -192,51 +212,41 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     }
 
     fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
-        let mut outer = rect + self.offset;
-
-        let mut inner = outer.shrink(self.window.dims.frame);
-        let style = ShadeStyle::Square(Vec2(0.0, -0.8));
-        self.draw
-            .shaded_frame(self.pass, outer, inner, style, self.cols.background);
-
-        if let Some(col) = self.cols.nav_region(highlights) {
-            outer = inner;
-            inner = outer.shrink(self.window.dims.margin);
-            self.draw.frame(self.pass, outer, inner, col);
-        }
-
-        self.draw.rect(self.pass, inner, self.cols.text_area);
+        self.draw_edit_region(rect + self.offset, self.cols.nav_region(highlights));
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
-        let mut outer = rect + self.offset;
+        let nav_col = self.cols.nav_region(highlights).or_else(|| {
+            if checked {
+                Some(self.cols.text_area)
+            } else {
+                None
+            }
+        });
 
-        let mut inner = outer.shrink(self.window.dims.frame);
-        let style = ShadeStyle::Square(Vec2(0.0, -0.8));
-        self.draw
-            .shaded_frame(self.pass, outer, inner, style, self.cols.background);
+        let inner = self.draw_edit_region(rect + self.offset, nav_col);
 
-        if checked || highlights.any() {
-            outer = inner;
-            inner = outer.shrink(self.window.dims.margin);
-            let col = self
-                .cols
-                .nav_region(highlights)
-                .unwrap_or(self.cols.text_area);
-            self.draw.frame(self.pass, outer, inner, col);
+        // TODO: draw an X, not a square!
+        if let Some(col) = self.cols.check_mark_state(highlights, checked) {
+            self.draw.rect(self.pass, inner, col);
         }
-
-        let col = self
-            .cols
-            .check_mark_state(highlights, checked)
-            .unwrap_or(self.cols.text_area);
-        self.draw.rect(self.pass, inner, col);
     }
 
     #[inline]
     fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
-        // TODO: distinct
-        self.checkbox(rect, checked, highlights);
+        let nav_col = self.cols.nav_region(highlights).or_else(|| {
+            if checked {
+                Some(self.cols.text_area)
+            } else {
+                None
+            }
+        });
+
+        let inner = self.draw_edit_region(rect + self.offset, nav_col);
+
+        if let Some(col) = self.cols.check_mark_state(highlights, checked) {
+            self.draw.circle(self.pass, inner, 0.3, col);
+        }
     }
 
     fn scrollbar(
