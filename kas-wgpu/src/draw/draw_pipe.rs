@@ -34,14 +34,24 @@ pub enum ShadeStyle {
 
 /// Abstraction over drawing commands specific to `kas_wgpu`
 pub trait DrawExt: Draw {
+    /// Add a flat circle to the draw buffer
+    ///
+    /// More generally, this shape is an axis-aligned oval.
+    ///
+    /// The `inner_radius` parameter gives the inner radius relative to the
+    /// outer radius: a value of `0.0` will result in the whole shape being
+    /// painted, while `1.0` will result in a zero-width line on the outer edge.
+    fn circle(&mut self, region: Self::Region, rect: Rect, inner_radius: f32, col: Colour);
+
     /// Add a rounded flat frame to the draw buffer.
     ///
     /// All drawing occurs within the `outer` rect and outside of the `inner`
     /// rect. Corners are circular (or more generally, ovular), centered on the
-    /// inner corners. The `inner_radius` parameter gives the inner radius
-    /// relative to the outer radius: a value of `0.0` will result in the whole
-    /// region (within the rounded corners) being painted, while `1.0` will
-    /// result in a zero-width line on the outer edge.
+    /// inner corners.
+    ///
+    /// The `inner_radius` parameter gives the inner radius relative to the
+    /// outer radius: a value of `0.0` will result in the whole shape being
+    /// painted, while `1.0` will result in a zero-width line on the outer edge.
     fn rounded_frame(
         &mut self,
         region: Self::Region,
@@ -183,6 +193,11 @@ impl Draw for DrawPipe {
 }
 
 impl DrawExt for DrawPipe {
+    #[inline]
+    fn circle(&mut self, pass: usize, rect: Rect, inner_radius: f32, col: Colour) {
+        self.flat_round.circle(pass, rect, inner_radius, col);
+    }
+
     #[inline]
     fn rounded_frame(
         &mut self,

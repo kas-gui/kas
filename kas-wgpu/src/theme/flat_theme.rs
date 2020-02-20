@@ -226,6 +226,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         let inner = self.draw_edit_region(rect + self.offset, nav_col);
 
+        // TODO: draw an X, not a square!
         if let Some(col) = self.cols.check_mark_state(highlights, checked) {
             self.draw.rect(self.pass, inner, col);
         }
@@ -233,8 +234,19 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
     #[inline]
     fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
-        // TODO: distinct
-        self.checkbox(rect, checked, highlights);
+        let nav_col = self.cols.nav_region(highlights).or_else(|| {
+            if checked {
+                Some(self.cols.text_area)
+            } else {
+                None
+            }
+        });
+
+        let inner = self.draw_edit_region(rect + self.offset, nav_col);
+
+        if let Some(col) = self.cols.check_mark_state(highlights, checked) {
+            self.draw.circle(self.pass, inner, 0.3, col);
+        }
     }
 
     fn scrollbar(

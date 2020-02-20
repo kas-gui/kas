@@ -11,6 +11,10 @@ use crate::draw::{Colour, Rgb, Vec2};
 use crate::shared::SharedState;
 use kas::geom::{Rect, Size};
 
+/// Offset relative to the size of a pixel used by the fragment shader to
+/// implement multi-sampling.
+const OFFSET: f32 = 0.125;
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct Vertex(Vec2, Rgb, f32, Vec2, Vec2);
@@ -172,7 +176,49 @@ impl FlatRound {
         v.clear();
     }
 
-    /// Bounds on input: `aa < cc < dd < bb`.
+    /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
+    pub fn circle(&mut self, pass: usize, rect: Rect, inner_radius: f32, col: Colour) {
+        let aa = Vec2::from(rect.pos);
+        let bb = aa + Vec2::from(rect.size);
+
+        if !aa.lt(bb) {
+            // zero / negative size: nothing to draw
+            return;
+        }
+
+        let inner = inner_radius.max(0.0).min(1.0);
+
+        let col = col.into();
+
+        let ab = Vec2(aa.0, bb.1);
+        let ba = Vec2(bb.0, aa.1);
+        let mid = (aa + bb) * 0.5;
+
+        let n0 = Vec2::splat(0.0);
+        let nbb = (bb - aa).sign();
+        let naa = -nbb;
+        let nab = Vec2(naa.0, nbb.1);
+        let nba = Vec2(nbb.0, naa.1);
+
+        // Since we take the mid-point, all offsets are uniform
+        let p = nbb / (bb - mid) * OFFSET;
+
+        let aa = Vertex(aa, col, inner, naa, p);
+        let ab = Vertex(ab, col, inner, nab, p);
+        let ba = Vertex(ba, col, inner, nba, p);
+        let bb = Vertex(bb, col, inner, nbb, p);
+        let mid = Vertex(mid, col, inner, n0, p);
+
+        #[rustfmt::skip]
+        self.add_vertices(pass, &[
+            aa, ba, mid,
+            mid, ba, bb,
+            bb, ab, mid,
+            mid, ab, aa,
+        ]);
+    }
+
+    /// Bounds on input: `aa < cc < dd < bb`, `0 ≤ inner_radius ≤ 1`.
     pub fn rounded_frame(
         &mut self,
         pass: usize,
@@ -219,11 +265,10 @@ impl FlatRound {
         let n0a = Vec2(0.0, naa.1);
         let n0b = Vec2(0.0, nbb.1);
 
-        let off = 0.125;
-        let paa = naa / (aa - cc) * off;
-        let pab = nab / (ab - cd) * off;
-        let pba = nba / (ba - dc) * off;
-        let pbb = nbb / (bb - dd) * off;
+        let paa = naa / (aa - cc) * OFFSET;
+        let pab = nab / (ab - cd) * OFFSET;
+        let pba = nba / (ba - dc) * OFFSET;
+        let pbb = nbb / (bb - dd) * OFFSET;
 
         // We must add corners separately to ensure correct interpolation of dir
         // values, hence need 16 points:
