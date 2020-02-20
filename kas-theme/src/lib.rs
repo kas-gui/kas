@@ -13,9 +13,11 @@ compile_error!("Crate features 'gat' and 'stack_dst' are incompatible.");
 
 mod col;
 mod dim;
+mod flat_theme;
 mod font;
 #[cfg(all(feature = "stack_dst", not(feature = "gat")))]
 mod multi;
+mod shaded_theme;
 #[cfg(all(feature = "stack_dst", not(feature = "gat")))]
 mod theme_dst;
 mod traits;
@@ -25,9 +27,11 @@ pub use kas::theme::*;
 
 pub use col::ThemeColours;
 pub use dim::{Dimensions, DimensionsParams, DimensionsWindow};
+pub use flat_theme::FlatTheme;
 pub use font::get_font;
 #[cfg(all(feature = "stack_dst", not(feature = "gat")))]
 pub use multi::MultiTheme;
+pub use shaded_theme::ShadedTheme;
 #[cfg(all(feature = "stack_dst", not(feature = "gat")))]
 pub use theme_dst::{ThemeDst, WindowDst};
 pub use traits::{Theme, Window};

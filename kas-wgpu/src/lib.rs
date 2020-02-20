@@ -11,7 +11,6 @@ pub mod draw;
 mod event_loop;
 mod options;
 mod shared;
-pub mod theme;
 mod window;
 
 use std::{error, fmt};
@@ -29,6 +28,7 @@ use window::Window;
 pub use options::Options;
 
 pub use kas;
+pub use kas_theme as theme;
 pub use wgpu_glyph as glyph;
 
 /// Possible failures from constructing a [`Toolkit`]
