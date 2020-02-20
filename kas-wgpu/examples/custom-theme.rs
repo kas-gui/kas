@@ -13,8 +13,9 @@ use kas::draw::Colour;
 use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::geom::Rect;
 use kas::macros::{make_widget, VoidMsg};
-use kas::theme::{Theme, ThemeAction, ThemeApi};
+use kas::theme::{ThemeAction, ThemeApi};
 use kas::widget::*;
+use kas_theme::Theme;
 
 use kas_wgpu::draw::*;
 use kas_wgpu::glyph::Font;

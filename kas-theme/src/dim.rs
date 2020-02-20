@@ -10,11 +10,11 @@
 use std::any::Any;
 use std::f32;
 
-use crate::draw::DrawText;
-use crate::geom::Size;
-use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
-use crate::theme::{self, TextClass};
-use crate::Direction::{Horizontal, Vertical};
+use kas::draw::DrawText;
+use kas::geom::Size;
+use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
+use kas::theme::{self, TextClass};
+use kas::Direction::{Horizontal, Vertical};
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -66,7 +66,7 @@ impl Dimensions {
     }
 }
 
-/// A convenient implementation of [`kas::theme::Window`]
+/// A convenient implementation of [`kas_theme::Window`]
 pub struct DimensionsWindow {
     pub dims: Dimensions,
 }
@@ -79,7 +79,7 @@ impl DimensionsWindow {
     }
 }
 
-impl<Draw: DrawText + 'static> theme::Window<Draw> for DimensionsWindow {
+impl<Draw: DrawText + 'static> crate::Window<Draw> for DimensionsWindow {
     #[cfg(not(feature = "gat"))]
     type SizeHandle = SizeHandle<'static, Draw>;
     #[cfg(feature = "gat")]

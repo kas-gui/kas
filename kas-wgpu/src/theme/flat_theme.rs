@@ -10,14 +10,14 @@
 use std::f32;
 use wgpu_glyph::Font;
 
-use kas::draw::{Colour, Draw};
+use kas::draw::{Colour, Draw, DrawText};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
 use kas::theme::{self, TextClass, TextProperties, ThemeAction, ThemeApi};
 use kas::Direction;
+use kas_theme::{Dimensions, DimensionsParams, DimensionsWindow, Theme};
 
-use super::{Dimensions, DimensionsParams, DimensionsWindow};
-use crate::draw::{DrawPipe, DrawText};
+use crate::draw::DrawPipe;
 use crate::resources::colours::ThemeColours;
 
 /// A simple flat theme.
@@ -53,7 +53,7 @@ pub struct DrawHandle<'a> {
     pass: usize,
 }
 
-impl theme::Theme<DrawPipe> for FlatTheme {
+impl Theme<DrawPipe> for FlatTheme {
     type Window = DimensionsWindow;
 
     #[cfg(not(feature = "gat"))]

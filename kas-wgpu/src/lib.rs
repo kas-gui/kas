@@ -20,6 +20,7 @@ use std::{error, fmt};
 
 use kas::event::UpdateHandle;
 use kas::WindowId;
+use kas_theme::Theme;
 use winit::error::OsError;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
@@ -76,13 +77,13 @@ impl From<shaderc::Error> for Error {
 }
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
-pub struct Toolkit<T: kas::theme::Theme<DrawPipe>> {
+pub struct Toolkit<T: Theme<DrawPipe>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<(WindowId, Window<T::Window>)>,
     shared: SharedState<T>,
 }
 
-impl<T: kas::theme::Theme<DrawPipe> + 'static> Toolkit<T> {
+impl<T: Theme<DrawPipe> + 'static> Toolkit<T> {
     /// Construct a new instance with default options.
     ///
     /// Environment variables may affect option selection; see documentation

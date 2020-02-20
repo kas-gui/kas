@@ -13,10 +13,10 @@ repository = "https://github.com/dhardy/kas"
 default = ["clipboard", "font-kit"]
 
 # Use Generic Associated Types (experimental)
-gat = ["kas/gat"]
+gat = ["kas-theme/gat"]
 
 # Use stack_dst crate for sized unsized types
-stack_dst = ["kas/stack_dst"]
+stack_dst = ["kas-theme/stack_dst"]
 
 [dependencies]
 kas = { path = "..", version = "0.2.0", features = ["winit"] }

@@ -10,17 +10,10 @@ use std::ops::DerefMut;
 
 use rusttype::Font;
 
-use super::{DrawHandle, SizeHandle, Theme, ThemeApi, Window};
+use super::{Theme, Window};
 use kas::draw::Colour;
 use kas::geom::Rect;
-
-/// Fixed-size object of `Unsized` type
-///
-/// This is a re-export of
-/// [`stack_dst::ValueA`](https://docs.rs/stack_dst/0.6.0/stack_dst/struct.ValueA.html)
-/// with a custom size. The `new` and `new_or_boxed` methods provide a
-/// convenient API.
-pub type StackDst<T> = stack_dst::ValueA<T, [usize; 8]>;
+use kas::theme::{DrawHandle, SizeHandle, StackDst, ThemeApi};
 
 /// As [`Theme`], but without associated types
 ///

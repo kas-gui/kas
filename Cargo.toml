@@ -32,11 +32,6 @@ stack_dst = { version = "0.6", features = ["unsize"], optional = true }
 version = "0.2.0"
 path = "kas-macros"
 
-[dependencies.rusttype]
-# Dependency for the Font type. This is a temporary measure
-# (see notes on Theme::get_fonts).
-version = "0.8"
-
 [dependencies.winit]
 # Provides translations for several winit types
 version = "0.21"

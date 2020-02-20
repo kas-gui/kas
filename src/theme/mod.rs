@@ -18,23 +18,22 @@
 //!
 //! [`Widget`]: crate::Widget
 
+use std::ops::DerefMut;
+
 use kas::Align;
 
-mod dimensions;
-#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
-mod multi_theme;
-#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
-mod theme_dst;
 mod theme_handle;
-mod theme_traits;
 
-pub use dimensions::{Dimensions, DimensionsParams, DimensionsWindow};
-#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
-pub use multi_theme::MultiTheme;
-#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
-pub use theme_dst::{StackDst, ThemeDst, WindowDst};
 pub use theme_handle::{DrawHandle, SizeHandle};
-pub use theme_traits::{Theme, ThemeApi, Window};
+
+#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
+/// Fixed-size object of `Unsized` type
+///
+/// This is a re-export of
+/// [`stack_dst::ValueA`](https://docs.rs/stack_dst/0.6.0/stack_dst/struct.ValueA.html)
+/// with a custom size. The `new` and `new_or_boxed` methods provide a
+/// convenient API.
+pub type StackDst<T> = stack_dst::ValueA<T, [usize; 8]>;
 
 /// Class of text drawn
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
@@ -70,4 +69,42 @@ pub enum ThemeAction {
     RedrawAll,
     /// Theme sizes changed: must call [`Theme::update_window`] and resize
     ThemeResize,
+}
+
+/// Interface through which a theme can be adjusted at run-time
+///
+/// All methods return a [`ThemeAction`] to enable correct action when a theme
+/// is updated via [`Manager::adjust_theme`]. When adjusting a theme before
+/// the UI is started, this return value can be safely ignored.
+///
+/// [`Manager::adjust_theme`]: crate::event::Manager::adjust_theme
+pub trait ThemeApi {
+    /// Set font size. Default is 18. Units are unknown.
+    fn set_font_size(&mut self, size: f32) -> ThemeAction;
+
+    /// Change the colour scheme
+    ///
+    /// If no theme by this name is found, the theme is unchanged.
+    // TODO: revise scheme identification and error handling?
+    fn set_colours(&mut self, _scheme: &str) -> ThemeAction;
+
+    /// Change the theme itself
+    ///
+    /// Themes may do nothing, or may react according to their own
+    /// interpretation of this method.
+    fn set_theme(&mut self, _theme: &str) -> ThemeAction {
+        ThemeAction::None
+    }
+}
+
+impl<T: ThemeApi> ThemeApi for Box<T> {
+    fn set_font_size(&mut self, size: f32) -> ThemeAction {
+        self.deref_mut().set_font_size(size)
+    }
+    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
+        self.deref_mut().set_colours(scheme)
+    }
+    fn set_theme(&mut self, theme: &str) -> ThemeAction {
+        self.deref_mut().set_theme(theme)
+    }
 }

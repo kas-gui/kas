@@ -136,7 +136,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     );
 
     #[cfg(feature = "stack_dst")]
-    let theme = kas::theme::MultiTheme::builder()
+    let theme = kas_theme::MultiTheme::builder()
         .add("shaded", kas_wgpu::theme::ShadedTheme::new())
         .add("flat", kas_wgpu::theme::FlatTheme::new())
         .build();

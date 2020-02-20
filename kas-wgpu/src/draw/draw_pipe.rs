@@ -14,7 +14,7 @@ use wgpu_glyph::GlyphBrushBuilder;
 use super::{Colour, Draw, DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
 use crate::shared::SharedState;
 use kas::geom::{Coord, Rect, Size};
-use kas::theme;
+use kas_theme::Theme;
 
 /// Style of drawing
 pub enum ShadeStyle {
@@ -52,7 +52,7 @@ impl DrawPipe {
     /// Construct
     // TODO: do we want to share state across windows? With glyph_brush this is
     // not trivial but with our "pipes" it shouldn't be difficult.
-    pub fn new<T: theme::Theme<Self>>(
+    pub fn new<T: Theme<Self>>(
         shared: &mut SharedState<T>,
         tex_format: wgpu::TextureFormat,
         size: Size,
