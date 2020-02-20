@@ -25,8 +25,6 @@ pub(crate) use shaded_round::ShadedRound;
 pub(crate) use shaded_square::ShadedSquare;
 pub(crate) use shaders::ShaderManager;
 
-pub use draw_pipe::DrawShaded;
-pub use kas::draw::{Colour, Draw, DrawText};
 pub use vector::{Quad, Vec2};
 
 /// 3-part colour data

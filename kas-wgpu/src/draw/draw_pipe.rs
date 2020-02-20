@@ -11,43 +11,11 @@ use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
 use wgpu_glyph::GlyphBrushBuilder;
 
-use super::{Colour, Draw, DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
+use super::{DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
 use crate::shared::SharedState;
+use kas::draw::{Colour, Draw, DrawShaded};
 use kas::geom::{Coord, Rect, Size};
 use kas_theme::Theme;
-
-/// Drawing commands for shaded shapes
-///
-/// These are parameterised via a pair of normals, `(inner, outer)`. These may
-/// have values from the closed range `[-1, 1]`, where -1 points inwards,
-/// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
-pub trait DrawShaded: Draw {
-    /// Add a shaded square to the draw buffer
-    fn shaded_square(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour);
-
-    /// Add a shaded circle to the draw buffer
-    fn shaded_circle(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour);
-
-    /// Add a square shaded frame to the draw buffer.
-    fn shaded_square_frame(
-        &mut self,
-        region: Self::Region,
-        outer: Rect,
-        inner: Rect,
-        norm: (f32, f32),
-        col: Colour,
-    );
-
-    /// Add a rounded shaded frame to the draw buffer.
-    fn shaded_round_frame(
-        &mut self,
-        region: Self::Region,
-        outer: Rect,
-        inner: Rect,
-        norm: (f32, f32),
-        col: Colour,
-    );
-}
 
 impl DrawPipe {
     /// Construct

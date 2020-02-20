@@ -10,14 +10,14 @@
 use std::f32;
 use wgpu_glyph::Font;
 
-use kas::draw::{Colour, Draw, DrawText};
+use kas::draw::{Colour, Draw, DrawShaded, DrawText};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
 use kas::theme::{self, TextClass, TextProperties, ThemeAction, ThemeApi};
 use kas::Direction;
 use kas_theme::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
 
-use crate::draw::{DrawPipe, DrawShaded};
+use crate::draw::DrawPipe;
 
 /// A simple, inflexible theme providing a sample implementation.
 #[derive(Clone, Debug)]

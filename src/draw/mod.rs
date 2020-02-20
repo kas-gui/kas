@@ -95,6 +95,41 @@ pub trait Draw {
     );
 }
 
+/// Drawing commands for shaded shapes
+///
+/// These are parameterised via a pair of normals, `(inner, outer)`. These may
+/// have values from the closed range `[-1, 1]`, where -1 points inwards,
+/// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
+///
+/// Shaded drawing may not be supported by all implementations.
+pub trait DrawShaded: Draw {
+    /// Add a shaded square to the draw buffer
+    fn shaded_square(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour);
+
+    /// Add a shaded circle to the draw buffer
+    fn shaded_circle(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour);
+
+    /// Add a square shaded frame to the draw buffer.
+    fn shaded_square_frame(
+        &mut self,
+        region: Self::Region,
+        outer: Rect,
+        inner: Rect,
+        norm: (f32, f32),
+        col: Colour,
+    );
+
+    /// Add a rounded shaded frame to the draw buffer.
+    fn shaded_round_frame(
+        &mut self,
+        region: Self::Region,
+        outer: Rect,
+        inner: Rect,
+        norm: (f32, f32),
+        col: Colour,
+    );
+}
+
 /// Abstraction over text rendering
 ///
 /// Note: the current API is designed to meet only current requirements since
