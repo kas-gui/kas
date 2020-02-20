@@ -173,7 +173,14 @@ impl FlatRound {
     }
 
     /// Bounds on input: `aa < cc < dd < bb`.
-    pub fn rounded_frame(&mut self, pass: usize, outer: Rect, inner: Rect, col: Colour) {
+    pub fn rounded_frame(
+        &mut self,
+        pass: usize,
+        outer: Rect,
+        inner: Rect,
+        inner_radius: f32,
+        col: Colour,
+    ) {
         let aa = Vec2::from(outer.pos);
         let bb = aa + Vec2::from(outer.size);
         let mut cc = Vec2::from(inner.pos);
@@ -193,9 +200,9 @@ impl FlatRound {
             dd = cc;
         }
 
-        let col = col.into();
+        let inner = inner_radius.max(0.0).min(1.0);
 
-        let inner = 0.0;
+        let col = col.into();
 
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);

@@ -35,7 +35,21 @@ pub enum ShadeStyle {
 /// Abstraction over drawing commands specific to `kas_wgpu`
 pub trait DrawExt: Draw {
     /// Add a rounded flat frame to the draw buffer.
-    fn rounded_frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour);
+    ///
+    /// All drawing occurs within the `outer` rect and outside of the `inner`
+    /// rect. Corners are circular (or more generally, ovular), centered on the
+    /// inner corners. The `inner_radius` parameter gives the inner radius
+    /// relative to the outer radius: a value of `0.0` will result in the whole
+    /// region (within the rounded corners) being painted, while `1.0` will
+    /// result in a zero-width line on the outer edge.
+    fn rounded_frame(
+        &mut self,
+        region: Self::Region,
+        outer: Rect,
+        inner: Rect,
+        inner_radius: f32,
+        col: Colour,
+    );
 
     /// Add a rounded shaded frame to the draw buffer.
     fn shaded_frame(
@@ -122,9 +136,9 @@ impl DrawPipe {
                 region.size.1,
             );
 
-            self.flat_round.render(device, pass, &mut rpass);
             self.shaded_square.render(device, pass, &mut rpass);
             self.shaded_round.render(device, pass, &mut rpass);
+            self.flat_round.render(device, pass, &mut rpass);
             drop(rpass);
 
             load_op = wgpu::LoadOp::Load;
@@ -170,8 +184,16 @@ impl Draw for DrawPipe {
 
 impl DrawExt for DrawPipe {
     #[inline]
-    fn rounded_frame(&mut self, pass: usize, outer: Rect, inner: Rect, col: Colour) {
-        self.flat_round.rounded_frame(pass, outer, inner, col);
+    fn rounded_frame(
+        &mut self,
+        pass: usize,
+        outer: Rect,
+        inner: Rect,
+        inner_radius: f32,
+        col: Colour,
+    ) {
+        self.flat_round
+            .rounded_frame(pass, outer, inner, inner_radius, col);
     }
 
     #[inline]

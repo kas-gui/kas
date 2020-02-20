@@ -133,6 +133,28 @@ impl ThemeApi for FlatTheme {
     }
 }
 
+impl<'a> DrawHandle<'a> {
+    /// Draw an edit region with optional navigation highlight.
+    /// Return the inner rect.
+    fn draw_edit_region(&mut self, outer: Rect, nav_col: Option<Colour>) -> Rect {
+        let inner1 = outer.shrink(self.window.dims.frame / 2);
+        let inner2 = outer.shrink(self.window.dims.frame);
+
+        self.draw.rect(self.pass, inner1, self.cols.text_area);
+
+        // We draw over the inner rect, taking advantage of the fact that
+        // rounded frames get drawn after flat rects.
+        self.draw
+            .rounded_frame(self.pass, outer, inner2, 0.333, self.cols.frame);
+
+        if let Some(col) = nav_col {
+            self.draw.rounded_frame(self.pass, inner1, inner2, 0.0, col);
+        }
+
+        inner2
+    }
+}
+
 impl<'a> theme::DrawHandle for DrawHandle<'a> {
     fn clip_region(
         &mut self,
@@ -162,7 +184,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let outer = rect + self.offset;
         let inner = outer.shrink(self.window.dims.frame);
         self.draw
-            .rounded_frame(self.pass, outer, inner, self.cols.frame);
+            .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
     }
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
@@ -180,7 +202,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let col = self.cols.button_state(highlights);
 
         let inner = outer.shrink(self.window.dims.button_frame);
-        self.draw.rounded_frame(self.pass, outer, inner, col);
+        self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
 
         if let Some(col) = self.cols.nav_region(highlights) {
             let diff = self.window.dims.button_frame - self.window.dims.margin;
@@ -193,43 +215,23 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     }
 
     fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
-        let mut outer = rect + self.offset;
-
-        let mut inner = outer.shrink(self.window.dims.frame);
-        self.draw
-            .rounded_frame(self.pass, outer, inner, self.cols.frame);
-
-        if let Some(col) = self.cols.nav_region(highlights) {
-            outer = inner;
-            inner = outer.shrink(self.window.dims.margin);
-            self.draw.frame(self.pass, outer, inner, col);
-        }
-
-        self.draw.rect(self.pass, inner, self.cols.text_area);
+        self.draw_edit_region(rect + self.offset, self.cols.nav_region(highlights));
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
-        let mut outer = rect + self.offset;
+        let nav_col = self.cols.nav_region(highlights).or_else(|| {
+            if checked {
+                Some(self.cols.text_area)
+            } else {
+                None
+            }
+        });
 
-        let mut inner = outer.shrink(self.window.dims.frame);
-        self.draw
-            .rounded_frame(self.pass, outer, inner, self.cols.frame);
+        let inner = self.draw_edit_region(rect + self.offset, nav_col);
 
-        if checked || highlights.any() {
-            outer = inner;
-            inner = outer.shrink(self.window.dims.margin);
-            let col = self
-                .cols
-                .nav_region(highlights)
-                .unwrap_or(self.cols.text_area);
-            self.draw.frame(self.pass, outer, inner, col);
+        if let Some(col) = self.cols.check_mark_state(highlights, checked) {
+            self.draw.rect(self.pass, inner, col);
         }
-
-        let col = self
-            .cols
-            .check_mark_state(highlights, checked)
-            .unwrap_or(self.cols.text_area);
-        self.draw.rect(self.pass, inner, col);
     }
 
     #[inline]
@@ -251,7 +253,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let half_width = outer.size.0.min(outer.size.1) / 2;
         let inner = outer.shrink(half_width);
         let col = self.cols.scrollbar_state(highlights);
-        self.draw.rounded_frame(self.pass, outer, inner, col);
+        self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
         self.draw.rect(self.pass, inner, col);
     }
 }
