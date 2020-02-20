@@ -16,34 +16,35 @@ use crate::shared::SharedState;
 use kas::geom::{Coord, Rect, Size};
 use kas_theme::Theme;
 
-/// Style of drawing
-pub enum ShadeStyle {
-    /// Square corners, shading according to the given normals
-    ///
-    /// Normal has two components, `(inner, outer)`, interpreted as the
-    /// horizontal component of the direction vector outwards from the drawn
-    /// feature. Both values are constrained to the closed range `[-1, 1]`.
-    Square(Vec2),
-    /// Round corners, shading according to the given normals
-    ///
-    /// Normal has two components, `(inner, outer)`, interpreted as the
-    /// horizontal component of the direction vector outwards from the drawn
-    /// feature. Both values are constrained to the closed range `[-1, 1]`.
-    Round(Vec2),
-}
+/// Drawing commands for shaded shapes
+///
+/// These are parameterised via a pair of normals, `(inner, outer)`. These may
+/// have values from the closed range `[-1, 1]`, where -1 points inwards,
+/// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
+pub trait DrawShaded: Draw {
+    /// Add a shaded square to the draw buffer
+    fn shaded_square(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour);
 
-/// Abstraction over drawing commands specific to `kas_wgpu`
-pub trait DrawExt: Draw {
-    /// Add a shaded square/circle to the draw buffer
-    fn shaded_box(&mut self, region: Self::Region, rect: Rect, style: ShadeStyle, col: Colour);
+    /// Add a shaded circle to the draw buffer
+    fn shaded_circle(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour);
 
-    /// Add a rounded shaded frame to the draw buffer.
-    fn shaded_frame(
+    /// Add a square shaded frame to the draw buffer.
+    fn shaded_square_frame(
         &mut self,
         region: Self::Region,
         outer: Rect,
         inner: Rect,
-        style: ShadeStyle,
+        norm: (f32, f32),
+        col: Colour,
+    );
+
+    /// Add a rounded shaded frame to the draw buffer.
+    fn shaded_round_frame(
+        &mut self,
+        region: Self::Region,
+        outer: Rect,
+        inner: Rect,
+        norm: (f32, f32),
         col: Colour,
     );
 }
@@ -191,31 +192,42 @@ impl Draw for DrawPipe {
     }
 }
 
-impl DrawExt for DrawPipe {
+impl DrawShaded for DrawPipe {
     #[inline]
-    fn shaded_box(&mut self, pass: usize, rect: Rect, style: ShadeStyle, col: Colour) {
-        match style {
-            ShadeStyle::Square(norm) => self.shaded_square.shaded_rect(pass, rect, norm, col),
-            ShadeStyle::Round(norm) => self.shaded_round.circle(pass, rect, norm, col),
-        }
+    fn shaded_square(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour) {
+        self.shaded_square
+            .shaded_rect(region, rect, Vec2::from(norm), col);
     }
 
     #[inline]
-    fn shaded_frame(
+    fn shaded_circle(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour) {
+        self.shaded_round
+            .circle(region, rect, Vec2::from(norm), col);
+    }
+
+    #[inline]
+    fn shaded_square_frame(
         &mut self,
-        pass: usize,
+        region: Self::Region,
         outer: Rect,
         inner: Rect,
-        style: ShadeStyle,
+        norm: (f32, f32),
         col: Colour,
     ) {
-        match style {
-            ShadeStyle::Square(norm) => self
-                .shaded_square
-                .shaded_frame(pass, outer, inner, norm, col),
-            ShadeStyle::Round(norm) => self
-                .shaded_round
-                .shaded_frame(pass, outer, inner, norm, col),
-        }
+        self.shaded_square
+            .shaded_frame(region, outer, inner, Vec2::from(norm), col);
+    }
+
+    #[inline]
+    fn shaded_round_frame(
+        &mut self,
+        region: Self::Region,
+        outer: Rect,
+        inner: Rect,
+        norm: (f32, f32),
+        col: Colour,
+    ) {
+        self.shaded_round
+            .shaded_frame(region, outer, inner, Vec2::from(norm), col);
     }
 }

@@ -17,7 +17,7 @@ use kas::theme::{self, TextClass, TextProperties, ThemeAction, ThemeApi};
 use kas::Direction;
 use kas_theme::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
 
-use crate::draw::{DrawExt, DrawPipe, ShadeStyle, Vec2};
+use crate::draw::{DrawPipe, DrawShaded};
 
 /// A simple, inflexible theme providing a sample implementation.
 #[derive(Clone, Debug)]
@@ -137,9 +137,8 @@ impl<'a> DrawHandle<'a> {
     /// Return the inner rect.
     fn draw_edit_region(&mut self, mut outer: Rect, nav_col: Option<Colour>) -> Rect {
         let mut inner = outer.shrink(self.window.dims.frame);
-        let style = ShadeStyle::Square(Vec2(-0.8, 0.0));
         self.draw
-            .shaded_frame(self.pass, outer, inner, style, self.cols.background);
+            .shaded_square_frame(self.pass, outer, inner, (-0.8, 0.0), self.cols.background);
 
         if let Some(col) = nav_col {
             outer = inner;
@@ -180,9 +179,8 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     fn outer_frame(&mut self, rect: Rect) {
         let outer = rect + self.offset;
         let inner = outer.shrink(self.window.dims.frame);
-        let style = ShadeStyle::Round(Vec2(0.6, -0.6));
         self.draw
-            .shaded_frame(self.pass, outer, inner, style, self.cols.background);
+            .shaded_round_frame(self.pass, outer, inner, (0.6, -0.6), self.cols.background);
     }
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
@@ -200,8 +198,8 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let inner = outer.shrink(self.window.dims.button_frame);
         let col = self.cols.button_state(highlights);
 
-        let style = ShadeStyle::Round(Vec2(0.0, 0.6));
-        self.draw.shaded_frame(self.pass, outer, inner, style, col);
+        self.draw
+            .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
         self.draw.rect(self.pass, inner, col);
 
         if let Some(col) = self.cols.nav_region(highlights) {
@@ -226,8 +224,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let inner = self.draw_edit_region(rect + self.offset, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(highlights, checked) {
-            let style = ShadeStyle::Square(Vec2(0.0, 0.4));
-            self.draw.shaded_box(self.pass, inner, style, col);
+            self.draw.shaded_square(self.pass, inner, (0.0, 0.4), col);
         }
     }
 
@@ -244,8 +241,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let inner = self.draw_edit_region(rect + self.offset, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(highlights, checked) {
-            let style = ShadeStyle::Round(Vec2(0.0, 1.0));
-            self.draw.shaded_box(self.pass, inner, style, col);
+            self.draw.shaded_circle(self.pass, inner, (0.0, 1.0), col);
         }
     }
 
@@ -261,9 +257,9 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let outer = h_rect + self.offset;
         let half_width = outer.size.0.min(outer.size.1) / 2;
         let inner = outer.shrink(half_width);
-        let style = ShadeStyle::Round(Vec2(0.0, 0.6));
         let col = self.cols.scrollbar_state(highlights);
-        self.draw.shaded_frame(self.pass, outer, inner, style, col);
+        self.draw
+            .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
         self.draw.rect(self.pass, inner, col);
     }
 }
