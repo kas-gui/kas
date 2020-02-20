@@ -7,7 +7,7 @@
 
 use std::ops::{Deref, DerefMut};
 
-#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
+#[cfg(feature = "stack_dst")]
 use super::StackDst;
 use super::{TextClass, TextProperties};
 use kas::event::HighlightState;
@@ -163,7 +163,7 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     }
 }
 
-#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
+#[cfg(feature = "stack_dst")]
 impl SizeHandle for StackDst<dyn SizeHandle> {
     fn outer_frame(&self) -> (Size, Size) {
         self.deref().outer_frame()
@@ -230,7 +230,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     }
 }
 
-#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
+#[cfg(feature = "stack_dst")]
 impl DrawHandle for StackDst<dyn DrawHandle> {
     fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
         self.deref_mut().clip_region(rect, offset, f)

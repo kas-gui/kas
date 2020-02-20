@@ -19,10 +19,6 @@
 //! -   widget rendering and sizing
 
 #![cfg_attr(feature = "nightly", feature(new_uninit))]
-#![cfg_attr(feature = "gat", feature(generic_associated_types))]
-
-#[cfg(all(feature = "gat", feature = "stack_dst"))]
-compile_error!("Crate features 'gat' and 'stack_dst' are incompatible.");
 
 extern crate kas_macros;
 extern crate self as kas; // required for reliable self-reference in kas_macros

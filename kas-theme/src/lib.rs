@@ -8,6 +8,9 @@
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![cfg_attr(feature = "stack_dst", feature(unsize))]
 
+#[cfg(all(feature = "gat", feature = "stack_dst"))]
+compile_error!("Crate features 'gat' and 'stack_dst' are incompatible.");
+
 mod col;
 mod dim;
 #[cfg(all(feature = "stack_dst", not(feature = "gat")))]

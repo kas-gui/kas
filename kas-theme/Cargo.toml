@@ -11,7 +11,8 @@ repository = "https://github.com/dhardy/kas"
 
 [features]
 # Use Generic Associated Types (experimental)
-gat = ["kas/gat"]
+# Currently (Feb 2020) compiler support is poor.
+gat = []
 
 # Use stack_dst crate for sized unsized types
 stack_dst = ["kas/stack_dst"]

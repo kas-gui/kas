@@ -26,7 +26,7 @@ mod theme_handle;
 
 pub use theme_handle::{DrawHandle, SizeHandle};
 
-#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
+#[cfg(feature = "stack_dst")]
 /// Fixed-size object of `Unsized` type
 ///
 /// This is a re-export of
