@@ -8,17 +8,16 @@
 //! Widget size and appearance can be modified through themes.
 
 use std::f32;
-use wgpu_glyph::{Font, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
+use wgpu_glyph::Font;
 
 use kas::draw::{Colour, Draw};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
 use kas::theme::{self, TextClass, TextProperties, ThemeAction, ThemeApi};
-use kas::Align;
 use kas::Direction;
 
 use super::{Dimensions, DimensionsParams, DimensionsWindow};
-use crate::draw::{DrawExt, DrawPipe, DrawText, Vec2};
+use crate::draw::{DrawExt, DrawPipe, DrawText};
 use crate::resources::colours::ThemeColours;
 
 /// A simple flat theme.
@@ -134,6 +133,28 @@ impl ThemeApi for FlatTheme {
     }
 }
 
+impl<'a> DrawHandle<'a> {
+    /// Draw an edit region with optional navigation highlight.
+    /// Return the inner rect.
+    fn draw_edit_region(&mut self, outer: Rect, nav_col: Option<Colour>) -> Rect {
+        let inner1 = outer.shrink(self.window.dims.frame / 2);
+        let inner2 = outer.shrink(self.window.dims.frame);
+
+        self.draw.rect(self.pass, inner1, self.cols.text_area);
+
+        // We draw over the inner rect, taking advantage of the fact that
+        // rounded frames get drawn after flat rects.
+        self.draw
+            .rounded_frame(self.pass, outer, inner2, 0.333, self.cols.frame);
+
+        if let Some(col) = nav_col {
+            self.draw.rounded_frame(self.pass, inner1, inner2, 0.0, col);
+        }
+
+        inner2
+    }
+}
+
 impl<'a> theme::DrawHandle for DrawHandle<'a> {
     fn clip_region(
         &mut self,
@@ -163,110 +184,76 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let outer = rect + self.offset;
         let inner = outer.shrink(self.window.dims.frame);
         self.draw
-            .rounded_frame(self.pass, outer, inner, self.cols.frame);
+            .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
     }
 
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
-        let bounds = Coord::from(rect.size);
-
+        let scale = self.window.dims.font_scale;
         let col = match props.class {
             TextClass::Label => self.cols.label_text,
             TextClass::Button => self.cols.button_text,
             TextClass::Edit | TextClass::EditMulti => self.cols.text,
         };
-
-        // TODO: support justified alignment
-        let (h_align, h_offset) = match props.horiz {
-            Align::Begin | Align::Stretch => (HorizontalAlign::Left, 0),
-            Align::Centre => (HorizontalAlign::Center, bounds.0 / 2),
-            Align::End => (HorizontalAlign::Right, bounds.0),
-        };
-        let (v_align, v_offset) = match props.vert {
-            Align::Begin | Align::Stretch => (VerticalAlign::Top, 0),
-            Align::Centre => (VerticalAlign::Center, bounds.1 / 2),
-            Align::End => (VerticalAlign::Bottom, bounds.1),
-        };
-
-        let text_pos = rect.pos + self.offset + Coord(h_offset, v_offset);
-
-        let layout = match props.class {
-            TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
-            TextClass::Button | TextClass::Edit => Layout::default_single_line(),
-        };
-        let layout = layout.h_align(h_align).v_align(v_align);
-
-        self.draw.draw_text(Section {
-            text,
-            screen_position: Vec2::from(text_pos).into(),
-            color: col.into(),
-            scale: Scale::uniform(self.window.dims.font_scale),
-            bounds: Vec2::from(bounds).into(),
-            layout,
-            ..Section::default()
-        });
+        self.draw.text(rect + self.offset, text, scale, props, col);
     }
 
     fn button(&mut self, rect: Rect, highlights: HighlightState) {
-        let mut outer = rect + self.offset;
+        let outer = rect + self.offset;
         let col = self.cols.button_state(highlights);
 
         let inner = outer.shrink(self.window.dims.button_frame);
-        self.draw.rounded_frame(self.pass, outer, inner, col);
+        self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
+        self.draw.rect(self.pass, inner, col);
 
         if let Some(col) = self.cols.nav_region(highlights) {
-            let diff = self.window.dims.button_frame - self.window.dims.margin;
-            outer = outer.shrink(diff);
-            // Note: we rely on this drawing *after* rounded_frame
-            self.draw.frame(self.pass, outer, inner, col);
+            let outer = outer.shrink(self.window.dims.button_frame / 3);
+            self.draw.rounded_frame(self.pass, outer, inner, 0.5, col);
         }
-
-        self.draw.rect(self.pass, inner, col);
     }
 
     fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
-        let mut outer = rect + self.offset;
-
-        let mut inner = outer.shrink(self.window.dims.frame);
-        self.draw
-            .rounded_frame(self.pass, outer, inner, self.cols.frame);
-
-        if let Some(col) = self.cols.nav_region(highlights) {
-            outer = inner;
-            inner = outer.shrink(self.window.dims.margin);
-            self.draw.frame(self.pass, outer, inner, col);
-        }
-
-        self.draw.rect(self.pass, inner, self.cols.text_area);
+        self.draw_edit_region(rect + self.offset, self.cols.nav_region(highlights));
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
-        let mut outer = rect + self.offset;
+        let nav_col = self.cols.nav_region(highlights).or_else(|| {
+            if checked {
+                Some(self.cols.text_area)
+            } else {
+                None
+            }
+        });
 
-        let mut inner = outer.shrink(self.window.dims.frame);
-        self.draw
-            .rounded_frame(self.pass, outer, inner, self.cols.frame);
+        let inner = self.draw_edit_region(rect + self.offset, nav_col);
 
-        if checked || highlights.any() {
-            outer = inner;
-            inner = outer.shrink(self.window.dims.margin);
-            let col = self
-                .cols
-                .nav_region(highlights)
-                .unwrap_or(self.cols.text_area);
-            self.draw.frame(self.pass, outer, inner, col);
+        if let Some(col) = self.cols.check_mark_state(highlights, checked) {
+            let radius = (inner.size.0 + inner.size.1) / 16;
+            let inner = inner.shrink(self.window.dims.margin + radius);
+            let p1 = inner.pos;
+            let p2 = inner.pos + inner.size;
+            let radius = radius as f32;
+            self.draw.rounded_line(self.pass, p1, p2, radius, col);
+            self.draw
+                .rounded_line(self.pass, Coord(p1.0, p2.1), Coord(p2.0, p1.1), radius, col);
         }
-
-        let col = self
-            .cols
-            .check_mark_state(highlights, checked)
-            .unwrap_or(self.cols.text_area);
-        self.draw.rect(self.pass, inner, col);
     }
 
     #[inline]
     fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
-        // TODO: distinct
-        self.checkbox(rect, checked, highlights);
+        let nav_col = self.cols.nav_region(highlights).or_else(|| {
+            if checked {
+                Some(self.cols.text_area)
+            } else {
+                None
+            }
+        });
+
+        let inner = self.draw_edit_region(rect + self.offset, nav_col);
+
+        if let Some(col) = self.cols.check_mark_state(highlights, checked) {
+            let inner = inner.shrink(self.window.dims.margin);
+            self.draw.circle(self.pass, inner, 0.3, col);
+        }
     }
 
     fn scrollbar(
@@ -282,7 +269,7 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let half_width = outer.size.0.min(outer.size.1) / 2;
         let inner = outer.shrink(half_width);
         let col = self.cols.scrollbar_state(highlights);
-        self.draw.rounded_frame(self.pass, outer, inner, col);
+        self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
         self.draw.rect(self.pass, inner, col);
     }
 }

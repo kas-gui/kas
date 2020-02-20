@@ -10,14 +10,11 @@
 use std::any::Any;
 use std::f32;
 
-use wgpu_glyph::{Layout, Scale, Section};
-
-use kas::geom::Size;
-use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
-use kas::theme::{self, TextClass};
-use kas::Direction::{self, Horizontal, Vertical};
-
-use crate::draw::{DrawPipe, DrawText};
+use crate::draw::DrawText;
+use crate::geom::Size;
+use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
+use crate::theme::{self, TextClass};
+use crate::Direction::{Horizontal, Vertical};
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -35,6 +32,7 @@ pub struct DimensionsParams {
     pub scrollbar_size: f32,
 }
 
+/// Dimensions available within [`DimensionsWindow`]
 #[derive(Clone, Debug)]
 pub struct Dimensions {
     pub font_scale: f32,
@@ -68,6 +66,7 @@ impl Dimensions {
     }
 }
 
+/// A convenient implementation of [`kas::theme::Window`]
 pub struct DimensionsWindow {
     pub dims: Dimensions,
 }
@@ -80,20 +79,20 @@ impl DimensionsWindow {
     }
 }
 
-impl theme::Window<DrawPipe> for DimensionsWindow {
+impl<Draw: DrawText + 'static> theme::Window<Draw> for DimensionsWindow {
     #[cfg(not(feature = "gat"))]
-    type SizeHandle = SizeHandle<'static>;
+    type SizeHandle = SizeHandle<'static, Draw>;
     #[cfg(feature = "gat")]
-    type SizeHandle<'a> = SizeHandle<'a>;
+    type SizeHandle<'a> = SizeHandle<'a, Draw>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle {
+    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        let handle = SizeHandle::new(draw, &self.dims);
-        std::mem::transmute::<SizeHandle<'a>, SizeHandle<'static>>(handle)
+        let h: SizeHandle<'a, Draw> = SizeHandle::new(draw, &self.dims);
+        std::mem::transmute(h)
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, draw: &'a mut DrawPipe) -> Self::SizeHandle<'a> {
+    fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle<'a> {
         SizeHandle::new(draw, &self.dims)
     }
 
@@ -102,18 +101,18 @@ impl theme::Window<DrawPipe> for DimensionsWindow {
     }
 }
 
-pub struct SizeHandle<'a> {
-    draw: &'a mut DrawPipe,
+pub struct SizeHandle<'a, Draw> {
+    draw: &'a mut Draw,
     dims: &'a Dimensions,
 }
 
-impl<'a> SizeHandle<'a> {
-    pub fn new(draw: &'a mut DrawPipe, dims: &'a Dimensions) -> Self {
+impl<'a, Draw> SizeHandle<'a, Draw> {
+    pub fn new(draw: &'a mut Draw, dims: &'a Dimensions) -> Self {
         SizeHandle { draw, dims }
     }
 }
 
-impl<'a> theme::SizeHandle for SizeHandle<'a> {
+impl<'a, Draw: DrawText> theme::SizeHandle for SizeHandle<'a, Draw> {
     fn outer_frame(&self) -> (Size, Size) {
         let f = self.dims.frame as u32;
         (Size::uniform(f), Size::uniform(f))
@@ -134,38 +133,20 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
     fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
         let font_scale = self.dims.font_scale;
         let line_height = self.dims.line_height;
-        let draw = &mut self.draw;
-        let mut bound = |dir: Direction| -> u32 {
-            let layout = match class {
-                TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
-                TextClass::Button | TextClass::Edit => Layout::default_single_line(),
-            };
-            let mut bounds = (f32::INFINITY, f32::INFINITY);
-            if let Some(size) = axis.size_other_if_fixed(Horizontal) {
-                bounds.1 = size as f32;
-            } else if let Some(size) = axis.size_other_if_fixed(Vertical) {
-                bounds.0 = size as f32;
-            }
-
-            let bounds = draw.glyph_bounds(Section {
-                text,
-                screen_position: (0.0, 0.0),
-                scale: Scale::uniform(font_scale),
-                bounds,
-                layout,
-                ..Section::default()
-            });
-
-            bounds
-                .map(|(min, max)| match dir {
-                    Horizontal => (max - min).0,
-                    Vertical => (max - min).1,
-                } as u32)
-                .unwrap_or(0)
+        let mut bounds = (f32::INFINITY, f32::INFINITY);
+        if let Some(size) = axis.size_other_if_fixed(Horizontal) {
+            bounds.1 = size as f32;
+        } else if let Some(size) = axis.size_other_if_fixed(Vertical) {
+            bounds.0 = size as f32;
+        }
+        let line_wrap = match class {
+            TextClass::Label | TextClass::EditMulti => true,
+            TextClass::Button | TextClass::Edit => false,
         };
+        let bounds = self.draw.text_bound(text, font_scale, bounds, line_wrap);
 
         if axis.is_horizontal() {
-            let bound = bound(Horizontal);
+            let bound = bounds.0 as u32;
             let min = match class {
                 TextClass::Edit | TextClass::EditMulti => self.dims.min_line_length,
                 _ => bound.min(self.dims.min_line_length),
@@ -177,7 +158,7 @@ impl<'a> theme::SizeHandle for SizeHandle<'a> {
                 TextClass::EditMulti => line_height * 3,
                 _ => line_height,
             };
-            let ideal = bound(Vertical).max(line_height);
+            let ideal = (bounds.1 as u32).max(line_height);
             let stretch = match class {
                 TextClass::Button | TextClass::Edit => StretchPolicy::Fixed,
                 _ => StretchPolicy::Filler,

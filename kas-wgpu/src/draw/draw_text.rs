@@ -5,56 +5,82 @@
 
 //! Text drawing API for `kas_wgpu`
 
-use std::borrow::Cow;
-use wgpu_glyph::{GlyphCruncher, VariedSection};
+use std::f32;
+use wgpu_glyph::{GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
-use super::{DrawPipe, Vec2};
-
-/// Abstraction over text rendering
-///
-/// TODO: this API is heavily dependent on `glyph_brush`. Eventually we want our
-/// own API, encapsulating translation functionality and with more default
-/// values (e.g. scale). When we get there, we should be able to move
-/// at least `FlatTheme` to `kas`.
-pub trait DrawText {
-    /// Queues a text section/layout.
-    fn draw_text<'a, S>(&mut self, section: S)
-    where
-        S: Into<Cow<'a, VariedSection<'a>>>;
-
-    /// Returns a bounding box for the section glyphs calculated using each glyph's
-    /// vertical & horizontal metrics.
-    ///
-    /// If the section is empty or would result in no drawn glyphs will return `None`.
-    ///
-    /// Invisible glyphs, like spaces, are discarded during layout so trailing ones will
-    /// not affect the bounds.
-    ///
-    /// The bounds will always lay within the specified layout bounds, ie that returned
-    /// by the layout's `bounds_rect` function.
-    ///
-    /// Benefits from caching, see [caching behaviour](#caching-behaviour).
-    fn glyph_bounds<'a, S>(&mut self, section: S) -> Option<(Vec2, Vec2)>
-    where
-        S: Into<Cow<'a, VariedSection<'a>>>;
-}
+use crate::draw::{DrawPipe, Vec2};
+use kas::draw::{Colour, DrawText};
+use kas::geom::{Coord, Rect};
+use kas::theme::{TextClass, TextProperties};
+use kas::Align;
 
 impl DrawText for DrawPipe {
-    #[inline]
-    fn draw_text<'a, S>(&mut self, section: S)
-    where
-        S: Into<Cow<'a, VariedSection<'a>>>,
-    {
-        self.glyph_brush.queue(section)
+    fn text(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        font_scale: f32,
+        props: TextProperties,
+        col: Colour,
+    ) {
+        let bounds = Coord::from(rect.size);
+
+        // TODO: support justified alignment
+        let (h_align, h_offset) = match props.horiz {
+            Align::Begin | Align::Stretch => (HorizontalAlign::Left, 0),
+            Align::Centre => (HorizontalAlign::Center, bounds.0 / 2),
+            Align::End => (HorizontalAlign::Right, bounds.0),
+        };
+        let (v_align, v_offset) = match props.vert {
+            Align::Begin | Align::Stretch => (VerticalAlign::Top, 0),
+            Align::Centre => (VerticalAlign::Center, bounds.1 / 2),
+            Align::End => (VerticalAlign::Bottom, bounds.1),
+        };
+
+        let text_pos = rect.pos + Coord(h_offset, v_offset);
+
+        let layout = match props.class {
+            TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
+            TextClass::Button | TextClass::Edit => Layout::default_single_line(),
+        };
+        let layout = layout.h_align(h_align).v_align(v_align);
+
+        self.glyph_brush.queue(Section {
+            text,
+            screen_position: Vec2::from(text_pos).into(),
+            color: col.into(),
+            scale: Scale::uniform(font_scale),
+            bounds: Vec2::from(bounds).into(),
+            layout,
+            ..Section::default()
+        });
     }
 
     #[inline]
-    fn glyph_bounds<'a, S>(&mut self, section: S) -> Option<(Vec2, Vec2)>
-    where
-        S: Into<Cow<'a, VariedSection<'a>>>,
-    {
+    fn text_bound(
+        &mut self,
+        text: &str,
+        font_scale: f32,
+        bounds: (f32, f32),
+        line_wrap: bool,
+    ) -> (f32, f32) {
+        let layout = match line_wrap {
+            true => Layout::default_wrap(),
+            false => Layout::default_single_line(),
+        };
+
         self.glyph_brush
-            .glyph_bounds(section)
+            .glyph_bounds(Section {
+                text,
+                screen_position: (0.0, 0.0),
+                scale: Scale::uniform(font_scale),
+                bounds,
+                layout,
+                ..Section::default()
+            })
             .map(|rect| (Vec2(rect.min.x, rect.min.y), Vec2(rect.max.x, rect.max.y)))
+            .map(|(min, max)| max - min)
+            .unwrap_or(Vec2::splat(0.0))
+            .into()
     }
 }
