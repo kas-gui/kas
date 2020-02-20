@@ -13,7 +13,7 @@ use kas::geom::{Rect, Size};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec2, Rgb, Vec2, Vec2);
+struct Vertex(Vec2, Rgb, f32, Vec2, Vec2);
 
 /// A pipeline for rendering rounded shapes
 pub struct FlatRound {
@@ -61,7 +61,7 @@ impl FlatRound {
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             layout: &pipeline_layout,
             vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &shared.shaders.vert_322,
+                module: &shared.shaders.vert_3122,
                 entry_point: "main",
             },
             fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
@@ -107,14 +107,20 @@ impl FlatRound {
                         shader_location: 1,
                     },
                     wgpu::VertexAttributeDescriptor {
-                        format: wgpu::VertexFormat::Float2,
+                        format: wgpu::VertexFormat::Float,
                         offset: (size_of::<Vec2>() + size_of::<Rgb>()) as u64,
                         shader_location: 2,
                     },
                     wgpu::VertexAttributeDescriptor {
                         format: wgpu::VertexFormat::Float2,
-                        offset: (2 * size_of::<Vec2>() + size_of::<Rgb>()) as u64,
+                        offset: (size_of::<Vec2>() + size_of::<Rgb>() + size_of::<f32>()) as u64,
                         shader_location: 3,
+                    },
+                    wgpu::VertexAttributeDescriptor {
+                        format: wgpu::VertexFormat::Float2,
+                        offset: (2 * size_of::<Vec2>() + size_of::<Rgb>() + size_of::<f32>())
+                            as u64,
+                        shader_location: 4,
                     },
                 ],
             }],
@@ -189,6 +195,8 @@ impl FlatRound {
 
         let col = col.into();
 
+        let inner = 0.0;
+
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
         let cd = Vec2(cc.0, dd.1);
@@ -212,25 +220,25 @@ impl FlatRound {
 
         // We must add corners separately to ensure correct interpolation of dir
         // values, hence need 16 points:
-        let ab = Vertex(ab, col, nab, pab);
-        let ba = Vertex(ba, col, nba, pba);
-        let cd = Vertex(cd, col, n0, pab);
-        let dc = Vertex(dc, col, n0, pba);
+        let ab = Vertex(ab, col, inner, nab, pab);
+        let ba = Vertex(ba, col, inner, nba, pba);
+        let cd = Vertex(cd, col, inner, n0, pab);
+        let dc = Vertex(dc, col, inner, n0, pba);
 
-        let ac = Vertex(Vec2(aa.0, cc.1), col, na0, paa);
-        let ad = Vertex(Vec2(aa.0, dd.1), col, na0, pab);
-        let bc = Vertex(Vec2(bb.0, cc.1), col, nb0, pba);
-        let bd = Vertex(Vec2(bb.0, dd.1), col, nb0, pbb);
+        let ac = Vertex(Vec2(aa.0, cc.1), col, inner, na0, paa);
+        let ad = Vertex(Vec2(aa.0, dd.1), col, inner, na0, pab);
+        let bc = Vertex(Vec2(bb.0, cc.1), col, inner, nb0, pba);
+        let bd = Vertex(Vec2(bb.0, dd.1), col, inner, nb0, pbb);
 
-        let ca = Vertex(Vec2(cc.0, aa.1), col, n0a, paa);
-        let cb = Vertex(Vec2(cc.0, bb.1), col, n0b, pab);
-        let da = Vertex(Vec2(dd.0, aa.1), col, n0a, pba);
-        let db = Vertex(Vec2(dd.0, bb.1), col, n0b, pbb);
+        let ca = Vertex(Vec2(cc.0, aa.1), col, inner, n0a, paa);
+        let cb = Vertex(Vec2(cc.0, bb.1), col, inner, n0b, pab);
+        let da = Vertex(Vec2(dd.0, aa.1), col, inner, n0a, pba);
+        let db = Vertex(Vec2(dd.0, bb.1), col, inner, n0b, pbb);
 
-        let aa = Vertex(aa, col, naa, paa);
-        let bb = Vertex(bb, col, nbb, pbb);
-        let cc = Vertex(cc, col, n0, paa);
-        let dd = Vertex(dd, col, n0, pbb);
+        let aa = Vertex(aa, col, inner, naa, paa);
+        let bb = Vertex(bb, col, inner, nbb, pbb);
+        let cc = Vertex(cc, col, inner, n0, paa);
+        let dd = Vertex(dd, col, inner, n0, pbb);
 
         // TODO: the four sides are simple rectangles, hence could use simpler rendering
 

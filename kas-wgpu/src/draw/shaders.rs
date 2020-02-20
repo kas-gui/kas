@@ -15,6 +15,7 @@ use wgpu::ShaderModule;
 /// Not really optimal (we could embed SPIR-V directly or load shaders from
 /// external resources), but simple to set up and use.
 pub struct ShaderManager {
+    pub vert_3122: ShaderModule,
     pub vert_32: ShaderModule,
     pub vert_322: ShaderModule,
     pub vert_3222: ShaderModule,
@@ -26,6 +27,11 @@ pub struct ShaderManager {
 impl ShaderManager {
     pub fn new(device: &wgpu::Device) -> Result<Self, Error> {
         let mut compiler = Compiler::new().unwrap();
+
+        let fname = "shaders/scaled3122.vert";
+        let source = include_str!("shaders/scaled3122.vert");
+        let artifact = compiler.compile_into_spirv(source, Vertex, fname, "main", None)?;
+        let vert_3122 = device.create_shader_module(&artifact.as_binary());
 
         let fname = "shaders/scaled32.vert";
         let source = include_str!("shaders/scaled32.vert");
@@ -58,6 +64,7 @@ impl ShaderManager {
         let frag_shaded_round = device.create_shader_module(&artifact.as_binary());
 
         Ok(ShaderManager {
+            vert_3122,
             vert_32,
             vert_322,
             vert_3222,

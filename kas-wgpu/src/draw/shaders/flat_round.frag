@@ -9,25 +9,26 @@
 precision mediump float;
 
 layout(location = 0) in vec3 fragColor;
-layout(location = 1) in vec2 dir;
-layout(location = 2) in vec2 off;
+layout(location = 1) in float inner;
+layout(location = 2) in vec2 pos;
+layout(location = 3) in vec2 off;
 
 layout(location = 0) out vec4 outColor;
 
-float sample_a(vec2 dir) {
-    vec2 dir2 = dir * dir;
-    float ss = dir2.x + dir2.y;
-    return (ss <= 1.0) ? 0.25 : 0.0;
+float sample_a(vec2 pos) {
+    vec2 pos2 = pos * pos;
+    float ss = pos2.x + pos2.y;
+    return (inner <= ss && ss <= 1.0) ? 0.25 : 0.0;
 }
 
 void main() {
     // Multi-sample alpha to avoid ugly aliasing.
     vec2 off1 = vec2(off.x, 3.0 * off.y);
     vec2 off2 = vec2(3.0 * off.x, off.y);
-    float alpha = sample_a(dir + off1)
-        + sample_a(dir - off1)
-        + sample_a(dir + off2)
-        + sample_a(dir - off2);
+    float alpha = sample_a(pos + off1)
+        + sample_a(pos - off1)
+        + sample_a(pos + off2)
+        + sample_a(pos - off2);
 
     outColor = vec4(fragColor, alpha);
 }
