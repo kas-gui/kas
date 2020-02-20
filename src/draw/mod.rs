@@ -14,7 +14,7 @@ mod colour;
 
 use std::any::Any;
 
-use crate::geom::Rect;
+use crate::geom::{Coord, Rect};
 use crate::theme::TextProperties;
 
 pub use colour::Colour;
@@ -45,14 +45,54 @@ pub trait Draw {
     /// Clip regions are cleared each frame and so must be recreated on demand.
     fn add_clip_region(&mut self, region: Rect) -> Self::Region;
 
+    /// Add a line with rounded ends to the draw buffer
+    ///
+    /// Note that for rectangular, axis-aligned lines, [`Draw::rect`] should be
+    /// preferred.
+    fn rounded_line(
+        &mut self,
+        region: Self::Region,
+        p1: Coord,
+        p2: Coord,
+        radius: f32,
+        col: Colour,
+    );
+
     /// Add a rectangle with flat shading to the draw buffer.
     fn rect(&mut self, region: Self::Region, rect: Rect, col: Colour);
+
+    /// Add a flat circle to the draw buffer
+    ///
+    /// More generally, this shape is an axis-aligned oval.
+    ///
+    /// The `inner_radius` parameter gives the inner radius relative to the
+    /// outer radius: a value of `0.0` will result in the whole shape being
+    /// painted, while `1.0` will result in a zero-width line on the outer edge.
+    fn circle(&mut self, region: Self::Region, rect: Rect, inner_radius: f32, col: Colour);
 
     /// Add a frame with flat shading to the draw buffer.
     ///
     /// It is expected that the `outer` rect contains the `inner` rect.
     /// Failure may result in graphical glitches.
     fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour);
+
+    /// Add a rounded flat frame to the draw buffer.
+    ///
+    /// All drawing occurs within the `outer` rect and outside of the `inner`
+    /// rect. Corners are circular (or more generally, ovular), centered on the
+    /// inner corners.
+    ///
+    /// The `inner_radius` parameter gives the inner radius relative to the
+    /// outer radius: a value of `0.0` will result in the whole shape being
+    /// painted, while `1.0` will result in a zero-width line on the outer edge.
+    fn rounded_frame(
+        &mut self,
+        region: Self::Region,
+        outer: Rect,
+        inner: Rect,
+        inner_radius: f32,
+        col: Colour,
+    );
 }
 
 /// Abstraction over text rendering

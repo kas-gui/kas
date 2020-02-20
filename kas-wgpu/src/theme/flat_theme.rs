@@ -17,7 +17,7 @@ use kas::theme::{self, TextClass, TextProperties, ThemeAction, ThemeApi};
 use kas::Direction;
 
 use super::{Dimensions, DimensionsParams, DimensionsWindow};
-use crate::draw::{DrawExt, DrawPipe, DrawText};
+use crate::draw::{DrawPipe, DrawText};
 use crate::resources::colours::ThemeColours;
 
 /// A simple flat theme.

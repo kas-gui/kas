@@ -34,46 +34,6 @@ pub enum ShadeStyle {
 
 /// Abstraction over drawing commands specific to `kas_wgpu`
 pub trait DrawExt: Draw {
-    /// Add a line with rounded ends to the draw buffer
-    ///
-    /// Note that for rectangular, axis-aligned lines, [`Draw::rect`] should be
-    /// preferred.
-    fn rounded_line(
-        &mut self,
-        region: Self::Region,
-        p1: Coord,
-        p2: Coord,
-        radius: f32,
-        col: Colour,
-    );
-
-    /// Add a flat circle to the draw buffer
-    ///
-    /// More generally, this shape is an axis-aligned oval.
-    ///
-    /// The `inner_radius` parameter gives the inner radius relative to the
-    /// outer radius: a value of `0.0` will result in the whole shape being
-    /// painted, while `1.0` will result in a zero-width line on the outer edge.
-    fn circle(&mut self, region: Self::Region, rect: Rect, inner_radius: f32, col: Colour);
-
-    /// Add a rounded flat frame to the draw buffer.
-    ///
-    /// All drawing occurs within the `outer` rect and outside of the `inner`
-    /// rect. Corners are circular (or more generally, ovular), centered on the
-    /// inner corners.
-    ///
-    /// The `inner_radius` parameter gives the inner radius relative to the
-    /// outer radius: a value of `0.0` will result in the whole shape being
-    /// painted, while `1.0` will result in a zero-width line on the outer edge.
-    fn rounded_frame(
-        &mut self,
-        region: Self::Region,
-        outer: Rect,
-        inner: Rect,
-        inner_radius: f32,
-        col: Colour,
-    );
-
     /// Add a shaded square/circle to the draw buffer
     fn shaded_box(&mut self, region: Self::Region, rect: Rect, style: ShadeStyle, col: Colour);
 
@@ -198,25 +158,23 @@ impl Draw for DrawPipe {
     }
 
     #[inline]
-    fn rect(&mut self, region: Self::Region, rect: Rect, col: Colour) {
-        self.shaded_square.rect(region, rect, col);
-    }
-
-    #[inline]
-    fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour) {
-        self.shaded_square.frame(region, outer, inner, col);
-    }
-}
-
-impl DrawExt for DrawPipe {
-    #[inline]
     fn rounded_line(&mut self, pass: usize, p1: Coord, p2: Coord, radius: f32, col: Colour) {
         self.flat_round.line(pass, p1, p2, radius, col);
     }
 
     #[inline]
+    fn rect(&mut self, region: Self::Region, rect: Rect, col: Colour) {
+        self.shaded_square.rect(region, rect, col);
+    }
+
+    #[inline]
     fn circle(&mut self, pass: usize, rect: Rect, inner_radius: f32, col: Colour) {
         self.flat_round.circle(pass, rect, inner_radius, col);
+    }
+
+    #[inline]
+    fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour) {
+        self.shaded_square.frame(region, outer, inner, col);
     }
 
     #[inline]
@@ -231,7 +189,9 @@ impl DrawExt for DrawPipe {
         self.flat_round
             .rounded_frame(pass, outer, inner, inner_radius, col);
     }
+}
 
+impl DrawExt for DrawPipe {
     #[inline]
     fn shaded_box(&mut self, pass: usize, rect: Rect, style: ShadeStyle, col: Colour) {
         match style {
