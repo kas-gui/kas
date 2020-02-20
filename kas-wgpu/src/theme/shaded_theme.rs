@@ -15,10 +15,9 @@ use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
 use kas::theme::{self, TextClass, TextProperties, ThemeAction, ThemeApi};
 use kas::Direction;
-use kas_theme::{Dimensions, DimensionsParams, DimensionsWindow, Theme};
+use kas_theme::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
 
 use crate::draw::{DrawExt, DrawPipe, ShadeStyle, Vec2};
-use crate::resources::colours::ThemeColours;
 
 /// A simple, inflexible theme providing a sample implementation.
 #[derive(Clone, Debug)]
@@ -105,7 +104,7 @@ impl Theme<DrawPipe> for ShadedTheme {
     }
 
     fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
-        vec![crate::font::get_font()]
+        vec![kas_theme::get_font()]
     }
 
     fn light_direction(&self) -> (f32, f32) {

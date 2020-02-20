@@ -9,9 +9,7 @@
 
 pub mod draw;
 mod event_loop;
-mod font;
 mod options;
-mod resources;
 mod shared;
 pub mod theme;
 mod window;

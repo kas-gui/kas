@@ -18,6 +18,7 @@ gat = []
 stack_dst = ["kas/stack_dst"]
 
 [dependencies]
+lazy_static = "1.4.0"
 log = "0.4"
 
 [dependencies.kas]

@@ -14,7 +14,7 @@ use font_kit::{
 };
 
 use lazy_static::lazy_static;
-use wgpu_glyph::Font;
+use rusttype::Font;
 // use wgpu_glyph::rusttype::FontCollection;
 
 #[cfg(feature = "font-kit")]
@@ -71,6 +71,10 @@ lazy_static! {
     static ref FONT: Font<'static> = Font::from_bytes(BYTES).unwrap();
 }
 
-pub(crate) fn get_font() -> Font<'static> {
+/// Get access to the font
+///
+/// TODO: this function is a placeholder until proper font management is
+/// integrated.
+pub fn get_font() -> Font<'static> {
     FONT.clone()
 }
