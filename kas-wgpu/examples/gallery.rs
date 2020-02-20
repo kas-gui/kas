@@ -38,13 +38,13 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=2, col=0)] _ = Label::from("TextButton"),
             #[widget(row=2, col=1)] _ = TextButton::new("Press me", Item::Button),
             #[widget(row=3, col=0)] _ = Label::from("CheckBox"),
-            #[widget(row=3, col=1)] _ = CheckBox::new("Check me")
+            #[widget(row=3, col=1)] _ = CheckBox::new("Check me").state(true)
                 .on_toggle(|check| Item::Check(check)),
             #[widget(row=4, col=0)] _ = Label::from("RadioBox"),
-            #[widget(row=4, col=1)] _ = RadioBox::new(radio, "radio box 1").state(true)
+            #[widget(row=4, col=1)] _ = RadioBox::new(radio, "radio box 1").state(false)
                 .on_activate(|id| Item::Radio(id)),
             #[widget(row=5, col=0)] _ = Label::from("RadioBox"),
-            #[widget(row=5, col=1)] _ = RadioBox::new(radio, "radio box 2")
+            #[widget(row=5, col=1)] _ = RadioBox::new(radio, "radio box 2").state(true)
                 .on_activate(|id| Item::Radio(id)),
             #[widget(row=6, col=0)] _ = Label::from("ScrollBar"),
             #[widget(row=6, col=1, handler = handle_scroll)] _ =

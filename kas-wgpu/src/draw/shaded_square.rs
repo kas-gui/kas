@@ -200,6 +200,40 @@ impl ShadedSquare {
         ]);
     }
 
+    /// Add a rect to the buffer, defined by two outer corners, `aa` and `bb`.
+    ///
+    /// Bounds on input: `aa < cc` and `-1 ≤ norm ≤ 1`.
+    pub fn shaded_rect(&mut self, pass: usize, rect: Rect, mut norm: Vec2, col: Colour) {
+        let aa = Vec2::from(rect.pos);
+        let bb = aa + Vec2::from(rect.size);
+
+        if !aa.lt(bb) {
+            // zero / negative size: nothing to draw
+            return;
+        }
+        if !Vec2::splat(-1.0).le(norm) || !norm.le(Vec2::splat(1.0)) {
+            norm = Vec2::splat(0.0);
+        }
+
+        let ab = Vec2(aa.0, bb.1);
+        let ba = Vec2(bb.0, aa.1);
+        let mid = (aa + bb) * 0.5;
+
+        let col = col.into();
+        let tt = (Vec2(0.0, -norm.1), Vec2(0.0, -norm.0));
+        let tl = (Vec2(-norm.1, 0.0), Vec2(-norm.0, 0.0));
+        let tb = (Vec2(0.0, norm.1), Vec2(0.0, norm.0));
+        let tr = (Vec2(norm.1, 0.0), Vec2(norm.0, 0.0));
+
+        #[rustfmt::skip]
+        self.add_vertices(pass, &[
+            Vertex(ba, col, tt.0), Vertex(mid, col, tt.1), Vertex(aa, col, tt.0),
+            Vertex(aa, col, tl.0), Vertex(mid, col, tl.1), Vertex(ab, col, tl.0),
+            Vertex(ab, col, tb.0), Vertex(mid, col, tb.1), Vertex(bb, col, tb.0),
+            Vertex(bb, col, tr.0), Vertex(mid, col, tr.1), Vertex(ba, col, tr.0),
+        ]);
+    }
+
     #[inline]
     pub fn frame(&mut self, pass: usize, outer: Rect, inner: Rect, col: Colour) {
         let norm = Vec2::splat(0.0);
@@ -246,10 +280,10 @@ impl ShadedSquare {
         let dc = Vec2(dd.0, cc.1);
 
         let col = col.into();
-        let tt = (Vec2(0.0, -norm.0), Vec2(0.0, -norm.1));
-        let tl = (Vec2(-norm.0, 0.0), Vec2(-norm.1, 0.0));
-        let tb = (Vec2(0.0, norm.0), Vec2(0.0, norm.1));
-        let tr = (Vec2(norm.0, 0.0), Vec2(norm.1, 0.0));
+        let tt = (Vec2(0.0, -norm.1), Vec2(0.0, -norm.0));
+        let tl = (Vec2(-norm.1, 0.0), Vec2(-norm.0, 0.0));
+        let tb = (Vec2(0.0, norm.1), Vec2(0.0, norm.0));
+        let tr = (Vec2(norm.1, 0.0), Vec2(norm.0, 0.0));
 
         #[rustfmt::skip]
         self.add_vertices(pass, &[

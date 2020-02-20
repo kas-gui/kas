@@ -20,13 +20,13 @@ use kas::theme;
 pub enum ShadeStyle {
     /// Square corners, shading according to the given normals
     ///
-    /// Normal has two components, `(outer, inner)`, interpreted as the
+    /// Normal has two components, `(inner, outer)`, interpreted as the
     /// horizontal component of the direction vector outwards from the drawn
     /// feature. Both values are constrained to the closed range `[-1, 1]`.
     Square(Vec2),
     /// Round corners, shading according to the given normals
     ///
-    /// Normal has two components, `(outer, inner)`, interpreted as the
+    /// Normal has two components, `(inner, outer)`, interpreted as the
     /// horizontal component of the direction vector outwards from the drawn
     /// feature. Both values are constrained to the closed range `[-1, 1]`.
     Round(Vec2),
@@ -60,6 +60,9 @@ pub trait DrawExt: Draw {
         inner_radius: f32,
         col: Colour,
     );
+
+    /// Add a shaded square/circle to the draw buffer
+    fn shaded_box(&mut self, region: Self::Region, rect: Rect, style: ShadeStyle, col: Colour);
 
     /// Add a rounded shaded frame to the draw buffer.
     fn shaded_frame(
@@ -209,6 +212,14 @@ impl DrawExt for DrawPipe {
     ) {
         self.flat_round
             .rounded_frame(pass, outer, inner, inner_radius, col);
+    }
+
+    #[inline]
+    fn shaded_box(&mut self, pass: usize, rect: Rect, style: ShadeStyle, col: Colour) {
+        match style {
+            ShadeStyle::Square(norm) => self.shaded_square.shaded_rect(pass, rect, norm, col),
+            ShadeStyle::Round(norm) => self.shaded_round.circle(pass, rect, norm, col),
+        }
     }
 
     #[inline]

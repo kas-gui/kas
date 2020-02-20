@@ -138,7 +138,7 @@ impl<'a> DrawHandle<'a> {
     /// Return the inner rect.
     fn draw_edit_region(&mut self, mut outer: Rect, nav_col: Option<Colour>) -> Rect {
         let mut inner = outer.shrink(self.window.dims.frame);
-        let style = ShadeStyle::Square(Vec2(0.0, -0.8));
+        let style = ShadeStyle::Square(Vec2(-0.8, 0.0));
         self.draw
             .shaded_frame(self.pass, outer, inner, style, self.cols.background);
 
@@ -226,9 +226,9 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         let inner = self.draw_edit_region(rect + self.offset, nav_col);
 
-        // TODO: draw an X, not a square!
         if let Some(col) = self.cols.check_mark_state(highlights, checked) {
-            self.draw.rect(self.pass, inner, col);
+            let style = ShadeStyle::Square(Vec2(0.0, 0.4));
+            self.draw.shaded_box(self.pass, inner, style, col);
         }
     }
 
@@ -245,7 +245,8 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
         let inner = self.draw_edit_region(rect + self.offset, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(highlights, checked) {
-            self.draw.circle(self.pass, inner, 0.3, col);
+            let style = ShadeStyle::Round(Vec2(0.0, 1.0));
+            self.draw.shaded_box(self.pass, inner, style, col);
         }
     }
 
