@@ -198,20 +198,17 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     }
 
     fn button(&mut self, rect: Rect, highlights: HighlightState) {
-        let mut outer = rect + self.offset;
+        let outer = rect + self.offset;
         let col = self.cols.button_state(highlights);
 
         let inner = outer.shrink(self.window.dims.button_frame);
         self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
+        self.draw.rect(self.pass, inner, col);
 
         if let Some(col) = self.cols.nav_region(highlights) {
-            let diff = self.window.dims.button_frame - self.window.dims.margin;
-            outer = outer.shrink(diff);
-            // Note: we rely on this drawing *after* rounded_frame
-            self.draw.frame(self.pass, outer, inner, col);
+            let outer = outer.shrink(self.window.dims.button_frame / 3);
+            self.draw.rounded_frame(self.pass, outer, inner, 0.5, col);
         }
-
-        self.draw.rect(self.pass, inner, col);
     }
 
     fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {

@@ -177,20 +177,18 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
     }
 
     fn button(&mut self, rect: Rect, highlights: HighlightState) {
-        let mut outer = rect + self.offset;
+        let outer = rect + self.offset;
+        let inner = outer.shrink(self.window.dims.button_frame);
         let col = self.cols.button_state(highlights);
 
-        let mut inner = outer.shrink(self.window.dims.button_frame);
         let style = ShadeStyle::Round(Vec2(0.0, 0.6));
         self.draw.shaded_frame(self.pass, outer, inner, style, col);
+        self.draw.rect(self.pass, inner, col);
 
         if let Some(col) = self.cols.nav_region(highlights) {
-            outer = inner;
-            inner = outer.shrink(self.window.dims.margin);
-            self.draw.frame(self.pass, outer, inner, col);
+            let outer = outer.shrink(self.window.dims.button_frame / 3);
+            self.draw.rounded_frame(self.pass, outer, inner, 0.5, col);
         }
-
-        self.draw.rect(self.pass, inner, col);
     }
 
     fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
