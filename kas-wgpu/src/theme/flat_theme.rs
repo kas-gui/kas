@@ -226,10 +226,15 @@ impl<'a> theme::DrawHandle for DrawHandle<'a> {
 
         let inner = self.draw_edit_region(rect + self.offset, nav_col);
 
-        // TODO: draw an X, not a square!
         if let Some(col) = self.cols.check_mark_state(highlights, checked) {
-            let inner = inner.shrink(self.window.dims.margin);
-            self.draw.rect(self.pass, inner, col);
+            let radius = (inner.size.0 + inner.size.1) / 16;
+            let inner = inner.shrink(self.window.dims.margin + radius);
+            let p1 = inner.pos;
+            let p2 = inner.pos + inner.size;
+            let radius = radius as f32;
+            self.draw.rounded_line(self.pass, p1, p2, radius, col);
+            self.draw
+                .rounded_line(self.pass, Coord(p1.0, p2.1), Coord(p2.0, p1.1), radius, col);
         }
     }
 

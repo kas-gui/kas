@@ -9,7 +9,7 @@ use std::mem::size_of;
 
 use crate::draw::{Colour, Rgb, Vec2};
 use crate::shared::SharedState;
-use kas::geom::{Rect, Size};
+use kas::geom::{Coord, Rect, Size};
 
 /// Offset relative to the size of a pixel used by the fragment shader to
 /// implement multi-sampling.
@@ -176,6 +176,57 @@ impl FlatRound {
         v.clear();
     }
 
+    pub fn line(&mut self, pass: usize, p1: Coord, p2: Coord, radius: f32, col: Colour) {
+        if p1 == p2 {
+            let rect = Rect {
+                pos: p1 - Coord::uniform(radius as i32),
+                size: Size::uniform((radius * 2.0) as u32),
+            };
+            self.circle(pass, rect, radius, col);
+            return;
+        }
+
+        let col = col.into();
+
+        let p1 = Vec2::from(p1);
+        let p2 = Vec2::from(p2);
+        let vx = p2 - p1;
+        let vx = vx * radius / (vx.0 * vx.0 + vx.1 * vx.1).sqrt();
+        let vy = Vec2(-vx.1, vx.0);
+
+        let n0 = Vec2::splat(0.0);
+        let nb = (vx + vy).sign();
+        let na = -nb;
+
+        // Since we take the mid-point, all offsets are uniform
+        let p = Vec2::splat(OFFSET / radius);
+
+        let ma1 = Vertex(p1 - vy, col, 0.0, Vec2(0.0, na.1), p);
+        let mb1 = Vertex(p1 + vy, col, 0.0, Vec2(0.0, nb.1), p);
+        let aa1 = Vertex(ma1.0 - vx, col, 0.0, Vec2(na.0, na.1), p);
+        let ab1 = Vertex(mb1.0 - vx, col, 0.0, Vec2(na.0, nb.1), p);
+        let ma2 = Vertex(p2 - vy, col, 0.0, Vec2(0.0, na.1), p);
+        let mb2 = Vertex(p2 + vy, col, 0.0, Vec2(0.0, nb.1), p);
+        let ba2 = Vertex(ma2.0 + vx, col, 0.0, Vec2(nb.0, na.1), p);
+        let bb2 = Vertex(mb2.0 + vx, col, 0.0, Vec2(nb.0, nb.1), p);
+        let p1 = Vertex(p1, col, 0.0, n0, p);
+        let p2 = Vertex(p2, col, 0.0, n0, p);
+
+        #[rustfmt::skip]
+        self.add_vertices(pass, &[
+            ab1, p1, mb1,
+            aa1, p1, ab1,
+            ma1, p1, aa1,
+            mb1, p1, mb2,
+            mb2, p1, p2,
+            mb2, p2, bb2,
+            bb2, p2, ba2,
+            ba2, p2, ma2,
+            ma2, p2, p1,
+            p1, ma1, ma2,
+        ]);
+    }
+
     /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
     pub fn circle(&mut self, pass: usize, rect: Rect, inner_radius: f32, col: Colour) {
         let aa = Vec2::from(rect.pos);
@@ -195,26 +246,26 @@ impl FlatRound {
         let mid = (aa + bb) * 0.5;
 
         let n0 = Vec2::splat(0.0);
-        let nbb = (bb - aa).sign();
-        let naa = -nbb;
-        let nab = Vec2(naa.0, nbb.1);
-        let nba = Vec2(nbb.0, naa.1);
+        let nb = (bb - aa).sign();
+        let na = -nb;
+        let nab = Vec2(na.0, nb.1);
+        let nba = Vec2(nb.0, na.1);
 
         // Since we take the mid-point, all offsets are uniform
-        let p = nbb / (bb - mid) * OFFSET;
+        let p = nb / (bb - mid) * OFFSET;
 
-        let aa = Vertex(aa, col, inner, naa, p);
+        let aa = Vertex(aa, col, inner, na, p);
         let ab = Vertex(ab, col, inner, nab, p);
         let ba = Vertex(ba, col, inner, nba, p);
-        let bb = Vertex(bb, col, inner, nbb, p);
+        let bb = Vertex(bb, col, inner, nb, p);
         let mid = Vertex(mid, col, inner, n0, p);
 
         #[rustfmt::skip]
         self.add_vertices(pass, &[
-            aa, ba, mid,
-            mid, ba, bb,
-            bb, ab, mid,
-            mid, ab, aa,
+            ba, mid, aa,
+            bb, mid, ba,
+            ab, mid, bb,
+            aa, mid, ab,
         ]);
     }
 
@@ -256,19 +307,19 @@ impl FlatRound {
         let dc = Vec2(dd.0, cc.1);
 
         let n0 = Vec2::splat(0.0);
-        let nbb = (bb - aa).sign();
-        let naa = -nbb;
-        let nab = Vec2(naa.0, nbb.1);
-        let nba = Vec2(nbb.0, naa.1);
-        let na0 = Vec2(naa.0, 0.0);
-        let nb0 = Vec2(nbb.0, 0.0);
-        let n0a = Vec2(0.0, naa.1);
-        let n0b = Vec2(0.0, nbb.1);
+        let nb = (bb - aa).sign();
+        let na = -nb;
+        let nab = Vec2(na.0, nb.1);
+        let nba = Vec2(nb.0, na.1);
+        let na0 = Vec2(na.0, 0.0);
+        let nb0 = Vec2(nb.0, 0.0);
+        let n0a = Vec2(0.0, na.1);
+        let n0b = Vec2(0.0, nb.1);
 
-        let paa = naa / (aa - cc) * OFFSET;
+        let paa = na / (aa - cc) * OFFSET;
         let pab = nab / (ab - cd) * OFFSET;
         let pba = nba / (ba - dc) * OFFSET;
-        let pbb = nbb / (bb - dd) * OFFSET;
+        let pbb = nb / (bb - dd) * OFFSET;
 
         // We must add corners separately to ensure correct interpolation of dir
         // values, hence need 16 points:
@@ -287,8 +338,8 @@ impl FlatRound {
         let da = Vertex(Vec2(dd.0, aa.1), col, inner, n0a, pba);
         let db = Vertex(Vec2(dd.0, bb.1), col, inner, n0b, pbb);
 
-        let aa = Vertex(aa, col, inner, naa, paa);
-        let bb = Vertex(bb, col, inner, nbb, pbb);
+        let aa = Vertex(aa, col, inner, na, paa);
+        let bb = Vertex(bb, col, inner, nb, pbb);
         let cc = Vertex(cc, col, inner, n0, paa);
         let dd = Vertex(dd, col, inner, n0, pbb);
 

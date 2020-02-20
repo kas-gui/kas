@@ -34,6 +34,19 @@ pub enum ShadeStyle {
 
 /// Abstraction over drawing commands specific to `kas_wgpu`
 pub trait DrawExt: Draw {
+    /// Add a line with rounded ends to the draw buffer
+    ///
+    /// Note that for rectangular, axis-aligned lines, [`Draw::rect`] should be
+    /// preferred.
+    fn rounded_line(
+        &mut self,
+        region: Self::Region,
+        p1: Coord,
+        p2: Coord,
+        radius: f32,
+        col: Colour,
+    );
+
     /// Add a flat circle to the draw buffer
     ///
     /// More generally, this shape is an axis-aligned oval.
@@ -196,6 +209,11 @@ impl Draw for DrawPipe {
 }
 
 impl DrawExt for DrawPipe {
+    #[inline]
+    fn rounded_line(&mut self, pass: usize, p1: Coord, p2: Coord, radius: f32, col: Colour) {
+        self.flat_round.line(pass, p1, p2, radius, col);
+    }
+
     #[inline]
     fn circle(&mut self, pass: usize, rect: Rect, inner_radius: f32, col: Colour) {
         self.flat_round.circle(pass, rect, inner_radius, col);
