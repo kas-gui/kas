@@ -43,7 +43,7 @@ version = "0.21"
 optional = true
 
 [workspace]
-members = ["kas-macros", "kas-wgpu"]
+members = ["kas-macros", "kas-theme", "kas-wgpu"]
 
 [package.metadata.docs.rs]
 features = ["nightly"]

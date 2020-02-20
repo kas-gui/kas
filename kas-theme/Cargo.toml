@@ -1,0 +1,13 @@
+[package]
+name = "kas-theme"
+version = "0.0.0"
+authors = ["Diggory Hardy <git@dhardy.name>"]
+edition = "2018"
+license = "Apache-2.0"
+description = "KAS toolkit — theme support"
+keywords = ["gui"]
+categories = ["gui"]
+repository = "https://github.com/dhardy/kas"
+
+[dependencies]
+kas = { path = "..", version = "0.2.0" }
