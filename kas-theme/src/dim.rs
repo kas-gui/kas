@@ -10,11 +10,10 @@
 use std::any::Any;
 use std::f32;
 
-use crate::draw::DrawText;
-use crate::geom::Size;
-use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
-use crate::theme::{self, TextClass};
-use crate::Direction::{Horizontal, Vertical};
+use kas::draw::{self, DrawText, TextClass};
+use kas::geom::Size;
+use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
+use kas::Direction::{Horizontal, Vertical};
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -66,7 +65,7 @@ impl Dimensions {
     }
 }
 
-/// A convenient implementation of [`kas::theme::Window`]
+/// A convenient implementation of [`kas-theme::Window`]
 pub struct DimensionsWindow {
     pub dims: Dimensions,
 }
@@ -79,7 +78,7 @@ impl DimensionsWindow {
     }
 }
 
-impl<Draw: DrawText + 'static> theme::Window<Draw> for DimensionsWindow {
+impl<Draw: DrawText + 'static> crate::Window<Draw> for DimensionsWindow {
     #[cfg(not(feature = "gat"))]
     type SizeHandle = SizeHandle<'static, Draw>;
     #[cfg(feature = "gat")]
@@ -112,7 +111,7 @@ impl<'a, Draw> SizeHandle<'a, Draw> {
     }
 }
 
-impl<'a, Draw: DrawText> theme::SizeHandle for SizeHandle<'a, Draw> {
+impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
     fn outer_frame(&self) -> (Size, Size) {
         let f = self.dims.frame as u32;
         (Size::uniform(f), Size::uniform(f))

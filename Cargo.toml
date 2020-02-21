@@ -13,10 +13,6 @@ repository = "https://github.com/dhardy/kas"
 # Enables usage of unstable Rust features
 nightly = []
 
-# Use Generic Associated Types (experimental)
-# Currently (Feb 2020) compiler support is poor.
-gat = []
-
 # Enables documentation of APIs for toolkits and internal use.
 # This API is not intended for use by end-user applications and
 # thus is omitted from built documentation by default.
@@ -32,18 +28,13 @@ stack_dst = { version = "0.6", features = ["unsize"], optional = true }
 version = "0.2.0"
 path = "kas-macros"
 
-[dependencies.rusttype]
-# Dependency for the Font type. This is a temporary measure
-# (see notes on Theme::get_fonts).
-version = "0.8"
-
 [dependencies.winit]
 # Provides translations for several winit types
 version = "0.21"
 optional = true
 
 [workspace]
-members = ["kas-macros", "kas-wgpu"]
+members = ["kas-macros", "kas-theme", "kas-wgpu"]
 
 [package.metadata.docs.rs]
 features = ["nightly"]

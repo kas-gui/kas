@@ -7,8 +7,9 @@
 
 use std::mem::size_of;
 
-use crate::draw::{Colour, Rgb, Vec2};
+use crate::draw::{Rgb, Vec2};
 use crate::shared::SharedState;
+use kas::draw::Colour;
 use kas::geom::{Coord, Rect, Size};
 
 /// Offset relative to the size of a pixel used by the fragment shader to

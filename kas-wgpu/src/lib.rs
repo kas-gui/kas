@@ -3,23 +3,28 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Toolkit for kas
+//! Toolkit for KAS targeting winit + WebGPU
+//!
+//! This crate provides an implementation of KAS, using
+//! [WebGPU](https://github.com/gfx-rs/wgpu-rs) for GPU-based rendering.
+//!
+//! Windowing is provided by [winit](https://github.com/rust-windowing/winit/).
+//! Clipboard functionality is (currently) provided by
+//! [clipboard](https://crates.io/crates/clipboard).
 
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 
 pub mod draw;
 mod event_loop;
-mod font;
 mod options;
-mod resources;
 mod shared;
-pub mod theme;
 mod window;
 
 use std::{error, fmt};
 
 use kas::event::UpdateHandle;
 use kas::WindowId;
+use kas_theme::Theme;
 use winit::error::OsError;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
@@ -30,6 +35,7 @@ use window::Window;
 pub use options::Options;
 
 pub use kas;
+pub use kas_theme as theme;
 pub use wgpu_glyph as glyph;
 
 /// Possible failures from constructing a [`Toolkit`]
@@ -76,13 +82,13 @@ impl From<shaderc::Error> for Error {
 }
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
-pub struct Toolkit<T: kas::theme::Theme<DrawPipe>> {
+pub struct Toolkit<T: Theme<DrawPipe>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<(WindowId, Window<T::Window>)>,
     shared: SharedState<T>,
 }
 
-impl<T: kas::theme::Theme<DrawPipe> + 'static> Toolkit<T> {
+impl<T: Theme<DrawPipe> + 'static> Toolkit<T> {
     /// Construct a new instance with default options.
     ///
     /// Environment variables may affect option selection; see documentation

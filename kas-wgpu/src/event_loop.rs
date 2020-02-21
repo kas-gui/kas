@@ -14,14 +14,15 @@ use winit::event::{Event, StartCause};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 use winit::window as ww;
 
-use kas::{theme, TkAction};
+use kas::TkAction;
+use kas_theme::Theme;
 
 use crate::draw::DrawPipe;
 use crate::shared::{PendingAction, SharedState};
 use crate::{ProxyAction, Window, WindowId};
 
 /// Event-loop data structure (i.e. all run-time state)
-pub(crate) struct Loop<T: theme::Theme<DrawPipe>> {
+pub(crate) struct Loop<T: Theme<DrawPipe>> {
     /// Window states
     windows: HashMap<ww::WindowId, Window<T::Window>>,
     /// Translates our WindowId to winit's
@@ -32,7 +33,7 @@ pub(crate) struct Loop<T: theme::Theme<DrawPipe>> {
     resumes: Vec<(Instant, ww::WindowId)>,
 }
 
-impl<T: theme::Theme<DrawPipe>> Loop<T> {
+impl<T: Theme<DrawPipe>> Loop<T> {
     pub(crate) fn new(
         mut windows: Vec<(WindowId, Window<T::Window>)>,
         shared: SharedState<T>,

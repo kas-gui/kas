@@ -8,10 +8,10 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{Editable, HasText};
+use crate::draw::{DrawHandle, SizeHandle, TextClass, TextProperties};
 use crate::event::{Action, CursorIcon, Handler, Manager, ManagerState, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
 use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
 use kas::geom::Rect;
 

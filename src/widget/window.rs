@@ -7,11 +7,11 @@
 
 use std::fmt::{self, Debug};
 
+use crate::draw::SizeHandle;
 use crate::event::{Callback, Event, Handler, Manager, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout::{self};
 use crate::macros::Widget;
-use crate::theme::SizeHandle;
 use crate::{CoreData, LayoutData, Widget, WidgetId};
 
 /// The main instantiation of the [`Window`] trait.

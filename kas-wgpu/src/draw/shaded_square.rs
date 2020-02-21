@@ -8,8 +8,9 @@
 use std::f32;
 use std::mem::size_of;
 
-use crate::draw::{Colour, Rgb, Vec2};
+use crate::draw::{Rgb, Vec2};
 use crate::shared::SharedState;
+use kas::draw::Colour;
 use kas::geom::{Rect, Size};
 
 #[repr(C)]

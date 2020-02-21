@@ -9,11 +9,14 @@ use rusttype::Font;
 use std::collections::HashMap;
 use std::marker::Unsize;
 
-use kas::draw::Colour;
+use crate::{Theme, ThemeDst, WindowDst};
+use kas::draw::{Colour, DrawHandle};
 use kas::geom::Rect;
-use kas::theme::{self, StackDst, Theme, ThemeAction, ThemeApi, ThemeDst};
+use kas::{StackDst, ThemeAction, ThemeApi};
 
 /// Wrapper around mutliple themes, supporting run-time switching
+///
+/// This struct is currently gated behind the `stack_dst` feature.
 pub struct MultiTheme<Draw> {
     names: HashMap<String, usize>,
     themes: Vec<StackDst<dyn ThemeDst<Draw>>>,
@@ -72,8 +75,8 @@ impl<Draw> MultiThemeBuilder<Draw> {
 }
 
 impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
-    type Window = StackDst<dyn theme::WindowDst<Draw>>;
-    type DrawHandle = StackDst<dyn theme::DrawHandle>;
+    type Window = StackDst<dyn WindowDst<Draw>>;
+    type DrawHandle = StackDst<dyn DrawHandle>;
 
     fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window {
         self.themes[self.active].new_window(draw, dpi_factor)
@@ -88,7 +91,7 @@ impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
         draw: &'a mut Draw,
         window: &'a mut Self::Window,
         rect: Rect,
-    ) -> StackDst<dyn theme::DrawHandle> {
+    ) -> StackDst<dyn DrawHandle> {
         self.themes[self.active].draw_handle(draw, window, rect)
     }
 

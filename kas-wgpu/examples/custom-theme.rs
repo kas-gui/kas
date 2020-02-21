@@ -13,12 +13,13 @@ use kas::draw::Colour;
 use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::geom::Rect;
 use kas::macros::{make_widget, VoidMsg};
-use kas::theme::{Theme, ThemeAction, ThemeApi};
 use kas::widget::*;
+use kas::{ThemeAction, ThemeApi};
+use kas_theme::Theme;
 
-use kas_wgpu::draw::*;
+use kas_wgpu::draw::DrawPipe;
 use kas_wgpu::glyph::Font;
-use kas_wgpu::theme::ShadedTheme;
+use kas_theme::ShadedTheme;
 
 /// A demo theme
 ///

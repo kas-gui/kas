@@ -11,9 +11,8 @@ use std::cell::RefCell;
 use kas::class::HasText;
 use kas::event::{Manager, UpdateHandle, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
-use kas::theme::ThemeApi;
 use kas::widget::{Label, TextButton, Window};
-use kas::{Widget, WidgetCore};
+use kas::{ThemeApi, Widget, WidgetCore};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {
@@ -79,7 +78,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         },
     );
 
-    let mut theme = kas_wgpu::theme::ShadedTheme::new();
+    let mut theme = kas_theme::ShadedTheme::new();
     theme.set_font_size(24.0);
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window.clone())?;

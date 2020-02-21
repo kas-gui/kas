@@ -1,0 +1,31 @@
+[package]
+name = "kas-theme"
+version = "0.0.0"
+authors = ["Diggory Hardy <git@dhardy.name>"]
+edition = "2018"
+license = "Apache-2.0"
+description = "KAS toolkit — theme support"
+keywords = ["gui"]
+categories = ["gui"]
+repository = "https://github.com/dhardy/kas"
+
+[features]
+# Use Generic Associated Types (experimental)
+# Currently (Feb 2020) compiler support is poor.
+gat = []
+
+# Use stack_dst crate for sized unsized types
+stack_dst = ["kas/stack_dst"]
+
+[dependencies]
+lazy_static = "1.4.0"
+log = "0.4"
+
+[dependencies.kas]
+path = ".."
+version = "0.2.0"
+
+[dependencies.rusttype]
+# Dependency for the Font type. This is a temporary measure
+# (see notes on Theme::get_fonts).
+version = "0.8"

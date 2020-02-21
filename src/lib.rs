@@ -19,11 +19,6 @@
 //! -   widget rendering and sizing
 
 #![cfg_attr(feature = "nightly", feature(new_uninit))]
-#![cfg_attr(feature = "gat", feature(generic_associated_types))]
-#![feature(unsize)]
-
-#[cfg(all(feature = "gat", feature = "stack_dst"))]
-compile_error!("Crate features 'gat' and 'stack_dst' are incompatible.");
 
 extern crate kas_macros;
 extern crate self as kas; // required for reliable self-reference in kas_macros
@@ -39,7 +34,6 @@ pub mod draw;
 pub mod event;
 pub mod geom;
 pub mod layout;
-pub mod theme;
 pub mod widget;
 
 // macro re-exports
@@ -49,3 +43,12 @@ pub mod macros;
 pub use crate::data::*;
 pub use crate::toolkit::*;
 pub use crate::traits::*;
+
+#[cfg(feature = "stack_dst")]
+/// Fixed-size object of `Unsized` type
+///
+/// This is a re-export of
+/// [`stack_dst::ValueA`](https://docs.rs/stack_dst/0.6.0/stack_dst/struct.ValueA.html)
+/// with a custom size. The `new` and `new_or_boxed` methods provide a
+/// convenient API.
+pub type StackDst<T> = stack_dst::ValueA<T, [usize; 8]>;

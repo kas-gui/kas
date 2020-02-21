@@ -9,35 +9,9 @@ use rusttype::Font;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
-use super::{DrawHandle, SizeHandle, ThemeAction};
-use kas::draw::Colour;
+use kas::draw::{Colour, DrawHandle, SizeHandle};
 use kas::geom::Rect;
-
-/// Interface through which a theme can be adjusted at run-time
-///
-/// All methods return a [`ThemeAction`] to enable correct action when a theme
-/// is updated via [`Manager::adjust_theme`]. When adjusting a theme before
-/// the UI is started, this return value can be safely ignored.
-///
-/// [`Manager::adjust_theme`]: crate::event::Manager::adjust_theme
-pub trait ThemeApi {
-    /// Set font size. Default is 18. Units are unknown.
-    fn set_font_size(&mut self, size: f32) -> ThemeAction;
-
-    /// Change the colour scheme
-    ///
-    /// If no theme by this name is found, the theme is unchanged.
-    // TODO: revise scheme identification and error handling?
-    fn set_colours(&mut self, _scheme: &str) -> ThemeAction;
-
-    /// Change the theme itself
-    ///
-    /// Themes may do nothing, or may react according to their own
-    /// interpretation of this method.
-    fn set_theme(&mut self, _theme: &str) -> ThemeAction {
-        ThemeAction::None
-    }
-}
+use kas::ThemeApi;
 
 /// A *theme* provides widget sizing and drawing implementations.
 ///
@@ -152,18 +126,6 @@ pub trait Window<Draw> {
     fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle<'a>;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-impl<T: ThemeApi> ThemeApi for Box<T> {
-    fn set_font_size(&mut self, size: f32) -> ThemeAction {
-        self.deref_mut().set_font_size(size)
-    }
-    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
-        self.deref_mut().set_colours(scheme)
-    }
-    fn set_theme(&mut self, theme: &str) -> ThemeAction {
-        self.deref_mut().set_theme(theme)
-    }
 }
 
 impl<T: Theme<Draw>, Draw> Theme<Draw> for Box<T> {

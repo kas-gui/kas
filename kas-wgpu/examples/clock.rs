@@ -14,9 +14,8 @@ use std::time::Duration;
 
 use kas::class::HasText;
 use kas::event::Manager;
-use kas::theme::ThemeApi;
 use kas::widget::{Label, Window};
-use kas::{Widget, WidgetCore};
+use kas::{ThemeApi, Widget, WidgetCore};
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
@@ -57,7 +56,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     });
 
-    let mut theme = kas_wgpu::theme::FlatTheme::new();
+    let mut theme = kas_theme::FlatTheme::new();
     theme.set_font_size(32.0);
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;

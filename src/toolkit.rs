@@ -17,7 +17,7 @@
 use std::num::NonZeroU32;
 
 use crate::event::{CursorIcon, UpdateHandle};
-use crate::theme::{ThemeAction, ThemeApi};
+use crate::{ThemeAction, ThemeApi};
 
 /// Identifier for a window added to a toolkit
 ///

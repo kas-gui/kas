@@ -266,7 +266,7 @@ pub(crate) fn derive(
     let fns = quote! {
         fn size_rules(
             &mut self,
-            size_handle: &mut dyn kas::theme::SizeHandle,
+            size_handle: &mut dyn kas::draw::SizeHandle,
             mut axis: kas::layout::AxisInfo
         )
             -> kas::layout::SizeRules
@@ -293,7 +293,7 @@ pub(crate) fn derive(
 
         fn set_rect(
             &mut self,
-            size_handle: &mut dyn kas::theme::SizeHandle,
+            size_handle: &mut dyn kas::draw::SizeHandle,
             rect: kas::geom::Rect,
             _: kas::AlignHints,
         ) {
@@ -325,7 +325,7 @@ pub(crate) fn derive(
 
         fn draw(
             &self,
-            draw_handle: &mut dyn kas::theme::DrawHandle,
+            draw_handle: &mut dyn kas::draw::DrawHandle,
             mgr: &kas::event::ManagerState
         ) {
             use kas::{geom::Coord, WidgetCore};

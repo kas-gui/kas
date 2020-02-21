@@ -25,8 +25,6 @@ pub(crate) use shaded_round::ShadedRound;
 pub(crate) use shaded_square::ShadedSquare;
 pub(crate) use shaders::ShaderManager;
 
-pub use draw_pipe::{DrawExt, ShadeStyle};
-pub use kas::draw::{Colour, Draw, DrawText};
 pub use vector::{Quad, Vec2};
 
 /// 3-part colour data
@@ -48,7 +46,7 @@ impl From<kas::draw::Colour> for Rgb {
     }
 }
 
-/// Manager of draw pipes and implementor of [`Draw`]
+/// Manager of draw pipes and implementor of [`kas::draw::Draw`]
 pub struct DrawPipe {
     clip_regions: Vec<Rect>,
     flat_round: FlatRound,

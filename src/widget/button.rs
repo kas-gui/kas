@@ -9,11 +9,11 @@ use smallvec::SmallVec;
 use std::fmt::Debug;
 
 use crate::class::HasText;
+use crate::draw::{DrawHandle, SizeHandle, TextClass, TextProperties};
 use crate::event::{Action, Handler, Manager, ManagerState, Response, VirtualKeyCode};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{DrawHandle, SizeHandle, TextClass, TextProperties};
 use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore, WidgetId};
 
 /// A push-button with a text label

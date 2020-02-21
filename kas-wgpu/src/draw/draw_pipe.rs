@@ -11,88 +11,17 @@ use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
 use wgpu_glyph::GlyphBrushBuilder;
 
-use super::{Colour, Draw, DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
+use super::{DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
 use crate::shared::SharedState;
+use kas::draw::{Colour, Draw, DrawRounded, DrawShaded};
 use kas::geom::{Coord, Rect, Size};
-use kas::theme;
-
-/// Style of drawing
-pub enum ShadeStyle {
-    /// Square corners, shading according to the given normals
-    ///
-    /// Normal has two components, `(inner, outer)`, interpreted as the
-    /// horizontal component of the direction vector outwards from the drawn
-    /// feature. Both values are constrained to the closed range `[-1, 1]`.
-    Square(Vec2),
-    /// Round corners, shading according to the given normals
-    ///
-    /// Normal has two components, `(inner, outer)`, interpreted as the
-    /// horizontal component of the direction vector outwards from the drawn
-    /// feature. Both values are constrained to the closed range `[-1, 1]`.
-    Round(Vec2),
-}
-
-/// Abstraction over drawing commands specific to `kas_wgpu`
-pub trait DrawExt: Draw {
-    /// Add a line with rounded ends to the draw buffer
-    ///
-    /// Note that for rectangular, axis-aligned lines, [`Draw::rect`] should be
-    /// preferred.
-    fn rounded_line(
-        &mut self,
-        region: Self::Region,
-        p1: Coord,
-        p2: Coord,
-        radius: f32,
-        col: Colour,
-    );
-
-    /// Add a flat circle to the draw buffer
-    ///
-    /// More generally, this shape is an axis-aligned oval.
-    ///
-    /// The `inner_radius` parameter gives the inner radius relative to the
-    /// outer radius: a value of `0.0` will result in the whole shape being
-    /// painted, while `1.0` will result in a zero-width line on the outer edge.
-    fn circle(&mut self, region: Self::Region, rect: Rect, inner_radius: f32, col: Colour);
-
-    /// Add a rounded flat frame to the draw buffer.
-    ///
-    /// All drawing occurs within the `outer` rect and outside of the `inner`
-    /// rect. Corners are circular (or more generally, ovular), centered on the
-    /// inner corners.
-    ///
-    /// The `inner_radius` parameter gives the inner radius relative to the
-    /// outer radius: a value of `0.0` will result in the whole shape being
-    /// painted, while `1.0` will result in a zero-width line on the outer edge.
-    fn rounded_frame(
-        &mut self,
-        region: Self::Region,
-        outer: Rect,
-        inner: Rect,
-        inner_radius: f32,
-        col: Colour,
-    );
-
-    /// Add a shaded square/circle to the draw buffer
-    fn shaded_box(&mut self, region: Self::Region, rect: Rect, style: ShadeStyle, col: Colour);
-
-    /// Add a rounded shaded frame to the draw buffer.
-    fn shaded_frame(
-        &mut self,
-        region: Self::Region,
-        outer: Rect,
-        inner: Rect,
-        style: ShadeStyle,
-        col: Colour,
-    );
-}
+use kas_theme::Theme;
 
 impl DrawPipe {
     /// Construct
     // TODO: do we want to share state across windows? With glyph_brush this is
     // not trivial but with our "pipes" it shouldn't be difficult.
-    pub fn new<T: theme::Theme<Self>>(
+    pub fn new<T: Theme<Self>>(
         shared: &mut SharedState<T>,
         tex_format: wgpu::TextureFormat,
         size: Size,
@@ -208,7 +137,7 @@ impl Draw for DrawPipe {
     }
 }
 
-impl DrawExt for DrawPipe {
+impl DrawRounded for DrawPipe {
     #[inline]
     fn rounded_line(&mut self, pass: usize, p1: Coord, p2: Coord, radius: f32, col: Colour) {
         self.flat_round.line(pass, p1, p2, radius, col);
@@ -231,31 +160,44 @@ impl DrawExt for DrawPipe {
         self.flat_round
             .rounded_frame(pass, outer, inner, inner_radius, col);
     }
+}
 
+impl DrawShaded for DrawPipe {
     #[inline]
-    fn shaded_box(&mut self, pass: usize, rect: Rect, style: ShadeStyle, col: Colour) {
-        match style {
-            ShadeStyle::Square(norm) => self.shaded_square.shaded_rect(pass, rect, norm, col),
-            ShadeStyle::Round(norm) => self.shaded_round.circle(pass, rect, norm, col),
-        }
+    fn shaded_square(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour) {
+        self.shaded_square
+            .shaded_rect(region, rect, Vec2::from(norm), col);
     }
 
     #[inline]
-    fn shaded_frame(
+    fn shaded_circle(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour) {
+        self.shaded_round
+            .circle(region, rect, Vec2::from(norm), col);
+    }
+
+    #[inline]
+    fn shaded_square_frame(
         &mut self,
-        pass: usize,
+        region: Self::Region,
         outer: Rect,
         inner: Rect,
-        style: ShadeStyle,
+        norm: (f32, f32),
         col: Colour,
     ) {
-        match style {
-            ShadeStyle::Square(norm) => self
-                .shaded_square
-                .shaded_frame(pass, outer, inner, norm, col),
-            ShadeStyle::Round(norm) => self
-                .shaded_round
-                .shaded_frame(pass, outer, inner, norm, col),
-        }
+        self.shaded_square
+            .shaded_frame(region, outer, inner, Vec2::from(norm), col);
+    }
+
+    #[inline]
+    fn shaded_round_frame(
+        &mut self,
+        region: Self::Region,
+        outer: Rect,
+        inner: Rect,
+        norm: (f32, f32),
+        col: Colour,
+    ) {
+        self.shaded_round
+            .shaded_frame(region, outer, inner, Vec2::from(norm), col);
     }
 }

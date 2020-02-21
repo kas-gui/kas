@@ -28,6 +28,9 @@ pub struct ThemeColours {
 
 impl ThemeColours {
     /// Open the given scheme, if found
+    ///
+    /// TODO: the intention is that this method can read and cache data from
+    /// external resources. For now, we simply hard-code a few instances.
     pub fn open(scheme: &str) -> Option<Self> {
         Some(match scheme {
             "default" => Self::new(),

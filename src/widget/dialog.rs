@@ -8,11 +8,11 @@
 //! KAS dialog boxes are pre-configured windows, usually allowing some
 //! customisation.
 
+use crate::draw::SizeHandle;
 use crate::event::{Callback, Manager, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout;
 use crate::macros::{VoidMsg, Widget};
-use crate::theme::SizeHandle;
 use crate::widget::{Label, TextButton};
 use crate::{CoreData, TkAction, Window};
 
