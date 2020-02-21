@@ -92,7 +92,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     };
     let window = Window::new("Calculator", content);
 
-    let mut theme = kas_wgpu::theme::ShadedTheme::new();
+    let mut theme = kas_theme::ShadedTheme::new();
     theme.set_font_size(24.0);
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;

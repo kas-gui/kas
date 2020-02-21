@@ -19,7 +19,7 @@ use kas_theme::Theme;
 
 use kas_wgpu::draw::DrawPipe;
 use kas_wgpu::glyph::Font;
-use kas_wgpu::theme::ShadedTheme;
+use kas_theme::ShadedTheme;
 
 /// A demo theme
 ///

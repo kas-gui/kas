@@ -137,11 +137,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
 
     #[cfg(feature = "stack_dst")]
     let theme = kas_theme::MultiTheme::builder()
-        .add("shaded", kas_wgpu::theme::ShadedTheme::new())
-        .add("flat", kas_wgpu::theme::FlatTheme::new())
+        .add("shaded", kas_theme::ShadedTheme::new())
+        .add("flat", kas_theme::FlatTheme::new())
         .build();
     #[cfg(not(feature = "stack_dst"))]
-    let theme = kas_wgpu::theme::ShadedTheme::new();
+    let theme = kas_theme::ShadedTheme::new();
 
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
