@@ -3,7 +3,17 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! KAS Theme lib
+//! KAS theme support
+//!
+//! This crate allows widget rendering to be customised via themes,
+//! and provides mid-level draw implementations for widgets.
+//!
+//! Each [`Theme`] is expected to have [`Window`]-specific data,
+//! and provides an implementation of [`kas::draw::DrawHandle`].
+//!
+//! Two themes are provided by this trait: [`FlatTheme`] and [`ShadedTheme`].
+//! Additionally, a meta-theme, [`MultiTheme`], allows run-time switching
+//! between themes.
 
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![cfg_attr(feature = "stack_dst", feature(unsize))]

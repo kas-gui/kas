@@ -15,6 +15,8 @@ use kas::geom::Rect;
 use kas::{StackDst, ThemeAction, ThemeApi};
 
 /// Wrapper around mutliple themes, supporting run-time switching
+///
+/// This struct is currently gated behind the `stack_dst` feature.
 pub struct MultiTheme<Draw> {
     names: HashMap<String, usize>,
     themes: Vec<StackDst<dyn ThemeDst<Draw>>>,

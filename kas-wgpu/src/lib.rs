@@ -3,7 +3,14 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Toolkit for kas
+//! Toolkit for KAS targeting winit + WebGPU
+//!
+//! This crate provides an implementation of KAS, using
+//! [WebGPU](https://github.com/gfx-rs/wgpu-rs) for GPU-based rendering.
+//!
+//! Windowing is provided by [winit](https://github.com/rust-windowing/winit/).
+//! Clipboard functionality is (currently) provided by
+//! [clipboard](https://crates.io/crates/clipboard).
 
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 
