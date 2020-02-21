@@ -14,9 +14,8 @@ use std::time::Duration;
 
 use kas::class::HasText;
 use kas::event::Manager;
-use kas::theme::ThemeApi;
 use kas::widget::{Label, Window};
-use kas::{Widget, WidgetCore};
+use kas::{ThemeApi, Widget, WidgetCore};
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();

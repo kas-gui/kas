@@ -10,10 +10,9 @@
 use std::any::Any;
 use std::f32;
 
-use kas::draw::DrawText;
+use kas::draw::{self, DrawText, TextClass};
 use kas::geom::Size;
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
-use kas::theme::{self, TextClass};
 use kas::Direction::{Horizontal, Vertical};
 
 /// Parameterisation of [`Dimensions`]
@@ -112,7 +111,7 @@ impl<'a, Draw> SizeHandle<'a, Draw> {
     }
 }
 
-impl<'a, Draw: DrawText> theme::SizeHandle for SizeHandle<'a, Draw> {
+impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
     fn outer_frame(&self) -> (Size, Size) {
         let f = self.dims.frame as u32;
         (Size::uniform(f), Size::uniform(f))

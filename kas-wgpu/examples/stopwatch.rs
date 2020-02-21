@@ -12,9 +12,8 @@ use std::time::{Duration, Instant};
 use kas::class::HasText;
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
-use kas::theme::ThemeApi;
 use kas::widget::{Label, TextButton, Window};
-use kas::{Widget, WidgetCore};
+use kas::{ThemeApi, Widget, WidgetCore};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {

@@ -13,8 +13,8 @@ use kas::class::HasText;
 use kas::event::VirtualKeyCode as VK;
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
-use kas::theme::ThemeApi;
 use kas::widget::{EditBox, TextButton, Window};
+use kas::ThemeApi;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Key {

@@ -11,9 +11,8 @@ use std::cell::RefCell;
 use kas::class::HasText;
 use kas::event::{Manager, UpdateHandle, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
-use kas::theme::ThemeApi;
 use kas::widget::{Label, TextButton, Window};
-use kas::{Widget, WidgetCore};
+use kas::{ThemeApi, Widget, WidgetCore};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {

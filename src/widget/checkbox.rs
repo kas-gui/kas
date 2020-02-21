@@ -9,11 +9,11 @@ use std::fmt::{self, Debug};
 
 use super::Label;
 use crate::class::HasBool;
+use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{Action, Handler, Manager, ManagerState, Response, VoidMsg};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{DrawHandle, SizeHandle};
 use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
 
 /// A bare checkbox (no label)

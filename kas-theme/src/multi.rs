@@ -10,9 +10,9 @@ use std::collections::HashMap;
 use std::marker::Unsize;
 
 use crate::{Theme, ThemeDst, WindowDst};
-use kas::draw::Colour;
+use kas::draw::{Colour, DrawHandle};
 use kas::geom::Rect;
-use kas::theme::{DrawHandle, StackDst, ThemeAction, ThemeApi};
+use kas::{StackDst, ThemeAction, ThemeApi};
 
 /// Wrapper around mutliple themes, supporting run-time switching
 pub struct MultiTheme<Draw> {

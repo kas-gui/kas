@@ -9,8 +9,8 @@ use log::trace;
 use std::fmt;
 
 use super::{AxisInfo, SizeRules};
+use crate::draw::SizeHandle;
 use crate::geom::{Coord, Rect, Size};
-use crate::theme::SizeHandle;
 use crate::{
     AlignHints,
     Direction::{Horizontal, Vertical},

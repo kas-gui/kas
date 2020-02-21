@@ -8,13 +8,13 @@
 use std::fmt::Debug;
 
 use super::ScrollBar;
+use crate::draw::{DrawHandle, SizeHandle, TextClass};
 use crate::event::{
     Action, CursorIcon, Event, Handler, Manager, ManagerState, Response, ScrollDelta,
 };
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::theme::{DrawHandle, SizeHandle, TextClass};
 use crate::{AlignHints, Horizontal, Vertical};
 use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
 

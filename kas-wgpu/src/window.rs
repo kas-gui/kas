@@ -10,8 +10,7 @@ use std::time::Instant;
 
 use kas::event::{Callback, CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
-use kas::theme::{ThemeAction, ThemeApi};
-use kas::{TkAction, WindowId};
+use kas::{ThemeAction, ThemeApi, TkAction, WindowId};
 use kas_theme::Theme;
 use winit::dpi::PhysicalSize;
 use winit::error::OsError;

@@ -23,7 +23,6 @@ mod theme_dst;
 mod traits;
 
 pub use kas;
-pub use kas::theme::*;
 
 pub use col::ThemeColours;
 pub use dim::{Dimensions, DimensionsParams, DimensionsWindow};

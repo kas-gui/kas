@@ -5,10 +5,10 @@
 
 //! Filler widget
 
+use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::ManagerState;
 use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
 use crate::macros::Widget;
-use crate::theme::{DrawHandle, SizeHandle};
 use crate::{CoreData, Layout};
 
 /// A space filler

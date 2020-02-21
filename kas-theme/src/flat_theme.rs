@@ -11,11 +11,10 @@ use rusttype::Font;
 use std::f32;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
-use kas::draw::{Colour, Draw, DrawText};
+use kas::draw::{self, Colour, Draw, DrawText, TextClass, TextProperties};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
-use kas::theme::{self, TextClass, TextProperties, ThemeAction, ThemeApi};
-use kas::Direction;
+use kas::{Direction, ThemeAction, ThemeApi};
 
 /// A simple flat theme.
 #[derive(Clone, Debug)]
@@ -152,12 +151,12 @@ impl<'a, D: Draw> DrawHandle<'a, D> {
     }
 }
 
-impl<'a, D: Draw + DrawText> theme::DrawHandle for DrawHandle<'a, D> {
+impl<'a, D: Draw + DrawText> draw::DrawHandle for DrawHandle<'a, D> {
     fn clip_region(
         &mut self,
         rect: Rect,
         offset: Coord,
-        f: &mut dyn FnMut(&mut dyn theme::DrawHandle),
+        f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
         let rect = rect + self.offset;
         let pass = self.draw.add_clip_region(rect);

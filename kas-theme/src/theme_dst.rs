@@ -11,9 +11,9 @@ use std::ops::DerefMut;
 use rusttype::Font;
 
 use super::{Theme, Window};
-use kas::draw::Colour;
+use kas::draw::{Colour, DrawHandle, SizeHandle};
 use kas::geom::Rect;
-use kas::theme::{DrawHandle, SizeHandle, StackDst, ThemeApi};
+use kas::{StackDst, ThemeApi};
 
 /// As [`Theme`], but without associated types
 ///

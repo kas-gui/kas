@@ -9,9 +9,8 @@ use std::f32;
 use wgpu_glyph::{GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use crate::draw::{DrawPipe, Vec2};
-use kas::draw::{Colour, DrawText};
+use kas::draw::{Colour, DrawText, TextClass, TextProperties};
 use kas::geom::{Coord, Rect};
-use kas::theme::{TextClass, TextProperties};
 use kas::Align;
 
 impl DrawText for DrawPipe {

@@ -9,9 +9,9 @@ use rusttype::Font;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
-use kas::draw::Colour;
+use kas::draw::{Colour, DrawHandle, SizeHandle};
 use kas::geom::Rect;
-use kas::theme::{DrawHandle, SizeHandle, ThemeApi};
+use kas::ThemeApi;
 
 /// A *theme* provides widget sizing and drawing implementations.
 ///

@@ -7,10 +7,10 @@
 
 use std::time::Duration;
 
+use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{Action, Event, Manager, ManagerState, Response, UpdateHandle};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
-use crate::theme::{DrawHandle, SizeHandle};
 use crate::{AlignHints, CoreData, Layout, Widget, WidgetCore, WidgetId};
 
 /// Event-handling aspect of a widget.

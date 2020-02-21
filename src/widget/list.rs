@@ -7,12 +7,12 @@
 
 use std::iter;
 
+use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{Event, Handler, Manager, ManagerState, Response};
 use crate::geom::Coord;
 use crate::layout::{
     self, AxisInfo, Margins, RowPositionSolver, RulesSetter, RulesSolver, SizeRules,
 };
-use crate::theme::{DrawHandle, SizeHandle};
 use crate::{AlignHints, Directional, Horizontal, Vertical};
 use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
 use kas::geom::Rect;

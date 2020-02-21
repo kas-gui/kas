@@ -7,13 +7,13 @@
 
 use std::ops::{Deref, DerefMut};
 
-#[cfg(feature = "stack_dst")]
-use super::StackDst;
 use super::{TextClass, TextProperties};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::Direction;
+#[cfg(feature = "stack_dst")]
+use kas::StackDst;
 
 /// Handle passed to objects during draw and sizing operations
 pub trait SizeHandle {

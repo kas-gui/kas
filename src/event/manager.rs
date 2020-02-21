@@ -12,8 +12,7 @@ use std::time::{Duration, Instant};
 
 use super::*;
 use crate::geom::Coord;
-use crate::theme::{ThemeAction, ThemeApi};
-use crate::{TkAction, TkWindow, Widget, WidgetId, WindowId};
+use crate::{ThemeAction, ThemeApi, TkAction, TkWindow, Widget, WidgetId, WindowId};
 
 /// Highlighting state of a widget
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]

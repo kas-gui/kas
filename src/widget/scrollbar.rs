@@ -7,11 +7,11 @@
 
 use std::fmt::Debug;
 
+use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{CursorIcon, Event, Handler, Manager, ManagerState, PressSource, Response};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
 use crate::macros::Widget;
-use crate::theme::{DrawHandle, SizeHandle};
 use crate::{AlignHints, CoreData, Directional, Layout, WidgetCore, WidgetId};
 
 /// A scroll bar

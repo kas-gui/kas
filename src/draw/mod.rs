@@ -11,13 +11,16 @@
 //! All draw operations are batched and do not happen immediately.
 
 mod colour;
+mod handle;
+mod text;
 
 use std::any::Any;
 
 use crate::geom::{Coord, Rect};
-use crate::theme::TextProperties;
 
 pub use colour::Colour;
+pub use handle::{DrawHandle, SizeHandle};
+pub use text::{DrawText, TextClass, TextProperties};
 
 /// Abstraction over drawing commands
 ///
@@ -128,32 +131,4 @@ pub trait DrawShaded: Draw {
         norm: (f32, f32),
         col: Colour,
     );
-}
-
-/// Abstraction over text rendering
-///
-/// Note: the current API is designed to meet only current requirements since
-/// changes are expected to support external font shaping libraries.
-pub trait DrawText {
-    /// Simple text drawing
-    ///
-    /// This allows text to be drawn according to a high-level API, and should
-    /// satisfy most uses.
-    fn text(&mut self, rect: Rect, text: &str, font_scale: f32, props: TextProperties, col: Colour);
-
-    /// Calculate size bound on text
-    ///
-    /// This may be used with [`DrawText::text`] to calculate size requirements
-    /// within [`kas::Layout::size_rules`].
-    ///
-    /// Bounds of `(f32::INFINITY, f32::INFINITY)` may be used if there are no
-    /// constraints. This parameter allows forcing line-wrapping behaviour
-    /// within the given bounds.
-    fn text_bound(
-        &mut self,
-        text: &str,
-        font_scale: f32,
-        bounds: (f32, f32),
-        line_wrap: bool,
-    ) -> (f32, f32);
 }
