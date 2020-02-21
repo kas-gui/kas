@@ -11,7 +11,7 @@ use rusttype::Font;
 use std::f32;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
-use kas::draw::{self, Colour, Draw, DrawText, TextClass, TextProperties};
+use kas::draw::{self, Colour, Draw, DrawRounded, DrawText, TextClass, TextProperties};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
 use kas::{Direction, ThemeAction, ThemeApi};
@@ -49,7 +49,7 @@ pub struct DrawHandle<'a, D: Draw> {
     pass: <D as Draw>::Region,
 }
 
-impl<D: Draw + DrawText + 'static> Theme<D> for FlatTheme {
+impl<D: Draw + DrawRounded + DrawText + 'static> Theme<D> for FlatTheme {
     type Window = DimensionsWindow;
 
     #[cfg(not(feature = "gat"))]
@@ -129,7 +129,7 @@ impl ThemeApi for FlatTheme {
     }
 }
 
-impl<'a, D: Draw> DrawHandle<'a, D> {
+impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
     /// Draw an edit region with optional navigation highlight.
     /// Return the inner rect.
     fn draw_edit_region(&mut self, outer: Rect, nav_col: Option<Colour>) -> Rect {
@@ -151,7 +151,7 @@ impl<'a, D: Draw> DrawHandle<'a, D> {
     }
 }
 
-impl<'a, D: Draw + DrawText> draw::DrawHandle for DrawHandle<'a, D> {
+impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D> {
     fn clip_region(
         &mut self,
         rect: Rect,

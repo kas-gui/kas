@@ -13,7 +13,7 @@ use wgpu_glyph::GlyphBrushBuilder;
 
 use super::{DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
 use crate::shared::SharedState;
-use kas::draw::{Colour, Draw, DrawShaded};
+use kas::draw::{Colour, Draw, DrawRounded, DrawShaded};
 use kas::geom::{Coord, Rect, Size};
 use kas_theme::Theme;
 
@@ -127,23 +127,25 @@ impl Draw for DrawPipe {
     }
 
     #[inline]
-    fn rounded_line(&mut self, pass: usize, p1: Coord, p2: Coord, radius: f32, col: Colour) {
-        self.flat_round.line(pass, p1, p2, radius, col);
-    }
-
-    #[inline]
     fn rect(&mut self, region: Self::Region, rect: Rect, col: Colour) {
         self.shaded_square.rect(region, rect, col);
     }
 
     #[inline]
-    fn circle(&mut self, pass: usize, rect: Rect, inner_radius: f32, col: Colour) {
-        self.flat_round.circle(pass, rect, inner_radius, col);
+    fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour) {
+        self.shaded_square.frame(region, outer, inner, col);
+    }
+}
+
+impl DrawRounded for DrawPipe {
+    #[inline]
+    fn rounded_line(&mut self, pass: usize, p1: Coord, p2: Coord, radius: f32, col: Colour) {
+        self.flat_round.line(pass, p1, p2, radius, col);
     }
 
     #[inline]
-    fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour) {
-        self.shaded_square.frame(region, outer, inner, col);
+    fn circle(&mut self, pass: usize, rect: Rect, inner_radius: f32, col: Colour) {
+        self.flat_round.circle(pass, rect, inner_radius, col);
     }
 
     #[inline]

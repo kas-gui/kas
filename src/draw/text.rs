@@ -36,8 +36,14 @@ pub struct TextProperties {
 
 /// Abstraction over text rendering
 ///
+/// This trait is an extension over [`Draw`] providing basic text rendering.
+/// Rendering makes use of transparency and should occur last in
+/// implementations which buffer draw commands.
+///
 /// Note: the current API is designed to meet only current requirements since
 /// changes are expected to support external font shaping libraries.
+///
+/// [`Draw`]: super::Draw
 pub trait DrawText {
     /// Simple text drawing
     ///

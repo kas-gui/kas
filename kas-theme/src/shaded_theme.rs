@@ -11,7 +11,7 @@ use rusttype::Font;
 use std::f32;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
-use kas::draw::{self, Colour, Draw, DrawShaded, DrawText, TextClass, TextProperties};
+use kas::draw::{self, Colour, Draw, DrawRounded, DrawShaded, DrawText, TextClass, TextProperties};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
 use kas::{Direction, ThemeAction, ThemeApi};
@@ -51,7 +51,7 @@ pub struct DrawHandle<'a, D: Draw> {
 
 impl<D> Theme<D> for ShadedTheme
 where
-    D: Draw + DrawShaded + DrawText + 'static,
+    D: Draw + DrawRounded + DrawShaded + DrawText + 'static,
 {
     type Window = DimensionsWindow;
 
@@ -151,7 +151,10 @@ impl<'a, D: Draw + DrawShaded> DrawHandle<'a, D> {
     }
 }
 
-impl<'a, D: Draw + DrawShaded + DrawText> draw::DrawHandle for DrawHandle<'a, D> {
+impl<'a, D> draw::DrawHandle for DrawHandle<'a, D>
+where
+    D: Draw + DrawRounded + DrawShaded + DrawText + 'static,
+{
     fn clip_region(
         &mut self,
         rect: Rect,
