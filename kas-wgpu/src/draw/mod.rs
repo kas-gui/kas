@@ -46,7 +46,7 @@ impl From<kas::draw::Colour> for Rgb {
     }
 }
 
-/// Manager of draw pipes and implementor of [`Draw`]
+/// Manager of draw pipes and implementor of [`kas::draw::Draw`]
 pub struct DrawPipe {
     clip_regions: Vec<Rect>,
     flat_round: FlatRound,

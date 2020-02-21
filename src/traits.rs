@@ -339,7 +339,10 @@ pub enum ThemeAction {
     None,
     /// All windows require redrawing
     RedrawAll,
-    /// Theme sizes changed: must call [`Theme::update_window`] and resize
+    /// Theme sizes have changed
+    ///
+    /// This implies that per-window theme data must be updated
+    /// (via [`kas-theme::Theme::update_window`]) and all widgets resized.
     ThemeResize,
 }
 

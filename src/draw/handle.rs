@@ -16,6 +16,10 @@ use kas::Direction;
 use kas::StackDst;
 
 /// Handle passed to objects during draw and sizing operations
+///
+/// This handle is provided by the toolkit (usually via a theme implementation)
+/// in order to provide sizing information of the elements drawn by
+/// [`DrawHandle`].
 pub trait SizeHandle {
     /// Size of a frame around child widget(s)
     ///
@@ -72,6 +76,10 @@ pub trait SizeHandle {
 }
 
 /// Handle passed to objects during draw and sizing operations
+///
+/// This handle is provided by the toolkit (usually via a theme implementation)
+/// as a high-level drawing interface. See also the companion trait,
+/// [`SizeHandle`].
 pub trait DrawHandle {
     /// Construct a new draw-handle on a given region and pass to a callback.
     ///
@@ -84,10 +92,9 @@ pub trait DrawHandle {
 
     /// Target area for drawing
     ///
-    /// This is the `Rect` passed to [`Theme::draw_handle`] or
-    /// [`DrawHandle::clip_region`], minus any offsets.
-    ///
-    /// [`Theme::draw_handle`]: super::Theme::draw_handle
+    /// If this instance of [`DrawHandle`] was created via
+    /// [`DrawHandle::clip_region`], then this returns the `rect` passed to
+    /// that method; otherwise this returns the window's `rect`.
     fn target_rect(&self) -> Rect;
 
     /// Draw a frame in the given [`Rect`]
