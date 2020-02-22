@@ -1,6 +1,10 @@
 KAS Examples
 ==========
 
+Exmaples demonstrate various features of KAS.
+
+Note that screenshots may be outdated since themes, draw routines and layout code has been updated quite frequently.
+
 ### Gallery
 
 A gallery of all available widgets and themes.
