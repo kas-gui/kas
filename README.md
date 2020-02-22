@@ -3,6 +3,7 @@ KAS GUI
 
 [![home](https://img.shields.io/badge/GitHub-home-blue)](https://github.com/dhardy/kas)
 [![old-home](https://img.shields.io/badge/GitLab-old--home-blueviolet)](https://gitlab.com/dhardy/kas)
+[![Build Status](https://travis-ci.com/dhardy/kas.svg?branch=master)](https://travis-ci.com/dhardy/kas)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
 ![Minimum rustc version](https://img.shields.io/badge/rustc-nightly-lightgray.svg)
 
