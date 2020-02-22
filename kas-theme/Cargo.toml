@@ -15,11 +15,12 @@ repository = "https://github.com/dhardy/kas"
 gat = []
 
 # Use stack_dst crate for sized unsized types
-stack_dst = ["kas/stack_dst"]
+stack_dst = ["kas/stack_dst", "_dst"]
 
 [dependencies]
 lazy_static = "1.4.0"
 log = "0.4"
+_dst = { version = "0.6", package = "stack_dst", features = ["unsize"], optional = true }
 
 [dependencies.kas]
 path = ".."
@@ -29,3 +30,6 @@ version = "0.2.0"
 # Dependency for the Font type. This is a temporary measure
 # (see notes on Theme::get_fonts).
 version = "0.8"
+
+[package.metadata.docs.rs]
+features = ["stack_dst"]

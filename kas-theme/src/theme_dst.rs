@@ -10,16 +10,18 @@ use std::ops::DerefMut;
 
 use rusttype::Font;
 
-use super::{Theme, Window};
+use super::{StackDst, Theme, Window};
 use kas::draw::{Colour, DrawHandle, SizeHandle};
 use kas::geom::Rect;
-use kas::{StackDst, ThemeApi};
+use kas::ThemeApi;
 
 /// As [`Theme`], but without associated types
 ///
 /// This trait is implemented automatically for all implementations of
 /// [`Theme`]. It is intended only for use where a less parameterised
 /// trait is required.
+///
+/// **Feature gated**: this is only available with feature `stack_dst`.
 pub trait ThemeDst<Draw>: ThemeApi {
     /// Construct per-window storage
     ///
@@ -41,13 +43,26 @@ pub trait ThemeDst<Draw>: ThemeApi {
     ///
     /// This function is **unsafe** because the returned object requires a
     /// lifetime bound not exceeding that of all three pointers passed in.
-    /// The [`StackDst`] type is unable to represent this bound.
+    #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
         draw: &mut Draw,
         window: &mut dyn WindowDst<Draw>,
         rect: Rect,
     ) -> StackDst<dyn DrawHandle>;
+
+    /// Construct a [`DrawHandle`] object
+    ///
+    /// Uses a [`StackDst`] to avoid requiring an associated type.
+    ///
+    /// See also [`Theme::draw_handle`].
+    #[cfg(feature = "gat")]
+    fn draw_handle<'a>(
+        &'a self,
+        draw: &'a mut Draw,
+        window: &'a mut dyn WindowDst<Draw>,
+        rect: Rect,
+    ) -> StackDst<dyn DrawHandle + 'a>;
 
     /// Get the list of available fonts
     ///
@@ -65,6 +80,7 @@ pub trait ThemeDst<Draw>: ThemeApi {
     fn clear_colour(&self) -> Colour;
 }
 
+#[cfg(not(feature = "gat"))]
 impl<'a, T: Theme<Draw>, Draw> ThemeDst<Draw> for T
 where
     <T as Theme<Draw>>::DrawHandle: 'static,
@@ -103,22 +119,66 @@ where
     }
 }
 
+#[cfg(feature = "gat")]
+impl<'a, T: Theme<Draw>, Draw> ThemeDst<Draw> for T {
+    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<Draw>> {
+        StackDst::new_or_boxed(<T as Theme<Draw>>::new_window(self, draw, dpi_factor))
+    }
+
+    fn update_window(&self, window: &mut dyn WindowDst<Draw>, dpi_factor: f32) {
+        let window = window.as_any_mut().downcast_mut().unwrap();
+        self.update_window(window, dpi_factor);
+    }
+
+    fn draw_handle<'b>(
+        &'b self,
+        draw: &'b mut Draw,
+        window: &'b mut dyn WindowDst<Draw>,
+        rect: Rect,
+    ) -> StackDst<dyn DrawHandle + 'b> {
+        let window = window.as_any_mut().downcast_mut().unwrap();
+        let h = <T as Theme<Draw>>::draw_handle(self, draw, window, rect);
+        StackDst::new_or_boxed(h)
+    }
+
+    fn get_fonts<'b>(&self) -> Vec<Font<'b>> {
+        self.get_fonts()
+    }
+
+    fn light_direction(&self) -> (f32, f32) {
+        self.light_direction()
+    }
+
+    fn clear_colour(&self) -> Colour {
+        self.clear_colour()
+    }
+}
+
 /// As [`Window`], but without associated types
+///
+/// **Feature gated**: this is only available with feature `stack_dst`.
 pub trait WindowDst<Draw> {
     /// Construct a [`SizeHandle`] object
     ///
     /// The `draw` reference is guaranteed to be identical to the one used to
     /// construct this object.
     ///
-    /// Note: this function is marked **unsafe** because the returned object
-    /// requires a lifetime bound not exceeding that of all three pointers
-    /// passed in. This ought to be expressible using generic associated types
-    /// but currently is not: https://github.com/rust-lang/rust/issues/67089
+    /// This function is **unsafe** because the returned object requires a
+    /// lifetime bound not exceeding that of all three pointers passed in.
+    #[cfg(not(feature = "gat"))]
     unsafe fn size_handle(&mut self, draw: &mut Draw) -> StackDst<dyn SizeHandle>;
+
+    /// Construct a [`SizeHandle`] object
+    ///
+    /// The `draw` reference is guaranteed to be identical to the one used to
+    /// construct this object.
+    #[cfg(feature = "gat")]
+    fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> StackDst<dyn SizeHandle + 'a>;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
+#[cfg(not(feature = "gat"))]
 impl<W: Window<Draw>, Draw> WindowDst<Draw> for W
 where
     <W as Window<Draw>>::SizeHandle: 'static,
@@ -133,10 +193,31 @@ where
     }
 }
 
-impl<Draw> Window<Draw> for StackDst<dyn WindowDst<Draw>> {
-    type SizeHandle = StackDst<dyn SizeHandle>;
+#[cfg(feature = "gat")]
+impl<W: Window<Draw>, Draw> WindowDst<Draw> for W {
+    fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> StackDst<dyn SizeHandle + 'a> {
+        let h = <W as Window<Draw>>::size_handle(self, draw);
+        StackDst::new_or_boxed(h)
+    }
 
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self.as_any_mut()
+    }
+}
+
+impl<Draw> Window<Draw> for StackDst<dyn WindowDst<Draw>> {
+    #[cfg(not(feature = "gat"))]
+    type SizeHandle = StackDst<dyn SizeHandle>;
+    #[cfg(feature = "gat")]
+    type SizeHandle<'a> = StackDst<dyn SizeHandle + 'a>;
+
+    #[cfg(not(feature = "gat"))]
     unsafe fn size_handle(&mut self, draw: &mut Draw) -> Self::SizeHandle {
+        self.deref_mut().size_handle(draw)
+    }
+
+    #[cfg(feature = "gat")]
+    fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle<'a> {
         self.deref_mut().size_handle(draw)
     }
 

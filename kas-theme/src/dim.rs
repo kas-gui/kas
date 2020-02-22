@@ -65,7 +65,7 @@ impl Dimensions {
     }
 }
 
-/// A convenient implementation of [`kas-theme::Window`]
+/// A convenient implementation of [`crate::Window`]
 pub struct DimensionsWindow {
     pub dims: Dimensions,
 }

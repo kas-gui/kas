@@ -1,0 +1,24 @@
+language: rust
+sudo: false
+
+# Currently we only support nightly rustc
+rust: nightly
+
+script:
+  - cargo test --all-features
+  - cargo test --manifest-path kas-macros/Cargo.toml --all-features
+  - cargo test --manifest-path kas-theme/Cargo.toml --all-features
+  - cargo test --manifest-path kas-wgpu/Cargo.toml
+  - cargo test --manifest-path kas-wgpu/Cargo.toml --features stack_dst
+  - cargo test --manifest-path kas-wgpu/Cargo.toml --all-features
+  - cargo doc --features winit,stack_dst --no-deps
+  - cargo doc --manifest-path kas-theme/Cargo.toml --features stack_dst --no-deps
+  - cargo doc --manifest-path kas-wgpu/Cargo.toml --features stack_dst --no-deps
+
+matrix:
+  include:
+    - name: "Linux nightly"
+      os: linux
+
+    - name: "OSX nightly"
+      os: osx

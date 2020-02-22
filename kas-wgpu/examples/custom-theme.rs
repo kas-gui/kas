@@ -17,9 +17,9 @@ use kas::widget::*;
 use kas::{ThemeAction, ThemeApi};
 use kas_theme::Theme;
 
+use kas_theme::ShadedTheme;
 use kas_wgpu::draw::DrawPipe;
 use kas_wgpu::glyph::Font;
-use kas_theme::ShadedTheme;
 
 /// A demo theme
 ///

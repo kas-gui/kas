@@ -9,20 +9,23 @@ use rusttype::Font;
 use std::collections::HashMap;
 use std::marker::Unsize;
 
-use crate::{Theme, ThemeDst, WindowDst};
+use crate::{StackDst, Theme, ThemeDst, WindowDst};
 use kas::draw::{Colour, DrawHandle};
 use kas::geom::Rect;
-use kas::{StackDst, ThemeAction, ThemeApi};
+use kas::{ThemeAction, ThemeApi};
 
 /// Wrapper around mutliple themes, supporting run-time switching
 ///
-/// This struct is currently gated behind the `stack_dst` feature.
+/// **Feature gated**: this is only available with feature `stack_dst`.
 pub struct MultiTheme<Draw> {
     names: HashMap<String, usize>,
     themes: Vec<StackDst<dyn ThemeDst<Draw>>>,
     active: usize,
 }
 
+/// Builder for [`MultiTheme`]
+///
+/// Construct via [`MultiTheme::builder`].
 pub struct MultiThemeBuilder<Draw> {
     names: HashMap<String, usize>,
     themes: Vec<StackDst<dyn ThemeDst<Draw>>>,
@@ -76,7 +79,11 @@ impl<Draw> MultiThemeBuilder<Draw> {
 
 impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
     type Window = StackDst<dyn WindowDst<Draw>>;
+
+    #[cfg(not(feature = "gat"))]
     type DrawHandle = StackDst<dyn DrawHandle>;
+    #[cfg(feature = "gat")]
+    type DrawHandle<'a> = StackDst<dyn DrawHandle + 'a>;
 
     fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window {
         self.themes[self.active].new_window(draw, dpi_factor)
@@ -86,12 +93,23 @@ impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
         self.themes[self.active].update_window(window, dpi_factor);
     }
 
+    #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle<'a>(
         &'a self,
         draw: &'a mut Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> StackDst<dyn DrawHandle> {
+        self.themes[self.active].draw_handle(draw, window, rect)
+    }
+
+    #[cfg(feature = "gat")]
+    fn draw_handle<'a>(
+        &'a self,
+        draw: &'a mut Draw,
+        window: &'a mut Self::Window,
+        rect: Rect,
+    ) -> StackDst<dyn DrawHandle + 'a> {
         self.themes[self.active].draw_handle(draw, window, rect)
     }
 

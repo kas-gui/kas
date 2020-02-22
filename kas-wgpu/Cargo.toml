@@ -10,7 +10,7 @@ categories = ["gui"]
 repository = "https://github.com/dhardy/kas"
 
 [features]
-default = ["clipboard", "font-kit"]
+default = ["clipboard", "font-kit", "stack_dst"]
 
 # Use Generic Associated Types (experimental)
 gat = ["kas-theme/gat"]
@@ -37,3 +37,6 @@ optional = true
 [dev-dependencies]
 chrono = "0.4"
 env_logger = "0.7"
+
+[package.metadata.docs.rs]
+features = ["stack_dst"]

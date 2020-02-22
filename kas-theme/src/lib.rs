@@ -18,17 +18,14 @@
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![cfg_attr(feature = "stack_dst", feature(unsize))]
 
-#[cfg(all(feature = "gat", feature = "stack_dst"))]
-compile_error!("Crate features 'gat' and 'stack_dst' are incompatible.");
-
 mod col;
 mod dim;
 mod flat_theme;
 mod font;
-#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
+#[cfg(feature = "stack_dst")]
 mod multi;
 mod shaded_theme;
-#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
+#[cfg(feature = "stack_dst")]
 mod theme_dst;
 mod traits;
 
@@ -38,9 +35,20 @@ pub use col::ThemeColours;
 pub use dim::{Dimensions, DimensionsParams, DimensionsWindow};
 pub use flat_theme::FlatTheme;
 pub use font::get_font;
-#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
-pub use multi::MultiTheme;
+#[cfg(feature = "stack_dst")]
+pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use shaded_theme::ShadedTheme;
-#[cfg(all(feature = "stack_dst", not(feature = "gat")))]
+#[cfg(feature = "stack_dst")]
 pub use theme_dst::{ThemeDst, WindowDst};
 pub use traits::{Theme, Window};
+
+#[cfg(feature = "stack_dst")]
+/// Fixed-size object of `Unsized` type
+///
+/// This is a re-export of
+/// [`stack_dst::ValueA`](https://docs.rs/stack_dst/0.6.0/stack_dst/struct.ValueA.html)
+/// with a custom size. The `new` and `new_or_boxed` methods provide a
+/// convenient API.
+///
+/// **Feature gated**: this is only available with feature `stack_dst`.
+pub type StackDst<T> = _dst::ValueA<T, [usize; 8]>;

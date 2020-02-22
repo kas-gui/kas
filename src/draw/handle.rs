@@ -12,8 +12,6 @@ use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::Direction;
-#[cfg(feature = "stack_dst")]
-use kas::StackDst;
 
 /// Handle passed to objects during draw and sizing operations
 ///
@@ -171,7 +169,10 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
 }
 
 #[cfg(feature = "stack_dst")]
-impl SizeHandle for StackDst<dyn SizeHandle> {
+impl<S> SizeHandle for stack_dst::ValueA<dyn SizeHandle, S>
+where
+    S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
+{
     fn outer_frame(&self) -> (Size, Size) {
         self.deref().outer_frame()
     }
@@ -238,7 +239,10 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
 }
 
 #[cfg(feature = "stack_dst")]
-impl DrawHandle for StackDst<dyn DrawHandle> {
+impl<S> DrawHandle for stack_dst::ValueA<dyn DrawHandle, S>
+where
+    S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
+{
     fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
         self.deref_mut().clip_region(rect, offset, f)
     }
