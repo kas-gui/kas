@@ -43,14 +43,3 @@ pub mod macros;
 pub use crate::data::*;
 pub use crate::toolkit::*;
 pub use crate::traits::*;
-
-#[cfg(feature = "stack_dst")]
-/// Fixed-size object of `Unsized` type
-///
-/// This is a re-export of
-/// [`stack_dst::ValueA`](https://docs.rs/stack_dst/0.6.0/stack_dst/struct.ValueA.html)
-/// with a custom size. The `new` and `new_or_boxed` methods provide a
-/// convenient API.
-///
-/// **Feature gated**: this is only available with feature `stack_dst`.
-pub type StackDst<T> = stack_dst::ValueA<T, [usize; 8]>;

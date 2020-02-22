@@ -41,3 +41,14 @@ pub use shaded_theme::ShadedTheme;
 #[cfg(feature = "stack_dst")]
 pub use theme_dst::{ThemeDst, WindowDst};
 pub use traits::{Theme, Window};
+
+#[cfg(feature = "stack_dst")]
+/// Fixed-size object of `Unsized` type
+///
+/// This is a re-export of
+/// [`stack_dst::ValueA`](https://docs.rs/stack_dst/0.6.0/stack_dst/struct.ValueA.html)
+/// with a custom size. The `new` and `new_or_boxed` methods provide a
+/// convenient API.
+///
+/// **Feature gated**: this is only available with feature `stack_dst`.
+pub type StackDst<T> = _dst::ValueA<T, [usize; 8]>;

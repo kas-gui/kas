@@ -10,10 +10,10 @@ use std::ops::DerefMut;
 
 use rusttype::Font;
 
-use super::{Theme, Window};
+use super::{StackDst, Theme, Window};
 use kas::draw::{Colour, DrawHandle, SizeHandle};
 use kas::geom::Rect;
-use kas::{StackDst, ThemeApi};
+use kas::ThemeApi;
 
 /// As [`Theme`], but without associated types
 ///

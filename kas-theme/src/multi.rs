@@ -9,10 +9,10 @@ use rusttype::Font;
 use std::collections::HashMap;
 use std::marker::Unsize;
 
-use crate::{Theme, ThemeDst, WindowDst};
+use crate::{StackDst, Theme, ThemeDst, WindowDst};
 use kas::draw::{Colour, DrawHandle};
 use kas::geom::Rect;
-use kas::{StackDst, ThemeAction, ThemeApi};
+use kas::{ThemeAction, ThemeApi};
 
 /// Wrapper around mutliple themes, supporting run-time switching
 ///
