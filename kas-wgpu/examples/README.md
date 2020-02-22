@@ -1,0 +1,74 @@
+KAS Examples
+==========
+
+### Gallery
+
+A gallery of all available widgets. (Currently not very many, because the focus
+has been on features and extensibility, not writing widgets.)
+
+![Gallery](../../gallery.png)
+
+### Hello
+
+A message box.
+
+![Hello](../../screenshots/hello.png)
+
+### Clock
+
+A very simple clock.
+
+![Clock](../../screenshots/clock.png)
+
+### Counter
+
+(Almost) the simplest interactive example possible: a counter with push-buttons.
+
+**Variant:** `sync-counter` opens two windows with a synchronised counter.
+
+![Counter](../../screenshots/counter.png)
+
+### Stopwatch
+
+Ready? Set! Go!
+
+![Stopwatch](../../screenshots/stopwatch.png)
+
+### Calculator
+
+A simple calculator, with (limited) keyboard support.
+
+![Calculator](../../screenshots/calculator.png)
+
+### Dynamic
+
+An example with dynamic contents. Doubles as a performance tester for how many
+widgets are viable in a window (beyond around 10'000, init/resizing is slow but
+interaction is still fast).
+
+![Dynamic](../../screenshots/dynamic.png)
+
+### Layout
+
+Demonstration of complex layout setting. Resizing is a little slow due to the
+text layout engine (may be improved in the future).
+
+![Layout](../../screenshots/layout.png)
+
+### Custom theme
+
+An example demonstrating a custom theme implementation.
+Pretty useless, but hey, funky background colours!
+
+![Custom theme](../../screenshots/theme.png)
+
+Copyright and Licence
+-------
+
+The <COPYRIGHT> file includes a list of contributors who claim copyright on this
+project. This list may be incomplete; new contributors may optionally add
+themselves to this list.
+
+The KAS library is published under the terms of the Apache License, Version 2.0.
+You may obtain a copy of this licence from the <LICENSE-APACHE> file or on
+the following webpage: <https://www.apache.org/licenses/LICENSE-2.0>

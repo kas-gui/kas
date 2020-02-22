@@ -25,10 +25,12 @@ Portability is somewhat limited, requiring nightly Rust and [`wgpu`] support.
 
 -   `kas`: the *core* of the GUI library, providing most interfaces and logic
     along with a selection of common widgets
--   `kas_macros`: a helper crate providing the procedural macros used by `kas`
--   `kas_wgpu`: provides windowing via [`winit`] and rendering via [`wgpu`]
--   `kas_widgets`: (unrealised) - providing extra widgets
--   `kas_graphs`: (unrealised) - plotting widgets
+-   `kas-macros`: a helper crate providing the procedural macros used by `kas`
+-   `kas-theme`: theming support for KAS (API plus a couple of standard themes,
+    at least for now)
+-   `kas-wgpu`: provides windowing via [`winit`] and rendering via [`wgpu`]
+-   `kas-widgets`: (unrealised) - providing extra widgets
+-   `kas-graphs`: (unrealised) - plotting widgets
 
 A user depends on `kas` to write their complete UI specification, and then
 pastes a few lines of code to initialise `kas_wgpu::Toolkit`, choose a theme,
@@ -40,6 +42,8 @@ add window(s), and run the UI.
 
 Examples
 ---------
+
+For details, see [kas-wgpu/examples/README.md][].
 
 ![Calculator](screenshots/calculator.png) ![Dynamic](screenshots/dynamic.png)
 ![Stopwatch and Custom-Theme](screenshots/stopwatch-and-theme.png) ![Gallery](screenshots/gallery.png)
