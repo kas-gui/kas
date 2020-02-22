@@ -76,7 +76,11 @@ impl<Draw> MultiThemeBuilder<Draw> {
 
 impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
     type Window = StackDst<dyn WindowDst<Draw>>;
+
+    #[cfg(not(feature = "gat"))]
     type DrawHandle = StackDst<dyn DrawHandle>;
+    #[cfg(feature = "gat")]
+    type DrawHandle<'a> = StackDst<dyn DrawHandle + 'a>;
 
     fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window {
         self.themes[self.active].new_window(draw, dpi_factor)
@@ -86,12 +90,23 @@ impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
         self.themes[self.active].update_window(window, dpi_factor);
     }
 
+    #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle<'a>(
         &'a self,
         draw: &'a mut Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> StackDst<dyn DrawHandle> {
+        self.themes[self.active].draw_handle(draw, window, rect)
+    }
+
+    #[cfg(feature = "gat")]
+    fn draw_handle<'a>(
+        &'a self,
+        draw: &'a mut Draw,
+        window: &'a mut Self::Window,
+        rect: Rect,
+    ) -> StackDst<dyn DrawHandle + 'a> {
         self.themes[self.active].draw_handle(draw, window, rect)
     }
 
