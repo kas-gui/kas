@@ -83,6 +83,20 @@ Features
 -   Memory and CPU efficient
 
 
+Optional features
+-------
+
+This crate has the following feature flags:
+
+-   `internal_doc`: turns on some extra documentation intended for internal
+    usage but not for end users. (This only affects documentation.)
+-   `nightly`: enables `new_uninit` feature to support cloning of
+    `Box<dyn Handler>` objects
+-   `winit`: adds compatibility code for winit's event and geometry types.
+    Compatibility with other event sources is currently incomplete (TODO).
+-   `stack_dst`: some compatibility impls (see `kas-theme`'s documentation)
+
+
 Copyright and Licence
 -------
 
