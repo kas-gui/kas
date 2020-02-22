@@ -3,6 +3,8 @@ KAS GUI
 
 [![home](https://img.shields.io/badge/GitHub-home-blue)](https://github.com/dhardy/kas)
 [![old-home](https://img.shields.io/badge/GitLab-old--home-blueviolet)](https://gitlab.com/dhardy/kas)
+[![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
+![Minimum rustc version](https://img.shields.io/badge/rustc-nightly-lightgray.svg)
 
 KAS, the *toolKit Abstraction System*, is a general-purpose GUI toolkit.
 **Goals** of the project are:
@@ -43,7 +45,7 @@ add window(s), and run the UI.
 Examples
 ---------
 
-For details, see [kas-wgpu/examples/README.md][].
+For details, see the [Examples README](kas-wgpu/examples/README.md).
 
 ![Calculator](screenshots/calculator.png) ![Dynamic](screenshots/dynamic.png)
 ![Stopwatch and Custom-Theme](screenshots/stopwatch-and-theme.png) ![Gallery](screenshots/gallery.png)
