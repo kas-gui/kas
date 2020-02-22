@@ -6,7 +6,7 @@ KAS Examples
 A gallery of all available widgets. (Currently not very many, because the focus
 has been on features and extensibility, not writing widgets.)
 
-![Gallery](../../gallery.png)
+![Gallery](../../screenshots/gallery.png)
 
 ### Hello
 
