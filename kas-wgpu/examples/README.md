@@ -3,8 +3,7 @@ KAS Examples
 
 ### Gallery
 
-A gallery of all available widgets. (Currently not very many, because the focus
-has been on features and extensibility, not writing widgets.)
+A gallery of all available widgets and themes.
 
 ![Gallery](../../screenshots/gallery.png)
 
