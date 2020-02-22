@@ -29,3 +29,6 @@ version = "0.2.0"
 # Dependency for the Font type. This is a temporary measure
 # (see notes on Theme::get_fonts).
 version = "0.8"
+
+[package.metadata.docs.rs]
+features = ["stack_dst"]

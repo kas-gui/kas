@@ -16,13 +16,16 @@ use kas::{StackDst, ThemeAction, ThemeApi};
 
 /// Wrapper around mutliple themes, supporting run-time switching
 ///
-/// This struct is currently gated behind the `stack_dst` feature.
+/// **Feature gated**: this is only available with feature `stack_dst`.
 pub struct MultiTheme<Draw> {
     names: HashMap<String, usize>,
     themes: Vec<StackDst<dyn ThemeDst<Draw>>>,
     active: usize,
 }
 
+/// Builder for [`MultiTheme`]
+///
+/// Construct via [`MultiTheme::builder`].
 pub struct MultiThemeBuilder<Draw> {
     names: HashMap<String, usize>,
     themes: Vec<StackDst<dyn ThemeDst<Draw>>>,

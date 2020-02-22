@@ -36,7 +36,7 @@ pub use dim::{Dimensions, DimensionsParams, DimensionsWindow};
 pub use flat_theme::FlatTheme;
 pub use font::get_font;
 #[cfg(feature = "stack_dst")]
-pub use multi::MultiTheme;
+pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use shaded_theme::ShadedTheme;
 #[cfg(feature = "stack_dst")]
 pub use theme_dst::{ThemeDst, WindowDst};

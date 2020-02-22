@@ -20,6 +20,8 @@ use kas::{StackDst, ThemeApi};
 /// This trait is implemented automatically for all implementations of
 /// [`Theme`]. It is intended only for use where a less parameterised
 /// trait is required.
+///
+/// **Feature gated**: this is only available with feature `stack_dst`.
 pub trait ThemeDst<Draw>: ThemeApi {
     /// Construct per-window storage
     ///
@@ -153,6 +155,8 @@ impl<'a, T: Theme<Draw>, Draw> ThemeDst<Draw> for T {
 }
 
 /// As [`Window`], but without associated types
+///
+/// **Feature gated**: this is only available with feature `stack_dst`.
 pub trait WindowDst<Draw> {
     /// Construct a [`SizeHandle`] object
     ///

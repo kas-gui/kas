@@ -37,3 +37,6 @@ optional = true
 [dev-dependencies]
 chrono = "0.4"
 env_logger = "0.7"
+
+[package.metadata.docs.rs]
+features = ["stack_dst"]
