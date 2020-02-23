@@ -19,6 +19,8 @@ matrix:
   include:
     - name: "Linux nightly"
       os: linux
+      before_install:
+        - sudo apt-get -y install libxcb-shape0-dev libxcb-xfixes0-dev
 
     - name: "OSX nightly"
       os: osx
