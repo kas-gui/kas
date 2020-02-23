@@ -8,8 +8,6 @@
 use std::any::Any;
 use std::ops::DerefMut;
 
-use rusttype::Font;
-
 use super::{StackDst, Theme, Window};
 use kas::draw::{Colour, DrawHandle, SizeHandle};
 use kas::geom::Rect;
@@ -23,6 +21,11 @@ use kas::ThemeApi;
 ///
 /// **Feature gated**: this is only available with feature `stack_dst`.
 pub trait ThemeDst<Draw>: ThemeApi {
+    /// Theme initialisation
+    ///
+    /// See also [`Theme::init`].
+    fn init(&mut self, draw: &mut Draw);
+
     /// Construct per-window storage
     ///
     /// Uses a [`StackDst`] to avoid requiring an associated type.
@@ -64,11 +67,6 @@ pub trait ThemeDst<Draw>: ThemeApi {
         rect: Rect,
     ) -> StackDst<dyn DrawHandle + 'a>;
 
-    /// Get the list of available fonts
-    ///
-    /// See also [`Theme::get_fonts`].
-    fn get_fonts<'a>(&self) -> Vec<Font<'a>>;
-
     /// Background colour
     ///
     /// See also [`Theme::clear_colour`].
@@ -81,6 +79,10 @@ where
     <T as Theme<Draw>>::DrawHandle: 'static,
     <<T as Theme<Draw>>::Window as Window<Draw>>::SizeHandle: 'static,
 {
+    fn init(&mut self, draw: &mut Draw) {
+        self.init(draw);
+    }
+
     fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<Draw>> {
         StackDst::new_or_boxed(<T as Theme<Draw>>::new_window(self, draw, dpi_factor))
     }
@@ -101,10 +103,6 @@ where
         StackDst::new_or_boxed(h)
     }
 
-    fn get_fonts<'b>(&self) -> Vec<Font<'b>> {
-        self.get_fonts()
-    }
-
     fn clear_colour(&self) -> Colour {
         self.clear_colour()
     }
@@ -112,6 +110,10 @@ where
 
 #[cfg(feature = "gat")]
 impl<'a, T: Theme<Draw>, Draw> ThemeDst<Draw> for T {
+    fn init(&mut self, draw: &mut Draw) {
+        self.init(draw);
+    }
+
     fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<Draw>> {
         StackDst::new_or_boxed(<T as Theme<Draw>>::new_window(self, draw, dpi_factor))
     }
@@ -130,10 +132,6 @@ impl<'a, T: Theme<Draw>, Draw> ThemeDst<Draw> for T {
         let window = window.as_any_mut().downcast_mut().unwrap();
         let h = <T as Theme<Draw>>::draw_handle(self, draw, window, rect);
         StackDst::new_or_boxed(h)
-    }
-
-    fn get_fonts<'b>(&self) -> Vec<Font<'b>> {
-        self.get_fonts()
     }
 
     fn clear_colour(&self) -> Colour {

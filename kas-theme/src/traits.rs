@@ -5,7 +5,6 @@
 
 //! Theme traits
 
-use rusttype::Font;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
@@ -28,6 +27,17 @@ pub trait Theme<Draw>: ThemeApi {
     type DrawHandle: DrawHandle;
     #[cfg(feature = "gat")]
     type DrawHandle<'a>: DrawHandle;
+
+    /// Theme initialisation
+    ///
+    /// The toolkit must call this method before [`Theme::new_window`]
+    /// to allow initialisation specific to the `Draw` device.
+    ///
+    /// At a minimum, a theme must load a font via [`DrawText::load_font`].
+    /// The first font loaded (by any theme) becomes the default font.
+    ///
+    /// [`DrawText::load_font`]: kas::draw::DrawText::load_font
+    fn init(&mut self, draw: &mut Draw);
 
     /// Construct per-window storage
     ///
@@ -69,24 +79,6 @@ pub trait Theme<Draw>: ThemeApi {
         rect: Rect,
     ) -> Self::DrawHandle<'a>;
 
-    /// Get the list of available fonts
-    ///
-    /// Currently, all fonts used must be specified up front by this method.
-    /// (Dynamic addition of fonts may be enabled in the future.)
-    ///
-    /// This is considered a "getter" rather than a "constructor" method since
-    /// the `Font` type is cheap to copy, and each window requires its own copy.
-    /// It may also be useful to retain a `Font` handle for access to its
-    /// methods.
-    ///
-    /// Corresponding `FontId`s may be created from the index into this list.
-    /// The first font in the list will be the default font.
-    ///
-    /// TODO: this part of the API is dependent on `rusttype::Font`. We should
-    /// build an abstraction over this, or possibly just pass the font bytes
-    /// (although this makes re-use of fonts between windows difficult).
-    fn get_fonts<'a>(&self) -> Vec<Font<'a>>;
-
     /// Background colour
     fn clear_colour(&self) -> Colour;
 }
@@ -124,6 +116,10 @@ impl<T: Theme<Draw>, Draw> Theme<Draw> for Box<T> {
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = <T as Theme<Draw>>::DrawHandle<'a>;
 
+    fn init(&mut self, draw: &mut Draw) {
+        self.deref_mut().init(draw);
+    }
+
     fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window {
         self.deref().new_window(draw, dpi_factor)
     }
@@ -150,9 +146,6 @@ impl<T: Theme<Draw>, Draw> Theme<Draw> for Box<T> {
         self.deref().draw_handle(draw, window, rect)
     }
 
-    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
-        self.deref().get_fonts()
-    }
     fn clear_colour(&self) -> Colour {
         self.deref().clear_colour()
     }

@@ -86,10 +86,6 @@ impl Theme<DrawPipe> for CustomTheme {
         self.inner.draw_handle(draw, window, rect)
     }
 
-    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
-        Theme::<DrawPipe>::get_fonts(&self.inner)
-    }
-
     fn clear_colour(&self) -> Colour {
         BACKGROUND.with(|b| b.get())
     }

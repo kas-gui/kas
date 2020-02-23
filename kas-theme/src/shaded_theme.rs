@@ -7,7 +7,6 @@
 //!
 //! Widget size and appearance can be modified through themes.
 
-use rusttype::Font;
 use std::f32;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
@@ -60,6 +59,10 @@ where
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = DrawHandle<'a, D>;
 
+    fn init(&mut self, draw: &mut D) {
+        crate::load_fonts(draw);
+    }
+
     fn new_window(&self, _draw: &mut D, dpi_factor: f32) -> Self::Window {
         DimensionsWindow::new(DIMS, self.font_size, dpi_factor)
     }
@@ -101,10 +104,6 @@ where
             offset: Coord::ZERO,
             pass: <D as Draw>::Region::default(),
         }
-    }
-
-    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
-        vec![crate::get_font()]
     }
 
     fn clear_colour(&self) -> Colour {

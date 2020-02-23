@@ -46,9 +46,9 @@ impl Layout for Label {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState) {
         let props = TextProperties {
-            class: TextClass::Label,
             horiz: self.halign,
             vert: self.valign,
+            ..TextProperties::default()
         };
         draw_handle.text(self.core.rect, &self.text, props);
     }
@@ -189,6 +189,7 @@ impl<H: 'static> Layout for EditBox<H> {
             class,
             horiz: Align::Begin,
             vert: Align::Begin,
+            ..TextProperties::default()
         };
         let mut text = &self.text;
         let mut _string;

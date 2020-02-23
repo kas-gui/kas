@@ -93,6 +93,7 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
             class: TextClass::Button,
             horiz: Align::Centre,
             vert: Align::Centre,
+            ..TextProperties::default()
         };
         draw_handle.text(self.b_rect, &self.label, props);
     }

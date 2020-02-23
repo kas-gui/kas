@@ -9,11 +9,15 @@ use std::f32;
 use wgpu_glyph::{GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use crate::draw::{DrawPipe, Vec2};
-use kas::draw::{Colour, DrawText, TextClass, TextProperties};
+use kas::draw::{Colour, DrawText, TextClass, TextProperties, Font, FontId};
 use kas::geom::{Coord, Rect};
 use kas::Align;
 
 impl DrawText for DrawPipe {
+    fn load_font(&mut self, font: Font<'static>) -> FontId {
+        FontId(self.glyph_brush.add_font(font).0)
+    }
+
     fn text(
         &mut self,
         rect: Rect,
@@ -47,11 +51,12 @@ impl DrawText for DrawPipe {
         self.glyph_brush.queue(Section {
             text,
             screen_position: Vec2::from(text_pos).into(),
-            color: col.into(),
-            scale: Scale::uniform(font_scale),
             bounds: Vec2::from(bounds).into(),
+            scale: Scale::uniform(font_scale),
+            color: col.into(),
+            z: 0.0,
             layout,
-            ..Section::default()
+            font_id: wgpu_glyph::FontId(props.font.0),
         });
     }
 

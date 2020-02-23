@@ -34,7 +34,7 @@ pub use kas;
 pub use col::ThemeColours;
 pub use dim::{Dimensions, DimensionsParams, DimensionsWindow};
 pub use flat_theme::FlatTheme;
-pub use font::get_font;
+pub(crate) use font::load_fonts;
 #[cfg(feature = "stack_dst")]
 pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use shaded_theme::ShadedTheme;

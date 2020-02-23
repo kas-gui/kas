@@ -44,7 +44,7 @@ use crate::geom::{Coord, Rect};
 
 pub use colour::Colour;
 pub use handle::{DrawHandle, SizeHandle};
-pub use text::{DrawText, TextClass, TextProperties};
+pub use text::{DrawText, TextClass, TextProperties, Font, FontId};
 
 /// Base abstraction over drawing
 ///

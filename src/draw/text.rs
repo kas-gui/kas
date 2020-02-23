@@ -5,9 +5,21 @@
 
 //! Text-drawing API
 
+pub use rusttype::Font;
+
 use super::Colour;
 use crate::geom::Rect;
 use crate::Align;
+
+/// Font identifier
+///
+/// A default font may be obtained with `FontId(0)`, which refers to the
+/// first font loaded by the (first) theme.
+///
+/// Other than this, users should treat this type as an opaque handle.
+/// An instance may be obtained by [`DrawText::load_font`].
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct FontId(pub usize);
 
 /// Class of text drawn
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
@@ -22,9 +34,18 @@ pub enum TextClass {
     EditMulti,
 }
 
+/// Default class: Label
+impl Default for TextClass {
+    fn default() -> Self {
+        TextClass::Label
+    }
+}
+
 /// Text alignment, class, etc.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct TextProperties {
+    /// Font
+    pub font: FontId,
     /// Class of text
     pub class: TextClass,
     /// Horizontal alignment
@@ -45,6 +66,9 @@ pub struct TextProperties {
 ///
 /// [`Draw`]: super::Draw
 pub trait DrawText {
+    /// Load a font
+    fn load_font(&mut self, font: Font<'static>) -> FontId;
+
     /// Simple text drawing
     ///
     /// This allows text to be drawn according to a high-level API, and should

@@ -37,7 +37,7 @@ impl DrawPipe {
         let f = a.0 / a.1;
         let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
 
-        let glyph_brush = GlyphBrushBuilder::using_fonts(shared.theme.get_fonts())
+        let glyph_brush = GlyphBrushBuilder::using_fonts(vec![])
             .build(&mut shared.device, tex_format);
 
         let region = Rect {
