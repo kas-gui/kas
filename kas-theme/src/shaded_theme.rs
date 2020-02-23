@@ -11,7 +11,8 @@ use std::f32;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShaded, DrawText, FontId, TextClass, TextProperties,
+    self, Colour, Draw, DrawRounded, DrawShaded, DrawText, FontId, Region, TextClass,
+    TextProperties,
 };
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
@@ -49,7 +50,7 @@ pub struct DrawHandle<'a, D: Draw> {
     cols: &'a ThemeColours,
     rect: Rect,
     offset: Coord,
-    pass: <D as Draw>::Region,
+    pass: Region,
 }
 
 impl<D> Theme<D> for ShadedTheme
@@ -90,7 +91,7 @@ where
             cols: transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
             rect,
             offset: Coord::ZERO,
-            pass: <D as Draw>::Region::default(),
+            pass: Region::default(),
         }
     }
     #[cfg(feature = "gat")]
@@ -106,7 +107,7 @@ where
             cols: &self.cols,
             rect,
             offset: Coord::ZERO,
-            pass: <D as Draw>::Region::default(),
+            pass: Region::default(),
         }
     }
 

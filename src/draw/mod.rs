@@ -46,6 +46,12 @@ pub use colour::Colour;
 pub use handle::{DrawHandle, SizeHandle, TextClass};
 pub use text::{DrawText, Font, FontId, TextProperties};
 
+/// Type returned by [`Draw::add_clip_region`].
+///
+/// Supports [`Default`], which may be used to target the root region.
+#[derive(Copy, Clone, Default)]
+pub struct Region(pub usize);
+
 /// Base abstraction over drawing
 ///
 /// All draw operations target some region identified by a handle of type
@@ -56,11 +62,6 @@ pub use text::{DrawText, Font, FontId, TextProperties};
 /// The primitives provided by this trait all draw solid areas, replacing prior
 /// contents.
 pub trait Draw {
-    /// Type returned by [`Draw::add_clip_region`].
-    ///
-    /// Supports [`Default`], which may be used to target the root region.
-    type Region: Copy + Clone + Default;
-
     /// Cast self to [`std::any::Any`] reference.
     ///
     /// A downcast on this value may be used to obtain a reference to a
@@ -70,15 +71,15 @@ pub trait Draw {
     /// Add a clip region
     ///
     /// Clip regions are cleared each frame and so must be recreated on demand.
-    fn add_clip_region(&mut self, region: Rect) -> Self::Region;
+    fn add_clip_region(&mut self, region: Rect) -> Region;
 
     /// Draw a rectangle of uniform colour
-    fn rect(&mut self, region: Self::Region, rect: Rect, col: Colour);
+    fn rect(&mut self, region: Region, rect: Rect, col: Colour);
 
     /// Draw a frame of uniform colour
     ///
     /// The frame is defined by the area inside `outer` and not inside `inner`.
-    fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour);
+    fn frame(&mut self, region: Region, outer: Rect, inner: Rect, col: Colour);
 }
 
 /// Drawing commands for rounded shapes
@@ -97,14 +98,7 @@ pub trait DrawRounded: Draw {
     ///
     /// Note that for rectangular, axis-aligned lines, [`Draw::rect`] should be
     /// preferred.
-    fn rounded_line(
-        &mut self,
-        region: Self::Region,
-        p1: Coord,
-        p2: Coord,
-        radius: f32,
-        col: Colour,
-    );
+    fn rounded_line(&mut self, region: Region, p1: Coord, p2: Coord, radius: f32, col: Colour);
 
     /// Draw a circle or oval of uniform colour
     ///
@@ -113,7 +107,7 @@ pub trait DrawRounded: Draw {
     /// The `inner_radius` parameter gives the inner radius relative to the
     /// outer radius: a value of `0.0` will result in the whole shape being
     /// painted, while `1.0` will result in a zero-width line on the outer edge.
-    fn circle(&mut self, region: Self::Region, rect: Rect, inner_radius: f32, col: Colour);
+    fn circle(&mut self, region: Region, rect: Rect, inner_radius: f32, col: Colour);
 
     /// Draw a frame with rounded corners and uniform colour
     ///
@@ -128,7 +122,7 @@ pub trait DrawRounded: Draw {
     /// allocated area.
     fn rounded_frame(
         &mut self,
-        region: Self::Region,
+        region: Region,
         outer: Rect,
         inner: Rect,
         inner_radius: f32,
@@ -149,15 +143,15 @@ pub trait DrawRounded: Draw {
 /// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
 pub trait DrawShaded: Draw {
     /// Add a shaded square to the draw buffer
-    fn shaded_square(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour);
+    fn shaded_square(&mut self, region: Region, rect: Rect, norm: (f32, f32), col: Colour);
 
     /// Add a shaded circle to the draw buffer
-    fn shaded_circle(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour);
+    fn shaded_circle(&mut self, region: Region, rect: Rect, norm: (f32, f32), col: Colour);
 
     /// Add a square shaded frame to the draw buffer.
     fn shaded_square_frame(
         &mut self,
-        region: Self::Region,
+        region: Region,
         outer: Rect,
         inner: Rect,
         norm: (f32, f32),
@@ -167,7 +161,7 @@ pub trait DrawShaded: Draw {
     /// Add a rounded shaded frame to the draw buffer.
     fn shaded_round_frame(
         &mut self,
-        region: Self::Region,
+        region: Region,
         outer: Rect,
         inner: Rect,
         norm: (f32, f32),
