@@ -61,7 +61,7 @@ pub struct Region(pub usize);
 ///
 /// The primitives provided by this trait all draw solid areas, replacing prior
 /// contents.
-pub trait Draw {
+pub trait Draw: Any {
     /// Cast self to [`std::any::Any`] reference.
     ///
     /// A downcast on this value may be used to obtain a reference to a

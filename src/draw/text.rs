@@ -7,7 +7,7 @@
 
 pub use rusttype::Font;
 
-use super::Colour;
+use super::{Colour, Draw};
 use crate::geom::Rect;
 use crate::Align;
 
@@ -44,9 +44,7 @@ pub struct TextProperties {
 ///
 /// Note: the current API is designed to meet only current requirements since
 /// changes are expected to support external font shaping libraries.
-///
-/// [`Draw`]: super::Draw
-pub trait DrawText {
+pub trait DrawText: Draw {
     /// Load a font
     fn load_font(&mut self, font: Font<'static>) -> FontId;
 

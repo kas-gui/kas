@@ -38,7 +38,11 @@ pub struct AxisInfo {
 }
 
 impl AxisInfo {
-    fn new(dir: Direction, fixed: Option<u32>) -> Self {
+    /// Construct with direction and an optional value for the other axis
+    ///
+    /// This method is *usually* not required by user code.
+    #[inline]
+    pub fn new(dir: Direction, fixed: Option<u32>) -> Self {
         AxisInfo {
             vertical: dir.is_vertical(),
             has_fixed: fixed.is_some(),
@@ -56,6 +60,16 @@ impl AxisInfo {
     #[inline]
     pub fn is_horizontal(self) -> bool {
         !self.vertical
+    }
+
+    /// Size of other axis, if fixed
+    #[inline]
+    pub fn other(&self) -> Option<u32> {
+        if self.has_fixed {
+            Some(self.other_axis)
+        } else {
+            None
+        }
     }
 
     /// Size of other axis, if fixed and `direction` matches this axis.
