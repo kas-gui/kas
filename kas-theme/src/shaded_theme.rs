@@ -107,10 +107,6 @@ where
         vec![crate::get_font()]
     }
 
-    fn light_direction(&self) -> (f32, f32) {
-        (0.3, 0.4)
-    }
-
     fn clear_colour(&self) -> Colour {
         self.cols.background
     }

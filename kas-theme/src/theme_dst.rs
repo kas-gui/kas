@@ -69,11 +69,6 @@ pub trait ThemeDst<Draw>: ThemeApi {
     /// See also [`Theme::get_fonts`].
     fn get_fonts<'a>(&self) -> Vec<Font<'a>>;
 
-    /// Light source
-    ///
-    /// See also [`Theme::light_direction`].
-    fn light_direction(&self) -> (f32, f32);
-
     /// Background colour
     ///
     /// See also [`Theme::clear_colour`].
@@ -110,10 +105,6 @@ where
         self.get_fonts()
     }
 
-    fn light_direction(&self) -> (f32, f32) {
-        self.light_direction()
-    }
-
     fn clear_colour(&self) -> Colour {
         self.clear_colour()
     }
@@ -143,10 +134,6 @@ impl<'a, T: Theme<Draw>, Draw> ThemeDst<Draw> for T {
 
     fn get_fonts<'b>(&self) -> Vec<Font<'b>> {
         self.get_fonts()
-    }
-
-    fn light_direction(&self) -> (f32, f32) {
-        self.light_direction()
     }
 
     fn clear_colour(&self) -> Colour {

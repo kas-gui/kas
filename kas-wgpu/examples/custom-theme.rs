@@ -90,10 +90,6 @@ impl Theme<DrawPipe> for CustomTheme {
         Theme::<DrawPipe>::get_fonts(&self.inner)
     }
 
-    fn light_direction(&self) -> (f32, f32) {
-        Theme::<DrawPipe>::light_direction(&self.inner)
-    }
-
     fn clear_colour(&self) -> Colour {
         BACKGROUND.with(|b| b.get())
     }

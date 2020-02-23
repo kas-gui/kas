@@ -26,7 +26,10 @@ impl DrawPipe {
         tex_format: wgpu::TextureFormat,
         size: Size,
     ) -> Self {
-        let dir = shared.theme.light_direction();
+        // Light dir: `(a, b)` where `0 ≤ a < pi/2` is the angle to the screen
+        // normal (i.e. `a = 0` is straight at the screen) and `b` is the bearing
+        // (from UP, clockwise), both in radians.
+        let dir: (f32, f32) = (0.3, 0.4);
         assert!(dir.0 >= 0.0);
         assert!(dir.0 < FRAC_PI_2);
         let a = (dir.0.sin(), dir.0.cos());

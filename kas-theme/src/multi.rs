@@ -117,10 +117,6 @@ impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
         self.themes[self.active].get_fonts()
     }
 
-    fn light_direction(&self) -> (f32, f32) {
-        self.themes[self.active].light_direction()
-    }
-
     fn clear_colour(&self) -> Colour {
         self.themes[self.active].clear_colour()
     }
