@@ -19,7 +19,7 @@ A message box.
 
 ### Clock
 
-A very simple clock.
+A simple clock. An example of a custom widget using lower-level draw routines.
 
 ![Clock](../../screenshots/clock.png)
 

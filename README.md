@@ -49,8 +49,7 @@ Examples
 For details, see the [Examples README](kas-wgpu/examples/README.md).
 
 ![Calculator](screenshots/calculator.png) ![Dynamic](screenshots/dynamic.png)
-![Stopwatch and Custom-Theme](screenshots/stopwatch-and-theme.png) ![Gallery](screenshots/gallery.png)
-![Layout](screenshots/layout.png)
+![Clock](screenshots/clock.png) ![Gallery](screenshots/gallery.png)
 
 
 Installation and Testing
