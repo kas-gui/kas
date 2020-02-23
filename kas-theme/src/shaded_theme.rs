@@ -155,6 +155,10 @@ impl<'a, D> draw::DrawHandle for DrawHandle<'a, D>
 where
     D: Draw + DrawRounded + DrawShaded + DrawText + 'static,
 {
+    fn draw_device(&mut self) -> (kas::draw::Region, Coord, &mut dyn kas::draw::Draw) {
+        (self.pass, self.offset, self.draw)
+    }
+
     fn clip_region(
         &mut self,
         rect: Rect,

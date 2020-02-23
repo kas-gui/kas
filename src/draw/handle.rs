@@ -95,6 +95,22 @@ pub trait SizeHandle {
 /// as a high-level drawing interface. See also the companion trait,
 /// [`SizeHandle`].
 pub trait DrawHandle {
+    /// Access the low-level draw device
+    ///
+    /// Returns `(region, offset, draw)`.
+    ///
+    /// One may use [`Draw::as_any_mut`] to downcast the `draw` object when necessary.
+    ///
+    /// WARNING: all positions ([`Rect`] and [`Coord`]) must be adjusted by the
+    /// given offset before being passed to [`Draw`] methods:
+    /// ```
+    /// # use kas::geom::*;
+    /// # let offset = Coord::ZERO;
+    /// # let rect = Rect::new(offset, Size::ZERO);
+    /// let rect = rect + offset;
+    /// ```
+    fn draw_device(&mut self) -> (kas::draw::Region, Coord, &mut dyn kas::draw::Draw);
+
     /// Construct a new draw-handle on a given region and pass to a callback.
     ///
     /// This new region uses coordinates relative to `offset` (i.e. coordinates
@@ -225,6 +241,9 @@ where
 }
 
 impl<H: DrawHandle> DrawHandle for Box<H> {
+    fn draw_device(&mut self) -> (kas::draw::Region, Coord, &mut dyn kas::draw::Draw) {
+        self.deref_mut().draw_device()
+    }
     fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
         self.deref_mut().clip_region(rect, offset, f)
     }
@@ -259,6 +278,9 @@ impl<S> DrawHandle for stack_dst::ValueA<dyn DrawHandle, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
+    fn draw_device(&mut self) -> (kas::draw::Region, Coord, &mut dyn kas::draw::Draw) {
+        self.deref_mut().draw_device()
+    }
     fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
         self.deref_mut().clip_region(rect, offset, f)
     }
