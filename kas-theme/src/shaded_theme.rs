@@ -7,18 +7,21 @@
 //!
 //! Widget size and appearance can be modified through themes.
 
-use rusttype::Font;
 use std::f32;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
-use kas::draw::{self, Colour, Draw, DrawRounded, DrawShaded, DrawText, TextClass, TextProperties};
+use kas::draw::{
+    self, Colour, Draw, DrawRounded, DrawShaded, DrawText, FontId, Region, TextClass,
+    TextProperties,
+};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
-use kas::{Direction, ThemeAction, ThemeApi};
+use kas::{Align, Direction, ThemeAction, ThemeApi};
 
 /// A simple, inflexible theme providing a sample implementation.
 #[derive(Clone, Debug)]
 pub struct ShadedTheme {
+    font_id: FontId,
     font_size: f32,
     cols: ThemeColours,
 }
@@ -27,6 +30,7 @@ impl ShadedTheme {
     /// Construct
     pub fn new() -> Self {
         ShadedTheme {
+            font_id: Default::default(),
             font_size: 18.0,
             cols: ThemeColours::new(),
         }
@@ -46,7 +50,7 @@ pub struct DrawHandle<'a, D: Draw> {
     cols: &'a ThemeColours,
     rect: Rect,
     offset: Coord,
-    pass: <D as Draw>::Region,
+    pass: Region,
 }
 
 impl<D> Theme<D> for ShadedTheme
@@ -60,12 +64,16 @@ where
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = DrawHandle<'a, D>;
 
+    fn init(&mut self, draw: &mut D) {
+        self.font_id = crate::load_fonts(draw);
+    }
+
     fn new_window(&self, _draw: &mut D, dpi_factor: f32) -> Self::Window {
-        DimensionsWindow::new(DIMS, self.font_size, dpi_factor)
+        DimensionsWindow::new(DIMS, self.font_id, self.font_size, dpi_factor)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        window.dims = Dimensions::new(DIMS, self.font_size, dpi_factor);
+        window.dims = Dimensions::new(DIMS, self.font_id, self.font_size, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -83,7 +91,7 @@ where
             cols: transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
             rect,
             offset: Coord::ZERO,
-            pass: <D as Draw>::Region::default(),
+            pass: Region::default(),
         }
     }
     #[cfg(feature = "gat")]
@@ -99,16 +107,8 @@ where
             cols: &self.cols,
             rect,
             offset: Coord::ZERO,
-            pass: <D as Draw>::Region::default(),
+            pass: Region::default(),
         }
-    }
-
-    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
-        vec![crate::get_font()]
-    }
-
-    fn light_direction(&self) -> (f32, f32) {
-        (0.3, 0.4)
     }
 
     fn clear_colour(&self) -> Colour {
@@ -155,6 +155,10 @@ impl<'a, D> draw::DrawHandle for DrawHandle<'a, D>
 where
     D: Draw + DrawRounded + DrawShaded + DrawText + 'static,
 {
+    fn draw_device(&mut self) -> (kas::draw::Region, Coord, &mut dyn kas::draw::Draw) {
+        (self.pass, self.offset, self.draw)
+    }
+
     fn clip_region(
         &mut self,
         rect: Rect,
@@ -186,14 +190,22 @@ where
             .shaded_round_frame(self.pass, outer, inner, (0.6, -0.6), self.cols.background);
     }
 
-    fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
-        let scale = self.window.dims.font_scale;
-        let col = match props.class {
-            TextClass::Label => self.cols.label_text,
-            TextClass::Button => self.cols.button_text,
-            TextClass::Edit | TextClass::EditMulti => self.cols.text,
+    fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
+        let props = TextProperties {
+            font: self.window.dims.font_id,
+            scale: self.window.dims.font_scale,
+            col: match class {
+                TextClass::Label => self.cols.label_text,
+                TextClass::Button => self.cols.button_text,
+                TextClass::Edit | TextClass::EditMulti => self.cols.text,
+            },
+            align,
+            line_wrap: match class {
+                TextClass::Label | TextClass::EditMulti => true,
+                TextClass::Button | TextClass::Edit => false,
+            },
         };
-        self.draw.text(rect + self.offset, text, scale, props, col);
+        self.draw.text(rect + self.offset, text, props);
     }
 
     fn button(&mut self, rect: Rect, highlights: HighlightState) {

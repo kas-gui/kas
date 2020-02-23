@@ -14,8 +14,10 @@ use font_kit::{
 };
 
 use lazy_static::lazy_static;
-use rusttype::Font;
+use std::sync::Once;
 // use wgpu_glyph::rusttype::FontCollection;
+
+use kas::draw::{DrawText, Font, FontId};
 
 #[cfg(feature = "font-kit")]
 use std::{fs::File, io::Read, sync::Arc};
@@ -71,10 +73,12 @@ lazy_static! {
     static ref FONT: Font<'static> = Font::from_bytes(BYTES).unwrap();
 }
 
-/// Get access to the font
-///
-/// TODO: this function is a placeholder until proper font management is
-/// integrated.
-pub fn get_font() -> Font<'static> {
-    FONT.clone()
+/// Load fonts
+pub(crate) fn load_fonts<D: DrawText>(draw: &mut D) -> FontId {
+    static LOAD_FONTS: Once = Once::new();
+    LOAD_FONTS.call_once(|| {
+        let font_id = draw.load_font(FONT.clone());
+        debug_assert_eq!(font_id, FontId::default());
+    });
+    FontId::default()
 }

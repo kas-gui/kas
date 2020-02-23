@@ -13,7 +13,7 @@ use wgpu_glyph::GlyphBrushBuilder;
 
 use super::{DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
 use crate::shared::SharedState;
-use kas::draw::{Colour, Draw, DrawRounded, DrawShaded};
+use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, Region};
 use kas::geom::{Coord, Rect, Size};
 use kas_theme::Theme;
 
@@ -26,7 +26,10 @@ impl DrawPipe {
         tex_format: wgpu::TextureFormat,
         size: Size,
     ) -> Self {
-        let dir = shared.theme.light_direction();
+        // Light dir: `(a, b)` where `0 ≤ a < pi/2` is the angle to the screen
+        // normal (i.e. `a = 0` is straight at the screen) and `b` is the bearing
+        // (from UP, clockwise), both in radians.
+        let dir: (f32, f32) = (0.3, 0.4);
         assert!(dir.0 >= 0.0);
         assert!(dir.0 < FRAC_PI_2);
         let a = (dir.0.sin(), dir.0.cos());
@@ -34,8 +37,8 @@ impl DrawPipe {
         let f = a.0 / a.1;
         let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
 
-        let glyph_brush = GlyphBrushBuilder::using_fonts(shared.theme.get_fonts())
-            .build(&mut shared.device, tex_format);
+        let glyph_brush =
+            GlyphBrushBuilder::using_fonts(vec![]).build(&mut shared.device, tex_format);
 
         let region = Rect {
             pos: Coord::ZERO,
@@ -113,91 +116,89 @@ impl DrawPipe {
 }
 
 impl Draw for DrawPipe {
-    type Region = usize;
-
     #[inline]
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
 
-    fn add_clip_region(&mut self, region: Rect) -> usize {
+    fn add_clip_region(&mut self, region: Rect) -> Region {
         let pass = self.clip_regions.len();
         self.clip_regions.push(region);
-        pass
+        Region(pass)
     }
 
     #[inline]
-    fn rect(&mut self, region: Self::Region, rect: Rect, col: Colour) {
-        self.shaded_square.rect(region, rect, col);
+    fn rect(&mut self, pass: Region, rect: Rect, col: Colour) {
+        self.shaded_square.rect(pass.0, rect, col);
     }
 
     #[inline]
-    fn frame(&mut self, region: Self::Region, outer: Rect, inner: Rect, col: Colour) {
-        self.shaded_square.frame(region, outer, inner, col);
+    fn frame(&mut self, pass: Region, outer: Rect, inner: Rect, col: Colour) {
+        self.shaded_square.frame(pass.0, outer, inner, col);
     }
 }
 
 impl DrawRounded for DrawPipe {
     #[inline]
-    fn rounded_line(&mut self, pass: usize, p1: Coord, p2: Coord, radius: f32, col: Colour) {
-        self.flat_round.line(pass, p1, p2, radius, col);
+    fn rounded_line(&mut self, pass: Region, p1: Coord, p2: Coord, radius: f32, col: Colour) {
+        self.flat_round.line(pass.0, p1, p2, radius, col);
     }
 
     #[inline]
-    fn circle(&mut self, pass: usize, rect: Rect, inner_radius: f32, col: Colour) {
-        self.flat_round.circle(pass, rect, inner_radius, col);
+    fn circle(&mut self, pass: Region, rect: Rect, inner_radius: f32, col: Colour) {
+        self.flat_round.circle(pass.0, rect, inner_radius, col);
     }
 
     #[inline]
     fn rounded_frame(
         &mut self,
-        pass: usize,
+        pass: Region,
         outer: Rect,
         inner: Rect,
         inner_radius: f32,
         col: Colour,
     ) {
         self.flat_round
-            .rounded_frame(pass, outer, inner, inner_radius, col);
+            .rounded_frame(pass.0, outer, inner, inner_radius, col);
     }
 }
 
 impl DrawShaded for DrawPipe {
     #[inline]
-    fn shaded_square(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour) {
+    fn shaded_square(&mut self, pass: Region, rect: Rect, norm: (f32, f32), col: Colour) {
         self.shaded_square
-            .shaded_rect(region, rect, Vec2::from(norm), col);
+            .shaded_rect(pass.0, rect, Vec2::from(norm), col);
     }
 
     #[inline]
-    fn shaded_circle(&mut self, region: Self::Region, rect: Rect, norm: (f32, f32), col: Colour) {
+    fn shaded_circle(&mut self, pass: Region, rect: Rect, norm: (f32, f32), col: Colour) {
         self.shaded_round
-            .circle(region, rect, Vec2::from(norm), col);
+            .circle(pass.0, rect, Vec2::from(norm), col);
     }
 
     #[inline]
     fn shaded_square_frame(
         &mut self,
-        region: Self::Region,
+        pass: Region,
         outer: Rect,
         inner: Rect,
         norm: (f32, f32),
         col: Colour,
     ) {
         self.shaded_square
-            .shaded_frame(region, outer, inner, Vec2::from(norm), col);
+            .shaded_frame(pass.0, outer, inner, Vec2::from(norm), col);
     }
 
     #[inline]
     fn shaded_round_frame(
         &mut self,
-        region: Self::Region,
+        pass: Region,
         outer: Rect,
         inner: Rect,
         norm: (f32, f32),
         col: Colour,
     ) {
         self.shaded_round
-            .shaded_frame(region, outer, inner, Vec2::from(norm), col);
+            .shaded_frame(pass.0, outer, inner, Vec2::from(norm), col);
     }
 }

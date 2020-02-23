@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use std::fmt::Debug;
 
 use crate::class::HasText;
-use crate::draw::{DrawHandle, SizeHandle, TextClass, TextProperties};
+use crate::draw::{DrawHandle, SizeHandle, TextClass};
 use crate::event::{Action, Handler, Manager, ManagerState, Response, VirtualKeyCode};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
@@ -89,12 +89,8 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
         draw_handle.button(self.b_rect, mgr.highlight_state(self.id()));
-        let props = TextProperties {
-            class: TextClass::Button,
-            horiz: Align::Centre,
-            vert: Align::Centre,
-        };
-        draw_handle.text(self.b_rect, &self.label, props);
+        let align = (Align::Centre, Align::Centre);
+        draw_handle.text(self.b_rect, &self.label, TextClass::Button, align);
     }
 }
 

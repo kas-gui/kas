@@ -5,7 +5,6 @@
 
 //! Wrapper around mutliple themes, supporting run-time switching
 
-use rusttype::Font;
 use std::collections::HashMap;
 use std::marker::Unsize;
 
@@ -85,6 +84,12 @@ impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = StackDst<dyn DrawHandle + 'a>;
 
+    fn init(&mut self, draw: &mut Draw) {
+        for theme in &mut self.themes {
+            theme.init(draw);
+        }
+    }
+
     fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window {
         self.themes[self.active].new_window(draw, dpi_factor)
     }
@@ -111,14 +116,6 @@ impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
         rect: Rect,
     ) -> StackDst<dyn DrawHandle + 'a> {
         self.themes[self.active].draw_handle(draw, window, rect)
-    }
-
-    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
-        self.themes[self.active].get_fonts()
-    }
-
-    fn light_direction(&self) -> (f32, f32) {
-        self.themes[self.active].light_direction()
     }
 
     fn clear_colour(&self) -> Colour {

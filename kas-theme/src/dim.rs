@@ -10,7 +10,7 @@
 use std::any::Any;
 use std::f32;
 
-use kas::draw::{self, DrawText, TextClass};
+use kas::draw::{self, DrawText, FontId, TextClass};
 use kas::geom::Size;
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::Direction::{Horizontal, Vertical};
@@ -34,6 +34,7 @@ pub struct DimensionsParams {
 /// Dimensions available within [`DimensionsWindow`]
 #[derive(Clone, Debug)]
 pub struct Dimensions {
+    pub font_id: FontId,
     pub font_scale: f32,
     pub line_height: u32,
     pub min_line_length: u32,
@@ -46,12 +47,13 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-    pub fn new(params: DimensionsParams, font_size: f32, dpi_factor: f32) -> Self {
+    pub fn new(params: DimensionsParams, font_id: FontId, font_size: f32, dpi_factor: f32) -> Self {
         let font_scale = font_size * dpi_factor;
         let line_height = font_scale.round() as u32;
         let margin = (params.margin * dpi_factor).round() as u32;
         let frame = (params.frame_size * dpi_factor).round() as u32;
         Dimensions {
+            font_id,
             font_scale,
             line_height,
             min_line_length: line_height * 10,
@@ -71,9 +73,9 @@ pub struct DimensionsWindow {
 }
 
 impl DimensionsWindow {
-    pub fn new(dims: DimensionsParams, font_size: f32, dpi_factor: f32) -> Self {
+    pub fn new(dims: DimensionsParams, font_id: FontId, font_size: f32, dpi_factor: f32) -> Self {
         DimensionsWindow {
-            dims: Dimensions::new(dims, font_size, dpi_factor),
+            dims: Dimensions::new(dims, font_id, font_size, dpi_factor),
         }
     }
 }
@@ -130,6 +132,7 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
     }
 
     fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
+        let font_id = self.dims.font_id;
         let font_scale = self.dims.font_scale;
         let line_height = self.dims.line_height;
         let mut bounds = (f32::INFINITY, f32::INFINITY);
@@ -142,7 +145,9 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
             TextClass::Label | TextClass::EditMulti => true,
             TextClass::Button | TextClass::Edit => false,
         };
-        let bounds = self.draw.text_bound(text, font_scale, bounds, line_wrap);
+        let bounds = self
+            .draw
+            .text_bound(text, font_id, font_scale, bounds, line_wrap);
 
         if axis.is_horizontal() {
             let bound = bounds.0 as u32;

@@ -187,6 +187,24 @@ impl std::ops::Sub for Size {
     }
 }
 
+impl std::ops::Mul<u32> for Size {
+    type Output = Self;
+
+    #[inline]
+    fn mul(self, x: u32) -> Self {
+        Size(self.0 * x, self.1 * x)
+    }
+}
+
+impl std::ops::Mul<f32> for Size {
+    type Output = Self;
+
+    #[inline]
+    fn mul(self, x: f32) -> Self {
+        Size((self.0 as f32 * x) as u32, (self.1 as f32 * x) as u32)
+    }
+}
+
 impl std::ops::AddAssign for Size {
     #[inline]
     fn add_assign(&mut self, rhs: Self) {

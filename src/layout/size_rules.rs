@@ -335,3 +335,16 @@ impl std::ops::AddAssign for SizeRules {
         };
     }
 }
+
+impl std::ops::Mul<u32> for SizeRules {
+    type Output = Self;
+
+    #[inline]
+    fn mul(self, rhs: u32) -> Self::Output {
+        SizeRules {
+            a: self.a * rhs,
+            b: self.b * rhs,
+            stretch: self.stretch,
+        }
+    }
+}

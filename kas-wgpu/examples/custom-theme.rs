@@ -19,7 +19,6 @@ use kas_theme::Theme;
 
 use kas_theme::ShadedTheme;
 use kas_wgpu::draw::DrawPipe;
-use kas_wgpu::glyph::Font;
 
 /// A demo theme
 ///
@@ -59,6 +58,10 @@ impl Theme<DrawPipe> for CustomTheme {
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = <ShadedTheme as Theme<DrawPipe>>::DrawHandle<'a>;
 
+    fn init(&mut self, draw: &mut DrawPipe) {
+        self.inner.init(draw);
+    }
+
     fn new_window(&self, draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         Theme::<DrawPipe>::new_window(&self.inner, draw, dpi_factor)
     }
@@ -84,14 +87,6 @@ impl Theme<DrawPipe> for CustomTheme {
         rect: Rect,
     ) -> Self::DrawHandle<'a> {
         self.inner.draw_handle(draw, window, rect)
-    }
-
-    fn get_fonts<'a>(&self) -> Vec<Font<'a>> {
-        Theme::<DrawPipe>::get_fonts(&self.inner)
-    }
-
-    fn light_direction(&self) -> (f32, f32) {
-        Theme::<DrawPipe>::light_direction(&self.inner)
     }
 
     fn clear_colour(&self) -> Colour {

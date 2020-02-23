@@ -5,33 +5,35 @@
 
 //! Text-drawing API
 
-use super::Colour;
+pub use rusttype::Font;
+
+use super::{Colour, Draw};
 use crate::geom::Rect;
 use crate::Align;
 
-/// Class of text drawn
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum TextClass {
-    /// Label text is drawn over the background colour
-    Label,
-    /// Button text is drawn over a button
-    Button,
-    /// Class of text drawn in a single-line edit box
-    Edit,
-    /// Class of text drawn in a multi-line edit box
-    EditMulti,
-}
+/// Font identifier
+///
+/// A default font may be obtained with `FontId(0)`, which refers to the
+/// first font loaded by the (first) theme.
+///
+/// Other than this, users should treat this type as an opaque handle.
+/// An instance may be obtained by [`DrawText::load_font`].
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct FontId(pub usize);
 
-/// Text alignment, class, etc.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+/// Text properties
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct TextProperties {
-    /// Class of text
-    pub class: TextClass,
-    /// Horizontal alignment
-    pub horiz: Align,
-    /// Vertical alignment
-    pub vert: Align,
-    // Note: do we want to add HighlightState?
+    /// Font
+    pub font: FontId,
+    /// Font scale
+    pub scale: f32,
+    /// Font colour
+    pub col: Colour,
+    /// Text alignment
+    pub align: (Align, Align),
+    /// True if text should automatically be line-wrapped
+    pub line_wrap: bool,
 }
 
 /// Abstraction over text rendering
@@ -42,14 +44,15 @@ pub struct TextProperties {
 ///
 /// Note: the current API is designed to meet only current requirements since
 /// changes are expected to support external font shaping libraries.
-///
-/// [`Draw`]: super::Draw
-pub trait DrawText {
+pub trait DrawText: Draw {
+    /// Load a font
+    fn load_font(&mut self, font: Font<'static>) -> FontId;
+
     /// Simple text drawing
     ///
     /// This allows text to be drawn according to a high-level API, and should
     /// satisfy most uses.
-    fn text(&mut self, rect: Rect, text: &str, font_scale: f32, props: TextProperties, col: Colour);
+    fn text(&mut self, rect: Rect, text: &str, props: TextProperties);
 
     /// Calculate size bound on text
     ///
@@ -62,6 +65,7 @@ pub trait DrawText {
     fn text_bound(
         &mut self,
         text: &str,
+        font_id: FontId,
         font_scale: f32,
         bounds: (f32, f32),
         line_wrap: bool,
