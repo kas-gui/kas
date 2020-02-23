@@ -17,44 +17,50 @@ use kas::event::Manager;
 use kas::widget::{Label, Window};
 use kas::{ThemeApi, Widget, WidgetCore};
 
-fn main() -> Result<(), kas_wgpu::Error> {
-    env_logger::init();
+#[layout(vertical)]
+#[handler]
+#[derive(Clone, Debug, kas :: macros :: Widget)]
+struct Clock {
+    #[core]
+    core: kas::CoreData,
+    #[layout_data]
+    layout_data: <Self as kas::LayoutData>::Data,
+    #[widget]
+    date: Label,
+    #[widget]
+    time: Label,
+}
 
-    let window = Window::new("Clock", {
-        #[layout(vertical)]
-        #[handler]
-        #[derive(Clone, Debug, kas :: macros :: Widget)]
-        struct Clock {
-            #[core]
-            core: kas::CoreData,
-            #[layout_data]
-            layout_data: <Self as kas::LayoutData>::Data,
-            #[widget]
-            date: Label,
-            #[widget]
-            time: Label,
-        }
-        impl Widget for Clock {
-            fn configure(&mut self, mgr: &mut Manager) {
-                mgr.update_on_timer(Duration::new(0, 0), self.id());
-            }
+impl Widget for Clock {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.update_on_timer(Duration::new(0, 0), self.id());
+    }
 
-            fn update_timer(&mut self, mgr: &mut Manager) -> Option<Duration> {
-                let now = Local::now();
-                self.date.set_text(mgr, now.format("%Y-%m-%d").to_string());
-                self.time.set_text(mgr, now.format("%H:%M:%S").to_string());
-                let ns = 1_000_000_000 - (now.time().nanosecond() % 1_000_000_000);
-                info!("Requesting update in {}ns", ns);
-                Some(Duration::new(0, ns))
-            }
-        }
+    fn update_timer(&mut self, mgr: &mut Manager) -> Option<Duration> {
+        let now = Local::now();
+        self.date.set_text(mgr, now.format("%Y-%m-%d").to_string());
+        self.time.set_text(mgr, now.format("%H:%M:%S").to_string());
+        let ns = 1_000_000_000 - (now.time().nanosecond() % 1_000_000_000);
+        info!("Requesting update in {}ns", ns);
+        Some(Duration::new(0, ns))
+    }
+}
+
+impl Clock {
+    fn new() -> Self {
         Clock {
             core: Default::default(),
             layout_data: Default::default(),
             date: Label::new(""),
             time: Label::new(""),
         }
-    });
+    }
+}
+
+fn main() -> Result<(), kas_wgpu::Error> {
+    env_logger::init();
+
+    let window = Window::new("Clock", Clock::new());
 
     let mut theme = kas_theme::FlatTheme::new();
     theme.set_font_size(32.0);
