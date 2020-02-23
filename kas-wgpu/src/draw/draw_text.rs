@@ -9,7 +9,7 @@ use std::f32;
 use wgpu_glyph::{GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use crate::draw::{DrawPipe, Vec2};
-use kas::draw::{Colour, DrawText, TextClass, TextProperties, Font, FontId};
+use kas::draw::{DrawText, Font, FontId, TextProperties};
 use kas::geom::{Coord, Rect};
 use kas::Align;
 
@@ -18,23 +18,16 @@ impl DrawText for DrawPipe {
         FontId(self.glyph_brush.add_font(font).0)
     }
 
-    fn text(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        font_scale: f32,
-        props: TextProperties,
-        col: Colour,
-    ) {
+    fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
         let bounds = Coord::from(rect.size);
 
         // TODO: support justified alignment
-        let (h_align, h_offset) = match props.horiz {
+        let (h_align, h_offset) = match props.align.0 {
             Align::Begin | Align::Stretch => (HorizontalAlign::Left, 0),
             Align::Centre => (HorizontalAlign::Center, bounds.0 / 2),
             Align::End => (HorizontalAlign::Right, bounds.0),
         };
-        let (v_align, v_offset) = match props.vert {
+        let (v_align, v_offset) = match props.align.1 {
             Align::Begin | Align::Stretch => (VerticalAlign::Top, 0),
             Align::Centre => (VerticalAlign::Center, bounds.1 / 2),
             Align::End => (VerticalAlign::Bottom, bounds.1),
@@ -42,9 +35,9 @@ impl DrawText for DrawPipe {
 
         let text_pos = rect.pos + Coord(h_offset, v_offset);
 
-        let layout = match props.class {
-            TextClass::Label | TextClass::EditMulti => Layout::default_wrap(),
-            TextClass::Button | TextClass::Edit => Layout::default_single_line(),
+        let layout = match props.line_wrap {
+            true => Layout::default_wrap(),
+            false => Layout::default_single_line(),
         };
         let layout = layout.h_align(h_align).v_align(v_align);
 
@@ -52,8 +45,8 @@ impl DrawText for DrawPipe {
             text,
             screen_position: Vec2::from(text_pos).into(),
             bounds: Vec2::from(bounds).into(),
-            scale: Scale::uniform(font_scale),
-            color: col.into(),
+            scale: Scale::uniform(props.scale),
+            color: props.col.into(),
             z: 0.0,
             layout,
             font_id: wgpu_glyph::FontId(props.font.0),
@@ -64,6 +57,7 @@ impl DrawText for DrawPipe {
     fn text_bound(
         &mut self,
         text: &str,
+        font_id: FontId,
         font_scale: f32,
         bounds: (f32, f32),
         line_wrap: bool,
@@ -77,10 +71,12 @@ impl DrawText for DrawPipe {
             .glyph_bounds(Section {
                 text,
                 screen_position: (0.0, 0.0),
-                scale: Scale::uniform(font_scale),
                 bounds,
+                scale: Scale::uniform(font_scale),
+                color: Default::default(),
+                z: 0.0,
                 layout,
-                ..Section::default()
+                font_id: wgpu_glyph::FontId(font_id.0),
             })
             .map(|rect| (Vec2(rect.min.x, rect.min.y), Vec2(rect.max.x, rect.max.y)))
             .map(|(min, max)| max - min)

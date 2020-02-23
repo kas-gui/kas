@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use crate::class::{Editable, HasText};
-use crate::draw::{DrawHandle, SizeHandle, TextClass, TextProperties};
+use crate::draw::{DrawHandle, SizeHandle, TextClass};
 use crate::event::{Action, CursorIcon, Handler, Manager, ManagerState, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
@@ -22,8 +22,7 @@ use kas::geom::Rect;
 pub struct Label {
     #[core]
     core: CoreData,
-    halign: Align,
-    valign: Align,
+    align: (Align, Align),
     text: String,
 }
 
@@ -39,18 +38,15 @@ impl Layout for Label {
     }
 
     fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
-        self.halign = align.horiz.unwrap_or(Align::Begin);
-        self.valign = align.vert.unwrap_or(Align::Centre);
+        self.align = (
+            align.horiz.unwrap_or(Align::Begin),
+            align.vert.unwrap_or(Align::Centre),
+        );
         self.core_data_mut().rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState) {
-        let props = TextProperties {
-            horiz: self.halign,
-            vert: self.valign,
-            ..TextProperties::default()
-        };
-        draw_handle.text(self.core.rect, &self.text, props);
+        draw_handle.text(self.core.rect, &self.text, TextClass::Label, self.align);
     }
 }
 
@@ -59,8 +55,7 @@ impl Label {
     pub fn new<T: ToString>(text: T) -> Self {
         Label {
             core: Default::default(),
-            halign: Default::default(),
-            valign: Default::default(),
+            align: Default::default(),
             text: text.to_string(),
         }
     }
@@ -73,8 +68,7 @@ where
     fn from(text: T) -> Self {
         Label {
             core: Default::default(),
-            halign: Default::default(),
-            valign: Default::default(),
+            align: Default::default(),
             text: String::from(text),
         }
     }
@@ -185,12 +179,7 @@ impl<H: 'static> Layout for EditBox<H> {
         };
         let highlights = mgr.highlight_state(self.id());
         draw_handle.edit_box(self.core.rect, highlights);
-        let props = TextProperties {
-            class,
-            horiz: Align::Begin,
-            vert: Align::Begin,
-            ..TextProperties::default()
-        };
+        let align = (Align::Begin, Align::Begin);
         let mut text = &self.text;
         let mut _string;
         if highlights.char_focus {
@@ -198,7 +187,7 @@ impl<H: 'static> Layout for EditBox<H> {
             _string.push('|');
             text = &_string;
         }
-        draw_handle.text(self.text_rect, text, props);
+        draw_handle.text(self.text_rect, text, class, align);
     }
 }
 

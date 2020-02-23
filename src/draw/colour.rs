@@ -6,7 +6,7 @@
 //! Colour type and theming
 
 /// Standard colour description
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Colour {
     pub r: f32,
     pub g: f32,

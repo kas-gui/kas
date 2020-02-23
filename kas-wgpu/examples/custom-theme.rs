@@ -19,7 +19,6 @@ use kas_theme::Theme;
 
 use kas_theme::ShadedTheme;
 use kas_wgpu::draw::DrawPipe;
-use kas_wgpu::glyph::Font;
 
 /// A demo theme
 ///
@@ -58,6 +57,10 @@ impl Theme<DrawPipe> for CustomTheme {
     type DrawHandle = <ShadedTheme as Theme<DrawPipe>>::DrawHandle;
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = <ShadedTheme as Theme<DrawPipe>>::DrawHandle<'a>;
+
+    fn init(&mut self, draw: &mut DrawPipe) {
+        self.inner.init(draw);
+    }
 
     fn new_window(&self, draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
         Theme::<DrawPipe>::new_window(&self.inner, draw, dpi_factor)

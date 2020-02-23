@@ -79,6 +79,8 @@ pub struct CoreData {
 }
 
 /// Alignment of contents
+///
+/// Note that alignment information is often passed as a `(horiz, vert)` pair.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum Align {
     /// Align to top or left (for left-to-right text)

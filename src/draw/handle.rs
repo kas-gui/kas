@@ -7,11 +7,30 @@
 
 use std::ops::{Deref, DerefMut};
 
-use super::{TextClass, TextProperties};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
-use kas::Direction;
+use kas::{Align, Direction};
+
+/// Class of text drawn
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum TextClass {
+    /// Label text is drawn over the background colour
+    Label,
+    /// Button text is drawn over a button
+    Button,
+    /// Class of text drawn in a single-line edit box
+    Edit,
+    /// Class of text drawn in a multi-line edit box
+    EditMulti,
+}
+
+/// Default class: Label
+impl Default for TextClass {
+    fn default() -> Self {
+        TextClass::Label
+    }
+}
 
 /// Handle passed to objects during draw and sizing operations
 ///
@@ -38,9 +57,6 @@ pub trait SizeHandle {
     /// Get a text label size bound
     ///
     /// Sizing requirements of [`DrawHandle::text`].
-    ///
-    /// Since only a subset of [`TextProperties`] fields are required, these are
-    /// passed directly.
     fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules;
 
     /// Size of the sides of a button.
@@ -103,7 +119,7 @@ pub trait DrawHandle {
     /// Draw some text using the standard font
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text(&mut self, rect: Rect, text: &str, props: TextProperties);
+    fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align));
 
     /// Draw button sides, background and margin-area highlight
     fn button(&mut self, rect: Rect, highlights: HighlightState);
@@ -218,8 +234,8 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn outer_frame(&mut self, rect: Rect) {
         self.deref_mut().outer_frame(rect)
     }
-    fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
-        self.deref_mut().text(rect, text, props)
+    fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
+        self.deref_mut().text(rect, text, class, align)
     }
     fn button(&mut self, rect: Rect, highlights: HighlightState) {
         self.deref_mut().button(rect, highlights)
@@ -252,8 +268,8 @@ where
     fn outer_frame(&mut self, rect: Rect) {
         self.deref_mut().outer_frame(rect)
     }
-    fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
-        self.deref_mut().text(rect, text, props)
+    fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
+        self.deref_mut().text(rect, text, class, align)
     }
     fn button(&mut self, rect: Rect, highlights: HighlightState) {
         self.deref_mut().button(rect, highlights)

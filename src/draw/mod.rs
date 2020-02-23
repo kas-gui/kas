@@ -43,8 +43,8 @@ use std::any::Any;
 use crate::geom::{Coord, Rect};
 
 pub use colour::Colour;
-pub use handle::{DrawHandle, SizeHandle};
-pub use text::{DrawText, TextClass, TextProperties, Font, FontId};
+pub use handle::{DrawHandle, SizeHandle, TextClass};
+pub use text::{DrawText, Font, FontId, TextProperties};
 
 /// Base abstraction over drawing
 ///

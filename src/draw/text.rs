@@ -21,38 +21,19 @@ use crate::Align;
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FontId(pub usize);
 
-/// Class of text drawn
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum TextClass {
-    /// Label text is drawn over the background colour
-    Label,
-    /// Button text is drawn over a button
-    Button,
-    /// Class of text drawn in a single-line edit box
-    Edit,
-    /// Class of text drawn in a multi-line edit box
-    EditMulti,
-}
-
-/// Default class: Label
-impl Default for TextClass {
-    fn default() -> Self {
-        TextClass::Label
-    }
-}
-
-/// Text alignment, class, etc.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+/// Text properties
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct TextProperties {
     /// Font
     pub font: FontId,
-    /// Class of text
-    pub class: TextClass,
-    /// Horizontal alignment
-    pub horiz: Align,
-    /// Vertical alignment
-    pub vert: Align,
-    // Note: do we want to add HighlightState?
+    /// Font scale
+    pub scale: f32,
+    /// Font colour
+    pub col: Colour,
+    /// Text alignment
+    pub align: (Align, Align),
+    /// True if text should automatically be line-wrapped
+    pub line_wrap: bool,
 }
 
 /// Abstraction over text rendering
@@ -73,7 +54,7 @@ pub trait DrawText {
     ///
     /// This allows text to be drawn according to a high-level API, and should
     /// satisfy most uses.
-    fn text(&mut self, rect: Rect, text: &str, font_scale: f32, props: TextProperties, col: Colour);
+    fn text(&mut self, rect: Rect, text: &str, props: TextProperties);
 
     /// Calculate size bound on text
     ///
@@ -86,6 +67,7 @@ pub trait DrawText {
     fn text_bound(
         &mut self,
         text: &str,
+        font_id: FontId,
         font_scale: f32,
         bounds: (f32, f32),
         line_wrap: bool,

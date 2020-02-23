@@ -13,11 +13,11 @@ use font_kit::{
     family_name::FamilyName, handle::Handle, properties::Properties, source::SystemSource,
 };
 
-use std::sync::Once;
 use lazy_static::lazy_static;
+use std::sync::Once;
 // use wgpu_glyph::rusttype::FontCollection;
 
-use kas::draw::{Font, FontId, DrawText};
+use kas::draw::{DrawText, Font, FontId};
 
 #[cfg(feature = "font-kit")]
 use std::{fs::File, io::Read, sync::Arc};
