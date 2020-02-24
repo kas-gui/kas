@@ -55,7 +55,7 @@ pub struct Region(pub usize);
 /// Base abstraction over drawing
 ///
 /// All draw operations target some region identified by a handle of type
-/// [`Draw::Region`]; this may be the whole window, some sub-region, or perhaps
+/// [`Region`]; this may be the whole window, some sub-region, or perhaps
 /// something else such as a texture. In general the user doesn't need to know
 /// what this is, but merely pass the given handle.
 ///

@@ -101,7 +101,7 @@ impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T> {
 impl<CB: CustomPipeBuilder + 'static, T: Theme<DrawPipe<CB::Pipe>> + 'static> Toolkit<CB, T> {
     /// Construct an instance with custom options
     ///
-    /// The `custom` parameter accepts a custom draw pipe (see [`CustomPipe`]).
+    /// The `custom` parameter accepts a custom draw pipe (see [`CustomPipeBuilder`]).
     /// Pass `()` if you don't have one.
     pub fn new_custom(custom: CB, theme: T, options: Options) -> Result<Self, Error> {
         Ok(Toolkit {
