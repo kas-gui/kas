@@ -20,7 +20,7 @@ stack_dst = ["kas-theme/stack_dst"]
 
 [dependencies]
 kas = { path = "..", version = "0.3.0", features = ["winit"] }
-kas-theme = { path = "../kas-theme" }
+kas-theme = { path = "../kas-theme", version = "0.3.0" }
 log = "0.4"
 shaderc = "0.6.1"
 smallvec = "1.1"
