@@ -9,7 +9,7 @@
 
 use std::cell::Cell;
 
-use kas::draw::Colour;
+use kas::draw::*;
 use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::geom::Rect;
 use kas::macros::{make_widget, VoidMsg};
@@ -17,21 +17,20 @@ use kas::widget::*;
 use kas::{ThemeAction, ThemeApi};
 use kas_theme::Theme;
 
-use kas_theme::ShadedTheme;
-use kas_wgpu::draw::DrawPipe;
+use kas_theme::FlatTheme;
 
 /// A demo theme
 ///
-/// We set a custom background colour and use `ShadedTheme` for everything else.
+/// We set a custom background colour and use `FlatTheme` for everything else.
 pub struct CustomTheme {
-    inner: ShadedTheme,
+    inner: FlatTheme,
 }
 
 impl CustomTheme {
     /// Construct
     pub fn new() -> Self {
         CustomTheme {
-            inner: ShadedTheme::new(),
+            inner: FlatTheme::new(),
         }
     }
 }
@@ -50,30 +49,30 @@ thread_local! {
     static BACKGROUND: Cell<Colour> = Cell::new(Colour::grey(1.0));
 }
 
-impl Theme<DrawPipe> for CustomTheme {
-    type Window = <ShadedTheme as Theme<DrawPipe>>::Window;
+impl<Draw: DrawRounded + DrawText> Theme<Draw> for CustomTheme {
+    type Window = <FlatTheme as Theme<Draw>>::Window;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = <ShadedTheme as Theme<DrawPipe>>::DrawHandle;
+    type DrawHandle = <FlatTheme as Theme<Draw>>::DrawHandle;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = <ShadedTheme as Theme<DrawPipe>>::DrawHandle<'a>;
+    type DrawHandle<'a> = <FlatTheme as Theme<Draw>>::DrawHandle<'a>;
 
-    fn init(&mut self, draw: &mut DrawPipe) {
+    fn init(&mut self, draw: &mut Draw) {
         self.inner.init(draw);
     }
 
-    fn new_window(&self, draw: &mut DrawPipe, dpi_factor: f32) -> Self::Window {
-        Theme::<DrawPipe>::new_window(&self.inner, draw, dpi_factor)
+    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window {
+        Theme::<Draw>::new_window(&self.inner, draw, dpi_factor)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        Theme::<DrawPipe>::update_window(&self.inner, window, dpi_factor);
+        Theme::<Draw>::update_window(&self.inner, window, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        draw: &mut DrawPipe,
+        draw: &mut Draw,
         window: &mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle {
@@ -82,7 +81,7 @@ impl Theme<DrawPipe> for CustomTheme {
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        draw: &'a mut DrawPipe,
+        draw: &'a mut Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle<'a> {
@@ -128,8 +127,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
-    let mut theme = CustomTheme::new();
-    let _ = theme.set_colours("light");
+    let theme = CustomTheme::new();
 
     let window = Window::new(
         "Theme demo",
