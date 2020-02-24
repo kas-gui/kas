@@ -15,6 +15,14 @@ pub trait DrawCustom<C: CustomPipe> {
     fn custom(&mut self, region: Region, rect: Rect, param: C::Param);
 }
 
+/// Builder for a custom pipe
+pub trait CustomPipeBuilder {
+    type Pipe: CustomPipe;
+
+    /// Build a pipe
+    fn build(&mut self, device: &wgpu::Device, size: Size) -> Self::Pipe;
+}
+
 /// A custom draw pipe
 ///
 /// A "draw pipe" consists of draw primitives (usually triangles), resources
@@ -24,12 +32,9 @@ pub trait DrawCustom<C: CustomPipe> {
 /// Note that `kas-wgpu` accepts only a single custom pipe. To use more than
 /// one, you will have to implement your own multiplexer (presumably using an
 /// enum for the `Param` type).
-pub trait CustomPipe: Clone {
+pub trait CustomPipe {
     /// User parameter type
     type Param;
-
-    /// Initialisation routines
-    fn init(&mut self, device: &wgpu::Device, size: Size);
 
     /// Called whenever the window is resized
     fn resize(&mut self, device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, size: Size);
@@ -50,12 +55,19 @@ pub trait CustomPipe: Clone {
     fn render(&mut self, device: &wgpu::Device, pass: usize, rpass: &mut wgpu::RenderPass);
 }
 
+/// A dummy implementation (does nothing)
+impl CustomPipeBuilder for () {
+    type Pipe = ();
+    fn build(&mut self, _: &wgpu::Device, _: Size) -> Self::Pipe {
+        ()
+    }
+}
+
 pub enum Void {}
 
 /// A dummy implementation (does nothing)
 impl CustomPipe for () {
     type Param = Void;
-    fn init(&mut self, _: &wgpu::Device, _: Size) {}
     fn resize(&mut self, _: &wgpu::Device, _: &mut wgpu::CommandEncoder, _: Size) {}
     fn invoke(&mut self, _: usize, _: Rect, _: Self::Param) {}
     fn render(&mut self, _: &wgpu::Device, _: usize, _: &mut wgpu::RenderPass) {}

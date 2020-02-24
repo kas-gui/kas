@@ -11,7 +11,7 @@ use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
 use wgpu_glyph::GlyphBrushBuilder;
 
-use super::{CustomPipe, DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
+use super::{CustomPipe, CustomPipeBuilder, DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
 use crate::shared::SharedState;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, Region};
 use kas::geom::{Coord, Rect, Size};
@@ -21,8 +21,8 @@ impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
     // TODO: do we want to share state across windows? With glyph_brush this is
     // not trivial but with our "pipes" it shouldn't be difficult.
-    pub fn new<T: Theme<Self>>(
-        shared: &mut SharedState<C, T>,
+    pub fn new<CB: CustomPipeBuilder<Pipe = C>, T: Theme<Self>>(
+        shared: &mut SharedState<CB, T>,
         tex_format: wgpu::TextureFormat,
         size: Size,
     ) -> Self {
@@ -37,8 +37,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let f = a.0 / a.1;
         let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
 
-        let mut custom = shared.custom.clone();
-        custom.init(&shared.device, size);
+        let custom = shared.custom.build(&shared.device, size);
 
         let glyph_brush =
             GlyphBrushBuilder::using_fonts(vec![]).build(&mut shared.device, tex_format);

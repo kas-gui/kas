@@ -26,7 +26,7 @@ pub(crate) use shaded_round::ShadedRound;
 pub(crate) use shaded_square::ShadedSquare;
 pub(crate) use shaders::ShaderManager;
 
-pub use custom::{CustomPipe, DrawCustom};
+pub use custom::{CustomPipe, CustomPipeBuilder, DrawCustom};
 pub use vector::{Quad, Vec2};
 
 /// 3-part colour data

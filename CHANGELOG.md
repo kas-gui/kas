@@ -44,7 +44,7 @@ window size limits, and switchable themes and colour schemes.
 -   Add `CheckBoxBare` (#51)
 
 ### Draw APIs and pipes
--   Support custom draw pipes (#64)
+-   Support custom draw pipes (#64, #65)
 -   New `FlatRound` pipe (#53)
 -   Use multisampling in `FlatRound` and `ShadedRound` pipes (#53)
 -   Move `Draw`* traits to `kas::draw` (#58, #60)
