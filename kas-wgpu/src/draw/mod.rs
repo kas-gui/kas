@@ -5,9 +5,7 @@
 
 //! Drawing API for `kas_wgpu`
 //!
-//! The drawing API is tiered: add bounds on the traits you need.
-//!
-//! All drawing operations are batched and do not happen immediately.
+//! Extensions to the API of [`kas::draw`], plus some utility types.
 
 mod custom;
 mod draw_pipe;
@@ -48,7 +46,7 @@ impl From<kas::draw::Colour> for Rgb {
     }
 }
 
-/// Manager of draw pipes and implementor of [`kas::draw::Draw`]
+/// `kas-wgpu`'s implemention of [`kas::draw::Draw`] and friends
 pub struct DrawPipe<C> {
     clip_regions: Vec<Rect>,
     shaded_round: ShadedRound,

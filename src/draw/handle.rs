@@ -14,6 +14,8 @@ use kas::layout::{AxisInfo, SizeRules};
 use kas::{Align, Direction};
 
 /// Class of text drawn
+///
+/// Themes choose font, font size, colour, and alignment based on this.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum TextClass {
     /// Label text is drawn over the background colour
@@ -102,8 +104,10 @@ pub trait DrawHandle {
     ///
     /// One may use [`Draw::as_any_mut`] to downcast the `draw` object when necessary.
     ///
-    /// WARNING: all positions ([`Rect`] and [`Coord`]) must be adjusted by the
-    /// given offset before being passed to [`Draw`] methods:
+    /// **Important**: all positions ([`Rect`] and [`Coord`]) must be adjusted
+    /// (as below) by the `given` offset before being passed to the methods of
+    /// [`Draw`] and its extension traits. This offset is used by
+    /// [`kas::widget::ScrollRegion`] to adjust its contents.
     /// ```
     /// # use kas::geom::*;
     /// # let offset = Coord::ZERO;

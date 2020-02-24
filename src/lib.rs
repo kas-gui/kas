@@ -7,16 +7,17 @@
 //!
 //! KAS is a GUI library. This crate provides the following:
 //!
-//! -   a widget model: [`Widget`] trait
-//! -   widget [`layout`] engine
+//! -   a widget model: [`WidgetCore`], [`Layout`], [`Widget`], [`event::Handler`] traits
+//! -   a [`layout`] engine (mostly configured through [`macros`])
+//! -   a modular [`draw`] API
 //! -   widget [`event`] handling
-//! -   common [`widget`] types
+//! -   some data types: [`geom`], [`Align`], [`Direction`]
+//! -   some pre-build widgets: [`widget`] module
 //!
-//! The remaining functionality is provided by a separate crate, referred to as
-//! the "toolkit". A KAS toolkit must provide:
+//! See also these external crates:
 //!
-//! -   system interfaces (window creation and event capture)
-//! -   widget rendering and sizing
+//! -   [`kas-theme`](https://crates.io/crates/kas-theme) - [docs.rs](https://docs.rs/crate/kas-theme) - theme API + themes
+//! -   [`kas-wgpu`](https://crates.io/crates/kas-wgpu) - [docs.rs](https://docs.rs/crate/kas-wgpu) - WebGPU + winit integration
 
 #![cfg_attr(feature = "nightly", feature(new_uninit))]
 

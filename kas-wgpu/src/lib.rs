@@ -103,6 +103,9 @@ impl<CB: CustomPipeBuilder + 'static, T: Theme<DrawPipe<CB::Pipe>> + 'static> To
     ///
     /// The `custom` parameter accepts a custom draw pipe (see [`CustomPipeBuilder`]).
     /// Pass `()` if you don't have one.
+    ///
+    /// The [`Options`] parameter allows direct specification of toolkit
+    /// options; usually, these are provided by [`Options::from_env`].
     pub fn new_custom(custom: CB, theme: T, options: Options) -> Result<Self, Error> {
         Ok(Toolkit {
             el: EventLoop::with_user_event(),

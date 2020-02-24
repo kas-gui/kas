@@ -5,8 +5,8 @@
 
 //! Widgets
 //!
-//! KAS provides these common widget types for convenience.
-//! All these widgets can be implemented in user-code.
+//! KAS provides these common widgets for convenience, although there is no
+//! reason they cannot be implemented in user code.
 
 mod button;
 mod checkbox;

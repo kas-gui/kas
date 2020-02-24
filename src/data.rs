@@ -14,11 +14,12 @@ use crate::geom::{Rect, Size};
 
 /// Widget identifier
 ///
-/// All widgets within a window are assigned a unique numeric identifier. This
-/// type may be tested for equality and order.
+/// All widgets are assigned an identifier which is unique within the window.
+/// This type may be tested for equality and order.
 ///
-/// Note: identifiers are first assigned when a window is instantiated by the
-/// toolkit.
+/// Identifiers are assigned when configured and when re-configured
+/// (via [`kas::TkAction::Reconfigure`]). Since user-code is not notified of a
+/// re-configure, user-code should not store a `WidgetId`.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct WidgetId(NonZeroU32);
 

@@ -3,9 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Widget styling
-//!
-//! Widget size and appearance can be modified through themes.
+//! Shaded theme
 
 use std::f32;
 
@@ -18,7 +16,7 @@ use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
 use kas::{Align, Direction, ThemeAction, ThemeApi};
 
-/// A simple, inflexible theme providing a sample implementation.
+/// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]
 pub struct ShadedTheme {
     font_id: FontId,

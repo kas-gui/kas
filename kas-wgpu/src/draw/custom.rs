@@ -9,13 +9,16 @@ use super::DrawPipe;
 use kas::draw::Region;
 use kas::geom::{Rect, Size};
 
-/// Abstraction allowing custom draw implementation
+/// Allows use of the low-level graphics API
+///
+/// To use this, write an implementation of [`CustomPipe`], then pass the
+/// corresponding [`CustomPipeBuilder`] to [`crate::Toolkit::new_custom`].
 pub trait DrawCustom<C: CustomPipe> {
     /// Call a custom draw pipe
     fn custom(&mut self, region: Region, rect: Rect, param: C::Param);
 }
 
-/// Builder for a custom pipe
+/// Builder for a [`CustomPipe`]
 pub trait CustomPipeBuilder {
     type Pipe: CustomPipe;
 
@@ -28,6 +31,9 @@ pub trait CustomPipeBuilder {
 /// A "draw pipe" consists of draw primitives (usually triangles), resources
 /// (textures), shaders, and pipe configuration (e.g. blending mode).
 /// A custom pipe allows direct use of the WebGPU graphics stack.
+///
+/// To use this, pass the corresponding [`CustomPipeBuilder`] to
+/// [`crate::Toolkit::new_custom`].
 ///
 /// Note that `kas-wgpu` accepts only a single custom pipe. To use more than
 /// one, you will have to implement your own multiplexer (presumably using an
