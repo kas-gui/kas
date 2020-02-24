@@ -50,6 +50,7 @@ For details, see the [Examples README](kas-wgpu/examples/README.md).
 
 ![Calculator](screenshots/calculator.png) ![Dynamic](screenshots/dynamic.png)
 ![Clock](screenshots/clock.png) ![Gallery](screenshots/gallery.png)
+![Mandlebrot](screenshots/mandlebrot.png)
 
 
 Installation and Testing
