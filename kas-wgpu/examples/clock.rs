@@ -4,7 +4,6 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Clock example
-#![feature(proc_macro_hygiene)]
 
 extern crate chrono;
 
@@ -18,7 +17,7 @@ use kas::event::{Manager, ManagerState};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::widget::Window;
-use kas::{Align, AlignHints, Direction, Layout, ThemeApi, Widget, WidgetCore};
+use kas::{Align, AlignHints, Direction, Layout, Widget, WidgetCore};
 use kas_wgpu::draw::DrawPipe;
 
 #[handler]
@@ -68,7 +67,7 @@ impl Layout for Clock {
         // Note: offset is used for scroll-regions, and should be zero here;
         // we add it anyway as is recommended.
         let (region, offset, draw) = draw_handle.draw_device();
-        let draw = draw.as_any_mut().downcast_mut::<DrawPipe>().unwrap();
+        let draw = draw.as_any_mut().downcast_mut::<DrawPipe<()>>().unwrap();
 
         draw.circle(region, self.core.rect + offset, 0.95, col_face);
 
@@ -160,8 +159,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
 
     let window = Window::new("Clock", Clock::new());
 
-    let mut theme = kas_theme::FlatTheme::new();
-    theme.set_font_size(32.0);
+    let theme = kas_theme::FlatTheme::new();
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
     toolkit.run()

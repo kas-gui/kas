@@ -9,6 +9,7 @@
 //!
 //! All drawing operations are batched and do not happen immediately.
 
+mod custom;
 mod draw_pipe;
 mod draw_text;
 mod flat_round;
@@ -25,6 +26,7 @@ pub(crate) use shaded_round::ShadedRound;
 pub(crate) use shaded_square::ShadedSquare;
 pub(crate) use shaders::ShaderManager;
 
+pub use custom::{CustomPipe, DrawCustom};
 pub use vector::{Quad, Vec2};
 
 /// 3-part colour data
@@ -47,10 +49,11 @@ impl From<kas::draw::Colour> for Rgb {
 }
 
 /// Manager of draw pipes and implementor of [`kas::draw::Draw`]
-pub struct DrawPipe {
+pub struct DrawPipe<C> {
     clip_regions: Vec<Rect>,
-    flat_round: FlatRound,
     shaded_round: ShadedRound,
     shaded_square: ShadedSquare,
+    custom: C,
+    flat_round: FlatRound,
     glyph_brush: GlyphBrush<'static, ()>,
 }

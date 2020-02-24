@@ -16,20 +16,21 @@ use kas::event::UpdateHandle;
 use clipboard::{ClipboardContext, ClipboardProvider};
 
 /// State shared between windows
-pub struct SharedState<T> {
+pub struct SharedState<C, T> {
     #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub shaders: ShaderManager,
+    pub custom: C,
     pub theme: T,
     pub pending: Vec<PendingAction>,
     window_id: u32,
 }
 
-impl<T> SharedState<T> {
+impl<C, T> SharedState<C, T> {
     /// Construct
-    pub fn new(theme: T, options: Options) -> Result<Self, Error> {
+    pub fn new(custom: C, theme: T, options: Options) -> Result<Self, Error> {
         #[cfg(feature = "clipboard")]
         let clipboard = match ClipboardContext::new() {
             Ok(cb) => Some(cb),
@@ -62,6 +63,7 @@ impl<T> SharedState<T> {
             device,
             queue,
             shaders,
+            custom,
             theme,
             pending: vec![],
             window_id: 0,

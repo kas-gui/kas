@@ -30,7 +30,7 @@ pub struct FlatRound {
 
 impl FlatRound {
     /// Construct
-    pub fn new<T>(shared: &SharedState<T>, size: Size) -> Self {
+    pub fn new<C, T>(shared: &SharedState<C, T>, size: Size) -> Self {
         let device = &shared.device;
 
         type Scale = [f32; 2];

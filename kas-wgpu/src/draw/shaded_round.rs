@@ -31,7 +31,7 @@ pub struct ShadedRound {
 
 impl ShadedRound {
     /// Construct
-    pub fn new<T>(shared: &SharedState<T>, size: Size, light_norm: [f32; 3]) -> Self {
+    pub fn new<C, T>(shared: &SharedState<C, T>, size: Size, light_norm: [f32; 3]) -> Self {
         let device = &shared.device;
 
         type Scale = [f32; 2];
