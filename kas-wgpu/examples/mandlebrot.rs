@@ -12,11 +12,13 @@ use std::mem::size_of;
 use wgpu::ShaderModule;
 
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::ManagerState;
+use kas::event::{
+    Action, CursorIcon, Event, Handler, Manager, ManagerState, Response, ScrollDelta, VoidMsg,
+};
 use kas::geom::{Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::widget::Window;
-use kas::{AlignHints, Layout};
+use kas::{AlignHints, Layout, WidgetCore, WidgetId};
 use kas_wgpu::draw::{CustomPipe, DrawCustom, DrawPipe, Vec2};
 use kas_wgpu::Options;
 
@@ -119,7 +121,7 @@ impl Clone for Pipe {
 }
 
 impl CustomPipe for Pipe {
-    type Param = (Vec2, f32);
+    type Param = (Vec2, Vec2);
 
     fn init(&mut self, device: &wgpu::Device, size: Size) {
         // Note: real apps should compile shaders once and share between windows
@@ -228,8 +230,7 @@ impl CustomPipe for Pipe {
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
 
-        let scale = p.1 / (rect.size.0.min(rect.size.1) as f32);
-        let cxy = (bb - aa) * scale;
+        let cxy = (bb - aa) * p.1;
 
         let caa = p.0 - cxy;
         let cbb = p.0 + cxy;
@@ -282,11 +283,13 @@ impl Pipe {
 }
 
 #[widget]
-#[handler]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Mandlebrot {
     #[core]
     core: kas::CoreData,
+    centre: Vec2,
+    scalar: Vec2,
+    scale: f32,
 }
 
 impl Layout for Mandlebrot {
@@ -297,13 +300,44 @@ impl Layout for Mandlebrot {
     #[inline]
     fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
         self.core.rect = rect;
+        let size = rect.size.0.min(rect.size.1);
+        self.scalar = Vec2::splat(self.scale / size as f32);
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState) {
         let (region, offset, draw) = draw_handle.draw_device();
         let draw = draw.as_any_mut().downcast_mut::<DrawPipe<Pipe>>().unwrap();
-        let p = (Vec2(-0.5, 0.0), 1.0);
+        let p = (self.centre, self.scalar);
         draw.custom(region, self.core.rect + offset, p);
+    }
+}
+
+impl Handler for Mandlebrot {
+    type Msg = VoidMsg;
+
+    fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
+        match event {
+            Event::Action(Action::Scroll(delta)) => {
+                let factor = match delta {
+                    ScrollDelta::LineDelta(_, y) => -0.5 * y as f32,
+                    ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f32,
+                };
+                self.scale *= 2f32.powf(factor);
+                let size = self.core.rect.size.0.min(self.core.rect.size.1);
+                self.scalar = Vec2::splat(self.scale / size as f32);
+                mgr.redraw(self.id());
+            }
+            Event::PressStart { source, coord } => {
+                mgr.request_press_grab(source, self, coord, Some(CursorIcon::Grabbing));
+            }
+            Event::PressMove { delta, .. } => {
+                self.centre = self.centre - Vec2::from(delta) * self.scalar * Vec2::splat(2.0);
+                mgr.redraw(self.id());
+            }
+            _ => (),
+        }
+
+        Response::None
     }
 }
 
@@ -311,6 +345,9 @@ impl Mandlebrot {
     fn new() -> Self {
         Mandlebrot {
             core: Default::default(),
+            centre: Vec2(-0.5, 0.0),
+            scalar: Vec2(0.0, 0.0),
+            scale: 1.0,
         }
     }
 }
