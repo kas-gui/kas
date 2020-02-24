@@ -6,18 +6,21 @@
 //! Mandlebrot example
 //!
 //! Demonstrates use of a custom draw pipe.
+#![feature(proc_macro_hygiene)]
 
 use shaderc::{Compiler, ShaderKind};
 use std::mem::size_of;
 use wgpu::ShaderModule;
 
+use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{
     Action, CursorIcon, Event, Handler, Manager, ManagerState, Response, ScrollDelta, VoidMsg,
 };
 use kas::geom::{Rect, Size};
-use kas::layout::{AxisInfo, SizeRules};
-use kas::widget::Window;
+use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
+use kas::macros::make_widget;
+use kas::widget::{Label, Window};
 use kas::{AlignHints, Layout, WidgetCore, WidgetId};
 use kas_wgpu::draw::{CustomPipe, DrawCustom, DrawPipe, Vec2};
 use kas_wgpu::Options;
@@ -68,8 +71,11 @@ void main() {
         z.y = y;
     }
 
-    float r = (i == iter ? 0.0 : float(i)) / iter;
-    outColor = vec4(r, 0.0, 0.0, 1.0);
+    float r = float(i) / iter;
+    r -= trunc(r);
+    float g = r * r;
+    float b = g * g;
+    outColor = vec4(r, g, b, 1.0);
 }
 ";
 
@@ -294,7 +300,7 @@ struct Mandlebrot {
 
 impl Layout for Mandlebrot {
     fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
-        SizeRules::fixed(100)
+        SizeRules::new(100, 100, StretchPolicy::Maximise)
     }
 
     #[inline]
@@ -313,7 +319,7 @@ impl Layout for Mandlebrot {
 }
 
 impl Handler for Mandlebrot {
-    type Msg = VoidMsg;
+    type Msg = ();
 
     fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
@@ -326,18 +332,21 @@ impl Handler for Mandlebrot {
                 let size = self.core.rect.size.0.min(self.core.rect.size.1);
                 self.scalar = Vec2::splat(self.scale / size as f32);
                 mgr.redraw(self.id());
+                Response::Msg(())
             }
             Event::PressStart { source, coord } => {
                 mgr.request_press_grab(source, self, coord, Some(CursorIcon::Grabbing));
+                Response::None
             }
             Event::PressMove { delta, .. } => {
-                self.centre = self.centre - Vec2::from(delta) * self.scalar * Vec2::splat(2.0);
+                let size = self.core.rect.size.0.min(self.core.rect.size.1);
+                let scalar = Vec2::splat(2.0 * self.scale / size as f32);
+                self.centre = self.centre - Vec2::from(delta) * scalar;
                 mgr.redraw(self.id());
+                Response::Msg(())
             }
-            _ => (),
+            _ => Response::None,
         }
-
-        Response::None
     }
 }
 
@@ -350,12 +359,40 @@ impl Mandlebrot {
             scale: 1.0,
         }
     }
+
+    fn loc(&self) -> String {
+        let op = if self.centre.1 < 0.0 { "−" } else { "+" };
+        format!(
+            "Location: {} {} {}i; scale: {}",
+            self.centre.0,
+            op,
+            self.centre.1.abs(),
+            self.scale
+        )
+    }
 }
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let window = Window::new("Mandlebrot", Mandlebrot::new());
+    let mbrot = Mandlebrot::new();
+
+    let window = make_widget! {
+        #[widget]
+        #[layout(vertical)]
+        #[handler(msg = VoidMsg)]
+        struct {
+            #[widget] label: Label = Label::new(mbrot.loc()),
+            #[widget(handler = mbrot)] mbrot: Mandlebrot = mbrot,
+        }
+        impl {
+            fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
+                self.label.set_string(mgr, self.mbrot.loc());
+                Response::None
+            }
+        }
+    };
+    let window = Window::new("Mandlebrot", window);
 
     let pipe = Pipe::new();
     let theme = kas_theme::FlatTheme::new();
