@@ -16,7 +16,7 @@
 
 pub mod draw;
 mod event_loop;
-mod options;
+pub mod options;
 mod shared;
 mod window;
 
@@ -32,10 +32,11 @@ use crate::draw::{CustomPipeBuilder, DrawPipe};
 use crate::shared::SharedState;
 use window::Window;
 
-pub use options::{BackendBit, Options, PowerPreference};
+pub use options::Options;
 
 pub use kas;
 pub use kas_theme as theme;
+pub use wgpu;
 pub use wgpu_glyph as glyph;
 
 /// Possible failures from constructing a [`Toolkit`]
