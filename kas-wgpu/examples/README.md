@@ -65,6 +65,12 @@ Pretty useless, but hey, funky background colours!
 
 ![Custom theme](../../screenshots/theme.png)
 
+### Mandlebrot
+
+An example demonstrating a custom draw pipe.
+
+![Mandlebrot](../../screenshots/mandlebrot.png)
+
 Copyright and Licence
 -------
 
