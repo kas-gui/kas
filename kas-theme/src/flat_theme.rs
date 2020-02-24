@@ -17,7 +17,7 @@ use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
 use kas::{Align, Direction, ThemeAction, ThemeApi};
 
-/// A simple flat theme.
+/// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
 pub struct FlatTheme {
     font_id: FontId,

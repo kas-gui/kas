@@ -22,7 +22,7 @@ use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::macros::make_widget;
 use kas::widget::{Label, Window};
 use kas::{AlignHints, Layout, WidgetCore, WidgetId};
-use kas_wgpu::draw::{CustomPipe, DrawCustom, DrawPipe, Vec2};
+use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, DrawCustom, DrawPipe, Vec2};
 use kas_wgpu::Options;
 
 const VERTEX: &'static str = "
@@ -106,30 +106,12 @@ impl Shaders {
 #[derive(Clone, Copy, Debug)]
 struct Vertex(Vec2, Vec2);
 
-struct PipeRes {
-    bind_group: wgpu::BindGroup,
-    scale_buf: wgpu::Buffer,
-    render_pipeline: wgpu::RenderPipeline,
-}
+struct PipeBuilder;
 
-struct Pipe {
-    res: Option<PipeRes>,
-    passes: Vec<Vec<Vertex>>,
-}
+impl CustomPipeBuilder for PipeBuilder {
+    type Pipe = Pipe;
 
-impl Clone for Pipe {
-    fn clone(&self) -> Self {
-        Pipe {
-            res: None,
-            passes: vec![],
-        }
-    }
-}
-
-impl CustomPipe for Pipe {
-    type Param = (Vec2, Vec2);
-
-    fn init(&mut self, device: &wgpu::Device, size: Size) {
+    fn build(&mut self, device: &wgpu::Device, size: Size) -> Self::Pipe {
         // Note: real apps should compile shaders once and share between windows
         let shaders = Shaders::compile(device);
 
@@ -210,12 +192,24 @@ impl CustomPipe for Pipe {
             alpha_to_coverage_enabled: false,
         });
 
-        self.res = Some(PipeRes {
+        Pipe {
             bind_group,
             scale_buf,
             render_pipeline,
-        });
+            passes: vec![],
+        }
     }
+}
+
+struct Pipe {
+    bind_group: wgpu::BindGroup,
+    scale_buf: wgpu::Buffer,
+    render_pipeline: wgpu::RenderPipeline,
+    passes: Vec<Vec<Vertex>>,
+}
+
+impl CustomPipe for Pipe {
+    type Param = (Vec2, Vec2);
 
     fn resize(&mut self, device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, size: Size) {
         type Scale = [f32; 2];
@@ -225,8 +219,7 @@ impl CustomPipe for Pipe {
             .fill_from_slice(&scale_factor);
         let byte_len = size_of::<Scale>() as u64;
 
-        let res = self.res.as_ref().unwrap();
-        encoder.copy_buffer_to_buffer(&scale_buf, 0, &res.scale_buf, 0, byte_len);
+        encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);
     }
 
     fn invoke(&mut self, pass: usize, rect: Rect, p: Self::Param) {
@@ -260,9 +253,8 @@ impl CustomPipe for Pipe {
             .fill_from_slice(&v);
         let count = v.len() as u32;
 
-        let res = self.res.as_ref().unwrap();
-        rpass.set_pipeline(&res.render_pipeline);
-        rpass.set_bind_group(0, &res.bind_group, &[]);
+        rpass.set_pipeline(&self.render_pipeline);
+        rpass.set_bind_group(0, &self.bind_group, &[]);
         rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
         rpass.draw(0..count, 0..1);
 
@@ -271,13 +263,6 @@ impl CustomPipe for Pipe {
 }
 
 impl Pipe {
-    fn new() -> Self {
-        Pipe {
-            res: None,
-            passes: vec![],
-        }
-    }
-
     fn add_vertices(&mut self, pass: usize, slice: &[Vertex]) {
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
@@ -394,9 +379,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
     };
     let window = Window::new("Mandlebrot", window);
 
-    let pipe = Pipe::new();
     let theme = kas_theme::FlatTheme::new();
-    let mut toolkit = kas_wgpu::Toolkit::new_custom(pipe, theme, Options::from_env())?;
+    let mut toolkit = kas_wgpu::Toolkit::new_custom(PipeBuilder, theme, Options::from_env())?;
     toolkit.add(window)?;
     toolkit.run()
 }

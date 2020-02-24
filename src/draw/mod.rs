@@ -8,10 +8,10 @@
 //! This module includes abstractions over the drawing API and some associated
 //! types.
 //!
-//! All draw operations may be batched; when drawn primitives (of high or low
-//! level) overlap, the result is implementation-defined.
-//! Note that current use-cases do make certain assumptions about this
-//! behaviour; this requires better specification (TBD).
+//! All draw operations may be batched; when drawn primitives overlap, the
+//! results are only loosely defined. All opaque draw commands replace prior
+//! contents, and generally executed in the order queued.
+//! Any partially-transparent draw commands are executed after opaque commands.
 //!
 //! ### High-level interface
 //!
@@ -19,20 +19,27 @@
 //! implementation of which is passed to [`kas::Layout::draw`]. A companion
 //! trait, [`SizeHandle`], is passed to [`kas::Layout::size_rules`].
 //!
-//! The primary reason this high-level interface exists is to allow themes a
-//! degree of flexibility over both drawing and sizing of elements.
+//! This interface allows themes a degree of flexibility over both drawing and
+//! sizing of elements and provides users with a very high-level interface to
+//! common UI shapes. It is expected to be extended significantly.
+//!
+//! ### Medium-level interface
+//!
+//! The [`Draw`] trait and its extensions provide a simpler, limited, drawing
+//! API, covering shapes such as lines, circles and rectangles, with
+//! single-colour (flat) shading or (depending upon the implementation) some
+//! other shading options.
+//!
+//! The [`Draw`] trait itself contains very little; extension traits
+//! [`DrawRounded`], [`DrawShaded`] and [`DrawText`] provide some additionaol
+//! routines. Toolkits must implement support for [`Draw`] while other
+//! extensions are optional; toolkits may also provide their own extensions.
 //!
 //! ### Low-level interface
 //!
-//! The [`Draw`] trait provides a basic (but limited) draw interface. Note that
-//! there is no common low-level drawing interface (excepting raw writes to
-//! some form of texture), thus this trait only provides a few simple draw
-//! operations. TODO
-//!
-//! Extension traits such as [`DrawRounded`], [`DrawShaded`] and [`DrawText`]
-//! may provide some higher-level draw operations.
-//! Note that it is optional whether the drawing backend supports these, and
-//! also that the backend may provide additional extension traits.
+//! There is no universal graphics API, hence none is provided by this crate.
+//! Instead, toolkits may provide their own extensions allowing direct access
+//! to the host graphics API, for example `kas-wgpu::draw::CustomPipe`.
 
 mod colour;
 mod handle;
@@ -55,7 +62,7 @@ pub struct Region(pub usize);
 /// Base abstraction over drawing
 ///
 /// All draw operations target some region identified by a handle of type
-/// [`Draw::Region`]; this may be the whole window, some sub-region, or perhaps
+/// [`Region`]; this may be the whole window, some sub-region, or perhaps
 /// something else such as a texture. In general the user doesn't need to know
 /// what this is, but merely pass the given handle.
 ///

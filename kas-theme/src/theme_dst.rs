@@ -141,6 +141,10 @@ impl<'a, T: Theme<Draw>, Draw> ThemeDst<Draw> for T {
 
 /// As [`Window`], but without associated types
 ///
+/// This trait is implemented automatically for all implementations of
+/// [`Window`]. It is intended only for use where a less parameterised
+/// trait is required.
+///
 /// **Feature gated**: this is only available with feature `stack_dst`.
 pub trait WindowDst<Draw> {
     /// Construct a [`SizeHandle`] object

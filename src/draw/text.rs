@@ -21,16 +21,17 @@ use crate::Align;
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FontId(pub usize);
 
-/// Text properties
+/// Text properties for use by [`DrawText::text`]
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct TextProperties {
-    /// Font
+    /// The font
     pub font: FontId,
-    /// Font scale
+    /// Font scale (approximately the pixel-height of a line of text or double
+    /// the "pt" size; currently not formally specified)
     pub scale: f32,
     /// Font colour
     pub col: Colour,
-    /// Text alignment
+    /// Text alignment in horizontal and vertical directions
     pub align: (Align, Align),
     /// True if text should automatically be line-wrapped
     pub line_wrap: bool,

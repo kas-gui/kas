@@ -7,12 +7,15 @@
 
 use std::ops::{Deref, DerefMut};
 
+use kas::draw::{Draw, Region};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::{Align, Direction};
 
 /// Class of text drawn
+///
+/// Themes choose font, font size, colour, and alignment based on this.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum TextClass {
     /// Label text is drawn over the background colour
@@ -101,15 +104,17 @@ pub trait DrawHandle {
     ///
     /// One may use [`Draw::as_any_mut`] to downcast the `draw` object when necessary.
     ///
-    /// WARNING: all positions ([`Rect`] and [`Coord`]) must be adjusted by the
-    /// given offset before being passed to [`Draw`] methods:
+    /// **Important**: all positions ([`Rect`] and [`Coord`]) must be adjusted
+    /// (as below) by the `given` offset before being passed to the methods of
+    /// [`Draw`] and its extension traits. This offset is used by
+    /// [`kas::widget::ScrollRegion`] to adjust its contents.
     /// ```
     /// # use kas::geom::*;
     /// # let offset = Coord::ZERO;
     /// # let rect = Rect::new(offset, Size::ZERO);
     /// let rect = rect + offset;
     /// ```
-    fn draw_device(&mut self) -> (kas::draw::Region, Coord, &mut dyn kas::draw::Draw);
+    fn draw_device(&mut self) -> (Region, Coord, &mut dyn Draw);
 
     /// Construct a new draw-handle on a given region and pass to a callback.
     ///
@@ -241,7 +246,7 @@ where
 }
 
 impl<H: DrawHandle> DrawHandle for Box<H> {
-    fn draw_device(&mut self) -> (kas::draw::Region, Coord, &mut dyn kas::draw::Draw) {
+    fn draw_device(&mut self) -> (Region, Coord, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
     fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
@@ -278,7 +283,7 @@ impl<S> DrawHandle for stack_dst::ValueA<dyn DrawHandle, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
-    fn draw_device(&mut self) -> (kas::draw::Region, Coord, &mut dyn kas::draw::Draw) {
+    fn draw_device(&mut self) -> (Region, Coord, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
     fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle)) {

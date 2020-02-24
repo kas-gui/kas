@@ -16,7 +16,7 @@
 
 pub mod draw;
 mod event_loop;
-mod options;
+pub mod options;
 mod shared;
 mod window;
 
@@ -28,7 +28,7 @@ use kas_theme::Theme;
 use winit::error::OsError;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
-use crate::draw::{CustomPipe, DrawPipe};
+use crate::draw::{CustomPipeBuilder, DrawPipe};
 use crate::shared::SharedState;
 use window::Window;
 
@@ -36,6 +36,7 @@ pub use options::Options;
 
 pub use kas;
 pub use kas_theme as theme;
+pub use wgpu;
 pub use wgpu_glyph as glyph;
 
 /// Possible failures from constructing a [`Toolkit`]
@@ -82,10 +83,10 @@ impl From<shaderc::Error> for Error {
 }
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
-pub struct Toolkit<C: CustomPipe, T: Theme<DrawPipe<C>>> {
+pub struct Toolkit<CB: CustomPipeBuilder, T: Theme<DrawPipe<CB::Pipe>>> {
     el: EventLoop<ProxyAction>,
-    windows: Vec<(WindowId, Window<C, T::Window>)>,
-    shared: SharedState<C, T>,
+    windows: Vec<(WindowId, Window<CB::Pipe, T::Window>)>,
+    shared: SharedState<CB, T>,
 }
 
 impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T> {
@@ -98,12 +99,15 @@ impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T> {
     }
 }
 
-impl<C: CustomPipe + 'static, T: Theme<DrawPipe<C>> + 'static> Toolkit<C, T> {
+impl<CB: CustomPipeBuilder + 'static, T: Theme<DrawPipe<CB::Pipe>> + 'static> Toolkit<CB, T> {
     /// Construct an instance with custom options
     ///
-    /// The `custom` parameter accepts a custom draw pipe (see [`CustomPipe`]).
+    /// The `custom` parameter accepts a custom draw pipe (see [`CustomPipeBuilder`]).
     /// Pass `()` if you don't have one.
-    pub fn new_custom(custom: C, theme: T, options: Options) -> Result<Self, Error> {
+    ///
+    /// The [`Options`] parameter allows direct specification of toolkit
+    /// options; usually, these are provided by [`Options::from_env`].
+    pub fn new_custom(custom: CB, theme: T, options: Options) -> Result<Self, Error> {
         Ok(Toolkit {
             el: EventLoop::with_user_event(),
             windows: vec![],
