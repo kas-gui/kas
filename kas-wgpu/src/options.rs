@@ -7,7 +7,7 @@
 
 use log::warn;
 use std::env::var;
-use wgpu::{BackendBit, PowerPreference};
+pub use wgpu::{BackendBit, PowerPreference};
 
 /// Toolkit options
 pub struct Options {

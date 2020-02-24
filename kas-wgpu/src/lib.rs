@@ -32,7 +32,7 @@ use crate::draw::{CustomPipeBuilder, DrawPipe};
 use crate::shared::SharedState;
 use window::Window;
 
-pub use options::Options;
+pub use options::{BackendBit, Options, PowerPreference};
 
 pub use kas;
 pub use kas_theme as theme;
