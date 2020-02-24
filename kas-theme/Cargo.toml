@@ -17,13 +17,13 @@ default = ["font-kit", "stack_dst"]
 gat = []
 
 # Use stack_dst crate for sized unsized types
-stack_dst = ["kas/stack_dst", "_dst"]
+stack_dst = ["kas/stack_dst", "stack_dst_"]
 
 [dependencies]
 font-kit = { version = "0.4.0", optional = true }
 lazy_static = "1.4.0"
 log = "0.4"
-_dst = { version = "0.6", package = "stack_dst", features = ["unsize"], optional = true }
+stack_dst_ = { version = "0.6", package = "stack_dst", features = ["unsize"], optional = true }
 
 [dependencies.kas]
 path = ".."
