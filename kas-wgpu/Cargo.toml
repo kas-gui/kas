@@ -1,6 +1,6 @@
 [package]
 name = "kas-wgpu"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -19,7 +19,7 @@ gat = ["kas-theme/gat"]
 stack_dst = ["kas-theme/stack_dst"]
 
 [dependencies]
-kas = { path = "..", version = "0.2.0", features = ["winit"] }
+kas = { path = "..", version = "0.3.0", features = ["winit"] }
 kas-theme = { path = "../kas-theme" }
 log = "0.4"
 shaderc = "0.6.1"
