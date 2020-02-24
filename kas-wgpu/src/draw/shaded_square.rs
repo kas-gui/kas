@@ -27,7 +27,7 @@ pub struct ShadedSquare {
 
 impl ShadedSquare {
     /// Construct
-    pub fn new<T>(shared: &SharedState<T>, size: Size, light_norm: [f32; 3]) -> Self {
+    pub fn new<C, T>(shared: &SharedState<C, T>, size: Size, light_norm: [f32; 3]) -> Self {
         let device = &shared.device;
         type Scale = [f32; 2];
         let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];

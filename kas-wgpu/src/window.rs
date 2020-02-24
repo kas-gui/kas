@@ -6,6 +6,7 @@
 //! `Window` and `WindowList` types
 
 use log::{debug, info, trace};
+use std::marker::PhantomData;
 use std::time::Instant;
 
 use kas::event::{Callback, CursorIcon, ManagerState, UpdateHandle};
@@ -17,12 +18,12 @@ use winit::error::OsError;
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 
-use crate::draw::DrawPipe;
+use crate::draw::{CustomPipe, DrawPipe};
 use crate::shared::{PendingAction, SharedState};
 use crate::ProxyAction;
 
 /// Per-window data
-pub(crate) struct Window<TW> {
+pub(crate) struct Window<C: CustomPipe, TW> {
     widget: Box<dyn kas::Window>,
     mgr: ManagerState,
     /// The winit window
@@ -30,15 +31,15 @@ pub(crate) struct Window<TW> {
     surface: wgpu::Surface,
     sc_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
-    draw_pipe: DrawPipe,
+    draw_pipe: DrawPipe<C>,
     theme_window: TW,
 }
 
 // Public functions, for use by the toolkit
-impl<TW: kas_theme::Window<DrawPipe> + 'static> Window<TW> {
+impl<C: CustomPipe, TW: kas_theme::Window<DrawPipe<C>> + 'static> Window<C, TW> {
     /// Construct a window
-    pub fn new<T: Theme<DrawPipe, Window = TW>>(
-        shared: &mut SharedState<T>,
+    pub fn new<T: Theme<DrawPipe<C>, Window = TW>>(
+        shared: &mut SharedState<C, T>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
         widget: Box<dyn kas::Window>,
     ) -> Result<Self, OsError> {
@@ -82,7 +83,7 @@ impl<TW: kas_theme::Window<DrawPipe> + 'static> Window<TW> {
     /// windows. Optionally returns a callback time.
     ///
     /// `init` should always return an action of at least `TkAction::Reconfigure`.
-    pub fn init<T: Theme<DrawPipe>>(&mut self, shared: &mut SharedState<T>) -> TkAction {
+    pub fn init<T: Theme<DrawPipe<C>>>(&mut self, shared: &mut SharedState<C, T>) -> TkAction {
         debug!("Window::init");
         let mut tkw = TkWindow::new(&self.window, shared);
         let mut mgr = self.mgr.manager(&mut tkw);
@@ -101,9 +102,9 @@ impl<TW: kas_theme::Window<DrawPipe> + 'static> Window<TW> {
     }
 
     /// Recompute layout of widgets and redraw
-    pub fn reconfigure<T: Theme<DrawPipe>>(
+    pub fn reconfigure<T: Theme<DrawPipe<C>>>(
         &mut self,
-        shared: &mut SharedState<T>,
+        shared: &mut SharedState<C, T>,
     ) -> Option<Instant> {
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         debug!("Reconfiguring window (size = {:?})", size);
@@ -119,7 +120,7 @@ impl<TW: kas_theme::Window<DrawPipe> + 'static> Window<TW> {
         self.mgr.next_resume()
     }
 
-    pub fn theme_resize<T: Theme<DrawPipe, Window = TW>>(&mut self, shared: &SharedState<T>) {
+    pub fn theme_resize<T: Theme<DrawPipe<C>, Window = TW>>(&mut self, shared: &SharedState<C, T>) {
         debug!("Applying theme resize");
         let scale_factor = self.window.scale_factor() as f32;
         shared
@@ -136,9 +137,9 @@ impl<TW: kas_theme::Window<DrawPipe> + 'static> Window<TW> {
     /// Handle an event
     ///
     /// Return true to remove the window
-    pub fn handle_event<T: Theme<DrawPipe, Window = TW>>(
+    pub fn handle_event<T: Theme<DrawPipe<C>, Window = TW>>(
         &mut self,
-        shared: &mut SharedState<T>,
+        shared: &mut SharedState<C, T>,
         event: WindowEvent,
     ) -> (TkAction, Option<Instant>) {
         // Note: resize must be handled here to update self.swap_chain.
@@ -170,7 +171,10 @@ impl<TW: kas_theme::Window<DrawPipe> + 'static> Window<TW> {
         self.mgr.region_moved(&mut *self.widget);
     }
 
-    pub fn handle_closure<T: Theme<DrawPipe>>(mut self, shared: &mut SharedState<T>) -> TkAction {
+    pub fn handle_closure<T: Theme<DrawPipe<C>>>(
+        mut self,
+        shared: &mut SharedState<C, T>,
+    ) -> TkAction {
         let mut tkw = TkWindow::new(&self.window, shared);
         let mut mgr = self.mgr.manager(&mut tkw);
 
@@ -189,9 +193,9 @@ impl<TW: kas_theme::Window<DrawPipe> + 'static> Window<TW> {
         mgr.unwrap_action()
     }
 
-    pub fn update_timer<T: Theme<DrawPipe>>(
+    pub fn update_timer<T: Theme<DrawPipe<C>>>(
         &mut self,
-        shared: &mut SharedState<T>,
+        shared: &mut SharedState<C, T>,
     ) -> (TkAction, Option<Instant>) {
         let mut tkw = TkWindow::new(&self.window, shared);
         let mut mgr = self.mgr.manager(&mut tkw);
@@ -199,9 +203,9 @@ impl<TW: kas_theme::Window<DrawPipe> + 'static> Window<TW> {
         (mgr.unwrap_action(), self.mgr.next_resume())
     }
 
-    pub fn update_handle<T: Theme<DrawPipe>>(
+    pub fn update_handle<T: Theme<DrawPipe<C>>>(
         &mut self,
-        shared: &mut SharedState<T>,
+        shared: &mut SharedState<C, T>,
         handle: UpdateHandle,
         payload: u64,
     ) -> TkAction {
@@ -213,10 +217,10 @@ impl<TW: kas_theme::Window<DrawPipe> + 'static> Window<TW> {
 }
 
 // Internal functions
-impl<TW: kas_theme::Window<DrawPipe> + 'static> Window<TW> {
-    fn do_resize<T: Theme<DrawPipe, Window = TW>>(
+impl<C: CustomPipe, TW: kas_theme::Window<DrawPipe<C>> + 'static> Window<C, TW> {
+    fn do_resize<T: Theme<DrawPipe<C>, Window = TW>>(
         &mut self,
-        shared: &mut SharedState<T>,
+        shared: &mut SharedState<C, T>,
         size: PhysicalSize<u32>,
     ) -> TkAction {
         let size = size.into();
@@ -241,7 +245,10 @@ impl<TW: kas_theme::Window<DrawPipe> + 'static> Window<TW> {
         TkAction::Redraw
     }
 
-    pub(crate) fn do_draw<T: Theme<DrawPipe, Window = TW>>(&mut self, shared: &mut SharedState<T>) {
+    pub(crate) fn do_draw<T: Theme<DrawPipe<C>, Window = TW>>(
+        &mut self,
+        shared: &mut SharedState<C, T>,
+    ) {
         trace!("Drawing window");
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         let rect = Rect {
@@ -274,18 +281,23 @@ fn to_wgpu_color(c: kas::draw::Colour) -> wgpu::Color {
     }
 }
 
-struct TkWindow<'a, T> {
+struct TkWindow<'a, C, T> {
     window: &'a winit::window::Window,
-    shared: &'a mut SharedState<T>,
+    shared: &'a mut SharedState<C, T>,
+    _phantom: PhantomData<C>,
 }
 
-impl<'a, T> TkWindow<'a, T> {
-    fn new(window: &'a winit::window::Window, shared: &'a mut SharedState<T>) -> Self {
-        TkWindow { window, shared }
+impl<'a, C, T> TkWindow<'a, C, T> {
+    fn new(window: &'a winit::window::Window, shared: &'a mut SharedState<C, T>) -> Self {
+        TkWindow {
+            window,
+            shared,
+            _phantom: Default::default(),
+        }
     }
 }
 
-impl<'a, T: Theme<DrawPipe>> kas::TkWindow for TkWindow<'a, T> {
+impl<'a, C: CustomPipe, T: Theme<DrawPipe<C>>> kas::TkWindow for TkWindow<'a, C, T> {
     fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.

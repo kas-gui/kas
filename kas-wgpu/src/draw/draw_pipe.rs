@@ -11,18 +11,18 @@ use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
 use wgpu_glyph::GlyphBrushBuilder;
 
-use super::{DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
+use super::{CustomPipe, DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
 use crate::shared::SharedState;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, Region};
 use kas::geom::{Coord, Rect, Size};
 use kas_theme::Theme;
 
-impl DrawPipe {
+impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
     // TODO: do we want to share state across windows? With glyph_brush this is
     // not trivial but with our "pipes" it shouldn't be difficult.
     pub fn new<T: Theme<Self>>(
-        shared: &mut SharedState<T>,
+        shared: &mut SharedState<C, T>,
         tex_format: wgpu::TextureFormat,
         size: Size,
     ) -> Self {
@@ -37,6 +37,9 @@ impl DrawPipe {
         let f = a.0 / a.1;
         let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
 
+        let mut custom = shared.custom.clone();
+        custom.init(&shared.device, size);
+
         let glyph_brush =
             GlyphBrushBuilder::using_fonts(vec![]).build(&mut shared.device, tex_format);
 
@@ -44,11 +47,13 @@ impl DrawPipe {
             pos: Coord::ZERO,
             size,
         };
+
         DrawPipe {
             clip_regions: vec![region],
-            flat_round: FlatRound::new(shared, size),
             shaded_square: ShadedSquare::new(shared, size, norm),
             shaded_round: ShadedRound::new(shared, size, norm),
+            custom,
+            flat_round: FlatRound::new(shared, size),
             glyph_brush,
         }
     }
@@ -58,9 +63,10 @@ impl DrawPipe {
         self.clip_regions[0].size = size;
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-        self.flat_round.resize(device, &mut encoder, size);
         self.shaded_square.resize(device, &mut encoder, size);
         self.shaded_round.resize(device, &mut encoder, size);
+        self.custom.resize(device, &mut encoder, size);
+        self.flat_round.resize(device, &mut encoder, size);
         encoder.finish()
     }
 
@@ -96,6 +102,7 @@ impl DrawPipe {
 
             self.shaded_square.render(device, pass, &mut rpass);
             self.shaded_round.render(device, pass, &mut rpass);
+            self.custom.render(device, pass, &mut rpass);
             self.flat_round.render(device, pass, &mut rpass);
             drop(rpass);
 
@@ -115,7 +122,7 @@ impl DrawPipe {
     }
 }
 
-impl Draw for DrawPipe {
+impl<C: CustomPipe + 'static> Draw for DrawPipe<C> {
     #[inline]
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
@@ -138,7 +145,7 @@ impl Draw for DrawPipe {
     }
 }
 
-impl DrawRounded for DrawPipe {
+impl<C: CustomPipe + 'static> DrawRounded for DrawPipe<C> {
     #[inline]
     fn rounded_line(&mut self, pass: Region, p1: Coord, p2: Coord, radius: f32, col: Colour) {
         self.flat_round.line(pass.0, p1, p2, radius, col);
@@ -163,7 +170,7 @@ impl DrawRounded for DrawPipe {
     }
 }
 
-impl DrawShaded for DrawPipe {
+impl<C: CustomPipe + 'static> DrawShaded for DrawPipe<C> {
     #[inline]
     fn shaded_square(&mut self, pass: Region, rect: Rect, norm: (f32, f32), col: Colour) {
         self.shaded_square

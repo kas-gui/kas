@@ -8,12 +8,12 @@
 use std::f32;
 use wgpu_glyph::{GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
-use crate::draw::{DrawPipe, Vec2};
+use crate::draw::{CustomPipe, DrawPipe, Vec2};
 use kas::draw::{DrawText, Font, FontId, TextProperties};
 use kas::geom::{Coord, Rect};
 use kas::Align;
 
-impl DrawText for DrawPipe {
+impl<C: CustomPipe + 'static> DrawText for DrawPipe<C> {
     fn load_font(&mut self, font: Font<'static>) -> FontId {
         FontId(self.glyph_brush.add_font(font).0)
     }
