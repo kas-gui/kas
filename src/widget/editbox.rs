@@ -38,8 +38,16 @@ enum EditAction {
 
 /// A *guard* around an [`EditBox`]
 ///
-/// An [`EditBox`] handles input by (1) updating its contents as expected, then
-/// (2) by invoking the `EditGuard`, and returning the optional message.
+/// When an [`EditBox`] receives input, it updates its contents as expected,
+/// then invokes a method of `EditGuard`. This method may update the
+/// [`EditBox`] and may return a message to be returned by the [`EditBox`]'s
+/// event handler.
+///
+/// All methods on this trait are passed a reference to the [`EditBox`] as
+/// parameter. The `EditGuard`'s state may be accessed via the
+/// [`EditBox::guard`] public field.
+///
+/// All methods have a default implementation which does nothing.
 pub trait EditGuard: Sized {
     /// The [`Handler::Msg`] type
     type Msg;
@@ -50,27 +58,20 @@ pub trait EditGuard: Sized {
     /// the Enter/Return key for single-line edit boxes.
     ///
     /// Note that activation events cannot edit the contents.
-    ///
-    /// The [`EditBox`] reference can be used to retrieve the contents via
-    /// [`EditBox::text`], to modify the contents, and to access the guard's
-    /// state via [`EditBox::guard`].
-    ///
-    /// The return value, if any, is the [`Handler`]'s response.
-    /// The default implementation simply returns `None`.
     fn activate(_: &mut EditBox<Self>) -> Option<Self::Msg> {
+        None
+    }
+
+    /// Focus-lost guard
+    ///
+    /// This function is called when the widget loses keyboard input focus.
+    fn focus_lost(_: &mut EditBox<Self>) -> Option<Self::Msg> {
         None
     }
 
     /// Edit guard
     ///
     /// This function is called on any edit of the contents.
-    ///
-    /// The [`EditBox`] reference can be used to retrieve the contents via
-    /// [`EditBox::text`], to modify the contents, and to access the guard's
-    /// state via [`EditBox::guard`].
-    ///
-    /// The return value, if any, is the [`Handler`]'s response.
-    /// The default implementation simply returns `None`.
     fn edit(_: &mut EditBox<Self>) -> Option<Self::Msg> {
         None
     }
@@ -85,6 +86,17 @@ pub struct EditActivate<F: Fn(&str) -> Option<M>, M>(pub F);
 impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditActivate<F, M> {
     type Msg = M;
     fn activate(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
+        (edit.guard.0)(&edit.text)
+    }
+}
+
+pub struct EditAFL<F: Fn(&str) -> Option<M>, M>(pub F);
+impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditAFL<F, M> {
+    type Msg = M;
+    fn activate(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
+        (edit.guard.0)(&edit.text)
+    }
+    fn focus_lost(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
         (edit.guard.0)(&edit.text)
     }
 }
@@ -213,16 +225,28 @@ impl EditBox<()> {
         }
     }
 
-    /// Set the event handler to be called on activation.
+    /// Set a guard function, called on activation
     ///
     /// The closure `f` is called when the `EditBox` is activated (when the
     /// "enter" key is pressed). Its result, if not `None`, is the event
     /// handler's response.
     ///
-    /// Technically, this consumes `self` and reconstructs another `EditBox`
-    /// with a different parameterisation.
+    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
+    /// previously assigned to the `EditBox` will be replaced.
     pub fn on_activate<F: Fn(&str) -> Option<M>, M>(self, f: F) -> EditBox<EditActivate<F, M>> {
         self.with_guard(EditActivate(f))
+    }
+
+    /// Set a guard function, called on activation and input-focus lost
+    ///
+    /// The closure `f` is called when the `EditBox` is activated (when the
+    /// "enter" key is pressed). Its result, if not `None`, is the event
+    /// handler's response.
+    ///
+    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
+    /// previously assigned to the `EditBox` will be replaced.
+    pub fn on_afl<F: Fn(&str) -> Option<M>, M>(self, f: F) -> EditBox<EditAFL<F, M>> {
+        self.with_guard(EditAFL(f))
     }
 }
 
@@ -371,6 +395,10 @@ impl<G: EditGuard + 'static> Handler for EditBox<G> {
             Action::Activate => {
                 mgr.request_char_focus(self.id());
                 Response::None
+            }
+            Action::LostCharFocus => {
+                let r = G::focus_lost(self);
+                r.map(|msg| msg.into()).unwrap_or(Response::None)
             }
             Action::ReceivedCharacter(c) => {
                 let r = match self.received_char(mgr, c) {

@@ -23,7 +23,7 @@ mod window;
 pub use button::TextButton;
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use dialog::MessageBox;
-pub use editbox::{EditActivate, EditBox, EditGuard};
+pub use editbox::{EditBox, EditGuard};
 pub use filler::Filler;
 pub use label::Label;
 pub use list::{BoxColumn, BoxList, BoxRow, Column, List, Row};

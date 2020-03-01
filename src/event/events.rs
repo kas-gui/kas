@@ -15,6 +15,8 @@ use crate::WidgetId;
 pub enum Action {
     /// Widget activation, for example clicking a button or toggling a check-box
     Activate,
+    /// Widget lost keyboard input focus
+    LostCharFocus,
     /// Widget receives a character of text input
     ReceivedCharacter(char),
     /// A mouse or touchpad scroll event

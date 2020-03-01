@@ -28,7 +28,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         struct {
             #[widget] _ = Label::new("Number of rows:"),
             #[widget(handler = activate)] edit: impl HasText = EditBox::new("3")
-                .on_activate(|text| text.parse::<usize>().ok()),
+                .on_afl(|text| text.parse::<usize>().ok()),
             #[widget(handler = button)] _ = TextButton::new("Set", Control::Set),
             #[widget(handler = button)] _ = TextButton::new("−", Control::Decr),
             #[widget(handler = button)] _ = TextButton::new("+", Control::Incr),
@@ -36,7 +36,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
         impl {
             fn activate(&mut self, _: &mut Manager, n: usize) -> Response<usize> {
-                // TODO: also call this when widget loses focus!
                 self.n = n;
                 n.into()
             }

@@ -203,9 +203,11 @@ impl ManagerState {
     #[inline]
     pub fn manager<'a>(&'a mut self, tkw: &'a mut dyn TkWindow) -> Manager<'a> {
         Manager {
-            action: TkAction::None,
+            read_only: false,
             mgr: self,
             tkw,
+            pending: SmallVec::new(),
+            action: TkAction::None,
         }
     }
 }
@@ -262,11 +264,17 @@ impl ManagerState {
     }
 }
 
+enum Pending {
+    LostCharFocus(WidgetId),
+}
+
 /// Manager of event-handling and toolkit actions
 pub struct Manager<'a> {
-    action: TkAction,
+    read_only: bool,
     mgr: &'a mut ManagerState,
     tkw: &'a mut dyn TkWindow,
+    pending: SmallVec<[Pending; 4]>,
+    action: TkAction,
 }
 
 /// Public API (around toolkit functionality)
@@ -399,7 +407,9 @@ impl<'a> Manager<'a> {
     /// This should be set from [`Widget::configure`].
     #[inline]
     pub fn add_accel_key(&mut self, key: VirtualKeyCode, id: WidgetId) {
-        self.mgr.accel_keys.insert(key, id);
+        if !self.read_only {
+            self.mgr.accel_keys.insert(key, id);
+        }
     }
 
     /// Request character-input focus
@@ -409,8 +419,9 @@ impl<'a> Manager<'a> {
     ///
     /// Currently, this method always succeeds.
     pub fn request_char_focus(&mut self, id: WidgetId) {
-        self.mgr.char_focus = Some(id);
-        self.redraw(id);
+        if !self.read_only {
+            self.set_char_focus(Some(id));
+        }
     }
 
     /// Request a mouse grab on the given `source`
@@ -434,6 +445,10 @@ impl<'a> Manager<'a> {
         coord: Coord,
         cursor: Option<CursorIcon>,
     ) -> bool {
+        if self.read_only {
+            return false;
+        }
+
         let w_id = widget.id();
         match source {
             PressSource::Mouse(button) => {
@@ -459,10 +474,7 @@ impl<'a> Manager<'a> {
             }
         }
 
-        if widget.allow_focus() {
-            self.mgr.char_focus = None;
-        }
-
+        self.set_char_focus(None);
         self.redraw(w_id);
         true
     }
@@ -586,13 +598,44 @@ impl<'a> Manager<'a> {
         }
         self.mgr.nav_focus = None;
     }
+
+    fn set_char_focus(&mut self, wid: Option<WidgetId>) {
+        if self.mgr.char_focus == wid {
+            return;
+        }
+
+        if let Some(id) = self.mgr.char_focus {
+            self.pending.push(Pending::LostCharFocus(id));
+            self.redraw(id);
+        }
+        if let Some(id) = wid {
+            self.redraw(id);
+        }
+        self.mgr.char_focus = wid;
+    }
 }
 
 /// Toolkit API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl<'a> Manager<'a> {
-    /// Extract the [`TkAction`].
-    pub fn unwrap_action(&mut self) -> TkAction {
+    /// Finish any processing and return the [`TkAction`]
+    pub fn finish<W>(mut self, widget: &mut W) -> TkAction
+    where
+        W: Widget + Handler<Msg = VoidMsg> + ?Sized,
+    {
+        // To avoid infinite loops, we consider self read-only from here on.
+        // Since we don't wish to duplicate Handler::handle, we don't actually
+        // make self const, but merely pretend it is in the public API.
+        self.read_only = true;
+
+        for item in self.pending.pop() {
+            match item {
+                Pending::LostCharFocus(id) => {
+                    let ev = Event::Action(Action::LostCharFocus);
+                    let _ = widget.handle(&mut self, id, ev);
+                }
+            }
+        }
         self.action
     }
 
@@ -678,10 +721,7 @@ impl<'a> Manager<'a> {
                 match (input.scancode, input.state, input.virtual_keycode) {
                     (_, ElementState::Pressed, Some(vkey)) if char_focus && !is_synthetic => match vkey {
                         VirtualKeyCode::Escape => {
-                            if let Some(id) = self.mgr.char_focus {
-                                self.redraw(id);
-                            }
-                            self.mgr.char_focus = None;
+                            self.set_char_focus(None);
                             Response::None
                         }
                         _ => Response::None,
@@ -887,6 +927,6 @@ impl<'a> Manager<'a> {
             Response::Msg(_) => unreachable!(),
         };
 
-        self.unwrap_action()
+        self.finish(widget)
     }
 }
