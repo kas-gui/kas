@@ -324,9 +324,6 @@ pub trait Window: Widget + Handler<Msg = VoidMsg> {
     /// should call `trigger_callback(index, mgr)` whenever the condition is met.
     fn callbacks(&self) -> Vec<(usize, Callback)>;
 
-    /// Get the callback used on window closure.
-    fn final_callback(&self) -> Option<&'static dyn Fn(Box<dyn kas::Window>, &mut Manager)>;
-
     /// Trigger a callback (see `iter_callbacks`).
     fn trigger_callback(&mut self, index: usize, mgr: &mut Manager);
 }

@@ -13,16 +13,27 @@ use kas::event::HighlightState;
 /// Provides standard theme colours
 #[derive(Clone, Debug)]
 pub struct ThemeColours {
+    /// Background colour
     pub background: Colour,
+    /// Colour for frames (not always used)
     pub frame: Colour,
+    /// Background colour of `EditBox`
     pub text_area: Colour,
+    /// Text colour in an `EditBox`
     pub text: Colour,
+    /// Text colour in a `Label`
     pub label_text: Colour,
+    /// Text colour on a `TextButton`
     pub button_text: Colour,
-    pub key_nav_focus: Colour,
+    /// Highlight colour for keyboard navigation
+    pub nav_focus: Colour,
+    /// Colour of a `TextButton`
     pub button: Colour,
+    /// Colour of a `TextButton` when hovered by the mouse
     pub button_highlighted: Colour,
+    /// Colour of a `TextButton` when depressed
     pub button_depressed: Colour,
+    /// Colour of mark within a `CheckBox` or `RadioBox`
     pub checkbox: Colour,
 }
 
@@ -52,7 +63,7 @@ impl ThemeColours {
             text: Colour::grey(0.0),
             label_text: Colour::grey(0.0),
             button_text: Colour::grey(1.0),
-            key_nav_focus: Colour::new(1.0, 0.7, 0.5),
+            nav_focus: Colour::new(1.0, 0.7, 0.5),
             button: Colour::new(0.2, 0.7, 1.0),
             button_highlighted: Colour::new(0.25, 0.8, 1.0),
             button_depressed: Colour::new(0.15, 0.525, 0.75),
@@ -69,7 +80,7 @@ impl ThemeColours {
             text: Colour::grey(0.0),
             label_text: Colour::grey(0.0),
             button_text: Colour::grey(0.0),
-            key_nav_focus: Colour::new(1.0, 0.7, 0.5),
+            nav_focus: Colour::new(1.0, 0.7, 0.5),
             button: Colour::new(1.0, 1.0, 0.8),
             button_highlighted: Colour::new(1.0, 1.0, 0.6),
             button_depressed: Colour::new(0.8, 0.8, 0.6),
@@ -86,7 +97,7 @@ impl ThemeColours {
             text: Colour::grey(1.0),
             label_text: Colour::grey(1.0),
             button_text: Colour::grey(1.0),
-            key_nav_focus: Colour::new(1.0, 0.7, 0.5),
+            nav_focus: Colour::new(1.0, 0.7, 0.5),
             button: Colour::new(0.5, 0.1, 0.1),
             button_highlighted: Colour::new(0.6, 0.3, 0.1),
             button_depressed: Colour::new(0.3, 0.1, 0.1),
@@ -96,8 +107,8 @@ impl ThemeColours {
 
     /// Get colour for navigation highlight region, if any
     pub fn nav_region(&self, highlights: HighlightState) -> Option<Colour> {
-        if highlights.key_focus {
-            Some(self.key_nav_focus)
+        if highlights.nav_focus {
+            Some(self.nav_focus)
         } else {
             None
         }

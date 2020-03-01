@@ -34,7 +34,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=0, col=1)] _ = Label::from("Hello world"),
             #[widget(row=1, col=0)] _ = Label::from("EditBox"),
             #[widget(row=1, col=1)] _ = EditBox::new("edit me")
-                .on_activate(|entry| Item::Edit(entry.to_string())),
+                .on_activate(|text| Some(Item::Edit(text.to_string()))),
             #[widget(row=2, col=0)] _ = Label::from("TextButton"),
             #[widget(row=2, col=1)] _ = TextButton::new("Press me", Item::Button),
             #[widget(row=3, col=0)] _ = Label::from("CheckBox"),

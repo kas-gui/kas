@@ -85,11 +85,38 @@ pub use update::UpdateHandle;
 /// This type is not constructible, therefore `Response<VoidMsg>` is known at
 /// compile-time not to contain a `Response::Msg(..)` variant.
 ///
-/// Custom message types are required to implement `From<VoidMsg>`. The
-/// [`derive(VoidMsg)`](../macros/index.html#the-derivevoidmsg-macro)
-/// macro may be used for this purpose.
+/// It is trivial to implement `From<VoidMsg>` for any type `T`; unfortunately
+/// Rust's type system is too restrictive for us to provide a blanket
+/// implementation (due both to orphan rules for trait implementations and to
+/// conflicting implementations; it is possible that this may change in the
+/// future).
+///
+/// `From<VoidMsg>` is implemented for a number of language types;
+/// custom message types are required to implement this via the
+/// [`derive(VoidMsg)`](../macros/index.html#the-derivevoidmsg-macro) macro.
 #[derive(Clone, Debug)]
 pub struct VoidMsg;
 
 /// Alias for `Response<VoidMsg>`
 pub type VoidResponse = Response<VoidMsg>;
+
+// TODO(specialization): replace below impls with impl<T> From<VoidMsg> for T
+macro_rules! impl_void_msg {
+    () => {};
+    ($t:ty) => {
+        impl From<VoidMsg> for $t {
+            fn from(_: VoidMsg) -> $t {
+                unreachable!()
+            }
+        }
+    };
+    ($t:ty, $($tt:ty,)*) => {
+        impl_void_msg!($t);
+        impl_void_msg!($($tt,)*);
+    };
+}
+impl_void_msg!(bool, char,);
+impl_void_msg!(u8, u16, u32, u64, u128, usize,);
+impl_void_msg!(i8, i16, i32, i64, i128, isize,);
+impl_void_msg!(f32, f64,);
+impl_void_msg!(&'static str, String,);

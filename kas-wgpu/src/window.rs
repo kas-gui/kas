@@ -101,7 +101,7 @@ impl<C: CustomPipe, TW: kas_theme::Window<DrawPipe<C>> + 'static> Window<C, TW> 
             }
         }
 
-        mgr.unwrap_action()
+        mgr.finish(&mut *self.widget)
     }
 
     /// Recompute layout of widgets and redraw
@@ -192,11 +192,8 @@ impl<C: CustomPipe, TW: kas_theme::Window<DrawPipe<C>> + 'static> Window<C, TW> 
                 }
             }
         }
-        if let Some(final_cb) = self.widget.final_callback() {
-            final_cb(self.widget, &mut mgr);
-        }
 
-        mgr.unwrap_action()
+        mgr.finish(&mut *self.widget)
     }
 
     pub fn update_timer<CB: CustomPipeBuilder<Pipe = C>, T: Theme<DrawPipe<C>>>(
@@ -206,7 +203,9 @@ impl<C: CustomPipe, TW: kas_theme::Window<DrawPipe<C>> + 'static> Window<C, TW> 
         let mut tkw = TkWindow::new(&self.window, shared);
         let mut mgr = self.mgr.manager(&mut tkw);
         mgr.update_timer(&mut *self.widget);
-        (mgr.unwrap_action(), self.mgr.next_resume())
+
+        let action = mgr.finish(&mut *self.widget);
+        (action, self.mgr.next_resume())
     }
 
     pub fn update_handle<CB: CustomPipeBuilder<Pipe = C>, T: Theme<DrawPipe<C>>>(
@@ -218,7 +217,7 @@ impl<C: CustomPipe, TW: kas_theme::Window<DrawPipe<C>> + 'static> Window<C, TW> 
         let mut tkw = TkWindow::new(&self.window, shared);
         let mut mgr = self.mgr.manager(&mut tkw);
         mgr.update_handle(&mut *self.widget, handle, payload);
-        mgr.unwrap_action()
+        mgr.finish(&mut *self.widget)
     }
 }
 
