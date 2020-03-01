@@ -100,6 +100,13 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditAFL<F, M> {
         (edit.guard.0)(&edit.text)
     }
 }
+pub struct EditEdit<F: Fn(&str) -> Option<M>, M>(pub F);
+impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
+    type Msg = M;
+    fn edit(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
+        (edit.guard.0)(&edit.text)
+    }
+}
 
 /// An editable, single-line text box.
 #[derive(Clone, Default, Widget)]
@@ -228,8 +235,8 @@ impl EditBox<()> {
     /// Set a guard function, called on activation
     ///
     /// The closure `f` is called when the `EditBox` is activated (when the
-    /// "enter" key is pressed). Its result, if not `None`, is the event
-    /// handler's response.
+    /// "enter" key is pressed).
+    /// Its result, if not `None`, is the event handler's response.
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
@@ -240,13 +247,24 @@ impl EditBox<()> {
     /// Set a guard function, called on activation and input-focus lost
     ///
     /// The closure `f` is called when the `EditBox` is activated (when the
-    /// "enter" key is pressed). Its result, if not `None`, is the event
-    /// handler's response.
+    /// "enter" key is pressed) and when keyboard focus is lost.
+    /// Its result, if not `None`, is the event handler's response.
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
     pub fn on_afl<F: Fn(&str) -> Option<M>, M>(self, f: F) -> EditBox<EditAFL<F, M>> {
         self.with_guard(EditAFL(f))
+    }
+
+    /// Set a guard function, called on edit
+    ///
+    /// The closure `f` is called when the `EditBox` is edited.
+    /// Its result, if not `None`, is the event handler's response.
+    ///
+    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
+    /// previously assigned to the `EditBox` will be replaced.
+    pub fn on_edit<F: Fn(&str) -> Option<M>, M>(self, f: F) -> EditBox<EditEdit<F, M>> {
+        self.with_guard(EditEdit(f))
     }
 }
 
