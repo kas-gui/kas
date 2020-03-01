@@ -192,9 +192,6 @@ impl<C: CustomPipe, TW: kas_theme::Window<DrawPipe<C>> + 'static> Window<C, TW> 
                 }
             }
         }
-        if let Some(final_cb) = self.widget.final_callback() {
-            final_cb(self.widget, &mut mgr);
-        }
 
         mgr.unwrap_action()
     }
