@@ -27,11 +27,9 @@ pub struct HighlightState {
     /// If true, this likely implies `hover` is also true.
     pub depress: bool,
     /// Keyboard navigation of UIs moves a "focus" from widget to widget.
-    pub key_focus: bool,
+    pub nav_focus: bool,
     /// "Character focus" implies this widget is ready to receive text input
     /// (e.g. typing into an input field).
-    ///
-    /// If true, this likely implies `key_focus` is also true.
     pub char_focus: bool,
 }
 
@@ -39,7 +37,7 @@ impl HighlightState {
     /// True if any part of the state is true
     #[inline]
     pub fn any(self) -> bool {
-        self.hover || self.depress || self.key_focus || self.char_focus
+        self.hover || self.depress || self.nav_focus || self.char_focus
     }
 }
 
@@ -66,7 +64,7 @@ struct TouchEvent {
 pub struct ManagerState {
     dpi_factor: f64,
     char_focus: Option<WidgetId>,
-    key_focus: Option<WidgetId>,
+    nav_focus: Option<WidgetId>,
     hover: Option<WidgetId>,
     hover_icon: CursorIcon,
     key_events: SmallVec<[(u32, WidgetId); 10]>,
@@ -93,7 +91,7 @@ impl ManagerState {
         ManagerState {
             dpi_factor,
             char_focus: None,
-            key_focus: None,
+            nav_focus: None,
             hover: None,
             hover_icon: CursorIcon::Default,
             key_events: Default::default(),
@@ -138,7 +136,7 @@ impl ManagerState {
         self.hover = widget.find_id(coord);
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
-        self.key_focus = self.key_focus.and_then(|id| map.get(&id).cloned());
+        self.nav_focus = self.nav_focus.and_then(|id| map.get(&id).cloned());
         self.mouse_grab = self
             .mouse_grab
             .and_then(|(id, b)| map.get(&id).map(|id| (*id, b)));
@@ -219,7 +217,7 @@ impl ManagerState {
         HighlightState {
             hover: self.is_hovered(w_id),
             depress: self.is_depressed(w_id),
-            key_focus: self.key_focus(w_id),
+            nav_focus: self.nav_focus(w_id),
             char_focus: self.char_focus(w_id),
         }
     }
@@ -232,8 +230,8 @@ impl ManagerState {
 
     /// Get whether this widget has keyboard focus
     #[inline]
-    pub fn key_focus(&self, w_id: WidgetId) -> bool {
-        self.key_focus == Some(w_id)
+    pub fn nav_focus(&self, w_id: WidgetId) -> bool {
+        self.nav_focus == Some(w_id)
     }
 
     /// Get whether the widget is under the mouse or finger
@@ -411,9 +409,6 @@ impl<'a> Manager<'a> {
     ///
     /// Currently, this method always succeeds.
     pub fn request_char_focus(&mut self, id: WidgetId) {
-        if self.mgr.key_focus.is_some() {
-            self.mgr.key_focus = Some(id);
-        }
         self.mgr.char_focus = Some(id);
         self.redraw(id);
     }
@@ -465,9 +460,6 @@ impl<'a> Manager<'a> {
         }
 
         if widget.allow_focus() {
-            if self.mgr.key_focus.is_some() {
-                self.mgr.key_focus = Some(w_id);
-            }
             self.mgr.char_focus = None;
         }
 
@@ -569,30 +561,30 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn next_key_focus(&mut self, widget: &mut dyn Widget) {
-        let mut id = self.mgr.key_focus.unwrap_or(WidgetId::FIRST);
+    fn next_nav_focus(&mut self, widget: &mut dyn Widget) {
+        let mut id = self.mgr.nav_focus.unwrap_or(WidgetId::FIRST);
         let end = widget.id();
         loop {
             id = id.next();
             if id >= end {
-                return self.unset_key_focus();
+                return self.unset_nav_focus();
             }
 
             // TODO(opt): incorporate walk/find logic
             if widget.find(id).map(|w| w.allow_focus()).unwrap_or(false) {
                 self.send_action(TkAction::Redraw);
-                self.mgr.key_focus = Some(id);
+                self.mgr.nav_focus = Some(id);
                 return;
             }
         }
     }
 
     #[cfg(feature = "winit")]
-    fn unset_key_focus(&mut self) {
-        if let Some(id) = self.mgr.key_focus {
+    fn unset_nav_focus(&mut self) {
+        if let Some(id) = self.mgr.nav_focus {
             self.redraw(id);
         }
-        self.mgr.key_focus = None;
+        self.mgr.nav_focus = None;
     }
 }
 
@@ -696,11 +688,11 @@ impl<'a> Manager<'a> {
                     },
                     (scancode, ElementState::Pressed, Some(vkey)) if !char_focus && !is_synthetic => match vkey {
                         VirtualKeyCode::Tab => {
-                            self.next_key_focus(widget.as_widget_mut());
+                            self.next_nav_focus(widget.as_widget_mut());
                             Response::None
                         }
-                        VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
-                            if let Some(id) = self.mgr.key_focus {
+                        VirtualKeyCode::Space | VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
+                            if let Some(id) = self.mgr.nav_focus {
                                 // Add to key_events for visual feedback
                                 self.add_key_event(scancode, id);
 
@@ -709,7 +701,7 @@ impl<'a> Manager<'a> {
                             } else { Response::None }
                         }
                         VirtualKeyCode::Escape => {
-                            self.unset_key_focus();
+                            self.unset_nav_focus();
                             Response::None
                         }
                         vkey @ _ => {
