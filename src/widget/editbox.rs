@@ -30,9 +30,68 @@ impl Default for LastEdit {
     }
 }
 
+enum EditAction {
+    None,
+    Activate,
+    Edit,
+}
+
+/// A *guard* around an [`EditBox`]
+///
+/// An [`EditBox`] handles input by (1) updating its contents as expected, then
+/// (2) by invoking the `EditGuard`, and returning the optional message.
+pub trait EditGuard: Sized {
+    /// The [`Handler::Msg`] type
+    type Msg;
+
+    /// Activation guard
+    ///
+    /// This function is called when the widget is "activated", for example by
+    /// the Enter/Return key for single-line edit boxes.
+    ///
+    /// Note that activation events cannot edit the contents.
+    ///
+    /// The [`EditBox`] reference can be used to retrieve the contents via
+    /// [`EditBox::text`], to modify the contents, and to access the guard's
+    /// state via [`EditBox::guard`].
+    ///
+    /// The return value, if any, is the [`Handler`]'s response.
+    /// The default implementation simply returns `None`.
+    fn activate(_: &mut EditBox<Self>) -> Option<Self::Msg> {
+        None
+    }
+
+    /// Edit guard
+    ///
+    /// This function is called on any edit of the contents.
+    ///
+    /// The [`EditBox`] reference can be used to retrieve the contents via
+    /// [`EditBox::text`], to modify the contents, and to access the guard's
+    /// state via [`EditBox::guard`].
+    ///
+    /// The return value, if any, is the [`Handler`]'s response.
+    /// The default implementation simply returns `None`.
+    fn edit(_: &mut EditBox<Self>) -> Option<Self::Msg> {
+        None
+    }
+}
+
+/// A simple implementation of [`EditGuard`]
+///
+/// The wrapped closure is called with the [`EditBox`]'s contents whenever the
+/// edit box is activated, and the response, if not `None`, is returned by the
+/// event handler.
+pub struct EditActivate<F: Fn(&str) -> Option<M>, M>(pub F);
+impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditActivate<F, M> {
+    type Msg = M;
+    fn activate(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
+        (edit.guard.0)(&edit.text)
+    }
+}
+
 /// An editable, single-line text box.
 #[derive(Clone, Default, Widget)]
-pub struct EditBox<H: 'static> {
+pub struct EditBox<G: 'static> {
     #[core]
     core: CoreData,
     text_rect: Rect,
@@ -41,10 +100,11 @@ pub struct EditBox<H: 'static> {
     text: String,
     old_state: Option<String>,
     last_edit: LastEdit,
-    on_activate: H,
+    /// The associated [`EditGuard`] implementation
+    pub guard: G,
 }
 
-impl<H> Debug for EditBox<H> {
+impl<G> Debug for EditBox<G> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -54,7 +114,7 @@ impl<H> Debug for EditBox<H> {
     }
 }
 
-impl<H: 'static> Widget for EditBox<H> {
+impl<G: 'static> Widget for EditBox<G> {
     fn allow_focus(&self) -> bool {
         true
     }
@@ -64,7 +124,7 @@ impl<H: 'static> Widget for EditBox<H> {
     }
 }
 
-impl<H: 'static> Layout for EditBox<H> {
+impl<G: 'static> Layout for EditBox<G> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let class = if self.multi_line {
             TextClass::EditMulti
@@ -132,18 +192,15 @@ impl EditBox<()> {
             text: text.into(),
             old_state: None,
             last_edit: LastEdit::None,
-            on_activate: (),
+            guard: (),
         }
     }
 
-    /// Set the event handler to be called on activation.
-    ///
-    /// The closure `f` is called when the `EditBox` is activated (when the
-    /// "enter" key is pressed). Its result is returned from the event handler.
+    /// Set an [`EditGuard`]
     ///
     /// Technically, this consumes `self` and reconstructs another `EditBox`
     /// with a different parameterisation.
-    pub fn on_activate<R, H: Fn(&str) -> R>(self, f: H) -> EditBox<H> {
+    pub fn with_guard<G>(self, guard: G) -> EditBox<G> {
         EditBox {
             core: self.core,
             text_rect: self.text_rect,
@@ -152,12 +209,24 @@ impl EditBox<()> {
             text: self.text,
             old_state: self.old_state,
             last_edit: self.last_edit,
-            on_activate: f,
+            guard,
         }
+    }
+
+    /// Set the event handler to be called on activation.
+    ///
+    /// The closure `f` is called when the `EditBox` is activated (when the
+    /// "enter" key is pressed). Its result, if not `None`, is the event
+    /// handler's response.
+    ///
+    /// Technically, this consumes `self` and reconstructs another `EditBox`
+    /// with a different parameterisation.
+    pub fn on_activate<F: Fn(&str) -> Option<M>, M>(self, f: F) -> EditBox<EditActivate<F, M>> {
+        self.with_guard(EditActivate(f))
     }
 }
 
-impl<H> EditBox<H> {
+impl<G> EditBox<G> {
     /// Set whether this `EditBox` is editable.
     pub fn editable(mut self, editable: bool) -> Self {
         self.editable = editable;
@@ -170,9 +239,9 @@ impl<H> EditBox<H> {
         self
     }
 
-    fn received_char(&mut self, mgr: &mut Manager, c: char) -> bool {
+    fn received_char(&mut self, mgr: &mut Manager, c: char) -> EditAction {
         if !self.editable {
-            return false;
+            return EditAction::None;
         }
 
         // TODO: Text selection and editing (see Unicode std. section 5.11)
@@ -195,7 +264,7 @@ impl<H> EditBox<H> {
                 '\u{0A}' /* line feed */ => (),
                 '\u{0B}' /* vertical tab */ => (),
                 '\u{0C}' /* form feed */ => (),
-                '\u{0D}' /* carriage return (\r) */ => return true,
+                '\u{0D}' /* carriage return (\r) */ => return EditAction::Activate,
                 '\u{16}' /* paste */ => {
                     if self.last_edit != LastEdit::Paste {
                         self.old_state = Some(self.text.clone());
@@ -241,11 +310,11 @@ impl<H> EditBox<H> {
             self.text.push(c);
         }
         mgr.redraw(self.id());
-        false
+        EditAction::Edit
     }
 }
 
-impl<H> HasText for EditBox<H> {
+impl<G> HasText for EditBox<G> {
     fn get_text(&self) -> &str {
         &self.text
     }
@@ -256,7 +325,7 @@ impl<H> HasText for EditBox<H> {
     }
 }
 
-impl<H> Editable for EditBox<H> {
+impl<G> Editable for EditBox<G> {
     fn is_editable(&self) -> bool {
         self.editable
     }
@@ -289,26 +358,27 @@ impl Handler for EditBox<()> {
     }
 }
 
-impl<M, H: Fn(&str) -> M> Handler for EditBox<H> {
-    type Msg = M;
+impl<G: EditGuard + 'static> Handler for EditBox<G> {
+    type Msg = G::Msg;
 
     #[inline]
     fn activation_via_press(&self) -> bool {
         true
     }
 
-    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
+    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
         match action {
             Action::Activate => {
                 mgr.request_char_focus(self.id());
                 Response::None
             }
             Action::ReceivedCharacter(c) => {
-                if self.received_char(mgr, c) {
-                    ((self.on_activate)(&self.text)).into()
-                } else {
-                    Response::None
-                }
+                let r = match self.received_char(mgr, c) {
+                    EditAction::None => None,
+                    EditAction::Activate => G::activate(self),
+                    EditAction::Edit => G::edit(self),
+                };
+                r.map(|msg| msg.into()).unwrap_or(Response::None)
             }
             a @ _ => Response::unhandled_action(a),
         }

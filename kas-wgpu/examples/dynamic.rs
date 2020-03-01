@@ -32,33 +32,28 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[handler(msg = Message)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
-            #[widget(handler = handler)] edit: impl HasText = EditBox::new("3").on_activate(|_| Control::Set),
-            #[widget(handler = handler)] _ = TextButton::new("Set", Control::Set),
-            #[widget(handler = handler)] _ = TextButton::new("−", Control::Decr),
-            #[widget(handler = handler)] _ = TextButton::new("+", Control::Incr),
+            #[widget(handler = activate)] edit: impl HasText = EditBox::new("3")
+                .on_activate(|text| text.parse::<usize>().ok()),
+            #[widget(handler = button)] _ = TextButton::new("Set", Control::Set),
+            #[widget(handler = button)] _ = TextButton::new("−", Control::Decr),
+            #[widget(handler = button)] _ = TextButton::new("+", Control::Incr),
+            n: usize = 3,
         }
         impl {
-            fn handler(&mut self, mgr: &mut Manager, msg: Control) -> Response<Message> {
-                match self.edit.get_text().parse::<usize>() {
-                    Ok(mut n) => {
-                        match msg {
-                            Control::Decr => {
-                                n = n.saturating_sub(1);
-                                self.edit.set_string(mgr, n.to_string());
-                            },
-                            Control::Incr => {
-                                n = n.saturating_add(1);
-                                self.edit.set_string(mgr, n.to_string());
-                            },
-                            Control::Set => ()
-                        }
-                        Message::Set(n).into()
-                    }
-                    _ => {
-                        self.edit.set_string(mgr, "0".to_string());
-                        Message::Set(0).into()
-                    }
-                }
+            fn activate(&mut self, _: &mut Manager, n: usize) -> Response<Message> {
+                // TODO: also call this when widget loses focus!
+                self.n = n;
+                Message::Set(n).into()
+            }
+            fn button(&mut self, mgr: &mut Manager, msg: Control) -> Response<Message> {
+                let n = match msg {
+                    Control::Decr => self.n.saturating_sub(1),
+                    Control::Incr => self.n.saturating_add(1),
+                    Control::Set => self.n,
+                };
+                self.edit.set_string(mgr, n.to_string());
+                self.n = n;
+                Message::Set(n).into()
             }
         }
     };
