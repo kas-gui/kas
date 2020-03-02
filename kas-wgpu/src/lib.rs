@@ -28,7 +28,7 @@ use kas_theme::Theme;
 use winit::error::OsError;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
-use crate::draw::{CustomPipeBuilder, DrawPipe};
+use crate::draw::{CustomPipe, CustomPipeBuilder, DrawWindow};
 use crate::shared::SharedState;
 use window::Window;
 
@@ -83,13 +83,13 @@ impl From<shaderc::Error> for Error {
 }
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
-pub struct Toolkit<CB: CustomPipeBuilder, T: Theme<DrawPipe<CB::Pipe>>> {
+pub struct Toolkit<C: CustomPipe, T: Theme<DrawWindow<C::Window>>> {
     el: EventLoop<ProxyAction>,
-    windows: Vec<(WindowId, Window<CB::Pipe, T::Window>)>,
-    shared: SharedState<CB, T>,
+    windows: Vec<(WindowId, Window<C::Window, T::Window>)>,
+    shared: SharedState<C, T>,
 }
 
-impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T> {
+impl<T: Theme<DrawWindow<()>> + 'static> Toolkit<(), T> {
     /// Construct a new instance with default options.
     ///
     /// Environment variables may affect option selection; see documentation
@@ -99,7 +99,7 @@ impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T> {
     }
 }
 
-impl<CB: CustomPipeBuilder + 'static, T: Theme<DrawPipe<CB::Pipe>> + 'static> Toolkit<CB, T> {
+impl<C: CustomPipe + 'static, T: Theme<DrawWindow<C::Window>> + 'static> Toolkit<C, T> {
     /// Construct an instance with custom options
     ///
     /// The `custom` parameter accepts a custom draw pipe (see [`CustomPipeBuilder`]).
@@ -107,7 +107,11 @@ impl<CB: CustomPipeBuilder + 'static, T: Theme<DrawPipe<CB::Pipe>> + 'static> To
     ///
     /// The [`Options`] parameter allows direct specification of toolkit
     /// options; usually, these are provided by [`Options::from_env`].
-    pub fn new_custom(custom: CB, theme: T, options: Options) -> Result<Self, Error> {
+    pub fn new_custom<CB: CustomPipeBuilder<Pipe = C>>(
+        custom: CB,
+        theme: T,
+        options: Options,
+    ) -> Result<Self, Error> {
         Ok(Toolkit {
             el: EventLoop::with_user_event(),
             windows: vec![],

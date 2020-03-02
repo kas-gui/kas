@@ -5,7 +5,7 @@
 
 //! Custom draw pipes
 
-use super::DrawPipe;
+use super::DrawWindow;
 use kas::draw::Region;
 use kas::geom::{Rect, Size};
 
@@ -13,9 +13,9 @@ use kas::geom::{Rect, Size};
 ///
 /// To use this, write an implementation of [`CustomPipe`], then pass the
 /// corresponding [`CustomPipeBuilder`] to [`crate::Toolkit::new_custom`].
-pub trait DrawCustom<C: CustomPipe> {
+pub trait DrawCustom<CW: CustomWindow> {
     /// Call a custom draw pipe
-    fn custom(&mut self, region: Region, rect: Rect, param: <C::Window as CustomWindow>::Param);
+    fn custom(&mut self, region: Region, rect: Rect, param: CW::Param);
 }
 
 /// Builder for a [`CustomPipe`]
@@ -23,7 +23,7 @@ pub trait CustomPipeBuilder {
     type Pipe: CustomPipe;
 
     /// Build a pipe
-    fn build(&mut self, device: &wgpu::Device) -> Self::Pipe;
+    fn build(&mut self, device: &wgpu::Device, tex_format: wgpu::TextureFormat) -> Self::Pipe;
 }
 
 /// A custom draw pipe
@@ -78,7 +78,7 @@ pub trait CustomWindow {
 /// A dummy implementation (does nothing)
 impl CustomPipeBuilder for () {
     type Pipe = ();
-    fn build(&mut self, _: &wgpu::Device) -> Self::Pipe {
+    fn build(&mut self, _: &wgpu::Device, _: wgpu::TextureFormat) -> Self::Pipe {
         ()
     }
 }
@@ -101,8 +101,8 @@ impl CustomWindow for () {
     fn invoke(&mut self, _: usize, _: Rect, _: Self::Param) {}
 }
 
-impl<C: CustomPipe> DrawCustom<C> for DrawPipe<C> {
-    fn custom(&mut self, region: Region, rect: Rect, param: <C::Window as CustomWindow>::Param) {
+impl<CW: CustomWindow> DrawCustom<CW> for DrawWindow<CW> {
+    fn custom(&mut self, region: Region, rect: Rect, param: CW::Param) {
         self.custom.invoke(region.0, rect, param);
     }
 }

@@ -22,7 +22,7 @@ use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::macros::make_widget;
 use kas::widget::{Label, Window};
 use kas::{AlignHints, Layout, WidgetCore, WidgetId};
-use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe, Vec2};
+use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawWindow, Vec2};
 use kas_wgpu::Options;
 
 const VERTEX: &'static str = "
@@ -111,7 +111,7 @@ struct PipeBuilder;
 impl CustomPipeBuilder for PipeBuilder {
     type Pipe = Pipe;
 
-    fn build(&mut self, device: &wgpu::Device) -> Self::Pipe {
+    fn build(&mut self, device: &wgpu::Device, _: wgpu::TextureFormat) -> Self::Pipe {
         // Note: real apps should compile shaders once and share between windows
         let shaders = Shaders::compile(device);
 
@@ -319,7 +319,10 @@ impl Layout for Mandlebrot {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState) {
         let (region, offset, draw) = draw_handle.draw_device();
-        let draw = draw.as_any_mut().downcast_mut::<DrawPipe<Pipe>>().unwrap();
+        let draw = draw
+            .as_any_mut()
+            .downcast_mut::<DrawWindow<PipeWindow>>()
+            .unwrap();
         let p = (self.centre, self.scalar);
         draw.custom(region, self.core.rect + offset, p);
     }

@@ -8,7 +8,7 @@
 use log::{info, warn};
 use std::num::NonZeroU32;
 
-use crate::draw::ShaderManager;
+use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow, ShaderManager};
 use crate::{Error, Options, WindowId};
 use kas::event::UpdateHandle;
 
@@ -16,21 +16,25 @@ use kas::event::UpdateHandle;
 use clipboard::{ClipboardContext, ClipboardProvider};
 
 /// State shared between windows
-pub struct SharedState<C, T> {
+pub struct SharedState<C: CustomPipe, T> {
     #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub shaders: ShaderManager,
-    pub custom: C,
+    pub draw: DrawPipe<C>,
     pub theme: T,
     pub pending: Vec<PendingAction>,
     window_id: u32,
 }
 
-impl<C, T> SharedState<C, T> {
+impl<C: CustomPipe, T> SharedState<C, T> {
     /// Construct
-    pub fn new(custom: C, theme: T, options: Options) -> Result<Self, Error> {
+    pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
+        custom: CB,
+        theme: T,
+        options: Options,
+    ) -> Result<Self, Error> {
         #[cfg(feature = "clipboard")]
         let clipboard = match ClipboardContext::new() {
             Ok(cb) => Some(cb),
@@ -56,6 +60,7 @@ impl<C, T> SharedState<C, T> {
         });
 
         let shaders = ShaderManager::new(&device)?;
+        let draw = DrawPipe::new(custom, &device, &shaders);
 
         Ok(SharedState {
             #[cfg(feature = "clipboard")]
@@ -63,7 +68,7 @@ impl<C, T> SharedState<C, T> {
             device,
             queue,
             shaders,
-            custom,
+            draw,
             theme,
             pending: vec![],
             window_id: 0,
@@ -73,6 +78,16 @@ impl<C, T> SharedState<C, T> {
     pub fn next_window_id(&mut self) -> WindowId {
         self.window_id += 1;
         WindowId::new(NonZeroU32::new(self.window_id).unwrap())
+    }
+
+    pub fn render(
+        &mut self,
+        window: &mut DrawWindow<C::Window>,
+        frame_view: &wgpu::TextureView,
+        clear_color: wgpu::Color,
+    ) -> wgpu::CommandBuffer {
+        self.draw
+            .render(window, &mut self.device, frame_view, clear_color)
     }
 
     #[cfg(not(feature = "clipboard"))]

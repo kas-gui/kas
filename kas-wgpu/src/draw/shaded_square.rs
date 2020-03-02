@@ -8,8 +8,7 @@
 use std::f32;
 use std::mem::size_of;
 
-use crate::draw::{Rgb, Vec2};
-use crate::shared::SharedState;
+use crate::draw::{Rgb, ShaderManager, Vec2};
 use kas::draw::Colour;
 use kas::geom::{Rect, Size};
 
@@ -32,9 +31,7 @@ pub struct Window {
 
 impl Pipeline {
     /// Construct
-    pub fn new<C, T>(shared: &SharedState<C, T>) -> Self {
-        let device = &shared.device;
-
+    pub fn new(device: &wgpu::Device, shaders: &ShaderManager) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             bindings: &[
                 wgpu::BindGroupLayoutBinding {
@@ -57,11 +54,11 @@ impl Pipeline {
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             layout: &pipeline_layout,
             vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &shared.shaders.vert_32,
+                module: &shaders.vert_32,
                 entry_point: "main",
             },
             fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
-                module: &shared.shaders.frag_shaded_square,
+                module: &shaders.frag_shaded_square,
                 entry_point: "main",
             }),
             rasterization_state: Some(wgpu::RasterizationStateDescriptor {
@@ -159,7 +156,7 @@ impl Pipeline {
 
     /// Render queued triangles and clear the queue
     pub fn render(
-        &mut self,
+        &self,
         window: &mut Window,
         device: &wgpu::Device,
         pass: usize,

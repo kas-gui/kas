@@ -24,6 +24,8 @@ pub(crate) use shaders::ShaderManager;
 pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};
 pub use vector::{Quad, Vec2};
 
+pub(crate) const TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
+
 /// 3-part colour data
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -43,16 +45,20 @@ impl From<kas::draw::Colour> for Rgb {
     }
 }
 
-/// `kas-wgpu`'s implemention of [`kas::draw::Draw`] and friends
-pub struct DrawPipe<C: CustomPipe> {
+/// Shared pipeline data
+pub struct DrawPipe<C> {
+    shaded_square: shaded_square::Pipeline,
+    shaded_round: shaded_round::Pipeline,
+    flat_round: flat_round::Pipeline,
+    custom: C,
+}
+
+/// Per-window pipeline data
+pub struct DrawWindow<CW: CustomWindow> {
     clip_regions: Vec<Rect>,
-    pipe_shaded_square: shaded_square::Pipeline,
-    pipe_shaded_round: shaded_round::Pipeline,
-    pipe_flat_round: flat_round::Pipeline,
-    pipe_custom: C,
     shaded_square: shaded_square::Window,
     shaded_round: shaded_round::Window,
     flat_round: flat_round::Window,
-    custom: C::Window,
-    glyph_brush: GlyphBrush<'static, ()>,
+    custom: CW,
+    glyph_brush: GlyphBrush<'static, ()>, // TODO: should be in DrawPipe
 }
