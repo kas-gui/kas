@@ -7,7 +7,7 @@ license = "Apache-2.0"
 description = "GUI Toolkit Abstraction System"
 keywords = ["gui"]
 categories = ["gui"]
-repository = "https://github.com/dhardy/kas"
+repository = "https://github.com/kas-gui/kas"
 
 [features]
 # Enables usage of unstable Rust features

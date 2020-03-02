@@ -1,9 +1,9 @@
 KAS GUI
 ==========
 
-[![home](https://img.shields.io/badge/GitHub-home-blue)](https://github.com/dhardy/kas)
+[![home](https://img.shields.io/badge/GitHub-home-blue)](https://github.com/kas-gui/kas)
 [![old-home](https://img.shields.io/badge/GitLab-old--home-blueviolet)](https://gitlab.com/dhardy/kas)
-[![Build Status](https://travis-ci.com/dhardy/kas.svg?branch=master)](https://travis-ci.com/dhardy/kas)
+[![Build Status](https://travis-ci.com/kas-gui/kas.svg?branch=master)](https://travis-ci.com/kas-gui/kas)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
 ![Minimum rustc version](https://img.shields.io/badge/rustc-nightly-lightgray.svg)
 
@@ -65,7 +65,7 @@ For the most part, Cargo should take care of dependencies, but note:
 Next, clone the repository and run the examples as follows:
 
 ```
-git clone https://github.com/dhardy/kas.git
+git clone https://github.com/kas-gui/kas.git
 cd kas
 cargo test
 cd kas-wgpu

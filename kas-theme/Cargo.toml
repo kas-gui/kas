@@ -7,7 +7,7 @@ license = "Apache-2.0"
 description = "KAS toolkit — theme support"
 keywords = ["gui"]
 categories = ["gui"]
-repository = "https://github.com/dhardy/kas"
+repository = "https://github.com/kas-gui/kas"
 
 [features]
 default = ["font-kit", "stack_dst"]
