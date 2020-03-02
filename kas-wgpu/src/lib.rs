@@ -28,7 +28,7 @@ use kas_theme::Theme;
 use winit::error::OsError;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
-use crate::draw::{CustomPipe, CustomPipeBuilder, DrawWindow};
+use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow};
 use crate::shared::SharedState;
 use window::Window;
 
@@ -83,13 +83,21 @@ impl From<shaderc::Error> for Error {
 }
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
-pub struct Toolkit<C: CustomPipe, T: Theme<DrawWindow<C::Window>>> {
+pub struct Toolkit<C: CustomPipe, T: Theme<DrawPipe<C>>>
+where
+    // TODO: investigate why this bound is required (in many places)!
+    // It simply restates the bound on Theme::Window. Compiler bug?
+    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+{
     el: EventLoop<ProxyAction>,
     windows: Vec<(WindowId, Window<C::Window, T::Window>)>,
     shared: SharedState<C, T>,
 }
 
-impl<T: Theme<DrawWindow<()>> + 'static> Toolkit<(), T> {
+impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T>
+where
+    T::Window: kas_theme::Window<DrawWindow<()>>,
+{
     /// Construct a new instance with default options.
     ///
     /// Environment variables may affect option selection; see documentation
@@ -99,7 +107,10 @@ impl<T: Theme<DrawWindow<()>> + 'static> Toolkit<(), T> {
     }
 }
 
-impl<C: CustomPipe + 'static, T: Theme<DrawWindow<C::Window>> + 'static> Toolkit<C, T> {
+impl<C: CustomPipe + 'static, T: Theme<DrawPipe<C>> + 'static> Toolkit<C, T>
+where
+    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+{
     /// Construct an instance with custom options
     ///
     /// The `custom` parameter accepts a custom draw pipe (see [`CustomPipeBuilder`]).

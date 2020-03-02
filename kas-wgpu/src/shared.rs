@@ -11,6 +11,7 @@ use std::num::NonZeroU32;
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow, ShaderManager};
 use crate::{Error, Options, WindowId};
 use kas::event::UpdateHandle;
+use kas_theme::Theme;
 
 #[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
@@ -28,11 +29,14 @@ pub struct SharedState<C: CustomPipe, T> {
     window_id: u32,
 }
 
-impl<C: CustomPipe, T> SharedState<C, T> {
+impl<C: CustomPipe, T: Theme<DrawPipe<C>>> SharedState<C, T>
+where
+    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+{
     /// Construct
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
         custom: CB,
-        theme: T,
+        mut theme: T,
         options: Options,
     ) -> Result<Self, Error> {
         #[cfg(feature = "clipboard")]
@@ -60,7 +64,9 @@ impl<C: CustomPipe, T> SharedState<C, T> {
         });
 
         let shaders = ShaderManager::new(&device)?;
-        let draw = DrawPipe::new(custom, &device, &shaders);
+        let mut draw = DrawPipe::new(custom, &device, &shaders);
+
+        theme.init(&mut draw);
 
         Ok(SharedState {
             #[cfg(feature = "clipboard")]

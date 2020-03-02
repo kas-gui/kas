@@ -13,7 +13,7 @@ use super::{
     flat_round, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow, DrawPipe,
     DrawWindow, ShaderManager, Vec2, TEX_FORMAT,
 };
-use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, Region};
+use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Region};
 use kas::geom::{Coord, Rect, Size};
 
 impl<C: CustomPipe> DrawPipe<C> {
@@ -29,6 +29,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let custom = custom.build(&device, TEX_FORMAT);
 
         DrawPipe {
+            fonts: vec![],
             shaded_square,
             shaded_round,
             flat_round,
@@ -60,7 +61,8 @@ impl<C: CustomPipe> DrawPipe<C> {
         let flat_round = self.flat_round.new_window(device, size);
         let custom = self.custom.new_window(device, size);
 
-        let glyph_brush = GlyphBrushBuilder::using_fonts(vec![]).build(device, TEX_FORMAT);
+        let glyph_brush =
+            GlyphBrushBuilder::using_fonts(self.fonts.clone()).build(device, TEX_FORMAT);
 
         DrawWindow {
             clip_regions: vec![region],
@@ -142,6 +144,10 @@ impl<CW: CustomWindow> DrawWindow<CW> {
         self.flat_round.resize(device, &mut encoder, size);
         encoder.finish()
     }
+}
+
+impl<C: CustomPipe> DrawShared for DrawPipe<C> {
+    type Draw = DrawWindow<C::Window>;
 }
 
 impl<CW: CustomWindow + 'static> Draw for DrawWindow<CW> {

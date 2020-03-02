@@ -9,8 +9,8 @@ use std::f32;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShaded, DrawText, FontId, Region, TextClass,
-    TextProperties,
+    self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, DrawTextShared, FontId,
+    Region, TextClass, TextProperties,
 };
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect};
@@ -51,22 +51,22 @@ pub struct DrawHandle<'a, D: Draw> {
     pass: Region,
 }
 
-impl<D> Theme<D> for ShadedTheme
+impl<D: DrawShared + DrawTextShared + 'static> Theme<D> for ShadedTheme
 where
-    D: Draw + DrawRounded + DrawShaded + DrawText + 'static,
+    D::Draw: DrawRounded + DrawShaded + DrawText,
 {
     type Window = DimensionsWindow;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = DrawHandle<'static, D>;
+    type DrawHandle = DrawHandle<'static, D::Draw>;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = DrawHandle<'a, D>;
+    type DrawHandle<'a> = DrawHandle<'a, D::Draw>;
 
     fn init(&mut self, draw: &mut D) {
         self.font_id = crate::load_fonts(draw);
     }
 
-    fn new_window(&self, _draw: &mut D, dpi_factor: f32) -> Self::Window {
+    fn new_window(&self, _draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
         DimensionsWindow::new(DIMS, self.font_id, self.font_size, dpi_factor)
     }
 
@@ -77,14 +77,14 @@ where
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle<'a>(
         &'a self,
-        draw: &'a mut D,
+        draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
         use std::mem::transmute;
         DrawHandle {
-            draw: transmute::<&'a mut D, &'static mut D>(draw),
+            draw: transmute::<&'a mut D::Draw, &'static mut D::Draw>(draw),
             window: transmute::<&'a mut Self::Window, &'static mut Self::Window>(window),
             cols: transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
             rect,
@@ -95,7 +95,7 @@ where
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        draw: &'a mut D,
+        draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle<'a> {

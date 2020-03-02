@@ -7,7 +7,7 @@
 
 pub use rusttype::Font;
 
-use super::{Colour, Draw};
+use super::{Colour, Draw, DrawShared};
 use crate::geom::Rect;
 use crate::Align;
 
@@ -17,7 +17,7 @@ use crate::Align;
 /// first font loaded by the (first) theme.
 ///
 /// Other than this, users should treat this type as an opaque handle.
-/// An instance may be obtained by [`DrawText::load_font`].
+/// An instance may be obtained by [`DrawTextShared::load_font`].
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FontId(pub usize);
 
@@ -37,6 +37,12 @@ pub struct TextProperties {
     pub line_wrap: bool,
 }
 
+/// Abstraction over type shared by [`DrawText`] implementations
+pub trait DrawTextShared: DrawShared {
+    /// Load a font
+    fn load_font(&mut self, font: Font<'static>) -> FontId;
+}
+
 /// Abstraction over text rendering
 ///
 /// This trait is an extension over [`Draw`] providing basic text rendering.
@@ -46,9 +52,6 @@ pub struct TextProperties {
 /// Note: the current API is designed to meet only current requirements since
 /// changes are expected to support external font shaping libraries.
 pub trait DrawText: Draw {
-    /// Load a font
-    fn load_font(&mut self, font: Font<'static>) -> FontId;
-
     /// Simple text drawing
     ///
     /// This allows text to be drawn according to a high-level API, and should

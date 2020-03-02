@@ -16,6 +16,7 @@ mod shaded_square;
 mod shaders;
 mod vector;
 
+use kas::draw::Font;
 use kas::geom::Rect;
 use wgpu_glyph::GlyphBrush;
 
@@ -47,6 +48,7 @@ impl From<kas::draw::Colour> for Rgb {
 
 /// Shared pipeline data
 pub struct DrawPipe<C> {
+    fonts: Vec<Font<'static>>,
     shaded_square: shaded_square::Pipeline,
     shaded_round: shaded_round::Pipeline,
     flat_round: flat_round::Pipeline,

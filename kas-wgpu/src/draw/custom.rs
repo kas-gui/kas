@@ -40,7 +40,7 @@ pub trait CustomPipeBuilder {
 /// enum for the `Param` type).
 pub trait CustomPipe {
     /// Type for per-window data
-    type Window: CustomWindow;
+    type Window: CustomWindow + 'static;
 
     /// Construct a window associated with this pipeline
     fn new_window(&self, device: &wgpu::Device, size: Size) -> Self::Window;

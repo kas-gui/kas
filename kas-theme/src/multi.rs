@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::marker::Unsize;
 
 use crate::{StackDst, Theme, ThemeDst, WindowDst};
-use kas::draw::{Colour, DrawHandle};
+use kas::draw::{Colour, DrawHandle, DrawShared};
 use kas::geom::Rect;
 use kas::{ThemeAction, ThemeApi};
 
@@ -76,21 +76,21 @@ impl<Draw> MultiThemeBuilder<Draw> {
     }
 }
 
-impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
-    type Window = StackDst<dyn WindowDst<Draw>>;
+impl<D: DrawShared + 'static> Theme<D> for MultiTheme<D> {
+    type Window = StackDst<dyn WindowDst<D::Draw>>;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = StackDst<dyn DrawHandle>;
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = StackDst<dyn DrawHandle + 'a>;
 
-    fn init(&mut self, draw: &mut Draw) {
+    fn init(&mut self, draw: &mut D) {
         for theme in &mut self.themes {
             theme.init(draw);
         }
     }
 
-    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window {
+    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
         self.themes[self.active].new_window(draw, dpi_factor)
     }
 
@@ -101,7 +101,7 @@ impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle<'a>(
         &'a self,
-        draw: &'a mut Draw,
+        draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> StackDst<dyn DrawHandle> {
@@ -111,7 +111,7 @@ impl<Draw: 'static> Theme<Draw> for MultiTheme<Draw> {
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        draw: &'a mut Draw,
+        draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> StackDst<dyn DrawHandle + 'a> {

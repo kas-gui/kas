@@ -9,7 +9,7 @@ use std::any::Any;
 use std::ops::DerefMut;
 
 use super::{StackDst, Theme, Window};
-use kas::draw::{Colour, DrawHandle, SizeHandle};
+use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle};
 use kas::geom::Rect;
 use kas::ThemeApi;
 
@@ -20,23 +20,23 @@ use kas::ThemeApi;
 /// trait is required.
 ///
 /// **Feature gated**: this is only available with feature `stack_dst`.
-pub trait ThemeDst<Draw>: ThemeApi {
+pub trait ThemeDst<D: DrawShared>: ThemeApi {
     /// Theme initialisation
     ///
     /// See also [`Theme::init`].
-    fn init(&mut self, draw: &mut Draw);
+    fn init(&mut self, draw: &mut D);
 
     /// Construct per-window storage
     ///
     /// Uses a [`StackDst`] to avoid requiring an associated type.
     ///
     /// See also [`Theme::new_window`].
-    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<Draw>>;
+    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<D::Draw>>;
 
     /// Update a window created by [`Theme::new_window`]
     ///
     /// See also [`Theme::update_window`].
-    fn update_window(&self, window: &mut dyn WindowDst<Draw>, dpi_factor: f32);
+    fn update_window(&self, window: &mut dyn WindowDst<D::Draw>, dpi_factor: f32);
 
     /// Construct a [`DrawHandle`] object
     ///
@@ -49,8 +49,8 @@ pub trait ThemeDst<Draw>: ThemeApi {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        draw: &mut Draw,
-        window: &mut dyn WindowDst<Draw>,
+        draw: &mut D::Draw,
+        window: &mut dyn WindowDst<D::Draw>,
         rect: Rect,
     ) -> StackDst<dyn DrawHandle>;
 
@@ -62,8 +62,8 @@ pub trait ThemeDst<Draw>: ThemeApi {
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        draw: &'a mut Draw,
-        window: &'a mut dyn WindowDst<Draw>,
+        draw: &'a mut D::Draw,
+        window: &'a mut dyn WindowDst<D::Draw>,
         rect: Rect,
     ) -> StackDst<dyn DrawHandle + 'a>;
 
@@ -74,32 +74,32 @@ pub trait ThemeDst<Draw>: ThemeApi {
 }
 
 #[cfg(not(feature = "gat"))]
-impl<'a, T: Theme<Draw>, Draw> ThemeDst<Draw> for T
+impl<'a, D: DrawShared, T: Theme<D>> ThemeDst<D> for T
 where
-    <T as Theme<Draw>>::DrawHandle: 'static,
-    <<T as Theme<Draw>>::Window as Window<Draw>>::SizeHandle: 'static,
+    <T as Theme<D>>::DrawHandle: 'static,
+    <<T as Theme<D>>::Window as Window<D::Draw>>::SizeHandle: 'static,
 {
-    fn init(&mut self, draw: &mut Draw) {
+    fn init(&mut self, draw: &mut D) {
         self.init(draw);
     }
 
-    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<Draw>> {
-        StackDst::new_or_boxed(<T as Theme<Draw>>::new_window(self, draw, dpi_factor))
+    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<D::Draw>> {
+        StackDst::new_or_boxed(<T as Theme<D>>::new_window(self, draw, dpi_factor))
     }
 
-    fn update_window(&self, window: &mut dyn WindowDst<Draw>, dpi_factor: f32) {
+    fn update_window(&self, window: &mut dyn WindowDst<D::Draw>, dpi_factor: f32) {
         let window = window.as_any_mut().downcast_mut().unwrap();
         self.update_window(window, dpi_factor);
     }
 
     unsafe fn draw_handle(
         &self,
-        draw: &mut Draw,
-        window: &mut dyn WindowDst<Draw>,
+        draw: &mut D::Draw,
+        window: &mut dyn WindowDst<D::Draw>,
         rect: Rect,
     ) -> StackDst<dyn DrawHandle> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<Draw>>::draw_handle(self, draw, window, rect);
+        let h = <T as Theme<D>>::draw_handle(self, draw, window, rect);
         StackDst::new_or_boxed(h)
     }
 
@@ -109,28 +109,28 @@ where
 }
 
 #[cfg(feature = "gat")]
-impl<'a, T: Theme<Draw>, Draw> ThemeDst<Draw> for T {
-    fn init(&mut self, draw: &mut Draw) {
+impl<'a, D: DrawShared, T: Theme<D>> ThemeDst<D> for T {
+    fn init(&mut self, draw: &mut D) {
         self.init(draw);
     }
 
-    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<Draw>> {
-        StackDst::new_or_boxed(<T as Theme<Draw>>::new_window(self, draw, dpi_factor))
+    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<D::Draw>> {
+        StackDst::new_or_boxed(<T as Theme<D>>::new_window(self, draw, dpi_factor))
     }
 
-    fn update_window(&self, window: &mut dyn WindowDst<Draw>, dpi_factor: f32) {
+    fn update_window(&self, window: &mut dyn WindowDst<D::Draw>, dpi_factor: f32) {
         let window = window.as_any_mut().downcast_mut().unwrap();
         self.update_window(window, dpi_factor);
     }
 
     fn draw_handle<'b>(
         &'b self,
-        draw: &'b mut Draw,
-        window: &'b mut dyn WindowDst<Draw>,
+        draw: &'b mut D::Draw,
+        window: &'b mut dyn WindowDst<D::Draw>,
         rect: Rect,
     ) -> StackDst<dyn DrawHandle + 'b> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<Draw>>::draw_handle(self, draw, window, rect);
+        let h = <T as Theme<D>>::draw_handle(self, draw, window, rect);
         StackDst::new_or_boxed(h)
     }
 
