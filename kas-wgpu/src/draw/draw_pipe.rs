@@ -11,7 +11,8 @@ use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
 use wgpu_glyph::GlyphBrushBuilder;
 
-use super::{CustomPipe, CustomPipeBuilder, DrawPipe, FlatRound, ShadedRound, ShadedSquare, Vec2};
+use super::{flat_round, shaded_round, shaded_square};
+use super::{CustomPipe, CustomPipeBuilder, DrawPipe, Vec2};
 use crate::shared::SharedState;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, Region};
 use kas::geom::{Coord, Rect, Size};
@@ -47,12 +48,24 @@ impl<C: CustomPipe> DrawPipe<C> {
             size,
         };
 
+        let pipe_shaded_square = shaded_square::Pipeline::new(shared);
+        let shaded_square = pipe_shaded_square.new_window(&shared.device, size, norm);
+
+        let pipe_shaded_round = shaded_round::Pipeline::new(shared);
+        let shaded_round = pipe_shaded_round.new_window(&shared.device, size, norm);
+
+        let pipe_flat_round = flat_round::Pipeline::new(shared);
+        let flat_round = pipe_flat_round.new_window(&shared.device, size);
+
         DrawPipe {
             clip_regions: vec![region],
-            shaded_square: ShadedSquare::new(shared, size, norm),
-            shaded_round: ShadedRound::new(shared, size, norm),
+            pipe_shaded_square,
+            pipe_shaded_round,
+            pipe_flat_round,
+            shaded_square,
+            shaded_round,
+            flat_round,
             custom,
-            flat_round: FlatRound::new(shared, size),
             glyph_brush,
         }
     }
@@ -99,10 +112,13 @@ impl<C: CustomPipe> DrawPipe<C> {
                 region.size.1,
             );
 
-            self.shaded_square.render(device, pass, &mut rpass);
-            self.shaded_round.render(device, pass, &mut rpass);
+            self.pipe_shaded_square
+                .render(&mut self.shaded_square, device, pass, &mut rpass);
+            self.pipe_shaded_round
+                .render(&mut self.shaded_round, device, pass, &mut rpass);
+            self.pipe_flat_round
+                .render(&mut self.flat_round, device, pass, &mut rpass);
             self.custom.render(device, pass, &mut rpass);
-            self.flat_round.render(device, pass, &mut rpass);
             drop(rpass);
 
             load_op = wgpu::LoadOp::Load;

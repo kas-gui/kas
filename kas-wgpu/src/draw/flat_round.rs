@@ -21,26 +21,22 @@ const OFFSET: f32 = 0.125;
 struct Vertex(Vec2, Rgb, f32, Vec2, Vec2);
 
 /// A pipeline for rendering rounded shapes
-pub struct FlatRound {
+pub struct Pipeline {
+    bind_group_layout: wgpu::BindGroupLayout,
+    render_pipeline: wgpu::RenderPipeline,
+}
+
+/// Per-window state
+pub struct Window {
     bind_group: wgpu::BindGroup,
     scale_buf: wgpu::Buffer,
-    render_pipeline: wgpu::RenderPipeline,
     passes: Vec<Vec<Vertex>>,
 }
 
-impl FlatRound {
+impl Pipeline {
     /// Construct
-    pub fn new<C, T>(shared: &SharedState<C, T>, size: Size) -> Self {
+    pub fn new<C, T>(shared: &SharedState<C, T>) -> Self {
         let device = &shared.device;
-
-        type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
-        let scale_buf = device
-            .create_buffer_mapped(
-                scale_factor.len(),
-                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            )
-            .fill_from_slice(&scale_factor);
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             bindings: &[wgpu::BindGroupLayoutBinding {
@@ -49,16 +45,7 @@ impl FlatRound {
                 ty: wgpu::BindingType::UniformBuffer { dynamic: false },
             }],
         });
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            bindings: &[wgpu::Binding {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer {
-                    buffer: &scale_buf,
-                    range: 0..(size_of::<Scale>() as u64),
-                },
-            }],
-        });
+
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             bind_group_layouts: &[&bind_group_layout],
         });
@@ -134,14 +121,68 @@ impl FlatRound {
             alpha_to_coverage_enabled: false,
         });
 
-        FlatRound {
+        Pipeline {
+            bind_group_layout,
+            render_pipeline,
+        }
+    }
+
+    /// Construct per-window state
+    pub fn new_window(&self, device: &wgpu::Device, size: Size) -> Window {
+        type Scale = [f32; 2];
+        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
+        let scale_buf = device
+            .create_buffer_mapped(
+                scale_factor.len(),
+                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            )
+            .fill_from_slice(&scale_factor);
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.bind_group_layout,
+            bindings: &[wgpu::Binding {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer {
+                    buffer: &scale_buf,
+                    range: 0..(size_of::<Scale>() as u64),
+                },
+            }],
+        });
+
+        Window {
             bind_group,
             scale_buf,
-            render_pipeline,
             passes: vec![],
         }
     }
 
+    /// Render queued triangles and clear the queue
+    pub fn render(
+        &mut self,
+        window: &mut Window,
+        device: &wgpu::Device,
+        pass: usize,
+        rpass: &mut wgpu::RenderPass,
+    ) {
+        if pass >= window.passes.len() {
+            return;
+        }
+        let v = &mut window.passes[pass];
+        let buffer = device
+            .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
+            .fill_from_slice(&v);
+        let count = v.len() as u32;
+
+        rpass.set_pipeline(&self.render_pipeline);
+        rpass.set_bind_group(0, &window.bind_group, &[]);
+        rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
+        rpass.draw(0..count, 0..1);
+
+        v.clear();
+    }
+}
+
+impl Window {
     pub fn resize(
         &mut self,
         device: &wgpu::Device,
@@ -156,25 +197,6 @@ impl FlatRound {
         let byte_len = size_of::<Scale>() as u64;
 
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);
-    }
-
-    /// Render queued triangles and clear the queue
-    pub fn render(&mut self, device: &wgpu::Device, pass: usize, rpass: &mut wgpu::RenderPass) {
-        if pass >= self.passes.len() {
-            return;
-        }
-        let v = &mut self.passes[pass];
-        let buffer = device
-            .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
-            .fill_from_slice(&v);
-        let count = v.len() as u32;
-
-        rpass.set_pipeline(&self.render_pipeline);
-        rpass.set_bind_group(0, &self.bind_group, &[]);
-        rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
-        rpass.draw(0..count, 0..1);
-
-        v.clear();
     }
 
     pub fn line(&mut self, pass: usize, p1: Coord, p2: Coord, radius: f32, col: Colour) {

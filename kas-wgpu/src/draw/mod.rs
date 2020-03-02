@@ -19,9 +19,6 @@ mod vector;
 use kas::geom::Rect;
 use wgpu_glyph::GlyphBrush;
 
-pub(crate) use flat_round::FlatRound;
-pub(crate) use shaded_round::ShadedRound;
-pub(crate) use shaded_square::ShadedSquare;
 pub(crate) use shaders::ShaderManager;
 
 pub use custom::{CustomPipe, CustomPipeBuilder, DrawCustom};
@@ -49,9 +46,12 @@ impl From<kas::draw::Colour> for Rgb {
 /// `kas-wgpu`'s implemention of [`kas::draw::Draw`] and friends
 pub struct DrawPipe<C> {
     clip_regions: Vec<Rect>,
-    shaded_round: ShadedRound,
-    shaded_square: ShadedSquare,
+    pipe_shaded_square: shaded_square::Pipeline,
+    pipe_shaded_round: shaded_round::Pipeline,
+    pipe_flat_round: flat_round::Pipeline,
+    shaded_square: shaded_square::Window,
+    shaded_round: shaded_round::Window,
+    flat_round: flat_round::Window,
     custom: C,
-    flat_round: FlatRound,
     glyph_brush: GlyphBrush<'static, ()>,
 }
