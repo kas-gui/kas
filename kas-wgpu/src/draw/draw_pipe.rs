@@ -12,7 +12,7 @@ use std::f32::consts::FRAC_PI_2;
 use wgpu_glyph::GlyphBrushBuilder;
 
 use super::{flat_round, shaded_round, shaded_square};
-use super::{CustomPipe, CustomPipeBuilder, DrawPipe, Vec2};
+use super::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawPipe, Vec2};
 use crate::shared::SharedState;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, Region};
 use kas::geom::{Coord, Rect, Size};
@@ -38,7 +38,8 @@ impl<C: CustomPipe> DrawPipe<C> {
         let f = a.0 / a.1;
         let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
 
-        let custom = shared.custom.build(&shared.device, size);
+        let pipe_custom = shared.custom.build(&shared.device);
+        let custom = pipe_custom.new_window(&shared.device, size);
 
         let glyph_brush =
             GlyphBrushBuilder::using_fonts(vec![]).build(&mut shared.device, tex_format);
@@ -62,6 +63,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             pipe_shaded_square,
             pipe_shaded_round,
             pipe_flat_round,
+            pipe_custom,
             shaded_square,
             shaded_round,
             flat_round,
@@ -118,7 +120,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                 .render(&mut self.shaded_round, device, pass, &mut rpass);
             self.pipe_flat_round
                 .render(&mut self.flat_round, device, pass, &mut rpass);
-            self.custom.render(device, pass, &mut rpass);
+            self.pipe_custom
+                .render(&mut self.custom, device, pass, &mut rpass);
             drop(rpass);
 
             load_op = wgpu::LoadOp::Load;

@@ -21,7 +21,7 @@ use wgpu_glyph::GlyphBrush;
 
 pub(crate) use shaders::ShaderManager;
 
-pub use custom::{CustomPipe, CustomPipeBuilder, DrawCustom};
+pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};
 pub use vector::{Quad, Vec2};
 
 /// 3-part colour data
@@ -44,14 +44,15 @@ impl From<kas::draw::Colour> for Rgb {
 }
 
 /// `kas-wgpu`'s implemention of [`kas::draw::Draw`] and friends
-pub struct DrawPipe<C> {
+pub struct DrawPipe<C: CustomPipe> {
     clip_regions: Vec<Rect>,
     pipe_shaded_square: shaded_square::Pipeline,
     pipe_shaded_round: shaded_round::Pipeline,
     pipe_flat_round: flat_round::Pipeline,
+    pipe_custom: C,
     shaded_square: shaded_square::Window,
     shaded_round: shaded_round::Window,
     flat_round: flat_round::Window,
-    custom: C,
+    custom: C::Window,
     glyph_brush: GlyphBrush<'static, ()>,
 }

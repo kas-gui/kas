@@ -22,7 +22,7 @@ use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::macros::make_widget;
 use kas::widget::{Label, Window};
 use kas::{AlignHints, Layout, WidgetCore, WidgetId};
-use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, DrawCustom, DrawPipe, Vec2};
+use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawPipe, Vec2};
 use kas_wgpu::Options;
 
 const VERTEX: &'static str = "
@@ -111,18 +111,9 @@ struct PipeBuilder;
 impl CustomPipeBuilder for PipeBuilder {
     type Pipe = Pipe;
 
-    fn build(&mut self, device: &wgpu::Device, size: Size) -> Self::Pipe {
+    fn build(&mut self, device: &wgpu::Device) -> Self::Pipe {
         // Note: real apps should compile shaders once and share between windows
         let shaders = Shaders::compile(device);
-
-        type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
-        let scale_buf = device
-            .create_buffer_mapped(
-                scale_factor.len(),
-                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            )
-            .fill_from_slice(&scale_factor);
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             bindings: &[wgpu::BindGroupLayoutBinding {
@@ -131,16 +122,7 @@ impl CustomPipeBuilder for PipeBuilder {
                 ty: wgpu::BindingType::UniformBuffer { dynamic: false },
             }],
         });
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            bindings: &[wgpu::Binding {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer {
-                    buffer: &scale_buf,
-                    range: 0..(size_of::<Scale>() as u64),
-                },
-            }],
-        });
+
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             bind_group_layouts: &[&bind_group_layout],
         });
@@ -193,22 +175,80 @@ impl CustomPipeBuilder for PipeBuilder {
         });
 
         Pipe {
-            bind_group,
-            scale_buf,
+            bind_group_layout,
             render_pipeline,
-            passes: vec![],
         }
     }
 }
 
 struct Pipe {
+    bind_group_layout: wgpu::BindGroupLayout,
+    render_pipeline: wgpu::RenderPipeline,
+}
+
+struct PipeWindow {
     bind_group: wgpu::BindGroup,
     scale_buf: wgpu::Buffer,
-    render_pipeline: wgpu::RenderPipeline,
     passes: Vec<Vec<Vertex>>,
 }
 
 impl CustomPipe for Pipe {
+    type Window = PipeWindow;
+
+    fn new_window(&self, device: &wgpu::Device, size: Size) -> Self::Window {
+        type Scale = [f32; 2];
+        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
+        let scale_buf = device
+            .create_buffer_mapped(
+                scale_factor.len(),
+                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            )
+            .fill_from_slice(&scale_factor);
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.bind_group_layout,
+            bindings: &[wgpu::Binding {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer {
+                    buffer: &scale_buf,
+                    range: 0..(size_of::<Scale>() as u64),
+                },
+            }],
+        });
+
+        PipeWindow {
+            bind_group,
+            scale_buf,
+            passes: vec![],
+        }
+    }
+
+    fn render(
+        &self,
+        window: &mut Self::Window,
+        device: &wgpu::Device,
+        pass: usize,
+        rpass: &mut wgpu::RenderPass,
+    ) {
+        if pass >= window.passes.len() {
+            return;
+        }
+        let v = &mut window.passes[pass];
+        let buffer = device
+            .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
+            .fill_from_slice(&v);
+        let count = v.len() as u32;
+
+        rpass.set_pipeline(&self.render_pipeline);
+        rpass.set_bind_group(0, &window.bind_group, &[]);
+        rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
+        rpass.draw(0..count, 0..1);
+
+        v.clear();
+    }
+}
+
+impl CustomWindow for PipeWindow {
     type Param = (Vec2, Vec2);
 
     fn resize(&mut self, device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, size: Size) {
@@ -242,27 +282,9 @@ impl CustomPipe for Pipe {
             Vertex(ab, cab), Vertex(ba, cba), Vertex(bb, cbb),
         ]);
     }
-
-    fn render(&mut self, device: &wgpu::Device, pass: usize, rpass: &mut wgpu::RenderPass) {
-        if pass >= self.passes.len() {
-            return;
-        }
-        let v = &mut self.passes[pass];
-        let buffer = device
-            .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
-            .fill_from_slice(&v);
-        let count = v.len() as u32;
-
-        rpass.set_pipeline(&self.render_pipeline);
-        rpass.set_bind_group(0, &self.bind_group, &[]);
-        rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
-        rpass.draw(0..count, 0..1);
-
-        v.clear();
-    }
 }
 
-impl Pipe {
+impl PipeWindow {
     fn add_vertices(&mut self, pass: usize, slice: &[Vertex]) {
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
