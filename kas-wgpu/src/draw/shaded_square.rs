@@ -8,8 +8,7 @@
 use std::f32;
 use std::mem::size_of;
 
-use crate::draw::{Rgb, Vec2};
-use crate::shared::SharedState;
+use crate::draw::{Rgb, ShaderManager, Vec2};
 use kas::draw::Colour;
 use kas::geom::{Rect, Size};
 
@@ -18,33 +17,21 @@ use kas::geom::{Rect, Size};
 struct Vertex(Vec2, Rgb, Vec2);
 
 /// A pipeline for rendering with flat and square-corner shading
-pub struct ShadedSquare {
+pub struct Pipeline {
+    bind_group_layout: wgpu::BindGroupLayout,
+    render_pipeline: wgpu::RenderPipeline,
+}
+
+/// Per-window state
+pub struct Window {
     bind_group: wgpu::BindGroup,
     scale_buf: wgpu::Buffer,
-    render_pipeline: wgpu::RenderPipeline,
     passes: Vec<Vec<Vertex>>,
 }
 
-impl ShadedSquare {
+impl Pipeline {
     /// Construct
-    pub fn new<C, T>(shared: &SharedState<C, T>, size: Size, light_norm: [f32; 3]) -> Self {
-        let device = &shared.device;
-        type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
-        let scale_buf = device
-            .create_buffer_mapped(
-                scale_factor.len(),
-                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            )
-            .fill_from_slice(&scale_factor);
-
-        let light_norm_buf = device
-            .create_buffer_mapped(
-                light_norm.len(),
-                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            )
-            .fill_from_slice(&light_norm);
-
+    pub fn new(device: &wgpu::Device, shaders: &ShaderManager) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             bindings: &[
                 wgpu::BindGroupLayoutBinding {
@@ -59,25 +46,7 @@ impl ShadedSquare {
                 },
             ],
         });
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &bind_group_layout,
-            bindings: &[
-                wgpu::Binding {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &scale_buf,
-                        range: 0..(size_of::<Scale>() as u64),
-                    },
-                },
-                wgpu::Binding {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &light_norm_buf,
-                        range: 0..(size_of::<[f32; 3]>() as u64),
-                    },
-                },
-            ],
-        });
+
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             bind_group_layouts: &[&bind_group_layout],
         });
@@ -85,11 +54,11 @@ impl ShadedSquare {
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             layout: &pipeline_layout,
             vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &shared.shaders.vert_32,
+                module: &shaders.vert_32,
                 entry_point: "main",
             },
             fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
-                module: &shared.shaders.frag_shaded_square,
+                module: &shaders.frag_shaded_square,
                 entry_point: "main",
             }),
             rasterization_state: Some(wgpu::RasterizationStateDescriptor {
@@ -134,14 +103,84 @@ impl ShadedSquare {
             alpha_to_coverage_enabled: false,
         });
 
-        ShadedSquare {
+        Pipeline {
+            bind_group_layout,
+            render_pipeline,
+        }
+    }
+
+    /// Construct per-window state
+    pub fn new_window(&self, device: &wgpu::Device, size: Size, light_norm: [f32; 3]) -> Window {
+        type Scale = [f32; 2];
+        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
+        let scale_buf = device
+            .create_buffer_mapped(
+                scale_factor.len(),
+                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            )
+            .fill_from_slice(&scale_factor);
+
+        let light_norm_buf = device
+            .create_buffer_mapped(
+                light_norm.len(),
+                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            )
+            .fill_from_slice(&light_norm);
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.bind_group_layout,
+            bindings: &[
+                wgpu::Binding {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &scale_buf,
+                        range: 0..(size_of::<Scale>() as u64),
+                    },
+                },
+                wgpu::Binding {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &light_norm_buf,
+                        range: 0..(size_of::<[f32; 3]>() as u64),
+                    },
+                },
+            ],
+        });
+
+        Window {
             bind_group,
             scale_buf,
-            render_pipeline,
             passes: vec![],
         }
     }
 
+    /// Render queued triangles and clear the queue
+    pub fn render(
+        &self,
+        window: &mut Window,
+        device: &wgpu::Device,
+        pass: usize,
+        rpass: &mut wgpu::RenderPass,
+    ) {
+        if pass >= window.passes.len() {
+            return;
+        }
+        let v = &mut window.passes[pass];
+        let buffer = device
+            .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
+            .fill_from_slice(&v);
+        let count = v.len() as u32;
+
+        rpass.set_pipeline(&self.render_pipeline);
+        rpass.set_bind_group(0, &window.bind_group, &[]);
+        rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
+        rpass.draw(0..count, 0..1);
+
+        v.clear();
+    }
+}
+
+impl Window {
     pub fn resize(
         &mut self,
         device: &wgpu::Device,
@@ -156,25 +195,6 @@ impl ShadedSquare {
         let byte_len = size_of::<Scale>() as u64;
 
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);
-    }
-
-    /// Render queued triangles and clear the queue
-    pub fn render(&mut self, device: &wgpu::Device, pass: usize, rpass: &mut wgpu::RenderPass) {
-        if pass >= self.passes.len() {
-            return;
-        }
-        let v = &mut self.passes[pass];
-        let buffer = device
-            .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
-            .fill_from_slice(&v);
-        let count = v.len() as u32;
-
-        rpass.set_pipeline(&self.render_pipeline);
-        rpass.set_bind_group(0, &self.bind_group, &[]);
-        rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
-        rpass.draw(0..count, 0..1);
-
-        v.clear();
     }
 
     /// Add a rectangle to the buffer

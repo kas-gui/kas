@@ -106,15 +106,21 @@ impl<W: Widget + Handler<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         &self.title
     }
 
+    fn find_size(&mut self, size_handle: &mut dyn SizeHandle) -> (Option<Size>, Size) {
+        let (min, ideal) = layout::solve(self, size_handle);
+        let min = if self.enforce_min { Some(min) } else { None };
+        (min, ideal)
+    }
+
     fn resize(
         &mut self,
         size_handle: &mut dyn SizeHandle,
         size: Size,
     ) -> (Option<Size>, Option<Size>) {
-        let (min, max) = layout::solve(self, size_handle, size);
+        let (min, ideal) = layout::solve_and_set(self, size_handle, size);
         (
             if self.enforce_min { Some(min) } else { None },
-            if self.enforce_max { Some(max) } else { None },
+            if self.enforce_max { Some(ideal) } else { None },
         )
     }
 

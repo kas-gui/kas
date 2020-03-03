@@ -16,16 +16,16 @@ mod shaded_square;
 mod shaders;
 mod vector;
 
+use kas::draw::Font;
 use kas::geom::Rect;
 use wgpu_glyph::GlyphBrush;
 
-pub(crate) use flat_round::FlatRound;
-pub(crate) use shaded_round::ShadedRound;
-pub(crate) use shaded_square::ShadedSquare;
 pub(crate) use shaders::ShaderManager;
 
-pub use custom::{CustomPipe, CustomPipeBuilder, DrawCustom};
+pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};
 pub use vector::{Quad, Vec2};
+
+pub(crate) const TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
 
 /// 3-part colour data
 #[repr(C)]
@@ -46,12 +46,21 @@ impl From<kas::draw::Colour> for Rgb {
     }
 }
 
-/// `kas-wgpu`'s implemention of [`kas::draw::Draw`] and friends
+/// Shared pipeline data
 pub struct DrawPipe<C> {
-    clip_regions: Vec<Rect>,
-    shaded_round: ShadedRound,
-    shaded_square: ShadedSquare,
+    fonts: Vec<Font<'static>>,
+    shaded_square: shaded_square::Pipeline,
+    shaded_round: shaded_round::Pipeline,
+    flat_round: flat_round::Pipeline,
     custom: C,
-    flat_round: FlatRound,
-    glyph_brush: GlyphBrush<'static, ()>,
+}
+
+/// Per-window pipeline data
+pub struct DrawWindow<CW: CustomWindow> {
+    clip_regions: Vec<Rect>,
+    shaded_square: shaded_square::Window,
+    shaded_round: shaded_round::Window,
+    flat_round: flat_round::Window,
+    custom: CW,
+    glyph_brush: GlyphBrush<'static, ()>, // TODO: should be in DrawPipe
 }

@@ -49,43 +49,46 @@ thread_local! {
     static BACKGROUND: Cell<Colour> = Cell::new(Colour::grey(1.0));
 }
 
-impl<Draw: DrawRounded + DrawText> Theme<Draw> for CustomTheme {
-    type Window = <FlatTheme as Theme<Draw>>::Window;
+impl<D: DrawShared + DrawTextShared + 'static> Theme<D> for CustomTheme
+where
+    D::Draw: DrawRounded + DrawText,
+{
+    type Window = <FlatTheme as Theme<D>>::Window;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = <FlatTheme as Theme<Draw>>::DrawHandle;
+    type DrawHandle = <FlatTheme as Theme<D>>::DrawHandle;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = <FlatTheme as Theme<Draw>>::DrawHandle<'a>;
+    type DrawHandle<'a> = <FlatTheme as Theme<D>>::DrawHandle<'a>;
 
-    fn init(&mut self, draw: &mut Draw) {
+    fn init(&mut self, draw: &mut D) {
         self.inner.init(draw);
     }
 
-    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window {
-        Theme::<Draw>::new_window(&self.inner, draw, dpi_factor)
+    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
+        Theme::<D>::new_window(&self.inner, draw, dpi_factor)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        Theme::<Draw>::update_window(&self.inner, window, dpi_factor);
+        Theme::<D>::update_window(&self.inner, window, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        draw: &mut Draw,
+        draw: &mut D::Draw,
         window: &mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle {
-        self.inner.draw_handle(draw, window, rect)
+        Theme::<D>::draw_handle(&self.inner, draw, window, rect)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        draw: &'a mut Draw,
+        draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle<'a> {
-        self.inner.draw_handle(draw, window, rect)
+        Theme::<D>::draw_handle(&self.inner, draw, window, rect)
     }
 
     fn clear_colour(&self) -> Colour {

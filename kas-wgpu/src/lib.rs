@@ -28,7 +28,7 @@ use kas_theme::Theme;
 use winit::error::OsError;
 use winit::event_loop::{EventLoop, EventLoopProxy};
 
-use crate::draw::{CustomPipeBuilder, DrawPipe};
+use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow};
 use crate::shared::SharedState;
 use window::Window;
 
@@ -83,13 +83,21 @@ impl From<shaderc::Error> for Error {
 }
 
 /// Builds a toolkit over a `winit::event_loop::EventLoop`.
-pub struct Toolkit<CB: CustomPipeBuilder, T: Theme<DrawPipe<CB::Pipe>>> {
+pub struct Toolkit<C: CustomPipe, T: Theme<DrawPipe<C>>>
+where
+    // TODO: investigate why this bound is required (in many places)!
+    // It simply restates the bound on Theme::Window. Compiler bug?
+    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+{
     el: EventLoop<ProxyAction>,
-    windows: Vec<(WindowId, Window<CB::Pipe, T::Window>)>,
-    shared: SharedState<CB, T>,
+    windows: Vec<(WindowId, Window<C::Window, T::Window>)>,
+    shared: SharedState<C, T>,
 }
 
-impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T> {
+impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T>
+where
+    T::Window: kas_theme::Window<DrawWindow<()>>,
+{
     /// Construct a new instance with default options.
     ///
     /// Environment variables may affect option selection; see documentation
@@ -99,7 +107,10 @@ impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T> {
     }
 }
 
-impl<CB: CustomPipeBuilder + 'static, T: Theme<DrawPipe<CB::Pipe>> + 'static> Toolkit<CB, T> {
+impl<C: CustomPipe + 'static, T: Theme<DrawPipe<C>> + 'static> Toolkit<C, T>
+where
+    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+{
     /// Construct an instance with custom options
     ///
     /// The `custom` parameter accepts a custom draw pipe (see [`CustomPipeBuilder`]).
@@ -107,11 +118,17 @@ impl<CB: CustomPipeBuilder + 'static, T: Theme<DrawPipe<CB::Pipe>> + 'static> To
     ///
     /// The [`Options`] parameter allows direct specification of toolkit
     /// options; usually, these are provided by [`Options::from_env`].
-    pub fn new_custom(custom: CB, theme: T, options: Options) -> Result<Self, Error> {
+    pub fn new_custom<CB: CustomPipeBuilder<Pipe = C>>(
+        custom: CB,
+        theme: T,
+        options: Options,
+    ) -> Result<Self, Error> {
+        let el = EventLoop::with_user_event();
+        let scale_factor = el.primary_monitor().scale_factor();
         Ok(Toolkit {
-            el: EventLoop::with_user_event(),
+            el,
             windows: vec![],
-            shared: SharedState::new(custom, theme, options)?,
+            shared: SharedState::new(custom, theme, options, scale_factor)?,
         })
     }
 

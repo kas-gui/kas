@@ -8,7 +8,7 @@
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
-use kas::draw::{Colour, DrawHandle, SizeHandle};
+use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle};
 use kas::geom::Rect;
 use kas::ThemeApi;
 
@@ -18,9 +18,9 @@ use kas::ThemeApi;
 ///
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
-pub trait Theme<Draw>: ThemeApi {
+pub trait Theme<D: DrawShared>: ThemeApi {
     /// The associated [`Window`] implementation.
-    type Window: Window<Draw> + 'static;
+    type Window: Window<D::Draw> + 'static;
 
     /// The associated [`DrawHandle`] implementation.
     #[cfg(not(feature = "gat"))]
@@ -33,11 +33,11 @@ pub trait Theme<Draw>: ThemeApi {
     /// The toolkit must call this method before [`Theme::new_window`]
     /// to allow initialisation specific to the `Draw` device.
     ///
-    /// At a minimum, a theme must load a font via [`DrawText::load_font`].
+    /// At a minimum, a theme must load a font via [`load_font`].
     /// The first font loaded (by any theme) becomes the default font.
     ///
-    /// [`DrawText::load_font`]: kas::draw::DrawText::load_font
-    fn init(&mut self, draw: &mut Draw);
+    /// [`load_font`]: kas::draw::DrawTextShared::load_font
+    fn init(&mut self, draw: &mut D);
 
     /// Construct per-window storage
     ///
@@ -50,7 +50,7 @@ pub trait Theme<Draw>: ThemeApi {
     /// ```
     ///
     /// A reference to the draw backend is provided allowing configuration.
-    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window;
+    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> Self::Window;
 
     /// Update a window created by [`Theme::new_window`]
     ///
@@ -67,14 +67,14 @@ pub trait Theme<Draw>: ThemeApi {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        draw: &mut Draw,
+        draw: &mut D::Draw,
         window: &mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle;
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        draw: &'a mut Draw,
+        draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle<'a>;
@@ -108,19 +108,19 @@ pub trait Window<Draw> {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-impl<T: Theme<Draw>, Draw> Theme<Draw> for Box<T> {
-    type Window = <T as Theme<Draw>>::Window;
+impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
+    type Window = <T as Theme<D>>::Window;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = <T as Theme<Draw>>::DrawHandle;
+    type DrawHandle = <T as Theme<D>>::DrawHandle;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = <T as Theme<Draw>>::DrawHandle<'a>;
+    type DrawHandle<'a> = <T as Theme<D>>::DrawHandle<'a>;
 
-    fn init(&mut self, draw: &mut Draw) {
+    fn init(&mut self, draw: &mut D) {
         self.deref_mut().init(draw);
     }
 
-    fn new_window(&self, draw: &mut Draw, dpi_factor: f32) -> Self::Window {
+    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
         self.deref().new_window(draw, dpi_factor)
     }
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
@@ -130,7 +130,7 @@ impl<T: Theme<Draw>, Draw> Theme<Draw> for Box<T> {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        draw: &mut Draw,
+        draw: &mut D::Draw,
         window: &mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle {
@@ -139,7 +139,7 @@ impl<T: Theme<Draw>, Draw> Theme<Draw> for Box<T> {
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        draw: &'a mut Draw,
+        draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle<'a> {

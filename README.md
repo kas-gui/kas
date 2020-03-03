@@ -1,9 +1,9 @@
 KAS GUI
 ==========
 
-[![home](https://img.shields.io/badge/GitHub-home-blue)](https://github.com/dhardy/kas)
+[![home](https://img.shields.io/badge/GitHub-home-blue)](https://github.com/kas-gui/kas)
 [![old-home](https://img.shields.io/badge/GitLab-old--home-blueviolet)](https://gitlab.com/dhardy/kas)
-[![Build Status](https://travis-ci.com/dhardy/kas.svg?branch=master)](https://travis-ci.com/dhardy/kas)
+[![Build Status](https://travis-ci.com/kas-gui/kas.svg?branch=master)](https://travis-ci.com/kas-gui/kas)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
 ![Minimum rustc version](https://img.shields.io/badge/rustc-nightly-lightgray.svg)
 
@@ -53,19 +53,28 @@ For details, see the [Examples README](kas-wgpu/examples/README.md).
 ![Mandlebrot](screenshots/mandlebrot.png)
 
 
-Installation and Testing
-------------------------
+Installation and dependencies
+----------------
 
-For the most part, Cargo should take care of dependencies, but note:
+Currently, KAS's only drawing method is [WebGPU](https://github.com/gfx-rs/wgpu-rs),
+which requires DirectX 11/12, Vulkan or Metal.
+In the future, there may be support for OpenGL and software rendering.
 
--   [shaderc may require some setup](https://github.com/google/shaderc-rs#setup)
--   [wgpu](https://github.com/gfx-rs/wgpu-rs) requires DirectX 11/12, Vulkan or
-    Metal (in the future it may support OpenGL)
+If you haven't already, install [Rust](https://www.rust-lang.org/), including
+the *nightly* channel (`rustup toolchain install nightly`). Either make nightly
+the default (`rustup default nightly`) or use `cargo +nightly ...` below.
+
+A few other dependencies may require installation, depending on the system.
+On Ubuntu:
+
+```sh
+sudo apt-get install build-essential git python3 cmake libxcb-shape0-dev libxcb-xfixes0-dev
+```
 
 Next, clone the repository and run the examples as follows:
 
 ```
-git clone https://github.com/dhardy/kas.git
+git clone https://github.com/kas-gui/kas.git
 cd kas
 cargo test
 cd kas-wgpu

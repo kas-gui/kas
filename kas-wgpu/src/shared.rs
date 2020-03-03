@@ -8,29 +8,41 @@
 use log::{info, warn};
 use std::num::NonZeroU32;
 
-use crate::draw::ShaderManager;
+use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow, ShaderManager};
 use crate::{Error, Options, WindowId};
 use kas::event::UpdateHandle;
+use kas_theme::Theme;
 
 #[cfg(feature = "clipboard")]
 use clipboard::{ClipboardContext, ClipboardProvider};
 
 /// State shared between windows
-pub struct SharedState<C, T> {
+pub struct SharedState<C: CustomPipe, T> {
     #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub shaders: ShaderManager,
-    pub custom: C,
+    pub draw: DrawPipe<C>,
     pub theme: T,
     pub pending: Vec<PendingAction>,
+    /// Newly created windows need to know the scale_factor *before* they are
+    /// created. This is used to estimate ideal window size.
+    pub scale_factor: f64,
     window_id: u32,
 }
 
-impl<C, T> SharedState<C, T> {
+impl<C: CustomPipe, T: Theme<DrawPipe<C>>> SharedState<C, T>
+where
+    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+{
     /// Construct
-    pub fn new(custom: C, theme: T, options: Options) -> Result<Self, Error> {
+    pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
+        custom: CB,
+        mut theme: T,
+        options: Options,
+        scale_factor: f64,
+    ) -> Result<Self, Error> {
         #[cfg(feature = "clipboard")]
         let clipboard = match ClipboardContext::new() {
             Ok(cb) => Some(cb),
@@ -56,6 +68,9 @@ impl<C, T> SharedState<C, T> {
         });
 
         let shaders = ShaderManager::new(&device)?;
+        let mut draw = DrawPipe::new(custom, &device, &shaders);
+
+        theme.init(&mut draw);
 
         Ok(SharedState {
             #[cfg(feature = "clipboard")]
@@ -63,9 +78,10 @@ impl<C, T> SharedState<C, T> {
             device,
             queue,
             shaders,
-            custom,
+            draw,
             theme,
             pending: vec![],
+            scale_factor,
             window_id: 0,
         })
     }
@@ -73,6 +89,16 @@ impl<C, T> SharedState<C, T> {
     pub fn next_window_id(&mut self) -> WindowId {
         self.window_id += 1;
         WindowId::new(NonZeroU32::new(self.window_id).unwrap())
+    }
+
+    pub fn render(
+        &mut self,
+        window: &mut DrawWindow<C::Window>,
+        frame_view: &wgpu::TextureView,
+        clear_color: wgpu::Color,
+    ) -> wgpu::CommandBuffer {
+        self.draw
+            .render(window, &mut self.device, frame_view, clear_color)
     }
 
     #[cfg(not(feature = "clipboard"))]

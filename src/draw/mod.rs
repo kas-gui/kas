@@ -51,13 +51,18 @@ use crate::geom::{Coord, Rect};
 
 pub use colour::Colour;
 pub use handle::{DrawHandle, SizeHandle, TextClass};
-pub use text::{DrawText, Font, FontId, TextProperties};
+pub use text::{DrawText, DrawTextShared, Font, FontId, TextProperties};
 
 /// Type returned by [`Draw::add_clip_region`].
 ///
 /// Supports [`Default`], which may be used to target the root region.
 #[derive(Copy, Clone, Default)]
 pub struct Region(pub usize);
+
+/// Bounds on type shared across [`Draw`] implementations
+pub trait DrawShared {
+    type Draw: Draw;
+}
 
 /// Base abstraction over drawing
 ///

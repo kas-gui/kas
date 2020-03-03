@@ -21,7 +21,7 @@ pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
 pub use single_solver::{SingleSetter, SingleSolver};
 pub use size_rules::{Margins, SizeRules, StretchPolicy};
-pub use sizer::{solve, RulesSetter, RulesSolver};
+pub use sizer::{solve, solve_and_set, RulesSetter, RulesSolver};
 pub use storage::{
     DynGridStorage, DynRowStorage, FixedGridStorage, FixedRowStorage, GridStorage, RowStorage,
     RowTemp, Storage,

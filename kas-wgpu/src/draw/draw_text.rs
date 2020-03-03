@@ -8,16 +8,20 @@
 use std::f32;
 use wgpu_glyph::{GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
-use crate::draw::{CustomPipe, DrawPipe, Vec2};
-use kas::draw::{DrawText, Font, FontId, TextProperties};
+use super::{CustomPipe, CustomWindow, DrawPipe, DrawWindow, Vec2};
+use kas::draw::{DrawText, DrawTextShared, Font, FontId, TextProperties};
 use kas::geom::{Coord, Rect};
 use kas::Align;
 
-impl<C: CustomPipe + 'static> DrawText for DrawPipe<C> {
+impl<C: CustomPipe + 'static> DrawTextShared for DrawPipe<C> {
     fn load_font(&mut self, font: Font<'static>) -> FontId {
-        FontId(self.glyph_brush.add_font(font).0)
+        let id = FontId(self.fonts.len());
+        self.fonts.push(font);
+        id
     }
+}
 
+impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
     fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
         let bounds = Coord::from(rect.size);
 
