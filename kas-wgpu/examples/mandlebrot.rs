@@ -22,7 +22,9 @@ use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::macros::make_widget;
 use kas::widget::{Label, Window};
 use kas::{AlignHints, Layout, WidgetCore, WidgetId};
-use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawWindow, Vec2};
+use kas_wgpu::draw::{
+    CustomPipe, CustomPipeBuilder, CustomWindow, DVec2, DrawCustom, DrawWindow, Vec2,
+};
 use kas_wgpu::Options;
 
 const VERTEX: &'static str = "
@@ -51,20 +53,26 @@ const FRAGMENT: &'static str = "
 
 precision highp float;
 
-layout(location = 0) in vec2 c;
+layout(location = 0) in vec2 cf;
 
 layout(location = 0) out vec4 outColor;
+
+layout(set = 0, binding = 1) uniform Locals {
+    dvec2 centre;
+    dvec2 scale;
+};
 
 const int iter = 64;
 
 void main() {
-    vec2 z;
+    dvec2 cd = cf;
+    dvec2 c = centre + cd * scale;
 
+    dvec2 z = c;
     int i;
-    z = c;
     for(i=0; i<iter; i++) {
-        float x = (z.x * z.x - z.y * z.y) + c.x;
-        float y = (z.y * z.x + z.x * z.y) + c.y;
+        double x = (z.x * z.x - z.y * z.y) + c.x;
+        double y = (z.y * z.x + z.x * z.y) + c.y;
 
         if((x * x + y * y) > 4.0) break;
         z.x = x;
@@ -116,11 +124,18 @@ impl CustomPipeBuilder for PipeBuilder {
         let shaders = Shaders::compile(device);
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            bindings: &[wgpu::BindGroupLayoutBinding {
-                binding: 0,
-                visibility: wgpu::ShaderStage::VERTEX,
-                ty: wgpu::BindingType::UniformBuffer { dynamic: false },
-            }],
+            bindings: &[
+                wgpu::BindGroupLayoutBinding {
+                    binding: 0,
+                    visibility: wgpu::ShaderStage::VERTEX,
+                    ty: wgpu::BindingType::UniformBuffer { dynamic: false },
+                },
+                wgpu::BindGroupLayoutBinding {
+                    binding: 1,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::UniformBuffer { dynamic: false },
+                },
+            ],
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -186,9 +201,17 @@ struct Pipe {
     render_pipeline: wgpu::RenderPipeline,
 }
 
+type Scale = [f32; 2];
+type UnifRect = (DVec2, DVec2);
+fn unif_rect_as_arr(rect: UnifRect) -> [f64; 4] {
+    [(rect.0).0, (rect.0).1, (rect.1).0, (rect.1).1]
+}
+
 struct PipeWindow {
     bind_group: wgpu::BindGroup,
     scale_buf: wgpu::Buffer,
+    rect_buf: wgpu::Buffer,
+    rect: UnifRect,
     passes: Vec<Vec<Vertex>>,
 }
 
@@ -196,29 +219,44 @@ impl CustomPipe for Pipe {
     type Window = PipeWindow;
 
     fn new_window(&self, device: &wgpu::Device, size: Size) -> Self::Window {
-        type Scale = [f32; 2];
+        let usage = wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST;
+
         let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
         let scale_buf = device
-            .create_buffer_mapped(
-                scale_factor.len(),
-                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            )
+            .create_buffer_mapped(scale_factor.len(), usage)
             .fill_from_slice(&scale_factor);
+
+        let rect: UnifRect = (DVec2::splat(0.0), DVec2::splat(1.0));
+        let rect_arr = unif_rect_as_arr(rect);
+        let rect_buf = device
+            .create_buffer_mapped(rect_arr.len(), usage)
+            .fill_from_slice(&rect_arr);
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.bind_group_layout,
-            bindings: &[wgpu::Binding {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer {
-                    buffer: &scale_buf,
-                    range: 0..(size_of::<Scale>() as u64),
+            bindings: &[
+                wgpu::Binding {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &scale_buf,
+                        range: 0..(size_of::<Scale>() as u64),
+                    },
                 },
-            }],
+                wgpu::Binding {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &rect_buf,
+                        range: 0..(size_of::<UnifRect>() as u64),
+                    },
+                },
+            ],
         });
 
         PipeWindow {
             bind_group,
             scale_buf,
+            rect_buf,
+            rect,
             passes: vec![],
         }
     }
@@ -235,9 +273,24 @@ impl CustomPipe for Pipe {
         let scale_buf = device
             .create_buffer_mapped(scale_factor.len(), wgpu::BufferUsage::COPY_SRC)
             .fill_from_slice(&scale_factor);
-        let byte_len = size_of::<Scale>() as u64;
 
+        let byte_len = size_of::<Scale>() as u64;
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &window.scale_buf, 0, byte_len);
+    }
+
+    fn update(
+        &self,
+        window: &mut Self::Window,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        let rect_arr = unif_rect_as_arr(window.rect);
+        let rect_buf = device
+            .create_buffer_mapped(rect_arr.len(), wgpu::BufferUsage::COPY_SRC)
+            .fill_from_slice(&rect_arr);
+
+        let byte_len = size_of::<UnifRect>() as u64;
+        encoder.copy_buffer_to_buffer(&rect_buf, 0, &window.rect_buf, 0, byte_len);
     }
 
     fn render(
@@ -251,6 +304,7 @@ impl CustomPipe for Pipe {
             return;
         }
         let v = &mut window.passes[pass];
+
         let buffer = device
             .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
             .fill_from_slice(&v);
@@ -266,19 +320,19 @@ impl CustomPipe for Pipe {
 }
 
 impl CustomWindow for PipeWindow {
-    type Param = (Vec2, Vec2);
+    type Param = UnifRect;
 
     fn invoke(&mut self, pass: usize, rect: Rect, p: Self::Param) {
+        self.rect = p;
+
         let aa = Vec2::from(rect.pos);
         let bb = aa + Vec2::from(rect.size);
 
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
 
-        let cxy = (bb - aa) * p.1;
-
-        let caa = p.0 - cxy;
-        let cbb = p.0 + cxy;
+        let caa = Vec2::splat(-1.0);
+        let cbb = Vec2::splat(1.0);
         let cab = Vec2(caa.0, cbb.1);
         let cba = Vec2(cbb.0, caa.1);
 
@@ -306,9 +360,8 @@ impl PipeWindow {
 struct Mandlebrot {
     #[core]
     core: kas::CoreData,
-    centre: Vec2,
-    scalar: Vec2,
-    scale: f32,
+    centre: DVec2,
+    scale: DVec2,
 }
 
 impl Layout for Mandlebrot {
@@ -319,8 +372,7 @@ impl Layout for Mandlebrot {
     #[inline]
     fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
         self.core.rect = rect;
-        let size = rect.size.0.min(rect.size.1);
-        self.scalar = Vec2::splat(self.scale / size as f32);
+        self.scale.0 = self.scale.1 * (rect.size.0 as f64 / rect.size.1 as f64);
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState) {
@@ -329,7 +381,7 @@ impl Layout for Mandlebrot {
             .as_any_mut()
             .downcast_mut::<DrawWindow<PipeWindow>>()
             .unwrap();
-        let p = (self.centre, self.scalar);
+        let p = (self.centre, self.scale);
         draw.custom(region, self.core.rect + offset, p);
     }
 }
@@ -341,12 +393,10 @@ impl Handler for Mandlebrot {
         match event {
             Event::Action(Action::Scroll(delta)) => {
                 let factor = match delta {
-                    ScrollDelta::LineDelta(_, y) => -0.5 * y as f32,
-                    ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f32,
+                    ScrollDelta::LineDelta(_, y) => -0.5 * y as f64,
+                    ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f64,
                 };
-                self.scale *= 2f32.powf(factor);
-                let size = self.core.rect.size.0.min(self.core.rect.size.1);
-                self.scalar = Vec2::splat(self.scale / size as f32);
+                self.scale = self.scale * 2f64.powf(factor);
                 mgr.redraw(self.id());
                 Response::Msg(())
             }
@@ -355,9 +405,8 @@ impl Handler for Mandlebrot {
                 Response::None
             }
             Event::PressMove { delta, .. } => {
-                let size = self.core.rect.size.0.min(self.core.rect.size.1);
-                let scalar = Vec2::splat(2.0 * self.scale / size as f32);
-                self.centre = self.centre - Vec2::from(delta) * scalar;
+                let scale = DVec2::splat(2.0) * self.scale / DVec2::from(self.core.rect.size);
+                self.centre = self.centre - DVec2::from(delta) * scale;
                 mgr.redraw(self.id());
                 Response::Msg(())
             }
@@ -370,9 +419,8 @@ impl Mandlebrot {
     fn new() -> Self {
         Mandlebrot {
             core: Default::default(),
-            centre: Vec2(-0.5, 0.0),
-            scalar: Vec2(0.0, 0.0),
-            scale: 1.0,
+            centre: DVec2(-0.5, 0.0),
+            scale: DVec2(1.5, 1.0),
         }
     }
 
@@ -383,7 +431,7 @@ impl Mandlebrot {
             self.centre.0,
             op,
             self.centre.1.abs(),
-            self.scale
+            self.scale.1
         )
     }
 }
