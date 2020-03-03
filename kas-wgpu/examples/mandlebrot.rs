@@ -20,8 +20,8 @@ use kas::event::{
 use kas::geom::{Rect, Size};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::macros::make_widget;
-use kas::widget::{Label, Window};
-use kas::{AlignHints, Layout, WidgetCore, WidgetId};
+use kas::widget::{Label, ScrollBar, Window};
+use kas::{AlignHints, Horizontal, Layout, WidgetCore, WidgetId};
 use kas_wgpu::draw::{
     CustomPipe, CustomPipeBuilder, CustomWindow, DVec2, DrawCustom, DrawWindow, Vec2,
 };
@@ -62,7 +62,9 @@ layout(set = 0, binding = 1) uniform Locals {
     dvec2 scale;
 };
 
-const int iter = 64;
+layout(set = 0, binding = 2) uniform Iters {
+    int iter;
+};
 
 void main() {
     dvec2 cd = cf;
@@ -79,8 +81,7 @@ void main() {
         z.y = y;
     }
 
-    float r = float(i) / iter;
-    r -= trunc(r);
+    float r = (i == iter) ? 0.0 : float(i) / iter;
     float g = r * r;
     float b = g * g;
     outColor = vec4(r, g, b, 1.0);
@@ -132,6 +133,11 @@ impl CustomPipeBuilder for PipeBuilder {
                 },
                 wgpu::BindGroupLayoutBinding {
                     binding: 1,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::UniformBuffer { dynamic: false },
+                },
+                wgpu::BindGroupLayoutBinding {
+                    binding: 2,
                     visibility: wgpu::ShaderStage::FRAGMENT,
                     ty: wgpu::BindingType::UniformBuffer { dynamic: false },
                 },
@@ -211,7 +217,9 @@ struct PipeWindow {
     bind_group: wgpu::BindGroup,
     scale_buf: wgpu::Buffer,
     rect_buf: wgpu::Buffer,
+    iter_buf: wgpu::Buffer,
     rect: UnifRect,
+    iterations: i32,
     passes: Vec<Vec<Vertex>>,
 }
 
@@ -232,6 +240,11 @@ impl CustomPipe for Pipe {
             .create_buffer_mapped(rect_arr.len(), usage)
             .fill_from_slice(&rect_arr);
 
+        let iter = [64];
+        let iter_buf = device
+            .create_buffer_mapped(iter.len(), usage)
+            .fill_from_slice(&iter);
+
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.bind_group_layout,
             bindings: &[
@@ -249,6 +262,13 @@ impl CustomPipe for Pipe {
                         range: 0..(size_of::<UnifRect>() as u64),
                     },
                 },
+                wgpu::Binding {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &iter_buf,
+                        range: 0..(size_of::<i32>() as u64),
+                    },
+                },
             ],
         });
 
@@ -256,7 +276,9 @@ impl CustomPipe for Pipe {
             bind_group,
             scale_buf,
             rect_buf,
+            iter_buf,
             rect,
+            iterations: iter[0],
             passes: vec![],
         }
     }
@@ -291,6 +313,14 @@ impl CustomPipe for Pipe {
 
         let byte_len = size_of::<UnifRect>() as u64;
         encoder.copy_buffer_to_buffer(&rect_buf, 0, &window.rect_buf, 0, byte_len);
+
+        let iter = [window.iterations];
+        let iter_buf = device
+            .create_buffer_mapped(iter.len(), wgpu::BufferUsage::COPY_SRC)
+            .fill_from_slice(&iter);
+
+        let byte_len = size_of::<i32>() as u64;
+        encoder.copy_buffer_to_buffer(&iter_buf, 0, &window.iter_buf, 0, byte_len);
     }
 
     fn render(
@@ -320,10 +350,11 @@ impl CustomPipe for Pipe {
 }
 
 impl CustomWindow for PipeWindow {
-    type Param = UnifRect;
+    type Param = (DVec2, DVec2, i32);
 
     fn invoke(&mut self, pass: usize, rect: Rect, p: Self::Param) {
-        self.rect = p;
+        self.rect = (p.0, p.1);
+        self.iterations = p.2;
 
         let aa = Vec2::from(rect.pos);
         let bb = aa + Vec2::from(rect.size);
@@ -362,6 +393,7 @@ struct Mandlebrot {
     core: kas::CoreData,
     centre: DVec2,
     scale: DVec2,
+    iter: i32,
 }
 
 impl Layout for Mandlebrot {
@@ -381,7 +413,7 @@ impl Layout for Mandlebrot {
             .as_any_mut()
             .downcast_mut::<DrawWindow<PipeWindow>>()
             .unwrap();
-        let p = (self.centre, self.scale);
+        let p = (self.centre, self.scale, self.iter);
         draw.custom(region, self.core.rect + offset, p);
     }
 }
@@ -421,17 +453,19 @@ impl Mandlebrot {
             core: Default::default(),
             centre: DVec2(-0.5, 0.0),
             scale: DVec2(1.5, 1.0),
+            iter: 64,
         }
     }
 
     fn loc(&self) -> String {
         let op = if self.centre.1 < 0.0 { "−" } else { "+" };
         format!(
-            "Location: {} {} {}i; scale: {}",
+            "Location: {} {} {}i; scale: {}; iters: {}",
             self.centre.0,
             op,
             self.centre.1.abs(),
-            self.scale.1
+            self.scale.1,
+            self.iter
         )
     }
 }
@@ -441,15 +475,24 @@ fn main() -> Result<(), kas_wgpu::Error> {
 
     let mbrot = Mandlebrot::new();
 
+    // We use a scrollbar as a slider because we don't have that yet!
+    let slider = ScrollBar::new().with_limits(256, 8).with_value(64);
+
     let window = make_widget! {
         #[widget]
         #[layout(vertical)]
         #[handler(msg = VoidMsg)]
         struct {
             #[widget] label: Label = Label::new(mbrot.loc()),
+            #[widget(handler = iter)] iters: ScrollBar<Horizontal> = slider,
             #[widget(handler = mbrot)] mbrot: Mandlebrot = mbrot,
         }
         impl {
+            fn iter(&mut self, mgr: &mut Manager, iter: u32) -> Response<VoidMsg> {
+                self.mbrot.iter = iter as i32;
+                self.label.set_string(mgr, self.mbrot.loc());
+                Response::None
+            }
             fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
                 self.label.set_string(mgr, self.mbrot.loc());
                 Response::None

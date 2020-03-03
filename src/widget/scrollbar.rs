@@ -71,6 +71,13 @@ impl<D: Directional> ScrollBar<D> {
         self
     }
 
+    /// Set the initial value
+    #[inline]
+    pub fn with_value(mut self, value: u32) -> Self {
+        self.value = value;
+        self
+    }
+
     /// Set the page limits
     ///
     /// The `max_value` parameter specifies the maximum possible value.
