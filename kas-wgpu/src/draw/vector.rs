@@ -187,3 +187,155 @@ impl From<Size> for Vec2 {
         Vec2(arg.0 as f32, arg.1 as f32)
     }
 }
+
+/// 2D vector (double precision)
+///
+/// Usually used as either a coordinate or a difference of coordinates, but
+/// may have some other uses.
+///
+/// Vectors are partially ordered and support component-wise comparison via
+/// methods like `lhs.lt(rhs)`. The `PartialOrd` trait is not implemented since
+/// it implements `lhs ≤ rhs` as `lhs < rhs || lhs == rhs` which is wrong for
+/// vectors (consider for `lhs = (0, 1), rhs = (1, 1)`).
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DVec2(pub f64, pub f64);
+
+impl DVec2 {
+    /// Constructs a new instance with each element initialized to `value`.
+    #[inline]
+    pub const fn splat(value: f64) -> Self {
+        DVec2(value, value)
+    }
+
+    /// For each component, return `±1` with the same sign as `self`.
+    #[inline]
+    pub fn sign(self) -> Self {
+        let one = 1f64;
+        DVec2(one.copysign(self.0), one.copysign(self.1))
+    }
+
+    /// True when for all components, `lhs < rhs`
+    #[inline]
+    pub fn lt(self, rhs: Self) -> bool {
+        self.0 < rhs.0 && self.1 < rhs.1
+    }
+
+    /// True when for all components, `lhs ≤ rhs`
+    #[inline]
+    pub fn le(self, rhs: Self) -> bool {
+        self.0 <= rhs.0 && self.1 <= rhs.1
+    }
+
+    /// True when for all components, `lhs ≥ rhs`
+    #[inline]
+    pub fn ge(self, rhs: Self) -> bool {
+        self.0 >= rhs.0 && self.1 >= rhs.1
+    }
+
+    /// True when for all components, `lhs > rhs`
+    #[inline]
+    pub fn gt(self, rhs: Self) -> bool {
+        self.0 > rhs.0 && self.1 > rhs.1
+    }
+}
+
+impl Neg for DVec2 {
+    type Output = DVec2;
+    #[inline]
+    fn neg(self) -> Self::Output {
+        DVec2(-self.0, -self.1)
+    }
+}
+
+impl Add<DVec2> for DVec2 {
+    type Output = DVec2;
+    #[inline]
+    fn add(self, rhs: DVec2) -> Self::Output {
+        DVec2(self.0 + rhs.0, self.1 + rhs.1)
+    }
+}
+
+impl Add<f64> for DVec2 {
+    type Output = DVec2;
+    #[inline]
+    fn add(self, rhs: f64) -> Self::Output {
+        DVec2(self.0 + rhs, self.1 + rhs)
+    }
+}
+
+impl Sub<DVec2> for DVec2 {
+    type Output = DVec2;
+    #[inline]
+    fn sub(self, rhs: DVec2) -> Self::Output {
+        DVec2(self.0 - rhs.0, self.1 - rhs.1)
+    }
+}
+
+impl Sub<f64> for DVec2 {
+    type Output = DVec2;
+    #[inline]
+    fn sub(self, rhs: f64) -> Self::Output {
+        DVec2(self.0 - rhs, self.1 - rhs)
+    }
+}
+
+impl Mul<DVec2> for DVec2 {
+    type Output = DVec2;
+    #[inline]
+    fn mul(self, rhs: DVec2) -> Self::Output {
+        DVec2(self.0 * rhs.0, self.1 * rhs.1)
+    }
+}
+
+impl Mul<f64> for DVec2 {
+    type Output = DVec2;
+    #[inline]
+    fn mul(self, rhs: f64) -> Self::Output {
+        DVec2(self.0 * rhs, self.1 * rhs)
+    }
+}
+
+impl Div<DVec2> for DVec2 {
+    type Output = DVec2;
+    #[inline]
+    fn div(self, rhs: DVec2) -> Self::Output {
+        DVec2(self.0 / rhs.0, self.1 / rhs.1)
+    }
+}
+
+impl Div<f64> for DVec2 {
+    type Output = DVec2;
+    #[inline]
+    fn div(self, rhs: f64) -> Self::Output {
+        DVec2(self.0 / rhs, self.1 / rhs)
+    }
+}
+
+impl From<(f64, f64)> for DVec2 {
+    #[inline]
+    fn from(arg: (f64, f64)) -> Self {
+        DVec2(arg.0, arg.1)
+    }
+}
+
+impl From<DVec2> for (f64, f64) {
+    #[inline]
+    fn from(v: DVec2) -> Self {
+        (v.0, v.1)
+    }
+}
+
+impl From<Coord> for DVec2 {
+    #[inline]
+    fn from(arg: Coord) -> Self {
+        DVec2(arg.0 as f64, arg.1 as f64)
+    }
+}
+
+impl From<Size> for DVec2 {
+    #[inline]
+    fn from(arg: Size) -> Self {
+        DVec2(arg.0 as f64, arg.1 as f64)
+    }
+}
