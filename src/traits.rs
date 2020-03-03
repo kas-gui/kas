@@ -311,7 +311,14 @@ pub trait Window: Widget + Handler<Msg = VoidMsg> {
     /// Get the window title
     fn title(&self) -> &str;
 
+    /// Calculate required size
+    ///
+    /// Returns optional minimum size, and ideal size.
+    fn find_size(&mut self, size_handle: &mut dyn SizeHandle) -> (Option<Size>, Size);
+
     /// Adjust the size of the window, repositioning widgets.
+    ///
+    /// Returns optional minimum size and optional maximum size.
     fn resize(
         &mut self,
         size_handle: &mut dyn SizeHandle,

@@ -66,10 +66,25 @@ pub trait RulesSetter {
     fn child_rect(&mut self, child_info: Self::ChildInfo) -> Rect;
 }
 
-/// Solve `widget` for `SizeRules` on both axes, horizontal first.
+/// Calculate required size of widget
 ///
-/// Return min an max size.
-pub fn solve<L: Widget>(
+/// Return min and ideal sizes.
+pub fn solve<L: Widget>(widget: &mut L, size_handle: &mut dyn SizeHandle) -> (Size, Size) {
+    // We call size_rules not because we want the result, but because our
+    // spec requires that we do so before calling set_rect.
+    let w = widget.size_rules(size_handle, AxisInfo::new(Horizontal, None));
+    let h = widget.size_rules(size_handle, AxisInfo::new(Vertical, Some(w.ideal_size())));
+
+    let min = Size(w.min_size(), h.min_size());
+    let ideal = Size(w.ideal_size(), h.ideal_size());
+    trace!("layout::solve: min={:?}, ideal={:?}", min, ideal);
+    (min, ideal)
+}
+
+/// Solve and assign widget layout
+///
+/// Return min and ideal sizes.
+pub fn solve_and_set<L: Widget>(
     widget: &mut L,
     size_handle: &mut dyn SizeHandle,
     size: Size,
@@ -83,17 +98,16 @@ pub fn solve<L: Widget>(
     widget.set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
 
     trace!(
-        "Layout solution for size={:?} has rules {:?}, {:?} and hierarchy:{}",
+        "layout::solve_and_set for size={:?} has rules {:?}, {:?} and hierarchy:{}",
         size,
         w,
         h,
         WidgetHeirarchy(widget, 0),
     );
 
-    (
-        Size(w.min_size(), h.min_size()),
-        Size(w.ideal_size(), h.ideal_size()),
-    )
+    let min = Size(w.min_size(), h.min_size());
+    let ideal = Size(w.ideal_size(), h.ideal_size());
+    (min, ideal)
 }
 
 struct WidgetHeirarchy<'a>(&'a dyn Widget, usize);

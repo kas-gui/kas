@@ -123,10 +123,12 @@ where
         theme: T,
         options: Options,
     ) -> Result<Self, Error> {
+        let el = EventLoop::with_user_event();
+        let scale_factor = el.primary_monitor().scale_factor();
         Ok(Toolkit {
-            el: EventLoop::with_user_event(),
+            el,
             windows: vec![],
-            shared: SharedState::new(custom, theme, options)?,
+            shared: SharedState::new(custom, theme, options, scale_factor)?,
         })
     }
 

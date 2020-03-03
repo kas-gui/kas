@@ -26,6 +26,9 @@ pub struct SharedState<C: CustomPipe, T> {
     pub draw: DrawPipe<C>,
     pub theme: T,
     pub pending: Vec<PendingAction>,
+    /// Newly created windows need to know the scale_factor *before* they are
+    /// created. This is used to estimate ideal window size.
+    pub scale_factor: f64,
     window_id: u32,
 }
 
@@ -38,6 +41,7 @@ where
         custom: CB,
         mut theme: T,
         options: Options,
+        scale_factor: f64,
     ) -> Result<Self, Error> {
         #[cfg(feature = "clipboard")]
         let clipboard = match ClipboardContext::new() {
@@ -77,6 +81,7 @@ where
             draw,
             theme,
             pending: vec![],
+            scale_factor,
             window_id: 0,
         })
     }

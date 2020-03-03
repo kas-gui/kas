@@ -307,7 +307,7 @@ struct Mandlebrot {
 
 impl Layout for Mandlebrot {
     fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
-        SizeRules::new(100, 100, StretchPolicy::Maximise)
+        SizeRules::new(500, 500, StretchPolicy::Maximise)
     }
 
     #[inline]

@@ -16,6 +16,7 @@ use winit::dpi::PhysicalSize;
 use winit::error::OsError;
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
+use winit::window::WindowBuilder;
 
 use crate::draw::{CustomPipe, CustomWindow, DrawPipe, DrawWindow, TEX_FORMAT};
 use crate::shared::{PendingAction, SharedState};
@@ -40,17 +41,32 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
     pub fn new<C: CustomPipe<Window = CW>, T: Theme<DrawPipe<C>, Window = TW>>(
         shared: &mut SharedState<C, T>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
-        widget: Box<dyn kas::Window>,
+        mut widget: Box<dyn kas::Window>,
     ) -> Result<Self, OsError> {
-        let window = winit::window::Window::new(elwt)?;
-        window.set_title(widget.title());
+        // Create draw immediately (with Size::ZERO) to find ideal window size
+        let scale_factor = shared.scale_factor as f32;
+        let mut draw = shared.draw.new_window(&mut shared.device, Size::ZERO);
+        let mut theme_window = shared.theme.new_window(&mut draw, scale_factor);
 
-        let dpi_factor = window.scale_factor();
+        let mut size_handle = unsafe { theme_window.size_handle(&mut draw) };
+        let (min, ideal) = widget.find_size(&mut size_handle);
+
+        let mut builder = WindowBuilder::new().with_inner_size(ideal);
+        if let Some(min) = min {
+            builder = builder.with_min_inner_size(min);
+        }
+        let window = builder.with_title(widget.title()).build(elwt)?;
+
+        let scale_factor = window.scale_factor();
+        shared.scale_factor = scale_factor;
         let size: Size = window.inner_size().into();
         info!("Constucted new window with size {:?}", size);
 
-        let surface = wgpu::Surface::create(&window);
+        // draw was initially created with Size::ZERO; we must resize
+        let buf = draw.resize(&shared.device, size);
+        shared.queue.submit(&[buf]);
 
+        let surface = wgpu::Surface::create(&window);
         let sc_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
             format: TEX_FORMAT,
@@ -60,10 +76,7 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
-        let mut draw = shared.draw.new_window(&mut shared.device, size);
-        let theme_window = shared.theme.new_window(&mut draw, dpi_factor as f32);
-
-        let mgr = ManagerState::new(dpi_factor);
+        let mgr = ManagerState::new(scale_factor);
 
         Ok(Window {
             widget,
@@ -160,6 +173,7 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
                 new_inner_size,
             } => {
                 // Note: API allows us to set new window size here.
+                shared.scale_factor = scale_factor;
                 shared
                     .theme
                     .update_window(&mut self.theme_window, scale_factor as f32);
