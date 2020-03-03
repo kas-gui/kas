@@ -8,6 +8,9 @@
 #[cfg(feature = "winit")]
 use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize, Pixel};
 
+mod vector;
+pub use vector::{DVec2, Quad, Vec2};
+
 /// An `(x, y)` coordinate.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Coord(pub i32, pub i32);

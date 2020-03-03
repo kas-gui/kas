@@ -8,9 +8,9 @@
 use std::f32;
 use std::mem::size_of;
 
-use crate::draw::{Rgb, ShaderManager, Vec2};
+use crate::draw::{Rgb, ShaderManager};
 use kas::draw::Colour;
-use kas::geom::{Rect, Size};
+use kas::geom::{Rect, Size, Vec2};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]

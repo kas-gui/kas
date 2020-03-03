@@ -17,14 +17,12 @@ use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{
     Action, CursorIcon, Event, Handler, Manager, ManagerState, Response, ScrollDelta, VoidMsg,
 };
-use kas::geom::{Rect, Size};
+use kas::geom::{DVec2, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::macros::make_widget;
 use kas::widget::{Label, ScrollBar, Window};
 use kas::{AlignHints, Horizontal, Layout, WidgetCore, WidgetId};
-use kas_wgpu::draw::{
-    CustomPipe, CustomPipeBuilder, CustomWindow, DVec2, DrawCustom, DrawWindow, Vec2,
-};
+use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawWindow};
 use kas_wgpu::Options;
 
 const VERTEX: &'static str = "

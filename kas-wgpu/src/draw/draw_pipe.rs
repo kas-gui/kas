@@ -11,10 +11,10 @@ use wgpu_glyph::GlyphBrushBuilder;
 
 use super::{
     flat_round, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow, DrawPipe,
-    DrawWindow, ShaderManager, Vec2, TEX_FORMAT,
+    DrawWindow, ShaderManager, TEX_FORMAT,
 };
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Region};
-use kas::geom::{Coord, Rect, Size};
+use kas::geom::{Coord, Rect, Size, Vec2};
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
