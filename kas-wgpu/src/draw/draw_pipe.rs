@@ -74,6 +74,24 @@ impl<C: CustomPipe> DrawPipe<C> {
         }
     }
 
+    /// Process window resize
+    pub fn resize(
+        &self,
+        window: &mut DrawWindow<C::Window>,
+        device: &wgpu::Device,
+        size: Size,
+    ) -> wgpu::CommandBuffer {
+        window.clip_regions[0].size = size;
+        let mut encoder =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+        window.shaded_square.resize(device, &mut encoder, size);
+        window.shaded_round.resize(device, &mut encoder, size);
+        self.custom
+            .resize(&mut window.custom, device, &mut encoder, size);
+        window.flat_round.resize(device, &mut encoder, size);
+        encoder.finish()
+    }
+
     /// Render batched draw instructions via `rpass`
     pub fn render(
         &self,
@@ -85,6 +103,8 @@ impl<C: CustomPipe> DrawPipe<C> {
         let desc = wgpu::CommandEncoderDescriptor { todo: 0 };
         let mut encoder = device.create_command_encoder(&desc);
         let mut load_op = wgpu::LoadOp::Clear;
+
+        self.custom.update(&mut window.custom, device, &mut encoder);
 
         // We use a separate render pass for each clipped region.
         for (pass, region) in window.clip_regions.iter().enumerate() {
@@ -128,20 +148,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         // Keep only first clip region (which is the entire window)
         window.clip_regions.truncate(1);
 
-        encoder.finish()
-    }
-}
-
-impl<CW: CustomWindow> DrawWindow<CW> {
-    /// Process window resize
-    pub fn resize(&mut self, device: &wgpu::Device, size: Size) -> wgpu::CommandBuffer {
-        self.clip_regions[0].size = size;
-        let mut encoder =
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-        self.shaded_square.resize(device, &mut encoder, size);
-        self.shaded_round.resize(device, &mut encoder, size);
-        self.custom.resize(device, &mut encoder, size);
-        self.flat_round.resize(device, &mut encoder, size);
         encoder.finish()
     }
 }

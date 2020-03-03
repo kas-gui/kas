@@ -64,7 +64,7 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
         info!("Constucted new window with size {:?}", size);
 
         // draw was initially created with Size::ZERO; we must resize
-        let buf = draw.resize(&shared.device, size);
+        let buf = shared.draw.resize(&mut draw, &shared.device, size);
         shared.queue.submit(&[buf]);
 
         let surface = wgpu::Surface::create(&window);
@@ -266,7 +266,7 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
         self.widget.resize(&mut size_handle, size);
         drop(size_handle);
 
-        let buf = self.draw.resize(&shared.device, size);
+        let buf = shared.draw.resize(&mut self.draw, &shared.device, size);
         shared.queue.submit(&[buf]);
 
         self.sc_desc.width = size.0;
@@ -298,8 +298,7 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
 
         let frame = self.swap_chain.get_next_texture();
         let clear_color = to_wgpu_color(shared.theme.clear_colour());
-        let buf = shared.render(&mut self.draw, &frame.view, clear_color);
-        shared.queue.submit(&[buf]);
+        shared.render(&mut self.draw, &frame.view, clear_color);
     }
 }
 

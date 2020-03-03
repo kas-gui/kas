@@ -223,6 +223,23 @@ impl CustomPipe for Pipe {
         }
     }
 
+    fn resize(
+        &self,
+        window: &mut Self::Window,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        size: Size,
+    ) {
+        type Scale = [f32; 2];
+        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
+        let scale_buf = device
+            .create_buffer_mapped(scale_factor.len(), wgpu::BufferUsage::COPY_SRC)
+            .fill_from_slice(&scale_factor);
+        let byte_len = size_of::<Scale>() as u64;
+
+        encoder.copy_buffer_to_buffer(&scale_buf, 0, &window.scale_buf, 0, byte_len);
+    }
+
     fn render(
         &self,
         window: &mut Self::Window,
@@ -250,17 +267,6 @@ impl CustomPipe for Pipe {
 
 impl CustomWindow for PipeWindow {
     type Param = (Vec2, Vec2);
-
-    fn resize(&mut self, device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, size: Size) {
-        type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
-        let scale_buf = device
-            .create_buffer_mapped(scale_factor.len(), wgpu::BufferUsage::COPY_SRC)
-            .fill_from_slice(&scale_factor);
-        let byte_len = size_of::<Scale>() as u64;
-
-        encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);
-    }
 
     fn invoke(&mut self, pass: usize, rect: Rect, p: Self::Param) {
         let aa = Vec2::from(rect.pos);
