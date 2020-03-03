@@ -67,8 +67,7 @@ layout(set = 0, binding = 2) uniform Iters {
 };
 
 void main() {
-    dvec2 cd = cf;
-    dvec2 c = centre + cd * scale;
+    dvec2 c = centre + dvec2(cf) * scale;
 
     dvec2 z = c;
     int i;
