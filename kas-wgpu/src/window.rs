@@ -50,6 +50,7 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
 
         let mut size_handle = unsafe { theme_window.size_handle(&mut draw) };
         let (min, ideal) = widget.find_size(&mut size_handle);
+        drop(size_handle);
 
         let mut builder = WindowBuilder::new().with_inner_size(ideal);
         if let Some(min) = min {

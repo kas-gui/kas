@@ -50,7 +50,7 @@ pub trait CustomPipe {
     /// Rendering uses one pass per region, where each region has its own
     /// scissor rect. This method may be called multiple times per frame.
     /// Each widget invoking this pipe will give the correct `pass` number for
-    /// the widget in [`CustomPipe::invoke`]; multiple widgets may use the same
+    /// the widget in [`CustomWindow::invoke`]; multiple widgets may use the same
     /// `pass`.
     fn render(
         &self,

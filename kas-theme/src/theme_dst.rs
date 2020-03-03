@@ -109,7 +109,7 @@ where
 }
 
 #[cfg(feature = "gat")]
-impl<'a, D: DrawShared, T: Theme<D>> ThemeDst<D> for T {
+impl<'a, D: DrawShared + 'static, T: Theme<D>> ThemeDst<D> for T {
     fn init(&mut self, draw: &mut D) {
         self.init(draw);
     }

@@ -18,7 +18,7 @@ use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::widget::Window;
 use kas::{Align, AlignHints, Direction, Layout, Widget, WidgetCore};
-use kas_wgpu::draw::DrawPipe;
+use kas_wgpu::draw::DrawWindow;
 
 #[handler]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
@@ -67,7 +67,7 @@ impl Layout for Clock {
         // Note: offset is used for scroll-regions, and should be zero here;
         // we add it anyway as is recommended.
         let (region, offset, draw) = draw_handle.draw_device();
-        let draw = draw.as_any_mut().downcast_mut::<DrawPipe<()>>().unwrap();
+        let draw = draw.as_any_mut().downcast_mut::<DrawWindow<()>>().unwrap();
 
         draw.circle(region, self.core.rect + offset, 0.95, col_face);
 
