@@ -14,9 +14,7 @@ use wgpu::ShaderModule;
 
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{
-    Action, CursorIcon, Event, Handler, Manager, ManagerState, Response, ScrollDelta, VoidMsg,
-};
+use kas::event::{self, Event, Manager, Response, VoidResponse};
 use kas::geom::{DVec2, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::macros::make_widget;
@@ -404,7 +402,7 @@ impl Layout for Mandlebrot {
         self.scale.0 = self.scale.1 * (rect.size.0 as f64 / rect.size.1 as f64);
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState) {
         let (region, offset, draw) = draw_handle.draw_device();
         let draw = draw
             .as_any_mut()
@@ -415,22 +413,22 @@ impl Layout for Mandlebrot {
     }
 }
 
-impl Handler for Mandlebrot {
+impl event::Handler for Mandlebrot {
     type Msg = ();
 
     fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
-            Event::Action(Action::Scroll(delta)) => {
+            Event::Action(event::Action::Scroll(delta)) => {
                 let factor = match delta {
-                    ScrollDelta::LineDelta(_, y) => -0.5 * y as f64,
-                    ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f64,
+                    event::ScrollDelta::LineDelta(_, y) => -0.5 * y as f64,
+                    event::ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f64,
                 };
                 self.scale = self.scale * 2f64.powf(factor);
                 mgr.redraw(self.id());
                 Response::Msg(())
             }
             Event::PressStart { source, coord } => {
-                mgr.request_press_grab(source, self, coord, Some(CursorIcon::Grabbing));
+                mgr.request_press_grab(source, self, coord, Some(event::CursorIcon::Grabbing));
                 Response::None
             }
             Event::PressMove { delta, .. } => {
@@ -478,19 +476,19 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = make_widget! {
         #[widget]
         #[layout(vertical)]
-        #[handler(msg = VoidMsg)]
+        #[handler(msg = event::VoidMsg)]
         struct {
             #[widget] label: Label = Label::new(mbrot.loc()),
             #[widget(handler = iter)] iters: ScrollBar<Horizontal> = slider,
             #[widget(handler = mbrot)] mbrot: Mandlebrot = mbrot,
         }
         impl {
-            fn iter(&mut self, mgr: &mut Manager, iter: u32) -> Response<VoidMsg> {
+            fn iter(&mut self, mgr: &mut Manager, iter: u32) -> VoidResponse {
                 self.mbrot.iter = iter as i32;
                 self.label.set_string(mgr, self.mbrot.loc());
                 Response::None
             }
-            fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
+            fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> VoidResponse {
                 self.label.set_string(mgr, self.mbrot.loc());
                 Response::None
             }

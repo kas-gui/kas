@@ -8,7 +8,7 @@
 use std::fmt::Debug;
 
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{CursorIcon, Event, Handler, Manager, ManagerState, PressSource, Response};
+use crate::event::{self, Event, Manager, Response};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
 use crate::macros::Widget;
@@ -30,7 +30,7 @@ pub struct ScrollBar<D: Directional> {
     handle_value: u32, // contract: > 0
     max_value: u32,
     value: u32,
-    press_source: Option<PressSource>,
+    press_source: Option<event::PressSource>,
     press_offset: i32,
 }
 
@@ -181,7 +181,7 @@ impl<D: Directional> Layout for ScrollBar<D> {
         self.update_handle();
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         let dir = self.direction.as_direction();
         let h_pos = self.position() as i32;
         let mut h_rect = self.core.rect;
@@ -199,13 +199,13 @@ impl<D: Directional> Layout for ScrollBar<D> {
     }
 }
 
-impl<D: Directional> Handler for ScrollBar<D> {
+impl<D: Directional> event::Handler for ScrollBar<D> {
     type Msg = u32;
 
     fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::PressStart { source, coord, .. } => {
-                if !mgr.request_press_grab(source, self, coord, Some(CursorIcon::Grabbing)) {
+                if !mgr.request_press_grab(source, self, coord, Some(event::CursorIcon::Grabbing)) {
                     return Response::None;
                 }
                 // Interacting with a scrollbar with multiple presses

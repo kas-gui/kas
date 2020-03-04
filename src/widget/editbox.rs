@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 
 use crate::class::{Editable, HasText};
 use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{Action, CursorIcon, Handler, Manager, ManagerState, Response, VoidMsg};
+use crate::event::{self, Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
@@ -138,8 +138,8 @@ impl<G: 'static> Widget for EditBox<G> {
         true
     }
 
-    fn cursor_icon(&self) -> CursorIcon {
-        CursorIcon::Text
+    fn cursor_icon(&self) -> event::CursorIcon {
+        event::CursorIcon::Text
     }
 }
 
@@ -180,7 +180,7 @@ impl<G: 'static> Layout for EditBox<G> {
         self.core_data_mut().rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         let class = if self.multi_line {
             TextClass::EditMulti
         } else {
