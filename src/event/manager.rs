@@ -210,6 +210,12 @@ impl ManagerState {
         self.time_updates.first().map(|time| time.0)
     }
 
+    /// Set an action
+    #[inline]
+    pub fn send_action(&mut self, action: TkAction) {
+        self.action = self.action.max(action);
+    }
+
     /// Construct a [`Manager`] referring to this state
     #[inline]
     pub fn manager<'a>(&'a mut self, tkw: &'a mut dyn TkWindow) -> Manager<'a> {
@@ -348,7 +354,7 @@ impl<'a> Manager<'a> {
     /// affect the UI after a reconfigure action.
     #[inline]
     pub fn send_action(&mut self, action: TkAction) {
-        self.mgr.action = self.mgr.action.max(action);
+        self.mgr.send_action(action);
     }
 
     /// Add a window

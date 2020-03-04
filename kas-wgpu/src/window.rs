@@ -98,8 +98,7 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
     pub fn init<C: CustomPipe<Window = CW>, T: Theme<DrawPipe<C>>>(
         &mut self,
         shared: &mut SharedState<C, T>,
-    ) -> TkAction
-    where
+    ) where
         T::Window: kas_theme::Window<DrawWindow<CW>>,
     {
         debug!("Window::init");
@@ -115,16 +114,13 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
                 Callback::Close => (),
             }
         }
-
-        mgr.finish(&mut *self.widget)
     }
 
     /// Recompute layout of widgets and redraw
-    pub fn reconfigure<C: CustomPipe<Window = CW>, T: Theme<DrawPipe<C>>>(
+    fn reconfigure<C: CustomPipe<Window = CW>, T: Theme<DrawPipe<C>>>(
         &mut self,
         shared: &mut SharedState<C, T>,
-    ) -> Option<Instant>
-    where
+    ) where
         T::Window: kas_theme::Window<DrawWindow<CW>>,
     {
         let size = Size(self.sc_desc.width, self.sc_desc.height);
@@ -137,8 +133,6 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
         let mut tkw = TkWindow::new(&self.window, shared);
         self.mgr.configure(&mut tkw, &mut *self.widget);
         self.window.request_redraw();
-
-        self.mgr.next_resume()
     }
 
     pub fn theme_resize<C: CustomPipe<Window = CW>, T: Theme<DrawPipe<C>, Window = TW>>(
@@ -195,11 +189,19 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
     ) -> (TkAction, Option<Instant>) {
         let mut tkw = TkWindow::new(&self.window, shared);
         let action = self.mgr.manager(&mut tkw).finish(&mut *self.widget);
-        (action, self.mgr.next_resume())
-    }
 
-    pub fn handle_moved(&mut self) {
-        self.mgr.region_moved(&mut *self.widget);
+        match action {
+            TkAction::None => (),
+            TkAction::Redraw => self.window.request_redraw(),
+            TkAction::RegionMoved => {
+                self.mgr.region_moved(&mut *self.widget);
+                self.window.request_redraw();
+            }
+            TkAction::Reconfigure => self.reconfigure(shared),
+            TkAction::Close | TkAction::CloseAll => (),
+        }
+
+        (action, self.mgr.next_resume())
     }
 
     pub fn handle_closure<C: CustomPipe<Window = CW>, T: Theme<DrawPipe<C>>>(
@@ -227,16 +229,14 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
     pub fn update_timer<C: CustomPipe<Window = CW>, T: Theme<DrawPipe<C>>>(
         &mut self,
         shared: &mut SharedState<C, T>,
-    ) -> (TkAction, Option<Instant>)
+    ) -> Option<Instant>
     where
         T::Window: kas_theme::Window<DrawWindow<CW>>,
     {
         let mut tkw = TkWindow::new(&self.window, shared);
         let mut mgr = self.mgr.manager(&mut tkw);
         mgr.update_timer(&mut *self.widget);
-
-        let action = mgr.finish(&mut *self.widget);
-        (action, self.mgr.next_resume())
+        self.mgr.next_resume()
     }
 
     pub fn update_handle<C: CustomPipe<Window = CW>, T: Theme<DrawPipe<C>>>(
@@ -244,14 +244,16 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
         shared: &mut SharedState<C, T>,
         handle: UpdateHandle,
         payload: u64,
-    ) -> TkAction
-    where
+    ) where
         T::Window: kas_theme::Window<DrawWindow<CW>>,
     {
         let mut tkw = TkWindow::new(&self.window, shared);
         let mut mgr = self.mgr.manager(&mut tkw);
         mgr.update_handle(&mut *self.widget, handle, payload);
-        mgr.finish(&mut *self.widget)
+    }
+
+    pub fn send_action(&mut self, action: TkAction) {
+        self.mgr.send_action(action);
     }
 }
 
