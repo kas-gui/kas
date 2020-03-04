@@ -159,15 +159,13 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
     }
 
     /// Handle an event
-    ///
-    /// Return true to remove the window
     pub fn handle_event<C: CustomPipe<Window = CW>, T: Theme<DrawPipe<C>, Window = TW>>(
         &mut self,
         shared: &mut SharedState<C, T>,
         event: WindowEvent,
-    ) -> (TkAction, Option<Instant>) {
+    ) {
         // Note: resize must be handled here to update self.swap_chain.
-        let action = match event {
+        match event {
             WindowEvent::Resized(size) => self.do_resize(shared, size),
             WindowEvent::ScaleFactorChanged {
                 scale_factor,
@@ -179,16 +177,24 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
                     .theme
                     .update_window(&mut self.theme_window, scale_factor as f32);
                 self.mgr.set_dpi_factor(scale_factor);
-                self.do_resize(shared, *new_inner_size)
+                self.do_resize(shared, *new_inner_size);
             }
             event @ _ => {
                 let mut tkw = TkWindow::new(&self.window, shared);
                 self.mgr
                     .manager(&mut tkw)
-                    .handle_winit(&mut *self.widget, event)
+                    .handle_winit(&mut *self.widget, event);
             }
-        };
+        }
+    }
 
+    /// Update, after receiving all events
+    pub fn update<C: CustomPipe<Window = CW>, T: Theme<DrawPipe<C>, Window = TW>>(
+        &mut self,
+        shared: &mut SharedState<C, T>,
+    ) -> (TkAction, Option<Instant>) {
+        let mut tkw = TkWindow::new(&self.window, shared);
+        let action = self.mgr.manager(&mut tkw).finish(&mut *self.widget);
         (action, self.mgr.next_resume())
     }
 
@@ -255,10 +261,10 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
         &mut self,
         shared: &mut SharedState<C, T>,
         size: PhysicalSize<u32>,
-    ) -> TkAction {
+    ) {
         let size = size.into();
         if size == Size(self.sc_desc.width, self.sc_desc.height) {
-            return TkAction::None;
+            return;
         }
 
         debug!("Resizing window to size={:?}", size);
@@ -275,7 +281,7 @@ impl<CW: CustomWindow + 'static, TW: kas_theme::Window<DrawWindow<CW>> + 'static
             .device
             .create_swap_chain(&self.surface, &self.sc_desc);
 
-        TkAction::Redraw
+        self.window.request_redraw();
     }
 
     pub(crate) fn do_draw<C: CustomPipe<Window = CW>, T: Theme<DrawPipe<C>, Window = TW>>(

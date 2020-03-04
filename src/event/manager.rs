@@ -49,6 +49,11 @@ struct TouchEvent {
     coord: Coord,
 }
 
+#[derive(Clone, Debug)]
+enum Pending {
+    LostCharFocus(WidgetId),
+}
+
 /// Window event manager
 ///
 /// Encapsulation of per-window event state plus supporting methods.
@@ -78,6 +83,8 @@ pub struct ManagerState {
     // TODO(opt): consider other containers, e.g. C++ multimap
     // or sorted Vec with binary search yielding a range
     handle_updates: HashMap<UpdateHandle, Vec<WidgetId>>,
+    pending: SmallVec<[Pending; 8]>,
+    action: TkAction,
 }
 
 /// Toolkit API
@@ -103,6 +110,8 @@ impl ManagerState {
             time_start: Instant::now(),
             time_updates: vec![],
             handle_updates: HashMap::new(),
+            pending: SmallVec::new(),
+            action: TkAction::None,
         }
     }
 
@@ -123,6 +132,8 @@ impl ManagerState {
         self.accel_keys.clear();
         self.time_updates.clear();
         self.handle_updates.clear();
+        self.pending.clear();
+        self.action = TkAction::None;
 
         let coord = self.last_mouse_coord;
         let mut mgr = self.manager(tkw);
@@ -206,8 +217,6 @@ impl ManagerState {
             read_only: false,
             mgr: self,
             tkw,
-            pending: SmallVec::new(),
-            action: TkAction::None,
         }
     }
 }
@@ -264,17 +273,11 @@ impl ManagerState {
     }
 }
 
-enum Pending {
-    LostCharFocus(WidgetId),
-}
-
 /// Manager of event-handling and toolkit actions
 pub struct Manager<'a> {
     read_only: bool,
     mgr: &'a mut ManagerState,
     tkw: &'a mut dyn TkWindow,
-    pending: SmallVec<[Pending; 4]>,
-    action: TkAction,
 }
 
 /// Public API (around toolkit functionality)
@@ -345,7 +348,7 @@ impl<'a> Manager<'a> {
     /// affect the UI after a reconfigure action.
     #[inline]
     pub fn send_action(&mut self, action: TkAction) {
-        self.action = self.action.max(action);
+        self.mgr.action = self.mgr.action.max(action);
     }
 
     /// Add a window
@@ -605,7 +608,7 @@ impl<'a> Manager<'a> {
         }
 
         if let Some(id) = self.mgr.char_focus {
-            self.pending.push(Pending::LostCharFocus(id));
+            self.mgr.pending.push(Pending::LostCharFocus(id));
             self.redraw(id);
         }
         if let Some(id) = wid {
@@ -618,7 +621,7 @@ impl<'a> Manager<'a> {
 /// Toolkit API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl<'a> Manager<'a> {
-    /// Finish any processing and return the [`TkAction`]
+    /// Update, after receiving all events
     pub fn finish<W>(mut self, widget: &mut W) -> TkAction
     where
         W: Widget + Handler<Msg = VoidMsg> + ?Sized,
@@ -628,7 +631,7 @@ impl<'a> Manager<'a> {
         // make self const, but merely pretend it is in the public API.
         self.read_only = true;
 
-        for item in self.pending.pop() {
+        for item in self.mgr.pending.pop() {
             match item {
                 Pending::LostCharFocus(id) => {
                     let ev = Event::Action(Action::LostCharFocus);
@@ -636,7 +639,10 @@ impl<'a> Manager<'a> {
                 }
             }
         }
-        self.action
+
+        let action = self.mgr.action;
+        self.mgr.action = TkAction::None;
+        action
     }
 
     /// Update widgets due to timer
@@ -689,7 +695,7 @@ impl<'a> Manager<'a> {
     /// events the toolkit must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(feature = "winit")]
-    pub fn handle_winit<W>(mut self, widget: &mut W, event: winit::event::WindowEvent) -> TkAction
+    pub fn handle_winit<W>(&mut self, widget: &mut W, event: winit::event::WindowEvent)
     where
         W: Widget + Handler<Msg = VoidMsg> + ?Sized,
     {
@@ -710,7 +716,7 @@ impl<'a> Manager<'a> {
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = self.mgr.char_focus {
                     let ev = Event::Action(Action::ReceivedCharacter(c));
-                    widget.handle(&mut self, id, ev)
+                    widget.handle(self, id, ev)
                 } else {
                     Response::None
                 }
@@ -737,7 +743,7 @@ impl<'a> Manager<'a> {
                                 self.add_key_event(scancode, id);
 
                                 let ev = Event::Action(Action::Activate);
-                                widget.handle(&mut self, id, ev)
+                                widget.handle(self, id, ev)
                             } else { Response::None }
                         }
                         VirtualKeyCode::Escape => {
@@ -750,7 +756,7 @@ impl<'a> Manager<'a> {
                                 self.add_key_event(scancode, id);
 
                                 let ev = Event::Action(Action::Activate);
-                                widget.handle(&mut self, id, ev)
+                                widget.handle(self, id, ev)
                             } else { Response::None }
                         }
                     },
@@ -774,7 +780,7 @@ impl<'a> Manager<'a> {
                     let source = PressSource::Mouse(button);
                     let delta = coord - self.mgr.last_mouse_coord;
                     let ev = Event::PressMove { source, coord, delta };
-                    widget.handle(&mut self, grab_id, ev)
+                    widget.handle(self, grab_id, ev)
                 } else {
                     // We don't forward move events without a grab
                     Response::None
@@ -797,7 +803,7 @@ impl<'a> Manager<'a> {
                         ScrollDelta::PixelDelta(Coord::from_logical(pos, self.mgr.dpi_factor)),
                 });
                 if let Some(id) = self.mgr.hover {
-                    widget.handle(&mut self, id, Event::Action(action))
+                    widget.handle(self, id, Event::Action(action))
                 } else {
                     Response::None
                 }
@@ -820,7 +826,7 @@ impl<'a> Manager<'a> {
                             coord,
                         },
                     };
-                    let r = widget.handle(&mut self, grab_id, ev);
+                    let r = widget.handle(self, grab_id, ev);
                     if state == ElementState::Released {
                         self.end_mouse_grab(button);
                     }
@@ -829,7 +835,7 @@ impl<'a> Manager<'a> {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
                         let ev = Event::PressStart { source, coord };
-                        widget.handle(&mut self, id, ev)
+                        widget.handle(self, id, ev)
                     } else {
                         Response::None
                     }
@@ -847,7 +853,7 @@ impl<'a> Manager<'a> {
                     TouchPhase::Started => {
                         if let Some(id) = widget.find_id(coord) {
                             let ev = Event::PressStart { source, coord };
-                            widget.handle(&mut self, id, ev)
+                            widget.handle(self, id, ev)
                         } else {
                             Response::None
                         }
@@ -878,7 +884,7 @@ impl<'a> Manager<'a> {
                             if redraw {
                                 self.send_action(TkAction::Redraw);
                             }
-                            widget.handle(&mut self, id, action)
+                            widget.handle(self, id, action)
                         } else {
                             Response::None
                         }
@@ -893,7 +899,7 @@ impl<'a> Manager<'a> {
                             if let Some(cur_id) = grab.cur_id {
                                 self.redraw(cur_id);
                             }
-                            widget.handle(&mut self, grab.start_id, action)
+                            widget.handle(self, grab.start_id, action)
                         } else {
                             Response::None
                         }
@@ -908,7 +914,7 @@ impl<'a> Manager<'a> {
                             if let Some(cur_id) = grab.cur_id {
                                 self.redraw(cur_id);
                             }
-                            widget.handle(&mut self, grab.start_id, action)
+                            widget.handle(self, grab.start_id, action)
                         } else {
                             Response::None
                         }
@@ -926,7 +932,5 @@ impl<'a> Manager<'a> {
             }
             Response::Msg(_) => unreachable!(),
         };
-
-        self.finish(widget)
     }
 }

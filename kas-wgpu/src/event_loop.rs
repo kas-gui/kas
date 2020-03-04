@@ -80,12 +80,7 @@ where
         match event {
             WindowEvent { window_id, event } => {
                 if let Some(window) = self.windows.get_mut(&window_id) {
-                    let (action, resume) = window.handle_event(&mut self.shared, event);
-                    actions.push((window_id, action));
-                    if let Some(instant) = resume {
-                        add_resume(&mut self.resumes, instant, window_id);
-                        have_new_resumes = true;
-                    }
+                    window.handle_event(&mut self.shared, event);
                 }
             }
 
@@ -160,13 +155,24 @@ where
                 }
             }
 
+            MainEventsCleared => {
+                for (window_id, window) in self.windows.iter_mut() {
+                    let (action, resume) = window.update(&mut self.shared);
+                    actions.push((*window_id, action));
+                    if let Some(instant) = resume {
+                        add_resume(&mut self.resumes, instant, *window_id);
+                        have_new_resumes = true;
+                    }
+                }
+            }
+
             RedrawRequested(id) => {
                 if let Some(window) = self.windows.get_mut(&id) {
                     window.do_draw(&mut self.shared);
                 }
             }
 
-            MainEventsCleared | RedrawEventsCleared | LoopDestroyed | Suspended | Resumed => return,
+            RedrawEventsCleared | LoopDestroyed | Suspended | Resumed => return,
         };
 
         // Create and init() any new windows.
