@@ -427,15 +427,15 @@ impl event::Handler for Mandlebrot {
                 mgr.redraw(self.id());
                 Response::Msg(())
             }
-            Event::PressStart { source, coord } => {
-                mgr.request_press_grab(source, self, coord, Some(event::CursorIcon::Grabbing));
-                Response::None
-            }
-            Event::PressMove { delta, .. } => {
+            Event::Action(event::Action::Pan { delta, .. }) => {
                 let scale = DVec2::splat(2.0) * self.scale / DVec2::from(self.core.rect.size);
                 self.centre = self.centre - DVec2::from(delta) * scale;
                 mgr.redraw(self.id());
                 Response::Msg(())
+            }
+            Event::PressStart { source, coord } => {
+                mgr.request_grab(self, source, coord, event::GrabMode::PanOnly, Some(event::CursorIcon::Grabbing));
+                Response::None
             }
             _ => Response::None,
         }

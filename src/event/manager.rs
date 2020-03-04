@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use super::*;
-use crate::geom::Coord;
+use crate::geom::{Coord, Vec2};
 use crate::{ThemeAction, ThemeApi, TkAction, TkWindow, Widget, WidgetId, WindowId};
 
 /// Highlighting state of a widget
@@ -41,12 +41,35 @@ impl HighlightState {
     }
 }
 
+/// Controls the types of events delivered by [`Manager::request_grab`]
+#[derive(Clone, Copy, Debug)]
+pub enum GrabMode {
+    /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each press
+    Grab,
+    /// Deliver [`Action::Pan`] events, with scaling and rotation
+    PanFull,
+    /// Deliver [`Action::Pan`] events, with scaling
+    PanScale,
+    /// Deliver [`Action::Pan`] events, with rotation
+    PanRotate,
+    /// Deliver [`Action::Pan`] events, without scaling or rotation
+    PanOnly,
+}
+
+#[derive(Clone, Debug)]
+struct MouseGrab {
+    button: MouseButton,
+    start_id: WidgetId,
+    mode: GrabMode,
+}
+
 #[derive(Clone, Debug)]
 struct TouchEvent {
     touch_id: u64,
     start_id: WidgetId,
     cur_id: Option<WidgetId>,
     coord: Coord,
+    mode: GrabMode,
 }
 
 #[derive(Clone, Debug)]
@@ -74,7 +97,7 @@ pub struct ManagerState {
     hover_icon: CursorIcon,
     key_events: SmallVec<[(u32, WidgetId); 10]>,
     last_mouse_coord: Coord,
-    mouse_grab: Option<(WidgetId, MouseButton)>,
+    mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchEvent; 10]>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
 
@@ -148,9 +171,13 @@ impl ManagerState {
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.nav_focus = self.nav_focus.and_then(|id| map.get(&id).cloned());
-        self.mouse_grab = self
-            .mouse_grab
-            .and_then(|(id, b)| map.get(&id).map(|id| (*id, b)));
+        self.mouse_grab = self.mouse_grab.as_ref().and_then(|grab| {
+            map.get(&grab.start_id).map(|id| MouseGrab {
+                start_id: *id,
+                button: grab.button,
+                mode: grab.mode,
+            })
+        });
 
         macro_rules! do_map {
             ($seq:expr, $update:expr) => {
@@ -265,8 +292,8 @@ impl ManagerState {
                 return true;
             }
         }
-        if let Some(grab) = self.mouse_grab {
-            if grab.0 == w_id && self.hover == Some(w_id) {
+        if let Some(grab) = &self.mouse_grab {
+            if grab.start_id == w_id && self.hover == Some(w_id) {
                 return true;
             }
         }
@@ -433,13 +460,25 @@ impl<'a> Manager<'a> {
         }
     }
 
-    /// Request a mouse grab on the given `source`
+    /// Request a grab on the given input `source`
     ///
-    /// If successful, corresponding move/end events will be forwarded to the
-    /// given `w_id`. The grab automatically ends after the end event. Since
-    /// these events are *requested*, the widget should consume them even if
-    /// e.g. the move events are not needed (although in practice this only
-    /// affects parents intercepting [`Response::Unhandled`] events).
+    /// If successful, corresponding mouse/touch events will be forwarded to
+    /// this widget. The grab terminates automatically.
+    ///
+    /// Behaviour depends on the `mode`:
+    ///
+    /// -   [`GrabMode::Grab`]: simple / low-level interpretation of input
+    ///     which delivers [`Event::PressMove`] and [`Event::PressEnd`] events.
+    ///     Multiple event sources may be grabbed simultaneously.
+    /// -   All other [`GrabMode`] values: generates [`Action::Pan`] events.
+    ///     Additional touch events starting on the same widget are
+    ///     automatically grabbed and may (depending on the `mode`)
+    ///     be used to generate rotation and scale components.
+    ///     Any previously existing `Pan` grabs by this widgets are replaced.
+    ///
+    /// Since these events are *requested*, the widget should consume them even
+    /// if not required (e.g. [`Event::PressMove`], although in practice this
+    /// only affects parents intercepting [`Response::Unhandled`] events.
     ///
     /// This method normally succeeds, but fails when
     /// multiple widgets attempt a grab the same press source simultaneously
@@ -447,22 +486,28 @@ impl<'a> Manager<'a> {
     ///
     /// This method automatically cancels any active char grab
     /// and updates keyboard navigation focus.
-    pub fn request_press_grab(
+    pub fn request_grab(
         &mut self,
-        source: PressSource,
         widget: &dyn Widget,
+        source: PressSource,
         coord: Coord,
+        mode: GrabMode,
         cursor: Option<CursorIcon>,
     ) -> bool {
         if self.read_only {
             return false;
         }
 
-        let w_id = widget.id();
+        let start_id = widget.id();
         match source {
             PressSource::Mouse(button) => {
                 if self.mgr.mouse_grab.is_none() {
-                    self.mgr.mouse_grab = Some((w_id, button));
+                    // TODO: if pan, cancel existing
+                    self.mgr.mouse_grab = Some(MouseGrab {
+                        start_id,
+                        button,
+                        mode,
+                    });
                     if let Some(icon) = cursor {
                         self.tkw.set_cursor_icon(icon);
                     }
@@ -474,17 +519,19 @@ impl<'a> Manager<'a> {
                 if self.get_touch(touch_id).is_some() {
                     return false;
                 }
+                // TODO: if pan, cancel existing
                 self.mgr.touch_grab.push(TouchEvent {
                     touch_id,
-                    start_id: w_id,
-                    cur_id: Some(w_id),
+                    start_id,
+                    cur_id: Some(start_id),
                     coord,
+                    mode,
                 });
             }
         }
 
         self.set_char_focus(None);
-        self.redraw(w_id);
+        self.redraw(start_id);
         true
     }
 }
@@ -541,17 +588,17 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn mouse_grab(&self) -> Option<(WidgetId, MouseButton)> {
-        self.mgr.mouse_grab
+    fn mouse_grab(&self) -> Option<MouseGrab> {
+        self.mgr.mouse_grab.clone()
     }
 
     #[cfg(feature = "winit")]
     fn end_mouse_grab(&mut self, button: MouseButton) {
-        if let Some(grab) = self.mgr.mouse_grab {
-            if grab.1 == button {
+        if let Some(grab) = self.mgr.mouse_grab.clone() {
+            if grab.button == button {
                 self.mgr.mouse_grab = None;
                 self.tkw.set_cursor_icon(self.mgr.hover_icon);
-                self.redraw(grab.0);
+                self.redraw(grab.start_id);
             }
         }
     }
@@ -782,11 +829,20 @@ impl<'a> Manager<'a> {
                 // Update hovered widget
                 self.set_hover(widget, widget.find_id(coord));
 
-                let r = if let Some((grab_id, button)) = self.mouse_grab() {
-                    let source = PressSource::Mouse(button);
+                let r = if let Some(grab) = self.mouse_grab() {
                     let delta = coord - self.mgr.last_mouse_coord;
-                    let ev = Event::PressMove { source, coord, delta };
-                    widget.handle(self, grab_id, ev)
+                    let ev = match grab.mode {
+                        GrabMode::Grab => {
+                            let source = PressSource::Mouse(grab.button);
+                            Event::PressMove { source, coord, delta }
+                        }
+                        // We cannot generate scale or rotation components
+                        _ => Event::Action(Action::Pan {
+                            alpha: Vec2(1.0, 0.0),
+                            delta: Vec2::from(delta),
+                        })
+                    };
+                    widget.handle(self, grab.start_id, ev)
                 } else {
                     // We don't forward move events without a grab
                     Response::None
@@ -822,17 +878,24 @@ impl<'a> Manager<'a> {
                 let coord = self.mgr.last_mouse_coord;
                 let source = PressSource::Mouse(button);
 
-                if let Some((grab_id, _)) = self.mouse_grab() {
-                    // Mouse grab active: send events there
-                    let ev = match state {
-                        ElementState::Pressed => Event::PressStart { source, coord },
-                        ElementState::Released => Event::PressEnd {
-                            source,
-                            end_id: self.mgr.hover,
-                            coord,
-                        },
+                if let Some(grab) = self.mouse_grab() {
+                    let r = match grab.mode {
+                        GrabMode::Grab => {
+                            // Mouse grab active: send events there
+                            let ev = match state {
+                                ElementState::Pressed => Event::PressStart { source, coord },
+                                ElementState::Released => Event::PressEnd {
+                                    source,
+                                    end_id: self.mgr.hover,
+                                    coord,
+                                },
+                            };
+                            widget.handle(self, grab.start_id, ev)
+                        }
+                        // Pan events do not receive Start/End notifications
+                        _ => Response::None,
                     };
-                    let r = widget.handle(self, grab_id, ev);
+
                     if state == ElementState::Released {
                         self.end_mouse_grab(button);
                     }

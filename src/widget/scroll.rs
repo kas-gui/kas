@@ -243,7 +243,13 @@ impl<W: Widget + event::Handler> event::Handler for ScrollRegion<W> {
                 }
             }
             Event::PressStart { source, coord } if source.is_primary() => {
-                mgr.request_press_grab(source, w, coord, Some(event::CursorIcon::Grabbing));
+                mgr.request_grab(
+                    w,
+                    source,
+                    coord,
+                    event::GrabMode::Grab,
+                    Some(event::CursorIcon::Grabbing),
+                );
                 Response::None
             }
             e @ _ => Response::Unhandled(e),

@@ -50,6 +50,9 @@ impl From<Rect> for Quad {
 pub struct Vec2(pub f32, pub f32);
 
 impl Vec2 {
+    /// Zero
+    pub const ZERO: Vec2 = Vec2(0.0, 0.0);
+
     /// Constructs a new instance with each element initialized to `value`.
     #[inline]
     pub const fn splat(value: f32) -> Self {
@@ -85,6 +88,15 @@ impl Vec2 {
     #[inline]
     pub fn gt(self, rhs: Self) -> bool {
         self.0 > rhs.0 && self.1 > rhs.1
+    }
+
+    /// Multiply two vectors as if they are complex numbers
+    #[inline]
+    pub fn complex_prod(self, rhs: Self) -> Self {
+        Vec2(
+            self.0 * rhs.0 - self.1 * rhs.1,
+            self.0 * rhs.1 + self.1 * rhs.0,
+        )
     }
 }
 
@@ -188,6 +200,13 @@ impl From<Size> for Vec2 {
     }
 }
 
+impl From<Vec2> for Coord {
+    #[inline]
+    fn from(arg: Vec2) -> Self {
+        Coord(arg.0.round() as i32, arg.1.round() as i32)
+    }
+}
+
 /// 2D vector (double precision)
 ///
 /// Usually used as either a coordinate or a difference of coordinates, but
@@ -202,6 +221,9 @@ impl From<Size> for Vec2 {
 pub struct DVec2(pub f64, pub f64);
 
 impl DVec2 {
+    /// Zero
+    pub const ZERO: DVec2 = DVec2(0.0, 0.0);
+
     /// Constructs a new instance with each element initialized to `value`.
     #[inline]
     pub const fn splat(value: f64) -> Self {
@@ -237,6 +259,15 @@ impl DVec2 {
     #[inline]
     pub fn gt(self, rhs: Self) -> bool {
         self.0 > rhs.0 && self.1 > rhs.1
+    }
+
+    /// Multiply two vectors as if they are complex numbers
+    #[inline]
+    pub fn complex_prod(self, rhs: Self) -> Self {
+        DVec2(
+            self.0 * rhs.0 - self.1 * rhs.1,
+            self.0 * rhs.1 + self.1 * rhs.0,
+        )
     }
 }
 
@@ -336,6 +367,13 @@ impl From<Coord> for DVec2 {
 impl From<Size> for DVec2 {
     #[inline]
     fn from(arg: Size) -> Self {
+        DVec2(arg.0 as f64, arg.1 as f64)
+    }
+}
+
+impl From<Vec2> for DVec2 {
+    #[inline]
+    fn from(arg: Vec2) -> Self {
         DVec2(arg.0 as f64, arg.1 as f64)
     }
 }

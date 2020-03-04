@@ -205,7 +205,13 @@ impl<D: Directional> event::Handler for ScrollBar<D> {
     fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::PressStart { source, coord, .. } => {
-                if !mgr.request_press_grab(source, self, coord, Some(event::CursorIcon::Grabbing)) {
+                if !mgr.request_grab(
+                    self,
+                    source,
+                    coord,
+                    event::GrabMode::Grab,
+                    Some(event::CursorIcon::Grabbing),
+                ) {
                     return Response::None;
                 }
                 // Interacting with a scrollbar with multiple presses
