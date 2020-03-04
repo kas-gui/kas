@@ -206,7 +206,7 @@ impl<D: Directional> event::Handler for ScrollBar<D> {
         match event {
             Event::PressStart { source, coord, .. } => {
                 if !mgr.request_grab(
-                    self,
+                    self.id(),
                     source,
                     coord,
                     event::GrabMode::Grab,

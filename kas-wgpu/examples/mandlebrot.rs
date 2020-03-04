@@ -434,7 +434,13 @@ impl event::Handler for Mandlebrot {
                 Response::Msg(())
             }
             Event::PressStart { source, coord } => {
-                mgr.request_grab(self, source, coord, event::GrabMode::PanOnly, Some(event::CursorIcon::Grabbing));
+                mgr.request_grab(
+                    self.id(),
+                    source,
+                    coord,
+                    event::GrabMode::PanOnly,
+                    Some(event::CursorIcon::Grabbing),
+                );
                 Response::None
             }
             _ => Response::None,

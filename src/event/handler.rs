@@ -187,13 +187,7 @@ impl<'a> Manager<'a> {
         match event {
             Event::Action(action) => widget.handle_action(mgr, action),
             Event::PressStart { source, coord } if activable && source.is_primary() => {
-                mgr.request_grab(
-                    widget.as_widget(),
-                    source,
-                    coord,
-                    event::GrabMode::Grab,
-                    None,
-                );
+                mgr.request_grab(widget.id(), source, coord, event::GrabMode::Grab, None);
                 Response::None
             }
             Event::PressMove { .. } if activable => {

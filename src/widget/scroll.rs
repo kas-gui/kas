@@ -244,7 +244,7 @@ impl<W: Widget + event::Handler> event::Handler for ScrollRegion<W> {
             }
             Event::PressStart { source, coord } if source.is_primary() => {
                 mgr.request_grab(
-                    w,
+                    w.id(),
                     source,
                     coord,
                     event::GrabMode::Grab,

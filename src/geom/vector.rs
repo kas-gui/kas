@@ -46,7 +46,7 @@ impl From<Rect> for Quad {
 /// it implements `lhs ≤ rhs` as `lhs < rhs || lhs == rhs` which is wrong for
 /// vectors (consider for `lhs = (0, 1), rhs = (1, 1)`).
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Vec2(pub f32, pub f32);
 
 impl Vec2 {
@@ -97,6 +97,25 @@ impl Vec2 {
             self.0 * rhs.0 - self.1 * rhs.1,
             self.0 * rhs.1 + self.1 * rhs.0,
         )
+    }
+
+    /// Divide by a second vector as if they are complex numbers
+    #[inline]
+    pub fn complex_div(self, rhs: Self) -> Self {
+        self.complex_prod(rhs.complex_inv())
+    }
+
+    /// Take the complex reciprocal
+    #[inline]
+    pub fn complex_inv(self) -> Self {
+        let ssi = 1.0 / self.sum_square();
+        Vec2(self.0 * ssi, -self.1 * ssi)
+    }
+
+    /// Return the sum of the square of the terms
+    #[inline]
+    pub fn sum_square(self) -> f32 {
+        self.0 * self.0 + self.1 * self.1
     }
 }
 
@@ -217,7 +236,7 @@ impl From<Vec2> for Coord {
 /// it implements `lhs ≤ rhs` as `lhs < rhs || lhs == rhs` which is wrong for
 /// vectors (consider for `lhs = (0, 1), rhs = (1, 1)`).
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct DVec2(pub f64, pub f64);
 
 impl DVec2 {

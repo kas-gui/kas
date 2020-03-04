@@ -26,7 +26,7 @@ pub enum Action {
     /// Mouse-grabs generate translation (`delta` component) only. Touch grabs
     /// optionally also generate rotation and scaling components.
     ///
-    /// In general, a point `p` should be transformed as follows:
+    /// In general, a point `p` on the screen should be transformed as follows:
     /// ```
     /// # use kas::geom::{Coord, Vec2};
     /// # let (alpha, delta) = (Vec2::ZERO, Vec2::ZERO);
