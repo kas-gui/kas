@@ -346,11 +346,11 @@ impl CustomPipe for Pipe {
 }
 
 impl CustomWindow for PipeWindow {
-    type Param = (DVec2, DVec2, Vec2, i32);
+    type Param = (DVec2, DVec2, f32, i32);
 
     fn invoke(&mut self, pass: usize, rect: Rect, p: Self::Param) {
         self.rect = (p.0, p.1);
-        let half_size = p.2;
+        let rel_width = p.2;
         self.iterations = p.3;
 
         let aa = Vec2::from(rect.pos);
@@ -360,7 +360,7 @@ impl CustomWindow for PipeWindow {
         let ba = Vec2(bb.0, aa.1);
 
         // Fix height to 2 here; width is relative:
-        let cbb = Vec2(half_size.0 / half_size.1, 1.0);
+        let cbb = Vec2(rel_width, 1.0);
         let caa = -cbb;
         let cab = Vec2(caa.0, cbb.1);
         let cba = Vec2(cbb.0, caa.1);
@@ -389,9 +389,11 @@ impl PipeWindow {
 struct Mandlebrot {
     #[core]
     core: kas::CoreData,
-    half_size: Vec2,
     alpha: DVec2,
     delta: DVec2,
+    view_delta: DVec2,
+    view_alpha: f64,
+    rel_width: f32,
     iter: i32,
 }
 
@@ -407,7 +409,11 @@ impl Layout for Mandlebrot {
     #[inline]
     fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
         self.core.rect = rect;
-        self.half_size = Vec2::from(rect.size) * 0.5;
+        let half_size = DVec2::from(rect.size) * DVec2::splat(0.5);
+        let rel_width = DVec2(half_size.0 / half_size.1, 1.0);
+        self.view_alpha = 1.0 / half_size.1; // actually, splat(this value)
+        self.view_delta = DVec2::splat(-self.view_alpha) * (DVec2::from(rect.pos) + half_size);
+        self.rel_width = rel_width.0 as f32;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState) {
@@ -416,7 +422,7 @@ impl Layout for Mandlebrot {
             .as_any_mut()
             .downcast_mut::<DrawWindow<PipeWindow>>()
             .unwrap();
-        let p = (self.alpha, self.delta, self.half_size, self.iter);
+        let p = (self.alpha, self.delta, self.rel_width, self.iter);
         draw.custom(region, self.core.rect + offset, p);
     }
 }
@@ -436,11 +442,13 @@ impl event::Handler for Mandlebrot {
                 Response::Msg(())
             }
             Event::Action(event::Action::Pan { alpha, delta }) => {
-                // Only vertical component of half_size is used for scale:
-                let delta = delta * Vec2::splat(1.0 / self.half_size.1);
                 // Adjust world offset (reverse):
-                self.alpha = self.alpha.complex_div(alpha.into());
-                self.delta = self.delta - self.alpha.complex_prod(delta.into());
+                let new_alpha = self.alpha.complex_prod(DVec2::from(alpha).complex_inv());
+                let va_d = DVec2::splat(self.view_alpha) * DVec2::from(delta);
+                let vd = self.view_delta;
+                self.delta =
+                    self.delta + self.alpha.complex_prod(vd - va_d) - new_alpha.complex_prod(vd);
+                self.alpha = new_alpha;
 
                 mgr.redraw(self.id());
                 Response::Msg(())
@@ -464,9 +472,11 @@ impl Mandlebrot {
     fn new() -> Self {
         Mandlebrot {
             core: Default::default(),
-            half_size: Vec2::ZERO,
             alpha: DVec2(1.0, 0.0),
             delta: DVec2(-0.5, 0.0),
+            view_delta: DVec2::ZERO,
+            view_alpha: 0.0,
+            rel_width: 0.0,
             iter: 64,
         }
     }

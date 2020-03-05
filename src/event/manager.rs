@@ -834,7 +834,8 @@ impl<'a> Manager<'a> {
                     _ => unreachable!(),
                 };
 
-                delta = q1 - alpha.complex_prod(p1);
+                // Average delta from both movements:
+                delta = (q1 - alpha.complex_prod(p1) + q2 - alpha.complex_prod(p2)) * 0.5;
             }
 
             let id = grab.id;
@@ -1124,8 +1125,10 @@ impl<'a> Manager<'a> {
                             }
                             widget.handle(self, id, action)
                         } else if let Some(pan_grab) = pan_grab {
-                            if let Some(pan) = self.mgr.pan_grab.get_mut(pan_grab.0 as usize) {
-                                pan.coords[pan_grab.1 as usize].1 = coord.into();
+                            if (pan_grab.1 as usize) < MAX_PAN_GRABS {
+                                if let Some(pan) = self.mgr.pan_grab.get_mut(pan_grab.0 as usize) {
+                                    pan.coords[pan_grab.1 as usize].1 = coord.into();
+                                }
                             }
                             Response::None
                         } else {
