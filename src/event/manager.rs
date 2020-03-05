@@ -805,7 +805,7 @@ impl<'a> Manager<'a> {
         for gi in 0..self.mgr.pan_grab.len() {
             let grab = &mut self.mgr.pan_grab[gi];
             debug_assert!(grab.mode != GrabMode::Grab);
-            assert!(grab.coords.len() > 0);
+            assert!(grab.n > 0);
 
             // Terminology: pi are old coordinates, qi are new coords
             let (p1, q1) = (grab.coords[0].0, grab.coords[0].1);
@@ -814,7 +814,7 @@ impl<'a> Manager<'a> {
             let alpha;
             let delta;
 
-            if grab.mode == GrabMode::PanOnly || grab.coords.len() == 1 {
+            if grab.mode == GrabMode::PanOnly || grab.n == 1 {
                 alpha = Vec2(1.0, 0.0);
                 delta = Vec2::from(q1 - p1);
             } else {

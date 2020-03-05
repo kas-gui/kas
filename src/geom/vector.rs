@@ -288,6 +288,25 @@ impl DVec2 {
             self.0 * rhs.1 + self.1 * rhs.0,
         )
     }
+
+    /// Divide by a second vector as if they are complex numbers
+    #[inline]
+    pub fn complex_div(self, rhs: Self) -> Self {
+        self.complex_prod(rhs.complex_inv())
+    }
+
+    /// Take the complex reciprocal
+    #[inline]
+    pub fn complex_inv(self) -> Self {
+        let ssi = 1.0 / self.sum_square();
+        DVec2(self.0 * ssi, -self.1 * ssi)
+    }
+
+    /// Return the sum of the square of the terms
+    #[inline]
+    pub fn sum_square(self) -> f64 {
+        self.0 * self.0 + self.1 * self.1
+    }
 }
 
 impl Neg for DVec2 {

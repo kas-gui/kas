@@ -49,6 +49,15 @@ pub enum Action {
     /// let alpha = alpha2.complex_prod(alpha1);
     /// let delta = alpha2.complex_prod(delta1) + delta2;
     /// ```
+    /// If instead one uses a transform to map screen-space to world-space,
+    /// this transform should be adjusted as follows:
+    /// ```
+    /// # use kas::geom::Vec2;
+    /// # let (alpha, delta) = (Vec2::ZERO, Vec2::ZERO);
+    /// # let (mut world_alpha, mut world_delta) = (Vec2::ZERO, Vec2::ZERO);
+    /// world_alpha = world_alpha.complex_div(alpha.into());
+    /// world_delta = world_delta - world_alpha.complex_prod(delta.into());
+    /// ```
     ///
     /// Those familiar with complex numbers may recognise that
     /// `alpha = a * e^{i*t}` where `a` is the scale component and `t` is the

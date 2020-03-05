@@ -54,8 +54,8 @@ layout(location = 0) in vec2 cf;
 layout(location = 0) out vec4 outColor;
 
 layout(set = 0, binding = 1) uniform Locals {
-    dvec2 centre;
-    dvec2 scale;
+    dvec2 alpha;
+    dvec2 delta;
 };
 
 layout(set = 0, binding = 2) uniform Iters {
@@ -63,7 +63,8 @@ layout(set = 0, binding = 2) uniform Iters {
 };
 
 void main() {
-    dvec2 c = centre + dvec2(cf) * scale;
+    dvec2 cd = cf;
+    dvec2 c = dvec2(alpha.x * cd.x - alpha.y * cd.y, alpha.x * cd.y + alpha.y * cd.x) + delta;
 
     dvec2 z = c;
     int i;
@@ -345,11 +346,12 @@ impl CustomPipe for Pipe {
 }
 
 impl CustomWindow for PipeWindow {
-    type Param = (DVec2, DVec2, i32);
+    type Param = (DVec2, DVec2, Vec2, i32);
 
     fn invoke(&mut self, pass: usize, rect: Rect, p: Self::Param) {
         self.rect = (p.0, p.1);
-        self.iterations = p.2;
+        let half_size = p.2;
+        self.iterations = p.3;
 
         let aa = Vec2::from(rect.pos);
         let bb = aa + Vec2::from(rect.size);
@@ -357,8 +359,9 @@ impl CustomWindow for PipeWindow {
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
 
-        let caa = Vec2::splat(-1.0);
-        let cbb = Vec2::splat(1.0);
+        // Fix height to 2 here; width is relative:
+        let cbb = Vec2(half_size.0 / half_size.1, 1.0);
+        let caa = -cbb;
         let cab = Vec2(caa.0, cbb.1);
         let cba = Vec2(cbb.0, caa.1);
 
@@ -386,20 +389,25 @@ impl PipeWindow {
 struct Mandlebrot {
     #[core]
     core: kas::CoreData,
-    centre: DVec2,
-    scale: DVec2,
+    half_size: Vec2,
+    alpha: DVec2,
+    delta: DVec2,
     iter: i32,
 }
 
 impl Layout for Mandlebrot {
-    fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
-        SizeRules::new(500, 500, StretchPolicy::Maximise)
+    fn size_rules(&mut self, _: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
+        let size = match a.is_horizontal() {
+            true => 750,
+            false => 500,
+        };
+        SizeRules::new(size, size, StretchPolicy::Maximise)
     }
 
     #[inline]
     fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
         self.core.rect = rect;
-        self.scale.0 = self.scale.1 * (rect.size.0 as f64 / rect.size.1 as f64);
+        self.half_size = Vec2::from(rect.size) * 0.5;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState) {
@@ -408,7 +416,7 @@ impl Layout for Mandlebrot {
             .as_any_mut()
             .downcast_mut::<DrawWindow<PipeWindow>>()
             .unwrap();
-        let p = (self.centre, self.scale, self.iter);
+        let p = (self.alpha, self.delta, self.half_size, self.iter);
         draw.custom(region, self.core.rect + offset, p);
     }
 }
@@ -423,13 +431,17 @@ impl event::Handler for Mandlebrot {
                     event::ScrollDelta::LineDelta(_, y) => -0.5 * y as f64,
                     event::ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f64,
                 };
-                self.scale = self.scale * 2f64.powf(factor);
+                self.alpha = self.alpha * 2f64.powf(factor);
                 mgr.redraw(self.id());
                 Response::Msg(())
             }
-            Event::Action(event::Action::Pan { delta, .. }) => {
-                let scale = DVec2::splat(2.0) * self.scale / DVec2::from(self.core.rect.size);
-                self.centre = self.centre - DVec2::from(delta) * scale;
+            Event::Action(event::Action::Pan { alpha, delta }) => {
+                // Only vertical component of half_size is used for scale:
+                let delta = delta * Vec2::splat(1.0 / self.half_size.1);
+                // Adjust world offset (reverse):
+                self.alpha = self.alpha.complex_div(alpha.into());
+                self.delta = self.delta - self.alpha.complex_prod(delta.into());
+
                 mgr.redraw(self.id());
                 Response::Msg(())
             }
@@ -438,7 +450,7 @@ impl event::Handler for Mandlebrot {
                     self.id(),
                     source,
                     coord,
-                    event::GrabMode::PanOnly,
+                    event::GrabMode::PanFull,
                     Some(event::CursorIcon::Grabbing),
                 );
                 Response::None
@@ -452,20 +464,21 @@ impl Mandlebrot {
     fn new() -> Self {
         Mandlebrot {
             core: Default::default(),
-            centre: DVec2(-0.5, 0.0),
-            scale: DVec2(1.5, 1.0),
+            half_size: Vec2::ZERO,
+            alpha: DVec2(1.0, 0.0),
+            delta: DVec2(-0.5, 0.0),
             iter: 64,
         }
     }
 
     fn loc(&self) -> String {
-        let op = if self.centre.1 < 0.0 { "−" } else { "+" };
+        let op = if self.delta.1 < 0.0 { "−" } else { "+" };
         format!(
             "Location: {} {} {}i; scale: {}; iters: {}",
-            self.centre.0,
+            self.delta.0,
             op,
-            self.centre.1.abs(),
-            self.scale.1,
+            self.delta.1.abs(),
+            self.alpha.sum_square().sqrt(),
             self.iter
         )
     }
