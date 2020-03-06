@@ -10,6 +10,7 @@ use std::env::var;
 pub use wgpu::{BackendBit, PowerPreference};
 
 /// Toolkit options
+#[derive(Clone, PartialEq, Hash)]
 pub struct Options {
     /// Adapter power preference. Default value: low power.
     pub power_preference: PowerPreference,
@@ -17,15 +18,16 @@ pub struct Options {
     pub backends: BackendBit,
 }
 
-impl Options {
-    /// Construct a new instance with default values
-    pub fn new() -> Self {
+impl Default for Options {
+    fn default() -> Self {
         Options {
             power_preference: PowerPreference::LowPower,
             backends: BackendBit::PRIMARY,
         }
     }
+}
 
+impl Options {
     /// Construct a new instance, reading from environment variables
     ///
     /// The following environment variables are read, in case-insensitive mode.
@@ -50,7 +52,7 @@ impl Options {
     /// -   `PRIMARY`: any of Vulkan, Metal or DX12
     /// -   `SECONDARY`: any of GL or DX11
     pub fn from_env() -> Self {
-        let mut options = Options::new();
+        let mut options = Options::default();
 
         if let Ok(mut v) = var("KAS_POWER_PREFERENCE") {
             v.make_ascii_uppercase();
