@@ -7,7 +7,7 @@
 
 use super::MouseButton;
 
-use crate::geom::{Coord, Vec2};
+use crate::geom::{Coord, DVec2};
 use crate::WidgetId;
 
 /// High-level events addressed to a widget by [`WidgetId`]
@@ -28,10 +28,10 @@ pub enum Action {
     ///
     /// In general, a point `p` on the screen should be transformed as follows:
     /// ```
-    /// # use kas::geom::{Coord, Vec2};
-    /// # let (alpha, delta) = (Vec2::ZERO, Vec2::ZERO);
+    /// # use kas::geom::{Coord, DVec2};
+    /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
     /// # let mut p = Coord::ZERO;
-    /// // Works for Coord type; for Vec2 type-conversions are unnecessary:
+    /// // Works for Coord type; for DVec2 type-conversions are unnecessary:
     /// p = (alpha.complex_prod(p.into()) + delta).into();
     /// ```
     ///
@@ -43,18 +43,18 @@ pub enum Action {
     ///
     /// Two such transforms may be combined as follows:
     /// ```
-    /// # use kas::geom::Vec2;
-    /// # let (alpha1, delta1) = (Vec2::ZERO, Vec2::ZERO);
-    /// # let (alpha2, delta2) = (Vec2::ZERO, Vec2::ZERO);
+    /// # use kas::geom::DVec2;
+    /// # let (alpha1, delta1) = (DVec2::ZERO, DVec2::ZERO);
+    /// # let (alpha2, delta2) = (DVec2::ZERO, DVec2::ZERO);
     /// let alpha = alpha2.complex_prod(alpha1);
     /// let delta = alpha2.complex_prod(delta1) + delta2;
     /// ```
     /// If instead one uses a transform to map screen-space to world-space,
     /// this transform should be adjusted as follows:
     /// ```
-    /// # use kas::geom::Vec2;
-    /// # let (alpha, delta) = (Vec2::ZERO, Vec2::ZERO);
-    /// # let (mut world_alpha, mut world_delta) = (Vec2::ZERO, Vec2::ZERO);
+    /// # use kas::geom::DVec2;
+    /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
+    /// # let (mut world_alpha, mut world_delta) = (DVec2::ZERO, DVec2::ZERO);
     /// world_alpha = world_alpha.complex_div(alpha.into());
     /// world_delta = world_delta - world_alpha.complex_prod(delta.into());
     /// ```
@@ -63,16 +63,16 @@ pub enum Action {
     /// `alpha = a * e^{i*t}` where `a` is the scale component and `t` is the
     /// angle of rotation. Calculate these components as follows:
     /// ```
-    /// # use kas::geom::Vec2;
-    /// # let alpha = Vec2::ZERO;
+    /// # use kas::geom::DVec2;
+    /// # let alpha = DVec2::ZERO;
     /// let a = (alpha.0 * alpha.0 + alpha.1 * alpha.1).sqrt();
     /// let t = (alpha.1).atan2(alpha.0);
     /// ```
     Pan {
         /// Rotation and scale component
-        alpha: Vec2,
+        alpha: DVec2,
         /// Translation component
-        delta: Vec2,
+        delta: DVec2,
     },
 }
 

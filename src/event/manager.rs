@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use std::u16;
 
 use super::*;
-use crate::geom::{Coord, Vec2};
+use crate::geom::{Coord, DVec2};
 use crate::{ThemeAction, ThemeApi, TkAction, TkWindow, Widget, WidgetId, WindowId};
 
 /// Highlighting state of a widget
@@ -83,7 +83,7 @@ struct PanGrab {
     mode: GrabMode,
     source_is_touch: bool,
     n: u16,
-    coords: [(Vec2, Vec2); MAX_PAN_GRABS],
+    coords: [(Coord, Coord); MAX_PAN_GRABS],
 }
 
 #[derive(Clone, Debug)]
@@ -289,7 +289,6 @@ impl ManagerState {
         source_is_touch: bool,
         coord: Coord,
     ) -> (u16, u16) {
-        let v = Vec2::from(coord);
         for (gi, grab) in self.pan_grab.iter_mut().enumerate() {
             if grab.id == id {
                 if grab.source_is_touch != source_is_touch {
@@ -299,7 +298,7 @@ impl ManagerState {
 
                 let index = grab.n;
                 if (index as usize) < MAX_PAN_GRABS {
-                    grab.coords[index as usize] = (v, v);
+                    grab.coords[index as usize] = (coord, coord);
                 }
                 grab.n = index + 1;
                 return (gi as u16, index);
@@ -308,8 +307,8 @@ impl ManagerState {
 
         let gj = self.pan_grab.len() as u16;
         let n = 1;
-        let mut coords: [(Vec2, Vec2); MAX_PAN_GRABS] = Default::default();
-        coords[0] = (v, v);
+        let mut coords: [(Coord, Coord); MAX_PAN_GRABS] = Default::default();
+        coords[0] = (coord, coord);
         self.pan_grab.push(PanGrab {
             id,
             mode,
@@ -344,7 +343,7 @@ impl ManagerState {
                 return self.remove_pan(g.0 as usize);
             }
             assert!(grab.source_is_touch);
-            for i in (g.1 as usize)..(grab.coords.len() - 1) {
+            for i in (g.1 as usize)..(grab.n as usize - 1) {
                 grab.coords[i] = grab.coords[i + 1];
             }
         } else {
@@ -808,25 +807,25 @@ impl<'a> Manager<'a> {
             assert!(grab.n > 0);
 
             // Terminology: pi are old coordinates, qi are new coords
-            let (p1, q1) = (grab.coords[0].0, grab.coords[0].1);
-            grab.coords[0].0 = q1;
+            let (p1, q1) = (DVec2::from(grab.coords[0].0), DVec2::from(grab.coords[0].1));
+            grab.coords[0].0 = grab.coords[0].1;
 
             let alpha;
             let delta;
 
             if grab.mode == GrabMode::PanOnly || grab.n == 1 {
-                alpha = Vec2(1.0, 0.0);
-                delta = Vec2::from(q1 - p1);
+                alpha = DVec2(1.0, 0.0);
+                delta = DVec2::from(q1 - p1);
             } else {
                 // We don't use more than two touches: information would be
                 // redundant (although it could be averaged).
-                let (p2, q2) = (grab.coords[1].0, grab.coords[1].1);
-                grab.coords[1].0 = q2;
+                let (p2, q2) = (DVec2::from(grab.coords[1].0), DVec2::from(grab.coords[1].1));
+                grab.coords[1].0 = grab.coords[1].1;
                 let (pd, qd) = (p2 - p1, q2 - q1);
 
                 alpha = match grab.mode {
                     GrabMode::PanFull => qd.complex_div(pd),
-                    GrabMode::PanScale => Vec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
+                    GrabMode::PanScale => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
                     GrabMode::PanRotate => {
                         let a = qd.complex_div(pd);
                         a / a.sum_square().sqrt()
@@ -839,7 +838,7 @@ impl<'a> Manager<'a> {
             }
 
             let id = grab.id;
-            if alpha != Vec2(1.0, 0.0) || delta != Vec2::ZERO {
+            if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
                 let ev = Event::Action(Action::Pan { alpha, delta });
                 let _ = widget.handle(&mut self, id, ev);
             }
@@ -1003,7 +1002,7 @@ impl<'a> Manager<'a> {
                         widget.handle(self, grab.start_id, ev)
                     } else {
                         if let Some(pan) = self.mgr.pan_grab.get_mut(grab.pan_grab.0 as usize) {
-                            pan.coords[grab.pan_grab.1 as usize].1 = coord.into();
+                            pan.coords[grab.pan_grab.1 as usize].1 = coord;
                         }
                         Response::None
                     }
@@ -1127,7 +1126,7 @@ impl<'a> Manager<'a> {
                         } else if let Some(pan_grab) = pan_grab {
                             if (pan_grab.1 as usize) < MAX_PAN_GRABS {
                                 if let Some(pan) = self.mgr.pan_grab.get_mut(pan_grab.0 as usize) {
-                                    pan.coords[pan_grab.1 as usize].1 = coord.into();
+                                    pan.coords[pan_grab.1 as usize].1 = coord;
                                 }
                             }
                             Response::None

@@ -146,6 +146,12 @@ impl From<(u32, u32)> for Size {
     }
 }
 
+impl From<Coord> for Size {
+    fn from(coord: Coord) -> Size {
+        Size(coord.0 as u32, coord.1 as u32)
+    }
+}
+
 #[cfg(feature = "winit")]
 impl<X: Pixel> From<PhysicalSize<X>> for Size {
     #[inline]

@@ -415,3 +415,17 @@ impl From<Vec2> for DVec2 {
         DVec2(arg.0 as f64, arg.1 as f64)
     }
 }
+
+impl From<DVec2> for Coord {
+    #[inline]
+    fn from(arg: DVec2) -> Self {
+        Coord(arg.0.round() as i32, arg.1.round() as i32)
+    }
+}
+
+impl From<DVec2> for Size {
+    #[inline]
+    fn from(arg: DVec2) -> Self {
+        Size(arg.0.round() as u32, arg.1.round() as u32)
+    }
+}
