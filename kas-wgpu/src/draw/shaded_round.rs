@@ -8,9 +8,9 @@
 use std::f32::consts::FRAC_PI_2;
 use std::mem::size_of;
 
-use crate::draw::{Rgb, ShaderManager, Vec2};
+use crate::draw::{Rgb, ShaderManager};
 use kas::draw::Colour;
-use kas::geom::{Rect, Size};
+use kas::geom::{Rect, Size, Vec2};
 
 /// Offset relative to the size of a pixel used by the fragment shader to
 /// implement multi-sampling.

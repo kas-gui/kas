@@ -11,7 +11,7 @@ use std::fmt::{self, Debug};
 use super::Label;
 use crate::class::HasBool;
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{Action, Handler, Manager, ManagerState, Response, UpdateHandle, VoidMsg};
+use crate::event::{self, Action, Manager, Response, UpdateHandle, VoidMsg};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
@@ -70,7 +70,7 @@ impl<OT: 'static> Layout for RadioBoxBare<OT> {
         self.core_data_mut().rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         let highlights = mgr.highlight_state(self.id());
         draw_handle.radiobox(self.core.rect, self.state, highlights);
     }
@@ -150,7 +150,7 @@ impl<H> HasBool for RadioBoxBare<H> {
     }
 }
 
-impl Handler for RadioBoxBare<()> {
+impl event::Handler for RadioBoxBare<()> {
     type Msg = VoidMsg;
 
     #[inline]
@@ -173,7 +173,7 @@ impl Handler for RadioBoxBare<()> {
     }
 }
 
-impl<M, H: Fn(WidgetId) -> M> Handler for RadioBoxBare<H> {
+impl<M, H: Fn(WidgetId) -> M> event::Handler for RadioBoxBare<H> {
     type Msg = M;
 
     #[inline]

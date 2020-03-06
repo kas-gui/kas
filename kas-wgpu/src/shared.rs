@@ -96,9 +96,11 @@ where
         window: &mut DrawWindow<C::Window>,
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
-    ) -> wgpu::CommandBuffer {
-        self.draw
-            .render(window, &mut self.device, frame_view, clear_color)
+    ) {
+        let buf = self
+            .draw
+            .render(window, &mut self.device, frame_view, clear_color);
+        self.queue.submit(&[buf]);
     }
 
     #[cfg(not(feature = "clipboard"))]

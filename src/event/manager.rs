@@ -9,9 +9,10 @@ use log::trace;
 use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+use std::u16;
 
 use super::*;
-use crate::geom::Coord;
+use crate::geom::{Coord, DVec2};
 use crate::{ThemeAction, ThemeApi, TkAction, TkWindow, Widget, WidgetId, WindowId};
 
 /// Highlighting state of a widget
@@ -41,12 +42,53 @@ impl HighlightState {
     }
 }
 
+/// Controls the types of events delivered by [`Manager::request_grab`]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum GrabMode {
+    /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each press
+    Grab,
+    /// Deliver [`Action::Pan`] events, with scaling and rotation
+    PanFull,
+    /// Deliver [`Action::Pan`] events, with scaling
+    PanScale,
+    /// Deliver [`Action::Pan`] events, with rotation
+    PanRotate,
+    /// Deliver [`Action::Pan`] events, without scaling or rotation
+    PanOnly,
+}
+
+#[derive(Clone, Debug)]
+struct MouseGrab {
+    button: MouseButton,
+    start_id: WidgetId,
+    mode: GrabMode,
+    pan_grab: (u16, u16),
+}
+
 #[derive(Clone, Debug)]
 struct TouchEvent {
     touch_id: u64,
     start_id: WidgetId,
     cur_id: Option<WidgetId>,
     coord: Coord,
+    mode: GrabMode,
+    pan_grab: (u16, u16),
+}
+
+const MAX_PAN_GRABS: usize = 2;
+
+#[derive(Clone, Debug)]
+struct PanGrab {
+    id: WidgetId,
+    mode: GrabMode,
+    source_is_touch: bool,
+    n: u16,
+    coords: [(Coord, Coord); MAX_PAN_GRABS],
+}
+
+#[derive(Clone, Debug)]
+enum Pending {
+    LostCharFocus(WidgetId),
 }
 
 /// Window event manager
@@ -69,8 +111,9 @@ pub struct ManagerState {
     hover_icon: CursorIcon,
     key_events: SmallVec<[(u32, WidgetId); 10]>,
     last_mouse_coord: Coord,
-    mouse_grab: Option<(WidgetId, MouseButton)>,
+    mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchEvent; 10]>,
+    pan_grab: SmallVec<[PanGrab; 4]>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
 
     time_start: Instant,
@@ -78,6 +121,8 @@ pub struct ManagerState {
     // TODO(opt): consider other containers, e.g. C++ multimap
     // or sorted Vec with binary search yielding a range
     handle_updates: HashMap<UpdateHandle, Vec<WidgetId>>,
+    pending: SmallVec<[Pending; 8]>,
+    action: TkAction,
 }
 
 /// Toolkit API
@@ -98,11 +143,14 @@ impl ManagerState {
             last_mouse_coord: Coord::ZERO,
             mouse_grab: None,
             touch_grab: Default::default(),
+            pan_grab: SmallVec::new(),
             accel_keys: HashMap::new(),
 
             time_start: Instant::now(),
             time_updates: vec![],
             handle_updates: HashMap::new(),
+            pending: SmallVec::new(),
+            action: TkAction::None,
         }
     }
 
@@ -123,6 +171,8 @@ impl ManagerState {
         self.accel_keys.clear();
         self.time_updates.clear();
         self.handle_updates.clear();
+        self.pending.clear();
+        self.action = TkAction::None;
 
         let coord = self.last_mouse_coord;
         let mut mgr = self.manager(tkw);
@@ -137,10 +187,24 @@ impl ManagerState {
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.nav_focus = self.nav_focus.and_then(|id| map.get(&id).cloned());
-        self.mouse_grab = self
-            .mouse_grab
-            .and_then(|(id, b)| map.get(&id).map(|id| (*id, b)));
+        self.mouse_grab = self.mouse_grab.as_ref().and_then(|grab| {
+            map.get(&grab.start_id).map(|id| MouseGrab {
+                start_id: *id,
+                button: grab.button,
+                mode: grab.mode,
+                pan_grab: grab.pan_grab,
+            })
+        });
 
+        let mut i = 0;
+        while i < self.pan_grab.len() {
+            if let Some(id) = map.get(&self.pan_grab[i].id) {
+                self.pan_grab[i].id = *id;
+                i += 1;
+            } else {
+                self.remove_pan(i);
+            }
+        }
         macro_rules! do_map {
             ($seq:expr, $update:expr) => {
                 let update = $update;
@@ -199,6 +263,12 @@ impl ManagerState {
         self.time_updates.first().map(|time| time.0)
     }
 
+    /// Set an action
+    #[inline]
+    pub fn send_action(&mut self, action: TkAction) {
+        self.action = self.action.max(action);
+    }
+
     /// Construct a [`Manager`] referring to this state
     #[inline]
     pub fn manager<'a>(&'a mut self, tkw: &'a mut dyn TkWindow) -> Manager<'a> {
@@ -206,8 +276,89 @@ impl ManagerState {
             read_only: false,
             mgr: self,
             tkw,
-            pending: SmallVec::new(),
-            action: TkAction::None,
+        }
+    }
+}
+
+/// internals
+impl ManagerState {
+    fn set_pan_on(
+        &mut self,
+        id: WidgetId,
+        mode: GrabMode,
+        source_is_touch: bool,
+        coord: Coord,
+    ) -> (u16, u16) {
+        for (gi, grab) in self.pan_grab.iter_mut().enumerate() {
+            if grab.id == id {
+                if grab.source_is_touch != source_is_touch {
+                    self.remove_pan(gi);
+                    break;
+                }
+
+                let index = grab.n;
+                if (index as usize) < MAX_PAN_GRABS {
+                    grab.coords[index as usize] = (coord, coord);
+                }
+                grab.n = index + 1;
+                return (gi as u16, index);
+            }
+        }
+
+        let gj = self.pan_grab.len() as u16;
+        let n = 1;
+        let mut coords: [(Coord, Coord); MAX_PAN_GRABS] = Default::default();
+        coords[0] = (coord, coord);
+        self.pan_grab.push(PanGrab {
+            id,
+            mode,
+            source_is_touch,
+            n,
+            coords,
+        });
+        (gj, 0)
+    }
+
+    fn remove_pan(&mut self, index: usize) {
+        self.pan_grab.remove(index);
+        if let Some(grab) = &mut self.mouse_grab {
+            let p0 = grab.pan_grab.0;
+            if p0 >= index as u16 && p0 != u16::MAX {
+                grab.pan_grab.0 = p0 - 1;
+            }
+        }
+        for grab in &mut self.touch_grab {
+            let p0 = grab.pan_grab.0;
+            if p0 >= index as u16 && p0 != u16::MAX {
+                grab.pan_grab.0 = p0 - 1;
+            }
+        }
+    }
+
+    #[cfg(feature = "winit")]
+    fn remove_pan_grab(&mut self, g: (u16, u16)) {
+        if let Some(grab) = self.pan_grab.get_mut(g.0 as usize) {
+            grab.n -= 1;
+            if grab.n == 0 {
+                return self.remove_pan(g.0 as usize);
+            }
+            assert!(grab.source_is_touch);
+            for i in (g.1 as usize)..(grab.n as usize - 1) {
+                grab.coords[i] = grab.coords[i + 1];
+            }
+        } else {
+            return; // shouldn't happen
+        }
+
+        // Note: the fact that grab.n > 0 implies source is a touch event!
+        for grab in &mut self.touch_grab {
+            if grab.pan_grab.0 == g.0 && grab.pan_grab.1 > g.1 {
+                grab.pan_grab.1 -= 1;
+                if (grab.pan_grab.1 as usize) == MAX_PAN_GRABS - 1 {
+                    let v = grab.coord.into();
+                    self.pan_grab[g.0 as usize].coords[grab.pan_grab.1 as usize] = (v, v);
+                }
+            }
         }
     }
 }
@@ -250,8 +401,8 @@ impl ManagerState {
                 return true;
             }
         }
-        if let Some(grab) = self.mouse_grab {
-            if grab.0 == w_id && self.hover == Some(w_id) {
+        if let Some(grab) = &self.mouse_grab {
+            if grab.start_id == w_id && self.hover == Some(w_id) {
                 return true;
             }
         }
@@ -264,17 +415,11 @@ impl ManagerState {
     }
 }
 
-enum Pending {
-    LostCharFocus(WidgetId),
-}
-
 /// Manager of event-handling and toolkit actions
 pub struct Manager<'a> {
     read_only: bool,
     mgr: &'a mut ManagerState,
     tkw: &'a mut dyn TkWindow,
-    pending: SmallVec<[Pending; 4]>,
-    action: TkAction,
 }
 
 /// Public API (around toolkit functionality)
@@ -345,7 +490,7 @@ impl<'a> Manager<'a> {
     /// affect the UI after a reconfigure action.
     #[inline]
     pub fn send_action(&mut self, action: TkAction) {
-        self.action = self.action.max(action);
+        self.mgr.send_action(action);
     }
 
     /// Add a window
@@ -424,13 +569,25 @@ impl<'a> Manager<'a> {
         }
     }
 
-    /// Request a mouse grab on the given `source`
+    /// Request a grab on the given input `source`
     ///
-    /// If successful, corresponding move/end events will be forwarded to the
-    /// given `w_id`. The grab automatically ends after the end event. Since
-    /// these events are *requested*, the widget should consume them even if
-    /// e.g. the move events are not needed (although in practice this only
-    /// affects parents intercepting [`Response::Unhandled`] events).
+    /// If successful, corresponding mouse/touch events will be forwarded to
+    /// this widget. The grab terminates automatically.
+    ///
+    /// Behaviour depends on the `mode`:
+    ///
+    /// -   [`GrabMode::Grab`]: simple / low-level interpretation of input
+    ///     which delivers [`Event::PressMove`] and [`Event::PressEnd`] events.
+    ///     Multiple event sources may be grabbed simultaneously.
+    /// -   All other [`GrabMode`] values: generates [`Action::Pan`] events.
+    ///     Requesting additional grabs on the same widget from the same source
+    ///     (i.e. multiple touches) allows generation of rotation and scale
+    ///     factors (depending on the [`GrabMode`]).
+    ///     Any previously existing `Pan` grabs by this widgets are replaced.
+    ///
+    /// Since these events are *requested*, the widget should consume them even
+    /// if not required (e.g. [`Event::PressMove`], although in practice this
+    /// only affects parents intercepting [`Response::Unhandled`] events.
     ///
     /// This method normally succeeds, but fails when
     /// multiple widgets attempt a grab the same press source simultaneously
@@ -438,44 +595,58 @@ impl<'a> Manager<'a> {
     ///
     /// This method automatically cancels any active char grab
     /// and updates keyboard navigation focus.
-    pub fn request_press_grab(
+    pub fn request_grab(
         &mut self,
+        id: WidgetId,
         source: PressSource,
-        widget: &dyn Widget,
         coord: Coord,
+        mode: GrabMode,
         cursor: Option<CursorIcon>,
     ) -> bool {
         if self.read_only {
             return false;
         }
 
-        let w_id = widget.id();
+        let start_id = id;
+        let mut pan_grab = (u16::MAX, 0);
         match source {
             PressSource::Mouse(button) => {
-                if self.mgr.mouse_grab.is_none() {
-                    self.mgr.mouse_grab = Some((w_id, button));
-                    if let Some(icon) = cursor {
-                        self.tkw.set_cursor_icon(icon);
-                    }
-                } else {
+                if self.mgr.mouse_grab.is_some() {
                     return false;
+                }
+                if mode != GrabMode::Grab {
+                    pan_grab = self.mgr.set_pan_on(id, mode, false, coord);
+                }
+                self.mgr.mouse_grab = Some(MouseGrab {
+                    start_id,
+                    button,
+                    mode,
+                    pan_grab,
+                });
+                if let Some(icon) = cursor {
+                    self.tkw.set_cursor_icon(icon);
                 }
             }
             PressSource::Touch(touch_id) => {
                 if self.get_touch(touch_id).is_some() {
                     return false;
                 }
+                if mode != GrabMode::Grab {
+                    pan_grab = self.mgr.set_pan_on(id, mode, true, coord);
+                }
                 self.mgr.touch_grab.push(TouchEvent {
                     touch_id,
-                    start_id: w_id,
-                    cur_id: Some(w_id),
+                    start_id,
+                    cur_id: Some(id),
                     coord,
+                    mode,
+                    pan_grab,
                 });
             }
         }
 
         self.set_char_focus(None);
-        self.redraw(w_id);
+        self.redraw(start_id);
         true
     }
 }
@@ -532,18 +703,25 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn mouse_grab(&self) -> Option<(WidgetId, MouseButton)> {
-        self.mgr.mouse_grab
+    fn mouse_grab(&self) -> Option<MouseGrab> {
+        self.mgr.mouse_grab.clone()
     }
 
     #[cfg(feature = "winit")]
     fn end_mouse_grab(&mut self, button: MouseButton) {
-        if let Some(grab) = self.mgr.mouse_grab {
-            if grab.1 == button {
-                self.mgr.mouse_grab = None;
-                self.tkw.set_cursor_icon(self.mgr.hover_icon);
-                self.redraw(grab.0);
-            }
+        if self
+            .mgr
+            .mouse_grab
+            .as_ref()
+            .map(|grab| grab.button != button)
+            .unwrap_or(true)
+        {
+            return;
+        }
+        if let Some(grab) = self.mgr.mouse_grab.take() {
+            self.tkw.set_cursor_icon(self.mgr.hover_icon);
+            self.redraw(grab.start_id);
+            self.mgr.remove_pan_grab(grab.pan_grab);
         }
     }
 
@@ -564,7 +742,7 @@ impl<'a> Manager<'a> {
         for i in 0..len {
             if self.mgr.touch_grab[i].touch_id == touch_id {
                 let grab = self.mgr.touch_grab[i].clone();
-                self.mgr.touch_grab[i] = self.mgr.touch_grab[len - 1].clone();
+                self.mgr.touch_grab.swap(i, len - 1);
                 self.mgr.touch_grab.truncate(len - 1);
                 return Some(grab);
             }
@@ -605,7 +783,7 @@ impl<'a> Manager<'a> {
         }
 
         if let Some(id) = self.mgr.char_focus {
-            self.pending.push(Pending::LostCharFocus(id));
+            self.mgr.pending.push(Pending::LostCharFocus(id));
             self.redraw(id);
         }
         if let Some(id) = wid {
@@ -618,17 +796,60 @@ impl<'a> Manager<'a> {
 /// Toolkit API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl<'a> Manager<'a> {
-    /// Finish any processing and return the [`TkAction`]
+    /// Update, after receiving all events
     pub fn finish<W>(mut self, widget: &mut W) -> TkAction
     where
         W: Widget + Handler<Msg = VoidMsg> + ?Sized,
     {
+        for gi in 0..self.mgr.pan_grab.len() {
+            let grab = &mut self.mgr.pan_grab[gi];
+            debug_assert!(grab.mode != GrabMode::Grab);
+            assert!(grab.n > 0);
+
+            // Terminology: pi are old coordinates, qi are new coords
+            let (p1, q1) = (DVec2::from(grab.coords[0].0), DVec2::from(grab.coords[0].1));
+            grab.coords[0].0 = grab.coords[0].1;
+
+            let alpha;
+            let delta;
+
+            if grab.mode == GrabMode::PanOnly || grab.n == 1 {
+                alpha = DVec2(1.0, 0.0);
+                delta = DVec2::from(q1 - p1);
+            } else {
+                // We don't use more than two touches: information would be
+                // redundant (although it could be averaged).
+                let (p2, q2) = (DVec2::from(grab.coords[1].0), DVec2::from(grab.coords[1].1));
+                grab.coords[1].0 = grab.coords[1].1;
+                let (pd, qd) = (p2 - p1, q2 - q1);
+
+                alpha = match grab.mode {
+                    GrabMode::PanFull => qd.complex_div(pd),
+                    GrabMode::PanScale => DVec2((qd.sum_square() / pd.sum_square()).sqrt(), 0.0),
+                    GrabMode::PanRotate => {
+                        let a = qd.complex_div(pd);
+                        a / a.sum_square().sqrt()
+                    }
+                    _ => unreachable!(),
+                };
+
+                // Average delta from both movements:
+                delta = (q1 - alpha.complex_mul(p1) + q2 - alpha.complex_mul(p2)) * 0.5;
+            }
+
+            let id = grab.id;
+            if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
+                let ev = Event::Action(Action::Pan { alpha, delta });
+                let _ = widget.handle(&mut self, id, ev);
+            }
+        }
+
         // To avoid infinite loops, we consider self read-only from here on.
         // Since we don't wish to duplicate Handler::handle, we don't actually
         // make self const, but merely pretend it is in the public API.
         self.read_only = true;
 
-        for item in self.pending.pop() {
+        for item in self.mgr.pending.pop() {
             match item {
                 Pending::LostCharFocus(id) => {
                     let ev = Event::Action(Action::LostCharFocus);
@@ -636,7 +857,10 @@ impl<'a> Manager<'a> {
                 }
             }
         }
-        self.action
+
+        let action = self.mgr.action;
+        self.mgr.action = TkAction::None;
+        action
     }
 
     /// Update widgets due to timer
@@ -689,7 +913,7 @@ impl<'a> Manager<'a> {
     /// events the toolkit must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(feature = "winit")]
-    pub fn handle_winit<W>(mut self, widget: &mut W, event: winit::event::WindowEvent) -> TkAction
+    pub fn handle_winit<W>(&mut self, widget: &mut W, event: winit::event::WindowEvent)
     where
         W: Widget + Handler<Msg = VoidMsg> + ?Sized,
     {
@@ -710,7 +934,7 @@ impl<'a> Manager<'a> {
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = self.mgr.char_focus {
                     let ev = Event::Action(Action::ReceivedCharacter(c));
-                    widget.handle(&mut self, id, ev)
+                    widget.handle(self, id, ev)
                 } else {
                     Response::None
                 }
@@ -737,7 +961,7 @@ impl<'a> Manager<'a> {
                                 self.add_key_event(scancode, id);
 
                                 let ev = Event::Action(Action::Activate);
-                                widget.handle(&mut self, id, ev)
+                                widget.handle(self, id, ev)
                             } else { Response::None }
                         }
                         VirtualKeyCode::Escape => {
@@ -750,7 +974,7 @@ impl<'a> Manager<'a> {
                                 self.add_key_event(scancode, id);
 
                                 let ev = Event::Action(Action::Activate);
-                                widget.handle(&mut self, id, ev)
+                                widget.handle(self, id, ev)
                             } else { Response::None }
                         }
                     },
@@ -770,11 +994,18 @@ impl<'a> Manager<'a> {
                 // Update hovered widget
                 self.set_hover(widget, widget.find_id(coord));
 
-                let r = if let Some((grab_id, button)) = self.mouse_grab() {
-                    let source = PressSource::Mouse(button);
+                let r = if let Some(grab) = self.mouse_grab() {
                     let delta = coord - self.mgr.last_mouse_coord;
-                    let ev = Event::PressMove { source, coord, delta };
-                    widget.handle(&mut self, grab_id, ev)
+                    if grab.mode == GrabMode::Grab {
+                        let source = PressSource::Mouse(grab.button);
+                        let ev = Event::PressMove { source, coord, delta };
+                        widget.handle(self, grab.start_id, ev)
+                    } else {
+                        if let Some(pan) = self.mgr.pan_grab.get_mut(grab.pan_grab.0 as usize) {
+                            pan.coords[grab.pan_grab.1 as usize].1 = coord;
+                        }
+                        Response::None
+                    }
                 } else {
                     // We don't forward move events without a grab
                     Response::None
@@ -797,7 +1028,7 @@ impl<'a> Manager<'a> {
                         ScrollDelta::PixelDelta(Coord::from_logical(pos, self.mgr.dpi_factor)),
                 });
                 if let Some(id) = self.mgr.hover {
-                    widget.handle(&mut self, id, Event::Action(action))
+                    widget.handle(self, id, Event::Action(action))
                 } else {
                     Response::None
                 }
@@ -810,17 +1041,24 @@ impl<'a> Manager<'a> {
                 let coord = self.mgr.last_mouse_coord;
                 let source = PressSource::Mouse(button);
 
-                if let Some((grab_id, _)) = self.mouse_grab() {
-                    // Mouse grab active: send events there
-                    let ev = match state {
-                        ElementState::Pressed => Event::PressStart { source, coord },
-                        ElementState::Released => Event::PressEnd {
-                            source,
-                            end_id: self.mgr.hover,
-                            coord,
-                        },
+                if let Some(grab) = self.mouse_grab() {
+                    let r = match grab.mode {
+                        GrabMode::Grab => {
+                            // Mouse grab active: send events there
+                            let ev = match state {
+                                ElementState::Pressed => Event::PressStart { source, coord },
+                                ElementState::Released => Event::PressEnd {
+                                    source,
+                                    end_id: self.mgr.hover,
+                                    coord,
+                                },
+                            };
+                            widget.handle(self, grab.start_id, ev)
+                        }
+                        // Pan events do not receive Start/End notifications
+                        _ => Response::None,
                     };
-                    let r = widget.handle(&mut self, grab_id, ev);
+
                     if state == ElementState::Released {
                         self.end_mouse_grab(button);
                     }
@@ -829,7 +1067,7 @@ impl<'a> Manager<'a> {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
                         let ev = Event::PressStart { source, coord };
-                        widget.handle(&mut self, id, ev)
+                        widget.handle(self, id, ev)
                     } else {
                         Response::None
                     }
@@ -847,7 +1085,7 @@ impl<'a> Manager<'a> {
                     TouchPhase::Started => {
                         if let Some(id) = widget.find_id(coord) {
                             let ev = Event::PressStart { source, coord };
-                            widget.handle(&mut self, id, ev)
+                            widget.handle(self, id, ev)
                         } else {
                             Response::None
                         }
@@ -857,43 +1095,61 @@ impl<'a> Manager<'a> {
                         // to be unavoidable (as with CursorMoved)
                         let cur_id = widget.find_id(coord);
 
-                        let r = self.get_touch(touch.id).map(|grab| {
-                            let id = grab.start_id;
-                            let action = Event::PressMove {
-                                source,
-                                coord,
-                                delta: coord - grab.coord,
-                            };
-                            // Only when 'depressed' status changes:
-                            let redraw = grab.cur_id != cur_id &&
-                                (grab.cur_id == Some(grab.start_id) || cur_id == Some(grab.start_id));
+                        let mut r = None;
+                        let mut pan_grab = None;
+                        if let Some(grab) = self.get_touch(touch.id) {
+                            if grab.mode == GrabMode::Grab {
+                                let id = grab.start_id;
+                                let action = Event::PressMove {
+                                    source,
+                                    coord,
+                                    delta: coord - grab.coord,
+                                };
+                                // Only when 'depressed' status changes:
+                                let redraw = grab.cur_id != cur_id &&
+                                    (grab.cur_id == Some(grab.start_id) || cur_id == Some(grab.start_id));
 
-                            grab.cur_id = cur_id;
-                            grab.coord = coord;
+                                grab.cur_id = cur_id;
+                                grab.coord = coord;
 
-                            (id, action, redraw)
-                        });
+                                r = Some((id, action, redraw));
+                            } else {
+                                pan_grab = Some(grab.pan_grab);
+                            }
+                        }
 
                         if let Some((id, action, redraw)) = r {
                             if redraw {
                                 self.send_action(TkAction::Redraw);
                             }
-                            widget.handle(&mut self, id, action)
+                            widget.handle(self, id, action)
+                        } else if let Some(pan_grab) = pan_grab {
+                            if (pan_grab.1 as usize) < MAX_PAN_GRABS {
+                                if let Some(pan) = self.mgr.pan_grab.get_mut(pan_grab.0 as usize) {
+                                    pan.coords[pan_grab.1 as usize].1 = coord;
+                                }
+                            }
+                            Response::None
                         } else {
                             Response::None
                         }
                     }
                     TouchPhase::Ended => {
                         if let Some(grab) = self.remove_touch(touch.id) {
-                            let action = Event::PressEnd {
-                                source,
-                                end_id: grab.cur_id,
-                                coord,
-                            };
-                            if let Some(cur_id) = grab.cur_id {
-                                self.redraw(cur_id);
+                            if grab.mode == GrabMode::Grab {
+                                let action = Event::PressEnd {
+                                    source,
+                                    end_id: grab.cur_id,
+                                    coord,
+                                };
+                                if let Some(cur_id) = grab.cur_id {
+                                    self.redraw(cur_id);
+                                }
+                                widget.handle(self, grab.start_id, action)
+                            } else {
+                                self.mgr.remove_pan_grab(grab.pan_grab);
+                                Response::None
                             }
-                            widget.handle(&mut self, grab.start_id, action)
                         } else {
                             Response::None
                         }
@@ -908,7 +1164,7 @@ impl<'a> Manager<'a> {
                             if let Some(cur_id) = grab.cur_id {
                                 self.redraw(cur_id);
                             }
-                            widget.handle(&mut self, grab.start_id, action)
+                            widget.handle(self, grab.start_id, action)
                         } else {
                             Response::None
                         }
@@ -926,7 +1182,5 @@ impl<'a> Manager<'a> {
             }
             Response::Msg(_) => unreachable!(),
         };
-
-        self.finish(widget)
     }
 }

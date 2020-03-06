@@ -7,7 +7,7 @@
 
 use super::MouseButton;
 
-use crate::geom::Coord;
+use crate::geom::{Coord, DVec2};
 use crate::WidgetId;
 
 /// High-level events addressed to a widget by [`WidgetId`]
@@ -21,6 +21,59 @@ pub enum Action {
     ReceivedCharacter(char),
     /// A mouse or touchpad scroll event
     Scroll(ScrollDelta),
+    /// A mouse or touch-screen move/zoom/rotate event
+    ///
+    /// Mouse-grabs generate translation (`delta` component) only. Touch grabs
+    /// optionally also generate rotation and scaling components.
+    ///
+    /// In general, a point `p` on the screen should be transformed as follows:
+    /// ```
+    /// # use kas::geom::{Coord, DVec2};
+    /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
+    /// # let mut p = Coord::ZERO;
+    /// // Works for Coord type; for DVec2 type-conversions are unnecessary:
+    /// p = (alpha.complex_mul(p.into()) + delta).into();
+    /// ```
+    ///
+    /// When it is known that there is no rotational component, one can use a
+    /// simpler transformation: `alpha.0 * p + delta`. When there is also no
+    /// scaling component, we just have a translation: `p + delta`.
+    /// Note however that if events are generated with rotation and/or scaling
+    /// components, these simplifications are invalid.
+    ///
+    /// Two such transforms may be combined as follows:
+    /// ```
+    /// # use kas::geom::DVec2;
+    /// # let (alpha1, delta1) = (DVec2::ZERO, DVec2::ZERO);
+    /// # let (alpha2, delta2) = (DVec2::ZERO, DVec2::ZERO);
+    /// let alpha = alpha2.complex_mul(alpha1);
+    /// let delta = alpha2.complex_mul(delta1) + delta2;
+    /// ```
+    /// If instead one uses a transform to map screen-space to world-space,
+    /// this transform should be adjusted as follows:
+    /// ```
+    /// # use kas::geom::DVec2;
+    /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
+    /// # let (mut world_alpha, mut world_delta) = (DVec2::ZERO, DVec2::ZERO);
+    /// world_alpha = world_alpha.complex_div(alpha.into());
+    /// world_delta = world_delta - world_alpha.complex_mul(delta.into());
+    /// ```
+    ///
+    /// Those familiar with complex numbers may recognise that
+    /// `alpha = a * e^{i*t}` where `a` is the scale component and `t` is the
+    /// angle of rotation. Calculate these components as follows:
+    /// ```
+    /// # use kas::geom::DVec2;
+    /// # let alpha = DVec2::ZERO;
+    /// let a = (alpha.0 * alpha.0 + alpha.1 * alpha.1).sqrt();
+    /// let t = (alpha.1).atan2(alpha.0);
+    /// ```
+    Pan {
+        /// Rotation and scale component
+        alpha: DVec2,
+        /// Translation component
+        delta: DVec2,
+    },
 }
 
 /// Low-level events addressed to a widget by [`WidgetId`] or coordinate.
@@ -34,7 +87,7 @@ pub enum Event {
     },
     /// Movement of mouse or a touch press
     ///
-    /// Received only given a [press grab](super::Manager::request_press_grab).
+    /// Received only given a [press grab](super::Manager::request_grab).
     PressMove {
         source: PressSource,
         coord: Coord,
@@ -42,7 +95,7 @@ pub enum Event {
     },
     /// End of a click/touch press
     ///
-    /// Received only given a [press grab](super::Manager::request_press_grab).
+    /// Received only given a [press grab](super::Manager::request_grab).
     ///
     /// When `end_id == None`, this is a "cancelled press": the end of the press
     /// is outside the application window.

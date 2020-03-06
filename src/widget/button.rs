@@ -10,7 +10,7 @@ use std::fmt::Debug;
 
 use crate::class::HasText;
 use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{Action, Handler, Manager, ManagerState, Response, VirtualKeyCode};
+use crate::event::{self, Action, Manager, Response, VirtualKeyCode};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
@@ -87,7 +87,7 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
         }
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         draw_handle.button(self.b_rect, mgr.highlight_state(self.id()));
         let align = (Align::Centre, Align::Centre);
         draw_handle.text(self.b_rect, &self.label, TextClass::Button, align);
@@ -140,7 +140,7 @@ impl<M: Clone + Debug> HasText for TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug> Handler for TextButton<M> {
+impl<M: Clone + Debug> event::Handler for TextButton<M> {
     type Msg = M;
 
     #[inline]

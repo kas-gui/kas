@@ -61,31 +61,10 @@ where
     ) {
         use Event::*;
 
-        // In most cases actions.len() is 0 or 1.
-        let mut actions = SmallVec::<[_; 2]>::new();
-        let mut have_new_resumes = false;
-        let add_resume = |resumes: &mut Vec<(Instant, ww::WindowId)>, instant, window_id| {
-            if let Some(i) = resumes
-                .iter()
-                .enumerate()
-                .find(|item| (item.1).1 == window_id)
-                .map(|item| item.0)
-            {
-                resumes[i].0 = instant;
-            } else {
-                resumes.push((instant, window_id));
-            }
-        };
-
         match event {
             WindowEvent { window_id, event } => {
                 if let Some(window) = self.windows.get_mut(&window_id) {
-                    let (action, resume) = window.handle_event(&mut self.shared, event);
-                    actions.push((window_id, action));
-                    if let Some(instant) = resume {
-                        add_resume(&mut self.resumes, instant, window_id);
-                        have_new_resumes = true;
-                    }
+                    window.handle_event(&mut self.shared, event);
                 }
             }
 
@@ -93,13 +72,14 @@ where
             UserEvent(action) => match action {
                 ProxyAction::Close(id) => {
                     if let Some(id) = self.id_map.get(&id) {
-                        actions.push((*id, TkAction::Close));
+                        if let Some(window) = self.windows.get_mut(&id) {
+                            window.send_action(TkAction::Close);
+                        }
                     }
                 }
                 ProxyAction::CloseAll => {
-                    if let Some(id) = self.windows.keys().next() {
-                        // Any id will do; if we have no windows we close anyway!
-                        actions.push((*id, TkAction::CloseAll));
+                    for window in self.windows.values_mut() {
+                        window.send_action(TkAction::Close);
                     }
                 }
                 ProxyAction::Update(handle, payload) => {
@@ -110,9 +90,8 @@ where
             },
 
             NewEvents(cause) => {
-                // In all cases, we reset control_flow at end of this fn
+                // MainEventsCleared will reset control_flow (but not when it is Poll)
                 *control_flow = ControlFlow::Wait;
-                have_new_resumes = true;
 
                 match cause {
                     StartCause::ResumeTimeReached {
@@ -128,9 +107,7 @@ where
                         assert_eq!(item.0, requested_resume);
 
                         let resume = if let Some(w) = self.windows.get_mut(&item.1) {
-                            let (action, resume) = w.update_timer(&mut self.shared);
-                            actions.push((item.1, action));
-                            resume
+                            w.update_timer(&mut self.shared)
                         } else {
                             // presumably, some window with active timers was removed
                             None
@@ -146,18 +123,71 @@ where
                         // This event serves no purpose?
                         // debug!("Wakeup: WaitCancelled (ignoring)");
                     }
-                    StartCause::Poll => {
-                        // We use this to check pending actions after removing windows
-                    }
+                    StartCause::Poll => (),
                     StartCause::Init => {
                         debug!("Wakeup: init");
 
-                        for (id, window) in self.windows.iter_mut() {
-                            let action = window.init(&mut self.shared);
-                            actions.push((*id, action));
+                        for window in self.windows.values_mut() {
+                            window.init(&mut self.shared);
                         }
                     }
                 }
+            }
+
+            MainEventsCleared => {
+                let mut close_all = false;
+                let mut to_close = SmallVec::<[ww::WindowId; 4]>::new();
+                for (window_id, window) in self.windows.iter_mut() {
+                    let (action, resume) = window.update(&mut self.shared);
+                    match action {
+                        TkAction::None
+                        | TkAction::Redraw
+                        | TkAction::RegionMoved
+                        | TkAction::Reconfigure => (),
+                        TkAction::Close => to_close.push(*window_id),
+                        TkAction::CloseAll => close_all = true,
+                    }
+                    if let Some(instant) = resume {
+                        if let Some((i, _)) = self
+                            .resumes
+                            .iter()
+                            .enumerate()
+                            .find(|item| (item.1).1 == *window_id)
+                        {
+                            self.resumes[i].0 = instant;
+                        } else {
+                            self.resumes.push((instant, *window_id));
+                        }
+                    }
+                }
+
+                for window_id in &to_close {
+                    if let Some(window) = self.windows.remove(window_id) {
+                        if window.handle_closure(&mut self.shared) == TkAction::CloseAll {
+                            close_all = true;
+                        }
+                        // Wake immediately in order to close remaining windows:
+                        *control_flow = ControlFlow::Poll;
+                    }
+                }
+                if close_all {
+                    for (_, window) in self.windows.drain() {
+                        let _ = window.handle_closure(&mut self.shared);
+                    }
+                }
+
+                self.resumes.sort_by_key(|item| item.0);
+
+                *control_flow = if *control_flow == ControlFlow::Exit || self.windows.is_empty() {
+                    ControlFlow::Exit
+                } else if *control_flow == ControlFlow::Poll {
+                    ControlFlow::Poll
+                } else if let Some((instant, _)) = self.resumes.first() {
+                    trace!("Requesting resume at {:?}", *instant);
+                    ControlFlow::WaitUntil(*instant)
+                } else {
+                    ControlFlow::Wait
+                };
             }
 
             RedrawRequested(id) => {
@@ -166,7 +196,7 @@ where
                 }
             }
 
-            MainEventsCleared | RedrawEventsCleared | LoopDestroyed | Suspended | Resumed => return,
+            RedrawEventsCleared | LoopDestroyed | Suspended | Resumed => return,
         };
 
         // Create and init() any new windows.
@@ -178,8 +208,7 @@ where
                         Ok(mut window) => {
                             let wid = window.window.id();
 
-                            let action = window.init(&mut self.shared);
-                            actions.push((wid, action));
+                            window.init(&mut self.shared);
 
                             self.id_map.insert(id, wid);
                             self.windows.insert(wid, window);
@@ -191,7 +220,9 @@ where
                 }
                 PendingAction::CloseWindow(id) => {
                     if let Some(id) = self.id_map.get(&id) {
-                        actions.push((*id, TkAction::Close));
+                        if let Some(window) = self.windows.get_mut(&id) {
+                            window.send_action(TkAction::Close);
+                        }
                     }
                 }
                 PendingAction::ThemeResize => {
@@ -205,67 +236,11 @@ where
                     }
                 }
                 PendingAction::Update(handle, payload) => {
-                    for (id, window) in self.windows.iter_mut() {
-                        let action = window.update_handle(&mut self.shared, handle, payload);
-                        actions.push((*id, action));
+                    for window in self.windows.values_mut() {
+                        window.update_handle(&mut self.shared, handle, payload);
                     }
                 }
             }
-        }
-
-        while let Some((id, action)) = actions.pop() {
-            match action {
-                TkAction::None => (),
-                TkAction::Redraw => {
-                    self.windows.get(&id).map(|w| w.window.request_redraw());
-                }
-                TkAction::RegionMoved => {
-                    if let Some(window) = self.windows.get_mut(&id) {
-                        window.handle_moved();
-                        window.window.request_redraw();
-                    }
-                }
-                TkAction::Reconfigure => {
-                    if let Some(window) = self.windows.get_mut(&id) {
-                        if let Some(instant) = window.reconfigure(&mut self.shared) {
-                            add_resume(&mut self.resumes, instant, id);
-                            have_new_resumes = true;
-                        }
-                    }
-                }
-                TkAction::Close => {
-                    if let Some(window) = self.windows.remove(&id) {
-                        if window.handle_closure(&mut self.shared) == TkAction::CloseAll {
-                            actions.push((id, TkAction::CloseAll));
-                        }
-                        // Wake immediately in order to evaluate pending actions:
-                        *control_flow = ControlFlow::Poll;
-                    }
-                }
-                TkAction::CloseAll => {
-                    for (_id, window) in self.windows.drain() {
-                        let _ = window.handle_closure(&mut self.shared);
-                        // Pending actions are not evaluated; this is ok.
-                    }
-                    self.id_map.clear();
-                    *control_flow = ControlFlow::Exit;
-                }
-            }
-        }
-
-        if have_new_resumes {
-            self.resumes.sort_by_key(|item| item.0);
-
-            *control_flow = if *control_flow == ControlFlow::Exit || self.windows.is_empty() {
-                ControlFlow::Exit
-            } else if *control_flow == ControlFlow::Poll {
-                ControlFlow::Poll
-            } else if let Some((instant, _)) = self.resumes.first() {
-                trace!("Requesting resume at {:?}", *instant);
-                ControlFlow::WaitUntil(*instant)
-            } else {
-                ControlFlow::Wait
-            };
         }
     }
 }

@@ -8,9 +8,9 @@
 use std::f32;
 use wgpu_glyph::{GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
-use super::{CustomPipe, CustomWindow, DrawPipe, DrawWindow, Vec2};
+use super::{CustomPipe, CustomWindow, DrawPipe, DrawWindow};
 use kas::draw::{DrawText, DrawTextShared, Font, FontId, TextProperties};
-use kas::geom::{Coord, Rect};
+use kas::geom::{Coord, Rect, Vec2};
 use kas::Align;
 
 impl<C: CustomPipe + 'static> DrawTextShared for DrawPipe<C> {

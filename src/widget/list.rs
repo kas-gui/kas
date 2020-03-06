@@ -8,11 +8,9 @@
 use std::iter;
 
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{Event, Handler, Manager, ManagerState, Response};
+use crate::event::{self, Event, Handler, Manager, Response};
 use crate::geom::Coord;
-use crate::layout::{
-    self, AxisInfo, Margins, RowPositionSolver, RulesSetter, RulesSolver, SizeRules,
-};
+use crate::layout::{self, AxisInfo, RulesSetter, RulesSolver, SizeRules};
 use crate::{AlignHints, Directional, Horizontal, Vertical};
 use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
 use kas::geom::Rect;
@@ -153,7 +151,7 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
         self.core.rect = rect;
         let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(
             rect,
-            Margins::ZERO,
+            layout::Margins::ZERO,
             (self.direction, self.widgets.len()),
             &mut self.data,
         );
@@ -165,7 +163,7 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        let solver = RowPositionSolver::new(self.direction);
+        let solver = layout::RowPositionSolver::new(self.direction);
         if let Some(child) = solver.find_child(&self.widgets, coord) {
             return child.find_id(coord);
         }
@@ -175,8 +173,8 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
         None
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
-        let solver = RowPositionSolver::new(self.direction);
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+        let solver = layout::RowPositionSolver::new(self.direction);
         solver.for_children(&self.widgets, draw_handle.target_rect(), |w| {
             w.draw(draw_handle, mgr)
         });

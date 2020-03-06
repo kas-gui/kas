@@ -45,6 +45,29 @@ pub trait CustomPipe {
     /// Construct a window associated with this pipeline
     fn new_window(&self, device: &wgpu::Device, size: Size) -> Self::Window;
 
+    /// Called whenever the window is resized
+    fn resize(
+        &self,
+        window: &mut Self::Window,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        size: Size,
+    );
+
+    /// Per-frame updates
+    ///
+    /// This is called once per frame before rendering operations, and may for
+    /// example be used to update uniform buffers.
+    ///
+    /// The default implementation does nothing.
+    fn update(
+        &self,
+        _window: &mut Self::Window,
+        _device: &wgpu::Device,
+        _encoder: &mut wgpu::CommandEncoder,
+    ) {
+    }
+
     /// Do a render pass.
     ///
     /// Rendering uses one pass per region, where each region has its own
@@ -64,9 +87,6 @@ pub trait CustomPipe {
 pub trait CustomWindow {
     /// User parameter type
     type Param;
-
-    /// Called whenever the window is resized
-    fn resize(&mut self, device: &wgpu::Device, encoder: &mut wgpu::CommandEncoder, size: Size);
 
     /// Invoke user-defined custom routine
     ///
@@ -91,13 +111,20 @@ impl CustomPipe for () {
     fn new_window(&self, _: &wgpu::Device, _: Size) -> Self::Window {
         ()
     }
+    fn resize(
+        &self,
+        _: &mut Self::Window,
+        _: &wgpu::Device,
+        _: &mut wgpu::CommandEncoder,
+        _: Size,
+    ) {
+    }
     fn render(&self, _: &mut Self::Window, _: &wgpu::Device, _: usize, _: &mut wgpu::RenderPass) {}
 }
 
 /// A dummy implementation (does nothing)
 impl CustomWindow for () {
     type Param = Void;
-    fn resize(&mut self, _: &wgpu::Device, _: &mut wgpu::CommandEncoder, _: Size) {}
     fn invoke(&mut self, _: usize, _: Rect, _: Self::Param) {}
 }
 

@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{Action, Event, Manager, ManagerState, Response, UpdateHandle};
+use crate::event::{self, Action, Event, Manager, Response, UpdateHandle};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, Layout, Widget, WidgetCore, WidgetId};
@@ -113,7 +113,7 @@ impl<M> Layout for Box<dyn Handler<Msg = M>> {
         self.as_ref().find_id(coord)
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         self.as_ref().draw(draw_handle, mgr);
     }
 }
@@ -187,7 +187,7 @@ impl<'a> Manager<'a> {
         match event {
             Event::Action(action) => widget.handle_action(mgr, action),
             Event::PressStart { source, coord } if activable && source.is_primary() => {
-                mgr.request_press_grab(source, widget.as_widget(), coord, None);
+                mgr.request_grab(widget.id(), source, coord, event::GrabMode::Grab, None);
                 Response::None
             }
             Event::PressMove { .. } if activable => {

@@ -8,6 +8,9 @@
 #[cfg(feature = "winit")]
 use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize, Pixel};
 
+mod vector;
+pub use vector::{DVec2, Quad, Vec2};
+
 /// An `(x, y)` coordinate.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Coord(pub i32, pub i32);
@@ -140,6 +143,12 @@ impl Size {
 impl From<(u32, u32)> for Size {
     fn from(size: (u32, u32)) -> Size {
         Size(size.0, size.1)
+    }
+}
+
+impl From<Coord> for Size {
+    fn from(coord: Coord) -> Size {
+        Size(coord.0 as u32, coord.1 as u32)
     }
 }
 

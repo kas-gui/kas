@@ -9,9 +9,7 @@ use std::fmt::Debug;
 
 use super::ScrollBar;
 use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{
-    Action, CursorIcon, Event, Handler, Manager, ManagerState, Response, ScrollDelta,
-};
+use crate::event::{self, Action, Event, Manager, Response};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
@@ -207,7 +205,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         }
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         if self.show_bars.0 {
             self.horiz_bar.draw(draw_handle, mgr);
         }
@@ -224,17 +222,17 @@ impl<W: Widget> Layout for ScrollRegion<W> {
     }
 }
 
-impl<W: Widget + Handler> Handler for ScrollRegion<W> {
-    type Msg = <W as Handler>::Msg;
+impl<W: Widget + event::Handler> event::Handler for ScrollRegion<W> {
+    type Msg = <W as event::Handler>::Msg;
 
     fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
             Event::Action(Action::Scroll(delta)) => {
                 let d = match delta {
-                    ScrollDelta::LineDelta(x, y) => {
+                    event::ScrollDelta::LineDelta(x, y) => {
                         Coord((-w.scroll_rate * x) as i32, (w.scroll_rate * y) as i32)
                     }
-                    ScrollDelta::PixelDelta(d) => d,
+                    event::ScrollDelta::PixelDelta(d) => d,
                 };
                 if w.set_offset(mgr, w.offset - d) {
                     w.horiz_bar.set_value(mgr, w.offset.0 as u32);
@@ -245,7 +243,13 @@ impl<W: Widget + Handler> Handler for ScrollRegion<W> {
                 }
             }
             Event::PressStart { source, coord } if source.is_primary() => {
-                mgr.request_press_grab(source, w, coord, Some(CursorIcon::Grabbing));
+                mgr.request_grab(
+                    w.id(),
+                    source,
+                    coord,
+                    event::GrabMode::Grab,
+                    Some(event::CursorIcon::Grabbing),
+                );
                 Response::None
             }
             e @ _ => Response::Unhandled(e),

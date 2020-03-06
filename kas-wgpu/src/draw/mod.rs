@@ -14,7 +14,6 @@ mod flat_round;
 mod shaded_round;
 mod shaded_square;
 mod shaders;
-mod vector;
 
 use kas::draw::Font;
 use kas::geom::Rect;
@@ -23,7 +22,6 @@ use wgpu_glyph::GlyphBrush;
 pub(crate) use shaders::ShaderManager;
 
 pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};
-pub use vector::{Quad, Vec2};
 
 pub(crate) const TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
 

@@ -16,8 +16,7 @@
 
 use std::num::NonZeroU32;
 
-use crate::event::{CursorIcon, UpdateHandle};
-use crate::{ThemeAction, ThemeApi};
+use crate::{event, ThemeAction, ThemeApi};
 
 /// Identifier for a window added to a toolkit
 ///
@@ -90,9 +89,9 @@ pub trait TkWindow {
 
     /// Updates all subscribed widgets
     ///
-    /// All widgets subscribed to the given [`UpdateHandle`], across all
+    /// All widgets subscribed to the given [`event::UpdateHandle`], across all
     /// windows, will receive an update.
-    fn trigger_update(&mut self, handle: UpdateHandle, payload: u64);
+    fn trigger_update(&mut self, handle: event::UpdateHandle, payload: u64);
 
     /// Attempt to get clipboard contents
     ///
@@ -107,7 +106,7 @@ pub trait TkWindow {
     fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> ThemeAction);
 
     /// Set the mouse cursor
-    fn set_cursor_icon(&mut self, icon: CursorIcon);
+    fn set_cursor_icon(&mut self, icon: event::CursorIcon);
 }
 
 #[cfg(test)]
