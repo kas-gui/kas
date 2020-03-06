@@ -15,7 +15,7 @@ use wgpu::ShaderModule;
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{self, Event, Manager, Response, VoidResponse};
-use kas::geom::{DVec2, Rect, Size, Vec2};
+use kas::geom::{Coord, DVec2, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::macros::make_widget;
 use kas::widget::{Label, ScrollBar, Window};
@@ -365,6 +365,13 @@ impl CustomWindow for PipeWindow {
         let cab = Vec2(caa.0, cbb.1);
         let cba = Vec2(cbb.0, caa.1);
 
+        // Effectively, this gives us the following "view transform":
+        // α_v * p + δ_v = 2 * (p - rect.pos) * (rel_width / width, 1 / height) - (rel_width, 1)
+        //               = 2 * (p - rect.pos) / height - (width, height) / height
+        //               = 2p / height - (2*rect.pos + rect.size) / height
+        // Or: α_v = 2 / height, δ_v = -(2*rect.pos + rect.size) / height
+        // This is used to define view_alpha and view_delta (in Mandlebrot::set_rect).
+
         #[rustfmt::skip]
         self.add_vertices(pass, &[
             Vertex(aa, caa), Vertex(ba, cba), Vertex(ab, cab),
@@ -409,15 +416,19 @@ impl Layout for Mandlebrot {
     #[inline]
     fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
         self.core.rect = rect;
-        let half_size = DVec2::from(rect.size) * DVec2::splat(0.5);
-        let rel_width = DVec2(half_size.0 / half_size.1, 1.0);
-        self.view_alpha = 1.0 / half_size.1; // actually, splat(this value)
-        self.view_delta = DVec2::splat(-self.view_alpha) * (DVec2::from(rect.pos) + half_size);
+        let size = DVec2::from(rect.size);
+        let rel_width = DVec2(size.0 / size.1, 1.0);
+        self.view_alpha = 2.0 / size.1;
+        self.view_delta = -(DVec2::from(rect.pos) * 2.0 + size) / size.1;
         self.rel_width = rel_width.0 as f32;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState) {
         let (region, offset, draw) = draw_handle.draw_device();
+        // TODO: our view transform assumes that offset = 0.
+        // Here it is but in general we should be able to handle an offset here!
+        assert_eq!(offset, Coord::ZERO, "view transform assumption violated");
+
         let draw = draw
             .as_any_mut()
             .downcast_mut::<DrawWindow<PipeWindow>>()
@@ -442,12 +453,18 @@ impl event::Handler for Mandlebrot {
                 Response::Msg(())
             }
             Event::Action(event::Action::Pan { alpha, delta }) => {
-                // Adjust world offset (reverse):
-                let new_alpha = self.alpha.complex_prod(DVec2::from(alpha).complex_inv());
-                let va_d = DVec2::splat(self.view_alpha) * DVec2::from(delta);
-                let vd = self.view_delta;
-                self.delta =
-                    self.delta + self.alpha.complex_prod(vd - va_d) - new_alpha.complex_prod(vd);
+                // Our full transform (from screen coordinates to world coordinates) is:
+                // f(p) = α_w * α_v * p + α_w * δ_v + δ_w
+                // where _w indicate world transforms (self.alpha, self.delta)
+                // and _v indicate view transforms (see notes in PipeWindow::invoke).
+                //
+                // To adjust the world offset (in reverse), we use the following formulae:
+                // α_w' = (1/α) * α_w
+                // δ_w' = δ_w - α_w' * α_v * δ + (α_w - α_w') δ_v
+                // where x' is the "new x".
+                let new_alpha = self.alpha.complex_div(alpha.into());
+                self.delta = self.delta - new_alpha.complex_prod(delta.into()) * self.view_alpha
+                    + (self.alpha - new_alpha).complex_prod(self.view_delta);
                 self.alpha = new_alpha;
 
                 mgr.redraw(self.id());
