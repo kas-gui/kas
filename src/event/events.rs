@@ -32,7 +32,7 @@ pub enum Action {
     /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
     /// # let mut p = Coord::ZERO;
     /// // Works for Coord type; for DVec2 type-conversions are unnecessary:
-    /// p = (alpha.complex_prod(p.into()) + delta).into();
+    /// p = (alpha.complex_mul(p.into()) + delta).into();
     /// ```
     ///
     /// When it is known that there is no rotational component, one can use a
@@ -46,8 +46,8 @@ pub enum Action {
     /// # use kas::geom::DVec2;
     /// # let (alpha1, delta1) = (DVec2::ZERO, DVec2::ZERO);
     /// # let (alpha2, delta2) = (DVec2::ZERO, DVec2::ZERO);
-    /// let alpha = alpha2.complex_prod(alpha1);
-    /// let delta = alpha2.complex_prod(delta1) + delta2;
+    /// let alpha = alpha2.complex_mul(alpha1);
+    /// let delta = alpha2.complex_mul(delta1) + delta2;
     /// ```
     /// If instead one uses a transform to map screen-space to world-space,
     /// this transform should be adjusted as follows:
@@ -56,7 +56,7 @@ pub enum Action {
     /// # let (alpha, delta) = (DVec2::ZERO, DVec2::ZERO);
     /// # let (mut world_alpha, mut world_delta) = (DVec2::ZERO, DVec2::ZERO);
     /// world_alpha = world_alpha.complex_div(alpha.into());
-    /// world_delta = world_delta - world_alpha.complex_prod(delta.into());
+    /// world_delta = world_delta - world_alpha.complex_mul(delta.into());
     /// ```
     ///
     /// Those familiar with complex numbers may recognise that

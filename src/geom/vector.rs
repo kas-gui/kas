@@ -92,7 +92,7 @@ impl Vec2 {
 
     /// Multiply two vectors as if they are complex numbers
     #[inline]
-    pub fn complex_prod(self, rhs: Self) -> Self {
+    pub fn complex_mul(self, rhs: Self) -> Self {
         Vec2(
             self.0 * rhs.0 - self.1 * rhs.1,
             self.0 * rhs.1 + self.1 * rhs.0,
@@ -102,7 +102,7 @@ impl Vec2 {
     /// Divide by a second vector as if they are complex numbers
     #[inline]
     pub fn complex_div(self, rhs: Self) -> Self {
-        self.complex_prod(rhs.complex_inv())
+        self.complex_mul(rhs.complex_inv())
     }
 
     /// Take the complex reciprocal
@@ -282,7 +282,7 @@ impl DVec2 {
 
     /// Multiply two vectors as if they are complex numbers
     #[inline]
-    pub fn complex_prod(self, rhs: Self) -> Self {
+    pub fn complex_mul(self, rhs: Self) -> Self {
         DVec2(
             self.0 * rhs.0 - self.1 * rhs.1,
             self.0 * rhs.1 + self.1 * rhs.0,
@@ -292,7 +292,7 @@ impl DVec2 {
     /// Divide by a second vector as if they are complex numbers
     #[inline]
     pub fn complex_div(self, rhs: Self) -> Self {
-        self.complex_prod(rhs.complex_inv())
+        self.complex_mul(rhs.complex_inv())
     }
 
     /// Take the complex reciprocal

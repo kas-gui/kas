@@ -834,7 +834,7 @@ impl<'a> Manager<'a> {
                 };
 
                 // Average delta from both movements:
-                delta = (q1 - alpha.complex_prod(p1) + q2 - alpha.complex_prod(p2)) * 0.5;
+                delta = (q1 - alpha.complex_mul(p1) + q2 - alpha.complex_mul(p2)) * 0.5;
             }
 
             let id = grab.id;

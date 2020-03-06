@@ -463,8 +463,8 @@ impl event::Handler for Mandlebrot {
                 // δ_w' = δ_w - α_w' * α_v * δ + (α_w - α_w') δ_v
                 // where x' is the "new x".
                 let new_alpha = self.alpha.complex_div(alpha.into());
-                self.delta = self.delta - new_alpha.complex_prod(delta.into()) * self.view_alpha
-                    + (self.alpha - new_alpha).complex_prod(self.view_delta);
+                self.delta = self.delta - new_alpha.complex_mul(delta.into()) * self.view_alpha
+                    + (self.alpha - new_alpha).complex_mul(self.view_delta);
                 self.alpha = new_alpha;
 
                 mgr.redraw(self.id());
