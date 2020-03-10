@@ -7,9 +7,10 @@
 
 use std::fmt::Debug;
 
+use super::DragHandle;
 use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Event, Manager, Response};
-use crate::geom::Rect;
+use crate::geom::*;
 use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
 use crate::macros::Widget;
 use crate::{AlignHints, CoreData, Directional, Layout, WidgetCore, WidgetId};
@@ -30,8 +31,8 @@ pub struct ScrollBar<D: Directional> {
     handle_value: u32, // contract: > 0
     max_value: u32,
     value: u32,
-    press_source: Option<event::PressSource>,
-    press_offset: i32,
+    #[widget]
+    handle: DragHandle,
 }
 
 impl<D: Directional + Default> ScrollBar<D> {
@@ -57,8 +58,7 @@ impl<D: Directional> ScrollBar<D> {
             handle_value: 1,
             max_value: 0,
             value: 0,
-            press_source: None,
-            press_offset: 0,
+            handle: DragHandle::new(),
         }
     }
 
@@ -92,13 +92,15 @@ impl<D: Directional> ScrollBar<D> {
     ///
     /// The choice of units is not important (e.g. can be pixels or lines),
     /// so long as both parameters use the same units.
-    pub fn set_limits(&mut self, max_value: u32, handle_value: u32) {
+    ///
+    /// Returns true if a redraw is required.
+    pub fn set_limits(&mut self, max_value: u32, handle_value: u32) -> bool {
         // We should gracefully handle zero, though appearance may be wrong.
         self.handle_value = handle_value.max(1);
 
         self.max_value = max_value;
         self.value = self.value.min(self.max_value);
-        self.update_handle();
+        self.update_handle()
     }
 
     /// Get the current value
@@ -112,7 +114,9 @@ impl<D: Directional> ScrollBar<D> {
         let value = value.min(self.max_value);
         if value != self.value {
             self.value = value;
-            mgr.redraw(self.id());
+            if self.handle.set_offset(self.offset()).1 {
+                mgr.redraw(self.handle.id());
+            }
         }
     }
 
@@ -124,30 +128,45 @@ impl<D: Directional> ScrollBar<D> {
         }
     }
 
-    fn update_handle(&mut self) {
+    fn update_handle(&mut self) -> bool {
         let len = self.len();
         let total = self.max_value as u64 + self.handle_value as u64;
         let handle_len = self.handle_value as u64 * len as u64 / total;
         self.handle_len = (handle_len as u32).max(self.min_handle_len).min(len);
-        self.value = self.value.min(self.max_value);
+        let mut size = self.core.rect.size;
+        if self.direction.is_horizontal() {
+            size.0 = self.handle_len;
+        } else {
+            size.1 = self.handle_len;
+        }
+        self.handle.set_size_and_offset(size, self.offset())
     }
 
-    // translate value to position in local coordinates
-    fn position(&self) -> u32 {
+    // translate value to offset in local coordinates
+    fn offset(&self) -> Coord {
         let len = self.len() - self.handle_len;
         let lhs = self.value as u64 * len as u64;
         let rhs = self.max_value as u64;
-        if rhs == 0 {
-            return 0;
+        let pos = if rhs == 0 {
+            0
+        } else {
+            (((lhs + (rhs / 2)) / rhs) as u32).min(len) as i32
+        };
+        match self.direction.is_vertical() {
+            false => Coord(pos, 0),
+            true => Coord(0, pos),
         }
-        let pos = ((lhs + (rhs / 2)) / rhs) as u32;
-        pos.min(len)
     }
 
     // true if not equal to old value
-    fn set_position(&mut self, mgr: &mut Manager, position: u32) -> bool {
+    fn set_offset(&mut self, offset: Coord) -> bool {
+        let offset = match self.direction.is_vertical() {
+            false => offset.0,
+            true => offset.1,
+        };
+
         let len = self.len() - self.handle_len;
-        let lhs = position as u64 * self.max_value as u64;
+        let lhs = offset as u64 * self.max_value as u64;
         let rhs = len as u64;
         if rhs == 0 {
             debug_assert_eq!(self.value, 0);
@@ -157,7 +176,6 @@ impl<D: Directional> ScrollBar<D> {
         let value = value.min(self.max_value);
         if value != self.value {
             self.value = value;
-            mgr.redraw(self.id());
             return true;
         }
         false
@@ -166,98 +184,59 @@ impl<D: Directional> ScrollBar<D> {
 
 impl<D: Directional> Layout for ScrollBar<D> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let (thickness, _, min_len) = size_handle.scrollbar();
+        let (width, _, min_len) = size_handle.scrollbar();
         if self.direction.is_vertical() == axis.is_vertical() {
             SizeRules::new(min_len, min_len, StretchPolicy::LowUtility)
         } else {
-            SizeRules::fixed(thickness)
+            SizeRules::fixed(width)
         }
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
         let (_, min_handle_len, _) = size_handle.scrollbar();
         self.min_handle_len = min_handle_len;
         self.core.rect = rect;
+        self.handle.set_rect(size_handle, rect, align);
         self.update_handle();
+    }
+
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if self.handle.rect().contains(coord) {
+            Some(self.handle.id())
+        } else {
+            Some(self.id())
+        }
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         let dir = self.direction.as_direction();
-        let h_pos = self.position() as i32;
-        let mut h_rect = self.core.rect;
-
-        if dir.is_horizontal() {
-            h_rect.pos.0 += h_pos;
-            h_rect.size.0 = self.handle_len;
-        } else {
-            h_rect.pos.1 += h_pos;
-            h_rect.size.1 = self.handle_len;
-        };
-
-        let hl = mgr.highlight_state(self.id());
-        draw_handle.scrollbar(self.core.rect, h_rect, dir, hl);
+        let hl = mgr.highlight_state(self.handle.id());
+        draw_handle.scrollbar(self.core.rect, self.handle.rect(), dir, hl);
     }
 }
 
 impl<D: Directional> event::Handler for ScrollBar<D> {
     type Msg = u32;
 
-    fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
-        match event {
-            Event::PressStart { source, coord, .. } => {
-                if !mgr.request_grab(
-                    self.id(),
-                    source,
-                    coord,
-                    event::GrabMode::Grab,
-                    Some(event::CursorIcon::Grabbing),
-                ) {
-                    return Response::None;
+    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        let offset = if id <= self.handle.id() {
+            match self.handle.handle(mgr, id, event).try_into() {
+                Ok(res) => return res,
+                Err(offset) => offset,
+            }
+        } else {
+            match event {
+                Event::PressStart { source, coord, .. } => {
+                    self.handle.handle_press_on_track(mgr, source, coord)
                 }
-                // Interacting with a scrollbar with multiple presses
-                // does not make sense. Any other gets aborted.
-                self.press_source = Some(source);
+                ev @ _ => return Response::Unhandled(ev),
+            }
+        };
 
-                // Event delivery implies coord is over the scrollbar.
-                let (pointer, offset) = match self.direction.is_vertical() {
-                    false => (coord.0, self.core.rect.pos.0),
-                    true => (coord.1, self.core.rect.pos.1),
-                };
-                let position = self.position() as i32;
-                let h_start = offset + position;
-
-                if pointer >= h_start && pointer < h_start + self.handle_len as i32 {
-                    // coord is on the scroll handle
-                    self.press_offset = position - pointer;
-                    Response::None
-                } else {
-                    // coord is not on the handle; we move the bar immediately
-                    self.press_offset = -offset - (self.handle_len / 2) as i32;
-                    let position = (pointer + self.press_offset).max(0) as u32;
-                    let moved = self.set_position(mgr, position);
-                    debug_assert!(moved);
-                    mgr.redraw(self.id());
-                    Response::Msg(self.value)
-                }
-            }
-            Event::PressMove { source, coord, .. } if Some(source) == self.press_source => {
-                let pointer = match self.direction.is_vertical() {
-                    false => coord.0,
-                    true => coord.1,
-                };
-                let position = (pointer + self.press_offset).max(0) as u32;
-                if self.set_position(mgr, position) {
-                    mgr.redraw(self.id());
-                    Response::Msg(self.value)
-                } else {
-                    Response::None
-                }
-            }
-            Event::PressEnd { source, .. } if Some(source) == self.press_source => {
-                self.press_source = None;
-                Response::None
-            }
-            e @ _ => Manager::handle_generic(self, mgr, e),
+        if self.set_offset(offset) {
+            Response::Msg(self.value)
+        } else {
+            Response::None
         }
     }
 }

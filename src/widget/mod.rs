@@ -11,6 +11,7 @@
 mod button;
 mod checkbox;
 mod dialog;
+mod drag;
 mod editbox;
 mod filler;
 mod label;
@@ -23,6 +24,7 @@ mod window;
 pub use button::TextButton;
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use dialog::MessageBox;
+pub use drag::DragHandle;
 pub use editbox::{EditBox, EditGuard};
 pub use filler::Filler;
 pub use label::Label;

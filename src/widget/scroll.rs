@@ -179,7 +179,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
 
         if self.show_bars.0 {
             let pos = Coord(pos.0, pos.1 + self.inner_size.1 as i32);
-            let size = Size(self.core.rect.size.0, width);
+            let size = Size(self.inner_size.0, width);
             self.horiz_bar
                 .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
             self.horiz_bar

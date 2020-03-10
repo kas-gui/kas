@@ -37,6 +37,14 @@ impl Coord {
         Coord(self.0.max(other.0), self.1.max(other.1))
     }
 
+    /// Return the value clamped to the given `min` and `max`
+    ///
+    /// In the case that `min > max`, the `min` value is returned.
+    #[inline]
+    pub fn clamped(self, min: Self, max: Self) -> Self {
+        self.min(max).max(min)
+    }
+
     /// Convert from a logical position
     #[cfg(feature = "winit")]
     pub fn from_logical<X: Pixel>(logical: LogicalPosition<X>, dpi_factor: f64) -> Self {
@@ -211,6 +219,15 @@ impl std::ops::Mul<f32> for Size {
     #[inline]
     fn mul(self, x: f32) -> Self {
         Size((self.0 as f32 * x) as u32, (self.1 as f32 * x) as u32)
+    }
+}
+
+impl std::ops::Div<u32> for Size {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, x: u32) -> Self {
+        Size(self.0 / x, self.1 / x)
     }
 }
 
