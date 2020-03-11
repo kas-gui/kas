@@ -45,6 +45,12 @@ impl Coord {
         self.min(max).max(min)
     }
 
+    /// Return the transpose (swap width and height)
+    #[inline]
+    pub fn transpose(self) -> Self {
+        Coord(self.1, self.0)
+    }
+
     /// Convert from a logical position
     #[cfg(feature = "winit")]
     pub fn from_logical<X: Pixel>(logical: LogicalPosition<X>, dpi_factor: f64) -> Self {
@@ -145,6 +151,12 @@ impl Size {
     #[inline]
     pub fn max(self, other: Self) -> Self {
         Size(self.0.max(other.0), self.1.max(other.1))
+    }
+
+    /// Return the transpose (swap width and height)
+    #[inline]
+    pub fn transpose(self) -> Self {
+        Size(self.1, self.0)
     }
 }
 

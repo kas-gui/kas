@@ -128,7 +128,7 @@ where
         let max_offset = self.handle.max_offset();
         match self.direction.is_vertical() {
             false => Coord((max_offset.0 as f64 * a / b) as i32, 0),
-            true => Coord(0, (max_offset.1 as f64 * a / b) as i32),
+            true => Coord(0, (max_offset.1 as f64 * (1.0 - a / b)) as i32),
         }
     }
 
@@ -138,7 +138,7 @@ where
         let max_offset = self.handle.max_offset();
         let a = match self.direction.is_vertical() {
             false => b * offset.0 as f64 / max_offset.0 as f64,
-            true => b * offset.1 as f64 / max_offset.1 as f64,
+            true => b * (1.0 - offset.1 as f64 / max_offset.1 as f64),
         };
         let value = T::approx_from(a).unwrap() + self.range.0;
         let value = if !(value >= self.range.0) {
@@ -163,7 +163,7 @@ where
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let (size, min_len) = size_handle.slider();
         if self.direction.is_vertical() == axis.is_vertical() {
-            SizeRules::new(min_len, min_len, StretchPolicy::LowUtility)
+            SizeRules::new(min_len, min_len, StretchPolicy::HighUtility)
         } else {
             SizeRules::fixed(size.1)
         }
@@ -171,7 +171,10 @@ where
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
         let (size, _) = size_handle.slider();
-        let size = size.min(rect.size);
+        let mut size = size.min(rect.size);
+        if self.direction.is_vertical() {
+            size = size.transpose();
+        }
         self.core.rect = rect;
         self.handle.set_rect(size_handle, rect, align);
         self.handle.set_size_and_offset(size, self.offset());

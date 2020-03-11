@@ -67,6 +67,8 @@ pub enum StretchPolicy {
     Filler,
     /// Extra space has low utility
     LowUtility,
+    /// Extra space has high utility
+    HighUtility,
     /// Greedily consume as much space as possible
     Maximise,
 }
