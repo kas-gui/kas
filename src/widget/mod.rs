@@ -19,6 +19,7 @@ mod list;
 mod radiobox;
 mod scroll;
 mod scrollbar;
+mod slider;
 mod window;
 
 pub use button::TextButton;
@@ -32,4 +33,5 @@ pub use list::{BoxColumn, BoxList, BoxRow, Column, List, Row};
 pub use radiobox::{RadioBox, RadioBoxBare};
 pub use scroll::ScrollRegion;
 pub use scrollbar::ScrollBar;
+pub use slider::Slider;
 pub use window::Window;

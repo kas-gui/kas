@@ -88,6 +88,17 @@ pub trait SizeHandle {
     ///
     /// Required bound: `min_len >= size.0`.
     fn scrollbar(&self) -> (Size, u32);
+
+    /// Dimensions for a slider
+    ///
+    /// Returns:
+    ///
+    /// -   `size`: minimum size of handle in horizontal orientation;
+    ///     `size.1` is also the dimension of the slider
+    /// -   `min_len`: minimum length for the whole bar
+    ///
+    /// Required bound: `min_len >= size.0`.
+    fn slider(&self) -> (Size, u32);
 }
 
 /// Handle passed to objects during draw and sizing operations
@@ -165,6 +176,14 @@ pub trait DrawHandle {
     /// -   `dir`: direction of bar
     /// -   `highlights`: highlighting information
     fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState);
+
+    /// Draw UI element: slider
+    ///
+    /// -   `rect`: area of whole widget (slider track)
+    /// -   `h_rect`: area of slider handle
+    /// -   `dir`: direction of slider (currently only LTR or TTB)
+    /// -   `highlights`: highlighting information
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState);
 }
 
 impl<S: SizeHandle> SizeHandle for Box<S> {
@@ -200,6 +219,9 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     }
     fn scrollbar(&self) -> (Size, u32) {
         self.deref().scrollbar()
+    }
+    fn slider(&self) -> (Size, u32) {
+        self.deref().slider()
     }
 }
 
@@ -241,6 +263,9 @@ where
     fn scrollbar(&self) -> (Size, u32) {
         self.deref().scrollbar()
     }
+    fn slider(&self) -> (Size, u32) {
+        self.deref().slider()
+    }
 }
 
 impl<H: DrawHandle> DrawHandle for Box<H> {
@@ -273,6 +298,9 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     }
     fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
         self.deref_mut().scrollbar(rect, h_rect, dir, highlights)
+    }
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
+        self.deref_mut().slider(rect, h_rect, dir, highlights)
     }
 }
 
@@ -310,5 +338,8 @@ where
     }
     fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
         self.deref_mut().scrollbar(rect, h_rect, dir, highlights)
+    }
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
+        self.deref_mut().slider(rect, h_rect, dir, highlights)
     }
 }

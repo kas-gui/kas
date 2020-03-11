@@ -17,6 +17,7 @@ enum Item {
     Check(bool),
     Radio(WidgetId),
     Edit(String),
+    Slider(i32),
     Scroll(u32),
     Popup,
 }
@@ -46,13 +47,19 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=5, col=0)] _ = Label::from("RadioBox"),
             #[widget(row=5, col=1)] _ = RadioBox::new(radio, "radio box 2").state(true)
                 .on_activate(|id| Item::Radio(id)),
-            #[widget(row=6, col=0)] _ = Label::from("ScrollBar"),
-            #[widget(row=6, col=1, handler = handle_scroll)] _ =
+            #[widget(row=6, col=0)] _ = Label::from("Slider"),
+            #[widget(row=6, col=1, handler = handle_slider)] _ =
+                Slider::<i32, Horizontal>::new(-2, 2).with_value(0),
+            #[widget(row=7, col=0)] _ = Label::from("ScrollBar"),
+            #[widget(row=7, col=1, handler = handle_scroll)] _ =
                 ScrollBar::<Horizontal>::new().with_limits(5, 2),
             #[widget(row=8)] _ = Label::from("Child window"),
             #[widget(row=8, col = 1)] _ = TextButton::new("Open", Item::Popup),
         }
         impl {
+            fn handle_slider(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {
+                Response::Msg(Item::Slider(msg))
+            }
             fn handle_scroll(&mut self, _: &mut Manager, msg: u32) -> Response<Item> {
                 Response::Msg(Item::Scroll(msg))
             }
@@ -123,6 +130,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         Item::Check(b) => println!("Checkbox: {}", b),
                         Item::Radio(id) => println!("Radiobox: {}", id),
                         Item::Edit(s) => println!("Edited: {}", s),
+                        Item::Slider(p) => println!("Slider: {}", p),
                         Item::Scroll(p) => println!("ScrollBar: {}", p),
                         Item::Popup => {
                             let window = MessageBox::new("Popup", "Hello!");

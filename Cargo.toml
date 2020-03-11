@@ -20,6 +20,7 @@ nightly = []
 internal_doc = []
 
 [dependencies]
+conv = "0.3"
 log = "0.4"
 rusttype = "0.8"
 smallvec = "1.1"

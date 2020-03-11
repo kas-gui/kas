@@ -40,6 +40,7 @@ const DIMS: DimensionsParams = DimensionsParams {
     frame_size: 5.0,
     button_frame: 5.0,
     scrollbar_size: Vec2::splat(8.0),
+    slider_size: Vec2(10.0, 25.0),
 };
 
 pub struct DrawHandle<'a, D: Draw> {
@@ -273,5 +274,30 @@ where
         self.draw
             .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
         self.draw.rect(self.pass, inner, col);
+    }
+
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
+        // track
+        let mut outer = rect + self.offset;
+        let half;
+        match dir {
+            Direction::Horizontal => {
+                half = outer.size.1 / 8;
+                outer.pos.1 += 3 * half as i32;
+                outer.size.1 -= 6 * half;
+            }
+            Direction::Vertical => {
+                half = outer.size.0 / 8;
+                outer.pos.0 += 3 * half as i32;
+                outer.size.0 -= 6 * half;
+            }
+        };
+        let inner = outer.shrink(half);
+        let col = self.cols.background;
+        self.draw
+            .shaded_round_frame(self.pass, outer, inner, (0.0, -0.8), col);
+
+        // handle
+        self.scrollbar(rect, h_rect, dir, highlights);
     }
 }

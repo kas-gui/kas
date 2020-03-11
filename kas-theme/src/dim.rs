@@ -29,6 +29,8 @@ pub struct DimensionsParams {
     pub button_frame: f32,
     /// Scrollbar minimum handle size
     pub scrollbar_size: Vec2,
+    /// Slider minimum handle size
+    pub slider_size: Vec2,
 }
 
 /// Dimensions available within [`DimensionsWindow`]
@@ -44,6 +46,7 @@ pub struct Dimensions {
     pub button_frame: u32,
     pub checkbox: u32,
     pub scrollbar: Size,
+    pub slider: Size,
 }
 
 impl Dimensions {
@@ -63,6 +66,7 @@ impl Dimensions {
             button_frame: (params.button_frame * dpi_factor).round() as u32,
             checkbox: (font_scale * 0.7).round() as u32 + 2 * (margin + frame),
             scrollbar: Size::from(params.scrollbar_size * dpi_factor),
+            slider: Size::from(params.slider_size * dpi_factor),
         }
     }
 }
@@ -192,6 +196,11 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
 
     fn scrollbar(&self) -> (Size, u32) {
         let size = self.dims.scrollbar;
+        (size, 2 * size.0)
+    }
+
+    fn slider(&self) -> (Size, u32) {
+        let size = self.dims.slider;
         (size, 2 * size.0)
     }
 }
