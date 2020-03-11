@@ -523,7 +523,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[handler(msg = event::VoidMsg)]
         struct {
             #[widget(cspan=2)] label: Label = Label::new(mbrot.loc()),
-            #[widget(row=2)] iters: Label = Label::new("064"),
+            #[widget(row=2, halign=centre)] iters: Label = Label::new("64").reserve("000"),
             #[widget(row=1, handler = iter)] _: Slider<i32, Vertical> = slider,
             #[widget(col=1, row=1, rspan=2, handler = mbrot)] mbrot: Mandlebrot = mbrot,
         }

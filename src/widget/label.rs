@@ -21,12 +21,14 @@ pub struct Label {
     #[core]
     core: CoreData,
     align: (Align, Align),
+    reserve: Option<&'static str>,
     text: String,
 }
 
 impl Layout for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let rules = size_handle.text_bound(&self.text, TextClass::Label, axis);
+        let text = self.reserve.unwrap_or(&self.text);
+        let rules = size_handle.text_bound(text, TextClass::Label, axis);
         if axis.is_horizontal() {
             self.core_data_mut().rect.size.0 = rules.ideal_size();
         } else {
@@ -54,8 +56,18 @@ impl Label {
         Label {
             core: Default::default(),
             align: Default::default(),
+            reserve: None,
             text: text.to_string(),
         }
+    }
+
+    /// Reserve sufficient room for the given text
+    ///
+    /// If this option is used, the label will be sized to fit this text, not
+    /// the actual text.
+    pub fn reserve(mut self, text: &'static str) -> Self {
+        self.reserve = Some(text);
+        self
     }
 }
 
@@ -67,6 +79,7 @@ where
         Label {
             core: Default::default(),
             align: Default::default(),
+            reserve: None,
             text: String::from(text),
         }
     }
