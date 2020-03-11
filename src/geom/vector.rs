@@ -226,6 +226,13 @@ impl From<Vec2> for Coord {
     }
 }
 
+impl From<Vec2> for Size {
+    #[inline]
+    fn from(arg: Vec2) -> Self {
+        Size(arg.0.round() as u32, arg.1.round() as u32)
+    }
+}
+
 /// 2D vector (double precision)
 ///
 /// Usually used as either a coordinate or a difference of coordinates, but

@@ -15,7 +15,7 @@ use kas::draw::{
     TextClass, TextProperties,
 };
 use kas::event::HighlightState;
-use kas::geom::{Coord, Rect};
+use kas::geom::{Coord, Rect, Vec2};
 use kas::{Align, Direction, ThemeAction, ThemeApi};
 
 /// A theme with flat (unshaded) rendering
@@ -41,7 +41,7 @@ const DIMS: DimensionsParams = DimensionsParams {
     margin: 2.0,
     frame_size: 4.0,
     button_frame: 6.0,
-    scrollbar_size: 8.0,
+    scrollbar_size: Vec2::splat(8.0),
 };
 
 pub struct DrawHandle<'a, D: Draw> {
@@ -249,7 +249,6 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         }
     }
 
-    #[inline]
     fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
         let nav_col = self.cols.nav_region(highlights).or_else(|| {
             if checked {

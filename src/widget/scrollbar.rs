@@ -184,17 +184,17 @@ impl<D: Directional> ScrollBar<D> {
 
 impl<D: Directional> Layout for ScrollBar<D> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let (width, _, min_len) = size_handle.scrollbar();
+        let (size, min_len) = size_handle.scrollbar();
         if self.direction.is_vertical() == axis.is_vertical() {
             SizeRules::new(min_len, min_len, StretchPolicy::LowUtility)
         } else {
-            SizeRules::fixed(width)
+            SizeRules::fixed(size.1)
         }
     }
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
-        let (_, min_handle_len, _) = size_handle.scrollbar();
-        self.min_handle_len = min_handle_len;
+        let (size, _) = size_handle.scrollbar();
+        self.min_handle_len = size.0;
         self.core.rect = rect;
         self.handle.set_rect(size_handle, rect, align);
         self.update_handle();

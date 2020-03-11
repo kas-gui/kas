@@ -80,16 +80,14 @@ pub trait SizeHandle {
 
     /// Dimensions for a scrollbar
     ///
-    /// Returns three components:
+    /// Returns:
     ///
-    /// -   `thickness`: scroll-bar width (for vertical scroll bars)
-    /// -   `min_handle_len`: minimum length for the handle
+    /// -   `size`: minimum size of handle in horizontal orientation;
+    ///     `size.1` is also the dimension of the scrollbar
     /// -   `min_len`: minimum length for the whole bar
     ///
-    /// Generally, one expects `min_len` is significantly greater than
-    /// `min_handle_len` (so that some movement is always possible).
-    /// It is required that `min_len >= min_handle_len`.
-    fn scrollbar(&self) -> (u32, u32, u32);
+    /// Required bound: `min_len >= size.0`.
+    fn scrollbar(&self) -> (Size, u32);
 }
 
 /// Handle passed to objects during draw and sizing operations
@@ -200,7 +198,7 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn radiobox(&self) -> Size {
         self.deref().radiobox()
     }
-    fn scrollbar(&self) -> (u32, u32, u32) {
+    fn scrollbar(&self) -> (Size, u32) {
         self.deref().scrollbar()
     }
 }
@@ -240,7 +238,7 @@ where
     fn radiobox(&self) -> Size {
         self.deref().radiobox()
     }
-    fn scrollbar(&self) -> (u32, u32, u32) {
+    fn scrollbar(&self) -> (Size, u32) {
         self.deref().scrollbar()
     }
 }
