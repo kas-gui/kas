@@ -73,7 +73,6 @@
 //! The following attribute parameters are expected:
 //!
 //! -   (first position): one of `single`, `horizontal`, `vertical`, `grid`
-//! -   (optional): `frame`
 //! -   (optional): `area=FIELD` where `FIELD` is a child widget; if specified,
 //!     the area of self is considered to refer to child `FIELD`. This causes
 //!     the [`kas::Layout::find_id`] function to directly return the child's Id.
@@ -87,8 +86,6 @@
 //!     of child fields
 //! -   `grid` — child widgets are arranged in a grid; position is specified
 //!     via parameters to the `#[widget]` attribute on child fields
-//!
-//! If the `frame` parameter is given, a frame is drawn around child widgets.
 //!
 //! Derivation of [`Layout`] for non-single layouts requires a data storage
 //! field as follows; for the `single` layout this field is optional:

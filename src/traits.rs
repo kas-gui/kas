@@ -214,22 +214,6 @@ pub trait Layout: WidgetCore {
 /// and [`event::Handler`]. The
 /// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro) may be
 /// used to generate some of these implementations.
-///
-/// Example of a simple widget which draws a frame around its child:
-///
-/// ```
-/// use kas::macros::Widget;
-/// use kas::{CoreData, LayoutData, Widget};
-///
-/// #[widget]
-/// #[layout(single, frame)]
-/// #[derive(Clone, Debug, Widget)]
-/// pub struct Frame<W: Widget> {
-///     #[core] core: CoreData,
-///     #[layout_data] layout_data: <Self as LayoutData>::Data,
-///     #[widget] child: W,
-/// }
-/// ```
 pub trait Widget: Layout {
     /// Configure widget
     ///

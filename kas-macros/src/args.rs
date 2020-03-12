@@ -165,7 +165,6 @@ mod kw {
     custom_keyword!(handler);
     custom_keyword!(msg);
     custom_keyword!(generics);
-    custom_keyword!(frame);
     custom_keyword!(single);
     custom_keyword!(horizontal);
     custom_keyword!(vertical);
@@ -404,7 +403,6 @@ pub enum LayoutType {
 pub struct LayoutArgs {
     pub span: Span,
     pub layout: LayoutType,
-    pub is_frame: bool,
     pub area: Option<Ident>,
 }
 
@@ -443,15 +441,11 @@ impl Parse for LayoutArgs {
             let _: Comma = content.parse()?;
         }
 
-        let mut is_frame = false;
         let mut area = None;
 
         while !content.is_empty() {
             let lookahead = content.lookahead1();
-            if !is_frame && lookahead.peek(kw::frame) {
-                let _: kw::frame = content.parse()?;
-                is_frame = true;
-            } else if area.is_none() && lookahead.peek(kw::area) {
+            if area.is_none() && lookahead.peek(kw::area) {
                 let _: kw::area = content.parse()?;
                 let _: Eq = content.parse()?;
                 area = Some(content.parse()?);
@@ -464,12 +458,7 @@ impl Parse for LayoutArgs {
             }
         }
 
-        Ok(LayoutArgs {
-            span,
-            layout,
-            is_frame,
-            area,
-        })
+        Ok(LayoutArgs { span, layout, area })
     }
 }
 

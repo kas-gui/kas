@@ -261,8 +261,6 @@ pub(crate) fn derive(
         }
     });
 
-    let is_frame = layout.is_frame;
-
     let fns = quote! {
         fn size_rules(
             &mut self,
@@ -283,11 +281,6 @@ pub(crate) fn derive(
             #size
             #size_post
 
-            if #is_frame {
-                let sizes = size_handle.outer_frame();
-                rules = rules + axis.extract_size(sizes.0) + axis.extract_size(sizes.1);
-            }
-
             rules
         }
 
@@ -301,11 +294,7 @@ pub(crate) fn derive(
             use kas::layout::{Margins, RulesSetter};
             self.core_data_mut().rect = rect;
 
-            let margins = if #is_frame {
-                Margins::outer_frame(size_handle.outer_frame())
-            } else {
-                Margins::ZERO
-            };
+            let margins = Margins::ZERO; // TODO: this is now useless
             let mut setter = <Self as kas::LayoutData>::Setter::new(
                 rect,
                 margins,
@@ -329,9 +318,6 @@ pub(crate) fn derive(
             mgr: &kas::event::ManagerState
         ) {
             use kas::{geom::Coord, WidgetCore};
-            if #is_frame {
-                draw_handle.outer_frame(self.core_data().rect);
-            }
 
             let rect = draw_handle.target_rect();
             let pos0 = rect.pos;
