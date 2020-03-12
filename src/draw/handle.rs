@@ -80,16 +80,25 @@ pub trait SizeHandle {
 
     /// Dimensions for a scrollbar
     ///
-    /// Returns three components:
+    /// Returns:
     ///
-    /// -   `thickness`: scroll-bar width (for vertical scroll bars)
-    /// -   `min_handle_len`: minimum length for the handle
+    /// -   `size`: minimum size of handle in horizontal orientation;
+    ///     `size.1` is also the dimension of the scrollbar
     /// -   `min_len`: minimum length for the whole bar
     ///
-    /// Generally, one expects `min_len` is significantly greater than
-    /// `min_handle_len` (so that some movement is always possible).
-    /// It is required that `min_len >= min_handle_len`.
-    fn scrollbar(&self) -> (u32, u32, u32);
+    /// Required bound: `min_len >= size.0`.
+    fn scrollbar(&self) -> (Size, u32);
+
+    /// Dimensions for a slider
+    ///
+    /// Returns:
+    ///
+    /// -   `size`: minimum size of handle in horizontal orientation;
+    ///     `size.1` is also the dimension of the slider
+    /// -   `min_len`: minimum length for the whole bar
+    ///
+    /// Required bound: `min_len >= size.0`.
+    fn slider(&self) -> (Size, u32);
 }
 
 /// Handle passed to objects during draw and sizing operations
@@ -167,6 +176,14 @@ pub trait DrawHandle {
     /// -   `dir`: direction of bar
     /// -   `highlights`: highlighting information
     fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState);
+
+    /// Draw UI element: slider
+    ///
+    /// -   `rect`: area of whole widget (slider track)
+    /// -   `h_rect`: area of slider handle
+    /// -   `dir`: direction of slider (currently only LTR or TTB)
+    /// -   `highlights`: highlighting information
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState);
 }
 
 impl<S: SizeHandle> SizeHandle for Box<S> {
@@ -200,8 +217,11 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn radiobox(&self) -> Size {
         self.deref().radiobox()
     }
-    fn scrollbar(&self) -> (u32, u32, u32) {
+    fn scrollbar(&self) -> (Size, u32) {
         self.deref().scrollbar()
+    }
+    fn slider(&self) -> (Size, u32) {
+        self.deref().slider()
     }
 }
 
@@ -240,8 +260,11 @@ where
     fn radiobox(&self) -> Size {
         self.deref().radiobox()
     }
-    fn scrollbar(&self) -> (u32, u32, u32) {
+    fn scrollbar(&self) -> (Size, u32) {
         self.deref().scrollbar()
+    }
+    fn slider(&self) -> (Size, u32) {
+        self.deref().slider()
     }
 }
 
@@ -275,6 +298,9 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     }
     fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
         self.deref_mut().scrollbar(rect, h_rect, dir, highlights)
+    }
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
+        self.deref_mut().slider(rect, h_rect, dir, highlights)
     }
 }
 
@@ -312,5 +338,8 @@ where
     }
     fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
         self.deref_mut().scrollbar(rect, h_rect, dir, highlights)
+    }
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
+        self.deref_mut().slider(rect, h_rect, dir, highlights)
     }
 }

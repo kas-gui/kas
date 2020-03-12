@@ -18,8 +18,8 @@ use kas::event::{self, Event, Manager, Response, VoidResponse};
 use kas::geom::{Coord, DVec2, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::macros::make_widget;
-use kas::widget::{Label, ScrollBar, Window};
-use kas::{AlignHints, Horizontal, Layout, WidgetCore, WidgetId};
+use kas::widget::{Label, Slider, Window};
+use kas::{AlignHints, Layout, ThemeApi, Vertical, WidgetCore, WidgetId};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawWindow};
 use kas_wgpu::Options;
 
@@ -501,12 +501,11 @@ impl Mandlebrot {
     fn loc(&self) -> String {
         let op = if self.delta.1 < 0.0 { "−" } else { "+" };
         format!(
-            "Location: {} {} {}i; scale: {}; iters: {}",
+            "Location: {} {} {}i; scale: {}",
             self.delta.0,
             op,
             self.delta.1.abs(),
-            self.alpha.sum_square().sqrt(),
-            self.iter
+            self.alpha.sum_square().sqrt()
         )
     }
 }
@@ -515,23 +514,24 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let mbrot = Mandlebrot::new();
-
-    // We use a scrollbar as a slider because we don't have that yet!
-    let slider = ScrollBar::new().with_limits(256, 8).with_value(64);
+    // TODO: move slider below iters — but currently grids with cell-spans can't handle this correctly!
+    let slider = Slider::new(0, 256).with_value(64);
 
     let window = make_widget! {
         #[widget]
-        #[layout(vertical)]
+        #[layout(grid)]
         #[handler(msg = event::VoidMsg)]
         struct {
-            #[widget] label: Label = Label::new(mbrot.loc()),
-            #[widget(handler = iter)] iters: ScrollBar<Horizontal> = slider,
-            #[widget(handler = mbrot)] mbrot: Mandlebrot = mbrot,
+            #[widget(cspan=2)] label: Label = Label::new(mbrot.loc()),
+            #[widget(row=2, halign=centre)] iters: Label = Label::new("64").reserve("000"),
+            #[widget(row=1, handler = iter)] _: Slider<i32, Vertical> = slider,
+            #[widget(col=1, row=1, rspan=2, handler = mbrot)] mbrot: Mandlebrot = mbrot,
         }
         impl {
-            fn iter(&mut self, mgr: &mut Manager, iter: u32) -> VoidResponse {
-                self.mbrot.iter = iter as i32;
+            fn iter(&mut self, mgr: &mut Manager, iter: i32) -> VoidResponse {
+                self.mbrot.iter = iter;
                 self.label.set_string(mgr, self.mbrot.loc());
+                self.iters.set_string(mgr, format!("{}", iter));
                 Response::None
             }
             fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> VoidResponse {
@@ -542,7 +542,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
     };
     let window = Window::new("Mandlebrot", window);
 
-    let theme = kas_theme::FlatTheme::new();
+    let mut theme = kas_theme::FlatTheme::new();
+    theme.set_colours("dark");
     let mut toolkit = kas_wgpu::Toolkit::new_custom(PipeBuilder, theme, Options::from_env())?;
     toolkit.add(window)?;
     toolkit.run()

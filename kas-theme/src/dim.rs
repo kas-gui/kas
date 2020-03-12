@@ -11,7 +11,7 @@ use std::any::Any;
 use std::f32;
 
 use kas::draw::{self, DrawText, FontId, TextClass};
-use kas::geom::Size;
+use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::Direction::{Horizontal, Vertical};
 
@@ -27,8 +27,10 @@ pub struct DimensionsParams {
     pub frame_size: f32,
     /// Button frame size (non-flat outer region)
     pub button_frame: f32,
-    /// Scrollbar width & min length
-    pub scrollbar_size: f32,
+    /// Scrollbar minimum handle size
+    pub scrollbar_size: Vec2,
+    /// Slider minimum handle size
+    pub slider_size: Vec2,
 }
 
 /// Dimensions available within [`DimensionsWindow`]
@@ -43,7 +45,8 @@ pub struct Dimensions {
     pub frame: u32,
     pub button_frame: u32,
     pub checkbox: u32,
-    pub scrollbar: u32,
+    pub scrollbar: Size,
+    pub slider: Size,
 }
 
 impl Dimensions {
@@ -62,7 +65,8 @@ impl Dimensions {
             frame,
             button_frame: (params.button_frame * dpi_factor).round() as u32,
             checkbox: (font_scale * 0.7).round() as u32 + 2 * (margin + frame),
-            scrollbar: (params.scrollbar_size * dpi_factor).round() as u32,
+            scrollbar: Size::from(params.scrollbar_size * dpi_factor),
+            slider: Size::from(params.slider_size * dpi_factor),
         }
     }
 }
@@ -190,8 +194,13 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
         self.checkbox()
     }
 
-    fn scrollbar(&self) -> (u32, u32, u32) {
-        let s = self.dims.scrollbar as u32;
-        (s, s, 2 * s)
+    fn scrollbar(&self) -> (Size, u32) {
+        let size = self.dims.scrollbar;
+        (size, 2 * size.0)
+    }
+
+    fn slider(&self) -> (Size, u32) {
+        let size = self.dims.slider;
+        (size, 2 * size.0)
     }
 }

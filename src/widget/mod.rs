@@ -11,6 +11,7 @@
 mod button;
 mod checkbox;
 mod dialog;
+mod drag;
 mod editbox;
 mod filler;
 mod label;
@@ -18,11 +19,13 @@ mod list;
 mod radiobox;
 mod scroll;
 mod scrollbar;
+mod slider;
 mod window;
 
 pub use button::TextButton;
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use dialog::MessageBox;
+pub use drag::DragHandle;
 pub use editbox::{EditBox, EditGuard};
 pub use filler::Filler;
 pub use label::Label;
@@ -30,4 +33,5 @@ pub use list::{BoxColumn, BoxList, BoxRow, Column, List, Row};
 pub use radiobox::{RadioBox, RadioBoxBare};
 pub use scroll::ScrollRegion;
 pub use scrollbar::ScrollBar;
+pub use slider::Slider;
 pub use window::Window;
