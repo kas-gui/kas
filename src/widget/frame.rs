@@ -7,8 +7,9 @@
 
 use std::fmt::Debug;
 
+use crate::class::*;
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Handler};
+use crate::event::{self, Handler, Manager};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
@@ -67,5 +68,42 @@ impl<W: Widget> Layout for Frame<W> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         draw_handle.outer_frame(self.core_data().rect);
         self.child.draw(draw_handle, mgr);
+    }
+}
+
+impl<W: HasBool + Widget> HasBool for Frame<W> {
+    fn get_bool(&self) -> bool {
+        self.child.get_bool()
+    }
+
+    fn set_bool(&mut self, mgr: &mut Manager, state: bool) {
+        self.child.set_bool(mgr, state);
+    }
+}
+
+impl<W: HasText + Widget> HasText for Frame<W> {
+    fn get_text(&self) -> &str {
+        self.child.get_text()
+    }
+
+    fn set_text<T: ToString>(&mut self, mgr: &mut Manager, text: T)
+    where
+        Self: Sized,
+    {
+        self.child.set_text(mgr, text);
+    }
+
+    fn set_string(&mut self, mgr: &mut Manager, text: String) {
+        self.child.set_string(mgr, text);
+    }
+}
+
+impl<W: Editable + Widget> Editable for Frame<W> {
+    fn is_editable(&self) -> bool {
+        self.child.is_editable()
+    }
+
+    fn set_editable(&mut self, editable: bool) {
+        self.child.set_editable(editable);
     }
 }

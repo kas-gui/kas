@@ -66,6 +66,53 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
+    let top_box = Frame::new(make_widget! {
+        #[widget]
+        #[layout(vertical)]
+        #[handler(msg = VoidMsg)]
+        struct {
+            #[widget(halign=centre)] _ = Label::from("Widget Gallery"),
+            #[widget(handler=set_theme)] _ = make_widget! {
+                #[widget]
+                #[layout(horizontal)]
+                #[handler(msg = &'static str)]
+                struct {
+                    #[widget] _ = TextButton::new("Flat", "flat"),
+                    #[widget] _ = TextButton::new("Shaded", "shaded"),
+                }
+            },
+            #[widget(handler=set_colour)] _ = make_widget! {
+                #[widget]
+                #[layout(horizontal)]
+                #[handler(msg = &'static str)]
+                struct {
+                    #[widget] _ = TextButton::new("Default", "default"),
+                    #[widget] _ = TextButton::new("Light", "light"),
+                    #[widget] _ = TextButton::new("Dark", "dark"),
+                }
+            },
+        }
+        impl {
+            fn set_theme(&mut self, mgr: &mut Manager, name: &'static str)
+                -> VoidResponse
+            {
+                println!("Theme: {:?}", name);
+                #[cfg(not(feature = "stack_dst"))]
+                println!("Warning: switching themes requires feature 'stack_dst'");
+
+                mgr.adjust_theme(|theme| theme.set_theme(name));
+                VoidResponse::None
+            }
+            fn set_colour(&mut self, mgr: &mut Manager, name: &'static str)
+                -> VoidResponse
+            {
+                println!("Colour scheme: {:?}", name);
+                mgr.adjust_theme(|theme| theme.set_colours(name));
+                VoidResponse::None
+            }
+        }
+    });
+
     let window = Window::new(
         "Widget Gallery",
         make_widget! {
@@ -73,52 +120,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[layout(vertical)]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget] _ = make_widget! {
-                    #[widget]
-                    #[layout(vertical, frame)]
-                    #[handler(msg = VoidMsg)]
-                    struct {
-                        #[widget(halign=centre)] _ = Label::from("Widget Gallery"),
-                        #[widget(handler=set_theme)] _ = make_widget! {
-                            #[widget]
-                            #[layout(horizontal)]
-                            #[handler(msg = &'static str)]
-                            struct {
-                                #[widget] _ = TextButton::new("Flat", "flat"),
-                                #[widget] _ = TextButton::new("Shaded", "shaded"),
-                            }
-                        },
-                        #[widget(handler=set_colour)] _ = make_widget! {
-                            #[widget]
-                            #[layout(horizontal)]
-                            #[handler(msg = &'static str)]
-                            struct {
-                                #[widget] _ = TextButton::new("Default", "default"),
-                                #[widget] _ = TextButton::new("Light", "light"),
-                                #[widget] _ = TextButton::new("Dark", "dark"),
-                            }
-                        },
-                    }
-                    impl {
-                        fn set_theme(&mut self, mgr: &mut Manager, name: &'static str)
-                            -> VoidResponse
-                        {
-                            println!("Theme: {:?}", name);
-                            #[cfg(not(feature = "stack_dst"))]
-                            println!("Warning: switching themes requires feature 'stack_dst'");
-
-                            mgr.adjust_theme(|theme| theme.set_theme(name));
-                            VoidResponse::None
-                        }
-                        fn set_colour(&mut self, mgr: &mut Manager, name: &'static str)
-                            -> VoidResponse
-                        {
-                            println!("Colour scheme: {:?}", name);
-                            mgr.adjust_theme(|theme| theme.set_colours(name));
-                            VoidResponse::None
-                        }
-                    }
-                },
+                #[widget] _ = top_box,
                 #[widget(handler = activations)] _ = ScrollRegion::new(widgets).with_auto_bars(true),
             }
             impl {
