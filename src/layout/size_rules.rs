@@ -160,6 +160,12 @@ impl SizeRules {
         self.m
     }
 
+    /// Set margins to max of own margins and given margins
+    pub fn include_margins(&mut self, margins: (u16, u16)) {
+        self.m.0 = self.m.0.max(margins.0);
+        self.m.1 = self.m.1.max(margins.1);
+    }
+
     /// Use the maximum size of `self` and `rhs`.
     #[inline]
     pub fn max(self, rhs: Self) -> SizeRules {
@@ -210,7 +216,6 @@ impl SizeRules {
     /// If `internal_margins` are true, then space is allocated for `self`'s
     /// margins inside the frame; if not, then `self`'s margins are merged with
     /// the frame's margins.
-    #[inline]
     pub fn surrounded_by(self, frame: SizeRules, internal_margins: bool) -> Self {
         let (c, m) = if internal_margins {
             ((self.m.0 + self.m.1) as u32, frame.m)
@@ -223,6 +228,14 @@ impl SizeRules {
             m,
             stretch: self.stretch.max(frame.stretch),
         }
+    }
+
+    /// Set self to `self - x + y`
+    pub fn sub_add(&mut self, x: Self, y: Self) {
+        self.a = self.a + y.a - x.a;
+        self.b = self.b + y.b - x.b;
+        self.m.1 = y.m.1;
+        self.stretch = self.stretch.max(y.stretch);
     }
 
     /// Reduce the minimum size

@@ -155,12 +155,41 @@ where
             widths: &mut [SizeRules],
             spans: &mut [(SizeRules, u32, u32)],
         ) -> SizeRules {
-            // For each span, we ensure cell widths are sufficiently large.
-            // Note that this distribution may not be optimal in the case of
-            // partially-overlapping spans; since those are rare this case
-            // remains unsolved for now (in any case, all spans will be
-            // sufficiently large, but some space may be wasted).
+            // spans: &mut [(rules, begin, end)]
 
+            // We merge all overlapping spans in arbitrary order.
+            let (mut i, mut j) = (0, 1);
+            let mut len = spans.len();
+            while j < len {
+                let (first, second) = if spans[i].1 <= spans[j].1 {
+                    (i, j)
+                } else {
+                    (j, i)
+                };
+                let first_end = spans[first].2 as usize;
+                let second_begin = spans[second].1 as usize;
+                if first_end <= second_begin {
+                    j += 1;
+                    if j >= len {
+                        i += 1;
+                        j = i + 1;
+                    }
+                    continue;
+                }
+
+                // Internal margins would be lost; handle those first.
+                widths[second_begin].include_margins((spans[second].0.margins().0, 0));
+                widths[first_end - 1].include_margins((0, spans[first].0.margins().1));
+
+                let overlap_sum = widths[second_begin..first_end].iter().sum();
+                spans[first].0.sub_add(overlap_sum, spans[second].0);
+
+                spans.swap(second, len - 1);
+                len -= 1;
+            }
+
+            // We are left with non-overlapping spans.
+            // For each span, we ensure cell widths are sufficiently large.
             for span in spans {
                 let rules = span.0;
                 let begin = span.1 as usize;
