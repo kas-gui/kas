@@ -60,7 +60,8 @@ impl<OT: 'static> Layout for RadioBoxBare<OT> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.radiobox();
         self.core.rect.size = size;
-        SizeRules::fixed(axis.extract_size(size))
+        let margins = size_handle.outer_margins();
+        SizeRules::extract_fixed(axis.dir(), size, margins)
     }
 
     fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {

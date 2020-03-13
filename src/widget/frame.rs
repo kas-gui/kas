@@ -10,8 +10,8 @@ use std::fmt::Debug;
 use crate::class::*;
 use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Handler, Manager};
-use crate::geom::{Coord, Rect};
-use crate::layout::{AxisInfo, SizeRules};
+use crate::geom::{Coord, Rect, Size};
+use crate::layout::{AxisInfo, Margins, SizeRules};
 use crate::macros::Widget;
 use crate::{AlignHints, CoreData, Layout, Widget, WidgetCore, WidgetId};
 
@@ -27,6 +27,8 @@ pub struct Frame<W: Widget> {
     core: CoreData,
     #[widget]
     child: W,
+    m0: Size,
+    m1: Size,
 }
 
 impl<W: Widget> Frame<W> {
@@ -36,23 +38,36 @@ impl<W: Widget> Frame<W> {
         Frame {
             core: Default::default(),
             child,
+            m0: Size::ZERO,
+            m1: Size::ZERO,
         }
     }
 }
 
 impl<W: Widget> Layout for Frame<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let sizes = size_handle.outer_frame();
-        self.child.size_rules(size_handle, axis)
-            + axis.extract_size(sizes.0)
-            + axis.extract_size(sizes.1)
+        let sides = size_handle.outer_frame();
+        let margins = Margins::ZERO;
+        let frame_rules = SizeRules::extract_fixed(axis.dir(), sides.0 + sides.1, margins);
+
+        let child_rules = self.child.size_rules(size_handle, axis);
+        let m = child_rules.margins();
+
+        if axis.is_horizontal() {
+            self.m0.0 = (sides.0).0 + m.0 as u32;
+            self.m1.0 = (sides.1).0 + m.1 as u32;
+        } else {
+            self.m0.1 = (sides.0).1 + m.0 as u32;
+            self.m1.1 = (sides.1).1 + m.1 as u32;
+        }
+
+        child_rules.surrounded_by(frame_rules, true)
     }
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, mut rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        let sizes = size_handle.outer_frame();
-        rect.pos += sizes.0;
-        rect.size -= sizes.0 + sizes.1;
+        rect.pos += self.m0;
+        rect.size -= self.m0 + self.m1;
         self.child.set_rect(size_handle, rect, align);
     }
 

@@ -10,7 +10,7 @@ use std::ops::{Deref, DerefMut};
 use kas::draw::{Draw, Region};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::{Align, Direction};
 
 /// Class of text drawn
@@ -52,7 +52,7 @@ pub trait SizeHandle {
     fn inner_margin(&self) -> Size;
 
     /// The margin between UI elements, where desired
-    fn outer_margin(&self) -> Size;
+    fn outer_margins(&self) -> Margins;
 
     /// The height of a line of text
     fn line_height(&self, class: TextClass) -> u32;
@@ -193,8 +193,8 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
     }
-    fn outer_margin(&self) -> Size {
-        self.deref().outer_margin()
+    fn outer_margins(&self) -> Margins {
+        self.deref().outer_margins()
     }
 
     fn line_height(&self, class: TextClass) -> u32 {
@@ -236,8 +236,8 @@ where
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
     }
-    fn outer_margin(&self) -> Size {
-        self.deref().outer_margin()
+    fn outer_margins(&self) -> Margins {
+        self.deref().outer_margins()
     }
 
     fn line_height(&self, class: TextClass) -> u32 {

@@ -119,6 +119,14 @@ impl<X: Pixel> From<Coord> for PhysicalPosition<X> {
     }
 }
 
+impl std::ops::AddAssign<Coord> for Coord {
+    #[inline]
+    fn add_assign(&mut self, rhs: Coord) {
+        self.0 += rhs.0;
+        self.1 += rhs.1;
+    }
+}
+
 impl std::ops::AddAssign<Size> for Coord {
     #[inline]
     fn add_assign(&mut self, rhs: Size) {

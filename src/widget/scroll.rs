@@ -142,12 +142,11 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         rules.reduce_min_to(line_height);
 
         if axis.is_horizontal() && (self.auto_bars || self.show_bars.1) {
-            rules + self.vert_bar.size_rules(size_handle, axis)
+            rules.append(self.vert_bar.size_rules(size_handle, axis));
         } else if axis.is_vertical() && (self.auto_bars || self.show_bars.0) {
-            rules + self.horiz_bar.size_rules(size_handle, axis)
-        } else {
-            rules
+            rules.append(self.horiz_bar.size_rules(size_handle, axis));
         }
+        rules
     }
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {

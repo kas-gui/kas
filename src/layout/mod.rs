@@ -50,6 +50,15 @@ impl AxisInfo {
         }
     }
 
+    /// Get the axis's direction
+    #[inline]
+    pub fn dir(&self) -> Direction {
+        match self.vertical {
+            false => Direction::Horizontal,
+            true => Direction::Vertical,
+        }
+    }
+
     /// True if the current axis is vertical
     #[inline]
     pub fn is_vertical(&self) -> bool {

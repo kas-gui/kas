@@ -168,17 +168,12 @@ where
                 let end = span.1 as usize;
                 let ind = span.2 as usize;
 
-                let sum = (start..end)
-                    .map(|n| storage.width_ref()[n])
-                    .fold(SizeRules::EMPTY, |x, y| x + y);
+                let sum = (start..end).map(|n| storage.width_ref()[n]).sum();
                 storage.width_mut()[start]
                     .set_at_least_op_sub(self.col_span_rules.as_ref()[ind], sum);
             }
 
-            rules = storage.width_ref()[0..cols]
-                .iter()
-                .copied()
-                .fold(SizeRules::EMPTY, |rules, item| rules + item);
+            rules = storage.width_ref()[0..cols].iter().sum();
             storage.width_mut()[cols] = rules;
         } else {
             for span in row_spans {
@@ -186,17 +181,12 @@ where
                 let end = span.1 as usize;
                 let ind = span.2 as usize;
 
-                let sum = (start..end)
-                    .map(|n| storage.height_ref()[n])
-                    .fold(SizeRules::EMPTY, |x, y| x + y);
+                let sum = (start..end).map(|n| storage.height_ref()[n]).sum();
                 storage.height_mut()[start]
                     .set_at_least_op_sub(self.row_span_rules.as_ref()[ind], sum);
             }
 
-            rules = storage.height_ref()[0..rows]
-                .iter()
-                .copied()
-                .fold(SizeRules::EMPTY, |rules, item| rules + item);
+            rules = storage.height_ref()[0..rows].iter().sum();
             storage.height_mut()[rows] = rules;
         }
 
@@ -207,10 +197,9 @@ where
 pub struct GridSetter<RT: RowTemp, CT: RowTemp, S: GridStorage> {
     widths: RT,
     heights: CT,
-    col_pos: RT,
-    row_pos: CT,
+    w_offsets: RT,
+    h_offsets: CT,
     pos: Coord,
-    inter: Size,
     _s: PhantomData<S>,
 }
 
@@ -221,40 +210,43 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
     /// - `storage`: reference to persistent storage
     pub fn new(rect: Rect, (cols, rows): (usize, usize), storage: &mut S) -> Self {
         let mut widths = RT::default();
-        let mut heights = CT::default();
         widths.set_len(cols);
+        let mut heights = CT::default();
         heights.set_len(rows);
+        let mut w_offsets = RT::default();
+        w_offsets.set_len(cols);
+        let mut h_offsets = CT::default();
+        h_offsets.set_len(rows);
 
         storage.set_width_len(cols + 1);
         storage.set_height_len(rows + 1);
 
-        let inter = Size(0, 0); // TODO
-
         SizeRules::solve_seq(widths.as_mut(), storage.width_ref(), rect.size.0);
-        SizeRules::solve_seq(heights.as_mut(), storage.height_ref(), rect.size.1);
-
-        let mut col_pos = RT::default();
-        let mut row_pos = CT::default();
-        col_pos.set_len(cols);
-        row_pos.set_len(rows);
-        let mut pos = 0;
-        for n in 0..cols {
-            col_pos.as_mut()[n] = pos;
-            pos += widths.as_ref()[n] + inter.0;
+        w_offsets.as_mut()[0] = 0;
+        for i in 1..w_offsets.as_ref().len() {
+            let i1 = i - 1;
+            let m1 = storage.width_ref()[i1].margins().1;
+            let m0 = storage.width_ref()[i].margins().0;
+            w_offsets.as_mut()[i] =
+                w_offsets.as_ref()[i1] + widths.as_ref()[i1] + m1.max(m0) as u32;
         }
-        pos = 0;
-        for n in 0..rows {
-            row_pos.as_mut()[n] = pos;
-            pos += heights.as_ref()[n] + inter.1;
+
+        SizeRules::solve_seq(heights.as_mut(), storage.height_ref(), rect.size.1);
+        h_offsets.as_mut()[0] = 0;
+        for i in 1..h_offsets.as_ref().len() {
+            let i1 = i - 1;
+            let m1 = storage.height_ref()[i1].margins().1;
+            let m0 = storage.height_ref()[i].margins().0;
+            h_offsets.as_mut()[i] =
+                h_offsets.as_ref()[i1] + heights.as_ref()[i1] + m1.max(m0) as u32;
         }
 
         GridSetter {
             widths,
             heights,
-            col_pos,
-            row_pos,
+            w_offsets,
+            h_offsets,
             pos: rect.pos,
-            inter,
             _s: Default::default(),
         }
     }
@@ -265,22 +257,17 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> RulesSetter for GridSetter<RT, CT
     type ChildInfo = GridChildInfo;
 
     fn child_rect(&mut self, info: Self::ChildInfo) -> Rect {
-        let pos = self.pos
-            + Coord(
-                self.col_pos.as_ref()[info.col] as i32,
-                self.row_pos.as_ref()[info.row] as i32,
-            );
+        let x = self.w_offsets.as_ref()[info.col] as i32;
+        let y = self.h_offsets.as_ref()[info.row] as i32;
+        let pos = self.pos + Coord(x, y);
 
-        let mut size = Size(
-            self.inter.0 * (info.col_end - info.col - 1) as u32,
-            self.inter.1 * (info.row_end - info.row - 1) as u32,
-        );
-        for n in info.col..info.col_end {
-            size.0 += self.widths.as_ref()[n];
-        }
-        for n in info.row..info.row_end {
-            size.1 += self.heights.as_ref()[n];
-        }
+        let i1 = info.col_end - 1;
+        let w = self.widths.as_ref()[i1] + self.w_offsets.as_ref()[i1]
+            - self.w_offsets.as_ref()[info.col];
+        let i1 = info.row_end - 1;
+        let h = self.heights.as_ref()[i1] + self.h_offsets.as_ref()[i1]
+            - self.h_offsets.as_ref()[info.row];
+        let size = Size(w, h);
 
         Rect { pos, size }
     }

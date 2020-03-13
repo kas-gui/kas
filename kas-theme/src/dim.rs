@@ -12,7 +12,7 @@ use std::f32;
 
 use kas::draw::{self, DrawText, FontId, TextClass};
 use kas::geom::{Size, Vec2};
-use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
+use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
 use kas::Direction::{Horizontal, Vertical};
 
 /// Parameterisation of [`Dimensions`]
@@ -127,8 +127,8 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
         Size::uniform(self.dims.margin as u32)
     }
 
-    fn outer_margin(&self) -> Size {
-        Size::uniform(self.dims.margin as u32)
+    fn outer_margins(&self) -> Margins {
+        Margins::uniform(self.dims.margin as u16)
     }
 
     fn line_height(&self, _: TextClass) -> u32 {
@@ -160,7 +160,8 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
                 _ => bound.min(self.dims.min_line_length),
             };
             let ideal = bound.min(self.dims.max_line_length);
-            SizeRules::new(min, ideal, StretchPolicy::LowUtility)
+            let margins = (self.dims.margin as u16, self.dims.margin as u16);
+            SizeRules::new(min, ideal, margins, StretchPolicy::LowUtility)
         } else {
             let min = match class {
                 TextClass::EditMulti => line_height * 3,
@@ -171,7 +172,7 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
                 TextClass::Button | TextClass::Edit => StretchPolicy::Fixed,
                 _ => StretchPolicy::Filler,
             };
-            SizeRules::new(min, ideal, stretch)
+            SizeRules::new(min, ideal, (0, 0), stretch)
         }
     }
 

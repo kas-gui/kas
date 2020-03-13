@@ -71,7 +71,7 @@ impl<T: RowTemp, S: RowStorage> RulesSolver for RowSolver<T, S> {
         let child_rules = child_rules(self.axis);
         if !self.axis_is_vertical {
             storage.as_mut()[child_info] = child_rules;
-            self.rules += child_rules;
+            self.rules.append(child_rules);
         } else {
             self.rules = self.rules.max(child_rules);
         }
@@ -105,8 +105,8 @@ impl<T: RowTemp, S: RowStorage> RulesSolver for RowSolver<T, S> {
 /// -   `S:` [`RowStorage`] — persistent storage type
 pub struct RowSetter<D, T: RowTemp, S: RowStorage> {
     crect: Rect,
-    inter: u32,
     widths: T,
+    offsets: T,
     direction: D,
     _s: PhantomData<S>,
 }
@@ -115,25 +115,28 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     pub fn new(rect: Rect, dim: (D, usize), storage: &mut S) -> Self {
         let mut widths = T::default();
         widths.set_len(dim.1);
+        let mut offsets = T::default();
+        offsets.set_len(dim.1);
         storage.set_len(dim.1 + 1);
 
-        let inter = (0, 0); // TODO
-        let mut crect = rect;
-
-        let (width, inter) = if dim.0.is_horizontal() {
-            crect.size.0 = 0; // hack to get correct first offset
-            (rect.size.0, inter.0)
-        } else {
-            crect.size.1 = 0;
-            (rect.size.1, inter.1)
+        let (pos, width) = match dim.0.is_horizontal() {
+            true => (rect.pos.0, rect.size.0),
+            false => (rect.pos.1, rect.size.1),
         };
 
         SizeRules::solve_seq(widths.as_mut(), storage.as_ref(), width);
+        offsets.as_mut()[0] = pos as u32;
+        for i in 1..offsets.as_ref().len() {
+            let i1 = i - 1;
+            let m1 = storage.as_ref()[i1].margins().1;
+            let m0 = storage.as_ref()[i].margins().0;
+            offsets.as_mut()[i] = offsets.as_ref()[i1] + widths.as_ref()[i1] + m1.max(m0) as u32;
+        }
 
         RowSetter {
-            crect,
-            inter,
+            crect: rect,
             widths,
+            offsets,
             direction: dim.0,
             _s: Default::default(),
         }
@@ -146,10 +149,10 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, 
 
     fn child_rect(&mut self, index: Self::ChildInfo) -> Rect {
         if self.direction.is_horizontal() {
-            self.crect.pos.0 += (self.crect.size.0 + self.inter) as i32;
+            self.crect.pos.0 = self.offsets.as_ref()[index] as i32;
             self.crect.size.0 = self.widths.as_ref()[index];
         } else {
-            self.crect.pos.1 += (self.crect.size.1 + self.inter) as i32;
+            self.crect.pos.1 = self.offsets.as_ref()[index] as i32;
             self.crect.size.1 = self.widths.as_ref()[index];
         }
         self.crect

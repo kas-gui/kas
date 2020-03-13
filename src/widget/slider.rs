@@ -162,10 +162,11 @@ where
 {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let (size, min_len) = size_handle.slider();
+        let margins = (0, 0);
         if self.direction.is_vertical() == axis.is_vertical() {
-            SizeRules::new(min_len, min_len, StretchPolicy::HighUtility)
+            SizeRules::new(min_len, min_len, margins, StretchPolicy::HighUtility)
         } else {
-            SizeRules::fixed(size.1)
+            SizeRules::fixed(size.1, margins)
         }
     }
 

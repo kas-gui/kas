@@ -410,7 +410,7 @@ impl Layout for Mandlebrot {
             true => 750,
             false => 500,
         };
-        SizeRules::new(size, size, StretchPolicy::Maximise)
+        SizeRules::new(size, size, (0, 0), StretchPolicy::Maximise)
     }
 
     #[inline]
