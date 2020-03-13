@@ -77,16 +77,7 @@ impl<T: RowTemp, S: RowStorage> RulesSolver for RowSolver<T, S> {
         }
     }
 
-    fn finish<ColIter, RowIter>(
-        self,
-        storage: &mut Self::Storage,
-        _: ColIter,
-        _: RowIter,
-    ) -> SizeRules
-    where
-        ColIter: Iterator<Item = (usize, usize, usize)>,
-        RowIter: Iterator<Item = (usize, usize, usize)>,
-    {
+    fn finish(self, storage: &mut Self::Storage) -> SizeRules {
         let cols = storage.as_ref().len() - 1;
         if !self.axis_is_vertical {
             storage.as_mut()[cols] = self.rules;

@@ -171,6 +171,12 @@ impl SizeRules {
         }
     }
 
+    /// Set `self = self.max(rhs);`
+    #[inline]
+    pub fn max_with(&mut self, rhs: Self) {
+        *self = self.max(rhs);
+    }
+
     /// Append the rules for `rhs` to self
     ///
     /// This implies that `rhs` rules concern an element to the right of or

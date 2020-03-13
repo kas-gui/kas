@@ -5,8 +5,6 @@
 
 //! Dynamic widgets
 
-use std::iter;
-
 use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Event, Handler, Manager, Response};
 use crate::geom::Coord;
@@ -144,7 +142,7 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
                 child.size_rules(size_handle, axis)
             });
         }
-        solver.finish(&mut self.data, iter::empty(), iter::empty())
+        solver.finish(&mut self.data)
     }
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {

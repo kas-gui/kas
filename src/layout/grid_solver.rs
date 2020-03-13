@@ -13,19 +13,13 @@ use crate::geom::{Coord, Rect, Size};
 /// Per-child information
 pub struct GridChildInfo {
     /// Column index (first column when in a span)
-    pub col: usize,
+    pub col: u32,
     /// One-past-last index of column span (`col_end = col + 1` without span)
-    pub col_end: usize,
-    /// Index in the list of all column spans (order is unimportant so long as
-    /// each column span has a unique index).
-    pub col_span_index: usize,
+    pub col_end: u32,
     /// Row index (first row when in a span)
-    pub row: usize,
+    pub row: u32,
     /// One-past-last index of row span (`row_end = row + 1` without span)
-    pub row_end: usize,
-    /// Index in the list of all row spans (order is unimportant so long as
-    /// each row span has a unique index).
-    pub row_span_index: usize,
+    pub row_end: u32,
 }
 
 /// A [`RulesSolver`] for grids supporting cell-spans
@@ -35,8 +29,10 @@ pub struct GridSolver<RT, CT, CSR, RSR, S: GridStorage> {
     axis: AxisInfo,
     widths: RT,
     heights: CT,
-    col_span_rules: CSR,
-    row_span_rules: RSR,
+    col_spans: CSR,
+    row_spans: RSR,
+    next_col_span: usize,
+    next_row_span: usize,
     _s: PhantomData<S>,
 }
 
@@ -56,8 +52,8 @@ impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
         assert!(widths.as_ref().iter().all(|w| *w == 0));
         assert!(heights.as_ref().iter().all(|w| *w == 0));
 
-        let col_span_rules = CSR::default();
-        let row_span_rules = RSR::default();
+        let col_spans = CSR::default();
+        let row_spans = RSR::default();
 
         storage.set_dims(cols + 1, rows + 1);
 
@@ -65,8 +61,10 @@ impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
             axis,
             widths,
             heights,
-            col_span_rules,
-            row_span_rules,
+            col_spans,
+            row_spans,
+            next_col_span: 0,
+            next_row_span: 0,
             _s: Default::default(),
         };
         solver.prepare(storage);
@@ -102,8 +100,8 @@ impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
 impl<RT: RowTemp, CT: RowTemp, CSR, RSR, S: GridStorage> RulesSolver
     for GridSolver<RT, CT, CSR, RSR, S>
 where
-    CSR: AsRef<[SizeRules]> + AsMut<[SizeRules]>,
-    RSR: AsRef<[SizeRules]> + AsMut<[SizeRules]>,
+    CSR: AsRef<[(SizeRules, u32, u32)]> + AsMut<[(SizeRules, u32, u32)]>,
+    RSR: AsRef<[(SizeRules, u32, u32)]> + AsMut<[(SizeRules, u32, u32)]>,
 {
     type Storage = S;
     type ChildInfo = GridChildInfo;
@@ -117,52 +115,46 @@ where
         if self.axis.has_fixed {
             if self.axis.is_horizontal() {
                 self.axis.other_axis = ((child_info.row + 1)..child_info.row_end)
-                    .fold(self.heights.as_ref()[child_info.row], |h, i| {
-                        h + self.heights.as_ref()[i]
+                    .fold(self.heights.as_ref()[child_info.row as usize], |h, i| {
+                        h + self.heights.as_ref()[i as usize]
                     });
             } else {
                 self.axis.other_axis = ((child_info.col + 1)..child_info.col_end)
-                    .fold(self.widths.as_ref()[child_info.col], |w, i| {
-                        w + self.widths.as_ref()[i]
+                    .fold(self.widths.as_ref()[child_info.col as usize], |w, i| {
+                        w + self.widths.as_ref()[i as usize]
                     });
             }
         }
         let child_rules = child_rules(self.axis);
-        let rules = if self.axis.is_horizontal() {
-            if child_info.col_span_index == std::usize::MAX {
-                &mut storage.widths_mut()[child_info.col]
+        if self.axis.is_horizontal() {
+            if child_info.col_end > child_info.col + 1 {
+                let span = &mut self.col_spans.as_mut()[self.next_col_span];
+                span.0.max_with(child_rules);
+                span.1 = child_info.col;
+                span.2 = child_info.col_end;
+                self.next_col_span += 1;
             } else {
-                &mut self.col_span_rules.as_mut()[child_info.col_span_index]
+                storage.widths_mut()[child_info.col as usize].max_with(child_rules);
             }
         } else {
-            if child_info.row_span_index == std::usize::MAX {
-                &mut storage.heights_mut()[child_info.row]
+            if child_info.row_end > child_info.row + 1 {
+                let span = &mut self.row_spans.as_mut()[self.next_row_span];
+                span.0.max_with(child_rules);
+                span.1 = child_info.row;
+                span.2 = child_info.row_end;
+                self.next_row_span += 1;
             } else {
-                &mut self.row_span_rules.as_mut()[child_info.row_span_index]
+                storage.heights_mut()[child_info.row as usize].max_with(child_rules);
             }
         };
-        *rules = rules.max(child_rules);
     }
 
-    fn finish<ColIter, RowIter>(
-        self,
-        storage: &mut Self::Storage,
-        col_spans: ColIter,
-        row_spans: RowIter,
-    ) -> SizeRules
-    where
-        ColIter: Iterator<Item = (usize, usize, usize)>,
-        RowIter: Iterator<Item = (usize, usize, usize)>,
-    {
-        fn calculate<I>(
+    fn finish(mut self, storage: &mut Self::Storage) -> SizeRules {
+        fn calculate(
             cols: usize,
             widths: &mut [SizeRules],
-            span_rules: &[SizeRules],
-            spans: I,
-        ) -> SizeRules
-        where
-            I: Iterator<Item = (usize, usize, usize)>,
-        {
+            spans: &mut [(SizeRules, u32, u32)],
+        ) -> SizeRules {
             // For each span, we ensure cell widths are sufficiently large.
             // Note that this distribution may not be optimal in the case of
             // partially-overlapping spans; since those are rare this case
@@ -170,11 +162,10 @@ where
             // sufficiently large, but some space may be wasted).
 
             for span in spans {
-                let start = span.0 as usize;
-                let end = span.1 as usize;
-                let ind = span.2 as usize;
-
-                span_rules[ind].distribute_span_over(&mut widths[start..end]);
+                let rules = span.0;
+                let begin = span.1 as usize;
+                let end = span.2 as usize;
+                rules.distribute_span_over(&mut widths[begin..end]);
             }
 
             let rules = widths[0..cols].iter().sum();
@@ -184,12 +175,10 @@ where
 
         if self.axis.is_horizontal() {
             let cols = storage.widths().len() - 1;
-            let span_rules = self.col_span_rules.as_ref();
-            calculate(cols, storage.widths_mut(), span_rules, col_spans)
+            calculate(cols, storage.widths_mut(), self.col_spans.as_mut())
         } else {
             let rows = storage.heights().len() - 1;
-            let span_rules = self.row_span_rules.as_ref();
-            calculate(rows, storage.heights_mut(), span_rules, row_spans)
+            calculate(rows, storage.heights_mut(), self.row_spans.as_mut())
         }
     }
 }
@@ -257,16 +246,16 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> RulesSetter for GridSetter<RT, CT
     type ChildInfo = GridChildInfo;
 
     fn child_rect(&mut self, info: Self::ChildInfo) -> Rect {
-        let x = self.w_offsets.as_ref()[info.col] as i32;
-        let y = self.h_offsets.as_ref()[info.row] as i32;
+        let x = self.w_offsets.as_ref()[info.col as usize] as i32;
+        let y = self.h_offsets.as_ref()[info.row as usize] as i32;
         let pos = self.pos + Coord(x, y);
 
-        let i1 = info.col_end - 1;
+        let i1 = info.col_end as usize - 1;
         let w = self.widths.as_ref()[i1] + self.w_offsets.as_ref()[i1]
-            - self.w_offsets.as_ref()[info.col];
-        let i1 = info.row_end - 1;
+            - self.w_offsets.as_ref()[info.col as usize];
+        let i1 = info.row_end as usize - 1;
         let h = self.heights.as_ref()[i1] + self.h_offsets.as_ref()[i1]
-            - self.h_offsets.as_ref()[info.row];
+            - self.h_offsets.as_ref()[info.row as usize];
         let size = Size(w, h);
 
         Rect { pos, size }

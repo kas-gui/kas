@@ -43,15 +43,7 @@ pub trait RulesSolver {
     /// Called at the end to output [`SizeRules`].
     ///
     /// Note that this does not include margins!
-    fn finish<ColIter, RowIter>(
-        self,
-        storage: &mut Self::Storage,
-        col_spans: ColIter,
-        row_spans: RowIter,
-    ) -> SizeRules
-    where
-        ColIter: Iterator<Item = (usize, usize, usize)>,
-        RowIter: Iterator<Item = (usize, usize, usize)>;
+    fn finish(self, storage: &mut Self::Storage) -> SizeRules;
 }
 
 /// Resolves a [`RulesSolver`] solution for each child

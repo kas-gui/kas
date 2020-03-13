@@ -41,16 +41,7 @@ impl RulesSolver for SingleSolver {
         self.rules = child_rules(self.axis);
     }
 
-    fn finish<ColIter, RowIter>(
-        self,
-        _storage: &mut Self::Storage,
-        _col_spans: ColIter,
-        _row_spans: RowIter,
-    ) -> SizeRules
-    where
-        ColIter: Iterator<Item = (usize, usize, usize)>,
-        RowIter: Iterator<Item = (usize, usize, usize)>,
-    {
+    fn finish(self, _storage: &mut Self::Storage) -> SizeRules {
         self.rules
     }
 }
