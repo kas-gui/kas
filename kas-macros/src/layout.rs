@@ -294,10 +294,8 @@ pub(crate) fn derive(
             use kas::layout::{Margins, RulesSetter};
             self.core_data_mut().rect = rect;
 
-            let margins = Margins::ZERO; // TODO: this is now useless
             let mut setter = <Self as kas::LayoutData>::Setter::new(
                 rect,
-                margins,
                 #dim,
                 &mut #data,
             );

@@ -7,7 +7,7 @@
 
 use std::marker::PhantomData;
 
-use super::{AxisInfo, Margins, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules};
+use super::{AxisInfo, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::{Coord, Rect};
 use crate::{Directional, Widget};
 
@@ -112,21 +112,20 @@ pub struct RowSetter<D, T: RowTemp, S: RowStorage> {
 }
 
 impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
-    pub fn new(mut rect: Rect, margins: Margins, dim: (D, usize), storage: &mut S) -> Self {
+    pub fn new(rect: Rect, dim: (D, usize), storage: &mut S) -> Self {
         let mut widths = T::default();
         widths.set_len(dim.1);
         storage.set_len(dim.1 + 1);
 
-        rect.pos += margins.first;
-        rect.size -= margins.first + margins.last;
+        let inter = (0, 0); // TODO
         let mut crect = rect;
 
         let (width, inter) = if dim.0.is_horizontal() {
             crect.size.0 = 0; // hack to get correct first offset
-            (rect.size.0, margins.inter.0)
+            (rect.size.0, inter.0)
         } else {
             crect.size.1 = 0;
-            (rect.size.1, margins.inter.1)
+            (rect.size.1, inter.1)
         };
 
         SizeRules::solve_seq(widths.as_mut(), storage.as_ref(), width);

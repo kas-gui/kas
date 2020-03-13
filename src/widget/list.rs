@@ -151,7 +151,6 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
         self.core.rect = rect;
         let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(
             rect,
-            layout::Margins::ZERO,
             (self.direction, self.widgets.len()),
             &mut self.data,
         );

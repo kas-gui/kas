@@ -5,7 +5,7 @@
 
 //! Miscellaneous solvers
 
-use super::{AxisInfo, Margins, RulesSetter, RulesSolver, SizeRules};
+use super::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::Rect;
 
 /// [`RulesSolver`] implementation for a fixed single-child layout
@@ -64,11 +64,8 @@ impl SingleSetter {
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
-    /// - `margins`: margin sizes
     /// - `storage`: irrelevent, but included for consistency
-    pub fn new(mut rect: Rect, margins: Margins, _: (), _: &mut ()) -> Self {
-        rect.pos += margins.first;
-        rect.size -= margins.first + margins.last;
+    pub fn new(rect: Rect, _: (), _: &mut ()) -> Self {
         let crect = rect;
 
         SingleSetter { crect }

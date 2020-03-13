@@ -7,7 +7,7 @@
 
 use std::marker::PhantomData;
 
-use super::{AxisInfo, GridStorage, Margins, RowTemp, RulesSetter, RulesSolver, SizeRules};
+use super::{AxisInfo, GridStorage, RowTemp, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::{Coord, Rect, Size};
 
 /// Per-child information
@@ -218,14 +218,8 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
-    /// - `margins`: margin sizes
     /// - `storage`: reference to persistent storage
-    pub fn new(
-        mut rect: Rect,
-        margins: Margins,
-        (cols, rows): (usize, usize),
-        storage: &mut S,
-    ) -> Self {
+    pub fn new(rect: Rect, (cols, rows): (usize, usize), storage: &mut S) -> Self {
         let mut widths = RT::default();
         let mut heights = CT::default();
         widths.set_len(cols);
@@ -234,9 +228,7 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
         storage.set_width_len(cols + 1);
         storage.set_height_len(rows + 1);
 
-        rect.pos += margins.first;
-        rect.size -= margins.first + margins.last;
-        let inter = margins.inter;
+        let inter = Size(0, 0); // TODO
 
         SizeRules::solve_seq(widths.as_mut(), storage.width_ref(), rect.size.0);
         SizeRules::solve_seq(heights.as_mut(), storage.height_ref(), rect.size.1);

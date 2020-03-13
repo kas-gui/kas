@@ -8,6 +8,7 @@
 use super::AxisInfo;
 use crate::geom::Size;
 
+// TODO: new Margin model
 /// Margin sizes
 ///
 /// Used by the layout system for margins around child widgets. Margins may be
