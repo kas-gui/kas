@@ -46,6 +46,7 @@ impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
+    /// - `(cols, rows)`: number of columns and rows
     /// - `storage`: reference to persistent storage
     pub fn new(axis: AxisInfo, (cols, rows): (usize, usize), storage: &mut S) -> Self {
         let mut widths = RT::default();
@@ -58,8 +59,7 @@ impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
         let col_span_rules = CSR::default();
         let row_span_rules = RSR::default();
 
-        storage.set_width_len(cols + 1);
-        storage.set_height_len(rows + 1);
+        storage.set_dims(cols + 1, rows + 1);
 
         let mut solver = GridSolver {
             axis,
@@ -77,27 +77,23 @@ impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
         if self.axis.has_fixed {
             // TODO: cache this for use by set_rect?
             if self.axis.is_vertical() {
-                SizeRules::solve_seq(
-                    self.widths.as_mut(),
-                    storage.width_ref(),
-                    self.axis.other_axis,
-                );
+                SizeRules::solve_seq(self.widths.as_mut(), storage.widths(), self.axis.other_axis);
             } else {
                 SizeRules::solve_seq(
                     self.heights.as_mut(),
-                    storage.height_ref(),
+                    storage.heights(),
                     self.axis.other_axis,
                 );
             }
         }
 
         if self.axis.is_horizontal() {
-            for n in 0..storage.width_ref().len() {
-                storage.width_mut()[n] = SizeRules::EMPTY;
+            for n in 0..storage.widths().len() {
+                storage.widths_mut()[n] = SizeRules::EMPTY;
             }
         } else {
-            for n in 0..storage.height_ref().len() {
-                storage.height_mut()[n] = SizeRules::EMPTY;
+            for n in 0..storage.heights().len() {
+                storage.heights_mut()[n] = SizeRules::EMPTY;
             }
         }
     }
@@ -134,13 +130,13 @@ where
         let child_rules = child_rules(self.axis);
         let rules = if self.axis.is_horizontal() {
             if child_info.col_span_index == std::usize::MAX {
-                &mut storage.width_mut()[child_info.col]
+                &mut storage.widths_mut()[child_info.col]
             } else {
                 &mut self.col_span_rules.as_mut()[child_info.col_span_index]
             }
         } else {
             if child_info.row_span_index == std::usize::MAX {
-                &mut storage.height_mut()[child_info.row]
+                &mut storage.heights_mut()[child_info.row]
             } else {
                 &mut self.row_span_rules.as_mut()[child_info.row_span_index]
             }
@@ -158,39 +154,43 @@ where
         ColIter: Iterator<Item = (usize, usize, usize)>,
         RowIter: Iterator<Item = (usize, usize, usize)>,
     {
-        let cols = storage.width_ref().len() - 1;
-        let rows = storage.height_ref().len() - 1;
+        fn calculate<I>(
+            cols: usize,
+            widths: &mut [SizeRules],
+            span_rules: &[SizeRules],
+            spans: I,
+        ) -> SizeRules
+        where
+            I: Iterator<Item = (usize, usize, usize)>,
+        {
+            // For each span, we ensure cell widths are sufficiently large.
+            // Note that this distribution may not be optimal in the case of
+            // partially-overlapping spans; since those are rare this case
+            // remains unsolved for now (in any case, all spans will be
+            // sufficiently large, but some space may be wasted).
 
-        let rules;
-        if self.axis.is_horizontal() {
-            for span in col_spans {
+            for span in spans {
                 let start = span.0 as usize;
                 let end = span.1 as usize;
                 let ind = span.2 as usize;
 
-                let sum = (start..end).map(|n| storage.width_ref()[n]).sum();
-                storage.width_mut()[start]
-                    .set_at_least_op_sub(self.col_span_rules.as_ref()[ind], sum);
+                span_rules[ind].distribute_span_over(&mut widths[start..end]);
             }
 
-            rules = storage.width_ref()[0..cols].iter().sum();
-            storage.width_mut()[cols] = rules;
-        } else {
-            for span in row_spans {
-                let start = span.0 as usize;
-                let end = span.1 as usize;
-                let ind = span.2 as usize;
-
-                let sum = (start..end).map(|n| storage.height_ref()[n]).sum();
-                storage.height_mut()[start]
-                    .set_at_least_op_sub(self.row_span_rules.as_ref()[ind], sum);
-            }
-
-            rules = storage.height_ref()[0..rows].iter().sum();
-            storage.height_mut()[rows] = rules;
+            let rules = widths[0..cols].iter().sum();
+            widths[cols] = rules;
+            rules
         }
 
-        rules
+        if self.axis.is_horizontal() {
+            let cols = storage.widths().len() - 1;
+            let span_rules = self.col_span_rules.as_ref();
+            calculate(cols, storage.widths_mut(), span_rules, col_spans)
+        } else {
+            let rows = storage.heights().len() - 1;
+            let span_rules = self.row_span_rules.as_ref();
+            calculate(rows, storage.heights_mut(), span_rules, row_spans)
+        }
     }
 }
 
@@ -206,7 +206,8 @@ pub struct GridSetter<RT: RowTemp, CT: RowTemp, S: GridStorage> {
 impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
     /// Construct.
     ///
-    /// - `axis`: `AxisInfo` instance passed into `size_rules`
+    /// - `rect`: target [`Rect`]
+    /// - `(cols, rows)`: number of columns and rows
     /// - `storage`: reference to persistent storage
     pub fn new(rect: Rect, (cols, rows): (usize, usize), storage: &mut S) -> Self {
         let mut widths = RT::default();
@@ -218,25 +219,24 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
         let mut h_offsets = CT::default();
         h_offsets.set_len(rows);
 
-        storage.set_width_len(cols + 1);
-        storage.set_height_len(rows + 1);
+        storage.set_dims(cols + 1, rows + 1);
 
-        SizeRules::solve_seq(widths.as_mut(), storage.width_ref(), rect.size.0);
+        SizeRules::solve_seq(widths.as_mut(), storage.widths(), rect.size.0);
         w_offsets.as_mut()[0] = 0;
         for i in 1..w_offsets.as_ref().len() {
             let i1 = i - 1;
-            let m1 = storage.width_ref()[i1].margins().1;
-            let m0 = storage.width_ref()[i].margins().0;
+            let m1 = storage.widths()[i1].margins().1;
+            let m0 = storage.widths()[i].margins().0;
             w_offsets.as_mut()[i] =
                 w_offsets.as_ref()[i1] + widths.as_ref()[i1] + m1.max(m0) as u32;
         }
 
-        SizeRules::solve_seq(heights.as_mut(), storage.height_ref(), rect.size.1);
+        SizeRules::solve_seq(heights.as_mut(), storage.heights(), rect.size.1);
         h_offsets.as_mut()[0] = 0;
         for i in 1..h_offsets.as_ref().len() {
             let i1 = i - 1;
-            let m1 = storage.height_ref()[i1].margins().1;
-            let m0 = storage.height_ref()[i].margins().0;
+            let m1 = storage.heights()[i1].margins().1;
+            let m0 = storage.heights()[i].margins().0;
             h_offsets.as_mut()[i] =
                 h_offsets.as_ref()[i1] + heights.as_ref()[i1] + m1.max(m0) as u32;
         }

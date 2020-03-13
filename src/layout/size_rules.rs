@@ -219,18 +219,6 @@ impl SizeRules {
         }
     }
 
-    /// Like `self = self.max(x - y)` but handling negative values correctly
-    // TODO: switch to i32?
-    pub fn set_at_least_op_sub(&mut self, x: Self, y: Self) {
-        if x.a > y.a {
-            self.a = self.a.max(x.a - y.a);
-        }
-        if x.b > y.b {
-            self.b = self.b.max(x.b - y.b);
-        }
-        self.b = self.a.max(self.b);
-    }
-
     /// Reduce the minimum size
     ///
     /// If `min` is greater than the current minimum size, this has no effect.
@@ -368,6 +356,51 @@ impl SizeRules {
 
                 largest -= step;
                 num_equal += num_add;
+            }
+        }
+    }
+
+    /// Adjust a sequence of `rules` to ensure that the total is at least `self`
+    ///
+    /// This is used by grids to ensure that cell spans are sufficiently large.
+    pub fn distribute_span_over(self, rules: &mut [Self]) {
+        let len = rules.len();
+        assert!(len > 0);
+        let len1 = len - 1;
+        let sum: SizeRules = rules.iter().sum();
+
+        rules[0].m.0 = rules[0].m.0.max(self.m.0);
+        rules[len1].m.1 = rules[len1].m.1.max(self.m.1);
+
+        let excess_a = self.a.saturating_sub(sum.a);
+        let excess_b = self.b.saturating_sub(sum.b);
+        if excess_a == 0 && excess_b == 0 {
+            return;
+        }
+
+        let highest_stretch = sum.stretch;
+        let count = (0..len)
+            .filter(|i| rules[*i].stretch == highest_stretch)
+            .count() as u32;
+        let a_per_elt = excess_a / count;
+        let b_per_elt = excess_b / count;
+        let mut extra_a = excess_a - count * a_per_elt;
+        let mut extra_b = excess_b - count * b_per_elt;
+        for i in 0..len {
+            if rules[i].stretch == highest_stretch {
+                rules[i].a += a_per_elt;
+                rules[i].b += b_per_elt;
+                if extra_a > 0 {
+                    rules[i].a += 1;
+                    extra_a -= 1;
+                }
+                if extra_b > 0 {
+                    rules[i].b += 1;
+                    extra_b -= 1;
+                }
+                if highest_stretch < self.stretch {
+                    rules[i].stretch = self.stretch;
+                }
             }
         }
     }

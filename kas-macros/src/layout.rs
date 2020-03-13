@@ -227,8 +227,8 @@ pub(crate) fn derive(
             let mut rules = solver.finish(&mut #data, iter::empty(), iter::empty());
         },
         LayoutType::Grid => {
-            let mut horiz = quote! {};
-            let mut vert = quote! {};
+            let mut horiz = quote! { iter::empty() };
+            let mut vert = quote! { iter::empty() };
             for span in &col_spans {
                 let start = span.0 as usize;
                 let end = span.1 as usize;
@@ -247,8 +247,7 @@ pub(crate) fn derive(
             }
 
             quote! {
-                let mut rules = solver.finish(&mut #data,
-                    iter::empty() #horiz, iter::empty() # vert);
+                let mut rules = solver.finish(&mut #data, #horiz, #vert);
             }
         }
     };

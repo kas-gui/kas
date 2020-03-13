@@ -126,17 +126,15 @@ impl_row_temporary!(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16);
 /// even usable) yet. This will likely be implemented in the future.
 pub trait GridStorage: sealed::Sealed + Clone {
     #[doc(hidden)]
-    fn width_ref(&self) -> &[SizeRules];
+    fn set_dims(&mut self, cols: usize, rows: usize);
     #[doc(hidden)]
-    fn width_mut(&mut self) -> &mut [SizeRules];
+    fn widths(&self) -> &[SizeRules];
     #[doc(hidden)]
-    fn set_width_len(&mut self, len: usize);
+    fn widths_mut(&mut self) -> &mut [SizeRules];
     #[doc(hidden)]
-    fn height_ref(&self) -> &[SizeRules];
+    fn heights(&self) -> &[SizeRules];
     #[doc(hidden)]
-    fn height_mut(&mut self) -> &mut [SizeRules];
-    #[doc(hidden)]
-    fn set_height_len(&mut self, len: usize);
+    fn heights_mut(&mut self) -> &mut [SizeRules];
 }
 
 #[derive(Clone, Debug, Default)]
@@ -152,23 +150,21 @@ where
     WR: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
     HR: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
 {
-    fn width_ref(&self) -> &[SizeRules] {
+    fn set_dims(&mut self, cols: usize, rows: usize) {
+        assert_eq!(self.width_rules.as_ref().len(), cols);
+        assert_eq!(self.height_rules.as_ref().len(), rows);
+    }
+    fn widths(&self) -> &[SizeRules] {
         self.width_rules.as_ref()
     }
-    fn width_mut(&mut self) -> &mut [SizeRules] {
+    fn widths_mut(&mut self) -> &mut [SizeRules] {
         self.width_rules.as_mut()
     }
-    fn set_width_len(&mut self, len: usize) {
-        assert_eq!(self.width_rules.as_ref().len(), len);
-    }
-    fn height_ref(&self) -> &[SizeRules] {
+    fn heights(&self) -> &[SizeRules] {
         self.height_rules.as_ref()
     }
-    fn height_mut(&mut self) -> &mut [SizeRules] {
+    fn heights_mut(&mut self) -> &mut [SizeRules] {
         self.height_rules.as_mut()
-    }
-    fn set_height_len(&mut self, len: usize) {
-        assert_eq!(self.height_rules.as_ref().len(), len);
     }
 }
 
@@ -182,23 +178,21 @@ pub struct DynGridStorage {
 impl Storage for DynGridStorage {}
 
 impl GridStorage for DynGridStorage {
-    fn width_ref(&self) -> &[SizeRules] {
+    fn set_dims(&mut self, cols: usize, rows: usize) {
+        self.width_rules.resize(cols, SizeRules::EMPTY);
+        self.height_rules.resize(rows, SizeRules::EMPTY);
+    }
+    fn widths(&self) -> &[SizeRules] {
         self.width_rules.as_ref()
     }
-    fn width_mut(&mut self) -> &mut [SizeRules] {
+    fn widths_mut(&mut self) -> &mut [SizeRules] {
         self.width_rules.as_mut()
     }
-    fn set_width_len(&mut self, len: usize) {
-        self.width_rules.resize(len, SizeRules::EMPTY);
-    }
-    fn height_ref(&self) -> &[SizeRules] {
+    fn heights(&self) -> &[SizeRules] {
         self.height_rules.as_ref()
     }
-    fn height_mut(&mut self) -> &mut [SizeRules] {
+    fn heights_mut(&mut self) -> &mut [SizeRules] {
         self.height_rules.as_mut()
-    }
-    fn set_height_len(&mut self, len: usize) {
-        self.height_rules.resize(len, SizeRules::EMPTY);
     }
 }
 
