@@ -59,7 +59,7 @@ impl<OT: 'static> Widget for RadioBoxBare<OT> {
 impl<OT: 'static> Layout for RadioBoxBare<OT> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.radiobox();
-        self.core_data_mut().rect.size = size;
+        self.core.rect.size = size;
         SizeRules::fixed(axis.extract_size(size))
     }
 
@@ -67,7 +67,7 @@ impl<OT: 'static> Layout for RadioBoxBare<OT> {
         let rect = align
             .complete(Align::Centre, Align::Centre, self.rect().size)
             .apply(rect);
-        self.core_data_mut().rect = rect;
+        self.core.rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {

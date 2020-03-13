@@ -292,7 +292,7 @@ pub(crate) fn derive(
         ) {
             use kas::{WidgetCore, Widget};
             use kas::layout::{Margins, RulesSetter};
-            self.core_data_mut().rect = rect;
+            self.core.rect = rect;
 
             let mut setter = <Self as kas::LayoutData>::Setter::new(
                 rect,

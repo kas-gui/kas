@@ -155,9 +155,9 @@ impl<G: 'static> Layout for EditBox<G> {
         let rules = SizeRules::fixed(axis.extract_size(sides.0 + sides.1 + margin))
             + size_handle.text_bound(&self.text, class, axis);
         if axis.is_horizontal() {
-            self.core_data_mut().rect.size.0 = rules.ideal_size();
+            self.core.rect.size.0 = rules.ideal_size();
         } else {
-            self.core_data_mut().rect.size.1 = rules.ideal_size();
+            self.core.rect.size.1 = rules.ideal_size();
         }
         rules
     }
@@ -177,7 +177,7 @@ impl<G: 'static> Layout for EditBox<G> {
             pos: rect.pos + sides.0,
             size: rect.size - (sides.0 + sides.1),
         };
-        self.core_data_mut().rect = rect;
+        self.core.rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {

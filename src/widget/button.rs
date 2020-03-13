@@ -47,9 +47,9 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
         let rules = SizeRules::fixed(axis.extract_size(sides.0 + sides.1 + margin))
             + size_handle.text_bound(&self.label, TextClass::Button, axis);
         if axis.is_horizontal() {
-            self.core_data_mut().rect.size.0 = rules.ideal_size();
+            self.core.rect.size.0 = rules.ideal_size();
         } else {
-            self.core_data_mut().rect.size.1 = rules.ideal_size();
+            self.core.rect.size.1 = rules.ideal_size();
         }
         rules
     }
@@ -58,7 +58,7 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
         let rect = align
             .complete(Align::Stretch, Align::Stretch, self.rect().size)
             .apply(rect);
-        self.core_data_mut().rect = rect;
+        self.core.rect = rect;
 
         // Add a margin around the button.
         // TODO: may be better to add margins in layout.
