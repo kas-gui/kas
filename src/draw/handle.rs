@@ -41,6 +41,20 @@ impl Default for TextClass {
 /// in order to provide sizing information of the elements drawn by
 /// [`DrawHandle`].
 pub trait SizeHandle {
+    /// Get the scale (DPI) factor
+    ///
+    /// "Traditional" PC screens have a scale factor of 1; high-DPI screens
+    /// may have a factor of 2 or higher; this may be fractional. It is
+    /// recommended to calculate sizes as follows:
+    /// ```
+    /// # let scale_factor = 1.5f32;
+    /// let size = (100.0 * scale_factor).round() as u32;
+    /// ```
+    ///
+    /// This value may change during a program's execution (e.g. when a window
+    /// is moved to a different monitor).
+    fn scale_factor(&self) -> f32;
+
     /// Size of a frame around child widget(s)
     ///
     /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
@@ -187,6 +201,10 @@ pub trait DrawHandle {
 }
 
 impl<S: SizeHandle> SizeHandle for Box<S> {
+    fn scale_factor(&self) -> f32 {
+        self.deref().scale_factor()
+    }
+
     fn outer_frame(&self) -> (Size, Size) {
         self.deref().outer_frame()
     }
@@ -230,6 +248,10 @@ impl<S> SizeHandle for stack_dst::ValueA<dyn SizeHandle, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
+    fn scale_factor(&self) -> f32 {
+        self.deref().scale_factor()
+    }
+
     fn outer_frame(&self) -> (Size, Size) {
         self.deref().outer_frame()
     }

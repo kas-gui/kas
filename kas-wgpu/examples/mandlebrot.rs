@@ -405,12 +405,13 @@ struct Mandlebrot {
 }
 
 impl Layout for Mandlebrot {
-    fn size_rules(&mut self, _: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
-        let size = match a.is_horizontal() {
-            true => 750,
-            false => 500,
-        };
-        SizeRules::new(size, size, (0, 0), StretchPolicy::Maximise)
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
+        let size = (match a.is_horizontal() {
+            true => 300.0,
+            false => 200.0,
+        } * size_handle.scale_factor())
+        .round() as u32;
+        SizeRules::new(size, size * 3, (0, 0), StretchPolicy::Maximise)
     }
 
     #[inline]
