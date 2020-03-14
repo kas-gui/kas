@@ -919,13 +919,16 @@ impl<'a> Manager<'a> {
     {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
         trace!("Event: {:?}", event);
+        
+        // Note: since <W as Handler>::Msg = VoidMsg, only two values of
+        // Response are possible: None and Unhandled. We don't have any use for
+        // Unhandled events here, so we can freely ignore all responses.
 
-        let response = match event {
+        match event {
             // Resized(size) [handled by toolkit]
             // Moved(position)
             CloseRequested => {
                 self.send_action(TkAction::Close);
-                Response::None
             }
             // Destroyed
             // DroppedFile(PathBuf),
@@ -934,9 +937,7 @@ impl<'a> Manager<'a> {
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = self.mgr.char_focus {
                     let ev = Event::Action(Action::ReceivedCharacter(c));
-                    widget.handle(self, id, ev)
-                } else {
-                    Response::None
+                    let _ = widget.handle(self, id, ev);
                 }
             }
             // Focused(bool),
@@ -946,14 +947,12 @@ impl<'a> Manager<'a> {
                     (_, ElementState::Pressed, Some(vkey)) if char_focus && !is_synthetic => match vkey {
                         VirtualKeyCode::Escape => {
                             self.set_char_focus(None);
-                            Response::None
                         }
-                        _ => Response::None,
+                        _ => (),
                     },
                     (scancode, ElementState::Pressed, Some(vkey)) if !char_focus && !is_synthetic => match (vkey, self.mgr.nav_focus) {
                         (VirtualKeyCode::Tab, _) => {
                             self.next_nav_focus(widget.as_widget_mut());
-                            Response::None
                         }
                         (VirtualKeyCode::Space, Some(nav_id)) |
                         (VirtualKeyCode::Return, Some(nav_id)) |
@@ -962,11 +961,10 @@ impl<'a> Manager<'a> {
                             self.add_key_event(scancode, nav_id);
 
                             let ev = Event::Action(Action::Activate);
-                            widget.handle(self, nav_id, ev)
+                            let _ = widget.handle(self, nav_id, ev);
                         }
                         (VirtualKeyCode::Escape, Some(_)) => {
                             self.unset_nav_focus();
-                            Response::None
                         }
                         (vkey @ _, _) => {
                             if let Some(id) = self.mgr.accel_keys.get(&vkey).cloned() {
@@ -974,15 +972,14 @@ impl<'a> Manager<'a> {
                                 self.add_key_event(scancode, id);
 
                                 let ev = Event::Action(Action::Activate);
-                                widget.handle(self, id, ev)
-                            } else { Response::None }
+                                let _ = widget.handle(self, id, ev);
+                            }
                         }
                     },
                     (scancode, ElementState::Released, _) => {
                         self.remove_key_event(scancode);
-                        Response::None
                     }
-                    _ => Response::None,
+                    _ => (),
                 }
             }
             CursorMoved {
@@ -994,32 +991,28 @@ impl<'a> Manager<'a> {
                 // Update hovered widget
                 self.set_hover(widget, widget.find_id(coord));
 
-                let r = if let Some(grab) = self.mouse_grab() {
+                if let Some(grab) = self.mouse_grab() {
                     let delta = coord - self.mgr.last_mouse_coord;
                     if grab.mode == GrabMode::Grab {
                         let source = PressSource::Mouse(grab.button);
                         let ev = Event::PressMove { source, coord, delta };
-                        widget.handle(self, grab.start_id, ev)
+                        let _ = widget.handle(self, grab.start_id, ev);
                     } else {
                         if let Some(pan) = self.mgr.pan_grab.get_mut(grab.pan_grab.0 as usize) {
                             pan.coords[grab.pan_grab.1 as usize].1 = coord;
                         }
-                        Response::None
                     }
                 } else {
                     // We don't forward move events without a grab
-                    Response::None
-                };
+                }
 
                 self.mgr.last_mouse_coord = coord;
-                r
             }
             // CursorEntered { .. },
             CursorLeft { .. } => {
                 // Set a fake coordinate off the window
                 self.mgr.last_mouse_coord = Coord(-1, -1);
                 self.set_hover(widget, None);
-                Response::None
             }
             MouseWheel { delta, .. } => {
                 let action = Action::Scroll(match delta {
@@ -1028,9 +1021,7 @@ impl<'a> Manager<'a> {
                         ScrollDelta::PixelDelta(Coord::from_logical(pos, self.mgr.dpi_factor)),
                 });
                 if let Some(id) = self.mgr.hover {
-                    widget.handle(self, id, Event::Action(action))
-                } else {
-                    Response::None
+                    let _ = widget.handle(self, id, Event::Action(action));
                 }
             }
             MouseInput {
@@ -1042,7 +1033,7 @@ impl<'a> Manager<'a> {
                 let source = PressSource::Mouse(button);
 
                 if let Some(grab) = self.mouse_grab() {
-                    let r = match grab.mode {
+                    match grab.mode {
                         GrabMode::Grab => {
                             // Mouse grab active: send events there
                             let ev = match state {
@@ -1053,26 +1044,21 @@ impl<'a> Manager<'a> {
                                     coord,
                                 },
                             };
-                            widget.handle(self, grab.start_id, ev)
+                            let _ = widget.handle(self, grab.start_id, ev);
                         }
                         // Pan events do not receive Start/End notifications
-                        _ => Response::None,
+                        _ => (),
                     };
 
                     if state == ElementState::Released {
                         self.end_mouse_grab(button);
                     }
-                    r
                 } else if let Some(id) = self.mgr.hover {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
                         let ev = Event::PressStart { source, coord };
-                        widget.handle(self, id, ev)
-                    } else {
-                        Response::None
+                        let _ = widget.handle(self, id, ev);
                     }
-                } else {
-                    Response::None
                 }
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
@@ -1085,9 +1071,7 @@ impl<'a> Manager<'a> {
                     TouchPhase::Started => {
                         if let Some(id) = widget.find_id(coord) {
                             let ev = Event::PressStart { source, coord };
-                            widget.handle(self, id, ev)
-                        } else {
-                            Response::None
+                            let _ = widget.handle(self, id, ev);
                         }
                     }
                     TouchPhase::Moved => {
@@ -1122,16 +1106,13 @@ impl<'a> Manager<'a> {
                             if redraw {
                                 self.send_action(TkAction::Redraw);
                             }
-                            widget.handle(self, id, action)
+                            let _ = widget.handle(self, id, action);
                         } else if let Some(pan_grab) = pan_grab {
                             if (pan_grab.1 as usize) < MAX_PAN_GRABS {
                                 if let Some(pan) = self.mgr.pan_grab.get_mut(pan_grab.0 as usize) {
                                     pan.coords[pan_grab.1 as usize].1 = coord;
                                 }
                             }
-                            Response::None
-                        } else {
-                            Response::None
                         }
                     }
                     TouchPhase::Ended => {
@@ -1145,13 +1126,10 @@ impl<'a> Manager<'a> {
                                 if let Some(cur_id) = grab.cur_id {
                                     self.redraw(cur_id);
                                 }
-                                widget.handle(self, grab.start_id, action)
+                                let _ = widget.handle(self, grab.start_id, action);
                             } else {
                                 self.mgr.remove_pan_grab(grab.pan_grab);
-                                Response::None
                             }
-                        } else {
-                            Response::None
                         }
                     }
                     TouchPhase::Cancelled => {
@@ -1164,23 +1142,13 @@ impl<'a> Manager<'a> {
                             if let Some(cur_id) = grab.cur_id {
                                 self.redraw(cur_id);
                             }
-                            widget.handle(self, grab.start_id, action)
-                        } else {
-                            Response::None
+                            let _ = widget.handle(self, grab.start_id, action);
                         }
                     }
                 }
             }
             // HiDpiFactorChanged(factor) [handled by toolkit]
-            _ => Response::None,
-        };
-
-        match response {
-            Response::None => (),
-            Response::Unhandled(_) => {
-                // we can safely ignore unhandled events here
-            }
-            Response::Msg(_) => unreachable!(),
-        };
+            _ => (),
+        }
     }
 }
