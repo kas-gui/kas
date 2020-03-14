@@ -950,25 +950,25 @@ impl<'a> Manager<'a> {
                         }
                         _ => Response::None,
                     },
-                    (scancode, ElementState::Pressed, Some(vkey)) if !char_focus && !is_synthetic => match vkey {
-                        VirtualKeyCode::Tab => {
+                    (scancode, ElementState::Pressed, Some(vkey)) if !char_focus && !is_synthetic => match (vkey, self.mgr.nav_focus) {
+                        (VirtualKeyCode::Tab, _) => {
                             self.next_nav_focus(widget.as_widget_mut());
                             Response::None
                         }
-                        VirtualKeyCode::Space | VirtualKeyCode::Return | VirtualKeyCode::NumpadEnter => {
-                            if let Some(id) = self.mgr.nav_focus {
-                                // Add to key_events for visual feedback
-                                self.add_key_event(scancode, id);
+                        (VirtualKeyCode::Space, Some(nav_id)) |
+                        (VirtualKeyCode::Return, Some(nav_id)) |
+                        (VirtualKeyCode::NumpadEnter, Some(nav_id)) => {
+                            // Add to key_events for visual feedback
+                            self.add_key_event(scancode, nav_id);
 
-                                let ev = Event::Action(Action::Activate);
-                                widget.handle(self, id, ev)
-                            } else { Response::None }
+                            let ev = Event::Action(Action::Activate);
+                            widget.handle(self, nav_id, ev)
                         }
-                        VirtualKeyCode::Escape => {
+                        (VirtualKeyCode::Escape, Some(_)) => {
                             self.unset_nav_focus();
                             Response::None
                         }
-                        vkey @ _ => {
+                        (vkey @ _, _) => {
                             if let Some(id) = self.mgr.accel_keys.get(&vkey).cloned() {
                                 // Add to key_events for visual feedback
                                 self.add_key_event(scancode, id);
