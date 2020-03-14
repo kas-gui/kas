@@ -104,6 +104,22 @@ impl Default for Align {
 }
 
 /// Partial alignment information provided by the parent
+///
+/// *Hints* are optional. Widgets are expected to substitute default values
+/// where hints are not provided.
+///
+/// The [`AlignHints::complete`] method is provided to conveniently apply
+/// alignment to a widget within [`kas::Layout::set_rect`]:
+/// ```
+/// # use kas::{Align, AlignHints, geom::*};
+/// # let align = AlignHints::NONE;
+/// # let rect = Rect::new(Coord::ZERO, Size::ZERO);
+/// let pref_size = Size(30, 20); // usually size comes from SizeHandle
+/// let rect = align
+///     .complete(Align::Stretch, Align::Centre, pref_size)
+///     .apply(rect);
+/// // self.core.rect = rect;
+/// ```
 #[derive(Debug, Default)]
 pub struct AlignHints {
     pub horiz: Option<Align>,

@@ -145,6 +145,8 @@ pub trait WidgetCore: fmt::Debug {
 ///
 /// This trait contains methods concerned with positioning of contents, other
 /// than those in [`event::Handler`].
+///
+/// For a description of the widget size model, see [`SizeRules`].
 pub trait Layout: WidgetCore {
     /// Get size rules for the given axis.
     ///

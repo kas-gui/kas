@@ -66,10 +66,65 @@ impl Default for StretchPolicy {
 
 /// Widget sizing information
 ///
-/// Return value of [`kas::Layout::size_rules`].
+/// This is the return value of [`kas::Layout::size_rules`] and is used to
+/// describe size and margin requirements for widgets. This type only concerns
+/// size requirements along a *single* axis.
 ///
-/// This struct conveys properties such as the minimum size and preferred size
-/// of the widgets being queried.
+/// All units are in pixels. Widgets should not hard-code size values but should
+/// get their sizes from the [`kas::draw::SizeHandle`] trait, which handles
+/// scaling for DPI factor.
+///
+/// ### Sizes
+///
+/// The widget size model is simple: a rectangular box, plus a margin on each
+/// side.Widget sizes are calculated from available space and the `SizeRules`;
+/// these rules currently include:
+///
+/// - the minimum size required for correct operation
+/// - the preferred / ideal size
+/// - a [`StretchPolicy`]
+///
+/// Available space is distributed between widgets depending on whether the
+/// space is below the minimum, between the minimum and preferred, or above
+/// the preferred size, with widgets with the highest [`StretchPolicy`] being
+/// prioritised extra space. Usually rows/columns will be stretched to use all
+/// available space, the exception being when none have a policy higher than
+/// [`StretchPolicy::Fixed`]. When expanding a row/column, the highest stretch
+/// policy of all contents will be used.
+///
+/// ### Margins
+///
+/// Required margin sizes are handled separately for each side of a widget.
+/// Since [`SizeRules`] concerns only one axis, it stores only two margin sizes:
+/// "pre" (left/top) and "post" (right/bottom). These are stored as `u16` values
+/// on the assumption that no margin need exceed 65536.
+///
+/// When widgets are placed next to each other, their margins may be combined;
+/// e.g. if a widget with margin of 6px is followed by another with margin 2px,
+/// the required margin between the two is the maximum, 6px.
+///
+/// Only the layout engine and parent widgets need consider margins (beyond
+/// their specification). For these cases, one needs to be aware that due to
+/// margin-merging behaviour, one cannot simply "add" two `SizeRules`. Instead,
+/// when placing one widget next to another, use [`SizeRules::append`] or
+/// [`SizeRules::appended`]; when placing a widget within a frame, use
+/// [`SizeRules::surrounded_by`]. When calculating the size of a sequence of
+/// widgets, one may use the [`Sum`] implementation (this assumes that the
+/// sequence is in left-to-right or top-to-bottom order).
+///
+/// ### Alignment
+///
+/// `SizeRules` concerns calculations of size requirements, which the layout
+/// engine uses to assign each widget a [`Rect`]; it is up to the widget itself
+/// to either fill this rect or align itself within the given space.
+/// See [`kas::Layout::set_rect`] for more information.
+///
+/// For widgets with a stretch policy of [`StretchPolicy::Fixed`], it is still
+/// possible for layout code to assign a size larger than the preference. It is
+/// up to the widget to align itself within this space: see
+/// [`kas::Layout::set_rect`] and [`kas::AlignHints`].
+///
+/// [`Rect`]: kas::geom::Rect
 #[derive(Copy, Clone, Debug, Default)]
 pub struct SizeRules {
     // minimum good size
