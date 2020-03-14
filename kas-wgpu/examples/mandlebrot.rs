@@ -405,12 +405,13 @@ struct Mandlebrot {
 }
 
 impl Layout for Mandlebrot {
-    fn size_rules(&mut self, _: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
-        let size = match a.is_horizontal() {
-            true => 750,
-            false => 500,
-        };
-        SizeRules::new(size, size, StretchPolicy::Maximise)
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
+        let size = (match a.is_horizontal() {
+            true => 300.0,
+            false => 200.0,
+        } * size_handle.scale_factor())
+        .round() as u32;
+        SizeRules::new(size, size * 3, (0, 0), StretchPolicy::Maximise)
     }
 
     #[inline]
@@ -514,7 +515,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let mbrot = Mandlebrot::new();
-    // TODO: move slider below iters — but currently grids with cell-spans can't handle this correctly!
     let slider = Slider::new(0, 256).with_value(64);
 
     let window = make_widget! {
@@ -523,8 +523,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[handler(msg = event::VoidMsg)]
         struct {
             #[widget(cspan=2)] label: Label = Label::new(mbrot.loc()),
-            #[widget(row=2, halign=centre)] iters: Label = Label::new("64").reserve("000"),
-            #[widget(row=1, handler = iter)] _: Slider<i32, Vertical> = slider,
+            #[widget(row=1, halign=centre)] iters: Label = Label::new("64").reserve("000"),
+            #[widget(row=2, handler = iter)] _: Slider<i32, Vertical> = slider,
             #[widget(col=1, row=1, rspan=2, handler = mbrot)] mbrot: Mandlebrot = mbrot,
         }
         impl {

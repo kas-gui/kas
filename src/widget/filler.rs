@@ -25,7 +25,7 @@ pub struct Filler {
 
 impl Layout for Filler {
     fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
-        SizeRules::new(0, 0, self.policy)
+        SizeRules::empty(self.policy)
     }
 
     fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState) {}

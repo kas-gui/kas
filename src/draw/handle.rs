@@ -10,7 +10,7 @@ use std::ops::{Deref, DerefMut};
 use kas::draw::{Draw, Region};
 use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::{Align, Direction};
 
 /// Class of text drawn
@@ -41,6 +41,20 @@ impl Default for TextClass {
 /// in order to provide sizing information of the elements drawn by
 /// [`DrawHandle`].
 pub trait SizeHandle {
+    /// Get the scale (DPI) factor
+    ///
+    /// "Traditional" PC screens have a scale factor of 1; high-DPI screens
+    /// may have a factor of 2 or higher; this may be fractional. It is
+    /// recommended to calculate sizes as follows:
+    /// ```
+    /// # let scale_factor = 1.5f32;
+    /// let size = (100.0 * scale_factor).round() as u32;
+    /// ```
+    ///
+    /// This value may change during a program's execution (e.g. when a window
+    /// is moved to a different monitor).
+    fn scale_factor(&self) -> f32;
+
     /// Size of a frame around child widget(s)
     ///
     /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
@@ -52,7 +66,7 @@ pub trait SizeHandle {
     fn inner_margin(&self) -> Size;
 
     /// The margin between UI elements, where desired
-    fn outer_margin(&self) -> Size;
+    fn outer_margins(&self) -> Margins;
 
     /// The height of a line of text
     fn line_height(&self, class: TextClass) -> u32;
@@ -187,14 +201,18 @@ pub trait DrawHandle {
 }
 
 impl<S: SizeHandle> SizeHandle for Box<S> {
+    fn scale_factor(&self) -> f32 {
+        self.deref().scale_factor()
+    }
+
     fn outer_frame(&self) -> (Size, Size) {
         self.deref().outer_frame()
     }
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
     }
-    fn outer_margin(&self) -> Size {
-        self.deref().outer_margin()
+    fn outer_margins(&self) -> Margins {
+        self.deref().outer_margins()
     }
 
     fn line_height(&self, class: TextClass) -> u32 {
@@ -230,14 +248,18 @@ impl<S> SizeHandle for stack_dst::ValueA<dyn SizeHandle, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
+    fn scale_factor(&self) -> f32 {
+        self.deref().scale_factor()
+    }
+
     fn outer_frame(&self) -> (Size, Size) {
         self.deref().outer_frame()
     }
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
     }
-    fn outer_margin(&self) -> Size {
-        self.deref().outer_margin()
+    fn outer_margins(&self) -> Margins {
+        self.deref().outer_margins()
     }
 
     fn line_height(&self, class: TextClass) -> u32 {

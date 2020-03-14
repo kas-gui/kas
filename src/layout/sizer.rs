@@ -43,15 +43,7 @@ pub trait RulesSolver {
     /// Called at the end to output [`SizeRules`].
     ///
     /// Note that this does not include margins!
-    fn finish<ColIter, RowIter>(
-        self,
-        storage: &mut Self::Storage,
-        col_spans: ColIter,
-        row_spans: RowIter,
-    ) -> SizeRules
-    where
-        ColIter: Iterator<Item = (usize, usize, usize)>,
-        RowIter: Iterator<Item = (usize, usize, usize)>;
+    fn finish(self, storage: &mut Self::Storage) -> SizeRules;
 }
 
 /// Resolves a [`RulesSolver`] solution for each child
@@ -92,9 +84,17 @@ pub fn solve_and_set<L: Widget>(
     // We call size_rules not because we want the result, but because our
     // spec requires that we do so before calling set_rect.
     let w = widget.size_rules(size_handle, AxisInfo::new(Horizontal, None));
-    let h = widget.size_rules(size_handle, AxisInfo::new(Vertical, Some(size.0)));
+    let m = w.margins();
+    let x = m.0 as i32;
+    let width = size.0 - (m.0 + m.1) as u32;
 
-    let pos = Coord(0, 0);
+    let h = widget.size_rules(size_handle, AxisInfo::new(Vertical, Some(width)));
+    let m = h.margins();
+    let y = m.0 as i32;
+    let height = size.1 - (m.0 + m.1) as u32;
+
+    let pos = Coord(x, y);
+    let size = Size(width, height);
     widget.set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
 
     trace!(

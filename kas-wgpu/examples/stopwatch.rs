@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use kas::class::HasText;
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
-use kas::widget::{Label, TextButton, Window};
+use kas::widget::{Frame, Label, TextButton, Window};
 use kas::{ThemeApi, Widget, WidgetCore};
 
 #[derive(Clone, Debug, VoidMsg)]
@@ -28,22 +28,7 @@ fn make_window() -> Box<dyn kas::Window> {
         #[layout(horizontal)]
         #[handler(msg = VoidMsg)]
         struct {
-            #[widget] display: impl HasText = make_widget!{
-                #[widget]
-                #[layout(single, frame)]
-                #[handler(msg = VoidMsg)]
-                struct {
-                    #[widget] display: Label = Label::from("0.000"),
-                }
-                impl HasText {
-                    fn get_text(&self) -> &str {
-                        self.display.get_text()
-                    }
-                    fn set_string(&mut self, mgr: &mut Manager, text: String) {
-                        self.display.set_text(mgr, text);
-                    }
-                }
-            },
+            #[widget] display: impl HasText = Frame::new(Label::from("0.000")),
             #[widget(handler = handle_button)] b_reset = TextButton::new("reset", Control::Reset),
             #[widget(handler = handle_button)] b_start = TextButton::new("start / stop", Control::Start),
             saved: Duration = Duration::default(),

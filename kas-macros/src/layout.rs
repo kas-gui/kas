@@ -3,8 +3,6 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-use std::cmp::Ordering;
-
 use crate::args::{Child, LayoutArgs, LayoutType};
 use proc_macro2::TokenStream;
 use quote::{quote, TokenStreamExt};
@@ -50,8 +48,8 @@ pub(crate) fn derive(
 
     let mut cols: usize = 0;
     let mut rows: usize = 0;
-    let mut col_spans: Vec<(u32, u32, u32)> = vec![];
-    let mut row_spans: Vec<(u32, u32, u32)> = vec![];
+    let mut col_spans: usize = 0;
+    let mut row_spans: usize = 0;
     let mut size = TokenStream::new();
     let mut set_rect = TokenStream::new();
     let mut draw = TokenStream::new();
@@ -83,19 +81,19 @@ pub(crate) fn derive(
                 let (r0, r1) = (pos.1, pos.1 + pos.3);
                 cols = cols.max(c1 as usize);
                 rows = rows.max(r1 as usize);
-                let col = c0 as usize;
-                let row = r0 as usize;
-                let col_span_index = get_span(&mut col_spans, c0, c1);
-                let row_span_index = get_span(&mut row_spans, r0, r1);
+                if pos.2 > 1 {
+                    col_spans += 1;
+                }
+                if pos.3 > 1 {
+                    row_spans += 1;
+                }
 
                 quote! {
                     kas::layout::GridChildInfo {
-                        col: #col,
-                        col_end: #c1 as usize,
-                        col_span_index: #col_span_index,
-                        row: #row,
-                        row_end: #r1 as usize,
-                        row_span_index: #row_span_index,
+                        col: #c0,
+                        col_end: #c1,
+                        row: #r0,
+                        row_end: #r1,
                     }
                 }
             }
@@ -136,19 +134,6 @@ pub(crate) fn derive(
             } else
         });
     }
-
-    let num_col_spans = col_spans.len() as usize;
-    let num_row_spans = row_spans.len() as usize;
-
-    // sort by end column, then by start column in reverse order
-    col_spans.sort_by(|a, b| match a.1.cmp(&b.1) {
-        Ordering::Equal => a.0.cmp(&b.0).reverse(),
-        o @ _ => o,
-    });
-    row_spans.sort_by(|a, b| match a.1.cmp(&b.1) {
-        Ordering::Equal => a.0.cmp(&b.0).reverse(),
-        o @ _ => o,
-    });
 
     let dim = match layout.layout {
         LayoutType::Single => quote! { () },
@@ -210,8 +195,8 @@ pub(crate) fn derive(
             type Solver = kas::layout::GridSolver::<
                 #col_temp,
                 #row_temp,
-                [kas::layout::SizeRules; #num_col_spans],
-                [kas::layout::SizeRules; #num_row_spans],
+                [(kas::layout::SizeRules, u32, u32); #col_spans],
+                [(kas::layout::SizeRules, u32, u32); #row_spans],
                 Self::Data,
             >;
             type Setter = kas::layout::GridSetter::<
@@ -222,37 +207,6 @@ pub(crate) fn derive(
         },
     };
 
-    let size_post = match layout.layout {
-        LayoutType::Single | LayoutType::Horizontal | LayoutType::Vertical => quote! {
-            let mut rules = solver.finish(&mut #data, iter::empty(), iter::empty());
-        },
-        LayoutType::Grid => {
-            let mut horiz = quote! {};
-            let mut vert = quote! {};
-            for span in &col_spans {
-                let start = span.0 as usize;
-                let end = span.1 as usize;
-                let ind = span.2 as usize;
-                horiz.append_all(quote! {
-                    .chain(iter::once((#start, #end, #ind)))
-                });
-            }
-            for span in &row_spans {
-                let start = span.0 as usize;
-                let end = span.1 as usize;
-                let ind = span.2 as usize;
-                vert.append_all(quote! {
-                    .chain(iter::once((#start, #end, #ind)))
-                });
-            }
-
-            quote! {
-                let mut rules = solver.finish(&mut #data,
-                    iter::empty() #horiz, iter::empty() # vert);
-            }
-        }
-    };
-
     let find_id_body = find_id_area.unwrap_or_else(|| {
         quote! {
             #find_id_else if self.rect().contains(coord) {
@@ -260,8 +214,6 @@ pub(crate) fn derive(
             }
         }
     });
-
-    let is_frame = layout.is_frame;
 
     let fns = quote! {
         fn size_rules(
@@ -281,14 +233,7 @@ pub(crate) fn derive(
                 &mut #data,
             );
             #size
-            #size_post
-
-            if #is_frame {
-                let sizes = size_handle.outer_frame();
-                rules = rules + axis.extract_size(sizes.0) + axis.extract_size(sizes.1);
-            }
-
-            rules
+            solver.finish(&mut #data)
         }
 
         fn set_rect(
@@ -299,16 +244,10 @@ pub(crate) fn derive(
         ) {
             use kas::{WidgetCore, Widget};
             use kas::layout::{Margins, RulesSetter};
-            self.core_data_mut().rect = rect;
+            self.core.rect = rect;
 
-            let margins = if #is_frame {
-                Margins::outer_frame(size_handle.outer_frame())
-            } else {
-                Margins::ZERO
-            };
             let mut setter = <Self as kas::LayoutData>::Setter::new(
                 rect,
-                margins,
                 #dim,
                 &mut #data,
             );
@@ -329,9 +268,6 @@ pub(crate) fn derive(
             mgr: &kas::event::ManagerState
         ) {
             use kas::{geom::Coord, WidgetCore};
-            if #is_frame {
-                draw_handle.outer_frame(self.core_data().rect);
-            }
 
             let rect = draw_handle.target_rect();
             let pos0 = rect.pos;
@@ -341,20 +277,4 @@ pub(crate) fn derive(
     };
 
     Ok((fns, data_type))
-}
-
-fn get_span(spans: &mut Vec<(u32, u32, u32)>, begin: u32, end: u32) -> usize {
-    if end <= begin + 1 {
-        return std::usize::MAX;
-    }
-
-    for s in spans.iter() {
-        if s.0 == begin && s.1 == end {
-            return s.2 as usize;
-        }
-    }
-
-    let i = spans.len();
-    spans.push((begin, end, i as u32));
-    i
 }

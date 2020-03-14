@@ -30,9 +30,9 @@ impl Layout for Label {
         let text = self.reserve.unwrap_or(&self.text);
         let rules = size_handle.text_bound(text, TextClass::Label, axis);
         if axis.is_horizontal() {
-            self.core_data_mut().rect.size.0 = rules.ideal_size();
+            self.core.rect.size.0 = rules.ideal_size();
         } else {
-            self.core_data_mut().rect.size.1 = rules.ideal_size();
+            self.core.rect.size.1 = rules.ideal_size();
         }
         rules
     }
@@ -42,7 +42,7 @@ impl Layout for Label {
             align.horiz.unwrap_or(Align::Begin),
             align.vert.unwrap_or(Align::Centre),
         );
-        self.core_data_mut().rect = rect;
+        self.core.rect = rect;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState) {

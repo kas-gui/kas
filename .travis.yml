@@ -8,7 +8,7 @@ script:
   - cargo test --all-features
   - cargo test --manifest-path kas-macros/Cargo.toml --all-features
   - cargo test --manifest-path kas-theme/Cargo.toml --all-features
-  - cargo test --manifest-path kas-wgpu/Cargo.toml
+  - travis_wait cargo test --manifest-path kas-wgpu/Cargo.toml
   - cargo test --manifest-path kas-wgpu/Cargo.toml --features stack_dst
   - cargo test --manifest-path kas-wgpu/Cargo.toml --all-features
   - cargo doc --features winit,stack_dst --no-deps

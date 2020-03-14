@@ -113,6 +113,7 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
 pub struct EditBox<G: 'static> {
     #[core]
     core: CoreData,
+    // During sizing, text_rect is used for the frame+inner-margin dimensions
     text_rect: Rect,
     editable: bool,
     multi_line: bool,
@@ -145,24 +146,36 @@ impl<G: 'static> Widget for EditBox<G> {
 
 impl<G: 'static> Layout for EditBox<G> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        let frame_sides = size_handle.edit_surround();
+        let inner = size_handle.inner_margin();
+        let frame_offset = frame_sides.0 + inner;
+        let frame_size = frame_offset + frame_sides.1 + inner;
+
+        let margins = size_handle.outer_margins();
+        let frame_rules = SizeRules::extract_fixed(axis.dir(), frame_size, margins);
+
         let class = if self.multi_line {
             TextClass::EditMulti
         } else {
             TextClass::Edit
         };
-        let sides = size_handle.edit_surround();
-        let margin = size_handle.inner_margin();
-        let rules = SizeRules::fixed(axis.extract_size(sides.0 + sides.1 + margin))
-            + size_handle.text_bound(&self.text, class, axis);
+        let content_rules = size_handle.text_bound(&self.text, class, axis);
+        let m = content_rules.margins();
+
+        let rules = content_rules.surrounded_by(frame_rules, true);
         if axis.is_horizontal() {
-            self.core_data_mut().rect.size.0 = rules.ideal_size();
+            self.core.rect.size.0 = rules.ideal_size();
+            self.text_rect.pos.0 = frame_offset.0 as i32 + m.0 as i32;
+            self.text_rect.size.0 = frame_size.0 + (m.0 + m.1) as u32;
         } else {
-            self.core_data_mut().rect.size.1 = rules.ideal_size();
+            self.core.rect.size.1 = rules.ideal_size();
+            self.text_rect.pos.1 = frame_offset.1 as i32 + m.0 as i32;
+            self.text_rect.size.1 = frame_size.1 + (m.0 + m.1) as u32;
         }
         rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
         let valign = if self.multi_line {
             Align::Stretch
         } else {
@@ -172,12 +185,9 @@ impl<G: 'static> Layout for EditBox<G> {
             .complete(Align::Stretch, valign, self.rect().size)
             .apply(rect);
 
-        let sides = size_handle.edit_surround();
-        self.text_rect = Rect {
-            pos: rect.pos + sides.0,
-            size: rect.size - (sides.0 + sides.1),
-        };
-        self.core_data_mut().rect = rect;
+        self.core.rect = rect;
+        self.text_rect.pos += rect.pos;
+        self.text_rect.size = rect.size - self.text_rect.size;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {

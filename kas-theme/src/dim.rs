@@ -12,7 +12,7 @@ use std::f32;
 
 use kas::draw::{self, DrawText, FontId, TextClass};
 use kas::geom::{Size, Vec2};
-use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
+use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
 use kas::Direction::{Horizontal, Vertical};
 
 /// Parameterisation of [`Dimensions`]
@@ -38,6 +38,7 @@ pub struct DimensionsParams {
 pub struct Dimensions {
     pub font_id: FontId,
     pub font_scale: f32,
+    pub scale_factor: f32,
     pub line_height: u32,
     pub min_line_length: u32,
     pub max_line_length: u32,
@@ -50,23 +51,29 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-    pub fn new(params: DimensionsParams, font_id: FontId, font_size: f32, dpi_factor: f32) -> Self {
-        let font_scale = font_size * dpi_factor;
+    pub fn new(
+        params: DimensionsParams,
+        font_id: FontId,
+        font_size: f32,
+        scale_factor: f32,
+    ) -> Self {
+        let font_scale = font_size * scale_factor;
         let line_height = font_scale.round() as u32;
-        let margin = (params.margin * dpi_factor).round() as u32;
-        let frame = (params.frame_size * dpi_factor).round() as u32;
+        let margin = (params.margin * scale_factor).round() as u32;
+        let frame = (params.frame_size * scale_factor).round() as u32;
         Dimensions {
             font_id,
             font_scale,
+            scale_factor,
             line_height,
             min_line_length: line_height * 10,
             max_line_length: line_height * 40,
             margin,
             frame,
-            button_frame: (params.button_frame * dpi_factor).round() as u32,
+            button_frame: (params.button_frame * scale_factor).round() as u32,
             checkbox: (font_scale * 0.7).round() as u32 + 2 * (margin + frame),
-            scrollbar: Size::from(params.scrollbar_size * dpi_factor),
-            slider: Size::from(params.slider_size * dpi_factor),
+            scrollbar: Size::from(params.scrollbar_size * scale_factor),
+            slider: Size::from(params.slider_size * scale_factor),
         }
     }
 }
@@ -77,9 +84,9 @@ pub struct DimensionsWindow {
 }
 
 impl DimensionsWindow {
-    pub fn new(dims: DimensionsParams, font_id: FontId, font_size: f32, dpi_factor: f32) -> Self {
+    pub fn new(dims: DimensionsParams, font_id: FontId, font_size: f32, scale_factor: f32) -> Self {
         DimensionsWindow {
-            dims: Dimensions::new(dims, font_id, font_size, dpi_factor),
+            dims: Dimensions::new(dims, font_id, font_size, scale_factor),
         }
     }
 }
@@ -118,6 +125,10 @@ impl<'a, Draw> SizeHandle<'a, Draw> {
 }
 
 impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
+    fn scale_factor(&self) -> f32 {
+        self.dims.scale_factor
+    }
+
     fn outer_frame(&self) -> (Size, Size) {
         let f = self.dims.frame as u32;
         (Size::uniform(f), Size::uniform(f))
@@ -127,8 +138,8 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
         Size::uniform(self.dims.margin as u32)
     }
 
-    fn outer_margin(&self) -> Size {
-        Size::uniform(self.dims.margin as u32)
+    fn outer_margins(&self) -> Margins {
+        Margins::uniform(self.dims.margin as u16)
     }
 
     fn line_height(&self, _: TextClass) -> u32 {
@@ -160,7 +171,8 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
                 _ => bound.min(self.dims.min_line_length),
             };
             let ideal = bound.min(self.dims.max_line_length);
-            SizeRules::new(min, ideal, StretchPolicy::LowUtility)
+            let margins = (self.dims.margin as u16, self.dims.margin as u16);
+            SizeRules::new(min, ideal, margins, StretchPolicy::LowUtility)
         } else {
             let min = match class {
                 TextClass::EditMulti => line_height * 3,
@@ -171,7 +183,7 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
                 TextClass::Button | TextClass::Edit => StretchPolicy::Fixed,
                 _ => StretchPolicy::Filler,
             };
-            SizeRules::new(min, ideal, stretch)
+            SizeRules::new(min, ideal, (0, 0), stretch)
         }
     }
 
