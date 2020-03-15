@@ -387,10 +387,10 @@ impl ManagerState {
         self.nav_focus == Some(w_id)
     }
 
-    /// Get whether the widget is under the mouse or finger
+    /// Get whether the widget is under the mouse cursor
     #[inline]
     pub fn is_hovered(&self, w_id: WidgetId) -> bool {
-        self.hover == Some(w_id)
+        self.mouse_grab.is_none() && self.hover == Some(w_id)
     }
 
     /// Check whether the given widget is visually depressed
