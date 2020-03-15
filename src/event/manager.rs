@@ -1009,9 +1009,12 @@ impl<'a> Manager<'a> {
             }
             // CursorEntered { .. },
             CursorLeft { .. } => {
-                // Set a fake coordinate off the window
-                self.mgr.last_mouse_coord = Coord(-1, -1);
-                self.set_hover(widget, None);
+                if self.mouse_grab().is_none() {
+                    // If there's a mouse grab, we will continue to receive
+                    // coordinates; if not, set a fake coordinate off the window
+                    self.mgr.last_mouse_coord = Coord(-1, -1);
+                    self.set_hover(widget, None);
+                }
             }
             MouseWheel { delta, .. } => {
                 let action = Action::Scroll(match delta {
