@@ -919,7 +919,7 @@ impl<'a> Manager<'a> {
     {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
         trace!("Event: {:?}", event);
-        
+
         // Note: since <W as Handler>::Msg = VoidMsg, only two values of
         // Response are possible: None and Unhandled. We don't have any use for
         // Unhandled events here, so we can freely ignore all responses.
@@ -943,43 +943,42 @@ impl<'a> Manager<'a> {
             // Focused(bool),
             KeyboardInput { input, is_synthetic, .. } => {
                 let char_focus = self.mgr.char_focus.is_some();
-                match (input.scancode, input.state, input.virtual_keycode) {
-                    (_, ElementState::Pressed, Some(vkey)) if char_focus && !is_synthetic => match vkey {
-                        VirtualKeyCode::Escape => {
-                            self.set_char_focus(None);
-                        }
-                        _ => (),
-                    },
-                    (scancode, ElementState::Pressed, Some(vkey)) if !char_focus && !is_synthetic => match (vkey, self.mgr.nav_focus) {
-                        (VirtualKeyCode::Tab, _) => {
-                            self.next_nav_focus(widget.as_widget_mut());
-                        }
-                        (VirtualKeyCode::Space, Some(nav_id)) |
-                        (VirtualKeyCode::Return, Some(nav_id)) |
-                        (VirtualKeyCode::NumpadEnter, Some(nav_id)) => {
-                            // Add to key_events for visual feedback
-                            self.add_key_event(scancode, nav_id);
+                if input.state == ElementState::Pressed && !is_synthetic {
+                    if let Some(vkey) = input.virtual_keycode {
+                        if char_focus {
+                            match vkey {
+                                VirtualKeyCode::Escape => self.set_char_focus(None),
+                                _ => (),
+                            }
+                        } else {
+                            match (vkey, self.mgr.nav_focus) {
+                                (VirtualKeyCode::Tab, _) => {
+                                    self.next_nav_focus(widget.as_widget_mut());
+                                }
+                                (VirtualKeyCode::Space, Some(nav_id)) |
+                                (VirtualKeyCode::Return, Some(nav_id)) |
+                                (VirtualKeyCode::NumpadEnter, Some(nav_id))  => {
+                                    // Add to key_events for visual feedback
+                                    self.add_key_event(input.scancode, nav_id);
 
-                            let ev = Event::Action(Action::Activate);
-                            let _ = widget.handle(self, nav_id, ev);
-                        }
-                        (VirtualKeyCode::Escape, Some(_)) => {
-                            self.unset_nav_focus();
-                        }
-                        (vkey @ _, _) => {
-                            if let Some(id) = self.mgr.accel_keys.get(&vkey).cloned() {
-                                // Add to key_events for visual feedback
-                                self.add_key_event(scancode, id);
+                                    let ev = Event::Action(Action::Activate);
+                                    let _ = widget.handle(self, nav_id, ev);
+                                }
+                                (VirtualKeyCode::Escape, _) => self.unset_nav_focus(),
+                                (vkey, _) => {
+                                    if let Some(id) = self.mgr.accel_keys.get(&vkey).cloned() {
+                                        // Add to key_events for visual feedback
+                                        self.add_key_event(input.scancode, id);
 
-                                let ev = Event::Action(Action::Activate);
-                                let _ = widget.handle(self, id, ev);
+                                        let ev = Event::Action(Action::Activate);
+                                        let _ = widget.handle(self, id, ev);
+                                    }
+                                }
                             }
                         }
-                    },
-                    (scancode, ElementState::Released, _) => {
-                        self.remove_key_event(scancode);
                     }
-                    _ => (),
+                } else if input.state == ElementState::Released {
+                    self.remove_key_event(input.scancode);
                 }
             }
             CursorMoved {
