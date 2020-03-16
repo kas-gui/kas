@@ -45,7 +45,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     Control::Incr => self.n.saturating_add(1),
                     Control::Set => self.n,
                 };
-                self.edit.set_string(mgr, n.to_string());
+                self.edit.set_text(mgr, n.to_string());
                 self.n = n;
                 n.into()
             }

@@ -14,7 +14,7 @@ use crate::event::{self, Action, Manager, Response, VirtualKeyCode};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
+use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore};
 
 /// A push-button with a text label
 #[derive(Clone, Debug, Default, Widget)]
@@ -23,7 +23,7 @@ pub struct TextButton<M: Clone + Debug> {
     core: CoreData,
     keys: SmallVec<[VirtualKeyCode; 4]>,
     // text_rect: Rect,
-    label: String,
+    label: CowString,
     msg: M,
 }
 
@@ -72,7 +72,7 @@ impl<M: Clone + Debug> TextButton<M> {
     /// type supporting `Clone` is valid, though it is recommended to use a
     /// simple `Copy` type (e.g. an enum). Click actions must be implemented on
     /// the parent (or other ancestor).
-    pub fn new<S: Into<String>>(label: S, msg: M) -> Self {
+    pub fn new<S: Into<CowString>>(label: S, msg: M) -> Self {
         TextButton {
             core: Default::default(),
             keys: SmallVec::new(),
@@ -104,7 +104,7 @@ impl<M: Clone + Debug> HasText for TextButton<M> {
         &self.label
     }
 
-    fn set_string(&mut self, mgr: &mut Manager, text: String) {
+    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString) {
         self.label = text;
         mgr.redraw(self.id());
     }

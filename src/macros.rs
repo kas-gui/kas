@@ -226,7 +226,7 @@
 //!     #[layout(vertical)]
 //!     #[handler(msg = VoidMsg)]
 //!     struct {
-//!         #[widget] _ = Label::from("Widget Gallery"),
+//!         #[widget] _ = Label::new("Widget Gallery"),
 //!         #[widget(handler = activations)] _ = inner_widgets,
 //!         last_item: Item = Item::Button,
 //!     }

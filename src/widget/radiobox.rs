@@ -15,7 +15,7 @@ use crate::event::{self, Action, Manager, Response, UpdateHandle, VoidMsg};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore, WidgetId};
+use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetId};
 
 /// A bare radiobox (no label)
 #[derive(Clone, Widget)]
@@ -237,7 +237,7 @@ impl<M, OT: Fn(WidgetId) -> M> RadioBox<OT> {
     /// The closure `f` is called with the new state of the radiobox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn new_on<T: ToString>(f: OT, handle: UpdateHandle, label: T) -> Self {
+    pub fn new_on<T: Into<CowString>>(f: OT, handle: UpdateHandle, label: T) -> Self {
         RadioBox {
             core: Default::default(),
             layout_data: Default::default(),
@@ -256,7 +256,7 @@ impl RadioBox<()> {
     /// RadioBox labels are optional; if no label is desired, use an empty
     /// string.
     #[inline]
-    pub fn new<T: ToString>(handle: UpdateHandle, label: T) -> Self {
+    pub fn new<T: Into<CowString>>(handle: UpdateHandle, label: T) -> Self {
         RadioBox {
             core: Default::default(),
             layout_data: Default::default(),

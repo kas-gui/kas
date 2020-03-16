@@ -6,7 +6,6 @@
 //! Counter example (simple button)
 #![feature(proc_macro_hygiene)]
 
-use std::fmt::Write;
 use std::time::{Duration, Instant};
 
 use kas::class::HasText;
@@ -28,12 +27,11 @@ fn make_window() -> Box<dyn kas::Window> {
         #[layout(horizontal)]
         #[handler(msg = VoidMsg)]
         struct {
-            #[widget] display: impl HasText = Frame::new(Label::from("0.000")),
+            #[widget] display: impl HasText = Frame::new(Label::new("0.000")),
             #[widget(handler = handle_button)] b_reset = TextButton::new("reset", Control::Reset),
             #[widget(handler = handle_button)] b_start = TextButton::new("start / stop", Control::Start),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
-            dur_buf: String = String::default(),
         }
         impl {
             fn handle_button(&mut self, mgr: &mut Manager, msg: Control) -> Response<VoidMsg> {
@@ -60,13 +58,11 @@ fn make_window() -> Box<dyn kas::Window> {
             fn update_timer(&mut self, mgr: &mut Manager) -> Option<Duration> {
                 if let Some(start) = self.start {
                     let dur = self.saved + (Instant::now() - start);
-                    self.dur_buf.clear();
-                    self.dur_buf.write_fmt(format_args!(
+                    self.display.set_text(mgr, format!(
                         "{}.{:03}",
                         dur.as_secs(),
                         dur.subsec_millis()
-                    )).unwrap();
-                    self.display.set_text(mgr, &self.dur_buf);
+                    ));
                     Some(Duration::new(0, 1))
                 } else {
                     None

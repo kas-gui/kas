@@ -10,7 +10,7 @@ use crate::draw::{DrawHandle, SizeHandle, TextClass};
 use crate::event::{Manager, ManagerState};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, Layout, WidgetCore};
+use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
 use kas::geom::Rect;
 
 /// A simple text label
@@ -22,7 +22,7 @@ pub struct Label {
     core: CoreData,
     align: (Align, Align),
     reserve: Option<&'static str>,
-    text: String,
+    text: CowString,
 }
 
 impl Layout for Label {
@@ -52,12 +52,12 @@ impl Layout for Label {
 
 impl Label {
     /// Construct a new, empty instance
-    pub fn new<T: ToString>(text: T) -> Self {
+    pub fn new<T: Into<CowString>>(text: T) -> Self {
         Label {
             core: Default::default(),
             align: Default::default(),
             reserve: None,
-            text: text.to_string(),
+            text: text.into(),
         }
     }
 
@@ -71,27 +71,13 @@ impl Label {
     }
 }
 
-impl<T> From<T> for Label
-where
-    String: From<T>,
-{
-    fn from(text: T) -> Self {
-        Label {
-            core: Default::default(),
-            align: Default::default(),
-            reserve: None,
-            text: String::from(text),
-        }
-    }
-}
-
 impl HasText for Label {
     fn get_text(&self) -> &str {
         &self.text
     }
 
-    fn set_string(&mut self, mgr: &mut Manager, text: String) {
-        self.text = text;
+    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString) {
+        self.text = text.into();
         mgr.redraw(self.id());
     }
 }

@@ -13,7 +13,7 @@ use crate::event::{self, Handler, Manager};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, Margins, SizeRules};
 use crate::macros::Widget;
-use crate::{AlignHints, CoreData, Layout, Widget, WidgetCore, WidgetId};
+use crate::{AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetId};
 
 /// A frame around content
 ///
@@ -101,15 +101,8 @@ impl<W: HasText + Widget> HasText for Frame<W> {
         self.child.get_text()
     }
 
-    fn set_text<T: ToString>(&mut self, mgr: &mut Manager, text: T)
-    where
-        Self: Sized,
-    {
-        self.child.set_text(mgr, text);
-    }
-
-    fn set_string(&mut self, mgr: &mut Manager, text: String) {
-        self.child.set_string(mgr, text);
+    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString) {
+        self.child.set_cow_string(mgr, text);
     }
 }
 

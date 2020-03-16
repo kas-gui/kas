@@ -12,7 +12,7 @@ use crate::draw::{DrawHandle, SizeHandle, TextClass};
 use crate::event::{self, Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
+use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore};
 use kas::geom::Rect;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -371,8 +371,8 @@ impl<G> HasText for EditBox<G> {
         &self.text
     }
 
-    fn set_string(&mut self, mgr: &mut Manager, text: String) {
-        self.text = text;
+    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString) {
+        self.text = text.to_string();
         mgr.redraw(self.id());
     }
 }

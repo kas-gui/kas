@@ -14,7 +14,7 @@ use crate::event::{self, Action, Manager, Response, VoidMsg};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
+use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore};
 
 /// A bare checkbox (no label)
 #[derive(Clone, Default, Widget)]
@@ -203,7 +203,7 @@ impl<M, OT: Fn(bool) -> M> CheckBox<OT> {
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn new_on<T: ToString>(f: OT, label: T) -> Self {
+    pub fn new_on<T: Into<CowString>>(f: OT, label: T) -> Self {
         CheckBox {
             core: Default::default(),
             layout_data: Default::default(),
@@ -219,7 +219,7 @@ impl CheckBox<()> {
     /// CheckBox labels are optional; if no label is desired, use an empty
     /// string.
     #[inline]
-    pub fn new<T: ToString>(label: T) -> Self {
+    pub fn new<T: Into<CowString>>(label: T) -> Self {
         CheckBox {
             core: Default::default(),
             layout_data: Default::default(),

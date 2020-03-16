@@ -44,3 +44,6 @@ pub mod macros;
 pub use crate::data::*;
 pub use crate::toolkit::*;
 pub use crate::traits::*;
+
+/// Convenience definition
+pub type CowString = std::borrow::Cow<'static, str>;
