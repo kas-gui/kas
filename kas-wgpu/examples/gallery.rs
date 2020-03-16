@@ -15,6 +15,7 @@ use kas::{Horizontal, WidgetId};
 enum Item {
     Button,
     Check(bool),
+    Combo(i32),
     Radio(WidgetId),
     Edit(String),
     Slider(i32),
@@ -47,16 +48,22 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=5, col=0)] _ = Label::new("RadioBox"),
             #[widget(row=5, col=1)] _ = RadioBox::new(radio, "radio box 2").state(true)
                 .on_activate(|id| Item::Radio(id)),
-            #[widget(row=6, col=0)] _ = Label::new("Slider"),
-            #[widget(row=6, col=1, handler = handle_slider)] _ =
+            #[widget(row=6, col=0)] _ = Label::new("ComboBox"),
+            #[widget(row=6, col=1, handler = handle_combo)] _: ComboBox<i32> =
+                [("One", 1), ("Two", 2), ("Three", 3)].iter().cloned().collect(),
+            #[widget(row=7, col=0)] _ = Label::new("Slider"),
+            #[widget(row=7, col=1, handler = handle_slider)] _ =
                 Slider::<i32, Horizontal>::new(-2, 2).with_value(0),
-            #[widget(row=7, col=0)] _ = Label::new("ScrollBar"),
-            #[widget(row=7, col=1, handler = handle_scroll)] _ =
+            #[widget(row=8, col=0)] _ = Label::new("ScrollBar"),
+            #[widget(row=8, col=1, handler = handle_scroll)] _ =
                 ScrollBar::<Horizontal>::new().with_limits(5, 2),
-            #[widget(row=8)] _ = Label::new("Child window"),
-            #[widget(row=8, col = 1)] _ = TextButton::new("Open", Item::Popup),
+            #[widget(row=9)] _ = Label::new("Child window"),
+            #[widget(row=9, col = 1)] _ = TextButton::new("Open", Item::Popup),
         }
         impl {
+            fn handle_combo(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {
+                Response::Msg(Item::Combo(msg))
+            }
             fn handle_slider(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {
                 Response::Msg(Item::Slider(msg))
             }
@@ -129,8 +136,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 {
                     match item {
                         Item::Button => println!("Clicked!"),
-                        Item::Check(b) => println!("Checkbox: {}", b),
-                        Item::Radio(id) => println!("Radiobox: {}", id),
+                        Item::Check(b) => println!("CheckBox: {}", b),
+                        Item::Combo(c) => println!("ComboBox: {}", c),
+                        Item::Radio(id) => println!("RadioBox: {}", id),
                         Item::Edit(s) => println!("Edited: {}", s),
                         Item::Slider(p) => println!("Slider: {}", p),
                         Item::Scroll(p) => println!("ScrollBar: {}", p),

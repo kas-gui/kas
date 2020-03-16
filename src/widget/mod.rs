@@ -10,6 +10,7 @@
 
 mod button;
 mod checkbox;
+mod combobox;
 mod dialog;
 mod drag;
 mod editbox;
@@ -25,6 +26,7 @@ mod window;
 
 pub use button::TextButton;
 pub use checkbox::{CheckBox, CheckBoxBare};
+pub use combobox::ComboBox;
 pub use dialog::MessageBox;
 pub use drag::DragHandle;
 pub use editbox::{EditBox, EditBoxVoid, EditGuard};
