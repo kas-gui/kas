@@ -11,25 +11,36 @@ use std::iter::FromIterator;
 use super::{Column, TextButton};
 use crate::class::HasText;
 use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{self, Action, Manager, Response};
-use crate::geom::Rect;
-use crate::layout::{AxisInfo, SizeRules};
+use crate::event::{self, Action, Callback, Event, Manager, Response, UpdateHandle};
+use crate::geom::*;
+use crate::layout::{self, AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
+use crate::{Align, CoreData, CowString, TkAction, WidgetCore, WidgetId};
 
 /// A pop-up multiple choice menu
-#[widget_config(key_nav = true)]
 #[handler(event)]
-#[derive(Clone, Debug, Default, Widget)]
-pub struct ComboBox<M: Clone + Debug> {
+#[derive(Clone, Debug, Widget)]
+pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
     core: CoreData,
     // text_rect: Rect,
-    choices: Column<TextButton<M>>,
+    column: Column<TextButton<u64>>,
+    messages: Vec<M>, // TODO: is this a useless lookup step?
     active: usize,
+    handle: UpdateHandle,
 }
 
-impl<M: Clone + Debug> Layout for ComboBox<M> {
+impl<M: Clone + Debug + 'static> kas::WidgetConfig for ComboBox<M> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.update_on_handle(self.handle, self.id());
+    }
+
+    fn key_nav(&self) -> bool {
+        true
+    }
+}
+
+impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.button_surround();
         let margins = size_handle.outer_margins();
@@ -40,7 +51,7 @@ impl<M: Clone + Debug> Layout for ComboBox<M> {
         content_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, _align: kas::AlignHints) {
         self.core.rect = rect;
 
         // In theory, text rendering should be restricted as in EditBox.
@@ -78,49 +89,59 @@ impl<M: Clone + Debug> ComboBox<M> {
     }
 
     #[inline]
-    fn new_(choices: Vec<TextButton<M>>) -> Self {
-        assert!(choices.len() > 0, "ComboBox: expected at least one choice");
+    fn new_(column: Vec<TextButton<u64>>, messages: Vec<M>) -> Self {
+        assert!(column.len() > 0, "ComboBox: expected at least one choice");
         ComboBox {
             core: Default::default(),
-            choices: Column::new(choices),
+            column: Column::new(column),
+            messages,
             active: 0,
+            handle: UpdateHandle::new(),
         }
     }
 
     /// Get the text of the active choice
     pub fn text(&self) -> &str {
-        self.choices[self.active].get_text()
+        self.column[self.active].get_text()
     }
 
     /// Add a choice to the combobox, in last position
     pub fn push<T: Into<CowString>>(&mut self, mgr: &mut Manager, label: CowString, msg: M) {
-        self.choices.push(mgr, TextButton::new(label, msg));
+        let len = self.column.len() as u64;
+        self.column.push(mgr, TextButton::new(label, len));
+        self.messages.push(msg);
     }
 }
 
 impl<T: Into<CowString>, M: Clone + Debug> FromIterator<(T, M)> for ComboBox<M> {
     fn from_iter<I: IntoIterator<Item = (T, M)>>(iter: I) -> Self {
         let iter = iter.into_iter();
-        let mut choices = Vec::with_capacity(iter.size_hint().1.unwrap_or(0));
-        for (label, msg) in iter {
-            choices.push(TextButton::new(label, msg));
+        let len = iter.size_hint().1.unwrap_or(0);
+        let mut choices = Vec::with_capacity(len);
+        let mut messages = Vec::with_capacity(len);
+        for (i, (label, msg)) in iter.enumerate() {
+            choices.push(TextButton::new(label, i as u64));
+            messages.push(msg);
         }
-        ComboBox::new_(choices)
+        ComboBox::new_(choices, messages)
     }
 }
 
 impl<'a, M: Clone + Debug + 'static> FromIterator<&'a (&'static str, M)> for ComboBox<M> {
     fn from_iter<I: IntoIterator<Item = &'a (&'static str, M)>>(iter: I) -> Self {
         let iter = iter.into_iter();
-        let mut choices = Vec::with_capacity(iter.size_hint().1.unwrap_or(0));
-        for item in iter {
-            choices.push(TextButton::new(item.0, item.1.clone()));
+        let len = iter.size_hint().1.unwrap_or(0);
+        let mut choices = Vec::with_capacity(len);
+        let mut messages = Vec::with_capacity(len);
+        for (i, (label, msg)) in iter.enumerate() {
+            choices.push(TextButton::new(*label, i as u64));
+            messages.push(msg.clone());
         }
-        ComboBox::new_(choices)
+        ComboBox::new_(choices, messages)
     }
 }
 
-impl<M: Clone + Debug> event::Handler for ComboBox<M> {
+impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
     type Msg = M;
 
     #[inline]
@@ -128,11 +149,86 @@ impl<M: Clone + Debug> event::Handler for ComboBox<M> {
         true
     }
 
-    fn action(&mut self, _: &mut Manager, action: Action) -> Response<M> {
+    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
         match action {
-            // TODO
-            Action::Activate => Response::None,
+            Action::Activate => {
+                mgr.add_window(Box::new(ComboPopup::new(self.column.clone(), self.handle)));
+                Response::None
+            }
+            Action::HandleUpdate { payload, .. } => {
+                let index = payload as usize;
+                assert!(index < self.column.len());
+                self.active = index;
+                mgr.redraw(self.id());
+                Response::Msg(self.messages[index].clone())
+            }
             a @ _ => Response::unhandled_action(a),
         }
     }
+}
+
+#[widget_config]
+#[layout(single)]
+#[handler(action)]
+#[derive(Clone, Debug, Widget)]
+struct ComboPopup {
+    #[widget_core]
+    core: CoreData,
+    #[widget]
+    column: Column<TextButton<u64>>,
+    handle: UpdateHandle,
+}
+
+impl ComboPopup {
+    #[inline]
+    fn new(column: Column<TextButton<u64>>, handle: UpdateHandle) -> Self {
+        ComboPopup {
+            core: Default::default(),
+            column,
+            handle,
+        }
+    }
+}
+
+impl event::EventHandler for ComboPopup {
+    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if id <= self.column.id() {
+            match self.column.event(mgr, id, event).try_into() {
+                Ok(r) => r,
+                Err(msg) => {
+                    mgr.trigger_update(self.handle, msg);
+                    mgr.send_action(TkAction::Close);
+                    Response::None
+                }
+            }
+        } else {
+            Response::Unhandled(event)
+        }
+    }
+}
+
+impl kas::Window for ComboPopup {
+    fn title(&self) -> &str {
+        &"Choices"
+    }
+
+    fn find_size(&mut self, size_handle: &mut dyn SizeHandle) -> (Option<Size>, Size) {
+        let (min, ideal) = layout::solve(self, size_handle);
+        (Some(min), ideal)
+    }
+
+    fn resize(
+        &mut self,
+        size_handle: &mut dyn SizeHandle,
+        size: Size,
+    ) -> (Option<Size>, Option<Size>) {
+        let (min, ideal) = layout::solve_and_set(self, size_handle, size);
+        (Some(min), Some(ideal))
+    }
+
+    fn callbacks(&self) -> Vec<(usize, Callback)> {
+        vec![]
+    }
+
+    fn trigger_callback(&mut self, _: usize, _: &mut Manager) {}
 }
