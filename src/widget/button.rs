@@ -46,20 +46,10 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
         let frame_rules = SizeRules::extract_fixed(axis.dir(), sides.0 + sides.1, margins);
 
         let content_rules = size_handle.text_bound(&self.label, TextClass::Button, axis);
-        let rules = content_rules.surrounded_by(frame_rules, true);
-
-        if axis.is_horizontal() {
-            self.core.rect.size.0 = rules.ideal_size();
-        } else {
-            self.core.rect.size.1 = rules.ideal_size();
-        }
-        rules
+        content_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
-        let rect = align
-            .complete(Align::Stretch, Align::Stretch, self.rect().size)
-            .apply(rect);
+    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
         self.core.rect = rect;
 
         // In theory, text rendering should be restricted as in EditBox.
