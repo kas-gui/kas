@@ -45,5 +45,8 @@ pub use crate::data::*;
 pub use crate::toolkit::*;
 pub use crate::traits::*;
 
-/// Convenience definition
-pub type CowString = std::borrow::Cow<'static, str>;
+/// Convenience definition: `Cow<'a, str>`
+pub type CowStringL<'a> = std::borrow::Cow<'a, str>;
+
+/// Convenience definition: `Cow<'static, str>`
+pub type CowString = CowStringL<'static>;

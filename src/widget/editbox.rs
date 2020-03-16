@@ -303,7 +303,7 @@ impl<G> EditBox<G> {
             match c {
                 '\u{03}' /* copy */ => {
                     // we don't yet have selection support, so just copy everything
-                    mgr.set_clipboard(self.text.clone());
+                    mgr.set_clipboard((&self.text).into());
                 }
                 '\u{08}' /* backspace */  => {
                     if self.last_edit != LastEdit::Backspace {

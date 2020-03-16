@@ -12,7 +12,7 @@ use crate::event::{Callback, Event, Handler, Manager, Response, VoidMsg};
 use crate::geom::Size;
 use crate::layout::{self};
 use crate::macros::Widget;
-use crate::{CoreData, LayoutData, Widget, WidgetId};
+use crate::{CoreData, CowString, LayoutData, Widget, WidgetId};
 
 /// The main instantiation of the [`Window`] trait.
 #[widget]
@@ -25,7 +25,7 @@ pub struct Window<W: Widget + 'static> {
     layout_data: <Self as LayoutData>::Data,
     enforce_min: bool,
     enforce_max: bool,
-    title: String,
+    title: CowString,
     #[widget]
     w: W,
     fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut Manager))>,
@@ -65,13 +65,13 @@ impl<W: Widget + Clone> Clone for Window<W> {
 
 impl<W: Widget> Window<W> {
     /// Create
-    pub fn new<T: ToString>(title: T, w: W) -> Window<W> {
+    pub fn new<T: Into<CowString>>(title: T, w: W) -> Window<W> {
         Window {
             core: Default::default(),
             layout_data: Default::default(),
             enforce_min: true,
             enforce_max: false,
-            title: title.to_string(),
+            title: title.into(),
             w,
             fns: Vec::new(),
         }

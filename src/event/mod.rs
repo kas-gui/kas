@@ -119,4 +119,4 @@ impl_void_msg!(bool, char,);
 impl_void_msg!(u8, u16, u32, u64, u128, usize,);
 impl_void_msg!(i8, i16, i32, i64, i128, isize,);
 impl_void_msg!(f32, f64,);
-impl_void_msg!(&'static str, String,);
+impl_void_msg!(&'static str, String, kas::CowString,);
