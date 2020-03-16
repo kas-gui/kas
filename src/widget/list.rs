@@ -5,6 +5,8 @@
 
 //! Dynamic widgets
 
+use std::ops::{Index, IndexMut};
+
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{Event, Manager, Response};
 use kas::layout::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
@@ -351,5 +353,19 @@ impl<D: Directional, W: Widget> List<D, W> {
         if len != self.widgets.len() {
             mgr.send_action(TkAction::Reconfigure);
         }
+    }
+}
+
+impl<D: Directional, W: Widget> Index<usize> for List<D, W> {
+    type Output = W;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.widgets[index]
+    }
+}
+
+impl<D: Directional, W: Widget> IndexMut<usize> for List<D, W> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.widgets[index]
     }
 }

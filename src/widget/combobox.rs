@@ -8,6 +8,8 @@
 use std::fmt::Debug;
 use std::iter::FromIterator;
 
+use super::{Column, TextButton};
+use crate::class::HasText;
 use crate::draw::{DrawHandle, SizeHandle, TextClass};
 use crate::event::{self, Action, Manager, Response};
 use crate::geom::Rect;
@@ -23,7 +25,7 @@ pub struct ComboBox<M: Clone + Debug> {
     #[widget_core]
     core: CoreData,
     // text_rect: Rect,
-    choices: Vec<(CowString, M)>,
+    choices: Column<TextButton<M>>,
     active: usize,
 }
 
@@ -61,32 +63,38 @@ impl<M: Clone + Debug> ComboBox<M> {
     /// Each choice has some corresponding message of type `M` which is emitted
     /// by the event handler when this choice is selected.
     ///
-    /// `ComboBox` implements [`FromIterator`] and thus may also be constructed
-    /// with [`std::iter::Iterator::collect`]:
+    /// This constructor may be used with an iterator compatible with any
+    /// [`FromIterator`] for `ComboBox`, for example:
     /// ```
     /// # use kas::widget::ComboBox;
-    /// let combobox: ComboBox<i32> = [("one", 1), ("two", 2), ("three", 3)].iter().cloned().collect();
+    /// let combobox = ComboBox::<i32>::new([("one", 1), ("two", 2), ("three", 3)].iter());
     /// ```
-    pub fn new(choices: Vec<(CowString, M)>) -> Self {
-        assert!(
-            choices.len() > 0,
-            "ComboBox::new: expected at least one choice"
-        );
+    #[inline]
+    pub fn new<T, I: IntoIterator<Item = T>>(iter: I) -> Self
+    where
+        ComboBox<M>: FromIterator<T>,
+    {
+        ComboBox::from_iter(iter)
+    }
+
+    #[inline]
+    fn new_(choices: Vec<TextButton<M>>) -> Self {
+        assert!(choices.len() > 0, "ComboBox: expected at least one choice");
         ComboBox {
             core: Default::default(),
-            choices,
+            choices: Column::new(choices),
             active: 0,
         }
     }
 
     /// Get the text of the active choice
     pub fn text(&self) -> &str {
-        &self.choices[self.active].0
+        self.choices[self.active].get_text()
     }
 
     /// Add a choice to the combobox, in last position
-    pub fn push<T: Into<CowString>>(&mut self, label: CowString, msg: M) {
-        self.choices.push((label.into(), msg));
+    pub fn push<T: Into<CowString>>(&mut self, mgr: &mut Manager, label: CowString, msg: M) {
+        self.choices.push(mgr, TextButton::new(label, msg));
     }
 }
 
@@ -95,9 +103,20 @@ impl<T: Into<CowString>, M: Clone + Debug> FromIterator<(T, M)> for ComboBox<M> 
         let iter = iter.into_iter();
         let mut choices = Vec::with_capacity(iter.size_hint().1.unwrap_or(0));
         for (label, msg) in iter {
-            choices.push((label.into(), msg));
+            choices.push(TextButton::new(label, msg));
         }
-        ComboBox::new(choices)
+        ComboBox::new_(choices)
+    }
+}
+
+impl<'a, M: Clone + Debug + 'static> FromIterator<&'a (&'static str, M)> for ComboBox<M> {
+    fn from_iter<I: IntoIterator<Item = &'a (&'static str, M)>>(iter: I) -> Self {
+        let iter = iter.into_iter();
+        let mut choices = Vec::with_capacity(iter.size_hint().1.unwrap_or(0));
+        for item in iter {
+            choices.push(TextButton::new(item.0, item.1.clone()));
+        }
+        ComboBox::new_(choices)
     }
 }
 
@@ -112,7 +131,7 @@ impl<M: Clone + Debug> event::Handler for ComboBox<M> {
     fn action(&mut self, _: &mut Manager, action: Action) -> Response<M> {
         match action {
             // TODO
-            Action::Activate => self.choices[self.active].1.clone().into(),
+            Action::Activate => Response::None,
             a @ _ => Response::unhandled_action(a),
         }
     }
