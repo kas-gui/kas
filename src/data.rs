@@ -72,7 +72,7 @@ impl fmt::Display for WidgetId {
 
 /// Common widget data
 ///
-/// All widgets should embed a `#[core] core: CoreData` field.
+/// All widgets should embed a `#[widget_core] core: CoreData` field.
 #[derive(Clone, Default, Debug)]
 pub struct CoreData {
     pub rect: Rect,

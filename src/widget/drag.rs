@@ -32,7 +32,7 @@ use crate::{AlignHints, CoreData, Layout, WidgetCore, WidgetId};
 #[widget]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct DragHandle {
-    #[core]
+    #[widget_core]
     core: CoreData,
     // The track is the area within which this DragHandle may move
     track: Rect,

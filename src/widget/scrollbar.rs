@@ -22,7 +22,7 @@ use crate::{AlignHints, CoreData, Directional, Layout, WidgetCore, WidgetId};
 #[widget]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollBar<D: Directional> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     direction: D,
     // Terminology assumes vertical orientation:

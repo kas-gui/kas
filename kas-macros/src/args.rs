@@ -23,7 +23,7 @@ pub struct Child {
 }
 
 pub struct Args {
-    pub core: Member,
+    pub core_data: Member,
     pub layout_data: Option<Member>,
     pub widget: Option<WidgetArgs>,
     pub layout: Option<LayoutArgs>,
@@ -54,19 +54,19 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         Data::Union(data) => return not_struct_err(data.union_token.span()),
     };
 
-    let mut core = None;
+    let mut core_data = None;
     let mut layout_data = None;
     let mut children = vec![];
 
     for (i, field) in fields.iter_mut().enumerate() {
         for attr in field.attrs.drain(..) {
-            if attr.path == parse_quote! { core } {
-                if core.is_none() {
-                    core = Some(member(i, field.ident.clone()));
+            if attr.path == parse_quote! { widget_core } {
+                if core_data.is_none() {
+                    core_data = Some(member(i, field.ident.clone()));
                 } else {
                     attr.span()
                         .unwrap()
-                        .error("multiple fields marked with #[core]")
+                        .error("multiple fields marked with #[widget_core]")
                         .emit();
                 }
             } else if attr.path == parse_quote! { layout_data } {
@@ -124,9 +124,9 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
-    if let Some(core) = core {
+    if let Some(core_data) = core_data {
         Ok(Args {
-            core,
+            core_data,
             layout_data,
             widget,
             layout,
@@ -136,7 +136,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
     } else {
         Err(Error::new(
             *span,
-            "one field must be marked with #[core] when deriving Widget",
+            "one field must be marked with #[widget_core] when deriving Widget",
         ))
     }
 }

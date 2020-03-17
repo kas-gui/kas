@@ -49,7 +49,7 @@ pub struct Slider<T, D: Directional>
 where
     T: SliderType,
 {
-    #[core]
+    #[widget_core]
     core: CoreData,
     direction: D, // TODO: also reversed direction
     // Terminology assumes vertical orientation:

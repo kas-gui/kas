@@ -19,7 +19,7 @@ use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore};
 /// A push-button with a text label
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     keys: SmallVec<[VirtualKeyCode; 4]>,
     // text_rect: Rect,

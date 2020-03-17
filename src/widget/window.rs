@@ -19,7 +19,7 @@ use crate::{CoreData, CowString, LayoutData, Widget, WidgetId};
 #[layout(single)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     #[layout_data]
     layout_data: <Self as LayoutData>::Data,

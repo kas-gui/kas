@@ -85,7 +85,7 @@ impl<'a> ToTokens for SubstTyGenerics<'a> {
 /// Macro to derive widget traits
 ///
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
-#[proc_macro_derive(Widget, attributes(core, widget, layout, handler, layout_data))]
+#[proc_macro_derive(Widget, attributes(widget_core, widget, layout, handler, layout_data))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as DeriveInput);
 
@@ -97,7 +97,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let name = &ast.ident;
     let widget_name = name.to_string();
 
-    let core = args.core;
+    let core_data = args.core_data;
     let count = args.children.len();
 
     let mut get_rules = quote! {};
@@ -117,11 +117,11 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             for #name #ty_generics #where_clause
         {
             fn core_data(&self) -> &kas::CoreData {
-                &self.#core
+                &self.#core_data
             }
 
             fn core_data_mut(&mut self) -> &mut kas::CoreData {
-                &mut self.#core
+                &mut self.#core_data
             }
 
             fn widget_name(&self) -> &'static str {
@@ -354,7 +354,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     // fields of anonymous struct:
     let mut field_toks = quote! {
-        #[core] core: kas::CoreData,
+        #[widget_core] core: kas::CoreData,
         #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
     };
     // initialisers for these fields:

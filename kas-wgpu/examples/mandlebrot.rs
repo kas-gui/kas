@@ -394,7 +394,7 @@ impl PipeWindow {
 #[widget]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Mandlebrot {
-    #[core]
+    #[widget_core]
     core: kas::CoreData,
     alpha: DVec2,
     delta: DVec2,

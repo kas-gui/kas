@@ -20,7 +20,7 @@ use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, 
 /// A bare radiobox (no label)
 #[derive(Clone, Widget)]
 pub struct RadioBoxBare<OT: 'static> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     state: bool,
     handle: UpdateHandle,
@@ -206,7 +206,7 @@ impl<M, H: Fn(WidgetId) -> M> event::Handler for RadioBoxBare<H> {
 #[handler(msg = M, generics = <M: From<VoidMsg>> where OT: Fn(WidgetId) -> M)]
 #[derive(Clone, Widget)]
 pub struct RadioBox<OT: 'static> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,

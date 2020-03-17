@@ -55,7 +55,7 @@
 //! #[handler(generics = <> where W: Handler<Msg = VoidMsg>)]
 //! #[derive(Clone, Debug, Widget)]
 //! struct WrapperWidget<W: Widget> {
-//!     #[core] core: CoreData,
+//!     #[widget_core] core: CoreData,
 //!     #[widget] child: W,
 //! }
 //! ```
@@ -126,7 +126,7 @@
 //!
 //! ### Fields
 //!
-//! One struct field with specification `#[core] core: CoreData` is required.
+//! One struct field with specification `#[widget_core] core: CoreData` is required.
 //! When deriving layouts a `#[layout_data]` field is also required (see above).
 //!
 //! Other fields may be child widgets or simply data fields. Those with a
@@ -183,7 +183,7 @@
 //! #[handler(generics = <> where W: Handler<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
-//!     #[core] core: CoreData,
+//!     #[widget_core] core: CoreData,
 //!     #[layout_data] layout_data: <Self as LayoutData>::Data,
 //!     #[widget] label: Label,
 //!     #[widget(handler = handler)] child: W,

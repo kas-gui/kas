@@ -18,7 +18,7 @@ use kas::geom::Rect;
 #[handler]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Label {
-    #[core]
+    #[widget_core]
     core: CoreData,
     align: (Align, Align),
     reserve: Option<&'static str>,

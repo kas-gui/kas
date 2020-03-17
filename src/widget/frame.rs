@@ -23,7 +23,7 @@ use crate::{AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetI
 #[handler(msg = <W as Handler>::Msg, generics = <> where W: Handler)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Frame<W: Widget> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     #[widget]
     child: W,

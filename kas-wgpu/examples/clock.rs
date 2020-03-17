@@ -23,7 +23,7 @@ use kas_wgpu::draw::DrawWindow;
 #[handler]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Clock {
-    #[core]
+    #[widget_core]
     core: kas::CoreData,
     date_rect: Rect,
     time_rect: Rect,

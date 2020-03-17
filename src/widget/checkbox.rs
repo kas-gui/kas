@@ -19,7 +19,7 @@ use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore};
 /// A bare checkbox (no label)
 #[derive(Clone, Default, Widget)]
 pub struct CheckBoxBare<OT: 'static> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     state: bool,
     on_toggle: OT,
@@ -172,7 +172,7 @@ impl<M, H: Fn(bool) -> M> event::Handler for CheckBoxBare<H> {
 #[handler(msg = M, generics = <M: From<VoidMsg>> where OT: Fn(bool) -> M)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<OT: 'static> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,

@@ -111,7 +111,7 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
 /// An editable, single-line text box.
 #[derive(Clone, Default, Widget)]
 pub struct EditBox<G: 'static> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     // During sizing, text_rect is used for the frame+inner-margin dimensions
     text_rect: Rect,

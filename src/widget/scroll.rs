@@ -28,7 +28,7 @@ use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
 #[widget]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     min_child_size: Size,
     inner_size: Size,
