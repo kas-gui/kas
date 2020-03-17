@@ -139,6 +139,18 @@ pub trait WidgetCore: fmt::Debug {
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
     fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget));
+
+    /// Is this widget navigable via Tab key?
+    fn key_nav(&self) -> bool {
+        false
+    }
+
+    /// Which cursor icon should be used on hover?
+    ///
+    /// Where no specific icon should be used, return [`event::CursorIcon::Default`].
+    fn cursor_icon(&self) -> event::CursorIcon {
+        event::CursorIcon::Default
+    }
 }
 
 /// Positioning and drawing routines for widgets
@@ -250,18 +262,6 @@ pub trait Widget: Layout {
     ///
     /// This method being called does not imply a redraw.
     fn update_handle(&mut self, _mgr: &mut Manager, _handle: event::UpdateHandle, _payload: u64) {}
-
-    /// Is this widget navigable via Tab key?
-    fn allow_focus(&self) -> bool {
-        false
-    }
-
-    /// Which cursor icon should be used on hover?
-    ///
-    /// Where no specific icon should be used, return [`event::CursorIcon::Default`].
-    fn cursor_icon(&self) -> event::CursorIcon {
-        event::CursorIcon::Default
-    }
 }
 
 /// Trait to describe the type needed by the layout implementation.

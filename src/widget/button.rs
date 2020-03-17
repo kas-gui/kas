@@ -17,6 +17,7 @@ use crate::macros::Widget;
 use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore};
 
 /// A push-button with a text label
+#[widget_core(key_nav = true)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug> {
     #[widget_core]
@@ -32,10 +33,6 @@ impl<M: Clone + Debug> Widget for TextButton<M> {
         for key in &self.keys {
             mgr.add_accel_key(*key, self.id());
         }
-    }
-
-    fn allow_focus(&self) -> bool {
-        true
     }
 }
 

@@ -60,6 +60,42 @@
 //! }
 //! ```
 //!
+//! #### WidgetCore
+//!
+//! The [`WidgetCore`] trait is always implemented by this macro. The
+//! `#[widget_core]` attribute may be used to parameterise this implementation,
+//! for example:
+//! ```
+//! use kas::draw::{DrawHandle, SizeHandle};
+//! use kas::layout::{AxisInfo, SizeRules};
+//! use kas::macros::Widget;
+//! use kas::{event, CoreData, Layout};
+//!
+//! #[widget]
+//! #[widget_core(key_nav = true)]
+//! #[derive(Clone, Debug, Default, Widget)]
+//! struct MyWidget {
+//!     #[widget_core] core: CoreData,
+//! }
+//!
+//! impl Layout for MyWidget {
+//!     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+//!         todo!()
+//!     }
+//!     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+//!         todo!()
+//!     }
+//! }
+//! ```
+//!
+//! The `#[widget_core]` attribute supports the following parameters, each
+//! with the specified default value:
+//!
+//! -   `key_nav = false`: a boolean, describing whether the widget supports
+//!     keyboard navigation (see [`WidgetCore::key_nav`])
+//! -   `cursor_icon = kas::event::CursorIcon::Default`: the cursor icon to use
+//!     when the mouse hovers over this widget (see [`WidgetCore::cursor_icon`])
+//!
 //! #### Widget
 //!
 //! If the `#[widget]` attribute is present, the [`Widget`] trait is derived
@@ -346,14 +382,9 @@
 //! #[derive(VoidMsg)]
 //! enum MyMessage { A, B };
 //! ```
-//!
-//! [`CoreData`]: crate::CoreData
-//! [`WidgetCore`]: crate::WidgetCore
-//! [`Widget`]: crate::Widget
-//! [`Layout`]: crate::Layout
-//! [`Layout::set_rect`]: crate::Layout::set_rect
-//! [`LayoutData`]: crate::LayoutData
-//! [`Handler`]: crate::event::Handler
-//! [`Handler::Msg`]: crate::event::Handler::Msg
+
+// Imported for doc-links
+#[allow(unused)]
+use crate::{event::Handler, CoreData, Layout, LayoutData, Widget, WidgetCore};
 
 pub use kas_macros::{make_widget, VoidMsg, Widget};

@@ -94,10 +94,6 @@ impl<M> Widget for Box<dyn Handler<Msg = M>> {
     fn update_handle(&mut self, mgr: &mut Manager, handle: UpdateHandle, payload: u64) {
         self.as_mut().update_handle(mgr, handle, payload);
     }
-
-    fn allow_focus(&self) -> bool {
-        self.as_ref().allow_focus()
-    }
 }
 
 impl<M> Layout for Box<dyn Handler<Msg = M>> {
@@ -152,6 +148,13 @@ impl<M> WidgetCore for Box<dyn Handler<Msg = M>> {
     }
     fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
         self.as_mut().walk_mut(f);
+    }
+
+    fn key_nav(&self) -> bool {
+        self.as_ref().key_nav()
+    }
+    fn cursor_icon(&self) -> event::CursorIcon {
+        self.as_ref().cursor_icon()
     }
 }
 

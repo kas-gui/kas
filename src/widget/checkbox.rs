@@ -14,9 +14,11 @@ use crate::event::{self, Action, Manager, Response, VoidMsg};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore};
+use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
 
 /// A bare checkbox (no label)
+#[widget]
+#[widget_core(key_nav = true)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBoxBare<OT: 'static> {
     #[widget_core]
@@ -32,12 +34,6 @@ impl<H> Debug for CheckBoxBare<H> {
             "CheckBoxBare {{ core: {:?}, state: {:?}, ... }}",
             self.core, self.state
         )
-    }
-}
-
-impl<OT: 'static> Widget for CheckBoxBare<OT> {
-    fn allow_focus(&self) -> bool {
-        true
     }
 }
 

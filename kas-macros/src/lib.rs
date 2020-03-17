@@ -112,6 +112,9 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         walk_mut_rules.append_all(quote! { self.#ident.walk_mut(f); });
     }
 
+    let key_nav = args.widget_core.key_nav;
+    let cursor_icon = args.widget_core.cursor_icon;
+
     let mut toks = quote! {
         impl #impl_generics kas::WidgetCore
             for #name #ty_generics #where_clause
@@ -153,6 +156,13 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn kas::Widget)) {
                 #walk_mut_rules
                 f(self);
+            }
+
+            fn key_nav(&self) -> bool {
+                #key_nav
+            }
+            fn cursor_icon(&self) -> kas::event::CursorIcon {
+                #cursor_icon
             }
         }
     };

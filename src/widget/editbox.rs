@@ -12,7 +12,7 @@ use crate::draw::{DrawHandle, SizeHandle, TextClass};
 use crate::event::{self, Action, Handler, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore};
+use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
 use kas::geom::Rect;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -109,6 +109,8 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
 }
 
 /// An editable, single-line text box.
+#[widget]
+#[widget_core(key_nav = true, cursor_icon = event::CursorIcon::Text)]
 #[derive(Clone, Default, Widget)]
 pub struct EditBox<G: 'static> {
     #[widget_core]
@@ -131,16 +133,6 @@ impl<G> Debug for EditBox<G> {
             "EditBox {{ core: {:?}, editable: {:?}, text: {:?}, ... }}",
             self.core, self.editable, self.text
         )
-    }
-}
-
-impl<G: 'static> Widget for EditBox<G> {
-    fn allow_focus(&self) -> bool {
-        true
-    }
-
-    fn cursor_icon(&self) -> event::CursorIcon {
-        event::CursorIcon::Text
     }
 }
 

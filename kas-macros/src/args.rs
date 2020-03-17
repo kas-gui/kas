@@ -25,6 +25,7 @@ pub struct Child {
 pub struct Args {
     pub core_data: Member,
     pub layout_data: Option<Member>,
+    pub widget_core: WidgetCore,
     pub widget: Option<WidgetArgs>,
     pub layout: Option<LayoutArgs>,
     pub handler: Vec<HandlerArgs>,
@@ -96,12 +97,22 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
+    let mut widget_core = None;
     let mut widget = None;
     let mut layout = None;
     let mut handler = vec![];
 
     for attr in ast.attrs.drain(..) {
-        if attr.path == parse_quote! { widget } {
+        if attr.path == parse_quote! { widget_core } {
+            if widget_core.is_none() {
+                widget_core = Some(syn::parse2(attr.tokens)?);
+            } else {
+                attr.span()
+                    .unwrap()
+                    .error("multiple #[widget_core(..)] attributes on type")
+                    .emit()
+            }
+        } else if attr.path == parse_quote! { widget } {
             if widget.is_none() {
                 widget = Some(syn::parse2(attr.tokens)?);
             } else {
@@ -124,10 +135,13 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
+    let widget_core = widget_core.unwrap_or(WidgetCore::default());
+
     if let Some(core_data) = core_data {
         Ok(Args {
             core_data,
             layout_data,
+            widget_core,
             widget,
             layout,
             handler,
@@ -172,6 +186,8 @@ mod kw {
     custom_keyword!(substitutions);
     custom_keyword!(halign);
     custom_keyword!(valign);
+    custom_keyword!(key_nav);
+    custom_keyword!(cursor_icon);
 }
 
 #[derive(Debug)]
@@ -370,6 +386,59 @@ impl ToTokens for GridPos {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let (c, r, cs, rs) = (&self.0, &self.1, &self.2, &self.3);
         tokens.append_all(quote! { (#c, #r, #cs, #rs) });
+    }
+}
+
+pub struct WidgetCore {
+    pub key_nav: bool,
+    pub cursor_icon: Expr,
+}
+
+impl Default for WidgetCore {
+    fn default() -> Self {
+        WidgetCore {
+            key_nav: false,
+            cursor_icon: parse_quote! { kas::event::CursorIcon::Default },
+        }
+    }
+}
+
+impl Parse for WidgetCore {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let mut props = WidgetCore::default();
+
+        if input.is_empty() {
+            return Ok(props);
+        }
+        let content;
+        let _ = parenthesized!(content in input);
+
+        let mut have_key_nav = false;
+        let mut have_cursor_icon = false;
+
+        while !content.is_empty() {
+            let lookahead = content.lookahead1();
+            if lookahead.peek(kw::key_nav) && !have_key_nav {
+                let _: kw::key_nav = content.parse()?;
+                let _: Eq = content.parse()?;
+                let value: syn::LitBool = content.parse()?;
+                props.key_nav = value.value;
+                have_key_nav = true;
+            } else if lookahead.peek(kw::cursor_icon) && !have_cursor_icon {
+                let _: kw::cursor_icon = content.parse()?;
+                let _: Eq = content.parse()?;
+                props.cursor_icon = content.parse()?;
+                have_cursor_icon = true;
+            } else {
+                return Err(lookahead.error());
+            };
+
+            if content.peek(Comma) {
+                let _: Comma = content.parse()?;
+            }
+        }
+
+        Ok(props)
     }
 }
 

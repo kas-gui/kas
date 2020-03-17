@@ -761,7 +761,7 @@ impl<'a> Manager<'a> {
             }
 
             // TODO(opt): incorporate walk/find logic
-            if widget.find(id).map(|w| w.allow_focus()).unwrap_or(false) {
+            if widget.find(id).map(|w| w.key_nav()).unwrap_or(false) {
                 self.send_action(TkAction::Redraw);
                 self.mgr.nav_focus = Some(id);
                 return;

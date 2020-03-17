@@ -18,6 +18,7 @@ use crate::macros::Widget;
 use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetId};
 
 /// A bare radiobox (no label)
+#[widget_core(key_nav = true)]
 #[derive(Clone, Widget)]
 pub struct RadioBoxBare<OT: 'static> {
     #[widget_core]
@@ -49,10 +50,6 @@ impl<OT: 'static> Widget for RadioBoxBare<OT> {
             self.state = state;
             mgr.redraw(self.id());
         }
-    }
-
-    fn allow_focus(&self) -> bool {
-        true
     }
 }
 
