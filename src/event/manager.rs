@@ -751,7 +751,7 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn next_nav_focus(&mut self, widget: &mut dyn Widget) {
+    fn next_nav_focus<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         let mut id = self.mgr.nav_focus.unwrap_or(WidgetId::FIRST);
         let end = widget.id();
         loop {
@@ -953,7 +953,7 @@ impl<'a> Manager<'a> {
                         } else {
                             match (vkey, self.mgr.nav_focus) {
                                 (VirtualKeyCode::Tab, _) => {
-                                    self.next_nav_focus(widget.as_widget_mut());
+                                    self.next_nav_focus(widget);
                                 }
                                 (VirtualKeyCode::Space, Some(nav_id)) |
                                 (VirtualKeyCode::Return, Some(nav_id)) |
