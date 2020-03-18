@@ -250,7 +250,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             };
             ev_to_num.append_all(quote! {
                 if id <= self.#ident.id() {
-                    let r = self.#ident.handle(mgr, id, event);
+                    let r = self.#ident.event(mgr, id, event);
                     #handler
                 } else
             });
@@ -261,12 +261,12 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             quote! {}
         } else {
             quote! {
-                fn handle(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
+                fn event(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
                 -> kas::event::Response<Self::Msg>
                 {
                     use kas::{WidgetCore, event::Response};
                     #ev_to_num {
-                        debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
+                        debug_assert!(id == self.id(), "Handler::event: bad WidgetId");
                         Response::Unhandled(event)
                     }
                 }

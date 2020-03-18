@@ -95,9 +95,9 @@ impl<W: Widget> Window<W> {
 impl<W: Widget + Handler<Msg = VoidMsg> + 'static> Handler for Window<W> {
     type Msg = VoidMsg;
 
-    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         // The window itself doesn't handle events, so we can just pass through
-        self.w.handle(mgr, id, event)
+        self.w.event(mgr, id, event)
     }
 }
 

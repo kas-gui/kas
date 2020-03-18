@@ -181,10 +181,10 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
 impl<D: Directional, W: Widget + Handler> Handler for List<D, W> {
     type Msg = <W as Handler>::Msg;
 
-    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         for child in &mut self.widgets {
             if id <= child.id() {
-                return child.handle(mgr, id, event);
+                return child.event(mgr, id, event);
             }
         }
         debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");

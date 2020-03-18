@@ -163,7 +163,7 @@ impl<M> event::Handler for RadioBoxBare<M> {
         true
     }
 
-    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
+    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
         match action {
             Action::Activate => {
                 if !self.state {

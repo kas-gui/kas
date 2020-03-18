@@ -840,7 +840,7 @@ impl<'a> Manager<'a> {
             let id = grab.id;
             if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
                 let ev = Event::Action(Action::Pan { alpha, delta });
-                let _ = widget.handle(&mut self, id, ev);
+                let _ = widget.event(&mut self, id, ev);
             }
         }
 
@@ -853,7 +853,7 @@ impl<'a> Manager<'a> {
             match item {
                 Pending::LostCharFocus(id) => {
                     let ev = Event::Action(Action::LostCharFocus);
-                    let _ = widget.handle(&mut self, id, ev);
+                    let _ = widget.event(&mut self, id, ev);
                 }
             }
         }
@@ -937,7 +937,7 @@ impl<'a> Manager<'a> {
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = self.mgr.char_focus {
                     let ev = Event::Action(Action::ReceivedCharacter(c));
-                    let _ = widget.handle(self, id, ev);
+                    let _ = widget.event(self, id, ev);
                 }
             }
             // Focused(bool),
@@ -962,7 +962,7 @@ impl<'a> Manager<'a> {
                                     self.add_key_event(input.scancode, nav_id);
 
                                     let ev = Event::Action(Action::Activate);
-                                    let _ = widget.handle(self, nav_id, ev);
+                                    let _ = widget.event(self, nav_id, ev);
                                 }
                                 (VirtualKeyCode::Escape, _) => self.unset_nav_focus(),
                                 (vkey, _) => {
@@ -971,7 +971,7 @@ impl<'a> Manager<'a> {
                                         self.add_key_event(input.scancode, id);
 
                                         let ev = Event::Action(Action::Activate);
-                                        let _ = widget.handle(self, id, ev);
+                                        let _ = widget.event(self, id, ev);
                                     }
                                 }
                             }
@@ -995,7 +995,7 @@ impl<'a> Manager<'a> {
                     if grab.mode == GrabMode::Grab {
                         let source = PressSource::Mouse(grab.button);
                         let ev = Event::PressMove { source, coord, delta };
-                        let _ = widget.handle(self, grab.start_id, ev);
+                        let _ = widget.event(self, grab.start_id, ev);
                     } else {
                         if let Some(pan) = self.mgr.pan_grab.get_mut(grab.pan_grab.0 as usize) {
                             pan.coords[grab.pan_grab.1 as usize].1 = coord;
@@ -1023,7 +1023,7 @@ impl<'a> Manager<'a> {
                         ScrollDelta::PixelDelta(Coord::from_logical(pos, self.mgr.dpi_factor)),
                 });
                 if let Some(id) = self.mgr.hover {
-                    let _ = widget.handle(self, id, Event::Action(action));
+                    let _ = widget.event(self, id, Event::Action(action));
                 }
             }
             MouseInput {
@@ -1046,7 +1046,7 @@ impl<'a> Manager<'a> {
                                     coord,
                                 },
                             };
-                            let _ = widget.handle(self, grab.start_id, ev);
+                            let _ = widget.event(self, grab.start_id, ev);
                         }
                         // Pan events do not receive Start/End notifications
                         _ => (),
@@ -1059,7 +1059,7 @@ impl<'a> Manager<'a> {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
                         let ev = Event::PressStart { source, coord };
-                        let _ = widget.handle(self, id, ev);
+                        let _ = widget.event(self, id, ev);
                     }
                 }
             }
@@ -1073,11 +1073,11 @@ impl<'a> Manager<'a> {
                     TouchPhase::Started => {
                         if let Some(id) = widget.find_id(coord) {
                             let ev = Event::PressStart { source, coord };
-                            let _ = widget.handle(self, id, ev);
+                            let _ = widget.event(self, id, ev);
                         }
                     }
                     TouchPhase::Moved => {
-                        // NOTE: calling widget.handle twice appears
+                        // NOTE: calling widget.event twice appears
                         // to be unavoidable (as with CursorMoved)
                         let cur_id = widget.find_id(coord);
 
@@ -1108,7 +1108,7 @@ impl<'a> Manager<'a> {
                             if redraw {
                                 self.send_action(TkAction::Redraw);
                             }
-                            let _ = widget.handle(self, id, action);
+                            let _ = widget.event(self, id, action);
                         } else if let Some(pan_grab) = pan_grab {
                             if (pan_grab.1 as usize) < MAX_PAN_GRABS {
                                 if let Some(pan) = self.mgr.pan_grab.get_mut(pan_grab.0 as usize) {
@@ -1128,7 +1128,7 @@ impl<'a> Manager<'a> {
                                 if let Some(cur_id) = grab.cur_id {
                                     self.redraw(cur_id);
                                 }
-                                let _ = widget.handle(self, grab.start_id, action);
+                                let _ = widget.event(self, grab.start_id, action);
                             } else {
                                 self.mgr.remove_pan_grab(grab.pan_grab);
                             }
@@ -1144,7 +1144,7 @@ impl<'a> Manager<'a> {
                             if let Some(cur_id) = grab.cur_id {
                                 self.redraw(cur_id);
                             }
-                            let _ = widget.handle(self, grab.start_id, action);
+                            let _ = widget.event(self, grab.start_id, action);
                         }
                     }
                 }

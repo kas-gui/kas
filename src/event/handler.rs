@@ -42,7 +42,7 @@ pub trait Handler: Widget {
     /// Widgets should handle any events applicable to themselves here, and
     /// return all other events via [`Response::Unhandled`].
     #[inline]
-    fn handle_action(&mut self, _: &mut Manager, action: Action) -> Response<Self::Msg> {
+    fn action(&mut self, _: &mut Manager, action: Action) -> Response<Self::Msg> {
         Response::Unhandled(Event::Action(action))
     }
 
@@ -50,7 +50,7 @@ pub trait Handler: Widget {
     ///
     /// Most non-parent widgets will not need to implement this method manually.
     /// The default implementation (which wraps [`Manager::handle_generic`])
-    /// forwards high-level events via [`Handler::handle_action`].
+    /// forwards high-level events via [`Handler::action`].
     ///
     /// Parent widgets should forward events to the appropriate child widget,
     /// translating event coordinates where applicable. Unused events should be
@@ -61,7 +61,7 @@ pub trait Handler: Widget {
     /// Additionally, this method allows lower-level interpretation of some
     /// events, e.g. more direct access to mouse inputs.
     #[inline]
-    fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         Manager::handle_generic(self, mgr, event)
     }
 }
@@ -73,12 +73,12 @@ impl<M> Handler for Box<dyn Handler<Msg = M>> {
         self.as_ref().activation_via_press()
     }
 
-    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
-        self.as_mut().handle_action(mgr, action)
+    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
+        self.as_mut().action(mgr, action)
     }
 
-    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        self.as_mut().handle(mgr, id, event)
+    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        self.as_mut().event(mgr, id, event)
     }
 }
 
@@ -188,7 +188,7 @@ impl<'a> Manager<'a> {
     {
         let activable = widget.activation_via_press();
         match event {
-            Event::Action(action) => widget.handle_action(mgr, action),
+            Event::Action(action) => widget.action(mgr, action),
             Event::PressStart { source, coord } if activable && source.is_primary() => {
                 mgr.request_grab(widget.id(), source, coord, event::GrabMode::Grab, None);
                 Response::None
@@ -198,7 +198,7 @@ impl<'a> Manager<'a> {
                 Response::None
             }
             Event::PressEnd { end_id, .. } if activable && end_id == Some(widget.id()) => {
-                widget.handle_action(mgr, Action::Activate)
+                widget.action(mgr, Action::Activate)
             }
             ev @ _ => Response::Unhandled(ev),
         }

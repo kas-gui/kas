@@ -202,9 +202,9 @@ where
 {
     type Msg = T;
 
-    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let offset = if id <= self.handle.id() {
-            match self.handle.handle(mgr, id, event).try_into() {
+            match self.handle.event(mgr, id, event).try_into() {
                 Ok(res) => return res,
                 Err(offset) => offset,
             }

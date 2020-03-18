@@ -150,7 +150,7 @@ impl event::Handler for DragHandle {
     /// Offset from first possible position (should be non-negative).
     type Msg = Coord;
 
-    fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::PressStart { source, coord, .. } => {
                 if !self.grab_press(mgr, source, coord) {

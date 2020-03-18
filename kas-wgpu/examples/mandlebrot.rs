@@ -442,7 +442,7 @@ impl Layout for Mandlebrot {
 impl event::Handler for Mandlebrot {
     type Msg = ();
 
-    fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::Action(event::Action::Scroll(delta)) => {
                 let factor = match delta {

@@ -399,7 +399,7 @@ impl<G: EditGuard + 'static> Handler for EditBox<G> {
         true
     }
 
-    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
+    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
         match action {
             Action::Activate => {
                 mgr.request_char_focus(self.id());
