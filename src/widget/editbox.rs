@@ -36,6 +36,12 @@ enum EditAction {
     Edit,
 }
 
+/// An [`EditBox`] with no [`EditGuard`]
+///
+/// This may be useful when requiring a fully-typed [`EditBox`]. Alternatively,
+/// one may implement an [`EditGuard`], `G`, and use `EditBox<G>`.
+pub type EditBoxVoid = EditBox<EditVoid>;
+
 /// A *guard* around an [`EditBox`]
 ///
 /// When an [`EditBox`] receives input, it updates its contents as expected,
@@ -77,11 +83,14 @@ pub trait EditGuard: Sized {
     }
 }
 
-/// A simple implementation of [`EditGuard`]
-///
-/// The wrapped closure is called with the [`EditBox`]'s contents whenever the
-/// edit box is activated, and the response, if not `None`, is returned by the
-/// event handler.
+/// No-action [`EditGuard`]
+#[derive(Clone, Debug)]
+pub struct EditVoid;
+impl EditGuard for EditVoid {
+    type Msg = VoidMsg;
+}
+
+/// An [`EditGuard`] impl which calls a closure when activated
 pub struct EditActivate<F: Fn(&str) -> Option<M>, M>(pub F);
 impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditActivate<F, M> {
     type Msg = M;
@@ -90,6 +99,7 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditActivate<F, M> {
     }
 }
 
+/// An [`EditGuard`] impl which calls a closure when activated or focus is lost
 pub struct EditAFL<F: Fn(&str) -> Option<M>, M>(pub F);
 impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditAFL<F, M> {
     type Msg = M;
@@ -100,6 +110,8 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditAFL<F, M> {
         (edit.guard.0)(&edit.text)
     }
 }
+
+/// An [`EditGuard`] impl which calls a closure when edited
 pub struct EditEdit<F: Fn(&str) -> Option<M>, M>(pub F);
 impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
     type Msg = M;
@@ -202,7 +214,7 @@ impl<G: 'static> Layout for EditBox<G> {
     }
 }
 
-impl EditBox<()> {
+impl EditBox<EditVoid> {
     /// Construct an `EditBox` with the given inital `text`.
     pub fn new<S: Into<String>>(text: S) -> Self {
         EditBox {
@@ -213,7 +225,7 @@ impl EditBox<()> {
             text: text.into(),
             old_state: None,
             last_edit: LastEdit::None,
-            guard: (),
+            guard: EditVoid,
         }
     }
 
@@ -376,29 +388,6 @@ impl<G> Editable for EditBox<G> {
 
     fn set_editable(&mut self, editable: bool) {
         self.editable = editable;
-    }
-}
-
-impl Handler for EditBox<()> {
-    type Msg = VoidMsg;
-
-    #[inline]
-    fn activation_via_press(&self) -> bool {
-        true
-    }
-
-    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<VoidMsg> {
-        match action {
-            Action::Activate => {
-                mgr.request_char_focus(self.id());
-                Response::None
-            }
-            Action::ReceivedCharacter(c) => {
-                self.received_char(mgr, c);
-                Response::None
-            }
-            a @ _ => Response::unhandled_action(a),
-        }
     }
 }
 
