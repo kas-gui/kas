@@ -6,7 +6,7 @@
 //! Dynamic widgets
 
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Handler, Manager, Response};
+use crate::event::{self, EvHandler, Event, Manager, Response};
 use crate::geom::Coord;
 use crate::layout::{self, AxisInfo, RulesSetter, RulesSolver, SizeRules};
 use crate::{AlignHints, Directional, Horizontal, Vertical};
@@ -42,7 +42,7 @@ pub type BoxColumn<M> = BoxList<Vertical, M>;
 /// This is parameterised over directionality and handler message type.
 ///
 /// See documentation of [`List`] type.
-pub type BoxList<D, M> = List<D, Box<dyn Handler<Msg = M>>>;
+pub type BoxList<D, M> = List<D, Box<dyn EvHandler<Msg = M>>>;
 
 /// A generic row/column widget
 ///
@@ -178,9 +178,11 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget + Handler> Handler for List<D, W> {
-    type Msg = <W as Handler>::Msg;
+impl<D: Directional, W: Widget + EvHandler> event::Handler for List<D, W> {
+    type Msg = <W as event::Handler>::Msg;
+}
 
+impl<D: Directional, W: Widget + EvHandler> event::EvHandler for List<D, W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         for child in &mut self.widgets {
             if id <= child.id() {

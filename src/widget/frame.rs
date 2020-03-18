@@ -9,7 +9,7 @@ use std::fmt::Debug;
 
 use crate::class::*;
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Handler, Manager};
+use crate::event::{self, EvHandler, Handler, Manager};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, Margins, SizeRules};
 use crate::macros::Widget;
@@ -20,7 +20,7 @@ use crate::{AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetI
 /// This widget provides a simple abstraction: drawing a frame around its
 /// contents.
 #[widget]
-#[handler(msg = <W as Handler>::Msg, generics = <> where W: Handler)]
+#[handler(msg = <W as Handler>::Msg, generics = <> where W: EvHandler)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Frame<W: Widget> {
     #[widget_core]

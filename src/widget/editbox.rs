@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 
 use crate::class::{Editable, HasText};
 use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{self, Action, Handler, Manager, Response, VoidMsg};
+use crate::event::{self, Action, Manager, Response, VoidMsg};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
@@ -55,7 +55,7 @@ pub type EditBoxVoid = EditBox<EditVoid>;
 ///
 /// All methods have a default implementation which does nothing.
 pub trait EditGuard: Sized {
-    /// The [`Handler::Msg`] type
+    /// The [`event::Handler::Msg`] type
     type Msg;
 
     /// Activation guard
@@ -391,7 +391,7 @@ impl<G> Editable for EditBox<G> {
     }
 }
 
-impl<G: EditGuard + 'static> Handler for EditBox<G> {
+impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
     type Msg = G::Msg;
 
     #[inline]
@@ -421,3 +421,6 @@ impl<G: EditGuard + 'static> Handler for EditBox<G> {
         }
     }
 }
+
+// TODO: derive
+impl<G: EditGuard + 'static> event::EvHandler for EditBox<G> {}

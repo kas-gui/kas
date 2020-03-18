@@ -184,6 +184,9 @@ impl<M> event::Handler for RadioBoxBare<M> {
     }
 }
 
+// TODO: derive
+impl<M> event::EvHandler for RadioBoxBare<M> {}
+
 /// A radiobox with optional label
 #[layout(horizontal, area=radiobox)]
 #[widget]

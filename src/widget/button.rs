@@ -122,3 +122,6 @@ impl<M: Clone + Debug> event::Handler for TextButton<M> {
         }
     }
 }
+
+// TODO: derive
+impl<M: Clone + Debug> event::EvHandler for TextButton<M> {}

@@ -8,15 +8,16 @@
 use std::fmt::{self, Debug};
 
 use crate::draw::SizeHandle;
-use crate::event::{Callback, Event, Handler, Manager, Response, VoidMsg};
+use crate::event::{Callback, EvHandler, Manager, VoidMsg};
 use crate::geom::Size;
 use crate::layout::{self};
 use crate::macros::Widget;
-use crate::{CoreData, CowString, LayoutData, Widget, WidgetId};
+use crate::{CoreData, CowString, LayoutData, Widget};
 
 /// The main instantiation of the [`Window`] trait.
 #[widget]
 #[layout(single)]
+#[handler(generics = <> where W: Widget + EvHandler<Msg = VoidMsg>)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
     #[widget_core]
@@ -92,16 +93,7 @@ impl<W: Widget> Window<W> {
     }
 }
 
-impl<W: Widget + Handler<Msg = VoidMsg> + 'static> Handler for Window<W> {
-    type Msg = VoidMsg;
-
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        // The window itself doesn't handle events, so we can just pass through
-        self.w.event(mgr, id, event)
-    }
-}
-
-impl<W: Widget + Handler<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
+impl<W: Widget + EvHandler<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
     fn title(&self) -> &str {
         &self.title
     }

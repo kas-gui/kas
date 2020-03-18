@@ -278,6 +278,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     for #name #ty_generics #where_clause
             {
                 type Msg = #msg;
+            }
+            impl #impl_generics kas::event::EvHandler
+                    for #name #ty_generics #where_clause
+            {
                 #handler
             }
         });
@@ -405,7 +409,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                 if let Some(ref wattr) = attr {
                     if let Some(tyr) = gen_msg {
-                        handler_clauses.push(quote! { #ty: kas::event::Handler<Msg = #tyr> });
+                        handler_clauses.push(quote! { #ty: kas::event::EvHandler<Msg = #tyr> });
                     } else {
                         // No typing. If a handler is specified, then the child must implement
                         // Handler<Msg = X> where the handler takes type X; otherwise
@@ -413,7 +417,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         if let Some(ref handler) = wattr.args.handler {
                             if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
                                 handler_clauses
-                                    .push(quote! { #ty: kas::event::Handler<Msg = #ty_bound> });
+                                    .push(quote! { #ty: kas::event::EvHandler<Msg = #ty_bound> });
                             } else {
                                 return quote! {}.into(); // exit after emitting error
                             }
@@ -421,7 +425,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             name_buf.push_str("R");
                             let tyr = Ident::new(&name_buf, Span::call_site());
                             handler_extra.push(tyr.clone());
-                            handler_clauses.push(quote! { #ty: kas::event::Handler<Msg = #tyr> });
+                            handler_clauses.push(quote! { #ty: kas::event::EvHandler<Msg = #tyr> });
                             handler_clauses.push(quote! { #msg: From<#tyr> });
                         }
                     }

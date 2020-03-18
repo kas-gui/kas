@@ -149,7 +149,9 @@ impl Layout for DragHandle {
 impl event::Handler for DragHandle {
     /// Offset from first possible position (should be non-negative).
     type Msg = Coord;
+}
 
+impl event::EvHandler for DragHandle {
     fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::PressStart { source, coord, .. } => {

@@ -201,7 +201,12 @@ where
     T: SliderType,
 {
     type Msg = T;
+}
 
+impl<T, D: Directional> event::EvHandler for Slider<T, D>
+where
+    T: SliderType,
+{
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let offset = if id <= self.handle.id() {
             match self.handle.event(mgr, id, event).try_into() {

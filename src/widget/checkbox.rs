@@ -148,6 +148,9 @@ impl<M> event::Handler for CheckBoxBare<M> {
     }
 }
 
+// TODO: derive
+impl<M> event::EvHandler for CheckBoxBare<M> {}
+
 /// A checkable box with optional label
 // TODO: use a generic wrapper for CheckBox and RadioBox?
 #[layout(horizontal, area=checkbox)]

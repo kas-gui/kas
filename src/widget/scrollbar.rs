@@ -218,7 +218,9 @@ impl<D: Directional> Layout for ScrollBar<D> {
 
 impl<D: Directional> event::Handler for ScrollBar<D> {
     type Msg = u32;
+}
 
+impl<D: Directional> event::EvHandler for ScrollBar<D> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let offset = if id <= self.handle.id() {
             match self.handle.event(mgr, id, event).try_into() {

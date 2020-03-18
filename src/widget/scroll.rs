@@ -222,9 +222,11 @@ impl<W: Widget> Layout for ScrollRegion<W> {
     }
 }
 
-impl<W: Widget + event::Handler> event::Handler for ScrollRegion<W> {
+impl<W: Widget + event::EvHandler> event::Handler for ScrollRegion<W> {
     type Msg = <W as event::Handler>::Msg;
+}
 
+impl<W: Widget + event::EvHandler> event::EvHandler for ScrollRegion<W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
             Event::Action(Action::Scroll(delta)) => {

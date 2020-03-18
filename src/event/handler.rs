@@ -13,7 +13,7 @@ use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, Layout, Widget, WidgetCore, WidgetId};
 
-/// Event-handling aspect of a widget.
+/// High-level event handling for a [`Widget`]
 ///
 /// This is a companion trait to [`Widget`]. It can (optionally) be implemented
 /// by the `derive(Widget)` macro, or can be implemented manually.
@@ -45,7 +45,15 @@ pub trait Handler: Widget {
     fn action(&mut self, _: &mut Manager, action: Action) -> Response<Self::Msg> {
         Response::Unhandled(Event::Action(action))
     }
+}
 
+/// Low-level event handling for a [`Widget`]
+///
+/// This is a companion trait to [`Widget`]. It can (optionally) be implemented
+/// by the `derive(Widget)` macro, or can be implemented manually.
+///
+/// [`Widget`]: crate::Widget
+pub trait EvHandler: Handler {
     /// Handle a low-level event.
     ///
     /// Most non-parent widgets will not need to implement this method manually.
@@ -66,7 +74,7 @@ pub trait Handler: Widget {
     }
 }
 
-impl<M> Handler for Box<dyn Handler<Msg = M>> {
+impl<M> Handler for Box<dyn EvHandler<Msg = M>> {
     type Msg = M;
 
     fn activation_via_press(&self) -> bool {
@@ -76,13 +84,15 @@ impl<M> Handler for Box<dyn Handler<Msg = M>> {
     fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
         self.as_mut().action(mgr, action)
     }
+}
 
+impl<M> EvHandler for Box<dyn EvHandler<Msg = M>> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         self.as_mut().event(mgr, id, event)
     }
 }
 
-impl<M> Widget for Box<dyn Handler<Msg = M>> {
+impl<M> Widget for Box<dyn EvHandler<Msg = M>> {
     fn configure(&mut self, mgr: &mut Manager) {
         self.as_mut().configure(mgr);
     }
@@ -96,7 +106,7 @@ impl<M> Widget for Box<dyn Handler<Msg = M>> {
     }
 }
 
-impl<M> Layout for Box<dyn Handler<Msg = M>> {
+impl<M> Layout for Box<dyn EvHandler<Msg = M>> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         self.as_mut().size_rules(size_handle, axis)
     }
@@ -114,7 +124,7 @@ impl<M> Layout for Box<dyn Handler<Msg = M>> {
     }
 }
 
-impl<M> WidgetCore for Box<dyn Handler<Msg = M>> {
+impl<M> WidgetCore for Box<dyn EvHandler<Msg = M>> {
     fn core_data(&self) -> &CoreData {
         self.as_ref().core_data()
     }

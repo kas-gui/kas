@@ -47,12 +47,12 @@
 //!
 //! ```
 //! use kas::macros::Widget;
-//! use kas::event::{Handler, VoidMsg};
+//! use kas::event::{EvHandler, VoidMsg};
 //! use kas::{CoreData, LayoutData, Widget};
 //!
 //! #[widget]
 //! #[layout(single)]
-//! #[handler(generics = <> where W: Handler<Msg = VoidMsg>)]
+//! #[handler(generics = <> where W: EvHandler<Msg = VoidMsg>)]
 //! #[derive(Clone, Debug, Widget)]
 //! struct WrapperWidget<W: Widget> {
 //!     #[widget_core] core: CoreData,
@@ -135,7 +135,8 @@
 //! #### Handler
 //!
 //! If one or more `#[handler]` attributes are present, then the [`Handler`]
-//! trait is implemented (potentially multiple times with different
+//! and [`EvHandler`]
+//! traits are implemented (potentially multiple times with different
 //! substitutions of generic parameters).
 //! This attribute accepts the following arguments:
 //!
@@ -206,7 +207,7 @@
 //! The example below includes multiple children and custom event handling.
 //!
 //! ```
-//! use kas::event::{Handler, Manager, VoidResponse, VoidMsg};
+//! use kas::event::{EvHandler, Manager, VoidResponse, VoidMsg};
 //! use kas::macros::Widget;
 //! use kas::widget::Label;
 //! use kas::{CoreData, LayoutData, Widget};
@@ -216,7 +217,7 @@
 //!
 //! #[widget]
 //! #[layout(vertical)]
-//! #[handler(generics = <> where W: Handler<Msg = ChildMessage>)]
+//! #[handler(generics = <> where W: EvHandler<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
 //!     #[widget_core] core: CoreData,
@@ -385,6 +386,6 @@
 
 // Imported for doc-links
 #[allow(unused)]
-use crate::{event::Handler, CoreData, Layout, LayoutData, Widget, WidgetCore};
+use crate::{event::EvHandler, event::Handler, CoreData, Layout, LayoutData, Widget, WidgetCore};
 
 pub use kas_macros::{make_widget, VoidMsg, Widget};

@@ -799,7 +799,7 @@ impl<'a> Manager<'a> {
     /// Update, after receiving all events
     pub fn finish<W>(mut self, widget: &mut W) -> TkAction
     where
-        W: Widget + Handler<Msg = VoidMsg> + ?Sized,
+        W: Widget + EvHandler<Msg = VoidMsg> + ?Sized,
     {
         for gi in 0..self.mgr.pan_grab.len() {
             let grab = &mut self.mgr.pan_grab[gi];
@@ -915,7 +915,7 @@ impl<'a> Manager<'a> {
     #[cfg(feature = "winit")]
     pub fn handle_winit<W>(&mut self, widget: &mut W, event: winit::event::WindowEvent)
     where
-        W: Widget + Handler<Msg = VoidMsg> + ?Sized,
+        W: Widget + EvHandler<Msg = VoidMsg> + ?Sized,
     {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
         trace!("Event: {:?}", event);
