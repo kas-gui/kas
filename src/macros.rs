@@ -47,7 +47,7 @@
 //!
 //! ```
 //! use kas::macros::Widget;
-//! use kas::event::{EvHandler, VoidMsg};
+//! use kas::event::VoidMsg;
 //! use kas::{CoreData, Layout, LayoutData, Widget};
 //!
 //! #[widget]
@@ -79,7 +79,6 @@
 //!     #[widget_core] core: CoreData,
 //! }
 //!
-//! impl event::EvHandler for MyWidget {}
 //! impl Layout for MyWidget {
 //!     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
 //!         todo!()
@@ -137,13 +136,12 @@
 //! #### Handler
 //!
 //! If one or more `#[handler]` attributes are present, then the [`Handler`]
-//! and [`EvHandler`]
-//! traits are implemented (potentially multiple times with different
+//! trait is implemented (potentially multiple times with different
 //! substitutions of generic parameters).
 //! This attribute accepts the following semi-colon separated arguments:
 //!
-//! -   (optional) `noderive` — do not derive [`Handler`] (but do still derive
-//!     [`EvHandler`])
+//! -   (optional) `noderive` — do not derive [`Handler`] (but apply generics
+//!     to derivation of [`Layout`], if applicable)
 //! -   (optional) `msg = TYPE` — the [`Handler::Msg`] associated type; if not
 //!     specified, this type defaults to [`kas::event::VoidMsg`]
 //! -   (optional) `substitutions = LIST` — a list subsitutions for type
@@ -151,13 +149,14 @@
 //! -   (optional): `generics = < X, Y, ... > where CONDS`
 //!     (`where CONDS` is optional)
 //!
-//! Commonly, implementations of these traits require extra type bounds on the
+//! Commonly, implementations of the [`Handler`] and [`Layout`] traits require
+//! extra type bounds on the
 //! `impl` which do not appear on the struct, for example a struct may be
 //! parametrised with `W: Widget`, but the [`Handler`] impl may require
-//! `W: EvHandler`. This may be achieved as follows:
+//! `W: Layout`. This may be achieved as follows:
 //! ```
 //! # use kas::macros::Widget;
-//! # use kas::{CoreData, Layout, Widget, event::{Handler, EvHandler}};
+//! # use kas::{CoreData, Layout, Widget, event::Handler};
 //! #[layout(single)]
 //! #[widget]
 //! #[handler(generics = <> where W: Layout; msg = <W as Handler>::Msg)]
@@ -223,7 +222,7 @@
 //! The example below includes multiple children and custom event handling.
 //!
 //! ```
-//! use kas::event::{EvHandler, Manager, VoidResponse, VoidMsg};
+//! use kas::event::{Manager, VoidResponse, VoidMsg};
 //! use kas::macros::Widget;
 //! use kas::widget::Label;
 //! use kas::{CoreData, Layout, LayoutData, Widget};
@@ -402,6 +401,6 @@
 
 // Imported for doc-links
 #[allow(unused)]
-use crate::{event::EvHandler, event::Handler, CoreData, Layout, LayoutData, Widget, WidgetCore};
+use crate::{event::Handler, CoreData, Layout, LayoutData, Widget, WidgetCore};
 
 pub use kas_macros::{make_widget, VoidMsg, Widget};

@@ -127,6 +127,11 @@ impl DragHandle {
     }
 }
 
+impl event::Handler for DragHandle {
+    /// Offset from first possible position (should be non-negative).
+    type Msg = Coord;
+}
+
 /// This implementation is unusual in that:
 ///
 /// 1.  `size_rules` always returns [`SizeRules::EMPTY`]
@@ -144,14 +149,7 @@ impl Layout for DragHandle {
     }
 
     fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState) {}
-}
 
-impl event::Handler for DragHandle {
-    /// Offset from first possible position (should be non-negative).
-    type Msg = Coord;
-}
-
-impl event::EvHandler for DragHandle {
     fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::PressStart { source, coord, .. } => {

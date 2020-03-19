@@ -129,6 +129,10 @@ impl<W: Widget> ScrollRegion<W> {
     }
 }
 
+impl<W: Layout> event::Handler for ScrollRegion<W> {
+    type Msg = <W as event::Handler>::Msg;
+}
+
 impl<W: Layout> Layout for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut rules = self.child.size_rules(size_handle, axis);
@@ -220,13 +224,7 @@ impl<W: Layout> Layout for ScrollRegion<W> {
             self.child.draw(handle, mgr)
         });
     }
-}
 
-impl<W: Widget + event::EvHandler> event::Handler for ScrollRegion<W> {
-    type Msg = <W as event::Handler>::Msg;
-}
-
-impl<W: Widget + event::EvHandler> event::EvHandler for ScrollRegion<W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
             Event::Action(Action::Scroll(delta)) => {

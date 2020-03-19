@@ -37,8 +37,6 @@ impl<M: Clone + Debug> Widget for TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug> event::EvHandler for TextButton<M> {}
-
 impl<M: Clone + Debug> Layout for TextButton<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.button_surround();

@@ -9,7 +9,7 @@ use std::fmt::Debug;
 
 use crate::class::*;
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, EvHandler, Handler, Manager};
+use crate::event::{self, Event, Handler, Manager, Response};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{AxisInfo, Margins, SizeRules};
 use crate::macros::Widget;
@@ -20,7 +20,7 @@ use crate::{AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetI
 /// This widget provides a simple abstraction: drawing a frame around its
 /// contents.
 #[widget]
-#[handler(msg = <W as Handler>::Msg; generics = <> where W: EvHandler)]
+#[handler(msg = <W as Handler>::Msg; generics = <> where W: Layout)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Frame<W: Widget> {
     #[widget_core]
@@ -43,8 +43,6 @@ impl<W: Widget> Frame<W> {
         }
     }
 }
-
-impl<W: Layout> event::EvHandler for Frame<W> {}
 
 impl<W: Layout> Layout for Frame<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
@@ -85,6 +83,16 @@ impl<W: Layout> Layout for Frame<W> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         draw_handle.outer_frame(self.core_data().rect);
         self.child.draw(draw_handle, mgr);
+    }
+
+    #[inline]
+    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if id <= self.child.id() {
+            self.child.event(mgr, id, event)
+        } else {
+            debug_assert!(id == self.id(), "Layout::event: bad WidgetId");
+            Response::Unhandled(event)
+        }
     }
 }
 

@@ -39,8 +39,6 @@ impl<M> Debug for CheckBoxBare<M> {
     }
 }
 
-impl<M> event::EvHandler for CheckBoxBare<M> {}
-
 impl<M> Layout for CheckBoxBare<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.checkbox();

@@ -260,7 +260,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 {
                     use kas::{WidgetCore, event::Response};
                     #ev_to_num {
-                        debug_assert!(id == self.id(), "Handler::event: bad WidgetId");
+                        debug_assert!(id == self.id(), "Layout::event: bad WidgetId");
                         Response::Unhandled(event)
                     }
                 }
@@ -278,22 +278,13 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
 
         if let Some(ref layout) = args.layout {
-            // NOTE: we cannot always derive EvHandler; only doing so when
-            // deriving Layout is a temporary solution.
-            toks.append_all(quote! {
-                impl #impl_generics kas::event::EvHandler
-                        for #name #ty_generics #where_clause
-                {
-                    #event
-                }
-            });
-
             match layout::derive(&args.children, layout, &args.layout_data) {
                 Ok(fns) => toks.append_all(quote! {
                     impl #impl_generics kas::Layout
                             for #name #ty_generics #where_clause
                     {
                         #fns
+                        #event
                     }
                 }),
                 Err(err) => return err.to_compile_error().into(),

@@ -55,8 +55,6 @@ impl<M> Widget for RadioBoxBare<M> {
     }
 }
 
-impl<M> event::EvHandler for RadioBoxBare<M> {}
-
 impl<M> Layout for RadioBoxBare<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.radiobox();

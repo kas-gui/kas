@@ -149,8 +149,6 @@ impl<G> Debug for EditBox<G> {
     }
 }
 
-impl<G: EditGuard + 'static> event::EvHandler for EditBox<G> {}
-
 impl<G: EditGuard + 'static> Layout for EditBox<G> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let frame_sides = size_handle.edit_surround();

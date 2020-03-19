@@ -156,6 +156,13 @@ where
     }
 }
 
+impl<T, D: Directional> event::Handler for Slider<T, D>
+where
+    T: SliderType,
+{
+    type Msg = T;
+}
+
 impl<T, D: Directional> Layout for Slider<T, D>
 where
     T: SliderType,
@@ -194,19 +201,7 @@ where
         let hl = mgr.highlight_state(self.handle.id());
         draw_handle.slider(self.core.rect, self.handle.rect(), dir, hl);
     }
-}
 
-impl<T, D: Directional> event::Handler for Slider<T, D>
-where
-    T: SliderType,
-{
-    type Msg = T;
-}
-
-impl<T, D: Directional> event::EvHandler for Slider<T, D>
-where
-    T: SliderType,
-{
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let offset = if id <= self.handle.id() {
             match self.handle.event(mgr, id, event).try_into() {

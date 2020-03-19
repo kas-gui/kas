@@ -404,6 +404,10 @@ struct Mandlebrot {
     iter: i32,
 }
 
+impl event::Handler for Mandlebrot {
+    type Msg = ();
+}
+
 impl Layout for Mandlebrot {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
         let size = (match a.is_horizontal() {
@@ -437,13 +441,7 @@ impl Layout for Mandlebrot {
         let p = (self.alpha, self.delta, self.rel_width, self.iter);
         draw.custom(region, self.core.rect + offset, p);
     }
-}
 
-impl event::Handler for Mandlebrot {
-    type Msg = ();
-}
-
-impl event::EvHandler for Mandlebrot {
     fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::Action(event::Action::Scroll(delta)) => {
