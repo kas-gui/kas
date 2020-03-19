@@ -9,7 +9,7 @@
 use std::cell::RefCell;
 
 use kas::class::HasText;
-use kas::event::{Manager, UpdateHandle, VoidMsg, VoidResponse};
+use kas::event::{Action, Handler, Manager, UpdateHandle, VoidMsg, Response};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};
 use kas::{ThemeApi, Widget, WidgetCore};
@@ -44,7 +44,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
         "Counter",
         make_widget! {
             #[layout(vertical)]
-            #[handler(msg = VoidMsg)]
             struct {
                 #[widget(halign=centre)] display: Label = Label::new("0"),
                 #[widget(handler = handle_button)] buttons -> Message = buttons,
@@ -54,15 +53,23 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 fn configure(&mut self, mgr: &mut Manager) {
                     mgr.update_on_handle(self.handle, self.id());
                 }
-
-                fn update_handle(&mut self, mgr: &mut Manager, _: UpdateHandle, _: u64) {
-                    let c = COUNTER.with(|c| *c.borrow());
-                    self.display.set_text(mgr, c.to_string());
+            }
+            impl Handler {
+                type Msg = VoidMsg;
+                fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<VoidMsg> {
+                    match action {
+                        Action::HandleUpdate { .. } => {
+                            let c = COUNTER.with(|c| *c.borrow());
+                            self.display.set_text(mgr, c.to_string());
+                            Response::None
+                        }
+                        a @ _ => Response::unhandled_action(a),
+                    }
                 }
             }
             impl {
                 fn handle_button(&mut self, mgr: &mut Manager, msg: Message)
-                    -> VoidResponse
+                    -> Response<VoidMsg>
                 {
                     COUNTER.with(|c| {
                         let mut c = c.borrow_mut();
@@ -72,7 +79,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         };
                     });
                     mgr.trigger_update(self.handle, 0);
-                    VoidResponse::None
+                    Response::None
                 }
             }
         },

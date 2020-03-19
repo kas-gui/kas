@@ -44,13 +44,41 @@ impl<M> Widget for RadioBoxBare<M> {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.update_on_handle(self.handle, self.id());
     }
+}
 
-    fn update_handle(&mut self, mgr: &mut Manager, _: UpdateHandle, payload: u64) {
-        let id = WidgetId::try_from(payload).unwrap();
-        let state = id == self.id();
-        if state != self.state {
-            self.state = state;
-            mgr.redraw(self.id());
+impl<M> event::Handler for RadioBoxBare<M> {
+    type Msg = M;
+
+    #[inline]
+    fn activation_via_press(&self) -> bool {
+        true
+    }
+
+    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
+        match action {
+            Action::Activate => {
+                if !self.state {
+                    self.state = true;
+                    mgr.redraw(self.id());
+                    mgr.trigger_update(self.handle, self.id().into());
+                    if let Some(ref f) = self.on_activate {
+                        f(self.id()).into()
+                    } else {
+                        Response::None
+                    }
+                } else {
+                    Response::None
+                }
+            }
+            Action::HandleUpdate { payload, .. } => {
+                let id = WidgetId::try_from(payload).unwrap();
+                if id != self.id() {
+                    self.state = false;
+                    mgr.redraw(self.id());
+                }
+                Response::None
+            }
+            a @ _ => Response::unhandled_action(a),
         }
     }
 }
@@ -73,30 +101,6 @@ impl<M> Layout for RadioBoxBare<M> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         let highlights = mgr.highlight_state(self.id());
         draw_handle.radiobox(self.core.rect, self.state, highlights);
-    }
-}
-
-impl<M> RadioBoxBare<M> {
-    /// Construct a radiobox which calls `f` when toggled
-    ///
-    /// This is a shortcut for `RadioBoxBare::new().on_activate(f)`.
-    ///
-    /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
-    /// same `handle` will be considered part of a single group.
-    ///
-    /// The closure `f` is called with the new state of the radiobox when
-    /// toggled, and the result of `f` is returned from the event handler.
-    #[inline]
-    pub fn new_on<F>(f: F, handle: UpdateHandle) -> Self
-    where
-        F: Fn(WidgetId) -> M + 'static,
-    {
-        RadioBoxBare {
-            core: Default::default(),
-            state: false,
-            handle,
-            on_activate: Some(Rc::new(f)),
-        }
     }
 }
 
@@ -134,6 +138,28 @@ impl RadioBoxBare<VoidMsg> {
 }
 
 impl<M> RadioBoxBare<M> {
+    /// Construct a radiobox which calls `f` when toggled
+    ///
+    /// This is a shortcut for `RadioBoxBare::new().on_activate(f)`.
+    ///
+    /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
+    /// same `handle` will be considered part of a single group.
+    ///
+    /// The closure `f` is called with the new state of the radiobox when
+    /// toggled, and the result of `f` is returned from the event handler.
+    #[inline]
+    pub fn new_on<F>(f: F, handle: UpdateHandle) -> Self
+    where
+        F: Fn(WidgetId) -> M + 'static,
+    {
+        RadioBoxBare {
+            core: Default::default(),
+            state: false,
+            handle,
+            on_activate: Some(Rc::new(f)),
+        }
+    }
+
     /// Set the initial state of the radiobox.
     #[inline]
     pub fn state(mut self, state: bool) -> Self {
@@ -152,35 +178,6 @@ impl<M> HasBool for RadioBoxBare<M> {
         mgr.redraw(self.id());
         if state {
             mgr.trigger_update(self.handle, self.id().into());
-        }
-    }
-}
-
-impl<M> event::Handler for RadioBoxBare<M> {
-    type Msg = M;
-
-    #[inline]
-    fn activation_via_press(&self) -> bool {
-        true
-    }
-
-    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
-        match action {
-            Action::Activate => {
-                if !self.state {
-                    self.state = true;
-                    mgr.redraw(self.id());
-                    mgr.trigger_update(self.handle, self.id().into());
-                    if let Some(ref f) = self.on_activate {
-                        f(self.id()).into()
-                    } else {
-                        Response::None
-                    }
-                } else {
-                    Response::None
-                }
-            }
-            a @ _ => Response::unhandled_action(a),
         }
     }
 }

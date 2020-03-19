@@ -260,7 +260,7 @@ impl ManagerState {
 
     /// Get the next resume time
     pub fn next_resume(&self) -> Option<Instant> {
-        self.time_updates.first().map(|time| time.0)
+        self.time_updates.last().map(|time| time.0)
     }
 
     /// Set an action
@@ -455,7 +455,7 @@ impl<'a> Manager<'a> {
             break;
         }
 
-        self.mgr.time_updates.sort_by_key(|row| row.0);
+        self.mgr.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
     }
 
     /// Subscribe to an update handle
@@ -867,26 +867,20 @@ impl<'a> Manager<'a> {
     pub fn update_timer<W: Layout + ?Sized>(&mut self, widget: &mut W) {
         let now = Instant::now();
 
-        // assumption: time_updates are sorted
-        let mut i = 0;
-        while i < self.mgr.time_updates.len() {
-            if self.mgr.time_updates[i].0 > now {
+        // assumption: time_updates are sorted in reverse order
+        while !self.mgr.time_updates.is_empty() {
+            if self.mgr.time_updates.last().unwrap().0 > now {
                 break;
             }
 
-            let w_id = self.mgr.time_updates[i].1;
-            trace!("Updating widget {} via timer", w_id);
-            let dur = widget.find_mut(w_id).and_then(|w| w.update_timer(self));
-            if let Some(dur) = dur {
-                assert!(dur > Duration::new(0, 0));
-                self.mgr.time_updates[i].0 = now + dur;
-                i += 1;
-            } else {
-                self.mgr.time_updates.remove(i);
-            }
+            let update = self.mgr.time_updates.pop().unwrap();
+            let w_id = update.1;
+            let action = Action::TimerUpdate;
+            trace!("Sending {:?} to widget {}", action, w_id);
+            let _ = widget.event(self, w_id, Event::Action(action));
         }
 
-        self.mgr.time_updates.sort_by_key(|row| row.0);
+        self.mgr.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
     }
 
     /// Update widgets due to handle
@@ -899,10 +893,9 @@ impl<'a> Manager<'a> {
         // NOTE: to avoid borrow conflict, we must clone values!
         if let Some(mut values) = self.mgr.handle_updates.get(&handle).cloned() {
             for w_id in values.drain(..) {
-                trace!("Updating widget {} via {:?}", w_id, handle);
-                if let Some(w) = widget.find_mut(w_id) {
-                    w.update_handle(self, handle, payload);
-                }
+                let action = Action::HandleUpdate { handle, payload };
+                trace!("Sending {:?} to widget {}", action, w_id);
+                let _ = widget.event(self, w_id, Event::Action(action));
             }
         }
     }

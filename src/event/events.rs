@@ -5,7 +5,7 @@
 
 //! Event handling: events
 
-use super::MouseButton;
+use super::{MouseButton, UpdateHandle};
 
 use crate::geom::{Coord, DVec2};
 use crate::WidgetId;
@@ -74,6 +74,19 @@ pub enum Action {
         /// Translation component
         delta: DVec2,
     },
+    /// Update from a timer
+    ///
+    /// This event is received after requesting timed wake-up(s)
+    /// (see [`Manager::update_on_timer`]).
+    TimerUpdate,
+    /// Update triggerred via an [`UpdateHandle`]
+    ///
+    /// This event may be received after registering an [`UpdateHandle`] via
+    /// [`Manager::update_on_handle`].
+    ///
+    /// A user-defined payload is passed. Interpretation of this payload is
+    /// user-defined and unfortunately not type safe.
+    HandleUpdate { handle: UpdateHandle, payload: u64 },
 }
 
 /// Low-level events addressed to a widget by [`WidgetId`] or coordinate.

@@ -7,7 +7,6 @@
 
 use std::fmt;
 use std::ops::DerefMut;
-use std::time::Duration;
 
 use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Event, Manager, ManagerState, Response};
@@ -172,32 +171,6 @@ pub trait Widget: WidgetCore {
     ///
     /// This method is called immediately after assigning `self.core_data().id`.
     fn configure(&mut self, _: &mut Manager) {}
-
-    /// Update the widget via a timer
-    ///
-    /// This method is called on scheduled updates
-    /// (see [`Manager::update_on_timer`]).
-    ///
-    /// When some [`Duration`] is returned, another timed update is scheduled
-    /// at approximately this duration from now (but without blocking redraws;
-    /// usage of 1ns effectively enables per-frame update with FPS limited via
-    /// VSync). Required: `duration > 0`.
-    ///
-    /// This method being called does not imply a redraw.
-    fn update_timer(&mut self, _: &mut Manager) -> Option<Duration> {
-        None
-    }
-
-    /// Update the widget via an update handle
-    ///
-    /// This method is called on triggered updates (see [`Manager::update_on_handle`]).
-    /// The source handle is specified via the [`event::UpdateHandle`] parameter.
-    ///
-    /// A user-defined payload is passed. Interpretation of this payload is
-    /// user-defined and unfortunately not type safe.
-    ///
-    /// This method being called does not imply a redraw.
-    fn update_handle(&mut self, _mgr: &mut Manager, _handle: event::UpdateHandle, _payload: u64) {}
 }
 
 /// Positioning and drawing routines for widgets
@@ -275,7 +248,7 @@ pub trait Layout: event::Handler {
     ///
     /// Parent widgets should forward events to the appropriate child widget,
     /// via logic like the following:
-    /// ```
+    /// ```norun
     /// if id <= self.child1.id() {
     ///     self.child1.event(mgr, id, event).into()
     /// } else if id <= self.child2.id() {

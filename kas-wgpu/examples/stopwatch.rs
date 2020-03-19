@@ -9,10 +9,10 @@
 use std::time::{Duration, Instant};
 
 use kas::class::HasText;
-use kas::event::{Manager, Response, VoidMsg};
+use kas::event::{Action, Handler, Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Frame, Label, TextButton, Window};
-use kas::{ThemeApi, Widget, WidgetCore};
+use kas::{ThemeApi, WidgetCore};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {
@@ -25,7 +25,7 @@ enum Control {
 fn make_window() -> Box<dyn kas::Window> {
     let stopwatch = make_widget! {
         #[layout(horizontal)]
-        #[handler(msg = VoidMsg)]
+        #[widget]
         struct {
             #[widget] display: impl HasText = Frame::new(Label::new("0.000")),
             #[widget(handler = handle_button)] b_reset = TextButton::new("reset", Control::Reset),
@@ -54,18 +54,23 @@ fn make_window() -> Box<dyn kas::Window> {
                 Response::None
             }
         }
-        impl Widget {
-            fn update_timer(&mut self, mgr: &mut Manager) -> Option<Duration> {
-                if let Some(start) = self.start {
-                    let dur = self.saved + (Instant::now() - start);
-                    self.display.set_text(mgr, format!(
-                        "{}.{:03}",
-                        dur.as_secs(),
-                        dur.subsec_millis()
-                    ));
-                    Some(Duration::new(0, 1))
-                } else {
-                    None
+        impl Handler {
+            type Msg = VoidMsg;
+            fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<VoidMsg> {
+                match action {
+                    Action::TimerUpdate => {
+                        if let Some(start) = self.start {
+                            let dur = self.saved + (Instant::now() - start);
+                            self.display.set_text(mgr, format!(
+                                "{}.{:03}",
+                                dur.as_secs(),
+                                dur.subsec_millis()
+                            ));
+                            mgr.update_on_timer(Duration::new(0, 1), self.id());
+                        }
+                        Response::None
+                    }
+                    a @ _ => Response::unhandled_action(a),
                 }
             }
         }

@@ -5,11 +5,9 @@
 
 //! Trait impls
 
-use std::time::Duration;
-
 use super::*;
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Action, Event, Manager, Response, UpdateHandle};
+use crate::event::{self, Action, Event, Manager, Response};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, WidgetId};
@@ -61,14 +59,6 @@ impl<M> WidgetCore for Box<dyn Layout<Msg = M>> {
 impl<M> Widget for Box<dyn Layout<Msg = M>> {
     fn configure(&mut self, mgr: &mut Manager) {
         self.as_mut().configure(mgr);
-    }
-
-    fn update_timer(&mut self, mgr: &mut Manager) -> Option<Duration> {
-        self.as_mut().update_timer(mgr)
-    }
-
-    fn update_handle(&mut self, mgr: &mut Manager, handle: UpdateHandle, payload: u64) {
-        self.as_mut().update_handle(mgr, handle, payload);
     }
 }
 

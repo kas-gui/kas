@@ -13,7 +13,7 @@ use syn::token::{Brace, Colon, Comma, Eq, Impl, Paren};
 use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{
     Attribute, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident,
-    ImplItemMethod, Index, Lit, Member, Token, Type, TypePath, TypeTraitObject,
+    Index, Lit, Member, Token, Type, TypePath, TypeTraitObject,
 };
 
 #[derive(Debug)]
@@ -648,14 +648,15 @@ impl Parse for HandlerAttrToks {
 
 pub struct MakeWidget {
     // handler: Msg type
-    pub handler_msg: Type,
+    pub handler_msg: Option<Type>,
     // additional attributes
     pub extra_attrs: TokenStream,
     pub generics: Generics,
+    pub struct_span: Span,
     // child widgets and data fields
     pub fields: Vec<WidgetField>,
     // impl blocks on the widget
-    pub impls: Vec<(Option<TypePath>, Vec<ImplItemMethod>)>,
+    pub impls: Vec<(Option<TypePath>, Vec<syn::ImplItem>)>,
 }
 
 impl Parse for MakeWidget {
@@ -675,16 +676,7 @@ impl Parse for MakeWidget {
             }
         }
 
-        let handler_msg = if let Some(path) = handler_msg {
-            path
-        } else {
-            return Err(Error::new(
-                input.span(),
-                "expected `#[handler ..]` attribute",
-            ));
-        };
-
-        let _: Token![struct] = input.parse()?;
+        let s: Token![struct] = input.parse()?;
 
         let mut generics: syn::Generics = input.parse()?;
         if input.peek(syn::token::Where) {
@@ -719,7 +711,7 @@ impl Parse for MakeWidget {
             let mut methods = vec![];
 
             while !content.is_empty() {
-                methods.push(content.parse::<ImplItemMethod>()?);
+                methods.push(content.parse::<syn::ImplItem>()?);
             }
 
             impls.push((target, methods));
@@ -729,6 +721,7 @@ impl Parse for MakeWidget {
             handler_msg,
             extra_attrs,
             generics,
+            struct_span: s.span(),
             fields,
             impls,
         })
