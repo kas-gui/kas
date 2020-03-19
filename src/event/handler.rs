@@ -17,8 +17,6 @@ use crate::{AlignHints, CoreData, Layout, Widget, WidgetCore, WidgetId};
 ///
 /// This is a companion trait to [`Widget`]. It can (optionally) be implemented
 /// by the `derive(Widget)` macro, or can be implemented manually.
-///
-/// [`Widget`]: crate::Widget
 pub trait Handler: Widget {
     /// Type of message returned by this handler.
     ///
@@ -51,8 +49,6 @@ pub trait Handler: Widget {
 ///
 /// This is a companion trait to [`Widget`]. It can (optionally) be implemented
 /// by the `derive(Widget)` macro, or can be implemented manually.
-///
-/// [`Widget`]: crate::Widget
 pub trait EvHandler: Handler {
     /// Handle a low-level event.
     ///
@@ -74,7 +70,7 @@ pub trait EvHandler: Handler {
     }
 }
 
-impl<M> Handler for Box<dyn EvHandler<Msg = M>> {
+impl<M> Handler for Box<dyn Layout<Msg = M>> {
     type Msg = M;
 
     fn activation_via_press(&self) -> bool {
@@ -86,13 +82,13 @@ impl<M> Handler for Box<dyn EvHandler<Msg = M>> {
     }
 }
 
-impl<M> EvHandler for Box<dyn EvHandler<Msg = M>> {
+impl<M> EvHandler for Box<dyn Layout<Msg = M>> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         self.as_mut().event(mgr, id, event)
     }
 }
 
-impl<M> Widget for Box<dyn EvHandler<Msg = M>> {
+impl<M> Widget for Box<dyn Layout<Msg = M>> {
     fn configure(&mut self, mgr: &mut Manager) {
         self.as_mut().configure(mgr);
     }
@@ -106,7 +102,7 @@ impl<M> Widget for Box<dyn EvHandler<Msg = M>> {
     }
 }
 
-impl<M> Layout for Box<dyn EvHandler<Msg = M>> {
+impl<M> Layout for Box<dyn Layout<Msg = M>> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         self.as_mut().size_rules(size_handle, axis)
     }
@@ -124,7 +120,7 @@ impl<M> Layout for Box<dyn EvHandler<Msg = M>> {
     }
 }
 
-impl<M> WidgetCore for Box<dyn EvHandler<Msg = M>> {
+impl<M> WidgetCore for Box<dyn Layout<Msg = M>> {
     fn core_data(&self) -> &CoreData {
         self.as_ref().core_data()
     }
@@ -168,7 +164,7 @@ impl<M> WidgetCore for Box<dyn EvHandler<Msg = M>> {
     }
 }
 
-impl<M: 'static> Clone for Box<dyn Handler<Msg = M>> {
+impl<M: 'static> Clone for Box<dyn Layout<Msg = M>> {
     fn clone(&self) -> Self {
         #[cfg(feature = "nightly")]
         unsafe {

@@ -167,25 +167,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     };
 
-    if let Some(layout) = args.layout {
-        let (fns, dt) = match layout::derive(&args.children, layout, &args.layout_data) {
-            Ok(res) => res,
-            Err(err) => return err.to_compile_error().into(),
-        };
-        toks.append_all(quote! {
-            impl #impl_generics kas::Layout
-                    for #name #ty_generics #where_clause
-            {
-                #fns
-            }
-            impl #impl_generics kas::LayoutData
-                    for #name #ty_generics #where_clause
-            {
-                #dt
-            }
-        });
-    }
-
     if let Some(_) = args.widget {
         toks.append_all(quote! {
             impl #impl_generics kas::Widget
@@ -193,6 +174,19 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             {
             }
         });
+    }
+
+    if let Some(ref layout) = args.layout {
+        match layout::data_type(&args.children, layout) {
+            Ok(dt) => toks.append_all(quote! {
+                impl #impl_generics kas::LayoutData
+                        for #name #ty_generics #where_clause
+                {
+                    #dt
+                }
+            }),
+            Err(err) => return err.to_compile_error().into(),
+        }
     }
 
     for handler in args.handler.drain(..) {
@@ -283,13 +277,28 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             });
         }
 
-        toks.append_all(quote! {
-            impl #impl_generics kas::event::EvHandler
-                    for #name #ty_generics #where_clause
-            {
-                #event
+        if let Some(ref layout) = args.layout {
+            // NOTE: we cannot always derive EvHandler; only doing so when
+            // deriving Layout is a temporary solution.
+            toks.append_all(quote! {
+                impl #impl_generics kas::event::EvHandler
+                        for #name #ty_generics #where_clause
+                {
+                    #event
+                }
+            });
+
+            match layout::derive(&args.children, layout, &args.layout_data) {
+                Ok(fns) => toks.append_all(quote! {
+                    impl #impl_generics kas::Layout
+                            for #name #ty_generics #where_clause
+                    {
+                        #fns
+                    }
+                }),
+                Err(err) => return err.to_compile_error().into(),
             }
-        });
+        }
     }
 
     toks.into()
@@ -414,15 +423,14 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                 if let Some(ref wattr) = attr {
                     if let Some(tyr) = gen_msg {
-                        handler_clauses.push(quote! { #ty: kas::event::EvHandler<Msg = #tyr> });
+                        handler_clauses.push(quote! { #ty: kas::Layout<Msg = #tyr> });
                     } else {
                         // No typing. If a handler is specified, then the child must implement
                         // Handler<Msg = X> where the handler takes type X; otherwise
                         // we use `msg.into()` and this conversion must be supported.
                         if let Some(ref handler) = wattr.args.handler {
                             if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
-                                handler_clauses
-                                    .push(quote! { #ty: kas::event::EvHandler<Msg = #ty_bound> });
+                                handler_clauses.push(quote! { #ty: kas::Layout<Msg = #ty_bound> });
                             } else {
                                 return quote! {}.into(); // exit after emitting error
                             }
@@ -430,7 +438,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             name_buf.push_str("R");
                             let tyr = Ident::new(&name_buf, Span::call_site());
                             handler_extra.push(tyr.clone());
-                            handler_clauses.push(quote! { #ty: kas::event::EvHandler<Msg = #tyr> });
+                            handler_clauses.push(quote! { #ty: kas::Layout<Msg = #tyr> });
                             handler_clauses.push(quote! { #msg: From<#tyr> });
                         }
                     }
@@ -490,7 +498,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote! { {
-        #[handler(msg = #msg, generics = < #handler_extra > #handler_where)]
+        #[handler(msg = #msg; generics = < #handler_extra > #handler_where)]
         #extra_attrs
         #[derive(Clone, Debug, kas::macros::Widget)]
         struct AnonWidget #impl_generics #where_clause {

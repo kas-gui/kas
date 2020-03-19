@@ -130,7 +130,7 @@ impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
 
 impl<D: Directional, W: Widget> Widget for List<D, W> {}
 
-impl<D: Directional, W: Widget> Layout for List<D, W> {
+impl<D: Directional, W: Layout> Layout for List<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut solver = layout::RowSolver::<Vec<u32>, _>::new(
             axis,

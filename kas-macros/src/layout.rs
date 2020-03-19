@@ -9,31 +9,7 @@ use quote::{quote, TokenStreamExt};
 use syn::parse::{Error, Result};
 use syn::Member;
 
-pub(crate) fn derive(
-    children: &Vec<Child>,
-    layout: LayoutArgs,
-    data_field: &Option<Member>,
-) -> Result<(TokenStream, TokenStream)> {
-    let data = if let Some(ref field) = data_field {
-        quote! { self.#field }
-    } else {
-        if layout.layout != LayoutType::Single {
-            return Err(Error::new(
-                layout.span,
-                "data field marked with #[layout_data] required when deriving Widget",
-            ));
-        }
-        quote! { () }
-    };
-
-    let find_id_area = layout.area.map(|area_widget| {
-        quote! {
-            if self.rect().contains(coord) {
-                Some(self.#area_widget.id())
-            }
-        }
-    });
-
+pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<TokenStream> {
     if layout.layout == LayoutType::Single {
         if !children.len() == 1 {
             return Err(Error::new(
@@ -50,6 +26,129 @@ pub(crate) fn derive(
     let mut rows: usize = 0;
     let mut col_spans: usize = 0;
     let mut row_spans: usize = 0;
+
+    for child in children.iter() {
+        let args = &child.args;
+
+        match layout.layout {
+            LayoutType::Single => (),
+            LayoutType::Horizontal => {
+                cols += 1;
+                rows = 1;
+            }
+            LayoutType::Vertical => {
+                cols = 1;
+                rows += 1;
+            }
+            LayoutType::Grid => {
+                let pos = args.as_pos()?;
+                let c1 = pos.0 + pos.2;
+                let r1 = pos.1 + pos.3;
+                cols = cols.max(c1 as usize);
+                rows = rows.max(r1 as usize);
+                if pos.2 > 1 {
+                    col_spans += 1;
+                }
+                if pos.3 > 1 {
+                    row_spans += 1;
+                }
+            }
+        }
+    }
+
+    let col_temp = if cols > 16 {
+        quote! { Vec<u32> }
+    } else {
+        quote! { [u32; #cols] }
+    };
+    let row_temp = if rows > 16 {
+        quote! { Vec<u32> }
+    } else {
+        quote! { [u32; #rows] }
+    };
+
+    Ok(match layout.layout {
+        LayoutType::Single => quote! {
+            type Data = ();
+            type Solver = kas::layout::SingleSolver;
+            type Setter = kas::layout::SingleSetter;
+        },
+        LayoutType::Horizontal => quote! {
+            type Data = kas::layout::FixedRowStorage::<
+                [kas::layout::SizeRules; #cols + 1]
+            >;
+            type Solver = kas::layout::RowSolver::<
+                #col_temp,
+                Self::Data,
+            >;
+            type Setter = kas::layout::RowSetter::<
+                kas::Horizontal,
+                #col_temp,
+                Self::Data,
+            >;
+        },
+        LayoutType::Vertical => quote! {
+            type Data = kas::layout::FixedRowStorage::<
+                [kas::layout::SizeRules; #rows + 1],
+            >;
+            type Solver = kas::layout::RowSolver::<
+                #row_temp,
+                Self::Data,
+            >;
+            type Setter = kas::layout::RowSetter::<
+                kas::Vertical,
+                #row_temp,
+                Self::Data,
+            >;
+        },
+        LayoutType::Grid => quote! {
+            type Data = kas::layout::FixedGridStorage::<
+                [kas::layout::SizeRules; #cols + 1],
+                [kas::layout::SizeRules; #rows + 1],
+            >;
+            type Solver = kas::layout::GridSolver::<
+                #col_temp,
+                #row_temp,
+                [(kas::layout::SizeRules, u32, u32); #col_spans],
+                [(kas::layout::SizeRules, u32, u32); #row_spans],
+                Self::Data,
+            >;
+            type Setter = kas::layout::GridSetter::<
+                #col_temp,
+                #row_temp,
+                Self::Data,
+            >;
+        },
+    })
+}
+
+pub(crate) fn derive(
+    children: &Vec<Child>,
+    layout: &LayoutArgs,
+    data_field: &Option<Member>,
+) -> Result<TokenStream> {
+    let data = if let Some(ref field) = data_field {
+        quote! { self.#field }
+    } else {
+        if layout.layout != LayoutType::Single {
+            return Err(Error::new(
+                layout.span,
+                "data field marked with #[layout_data] required when deriving Widget",
+            ));
+        }
+        quote! { () }
+    };
+
+    let find_id_area = layout.area.as_ref().map(|area_widget| {
+        quote! {
+            if self.rect().contains(coord) {
+                Some(self.#area_widget.id())
+            }
+        }
+    });
+
+    let mut cols: usize = 0;
+    let mut rows: usize = 0;
     let mut size = TokenStream::new();
     let mut set_rect = TokenStream::new();
     let mut draw = TokenStream::new();
@@ -81,12 +180,6 @@ pub(crate) fn derive(
                 let (r0, r1) = (pos.1, pos.1 + pos.3);
                 cols = cols.max(c1 as usize);
                 rows = rows.max(r1 as usize);
-                if pos.2 > 1 {
-                    col_spans += 1;
-                }
-                if pos.3 > 1 {
-                    row_spans += 1;
-                }
 
                 quote! {
                     kas::layout::GridChildInfo {
@@ -142,71 +235,6 @@ pub(crate) fn derive(
         LayoutType::Grid => quote! { (#cols, #rows) },
     };
 
-    let col_temp = if cols > 16 {
-        quote! { Vec<u32> }
-    } else {
-        quote! { [u32; #cols] }
-    };
-    let row_temp = if rows > 16 {
-        quote! { Vec<u32> }
-    } else {
-        quote! { [u32; #rows] }
-    };
-
-    let data_type = match layout.layout {
-        LayoutType::Single => quote! {
-            type Data = ();
-            type Solver = kas::layout::SingleSolver;
-            type Setter = kas::layout::SingleSetter;
-        },
-        LayoutType::Horizontal => quote! {
-            type Data = kas::layout::FixedRowStorage::<
-                [kas::layout::SizeRules; #cols + 1]
-            >;
-            type Solver = kas::layout::RowSolver::<
-                #col_temp,
-                Self::Data,
-            >;
-            type Setter = kas::layout::RowSetter::<
-                kas::Horizontal,
-                #col_temp,
-                Self::Data,
-            >;
-        },
-        LayoutType::Vertical => quote! {
-            type Data = kas::layout::FixedRowStorage::<
-                [kas::layout::SizeRules; #rows + 1],
-            >;
-            type Solver = kas::layout::RowSolver::<
-                #row_temp,
-                Self::Data,
-            >;
-            type Setter = kas::layout::RowSetter::<
-                kas::Vertical,
-                #row_temp,
-                Self::Data,
-            >;
-        },
-        LayoutType::Grid => quote! {
-            type Data = kas::layout::FixedGridStorage::<
-                [kas::layout::SizeRules; #cols + 1],
-                [kas::layout::SizeRules; #rows + 1],
-            >;
-            type Solver = kas::layout::GridSolver::<
-                #col_temp,
-                #row_temp,
-                [(kas::layout::SizeRules, u32, u32); #col_spans],
-                [(kas::layout::SizeRules, u32, u32); #row_spans],
-                Self::Data,
-            >;
-            type Setter = kas::layout::GridSetter::<
-                #col_temp,
-                #row_temp,
-                Self::Data,
-            >;
-        },
-    };
-
     let find_id_body = find_id_area.unwrap_or_else(|| {
         quote! {
             #find_id_else if self.rect().contains(coord) {
@@ -215,7 +243,7 @@ pub(crate) fn derive(
         }
     });
 
-    let fns = quote! {
+    Ok(quote! {
         fn size_rules(
             &mut self,
             size_handle: &mut dyn kas::draw::SizeHandle,
@@ -274,7 +302,5 @@ pub(crate) fn derive(
             let pos1 = rect.pos + Coord::from(rect.size);
             #draw
         }
-    };
-
-    Ok((fns, data_type))
+    })
 }

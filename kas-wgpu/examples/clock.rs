@@ -13,7 +13,7 @@ use std::f32::consts::PI;
 use std::time::Duration;
 
 use kas::draw::{Colour, DrawHandle, DrawRounded, DrawText, SizeHandle, TextClass, TextProperties};
-use kas::event::{Manager, ManagerState};
+use kas::event::{self, Manager, ManagerState};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::widget::Window;
@@ -32,6 +32,8 @@ struct Clock {
     date: String,
     time: String,
 }
+
+impl event::EvHandler for Clock {}
 
 impl Layout for Clock {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {

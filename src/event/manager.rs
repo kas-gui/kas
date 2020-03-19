@@ -13,7 +13,7 @@ use std::u16;
 
 use super::*;
 use crate::geom::{Coord, DVec2};
-use crate::{ThemeAction, ThemeApi, TkAction, TkWindow, Widget, WidgetId, WindowId};
+use crate::{Layout, ThemeAction, ThemeApi, TkAction, TkWindow, WidgetId, WindowId};
 
 /// Highlighting state of a widget
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
@@ -160,7 +160,7 @@ impl ManagerState {
     /// is created (before or after resizing).
     pub fn configure<W>(&mut self, tkw: &mut dyn TkWindow, widget: &mut W)
     where
-        W: Widget + Handler<Msg = VoidMsg> + ?Sized,
+        W: Layout<Msg = VoidMsg> + ?Sized,
     {
         // Re-assigning WidgetIds might invalidate state; to avoid this we map
         // existing ids to new ids
@@ -240,7 +240,7 @@ impl ManagerState {
             .map(|id| (elt.0, *id)));
     }
 
-    pub fn region_moved<W: Widget + ?Sized>(&mut self, widget: &mut W) {
+    pub fn region_moved<W: Layout + ?Sized>(&mut self, widget: &mut W) {
         // Note: redraw is already implied.
 
         // Update hovered widget
@@ -654,7 +654,7 @@ impl<'a> Manager<'a> {
 /// Internal methods
 impl<'a> Manager<'a> {
     #[cfg(feature = "winit")]
-    fn set_hover<W: Widget + ?Sized>(&mut self, widget: &mut W, w_id: Option<WidgetId>) {
+    fn set_hover<W: Layout + ?Sized>(&mut self, widget: &mut W, w_id: Option<WidgetId>) {
         if self.mgr.hover != w_id {
             self.mgr.hover = w_id;
             self.send_action(TkAction::Redraw);
@@ -751,7 +751,7 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn next_nav_focus<W: Widget + ?Sized>(&mut self, widget: &mut W) {
+    fn next_nav_focus<W: Layout + ?Sized>(&mut self, widget: &mut W) {
         let mut id = self.mgr.nav_focus.unwrap_or(WidgetId::FIRST);
         let end = widget.id();
         loop {
@@ -799,7 +799,7 @@ impl<'a> Manager<'a> {
     /// Update, after receiving all events
     pub fn finish<W>(mut self, widget: &mut W) -> TkAction
     where
-        W: Widget + EvHandler<Msg = VoidMsg> + ?Sized,
+        W: Layout<Msg = VoidMsg> + ?Sized,
     {
         for gi in 0..self.mgr.pan_grab.len() {
             let grab = &mut self.mgr.pan_grab[gi];
@@ -864,7 +864,7 @@ impl<'a> Manager<'a> {
     }
 
     /// Update widgets due to timer
-    pub fn update_timer<W: Widget + ?Sized>(&mut self, widget: &mut W) {
+    pub fn update_timer<W: Layout + ?Sized>(&mut self, widget: &mut W) {
         let now = Instant::now();
 
         // assumption: time_updates are sorted
@@ -890,7 +890,7 @@ impl<'a> Manager<'a> {
     }
 
     /// Update widgets due to handle
-    pub fn update_handle<W: Widget + ?Sized>(
+    pub fn update_handle<W: Layout + ?Sized>(
         &mut self,
         widget: &mut W,
         handle: UpdateHandle,
@@ -915,7 +915,7 @@ impl<'a> Manager<'a> {
     #[cfg(feature = "winit")]
     pub fn handle_winit<W>(&mut self, widget: &mut W, event: winit::event::WindowEvent)
     where
-        W: Widget + EvHandler<Msg = VoidMsg> + ?Sized,
+        W: Layout<Msg = VoidMsg> + ?Sized,
     {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
         trace!("Event: {:?}", event);

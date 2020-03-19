@@ -44,7 +44,9 @@ impl<W: Widget> Frame<W> {
     }
 }
 
-impl<W: Widget> Layout for Frame<W> {
+impl<W: Layout> event::EvHandler for Frame<W> {}
+
+impl<W: Layout> Layout for Frame<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.outer_frame();
         let margins = Margins::ZERO;

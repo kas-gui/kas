@@ -48,11 +48,11 @@
 //! ```
 //! use kas::macros::Widget;
 //! use kas::event::{EvHandler, VoidMsg};
-//! use kas::{CoreData, LayoutData, Widget};
+//! use kas::{CoreData, Layout, LayoutData, Widget};
 //!
 //! #[widget]
 //! #[layout(single)]
-//! #[handler(generics = <> where W: EvHandler<Msg = VoidMsg>)]
+//! #[handler(generics = <> where W: Layout<Msg = VoidMsg>)]
 //! #[derive(Clone, Debug, Widget)]
 //! struct WrapperWidget<W: Widget> {
 //!     #[widget_core] core: CoreData,
@@ -73,11 +73,13 @@
 //!
 //! #[widget]
 //! #[widget_core(key_nav = true)]
+//! #[handler]
 //! #[derive(Clone, Debug, Default, Widget)]
 //! struct MyWidget {
 //!     #[widget_core] core: CoreData,
 //! }
 //!
+//! impl event::EvHandler for MyWidget {}
 //! impl Layout for MyWidget {
 //!     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
 //!         todo!()
@@ -155,10 +157,10 @@
 //! `W: EvHandler`. This may be achieved as follows:
 //! ```
 //! # use kas::macros::Widget;
-//! # use kas::{CoreData, Widget, event::{Handler, EvHandler}};
+//! # use kas::{CoreData, Layout, Widget, event::{Handler, EvHandler}};
 //! #[layout(single)]
 //! #[widget]
-//! #[handler(generics = <> where W: EvHandler; msg = <W as Handler>::Msg)]
+//! #[handler(generics = <> where W: Layout; msg = <W as Handler>::Msg)]
 //! #[derive(Clone, Debug, Default, Widget)]
 //! pub struct Frame<W: Widget> {
 //!     #[widget_core]
@@ -224,14 +226,14 @@
 //! use kas::event::{EvHandler, Manager, VoidResponse, VoidMsg};
 //! use kas::macros::Widget;
 //! use kas::widget::Label;
-//! use kas::{CoreData, LayoutData, Widget};
+//! use kas::{CoreData, Layout, LayoutData, Widget};
 //!
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
 //!
 //! #[widget]
 //! #[layout(vertical)]
-//! #[handler(generics = <> where W: EvHandler<Msg = ChildMessage>)]
+//! #[handler(generics = <> where W: Layout<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
 //!     #[widget_core] core: CoreData,

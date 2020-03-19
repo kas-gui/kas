@@ -7,7 +7,7 @@
 
 use crate::class::HasText;
 use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{Manager, ManagerState};
+use crate::event::{self, Manager, ManagerState};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
@@ -24,6 +24,8 @@ pub struct Label {
     reserve: Option<&'static str>,
     text: CowString,
 }
+
+impl event::EvHandler for Label {}
 
 impl Layout for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {

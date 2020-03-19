@@ -153,13 +153,58 @@ pub trait WidgetCore: fmt::Debug {
     }
 }
 
+/// A widget is a UI element.
+///
+/// Widgets usually occupy space within the UI and are drawable. Widgets may
+/// respond to user events. Widgets may have child widgets.
+///
+/// Widgets must additionally implement the traits [`WidgetCore`], [`Layout`]
+/// and [`event::Handler`]. The
+/// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro) may be
+/// used to generate some of these implementations.
+pub trait Widget: WidgetCore {
+    /// Configure widget
+    ///
+    /// Widgets are *configured* on window creation and when
+    /// [`kas::TkAction::Reconfigure`] is sent.
+    ///
+    /// This method is called immediately after assigning `self.core_data().id`.
+    fn configure(&mut self, _: &mut Manager) {}
+
+    /// Update the widget via a timer
+    ///
+    /// This method is called on scheduled updates
+    /// (see [`Manager::update_on_timer`]).
+    ///
+    /// When some [`Duration`] is returned, another timed update is scheduled
+    /// at approximately this duration from now (but without blocking redraws;
+    /// usage of 1ns effectively enables per-frame update with FPS limited via
+    /// VSync). Required: `duration > 0`.
+    ///
+    /// This method being called does not imply a redraw.
+    fn update_timer(&mut self, _: &mut Manager) -> Option<Duration> {
+        None
+    }
+
+    /// Update the widget via an update handle
+    ///
+    /// This method is called on triggered updates (see [`Manager::update_on_handle`]).
+    /// The source handle is specified via the [`event::UpdateHandle`] parameter.
+    ///
+    /// A user-defined payload is passed. Interpretation of this payload is
+    /// user-defined and unfortunately not type safe.
+    ///
+    /// This method being called does not imply a redraw.
+    fn update_handle(&mut self, _mgr: &mut Manager, _handle: event::UpdateHandle, _payload: u64) {}
+}
+
 /// Positioning and drawing routines for widgets
 ///
 /// This trait contains methods concerned with positioning of contents, other
 /// than those in [`event::Handler`].
 ///
 /// For a description of the widget size model, see [`SizeRules`].
-pub trait Layout: WidgetCore {
+pub trait Layout: event::EvHandler {
     /// Get size rules for the given axis.
     ///
     /// This method takes `&mut self` to allow local caching of child widget
@@ -219,51 +264,6 @@ pub trait Layout: WidgetCore {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState);
 }
 
-/// A widget is a UI element.
-///
-/// Widgets usually occupy space within the UI and are drawable. Widgets may
-/// respond to user events. Widgets may have child widgets.
-///
-/// Widgets must additionally implement the traits [`WidgetCore`], [`Layout`]
-/// and [`event::Handler`]. The
-/// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro) may be
-/// used to generate some of these implementations.
-pub trait Widget: Layout {
-    /// Configure widget
-    ///
-    /// Widgets are *configured* on window creation and when
-    /// [`kas::TkAction::Reconfigure`] is sent.
-    ///
-    /// This method is called immediately after assigning `self.core_data().id`.
-    fn configure(&mut self, _: &mut Manager) {}
-
-    /// Update the widget via a timer
-    ///
-    /// This method is called on scheduled updates
-    /// (see [`Manager::update_on_timer`]).
-    ///
-    /// When some [`Duration`] is returned, another timed update is scheduled
-    /// at approximately this duration from now (but without blocking redraws;
-    /// usage of 1ns effectively enables per-frame update with FPS limited via
-    /// VSync). Required: `duration > 0`.
-    ///
-    /// This method being called does not imply a redraw.
-    fn update_timer(&mut self, _: &mut Manager) -> Option<Duration> {
-        None
-    }
-
-    /// Update the widget via an update handle
-    ///
-    /// This method is called on triggered updates (see [`Manager::update_on_handle`]).
-    /// The source handle is specified via the [`event::UpdateHandle`] parameter.
-    ///
-    /// A user-defined payload is passed. Interpretation of this payload is
-    /// user-defined and unfortunately not type safe.
-    ///
-    /// This method being called does not imply a redraw.
-    fn update_handle(&mut self, _mgr: &mut Manager, _handle: event::UpdateHandle, _payload: u64) {}
-}
-
 /// Trait to describe the type needed by the layout implementation.
 ///
 /// To allow the `derive(Widget)` macro to implement [`Widget`], we use an
@@ -288,7 +288,7 @@ pub trait LayoutData {
 // Window should be a Widget. So alternatives are (1) use a struct instead of a
 // trait or (2) allow any Widget to derive Window (i.e. implement required
 // functionality with macros instead of the generic code below).
-pub trait Window: Widget + event::EvHandler<Msg = event::VoidMsg> {
+pub trait Window: Layout<Msg = event::VoidMsg> {
     /// Get the window title
     fn title(&self) -> &str;
 

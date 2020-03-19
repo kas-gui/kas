@@ -129,7 +129,7 @@ impl<W: Widget> ScrollRegion<W> {
     }
 }
 
-impl<W: Widget> Layout for ScrollRegion<W> {
+impl<W: Layout> Layout for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut rules = self.child.size_rules(size_handle, axis);
         if axis.is_horizontal() {

@@ -23,6 +23,8 @@ pub struct Filler {
     policy: StretchPolicy,
 }
 
+impl event::EvHandler for Filler {}
+
 impl Layout for Filler {
     fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
         SizeRules::empty(self.policy)
