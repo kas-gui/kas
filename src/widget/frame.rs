@@ -20,7 +20,7 @@ use crate::{AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetI
 /// This widget provides a simple abstraction: drawing a frame around its
 /// contents.
 #[widget]
-#[handler(msg = <W as Handler>::Msg, generics = <> where W: EvHandler)]
+#[handler(msg = <W as Handler>::Msg; generics = <> where W: EvHandler)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Frame<W: Widget> {
     #[widget_core]

@@ -237,7 +237,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
         // Note: we may have extra generic types used in where clauses, but we
         // don't want these in ty_generics.
-        let (impl_generics, _, where_clause) = generics.split_for_impl();
+        let (impl_generics, _ty, where_clause) = generics.split_for_impl();
         let ty_generics = SubstTyGenerics(&ast.generics, subs);
 
         let mut ev_to_num = TokenStream::new();
@@ -256,7 +256,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             });
         }
 
-        let handler = if args.children.is_empty() {
+        let event = if args.children.is_empty() {
             // rely on the default implementation
             quote! {}
         } else {
@@ -273,16 +273,21 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
         };
 
+        if !handler.noderive {
+            toks.append_all(quote! {
+                impl #impl_generics kas::event::Handler
+                        for #name #ty_generics #where_clause
+                {
+                    type Msg = #msg;
+                }
+            });
+        }
+
         toks.append_all(quote! {
-            impl #impl_generics kas::event::Handler
-                    for #name #ty_generics #where_clause
-            {
-                type Msg = #msg;
-            }
             impl #impl_generics kas::event::EvHandler
                     for #name #ty_generics #where_clause
             {
-                #handler
+                #event
             }
         });
     }

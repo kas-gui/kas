@@ -20,6 +20,7 @@ use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, 
 
 /// A bare radiobox (no label)
 #[widget_core(key_nav = true)]
+#[handler(noderive)]
 #[derive(Clone, Widget)]
 pub struct RadioBoxBare<M> {
     #[widget_core]
@@ -184,13 +185,10 @@ impl<M> event::Handler for RadioBoxBare<M> {
     }
 }
 
-// TODO: derive
-impl<M> event::EvHandler for RadioBoxBare<M> {}
-
 /// A radiobox with optional label
 #[layout(horizontal, area=radiobox)]
 #[widget]
-#[handler(msg = M, generics = <> where M: From<VoidMsg>)]
+#[handler(msg = M; generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Widget)]
 pub struct RadioBox<M> {
     #[widget_core]

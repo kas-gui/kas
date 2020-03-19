@@ -123,6 +123,7 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
 /// An editable, single-line text box.
 #[widget]
 #[widget_core(key_nav = true, cursor_icon = event::CursorIcon::Text)]
+#[handler(noderive; generics = <> where G: EditGuard)]
 #[derive(Clone, Default, Widget)]
 pub struct EditBox<G: 'static> {
     #[widget_core]
@@ -421,6 +422,3 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
         }
     }
 }
-
-// TODO: derive
-impl<G: EditGuard + 'static> event::EvHandler for EditBox<G> {}

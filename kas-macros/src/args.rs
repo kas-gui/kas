@@ -9,11 +9,11 @@ use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
 use syn::spanned::Spanned;
-use syn::token::{Brace, Colon, Comma, Eq, Impl, Paren, Pound, RArrow, Struct, Underscore, Where};
+use syn::token::{Brace, Colon, Comma, Eq, Impl, Paren};
 use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{
     Attribute, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident,
-    ImplItemMethod, Index, Lit, Member, Type, TypePath, TypeTraitObject,
+    ImplItemMethod, Index, Lit, Member, Token, Type, TypePath, TypeTraitObject,
 };
 
 #[derive(Debug)]
@@ -188,6 +188,7 @@ mod kw {
     custom_keyword!(valign);
     custom_keyword!(key_nav);
     custom_keyword!(cursor_icon);
+    custom_keyword!(noderive);
 }
 
 #[derive(Debug)]
@@ -532,39 +533,50 @@ impl Parse for LayoutArgs {
 }
 
 pub struct HandlerArgs {
+    pub noderive: bool,
     pub msg: Type,
     pub substitutions: HashMap<Ident, Type>,
     pub generics: Generics,
 }
 
+impl Default for HandlerArgs {
+    fn default() -> Self {
+        HandlerArgs {
+            noderive: true,
+            msg: parse_quote! { kas::event::VoidMsg },
+            substitutions: Default::default(),
+            generics: Default::default(),
+        }
+    }
+}
+
 impl Parse for HandlerArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let (mut have_msg, mut have_subs, mut have_gen) = (false, false, false);
-        let mut msg = parse_quote! { kas::event::VoidMsg };
-        let mut substitutions = HashMap::new();
-        let mut generics = Generics::default();
+        let mut have_noderive = false;
+        let mut have_msg = false;
+        let mut have_subs = false;
+        let mut have_gen = false;
+        let mut args = HandlerArgs::default();
+        args.noderive = false;
 
         if input.is_empty() {
-            return Ok(HandlerArgs {
-                msg,
-                substitutions,
-                generics,
-            });
+            return Ok(args);
         }
 
         let content;
         let _ = parenthesized!(content in input);
 
-        // If we have a where clause, that will greedily consume remaining
-        // input. Because of this, `generics = ...` must come last.
-
         while !content.is_empty() {
             let lookahead = content.lookahead1();
-            if !have_msg && lookahead.peek(kw::msg) {
+            if !have_noderive && lookahead.peek(kw::noderive) {
+                have_noderive = true;
+                let _: kw::noderive = content.parse()?;
+                args.noderive = true;
+            } else if !have_msg && lookahead.peek(kw::msg) {
                 have_msg = true;
                 let _: kw::msg = content.parse()?;
                 let _: Eq = content.parse()?;
-                msg = content.parse()?;
+                args.msg = content.parse()?;
             } else if !have_subs && lookahead.peek(kw::substitutions) {
                 have_subs = true;
                 let _: kw::substitutions = content.parse()?;
@@ -580,38 +592,27 @@ impl Parse for HandlerArgs {
                     if content2.peek(Comma) {
                         let _: Comma = content2.parse()?;
                     }
-                    substitutions.insert(ident, ty);
+                    args.substitutions.insert(ident, ty);
                 }
             } else if !have_gen && lookahead.peek(kw::generics) {
                 have_gen = true;
                 let _: kw::generics = content.parse()?;
                 let _: Eq = content.parse()?;
-                generics = content.parse()?;
-                if content.peek(Where) {
-                    generics.where_clause = content.parse()?;
-                    // Last pass should consume all content
-                    if !content.is_empty() {
-                        return Err(Error::new(
-                            content.span(),
-                            "no content expected after where clause",
-                        ));
-                    }
-                    break;
+                args.generics = content.parse()?;
+                if content.peek(Token![where]) {
+                    args.generics.where_clause = content.parse()?;
                 }
             } else {
                 return Err(lookahead.error());
             }
 
-            if content.peek(Comma) {
-                let _: Comma = content.parse()?;
+            // Unusually, we use semi-colon separators
+            if content.peek(Token![;]) {
+                let _: Token![;] = content.parse()?;
             }
         }
 
-        Ok(HandlerArgs {
-            msg,
-            substitutions,
-            generics,
-        })
+        Ok(args)
     }
 }
 
@@ -683,7 +684,7 @@ impl Parse for MakeWidget {
             ));
         };
 
-        let _: Struct = input.parse()?;
+        let _: Token![struct] = input.parse()?;
 
         let mut generics: syn::Generics = input.parse()?;
         if input.peek(syn::token::Where) {
@@ -736,8 +737,8 @@ impl Parse for MakeWidget {
 
 impl Parse for WidgetField {
     fn parse(input: ParseStream) -> Result<Self> {
-        let widget_attr = if input.peek(Pound) {
-            let _: Pound = input.parse()?;
+        let widget_attr = if input.peek(Token![#]) {
+            let _: Token![#] = input.parse()?;
             let inner;
             let _ = bracketed!(inner in input);
             let _: kw::widget = inner.parse()?;
@@ -749,8 +750,8 @@ impl Parse for WidgetField {
 
         let ident = {
             let lookahead = input.lookahead1();
-            if lookahead.peek(Underscore) {
-                let _: Underscore = input.parse()?;
+            if lookahead.peek(Token![_]) {
+                let _: Token![_] = input.parse()?;
                 None
             } else if lookahead.peek(Ident) {
                 Some(input.parse::<Ident>()?)
@@ -774,8 +775,8 @@ impl Parse for WidgetField {
             ChildType::Generic(None, None)
         };
 
-        if input.peek(RArrow) {
-            let arrow: RArrow = input.parse()?;
+        if input.peek(Token![->]) {
+            let arrow: Token![->] = input.parse()?;
             if !widget_attr.is_some() {
                 return Err(Error::new(
                     arrow.span(),

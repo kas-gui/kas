@@ -138,25 +138,39 @@
 //! and [`EvHandler`]
 //! traits are implemented (potentially multiple times with different
 //! substitutions of generic parameters).
-//! This attribute accepts the following arguments:
+//! This attribute accepts the following semi-colon separated arguments:
 //!
+//! -   (optional) `noderive` — do not derive [`Handler`] (but do still derive
+//!     [`EvHandler`])
 //! -   (optional) `msg = TYPE` — the [`Handler::Msg`] associated type; if not
 //!     specified, this type defaults to [`kas::event::VoidMsg`]
-//! -   (optional) `substitutions = TUPLE` — a tuple of subsitutions for type
-//!     generics, for example: `(T1 = MyType, T2 = some::other::Type)`
+//! -   (optional) `substitutions = LIST` — a list subsitutions for type
+//!     generics, for example: (T1 = MyType, T2 = some::other::Type`
 //! -   (optional): `generics = < X, Y, ... > where CONDS`
-//!     (`where CONDS` is optional, and if present must be the last argument)
+//!     (`where CONDS` is optional)
 //!
-//! Commonly the [`Handler`] implementation requires extra bounds on generic
-//! types, and sometimes also additional type parameters; the `generics`
-//! argument allows this. This argument is optional and if present must be the
-//! last argument. Note that the generic types and bounds given are *added to*
-//! the generics defined on the struct itself.
+//! Commonly, implementations of these traits require extra type bounds on the
+//! `impl` which do not appear on the struct, for example a struct may be
+//! parametrised with `W: Widget`, but the [`Handler`] impl may require
+//! `W: EvHandler`. This may be achieved as follows:
+//! ```
+//! # use kas::macros::Widget;
+//! # use kas::{CoreData, Widget, event::{Handler, EvHandler}};
+//! #[layout(single)]
+//! #[widget]
+//! #[handler(generics = <> where W: EvHandler; msg = <W as Handler>::Msg)]
+//! #[derive(Clone, Debug, Default, Widget)]
+//! pub struct Frame<W: Widget> {
+//!     #[widget_core]
+//!     core: CoreData,
+//!     #[widget]
+//!     child: W,
+//! }
+//! ```
+//! Unusually, the `#[handler]` attribute uses `;` as a parameter separator,
+//! since both the `substitutions` and `generics` parameters may contain
+//! comma-separated lists.
 //!
-//! If you need to substitute generic parameters on the struct with concrete
-//! types for the [`Handler`] implementation, use the `substitutions` argument.
-//! Be aware that this behaviour is a hack which only supports type generics
-//! on parameters without where clause constraints.
 //! (Note that ideally we would use equality constraints in `where` predicates
 //! instead of adding special parameter substitution support, but type equality
 //! constraints are not supported by Rust yet: #20041.)

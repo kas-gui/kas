@@ -18,6 +18,7 @@ use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore};
 
 /// A push-button with a text label
 #[widget_core(key_nav = true)]
+#[handler(noderive)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug> {
     #[widget_core]
@@ -122,6 +123,3 @@ impl<M: Clone + Debug> event::Handler for TextButton<M> {
         }
     }
 }
-
-// TODO: derive
-impl<M: Clone + Debug> event::EvHandler for TextButton<M> {}
