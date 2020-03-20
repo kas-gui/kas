@@ -20,13 +20,3 @@ matrix:
       os: linux
       before_install:
         - sudo apt-get -y install libxcb-shape0-dev libxcb-xfixes0-dev
-
-    - name: "OSX nightly"
-      os: osx
-      # Note: this has timeout issues testing kas-wgpu, so only use cargo check
-      script:
-        - cargo test --all-features
-        - cargo test --manifest-path kas-macros/Cargo.toml --all-features
-        - cargo check --manifest-path kas-theme/Cargo.toml
-        - cargo check --manifest-path kas-wgpu/Cargo.toml --examples
-        - cargo doc --features winit,stack_dst --no-deps
