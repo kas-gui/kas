@@ -9,7 +9,7 @@
 use std::cell::RefCell;
 
 use kas::class::HasText;
-use kas::event::{Action, Handler, Manager, UpdateHandle, VoidMsg, Response};
+use kas::event::{Action, Handler, Manager, Response, UpdateHandle, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};
 use kas::{ThemeApi, Widget, WidgetCore};

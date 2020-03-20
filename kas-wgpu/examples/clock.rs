@@ -13,7 +13,7 @@ use std::f32::consts::PI;
 use std::time::Duration;
 
 use kas::draw::{Colour, DrawHandle, DrawRounded, DrawText, SizeHandle, TextClass, TextProperties};
-use kas::event::{self, Action, Event, Handler, Response, Manager, ManagerState};
+use kas::event::{self, Action, Event, Handler, Manager, ManagerState, Response};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::widget::Window;

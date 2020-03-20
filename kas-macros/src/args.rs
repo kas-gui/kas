@@ -12,8 +12,8 @@ use syn::spanned::Spanned;
 use syn::token::{Brace, Colon, Comma, Eq, Impl, Paren};
 use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{
-    Attribute, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident,
-    Index, Lit, Member, Token, Type, TypePath, TypeTraitObject,
+    Attribute, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Index,
+    Lit, Member, Token, Type, TypePath, TypeTraitObject,
 };
 
 #[derive(Debug)]

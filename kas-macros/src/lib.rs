@@ -20,9 +20,7 @@ use syn::spanned::Spanned;
 use syn::token::Comma;
 use syn::Token;
 use syn::{parse_macro_input, parse_quote};
-use syn::{
-     GenericParam, Ident, Type, TypePath, TypeParam,
-};
+use syn::{GenericParam, Ident, Type, TypeParam, TypePath};
 
 use self::args::ChildType;
 
@@ -305,9 +303,8 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
     // find type of handler's message; return None on error
     let mut find_handler_ty = |handler: &Ident,
-        impls: &Vec<(Option<TypePath>, Vec<syn::ImplItem>)>|
-     -> Option<Type>
-     {
+                               impls: &Vec<(Option<TypePath>, Vec<syn::ImplItem>)>|
+     -> Option<Type> {
         // check the buffer in case we did this already
         for (ident, ty) in &find_handler_ty_buf {
             if ident == handler {
@@ -320,7 +317,9 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         for impl_block in impls {
             for f in &impl_block.1 {
                 match f {
-                    syn::ImplItem::Method(syn::ImplItemMethod { sig, .. }) if sig.ident == *handler => {
+                    syn::ImplItem::Method(syn::ImplItemMethod { sig, .. })
+                        if sig.ident == *handler =>
+                    {
                         if let Some(x) = x {
                             handler
                                 .span()
@@ -331,8 +330,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                 .unwrap()
                                 .error("first method with this name")
                                 .emit();
-                            sig
-                                .ident
+                            sig.ident
                                 .span()
                                 .unwrap()
                                 .error("second method with this name")
@@ -398,10 +396,14 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let mut msg = None;
         let msg_ident: Ident = parse_quote! { Msg };
         for (name, body) in &args.impls {
-            if name == &Some(parse_quote!{ Handler }) || name == &Some(parse_quote!{ kas::Handler }) {
+            if name == &Some(parse_quote! { Handler })
+                || name == &Some(parse_quote! { kas::Handler })
+            {
                 for item in body {
                     match item {
-                        &syn::ImplItem::Type(syn::ImplItemType { ref ident, ref ty, .. }) if *ident == msg_ident => {
+                        &syn::ImplItem::Type(syn::ImplItemType {
+                            ref ident, ref ty, ..
+                        }) if *ident == msg_ident => {
                             msg = Some(ty);
                             break;
                         }
@@ -413,7 +415,10 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         if let Some(msg) = msg {
             msg.clone()
         } else {
-            args.struct_span.unwrap().error("no Handler impl and no #[handler] attribute").emit();
+            args.struct_span
+                .unwrap()
+                .error("no Handler impl and no #[handler] attribute")
+                .emit();
             return proc_macro::TokenStream::new();
         }
     };
@@ -508,7 +513,11 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         });
     }
 
-    let handler_noderive = if args.handler_msg.is_some() { quote! {} } else { quote! { noderive; }};
+    let handler_noderive = if args.handler_msg.is_some() {
+        quote! {}
+    } else {
+        quote! { noderive; }
+    };
     let handler_where = if handler_clauses.is_empty() {
         quote! {}
     } else {
