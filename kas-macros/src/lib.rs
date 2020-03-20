@@ -15,14 +15,12 @@ use std::collections::HashMap;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 use std::fmt::Write;
-use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::token::Comma;
 use syn::Token;
 use syn::{parse_macro_input, parse_quote};
 use syn::{GenericParam, Ident, Type, TypeParam, TypePath};
 
-use self::args::ChildType;
+use self::args::{ChildType, HandlerArgs};
 
 mod layout;
 
@@ -398,12 +396,8 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // debug impl
     let mut debug_fields = TokenStream::new();
 
-    // extra generic types and where clause for handler impl
-    let mut handler_extra = Punctuated::<_, Comma>::new();
-    let mut handler_clauses = Punctuated::<_, Comma>::new();
-
-    let msg = if let Some(msg) = &args.handler_msg {
-        msg.clone()
+    let mut handler = if let Some(h) = args.handler {
+        h
     } else {
         let mut msg = None;
         let msg_ident: Ident = parse_quote! { Msg };
@@ -416,7 +410,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         &syn::ImplItem::Type(syn::ImplItemType {
                             ref ident, ref ty, ..
                         }) if *ident == msg_ident => {
-                            msg = Some(ty);
+                            msg = Some(ty.clone());
                             break;
                         }
                         _ => (),
@@ -424,8 +418,9 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
             }
         }
+
         if let Some(msg) = msg {
-            msg.clone()
+            HandlerArgs::new(msg)
         } else {
             args.struct_span
                 .unwrap()
@@ -434,6 +429,14 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             return proc_macro::TokenStream::new();
         }
     };
+    let msg = &handler.msg;
+    let mut handler_clauses = if let Some(ref clause) = handler.generics.where_clause {
+        // Ideally we'd use take() or swap() here, but functionality is limited
+        clause.predicates.clone()
+    } else {
+        Default::default()
+    };
+
     let extra_attrs = args.extra_attrs;
 
     for (index, field) in args.fields.drain(..).enumerate() {
@@ -459,23 +462,27 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                 if let Some(ref wattr) = attr {
                     if let Some(tyr) = gen_msg {
-                        handler_clauses.push(quote! { #ty: kas::Layout<Msg = #tyr> });
+                        handler_clauses.push(parse_quote! { #ty: kas::Layout<Msg = #tyr> });
                     } else {
                         // No typing. If a handler is specified, then the child must implement
                         // Handler<Msg = X> where the handler takes type X; otherwise
                         // we use `msg.into()` and this conversion must be supported.
                         if let Some(ref handler) = wattr.args.handler {
                             if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
-                                handler_clauses.push(quote! { #ty: kas::Layout<Msg = #ty_bound> });
+                                handler_clauses
+                                    .push(parse_quote! { #ty: kas::Layout<Msg = #ty_bound> });
                             } else {
                                 return quote! {}.into(); // exit after emitting error
                             }
                         } else {
                             name_buf.push_str("R");
                             let tyr = Ident::new(&name_buf, Span::call_site());
-                            handler_extra.push(tyr.clone());
-                            handler_clauses.push(quote! { #ty: kas::Layout<Msg = #tyr> });
-                            handler_clauses.push(quote! { #msg: From<#tyr> });
+                            handler
+                                .generics
+                                .params
+                                .push(syn::GenericParam::Type(tyr.clone().into()));
+                            handler_clauses.push(parse_quote! { #ty: kas::Layout<Msg = #tyr> });
+                            handler_clauses.push(parse_quote! { #msg: From<#tyr> });
                         }
                     }
 
@@ -504,6 +511,13 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             .append_all(quote! { write!(f, ", {}: {:?}", stringify!(#ident), self.#ident)?; });
     }
 
+    if !handler_clauses.is_empty() {
+        handler.generics.where_clause = Some(syn::WhereClause {
+            where_token: Default::default(),
+            predicates: handler_clauses,
+        });
+    }
+
     let (impl_generics, ty_generics, where_clause) = args.generics.split_for_impl();
 
     let mut impls = quote! {};
@@ -525,21 +539,10 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         });
     }
 
-    let handler_noderive = if args.handler_msg.is_some() {
-        quote! {}
-    } else {
-        quote! { noderive, }
-    };
-    let handler_where = if handler_clauses.is_empty() {
-        quote! {}
-    } else {
-        quote! { where #handler_clauses }
-    };
-
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote! { {
-        #[handler(#handler_noderive msg = #msg, generics = < #handler_extra > #handler_where)]
+        #handler
         #extra_attrs
         #[derive(Clone, Debug, kas::macros::Widget)]
         struct AnonWidget #impl_generics #where_clause {

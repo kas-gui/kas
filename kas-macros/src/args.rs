@@ -506,14 +506,20 @@ pub struct HandlerArgs {
     pub generics: Generics,
 }
 
-impl Default for HandlerArgs {
-    fn default() -> Self {
+impl HandlerArgs {
+    pub fn new(msg: Type) -> Self {
         HandlerArgs {
             noderive: true,
-            msg: parse_quote! { kas::event::VoidMsg },
+            msg,
             substitutions: Default::default(),
             generics: Default::default(),
         }
+    }
+}
+
+impl Default for HandlerArgs {
+    fn default() -> Self {
+        HandlerArgs::new(parse_quote! { kas::event::VoidMsg })
     }
 }
 
@@ -588,6 +594,52 @@ impl Parse for HandlerArgs {
     }
 }
 
+impl ToTokens for HandlerArgs {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        <Token![#]>::default().to_tokens(tokens);
+        syn::token::Bracket::default().surround(tokens, |tokens| {
+            kw::handler::default().to_tokens(tokens);
+            syn::token::Paren::default().surround(tokens, |tokens| {
+                if self.noderive {
+                    kw::noderive::default().to_tokens(tokens);
+                    Comma::default().to_tokens(tokens);
+                }
+
+                kw::msg::default().to_tokens(tokens);
+                Eq::default().to_tokens(tokens);
+                self.msg.to_tokens(tokens);
+                Comma::default().to_tokens(tokens);
+
+                if !self.substitutions.is_empty()
+                    || !self.generics.params.is_empty()
+                    || self.generics.where_clause.is_some()
+                {
+                    kw::generics::default().to_tokens(tokens);
+                    Eq::default().to_tokens(tokens);
+
+                    for (k, v) in &self.substitutions {
+                        k.to_tokens(tokens);
+                        <Token![=>]>::default().to_tokens(tokens);
+                        v.to_tokens(tokens);
+                        Comma::default().to_tokens(tokens);
+                    }
+
+                    self.generics.to_tokens(tokens);
+                    if let Some(ref clause) = self.generics.where_clause {
+                        if self.generics.params.is_empty() {
+                            // generics doesn't print <> in this case
+                            <Token![<]>::default().to_tokens(tokens);
+                            <Token![>]>::default().to_tokens(tokens);
+                        }
+                        clause.where_token.to_tokens(tokens);
+                        clause.predicates.to_tokens(tokens);
+                    }
+                }
+            });
+        });
+    }
+}
+
 pub enum ChildType {
     Fixed(Type), // fixed type
     // Generic, optionally with specified handler msg type,
@@ -602,25 +654,9 @@ pub struct WidgetField {
     pub value: Expr,
 }
 
-struct HandlerAttrToks {
-    msg: Type,
-}
-
-impl Parse for HandlerAttrToks {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let content;
-        let _ = parenthesized!(content in input);
-        let _: kw::msg = content.parse()?;
-        let _: Eq = content.parse()?;
-        let msg = content.parse()?;
-
-        Ok(HandlerAttrToks { msg })
-    }
-}
-
 pub struct MakeWidget {
-    // handler: Msg type
-    pub handler_msg: Option<Type>,
+    // handler attribute
+    pub handler: Option<HandlerArgs>,
     // additional attributes
     pub extra_attrs: TokenStream,
     pub generics: Generics,
@@ -633,16 +669,15 @@ pub struct MakeWidget {
 
 impl Parse for MakeWidget {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut handler_msg = None;
+        let mut handler = None;
         let mut extra_attrs = TokenStream::new();
         let mut attrs = input.call(Attribute::parse_outer)?;
         for attr in attrs.drain(..) {
             if attr.path == parse_quote! { handler } {
-                if handler_msg.is_some() {
+                if handler.is_some() {
                     return Err(Error::new(attr.span(), "duplicate `handler` attribute"));
                 }
-                let hat: HandlerAttrToks = syn::parse2(attr.tokens)?;
-                handler_msg = Some(hat.msg);
+                handler = Some(syn::parse2(attr.tokens)?);
             } else {
                 extra_attrs.append_all(quote! { #attr });
             }
@@ -690,7 +725,7 @@ impl Parse for MakeWidget {
         }
 
         Ok(MakeWidget {
-            handler_msg,
+            handler,
             extra_attrs,
             generics,
             struct_span: s.span(),
