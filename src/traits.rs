@@ -242,9 +242,9 @@ pub trait Layout: event::Handler {
     ///
     /// Most non-parent widgets will not need to implement this method manually.
     /// The default implementation (which wraps [`Manager::handle_generic`])
-    /// forwards high-level events via [`Handler::action`], thus the only reason
-    /// for non-parent widgets to implement this manually is for low-level
-    /// event processing.
+    /// forwards high-level events via [`event::Handler::action`], thus the only
+    /// reason for non-parent widgets to implement this manually is for
+    /// low-level event processing.
     ///
     /// Parent widgets should forward events to the appropriate child widget,
     /// via logic like the following:

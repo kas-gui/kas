@@ -13,6 +13,8 @@ use std::u16;
 
 use super::*;
 use crate::geom::{Coord, DVec2};
+#[allow(unused)]
+use crate::Widget; // for doc-links
 use crate::{Layout, ThemeAction, ThemeApi, TkAction, TkWindow, WidgetId, WindowId};
 
 /// Highlighting state of a widget
@@ -427,8 +429,7 @@ impl<'a> Manager<'a> {
     /// Schedule an update
     ///
     /// Widgets requiring animation should schedule an update; as a result,
-    /// their [`Widget::update_timer`] method will be called, roughly at time
-    /// `now + duration`.
+    /// [`Action::TimerUpdate`] will be sent, roughly at time `now + duration`.
     ///
     /// Timings may be a few ms out, but should be sufficient for e.g. updating
     /// a clock each second. Very short positive durations (e.g. 1ns) may be
@@ -460,8 +461,8 @@ impl<'a> Manager<'a> {
 
     /// Subscribe to an update handle
     ///
-    /// All widgets subscribed to an update handle will have their
-    /// [`Widget::update_handle`] method called when [`Manager::trigger_update`]
+    /// All widgets subscribed to an update handle will be sent
+    /// [`Action::HandleUpdate`] when [`Manager::trigger_update`]
     /// is called with the corresponding handle.
     ///
     /// This should be called from [`Widget::configure`].
