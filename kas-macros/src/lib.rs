@@ -187,6 +187,9 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     }
 
+    if args.handler.is_empty() {
+        args.handler.push(Default::default());
+    }
     for handler in args.handler.drain(..) {
         let msg = handler.msg;
         let subs = handler.substitutions;
@@ -232,39 +235,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let (impl_generics, _ty, where_clause) = generics.split_for_impl();
         let ty_generics = SubstTyGenerics(&ast.generics, subs);
 
-        let mut ev_to_num = TokenStream::new();
-        for child in args.children.iter() {
-            let ident = &child.ident;
-            let handler = if let Some(ref h) = child.args.handler {
-                quote! { r.try_into().unwrap_or_else(|msg| self.#h(mgr, msg)) }
-            } else {
-                quote! { r.into() }
-            };
-            ev_to_num.append_all(quote! {
-                if id <= self.#ident.id() {
-                    let r = self.#ident.event(mgr, id, event);
-                    #handler
-                } else
-            });
-        }
-
-        let event = if args.children.is_empty() {
-            // rely on the default implementation
-            quote! {}
-        } else {
-            quote! {
-                fn event(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
-                -> kas::event::Response<Self::Msg>
-                {
-                    use kas::{WidgetCore, event::Response};
-                    #ev_to_num {
-                        debug_assert!(id == self.id(), "Layout::event: bad WidgetId");
-                        kas::event::Manager::handle_generic(self, mgr, event)
-                    }
-                }
-            }
-        };
-
         if !handler.noderive {
             toks.append_all(quote! {
                 impl #impl_generics kas::event::Handler
@@ -276,6 +246,39 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
 
         if let Some(ref layout) = args.layout {
+            let mut ev_to_num = TokenStream::new();
+            for child in args.children.iter() {
+                let ident = &child.ident;
+                let handler = if let Some(ref h) = child.args.handler {
+                    quote! { r.try_into().unwrap_or_else(|msg| self.#h(mgr, msg)) }
+                } else {
+                    quote! { r.into() }
+                };
+                ev_to_num.append_all(quote! {
+                    if id <= self.#ident.id() {
+                        let r = self.#ident.event(mgr, id, event);
+                        #handler
+                    } else
+                });
+            }
+
+            let event = if args.children.is_empty() {
+                // rely on the default implementation
+                quote! {}
+            } else {
+                quote! {
+                    fn event(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
+                    -> kas::event::Response<Self::Msg>
+                    {
+                        use kas::{WidgetCore, event::Response};
+                        #ev_to_num {
+                            debug_assert!(id == self.id(), "Layout::event: bad WidgetId");
+                            kas::event::Manager::handle_generic(self, mgr, event)
+                        }
+                    }
+                }
+            };
+
             match layout::derive(&args.children, layout, &args.layout_data) {
                 Ok(fns) => toks.append_all(quote! {
                     impl #impl_generics kas::Layout
