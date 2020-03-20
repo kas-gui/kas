@@ -151,7 +151,7 @@ pub trait WidgetCore: fmt::Debug {
 /// contain parameters, e.g. `#[widget_config(key_nav = true)]`.
 // TODO(specialization): provide a blanket implementation, so that users only
 // need implement manually when they have something to configure.
-pub trait WidgetConfig: WidgetCore {
+pub trait WidgetConfig: Layout {
     /// Configure widget
     ///
     /// Widgets are *configured* on window creation and when
@@ -184,7 +184,7 @@ pub trait WidgetConfig: WidgetCore {
 /// as well as low-level event handling.
 ///
 /// For a description of the widget size model, see [`SizeRules`].
-pub trait Layout: event::EventHandler {
+pub trait Layout: WidgetCore {
     /// Get size rules for the given axis.
     ///
     /// This method takes `&mut self` to allow local caching of child widget
@@ -255,7 +255,7 @@ pub trait Layout: event::EventHandler {
 /// `fn foo<M>(w: &mut dyn Widget<Msg = M>)`, or, e.g.
 /// `fn foo(w: &mut dyn WidgetConfig)` (note that `WidgetConfig` is the last unparameterised
 /// trait in the widget trait family).
-pub trait Widget: Layout {}
+pub trait Widget: event::EventHandler {}
 
 /// Trait to describe the type needed by the layout implementation.
 ///

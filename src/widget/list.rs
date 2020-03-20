@@ -42,7 +42,7 @@ pub type BoxColumn<M> = BoxList<Vertical, M>;
 /// This is parameterised over directionality and handler message type.
 ///
 /// See documentation of [`List`] type.
-pub type BoxList<D, M> = List<D, Box<dyn Layout<Msg = M>>>;
+pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
 
 /// A generic row/column widget
 ///

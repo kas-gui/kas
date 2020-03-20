@@ -185,6 +185,17 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }),
             Err(err) => return err.to_compile_error().into(),
         }
+
+        match layout::derive(&args.children, layout, &args.layout_data) {
+            Ok(fns) => toks.append_all(quote! {
+                impl #impl_generics kas::Layout
+                        for #name #ty_generics #where_clause
+                {
+                    #fns
+                }
+            }),
+            Err(err) => return err.to_compile_error().into(),
+        }
     }
 
     // The following traits are all parametrised over the Handler::Msg type.
@@ -289,19 +300,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     #event
                 }
             });
-        }
-
-        if let Some(ref layout) = args.layout {
-            match layout::derive(&args.children, layout, &args.layout_data) {
-                Ok(fns) => toks.append_all(quote! {
-                    impl #impl_generics kas::Layout
-                            for #name #ty_generics #where_clause
-                    {
-                        #fns
-                    }
-                }),
-                Err(err) => return err.to_compile_error().into(),
-            }
         }
 
         toks.append_all(quote! {

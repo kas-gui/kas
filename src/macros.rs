@@ -52,7 +52,7 @@
 //!
 //! #[widget_config]
 //! #[layout(single)]
-//! #[handler(generics = <> where W: Layout<Msg = VoidMsg>)]
+//! #[handler(generics = <> where W: Widget<Msg = VoidMsg>)]
 //! #[derive(Clone, Debug, Widget)]
 //! struct WrapperWidget<W: Widget> {
 //!     #[widget_core] core: CoreData,
@@ -242,7 +242,7 @@
 //!
 //! #[widget_config]
 //! #[layout(vertical)]
-//! #[handler(generics = <> where W: Layout<Msg = ChildMessage>)]
+//! #[handler(generics = <> where W: Widget<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
 //!     #[widget_core] core: CoreData,
