@@ -10,13 +10,11 @@ use std::fmt::{self, Debug};
 use std::rc::Rc;
 
 use super::Label;
-use crate::class::HasBool;
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Action, Manager, Response, UpdateHandle, VoidMsg};
-use crate::geom::Rect;
-use crate::layout::{AxisInfo, SizeRules};
-use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetConfig, WidgetCore, WidgetId};
+use kas::class::HasBool;
+use kas::draw::{DrawHandle, SizeHandle};
+use kas::event::{Action, Manager, Response, UpdateHandle, VoidMsg};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::prelude::*;
 
 /// A bare radiobox (no label)
 #[handler(event)]

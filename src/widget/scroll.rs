@@ -8,13 +8,10 @@
 use std::fmt::Debug;
 
 use super::ScrollBar;
-use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{self, Action, Event, Manager, Response};
-use crate::geom::{Coord, Rect, Size};
-use crate::layout::{AxisInfo, SizeRules};
-use crate::macros::Widget;
-use crate::{AlignHints, Horizontal, Vertical};
-use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
+use kas::draw::{DrawHandle, SizeHandle, TextClass};
+use kas::event::{Action, Event, Manager, Response};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::prelude::*;
 
 /// A scrollable region
 ///

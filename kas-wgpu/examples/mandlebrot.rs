@@ -14,12 +14,11 @@ use wgpu::ShaderModule;
 
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{self, Event, Manager, Response, VoidResponse};
+use kas::event::{Event, Manager, Response, VoidResponse};
 use kas::geom::{Coord, DVec2, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
-use kas::macros::make_widget;
+use kas::prelude::*;
 use kas::widget::{Label, Slider, Window};
-use kas::{AlignHints, Layout, ThemeApi, Vertical, WidgetCore, WidgetId};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawWindow};
 use kas_wgpu::Options;
 

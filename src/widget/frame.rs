@@ -7,13 +7,11 @@
 
 use std::fmt::Debug;
 
-use crate::class::*;
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Handler, Manager, Response};
-use crate::geom::{Coord, Rect, Size};
-use crate::layout::{AxisInfo, Margins, SizeRules};
-use crate::macros::Widget;
-use crate::{AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetId};
+use kas::class::*;
+use kas::draw::{DrawHandle, SizeHandle};
+use kas::event::{Event, Handler, Manager, Response};
+use kas::layout::{AxisInfo, Margins, SizeRules};
+use kas::prelude::*;
 
 /// A frame around content
 ///

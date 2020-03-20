@@ -8,12 +8,10 @@
 use std::fmt::Debug;
 
 use super::DragHandle;
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Manager, Response};
-use crate::geom::*;
-use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
-use crate::macros::Widget;
-use crate::{AlignHints, CoreData, Directional, Layout, WidgetCore, WidgetId};
+use kas::draw::{DrawHandle, SizeHandle};
+use kas::event::{Event, Manager, Response};
+use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
+use kas::prelude::*;
 
 /// A scroll bar
 ///

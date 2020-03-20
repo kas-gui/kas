@@ -5,13 +5,10 @@
 
 //! Dynamic widgets
 
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Manager, Response};
-use crate::geom::Coord;
-use crate::layout::{self, AxisInfo, RulesSetter, RulesSolver, SizeRules};
-use crate::{AlignHints, Directional, Horizontal, Vertical};
-use crate::{CoreData, Layout, TkAction, Widget, WidgetConfig, WidgetCore, WidgetId};
-use kas::geom::Rect;
+use kas::draw::{DrawHandle, SizeHandle};
+use kas::event::{Event, Manager, Response};
+use kas::layout::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
+use kas::prelude::*;
 
 /// A generic row widget
 ///

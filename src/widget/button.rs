@@ -8,20 +8,18 @@
 use smallvec::SmallVec;
 use std::fmt::Debug;
 
-use crate::class::HasText;
-use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{self, Action, Manager, Response, VirtualKeyCode};
-use crate::geom::Rect;
-use crate::layout::{AxisInfo, SizeRules};
-use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetConfig, WidgetCore};
+use kas::class::HasText;
+use kas::draw::{DrawHandle, SizeHandle, TextClass};
+use kas::event::{Action, Manager, Response, VirtualKeyCode};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::prelude::*;
 
 /// A push-button with a text label
 #[handler(event)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug> {
     #[widget_core]
-    core: CoreData,
+    core: kas::CoreData,
     keys: SmallVec<[VirtualKeyCode; 4]>,
     // text_rect: Rect,
     label: CowString,

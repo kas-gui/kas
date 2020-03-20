@@ -7,13 +7,11 @@
 
 use std::fmt::{self, Debug};
 
-use crate::class::{Editable, HasText};
-use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{self, Action, Manager, Response, VoidMsg};
-use crate::layout::{AxisInfo, SizeRules};
-use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
-use kas::geom::Rect;
+use kas::class::{Editable, HasText};
+use kas::draw::{DrawHandle, SizeHandle, TextClass};
+use kas::event::{Action, Manager, Response, VoidMsg};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
 enum LastEdit {

@@ -7,12 +7,9 @@
 
 use std::fmt::{self, Debug};
 
-use crate::draw::SizeHandle;
-use crate::event::{Callback, Manager, VoidMsg};
-use crate::geom::Size;
-use crate::layout::{self};
-use crate::macros::Widget;
-use crate::{CoreData, CowString, LayoutData, Widget};
+use kas::draw::SizeHandle;
+use kas::event::{Callback, Manager, VoidMsg};
+use kas::prelude::*;
 
 /// The main instantiation of the [`Window`] trait.
 #[widget_config]

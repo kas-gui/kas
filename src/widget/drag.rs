@@ -7,12 +7,10 @@
 
 use std::fmt::Debug;
 
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Manager, PressSource, Response};
-use crate::geom::*;
-use crate::layout::{AxisInfo, SizeRules};
-use crate::macros::Widget;
-use crate::{AlignHints, CoreData, Layout, WidgetCore, WidgetId};
+use kas::draw::{DrawHandle, SizeHandle};
+use kas::event::{Event, Manager, PressSource, Response};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::prelude::*;
 
 /// Draggable Handle
 ///

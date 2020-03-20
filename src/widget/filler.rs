@@ -5,10 +5,9 @@
 
 //! Filler widget
 
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
-use crate::macros::Widget;
-use crate::{event, CoreData, Layout};
+use kas::draw::{DrawHandle, SizeHandle};
+use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
+use kas::prelude::*;
 
 /// A space filler
 ///
