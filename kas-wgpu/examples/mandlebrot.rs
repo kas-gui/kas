@@ -394,7 +394,7 @@ impl PipeWindow {
 #[widget]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Mandlebrot {
-    #[core]
+    #[widget_core]
     core: kas::CoreData,
     alpha: DVec2,
     delta: DVec2,
@@ -402,6 +402,10 @@ struct Mandlebrot {
     view_alpha: f64,
     rel_width: f32,
     iter: i32,
+}
+
+impl event::Handler for Mandlebrot {
+    type Msg = ();
 }
 
 impl Layout for Mandlebrot {
@@ -437,12 +441,8 @@ impl Layout for Mandlebrot {
         let p = (self.alpha, self.delta, self.rel_width, self.iter);
         draw.custom(region, self.core.rect + offset, p);
     }
-}
 
-impl event::Handler for Mandlebrot {
-    type Msg = ();
-
-    fn handle(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::Action(event::Action::Scroll(delta)) => {
                 let factor = match delta {
@@ -530,12 +530,12 @@ fn main() -> Result<(), kas_wgpu::Error> {
         impl {
             fn iter(&mut self, mgr: &mut Manager, iter: i32) -> VoidResponse {
                 self.mbrot.iter = iter;
-                self.label.set_string(mgr, self.mbrot.loc());
-                self.iters.set_string(mgr, format!("{}", iter));
+                self.label.set_text(mgr, self.mbrot.loc());
+                self.iters.set_text(mgr, format!("{}", iter));
                 Response::None
             }
             fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> VoidResponse {
-                self.label.set_string(mgr, self.mbrot.loc());
+                self.label.set_text(mgr, self.mbrot.loc());
                 Response::None
             }
         }

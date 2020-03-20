@@ -18,7 +18,7 @@ use crate::{event, CoreData, Layout};
 #[handler]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Filler {
-    #[core]
+    #[widget_core]
     core: CoreData,
     policy: StretchPolicy,
 }

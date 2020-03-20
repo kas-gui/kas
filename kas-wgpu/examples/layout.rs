@@ -23,13 +23,13 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[layout(grid)]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(row=0, col=2)] _ = Label::from("Layout demo"),
-                #[widget(row=1, col=1, cspan=3)] _ = Label::from(lipsum),
+                #[widget(row=0, col=2)] _ = Label::new("Layout demo"),
+                #[widget(row=1, col=1, cspan=3)] _ = Label::new(lipsum),
                 #[widget(row=1, col=4)] _ = CheckBox::new(""),
-                #[widget(row=2, col=0)] _ = Label::from("Text"),
-                #[widget(row=2, col=2, cspan=2, rspan=2)] _ = Label::from(crasit),
+                #[widget(row=2, col=0)] _ = Label::new("Text"),
+                #[widget(row=2, col=2, cspan=2, rspan=2)] _ = Label::new(crasit),
                 #[widget(row=3, col=1)] _ = EditBox::new("edit"),
-                #[widget(row=0, col=3)] _ = Label::from("<->"),
+                #[widget(row=0, col=3)] _ = Label::new("<->"),
             }
         },
     );

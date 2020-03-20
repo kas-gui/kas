@@ -14,7 +14,7 @@ use crate::geom::Size;
 use crate::layout;
 use crate::macros::{VoidMsg, Widget};
 use crate::widget::{Label, TextButton};
-use crate::{CoreData, TkAction, Window};
+use crate::{CoreData, CowString, TkAction, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum DialogButton {
@@ -27,11 +27,11 @@ enum DialogButton {
 #[handler]
 #[derive(Clone, Debug, Widget)]
 pub struct MessageBox {
-    #[core]
+    #[widget_core]
     core: CoreData,
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,
-    title: String,
+    title: CowString,
     #[widget]
     label: Label,
     #[widget(handler = handle_button)]
@@ -39,11 +39,11 @@ pub struct MessageBox {
 }
 
 impl MessageBox {
-    pub fn new<T: ToString, M: ToString>(title: T, message: M) -> Self {
+    pub fn new<T: Into<CowString>, M: Into<CowString>>(title: T, message: M) -> Self {
         MessageBox {
             core: Default::default(),
             layout_data: Default::default(),
-            title: title.to_string(),
+            title: title.into(),
             label: Label::new(message),
             button: TextButton::new("Ok", DialogButton::Close),
         }

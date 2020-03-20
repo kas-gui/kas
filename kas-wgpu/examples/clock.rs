@@ -13,17 +13,16 @@ use std::f32::consts::PI;
 use std::time::Duration;
 
 use kas::draw::{Colour, DrawHandle, DrawRounded, DrawText, SizeHandle, TextClass, TextProperties};
-use kas::event::{Manager, ManagerState};
+use kas::event::{self, Action, Event, Handler, Response, Manager, ManagerState};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::widget::Window;
 use kas::{Align, AlignHints, Direction, Layout, Widget, WidgetCore};
 use kas_wgpu::draw::DrawWindow;
 
-#[handler]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Clock {
-    #[core]
+    #[widget_core]
     core: kas::CoreData,
     date_rect: Rect,
     time_rect: Rect,
@@ -128,15 +127,26 @@ impl Widget for Clock {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.update_on_timer(Duration::new(0, 0), self.id());
     }
+}
 
-    fn update_timer(&mut self, mgr: &mut Manager) -> Option<Duration> {
-        self.now = Local::now();
-        mgr.redraw(self.id());
-        self.date = self.now.format("%Y-%m-%d").to_string();
-        self.time = self.now.format("%H:%M:%S").to_string();
-        let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
-        info!("Requesting update in {}ns", ns);
-        Some(Duration::new(0, ns))
+impl Handler for Clock {
+    type Msg = event::VoidMsg;
+
+    #[inline]
+    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
+        match action {
+            Action::TimerUpdate => {
+                self.now = Local::now();
+                mgr.redraw(self.id());
+                self.date = self.now.format("%Y-%m-%d").to_string();
+                self.time = self.now.format("%H:%M:%S").to_string();
+                let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
+                info!("Requesting update in {}ns", ns);
+                mgr.update_on_timer(Duration::new(0, ns), self.id());
+                Response::None
+            }
+            a @ _ => Response::Unhandled(Event::Action(a)),
+        }
     }
 }
 

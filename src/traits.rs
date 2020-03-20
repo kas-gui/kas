@@ -7,13 +7,14 @@
 
 use std::fmt;
 use std::ops::DerefMut;
-use std::time::Duration;
 
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Manager, ManagerState};
+use crate::event::{self, Event, Manager, ManagerState, Response};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, WidgetId};
+
+mod impls;
 
 /// Support trait for cloning boxed unsized objects
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -139,15 +140,46 @@ pub trait WidgetCore: fmt::Debug {
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
     fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget));
+
+    /// Is this widget navigable via Tab key?
+    fn key_nav(&self) -> bool {
+        false
+    }
+
+    /// Which cursor icon should be used on hover?
+    ///
+    /// Where no specific icon should be used, return [`event::CursorIcon::Default`].
+    fn cursor_icon(&self) -> event::CursorIcon {
+        event::CursorIcon::Default
+    }
+}
+
+/// A widget is a UI element.
+///
+/// Widgets usually occupy space within the UI and are drawable. Widgets may
+/// respond to user events. Widgets may have child widgets.
+///
+/// Widgets must additionally implement the traits [`WidgetCore`], [`Layout`]
+/// and [`event::Handler`]. The
+/// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro) may be
+/// used to generate some of these implementations.
+pub trait Widget: WidgetCore {
+    /// Configure widget
+    ///
+    /// Widgets are *configured* on window creation and when
+    /// [`kas::TkAction::Reconfigure`] is sent.
+    ///
+    /// This method is called immediately after assigning `self.core_data().id`.
+    fn configure(&mut self, _: &mut Manager) {}
 }
 
 /// Positioning and drawing routines for widgets
 ///
-/// This trait contains methods concerned with positioning of contents, other
-/// than those in [`event::Handler`].
+/// This trait contains methods concerned with positioning of contents
+/// as well as low-level event handling.
 ///
 /// For a description of the widget size model, see [`SizeRules`].
-pub trait Layout: WidgetCore {
+pub trait Layout: event::Handler {
     /// Get size rules for the given axis.
     ///
     /// This method takes `&mut self` to allow local caching of child widget
@@ -205,62 +237,33 @@ pub trait Layout: WidgetCore {
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState);
-}
 
-/// A widget is a UI element.
-///
-/// Widgets usually occupy space within the UI and are drawable. Widgets may
-/// respond to user events. Widgets may have child widgets.
-///
-/// Widgets must additionally implement the traits [`WidgetCore`], [`Layout`]
-/// and [`event::Handler`]. The
-/// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro) may be
-/// used to generate some of these implementations.
-pub trait Widget: Layout {
-    /// Configure widget
+    /// Handle a low-level event.
     ///
-    /// Widgets are *configured* on window creation and when
-    /// [`kas::TkAction::Reconfigure`] is sent.
+    /// Most non-parent widgets will not need to implement this method manually.
+    /// The default implementation (which wraps [`Manager::handle_generic`])
+    /// forwards high-level events via [`Handler::action`], thus the only reason
+    /// for non-parent widgets to implement this manually is for low-level
+    /// event processing.
     ///
-    /// This method is called immediately after assigning `self.core_data().id`.
-    fn configure(&mut self, _: &mut Manager) {}
-
-    /// Update the widget via a timer
-    ///
-    /// This method is called on scheduled updates
-    /// (see [`Manager::update_on_timer`]).
-    ///
-    /// When some [`Duration`] is returned, another timed update is scheduled
-    /// at approximately this duration from now (but without blocking redraws;
-    /// usage of 1ns effectively enables per-frame update with FPS limited via
-    /// VSync). Required: `duration > 0`.
-    ///
-    /// This method being called does not imply a redraw.
-    fn update_timer(&mut self, _: &mut Manager) -> Option<Duration> {
-        None
-    }
-
-    /// Update the widget via an update handle
-    ///
-    /// This method is called on triggered updates (see [`Manager::update_on_handle`]).
-    /// The source handle is specified via the [`event::UpdateHandle`] parameter.
-    ///
-    /// A user-defined payload is passed. Interpretation of this payload is
-    /// user-defined and unfortunately not type safe.
-    ///
-    /// This method being called does not imply a redraw.
-    fn update_handle(&mut self, _mgr: &mut Manager, _handle: event::UpdateHandle, _payload: u64) {}
-
-    /// Is this widget navigable via Tab key?
-    fn allow_focus(&self) -> bool {
-        false
-    }
-
-    /// Which cursor icon should be used on hover?
-    ///
-    /// Where no specific icon should be used, return [`event::CursorIcon::Default`].
-    fn cursor_icon(&self) -> event::CursorIcon {
-        event::CursorIcon::Default
+    /// Parent widgets should forward events to the appropriate child widget,
+    /// via logic like the following:
+    /// ```norun
+    /// if id <= self.child1.id() {
+    ///     self.child1.event(mgr, id, event).into()
+    /// } else if id <= self.child2.id() {
+    ///     self.child2.event(mgr, id, event).into()
+    /// } else {
+    ///     debug_assert!(id == self.id(), "Layout::event: bad WidgetId");
+    ///     // either handle `event`, or return:
+    ///     Response::Unhandled(event)
+    /// }
+    /// ```
+    /// Optionally, the return value of child event handlers may be intercepted
+    /// in order to handle returned messages and/or unhandled events.
+    #[inline]
+    fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
+        Manager::handle_generic(self, mgr, event)
     }
 }
 
@@ -288,7 +291,7 @@ pub trait LayoutData {
 // Window should be a Widget. So alternatives are (1) use a struct instead of a
 // trait or (2) allow any Widget to derive Window (i.e. implement required
 // functionality with macros instead of the generic code below).
-pub trait Window: Widget + event::Handler<Msg = event::VoidMsg> {
+pub trait Window: Layout<Msg = event::VoidMsg> {
     /// Get the window title
     fn title(&self) -> &str;
 

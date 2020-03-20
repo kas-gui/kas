@@ -8,24 +8,25 @@
 use std::fmt::{self, Debug};
 
 use crate::draw::SizeHandle;
-use crate::event::{Callback, Event, Handler, Manager, Response, VoidMsg};
+use crate::event::{Callback, Manager, VoidMsg};
 use crate::geom::Size;
 use crate::layout::{self};
 use crate::macros::Widget;
-use crate::{CoreData, LayoutData, Widget, WidgetId};
+use crate::{CoreData, CowString, Layout, LayoutData, Widget};
 
 /// The main instantiation of the [`Window`] trait.
 #[widget]
 #[layout(single)]
+#[handler(generics = <> where W: Layout<Msg = VoidMsg>)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     #[layout_data]
     layout_data: <Self as LayoutData>::Data,
     enforce_min: bool,
     enforce_max: bool,
-    title: String,
+    title: CowString,
     #[widget]
     w: W,
     fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut Manager))>,
@@ -65,13 +66,13 @@ impl<W: Widget + Clone> Clone for Window<W> {
 
 impl<W: Widget> Window<W> {
     /// Create
-    pub fn new<T: ToString>(title: T, w: W) -> Window<W> {
+    pub fn new<T: Into<CowString>>(title: T, w: W) -> Window<W> {
         Window {
             core: Default::default(),
             layout_data: Default::default(),
             enforce_min: true,
             enforce_max: false,
-            title: title.to_string(),
+            title: title.into(),
             w,
             fns: Vec::new(),
         }
@@ -92,16 +93,7 @@ impl<W: Widget> Window<W> {
     }
 }
 
-impl<W: Widget + Handler<Msg = VoidMsg> + 'static> Handler for Window<W> {
-    type Msg = VoidMsg;
-
-    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        // The window itself doesn't handle events, so we can just pass through
-        self.w.handle(mgr, id, event)
-    }
-}
-
-impl<W: Widget + Handler<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
+impl<W: Layout<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
     fn title(&self) -> &str {
         &self.title
     }

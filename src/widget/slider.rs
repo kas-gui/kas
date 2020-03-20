@@ -49,7 +49,7 @@ pub struct Slider<T, D: Directional>
 where
     T: SliderType,
 {
-    #[core]
+    #[widget_core]
     core: CoreData,
     direction: D, // TODO: also reversed direction
     // Terminology assumes vertical orientation:
@@ -156,6 +156,13 @@ where
     }
 }
 
+impl<T, D: Directional> event::Handler for Slider<T, D>
+where
+    T: SliderType,
+{
+    type Msg = T;
+}
+
 impl<T, D: Directional> Layout for Slider<T, D>
 where
     T: SliderType,
@@ -194,17 +201,10 @@ where
         let hl = mgr.highlight_state(self.handle.id());
         draw_handle.slider(self.core.rect, self.handle.rect(), dir, hl);
     }
-}
 
-impl<T, D: Directional> event::Handler for Slider<T, D>
-where
-    T: SliderType,
-{
-    type Msg = T;
-
-    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let offset = if id <= self.handle.id() {
-            match self.handle.handle(mgr, id, event).try_into() {
+            match self.handle.event(mgr, id, event).try_into() {
                 Ok(res) => return res,
                 Err(offset) => offset,
             }

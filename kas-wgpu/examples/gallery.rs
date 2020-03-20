@@ -31,29 +31,29 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[layout(grid)]
         #[handler(msg = Item)]
         struct {
-            #[widget(row=0, col=0)] _ = Label::from("Label"),
-            #[widget(row=0, col=1)] _ = Label::from("Hello world"),
-            #[widget(row=1, col=0)] _ = Label::from("EditBox"),
+            #[widget(row=0, col=0)] _ = Label::new("Label"),
+            #[widget(row=0, col=1)] _ = Label::new("Hello world"),
+            #[widget(row=1, col=0)] _ = Label::new("EditBox"),
             #[widget(row=1, col=1)] _ = EditBox::new("edit me")
                 .on_activate(|text| Some(Item::Edit(text.to_string()))),
-            #[widget(row=2, col=0)] _ = Label::from("TextButton"),
+            #[widget(row=2, col=0)] _ = Label::new("TextButton"),
             #[widget(row=2, col=1)] _ = TextButton::new("Press me", Item::Button),
-            #[widget(row=3, col=0)] _ = Label::from("CheckBox"),
+            #[widget(row=3, col=0)] _ = Label::new("CheckBox"),
             #[widget(row=3, col=1)] _ = CheckBox::new("Check me").state(true)
                 .on_toggle(|check| Item::Check(check)),
-            #[widget(row=4, col=0)] _ = Label::from("RadioBox"),
+            #[widget(row=4, col=0)] _ = Label::new("RadioBox"),
             #[widget(row=4, col=1)] _ = RadioBox::new(radio, "radio box 1").state(false)
                 .on_activate(|id| Item::Radio(id)),
-            #[widget(row=5, col=0)] _ = Label::from("RadioBox"),
+            #[widget(row=5, col=0)] _ = Label::new("RadioBox"),
             #[widget(row=5, col=1)] _ = RadioBox::new(radio, "radio box 2").state(true)
                 .on_activate(|id| Item::Radio(id)),
-            #[widget(row=6, col=0)] _ = Label::from("Slider"),
+            #[widget(row=6, col=0)] _ = Label::new("Slider"),
             #[widget(row=6, col=1, handler = handle_slider)] _ =
                 Slider::<i32, Horizontal>::new(-2, 2).with_value(0),
-            #[widget(row=7, col=0)] _ = Label::from("ScrollBar"),
+            #[widget(row=7, col=0)] _ = Label::new("ScrollBar"),
             #[widget(row=7, col=1, handler = handle_scroll)] _ =
                 ScrollBar::<Horizontal>::new().with_limits(5, 2),
-            #[widget(row=8)] _ = Label::from("Child window"),
+            #[widget(row=8)] _ = Label::new("Child window"),
             #[widget(row=8, col = 1)] _ = TextButton::new("Open", Item::Popup),
         }
         impl {
@@ -71,7 +71,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[layout(vertical)]
         #[handler(msg = VoidMsg)]
         struct {
-            #[widget(halign=centre)] _ = Label::from("Widget Gallery"),
+            #[widget(halign=centre)] _ = Label::new("Widget Gallery"),
             #[widget(handler=set_theme)] _ = make_widget! {
                 #[widget]
                 #[layout(horizontal)]

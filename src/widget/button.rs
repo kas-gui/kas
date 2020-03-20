@@ -14,16 +14,18 @@ use crate::event::{self, Action, Manager, Response, VirtualKeyCode};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
+use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore};
 
 /// A push-button with a text label
+#[widget_core(key_nav = true)]
+#[handler(noderive)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     keys: SmallVec<[VirtualKeyCode; 4]>,
     // text_rect: Rect,
-    label: String,
+    label: CowString,
     msg: M,
 }
 
@@ -32,10 +34,6 @@ impl<M: Clone + Debug> Widget for TextButton<M> {
         for key in &self.keys {
             mgr.add_accel_key(*key, self.id());
         }
-    }
-
-    fn allow_focus(&self) -> bool {
-        true
     }
 }
 
@@ -46,20 +44,10 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
         let frame_rules = SizeRules::extract_fixed(axis.dir(), sides.0 + sides.1, margins);
 
         let content_rules = size_handle.text_bound(&self.label, TextClass::Button, axis);
-        let rules = content_rules.surrounded_by(frame_rules, true);
-
-        if axis.is_horizontal() {
-            self.core.rect.size.0 = rules.ideal_size();
-        } else {
-            self.core.rect.size.1 = rules.ideal_size();
-        }
-        rules
+        content_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
-        let rect = align
-            .complete(Align::Stretch, Align::Stretch, self.rect().size)
-            .apply(rect);
+    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
         self.core.rect = rect;
 
         // In theory, text rendering should be restricted as in EditBox.
@@ -82,7 +70,7 @@ impl<M: Clone + Debug> TextButton<M> {
     /// type supporting `Clone` is valid, though it is recommended to use a
     /// simple `Copy` type (e.g. an enum). Click actions must be implemented on
     /// the parent (or other ancestor).
-    pub fn new<S: Into<String>>(label: S, msg: M) -> Self {
+    pub fn new<S: Into<CowString>>(label: S, msg: M) -> Self {
         TextButton {
             core: Default::default(),
             keys: SmallVec::new(),
@@ -114,7 +102,7 @@ impl<M: Clone + Debug> HasText for TextButton<M> {
         &self.label
     }
 
-    fn set_string(&mut self, mgr: &mut Manager, text: String) {
+    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString) {
         self.label = text;
         mgr.redraw(self.id());
     }
@@ -128,7 +116,7 @@ impl<M: Clone + Debug> event::Handler for TextButton<M> {
         true
     }
 
-    fn handle_action(&mut self, _: &mut Manager, action: Action) -> Response<M> {
+    fn action(&mut self, _: &mut Manager, action: Action) -> Response<M> {
         match action {
             Action::Activate => self.msg.clone().into(),
             a @ _ => Response::unhandled_action(a),

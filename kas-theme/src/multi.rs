@@ -11,13 +11,13 @@ use std::marker::Unsize;
 use crate::{StackDst, Theme, ThemeDst, WindowDst};
 use kas::draw::{Colour, DrawHandle, DrawShared};
 use kas::geom::Rect;
-use kas::{ThemeAction, ThemeApi};
+use kas::{CowString, ThemeAction, ThemeApi};
 
 /// Wrapper around mutliple themes, supporting run-time switching
 ///
 /// **Feature gated**: this is only available with feature `stack_dst`.
 pub struct MultiTheme<Draw> {
-    names: HashMap<String, usize>,
+    names: HashMap<CowString, usize>,
     themes: Vec<StackDst<dyn ThemeDst<Draw>>>,
     active: usize,
 }
@@ -26,7 +26,7 @@ pub struct MultiTheme<Draw> {
 ///
 /// Construct via [`MultiTheme::builder`].
 pub struct MultiThemeBuilder<Draw> {
-    names: HashMap<String, usize>,
+    names: HashMap<CowString, usize>,
     themes: Vec<StackDst<dyn ThemeDst<Draw>>>,
 }
 
@@ -42,13 +42,13 @@ impl<Draw> MultiTheme<Draw> {
 
 impl<Draw> MultiThemeBuilder<Draw> {
     /// Add a theme
-    pub fn add<S: ToString, U>(mut self, name: S, theme: U) -> Self
+    pub fn add<S: Into<CowString>, U>(mut self, name: S, theme: U) -> Self
     where
         U: Unsize<dyn ThemeDst<Draw>>,
         Box<U>: Unsize<dyn ThemeDst<Draw>>,
     {
         let index = self.themes.len();
-        self.names.insert(name.to_string(), index);
+        self.names.insert(name.into(), index);
         self.themes.push(StackDst::new_or_boxed(theme));
         self
     }

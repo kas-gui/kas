@@ -371,12 +371,12 @@ where
     }
 
     #[inline]
-    fn get_clipboard(&mut self) -> Option<String> {
+    fn get_clipboard(&mut self) -> Option<kas::CowString> {
         self.shared.get_clipboard()
     }
 
     #[inline]
-    fn set_clipboard(&mut self, content: String) {
+    fn set_clipboard<'c>(&mut self, content: kas::CowStringL<'c>) {
         self.shared.set_clipboard(content);
     }
 

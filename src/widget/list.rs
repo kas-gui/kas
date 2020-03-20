@@ -6,7 +6,7 @@
 //! Dynamic widgets
 
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Handler, Manager, Response};
+use crate::event::{self, Event, Manager, Response};
 use crate::geom::Coord;
 use crate::layout::{self, AxisInfo, RulesSetter, RulesSolver, SizeRules};
 use crate::{AlignHints, Directional, Horizontal, Vertical};
@@ -42,7 +42,7 @@ pub type BoxColumn<M> = BoxList<Vertical, M>;
 /// This is parameterised over directionality and handler message type.
 ///
 /// See documentation of [`List`] type.
-pub type BoxList<D, M> = List<D, Box<dyn Handler<Msg = M>>>;
+pub type BoxList<D, M> = List<D, Box<dyn Layout<Msg = M>>>;
 
 /// A generic row/column widget
 ///
@@ -130,7 +130,11 @@ impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
 
 impl<D: Directional, W: Widget> Widget for List<D, W> {}
 
-impl<D: Directional, W: Widget> Layout for List<D, W> {
+impl<D: Directional, W: Layout> event::Handler for List<D, W> {
+    type Msg = <W as event::Handler>::Msg;
+}
+
+impl<D: Directional, W: Layout> Layout for List<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut solver = layout::RowSolver::<Vec<u32>, _>::new(
             axis,
@@ -176,15 +180,11 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
             w.draw(draw_handle, mgr)
         });
     }
-}
 
-impl<D: Directional, W: Widget + Handler> Handler for List<D, W> {
-    type Msg = <W as Handler>::Msg;
-
-    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         for child in &mut self.widgets {
             if id <= child.id() {
-                return child.handle(mgr, id, event);
+                return child.event(mgr, id, event);
             }
         }
         debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");

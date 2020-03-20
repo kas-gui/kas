@@ -7,6 +7,7 @@
 
 use std::convert::TryFrom;
 use std::fmt::{self, Debug};
+use std::rc::Rc;
 
 use super::Label;
 use crate::class::HasBool;
@@ -15,19 +16,21 @@ use crate::event::{self, Action, Manager, Response, UpdateHandle, VoidMsg};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore, WidgetId};
+use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetId};
 
 /// A bare radiobox (no label)
+#[widget_core(key_nav = true)]
+#[handler(noderive)]
 #[derive(Clone, Widget)]
-pub struct RadioBoxBare<OT: 'static> {
-    #[core]
+pub struct RadioBoxBare<M> {
+    #[widget_core]
     core: CoreData,
     state: bool,
     handle: UpdateHandle,
-    on_activate: OT,
+    on_activate: Option<Rc<dyn Fn(WidgetId) -> M>>,
 }
 
-impl<H> Debug for RadioBoxBare<H> {
+impl<M> Debug for RadioBoxBare<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -37,26 +40,50 @@ impl<H> Debug for RadioBoxBare<H> {
     }
 }
 
-impl<OT: 'static> Widget for RadioBoxBare<OT> {
+impl<M> Widget for RadioBoxBare<M> {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.update_on_handle(self.handle, self.id());
     }
+}
 
-    fn update_handle(&mut self, mgr: &mut Manager, _: UpdateHandle, payload: u64) {
-        let id = WidgetId::try_from(payload).unwrap();
-        let state = id == self.id();
-        if state != self.state {
-            self.state = state;
-            mgr.redraw(self.id());
-        }
+impl<M> event::Handler for RadioBoxBare<M> {
+    type Msg = M;
+
+    #[inline]
+    fn activation_via_press(&self) -> bool {
+        true
     }
 
-    fn allow_focus(&self) -> bool {
-        true
+    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
+        match action {
+            Action::Activate => {
+                if !self.state {
+                    self.state = true;
+                    mgr.redraw(self.id());
+                    mgr.trigger_update(self.handle, self.id().into());
+                    if let Some(ref f) = self.on_activate {
+                        f(self.id()).into()
+                    } else {
+                        Response::None
+                    }
+                } else {
+                    Response::None
+                }
+            }
+            Action::HandleUpdate { payload, .. } => {
+                let id = WidgetId::try_from(payload).unwrap();
+                if id != self.id() {
+                    self.state = false;
+                    mgr.redraw(self.id());
+                }
+                Response::None
+            }
+            a @ _ => Response::unhandled_action(a),
+        }
     }
 }
 
-impl<OT: 'static> Layout for RadioBoxBare<OT> {
+impl<M> Layout for RadioBoxBare<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.radiobox();
         self.core.rect.size = size;
@@ -77,28 +104,7 @@ impl<OT: 'static> Layout for RadioBoxBare<OT> {
     }
 }
 
-impl<M, OT: Fn(WidgetId) -> M> RadioBoxBare<OT> {
-    /// Construct a radiobox which calls `f` when toggled
-    ///
-    /// This is a shortcut for `RadioBoxBare::new().on_activate(f)`.
-    ///
-    /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
-    /// same `handle` will be considered part of a single group.
-    ///
-    /// The closure `f` is called with the new state of the radiobox when
-    /// toggled, and the result of `f` is returned from the event handler.
-    #[inline]
-    pub fn new_on(f: OT, handle: UpdateHandle) -> Self {
-        RadioBoxBare {
-            core: Default::default(),
-            state: false,
-            handle,
-            on_activate: f,
-        }
-    }
-}
-
-impl RadioBoxBare<()> {
+impl RadioBoxBare<VoidMsg> {
     /// Construct a radiobox
     ///
     /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
@@ -109,7 +115,7 @@ impl RadioBoxBare<()> {
             core: Default::default(),
             state: false,
             handle,
-            on_activate: (),
+            on_activate: None,
         }
     }
 
@@ -118,17 +124,42 @@ impl RadioBoxBare<()> {
     /// The closure `f` is called with the new state of the radiobox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn on_activate<M, OT: Fn(WidgetId) -> M>(self, f: OT) -> RadioBoxBare<OT> {
+    pub fn on_activate<M, F>(self, f: F) -> RadioBoxBare<M>
+    where
+        F: Fn(WidgetId) -> M + 'static,
+    {
         RadioBoxBare {
             core: self.core,
             state: self.state,
             handle: self.handle,
-            on_activate: f,
+            on_activate: Some(Rc::new(f)),
         }
     }
 }
 
-impl<OT: 'static> RadioBoxBare<OT> {
+impl<M> RadioBoxBare<M> {
+    /// Construct a radiobox which calls `f` when toggled
+    ///
+    /// This is a shortcut for `RadioBoxBare::new().on_activate(f)`.
+    ///
+    /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
+    /// same `handle` will be considered part of a single group.
+    ///
+    /// The closure `f` is called with the new state of the radiobox when
+    /// toggled, and the result of `f` is returned from the event handler.
+    #[inline]
+    pub fn new_on<F>(f: F, handle: UpdateHandle) -> Self
+    where
+        F: Fn(WidgetId) -> M + 'static,
+    {
+        RadioBoxBare {
+            core: Default::default(),
+            state: false,
+            handle,
+            on_activate: Some(Rc::new(f)),
+        }
+    }
+
     /// Set the initial state of the radiobox.
     #[inline]
     pub fn state(mut self, state: bool) -> Self {
@@ -137,7 +168,7 @@ impl<OT: 'static> RadioBoxBare<OT> {
     }
 }
 
-impl<H> HasBool for RadioBoxBare<H> {
+impl<M> HasBool for RadioBoxBare<M> {
     fn get_bool(&self) -> bool {
         self.state
     }
@@ -151,72 +182,23 @@ impl<H> HasBool for RadioBoxBare<H> {
     }
 }
 
-impl event::Handler for RadioBoxBare<()> {
-    type Msg = VoidMsg;
-
-    #[inline]
-    fn activation_via_press(&self) -> bool {
-        true
-    }
-
-    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<VoidMsg> {
-        match action {
-            Action::Activate => {
-                if !self.state {
-                    self.state = true;
-                    mgr.redraw(self.id());
-                    mgr.trigger_update(self.handle, self.id().into());
-                }
-                Response::None
-            }
-            a @ _ => Response::unhandled_action(a),
-        }
-    }
-}
-
-impl<M, H: Fn(WidgetId) -> M> event::Handler for RadioBoxBare<H> {
-    type Msg = M;
-
-    #[inline]
-    fn activation_via_press(&self) -> bool {
-        true
-    }
-
-    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
-        match action {
-            Action::Activate => {
-                if !self.state {
-                    self.state = true;
-                    mgr.redraw(self.id());
-                    mgr.trigger_update(self.handle, self.id().into());
-                    ((self.on_activate)(self.id())).into()
-                } else {
-                    Response::None
-                }
-            }
-            a @ _ => Response::unhandled_action(a),
-        }
-    }
-}
-
 /// A radiobox with optional label
 #[layout(horizontal, area=radiobox)]
 #[widget]
-#[handler(substitutions = (OT = ()))]
-#[handler(msg = M, generics = <M: From<VoidMsg>> where OT: Fn(WidgetId) -> M)]
+#[handler(msg = M; generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Widget)]
-pub struct RadioBox<OT: 'static> {
-    #[core]
+pub struct RadioBox<M> {
+    #[widget_core]
     core: CoreData,
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,
     #[widget]
-    radiobox: RadioBoxBare<OT>,
+    radiobox: RadioBoxBare<M>,
     #[widget]
     label: Label,
 }
 
-impl<H> Debug for RadioBox<H> {
+impl<M> Debug for RadioBox<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -226,7 +208,7 @@ impl<H> Debug for RadioBox<H> {
     }
 }
 
-impl<M, OT: Fn(WidgetId) -> M> RadioBox<OT> {
+impl<M> RadioBox<M> {
     /// Construct a radiobox with a given `label` which calls `f` when toggled.
     ///
     /// This is a shortcut for `RadioBox::new(label).on_activate(f)`.
@@ -237,7 +219,10 @@ impl<M, OT: Fn(WidgetId) -> M> RadioBox<OT> {
     /// The closure `f` is called with the new state of the radiobox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn new_on<T: ToString>(f: OT, handle: UpdateHandle, label: T) -> Self {
+    pub fn new_on<T: Into<CowString>, F>(f: F, handle: UpdateHandle, label: T) -> Self
+    where
+        F: Fn(WidgetId) -> M + 'static,
+    {
         RadioBox {
             core: Default::default(),
             layout_data: Default::default(),
@@ -247,7 +232,7 @@ impl<M, OT: Fn(WidgetId) -> M> RadioBox<OT> {
     }
 }
 
-impl RadioBox<()> {
+impl RadioBox<VoidMsg> {
     /// Construct a radiobox with a given `label`.
     ///
     /// All instances of [`RadioBoxBare`] and [`RadioBox`] constructed over the
@@ -256,7 +241,7 @@ impl RadioBox<()> {
     /// RadioBox labels are optional; if no label is desired, use an empty
     /// string.
     #[inline]
-    pub fn new<T: ToString>(handle: UpdateHandle, label: T) -> Self {
+    pub fn new<T: Into<CowString>>(handle: UpdateHandle, label: T) -> Self {
         RadioBox {
             core: Default::default(),
             layout_data: Default::default(),
@@ -270,7 +255,10 @@ impl RadioBox<()> {
     /// The closure `f` is called with the new state of the radiobox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn on_activate<M, OT: Fn(WidgetId) -> M>(self, f: OT) -> RadioBox<OT> {
+    pub fn on_activate<M, F>(self, f: F) -> RadioBox<M>
+    where
+        F: Fn(WidgetId) -> M + 'static,
+    {
         RadioBox {
             core: self.core,
             layout_data: self.layout_data,
@@ -280,7 +268,7 @@ impl RadioBox<()> {
     }
 }
 
-impl<OT: 'static> RadioBox<OT> {
+impl<M> RadioBox<M> {
     /// Set the initial state of the radiobox.
     #[inline]
     pub fn state(mut self, state: bool) -> Self {
@@ -289,7 +277,7 @@ impl<OT: 'static> RadioBox<OT> {
     }
 }
 
-impl<H> HasBool for RadioBox<H> {
+impl<M> HasBool for RadioBox<M> {
     #[inline]
     fn get_bool(&self) -> bool {
         self.radiobox.get_bool()

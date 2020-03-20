@@ -28,7 +28,7 @@ use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
 #[widget]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
-    #[core]
+    #[widget_core]
     core: CoreData,
     min_child_size: Size,
     inner_size: Size,
@@ -129,7 +129,11 @@ impl<W: Widget> ScrollRegion<W> {
     }
 }
 
-impl<W: Widget> Layout for ScrollRegion<W> {
+impl<W: Layout> event::Handler for ScrollRegion<W> {
+    type Msg = <W as event::Handler>::Msg;
+}
+
+impl<W: Layout> Layout for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut rules = self.child.size_rules(size_handle, axis);
         if axis.is_horizontal() {
@@ -220,12 +224,8 @@ impl<W: Widget> Layout for ScrollRegion<W> {
             self.child.draw(handle, mgr)
         });
     }
-}
 
-impl<W: Widget + event::Handler> event::Handler for ScrollRegion<W> {
-    type Msg = <W as event::Handler>::Msg;
-
-    fn handle(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
             Event::Action(Action::Scroll(delta)) => {
                 let d = match delta {
@@ -256,7 +256,7 @@ impl<W: Widget + event::Handler> event::Handler for ScrollRegion<W> {
         };
 
         if id <= self.horiz_bar.id() {
-            return match Response::<Self::Msg>::try_from(self.horiz_bar.handle(mgr, id, event)) {
+            return match Response::<Self::Msg>::try_from(self.horiz_bar.event(mgr, id, event)) {
                 Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
@@ -265,7 +265,7 @@ impl<W: Widget + event::Handler> event::Handler for ScrollRegion<W> {
                 }
             };
         } else if id <= self.vert_bar.id() {
-            return match Response::<Self::Msg>::try_from(self.vert_bar.handle(mgr, id, event)) {
+            return match Response::<Self::Msg>::try_from(self.vert_bar.event(mgr, id, event)) {
                 Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
@@ -316,7 +316,7 @@ impl<W: Widget + event::Handler> event::Handler for ScrollRegion<W> {
             },
         };
 
-        match self.child.handle(mgr, id, event) {
+        match self.child.event(mgr, id, event) {
             Response::None => Response::None,
             Response::Unhandled(event) => unhandled(self, mgr, event),
             e @ _ => e,

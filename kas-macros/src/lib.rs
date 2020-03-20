@@ -21,14 +21,14 @@ use syn::token::Comma;
 use syn::Token;
 use syn::{parse_macro_input, parse_quote};
 use syn::{
-    DeriveInput, FnArg, GenericParam, Generics, Ident, ImplItemMethod, Type, TypeParam, TypePath,
+     GenericParam, Ident, Type, TypePath, TypeParam,
 };
 
 use self::args::ChildType;
 
 mod layout;
 
-struct SubstTyGenerics<'a>(&'a Generics, HashMap<Ident, Type>);
+struct SubstTyGenerics<'a>(&'a syn::Generics, HashMap<Ident, Type>);
 
 // impl copied from syn, with modifications
 impl<'a> ToTokens for SubstTyGenerics<'a> {
@@ -85,9 +85,9 @@ impl<'a> ToTokens for SubstTyGenerics<'a> {
 /// Macro to derive widget traits
 ///
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
-#[proc_macro_derive(Widget, attributes(core, widget, layout, handler, layout_data))]
+#[proc_macro_derive(Widget, attributes(widget_core, widget, layout, handler, layout_data))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let mut ast = parse_macro_input!(input as DeriveInput);
+    let mut ast = parse_macro_input!(input as syn::DeriveInput);
 
     let mut args = match args::read_attrs(&mut ast) {
         Ok(w) => w,
@@ -97,7 +97,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let name = &ast.ident;
     let widget_name = name.to_string();
 
-    let core = args.core;
+    let core_data = args.core_data;
     let count = args.children.len();
 
     let mut get_rules = quote! {};
@@ -112,16 +112,19 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         walk_mut_rules.append_all(quote! { self.#ident.walk_mut(f); });
     }
 
+    let key_nav = args.widget_core.key_nav;
+    let cursor_icon = args.widget_core.cursor_icon;
+
     let mut toks = quote! {
         impl #impl_generics kas::WidgetCore
             for #name #ty_generics #where_clause
         {
             fn core_data(&self) -> &kas::CoreData {
-                &self.#core
+                &self.#core_data
             }
 
             fn core_data_mut(&mut self) -> &mut kas::CoreData {
-                &mut self.#core
+                &mut self.#core_data
             }
 
             fn widget_name(&self) -> &'static str {
@@ -154,27 +157,15 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 #walk_mut_rules
                 f(self);
             }
+
+            fn key_nav(&self) -> bool {
+                #key_nav
+            }
+            fn cursor_icon(&self) -> kas::event::CursorIcon {
+                #cursor_icon
+            }
         }
     };
-
-    if let Some(layout) = args.layout {
-        let (fns, dt) = match layout::derive(&args.children, layout, &args.layout_data) {
-            Ok(res) => res,
-            Err(err) => return err.to_compile_error().into(),
-        };
-        toks.append_all(quote! {
-            impl #impl_generics kas::Layout
-                    for #name #ty_generics #where_clause
-            {
-                #fns
-            }
-            impl #impl_generics kas::LayoutData
-                    for #name #ty_generics #where_clause
-            {
-                #dt
-            }
-        });
-    }
 
     if let Some(_) = args.widget {
         toks.append_all(quote! {
@@ -183,6 +174,19 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             {
             }
         });
+    }
+
+    if let Some(ref layout) = args.layout {
+        match layout::data_type(&args.children, layout) {
+            Ok(dt) => toks.append_all(quote! {
+                impl #impl_generics kas::LayoutData
+                        for #name #ty_generics #where_clause
+                {
+                    #dt
+                }
+            }),
+            Err(err) => return err.to_compile_error().into(),
+        }
     }
 
     for handler in args.handler.drain(..) {
@@ -227,7 +231,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
         // Note: we may have extra generic types used in where clauses, but we
         // don't want these in ty_generics.
-        let (impl_generics, _, where_clause) = generics.split_for_impl();
+        let (impl_generics, _ty, where_clause) = generics.split_for_impl();
         let ty_generics = SubstTyGenerics(&ast.generics, subs);
 
         let mut ev_to_num = TokenStream::new();
@@ -240,37 +244,52 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             };
             ev_to_num.append_all(quote! {
                 if id <= self.#ident.id() {
-                    let r = self.#ident.handle(mgr, id, event);
+                    let r = self.#ident.event(mgr, id, event);
                     #handler
                 } else
             });
         }
 
-        let handler = if args.children.is_empty() {
+        let event = if args.children.is_empty() {
             // rely on the default implementation
             quote! {}
         } else {
             quote! {
-                fn handle(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
+                fn event(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
                 -> kas::event::Response<Self::Msg>
                 {
                     use kas::{WidgetCore, event::Response};
                     #ev_to_num {
-                        debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
-                        Response::Unhandled(event)
+                        debug_assert!(id == self.id(), "Layout::event: bad WidgetId");
+                        kas::event::Manager::handle_generic(self, mgr, event)
                     }
                 }
             }
         };
 
-        toks.append_all(quote! {
-            impl #impl_generics kas::event::Handler
-                    for #name #ty_generics #where_clause
-            {
-                type Msg = #msg;
-                #handler
+        if !handler.noderive {
+            toks.append_all(quote! {
+                impl #impl_generics kas::event::Handler
+                        for #name #ty_generics #where_clause
+                {
+                    type Msg = #msg;
+                }
+            });
+        }
+
+        if let Some(ref layout) = args.layout {
+            match layout::derive(&args.children, layout, &args.layout_data) {
+                Ok(fns) => toks.append_all(quote! {
+                    impl #impl_generics kas::Layout
+                            for #name #ty_generics #where_clause
+                    {
+                        #fns
+                        #event
+                    }
+                }),
+                Err(err) => return err.to_compile_error().into(),
             }
-        });
+        }
     }
 
     toks.into()
@@ -286,8 +305,9 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
     // find type of handler's message; return None on error
     let mut find_handler_ty = |handler: &Ident,
-                               impls: &Vec<(Option<TypePath>, Vec<ImplItemMethod>)>|
-     -> Option<Type> {
+        impls: &Vec<(Option<TypePath>, Vec<syn::ImplItem>)>|
+     -> Option<Type>
+     {
         // check the buffer in case we did this already
         for (ident, ty) in &find_handler_ty_buf {
             if ident == handler {
@@ -299,38 +319,41 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         for impl_block in impls {
             for f in &impl_block.1 {
-                if f.sig.ident == *handler {
-                    if let Some(x) = x {
-                        handler
-                            .span()
-                            .unwrap()
-                            .error("multiple methods with this name")
-                            .emit();
-                        x.0.span()
-                            .unwrap()
-                            .error("first method with this name")
-                            .emit();
-                        f.sig
-                            .ident
-                            .span()
-                            .unwrap()
-                            .error("second method with this name")
-                            .emit();
-                        return None;
+                match f {
+                    syn::ImplItem::Method(syn::ImplItemMethod { sig, .. }) if sig.ident == *handler => {
+                        if let Some(x) = x {
+                            handler
+                                .span()
+                                .unwrap()
+                                .error("multiple methods with this name")
+                                .emit();
+                            x.0.span()
+                                .unwrap()
+                                .error("first method with this name")
+                                .emit();
+                            sig
+                                .ident
+                                .span()
+                                .unwrap()
+                                .error("second method with this name")
+                                .emit();
+                            return None;
+                        }
+                        if sig.inputs.len() != 3 {
+                            sig.span()
+                                .unwrap()
+                                .error("handler functions must have signature: fn handler(&mut self, mgr: &mut Manager, msg: T)")
+                                .emit();
+                            return None;
+                        }
+                        let arg = sig.inputs.last().unwrap();
+                        let ty = match arg {
+                            syn::FnArg::Typed(arg) => (*arg.ty).clone(),
+                            _ => panic!("expected typed argument"), // nothing else is possible here?
+                        };
+                        x = Some((sig.ident.clone(), ty));
                     }
-                    if f.sig.inputs.len() != 3 {
-                        f.sig.span()
-                            .unwrap()
-                            .error("handler functions must have signature: fn handler(&mut self, mgr: &mut Manager, msg: T)")
-                            .emit();
-                        return None;
-                    }
-                    let arg = f.sig.inputs.last().unwrap();
-                    let ty = match arg {
-                        FnArg::Typed(arg) => (*arg.ty).clone(),
-                        _ => panic!("expected typed argument"), // nothing else is possible here?
-                    };
-                    x = Some((f.sig.ident.clone(), ty));
+                    _ => (),
                 }
             }
         }
@@ -354,7 +377,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     // fields of anonymous struct:
     let mut field_toks = quote! {
-        #[core] core: kas::CoreData,
+        #[widget_core] core: kas::CoreData,
         #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
     };
     // initialisers for these fields:
@@ -369,7 +392,31 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut handler_extra = Punctuated::<_, Comma>::new();
     let mut handler_clauses = Punctuated::<_, Comma>::new();
 
-    let msg = &args.handler_msg;
+    let msg = if let Some(msg) = &args.handler_msg {
+        msg.clone()
+    } else {
+        let mut msg = None;
+        let msg_ident: Ident = parse_quote! { Msg };
+        for (name, body) in &args.impls {
+            if name == &Some(parse_quote!{ Handler }) || name == &Some(parse_quote!{ kas::Handler }) {
+                for item in body {
+                    match item {
+                        &syn::ImplItem::Type(syn::ImplItemType { ref ident, ref ty, .. }) if *ident == msg_ident => {
+                            msg = Some(ty);
+                            break;
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        }
+        if let Some(msg) = msg {
+            msg.clone()
+        } else {
+            args.struct_span.unwrap().error("no Handler impl and no #[handler] attribute").emit();
+            return proc_macro::TokenStream::new();
+        }
+    };
     let extra_attrs = args.extra_attrs;
 
     for (index, field) in args.fields.drain(..).enumerate() {
@@ -395,15 +442,14 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                 if let Some(ref wattr) = attr {
                     if let Some(tyr) = gen_msg {
-                        handler_clauses.push(quote! { #ty: kas::event::Handler<Msg = #tyr> });
+                        handler_clauses.push(quote! { #ty: kas::Layout<Msg = #tyr> });
                     } else {
                         // No typing. If a handler is specified, then the child must implement
                         // Handler<Msg = X> where the handler takes type X; otherwise
                         // we use `msg.into()` and this conversion must be supported.
                         if let Some(ref handler) = wattr.args.handler {
                             if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
-                                handler_clauses
-                                    .push(quote! { #ty: kas::event::Handler<Msg = #ty_bound> });
+                                handler_clauses.push(quote! { #ty: kas::Layout<Msg = #ty_bound> });
                             } else {
                                 return quote! {}.into(); // exit after emitting error
                             }
@@ -411,7 +457,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             name_buf.push_str("R");
                             let tyr = Ident::new(&name_buf, Span::call_site());
                             handler_extra.push(tyr.clone());
-                            handler_clauses.push(quote! { #ty: kas::event::Handler<Msg = #tyr> });
+                            handler_clauses.push(quote! { #ty: kas::Layout<Msg = #tyr> });
                             handler_clauses.push(quote! { #msg: From<#tyr> });
                         }
                     }
@@ -462,6 +508,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         });
     }
 
+    let handler_noderive = if args.handler_msg.is_some() { quote! {} } else { quote! { noderive; }};
     let handler_where = if handler_clauses.is_empty() {
         quote! {}
     } else {
@@ -471,7 +518,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote! { {
-        #[handler(msg = #msg, generics = < #handler_extra > #handler_where)]
+        #[handler(#handler_noderive msg = #msg; generics = < #handler_extra > #handler_where)]
         #extra_attrs
         #[derive(Clone, Debug, kas::macros::Widget)]
         struct AnonWidget #impl_generics #where_clause {
@@ -494,7 +541,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
 #[proc_macro_derive(VoidMsg)]
 pub fn derive_empty_msg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let ast = parse_macro_input!(input as DeriveInput);
+    let ast = parse_macro_input!(input as syn::DeriveInput);
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let name = &ast.ident;
 

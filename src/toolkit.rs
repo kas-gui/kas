@@ -97,10 +97,10 @@ pub trait TkWindow {
     ///
     /// In case of failure, paste actions will simply fail. The implementation
     /// may wish to log an appropriate warning message.
-    fn get_clipboard(&mut self) -> Option<String>;
+    fn get_clipboard(&mut self) -> Option<crate::CowString>;
 
     /// Attempt to set clipboard contents
-    fn set_clipboard(&mut self, content: String);
+    fn set_clipboard<'c>(&mut self, content: crate::CowStringL<'c>);
 
     /// Adjust the theme
     fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> ThemeAction);

@@ -6,6 +6,7 @@
 //! Toggle widgets
 
 use std::fmt::{self, Debug};
+use std::rc::Rc;
 
 use super::Label;
 use crate::class::HasBool;
@@ -14,18 +15,21 @@ use crate::event::{self, Action, Manager, Response, VoidMsg};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, Layout, Widget, WidgetCore};
+use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
 
 /// A bare checkbox (no label)
+#[widget]
+#[widget_core(key_nav = true)]
+#[handler(noderive)]
 #[derive(Clone, Default, Widget)]
-pub struct CheckBoxBare<OT: 'static> {
-    #[core]
+pub struct CheckBoxBare<M> {
+    #[widget_core]
     core: CoreData,
     state: bool,
-    on_toggle: OT,
+    on_toggle: Option<Rc<dyn Fn(bool) -> M>>,
 }
 
-impl<H> Debug for CheckBoxBare<H> {
+impl<M> Debug for CheckBoxBare<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -35,13 +39,7 @@ impl<H> Debug for CheckBoxBare<H> {
     }
 }
 
-impl<OT: 'static> Widget for CheckBoxBare<OT> {
-    fn allow_focus(&self) -> bool {
-        true
-    }
-}
-
-impl<OT: 'static> Layout for CheckBoxBare<OT> {
+impl<M> Layout for CheckBoxBare<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.checkbox();
         self.core.rect.size = size;
@@ -62,7 +60,7 @@ impl<OT: 'static> Layout for CheckBoxBare<OT> {
     }
 }
 
-impl<M, OT: Fn(bool) -> M> CheckBoxBare<OT> {
+impl<M> CheckBoxBare<M> {
     /// Construct a checkbox which calls `f` when toggled
     ///
     /// This is a shortcut for `CheckBoxBare::new().on_toggle(f)`.
@@ -70,23 +68,23 @@ impl<M, OT: Fn(bool) -> M> CheckBoxBare<OT> {
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn new_on(f: OT) -> Self {
+    pub fn new_on<F: Fn(bool) -> M + 'static>(f: F) -> Self {
         CheckBoxBare {
             core: Default::default(),
             state: false,
-            on_toggle: f,
+            on_toggle: Some(Rc::new(f)),
         }
     }
 }
 
-impl CheckBoxBare<()> {
+impl CheckBoxBare<VoidMsg> {
     /// Construct a checkbox
     #[inline]
     pub fn new() -> Self {
         CheckBoxBare {
             core: Default::default(),
             state: false,
-            on_toggle: (),
+            on_toggle: None,
         }
     }
 
@@ -95,16 +93,19 @@ impl CheckBoxBare<()> {
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn on_toggle<M, OT: Fn(bool) -> M>(self, f: OT) -> CheckBoxBare<OT> {
+    pub fn on_toggle<M, F>(self, f: F) -> CheckBoxBare<M>
+    where
+        F: Fn(bool) -> M + 'static,
+    {
         CheckBoxBare {
             core: self.core,
             state: self.state,
-            on_toggle: f,
+            on_toggle: Some(Rc::new(f)),
         }
     }
 }
 
-impl<OT: 'static> CheckBoxBare<OT> {
+impl<M> CheckBoxBare<M> {
     /// Set the initial state of the checkbox.
     #[inline]
     pub fn state(mut self, state: bool) -> Self {
@@ -113,7 +114,7 @@ impl<OT: 'static> CheckBoxBare<OT> {
     }
 }
 
-impl<H> HasBool for CheckBoxBare<H> {
+impl<M> HasBool for CheckBoxBare<M> {
     fn get_bool(&self) -> bool {
         self.state
     }
@@ -124,27 +125,7 @@ impl<H> HasBool for CheckBoxBare<H> {
     }
 }
 
-impl event::Handler for CheckBoxBare<()> {
-    type Msg = VoidMsg;
-
-    #[inline]
-    fn activation_via_press(&self) -> bool {
-        true
-    }
-
-    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<VoidMsg> {
-        match action {
-            Action::Activate => {
-                self.state = !self.state;
-                mgr.redraw(self.id());
-                Response::None
-            }
-            a @ _ => Response::unhandled_action(a),
-        }
-    }
-}
-
-impl<M, H: Fn(bool) -> M> event::Handler for CheckBoxBare<H> {
+impl<M> event::Handler for CheckBoxBare<M> {
     type Msg = M;
 
     #[inline]
@@ -152,12 +133,16 @@ impl<M, H: Fn(bool) -> M> event::Handler for CheckBoxBare<H> {
         true
     }
 
-    fn handle_action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
+    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
         match action {
             Action::Activate => {
                 self.state = !self.state;
                 mgr.redraw(self.id());
-                ((self.on_toggle)(self.state)).into()
+                if let Some(ref f) = self.on_toggle {
+                    f(self.state).into()
+                } else {
+                    Response::None
+                }
             }
             a @ _ => Response::unhandled_action(a),
         }
@@ -168,21 +153,20 @@ impl<M, H: Fn(bool) -> M> event::Handler for CheckBoxBare<H> {
 // TODO: use a generic wrapper for CheckBox and RadioBox?
 #[layout(horizontal, area=checkbox)]
 #[widget]
-#[handler(substitutions = (OT = ()))]
-#[handler(msg = M, generics = <M: From<VoidMsg>> where OT: Fn(bool) -> M)]
+#[handler(msg = M; generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Default, Widget)]
-pub struct CheckBox<OT: 'static> {
-    #[core]
+pub struct CheckBox<M> {
+    #[widget_core]
     core: CoreData,
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,
     #[widget]
-    checkbox: CheckBoxBare<OT>,
+    checkbox: CheckBoxBare<M>,
     #[widget]
     label: Label,
 }
 
-impl<H> Debug for CheckBox<H> {
+impl<M> Debug for CheckBox<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -192,7 +176,7 @@ impl<H> Debug for CheckBox<H> {
     }
 }
 
-impl<M, OT: Fn(bool) -> M> CheckBox<OT> {
+impl<M> CheckBox<M> {
     /// Construct a checkbox with a given `label` which calls `f` when toggled.
     ///
     /// This is a shortcut for `CheckBox::new(label).on_toggle(f)`.
@@ -203,7 +187,10 @@ impl<M, OT: Fn(bool) -> M> CheckBox<OT> {
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn new_on<T: ToString>(f: OT, label: T) -> Self {
+    pub fn new_on<T: Into<CowString>, F>(f: F, label: T) -> Self
+    where
+        F: Fn(bool) -> M + 'static,
+    {
         CheckBox {
             core: Default::default(),
             layout_data: Default::default(),
@@ -213,13 +200,13 @@ impl<M, OT: Fn(bool) -> M> CheckBox<OT> {
     }
 }
 
-impl CheckBox<()> {
+impl CheckBox<VoidMsg> {
     /// Construct a checkbox with a given `label`.
     ///
     /// CheckBox labels are optional; if no label is desired, use an empty
     /// string.
     #[inline]
-    pub fn new<T: ToString>(label: T) -> Self {
+    pub fn new<T: Into<CowString>>(label: T) -> Self {
         CheckBox {
             core: Default::default(),
             layout_data: Default::default(),
@@ -233,7 +220,10 @@ impl CheckBox<()> {
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn on_toggle<M, OT: Fn(bool) -> M>(self, f: OT) -> CheckBox<OT> {
+    pub fn on_toggle<M, F>(self, f: F) -> CheckBox<M>
+    where
+        F: Fn(bool) -> M + 'static,
+    {
         CheckBox {
             core: self.core,
             layout_data: self.layout_data,
@@ -243,7 +233,7 @@ impl CheckBox<()> {
     }
 }
 
-impl<OT: 'static> CheckBox<OT> {
+impl<M> CheckBox<M> {
     /// Set the initial state of the checkbox.
     #[inline]
     pub fn state(mut self, state: bool) -> Self {
@@ -252,7 +242,7 @@ impl<OT: 'static> CheckBox<OT> {
     }
 }
 
-impl<H> HasBool for CheckBox<H> {
+impl<M> HasBool for CheckBox<M> {
     #[inline]
     fn get_bool(&self) -> bool {
         self.checkbox.get_bool()

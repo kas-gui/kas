@@ -105,16 +105,16 @@ where
 
     #[cfg(not(feature = "clipboard"))]
     #[inline]
-    pub fn get_clipboard(&mut self) -> Option<String> {
+    pub fn get_clipboard(&mut self) -> Option<kas::CowString> {
         None
     }
 
     #[cfg(feature = "clipboard")]
-    pub fn get_clipboard(&mut self) -> Option<String> {
+    pub fn get_clipboard(&mut self) -> Option<kas::CowString> {
         self.clipboard
             .as_mut()
             .and_then(|cb| match cb.get_contents() {
-                Ok(c) => Some(c),
+                Ok(c) => Some(c.into()),
                 Err(e) => {
                     warn!("Failed to get clipboard contents: {:?}", e);
                     None
@@ -124,12 +124,12 @@ where
 
     #[cfg(not(feature = "clipboard"))]
     #[inline]
-    pub fn set_clipboard(&mut self, _content: String) {}
+    pub fn set_clipboard<'c>(&mut self, content: kas::CowStringL<'c>) {}
 
     #[cfg(feature = "clipboard")]
-    pub fn set_clipboard(&mut self, content: String) {
+    pub fn set_clipboard<'c>(&mut self, content: kas::CowStringL<'c>) {
         self.clipboard.as_mut().map(|cb| {
-            cb.set_contents(content)
+            cb.set_contents(content.into())
                 .unwrap_or_else(|e| warn!("Failed to set clipboard contents: {:?}", e))
         });
     }
