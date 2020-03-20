@@ -60,9 +60,9 @@ pub trait WidgetCore: fmt::Debug {
     fn widget_name(&self) -> &'static str;
 
     /// Erase type
-    fn as_widget(&self) -> &dyn Widget;
+    fn as_widget(&self) -> &dyn WidgetConfig;
     /// Erase type
-    fn as_widget_mut(&mut self) -> &mut dyn Widget;
+    fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig;
 
     /// Get the number of child widgets
     fn len(&self) -> usize;
@@ -73,7 +73,7 @@ pub trait WidgetCore: fmt::Debug {
     /// For convenience, `Index<usize>` is implemented via this method.
     ///
     /// Required: `index < self.len()`.
-    fn get(&self, index: usize) -> Option<&dyn Widget>;
+    fn get(&self, index: usize) -> Option<&dyn WidgetConfig>;
 
     /// Mutable variant of get
     ///
@@ -81,13 +81,13 @@ pub trait WidgetCore: fmt::Debug {
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
     /// be requested. This can be done via [`Manager::send_action`].
     /// This method may be removed in the future.
-    fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
     /// Find a child widget by identifier
     ///
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
-    fn find(&self, id: WidgetId) -> Option<&dyn Widget> {
+    fn find(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
         if id == self.id() {
             return Some(self.as_widget());
         } else if id > self.id() {
@@ -110,7 +110,7 @@ pub trait WidgetCore: fmt::Debug {
     ///
     /// This requires that the widget tree has already been configured by
     /// [`ManagerState::configure`].
-    fn find_mut(&mut self, id: WidgetId) -> Option<&mut dyn Widget> {
+    fn find_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
         if id == self.id() {
             return Some(self.as_widget_mut());
         } else if id > self.id() {
@@ -133,13 +133,13 @@ pub trait WidgetCore: fmt::Debug {
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk(&self, f: &mut dyn FnMut(&dyn Widget));
+    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig));
 
     /// Walk through all widgets, calling `f` once on each.
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget));
+    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig));
 }
 
 /// Widget configuration
@@ -177,17 +177,6 @@ pub trait WidgetConfig: WidgetCore {
         event::CursorIcon::Default
     }
 }
-
-/// Widget trait
-///
-/// Widgets usually occupy space within the UI and are drawable. Widgets may
-/// respond to user events. Widgets may have child widgets.
-///
-/// Widgets must additionally implement the traits [`WidgetCore`], [`Layout`]
-/// and [`event::Handler`]. The
-/// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro) may be
-/// used to generate some of these implementations.
-pub trait Widget: WidgetConfig {}
 
 /// Positioning and drawing routines for widgets
 ///
@@ -283,6 +272,19 @@ pub trait Layout: event::Handler {
     }
 }
 
+/// Widget trait
+///
+/// This is one of a family of widget traits, all of which must be implemented
+/// for a functional widget. In general, most traits will be implemented via the
+/// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro).
+///
+/// A [`Widget`] may be passed into a generic function via
+/// `fn foo<W: Widget>(w: &mut W)` or via
+/// `fn foo<M>(w: &mut dyn Widget<Msg = M>)`, or, e.g.
+/// `fn foo(w: &mut dyn WidgetConfig)` (note that `WidgetConfig` is the last unparameterised
+/// trait in the widget trait family).
+pub trait Widget: Layout {}
+
 /// Trait to describe the type needed by the layout implementation.
 ///
 /// To allow the `derive(Widget)` macro to implement [`Widget`], we use an
@@ -307,7 +309,7 @@ pub trait LayoutData {
 // Window should be a Widget. So alternatives are (1) use a struct instead of a
 // trait or (2) allow any Widget to derive Window (i.e. implement required
 // functionality with macros instead of the generic code below).
-pub trait Window: Layout<Msg = event::VoidMsg> {
+pub trait Window: Widget<Msg = event::VoidMsg> {
     /// Get the window title
     fn title(&self) -> &str;
 

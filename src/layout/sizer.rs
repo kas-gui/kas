@@ -12,7 +12,7 @@ use super::{AxisInfo, SizeRules};
 use crate::draw::SizeHandle;
 use crate::geom::{Coord, Rect, Size};
 use crate::Direction::{Horizontal, Vertical};
-use crate::{AlignHints, Layout, Widget};
+use crate::{AlignHints, Layout, WidgetConfig};
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -107,7 +107,7 @@ pub fn solve_and_set<L: Layout>(
     (min, ideal)
 }
 
-struct WidgetHeirarchy<'a>(&'a dyn Widget, usize);
+struct WidgetHeirarchy<'a>(&'a dyn WidgetConfig, usize);
 impl<'a> fmt::Display for WidgetHeirarchy<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(

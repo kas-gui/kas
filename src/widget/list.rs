@@ -95,11 +95,11 @@ impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
     }
 
     #[inline]
-    fn as_widget(&self) -> &dyn Widget {
+    fn as_widget(&self) -> &dyn WidgetConfig {
         self
     }
     #[inline]
-    fn as_widget_mut(&mut self) -> &mut dyn Widget {
+    fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig {
         self
     }
 
@@ -108,21 +108,21 @@ impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
         self.widgets.len()
     }
     #[inline]
-    fn get(&self, index: usize) -> Option<&dyn Widget> {
+    fn get(&self, index: usize) -> Option<&dyn WidgetConfig> {
         self.widgets.get(index).map(|w| w.as_widget())
     }
     #[inline]
-    fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
         self.widgets.get_mut(index).map(|w| w.as_widget_mut())
     }
 
-    fn walk(&self, f: &mut dyn FnMut(&dyn Widget)) {
+    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
         for child in &self.widgets {
             child.walk(f);
         }
         f(self)
     }
-    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
+    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
         for child in &mut self.widgets {
             child.walk_mut(f);
         }
@@ -130,13 +130,11 @@ impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> Widget for List<D, W> {}
-
-impl<D: Directional, W: Layout> event::Handler for List<D, W> {
+impl<D: Directional, W: Widget> event::Handler for List<D, W> {
     type Msg = <W as event::Handler>::Msg;
 }
 
-impl<D: Directional, W: Layout> Layout for List<D, W> {
+impl<D: Directional, W: Widget> Layout for List<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut solver = layout::RowSolver::<Vec<u32>, _>::new(
             axis,
@@ -193,6 +191,8 @@ impl<D: Directional, W: Layout> Layout for List<D, W> {
         Response::Unhandled(event)
     }
 }
+
+impl<D: Directional, W: Widget> Widget for List<D, W> {}
 
 impl<D: Directional + Default, W: Widget> List<D, W> {
     /// Construct a new instance

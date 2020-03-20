@@ -20,7 +20,7 @@ use crate::{AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetI
 /// This widget provides a simple abstraction: drawing a frame around its
 /// contents.
 #[widget_config]
-#[handler(msg = <W as Handler>::Msg; generics = <> where W: Layout)]
+#[handler(msg = <W as Handler>::Msg; generics = <> where W: Widget)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Frame<W: Widget> {
     #[widget_core]
@@ -44,7 +44,7 @@ impl<W: Widget> Frame<W> {
     }
 }
 
-impl<W: Layout> Layout for Frame<W> {
+impl<W: Widget> Layout for Frame<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.outer_frame();
         let margins = Margins::ZERO;

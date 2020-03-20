@@ -129,29 +129,29 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 #widget_name
             }
 
-            fn as_widget(&self) -> &dyn kas::Widget { self }
-            fn as_widget_mut(&mut self) -> &mut dyn kas::Widget { self }
+            fn as_widget(&self) -> &dyn kas::WidgetConfig { self }
+            fn as_widget_mut(&mut self) -> &mut dyn kas::WidgetConfig { self }
 
             fn len(&self) -> usize {
                 #count
             }
-            fn get(&self, _index: usize) -> Option<&dyn kas::Widget> {
+            fn get(&self, _index: usize) -> Option<&dyn kas::WidgetConfig> {
                 match _index {
                     #get_rules
                     _ => None
                 }
             }
-            fn get_mut(&mut self, _index: usize) -> Option<&mut dyn kas::Widget> {
+            fn get_mut(&mut self, _index: usize) -> Option<&mut dyn kas::WidgetConfig> {
                 match _index {
                     #get_mut_rules
                     _ => None
                 }
             }
-            fn walk(&self, f: &mut dyn FnMut(&dyn kas::Widget)) {
+            fn walk(&self, f: &mut dyn FnMut(&dyn kas::WidgetConfig)) {
                 #walk_rules
                 f(self);
             }
-            fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn kas::Widget)) {
+            fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn kas::WidgetConfig)) {
                 #walk_mut_rules
                 f(self);
             }
@@ -189,6 +189,9 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     }
 
+    // The following traits are all parametrised over the Handler::Msg type.
+    // Usually we only have one instance of this, but we support multiple; in
+    // case no `#[handler]` attribute is present, we use a default value.
     if args.handler.is_empty() {
         args.handler.push(Default::default());
     }
@@ -293,11 +296,11 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 Err(err) => return err.to_compile_error().into(),
             }
         }
-    }
 
-    toks.append_all(quote! {
-        impl #impl_generics kas::Widget for #name #ty_generics #where_clause {}
-    });
+        toks.append_all(quote! {
+            impl #impl_generics kas::Widget for #name #ty_generics #where_clause {}
+        });
+    }
 
     toks.into()
 }

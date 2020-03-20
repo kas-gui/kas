@@ -6,13 +6,15 @@
 //! Event handling - handler
 
 use crate::event::{self, Action, Event, Manager, Response};
-use crate::Widget;
+#[allow(unused)]
+use crate::Widget; // for doc-links
+use crate::WidgetConfig;
 
 /// High-level event handling for a [`Widget`]
 ///
 /// This is a companion trait to [`Widget`]. It can (optionally) be implemented
 /// by the `derive(Widget)` macro, or can be implemented manually.
-pub trait Handler: Widget {
+pub trait Handler: WidgetConfig {
     /// Type of message returned by this handler.
     ///
     /// This mechanism allows type-safe handling of user-defined responses to handled actions.
