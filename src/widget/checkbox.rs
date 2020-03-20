@@ -153,7 +153,7 @@ impl<M> event::Handler for CheckBoxBare<M> {
 // TODO: use a generic wrapper for CheckBox and RadioBox?
 #[layout(horizontal, area=checkbox)]
 #[widget_config]
-#[handler(msg = M; generics = <> where M: From<VoidMsg>)]
+#[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<M> {
     #[widget_core]

@@ -528,7 +528,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let handler_noderive = if args.handler_msg.is_some() {
         quote! {}
     } else {
-        quote! { noderive; }
+        quote! { noderive, }
     };
     let handler_where = if handler_clauses.is_empty() {
         quote! {}
@@ -539,7 +539,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote! { {
-        #[handler(#handler_noderive msg = #msg; generics = < #handler_extra > #handler_where)]
+        #[handler(#handler_noderive msg = #msg, generics = < #handler_extra > #handler_where)]
         #extra_attrs
         #[derive(Clone, Debug, kas::macros::Widget)]
         struct AnonWidget #impl_generics #where_clause {

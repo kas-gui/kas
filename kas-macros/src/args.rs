@@ -521,7 +521,6 @@ impl Parse for HandlerArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut have_noderive = false;
         let mut have_msg = false;
-        let mut have_subs = false;
         let mut have_gen = false;
         let mut args = HandlerArgs::default();
         args.noderive = false;
@@ -544,38 +543,44 @@ impl Parse for HandlerArgs {
                 let _: kw::msg = content.parse()?;
                 let _: Eq = content.parse()?;
                 args.msg = content.parse()?;
-            } else if !have_subs && lookahead.peek(kw::substitutions) {
-                have_subs = true;
-                let _: kw::substitutions = content.parse()?;
-                let _: Eq = content.parse()?;
-                let content2;
-                let _ = parenthesized!(content2 in content);
-                while !content2.is_empty() {
-                    // TODO: ideally we should support substitution of lifetime and
-                    // const generic parameters too.
-                    let ident: Ident = content2.parse()?;
-                    let _: Eq = content2.parse()?;
-                    let ty: Type = content2.parse()?;
-                    if content2.peek(Comma) {
-                        let _: Comma = content2.parse()?;
-                    }
-                    args.substitutions.insert(ident, ty);
-                }
             } else if !have_gen && lookahead.peek(kw::generics) {
                 have_gen = true;
                 let _: kw::generics = content.parse()?;
                 let _: Eq = content.parse()?;
-                args.generics = content.parse()?;
-                if content.peek(Token![where]) {
-                    args.generics.where_clause = content.parse()?;
+
+                // Optionally, substitutions come first
+                while content.peek(Ident) {
+                    let ident: Ident = content.parse()?;
+                    let _: Token![=>] = content.parse()?;
+                    let ty: Type = content.parse()?;
+                    args.substitutions.insert(ident, ty);
+                    let _: Comma = content.parse()?;
+                }
+
+                if content.peek(Token![<]) {
+                    args.generics = content.parse()?;
+                    if content.peek(Token![where]) {
+                        args.generics.where_clause = content.parse()?;
+                    }
+                } else {
+                    return Err(Error::new(
+                        content.span(),
+                        "expected `< ... > [where ...]` or `T => Substitution ...`",
+                    ));
+                }
+
+                if !content.is_empty() {
+                    return Err(Error::new(
+                        content.span(),
+                        "no more content expected (`generics` must be last parameter)",
+                    ));
                 }
             } else {
                 return Err(lookahead.error());
             }
 
-            // Unusually, we use semi-colon separators
-            if content.peek(Token![;]) {
-                let _: Token![;] = content.parse()?;
+            if content.peek(Comma) {
+                let _: Comma = content.parse()?;
             }
         }
 
