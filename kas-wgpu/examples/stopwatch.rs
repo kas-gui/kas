@@ -25,7 +25,7 @@ enum Control {
 fn make_window() -> Box<dyn kas::Window> {
     let stopwatch = make_widget! {
         #[layout(horizontal)]
-        #[widget]
+        #[widget_config]
         struct {
             #[widget] display: impl HasText = Frame::new(Label::new("0.000")),
             #[widget(handler = handle_button)] b_reset = TextButton::new("reset", Control::Reset),

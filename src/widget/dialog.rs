@@ -22,7 +22,7 @@ enum DialogButton {
 }
 
 /// A simple message box.
-#[widget]
+#[widget_config]
 #[layout(vertical)]
 #[handler]
 #[derive(Clone, Debug, Widget)]

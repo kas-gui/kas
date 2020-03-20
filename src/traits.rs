@@ -140,21 +140,45 @@ pub trait WidgetCore: fmt::Debug {
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
     fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget));
+}
+
+/// Widget configuration
+///
+/// This trait allows some configuration of widget behaviour. All items have
+/// default values. This trait may be implemented by hand, or may be derived
+/// with the [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro)
+/// by use of a `#[widget_config]` attribute. Optionally, this attribute can
+/// contain parameters, e.g. `#[widget_config(key_nav = true)]`.
+// TODO(specialization): provide a blanket implementation, so that users only
+// need implement manually when they have something to configure.
+pub trait WidgetConfig: WidgetCore {
+    /// Configure widget
+    ///
+    /// Widgets are *configured* on window creation and when
+    /// [`kas::TkAction::Reconfigure`] is sent.
+    ///
+    /// Configuration happens after resizing. This method is called after
+    /// a [`WidgetId`] has been assigned to self and to each child.
+    ///
+    /// The default implementation of this method does nothing.
+    fn configure(&mut self, _: &mut Manager) {}
 
     /// Is this widget navigable via Tab key?
+    ///
+    /// Defaults to `false`.
     fn key_nav(&self) -> bool {
         false
     }
 
     /// Which cursor icon should be used on hover?
     ///
-    /// Where no specific icon should be used, return [`event::CursorIcon::Default`].
+    /// Defaults to [`event::CursorIcon::Default`].
     fn cursor_icon(&self) -> event::CursorIcon {
         event::CursorIcon::Default
     }
 }
 
-/// A widget is a UI element.
+/// Widget trait
 ///
 /// Widgets usually occupy space within the UI and are drawable. Widgets may
 /// respond to user events. Widgets may have child widgets.
@@ -163,15 +187,7 @@ pub trait WidgetCore: fmt::Debug {
 /// and [`event::Handler`]. The
 /// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro) may be
 /// used to generate some of these implementations.
-pub trait Widget: WidgetCore {
-    /// Configure widget
-    ///
-    /// Widgets are *configured* on window creation and when
-    /// [`kas::TkAction::Reconfigure`] is sent.
-    ///
-    /// This method is called immediately after assigning `self.core_data().id`.
-    fn configure(&mut self, _: &mut Manager) {}
-}
+pub trait Widget: WidgetConfig {}
 
 /// Positioning and drawing routines for widgets
 ///

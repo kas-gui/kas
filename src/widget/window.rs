@@ -15,7 +15,7 @@ use crate::macros::Widget;
 use crate::{CoreData, CowString, Layout, LayoutData, Widget};
 
 /// The main instantiation of the [`Window`] trait.
-#[widget]
+#[widget_config]
 #[layout(single)]
 #[handler(generics = <> where W: Layout<Msg = VoidMsg>)]
 #[derive(Widget)]

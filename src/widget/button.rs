@@ -14,10 +14,9 @@ use crate::event::{self, Action, Manager, Response, VirtualKeyCode};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore};
+use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetConfig, WidgetCore};
 
 /// A push-button with a text label
-#[widget_core(key_nav = true)]
 #[handler(noderive)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug> {
@@ -29,11 +28,15 @@ pub struct TextButton<M: Clone + Debug> {
     msg: M,
 }
 
-impl<M: Clone + Debug> Widget for TextButton<M> {
+impl<M: Clone + Debug> WidgetConfig for TextButton<M> {
     fn configure(&mut self, mgr: &mut Manager) {
         for key in &self.keys {
             mgr.add_accel_key(*key, self.id());
         }
+    }
+
+    fn key_nav(&self) -> bool {
+        true
     }
 }
 

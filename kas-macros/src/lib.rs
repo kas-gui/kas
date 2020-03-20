@@ -83,7 +83,10 @@ impl<'a> ToTokens for SubstTyGenerics<'a> {
 /// Macro to derive widget traits
 ///
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
-#[proc_macro_derive(Widget, attributes(widget_core, widget, layout, handler, layout_data))]
+#[proc_macro_derive(
+    Widget,
+    attributes(widget_core, widget_config, widget, layout, handler, layout_data)
+)]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as syn::DeriveInput);
 
@@ -109,9 +112,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         walk_rules.append_all(quote! { self.#ident.walk(f); });
         walk_mut_rules.append_all(quote! { self.#ident.walk_mut(f); });
     }
-
-    let key_nav = args.widget_core.key_nav;
-    let cursor_icon = args.widget_core.cursor_icon;
 
     let mut toks = quote! {
         impl #impl_generics kas::WidgetCore
@@ -155,21 +155,23 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 #walk_mut_rules
                 f(self);
             }
-
-            fn key_nav(&self) -> bool {
-                #key_nav
-            }
-            fn cursor_icon(&self) -> kas::event::CursorIcon {
-                #cursor_icon
-            }
         }
     };
 
-    if let Some(_) = args.widget {
+    if let Some(config) = args.widget_config {
+        let key_nav = config.key_nav;
+        let cursor_icon = config.cursor_icon;
+
         toks.append_all(quote! {
-            impl #impl_generics kas::Widget
+            impl #impl_generics kas::WidgetConfig
                     for #name #ty_generics #where_clause
             {
+                fn key_nav(&self) -> bool {
+                    #key_nav
+                }
+                fn cursor_icon(&self) -> kas::event::CursorIcon {
+                    #cursor_icon
+                }
             }
         });
     }
@@ -292,6 +294,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             }
         }
     }
+
+    toks.append_all(quote! {
+        impl #impl_generics kas::Widget for #name #ty_generics #where_clause {}
+    });
 
     toks.into()
 }

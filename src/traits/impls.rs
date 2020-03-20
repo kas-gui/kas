@@ -47,6 +47,12 @@ impl<M> WidgetCore for Box<dyn Layout<Msg = M>> {
     fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
         self.as_mut().walk_mut(f);
     }
+}
+
+impl<M> WidgetConfig for Box<dyn Layout<Msg = M>> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        self.as_mut().configure(mgr);
+    }
 
     fn key_nav(&self) -> bool {
         self.as_ref().key_nav()
@@ -56,11 +62,7 @@ impl<M> WidgetCore for Box<dyn Layout<Msg = M>> {
     }
 }
 
-impl<M> Widget for Box<dyn Layout<Msg = M>> {
-    fn configure(&mut self, mgr: &mut Manager) {
-        self.as_mut().configure(mgr);
-    }
-}
+impl<M> Widget for Box<dyn Layout<Msg = M>> {}
 
 impl<M> event::Handler for Box<dyn Layout<Msg = M>> {
     type Msg = M;

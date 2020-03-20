@@ -25,8 +25,7 @@ pub struct Child {
 pub struct Args {
     pub core_data: Member,
     pub layout_data: Option<Member>,
-    pub widget_core: WidgetCore,
-    pub widget: Option<WidgetArgs>,
+    pub widget_config: Option<WidgetConfig>,
     pub layout: Option<LayoutArgs>,
     pub handler: Vec<HandlerArgs>,
     pub children: Vec<Child>,
@@ -97,28 +96,18 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
-    let mut widget_core = None;
-    let mut widget = None;
+    let mut widget_config = None;
     let mut layout = None;
     let mut handler = vec![];
 
     for attr in ast.attrs.drain(..) {
-        if attr.path == parse_quote! { widget_core } {
-            if widget_core.is_none() {
-                widget_core = Some(syn::parse2(attr.tokens)?);
+        if attr.path == parse_quote! { widget_config } {
+            if widget_config.is_none() {
+                widget_config = Some(syn::parse2(attr.tokens)?);
             } else {
                 attr.span()
                     .unwrap()
-                    .error("multiple #[widget_core(..)] attributes on type")
-                    .emit()
-            }
-        } else if attr.path == parse_quote! { widget } {
-            if widget.is_none() {
-                widget = Some(syn::parse2(attr.tokens)?);
-            } else {
-                attr.span()
-                    .unwrap()
-                    .error("multiple #[widget(..)] attributes on type")
+                    .error("multiple #[widget_config(..)] attributes on type")
                     .emit()
             }
         } else if attr.path == parse_quote! { layout } {
@@ -135,14 +124,11 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
-    let widget_core = widget_core.unwrap_or(WidgetCore::default());
-
     if let Some(core_data) = core_data {
         Ok(Args {
             core_data,
             layout_data,
-            widget_core,
-            widget,
+            widget_config,
             layout,
             handler,
             children,
@@ -390,23 +376,23 @@ impl ToTokens for GridPos {
     }
 }
 
-pub struct WidgetCore {
+pub struct WidgetConfig {
     pub key_nav: bool,
     pub cursor_icon: Expr,
 }
 
-impl Default for WidgetCore {
+impl Default for WidgetConfig {
     fn default() -> Self {
-        WidgetCore {
+        WidgetConfig {
             key_nav: false,
             cursor_icon: parse_quote! { kas::event::CursorIcon::Default },
         }
     }
 }
 
-impl Parse for WidgetCore {
+impl Parse for WidgetConfig {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut props = WidgetCore::default();
+        let mut props = WidgetConfig::default();
 
         if input.is_empty() {
             return Ok(props);
@@ -440,25 +426,6 @@ impl Parse for WidgetCore {
         }
 
         Ok(props)
-    }
-}
-
-pub struct WidgetArgs {}
-
-impl Parse for WidgetArgs {
-    fn parse(input: ParseStream) -> Result<Self> {
-        if input.is_empty() {
-            return Ok(WidgetArgs {});
-        }
-
-        let content;
-        let _ = parenthesized!(content in input);
-
-        if !content.is_empty() {
-            return Err(Error::new(content.span(), "unexpected content"));
-        }
-
-        Ok(WidgetArgs {})
     }
 }
 

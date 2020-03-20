@@ -50,7 +50,7 @@
 //! use kas::event::VoidMsg;
 //! use kas::{CoreData, Layout, LayoutData, Widget};
 //!
-//! #[widget]
+//! #[widget_config]
 //! #[layout(single)]
 //! #[handler(generics = <> where W: Layout<Msg = VoidMsg>)]
 //! #[derive(Clone, Debug, Widget)]
@@ -71,7 +71,7 @@
 //! use kas::macros::Widget;
 //! use kas::{event, CoreData, Layout};
 //!
-//! #[widget]
+//! #[widget_config]
 //! #[widget_core(key_nav = true)]
 //! #[handler]
 //! #[derive(Clone, Debug, Default, Widget)]
@@ -93,9 +93,9 @@
 //! with the specified default value:
 //!
 //! -   `key_nav = false`: a boolean, describing whether the widget supports
-//!     keyboard navigation (see [`WidgetCore::key_nav`])
+//!     keyboard navigation (see [`WidgetConfig::key_nav`])
 //! -   `cursor_icon = kas::event::CursorIcon::Default`: the cursor icon to use
-//!     when the mouse hovers over this widget (see [`WidgetCore::cursor_icon`])
+//!     when the mouse hovers over this widget (see [`WidgetConfig::cursor_icon`])
 //!
 //! #### Widget
 //!
@@ -158,7 +158,7 @@
 //! # use kas::macros::Widget;
 //! # use kas::{CoreData, Layout, Widget, event::Handler};
 //! #[layout(single)]
-//! #[widget]
+//! #[widget_config]
 //! #[handler(generics = <> where W: Layout; msg = <W as Handler>::Msg)]
 //! #[derive(Clone, Debug, Default, Widget)]
 //! pub struct Frame<W: Widget> {
@@ -230,7 +230,7 @@
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
 //!
-//! #[widget]
+//! #[widget_config]
 //! #[layout(vertical)]
 //! #[handler(generics = <> where W: Layout<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
@@ -274,7 +274,7 @@
 //!     Check(bool),
 //! }
 //! let widget = make_widget! {
-//!     #[widget]
+//!     #[widget_config]
 //!     #[layout(vertical)]
 //!     #[handler(msg = VoidMsg)]
 //!     struct {
@@ -373,7 +373,7 @@
 //! }
 //!
 //! let button_box = make_widget!{
-//!     #[widget]
+//!     #[widget_config]
 //!     #[layout(horizontal)]
 //!     #[handler(msg = OkCancel)]
 //!     struct {
@@ -401,6 +401,6 @@
 
 // Imported for doc-links
 #[allow(unused)]
-use crate::{event::Handler, CoreData, Layout, LayoutData, Widget, WidgetCore};
+use crate::{event::Handler, CoreData, Layout, LayoutData, Widget, WidgetConfig, WidgetCore};
 
 pub use kas_macros::{make_widget, VoidMsg, Widget};

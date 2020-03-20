@@ -14,7 +14,7 @@ use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
 use kas::geom::Rect;
 
 /// A simple text label
-#[widget]
+#[widget_config]
 #[handler]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Label {

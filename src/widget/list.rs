@@ -10,7 +10,7 @@ use crate::event::{self, Event, Manager, Response};
 use crate::geom::Coord;
 use crate::layout::{self, AxisInfo, RulesSetter, RulesSolver, SizeRules};
 use crate::{AlignHints, Directional, Horizontal, Vertical};
-use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
+use crate::{CoreData, Layout, TkAction, Widget, WidgetConfig, WidgetCore, WidgetId};
 use kas::geom::Rect;
 
 /// A generic row widget
@@ -74,6 +74,8 @@ pub struct List<D: Directional, W: Widget> {
     data: layout::DynRowStorage,
     direction: D,
 }
+
+impl<D: Directional, W: Widget> WidgetConfig for List<D, W> {}
 
 // We implement this manually, because the derive implementation cannot handle
 // vectors of child widgets.

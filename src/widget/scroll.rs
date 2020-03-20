@@ -25,7 +25,7 @@ use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
 /// Scroll regions translate their contents by an `offset`, which has a
 /// minimum value of [`Coord::ZERO`] and a maximum value of
 /// [`ScrollRegion::max_offset`].
-#[widget]
+#[widget_config]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
     #[widget_core]

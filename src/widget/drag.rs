@@ -29,7 +29,7 @@ use crate::{AlignHints, CoreData, Layout, WidgetCore, WidgetId};
 /// 3.  [`Layout::draw`] does nothing. The parent should handle all drawing.
 /// 4.  Optionally, this widget can handle clicks on the track area via
 ///     [`DragHandle::handle_press_on_track`].
-#[widget]
+#[widget_config]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct DragHandle {
     #[widget_core]

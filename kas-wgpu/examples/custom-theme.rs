@@ -118,7 +118,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let widgets = make_widget! {
-        #[widget]
+        #[widget_config]
         #[layout(grid)]
         #[handler(msg = Item)]
         struct {
@@ -135,7 +135,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new(
         "Theme demo",
         make_widget! {
-            #[widget]
+            #[widget_config]
             #[layout(single)]
             #[handler(msg = VoidMsg)]
             struct {

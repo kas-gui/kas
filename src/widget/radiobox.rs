@@ -16,10 +16,9 @@ use crate::event::{self, Action, Manager, Response, UpdateHandle, VoidMsg};
 use crate::geom::Rect;
 use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetId};
+use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetConfig, WidgetCore, WidgetId};
 
 /// A bare radiobox (no label)
-#[widget_core(key_nav = true)]
 #[handler(noderive)]
 #[derive(Clone, Widget)]
 pub struct RadioBoxBare<M> {
@@ -40,9 +39,13 @@ impl<M> Debug for RadioBoxBare<M> {
     }
 }
 
-impl<M> Widget for RadioBoxBare<M> {
+impl<M> WidgetConfig for RadioBoxBare<M> {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.update_on_handle(self.handle, self.id());
+    }
+
+    fn key_nav(&self) -> bool {
+        true
     }
 }
 
@@ -184,7 +187,7 @@ impl<M> HasBool for RadioBoxBare<M> {
 
 /// A radiobox with optional label
 #[layout(horizontal, area=radiobox)]
-#[widget]
+#[widget_config]
 #[handler(msg = M; generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Widget)]
 pub struct RadioBox<M> {

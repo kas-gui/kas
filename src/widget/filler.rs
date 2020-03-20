@@ -14,7 +14,7 @@ use crate::{event, CoreData, Layout};
 ///
 /// This widget has zero minimum size but can expand according to the given
 /// stretch policy.
-#[widget]
+#[widget_config]
 #[handler]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Filler {

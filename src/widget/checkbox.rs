@@ -18,7 +18,7 @@ use crate::macros::Widget;
 use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
 
 /// A bare checkbox (no label)
-#[widget]
+#[widget_config]
 #[widget_core(key_nav = true)]
 #[handler(noderive)]
 #[derive(Clone, Default, Widget)]
@@ -152,7 +152,7 @@ impl<M> event::Handler for CheckBoxBare<M> {
 /// A checkable box with optional label
 // TODO: use a generic wrapper for CheckBox and RadioBox?
 #[layout(horizontal, area=checkbox)]
-#[widget]
+#[widget_config]
 #[handler(msg = M; generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<M> {

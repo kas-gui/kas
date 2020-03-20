@@ -19,7 +19,7 @@ use crate::{AlignHints, CoreData, Directional, Layout, WidgetCore, WidgetId};
 ///
 /// Scroll bars allow user-input of a value between 0 and a defined maximum,
 /// and allow the size of the handle to be specified.
-#[widget]
+#[widget_config]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollBar<D: Directional> {
     #[widget_core]

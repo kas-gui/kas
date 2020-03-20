@@ -17,7 +17,7 @@ use kas::event::{self, Action, Event, Handler, Manager, ManagerState, Response};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::widget::Window;
-use kas::{Align, AlignHints, Direction, Layout, Widget, WidgetCore};
+use kas::{Align, AlignHints, Direction, Layout, WidgetConfig, WidgetCore};
 use kas_wgpu::draw::DrawWindow;
 
 #[derive(Clone, Debug, kas :: macros :: Widget)]
@@ -123,7 +123,7 @@ impl Layout for Clock {
     }
 }
 
-impl Widget for Clock {
+impl WidgetConfig for Clock {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.update_on_timer(Duration::new(0, 0), self.id());
     }

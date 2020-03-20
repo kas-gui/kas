@@ -14,7 +14,7 @@ use std::u16;
 use super::*;
 use crate::geom::{Coord, DVec2};
 #[allow(unused)]
-use crate::Widget; // for doc-links
+use crate::WidgetConfig; // for doc-links
 use crate::{Layout, ThemeAction, ThemeApi, TkAction, TkWindow, WidgetId, WindowId};
 
 /// Highlighting state of a widget
@@ -436,7 +436,7 @@ impl<'a> Manager<'a> {
     /// used to schedule an update on the next frame. Frames should in any case
     /// be limited by vsync, avoiding excessive frame rates.
     ///
-    /// This should be called from [`Widget::configure`] or from an event
+    /// This should be called from [`WidgetConfig::configure`] or from an event
     /// handler. Note that scheduled updates are cleared if reconfigured.
     pub fn update_on_timer(&mut self, duration: Duration, w_id: WidgetId) {
         let time = Instant::now() + duration;
@@ -465,7 +465,7 @@ impl<'a> Manager<'a> {
     /// [`Action::HandleUpdate`] when [`Manager::trigger_update`]
     /// is called with the corresponding handle.
     ///
-    /// This should be called from [`Widget::configure`].
+    /// This should be called from [`WidgetConfig::configure`].
     pub fn update_on_handle(&mut self, handle: UpdateHandle, w_id: WidgetId) {
         self.mgr
             .handle_updates
@@ -550,7 +550,7 @@ impl<'a> Manager<'a> {
     /// If this key is pressed when the window has focus and no widget has a
     /// key-grab, the given widget will receive an [`Action::Activate`] event.
     ///
-    /// This should be set from [`Widget::configure`].
+    /// This should be set from [`WidgetConfig::configure`].
     #[inline]
     pub fn add_accel_key(&mut self, key: VirtualKeyCode, id: WidgetId) {
         if !self.read_only {
