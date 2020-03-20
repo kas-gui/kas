@@ -44,6 +44,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         "Counter",
         make_widget! {
             #[layout(vertical)]
+            #[handler(event)]
             struct {
                 #[widget(halign=centre)] display: Label = Label::new("0"),
                 #[widget(handler = handle_button)] buttons -> Message = buttons,

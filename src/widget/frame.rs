@@ -20,7 +20,7 @@ use crate::{AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetI
 /// This widget provides a simple abstraction: drawing a frame around its
 /// contents.
 #[widget_config]
-#[handler(msg = <W as Handler>::Msg)]
+#[handler(action, msg = <W as Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Frame<W: Widget> {
     #[widget_core]
@@ -84,7 +84,9 @@ impl<W: Widget> Layout for Frame<W> {
         draw_handle.outer_frame(self.core_data().rect);
         self.child.draw(draw_handle, mgr);
     }
+}
 
+impl<W: Widget> event::EventHandler for Frame<W> {
     #[inline]
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if id <= self.child.id() {

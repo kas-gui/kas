@@ -9,7 +9,7 @@ use std::fmt;
 use std::ops::DerefMut;
 
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Manager, ManagerState, Response};
+use crate::event::{self, Manager, ManagerState};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, WidgetId};
@@ -184,7 +184,7 @@ pub trait WidgetConfig: WidgetCore {
 /// as well as low-level event handling.
 ///
 /// For a description of the widget size model, see [`SizeRules`].
-pub trait Layout: event::Handler {
+pub trait Layout: event::EventHandler {
     /// Get size rules for the given axis.
     ///
     /// This method takes `&mut self` to allow local caching of child widget
@@ -242,34 +242,6 @@ pub trait Layout: event::Handler {
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState);
-
-    /// Handle a low-level event.
-    ///
-    /// Most non-parent widgets will not need to implement this method manually.
-    /// The default implementation (which wraps [`Manager::handle_generic`])
-    /// forwards high-level events via [`event::Handler::action`], thus the only
-    /// reason for non-parent widgets to implement this manually is for
-    /// low-level event processing.
-    ///
-    /// Parent widgets should forward events to the appropriate child widget,
-    /// via logic like the following:
-    /// ```norun
-    /// if id <= self.child1.id() {
-    ///     self.child1.event(mgr, id, event).into()
-    /// } else if id <= self.child2.id() {
-    ///     self.child2.event(mgr, id, event).into()
-    /// } else {
-    ///     debug_assert!(id == self.id(), "Layout::event: bad WidgetId");
-    ///     // either handle `event`, or return:
-    ///     Response::Unhandled(event)
-    /// }
-    /// ```
-    /// Optionally, the return value of child event handlers may be intercepted
-    /// in order to handle returned messages and/or unhandled events.
-    #[inline]
-    fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
-        Manager::handle_generic(self, mgr, event)
-    }
 }
 
 /// Widget trait

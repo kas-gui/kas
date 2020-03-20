@@ -19,7 +19,7 @@ use crate::macros::Widget;
 use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetConfig, WidgetCore, WidgetId};
 
 /// A bare radiobox (no label)
-#[handler(noderive)]
+#[handler(event)]
 #[derive(Clone, Widget)]
 pub struct RadioBoxBare<M> {
     #[widget_core]

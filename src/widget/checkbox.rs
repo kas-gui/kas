@@ -20,7 +20,7 @@ use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
 /// A bare checkbox (no label)
 #[widget_config]
 #[widget_core(key_nav = true)]
-#[handler(noderive)]
+#[handler(event)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBoxBare<M> {
     #[widget_core]

@@ -174,7 +174,10 @@ mod kw {
     custom_keyword!(valign);
     custom_keyword!(key_nav);
     custom_keyword!(cursor_icon);
-    custom_keyword!(noderive);
+    custom_keyword!(none);
+    custom_keyword!(all);
+    custom_keyword!(action);
+    custom_keyword!(event);
 }
 
 #[derive(Debug)]
@@ -499,8 +502,10 @@ impl Parse for LayoutArgs {
     }
 }
 
+#[derive(Debug)]
 pub struct HandlerArgs {
-    pub noderive: bool,
+    pub action: bool,
+    pub event: bool,
     pub msg: Type,
     pub substitutions: HashMap<Ident, Type>,
     pub generics: Generics,
@@ -509,7 +514,8 @@ pub struct HandlerArgs {
 impl HandlerArgs {
     pub fn new(msg: Type) -> Self {
         HandlerArgs {
-            noderive: true,
+            action: false,
+            event: false,
             msg,
             substitutions: Default::default(),
             generics: Default::default(),
@@ -525,69 +531,84 @@ impl Default for HandlerArgs {
 
 impl Parse for HandlerArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut have_noderive = false;
+        let mut have_config = false;
         let mut have_msg = false;
         let mut have_gen = false;
         let mut args = HandlerArgs::default();
-        args.noderive = false;
 
-        if input.is_empty() {
-            return Ok(args);
-        }
+        if !input.is_empty() {
+            let content;
+            let _ = parenthesized!(content in input);
 
-        let content;
-        let _ = parenthesized!(content in input);
+            while !content.is_empty() {
+                let lookahead = content.lookahead1();
+                if !have_config && lookahead.peek(kw::none) {
+                    let _: kw::none = content.parse()?;
+                    have_config = true;
+                } else if !have_config && lookahead.peek(kw::all) {
+                    let _: kw::all = content.parse()?;
+                    args.action = true;
+                    args.event = true;
+                    have_config = true;
+                } else if !have_config && lookahead.peek(kw::action) {
+                    let _: kw::action = content.parse()?;
+                    args.action = true;
+                    have_config = true;
+                } else if !have_config && lookahead.peek(kw::event) {
+                    let _: kw::event = content.parse()?;
+                    args.event = true;
+                    have_config = true;
+                } else if !have_msg && lookahead.peek(kw::msg) {
+                    have_msg = true;
+                    let _: kw::msg = content.parse()?;
+                    let _: Eq = content.parse()?;
+                    args.msg = content.parse()?;
+                } else if !have_gen && lookahead.peek(kw::generics) {
+                    have_gen = true;
+                    let _: kw::generics = content.parse()?;
+                    let _: Eq = content.parse()?;
 
-        while !content.is_empty() {
-            let lookahead = content.lookahead1();
-            if !have_noderive && lookahead.peek(kw::noderive) {
-                have_noderive = true;
-                let _: kw::noderive = content.parse()?;
-                args.noderive = true;
-            } else if !have_msg && lookahead.peek(kw::msg) {
-                have_msg = true;
-                let _: kw::msg = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.msg = content.parse()?;
-            } else if !have_gen && lookahead.peek(kw::generics) {
-                have_gen = true;
-                let _: kw::generics = content.parse()?;
-                let _: Eq = content.parse()?;
+                    // Optionally, substitutions come first
+                    while content.peek(Ident) {
+                        let ident: Ident = content.parse()?;
+                        let _: Token![=>] = content.parse()?;
+                        let ty: Type = content.parse()?;
+                        args.substitutions.insert(ident, ty);
+                        let _: Comma = content.parse()?;
+                    }
 
-                // Optionally, substitutions come first
-                while content.peek(Ident) {
-                    let ident: Ident = content.parse()?;
-                    let _: Token![=>] = content.parse()?;
-                    let ty: Type = content.parse()?;
-                    args.substitutions.insert(ident, ty);
-                    let _: Comma = content.parse()?;
-                }
+                    if content.peek(Token![<]) {
+                        args.generics = content.parse()?;
+                        if content.peek(Token![where]) {
+                            args.generics.where_clause = content.parse()?;
+                        }
+                    } else {
+                        return Err(Error::new(
+                            content.span(),
+                            "expected `< ... > [where ...]` or `T => Substitution ...`",
+                        ));
+                    }
 
-                if content.peek(Token![<]) {
-                    args.generics = content.parse()?;
-                    if content.peek(Token![where]) {
-                        args.generics.where_clause = content.parse()?;
+                    if !content.is_empty() {
+                        return Err(Error::new(
+                            content.span(),
+                            "no more content expected (`generics` must be last parameter)",
+                        ));
                     }
                 } else {
-                    return Err(Error::new(
-                        content.span(),
-                        "expected `< ... > [where ...]` or `T => Substitution ...`",
-                    ));
+                    return Err(lookahead.error());
                 }
 
-                if !content.is_empty() {
-                    return Err(Error::new(
-                        content.span(),
-                        "no more content expected (`generics` must be last parameter)",
-                    ));
+                if content.peek(Comma) {
+                    let _: Comma = content.parse()?;
                 }
-            } else {
-                return Err(lookahead.error());
             }
+        }
 
-            if content.peek(Comma) {
-                let _: Comma = content.parse()?;
-            }
+        if !have_config {
+            // default to all
+            args.action = true;
+            args.event = true;
         }
 
         Ok(args)
@@ -600,10 +621,13 @@ impl ToTokens for HandlerArgs {
         syn::token::Bracket::default().surround(tokens, |tokens| {
             kw::handler::default().to_tokens(tokens);
             syn::token::Paren::default().surround(tokens, |tokens| {
-                if self.noderive {
-                    kw::noderive::default().to_tokens(tokens);
-                    Comma::default().to_tokens(tokens);
-                }
+                match (self.action, self.event) {
+                    (false, false) => kw::none::default().to_tokens(tokens),
+                    (false, true) => kw::event::default().to_tokens(tokens),
+                    (true, false) => kw::action::default().to_tokens(tokens),
+                    (true, true) => kw::all::default().to_tokens(tokens),
+                };
+                Comma::default().to_tokens(tokens);
 
                 kw::msg::default().to_tokens(tokens);
                 Eq::default().to_tokens(tokens);

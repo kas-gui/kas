@@ -148,7 +148,7 @@
 //!     generics, for example: (T1 = MyType, T2 = some::other::Type`
 //! -   (optional): `generics = ...`; this parameter must appear last in the
 //!     list and allows extra type parameters and/or restrictions to appear on
-//!     the implementations of [`Handler`] and [`Widget`].
+//!     the implementations of [`Handler`], [`EventHandler`] and [`Widget`].
 //!     It accepts any of the following:
 //!
 //!     -   `<TYPE_PARAMS>` where `TYPE_PARAMS` is the usual list of type
@@ -411,6 +411,9 @@
 
 // Imported for doc-links
 #[allow(unused)]
-use crate::{event::Handler, CoreData, Layout, LayoutData, Widget, WidgetConfig, WidgetCore};
+use crate::{
+    event::{EventHandler, Handler},
+    CoreData, Layout, LayoutData, Widget, WidgetConfig, WidgetCore,
+};
 
 pub use kas_macros::{make_widget, VoidMsg, Widget};

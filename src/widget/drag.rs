@@ -30,6 +30,7 @@ use crate::{AlignHints, CoreData, Layout, WidgetCore, WidgetId};
 /// 4.  Optionally, this widget can handle clicks on the track area via
 ///     [`DragHandle::handle_press_on_track`].
 #[widget_config]
+#[handler(action, msg = Coord)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct DragHandle {
     #[widget_core]
@@ -127,11 +128,6 @@ impl DragHandle {
     }
 }
 
-impl event::Handler for DragHandle {
-    /// Offset from first possible position (should be non-negative).
-    type Msg = Coord;
-}
-
 /// This implementation is unusual in that:
 ///
 /// 1.  `size_rules` always returns [`SizeRules::EMPTY`]
@@ -149,7 +145,9 @@ impl Layout for DragHandle {
     }
 
     fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState) {}
+}
 
+impl event::EventHandler for DragHandle {
     fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::PressStart { source, coord, .. } => {

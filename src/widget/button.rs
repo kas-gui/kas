@@ -17,7 +17,7 @@ use crate::macros::Widget;
 use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetConfig, WidgetCore};
 
 /// A push-button with a text label
-#[handler(noderive)]
+#[handler(event)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug> {
     #[widget_core]

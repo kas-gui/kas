@@ -26,6 +26,7 @@ use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
 /// minimum value of [`Coord::ZERO`] and a maximum value of
 /// [`ScrollRegion::max_offset`].
 #[widget_config]
+#[handler(action, msg = <W as event::Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
     #[widget_core]
@@ -129,10 +130,6 @@ impl<W: Widget> ScrollRegion<W> {
     }
 }
 
-impl<W: Widget> event::Handler for ScrollRegion<W> {
-    type Msg = <W as event::Handler>::Msg;
-}
-
 impl<W: Widget> Layout for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut rules = self.child.size_rules(size_handle, axis);
@@ -224,7 +221,9 @@ impl<W: Widget> Layout for ScrollRegion<W> {
             self.child.draw(handle, mgr)
         });
     }
+}
 
+impl<W: Widget> event::EventHandler for ScrollRegion<W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
             Event::Action(Action::Scroll(delta)) => {

@@ -20,6 +20,7 @@ use kas::widget::Window;
 use kas::{Align, AlignHints, Direction, Layout, WidgetConfig, WidgetCore};
 use kas_wgpu::draw::DrawWindow;
 
+#[handler(event)]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Clock {
     #[widget_core]

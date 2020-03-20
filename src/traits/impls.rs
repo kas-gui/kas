@@ -62,18 +62,6 @@ impl<M> WidgetConfig for Box<dyn Widget<Msg = M>> {
     }
 }
 
-impl<M> event::Handler for Box<dyn Widget<Msg = M>> {
-    type Msg = M;
-
-    fn activation_via_press(&self) -> bool {
-        self.as_ref().activation_via_press()
-    }
-
-    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
-        self.as_mut().action(mgr, action)
-    }
-}
-
 impl<M> Layout for Box<dyn Widget<Msg = M>> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         self.as_mut().size_rules(size_handle, axis)
@@ -90,7 +78,21 @@ impl<M> Layout for Box<dyn Widget<Msg = M>> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         self.as_ref().draw(draw_handle, mgr);
     }
+}
 
+impl<M> event::Handler for Box<dyn Widget<Msg = M>> {
+    type Msg = M;
+
+    fn activation_via_press(&self) -> bool {
+        self.as_ref().activation_via_press()
+    }
+
+    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
+        self.as_mut().action(mgr, action)
+    }
+}
+
+impl<M> event::EventHandler for Box<dyn Widget<Msg = M>> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         self.as_mut().event(mgr, id, event)
     }

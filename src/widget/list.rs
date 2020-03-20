@@ -130,10 +130,6 @@ impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> event::Handler for List<D, W> {
-    type Msg = <W as event::Handler>::Msg;
-}
-
 impl<D: Directional, W: Widget> Layout for List<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut solver = layout::RowSolver::<Vec<u32>, _>::new(
@@ -180,7 +176,13 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
             w.draw(draw_handle, mgr)
         });
     }
+}
 
+impl<D: Directional, W: Widget> event::Handler for List<D, W> {
+    type Msg = <W as event::Handler>::Msg;
+}
+
+impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         for child in &mut self.widgets {
             if id <= child.id() {

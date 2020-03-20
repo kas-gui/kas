@@ -20,6 +20,7 @@ use crate::{AlignHints, CoreData, Directional, Layout, WidgetCore, WidgetId};
 /// Scroll bars allow user-input of a value between 0 and a defined maximum,
 /// and allow the size of the handle to be specified.
 #[widget_config]
+#[handler(action, msg = u32)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollBar<D: Directional> {
     #[widget_core]
@@ -182,10 +183,6 @@ impl<D: Directional> ScrollBar<D> {
     }
 }
 
-impl<D: Directional> event::Handler for ScrollBar<D> {
-    type Msg = u32;
-}
-
 impl<D: Directional> Layout for ScrollBar<D> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let (size, min_len) = size_handle.scrollbar();
@@ -218,7 +215,9 @@ impl<D: Directional> Layout for ScrollBar<D> {
         let hl = mgr.highlight_state(self.handle.id());
         draw_handle.scrollbar(self.core.rect, self.handle.rect(), dir, hl);
     }
+}
 
+impl<D: Directional> event::EventHandler for ScrollBar<D> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let offset = if id <= self.handle.id() {
             match self.handle.event(mgr, id, event).try_into() {

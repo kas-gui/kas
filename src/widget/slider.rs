@@ -44,11 +44,9 @@ impl<
 ///
 /// Sliders allow user input of a value from a fixed range.
 #[widget_config]
+#[handler(action, msg = T)]
 #[derive(Clone, Debug, Default, Widget)]
-pub struct Slider<T, D: Directional>
-where
-    T: SliderType,
-{
+pub struct Slider<T: SliderType, D: Directional> {
     #[widget_core]
     core: CoreData,
     direction: D, // TODO: also reversed direction
@@ -59,10 +57,7 @@ where
     handle: DragHandle,
 }
 
-impl<T, D: Directional + Default> Slider<T, D>
-where
-    T: SliderType,
-{
+impl<T: SliderType, D: Directional + Default> Slider<T, D> {
     /// Construct a slider
     ///
     /// The range must be specified; the initial value defaults to the range's
@@ -72,10 +67,7 @@ where
     }
 }
 
-impl<T, D: Directional> Slider<T, D>
-where
-    T: SliderType,
-{
+impl<T: SliderType, D: Directional> Slider<T, D> {
     /// Construct a slider with the given `direction`
     ///
     /// The range must be specified; the initial value defaults to the range's
@@ -156,17 +148,7 @@ where
     }
 }
 
-impl<T, D: Directional> event::Handler for Slider<T, D>
-where
-    T: SliderType,
-{
-    type Msg = T;
-}
-
-impl<T, D: Directional> Layout for Slider<T, D>
-where
-    T: SliderType,
-{
+impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let (size, min_len) = size_handle.slider();
         let margins = (0, 0);
@@ -201,7 +183,9 @@ where
         let hl = mgr.highlight_state(self.handle.id());
         draw_handle.slider(self.core.rect, self.handle.rect(), dir, hl);
     }
+}
 
+impl<T: SliderType, D: Directional> event::EventHandler for Slider<T, D> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let offset = if id <= self.handle.id() {
             match self.handle.event(mgr, id, event).try_into() {

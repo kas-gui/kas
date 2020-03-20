@@ -238,7 +238,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let (impl_generics, _ty, where_clause) = generics.split_for_impl();
         let ty_generics = SubstTyGenerics(&ast.generics, subs);
 
-        if !handler.noderive {
+        if handler.action {
             toks.append_all(quote! {
                 impl #impl_generics kas::event::Handler
                         for #name #ty_generics #where_clause
@@ -248,7 +248,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             });
         }
 
-        if let Some(ref layout) = args.layout {
+        if handler.event {
             let mut ev_to_num = TokenStream::new();
             for child in args.children.iter() {
                 let ident = &child.ident;
@@ -282,13 +282,22 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 }
             };
 
+            toks.append_all(quote! {
+                impl #impl_generics kas::event::EventHandler
+                        for #name #ty_generics #where_clause
+                {
+                    #event
+                }
+            });
+        }
+
+        if let Some(ref layout) = args.layout {
             match layout::derive(&args.children, layout, &args.layout_data) {
                 Ok(fns) => toks.append_all(quote! {
                     impl #impl_generics kas::Layout
                             for #name #ty_generics #where_clause
                     {
                         #fns
-                        #event
                     }
                 }),
                 Err(err) => return err.to_compile_error().into(),
@@ -462,7 +471,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
                 if let Some(ref wattr) = attr {
                     if let Some(tyr) = gen_msg {
-                        handler_clauses.push(parse_quote! { #ty: kas::Layout<Msg = #tyr> });
+                        handler_clauses.push(parse_quote! { #ty: kas::Widget<Msg = #tyr> });
                     } else {
                         // No typing. If a handler is specified, then the child must implement
                         // Handler<Msg = X> where the handler takes type X; otherwise
@@ -470,7 +479,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         if let Some(ref handler) = wattr.args.handler {
                             if let Some(ty_bound) = find_handler_ty(handler, &args.impls) {
                                 handler_clauses
-                                    .push(parse_quote! { #ty: kas::Layout<Msg = #ty_bound> });
+                                    .push(parse_quote! { #ty: kas::Widget<Msg = #ty_bound> });
                             } else {
                                 return quote! {}.into(); // exit after emitting error
                             }
@@ -481,7 +490,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                                 .generics
                                 .params
                                 .push(syn::GenericParam::Type(tyr.clone().into()));
-                            handler_clauses.push(parse_quote! { #ty: kas::Layout<Msg = #tyr> });
+                            handler_clauses.push(parse_quote! { #ty: kas::Widget<Msg = #tyr> });
                             handler_clauses.push(parse_quote! { #msg: From<#tyr> });
                         }
                     }

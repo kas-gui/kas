@@ -392,6 +392,7 @@ impl PipeWindow {
 }
 
 #[widget_config]
+#[handler(action, msg = ())]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Mandlebrot {
     #[widget_core]
@@ -402,10 +403,6 @@ struct Mandlebrot {
     view_alpha: f64,
     rel_width: f32,
     iter: i32,
-}
-
-impl event::Handler for Mandlebrot {
-    type Msg = ();
 }
 
 impl Layout for Mandlebrot {
@@ -441,7 +438,9 @@ impl Layout for Mandlebrot {
         let p = (self.alpha, self.delta, self.rel_width, self.iter);
         draw.custom(region, self.core.rect + offset, p);
     }
+}
 
+impl event::EventHandler for Mandlebrot {
     fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::Action(event::Action::Scroll(delta)) => {
