@@ -7,17 +7,14 @@
 
 use std::fmt::{self, Debug};
 
-use crate::draw::SizeHandle;
-use crate::event::{Callback, Manager, VoidMsg};
-use crate::geom::Size;
-use crate::layout::{self};
-use crate::macros::Widget;
-use crate::{CoreData, CowString, Layout, LayoutData, Widget};
+use kas::draw::SizeHandle;
+use kas::event::{Callback, Manager, VoidMsg};
+use kas::prelude::*;
 
 /// The main instantiation of the [`Window`] trait.
-#[widget]
+#[widget_config]
 #[layout(single)]
-#[handler(generics = <> where W: Layout<Msg = VoidMsg>)]
+#[handler(generics = <> where W: Widget<Msg = VoidMsg>)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
     #[widget_core]
@@ -93,7 +90,7 @@ impl<W: Widget> Window<W> {
     }
 }
 
-impl<W: Layout<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
+impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
     fn title(&self) -> &str {
         &self.title
     }

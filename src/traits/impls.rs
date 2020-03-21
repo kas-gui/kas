@@ -12,7 +12,7 @@ use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, WidgetId};
 
-impl<M> WidgetCore for Box<dyn Layout<Msg = M>> {
+impl<M> WidgetCore for Box<dyn Widget<Msg = M>> {
     fn core_data(&self) -> &CoreData {
         self.as_ref().core_data()
     }
@@ -24,28 +24,34 @@ impl<M> WidgetCore for Box<dyn Layout<Msg = M>> {
         self.as_ref().widget_name()
     }
 
-    fn as_widget(&self) -> &dyn Widget {
+    fn as_widget(&self) -> &dyn WidgetConfig {
         self.as_ref().as_widget()
     }
-    fn as_widget_mut(&mut self) -> &mut dyn Widget {
+    fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig {
         self.as_mut().as_widget_mut()
     }
 
     fn len(&self) -> usize {
         self.as_ref().len()
     }
-    fn get(&self, index: usize) -> Option<&dyn Widget> {
+    fn get(&self, index: usize) -> Option<&dyn WidgetConfig> {
         self.as_ref().get(index)
     }
-    fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
         self.as_mut().get_mut(index)
     }
 
-    fn walk(&self, f: &mut dyn FnMut(&dyn Widget)) {
+    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
         self.as_ref().walk(f);
     }
-    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
+    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
         self.as_mut().walk_mut(f);
+    }
+}
+
+impl<M> WidgetConfig for Box<dyn Widget<Msg = M>> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        self.as_mut().configure(mgr);
     }
 
     fn key_nav(&self) -> bool {
@@ -56,25 +62,7 @@ impl<M> WidgetCore for Box<dyn Layout<Msg = M>> {
     }
 }
 
-impl<M> Widget for Box<dyn Layout<Msg = M>> {
-    fn configure(&mut self, mgr: &mut Manager) {
-        self.as_mut().configure(mgr);
-    }
-}
-
-impl<M> event::Handler for Box<dyn Layout<Msg = M>> {
-    type Msg = M;
-
-    fn activation_via_press(&self) -> bool {
-        self.as_ref().activation_via_press()
-    }
-
-    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
-        self.as_mut().action(mgr, action)
-    }
-}
-
-impl<M> Layout for Box<dyn Layout<Msg = M>> {
+impl<M> Layout for Box<dyn Widget<Msg = M>> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         self.as_mut().size_rules(size_handle, axis)
     }
@@ -90,13 +78,29 @@ impl<M> Layout for Box<dyn Layout<Msg = M>> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         self.as_ref().draw(draw_handle, mgr);
     }
+}
 
+impl<M> event::Handler for Box<dyn Widget<Msg = M>> {
+    type Msg = M;
+
+    fn activation_via_press(&self) -> bool {
+        self.as_ref().activation_via_press()
+    }
+
+    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
+        self.as_mut().action(mgr, action)
+    }
+}
+
+impl<M> event::EventHandler for Box<dyn Widget<Msg = M>> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         self.as_mut().event(mgr, id, event)
     }
 }
 
-impl<M: 'static> Clone for Box<dyn Layout<Msg = M>> {
+impl<M> Widget for Box<dyn Widget<Msg = M>> {}
+
+impl<M: 'static> Clone for Box<dyn Widget<Msg = M>> {
     fn clone(&self) -> Self {
         #[cfg(feature = "nightly")]
         unsafe {

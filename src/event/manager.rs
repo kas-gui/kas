@@ -13,7 +13,9 @@ use std::u16;
 
 use super::*;
 use crate::geom::{Coord, DVec2};
-use crate::{Layout, ThemeAction, ThemeApi, TkAction, TkWindow, WidgetId, WindowId};
+#[allow(unused)]
+use crate::WidgetConfig; // for doc-links
+use crate::{ThemeAction, ThemeApi, TkAction, TkWindow, Widget, WidgetId, WindowId};
 
 /// Highlighting state of a widget
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
@@ -160,7 +162,7 @@ impl ManagerState {
     /// is created (before or after resizing).
     pub fn configure<W>(&mut self, tkw: &mut dyn TkWindow, widget: &mut W)
     where
-        W: Layout<Msg = VoidMsg> + ?Sized,
+        W: Widget<Msg = VoidMsg> + ?Sized,
     {
         // Re-assigning WidgetIds might invalidate state; to avoid this we map
         // existing ids to new ids
@@ -240,7 +242,7 @@ impl ManagerState {
             .map(|id| (elt.0, *id)));
     }
 
-    pub fn region_moved<W: Layout + ?Sized>(&mut self, widget: &mut W) {
+    pub fn region_moved<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         // Note: redraw is already implied.
 
         // Update hovered widget
@@ -427,15 +429,14 @@ impl<'a> Manager<'a> {
     /// Schedule an update
     ///
     /// Widgets requiring animation should schedule an update; as a result,
-    /// their [`Widget::update_timer`] method will be called, roughly at time
-    /// `now + duration`.
+    /// [`Action::TimerUpdate`] will be sent, roughly at time `now + duration`.
     ///
     /// Timings may be a few ms out, but should be sufficient for e.g. updating
     /// a clock each second. Very short positive durations (e.g. 1ns) may be
     /// used to schedule an update on the next frame. Frames should in any case
     /// be limited by vsync, avoiding excessive frame rates.
     ///
-    /// This should be called from [`Widget::configure`] or from an event
+    /// This should be called from [`WidgetConfig::configure`] or from an event
     /// handler. Note that scheduled updates are cleared if reconfigured.
     pub fn update_on_timer(&mut self, duration: Duration, w_id: WidgetId) {
         let time = Instant::now() + duration;
@@ -460,11 +461,11 @@ impl<'a> Manager<'a> {
 
     /// Subscribe to an update handle
     ///
-    /// All widgets subscribed to an update handle will have their
-    /// [`Widget::update_handle`] method called when [`Manager::trigger_update`]
+    /// All widgets subscribed to an update handle will be sent
+    /// [`Action::HandleUpdate`] when [`Manager::trigger_update`]
     /// is called with the corresponding handle.
     ///
-    /// This should be called from [`Widget::configure`].
+    /// This should be called from [`WidgetConfig::configure`].
     pub fn update_on_handle(&mut self, handle: UpdateHandle, w_id: WidgetId) {
         self.mgr
             .handle_updates
@@ -549,7 +550,7 @@ impl<'a> Manager<'a> {
     /// If this key is pressed when the window has focus and no widget has a
     /// key-grab, the given widget will receive an [`Action::Activate`] event.
     ///
-    /// This should be set from [`Widget::configure`].
+    /// This should be set from [`WidgetConfig::configure`].
     #[inline]
     pub fn add_accel_key(&mut self, key: VirtualKeyCode, id: WidgetId) {
         if !self.read_only {
@@ -654,7 +655,7 @@ impl<'a> Manager<'a> {
 /// Internal methods
 impl<'a> Manager<'a> {
     #[cfg(feature = "winit")]
-    fn set_hover<W: Layout + ?Sized>(&mut self, widget: &mut W, w_id: Option<WidgetId>) {
+    fn set_hover<W: Widget + ?Sized>(&mut self, widget: &mut W, w_id: Option<WidgetId>) {
         if self.mgr.hover != w_id {
             self.mgr.hover = w_id;
             self.send_action(TkAction::Redraw);
@@ -751,7 +752,7 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn next_nav_focus<W: Layout + ?Sized>(&mut self, widget: &mut W) {
+    fn next_nav_focus<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         let mut id = self.mgr.nav_focus.unwrap_or(WidgetId::FIRST);
         let end = widget.id();
         loop {
@@ -799,7 +800,7 @@ impl<'a> Manager<'a> {
     /// Update, after receiving all events
     pub fn finish<W>(mut self, widget: &mut W) -> TkAction
     where
-        W: Layout<Msg = VoidMsg> + ?Sized,
+        W: Widget<Msg = VoidMsg> + ?Sized,
     {
         for gi in 0..self.mgr.pan_grab.len() {
             let grab = &mut self.mgr.pan_grab[gi];
@@ -864,7 +865,7 @@ impl<'a> Manager<'a> {
     }
 
     /// Update widgets due to timer
-    pub fn update_timer<W: Layout + ?Sized>(&mut self, widget: &mut W) {
+    pub fn update_timer<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         let now = Instant::now();
 
         // assumption: time_updates are sorted in reverse order
@@ -884,7 +885,7 @@ impl<'a> Manager<'a> {
     }
 
     /// Update widgets due to handle
-    pub fn update_handle<W: Layout + ?Sized>(
+    pub fn update_handle<W: Widget + ?Sized>(
         &mut self,
         widget: &mut W,
         handle: UpdateHandle,
@@ -908,7 +909,7 @@ impl<'a> Manager<'a> {
     #[cfg(feature = "winit")]
     pub fn handle_winit<W>(&mut self, widget: &mut W, event: winit::event::WindowEvent)
     where
-        W: Layout<Msg = VoidMsg> + ?Sized,
+        W: Widget<Msg = VoidMsg> + ?Sized,
     {
         use winit::event::{ElementState, MouseScrollDelta, TouchPhase, WindowEvent::*};
         trace!("Event: {:?}", event);

@@ -50,9 +50,9 @@
 //! use kas::event::VoidMsg;
 //! use kas::{CoreData, Layout, LayoutData, Widget};
 //!
-//! #[widget]
+//! #[widget_config]
 //! #[layout(single)]
-//! #[handler(generics = <> where W: Layout<Msg = VoidMsg>)]
+//! #[handler(generics = <> where W: Widget<Msg = VoidMsg>)]
 //! #[derive(Clone, Debug, Widget)]
 //! struct WrapperWidget<W: Widget> {
 //!     #[widget_core] core: CoreData,
@@ -71,7 +71,7 @@
 //! use kas::macros::Widget;
 //! use kas::{event, CoreData, Layout};
 //!
-//! #[widget]
+//! #[widget_config]
 //! #[widget_core(key_nav = true)]
 //! #[handler]
 //! #[derive(Clone, Debug, Default, Widget)]
@@ -93,9 +93,9 @@
 //! with the specified default value:
 //!
 //! -   `key_nav = false`: a boolean, describing whether the widget supports
-//!     keyboard navigation (see [`WidgetCore::key_nav`])
+//!     keyboard navigation (see [`WidgetConfig::key_nav`])
 //! -   `cursor_icon = kas::event::CursorIcon::Default`: the cursor icon to use
-//!     when the mouse hovers over this widget (see [`WidgetCore::cursor_icon`])
+//!     when the mouse hovers over this widget (see [`WidgetConfig::cursor_icon`])
 //!
 //! #### Widget
 //!
@@ -138,7 +138,7 @@
 //! If one or more `#[handler]` attributes are present, then the [`Handler`]
 //! trait is implemented (potentially multiple times with different
 //! substitutions of generic parameters).
-//! This attribute accepts the following semi-colon separated arguments:
+//! This attribute accepts the following comma separated arguments:
 //!
 //! -   (optional) `noderive` — do not derive [`Handler`] (but apply generics
 //!     to derivation of [`Layout`], if applicable)
@@ -146,8 +146,21 @@
 //!     specified, this type defaults to [`kas::event::VoidMsg`]
 //! -   (optional) `substitutions = LIST` — a list subsitutions for type
 //!     generics, for example: (T1 = MyType, T2 = some::other::Type`
-//! -   (optional): `generics = < X, Y, ... > where CONDS`
-//!     (`where CONDS` is optional)
+//! -   (optional): `generics = ...`; this parameter must appear last in the
+//!     list and allows extra type parameters and/or restrictions to appear on
+//!     the implementations of [`Handler`], [`EventHandler`] and [`Widget`].
+//!     It accepts any of the following:
+//!
+//!     -   `<TYPE_PARAMS>` where `TYPE_PARAMS` is the usual list of type
+//!         parameters (e.g. `T, W: Widget`)
+//!     -   `<TYPE_PARAMS> where CONDS` where `CONDS` are extra restrictions on
+//!         type parameters (these restrictions may be on type parameters used
+//!         in the struct signature as well as those in the `TYPE_PARAMS` list)
+//!     -   `SUBS` where `SUBS` is a list of substitutions; e.g. if `M` is a
+//!         type parameter of the struct, then `M => MyMsg` will substitute the
+//!         parameter `M` for concrete type `MyMsg`
+//!     -   `SUBS <TYPE_PARAMS> where CONDS`; e.g. if `M` is a type parameter
+//!         of the struct, one might use `M => <W as Handler>::Msg, <W: Widget>`
 //!
 //! Commonly, implementations of the [`Handler`] and [`Layout`] traits require
 //! extra type bounds on the
@@ -158,8 +171,8 @@
 //! # use kas::macros::Widget;
 //! # use kas::{CoreData, Layout, Widget, event::Handler};
 //! #[layout(single)]
-//! #[widget]
-//! #[handler(generics = <> where W: Layout; msg = <W as Handler>::Msg)]
+//! #[widget_config]
+//! #[handler(msg = <W as Handler>::Msg, generics = <> where W: Layout)]
 //! #[derive(Clone, Debug, Default, Widget)]
 //! pub struct Frame<W: Widget> {
 //!     #[widget_core]
@@ -168,9 +181,6 @@
 //!     child: W,
 //! }
 //! ```
-//! Unusually, the `#[handler]` attribute uses `;` as a parameter separator,
-//! since both the `substitutions` and `generics` parameters may contain
-//! comma-separated lists.
 //!
 //! (Note that ideally we would use equality constraints in `where` predicates
 //! instead of adding special parameter substitution support, but type equality
@@ -230,9 +240,9 @@
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
 //!
-//! #[widget]
+//! #[widget_config]
 //! #[layout(vertical)]
-//! #[handler(generics = <> where W: Layout<Msg = ChildMessage>)]
+//! #[handler(generics = <> where W: Widget<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
 //!     #[widget_core] core: CoreData,
@@ -274,7 +284,7 @@
 //!     Check(bool),
 //! }
 //! let widget = make_widget! {
-//!     #[widget]
+//!     #[widget_config]
 //!     #[layout(vertical)]
 //!     #[handler(msg = VoidMsg)]
 //!     struct {
@@ -373,7 +383,7 @@
 //! }
 //!
 //! let button_box = make_widget!{
-//!     #[widget]
+//!     #[widget_config]
 //!     #[layout(horizontal)]
 //!     #[handler(msg = OkCancel)]
 //!     struct {
@@ -401,6 +411,9 @@
 
 // Imported for doc-links
 #[allow(unused)]
-use crate::{event::Handler, CoreData, Layout, LayoutData, Widget, WidgetCore};
+use crate::{
+    event::{EventHandler, Handler},
+    CoreData, Layout, LayoutData, Widget, WidgetConfig, WidgetCore,
+};
 
 pub use kas_macros::{make_widget, VoidMsg, Widget};

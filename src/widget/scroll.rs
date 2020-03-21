@@ -8,13 +8,10 @@
 use std::fmt::Debug;
 
 use super::ScrollBar;
-use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{self, Action, Event, Manager, Response};
-use crate::geom::{Coord, Rect, Size};
-use crate::layout::{AxisInfo, SizeRules};
-use crate::macros::Widget;
-use crate::{AlignHints, Horizontal, Vertical};
-use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
+use kas::draw::{DrawHandle, SizeHandle, TextClass};
+use kas::event::{Action, Event, Manager, Response};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::prelude::*;
 
 /// A scrollable region
 ///
@@ -25,7 +22,8 @@ use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
 /// Scroll regions translate their contents by an `offset`, which has a
 /// minimum value of [`Coord::ZERO`] and a maximum value of
 /// [`ScrollRegion::max_offset`].
-#[widget]
+#[widget_config]
+#[handler(action, msg = <W as event::Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
     #[widget_core]
@@ -129,11 +127,7 @@ impl<W: Widget> ScrollRegion<W> {
     }
 }
 
-impl<W: Layout> event::Handler for ScrollRegion<W> {
-    type Msg = <W as event::Handler>::Msg;
-}
-
-impl<W: Layout> Layout for ScrollRegion<W> {
+impl<W: Widget> Layout for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut rules = self.child.size_rules(size_handle, axis);
         if axis.is_horizontal() {
@@ -224,7 +218,9 @@ impl<W: Layout> Layout for ScrollRegion<W> {
             self.child.draw(handle, mgr)
         });
     }
+}
 
+impl<W: Widget> event::EventHandler for ScrollRegion<W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
             Event::Action(Action::Scroll(delta)) => {

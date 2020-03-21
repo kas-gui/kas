@@ -9,18 +9,16 @@ use std::fmt::{self, Debug};
 use std::rc::Rc;
 
 use super::Label;
-use crate::class::HasBool;
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Action, Manager, Response, VoidMsg};
-use crate::geom::Rect;
-use crate::layout::{AxisInfo, SizeRules};
-use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
+use kas::class::HasBool;
+use kas::draw::{DrawHandle, SizeHandle};
+use kas::event::{Action, Manager, Response, VoidMsg};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::prelude::*;
 
 /// A bare checkbox (no label)
-#[widget]
+#[widget_config]
 #[widget_core(key_nav = true)]
-#[handler(noderive)]
+#[handler(event)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBoxBare<M> {
     #[widget_core]
@@ -152,8 +150,8 @@ impl<M> event::Handler for CheckBoxBare<M> {
 /// A checkable box with optional label
 // TODO: use a generic wrapper for CheckBox and RadioBox?
 #[layout(horizontal, area=checkbox)]
-#[widget]
-#[handler(msg = M; generics = <> where M: From<VoidMsg>)]
+#[widget_config]
+#[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<M> {
     #[widget_core]

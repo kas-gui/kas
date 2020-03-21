@@ -31,7 +31,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let buttons = make_widget! {
-        #[widget]
+        #[widget_config]
         #[layout(grid)]
         #[handler(msg = Key)]
         struct {
@@ -73,7 +73,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
     let content = make_widget! {
-        #[widget]
+        #[widget_config]
         #[layout(vertical)]
         #[handler(msg = VoidMsg)]
         struct {

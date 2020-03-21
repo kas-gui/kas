@@ -24,8 +24,9 @@ enum Control {
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
 fn make_window() -> Box<dyn kas::Window> {
     let stopwatch = make_widget! {
+        #[widget_config]
         #[layout(horizontal)]
-        #[widget]
+        #[handler(event)]
         struct {
             #[widget] display: impl HasText = Frame::new(Label::new("0.000")),
             #[widget(handler = handle_button)] b_reset = TextButton::new("reset", Control::Reset),

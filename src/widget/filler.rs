@@ -5,16 +5,15 @@
 
 //! Filler widget
 
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::layout::{AxisInfo, SizeRules, StretchPolicy};
-use crate::macros::Widget;
-use crate::{event, CoreData, Layout};
+use kas::draw::{DrawHandle, SizeHandle};
+use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
+use kas::prelude::*;
 
 /// A space filler
 ///
 /// This widget has zero minimum size but can expand according to the given
 /// stretch policy.
-#[widget]
+#[widget_config]
 #[handler]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Filler {

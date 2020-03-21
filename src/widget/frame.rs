@@ -7,20 +7,18 @@
 
 use std::fmt::Debug;
 
-use crate::class::*;
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Handler, Manager, Response};
-use crate::geom::{Coord, Rect, Size};
-use crate::layout::{AxisInfo, Margins, SizeRules};
-use crate::macros::Widget;
-use crate::{AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetId};
+use kas::class::*;
+use kas::draw::{DrawHandle, SizeHandle};
+use kas::event::{Event, Handler, Manager, Response};
+use kas::layout::{AxisInfo, Margins, SizeRules};
+use kas::prelude::*;
 
 /// A frame around content
 ///
 /// This widget provides a simple abstraction: drawing a frame around its
 /// contents.
-#[widget]
-#[handler(msg = <W as Handler>::Msg; generics = <> where W: Layout)]
+#[widget_config]
+#[handler(action, msg = <W as Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Frame<W: Widget> {
     #[widget_core]
@@ -44,7 +42,7 @@ impl<W: Widget> Frame<W> {
     }
 }
 
-impl<W: Layout> Layout for Frame<W> {
+impl<W: Widget> Layout for Frame<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.outer_frame();
         let margins = Margins::ZERO;
@@ -84,7 +82,9 @@ impl<W: Layout> Layout for Frame<W> {
         draw_handle.outer_frame(self.core_data().rect);
         self.child.draw(draw_handle, mgr);
     }
+}
 
+impl<W: Widget> event::EventHandler for Frame<W> {
     #[inline]
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if id <= self.child.id() {

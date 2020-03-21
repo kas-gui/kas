@@ -5,13 +5,10 @@
 
 //! Dynamic widgets
 
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Manager, Response};
-use crate::geom::Coord;
-use crate::layout::{self, AxisInfo, RulesSetter, RulesSolver, SizeRules};
-use crate::{AlignHints, Directional, Horizontal, Vertical};
-use crate::{CoreData, Layout, TkAction, Widget, WidgetCore, WidgetId};
-use kas::geom::Rect;
+use kas::draw::{DrawHandle, SizeHandle};
+use kas::event::{Event, Manager, Response};
+use kas::layout::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
+use kas::prelude::*;
 
 /// A generic row widget
 ///
@@ -42,7 +39,7 @@ pub type BoxColumn<M> = BoxList<Vertical, M>;
 /// This is parameterised over directionality and handler message type.
 ///
 /// See documentation of [`List`] type.
-pub type BoxList<D, M> = List<D, Box<dyn Layout<Msg = M>>>;
+pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
 
 /// A generic row/column widget
 ///
@@ -75,6 +72,8 @@ pub struct List<D: Directional, W: Widget> {
     direction: D,
 }
 
+impl<D: Directional, W: Widget> WidgetConfig for List<D, W> {}
+
 // We implement this manually, because the derive implementation cannot handle
 // vectors of child widgets.
 impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
@@ -93,11 +92,11 @@ impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
     }
 
     #[inline]
-    fn as_widget(&self) -> &dyn Widget {
+    fn as_widget(&self) -> &dyn WidgetConfig {
         self
     }
     #[inline]
-    fn as_widget_mut(&mut self) -> &mut dyn Widget {
+    fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig {
         self
     }
 
@@ -106,21 +105,21 @@ impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
         self.widgets.len()
     }
     #[inline]
-    fn get(&self, index: usize) -> Option<&dyn Widget> {
+    fn get(&self, index: usize) -> Option<&dyn WidgetConfig> {
         self.widgets.get(index).map(|w| w.as_widget())
     }
     #[inline]
-    fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget> {
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
         self.widgets.get_mut(index).map(|w| w.as_widget_mut())
     }
 
-    fn walk(&self, f: &mut dyn FnMut(&dyn Widget)) {
+    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
         for child in &self.widgets {
             child.walk(f);
         }
         f(self)
     }
-    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget)) {
+    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
         for child in &mut self.widgets {
             child.walk_mut(f);
         }
@@ -128,13 +127,7 @@ impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> Widget for List<D, W> {}
-
-impl<D: Directional, W: Layout> event::Handler for List<D, W> {
-    type Msg = <W as event::Handler>::Msg;
-}
-
-impl<D: Directional, W: Layout> Layout for List<D, W> {
+impl<D: Directional, W: Widget> Layout for List<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut solver = layout::RowSolver::<Vec<u32>, _>::new(
             axis,
@@ -180,7 +173,13 @@ impl<D: Directional, W: Layout> Layout for List<D, W> {
             w.draw(draw_handle, mgr)
         });
     }
+}
 
+impl<D: Directional, W: Widget> event::Handler for List<D, W> {
+    type Msg = <W as event::Handler>::Msg;
+}
+
+impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         for child in &mut self.widgets {
             if id <= child.id() {
@@ -191,6 +190,8 @@ impl<D: Directional, W: Layout> Layout for List<D, W> {
         Response::Unhandled(event)
     }
 }
+
+impl<D: Directional, W: Widget> Widget for List<D, W> {}
 
 impl<D: Directional + Default, W: Widget> List<D, W> {
     /// Construct a new instance

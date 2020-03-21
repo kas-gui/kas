@@ -10,17 +10,14 @@ use std::fmt::{self, Debug};
 use std::rc::Rc;
 
 use super::Label;
-use crate::class::HasBool;
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Action, Manager, Response, UpdateHandle, VoidMsg};
-use crate::geom::Rect;
-use crate::layout::{AxisInfo, SizeRules};
-use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, CowString, Layout, Widget, WidgetCore, WidgetId};
+use kas::class::HasBool;
+use kas::draw::{DrawHandle, SizeHandle};
+use kas::event::{Action, Manager, Response, UpdateHandle, VoidMsg};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::prelude::*;
 
 /// A bare radiobox (no label)
-#[widget_core(key_nav = true)]
-#[handler(noderive)]
+#[handler(event)]
 #[derive(Clone, Widget)]
 pub struct RadioBoxBare<M> {
     #[widget_core]
@@ -40,9 +37,13 @@ impl<M> Debug for RadioBoxBare<M> {
     }
 }
 
-impl<M> Widget for RadioBoxBare<M> {
+impl<M> WidgetConfig for RadioBoxBare<M> {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.update_on_handle(self.handle, self.id());
+    }
+
+    fn key_nav(&self) -> bool {
+        true
     }
 }
 
@@ -184,8 +185,8 @@ impl<M> HasBool for RadioBoxBare<M> {
 
 /// A radiobox with optional label
 #[layout(horizontal, area=radiobox)]
-#[widget]
-#[handler(msg = M; generics = <> where M: From<VoidMsg>)]
+#[widget_config]
+#[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Widget)]
 pub struct RadioBox<M> {
     #[widget_core]

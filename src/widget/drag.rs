@@ -7,12 +7,10 @@
 
 use std::fmt::Debug;
 
-use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Manager, PressSource, Response};
-use crate::geom::*;
-use crate::layout::{AxisInfo, SizeRules};
-use crate::macros::Widget;
-use crate::{AlignHints, CoreData, Layout, WidgetCore, WidgetId};
+use kas::draw::{DrawHandle, SizeHandle};
+use kas::event::{Event, Manager, PressSource, Response};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::prelude::*;
 
 /// Draggable Handle
 ///
@@ -29,7 +27,8 @@ use crate::{AlignHints, CoreData, Layout, WidgetCore, WidgetId};
 /// 3.  [`Layout::draw`] does nothing. The parent should handle all drawing.
 /// 4.  Optionally, this widget can handle clicks on the track area via
 ///     [`DragHandle::handle_press_on_track`].
-#[widget]
+#[widget_config]
+#[handler(action, msg = Coord)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct DragHandle {
     #[widget_core]
@@ -127,11 +126,6 @@ impl DragHandle {
     }
 }
 
-impl event::Handler for DragHandle {
-    /// Offset from first possible position (should be non-negative).
-    type Msg = Coord;
-}
-
 /// This implementation is unusual in that:
 ///
 /// 1.  `size_rules` always returns [`SizeRules::EMPTY`]
@@ -149,7 +143,9 @@ impl Layout for DragHandle {
     }
 
     fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState) {}
+}
 
+impl event::EventHandler for DragHandle {
     fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::PressStart { source, coord, .. } => {

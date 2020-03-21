@@ -9,7 +9,7 @@ use std::fmt;
 use std::ops::DerefMut;
 
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Event, Manager, ManagerState, Response};
+use crate::event::{self, Manager, ManagerState};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, WidgetId};
@@ -60,9 +60,9 @@ pub trait WidgetCore: fmt::Debug {
     fn widget_name(&self) -> &'static str;
 
     /// Erase type
-    fn as_widget(&self) -> &dyn Widget;
+    fn as_widget(&self) -> &dyn WidgetConfig;
     /// Erase type
-    fn as_widget_mut(&mut self) -> &mut dyn Widget;
+    fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig;
 
     /// Get the number of child widgets
     fn len(&self) -> usize;
@@ -73,7 +73,7 @@ pub trait WidgetCore: fmt::Debug {
     /// For convenience, `Index<usize>` is implemented via this method.
     ///
     /// Required: `index < self.len()`.
-    fn get(&self, index: usize) -> Option<&dyn Widget>;
+    fn get(&self, index: usize) -> Option<&dyn WidgetConfig>;
 
     /// Mutable variant of get
     ///
@@ -81,13 +81,13 @@ pub trait WidgetCore: fmt::Debug {
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
     /// be requested. This can be done via [`Manager::send_action`].
     /// This method may be removed in the future.
-    fn get_mut(&mut self, index: usize) -> Option<&mut dyn Widget>;
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
     /// Find a child widget by identifier
     ///
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
-    fn find(&self, id: WidgetId) -> Option<&dyn Widget> {
+    fn find(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
         if id == self.id() {
             return Some(self.as_widget());
         } else if id > self.id() {
@@ -110,7 +110,7 @@ pub trait WidgetCore: fmt::Debug {
     ///
     /// This requires that the widget tree has already been configured by
     /// [`ManagerState::configure`].
-    fn find_mut(&mut self, id: WidgetId) -> Option<&mut dyn Widget> {
+    fn find_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
         if id == self.id() {
             return Some(self.as_widget_mut());
         } else if id > self.id() {
@@ -133,44 +133,49 @@ pub trait WidgetCore: fmt::Debug {
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk(&self, f: &mut dyn FnMut(&dyn Widget));
+    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig));
 
     /// Walk through all widgets, calling `f` once on each.
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn Widget));
+    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig));
+}
+
+/// Widget configuration
+///
+/// This trait allows some configuration of widget behaviour. All items have
+/// default values. This trait may be implemented by hand, or may be derived
+/// with the [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro)
+/// by use of a `#[widget_config]` attribute. Optionally, this attribute can
+/// contain parameters, e.g. `#[widget_config(key_nav = true)]`.
+// TODO(specialization): provide a blanket implementation, so that users only
+// need implement manually when they have something to configure.
+pub trait WidgetConfig: Layout {
+    /// Configure widget
+    ///
+    /// Widgets are *configured* on window creation and when
+    /// [`kas::TkAction::Reconfigure`] is sent.
+    ///
+    /// Configuration happens after resizing. This method is called after
+    /// a [`WidgetId`] has been assigned to self and to each child.
+    ///
+    /// The default implementation of this method does nothing.
+    fn configure(&mut self, _: &mut Manager) {}
 
     /// Is this widget navigable via Tab key?
+    ///
+    /// Defaults to `false`.
     fn key_nav(&self) -> bool {
         false
     }
 
     /// Which cursor icon should be used on hover?
     ///
-    /// Where no specific icon should be used, return [`event::CursorIcon::Default`].
+    /// Defaults to [`event::CursorIcon::Default`].
     fn cursor_icon(&self) -> event::CursorIcon {
         event::CursorIcon::Default
     }
-}
-
-/// A widget is a UI element.
-///
-/// Widgets usually occupy space within the UI and are drawable. Widgets may
-/// respond to user events. Widgets may have child widgets.
-///
-/// Widgets must additionally implement the traits [`WidgetCore`], [`Layout`]
-/// and [`event::Handler`]. The
-/// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro) may be
-/// used to generate some of these implementations.
-pub trait Widget: WidgetCore {
-    /// Configure widget
-    ///
-    /// Widgets are *configured* on window creation and when
-    /// [`kas::TkAction::Reconfigure`] is sent.
-    ///
-    /// This method is called immediately after assigning `self.core_data().id`.
-    fn configure(&mut self, _: &mut Manager) {}
 }
 
 /// Positioning and drawing routines for widgets
@@ -179,7 +184,7 @@ pub trait Widget: WidgetCore {
 /// as well as low-level event handling.
 ///
 /// For a description of the widget size model, see [`SizeRules`].
-pub trait Layout: event::Handler {
+pub trait Layout: WidgetCore {
     /// Get size rules for the given axis.
     ///
     /// This method takes `&mut self` to allow local caching of child widget
@@ -237,35 +242,20 @@ pub trait Layout: event::Handler {
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState);
-
-    /// Handle a low-level event.
-    ///
-    /// Most non-parent widgets will not need to implement this method manually.
-    /// The default implementation (which wraps [`Manager::handle_generic`])
-    /// forwards high-level events via [`Handler::action`], thus the only reason
-    /// for non-parent widgets to implement this manually is for low-level
-    /// event processing.
-    ///
-    /// Parent widgets should forward events to the appropriate child widget,
-    /// via logic like the following:
-    /// ```norun
-    /// if id <= self.child1.id() {
-    ///     self.child1.event(mgr, id, event).into()
-    /// } else if id <= self.child2.id() {
-    ///     self.child2.event(mgr, id, event).into()
-    /// } else {
-    ///     debug_assert!(id == self.id(), "Layout::event: bad WidgetId");
-    ///     // either handle `event`, or return:
-    ///     Response::Unhandled(event)
-    /// }
-    /// ```
-    /// Optionally, the return value of child event handlers may be intercepted
-    /// in order to handle returned messages and/or unhandled events.
-    #[inline]
-    fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
-        Manager::handle_generic(self, mgr, event)
-    }
 }
+
+/// Widget trait
+///
+/// This is one of a family of widget traits, all of which must be implemented
+/// for a functional widget. In general, most traits will be implemented via the
+/// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro).
+///
+/// A [`Widget`] may be passed into a generic function via
+/// `fn foo<W: Widget>(w: &mut W)` or via
+/// `fn foo<M>(w: &mut dyn Widget<Msg = M>)`, or, e.g.
+/// `fn foo(w: &mut dyn WidgetConfig)` (note that `WidgetConfig` is the last unparameterised
+/// trait in the widget trait family).
+pub trait Widget: event::EventHandler {}
 
 /// Trait to describe the type needed by the layout implementation.
 ///
@@ -291,7 +281,7 @@ pub trait LayoutData {
 // Window should be a Widget. So alternatives are (1) use a struct instead of a
 // trait or (2) allow any Widget to derive Window (i.e. implement required
 // functionality with macros instead of the generic code below).
-pub trait Window: Layout<Msg = event::VoidMsg> {
+pub trait Window: Widget<Msg = event::VoidMsg> {
     /// Get the window title
     fn title(&self) -> &str;
 

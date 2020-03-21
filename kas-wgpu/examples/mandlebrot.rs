@@ -14,12 +14,11 @@ use wgpu::ShaderModule;
 
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{self, Event, Manager, Response, VoidResponse};
+use kas::event::{Event, Manager, Response, VoidResponse};
 use kas::geom::{Coord, DVec2, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
-use kas::macros::make_widget;
+use kas::prelude::*;
 use kas::widget::{Label, Slider, Window};
-use kas::{AlignHints, Layout, ThemeApi, Vertical, WidgetCore, WidgetId};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawWindow};
 use kas_wgpu::Options;
 
@@ -391,7 +390,8 @@ impl PipeWindow {
     }
 }
 
-#[widget]
+#[widget_config]
+#[handler(action, msg = ())]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Mandlebrot {
     #[widget_core]
@@ -402,10 +402,6 @@ struct Mandlebrot {
     view_alpha: f64,
     rel_width: f32,
     iter: i32,
-}
-
-impl event::Handler for Mandlebrot {
-    type Msg = ();
 }
 
 impl Layout for Mandlebrot {
@@ -441,7 +437,9 @@ impl Layout for Mandlebrot {
         let p = (self.alpha, self.delta, self.rel_width, self.iter);
         draw.custom(region, self.core.rect + offset, p);
     }
+}
 
+impl event::EventHandler for Mandlebrot {
     fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
             Event::Action(event::Action::Scroll(delta)) => {
@@ -518,7 +516,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let slider = Slider::new(0, 256).with_value(64);
 
     let window = make_widget! {
-        #[widget]
+        #[widget_config]
         #[layout(grid)]
         #[handler(msg = event::VoidMsg)]
         struct {

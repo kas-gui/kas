@@ -19,7 +19,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new(
         "Layout demo",
         make_widget! {
-            #[widget]
+            #[widget_config]
             #[layout(grid)]
             #[handler(msg = VoidMsg)]
             struct {

@@ -8,13 +8,11 @@
 //! KAS dialog boxes are pre-configured windows, usually allowing some
 //! customisation.
 
-use crate::draw::SizeHandle;
-use crate::event::{Callback, Manager, Response, VoidMsg};
-use crate::geom::Size;
-use crate::layout;
-use crate::macros::{VoidMsg, Widget};
-use crate::widget::{Label, TextButton};
-use crate::{CoreData, CowString, TkAction, Window};
+use kas::draw::SizeHandle;
+use kas::event::{Callback, Manager, Response, VoidMsg};
+use kas::layout;
+use kas::prelude::*;
+use kas::widget::{Label, TextButton};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum DialogButton {
@@ -22,7 +20,7 @@ enum DialogButton {
 }
 
 /// A simple message box.
-#[widget]
+#[widget_config]
 #[layout(vertical)]
 #[handler]
 #[derive(Clone, Debug, Widget)]

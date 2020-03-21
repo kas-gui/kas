@@ -7,7 +7,8 @@
 //!
 //! KAS is a GUI library. This crate provides the following:
 //!
-//! -   a widget model: [`WidgetCore`], [`Layout`], [`Widget`], [`event::Handler`] traits
+//! -   a widget model: [`WidgetCore`], [`WidgetConfig`], [`Layout`],
+//!     [`Widget`], [`event::Handler`] traits
 //! -   a [`layout`] engine (mostly configured through [`macros`])
 //! -   a modular [`draw`] API
 //! -   widget [`event`] handling
@@ -35,6 +36,7 @@ pub mod draw;
 pub mod event;
 pub mod geom;
 pub mod layout;
+pub mod prelude;
 pub mod widget;
 
 // macro re-exports

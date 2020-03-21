@@ -12,8 +12,8 @@ use syn::spanned::Spanned;
 use syn::token::{Brace, Colon, Comma, Eq, Impl, Paren};
 use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{
-    Attribute, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident,
-    Index, Lit, Member, Token, Type, TypePath, TypeTraitObject,
+    Attribute, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Index,
+    Lit, Member, Token, Type, TypePath, TypeTraitObject,
 };
 
 #[derive(Debug)]
@@ -25,8 +25,7 @@ pub struct Child {
 pub struct Args {
     pub core_data: Member,
     pub layout_data: Option<Member>,
-    pub widget_core: WidgetCore,
-    pub widget: Option<WidgetArgs>,
+    pub widget_config: Option<WidgetConfig>,
     pub layout: Option<LayoutArgs>,
     pub handler: Vec<HandlerArgs>,
     pub children: Vec<Child>,
@@ -97,28 +96,18 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
-    let mut widget_core = None;
-    let mut widget = None;
+    let mut widget_config = None;
     let mut layout = None;
     let mut handler = vec![];
 
     for attr in ast.attrs.drain(..) {
-        if attr.path == parse_quote! { widget_core } {
-            if widget_core.is_none() {
-                widget_core = Some(syn::parse2(attr.tokens)?);
+        if attr.path == parse_quote! { widget_config } {
+            if widget_config.is_none() {
+                widget_config = Some(syn::parse2(attr.tokens)?);
             } else {
                 attr.span()
                     .unwrap()
-                    .error("multiple #[widget_core(..)] attributes on type")
-                    .emit()
-            }
-        } else if attr.path == parse_quote! { widget } {
-            if widget.is_none() {
-                widget = Some(syn::parse2(attr.tokens)?);
-            } else {
-                attr.span()
-                    .unwrap()
-                    .error("multiple #[widget(..)] attributes on type")
+                    .error("multiple #[widget_config(..)] attributes on type")
                     .emit()
             }
         } else if attr.path == parse_quote! { layout } {
@@ -135,14 +124,11 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
-    let widget_core = widget_core.unwrap_or(WidgetCore::default());
-
     if let Some(core_data) = core_data {
         Ok(Args {
             core_data,
             layout_data,
-            widget_core,
-            widget,
+            widget_config,
             layout,
             handler,
             children,
@@ -188,7 +174,10 @@ mod kw {
     custom_keyword!(valign);
     custom_keyword!(key_nav);
     custom_keyword!(cursor_icon);
-    custom_keyword!(noderive);
+    custom_keyword!(none);
+    custom_keyword!(all);
+    custom_keyword!(action);
+    custom_keyword!(event);
 }
 
 #[derive(Debug)]
@@ -390,23 +379,23 @@ impl ToTokens for GridPos {
     }
 }
 
-pub struct WidgetCore {
+pub struct WidgetConfig {
     pub key_nav: bool,
     pub cursor_icon: Expr,
 }
 
-impl Default for WidgetCore {
+impl Default for WidgetConfig {
     fn default() -> Self {
-        WidgetCore {
+        WidgetConfig {
             key_nav: false,
             cursor_icon: parse_quote! { kas::event::CursorIcon::Default },
         }
     }
 }
 
-impl Parse for WidgetCore {
+impl Parse for WidgetConfig {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut props = WidgetCore::default();
+        let mut props = WidgetConfig::default();
 
         if input.is_empty() {
             return Ok(props);
@@ -440,25 +429,6 @@ impl Parse for WidgetCore {
         }
 
         Ok(props)
-    }
-}
-
-pub struct WidgetArgs {}
-
-impl Parse for WidgetArgs {
-    fn parse(input: ParseStream) -> Result<Self> {
-        if input.is_empty() {
-            return Ok(WidgetArgs {});
-        }
-
-        let content;
-        let _ = parenthesized!(content in input);
-
-        if !content.is_empty() {
-            return Err(Error::new(content.span(), "unexpected content"));
-        }
-
-        Ok(WidgetArgs {})
     }
 }
 
@@ -532,87 +502,165 @@ impl Parse for LayoutArgs {
     }
 }
 
+#[derive(Debug)]
 pub struct HandlerArgs {
-    pub noderive: bool,
+    pub action: bool,
+    pub event: bool,
     pub msg: Type,
     pub substitutions: HashMap<Ident, Type>,
     pub generics: Generics,
 }
 
-impl Default for HandlerArgs {
-    fn default() -> Self {
+impl HandlerArgs {
+    pub fn new(msg: Type) -> Self {
         HandlerArgs {
-            noderive: true,
-            msg: parse_quote! { kas::event::VoidMsg },
+            action: false,
+            event: false,
+            msg,
             substitutions: Default::default(),
             generics: Default::default(),
         }
     }
 }
 
+impl Default for HandlerArgs {
+    fn default() -> Self {
+        HandlerArgs::new(parse_quote! { kas::event::VoidMsg })
+    }
+}
+
 impl Parse for HandlerArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut have_noderive = false;
+        let mut have_config = false;
         let mut have_msg = false;
-        let mut have_subs = false;
         let mut have_gen = false;
         let mut args = HandlerArgs::default();
-        args.noderive = false;
 
-        if input.is_empty() {
-            return Ok(args);
+        if !input.is_empty() {
+            let content;
+            let _ = parenthesized!(content in input);
+
+            while !content.is_empty() {
+                let lookahead = content.lookahead1();
+                if !have_config && lookahead.peek(kw::none) {
+                    let _: kw::none = content.parse()?;
+                    have_config = true;
+                } else if !have_config && lookahead.peek(kw::all) {
+                    let _: kw::all = content.parse()?;
+                    args.action = true;
+                    args.event = true;
+                    have_config = true;
+                } else if !have_config && lookahead.peek(kw::action) {
+                    let _: kw::action = content.parse()?;
+                    args.action = true;
+                    have_config = true;
+                } else if !have_config && lookahead.peek(kw::event) {
+                    let _: kw::event = content.parse()?;
+                    args.event = true;
+                    have_config = true;
+                } else if !have_msg && lookahead.peek(kw::msg) {
+                    have_msg = true;
+                    let _: kw::msg = content.parse()?;
+                    let _: Eq = content.parse()?;
+                    args.msg = content.parse()?;
+                } else if !have_gen && lookahead.peek(kw::generics) {
+                    have_gen = true;
+                    let _: kw::generics = content.parse()?;
+                    let _: Eq = content.parse()?;
+
+                    // Optionally, substitutions come first
+                    while content.peek(Ident) {
+                        let ident: Ident = content.parse()?;
+                        let _: Token![=>] = content.parse()?;
+                        let ty: Type = content.parse()?;
+                        args.substitutions.insert(ident, ty);
+                        let _: Comma = content.parse()?;
+                    }
+
+                    if content.peek(Token![<]) {
+                        args.generics = content.parse()?;
+                        if content.peek(Token![where]) {
+                            args.generics.where_clause = content.parse()?;
+                        }
+                    } else {
+                        return Err(Error::new(
+                            content.span(),
+                            "expected `< ... > [where ...]` or `T => Substitution ...`",
+                        ));
+                    }
+
+                    if !content.is_empty() {
+                        return Err(Error::new(
+                            content.span(),
+                            "no more content expected (`generics` must be last parameter)",
+                        ));
+                    }
+                } else {
+                    return Err(lookahead.error());
+                }
+
+                if content.peek(Comma) {
+                    let _: Comma = content.parse()?;
+                }
+            }
         }
 
-        let content;
-        let _ = parenthesized!(content in input);
-
-        while !content.is_empty() {
-            let lookahead = content.lookahead1();
-            if !have_noderive && lookahead.peek(kw::noderive) {
-                have_noderive = true;
-                let _: kw::noderive = content.parse()?;
-                args.noderive = true;
-            } else if !have_msg && lookahead.peek(kw::msg) {
-                have_msg = true;
-                let _: kw::msg = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.msg = content.parse()?;
-            } else if !have_subs && lookahead.peek(kw::substitutions) {
-                have_subs = true;
-                let _: kw::substitutions = content.parse()?;
-                let _: Eq = content.parse()?;
-                let content2;
-                let _ = parenthesized!(content2 in content);
-                while !content2.is_empty() {
-                    // TODO: ideally we should support substitution of lifetime and
-                    // const generic parameters too.
-                    let ident: Ident = content2.parse()?;
-                    let _: Eq = content2.parse()?;
-                    let ty: Type = content2.parse()?;
-                    if content2.peek(Comma) {
-                        let _: Comma = content2.parse()?;
-                    }
-                    args.substitutions.insert(ident, ty);
-                }
-            } else if !have_gen && lookahead.peek(kw::generics) {
-                have_gen = true;
-                let _: kw::generics = content.parse()?;
-                let _: Eq = content.parse()?;
-                args.generics = content.parse()?;
-                if content.peek(Token![where]) {
-                    args.generics.where_clause = content.parse()?;
-                }
-            } else {
-                return Err(lookahead.error());
-            }
-
-            // Unusually, we use semi-colon separators
-            if content.peek(Token![;]) {
-                let _: Token![;] = content.parse()?;
-            }
+        if !have_config {
+            // default to all
+            args.action = true;
+            args.event = true;
         }
 
         Ok(args)
+    }
+}
+
+impl ToTokens for HandlerArgs {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        <Token![#]>::default().to_tokens(tokens);
+        syn::token::Bracket::default().surround(tokens, |tokens| {
+            kw::handler::default().to_tokens(tokens);
+            syn::token::Paren::default().surround(tokens, |tokens| {
+                match (self.action, self.event) {
+                    (false, false) => kw::none::default().to_tokens(tokens),
+                    (false, true) => kw::event::default().to_tokens(tokens),
+                    (true, false) => kw::action::default().to_tokens(tokens),
+                    (true, true) => kw::all::default().to_tokens(tokens),
+                };
+                Comma::default().to_tokens(tokens);
+
+                kw::msg::default().to_tokens(tokens);
+                Eq::default().to_tokens(tokens);
+                self.msg.to_tokens(tokens);
+                Comma::default().to_tokens(tokens);
+
+                if !self.substitutions.is_empty()
+                    || !self.generics.params.is_empty()
+                    || self.generics.where_clause.is_some()
+                {
+                    kw::generics::default().to_tokens(tokens);
+                    Eq::default().to_tokens(tokens);
+
+                    for (k, v) in &self.substitutions {
+                        k.to_tokens(tokens);
+                        <Token![=>]>::default().to_tokens(tokens);
+                        v.to_tokens(tokens);
+                        Comma::default().to_tokens(tokens);
+                    }
+
+                    self.generics.to_tokens(tokens);
+                    if let Some(ref clause) = self.generics.where_clause {
+                        if self.generics.params.is_empty() {
+                            // generics doesn't print <> in this case
+                            <Token![<]>::default().to_tokens(tokens);
+                            <Token![>]>::default().to_tokens(tokens);
+                        }
+                        clause.where_token.to_tokens(tokens);
+                        clause.predicates.to_tokens(tokens);
+                    }
+                }
+            });
+        });
     }
 }
 
@@ -630,25 +678,9 @@ pub struct WidgetField {
     pub value: Expr,
 }
 
-struct HandlerAttrToks {
-    msg: Type,
-}
-
-impl Parse for HandlerAttrToks {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let content;
-        let _ = parenthesized!(content in input);
-        let _: kw::msg = content.parse()?;
-        let _: Eq = content.parse()?;
-        let msg = content.parse()?;
-
-        Ok(HandlerAttrToks { msg })
-    }
-}
-
 pub struct MakeWidget {
-    // handler: Msg type
-    pub handler_msg: Option<Type>,
+    // handler attribute
+    pub handler: Option<HandlerArgs>,
     // additional attributes
     pub extra_attrs: TokenStream,
     pub generics: Generics,
@@ -661,16 +693,15 @@ pub struct MakeWidget {
 
 impl Parse for MakeWidget {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut handler_msg = None;
+        let mut handler = None;
         let mut extra_attrs = TokenStream::new();
         let mut attrs = input.call(Attribute::parse_outer)?;
         for attr in attrs.drain(..) {
             if attr.path == parse_quote! { handler } {
-                if handler_msg.is_some() {
+                if handler.is_some() {
                     return Err(Error::new(attr.span(), "duplicate `handler` attribute"));
                 }
-                let hat: HandlerAttrToks = syn::parse2(attr.tokens)?;
-                handler_msg = Some(hat.msg);
+                handler = Some(syn::parse2(attr.tokens)?);
             } else {
                 extra_attrs.append_all(quote! { #attr });
             }
@@ -718,7 +749,7 @@ impl Parse for MakeWidget {
         }
 
         Ok(MakeWidget {
-            handler_msg,
+            handler,
             extra_attrs,
             generics,
             struct_span: s.span(),

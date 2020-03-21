@@ -7,13 +7,11 @@
 
 use std::fmt::{self, Debug};
 
-use crate::class::{Editable, HasText};
-use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{self, Action, Manager, Response, VoidMsg};
-use crate::layout::{AxisInfo, SizeRules};
-use crate::macros::Widget;
-use crate::{Align, AlignHints, CoreData, CowString, Layout, WidgetCore};
-use kas::geom::Rect;
+use kas::class::{Editable, HasText};
+use kas::draw::{DrawHandle, SizeHandle, TextClass};
+use kas::event::{Action, Manager, Response, VoidMsg};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
 enum LastEdit {
@@ -121,9 +119,8 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
 }
 
 /// An editable, single-line text box.
-#[widget]
-#[widget_core(key_nav = true, cursor_icon = event::CursorIcon::Text)]
-#[handler(noderive; generics = <> where G: EditGuard)]
+#[widget_config(key_nav = true, cursor_icon = event::CursorIcon::Text)]
+#[handler(event, generics = <> where G: EditGuard)]
 #[derive(Clone, Default, Widget)]
 pub struct EditBox<G: 'static> {
     #[widget_core]
@@ -149,7 +146,7 @@ impl<G> Debug for EditBox<G> {
     }
 }
 
-impl<G: EditGuard + 'static> Layout for EditBox<G> {
+impl<G: 'static> Layout for EditBox<G> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let frame_sides = size_handle.edit_surround();
         let inner = size_handle.inner_margin();

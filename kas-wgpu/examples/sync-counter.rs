@@ -9,10 +9,10 @@
 use std::cell::RefCell;
 
 use kas::class::HasText;
-use kas::event::{Action, Handler, Manager, UpdateHandle, VoidMsg, Response};
+use kas::event::{Action, Handler, Manager, Response, UpdateHandle, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};
-use kas::{ThemeApi, Widget, WidgetCore};
+use kas::{ThemeApi, WidgetConfig, WidgetCore};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {
@@ -29,7 +29,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let buttons = make_widget! {
-        #[widget]
+        #[widget_config]
         #[layout(horizontal)]
         #[handler(msg = Message)]
         struct {
@@ -44,12 +44,13 @@ fn main() -> Result<(), kas_wgpu::Error> {
         "Counter",
         make_widget! {
             #[layout(vertical)]
+            #[handler(event)]
             struct {
                 #[widget(halign=centre)] display: Label = Label::new("0"),
                 #[widget(handler = handle_button)] buttons -> Message = buttons,
                 handle: UpdateHandle = handle,
             }
-            impl Widget {
+            impl WidgetConfig {
                 fn configure(&mut self, mgr: &mut Manager) {
                     mgr.update_on_handle(self.handle, self.id());
                 }
