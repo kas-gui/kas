@@ -15,7 +15,7 @@ use kas::draw::{
     TextClass, TextProperties,
 };
 use kas::event::HighlightState;
-use kas::geom::{Coord, Rect, Vec2};
+use kas::geom::*;
 use kas::{Align, Direction, ThemeAction, ThemeApi};
 
 /// A theme with flat (unshaded) rendering
@@ -136,9 +136,10 @@ impl ThemeApi for FlatTheme {
 impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
     /// Draw an edit region with optional navigation highlight.
     /// Return the inner rect.
-    fn draw_edit_region(&mut self, outer: Rect, nav_col: Option<Colour>) -> Rect {
-        let inner1 = outer.shrink(self.window.dims.frame / 2);
-        let inner2 = outer.shrink(self.window.dims.frame);
+    fn draw_edit_region(&mut self, outer: Rect, nav_col: Option<Colour>) -> Quad {
+        let outer = Quad::from(outer);
+        let inner1 = outer.shrink(self.window.dims.frame as f32 / 2.0);
+        let inner2 = outer.shrink(self.window.dims.frame as f32);
 
         self.draw.rect(self.pass, inner1, self.cols.text_area);
 
@@ -185,8 +186,8 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     }
 
     fn outer_frame(&mut self, rect: Rect) {
-        let outer = rect + self.offset;
-        let inner = outer.shrink(self.window.dims.frame);
+        let outer = Quad::from(rect + self.offset);
+        let inner = outer.shrink(self.window.dims.frame as f32);
         self.draw
             .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
     }
@@ -210,15 +211,15 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     }
 
     fn button(&mut self, rect: Rect, highlights: HighlightState) {
-        let outer = rect + self.offset;
+        let outer = Quad::from(rect + self.offset);
         let col = self.cols.button_state(highlights);
 
-        let inner = outer.shrink(self.window.dims.button_frame);
+        let inner = outer.shrink(self.window.dims.button_frame as f32);
         self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
         self.draw.rect(self.pass, inner, col);
 
         if let Some(col) = self.cols.nav_region(highlights) {
-            let outer = outer.shrink(self.window.dims.button_frame / 3);
+            let outer = outer.shrink(self.window.dims.button_frame as f32 / 3.0);
             self.draw.rounded_frame(self.pass, outer, inner, 0.5, col);
         }
     }
@@ -239,14 +240,13 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         let inner = self.draw_edit_region(rect + self.offset, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(highlights, checked) {
-            let radius = (inner.size.0 + inner.size.1) / 16;
-            let inner = inner.shrink(self.window.dims.margin + radius);
-            let p1 = inner.pos;
-            let p2 = inner.pos + inner.size;
+            let radius = inner.size().sum() * (1.0 / 16.0);
+            let inner = inner.shrink(self.window.dims.margin as f32 + radius);
             let radius = radius as f32;
-            self.draw.rounded_line(self.pass, p1, p2, radius, col);
             self.draw
-                .rounded_line(self.pass, Coord(p1.0, p2.1), Coord(p2.0, p1.1), radius, col);
+                .rounded_line(self.pass, inner.a, inner.b, radius, col);
+            self.draw
+                .rounded_line(self.pass, inner.ab(), inner.ba(), radius, col);
         }
     }
 
@@ -262,7 +262,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         let inner = self.draw_edit_region(rect + self.offset, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(highlights, checked) {
-            let inner = inner.shrink(self.window.dims.margin);
+            let inner = inner.shrink(self.window.dims.margin as f32);
             self.draw.circle(self.pass, inner, 0.3, col);
         }
     }
@@ -276,32 +276,20 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     ) {
         // TODO: also draw slider behind handle: needs an extra layer?
 
-        let outer = h_rect + self.offset;
-        let half_width = outer.size.0.min(outer.size.1) / 2;
-        let inner = outer.shrink(half_width);
+        let outer = Quad::from(h_rect + self.offset);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let col = self.cols.scrollbar_state(highlights);
         self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
-        self.draw.rect(self.pass, inner, col);
     }
 
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
         // track
-        let mut outer = rect + self.offset;
-        // TODO: draw with floats; ints are too inaccurate!
-        let half;
-        match dir {
-            Direction::Horizontal => {
-                half = outer.size.1 / 8;
-                outer.pos.1 += 3 * half as i32;
-                outer.size.1 -= 6 * half;
-            }
-            Direction::Vertical => {
-                half = outer.size.0 / 8;
-                outer.pos.0 += 3 * half as i32;
-                outer.size.0 -= 6 * half;
-            }
+        let mut outer = Quad::from(rect + self.offset);
+        outer = match dir {
+            Direction::Horizontal => outer.shrink_vec(Vec2(0.0, outer.size().1 * (3.0 / 8.0))),
+            Direction::Vertical => outer.shrink_vec(Vec2(outer.size().0 * (3.0 / 8.0), 0.0)),
         };
-        let inner = outer.shrink(half);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let col = self.cols.frame;
         self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
 

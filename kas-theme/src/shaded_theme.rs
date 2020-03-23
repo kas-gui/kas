@@ -13,7 +13,7 @@ use kas::draw::{
     Region, TextClass, TextProperties,
 };
 use kas::event::HighlightState;
-use kas::geom::{Coord, Rect, Vec2};
+use kas::geom::*;
 use kas::{Align, Direction, ThemeAction, ThemeApi};
 
 /// A theme using simple shading to give apparent depth to elements
@@ -134,14 +134,16 @@ impl ThemeApi for ShadedTheme {
 impl<'a, D: Draw + DrawShaded> DrawHandle<'a, D> {
     /// Draw an edit region with optional navigation highlight.
     /// Return the inner rect.
-    fn draw_edit_region(&mut self, mut outer: Rect, nav_col: Option<Colour>) -> Rect {
-        let mut inner = outer.shrink(self.window.dims.frame);
+    fn draw_edit_region(&mut self, outer: Rect, nav_col: Option<Colour>) -> Quad {
+        let mut outer = Quad::from(outer);
+        let mut inner = outer.shrink(self.window.dims.frame as f32);
+
         self.draw
             .shaded_square_frame(self.pass, outer, inner, (-0.8, 0.0), self.cols.background);
 
         if let Some(col) = nav_col {
             outer = inner;
-            inner = outer.shrink(self.window.dims.margin);
+            inner = outer.shrink(self.window.dims.margin as f32);
             self.draw.frame(self.pass, outer, inner, col);
         }
 
@@ -183,8 +185,8 @@ where
     }
 
     fn outer_frame(&mut self, rect: Rect) {
-        let outer = rect + self.offset;
-        let inner = outer.shrink(self.window.dims.frame);
+        let outer = Quad::from(rect + self.offset);
+        let inner = outer.shrink(self.window.dims.frame as f32);
         self.draw
             .shaded_round_frame(self.pass, outer, inner, (0.6, -0.6), self.cols.background);
     }
@@ -208,8 +210,8 @@ where
     }
 
     fn button(&mut self, rect: Rect, highlights: HighlightState) {
-        let outer = rect + self.offset;
-        let inner = outer.shrink(self.window.dims.button_frame);
+        let outer = Quad::from(rect + self.offset);
+        let inner = outer.shrink(self.window.dims.button_frame as f32);
         let col = self.cols.button_state(highlights);
 
         self.draw
@@ -217,7 +219,7 @@ where
         self.draw.rect(self.pass, inner, col);
 
         if let Some(col) = self.cols.nav_region(highlights) {
-            let outer = outer.shrink(self.window.dims.button_frame / 3);
+            let outer = outer.shrink(self.window.dims.button_frame as f32 / 3.0);
             self.draw.rounded_frame(self.pass, outer, inner, 0.5, col);
         }
     }
@@ -267,32 +269,21 @@ where
     ) {
         // TODO: also draw slider behind handle: needs an extra layer?
 
-        let outer = h_rect + self.offset;
-        let half_width = outer.size.0.min(outer.size.1) / 2;
-        let inner = outer.shrink(half_width);
+        let outer = Quad::from(h_rect + self.offset);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let col = self.cols.scrollbar_state(highlights);
         self.draw
             .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
-        self.draw.rect(self.pass, inner, col);
     }
 
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
         // track
-        let mut outer = rect + self.offset;
-        let half;
-        match dir {
-            Direction::Horizontal => {
-                half = outer.size.1 / 8;
-                outer.pos.1 += 3 * half as i32;
-                outer.size.1 -= 6 * half;
-            }
-            Direction::Vertical => {
-                half = outer.size.0 / 8;
-                outer.pos.0 += 3 * half as i32;
-                outer.size.0 -= 6 * half;
-            }
+        let mut outer = Quad::from(h_rect + self.offset);
+        outer = match dir {
+            Direction::Horizontal => outer.shrink_vec(Vec2(0.0, outer.size().1 * (3.0 / 8.0))),
+            Direction::Vertical => outer.shrink_vec(Vec2(outer.size().0 * (3.0 / 8.0), 0.0)),
         };
-        let inner = outer.shrink(half);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let col = self.cols.background;
         self.draw
             .shaded_round_frame(self.pass, outer, inner, (0.0, -0.8), col);

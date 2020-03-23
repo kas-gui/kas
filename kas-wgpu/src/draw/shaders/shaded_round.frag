@@ -8,10 +8,10 @@
 
 precision mediump float;
 
-layout(location = 0) in vec3 fragColor;
-layout(location = 1) in vec2 dir;
-layout(location = 2) in vec2 adjust;
-layout(location = 3) in vec2 off;
+layout(location = 0) flat in vec3 fragColor;
+layout(location = 1) noperspective in vec2 dir;
+layout(location = 2) flat in vec2 adjust;
+layout(location = 3) noperspective in vec2 off;
 
 layout(location = 0) out vec4 outColor;
 
@@ -42,7 +42,7 @@ void main() {
     float z = sqrt(max(1.0 - ss, 0));
     float h = sqrt(ss);
     float t = adjust.x + adjust.y * atan(h, z);
-    vec2 normh;
+    vec2 normh = vec2(0.0);
     if (h > 0.0) {
         normh = dir * (sin(t) / h);
         z = cos(t);
@@ -54,6 +54,6 @@ void main() {
     // float z = sqrt(1.0 - adjust.y * ss);
     // vec3 norm = vec3(dir * sqrt(adjust.y), z);
 
-    vec3 c = fragColor * max(dot(norm, lightNorm), 0);
+    vec3 c = fragColor * dot(norm, lightNorm);
     outColor = vec4(c, alpha);
 }

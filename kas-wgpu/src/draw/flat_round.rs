@@ -9,7 +9,7 @@ use std::mem::size_of;
 
 use crate::draw::{Rgb, ShaderManager};
 use kas::draw::Colour;
-use kas::geom::{Coord, Rect, Size, Vec2};
+use kas::geom::{Quad, Size, Vec2};
 
 /// Offset relative to the size of a pixel used by the fragment shader to
 /// implement multi-sampling.
@@ -196,20 +196,16 @@ impl Window {
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);
     }
 
-    pub fn line(&mut self, pass: usize, p1: Coord, p2: Coord, radius: f32, col: Colour) {
+    pub fn line(&mut self, pass: usize, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
         if p1 == p2 {
-            let rect = Rect {
-                pos: p1 - Coord::uniform(radius as i32),
-                size: Size::uniform((radius * 2.0) as u32),
-            };
-            self.circle(pass, rect, radius, col);
+            let a = p1 - radius;
+            let b = p2 + radius;
+            self.circle(pass, Quad { a, b }, radius, col);
             return;
         }
 
         let col = col.into();
 
-        let p1 = Vec2::from(p1);
-        let p2 = Vec2::from(p2);
         let vx = p2 - p1;
         let vx = vx * radius / (vx.0 * vx.0 + vx.1 * vx.1).sqrt();
         let vy = Vec2(-vx.1, vx.0);
@@ -248,9 +244,9 @@ impl Window {
     }
 
     /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
-    pub fn circle(&mut self, pass: usize, rect: Rect, inner_radius: f32, col: Colour) {
-        let aa = Vec2::from(rect.pos);
-        let bb = aa + Vec2::from(rect.size);
+    pub fn circle(&mut self, pass: usize, rect: Quad, inner_radius: f32, col: Colour) {
+        let aa = rect.a;
+        let bb = rect.b;
 
         if !aa.lt(bb) {
             // zero / negative size: nothing to draw
@@ -293,15 +289,15 @@ impl Window {
     pub fn rounded_frame(
         &mut self,
         pass: usize,
-        outer: Rect,
-        inner: Rect,
+        outer: Quad,
+        inner: Quad,
         inner_radius: f32,
         col: Colour,
     ) {
-        let aa = Vec2::from(outer.pos);
-        let bb = aa + Vec2::from(outer.size);
-        let mut cc = Vec2::from(inner.pos);
-        let mut dd = cc + Vec2::from(inner.size);
+        let aa = outer.a;
+        let bb = outer.b;
+        let mut cc = inner.a;
+        let mut dd = inner.b;
 
         if !aa.lt(bb) {
             // zero / negative size: nothing to draw

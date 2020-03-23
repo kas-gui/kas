@@ -10,7 +10,7 @@ use std::mem::size_of;
 
 use crate::draw::{Rgb, ShaderManager};
 use kas::draw::Colour;
-use kas::geom::{Rect, Size, Vec2};
+use kas::geom::{Quad, Size, Vec2};
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -198,11 +198,10 @@ impl Window {
     }
 
     /// Add a rectangle to the buffer
-    pub fn rect(&mut self, pass: usize, rect: Rect, col: Colour) {
-        let pos = Vec2::from(rect.pos);
-        let size = Vec2::from(rect.size);
+    pub fn rect(&mut self, pass: usize, rect: Quad, col: Colour) {
+        let aa = rect.a;
+        let bb = rect.b;
 
-        let (aa, bb) = (pos, pos + size);
         if !aa.lt(bb) {
             // zero / negative size: nothing to draw
             return;
@@ -224,9 +223,9 @@ impl Window {
     /// Add a rect to the buffer, defined by two outer corners, `aa` and `bb`.
     ///
     /// Bounds on input: `aa < cc` and `-1 ≤ norm ≤ 1`.
-    pub fn shaded_rect(&mut self, pass: usize, rect: Rect, mut norm: Vec2, col: Colour) {
-        let aa = Vec2::from(rect.pos);
-        let bb = aa + Vec2::from(rect.size);
+    pub fn shaded_rect(&mut self, pass: usize, rect: Quad, mut norm: Vec2, col: Colour) {
+        let aa = rect.a;
+        let bb = rect.b;
 
         if !aa.lt(bb) {
             // zero / negative size: nothing to draw
@@ -256,7 +255,7 @@ impl Window {
     }
 
     #[inline]
-    pub fn frame(&mut self, pass: usize, outer: Rect, inner: Rect, col: Colour) {
+    pub fn frame(&mut self, pass: usize, outer: Quad, inner: Quad, col: Colour) {
         let norm = Vec2::splat(0.0);
         self.shaded_frame(pass, outer, inner, norm, col);
     }
@@ -268,15 +267,15 @@ impl Window {
     pub fn shaded_frame(
         &mut self,
         pass: usize,
-        outer: Rect,
-        inner: Rect,
+        outer: Quad,
+        inner: Quad,
         mut norm: Vec2,
         col: Colour,
     ) {
-        let aa = Vec2::from(outer.pos);
-        let bb = aa + Vec2::from(outer.size);
-        let mut cc = Vec2::from(inner.pos);
-        let mut dd = cc + Vec2::from(inner.size);
+        let aa = outer.a;
+        let bb = outer.b;
+        let mut cc = inner.a;
+        let mut dd = inner.b;
 
         if !aa.lt(bb) {
             // zero / negative size: nothing to draw

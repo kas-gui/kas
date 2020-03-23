@@ -48,7 +48,7 @@ const FRAGMENT: &'static str = "
 
 precision highp float;
 
-layout(location = 0) in vec2 cf;
+layout(location = 0) noperspective in vec2 cf;
 
 layout(location = 0) out vec4 outColor;
 
