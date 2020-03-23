@@ -40,7 +40,7 @@ const DIMS: DimensionsParams = DimensionsParams {
     frame_size: 5.0,
     button_frame: 5.0,
     scrollbar_size: Vec2::splat(8.0),
-    slider_size: Vec2(10.0, 25.0),
+    slider_size: Vec2(12.0, 25.0),
 };
 
 pub struct DrawHandle<'a, D: Draw> {
@@ -150,6 +150,15 @@ impl<'a, D: Draw + DrawShaded> DrawHandle<'a, D> {
         self.draw.rect(self.pass, inner, self.cols.text_area);
         inner
     }
+
+    /// Draw a handle (for slider, scrollbar)
+    fn draw_handle(&mut self, rect: Rect, highlights: HighlightState) {
+        let outer = Quad::from(rect + self.offset);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
+        let col = self.cols.scrollbar_state(highlights);
+        self.draw
+            .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
+    }
 }
 
 impl<'a, D> draw::DrawHandle for DrawHandle<'a, D>
@@ -187,8 +196,10 @@ where
     fn outer_frame(&mut self, rect: Rect) {
         let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(self.window.dims.frame as f32);
+        let norm = (0.7, -0.7);
+        let col = self.cols.background;
         self.draw
-            .shaded_round_frame(self.pass, outer, inner, (0.6, -0.6), self.cols.background);
+            .shaded_round_frame(self.pass, outer, inner, norm, col);
     }
 
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
@@ -260,35 +271,33 @@ where
         }
     }
 
-    fn scrollbar(
-        &mut self,
-        _rect: Rect,
-        h_rect: Rect,
-        _dir: Direction,
-        highlights: HighlightState,
-    ) {
-        // TODO: also draw slider behind handle: needs an extra layer?
-
-        let outer = Quad::from(h_rect + self.offset);
+    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, _dir: Direction, highlights: HighlightState) {
+        // track
+        let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        let col = self.cols.scrollbar_state(highlights);
+        let norm = (0.0, -0.7);
+        let col = self.cols.background;
         self.draw
-            .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
+            .shaded_round_frame(self.pass, outer, inner, norm, col);
+
+        // handle
+        self.draw_handle(h_rect, highlights);
     }
 
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
         // track
-        let mut outer = Quad::from(h_rect + self.offset);
+        let mut outer = Quad::from(rect + self.offset);
         outer = match dir {
             Direction::Horizontal => outer.shrink_vec(Vec2(0.0, outer.size().1 * (3.0 / 8.0))),
             Direction::Vertical => outer.shrink_vec(Vec2(outer.size().0 * (3.0 / 8.0), 0.0)),
         };
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
+        let norm = (0.0, -0.7);
         let col = self.cols.background;
         self.draw
-            .shaded_round_frame(self.pass, outer, inner, (0.0, -0.8), col);
+            .shaded_round_frame(self.pass, outer, inner, norm, col);
 
         // handle
-        self.scrollbar(rect, h_rect, dir, highlights);
+        self.draw_handle(h_rect, highlights);
     }
 }

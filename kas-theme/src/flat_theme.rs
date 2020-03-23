@@ -42,7 +42,7 @@ const DIMS: DimensionsParams = DimensionsParams {
     frame_size: 4.0,
     button_frame: 6.0,
     scrollbar_size: Vec2::splat(8.0),
-    slider_size: Vec2(10.0, 25.0),
+    slider_size: Vec2(12.0, 25.0),
 };
 
 pub struct DrawHandle<'a, D: Draw> {
@@ -153,6 +153,14 @@ impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
         }
 
         inner2
+    }
+
+    /// Draw a handle (for slider, scrollbar)
+    fn draw_handle(&mut self, rect: Rect, highlights: HighlightState) {
+        let outer = Quad::from(rect + self.offset);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
+        let col = self.cols.scrollbar_state(highlights);
+        self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
     }
 }
 
@@ -267,19 +275,15 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         }
     }
 
-    fn scrollbar(
-        &mut self,
-        _rect: Rect,
-        h_rect: Rect,
-        _dir: Direction,
-        highlights: HighlightState,
-    ) {
-        // TODO: also draw slider behind handle: needs an extra layer?
-
-        let outer = Quad::from(h_rect + self.offset);
+    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, _dir: Direction, highlights: HighlightState) {
+        // track
+        let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
-        let col = self.cols.scrollbar_state(highlights);
+        let col = self.cols.frame;
         self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
+
+        // handle
+        self.draw_handle(h_rect, highlights);
     }
 
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
@@ -294,6 +298,6 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
 
         // handle
-        self.scrollbar(rect, h_rect, dir, highlights);
+        self.draw_handle(h_rect, highlights);
     }
 }
