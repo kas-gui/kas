@@ -55,7 +55,7 @@ impl MessageBox {
     }
 }
 
-impl Window for MessageBox {
+impl kas::Window for MessageBox {
     fn title(&self) -> &str {
         &self.title
     }

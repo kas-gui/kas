@@ -7,20 +7,18 @@
 
 use std::fmt::{self, Debug};
 
-use kas::draw::SizeHandle;
+use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{Callback, Manager, VoidMsg};
+use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// The main instantiation of the [`Window`] trait.
 #[widget_config]
-#[layout(single)]
 #[handler(generics = <> where W: Widget<Msg = VoidMsg>)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
     #[widget_core]
     core: CoreData,
-    #[layout_data]
-    layout_data: <Self as LayoutData>::Data,
     enforce_min: bool,
     enforce_max: bool,
     title: CowString,
@@ -51,7 +49,6 @@ impl<W: Widget + Clone> Clone for Window<W> {
     fn clone(&self) -> Self {
         Window {
             core: self.core.clone(),
-            layout_data: self.layout_data.clone(),
             enforce_min: self.enforce_min,
             enforce_max: self.enforce_max,
             title: self.title.clone(),
@@ -66,7 +63,6 @@ impl<W: Widget> Window<W> {
     pub fn new<T: Into<CowString>>(title: T, w: W) -> Window<W> {
         Window {
             core: Default::default(),
-            layout_data: Default::default(),
             enforce_min: true,
             enforce_max: false,
             title: title.into(),
@@ -87,6 +83,29 @@ impl<W: Widget> Window<W> {
     /// condition. The closure must be passed by reference.
     pub fn add_callback(&mut self, condition: Callback, f: &'static dyn Fn(&mut W, &mut Manager)) {
         self.fns.push((condition, f));
+    }
+}
+
+impl<W: Widget> Layout for Window<W> {
+    #[inline]
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        self.w.size_rules(size_handle, axis)
+    }
+
+    #[inline]
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+        self.core.rect = rect;
+        self.w.set_rect(size_handle, rect, align);
+    }
+
+    #[inline]
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        self.w.find_id(coord)
+    }
+
+    #[inline]
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+        self.w.draw(draw_handle, mgr);
     }
 }
 
