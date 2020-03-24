@@ -13,7 +13,6 @@ use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// The main instantiation of the [`Window`] trait.
-#[widget_config]
 #[handler(generics = <> where W: Widget<Msg = VoidMsg>)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {

@@ -81,10 +81,7 @@ impl<'a> ToTokens for SubstTyGenerics<'a> {
 /// Macro to derive widget traits
 ///
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
-#[proc_macro_derive(
-    Widget,
-    attributes(widget_core, widget_config, widget, layout, handler, layout_data)
-)]
+#[proc_macro_derive(Widget, attributes(widget_core, widget, layout, handler, layout_data))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as syn::DeriveInput);
 
@@ -144,7 +141,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     };
 
-    if let Some(config) = args.widget_config {
+    if let Some(config) = args.widget.config {
         let key_nav = config.key_nav;
         let cursor_icon = config.cursor_icon;
 

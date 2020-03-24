@@ -50,7 +50,6 @@
 //! use kas::event::VoidMsg;
 //! use kas::{CoreData, Layout, LayoutData, Widget};
 //!
-//! #[widget_config]
 //! #[layout(single)]
 //! #[handler(generics = <> where W: Widget<Msg = VoidMsg>)]
 //! #[derive(Clone, Debug, Widget)]
@@ -63,7 +62,7 @@
 //! #### WidgetCore
 //!
 //! The [`WidgetCore`] trait is always implemented by this macro. The
-//! `#[widget_core]` attribute may be used to parameterise this implementation,
+//! `#[widget]` attribute may be used to parameterise this implementation,
 //! for example:
 //! ```
 //! use kas::draw::{DrawHandle, SizeHandle};
@@ -71,8 +70,7 @@
 //! use kas::macros::Widget;
 //! use kas::{event, CoreData, Layout};
 //!
-//! #[widget_config]
-//! #[widget_core(key_nav = true)]
+//! #[widget(config(key_nav = true))]
 //! #[handler]
 //! #[derive(Clone, Debug, Default, Widget)]
 //! struct MyWidget {
@@ -89,13 +87,18 @@
 //! }
 //! ```
 //!
-//! The `#[widget_core]` attribute supports the following parameters, each
-//! with the specified default value:
+//! The `#[widget]` attribute supports the following syntax:
 //!
-//! -   `key_nav = false`: a boolean, describing whether the widget supports
-//!     keyboard navigation (see [`WidgetConfig::key_nav`])
-//! -   `cursor_icon = kas::event::CursorIcon::Default`: the cursor icon to use
-//!     when the mouse hovers over this widget (see [`WidgetConfig::cursor_icon`])
+//! -   `config = noauto`: opt out of deriving the [`WidgetConfig`] trait; use
+//!     this to implement the trait manually (e.g. to use [`WidgetConfig::configure`])
+//! -   `confg(noauto)`: same as above
+//! -   `confg(PARAMS)`: derive [`WidgetConfig`] but with the following `PARAMS`
+//!     specified:
+//!
+//!     -   `key_nav = false`: a boolean, describing whether the widget supports
+//!         keyboard navigation (see [`WidgetConfig::key_nav`])
+//!     -   `cursor_icon = kas::event::CursorIcon::Default`: the cursor icon to use
+//!         when the mouse hovers over this widget (see [`WidgetConfig::cursor_icon`])
 //!
 //! #### Widget
 //!
@@ -171,7 +174,6 @@
 //! # use kas::macros::Widget;
 //! # use kas::{CoreData, Layout, Widget, event::Handler};
 //! #[layout(single)]
-//! #[widget_config]
 //! #[handler(msg = <W as Handler>::Msg, generics = <> where W: Layout)]
 //! #[derive(Clone, Debug, Default, Widget)]
 //! pub struct Frame<W: Widget> {
@@ -240,7 +242,6 @@
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
 //!
-//! #[widget_config]
 //! #[layout(vertical)]
 //! #[handler(generics = <> where W: Widget<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
@@ -284,7 +285,6 @@
 //!     Check(bool),
 //! }
 //! let widget = make_widget! {
-//!     #[widget_config]
 //!     #[layout(vertical)]
 //!     #[handler(msg = VoidMsg)]
 //!     struct {
@@ -383,7 +383,6 @@
 //! }
 //!
 //! let button_box = make_widget!{
-//!     #[widget_config]
 //!     #[layout(horizontal)]
 //!     #[handler(msg = OkCancel)]
 //!     struct {

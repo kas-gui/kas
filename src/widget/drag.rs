@@ -27,7 +27,6 @@ use kas::prelude::*;
 /// 3.  [`Layout::draw`] does nothing. The parent should handle all drawing.
 /// 4.  Optionally, this widget can handle clicks on the track area via
 ///     [`DragHandle::handle_press_on_track`].
-#[widget_config]
 #[handler(action, msg = Coord)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct DragHandle {

@@ -22,7 +22,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let controls = make_widget! {
-        #[widget_config]
         #[layout(horizontal)]
         #[handler(msg = usize)]
         struct {
@@ -54,7 +53,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let mut window = Window::new(
         "Dynamic widget demo",
         make_widget! {
-            #[widget_config]
             #[layout(vertical)]
             #[handler(msg = VoidMsg)]
             struct {

@@ -17,7 +17,6 @@ use kas::prelude::*;
 ///
 /// This widget provides a simple abstraction: drawing a frame around its
 /// contents.
-#[widget_config]
 #[handler(action, msg = <W as Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Frame<W: Widget> {

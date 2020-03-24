@@ -28,7 +28,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
 
     let radio = UpdateHandle::new();
     let widgets = make_widget! {
-        #[widget_config]
         #[layout(grid)]
         #[handler(msg = Item)]
         struct {
@@ -74,13 +73,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
     };
 
     let top_box = Frame::new(make_widget! {
-        #[widget_config]
         #[layout(vertical)]
         #[handler(msg = VoidMsg)]
         struct {
             #[widget(halign=centre)] _ = Label::new("Widget Gallery"),
             #[widget(handler=set_theme)] _ = make_widget! {
-                #[widget_config]
                 #[layout(horizontal)]
                 #[handler(msg = &'static str)]
                 struct {
@@ -89,7 +86,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 }
             },
             #[widget(handler=set_colour)] _ = make_widget! {
-                #[widget_config]
                 #[layout(horizontal)]
                 #[handler(msg = &'static str)]
                 struct {
@@ -123,7 +119,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new(
         "Widget Gallery",
         make_widget! {
-            #[widget_config]
             #[layout(vertical)]
             #[handler(msg = VoidMsg)]
             struct {

@@ -16,6 +16,7 @@ use kas::prelude::*;
 
 /// A push-button with a text label
 #[handler(event)]
+#[widget(config=noauto)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug> {
     #[widget_core]

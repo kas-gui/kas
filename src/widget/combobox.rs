@@ -19,6 +19,7 @@ use crate::{Align, CoreData, CowString, TkAction, WidgetCore, WidgetId};
 
 /// A pop-up multiple choice menu
 #[handler(event)]
+#[widget(config=noauto)]
 #[derive(Clone, Debug, Widget)]
 pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
@@ -167,7 +168,6 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
     }
 }
 
-#[widget_config]
 #[layout(single)]
 #[handler(action)]
 #[derive(Clone, Debug, Widget)]
