@@ -101,14 +101,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let mut get_rules = quote! {};
     let mut get_mut_rules = quote! {};
-    let mut walk_rules = quote! {};
-    let mut walk_mut_rules = quote! {};
     for (i, child) in args.children.iter().enumerate() {
         let ident = &child.ident;
         get_rules.append_all(quote! { #i => Some(&self.#ident), });
         get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
-        walk_rules.append_all(quote! { self.#ident.walk(f); });
-        walk_mut_rules.append_all(quote! { self.#ident.walk_mut(f); });
     }
 
     let mut toks = quote! {
@@ -144,14 +140,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     #get_mut_rules
                     _ => None
                 }
-            }
-            fn walk(&self, f: &mut dyn FnMut(&dyn kas::WidgetConfig)) {
-                #walk_rules
-                f(self);
-            }
-            fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn kas::WidgetConfig)) {
-                #walk_mut_rules
-                f(self);
             }
         }
     };

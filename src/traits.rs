@@ -133,13 +133,27 @@ pub trait WidgetCore: fmt::Debug {
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig));
+    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
+        for i in 0..self.len() {
+            if let Some(w) = self.get(i) {
+                w.walk(f);
+            }
+        }
+        f(self.as_widget());
+    }
 
     /// Walk through all widgets, calling `f` once on each.
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig));
+    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
+        for i in 0..self.len() {
+            if let Some(w) = self.get_mut(i) {
+                w.walk_mut(f);
+            }
+        }
+        f(self.as_widget_mut());
+    }
 }
 
 /// Widget configuration
