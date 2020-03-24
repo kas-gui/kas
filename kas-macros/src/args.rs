@@ -60,7 +60,16 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
 
     for (i, field) in fields.iter_mut().enumerate() {
         for attr in field.attrs.drain(..) {
-            if attr.path == parse_quote! { widget_core } {
+            if attr.path == parse_quote! { widget_config }
+                || attr.path == parse_quote! { layout }
+                || attr.path == parse_quote! { handler }
+            {
+                // These are valid attributes according to proc_macro_derive, so we need to catch them
+                attr.span()
+                    .unwrap()
+                    .error("invalid attribute on Widget field (applicable to struct only)")
+                    .emit()
+            } else if attr.path == parse_quote! { widget_core } {
                 if core_data.is_none() {
                     core_data = Some(member(i, field.ident.clone()));
                 } else {
@@ -101,7 +110,13 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
     let mut handler = vec![];
 
     for attr in ast.attrs.drain(..) {
-        if attr.path == parse_quote! { widget_config } {
+        if attr.path == parse_quote! { widget_core } || attr.path == parse_quote! { layout_data } {
+            // These are valid attributes according to proc_macro_derive, so we need to catch them
+            attr.span()
+                .unwrap()
+                .error("invalid attribute on Widget struct (applicable to fields only)")
+                .emit()
+        } else if attr.path == parse_quote! { widget_config } {
             if widget_config.is_none() {
                 widget_config = Some(syn::parse2(attr.tokens)?);
             } else {

@@ -16,8 +16,7 @@ use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// A bare checkbox (no label)
-#[widget_config]
-#[widget_core(key_nav = true)]
+#[widget_config(key_nav = true)]
 #[handler(event)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBoxBare<M> {
