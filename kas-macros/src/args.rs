@@ -194,6 +194,7 @@ mod kw {
     custom_keyword!(event);
     custom_keyword!(config);
     custom_keyword!(noauto);
+    custom_keyword!(children);
 }
 
 #[derive(Debug)]
@@ -397,12 +398,14 @@ impl ToTokens for GridPos {
 
 pub struct WidgetArgs {
     pub config: Option<WidgetConfig>,
+    pub children: bool,
 }
 
 impl Default for WidgetArgs {
     fn default() -> Self {
         WidgetArgs {
             config: Some(WidgetConfig::default()),
+            children: true,
         }
     }
 }
@@ -425,6 +428,8 @@ impl Parse for WidgetArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut config = None;
         let mut have_config = false;
+        let mut children = true;
+        let mut have_children = false;
 
         if !input.is_empty() {
             let content;
@@ -432,7 +437,13 @@ impl Parse for WidgetArgs {
 
             while !content.is_empty() {
                 let lookahead = content.lookahead1();
-                if lookahead.peek(kw::config) && !have_config {
+                if lookahead.peek(kw::children) && !have_children {
+                    have_children = true;
+                    let _: kw::children = content.parse()?;
+                    let _: Eq = content.parse()?;
+                    let _: kw::noauto = content.parse()?;
+                    children = false;
+                } else if lookahead.peek(kw::config) && !have_config {
                     have_config = true;
                     let _: kw::config = content.parse()?;
 
@@ -487,7 +498,11 @@ impl Parse for WidgetArgs {
             }
         }
 
-        Ok(WidgetArgs { config })
+        if !have_config {
+            config = Some(WidgetConfig::default());
+        }
+
+        Ok(WidgetArgs { config, children })
     }
 }
 

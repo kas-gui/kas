@@ -63,7 +63,15 @@ pub trait WidgetCore: fmt::Debug {
     fn as_widget(&self) -> &dyn WidgetConfig;
     /// Erase type
     fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig;
+}
 
+/// Listing of a widget's children
+///
+/// Usually this is implemented by `derive(Widget)`, but for dynamic widgets it
+/// may have to be implemented manually. Note that if the results of these
+/// methods ever change, one must send [`TkAction::Reconfigure`].
+/// TODO: full reconfigure may be too slow; find a better option.
+pub trait WidgetChildren: WidgetCore {
     /// Get the number of child widgets
     fn len(&self) -> usize;
 
@@ -198,7 +206,7 @@ pub trait WidgetConfig: Layout {
 /// as well as low-level event handling.
 ///
 /// For a description of the widget size model, see [`SizeRules`].
-pub trait Layout: WidgetCore {
+pub trait Layout: WidgetChildren {
     /// Get size rules for the given axis.
     ///
     /// This method takes `&mut self` to allow local caching of child widget

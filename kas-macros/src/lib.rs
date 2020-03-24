@@ -122,24 +122,32 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
             fn as_widget(&self) -> &dyn kas::WidgetConfig { self }
             fn as_widget_mut(&mut self) -> &mut dyn kas::WidgetConfig { self }
-
-            fn len(&self) -> usize {
-                #count
-            }
-            fn get(&self, _index: usize) -> Option<&dyn kas::WidgetConfig> {
-                match _index {
-                    #get_rules
-                    _ => None
-                }
-            }
-            fn get_mut(&mut self, _index: usize) -> Option<&mut dyn kas::WidgetConfig> {
-                match _index {
-                    #get_mut_rules
-                    _ => None
-                }
-            }
         }
     };
+
+    if args.widget.children {
+        toks.append_all(quote! {
+            impl #impl_generics kas::WidgetChildren
+                for #name #ty_generics #where_clause
+            {
+                fn len(&self) -> usize {
+                    #count
+                }
+                fn get(&self, _index: usize) -> Option<&dyn kas::WidgetConfig> {
+                    match _index {
+                        #get_rules
+                        _ => None
+                    }
+                }
+                fn get_mut(&mut self, _index: usize) -> Option<&mut dyn kas::WidgetConfig> {
+                    match _index {
+                        #get_mut_rules
+                        _ => None
+                    }
+                }
+            }
+        });
+    }
 
     if let Some(config) = args.widget.config {
         let key_nav = config.key_nav;

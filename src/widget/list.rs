@@ -66,42 +66,18 @@ pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
 /// children.
 ///
 /// [`make_widget`]: ../macros/index.html#the-make_widget-macro
-#[derive(Clone, Default, Debug)]
+#[handler(action, msg=<W as event::Handler>::Msg)]
+#[widget(children=noauto)]
+#[derive(Clone, Default, Debug, Widget)]
 pub struct List<D: Directional, W: Widget> {
+    #[widget_core]
     core: CoreData,
     widgets: Vec<W>,
     data: layout::DynRowStorage,
     direction: D,
 }
 
-impl<D: Directional, W: Widget> WidgetConfig for List<D, W> {}
-
-// We implement this manually, because the derive implementation cannot handle
-// vectors of child widgets.
-impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
-    #[inline]
-    fn core_data(&self) -> &CoreData {
-        &self.core
-    }
-    #[inline]
-    fn core_data_mut(&mut self) -> &mut CoreData {
-        &mut self.core
-    }
-
-    #[inline]
-    fn widget_name(&self) -> &'static str {
-        "List"
-    }
-
-    #[inline]
-    fn as_widget(&self) -> &dyn WidgetConfig {
-        self
-    }
-    #[inline]
-    fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig {
-        self
-    }
-
+impl<D: Directional, W: Widget> WidgetChildren for List<D, W> {
     #[inline]
     fn len(&self) -> usize {
         self.widgets.len()
@@ -164,10 +140,6 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> event::Handler for List<D, W> {
-    type Msg = <W as event::Handler>::Msg;
-}
-
 impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         for child in &mut self.widgets {
@@ -179,8 +151,6 @@ impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
         Response::Unhandled(event)
     }
 }
-
-impl<D: Directional, W: Widget> Widget for List<D, W> {}
 
 impl<D: Directional + Default, W: Widget> List<D, W> {
     /// Construct a new instance
