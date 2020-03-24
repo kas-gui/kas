@@ -73,8 +73,8 @@ pub fn solve<L: Layout>(widget: &mut L, size_handle: &mut dyn SizeHandle) -> (Si
 /// Solve and assign widget layout
 ///
 /// Return min and ideal sizes.
-pub fn solve_and_set<L: WidgetConfig>(
-    widget: &mut L,
+pub fn solve_and_set(
+    widget: &mut dyn WidgetConfig,
     size_handle: &mut dyn SizeHandle,
     size: Size,
 ) -> (Size, Size) {

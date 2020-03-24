@@ -279,7 +279,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     {
                         use kas::{WidgetCore, event::Response};
                         #ev_to_num {
-                            debug_assert!(id == self.id(), "Layout::event: bad WidgetId");
+                            debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
                             kas::event::Manager::handle_generic(self, mgr, event)
                         }
                     }

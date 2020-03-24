@@ -242,6 +242,7 @@ impl ManagerState {
             .map(|id| (elt.0, *id)));
     }
 
+    /// Update the widgets under the cursor and touch events
     pub fn region_moved<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         // Note: redraw is already implied.
 
@@ -492,6 +493,20 @@ impl<'a> Manager<'a> {
     #[inline]
     pub fn send_action(&mut self, action: TkAction) {
         self.mgr.send_action(action);
+    }
+
+    /// Add a pop-up
+    ///
+    /// A pop-up is a box used for things like tool-tips and menus which is
+    /// drawn on top of other content and has focus for input.
+    ///
+    /// Depending on the host environment, the pop-up may be a special type of
+    /// window without borders and with precise placement, or may be a layer
+    /// drawn in an existing window.
+    #[inline]
+    // TODO: parameters
+    pub fn add_overlay(&mut self, widget: Box<dyn kas::Overlay>) {
+        self.tkw.add_overlay(widget);
     }
 
     /// Add a window
@@ -797,6 +812,18 @@ impl<'a> Manager<'a> {
 /// Toolkit API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl<'a> Manager<'a> {
+    // Hack to make TkAction::Close on an overlay close only that.
+    // This is not quite correct, since it could mask a legitimate Close
+    // event (e.g. a pop-up menu to close the window).
+    pub(crate) fn replace_action_close_with_reconfigure(&mut self) -> bool {
+        if self.mgr.action == TkAction::Close {
+            self.mgr.action = TkAction::Reconfigure;
+            true
+        } else {
+            false
+        }
+    }
+
     /// Update, after receiving all events
     pub fn finish<W>(mut self, widget: &mut W) -> TkAction
     where

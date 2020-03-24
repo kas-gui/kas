@@ -24,7 +24,7 @@ use crate::ProxyAction;
 
 /// Per-window data
 pub(crate) struct Window<CW: CustomWindow, TW> {
-    widget: Box<dyn kas::Window>,
+    pub(crate) widget: Box<dyn kas::Window>,
     mgr: ManagerState,
     /// The winit window
     pub(crate) window: winit::window::Window,
@@ -257,6 +257,21 @@ where
         mgr.update_handle(&mut *self.widget, handle, payload);
     }
 
+    pub fn add_overlay<C, T>(
+        &mut self,
+        shared: &mut SharedState<C, T>,
+        widget: Box<dyn kas::Overlay>,
+    ) where
+        C: CustomPipe<Window = CW>,
+        T: Theme<DrawPipe<C>, Window = TW>,
+    {
+        let window = &mut *self.widget;
+        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
+        let mut tkw = TkWindow::new(&self.window, shared);
+        let mut mgr = self.mgr.manager(&mut tkw);
+        kas::Window::add_overlay(window, &mut size_handle, &mut mgr, widget);
+    }
+
     pub fn send_action(&mut self, action: TkAction) {
         self.mgr.send_action(action);
     }
@@ -346,6 +361,13 @@ where
     T: Theme<DrawPipe<C>>,
     T::Window: kas_theme::Window<DrawWindow<C::Window>>,
 {
+    fn add_overlay(&mut self, widget: Box<dyn kas::Overlay>) {
+        let id = self.window.id();
+        self.shared
+            .pending
+            .push(PendingAction::AddOverlay(id, widget));
+    }
+
     fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.

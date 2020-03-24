@@ -122,7 +122,8 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
                 let i1 = i - 1;
                 let m1 = storage.as_ref()[i1].margins().1;
                 let m0 = storage.as_ref()[i].margins().0;
-                offsets.as_mut()[i] = offsets.as_ref()[i1] + widths.as_ref()[i1] + m1.max(m0) as u32;
+                offsets.as_mut()[i] =
+                    offsets.as_ref()[i1] + widths.as_ref()[i1] + m1.max(m0) as u32;
             }
         }
 

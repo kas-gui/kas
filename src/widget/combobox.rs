@@ -11,7 +11,7 @@ use std::iter::FromIterator;
 use super::{Column, TextButton};
 use crate::class::HasText;
 use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{self, Action, Callback, Event, Manager, Response, UpdateHandle};
+use crate::event::{self, Action, Event, Manager, Response, UpdateHandle};
 use crate::geom::*;
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::macros::Widget;
@@ -153,7 +153,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
     fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
         match action {
             Action::Activate => {
-                mgr.add_window(Box::new(ComboPopup::new(self.column.clone(), self.handle)));
+                mgr.add_overlay(Box::new(ComboPopup::new(self.column.clone(), self.handle)));
                 Response::None
             }
             Action::HandleUpdate { payload, .. } => {
@@ -207,11 +207,7 @@ impl event::EventHandler for ComboPopup {
     }
 }
 
-impl kas::Window for ComboPopup {
-    fn title(&self) -> &str {
-        &"Choices"
-    }
-
+impl kas::Overlay for ComboPopup {
     fn find_size(&mut self, size_handle: &mut dyn SizeHandle) -> (Option<Size>, Size) {
         let (min, ideal) = layout::solve(self, size_handle);
         (Some(min), ideal)
@@ -225,10 +221,4 @@ impl kas::Window for ComboPopup {
         let (min, ideal) = layout::solve_and_set(self, size_handle, size);
         (Some(min), Some(ideal))
     }
-
-    fn callbacks(&self) -> Vec<(usize, Callback)> {
-        vec![]
-    }
-
-    fn trigger_callback(&mut self, _: usize, _: &mut Manager) {}
 }

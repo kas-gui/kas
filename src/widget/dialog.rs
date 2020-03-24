@@ -54,11 +54,7 @@ impl MessageBox {
     }
 }
 
-impl kas::Window for MessageBox {
-    fn title(&self) -> &str {
-        &self.title
-    }
-
+impl kas::Overlay for MessageBox {
     fn find_size(&mut self, size_handle: &mut dyn SizeHandle) -> (Option<Size>, Size) {
         let (min, ideal) = layout::solve(self, size_handle);
         (Some(min), ideal)
@@ -72,6 +68,15 @@ impl kas::Window for MessageBox {
         let (min, ideal) = layout::solve_and_set(self, size_handle, size);
         (Some(min), Some(ideal))
     }
+}
+
+impl kas::Window for MessageBox {
+    fn title(&self) -> &str {
+        &self.title
+    }
+
+    // do not support overlays (yet?)
+    fn add_overlay(&mut self, _: &mut dyn SizeHandle, _: &mut Manager, _: Box<dyn kas::Overlay>) {}
 
     // doesn't support callbacks, so doesn't need to do anything here
     fn callbacks(&self) -> Vec<(usize, Callback)> {

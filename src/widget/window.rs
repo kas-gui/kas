@@ -8,12 +8,13 @@
 use std::fmt::{self, Debug};
 
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Callback, Manager, VoidMsg};
+use kas::event::{Callback, Event, Manager, Response, VoidMsg};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// The main instantiation of the [`Window`] trait.
-#[handler(generics = <> where W: Widget<Msg = VoidMsg>)]
+#[handler(action, generics = <> where W: Widget<Msg = VoidMsg>)]
+#[widget(children=noauto)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
     #[widget_core]
@@ -23,6 +24,7 @@ pub struct Window<W: Widget + 'static> {
     title: CowString,
     #[widget]
     w: W,
+    overlays: Vec<Box<dyn kas::Overlay>>,
     fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut Manager))>,
 }
 
@@ -52,6 +54,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
             enforce_max: self.enforce_max,
             title: self.title.clone(),
             w: self.w.clone(),
+            overlays: vec![], // these are temporary; don't clone
             fns: self.fns.clone(),
         }
     }
@@ -66,6 +69,7 @@ impl<W: Widget> Window<W> {
             enforce_max: false,
             title: title.into(),
             w,
+            overlays: vec![],
             fns: Vec::new(),
         }
     }
@@ -85,9 +89,32 @@ impl<W: Widget> Window<W> {
     }
 }
 
+impl<W: Widget> WidgetChildren for Window<W> {
+    fn len(&self) -> usize {
+        1 + self.overlays.len()
+    }
+
+    fn get(&self, index: usize) -> Option<&dyn WidgetConfig> {
+        if index == 0 {
+            Some(&self.w)
+        } else {
+            self.overlays.get(index - 1).map(|w| w.as_widget())
+        }
+    }
+
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+        if index == 0 {
+            Some(&mut self.w)
+        } else {
+            self.overlays.get_mut(index - 1).map(|w| w.as_widget_mut())
+        }
+    }
+}
+
 impl<W: Widget> Layout for Window<W> {
     #[inline]
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        // Note: we do not consider overlays, since they are usually temporary
         self.w.size_rules(size_handle, axis)
     }
 
@@ -95,24 +122,55 @@ impl<W: Widget> Layout for Window<W> {
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         self.w.set_rect(size_handle, rect, align);
+        for overlay in &mut self.overlays {
+            overlay.set_rect(size_handle, rect, AlignHints::NONE);
+        }
     }
 
     #[inline]
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        for overlay in self.overlays.iter().rev() {
+            if let Some(id) = overlay.find_id(coord) {
+                return Some(id);
+            }
+        }
         self.w.find_id(coord)
     }
 
     #[inline]
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         self.w.draw(draw_handle, mgr);
+        for overlay in &self.overlays {
+            draw_handle.clip_region(self.core.rect, Coord::ZERO, &mut |draw_handle| {
+                overlay.draw(draw_handle, mgr);
+            });
+        }
     }
 }
 
-impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
-    fn title(&self) -> &str {
-        &self.title
-    }
+impl<W: Widget<Msg = VoidMsg> + 'static> event::EventHandler for Window<W> {
+    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if id <= self.w.id() {
+            self.w.event(mgr, id, event)
+        } else {
+            for i in 0..self.overlays.len() {
+                let overlay = &mut self.overlays[i];
+                if id <= overlay.id() {
+                    let r = overlay.event(mgr, id, event);
+                    if mgr.replace_action_close_with_reconfigure() {
+                        self.overlays.remove(i);
+                    }
+                    return r;
+                }
+            }
 
+            debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
+            Manager::handle_generic(self, mgr, event)
+        }
+    }
+}
+
+impl<W: Widget<Msg = VoidMsg> + 'static> kas::Overlay for Window<W> {
     fn find_size(&mut self, size_handle: &mut dyn SizeHandle) -> (Option<Size>, Size) {
         let (min, ideal) = layout::solve(self, size_handle);
         let min = if self.enforce_min { Some(min) } else { None };
@@ -129,6 +187,26 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
             if self.enforce_min { Some(min) } else { None },
             if self.enforce_max { Some(ideal) } else { None },
         )
+    }
+}
+
+impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
+    fn title(&self) -> &str {
+        &self.title
+    }
+
+    fn add_overlay(
+        &mut self,
+        size_handle: &mut dyn SizeHandle,
+        mgr: &mut Manager,
+        mut overlay: Box<dyn kas::Overlay>,
+    ) {
+        let widget = overlay.as_widget_mut();
+        layout::solve_and_set(widget, size_handle, self.core.rect.size);
+
+        // TODO: using reconfigure here is inefficient
+        mgr.send_action(TkAction::Reconfigure);
+        self.overlays.push(overlay);
     }
 
     fn callbacks(&self) -> Vec<(usize, Callback)> {

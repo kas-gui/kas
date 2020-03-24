@@ -297,16 +297,11 @@ pub trait LayoutData {
     type Setter: layout::RulesSetter;
 }
 
-/// A window is a drawable interactive region provided by windowing system.
-// TODO: should this be a trait, instead of simply a struct? Should it be
-// implemented by dialogs? Note that from the toolkit perspective, it seems a
-// Window should be a Widget. So alternatives are (1) use a struct instead of a
-// trait or (2) allow any Widget to derive Window (i.e. implement required
-// functionality with macros instead of the generic code below).
-pub trait Window: Widget<Msg = event::VoidMsg> {
-    /// Get the window title
-    fn title(&self) -> &str;
-
+/// A simplified window used for pop-ups
+///
+/// An `Overlay` may be given a dedicated window by the windowing system or may
+/// be drawn as an overlay on the current window.
+pub trait Overlay: Widget<Msg = event::VoidMsg> {
     /// Calculate required size
     ///
     /// Returns optional minimum size, and ideal size.
@@ -320,6 +315,20 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
         size_handle: &mut dyn SizeHandle,
         size: Size,
     ) -> (Option<Size>, Option<Size>);
+}
+
+/// A root window extends [`Overlay`] with callbacks and overlay layers
+pub trait Window: Overlay {
+    /// Get the window title
+    fn title(&self) -> &str;
+
+    /// Add an overlay layer
+    fn add_overlay(
+        &mut self,
+        size_handle: &mut dyn SizeHandle,
+        mgr: &mut Manager,
+        overlay: Box<dyn kas::Overlay>,
+    );
 
     /// Get a list of available callbacks.
     ///

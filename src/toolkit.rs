@@ -75,6 +75,12 @@ pub enum TkAction {
 /// This is implemented by a KAS toolkit on a window handle.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub trait TkWindow {
+    /// Add an overlay
+    ///
+    /// An overlay is a layer which appears on top of the current window, both
+    /// graphically and in terms of events. Multiple overlays are possible.
+    fn add_overlay(&mut self, widget: Box<dyn kas::Overlay>);
+
     /// Add a window
     ///
     /// Toolkits typically allow windows to be added directly, before start of

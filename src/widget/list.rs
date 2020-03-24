@@ -147,8 +147,9 @@ impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
                 return child.event(mgr, id, event);
             }
         }
-        debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
-        Response::Unhandled(event)
+
+        debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
+        Manager::handle_generic(self, mgr, event)
     }
 }
 

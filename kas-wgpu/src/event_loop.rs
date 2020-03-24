@@ -202,6 +202,14 @@ where
         // Create and init() any new windows.
         while let Some(pending) = self.shared.pending.pop() {
             match pending {
+                PendingAction::AddOverlay(id, widget) => {
+                    debug!("Adding overlay");
+                    // TODO: support pop-ups as a special window, where available
+                    self.windows
+                        .get_mut(&id)
+                        .unwrap()
+                        .add_overlay(&mut self.shared, widget);
+                }
                 PendingAction::AddWindow(id, widget) => {
                     debug!("Adding window {}", widget.title());
                     match Window::new(&mut self.shared, elwt, widget) {
