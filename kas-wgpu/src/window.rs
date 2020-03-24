@@ -130,10 +130,11 @@ where
         T: Theme<DrawPipe<C>, Window = TW>,
     {
         let size = Size(self.sc_desc.width, self.sc_desc.height);
-        debug!("Reconfiguring window (size = {:?})", size);
+        let rect = Rect::new(Coord::ZERO, size);
+        debug!("Reconfiguring window (rect = {:?})", rect);
 
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
-        let (min, max) = self.widget.resize(&mut size_handle, size);
+        let (min, max) = self.widget.resize(&mut size_handle, rect);
         self.window.set_min_inner_size(min);
         self.window.set_max_inner_size(max);
         let mut tkw = TkWindow::new(&self.window, shared);
@@ -152,8 +153,9 @@ where
             .theme
             .update_window(&mut self.theme_window, scale_factor);
         let size = Size(self.sc_desc.width, self.sc_desc.height);
+        let rect = Rect::new(Coord::ZERO, size);
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
-        let (min, max) = self.widget.resize(&mut size_handle, size);
+        let (min, max) = self.widget.resize(&mut size_handle, rect);
         self.window.set_min_inner_size(min);
         self.window.set_max_inner_size(max);
         self.window.request_redraw();
@@ -257,11 +259,8 @@ where
         mgr.update_handle(&mut *self.widget, handle, payload);
     }
 
-    pub fn add_overlay<C, T>(
-        &mut self,
-        shared: &mut SharedState<C, T>,
-        widget: Box<dyn kas::Overlay>,
-    ) where
+    pub fn add_popup<C, T>(&mut self, shared: &mut SharedState<C, T>, popup: kas::Popup)
+    where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
@@ -269,7 +268,7 @@ where
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
         let mut tkw = TkWindow::new(&self.window, shared);
         let mut mgr = self.mgr.manager(&mut tkw);
-        kas::Window::add_overlay(window, &mut size_handle, &mut mgr, widget);
+        kas::Window::add_popup(window, &mut size_handle, &mut mgr, popup);
     }
 
     pub fn send_action(&mut self, action: TkAction) {
@@ -293,9 +292,10 @@ where
             return;
         }
 
-        debug!("Resizing window to size={:?}", size);
+        let rect = Rect::new(Coord::ZERO, size);
+        debug!("Resizing window to rect = {:?}", rect);
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
-        self.widget.resize(&mut size_handle, size);
+        self.widget.resize(&mut size_handle, rect);
         drop(size_handle);
 
         let buf = shared.draw.resize(&mut self.draw, &shared.device, size);
@@ -361,11 +361,9 @@ where
     T: Theme<DrawPipe<C>>,
     T::Window: kas_theme::Window<DrawWindow<C::Window>>,
 {
-    fn add_overlay(&mut self, widget: Box<dyn kas::Overlay>) {
+    fn add_popup(&mut self, popup: kas::Popup) {
         let id = self.window.id();
-        self.shared
-            .pending
-            .push(PendingAction::AddOverlay(id, widget));
+        self.shared.pending.push(PendingAction::AddPopup(id, popup));
     }
 
     fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {

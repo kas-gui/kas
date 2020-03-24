@@ -24,7 +24,7 @@ pub struct Window<W: Widget + 'static> {
     title: CowString,
     #[widget]
     w: W,
-    overlays: Vec<Box<dyn kas::Overlay>>,
+    popups: Vec<kas::Popup>,
     fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut Manager))>,
 }
 
@@ -54,7 +54,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
             enforce_max: self.enforce_max,
             title: self.title.clone(),
             w: self.w.clone(),
-            overlays: vec![], // these are temporary; don't clone
+            popups: vec![], // these are temporary; don't clone
             fns: self.fns.clone(),
         }
     }
@@ -69,7 +69,7 @@ impl<W: Widget> Window<W> {
             enforce_max: false,
             title: title.into(),
             w,
-            overlays: vec![],
+            popups: vec![],
             fns: Vec::new(),
         }
     }
@@ -91,14 +91,16 @@ impl<W: Widget> Window<W> {
 
 impl<W: Widget> WidgetChildren for Window<W> {
     fn len(&self) -> usize {
-        1 + self.overlays.len()
+        1 + self.popups.len()
     }
 
     fn get(&self, index: usize) -> Option<&dyn WidgetConfig> {
         if index == 0 {
             Some(&self.w)
         } else {
-            self.overlays.get(index - 1).map(|w| w.as_widget())
+            self.popups
+                .get(index - 1)
+                .map(|popup| popup.overlay.as_widget())
         }
     }
 
@@ -106,7 +108,9 @@ impl<W: Widget> WidgetChildren for Window<W> {
         if index == 0 {
             Some(&mut self.w)
         } else {
-            self.overlays.get_mut(index - 1).map(|w| w.as_widget_mut())
+            self.popups
+                .get_mut(index - 1)
+                .map(|popup| popup.overlay.as_widget_mut())
         }
     }
 }
@@ -114,7 +118,7 @@ impl<W: Widget> WidgetChildren for Window<W> {
 impl<W: Widget> Layout for Window<W> {
     #[inline]
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        // Note: we do not consider overlays, since they are usually temporary
+        // Note: we do not consider popups, since they are usually temporary
         self.w.size_rules(size_handle, axis)
     }
 
@@ -122,15 +126,52 @@ impl<W: Widget> Layout for Window<W> {
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         self.w.set_rect(size_handle, rect, align);
-        for overlay in &mut self.overlays {
-            overlay.set_rect(size_handle, rect, AlignHints::NONE);
+        for popup in &mut self.popups {
+            let ir = self.w.find(popup.parent).unwrap().rect();
+            let widget = popup.overlay.as_widget_mut();
+            let (_, ideal) = layout::solve(widget, size_handle);
+
+            let place_in = |p_out, s_out, p_in, s_in, ideal| -> (i32, u32) {
+                debug_assert!(p_in >= p_out);
+                let before = (p_in - p_out) as u32;
+                debug_assert!(s_out >= s_in + before);
+                let after = s_out - s_in - before;
+                if after >= ideal {
+                    (p_in + s_in as i32, ideal)
+                } else if before >= ideal {
+                    (p_in - ideal as i32, ideal)
+                } else if before > after {
+                    (p_out, before)
+                } else {
+                    (p_in + s_in as i32, after)
+                }
+            };
+            let place_out = |p_out, s_out, p_in: i32, s_in, ideal: u32| -> (i32, u32) {
+                let pos = p_in.min(p_out + s_out as i32 - ideal as i32).max(p_out);
+                let size = ideal.max(s_in).min(s_out);
+                (pos, size)
+            };
+            let rect = match popup.direction {
+                Direction::Horizontal => {
+                    let (x, w) = place_in(rect.pos.0, rect.size.0, ir.pos.0, ir.size.0, ideal.0);
+                    let (y, h) = place_out(rect.pos.1, rect.size.1, ir.pos.1, ir.size.1, ideal.1);
+                    Rect::new(Coord(x, y), Size(w, h))
+                }
+                Direction::Vertical => {
+                    let (x, w) = place_out(rect.pos.0, rect.size.0, ir.pos.0, ir.size.0, ideal.0);
+                    let (y, h) = place_in(rect.pos.1, rect.size.1, ir.pos.1, ir.size.1, ideal.1);
+                    Rect::new(Coord(x, y), Size(w, h))
+                }
+            };
+
+            layout::solve_and_set(widget, size_handle, rect, false);
         }
     }
 
     #[inline]
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        for overlay in self.overlays.iter().rev() {
-            if let Some(id) = overlay.find_id(coord) {
+        for popup in self.popups.iter().rev() {
+            if let Some(id) = popup.overlay.find_id(coord) {
                 return Some(id);
             }
         }
@@ -140,9 +181,9 @@ impl<W: Widget> Layout for Window<W> {
     #[inline]
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
         self.w.draw(draw_handle, mgr);
-        for overlay in &self.overlays {
+        for popup in &self.popups {
             draw_handle.clip_region(self.core.rect, Coord::ZERO, &mut |draw_handle| {
-                overlay.draw(draw_handle, mgr);
+                popup.overlay.draw(draw_handle, mgr);
             });
         }
     }
@@ -153,12 +194,12 @@ impl<W: Widget<Msg = VoidMsg> + 'static> event::EventHandler for Window<W> {
         if id <= self.w.id() {
             self.w.event(mgr, id, event)
         } else {
-            for i in 0..self.overlays.len() {
-                let overlay = &mut self.overlays[i];
-                if id <= overlay.id() {
-                    let r = overlay.event(mgr, id, event);
+            for i in 0..self.popups.len() {
+                let widget = &mut self.popups[i].overlay;
+                if id <= widget.id() {
+                    let r = widget.event(mgr, id, event);
                     if mgr.replace_action_close_with_reconfigure() {
-                        self.overlays.remove(i);
+                        self.popups.remove(i);
                     }
                     return r;
                 }
@@ -180,9 +221,9 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Overlay for Window<W> {
     fn resize(
         &mut self,
         size_handle: &mut dyn SizeHandle,
-        size: Size,
+        rect: Rect,
     ) -> (Option<Size>, Option<Size>) {
-        let (min, ideal) = layout::solve_and_set(self, size_handle, size);
+        let (min, ideal) = layout::solve_and_set(self, size_handle, rect, true);
         (
             if self.enforce_min { Some(min) } else { None },
             if self.enforce_max { Some(ideal) } else { None },
@@ -195,18 +236,10 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         &self.title
     }
 
-    fn add_overlay(
-        &mut self,
-        size_handle: &mut dyn SizeHandle,
-        mgr: &mut Manager,
-        mut overlay: Box<dyn kas::Overlay>,
-    ) {
-        let widget = overlay.as_widget_mut();
-        layout::solve_and_set(widget, size_handle, self.core.rect.size);
-
+    fn add_popup(&mut self, _: &mut dyn SizeHandle, mgr: &mut Manager, popup: kas::Popup) {
         // TODO: using reconfigure here is inefficient
         mgr.send_action(TkAction::Reconfigure);
-        self.overlays.push(overlay);
+        self.popups.push(popup);
     }
 
     fn callbacks(&self) -> Vec<(usize, Callback)> {

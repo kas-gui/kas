@@ -12,7 +12,7 @@ use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Manager, ManagerState};
 use crate::geom::{Coord, Rect, Size};
 use crate::layout::{self, AxisInfo, SizeRules};
-use crate::{AlignHints, CoreData, WidgetId};
+use crate::{AlignHints, CoreData, Direction, WidgetId};
 
 mod impls;
 
@@ -313,8 +313,15 @@ pub trait Overlay: Widget<Msg = event::VoidMsg> {
     fn resize(
         &mut self,
         size_handle: &mut dyn SizeHandle,
-        size: Size,
+        rect: Rect,
     ) -> (Option<Size>, Option<Size>);
+}
+
+/// A pop-up is an overlay with parent & position information
+pub struct Popup {
+    pub parent: WidgetId,
+    pub direction: Direction,
+    pub overlay: Box<dyn kas::Overlay>,
 }
 
 /// A root window extends [`Overlay`] with callbacks and overlay layers
@@ -323,12 +330,7 @@ pub trait Window: Overlay {
     fn title(&self) -> &str;
 
     /// Add an overlay layer
-    fn add_overlay(
-        &mut self,
-        size_handle: &mut dyn SizeHandle,
-        mgr: &mut Manager,
-        overlay: Box<dyn kas::Overlay>,
-    );
+    fn add_popup(&mut self, size_handle: &mut dyn SizeHandle, mgr: &mut Manager, popup: Popup);
 
     /// Get a list of available callbacks.
     ///

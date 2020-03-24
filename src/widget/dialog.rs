@@ -63,9 +63,9 @@ impl kas::Overlay for MessageBox {
     fn resize(
         &mut self,
         size_handle: &mut dyn SizeHandle,
-        size: Size,
+        rect: Rect,
     ) -> (Option<Size>, Option<Size>) {
-        let (min, ideal) = layout::solve_and_set(self, size_handle, size);
+        let (min, ideal) = layout::solve_and_set(self, size_handle, rect, true);
         (Some(min), Some(ideal))
     }
 }
@@ -76,7 +76,7 @@ impl kas::Window for MessageBox {
     }
 
     // do not support overlays (yet?)
-    fn add_overlay(&mut self, _: &mut dyn SizeHandle, _: &mut Manager, _: Box<dyn kas::Overlay>) {}
+    fn add_popup(&mut self, _: &mut dyn SizeHandle, _: &mut Manager, _: kas::Popup) {}
 
     // doesn't support callbacks, so doesn't need to do anything here
     fn callbacks(&self) -> Vec<(usize, Callback)> {

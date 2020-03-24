@@ -495,7 +495,7 @@ impl<'a> Manager<'a> {
         self.mgr.send_action(action);
     }
 
-    /// Add a pop-up
+    /// Add an overlay (pop-up)
     ///
     /// A pop-up is a box used for things like tool-tips and menus which is
     /// drawn on top of other content and has focus for input.
@@ -503,10 +503,12 @@ impl<'a> Manager<'a> {
     /// Depending on the host environment, the pop-up may be a special type of
     /// window without borders and with precise placement, or may be a layer
     /// drawn in an existing window.
+    ///
+    /// The pop-up should be placed *next to* the specified `rect`, in the given
+    /// `direction`.
     #[inline]
-    // TODO: parameters
-    pub fn add_overlay(&mut self, widget: Box<dyn kas::Overlay>) {
-        self.tkw.add_overlay(widget);
+    pub fn add_popup(&mut self, popup: kas::Popup) {
+        self.tkw.add_popup(popup);
     }
 
     /// Add a window

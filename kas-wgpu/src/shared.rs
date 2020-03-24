@@ -136,7 +136,7 @@ where
 }
 
 pub enum PendingAction {
-    AddOverlay(winit::window::WindowId, Box<dyn kas::Overlay>),
+    AddPopup(winit::window::WindowId, kas::Popup),
     AddWindow(WindowId, Box<dyn kas::Window>),
     CloseWindow(WindowId),
     ThemeResize,

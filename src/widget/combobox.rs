@@ -15,7 +15,7 @@ use crate::event::{self, Action, Event, Manager, Response, UpdateHandle};
 use crate::geom::*;
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::macros::Widget;
-use crate::{Align, CoreData, CowString, TkAction, WidgetCore, WidgetId};
+use crate::{Align, CoreData, CowString, Direction, TkAction, WidgetCore, WidgetId};
 
 /// A pop-up multiple choice menu
 #[handler(event)]
@@ -153,7 +153,11 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
     fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
         match action {
             Action::Activate => {
-                mgr.add_overlay(Box::new(ComboPopup::new(self.column.clone(), self.handle)));
+                mgr.add_popup(kas::Popup {
+                    parent: self.id(),
+                    direction: Direction::Vertical,
+                    overlay: Box::new(ComboPopup::new(self.column.clone(), self.handle)),
+                });
                 Response::None
             }
             Action::HandleUpdate { payload, .. } => {
@@ -216,9 +220,9 @@ impl kas::Overlay for ComboPopup {
     fn resize(
         &mut self,
         size_handle: &mut dyn SizeHandle,
-        size: Size,
+        rect: Rect,
     ) -> (Option<Size>, Option<Size>) {
-        let (min, ideal) = layout::solve_and_set(self, size_handle, size);
+        let (min, ideal) = layout::solve_and_set(self, size_handle, rect, true);
         (Some(min), Some(ideal))
     }
 }

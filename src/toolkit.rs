@@ -79,7 +79,10 @@ pub trait TkWindow {
     ///
     /// An overlay is a layer which appears on top of the current window, both
     /// graphically and in terms of events. Multiple overlays are possible.
-    fn add_overlay(&mut self, widget: Box<dyn kas::Overlay>);
+    ///
+    /// The pop-up should be placed *next to* the specified `rect`, in the given
+    /// `direction`.
+    fn add_popup(&mut self, popup: kas::Popup);
 
     /// Add a window
     ///
