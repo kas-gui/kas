@@ -127,9 +127,7 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
             return child.find_id(coord);
         }
 
-        // We should return Some(self), but hit a borrow check error.
-        // This should however be unreachable anyway.
-        None
+        Some(self.id())
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {

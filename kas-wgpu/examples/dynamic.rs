@@ -4,18 +4,95 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Dynamic widget example
+//!
+//! This example exists in part to demonstrate use of dynamically-allocated
+//! widgets (note also one can use `Column<Box<dyn Widget<Msg = ()>>>`).
+//!
+//! In part, this also serves as a stress-test of how many widgets it is viable
+//! to have in an app. In my testing:
+//!
+//! -   hundreds of widgets performs mostly flawlessly even in debug mode
+//! -   thousands of widgets performs flawlessly in release mode
+//! -   hundreds of thousands of widgets has some issues (slow creation,
+//!     very slow activation of a RadioBox in a chain hundreds-of-thousands
+//!     long), but in many ways still performs well in release mode
 #![feature(proc_macro_hygiene)]
 
 use kas::class::HasText;
-use kas::event::{Callback, Manager, Response, VoidMsg};
-use kas::macros::{make_widget, VoidMsg};
-use kas::widget::{Column, EditBox, EditBoxVoid, Filler, Label, ScrollRegion, TextButton, Window};
+use kas::event::{Manager, Response, UpdateHandle, VoidMsg};
+use kas::prelude::*;
+use kas::widget::*;
+
+thread_local! {
+    pub static RADIO: UpdateHandle = UpdateHandle::new();
+}
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {
     Decr,
     Incr,
     Set,
+}
+
+#[derive(Clone, Debug, VoidMsg)]
+enum EntryMsg {
+    Select(usize),
+    Update(usize, String),
+}
+
+// TODO: it would be nicer to use EditBox::new(..).on_edit(..), but that produces
+// an object with unnamable type, which is a problem.
+#[derive(Clone, Debug)]
+struct ListEntryGuard(usize);
+impl EditGuard for ListEntryGuard {
+    type Msg = EntryMsg;
+
+    fn edit(entry: &mut EditBox<Self>) -> Option<Self::Msg> {
+        Some(EntryMsg::Update(
+            entry.guard.0,
+            entry.get_text().to_string(),
+        ))
+    }
+}
+
+// The list entry
+//
+// Use of a compound listing here with five child widgets (RadioBox is a
+// compound widget) slows down list resizing significantly (more so in debug
+// builds).
+//
+// Use of an embedded RadioBox demonstrates another performance issue:
+// activating any RadioBox sends a message to all others using the same
+// UpdateHandle, which is quite slow with thousands of entries!
+// (This issue does not occur when RadioBoxes are independent.)
+#[layout(vertical)]
+#[handler(msg=EntryMsg)]
+#[derive(Clone, Debug, Widget)]
+struct ListEntry {
+    #[widget_core]
+    core: CoreData,
+    #[layout_data]
+    layout_data: <Self as kas::LayoutData>::Data,
+    #[widget]
+    label: Label,
+    #[widget]
+    radio: RadioBox<EntryMsg>,
+    #[widget]
+    entry: EditBox<ListEntryGuard>,
+}
+
+impl ListEntry {
+    fn new(n: usize, active: bool) -> Self {
+        ListEntry {
+            core: Default::default(),
+            layout_data: Default::default(),
+            label: Label::new(format!("Entry number {}", n + 1)),
+            radio: RadioBox::new(RADIO.with(|h| *h), "display this entry")
+                .state(active)
+                .on_activate(move |_| EntryMsg::Select(n)),
+            entry: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
+        }
+    }
 }
 
 fn main() -> Result<(), kas_wgpu::Error> {
@@ -50,30 +127,56 @@ fn main() -> Result<(), kas_wgpu::Error> {
             }
         }
     };
-    let mut window = Window::new(
+
+    let entries = vec![
+        ListEntry::new(0, true),
+        ListEntry::new(1, false),
+        ListEntry::new(2, false),
+    ];
+
+    let window = Window::new(
         "Dynamic widget demo",
         make_widget! {
             #[layout(vertical)]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
-                #[widget(handler = handler)] controls -> usize = controls,
-                #[widget] list: ScrollRegion<Column<EditBoxVoid>> =
-                    ScrollRegion::new(Column::new(vec![])).with_bars(false, true),
+                #[widget(handler = set_len)] controls -> usize = controls,
+                #[widget] _ = Label::new("Contents of selected entry:"),
+                #[widget] display: Label = Label::new("Entry #0"),
+                #[widget(handler = set_radio)] list: ScrollRegion<Column<ListEntry>> =
+                    ScrollRegion::new(Column::new(entries)).with_bars(false, true),
                 #[widget] _ = Filler::maximise(),
+                active: usize = 0,
             }
             impl {
-                fn handler(&mut self, mgr: &mut Manager, n: usize) -> Response<VoidMsg> {
-                    self.list.inner_mut().resize_with(mgr, n, |i| EditBox::new(i.to_string()));
+                fn set_len(&mut self, mgr: &mut Manager, len: usize) -> Response<VoidMsg> {
+                    let active = self.active;
+                    let old_len = self.list.inner().len();
+                    self.list.inner_mut().resize_with(mgr, len, |n| ListEntry::new(n, n == active));
+                    if active >= old_len && active < len {
+                        let _ = self.set_radio(mgr, EntryMsg::Select(active));
+                    }
+                    Response::None
+                }
+                fn set_radio(&mut self, mgr: &mut Manager, msg: EntryMsg) -> Response<VoidMsg> {
+                    match msg {
+                        EntryMsg::Select(n) => {
+                            self.active = n;
+                            let text = self.list.inner()[n].entry.get_text().to_string();
+                            self.display.set_text(mgr, text);
+                        }
+                        EntryMsg::Update(n, text) => {
+                            if n == self.active {
+                                self.display.set_text(mgr, text);
+                            }
+                        }
+                    }
                     Response::None
                 }
             }
         },
     );
-
-    window.add_callback(Callback::Start, &|w, mgr| {
-        let _ = w.handler(mgr, 3);
-    });
 
     let theme = kas_theme::ShadedTheme::new();
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
