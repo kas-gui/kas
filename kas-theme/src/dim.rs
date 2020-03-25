@@ -129,9 +129,9 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
         self.dims.scale_factor
     }
 
-    fn outer_frame(&self) -> (Size, Size) {
+    fn frame(&self) -> Size {
         let f = self.dims.frame as u32;
-        (Size::uniform(f), Size::uniform(f))
+        Size::uniform(f)
     }
 
     fn inner_margin(&self) -> Size {
@@ -164,6 +164,7 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
             .draw
             .text_bound(text, font_id, font_scale, bounds, line_wrap);
 
+        let margins = (self.dims.margin as u16, self.dims.margin as u16);
         if axis.is_horizontal() {
             let bound = bounds.0 as u32;
             let min = match class {
@@ -171,7 +172,6 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
                 _ => bound.min(self.dims.min_line_length),
             };
             let ideal = bound.min(self.dims.max_line_length);
-            let margins = (self.dims.margin as u16, self.dims.margin as u16);
             SizeRules::new(min, ideal, margins, StretchPolicy::LowUtility)
         } else {
             let min = match class {
@@ -183,7 +183,7 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
                 TextClass::Button | TextClass::Edit => StretchPolicy::Fixed,
                 _ => StretchPolicy::Filler,
             };
-            SizeRules::new(min, ideal, (0, 0), stretch)
+            SizeRules::new(min, ideal, margins, stretch)
         }
     }
 

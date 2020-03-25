@@ -144,6 +144,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget(handler = set_len)] controls -> usize = controls,
                 #[widget] _ = Label::new("Contents of selected entry:"),
                 #[widget] display: Label = Label::new("Entry #0"),
+                #[widget] _ = Separator::new(),
                 #[widget(handler = set_radio)] list: ScrollRegion<Column<ListEntry>> =
                     ScrollRegion::new(Column::new(entries)).with_bars(false, true),
                 #[widget] _ = Filler::maximise(),

@@ -200,6 +200,13 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
     }
 
+    fn separator(&mut self, rect: Rect) {
+        let outer = Quad::from(rect + self.offset);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
+        self.draw
+            .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
+    }
+
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         let props = TextProperties {
             font: self.window.dims.font_id,

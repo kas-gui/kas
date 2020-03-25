@@ -202,6 +202,15 @@ where
             .shaded_round_frame(self.pass, outer, inner, norm, col);
     }
 
+    fn separator(&mut self, rect: Rect) {
+        let outer = Quad::from(rect + self.offset);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
+        let norm = (0.0, -0.7);
+        let col = self.cols.background;
+        self.draw
+            .shaded_round_frame(self.pass, outer, inner, norm, col);
+    }
+
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         let props = TextProperties {
             font: self.window.dims.font_id,
