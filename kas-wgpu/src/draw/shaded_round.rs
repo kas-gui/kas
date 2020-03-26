@@ -10,7 +10,7 @@ use std::mem::size_of;
 
 use crate::draw::{Rgb, ShaderManager};
 use kas::draw::Colour;
-use kas::geom::{Rect, Size, Vec2};
+use kas::geom::{Quad, Size, Vec2};
 
 /// Offset relative to the size of a pixel used by the fragment shader to
 /// implement multi-sampling.
@@ -219,9 +219,9 @@ impl Window {
     }
 
     /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
-    pub fn circle(&mut self, pass: usize, rect: Rect, mut norm: Vec2, col: Colour) {
-        let aa = Vec2::from(rect.pos);
-        let bb = aa + Vec2::from(rect.size);
+    pub fn circle(&mut self, pass: usize, rect: Quad, mut norm: Vec2, col: Colour) {
+        let aa = rect.a;
+        let bb = rect.b;
 
         if !aa.lt(bb) {
             // zero / negative size: nothing to draw
@@ -266,15 +266,15 @@ impl Window {
     pub fn shaded_frame(
         &mut self,
         pass: usize,
-        outer: Rect,
-        inner: Rect,
+        outer: Quad,
+        inner: Quad,
         mut norm: Vec2,
         col: Colour,
     ) {
-        let aa = Vec2::from(outer.pos);
-        let bb = aa + Vec2::from(outer.size);
-        let mut cc = Vec2::from(inner.pos);
-        let mut dd = cc + Vec2::from(inner.size);
+        let aa = outer.a;
+        let bb = outer.b;
+        let mut cc = inner.a;
+        let mut dd = inner.b;
 
         if !aa.lt(bb) {
             // zero / negative size: nothing to draw

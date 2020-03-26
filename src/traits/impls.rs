@@ -30,7 +30,9 @@ impl<M> WidgetCore for Box<dyn Widget<Msg = M>> {
     fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig {
         self.as_mut().as_widget_mut()
     }
+}
 
+impl<M> WidgetChildren for Box<dyn Widget<Msg = M>> {
     fn len(&self) -> usize {
         self.as_ref().len()
     }
@@ -39,6 +41,13 @@ impl<M> WidgetCore for Box<dyn Widget<Msg = M>> {
     }
     fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
         self.as_mut().get_mut(index)
+    }
+
+    fn find(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+        self.as_ref().find(id)
+    }
+    fn find_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
+        self.as_mut().find_mut(id)
     }
 
     fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {

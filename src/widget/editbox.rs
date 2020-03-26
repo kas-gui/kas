@@ -119,7 +119,7 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
 }
 
 /// An editable, single-line text box.
-#[widget_config(key_nav = true, cursor_icon = event::CursorIcon::Text)]
+#[widget(config(key_nav = true, cursor_icon = event::CursorIcon::Text))]
 #[handler(event, generics = <> where G: EditGuard)]
 #[derive(Clone, Default, Widget)]
 pub struct EditBox<G: 'static> {

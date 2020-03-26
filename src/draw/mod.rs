@@ -47,7 +47,7 @@ mod text;
 
 use std::any::Any;
 
-use crate::geom::{Coord, Rect};
+use crate::geom::{Quad, Rect, Vec2};
 
 pub use colour::Colour;
 pub use handle::{DrawHandle, SizeHandle, TextClass};
@@ -65,6 +65,11 @@ pub trait DrawShared {
 }
 
 /// Base abstraction over drawing
+///
+/// Unlike [`DrawHandle`], coordinates are specified via a [`Vec2`] and
+/// rectangular regions via [`Quad`]. The same coordinate system is used, hence
+/// type conversions can be performed with `from` and `into`. Integral
+/// coordinates align with pixels, non-integral coordinates may also be used.
 ///
 /// All draw operations target some region identified by a handle of type
 /// [`Region`]; this may be the whole window, some sub-region, or perhaps
@@ -86,12 +91,12 @@ pub trait Draw: Any {
     fn add_clip_region(&mut self, region: Rect) -> Region;
 
     /// Draw a rectangle of uniform colour
-    fn rect(&mut self, region: Region, rect: Rect, col: Colour);
+    fn rect(&mut self, region: Region, rect: Quad, col: Colour);
 
     /// Draw a frame of uniform colour
     ///
     /// The frame is defined by the area inside `outer` and not inside `inner`.
-    fn frame(&mut self, region: Region, outer: Rect, inner: Rect, col: Colour);
+    fn frame(&mut self, region: Region, outer: Quad, inner: Quad, col: Colour);
 }
 
 /// Drawing commands for rounded shapes
@@ -110,7 +115,7 @@ pub trait DrawRounded: Draw {
     ///
     /// Note that for rectangular, axis-aligned lines, [`Draw::rect`] should be
     /// preferred.
-    fn rounded_line(&mut self, region: Region, p1: Coord, p2: Coord, radius: f32, col: Colour);
+    fn rounded_line(&mut self, region: Region, p1: Vec2, p2: Vec2, radius: f32, col: Colour);
 
     /// Draw a circle or oval of uniform colour
     ///
@@ -119,7 +124,7 @@ pub trait DrawRounded: Draw {
     /// The `inner_radius` parameter gives the inner radius relative to the
     /// outer radius: a value of `0.0` will result in the whole shape being
     /// painted, while `1.0` will result in a zero-width line on the outer edge.
-    fn circle(&mut self, region: Region, rect: Rect, inner_radius: f32, col: Colour);
+    fn circle(&mut self, region: Region, rect: Quad, inner_radius: f32, col: Colour);
 
     /// Draw a frame with rounded corners and uniform colour
     ///
@@ -135,8 +140,8 @@ pub trait DrawRounded: Draw {
     fn rounded_frame(
         &mut self,
         region: Region,
-        outer: Rect,
-        inner: Rect,
+        outer: Quad,
+        inner: Quad,
         inner_radius: f32,
         col: Colour,
     );
@@ -155,17 +160,17 @@ pub trait DrawRounded: Draw {
 /// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
 pub trait DrawShaded: Draw {
     /// Add a shaded square to the draw buffer
-    fn shaded_square(&mut self, region: Region, rect: Rect, norm: (f32, f32), col: Colour);
+    fn shaded_square(&mut self, region: Region, rect: Quad, norm: (f32, f32), col: Colour);
 
     /// Add a shaded circle to the draw buffer
-    fn shaded_circle(&mut self, region: Region, rect: Rect, norm: (f32, f32), col: Colour);
+    fn shaded_circle(&mut self, region: Region, rect: Quad, norm: (f32, f32), col: Colour);
 
     /// Add a square shaded frame to the draw buffer.
     fn shaded_square_frame(
         &mut self,
         region: Region,
-        outer: Rect,
-        inner: Rect,
+        outer: Quad,
+        inner: Quad,
         norm: (f32, f32),
         col: Colour,
     );
@@ -174,8 +179,8 @@ pub trait DrawShaded: Draw {
     fn shaded_round_frame(
         &mut self,
         region: Region,
-        outer: Rect,
-        inner: Rect,
+        outer: Quad,
+        inner: Quad,
         norm: (f32, f32),
         col: Colour,
     );

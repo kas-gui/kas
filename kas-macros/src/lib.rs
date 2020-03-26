@@ -81,10 +81,7 @@ impl<'a> ToTokens for SubstTyGenerics<'a> {
 /// Macro to derive widget traits
 ///
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
-#[proc_macro_derive(
-    Widget,
-    attributes(widget_core, widget_config, widget, layout, handler, layout_data)
-)]
+#[proc_macro_derive(Widget, attributes(widget_core, widget, layout, handler, layout_data))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as syn::DeriveInput);
 
@@ -101,14 +98,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let mut get_rules = quote! {};
     let mut get_mut_rules = quote! {};
-    let mut walk_rules = quote! {};
-    let mut walk_mut_rules = quote! {};
     for (i, child) in args.children.iter().enumerate() {
         let ident = &child.ident;
         get_rules.append_all(quote! { #i => Some(&self.#ident), });
         get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
-        walk_rules.append_all(quote! { self.#ident.walk(f); });
-        walk_mut_rules.append_all(quote! { self.#ident.walk_mut(f); });
     }
 
     let mut toks = quote! {
@@ -129,34 +122,34 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
             fn as_widget(&self) -> &dyn kas::WidgetConfig { self }
             fn as_widget_mut(&mut self) -> &mut dyn kas::WidgetConfig { self }
-
-            fn len(&self) -> usize {
-                #count
-            }
-            fn get(&self, _index: usize) -> Option<&dyn kas::WidgetConfig> {
-                match _index {
-                    #get_rules
-                    _ => None
-                }
-            }
-            fn get_mut(&mut self, _index: usize) -> Option<&mut dyn kas::WidgetConfig> {
-                match _index {
-                    #get_mut_rules
-                    _ => None
-                }
-            }
-            fn walk(&self, f: &mut dyn FnMut(&dyn kas::WidgetConfig)) {
-                #walk_rules
-                f(self);
-            }
-            fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn kas::WidgetConfig)) {
-                #walk_mut_rules
-                f(self);
-            }
         }
     };
 
-    if let Some(config) = args.widget_config {
+    if args.widget.children {
+        toks.append_all(quote! {
+            impl #impl_generics kas::WidgetChildren
+                for #name #ty_generics #where_clause
+            {
+                fn len(&self) -> usize {
+                    #count
+                }
+                fn get(&self, _index: usize) -> Option<&dyn kas::WidgetConfig> {
+                    match _index {
+                        #get_rules
+                        _ => None
+                    }
+                }
+                fn get_mut(&mut self, _index: usize) -> Option<&mut dyn kas::WidgetConfig> {
+                    match _index {
+                        #get_mut_rules
+                        _ => None
+                    }
+                }
+            }
+        });
+    }
+
+    if let Some(config) = args.widget.config {
         let key_nav = config.key_nav;
         let cursor_icon = config.cursor_icon;
 
@@ -286,7 +279,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     {
                         use kas::{WidgetCore, event::Response};
                         #ev_to_num {
-                            debug_assert!(id == self.id(), "Layout::event: bad WidgetId");
+                            debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
                             kas::event::Manager::handle_generic(self, mgr, event)
                         }
                     }

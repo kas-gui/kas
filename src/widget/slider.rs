@@ -41,7 +41,6 @@ impl<
 /// A slider
 ///
 /// Sliders allow user input of a value from a fixed range.
-#[widget_config]
 #[handler(action, msg = T)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Slider<T: SliderType, D: Directional> {

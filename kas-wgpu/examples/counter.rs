@@ -22,7 +22,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let buttons = make_widget! {
-        #[widget_config]
         #[layout(horizontal)]
         #[handler(msg = Message)]
         struct {
@@ -33,7 +32,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new(
         "Counter",
         make_widget! {
-            #[widget_config]
             #[layout(vertical)]
             #[handler(msg = VoidMsg)]
             struct {

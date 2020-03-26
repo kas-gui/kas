@@ -8,8 +8,9 @@
 use log::{debug, info, trace};
 use std::time::Instant;
 
-use kas::event::{Callback, CursorIcon, ManagerState, UpdateHandle};
+use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
+use kas::layout;
 use kas::{ThemeAction, ThemeApi, TkAction, WindowId};
 use kas_theme::Theme;
 use winit::dpi::PhysicalSize;
@@ -24,7 +25,8 @@ use crate::ProxyAction;
 
 /// Per-window data
 pub(crate) struct Window<CW: CustomWindow, TW> {
-    widget: Box<dyn kas::Window>,
+    pub(crate) widget: Box<dyn kas::Window>,
+    pub(crate) window_id: WindowId,
     mgr: ManagerState,
     /// The winit window
     pub(crate) window: winit::window::Window,
@@ -45,6 +47,7 @@ where
     pub fn new<C, T>(
         shared: &mut SharedState<C, T>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
+        window_id: WindowId,
         mut widget: Box<dyn kas::Window>,
     ) -> Result<Self, OsError>
     where
@@ -57,12 +60,16 @@ where
         let mut theme_window = shared.theme.new_window(&mut draw, scale_factor);
 
         let mut size_handle = unsafe { theme_window.size_handle(&mut draw) };
-        let (min, ideal) = widget.find_size(&mut size_handle);
+        let (min, ideal) = layout::solve(widget.as_widget_mut(), &mut size_handle);
         drop(size_handle);
 
         let mut builder = WindowBuilder::new().with_inner_size(ideal);
-        if let Some(min) = min {
+        let restrict_dimensions = widget.restrict_dimensions();
+        if restrict_dimensions.0 {
             builder = builder.with_min_inner_size(min);
+        }
+        if restrict_dimensions.1 {
+            builder = builder.with_max_inner_size(ideal);
         }
         let window = builder.with_title(widget.title()).build(elwt)?;
 
@@ -85,10 +92,12 @@ where
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
-        let mgr = ManagerState::new(scale_factor);
+        let mut mgr = ManagerState::new(scale_factor);
+        mgr.send_action(TkAction::Reconfigure);
 
         Ok(Window {
             widget,
+            window_id,
             mgr,
             window,
             surface,
@@ -99,46 +108,18 @@ where
         })
     }
 
-    /// Called by the `Toolkit` when the event loop starts to initialise
-    /// windows. Optionally returns a callback time.
-    ///
-    /// `init` should always return an action of at least `TkAction::Reconfigure`.
-    pub fn init<C, T>(&mut self, shared: &mut SharedState<C, T>)
-    where
-        C: CustomPipe<Window = CW>,
-        T: Theme<DrawPipe<C>, Window = TW>,
-    {
-        debug!("Window::init");
-        let mut tkw = TkWindow::new(&self.window, shared);
-        let mut mgr = self.mgr.manager(&mut tkw);
-        mgr.send_action(TkAction::Reconfigure);
-
-        for (i, condition) in self.widget.callbacks() {
-            match condition {
-                Callback::Start => {
-                    self.widget.trigger_callback(i, &mut mgr);
-                }
-                Callback::Close => (),
-            }
-        }
-    }
-
     /// Recompute layout of widgets and redraw
     fn reconfigure<C, T>(&mut self, shared: &mut SharedState<C, T>)
     where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
-        let size = Size(self.sc_desc.width, self.sc_desc.height);
-        debug!("Reconfiguring window (size = {:?})", size);
+        debug!("Window::reconfigure");
 
-        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
-        let (min, max) = self.widget.resize(&mut size_handle, size);
-        self.window.set_min_inner_size(min);
-        self.window.set_max_inner_size(max);
         let mut tkw = TkWindow::new(&self.window, shared);
         self.mgr.configure(&mut tkw, &mut *self.widget);
-        self.window.request_redraw();
+
+        self.apply_size();
     }
 
     pub fn theme_resize<C, T>(&mut self, shared: &SharedState<C, T>)
@@ -146,17 +127,12 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
-        debug!("Applying theme resize");
+        debug!("Window::theme_resize");
         let scale_factor = self.window.scale_factor() as f32;
         shared
             .theme
             .update_window(&mut self.theme_window, scale_factor);
-        let size = Size(self.sc_desc.width, self.sc_desc.height);
-        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
-        let (min, max) = self.widget.resize(&mut size_handle, size);
-        self.window.set_min_inner_size(min);
-        self.window.set_max_inner_size(max);
-        self.window.request_redraw();
+        self.apply_size();
     }
 
     /// Handle an event
@@ -219,16 +195,7 @@ where
     {
         let mut tkw = TkWindow::new(&self.window, shared);
         let mut mgr = self.mgr.manager(&mut tkw);
-
-        for (i, condition) in self.widget.callbacks() {
-            match condition {
-                Callback::Start => (),
-                Callback::Close => {
-                    self.widget.trigger_callback(i, &mut mgr);
-                }
-            }
-        }
-
+        self.widget.handle_closure(&mut mgr);
         mgr.finish(&mut *self.widget)
     }
 
@@ -257,8 +224,38 @@ where
         mgr.update_handle(&mut *self.widget, handle, payload);
     }
 
+    pub fn add_popup<C, T>(
+        &mut self,
+        shared: &mut SharedState<C, T>,
+        id: WindowId,
+        popup: kas::Popup,
+    ) where
+        C: CustomPipe<Window = CW>,
+        T: Theme<DrawPipe<C>, Window = TW>,
+    {
+        let window = &mut *self.widget;
+        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
+        let mut tkw = TkWindow::new(&self.window, shared);
+        let mut mgr = self.mgr.manager(&mut tkw);
+        kas::Window::add_popup(window, &mut size_handle, &mut mgr, id, popup);
+    }
+
     pub fn send_action(&mut self, action: TkAction) {
         self.mgr.send_action(action);
+    }
+
+    pub fn send_close<C, T>(&mut self, shared: &mut SharedState<C, T>, id: WindowId)
+    where
+        C: CustomPipe<Window = CW>,
+        T: Theme<DrawPipe<C>, Window = TW>,
+    {
+        if id == self.window_id {
+            self.mgr.send_action(TkAction::Close);
+        } else {
+            let mut tkw = TkWindow::new(&self.window, shared);
+            let mut mgr = self.mgr.manager(&mut tkw);
+            self.widget.remove_popup(&mut mgr, id);
+        }
     }
 }
 
@@ -268,6 +265,28 @@ where
     CW: CustomWindow + 'static,
     TW: kas_theme::Window<DrawWindow<CW>> + 'static,
 {
+    fn apply_size(&mut self) {
+        let size = Size(self.sc_desc.width, self.sc_desc.height);
+        let rect = Rect::new(Coord::ZERO, size);
+
+        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
+        let (min, ideal) =
+            layout::solve_and_set(self.widget.as_widget_mut(), &mut size_handle, rect, true);
+        let restrict_dimensions = self.widget.restrict_dimensions();
+        let min = match restrict_dimensions.0 {
+            false => None,
+            true => Some(min),
+        };
+        let max = match restrict_dimensions.1 {
+            false => None,
+            true => Some(ideal),
+        };
+        self.window.set_min_inner_size(min);
+        self.window.set_max_inner_size(max);
+
+        self.window.request_redraw();
+    }
+
     fn do_resize<C, T>(&mut self, shared: &mut SharedState<C, T>, size: PhysicalSize<u32>)
     where
         C: CustomPipe<Window = CW>,
@@ -278,9 +297,10 @@ where
             return;
         }
 
-        debug!("Resizing window to size={:?}", size);
+        let rect = Rect::new(Coord::ZERO, size);
+        debug!("Resizing window to rect = {:?}", rect);
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
-        self.widget.resize(&mut size_handle, size);
+        layout::solve_and_set(self.widget.as_widget_mut(), &mut size_handle, rect, true);
         drop(size_handle);
 
         let buf = shared.draw.resize(&mut self.draw, &shared.device, size);
@@ -300,7 +320,7 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
-        trace!("Drawing window");
+        trace!("Window::do_draw");
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         let rect = Rect {
             pos: Coord::ZERO,
@@ -346,6 +366,15 @@ where
     T: Theme<DrawPipe<C>>,
     T::Window: kas_theme::Window<DrawWindow<C::Window>>,
 {
+    fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
+        let id = self.shared.next_window_id();
+        let parent_id = self.window.id();
+        self.shared
+            .pending
+            .push(PendingAction::AddPopup(parent_id, id, popup));
+        id
+    }
+
     fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
         // By far the simplest way to implement this is to let our call
         // anscestor, event::Loop::handle, do the work.

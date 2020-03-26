@@ -10,29 +10,64 @@
 use kas::geom::{Coord, Rect, Size};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-/// Axis-aligned 2D cuboid, specified via two corners
+/// Axis-aligned 2D cuboid, specified via two corners `a` and `b`
 ///
-/// Typically it is expected that `self.0.le(self.1)`.
+/// Typically it is expected that `a.le(b)`, although this is not required.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Quad(pub Vec2, pub Vec2);
+pub struct Quad {
+    pub a: Vec2,
+    pub b: Vec2,
+}
 
 impl Quad {
-    /// Make self smaller by `value` on all sides (i.e. add to `self.0` and
-    /// subtract from `self.1`).
+    /// Get the size
     #[inline]
-    pub fn shrink(&mut self, value: f32) {
-        self.0 = self.0 + value;
-        self.1 = self.1 - value;
+    pub fn size(&self) -> Vec2 {
+        self.b - self.a
+    }
+
+    /// Swizzle coordinates: x from first, y from second point
+    #[inline]
+    pub fn ab(&self) -> Vec2 {
+        Vec2(self.a.0, self.b.1)
+    }
+
+    /// Swizzle coordinates: x from second, y from first point
+    #[inline]
+    pub fn ba(&self) -> Vec2 {
+        Vec2(self.b.0, self.a.1)
+    }
+
+    /// Shrink self in all directions by the given `value`
+    ///
+    /// In debug mode, this asserts `a.le(b)` after shrinking.
+    #[inline]
+    pub fn shrink(&self, value: f32) -> Quad {
+        let a = self.a + value;
+        let b = self.b - value;
+        debug_assert!(a.le(b));
+        Quad { a, b }
+    }
+
+    /// Shrink self in all directions by the given `value`
+    ///
+    /// In debug mode, this asserts `a.le(b)` after shrinking.
+    #[inline]
+    pub fn shrink_vec(&self, value: Vec2) -> Quad {
+        let a = self.a + value;
+        let b = self.b - value;
+        debug_assert!(a.le(b));
+        Quad { a, b }
     }
 }
 
 impl From<Rect> for Quad {
     #[inline]
     fn from(rect: Rect) -> Quad {
-        let pos = Vec2::from(rect.pos);
-        let size = Vec2::from(rect.size);
-        Quad(pos, pos + size)
+        let a = Vec2::from(rect.pos);
+        let b = a + Vec2::from(rect.size);
+        Quad { a, b }
     }
 }
 
@@ -57,6 +92,12 @@ impl Vec2 {
     #[inline]
     pub const fn splat(value: f32) -> Self {
         Vec2(value, value)
+    }
+
+    /// Take the minimum component
+    #[inline]
+    pub fn min_comp(self) -> f32 {
+        self.0.min(self.1)
     }
 
     /// For each component, return `±1` with the same sign as `self`.
@@ -110,6 +151,12 @@ impl Vec2 {
     pub fn complex_inv(self) -> Self {
         let ssi = 1.0 / self.sum_square();
         Vec2(self.0 * ssi, -self.1 * ssi)
+    }
+
+    /// Return the sum of the terms
+    #[inline]
+    pub fn sum(self) -> f32 {
+        self.0 + self.1
     }
 
     /// Return the sum of the square of the terms
@@ -307,6 +354,12 @@ impl DVec2 {
     pub fn complex_inv(self) -> Self {
         let ssi = 1.0 / self.sum_square();
         DVec2(self.0 * ssi, -self.1 * ssi)
+    }
+
+    /// Return the sum of the terms
+    #[inline]
+    pub fn sum(self) -> f64 {
+        self.0 + self.1
     }
 
     /// Return the sum of the square of the terms

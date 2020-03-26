@@ -16,8 +16,7 @@ use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// A bare checkbox (no label)
-#[widget_config]
-#[widget_core(key_nav = true)]
+#[widget(config(key_nav = true))]
 #[handler(event)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBoxBare<M> {
@@ -150,7 +149,6 @@ impl<M> event::Handler for CheckBoxBare<M> {
 /// A checkable box with optional label
 // TODO: use a generic wrapper for CheckBox and RadioBox?
 #[layout(horizontal, area=checkbox)]
-#[widget_config]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<M> {

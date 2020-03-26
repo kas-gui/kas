@@ -10,9 +10,9 @@ use std::ops::DerefMut;
 
 use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Manager, ManagerState};
-use crate::geom::{Coord, Rect, Size};
+use crate::geom::{Coord, Rect};
 use crate::layout::{self, AxisInfo, SizeRules};
-use crate::{AlignHints, CoreData, WidgetId};
+use crate::{AlignHints, CoreData, Direction, WidgetId, WindowId};
 
 mod impls;
 
@@ -63,7 +63,15 @@ pub trait WidgetCore: fmt::Debug {
     fn as_widget(&self) -> &dyn WidgetConfig;
     /// Erase type
     fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig;
+}
 
+/// Listing of a widget's children
+///
+/// Usually this is implemented by `derive(Widget)`, but for dynamic widgets it
+/// may have to be implemented manually. Note that if the results of these
+/// methods ever change, one must send [`TkAction::Reconfigure`].
+/// TODO: full reconfigure may be too slow; find a better option.
+pub trait WidgetChildren: WidgetCore {
     /// Get the number of child widgets
     fn len(&self) -> usize;
 
@@ -133,13 +141,27 @@ pub trait WidgetCore: fmt::Debug {
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig));
+    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
+        for i in 0..self.len() {
+            if let Some(w) = self.get(i) {
+                w.walk(f);
+            }
+        }
+        f(self.as_widget());
+    }
 
     /// Walk through all widgets, calling `f` once on each.
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig));
+    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
+        for i in 0..self.len() {
+            if let Some(w) = self.get_mut(i) {
+                w.walk_mut(f);
+            }
+        }
+        f(self.as_widget_mut());
+    }
 }
 
 /// Widget configuration
@@ -157,8 +179,10 @@ pub trait WidgetConfig: Layout {
     /// Widgets are *configured* on window creation and when
     /// [`kas::TkAction::Reconfigure`] is sent.
     ///
-    /// Configuration happens after resizing. This method is called after
-    /// a [`WidgetId`] has been assigned to self and to each child.
+    /// Configure is called before resizing (but after calculation of the
+    /// initial window size). This method is called after
+    /// a [`WidgetId`] has been assigned to self, and after `configure` has
+    /// been called on each child.
     ///
     /// The default implementation of this method does nothing.
     fn configure(&mut self, _: &mut Manager) {}
@@ -184,7 +208,7 @@ pub trait WidgetConfig: Layout {
 /// as well as low-level event handling.
 ///
 /// For a description of the widget size model, see [`SizeRules`].
-pub trait Layout: WidgetCore {
+pub trait Layout: WidgetChildren {
     /// Get size rules for the given axis.
     ///
     /// This method takes `&mut self` to allow local caching of child widget
@@ -275,38 +299,50 @@ pub trait LayoutData {
     type Setter: layout::RulesSetter;
 }
 
-/// A window is a drawable interactive region provided by windowing system.
-// TODO: should this be a trait, instead of simply a struct? Should it be
-// implemented by dialogs? Note that from the toolkit perspective, it seems a
-// Window should be a Widget. So alternatives are (1) use a struct instead of a
-// trait or (2) allow any Widget to derive Window (i.e. implement required
-// functionality with macros instead of the generic code below).
+/// A pop-up is an overlay with parent & position information
+pub struct Popup {
+    pub parent: WidgetId,
+    pub direction: Direction,
+    pub overlay: Box<dyn Widget<Msg = event::VoidMsg>>,
+}
+
+/// Functionality required by a window
 pub trait Window: Widget<Msg = event::VoidMsg> {
     /// Get the window title
     fn title(&self) -> &str;
 
-    /// Calculate required size
+    /// Whether to limit the maximum size of a window
     ///
-    /// Returns optional minimum size, and ideal size.
-    fn find_size(&mut self, size_handle: &mut dyn SizeHandle) -> (Option<Size>, Size);
+    /// All widgets' size rules allow calculation of two sizes: the minimum
+    /// size and the ideal size. Windows are initially sized to the ideal size.
+    /// This option controls whether the window size is restricted by the
+    /// calculated minimum size and by the ideal size.
+    ///
+    /// Return value is `(restrict_min, restrict_max)`. Suggested is to use
+    /// `(true, true)` for simple dialog boxes and `(true, false)` for complex
+    /// windows.
+    fn restrict_dimensions(&self) -> (bool, bool);
 
-    /// Adjust the size of the window, repositioning widgets.
+    /// Add a pop-up as a layer in the current window
     ///
-    /// Returns optional minimum size and optional maximum size.
-    fn resize(
+    /// Each [`Popup`] is assigned a [`WindowId`]; both are passed.
+    fn add_popup(
         &mut self,
         size_handle: &mut dyn SizeHandle,
-        size: Size,
-    ) -> (Option<Size>, Option<Size>);
+        mgr: &mut Manager,
+        id: WindowId,
+        popup: Popup,
+    );
 
-    /// Get a list of available callbacks.
+    /// Trigger closure of a pop-up
     ///
-    /// This returns a sequence of `(index, condition)` values. The toolkit
-    /// should call `trigger_callback(index, mgr)` whenever the condition is met.
-    fn callbacks(&self) -> Vec<(usize, event::Callback)>;
+    /// If the given `id` refers to a pop-up, it should be closed.
+    fn remove_popup(&mut self, mgr: &mut Manager, id: WindowId);
 
-    /// Trigger a callback (see `iter_callbacks`).
-    fn trigger_callback(&mut self, index: usize, mgr: &mut Manager);
+    /// Handle closure of self
+    ///
+    /// This allows for actions on destruction, but doesn't need to do anything.
+    fn handle_closure(&mut self, _mgr: &mut Manager) {}
 }
 
 /// Return value of [`ThemeApi`] functions

@@ -24,7 +24,6 @@ enum Control {
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
 fn make_window() -> Box<dyn kas::Window> {
     let stopwatch = make_widget! {
-        #[widget_config]
         #[layout(horizontal)]
         #[handler(event)]
         struct {
@@ -78,7 +77,7 @@ fn make_window() -> Box<dyn kas::Window> {
     };
 
     let mut window = Window::new("Stopwatch", stopwatch);
-    window.set_enforce_size(true, true);
+    window.set_restrict_dimensions(true, true);
     Box::new(window)
 }
 

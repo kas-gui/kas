@@ -22,7 +22,6 @@ use kas::prelude::*;
 /// Scroll regions translate their contents by an `offset`, which has a
 /// minimum value of [`Coord::ZERO`] and a maximum value of
 /// [`ScrollRegion::max_offset`].
-#[widget_config]
 #[handler(action, msg = <W as event::Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
@@ -117,7 +116,7 @@ impl<W: Widget> ScrollRegion<W> {
     /// Returns true if the offset is not identical to the old offset.
     #[inline]
     pub fn set_offset(&mut self, mgr: &mut Manager, offset: Coord) -> bool {
-        let offset = offset.max(Coord::ZERO).min(self.max_offset);
+        let offset = offset.clamp(Coord::ZERO, self.max_offset);
         if offset != self.offset {
             self.offset = offset;
             mgr.send_action(TkAction::RegionMoved);
@@ -173,7 +172,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         self.child
             .set_rect(size_handle, child_rect, AlignHints::NONE);
         self.max_offset = Coord::from(child_size) - Coord::from(self.inner_size);
-        self.offset = self.offset.max(Coord::ZERO).min(self.max_offset);
+        self.offset = self.offset.clamp(Coord::ZERO, self.max_offset);
 
         if self.show_bars.0 {
             let pos = Coord(pos.0, pos.1 + self.inner_size.1 as i32);

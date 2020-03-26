@@ -18,7 +18,7 @@ use std::num::NonZeroU32;
 
 use crate::{event, ThemeAction, ThemeApi};
 
-/// Identifier for a window added to a toolkit
+/// Identifier for a window or pop-up
 ///
 /// Identifiers should always be unique.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -75,6 +75,15 @@ pub enum TkAction {
 /// This is implemented by a KAS toolkit on a window handle.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub trait TkWindow {
+    /// Add a pop-up
+    ///
+    /// A pop-up may be presented as an overlay layer in the current window or
+    /// via a new borderless window.
+    ///
+    /// Pop-ups support position hints: they are placed *next to* the specified
+    /// `rect`, preferably in the given `direction`.
+    fn add_popup(&mut self, popup: kas::Popup) -> WindowId;
+
     /// Add a window
     ///
     /// Toolkits typically allow windows to be added directly, before start of

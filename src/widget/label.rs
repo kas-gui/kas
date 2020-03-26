@@ -12,7 +12,6 @@ use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// A simple text label
-#[widget_config]
 #[handler]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Label {

@@ -239,24 +239,28 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
 
         storage.set_dims(cols + 1, rows + 1);
 
-        SizeRules::solve_seq(widths.as_mut(), storage.widths(), rect.size.0);
-        w_offsets.as_mut()[0] = 0;
-        for i in 1..w_offsets.as_ref().len() {
-            let i1 = i - 1;
-            let m1 = storage.widths()[i1].margins().1;
-            let m0 = storage.widths()[i].margins().0;
-            w_offsets.as_mut()[i] =
-                w_offsets.as_ref()[i1] + widths.as_ref()[i1] + m1.max(m0) as u32;
+        if cols > 0 {
+            SizeRules::solve_seq(widths.as_mut(), storage.widths(), rect.size.0);
+            w_offsets.as_mut()[0] = 0;
+            for i in 1..w_offsets.as_ref().len() {
+                let i1 = i - 1;
+                let m1 = storage.widths()[i1].margins().1;
+                let m0 = storage.widths()[i].margins().0;
+                w_offsets.as_mut()[i] =
+                    w_offsets.as_ref()[i1] + widths.as_ref()[i1] + m1.max(m0) as u32;
+            }
         }
 
-        SizeRules::solve_seq(heights.as_mut(), storage.heights(), rect.size.1);
-        h_offsets.as_mut()[0] = 0;
-        for i in 1..h_offsets.as_ref().len() {
-            let i1 = i - 1;
-            let m1 = storage.heights()[i1].margins().1;
-            let m0 = storage.heights()[i].margins().0;
-            h_offsets.as_mut()[i] =
-                h_offsets.as_ref()[i1] + heights.as_ref()[i1] + m1.max(m0) as u32;
+        if rows > 0 {
+            SizeRules::solve_seq(heights.as_mut(), storage.heights(), rect.size.1);
+            h_offsets.as_mut()[0] = 0;
+            for i in 1..h_offsets.as_ref().len() {
+                let i1 = i - 1;
+                let m1 = storage.heights()[i1].margins().1;
+                let m0 = storage.heights()[i].margins().0;
+                h_offsets.as_mut()[i] =
+                    h_offsets.as_ref()[i1] + heights.as_ref()[i1] + m1.max(m0) as u32;
+            }
         }
 
         GridSetter {

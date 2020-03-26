@@ -25,7 +25,7 @@ pub struct Child {
 pub struct Args {
     pub core_data: Member,
     pub layout_data: Option<Member>,
-    pub widget_config: Option<WidgetConfig>,
+    pub widget: WidgetArgs,
     pub layout: Option<LayoutArgs>,
     pub handler: Vec<HandlerArgs>,
     pub children: Vec<Child>,
@@ -60,7 +60,13 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
 
     for (i, field) in fields.iter_mut().enumerate() {
         for attr in field.attrs.drain(..) {
-            if attr.path == parse_quote! { widget_core } {
+            if attr.path == parse_quote! { layout } || attr.path == parse_quote! { handler } {
+                // These are valid attributes according to proc_macro_derive, so we need to catch them
+                attr.span()
+                    .unwrap()
+                    .error("invalid attribute on Widget field (applicable to struct only)")
+                    .emit()
+            } else if attr.path == parse_quote! { widget_core } {
                 if core_data.is_none() {
                     core_data = Some(member(i, field.ident.clone()));
                 } else {
@@ -96,18 +102,24 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
-    let mut widget_config = None;
+    let mut widget = None;
     let mut layout = None;
     let mut handler = vec![];
 
     for attr in ast.attrs.drain(..) {
-        if attr.path == parse_quote! { widget_config } {
-            if widget_config.is_none() {
-                widget_config = Some(syn::parse2(attr.tokens)?);
+        if attr.path == parse_quote! { widget_core } || attr.path == parse_quote! { layout_data } {
+            // These are valid attributes according to proc_macro_derive, so we need to catch them
+            attr.span()
+                .unwrap()
+                .error("invalid attribute on Widget struct (applicable to fields only)")
+                .emit()
+        } else if attr.path == parse_quote! { widget } {
+            if widget.is_none() {
+                widget = Some(syn::parse2(attr.tokens)?);
             } else {
                 attr.span()
                     .unwrap()
-                    .error("multiple #[widget_config(..)] attributes on type")
+                    .error("multiple #[widget(..)] attributes on type")
                     .emit()
             }
         } else if attr.path == parse_quote! { layout } {
@@ -124,11 +136,13 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         }
     }
 
+    let widget = widget.unwrap_or(WidgetArgs::default());
+
     if let Some(core_data) = core_data {
         Ok(Args {
             core_data,
             layout_data,
-            widget_config,
+            widget,
             layout,
             handler,
             children,
@@ -178,6 +192,9 @@ mod kw {
     custom_keyword!(all);
     custom_keyword!(action);
     custom_keyword!(event);
+    custom_keyword!(config);
+    custom_keyword!(noauto);
+    custom_keyword!(children);
 }
 
 #[derive(Debug)]
@@ -379,6 +396,20 @@ impl ToTokens for GridPos {
     }
 }
 
+pub struct WidgetArgs {
+    pub config: Option<WidgetConfig>,
+    pub children: bool,
+}
+
+impl Default for WidgetArgs {
+    fn default() -> Self {
+        WidgetArgs {
+            config: Some(WidgetConfig::default()),
+            children: true,
+        }
+    }
+}
+
 pub struct WidgetConfig {
     pub key_nav: bool,
     pub cursor_icon: Expr,
@@ -393,42 +424,85 @@ impl Default for WidgetConfig {
     }
 }
 
-impl Parse for WidgetConfig {
+impl Parse for WidgetArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut props = WidgetConfig::default();
+        let mut config = None;
+        let mut have_config = false;
+        let mut children = true;
+        let mut have_children = false;
 
-        if input.is_empty() {
-            return Ok(props);
-        }
-        let content;
-        let _ = parenthesized!(content in input);
+        if !input.is_empty() {
+            let content;
+            let _ = parenthesized!(content in input);
 
-        let mut have_key_nav = false;
-        let mut have_cursor_icon = false;
+            while !content.is_empty() {
+                let lookahead = content.lookahead1();
+                if lookahead.peek(kw::children) && !have_children {
+                    have_children = true;
+                    let _: kw::children = content.parse()?;
+                    let _: Eq = content.parse()?;
+                    let _: kw::noauto = content.parse()?;
+                    children = false;
+                } else if lookahead.peek(kw::config) && !have_config {
+                    have_config = true;
+                    let _: kw::config = content.parse()?;
 
-        while !content.is_empty() {
-            let lookahead = content.lookahead1();
-            if lookahead.peek(kw::key_nav) && !have_key_nav {
-                let _: kw::key_nav = content.parse()?;
-                let _: Eq = content.parse()?;
-                let value: syn::LitBool = content.parse()?;
-                props.key_nav = value.value;
-                have_key_nav = true;
-            } else if lookahead.peek(kw::cursor_icon) && !have_cursor_icon {
-                let _: kw::cursor_icon = content.parse()?;
-                let _: Eq = content.parse()?;
-                props.cursor_icon = content.parse()?;
-                have_cursor_icon = true;
-            } else {
-                return Err(lookahead.error());
-            };
+                    if content.peek(Eq) {
+                        let _: Eq = content.parse()?;
+                        let lookahead = content.lookahead1();
+                        if lookahead.peek(kw::noauto) {
+                            let _: kw::noauto = content.parse()?;
+                        } else {
+                            return Err(lookahead.error());
+                        }
+                    } else if content.peek(syn::token::Paren) {
+                        let content2;
+                        let _ = parenthesized!(content2 in content);
 
-            if content.peek(Comma) {
-                let _: Comma = content.parse()?;
+                        let mut conf = WidgetConfig::default();
+                        let mut have_key_nav = false;
+                        let mut have_cursor_icon = false;
+
+                        while !content2.is_empty() {
+                            let lookahead = content2.lookahead1();
+                            if lookahead.peek(kw::noauto) && !have_key_nav && !have_cursor_icon {
+                                let _: kw::noauto = content2.parse()?;
+                                break;
+                            } else if lookahead.peek(kw::key_nav) && !have_key_nav {
+                                let _: kw::key_nav = content2.parse()?;
+                                let _: Eq = content2.parse()?;
+                                let value: syn::LitBool = content2.parse()?;
+                                conf.key_nav = value.value;
+                                have_key_nav = true;
+                            } else if lookahead.peek(kw::cursor_icon) && !have_cursor_icon {
+                                let _: kw::cursor_icon = content2.parse()?;
+                                let _: Eq = content2.parse()?;
+                                conf.cursor_icon = content2.parse()?;
+                                have_cursor_icon = true;
+                            } else {
+                                return Err(lookahead.error());
+                            };
+
+                            if content2.peek(Comma) {
+                                let _: Comma = content2.parse()?;
+                            }
+                        }
+
+                        config = Some(conf);
+                    }
+                }
+
+                if content.peek(Comma) {
+                    let _: Comma = content.parse()?;
+                }
             }
         }
 
-        Ok(props)
+        if !have_config {
+            config = Some(WidgetConfig::default());
+        }
+
+        Ok(WidgetArgs { config, children })
     }
 }
 

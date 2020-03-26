@@ -17,7 +17,6 @@ use kas::prelude::*;
 ///
 /// This widget provides a simple abstraction: drawing a frame around its
 /// contents.
-#[widget_config]
 #[handler(action, msg = <W as Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Frame<W: Widget> {
@@ -44,19 +43,19 @@ impl<W: Widget> Frame<W> {
 
 impl<W: Widget> Layout for Frame<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let sides = size_handle.outer_frame();
+        let size = size_handle.frame();
         let margins = Margins::ZERO;
-        let frame_rules = SizeRules::extract_fixed(axis.dir(), sides.0 + sides.1, margins);
+        let frame_rules = SizeRules::extract_fixed(axis.dir(), size + size, margins);
 
         let child_rules = self.child.size_rules(size_handle, axis);
         let m = child_rules.margins();
 
         if axis.is_horizontal() {
-            self.m0.0 = (sides.0).0 + m.0 as u32;
-            self.m1.0 = (sides.1).0 + m.1 as u32;
+            self.m0.0 = size.0 + m.0 as u32;
+            self.m1.0 = size.0 + m.1 as u32;
         } else {
-            self.m0.1 = (sides.0).1 + m.0 as u32;
-            self.m1.1 = (sides.1).1 + m.1 as u32;
+            self.m0.1 = size.1 + m.0 as u32;
+            self.m1.1 = size.1 + m.1 as u32;
         }
 
         child_rules.surrounded_by(frame_rules, true)

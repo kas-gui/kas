@@ -57,8 +57,8 @@ pub trait SizeHandle {
 
     /// Size of a frame around child widget(s)
     ///
-    /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
-    fn outer_frame(&self) -> (Size, Size);
+    /// Returns dimensions of the frame on each side.
+    fn frame(&self) -> Size;
 
     /// The margin around content within a widget
     ///
@@ -78,12 +78,14 @@ pub trait SizeHandle {
 
     /// Size of the sides of a button.
     ///
-    /// Includes each side (as in `outer_frame`), minus the content area (to be added separately).
+    /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
+    /// Excludes size of content area.
     fn button_surround(&self) -> (Size, Size);
 
     /// Size of the sides of an edit box.
     ///
-    /// Includes each side (as in `outer_frame`), minus the content area (to be added separately).
+    /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
+    /// Excludes size of content area.
     fn edit_surround(&self) -> (Size, Size);
 
     /// Size of the element drawn by [`DrawHandle::checkbox`].
@@ -155,10 +157,13 @@ pub trait DrawHandle {
     /// that method; otherwise this returns the window's `rect`.
     fn target_rect(&self) -> Rect;
 
-    /// Draw a frame in the given [`Rect`]
+    /// Draw a frame inside the given `rect`
     ///
-    /// The frame dimensions should equal those of [`SizeHandle::outer_frame`].
+    /// The frame dimensions equal those of [`SizeHandle::frame`] on each side.
     fn outer_frame(&mut self, rect: Rect);
+
+    /// Draw a separator in the given `rect`
+    fn separator(&mut self, rect: Rect);
 
     /// Draw some text using the standard font
     ///
@@ -205,8 +210,8 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
         self.deref().scale_factor()
     }
 
-    fn outer_frame(&self) -> (Size, Size) {
-        self.deref().outer_frame()
+    fn frame(&self) -> Size {
+        self.deref().frame()
     }
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
@@ -252,8 +257,8 @@ where
         self.deref().scale_factor()
     }
 
-    fn outer_frame(&self) -> (Size, Size) {
-        self.deref().outer_frame()
+    fn frame(&self) -> Size {
+        self.deref().frame()
     }
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
@@ -301,7 +306,10 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         self.deref().target_rect()
     }
     fn outer_frame(&mut self, rect: Rect) {
-        self.deref_mut().outer_frame(rect)
+        self.deref_mut().outer_frame(rect);
+    }
+    fn separator(&mut self, rect: Rect) {
+        self.deref_mut().separator(rect);
     }
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
@@ -341,7 +349,10 @@ where
         self.deref().target_rect()
     }
     fn outer_frame(&mut self, rect: Rect) {
-        self.deref_mut().outer_frame(rect)
+        self.deref_mut().outer_frame(rect);
+    }
+    fn separator(&mut self, rect: Rect) {
+        self.deref_mut().separator(rect);
     }
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)

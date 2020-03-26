@@ -9,10 +9,10 @@
 //! customisation.
 
 use kas::draw::SizeHandle;
-use kas::event::{Callback, Manager, Response, VoidMsg};
-use kas::layout;
+use kas::event::{Manager, Response, VoidMsg};
 use kas::prelude::*;
 use kas::widget::{Label, TextButton};
+use kas::WindowId;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum DialogButton {
@@ -20,7 +20,6 @@ enum DialogButton {
 }
 
 /// A simple message box.
-#[widget_config]
 #[layout(vertical)]
 #[handler]
 #[derive(Clone, Debug, Widget)]
@@ -55,28 +54,19 @@ impl MessageBox {
     }
 }
 
-impl Window for MessageBox {
+impl kas::Window for MessageBox {
     fn title(&self) -> &str {
         &self.title
     }
 
-    fn find_size(&mut self, size_handle: &mut dyn SizeHandle) -> (Option<Size>, Size) {
-        let (min, ideal) = layout::solve(self, size_handle);
-        (Some(min), ideal)
+    fn restrict_dimensions(&self) -> (bool, bool) {
+        (true, true)
     }
 
-    fn resize(
-        &mut self,
-        size_handle: &mut dyn SizeHandle,
-        size: Size,
-    ) -> (Option<Size>, Option<Size>) {
-        let (min, ideal) = layout::solve_and_set(self, size_handle, size);
-        (Some(min), Some(ideal))
+    // do not support overlays (yet?)
+    fn add_popup(&mut self, _: &mut dyn SizeHandle, _: &mut Manager, _: WindowId, _: kas::Popup) {
+        panic!("MessageBox does not (currently) support pop-ups");
     }
 
-    // doesn't support callbacks, so doesn't need to do anything here
-    fn callbacks(&self) -> Vec<(usize, Callback)> {
-        Vec::new()
-    }
-    fn trigger_callback(&mut self, _index: usize, _: &mut Manager) {}
+    fn remove_popup(&mut self, _: &mut Manager, _: WindowId) {}
 }

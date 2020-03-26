@@ -5,6 +5,8 @@
 
 //! Dynamic widgets
 
+use std::ops::{Index, IndexMut};
+
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{Event, Manager, Response};
 use kas::layout::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
@@ -64,42 +66,18 @@ pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
 /// children.
 ///
 /// [`make_widget`]: ../macros/index.html#the-make_widget-macro
-#[derive(Clone, Default, Debug)]
+#[handler(action, msg=<W as event::Handler>::Msg)]
+#[widget(children=noauto)]
+#[derive(Clone, Default, Debug, Widget)]
 pub struct List<D: Directional, W: Widget> {
+    #[widget_core]
     core: CoreData,
     widgets: Vec<W>,
     data: layout::DynRowStorage,
     direction: D,
 }
 
-impl<D: Directional, W: Widget> WidgetConfig for List<D, W> {}
-
-// We implement this manually, because the derive implementation cannot handle
-// vectors of child widgets.
-impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
-    #[inline]
-    fn core_data(&self) -> &CoreData {
-        &self.core
-    }
-    #[inline]
-    fn core_data_mut(&mut self) -> &mut CoreData {
-        &mut self.core
-    }
-
-    #[inline]
-    fn widget_name(&self) -> &'static str {
-        "List"
-    }
-
-    #[inline]
-    fn as_widget(&self) -> &dyn WidgetConfig {
-        self
-    }
-    #[inline]
-    fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig {
-        self
-    }
-
+impl<D: Directional, W: Widget> WidgetChildren for List<D, W> {
     #[inline]
     fn len(&self) -> usize {
         self.widgets.len()
@@ -111,19 +89,6 @@ impl<D: Directional, W: Widget> WidgetCore for List<D, W> {
     #[inline]
     fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
         self.widgets.get_mut(index).map(|w| w.as_widget_mut())
-    }
-
-    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
-        for child in &self.widgets {
-            child.walk(f);
-        }
-        f(self)
-    }
-    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
-        for child in &mut self.widgets {
-            child.walk_mut(f);
-        }
-        f(self)
     }
 }
 
@@ -162,9 +127,7 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
             return child.find_id(coord);
         }
 
-        // We should return Some(self), but hit a borrow check error.
-        // This should however be unreachable anyway.
-        None
+        Some(self.id())
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
@@ -175,10 +138,6 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> event::Handler for List<D, W> {
-    type Msg = <W as event::Handler>::Msg;
-}
-
 impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         for child in &mut self.widgets {
@@ -186,12 +145,11 @@ impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
                 return child.event(mgr, id, event);
             }
         }
-        debug_assert!(id == self.id(), "Handler::handle: bad WidgetId");
-        Response::Unhandled(event)
+
+        debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
+        Manager::handle_generic(self, mgr, event)
     }
 }
-
-impl<D: Directional, W: Widget> Widget for List<D, W> {}
 
 impl<D: Directional + Default, W: Widget> List<D, W> {
     /// Construct a new instance
@@ -351,5 +309,19 @@ impl<D: Directional, W: Widget> List<D, W> {
         if len != self.widgets.len() {
             mgr.send_action(TkAction::Reconfigure);
         }
+    }
+}
+
+impl<D: Directional, W: Widget> Index<usize> for List<D, W> {
+    type Output = W;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.widgets[index]
+    }
+}
+
+impl<D: Directional, W: Widget> IndexMut<usize> for List<D, W> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.widgets[index]
     }
 }

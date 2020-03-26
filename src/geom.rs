@@ -41,7 +41,7 @@ impl Coord {
     ///
     /// In the case that `min > max`, the `min` value is returned.
     #[inline]
-    pub fn clamped(self, min: Self, max: Self) -> Self {
+    pub fn clamp(self, min: Self, max: Self) -> Self {
         self.min(max).max(min)
     }
 

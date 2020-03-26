@@ -12,7 +12,7 @@ use super::{AxisInfo, SizeRules};
 use crate::draw::SizeHandle;
 use crate::geom::{Coord, Rect, Size};
 use crate::Direction::{Horizontal, Vertical};
-use crate::{AlignHints, Layout, WidgetConfig};
+use crate::{AlignHints, WidgetConfig};
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -58,7 +58,7 @@ pub trait RulesSetter {
 /// Calculate required size of widget
 ///
 /// Return min and ideal sizes.
-pub fn solve<L: Layout>(widget: &mut L, size_handle: &mut dyn SizeHandle) -> (Size, Size) {
+pub fn solve(widget: &mut dyn WidgetConfig, size_handle: &mut dyn SizeHandle) -> (Size, Size) {
     // We call size_rules not because we want the result, but because our
     // spec requires that we do so before calling set_rect.
     let w = widget.size_rules(size_handle, AxisInfo::new(Horizontal, None));
@@ -73,30 +73,34 @@ pub fn solve<L: Layout>(widget: &mut L, size_handle: &mut dyn SizeHandle) -> (Si
 /// Solve and assign widget layout
 ///
 /// Return min and ideal sizes.
-pub fn solve_and_set<L: WidgetConfig>(
-    widget: &mut L,
+pub fn solve_and_set(
+    widget: &mut dyn WidgetConfig,
     size_handle: &mut dyn SizeHandle,
-    size: Size,
+    mut rect: Rect,
+    include_margins: bool,
 ) -> (Size, Size) {
     // We call size_rules not because we want the result, but because our
     // spec requires that we do so before calling set_rect.
     let w = widget.size_rules(size_handle, AxisInfo::new(Horizontal, None));
-    let m = w.margins();
-    let x = m.0 as i32;
-    let width = size.0 - (m.0 + m.1) as u32;
+    let wm = w.margins();
+    let mut width = rect.size.0;
+    if include_margins {
+        width -= (wm.0 + wm.1) as u32;
+    }
 
     let h = widget.size_rules(size_handle, AxisInfo::new(Vertical, Some(width)));
-    let m = h.margins();
-    let y = m.0 as i32;
-    let height = size.1 - (m.0 + m.1) as u32;
+    let hm = h.margins();
 
-    let pos = Coord(x, y);
-    let size = Size(width, height);
-    widget.set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
+    if include_margins {
+        rect.pos += Coord(wm.0 as i32, hm.0 as i32);
+        rect.size.0 = width;
+        rect.size.1 -= (hm.0 + hm.1) as u32;
+    }
+    widget.set_rect(size_handle, rect, AlignHints::NONE);
 
     trace!(
         "layout::solve_and_set for size={:?} has rules {:?}, {:?} and hierarchy:{}",
-        size,
+        rect.size,
         w,
         h,
         WidgetHeirarchy(widget, 0),

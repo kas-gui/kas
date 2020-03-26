@@ -14,7 +14,7 @@ use super::{
     DrawWindow, ShaderManager, TEX_FORMAT,
 };
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Region};
-use kas::geom::{Coord, Rect, Size, Vec2};
+use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
@@ -169,24 +169,24 @@ impl<CW: CustomWindow + 'static> Draw for DrawWindow<CW> {
     }
 
     #[inline]
-    fn rect(&mut self, pass: Region, rect: Rect, col: Colour) {
+    fn rect(&mut self, pass: Region, rect: Quad, col: Colour) {
         self.shaded_square.rect(pass.0, rect, col);
     }
 
     #[inline]
-    fn frame(&mut self, pass: Region, outer: Rect, inner: Rect, col: Colour) {
+    fn frame(&mut self, pass: Region, outer: Quad, inner: Quad, col: Colour) {
         self.shaded_square.frame(pass.0, outer, inner, col);
     }
 }
 
 impl<CW: CustomWindow + 'static> DrawRounded for DrawWindow<CW> {
     #[inline]
-    fn rounded_line(&mut self, pass: Region, p1: Coord, p2: Coord, radius: f32, col: Colour) {
+    fn rounded_line(&mut self, pass: Region, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
         self.flat_round.line(pass.0, p1, p2, radius, col);
     }
 
     #[inline]
-    fn circle(&mut self, pass: Region, rect: Rect, inner_radius: f32, col: Colour) {
+    fn circle(&mut self, pass: Region, rect: Quad, inner_radius: f32, col: Colour) {
         self.flat_round.circle(pass.0, rect, inner_radius, col);
     }
 
@@ -194,8 +194,8 @@ impl<CW: CustomWindow + 'static> DrawRounded for DrawWindow<CW> {
     fn rounded_frame(
         &mut self,
         pass: Region,
-        outer: Rect,
-        inner: Rect,
+        outer: Quad,
+        inner: Quad,
         inner_radius: f32,
         col: Colour,
     ) {
@@ -206,13 +206,13 @@ impl<CW: CustomWindow + 'static> DrawRounded for DrawWindow<CW> {
 
 impl<CW: CustomWindow + 'static> DrawShaded for DrawWindow<CW> {
     #[inline]
-    fn shaded_square(&mut self, pass: Region, rect: Rect, norm: (f32, f32), col: Colour) {
+    fn shaded_square(&mut self, pass: Region, rect: Quad, norm: (f32, f32), col: Colour) {
         self.shaded_square
             .shaded_rect(pass.0, rect, Vec2::from(norm), col);
     }
 
     #[inline]
-    fn shaded_circle(&mut self, pass: Region, rect: Rect, norm: (f32, f32), col: Colour) {
+    fn shaded_circle(&mut self, pass: Region, rect: Quad, norm: (f32, f32), col: Colour) {
         self.shaded_round
             .circle(pass.0, rect, Vec2::from(norm), col);
     }
@@ -221,8 +221,8 @@ impl<CW: CustomWindow + 'static> DrawShaded for DrawWindow<CW> {
     fn shaded_square_frame(
         &mut self,
         pass: Region,
-        outer: Rect,
-        inner: Rect,
+        outer: Quad,
+        inner: Quad,
         norm: (f32, f32),
         col: Colour,
     ) {
@@ -234,8 +234,8 @@ impl<CW: CustomWindow + 'static> DrawShaded for DrawWindow<CW> {
     fn shaded_round_frame(
         &mut self,
         pass: Region,
-        outer: Rect,
-        inner: Rect,
+        outer: Quad,
+        inner: Quad,
         norm: (f32, f32),
         col: Colour,
     ) {

@@ -14,13 +14,14 @@ use std::time::Duration;
 
 use kas::draw::{Colour, DrawHandle, DrawRounded, DrawText, SizeHandle, TextClass, TextProperties};
 use kas::event::{self, Action, Event, Handler, Manager, ManagerState, Response};
-use kas::geom::{Coord, Rect, Size};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::geom::*;
+use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::widget::Window;
 use kas::{Align, AlignHints, Direction, Layout, WidgetConfig, WidgetCore};
 use kas_wgpu::draw::DrawWindow;
 
 #[handler(event)]
+#[widget(config = noauto)]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Clock {
     #[widget_core]
@@ -37,7 +38,10 @@ impl Layout for Clock {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
         // Always use value for horiz axis: we want a square shape
         let axis = AxisInfo::new(Direction::Horizontal, None);
-        size_handle.text_bound("0000-00-00", TextClass::Label, axis)
+        let text_req = size_handle.text_bound("0000-00-00", TextClass::Label, axis);
+        // extra makes default size larger without affecting min size
+        let extra = SizeRules::new(0, 100, (0, 0), StretchPolicy::HighUtility);
+        text_req.surrounded_by(extra, false)
     }
 
     #[inline]
@@ -69,19 +73,17 @@ impl Layout for Clock {
         let (region, offset, draw) = draw_handle.draw_device();
         let draw = draw.as_any_mut().downcast_mut::<DrawWindow<()>>().unwrap();
 
-        draw.circle(region, self.core.rect + offset, 0.95, col_face);
+        let rect = Quad::from(self.core.rect + offset);
+        draw.circle(region, rect, 0.95, col_face);
 
-        let half = (self.core.rect.size.1 / 2) as i32;
-        let c = self.core.rect.pos + offset + Coord(half, half);
+        let half = (rect.b.1 - rect.a.1) / 2.0;
+        let centre = rect.a + half;
 
         let mut line_seg = |t: f32, r1: f32, r2: f32, w, col| {
-            let (sin, cos) = (t.sin(), -t.cos());
-            let p1 = Coord((r1 * sin).round() as i32, (r1 * cos).round() as i32);
-            let p2 = Coord((r2 * sin).round() as i32, (r2 * cos).round() as i32);
-            draw.rounded_line(region, c + p1, c + p2, w, col);
+            let v = Vec2(t.sin(), -t.cos());
+            draw.rounded_line(region, centre + v * r1, centre + v * r2, w, col);
         };
 
-        let half = half as f32;
         let w = half * 0.015625;
         let l = w * 5.0;
         let r = half - w;
@@ -91,27 +93,13 @@ impl Layout for Clock {
         }
 
         let secs = self.now.time().num_seconds_from_midnight();
-        line_seg(
-            (secs % (12 * 3600)) as f32 * (PI / (6.0 * 3600.0)),
-            0.0,
-            half * 0.55,
-            half * 0.03,
-            col_hands,
-        );
-        line_seg(
-            (secs % 3600) as f32 * (PI / 1800.0),
-            0.0,
-            half * 0.8,
-            half * 0.015,
-            col_hands,
-        );
-        line_seg(
-            (secs % 60) as f32 * (PI / 30.0),
-            0.0,
-            half * 0.9,
-            half * 0.005,
-            col_secs,
-        );
+        let a_sec = (secs % 60) as f32 * (PI / 30.0);
+        let a_min = (secs % 3600) as f32 * (PI / 1800.0);
+        let a_hour = (secs % (12 * 3600)) as f32 * (PI / (12.0 * 1800.0));
+
+        line_seg(a_hour, 0.0, half * 0.55, half * 0.03, col_hands);
+        line_seg(a_min, 0.0, half * 0.8, half * 0.015, col_hands);
+        line_seg(a_sec, 0.0, half * 0.9, half * 0.005, col_secs);
 
         let props = TextProperties {
             scale: self.font_scale,

@@ -48,7 +48,7 @@ const FRAGMENT: &'static str = "
 
 precision highp float;
 
-layout(location = 0) in vec2 cf;
+layout(location = 0) noperspective in vec2 cf;
 
 layout(location = 0) out vec4 outColor;
 
@@ -390,7 +390,6 @@ impl PipeWindow {
     }
 }
 
-#[widget_config]
 #[handler(action, msg = ())]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Mandlebrot {
@@ -516,7 +515,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let slider = Slider::new(0, 256).with_value(64);
 
     let window = make_widget! {
-        #[widget_config]
         #[layout(grid)]
         #[handler(msg = event::VoidMsg)]
         struct {

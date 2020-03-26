@@ -27,7 +27,6 @@ use kas::prelude::*;
 /// 3.  [`Layout::draw`] does nothing. The parent should handle all drawing.
 /// 4.  Optionally, this widget can handle clicks on the track area via
 ///     [`DragHandle::handle_press_on_track`].
-#[widget_config]
 #[handler(action, msg = Coord)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct DragHandle {
@@ -77,7 +76,7 @@ impl DragHandle {
     /// Returns the new offset (after clamping input), and a boolean which
     /// is true if the offset is different from the previous offset.
     pub fn set_offset(&mut self, offset: Coord) -> (Coord, bool) {
-        let offset = offset.clamped(Coord::ZERO, self.max_offset());
+        let offset = offset.clamp(Coord::ZERO, self.max_offset());
         let handle_pos = self.track.pos + offset;
         if handle_pos != self.core.rect.pos {
             self.core.rect.pos = handle_pos;
