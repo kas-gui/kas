@@ -9,13 +9,12 @@ use std::fmt::Debug;
 use std::iter::FromIterator;
 
 use super::{Column, TextButton};
-use crate::class::HasText;
-use crate::draw::{DrawHandle, SizeHandle, TextClass};
-use crate::event::{self, Action, Event, Manager, Response, UpdateHandle};
-use crate::geom::*;
-use crate::layout::{AxisInfo, SizeRules};
-use crate::macros::Widget;
-use crate::{Align, CoreData, CowString, Direction, TkAction, WidgetCore, WidgetId};
+use kas::class::HasText;
+use kas::draw::{DrawHandle, SizeHandle, TextClass};
+use kas::event::{Action, Event, Manager, Response, UpdateHandle};
+use kas::layout::{AxisInfo, SizeRules};
+use kas::prelude::*;
+use kas::WindowId;
 
 /// A pop-up multiple choice menu
 #[handler(event)]
@@ -29,6 +28,7 @@ pub struct ComboBox<M: Clone + Debug + 'static> {
     messages: Vec<M>, // TODO: is this a useless lookup step?
     active: usize,
     handle: UpdateHandle,
+    popup: Option<WindowId>,
 }
 
 impl<M: Clone + Debug + 'static> kas::WidgetConfig for ComboBox<M> {
@@ -98,6 +98,7 @@ impl<M: Clone + Debug> ComboBox<M> {
             messages,
             active: 0,
             handle: UpdateHandle::new(),
+            popup: None,
         }
     }
 
@@ -153,17 +154,27 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
     fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
         match action {
             Action::Activate => {
-                mgr.add_popup(kas::Popup {
-                    parent: self.id(),
-                    direction: Direction::Vertical,
-                    overlay: Box::new(ComboPopup::new(self.column.clone(), self.handle)),
-                });
+                if let Some(id) = self.popup {
+                    mgr.close_window(id);
+                    self.popup = None;
+                } else {
+                    let id = mgr.add_popup(kas::Popup {
+                        parent: self.id(),
+                        direction: Direction::Vertical,
+                        overlay: Box::new(ComboPopup::new(self.column.clone(), self.handle)),
+                    });
+                    self.popup = Some(id);
+                }
                 Response::None
             }
             Action::HandleUpdate { payload, .. } => {
                 let index = payload as usize;
                 assert!(index < self.column.len());
                 self.active = index;
+                if let Some(id) = self.popup {
+                    mgr.close_window(id);
+                    self.popup = None;
+                }
                 mgr.redraw(self.id());
                 Response::Msg(self.messages[index].clone())
             }
