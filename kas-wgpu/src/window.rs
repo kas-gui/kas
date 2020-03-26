@@ -135,10 +135,11 @@ where
         T: Theme<DrawPipe<C>, Window = TW>,
     {
         debug!("Window::reconfigure");
-        self.apply_size();
 
         let mut tkw = TkWindow::new(&self.window, shared);
         self.mgr.configure(&mut tkw, &mut *self.widget);
+
+        self.apply_size();
     }
 
     pub fn theme_resize<C, T>(&mut self, shared: &SharedState<C, T>)

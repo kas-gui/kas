@@ -179,8 +179,10 @@ pub trait WidgetConfig: Layout {
     /// Widgets are *configured* on window creation and when
     /// [`kas::TkAction::Reconfigure`] is sent.
     ///
-    /// Configuration happens after resizing. This method is called after
-    /// a [`WidgetId`] has been assigned to self and to each child.
+    /// Configure is called before resizing (but after calculation of the
+    /// initial window size). This method is called after
+    /// a [`WidgetId`] has been assigned to self, and after `configure` has
+    /// been called on each child.
     ///
     /// The default implementation of this method does nothing.
     fn configure(&mut self, _: &mut Manager) {}
