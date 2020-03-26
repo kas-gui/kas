@@ -14,7 +14,7 @@ use kas::prelude::*;
 
 /// The main instantiation of the [`Window`] trait.
 #[handler(action, generics = <> where W: Widget<Msg = VoidMsg>)]
-#[widget(children=noauto)]
+#[widget(children=noauto, config=noauto)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
     #[widget_core]
@@ -80,6 +80,8 @@ impl<W: Widget> Window<W> {
 
     /// Add a closure to be called, with a reference to self, on the given
     /// condition. The closure must be passed by reference.
+    // TODO: consider whether to keep this. The only functionality added is for
+    // actions which happen on destruction.
     pub fn add_callback(&mut self, condition: Callback, f: &'static dyn Fn(&mut W, &mut Manager)) {
         self.fns.push((condition, f));
     }
@@ -107,6 +109,17 @@ impl<W: Widget> WidgetChildren for Window<W> {
             self.popups
                 .get_mut(index - 1)
                 .map(|popup| popup.overlay.as_widget_mut())
+        }
+    }
+}
+
+impl<W: Widget> WidgetConfig for Window<W> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        for (condition, f) in &self.fns {
+            match condition {
+                Callback::Start => f(&mut self.w, mgr),
+                Callback::Close => (),
+            }
         }
     }
 }
@@ -222,13 +235,12 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         self.popups.push(popup);
     }
 
-    fn callbacks(&self) -> Vec<(usize, Callback)> {
-        self.fns.iter().map(|(cond, _)| *cond).enumerate().collect()
-    }
-
-    /// Trigger a callback (see `iter_callbacks`).
-    fn trigger_callback(&mut self, index: usize, mgr: &mut Manager) {
-        let cb = &mut self.fns[index].1;
-        cb(&mut self.w, mgr);
+    fn handle_closure(&mut self, mgr: &mut Manager) {
+        for (condition, f) in &self.fns {
+            match condition {
+                Callback::Close => f(&mut self.w, mgr),
+                Callback::Start => (),
+            }
+        }
     }
 }

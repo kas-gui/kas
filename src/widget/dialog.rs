@@ -9,7 +9,7 @@
 //! customisation.
 
 use kas::draw::SizeHandle;
-use kas::event::{Callback, Manager, Response, VoidMsg};
+use kas::event::{Manager, Response, VoidMsg};
 use kas::prelude::*;
 use kas::widget::{Label, TextButton};
 
@@ -64,10 +64,4 @@ impl kas::Window for MessageBox {
 
     // do not support overlays (yet?)
     fn add_popup(&mut self, _: &mut dyn SizeHandle, _: &mut Manager, _: kas::Popup) {}
-
-    // doesn't support callbacks, so doesn't need to do anything here
-    fn callbacks(&self) -> Vec<(usize, Callback)> {
-        Vec::new()
-    }
-    fn trigger_callback(&mut self, _index: usize, _: &mut Manager) {}
 }

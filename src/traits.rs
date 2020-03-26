@@ -326,14 +326,10 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
     /// Add an overlay layer
     fn add_popup(&mut self, size_handle: &mut dyn SizeHandle, mgr: &mut Manager, popup: Popup);
 
-    /// Get a list of available callbacks.
+    /// Handle closure of self
     ///
-    /// This returns a sequence of `(index, condition)` values. The toolkit
-    /// should call `trigger_callback(index, mgr)` whenever the condition is met.
-    fn callbacks(&self) -> Vec<(usize, event::Callback)>;
-
-    /// Trigger a callback (see `iter_callbacks`).
-    fn trigger_callback(&mut self, index: usize, mgr: &mut Manager);
+    /// This allows for actions on destruction, but doesn't need to do anything.
+    fn handle_closure(&mut self, _mgr: &mut Manager) {}
 }
 
 /// Return value of [`ThemeApi`] functions

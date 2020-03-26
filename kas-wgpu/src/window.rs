@@ -8,7 +8,7 @@
 use log::{debug, info, trace};
 use std::time::Instant;
 
-use kas::event::{Callback, CursorIcon, ManagerState, UpdateHandle};
+use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout;
 use kas::{ThemeAction, ThemeApi, TkAction, WindowId};
@@ -117,15 +117,6 @@ where
         let mut tkw = TkWindow::new(&self.window, shared);
         let mut mgr = self.mgr.manager(&mut tkw);
         mgr.send_action(TkAction::Reconfigure);
-
-        for (i, condition) in self.widget.callbacks() {
-            match condition {
-                Callback::Start => {
-                    self.widget.trigger_callback(i, &mut mgr);
-                }
-                Callback::Close => (),
-            }
-        }
     }
 
     /// Recompute layout of widgets and redraw
@@ -215,16 +206,7 @@ where
     {
         let mut tkw = TkWindow::new(&self.window, shared);
         let mut mgr = self.mgr.manager(&mut tkw);
-
-        for (i, condition) in self.widget.callbacks() {
-            match condition {
-                Callback::Start => (),
-                Callback::Close => {
-                    self.widget.trigger_callback(i, &mut mgr);
-                }
-            }
-        }
-
+        self.widget.handle_closure(&mut mgr);
         mgr.finish(&mut *self.widget)
     }
 
