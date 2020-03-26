@@ -90,7 +90,8 @@ where
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
-        let mgr = ManagerState::new(scale_factor);
+        let mut mgr = ManagerState::new(scale_factor);
+        mgr.send_action(TkAction::Reconfigure);
 
         Ok(Window {
             widget,
@@ -102,21 +103,6 @@ where
             draw,
             theme_window,
         })
-    }
-
-    /// Called by the `Toolkit` when the event loop starts to initialise
-    /// windows. Optionally returns a callback time.
-    ///
-    /// `init` should always return an action of at least `TkAction::Reconfigure`.
-    pub fn init<C, T>(&mut self, shared: &mut SharedState<C, T>)
-    where
-        C: CustomPipe<Window = CW>,
-        T: Theme<DrawPipe<C>, Window = TW>,
-    {
-        debug!("Window::init");
-        let mut tkw = TkWindow::new(&self.window, shared);
-        let mut mgr = self.mgr.manager(&mut tkw);
-        mgr.send_action(TkAction::Reconfigure);
     }
 
     /// Recompute layout of widgets and redraw

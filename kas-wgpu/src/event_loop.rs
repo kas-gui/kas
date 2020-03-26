@@ -126,10 +126,6 @@ where
                     StartCause::Poll => (),
                     StartCause::Init => {
                         debug!("Wakeup: init");
-
-                        for window in self.windows.values_mut() {
-                            window.init(&mut self.shared);
-                        }
                     }
                 }
             }
@@ -213,11 +209,8 @@ where
                 PendingAction::AddWindow(id, widget) => {
                     debug!("Adding window {}", widget.title());
                     match Window::new(&mut self.shared, elwt, widget) {
-                        Ok(mut window) => {
+                        Ok(window) => {
                             let wid = window.window.id();
-
-                            window.init(&mut self.shared);
-
                             self.id_map.insert(id, wid);
                             self.windows.insert(wid, window);
                         }
