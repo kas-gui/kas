@@ -41,12 +41,15 @@ where
     T::Window: kas_theme::Window<DrawWindow<C::Window>>,
 {
     pub(crate) fn new(
-        mut windows: Vec<(WindowId, Window<C::Window, T::Window>)>,
+        mut windows: Vec<Window<C::Window, T::Window>>,
         shared: SharedState<C, T>,
     ) -> Self {
-        let id_map = windows.iter().map(|(id, w)| (*id, w.window.id())).collect();
+        let id_map = windows
+            .iter()
+            .map(|w| (w.window_id, w.window.id()))
+            .collect();
         Loop {
-            windows: windows.drain(..).map(|(_, w)| (w.window.id(), w)).collect(),
+            windows: windows.drain(..).map(|w| (w.window.id(), w)).collect(),
             id_map,
             shared,
             resumes: vec![],
@@ -159,6 +162,7 @@ where
 
                 for window_id in &to_close {
                     if let Some(window) = self.windows.remove(window_id) {
+                        self.id_map.remove(&window.window_id);
                         if window.handle_closure(&mut self.shared) == TkAction::CloseAll {
                             close_all = true;
                         }
@@ -210,7 +214,7 @@ where
                 }
                 PendingAction::AddWindow(id, widget) => {
                     debug!("Adding window {}", widget.title());
-                    match Window::new(&mut self.shared, elwt, widget) {
+                    match Window::new(&mut self.shared, elwt, id, widget) {
                         Ok(window) => {
                             let wid = window.window.id();
                             self.id_map.insert(id, wid);
@@ -222,10 +226,11 @@ where
                     };
                 }
                 PendingAction::CloseWindow(id) => {
-                    if let Some(id) = self.id_map.get(&id) {
-                        if let Some(window) = self.windows.get_mut(&id) {
+                    if let Some(wwid) = self.id_map.get(&id) {
+                        if let Some(window) = self.windows.get_mut(&wwid) {
                             window.send_action(TkAction::Close);
                         }
+                        self.id_map.remove(&id);
                     }
                 }
                 PendingAction::ThemeResize => {

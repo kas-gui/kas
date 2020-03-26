@@ -90,7 +90,7 @@ where
     T::Window: kas_theme::Window<DrawWindow<C::Window>>,
 {
     el: EventLoop<ProxyAction>,
-    windows: Vec<(WindowId, Window<C::Window, T::Window>)>,
+    windows: Vec<Window<C::Window, T::Window>>,
     shared: SharedState<C, T>,
 }
 
@@ -143,9 +143,9 @@ where
 
     /// Add a boxed window directly
     pub fn add_boxed(&mut self, widget: Box<dyn kas::Window>) -> Result<WindowId, Error> {
-        let win = Window::new(&mut self.shared, &self.el, widget)?;
         let id = self.shared.next_window_id();
-        self.windows.push((id, win));
+        let win = Window::new(&mut self.shared, &self.el, id, widget)?;
+        self.windows.push(win);
         Ok(id)
     }
 

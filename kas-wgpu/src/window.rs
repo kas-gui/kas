@@ -26,6 +26,7 @@ use crate::ProxyAction;
 /// Per-window data
 pub(crate) struct Window<CW: CustomWindow, TW> {
     pub(crate) widget: Box<dyn kas::Window>,
+    pub(crate) window_id: WindowId,
     mgr: ManagerState,
     /// The winit window
     pub(crate) window: winit::window::Window,
@@ -46,6 +47,7 @@ where
     pub fn new<C, T>(
         shared: &mut SharedState<C, T>,
         elwt: &EventLoopWindowTarget<ProxyAction>,
+        window_id: WindowId,
         mut widget: Box<dyn kas::Window>,
     ) -> Result<Self, OsError>
     where
@@ -95,6 +97,7 @@ where
 
         Ok(Window {
             widget,
+            window_id,
             mgr,
             window,
             surface,
