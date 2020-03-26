@@ -13,7 +13,7 @@ use crate::class::HasText;
 use crate::draw::{DrawHandle, SizeHandle, TextClass};
 use crate::event::{self, Action, Event, Manager, Response, UpdateHandle};
 use crate::geom::*;
-use crate::layout::{self, AxisInfo, SizeRules};
+use crate::layout::{AxisInfo, SizeRules};
 use crate::macros::Widget;
 use crate::{Align, CoreData, CowString, Direction, TkAction, WidgetCore, WidgetId};
 
@@ -208,21 +208,5 @@ impl event::EventHandler for ComboPopup {
         } else {
             Response::Unhandled(event)
         }
-    }
-}
-
-impl kas::Overlay for ComboPopup {
-    fn find_size(&mut self, size_handle: &mut dyn SizeHandle) -> (Option<Size>, Size) {
-        let (min, ideal) = layout::solve(self, size_handle);
-        (Some(min), ideal)
-    }
-
-    fn resize(
-        &mut self,
-        size_handle: &mut dyn SizeHandle,
-        rect: Rect,
-    ) -> (Option<Size>, Option<Size>) {
-        let (min, ideal) = layout::solve_and_set(self, size_handle, rect, true);
-        (Some(min), Some(ideal))
     }
 }

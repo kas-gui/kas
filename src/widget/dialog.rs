@@ -10,7 +10,6 @@
 
 use kas::draw::SizeHandle;
 use kas::event::{Callback, Manager, Response, VoidMsg};
-use kas::layout;
 use kas::prelude::*;
 use kas::widget::{Label, TextButton};
 
@@ -54,25 +53,13 @@ impl MessageBox {
     }
 }
 
-impl kas::Overlay for MessageBox {
-    fn find_size(&mut self, size_handle: &mut dyn SizeHandle) -> (Option<Size>, Size) {
-        let (min, ideal) = layout::solve(self, size_handle);
-        (Some(min), ideal)
-    }
-
-    fn resize(
-        &mut self,
-        size_handle: &mut dyn SizeHandle,
-        rect: Rect,
-    ) -> (Option<Size>, Option<Size>) {
-        let (min, ideal) = layout::solve_and_set(self, size_handle, rect, true);
-        (Some(min), Some(ideal))
-    }
-}
-
 impl kas::Window for MessageBox {
     fn title(&self) -> &str {
         &self.title
+    }
+
+    fn restrict_dimensions(&self) -> (bool, bool) {
+        (true, true)
     }
 
     // do not support overlays (yet?)

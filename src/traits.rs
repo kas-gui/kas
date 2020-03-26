@@ -10,7 +10,7 @@ use std::ops::DerefMut;
 
 use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Manager, ManagerState};
-use crate::geom::{Coord, Rect, Size};
+use crate::geom::{Coord, Rect};
 use crate::layout::{self, AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, Direction, WidgetId};
 
@@ -297,37 +297,29 @@ pub trait LayoutData {
     type Setter: layout::RulesSetter;
 }
 
-/// A simplified window used for pop-ups
-///
-/// An `Overlay` may be given a dedicated window by the windowing system or may
-/// be drawn as an overlay on the current window.
-pub trait Overlay: Widget<Msg = event::VoidMsg> {
-    /// Calculate required size
-    ///
-    /// Returns optional minimum size, and ideal size.
-    fn find_size(&mut self, size_handle: &mut dyn SizeHandle) -> (Option<Size>, Size);
-
-    /// Adjust the size of the window, repositioning widgets.
-    ///
-    /// Returns optional minimum size and optional maximum size.
-    fn resize(
-        &mut self,
-        size_handle: &mut dyn SizeHandle,
-        rect: Rect,
-    ) -> (Option<Size>, Option<Size>);
-}
-
 /// A pop-up is an overlay with parent & position information
 pub struct Popup {
     pub parent: WidgetId,
     pub direction: Direction,
-    pub overlay: Box<dyn kas::Overlay>,
+    pub overlay: Box<dyn Widget<Msg = event::VoidMsg>>,
 }
 
-/// A root window extends [`Overlay`] with callbacks and overlay layers
-pub trait Window: Overlay {
+/// Functionality required by a window
+pub trait Window: Widget<Msg = event::VoidMsg> {
     /// Get the window title
     fn title(&self) -> &str;
+
+    /// Whether to limit the maximum size of a window
+    ///
+    /// All widgets' size rules allow calculation of two sizes: the minimum
+    /// size and the ideal size. Windows are initially sized to the ideal size.
+    /// This option controls whether the window size is restricted by the
+    /// calculated minimum size and by the ideal size.
+    ///
+    /// Return value is `(restrict_min, restrict_max)`. Suggested is to use
+    /// `(true, true)` for simple dialog boxes and `(true, false)` for complex
+    /// windows.
+    fn restrict_dimensions(&self) -> (bool, bool);
 
     /// Add an overlay layer
     fn add_popup(&mut self, size_handle: &mut dyn SizeHandle, mgr: &mut Manager, popup: Popup);

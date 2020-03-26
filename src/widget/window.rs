@@ -19,8 +19,7 @@ use kas::prelude::*;
 pub struct Window<W: Widget + 'static> {
     #[widget_core]
     core: CoreData,
-    enforce_min: bool,
-    enforce_max: bool,
+    restrict_dimensions: (bool, bool),
     title: CowString,
     #[widget]
     w: W,
@@ -50,8 +49,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
     fn clone(&self) -> Self {
         Window {
             core: self.core.clone(),
-            enforce_min: self.enforce_min,
-            enforce_max: self.enforce_max,
+            restrict_dimensions: self.restrict_dimensions.clone(),
             title: self.title.clone(),
             w: self.w.clone(),
             popups: vec![], // these are temporary; don't clone
@@ -65,8 +63,7 @@ impl<W: Widget> Window<W> {
     pub fn new<T: Into<CowString>>(title: T, w: W) -> Window<W> {
         Window {
             core: Default::default(),
-            enforce_min: true,
-            enforce_max: false,
+            restrict_dimensions: (true, false),
             title: title.into(),
             w,
             popups: vec![],
@@ -77,9 +74,8 @@ impl<W: Widget> Window<W> {
     /// Configure whether min/max dimensions are forced
     ///
     /// By default, the min size is enforced but not the max.
-    pub fn set_enforce_size(&mut self, min: bool, max: bool) {
-        self.enforce_min = min;
-        self.enforce_max = max;
+    pub fn set_restrict_dimensions(&mut self, min: bool, max: bool) {
+        self.restrict_dimensions = (min, max);
     }
 
     /// Add a closure to be called, with a reference to self, on the given
@@ -211,29 +207,13 @@ impl<W: Widget<Msg = VoidMsg> + 'static> event::EventHandler for Window<W> {
     }
 }
 
-impl<W: Widget<Msg = VoidMsg> + 'static> kas::Overlay for Window<W> {
-    fn find_size(&mut self, size_handle: &mut dyn SizeHandle) -> (Option<Size>, Size) {
-        let (min, ideal) = layout::solve(self, size_handle);
-        let min = if self.enforce_min { Some(min) } else { None };
-        (min, ideal)
-    }
-
-    fn resize(
-        &mut self,
-        size_handle: &mut dyn SizeHandle,
-        rect: Rect,
-    ) -> (Option<Size>, Option<Size>) {
-        let (min, ideal) = layout::solve_and_set(self, size_handle, rect, true);
-        (
-            if self.enforce_min { Some(min) } else { None },
-            if self.enforce_max { Some(ideal) } else { None },
-        )
-    }
-}
-
 impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
     fn title(&self) -> &str {
         &self.title
+    }
+
+    fn restrict_dimensions(&self) -> (bool, bool) {
+        self.restrict_dimensions
     }
 
     fn add_popup(&mut self, _: &mut dyn SizeHandle, mgr: &mut Manager, popup: kas::Popup) {
