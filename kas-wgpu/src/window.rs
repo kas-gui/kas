@@ -243,6 +243,20 @@ where
     pub fn send_action(&mut self, action: TkAction) {
         self.mgr.send_action(action);
     }
+
+    pub fn send_close<C, T>(&mut self, shared: &mut SharedState<C, T>, id: WindowId)
+    where
+        C: CustomPipe<Window = CW>,
+        T: Theme<DrawPipe<C>, Window = TW>,
+    {
+        if id == self.window_id {
+            self.mgr.send_action(TkAction::Close);
+        } else {
+            let mut tkw = TkWindow::new(&self.window, shared);
+            let mut mgr = self.mgr.manager(&mut tkw);
+            self.widget.remove_popup(&mut mgr, id);
+        }
+    }
 }
 
 // Internal functions

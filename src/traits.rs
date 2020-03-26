@@ -334,6 +334,11 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
         popup: Popup,
     );
 
+    /// Trigger closure of a pop-up
+    ///
+    /// If the given `id` refers to a pop-up, it should be closed.
+    fn remove_popup(&mut self, mgr: &mut Manager, id: WindowId);
+
     /// Handle closure of self
     ///
     /// This allows for actions on destruction, but doesn't need to do anything.

@@ -228,7 +228,7 @@ where
                 PendingAction::CloseWindow(id) => {
                     if let Some(wwid) = self.id_map.get(&id) {
                         if let Some(window) = self.windows.get_mut(&wwid) {
-                            window.send_action(TkAction::Close);
+                            window.send_close(&mut self.shared, id);
                         }
                         self.id_map.remove(&id);
                     }

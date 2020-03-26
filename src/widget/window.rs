@@ -242,6 +242,16 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         self.popups.push((id, popup));
     }
 
+    fn remove_popup(&mut self, mgr: &mut Manager, id: WindowId) {
+        for i in 0..self.popups.len() {
+            if id == self.popups[i].0 {
+                self.popups.remove(i);
+                mgr.send_action(TkAction::Reconfigure);
+                return;
+            }
+        }
+    }
+
     fn handle_closure(&mut self, mgr: &mut Manager) {
         for (condition, f) in &self.fns {
             match condition {

@@ -64,5 +64,9 @@ impl kas::Window for MessageBox {
     }
 
     // do not support overlays (yet?)
-    fn add_popup(&mut self, _: &mut dyn SizeHandle, _: &mut Manager, _: WindowId, _: kas::Popup) {}
+    fn add_popup(&mut self, _: &mut dyn SizeHandle, _: &mut Manager, _: WindowId, _: kas::Popup) {
+        panic!("MessageBox does not (currently) support pop-ups");
+    }
+
+    fn remove_popup(&mut self, _: &mut Manager, _: WindowId) {}
 }
