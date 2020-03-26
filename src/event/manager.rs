@@ -507,8 +507,8 @@ impl<'a> Manager<'a> {
     /// The pop-up should be placed *next to* the specified `rect`, in the given
     /// `direction`.
     #[inline]
-    pub fn add_popup(&mut self, popup: kas::Popup) {
-        self.tkw.add_popup(popup);
+    pub fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
+        self.tkw.add_popup(popup)
     }
 
     /// Add a window

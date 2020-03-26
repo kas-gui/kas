@@ -11,6 +11,7 @@ use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{Callback, Event, Manager, Response, VoidMsg};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
+use kas::WindowId;
 
 /// The main instantiation of the [`Window`] trait.
 #[handler(action, generics = <> where W: Widget<Msg = VoidMsg>)]
@@ -23,7 +24,7 @@ pub struct Window<W: Widget + 'static> {
     title: CowString,
     #[widget]
     w: W,
-    popups: Vec<kas::Popup>,
+    popups: Vec<(WindowId, kas::Popup)>,
     fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut Manager))>,
 }
 
@@ -98,7 +99,7 @@ impl<W: Widget> WidgetChildren for Window<W> {
         } else {
             self.popups
                 .get(index - 1)
-                .map(|popup| popup.overlay.as_widget())
+                .map(|popup| popup.1.overlay.as_widget())
         }
     }
 
@@ -108,7 +109,7 @@ impl<W: Widget> WidgetChildren for Window<W> {
         } else {
             self.popups
                 .get_mut(index - 1)
-                .map(|popup| popup.overlay.as_widget_mut())
+                .map(|popup| popup.1.overlay.as_widget_mut())
         }
     }
 }
@@ -135,7 +136,7 @@ impl<W: Widget> Layout for Window<W> {
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         self.w.set_rect(size_handle, rect, align);
-        for popup in &mut self.popups {
+        for (_id, popup) in &mut self.popups {
             let ir = self.w.find(popup.parent).unwrap().rect();
             let widget = popup.overlay.as_widget_mut();
             let (_, ideal) = layout::solve(widget, size_handle);
@@ -180,7 +181,7 @@ impl<W: Widget> Layout for Window<W> {
     #[inline]
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
         for popup in self.popups.iter().rev() {
-            if let Some(id) = popup.overlay.find_id(coord) {
+            if let Some(id) = popup.1.overlay.find_id(coord) {
                 return Some(id);
             }
         }
@@ -192,7 +193,7 @@ impl<W: Widget> Layout for Window<W> {
         self.w.draw(draw_handle, mgr);
         for popup in &self.popups {
             draw_handle.clip_region(self.core.rect, Coord::ZERO, &mut |draw_handle| {
-                popup.overlay.draw(draw_handle, mgr);
+                popup.1.overlay.draw(draw_handle, mgr);
             });
         }
     }
@@ -204,7 +205,7 @@ impl<W: Widget<Msg = VoidMsg> + 'static> event::EventHandler for Window<W> {
             self.w.event(mgr, id, event)
         } else {
             for i in 0..self.popups.len() {
-                let widget = &mut self.popups[i].overlay;
+                let widget = &mut self.popups[i].1.overlay;
                 if id <= widget.id() {
                     let r = widget.event(mgr, id, event);
                     if mgr.replace_action_close_with_reconfigure() {
@@ -229,10 +230,16 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         self.restrict_dimensions
     }
 
-    fn add_popup(&mut self, _: &mut dyn SizeHandle, mgr: &mut Manager, popup: kas::Popup) {
+    fn add_popup(
+        &mut self,
+        _: &mut dyn SizeHandle,
+        mgr: &mut Manager,
+        id: WindowId,
+        popup: kas::Popup,
+    ) {
         // TODO: using reconfigure here is inefficient
         mgr.send_action(TkAction::Reconfigure);
-        self.popups.push(popup);
+        self.popups.push((id, popup));
     }
 
     fn handle_closure(&mut self, mgr: &mut Manager) {

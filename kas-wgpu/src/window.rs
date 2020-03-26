@@ -221,8 +221,12 @@ where
         mgr.update_handle(&mut *self.widget, handle, payload);
     }
 
-    pub fn add_popup<C, T>(&mut self, shared: &mut SharedState<C, T>, popup: kas::Popup)
-    where
+    pub fn add_popup<C, T>(
+        &mut self,
+        shared: &mut SharedState<C, T>,
+        id: WindowId,
+        popup: kas::Popup,
+    ) where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
@@ -230,7 +234,7 @@ where
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
         let mut tkw = TkWindow::new(&self.window, shared);
         let mut mgr = self.mgr.manager(&mut tkw);
-        kas::Window::add_popup(window, &mut size_handle, &mut mgr, popup);
+        kas::Window::add_popup(window, &mut size_handle, &mut mgr, id, popup);
     }
 
     pub fn send_action(&mut self, action: TkAction) {
@@ -345,9 +349,13 @@ where
     T: Theme<DrawPipe<C>>,
     T::Window: kas_theme::Window<DrawWindow<C::Window>>,
 {
-    fn add_popup(&mut self, popup: kas::Popup) {
-        let id = self.window.id();
-        self.shared.pending.push(PendingAction::AddPopup(id, popup));
+    fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
+        let id = self.shared.next_window_id();
+        let parent_id = self.window.id();
+        self.shared
+            .pending
+            .push(PendingAction::AddPopup(parent_id, id, popup));
+        id
     }
 
     fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {

@@ -12,7 +12,7 @@ use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Manager, ManagerState};
 use crate::geom::{Coord, Rect};
 use crate::layout::{self, AxisInfo, SizeRules};
-use crate::{AlignHints, CoreData, Direction, WidgetId};
+use crate::{AlignHints, CoreData, Direction, WidgetId, WindowId};
 
 mod impls;
 
@@ -323,8 +323,16 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
     /// windows.
     fn restrict_dimensions(&self) -> (bool, bool);
 
-    /// Add an overlay layer
-    fn add_popup(&mut self, size_handle: &mut dyn SizeHandle, mgr: &mut Manager, popup: Popup);
+    /// Add a pop-up as a layer in the current window
+    ///
+    /// Each [`Popup`] is assigned a [`WindowId`]; both are passed.
+    fn add_popup(
+        &mut self,
+        size_handle: &mut dyn SizeHandle,
+        mgr: &mut Manager,
+        id: WindowId,
+        popup: Popup,
+    );
 
     /// Handle closure of self
     ///

@@ -12,6 +12,7 @@ use kas::draw::SizeHandle;
 use kas::event::{Manager, Response, VoidMsg};
 use kas::prelude::*;
 use kas::widget::{Label, TextButton};
+use kas::WindowId;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum DialogButton {
@@ -63,5 +64,5 @@ impl kas::Window for MessageBox {
     }
 
     // do not support overlays (yet?)
-    fn add_popup(&mut self, _: &mut dyn SizeHandle, _: &mut Manager, _: kas::Popup) {}
+    fn add_popup(&mut self, _: &mut dyn SizeHandle, _: &mut Manager, _: WindowId, _: kas::Popup) {}
 }

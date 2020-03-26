@@ -198,13 +198,15 @@ where
         // Create and init() any new windows.
         while let Some(pending) = self.shared.pending.pop() {
             match pending {
-                PendingAction::AddPopup(id, popup) => {
+                PendingAction::AddPopup(parent_id, id, popup) => {
                     debug!("Adding overlay");
                     // TODO: support pop-ups as a special window, where available
-                    self.windows
-                        .get_mut(&id)
-                        .unwrap()
-                        .add_popup(&mut self.shared, popup);
+                    self.windows.get_mut(&parent_id).unwrap().add_popup(
+                        &mut self.shared,
+                        id,
+                        popup,
+                    );
+                    self.id_map.insert(id, parent_id);
                 }
                 PendingAction::AddWindow(id, widget) => {
                     debug!("Adding window {}", widget.title());
