@@ -32,6 +32,13 @@ impl WidgetId {
     }
 }
 
+impl TryFrom<u32> for WidgetId {
+    type Error = ();
+    fn try_from(x: u32) -> Result<WidgetId, ()> {
+        NonZeroU32::new(x).map(|n| WidgetId(n)).ok_or(())
+    }
+}
+
 impl TryFrom<u64> for WidgetId {
     type Error = ();
     fn try_from(x: u64) -> Result<WidgetId, ()> {

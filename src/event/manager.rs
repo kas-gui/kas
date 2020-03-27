@@ -8,6 +8,8 @@
 use log::trace;
 use smallvec::SmallVec;
 use std::collections::HashMap;
+#[cfg(feature = "winit")]
+use std::convert::TryFrom;
 use std::time::{Duration, Instant};
 use std::u16;
 
@@ -107,6 +109,7 @@ enum Pending {
 #[derive(Clone, Debug)]
 pub struct ManagerState {
     dpi_factor: f64,
+    modifiers: ModifiersState,
     char_focus: Option<WidgetId>,
     nav_focus: Option<WidgetId>,
     hover: Option<WidgetId>,
@@ -137,6 +140,7 @@ impl ManagerState {
     pub fn new(dpi_factor: f64) -> Self {
         ManagerState {
             dpi_factor,
+            modifiers: ModifiersState::empty(),
             char_focus: None,
             nav_focus: None,
             hover: None,
@@ -769,14 +773,26 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn next_nav_focus<W: Widget + ?Sized>(&mut self, widget: &mut W) {
-        let mut id = self.mgr.nav_focus.unwrap_or(WidgetId::FIRST);
+    fn next_nav_focus<W: Widget + ?Sized>(&mut self, widget: &mut W, backward: bool) {
         let end = widget.id();
+        let mut n: u32 = if let Some(id) = self.mgr.nav_focus {
+            u32::from(id)
+        } else if backward {
+            end.into()
+        } else {
+            0
+        };
         loop {
-            id = id.next();
-            if id >= end {
+            if backward {
+                n = n.wrapping_sub(1);
+            } else {
+                n = n.wrapping_add(1);
+            }
+            if n == 0 || n > end.into() {
                 return self.unset_nav_focus();
             }
+
+            let id = WidgetId::try_from(n).unwrap();
 
             // TODO(opt): incorporate walk/find logic
             if widget.find(id).map(|w| w.key_nav()).unwrap_or(false) {
@@ -976,7 +992,7 @@ impl<'a> Manager<'a> {
                         } else {
                             match (vkey, self.mgr.nav_focus) {
                                 (VirtualKeyCode::Tab, _) => {
-                                    self.next_nav_focus(widget);
+                                    self.next_nav_focus(widget, self.mgr.modifiers.shift());
                                 }
                                 (VirtualKeyCode::Space, Some(nav_id)) |
                                 (VirtualKeyCode::Return, Some(nav_id)) |
@@ -1003,6 +1019,9 @@ impl<'a> Manager<'a> {
                 } else if input.state == ElementState::Released {
                     self.remove_key_event(input.scancode);
                 }
+            }
+            ModifiersChanged(state) => {
+                self.mgr.modifiers = state;
             }
             CursorMoved {
                 position,
