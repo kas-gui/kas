@@ -42,6 +42,7 @@ impl<
 ///
 /// Sliders allow user input of a value from a fixed range.
 #[handler(action, msg = T)]
+#[widget(config(key_nav = true))]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Slider<T: SliderType, D: Directional> {
     #[widget_core]
@@ -176,8 +177,12 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+        // Depending on whether we get the highlight state for self.id() or
+        // self.handle.id() we can highlight when over the slider or just the
+        // handle. But for key-nav, we want highlight-state of self.
+        let hl = mgr.highlight_state(self.id());
+
         let dir = self.direction.as_direction();
-        let hl = mgr.highlight_state(self.handle.id());
         draw_handle.slider(self.core.rect, self.handle.rect(), dir, hl);
     }
 }

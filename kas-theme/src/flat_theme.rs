@@ -158,9 +158,16 @@ impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
     /// Draw a handle (for slider, scrollbar)
     fn draw_handle(&mut self, rect: Rect, highlights: HighlightState) {
         let outer = Quad::from(rect + self.offset);
-        let inner = outer.shrink(outer.size().min_comp() / 2.0);
+        let thickness = outer.size().min_comp() / 2.0;
+        let inner = outer.shrink(thickness);
         let col = self.cols.scrollbar_state(highlights);
         self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
+
+        if let Some(col) = self.cols.nav_region(highlights) {
+            let outer = outer.shrink(thickness / 4.0);
+            self.draw
+                .rounded_frame(self.pass, outer, inner, 2.0 / 3.0, col);
+        }
     }
 }
 
