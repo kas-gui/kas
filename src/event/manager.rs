@@ -697,19 +697,58 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn add_key_event(&mut self, scancode: u32, id: WidgetId) {
-        for item in &self.mgr.key_events {
-            if item.1 == id {
-                return;
+    fn start_key_event<W>(&mut self, widget: &mut W, vkey: VirtualKeyCode, scancode: u32)
+    where
+        W: Widget<Msg = VoidMsg> + ?Sized,
+    {
+        use VirtualKeyCode as VK;
+        if self.mgr.char_focus.is_some() {
+            match vkey {
+                VK::Escape => self.set_char_focus(None),
+                _ => (),
             }
+            return;
         }
 
-        self.mgr.key_events.push((scancode, id));
-        self.redraw(id);
+        if vkey == VK::Tab {
+            self.next_nav_focus(widget, self.mgr.modifiers.shift());
+        } else if vkey == VK::Escape {
+            self.unset_nav_focus();
+        } else {
+            let mut id_action = None;
+
+            if let Some(nav_id) = self.mgr.nav_focus {
+                if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
+                    id_action = Some((nav_id, Action::Activate));
+                } else if let Some(nav_key) = NavKey::new(vkey) {
+                    id_action = Some((nav_id, Action::NavKey(nav_key)));
+                }
+            }
+
+            if id_action.is_none() {
+                if let Some(id) = self.mgr.accel_keys.get(&vkey).cloned() {
+                    id_action = Some((id, Action::Activate));
+                }
+            }
+
+            if let Some((id, action)) = id_action {
+                let _ = widget.event(self, id, Event::Action(action));
+
+                // Add to key_events for visual feedback
+                for item in &self.mgr.key_events {
+                    if item.1 == id {
+                        return;
+                    }
+                }
+
+                self.mgr.key_events.push((scancode, id));
+                self.redraw(id);
+            }
+        }
     }
 
     #[cfg(feature = "winit")]
-    fn remove_key_event(&mut self, scancode: u32) {
+    fn end_key_event(&mut self, scancode: u32) {
         let r = 'outer: loop {
             for (i, item) in self.mgr.key_events.iter().enumerate() {
                 // We must match scancode not vkey since the
@@ -981,43 +1020,12 @@ impl<'a> Manager<'a> {
             }
             // Focused(bool),
             KeyboardInput { input, is_synthetic, .. } => {
-                let char_focus = self.mgr.char_focus.is_some();
                 if input.state == ElementState::Pressed && !is_synthetic {
                     if let Some(vkey) = input.virtual_keycode {
-                        if char_focus {
-                            match vkey {
-                                VirtualKeyCode::Escape => self.set_char_focus(None),
-                                _ => (),
-                            }
-                        } else {
-                            match (vkey, self.mgr.nav_focus) {
-                                (VirtualKeyCode::Tab, _) => {
-                                    self.next_nav_focus(widget, self.mgr.modifiers.shift());
-                                }
-                                (VirtualKeyCode::Space, Some(nav_id)) |
-                                (VirtualKeyCode::Return, Some(nav_id)) |
-                                (VirtualKeyCode::NumpadEnter, Some(nav_id))  => {
-                                    // Add to key_events for visual feedback
-                                    self.add_key_event(input.scancode, nav_id);
-
-                                    let ev = Event::Action(Action::Activate);
-                                    let _ = widget.event(self, nav_id, ev);
-                                }
-                                (VirtualKeyCode::Escape, _) => self.unset_nav_focus(),
-                                (vkey, _) => {
-                                    if let Some(id) = self.mgr.accel_keys.get(&vkey).cloned() {
-                                        // Add to key_events for visual feedback
-                                        self.add_key_event(input.scancode, id);
-
-                                        let ev = Event::Action(Action::Activate);
-                                        let _ = widget.event(self, id, ev);
-                                    }
-                                }
-                            }
-                        }
+                        self.start_key_event(widget, vkey, input.scancode);
                     }
                 } else if input.state == ElementState::Released {
-                    self.remove_key_event(input.scancode);
+                    self.end_key_event(input.scancode);
                 }
             }
             ModifiersChanged(state) => {

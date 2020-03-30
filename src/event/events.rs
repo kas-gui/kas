@@ -7,7 +7,7 @@
 
 #[allow(unused)]
 use super::Manager; // for doc-links
-use super::{MouseButton, UpdateHandle};
+use super::{MouseButton, UpdateHandle, VirtualKeyCode};
 
 use crate::geom::{Coord, DVec2};
 use crate::WidgetId;
@@ -17,6 +17,11 @@ use crate::WidgetId;
 pub enum Action {
     /// Widget activation, for example clicking a button or toggling a check-box
     Activate,
+    /// Navigation key input
+    ///
+    /// This is received only when the widget has key-navigation focus. Note
+    /// that [`Action::Activate`] is also effectively a navigation key.
+    NavKey(NavKey),
     /// Widget lost keyboard input focus
     LostCharFocus,
     /// Widget receives a character of text input
@@ -119,6 +124,47 @@ pub enum Event {
         end_id: Option<WidgetId>,
         coord: Coord,
     },
+}
+
+/// Navigation key ([`Action::NavKey`])
+// TODO: possible expansion candidates: Cut/Copy/Paste,
+// Space, Enter, ScrollLock, Pause, Insert, Delete, Backspace
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum NavKey {
+    /// Left arrow
+    Left,
+    /// Right arrow
+    Right,
+    /// Up arrow
+    Up,
+    /// Down arrow
+    Down,
+    /// Home key
+    Home,
+    /// End key
+    End,
+    /// Page up
+    PageUp,
+    /// Page down
+    PageDown,
+}
+
+impl NavKey {
+    /// Try constructing from a [`VirtualKeyCode`]
+    pub fn new(vkey: VirtualKeyCode) -> Option<Self> {
+        use VirtualKeyCode::*;
+        Some(match vkey {
+            Home => NavKey::Home,
+            End => NavKey::End,
+            PageDown => NavKey::PageDown,
+            PageUp => NavKey::PageUp,
+            Left => NavKey::Left,
+            Up => NavKey::Up,
+            Right => NavKey::Right,
+            Down => NavKey::Down,
+            _ => return None,
+        })
+    }
 }
 
 /// Source of `EventChild::Press`
