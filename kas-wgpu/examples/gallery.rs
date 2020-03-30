@@ -52,7 +52,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 [("One", 1), ("Two", 2), ("Three", 3)].iter().cloned().collect(),
             #[widget(row=7, col=0)] _ = Label::new("Slider"),
             #[widget(row=7, col=1, handler = handle_slider)] _ =
-                Slider::<i32, Horizontal>::new(-2, 2).with_value(0),
+                Slider::<i32, Horizontal>::new(-2, 2, 1).with_value(0),
             #[widget(row=8, col=0)] _ = Label::new("ScrollBar"),
             #[widget(row=8, col=1, handler = handle_scroll)] _ =
                 ScrollBar::<Horizontal>::new().with_limits(5, 2),

@@ -11,7 +11,7 @@ use std::ops::{Add, Sub};
 
 use super::DragHandle;
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, Manager, Response};
+use kas::event::{Action, Event, Manager, NavKey, Response};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::prelude::*;
 
@@ -50,6 +50,7 @@ pub struct Slider<T: SliderType, D: Directional> {
     direction: D, // TODO: also reversed direction
     // Terminology assumes vertical orientation:
     range: (T, T),
+    step: T,
     value: T,
     #[widget]
     handle: DragHandle,
@@ -58,26 +59,35 @@ pub struct Slider<T: SliderType, D: Directional> {
 impl<T: SliderType, D: Directional + Default> Slider<T, D> {
     /// Construct a slider
     ///
-    /// The range must be specified; the initial value defaults to the range's
+    /// Values vary between the given `min` and `max`. When keyboard navigation
+    /// is used, arrow keys will increment the value by `step` and page up/down
+    /// keys by `step * 16`.
+    ///
+    /// The initial value defaults to the range's
     /// lower bound but may be specified via [`Slider::with_value`].
-    pub fn new(min: T, max: T) -> Self {
-        Slider::new_with_direction(min, max, D::default())
+    pub fn new(min: T, max: T, step: T) -> Self {
+        Slider::new_with_direction(min, max, step, D::default())
     }
 }
 
 impl<T: SliderType, D: Directional> Slider<T, D> {
     /// Construct a slider with the given `direction`
     ///
-    /// The range must be specified; the initial value defaults to the range's
+    /// Values vary between the given `min` and `max`. When keyboard navigation
+    /// is used, arrow keys will increment the value by `step` and page up/down
+    /// keys by `step * 16`.
+    ///
+    /// The initial value defaults to the range's
     /// lower bound but may be specified via [`Slider::with_value`].
     #[inline]
-    pub fn new_with_direction(min: T, max: T, direction: D) -> Self {
+    pub fn new_with_direction(min: T, max: T, step: T, direction: D) -> Self {
         assert!(min <= max);
         let value = min;
         Slider {
             core: Default::default(),
             direction,
             range: (min, max),
+            step,
             value,
             handle: DragHandle::new(),
         }
@@ -97,7 +107,9 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
     }
 
     /// Set the value
-    pub fn set_value(&mut self, mgr: &mut Manager, mut value: T) {
+    ///
+    /// Returns true when the value differs from the old value
+    pub fn set_value(&mut self, mgr: &mut Manager, mut value: T) -> bool {
         if value < self.range.0 {
             value = self.range.0;
         } else if value > self.range.1 {
@@ -108,6 +120,9 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
             if self.handle.set_offset(self.offset()).1 {
                 mgr.redraw(self.handle.id());
             }
+            true
+        } else {
+            false
         }
     }
 
@@ -118,7 +133,8 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
         let max_offset = self.handle.max_offset();
         match self.direction.is_vertical() {
             false => Coord((max_offset.0 as f64 * a / b) as i32, 0),
-            true => Coord(0, (max_offset.1 as f64 * (1.0 - a / b)) as i32),
+            true => Coord(0, (max_offset.1 as f64 * a / b) as i32),
+            // TODO: reversed vert => Coord(0, (max_offset.1 as f64 * (1.0 - a / b)) as i32),
         }
     }
 
@@ -128,7 +144,8 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
         let max_offset = self.handle.max_offset();
         let a = match self.direction.is_vertical() {
             false => b * offset.0 as f64 / max_offset.0 as f64,
-            true => b * (1.0 - offset.1 as f64 / max_offset.1 as f64),
+            true => b * offset.1 as f64 / max_offset.1 as f64,
+            // TODO: reversed vert => b * (1.0 - offset.1 as f64 / max_offset.1 as f64),
         };
         let value = T::approx_from(a).unwrap() + self.range.0;
         let value = if !(value >= self.range.0) {
@@ -196,6 +213,30 @@ impl<T: SliderType, D: Directional> event::EventHandler for Slider<T, D> {
             }
         } else {
             match event {
+                Event::Action(Action::NavKey(key)) => {
+                    // Generics makes this easier than constructing a literal and multiplying!
+                    let sixteen_of = |mut x: T| -> T {
+                        x = x + x;
+                        x = x + x;
+                        x = x + x;
+                        x + x
+                    };
+
+                    let v = match key {
+                        NavKey::Left | NavKey::Up => self.value - self.step,
+                        NavKey::Right | NavKey::Down => self.value + self.step,
+                        NavKey::PageUp => self.value - sixteen_of(self.step),
+                        NavKey::PageDown => self.value + sixteen_of(self.step),
+                        NavKey::Home => self.range.0,
+                        NavKey::End => self.range.1,
+                        // _ => return Response::Unhandled(event),
+                    };
+                    return if self.set_value(mgr, v) {
+                        Response::Msg(self.value)
+                    } else {
+                        Response::None
+                    };
+                }
                 Event::PressStart { source, coord, .. } => {
                     self.handle.handle_press_on_track(mgr, source, coord)
                 }
