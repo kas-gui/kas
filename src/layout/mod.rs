@@ -15,7 +15,6 @@ mod sizer;
 mod storage;
 
 use crate::geom::Size;
-use crate::{Direction, Directional};
 
 pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
@@ -42,20 +41,11 @@ impl AxisInfo {
     ///
     /// This method is *usually* not required by user code.
     #[inline]
-    pub fn new(dir: Direction, fixed: Option<u32>) -> Self {
+    pub fn new(vertical: bool, fixed: Option<u32>) -> Self {
         AxisInfo {
-            vertical: dir.is_vertical(),
+            vertical,
             has_fixed: fixed.is_some(),
             other_axis: fixed.unwrap_or(0),
-        }
-    }
-
-    /// Get the axis's direction
-    #[inline]
-    pub fn dir(&self) -> Direction {
-        match self.vertical {
-            false => Direction::Horizontal,
-            true => Direction::Vertical,
         }
     }
 
@@ -81,10 +71,10 @@ impl AxisInfo {
         }
     }
 
-    /// Size of other axis, if fixed and `direction` matches this axis.
+    /// Size of other axis, if fixed and `vertical` matches this axis.
     #[inline]
-    pub fn size_other_if_fixed(&self, dir: Direction) -> Option<u32> {
-        if dir.is_vertical() == self.vertical && self.has_fixed {
+    pub fn size_other_if_fixed(&self, vertical: bool) -> Option<u32> {
+        if vertical == self.vertical && self.has_fixed {
             Some(self.other_axis)
         } else {
             None

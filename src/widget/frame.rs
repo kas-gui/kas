@@ -45,7 +45,7 @@ impl<W: Widget> Layout for Frame<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.frame();
         let margins = Margins::ZERO;
-        let frame_rules = SizeRules::extract_fixed(axis.dir(), size + size, margins);
+        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, margins);
 
         let child_rules = self.child.size_rules(size_handle, axis);
         let m = child_rules.margins();

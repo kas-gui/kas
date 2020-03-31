@@ -8,7 +8,6 @@
 use std::iter::Sum;
 
 use crate::geom::Size;
-use crate::Direction;
 
 // TODO: new Margin model
 /// Margin sizes
@@ -164,20 +163,21 @@ impl SizeRules {
 
     /// Construct fixed-size rules from given data
     #[inline]
-    pub fn extract_fixed(dir: Direction, size: Size, margin: Margins) -> Self {
-        match dir {
-            Direction::Horizontal => SizeRules {
+    pub fn extract_fixed(vertical: bool, size: Size, margin: Margins) -> Self {
+        if !vertical {
+            SizeRules {
                 a: size.0,
                 b: size.0,
                 m: (margin.first.0, margin.last.0),
                 stretch: StretchPolicy::Fixed,
-            },
-            Direction::Vertical => SizeRules {
+            }
+        } else {
+            SizeRules {
                 a: size.1,
                 b: size.1,
                 m: (margin.first.1, margin.last.1),
                 stretch: StretchPolicy::Fixed,
-            },
+            }
         }
     }
 
