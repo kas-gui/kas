@@ -180,8 +180,10 @@ mod kw {
     custom_keyword!(msg);
     custom_keyword!(generics);
     custom_keyword!(single);
-    custom_keyword!(horizontal);
-    custom_keyword!(vertical);
+    custom_keyword!(right);
+    custom_keyword!(left);
+    custom_keyword!(down);
+    custom_keyword!(up);
     custom_keyword!(grid);
     custom_keyword!(substitutions);
     custom_keyword!(halign);
@@ -514,8 +516,10 @@ impl Parse for WidgetArgs {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LayoutType {
     Single,
-    Horizontal,
-    Vertical,
+    Right,
+    Left,
+    Down,
+    Up,
     Grid,
 }
 
@@ -545,19 +549,25 @@ impl Parse for LayoutArgs {
             LayoutType::Single
         } else if lookahead.peek(kw::row) {
             let _: kw::row = content.parse()?;
-            LayoutType::Horizontal
-        } else if lookahead.peek(kw::horizontal) {
-            let _: kw::horizontal = content.parse()?;
-            LayoutType::Horizontal
+            LayoutType::Right
+        } else if lookahead.peek(kw::right) {
+            let _: kw::right = content.parse()?;
+            LayoutType::Right
+        } else if lookahead.peek(kw::left) {
+            let _: kw::left = content.parse()?;
+            LayoutType::Left
         } else if lookahead.peek(kw::col) {
             let _: kw::col = content.parse()?;
-            LayoutType::Vertical
+            LayoutType::Down
         } else if lookahead.peek(kw::column) {
             let _: kw::column = content.parse()?;
-            LayoutType::Vertical
-        } else if lookahead.peek(kw::vertical) {
-            let _: kw::vertical = content.parse()?;
-            LayoutType::Vertical
+            LayoutType::Down
+        } else if lookahead.peek(kw::down) {
+            let _: kw::down = content.parse()?;
+            LayoutType::Down
+        } else if lookahead.peek(kw::up) {
+            let _: kw::up = content.parse()?;
+            LayoutType::Up
         } else if lookahead.peek(kw::grid) {
             let _: kw::grid = content.parse()?;
             LayoutType::Grid

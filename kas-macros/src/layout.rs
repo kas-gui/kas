@@ -32,11 +32,11 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
 
         match layout.layout {
             LayoutType::Single => (),
-            LayoutType::Horizontal => {
+            LayoutType::Right | LayoutType::Left => {
                 cols += 1;
                 rows = 1;
             }
-            LayoutType::Vertical => {
+            LayoutType::Down | LayoutType::Up => {
                 cols = 1;
                 rows += 1;
             }
@@ -73,7 +73,7 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
             type Solver = kas::layout::SingleSolver;
             type Setter = kas::layout::SingleSetter;
         },
-        LayoutType::Horizontal => quote! {
+        LayoutType::Right => quote! {
             type Data = kas::layout::FixedRowStorage::<
                 [kas::layout::SizeRules; #cols + 1]
             >;
@@ -87,7 +87,21 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
                 Self::Data,
             >;
         },
-        LayoutType::Vertical => quote! {
+        LayoutType::Left => quote! {
+            type Data = kas::layout::FixedRowStorage::<
+                [kas::layout::SizeRules; #cols + 1]
+            >;
+            type Solver = kas::layout::RowSolver::<
+                #col_temp,
+                Self::Data,
+            >;
+            type Setter = kas::layout::RowSetter::<
+                kas::Left,
+                #col_temp,
+                Self::Data,
+            >;
+        },
+        LayoutType::Down => quote! {
             type Data = kas::layout::FixedRowStorage::<
                 [kas::layout::SizeRules; #rows + 1],
             >;
@@ -97,6 +111,20 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
             >;
             type Setter = kas::layout::RowSetter::<
                 kas::Down,
+                #row_temp,
+                Self::Data,
+            >;
+        },
+        LayoutType::Up => quote! {
+            type Data = kas::layout::FixedRowStorage::<
+                [kas::layout::SizeRules; #rows + 1],
+            >;
+            type Solver = kas::layout::RowSolver::<
+                #row_temp,
+                Self::Data,
+            >;
+            type Setter = kas::layout::RowSetter::<
+                kas::Up,
                 #row_temp,
                 Self::Data,
             >;
@@ -160,14 +188,14 @@ pub(crate) fn derive(
 
         let child_info = match layout.layout {
             LayoutType::Single => quote! { () },
-            LayoutType::Horizontal => {
+            LayoutType::Right | LayoutType::Left => {
                 let col = cols;
                 cols += 1;
                 rows = 1;
 
                 quote! { #col }
             }
-            LayoutType::Vertical => {
+            LayoutType::Down | LayoutType::Up => {
                 let row = rows;
                 cols = 1;
                 rows += 1;
@@ -230,9 +258,10 @@ pub(crate) fn derive(
 
     let dim = match layout.layout {
         LayoutType::Single => quote! { () },
-        // TODO: reversed directions
-        LayoutType::Horizontal => quote! { (kas::Right, #cols) },
-        LayoutType::Vertical => quote! { (kas::Down, #rows) },
+        LayoutType::Right => quote! { (kas::Right, #cols) },
+        LayoutType::Left => quote! { (kas::Left, #cols) },
+        LayoutType::Down => quote! { (kas::Down, #rows) },
+        LayoutType::Up => quote! { (kas::Up, #rows) },
         LayoutType::Grid => quote! { (#cols, #rows) },
     };
 

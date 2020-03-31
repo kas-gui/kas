@@ -113,7 +113,7 @@
 //! The following attribute parameters are expected:
 //!
 //! -   (first position): one of `single`, `grid`,
-//!     `horizontal`, `vertical`, `col`, `column`, `row`
+//!     `right`, `left`, `down`, `up`, `col`, `column`, `row`
 //! -   (optional): `area=FIELD` where `FIELD` is a child widget; if specified,
 //!     the area of self is considered to refer to child `FIELD`. This causes
 //!     the [`kas::Layout::find_id`] function to directly return the child's Id.
@@ -121,10 +121,12 @@
 //! Child widgets are arranged as specified by the first parameter:
 //!
 //! -   `single` — the widget wraps a single child, with no border or margin
-//! -   `col`, `column` or `vertical` — child widgets are arranged in a vertical
+//! -   `col`, `column` or `down` — child widgets are arranged in a vertical
 //!     column, top-to-bottom
-//! -   `row` or `horizontal` — child widgets are arranged in a horizontal row,
+//! -   `up` — reversed column
+//! -   `row` or `right` — child widgets are arranged in a horizontal row,
 //!     left-to-right
+//! -   `left` — reversed row
 //! -   `grid` — child widgets are arranged in a grid; position is specified
 //!     via parameters to the `#[widget]` attribute on child fields
 //!
