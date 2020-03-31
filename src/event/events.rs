@@ -127,6 +127,13 @@ pub enum Event {
 }
 
 /// Navigation key ([`Action::NavKey`])
+///
+/// The purpose of this enum (instead of sending the active widget a
+/// [`VirtualKeyCode`]) is consistent behaviour: these "navigation keys" will
+/// always be sent to the widget highlighted for keyboard navigation, if active,
+/// while alpha-numeric keys will always be available for accelerator keys
+/// (when a character input grab is not present). Additionally, this allows
+/// uniform behaviour with regards to num-pad keys.
 // TODO: possible expansion candidates: Cut/Copy/Paste,
 // Space, Enter, ScrollLock, Pause, Insert, Delete, Backspace
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

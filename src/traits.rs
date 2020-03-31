@@ -12,6 +12,8 @@ use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Manager, ManagerState};
 use crate::geom::{Coord, Rect};
 use crate::layout::{self, AxisInfo, SizeRules};
+#[allow(unused)]
+use crate::TkAction; // for doc links
 use crate::{AlignHints, CoreData, Direction, WidgetId, WindowId};
 
 mod impls;
