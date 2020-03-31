@@ -190,48 +190,55 @@ impl CompleteAlignment {
 /// Trait over directional types
 ///
 /// Using a generic `<D: Directional>` over [`Direction`] allows compile-time
-/// substitution via the [`Horizontal`] and [`Vertical`] instantiations.
+/// substitution via the [`Right`], [`Down`], [`Left`] and [`Up`] instantiations.
 pub trait Directional: Copy + Sized + std::fmt::Debug {
     fn as_direction(self) -> Direction;
 
     #[inline]
     fn is_vertical(self) -> bool {
-        self.as_direction() == Direction::Vertical
+        ((self.as_direction() as u32) & 1) == 1
     }
 
     #[inline]
     fn is_horizontal(self) -> bool {
-        self.as_direction() == Direction::Horizontal
+        ((self.as_direction() as u32) & 1) == 0
     }
-}
 
-/// Fixed instantiation of [`Directional`]
-#[derive(Copy, Clone, Default, Debug)]
-pub struct Horizontal;
-impl Directional for Horizontal {
+    /// Left or Up
     #[inline]
-    fn as_direction(self) -> Direction {
-        Direction::Horizontal
+    fn is_reversed(self) -> bool {
+        ((self.as_direction() as u32) & 2) == 2
     }
 }
 
-/// Fixed instantiation of [`Directional`]
-#[derive(Copy, Clone, Default, Debug)]
-pub struct Vertical;
-impl Directional for Vertical {
-    #[inline]
-    fn as_direction(self) -> Direction {
-        Direction::Vertical
-    }
+macro_rules! fixed {
+    ($d:ident) => {
+        /// Fixed instantiation of [`Directional`]
+        #[derive(Copy, Clone, Default, Debug)]
+        pub struct $d;
+        impl Directional for $d {
+            #[inline]
+            fn as_direction(self) -> Direction {
+                Direction::$d
+            }
+        }
+    };
+    ($d:ident, $($dd:ident),*) => {
+        fixed!($d);
+        fixed!($($dd),*);
+    };
 }
+fixed!(Right, Down, Left, Up);
 
-/// Horizontal / vertical direction
+/// Axis-aligned directions
 ///
 /// This is a variable instantiation of [`Directional`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum Direction {
-    Horizontal = 0,
-    Vertical = 1,
+    Right = 0,
+    Down = 1,
+    Left = 2,
+    Up = 3,
 }
 
 impl Directional for Direction {

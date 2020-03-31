@@ -82,7 +82,7 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
                 Self::Data,
             >;
             type Setter = kas::layout::RowSetter::<
-                kas::Horizontal,
+                kas::Right,
                 #col_temp,
                 Self::Data,
             >;
@@ -96,7 +96,7 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
                 Self::Data,
             >;
             type Setter = kas::layout::RowSetter::<
-                kas::Vertical,
+                kas::Down,
                 #row_temp,
                 Self::Data,
             >;
@@ -230,8 +230,9 @@ pub(crate) fn derive(
 
     let dim = match layout.layout {
         LayoutType::Single => quote! { () },
-        LayoutType::Horizontal => quote! { (kas::Horizontal, #cols) },
-        LayoutType::Vertical => quote! { (kas::Vertical, #rows) },
+        // TODO: reversed directions
+        LayoutType::Horizontal => quote! { (kas::Right, #cols) },
+        LayoutType::Vertical => quote! { (kas::Down, #rows) },
         LayoutType::Grid => quote! { (#cols, #rows) },
     };
 

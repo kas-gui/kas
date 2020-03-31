@@ -16,7 +16,7 @@ use kas::draw::{
 };
 use kas::event::HighlightState;
 use kas::geom::*;
-use kas::{Align, Direction, ThemeAction, ThemeApi};
+use kas::{Align, Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
@@ -303,9 +303,9 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
         // track
         let mut outer = Quad::from(rect + self.offset);
-        outer = match dir {
-            Direction::Horizontal => outer.shrink_vec(Vec2(0.0, outer.size().1 * (3.0 / 8.0))),
-            Direction::Vertical => outer.shrink_vec(Vec2(outer.size().0 * (3.0 / 8.0), 0.0)),
+        outer = match dir.is_horizontal() {
+            true => outer.shrink_vec(Vec2(0.0, outer.size().1 * (3.0 / 8.0))),
+            false => outer.shrink_vec(Vec2(outer.size().0 * (3.0 / 8.0), 0.0)),
         };
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         let col = self.cols.frame;

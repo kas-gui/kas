@@ -281,6 +281,12 @@ impl Rect {
         Rect { pos, size }
     }
 
+    /// Get pos + size
+    #[inline]
+    pub fn pos_end(&self) -> Coord {
+        self.pos + self.size
+    }
+
     /// Check whether the given coordinate is contained within this rect
     #[inline]
     pub fn contains(&self, c: Coord) -> bool {

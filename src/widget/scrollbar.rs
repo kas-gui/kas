@@ -145,25 +145,31 @@ impl<D: Directional> ScrollBar<D> {
         let len = self.len() - self.handle_len;
         let lhs = self.value as u64 * len as u64;
         let rhs = self.max_value as u64;
-        let pos = if rhs == 0 {
+        let mut pos = if rhs == 0 {
             0
         } else {
-            (((lhs + (rhs / 2)) / rhs) as u32).min(len) as i32
+            (((lhs + (rhs / 2)) / rhs) as u32).min(len)
         };
+        if self.direction.is_reversed() {
+            pos = len - pos;
+        }
         match self.direction.is_vertical() {
-            false => Coord(pos, 0),
-            true => Coord(0, pos),
+            false => Coord(pos as i32, 0),
+            true => Coord(0, pos as i32),
         }
     }
 
     // true if not equal to old value
     fn set_offset(&mut self, offset: Coord) -> bool {
-        let offset = match self.direction.is_vertical() {
+        let len = self.len() - self.handle_len;
+        let mut offset = match self.direction.is_vertical() {
             false => offset.0,
             true => offset.1,
-        };
+        } as u32;
+        if self.direction.is_reversed() {
+            offset = len - offset;
+        }
 
-        let len = self.len() - self.handle_len;
         let lhs = offset as u64 * self.max_value as u64;
         let rhs = len as u64;
         if rhs == 0 {

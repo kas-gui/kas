@@ -35,9 +35,9 @@ pub struct ScrollRegion<W: Widget> {
     auto_bars: bool,
     show_bars: (bool, bool),
     #[widget]
-    horiz_bar: ScrollBar<Horizontal>,
+    horiz_bar: ScrollBar<kas::Right>,
     #[widget]
-    vert_bar: ScrollBar<Vertical>,
+    vert_bar: ScrollBar<kas::Down>,
     #[widget]
     child: W,
 }

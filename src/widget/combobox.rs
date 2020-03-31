@@ -160,7 +160,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 } else {
                     let id = mgr.add_popup(kas::Popup {
                         parent: self.id(),
-                        direction: Direction::Vertical,
+                        direction: Direction::Down,
                         overlay: Box::new(ComboPopup::new(self.column.clone(), self.handle)),
                     });
                     self.popup = Some(id);

@@ -15,26 +15,26 @@ use kas::prelude::*;
 /// A generic row widget
 ///
 /// See documentation of [`List`] type.
-pub type Row<W> = List<Horizontal, W>;
+pub type Row<W> = List<kas::Right, W>;
 
 /// A generic column widget
 ///
 /// See documentation of [`List`] type.
-pub type Column<W> = List<Vertical, W>;
+pub type Column<W> = List<kas::Down, W>;
 
 /// A row of boxed widgets
 ///
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`List`] type.
-pub type BoxRow<M> = BoxList<Horizontal, M>;
+pub type BoxRow<M> = BoxList<kas::Right, M>;
 
 /// A column of boxed widgets
 ///
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`List`] type.
-pub type BoxColumn<M> = BoxList<Vertical, M>;
+pub type BoxColumn<M> = BoxList<kas::Down, M>;
 
 /// A row/column of boxed widgets
 ///
