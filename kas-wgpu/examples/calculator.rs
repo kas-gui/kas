@@ -72,7 +72,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
     let content = make_widget! {
-        #[layout(vertical)]
+        #[layout(column)]
         #[handler(msg = VoidMsg)]
         struct {
             #[widget] display: impl HasText = EditBox::new("0").editable(false).multi_line(true),

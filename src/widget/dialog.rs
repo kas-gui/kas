@@ -20,7 +20,7 @@ enum DialogButton {
 }
 
 /// A simple message box.
-#[layout(vertical)]
+#[layout(column)]
 #[handler]
 #[derive(Clone, Debug, Widget)]
 pub struct MessageBox {

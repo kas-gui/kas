@@ -73,12 +73,12 @@ fn main() -> Result<(), kas_wgpu::Error> {
     };
 
     let top_box = Frame::new(make_widget! {
-        #[layout(vertical)]
+        #[layout(column)]
         #[handler(msg = VoidMsg)]
         struct {
             #[widget(halign=centre)] _ = Label::new("Widget Gallery"),
             #[widget(handler=set_theme)] _ = make_widget! {
-                #[layout(horizontal)]
+                #[layout(row)]
                 #[handler(msg = &'static str)]
                 struct {
                     #[widget] _ = TextButton::new("Flat", "flat"),
@@ -86,7 +86,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 }
             },
             #[widget(handler=set_colour)] _ = make_widget! {
-                #[layout(horizontal)]
+                #[layout(row)]
                 #[handler(msg = &'static str)]
                 struct {
                     #[widget] _ = TextButton::new("Default", "default"),
@@ -119,7 +119,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new(
         "Widget Gallery",
         make_widget! {
-            #[layout(vertical)]
+            #[layout(column)]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = top_box,

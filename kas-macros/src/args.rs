@@ -195,6 +195,7 @@ mod kw {
     custom_keyword!(config);
     custom_keyword!(noauto);
     custom_keyword!(children);
+    custom_keyword!(column);
 }
 
 #[derive(Debug)]
@@ -281,6 +282,10 @@ impl Parse for WidgetAttrArgs {
             let lookahead = content.lookahead1();
             if args.col.is_none() && lookahead.peek(kw::col) {
                 let _: kw::col = content.parse()?;
+                let _: Eq = content.parse()?;
+                args.col = Some(content.parse()?);
+            } else if args.col.is_none() && lookahead.peek(kw::column) {
+                let _: kw::column = content.parse()?;
                 let _: Eq = content.parse()?;
                 args.col = Some(content.parse()?);
             } else if args.row.is_none() && lookahead.peek(kw::row) {
@@ -538,9 +543,18 @@ impl Parse for LayoutArgs {
         let layout = if lookahead.peek(kw::single) {
             let _: kw::single = content.parse()?;
             LayoutType::Single
+        } else if lookahead.peek(kw::row) {
+            let _: kw::row = content.parse()?;
+            LayoutType::Horizontal
         } else if lookahead.peek(kw::horizontal) {
             let _: kw::horizontal = content.parse()?;
             LayoutType::Horizontal
+        } else if lookahead.peek(kw::col) {
+            let _: kw::col = content.parse()?;
+            LayoutType::Vertical
+        } else if lookahead.peek(kw::column) {
+            let _: kw::column = content.parse()?;
+            LayoutType::Vertical
         } else if lookahead.peek(kw::vertical) {
             let _: kw::vertical = content.parse()?;
             LayoutType::Vertical

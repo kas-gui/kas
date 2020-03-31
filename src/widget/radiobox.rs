@@ -185,7 +185,7 @@ impl<M> HasBool for RadioBoxBare<M> {
 }
 
 /// A radiobox with optional label
-#[layout(horizontal, area=radiobox)]
+#[layout(row, area=radiobox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Widget)]
 pub struct RadioBox<M> {
