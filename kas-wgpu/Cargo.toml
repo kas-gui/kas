@@ -26,7 +26,7 @@ shaderc = "0.6.1"
 smallvec = "1.1"
 wgpu = "0.4.0"
 wgpu_glyph = "0.6.0"
-winit = "0.21.0"
+winit = "0.22.0"
 
 [dependencies.clipboard]
 # Provides clipboard support

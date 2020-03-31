@@ -512,7 +512,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let mbrot = Mandlebrot::new();
-    let slider = Slider::new(0, 256).with_value(64);
+    let slider = Slider::new(0, 256, 1).with_value(64);
 
     let window = make_widget! {
         #[layout(grid)]

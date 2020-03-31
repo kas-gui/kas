@@ -131,7 +131,7 @@ impl ThemeApi for ShadedTheme {
     }
 }
 
-impl<'a, D: Draw + DrawShaded> DrawHandle<'a, D> {
+impl<'a, D: Draw + DrawRounded + DrawShaded> DrawHandle<'a, D> {
     /// Draw an edit region with optional navigation highlight.
     /// Return the inner rect.
     fn draw_edit_region(&mut self, outer: Rect, nav_col: Option<Colour>) -> Quad {
@@ -154,10 +154,17 @@ impl<'a, D: Draw + DrawShaded> DrawHandle<'a, D> {
     /// Draw a handle (for slider, scrollbar)
     fn draw_handle(&mut self, rect: Rect, highlights: HighlightState) {
         let outer = Quad::from(rect + self.offset);
-        let inner = outer.shrink(outer.size().min_comp() / 2.0);
+        let thickness = outer.size().min_comp() / 2.0;
+        let inner = outer.shrink(thickness);
         let col = self.cols.scrollbar_state(highlights);
         self.draw
             .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
+
+        if let Some(col) = self.cols.nav_region(highlights) {
+            let outer = outer.shrink(thickness / 4.0);
+            self.draw
+                .rounded_frame(self.pass, outer, inner, 2.0 / 3.0, col);
+        }
     }
 }
 

@@ -22,6 +22,10 @@
 
 #![cfg_attr(feature = "nightly", feature(new_uninit))]
 
+#[cfg(not(feature = "winit"))]
+#[macro_use]
+extern crate bitflags;
+
 extern crate kas_macros;
 extern crate self as kas; // required for reliable self-reference in kas_macros
 

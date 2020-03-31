@@ -25,6 +25,7 @@ log = "0.4"
 rusttype = "0.8"
 smallvec = "1.1"
 stack_dst = { version = "0.6", features = ["unsize"], optional = true }
+bitflags = "1" # only used without winit
 
 [dependencies.kas-macros]
 version = "0.3.0"
@@ -32,7 +33,7 @@ path = "kas-macros"
 
 [dependencies.winit]
 # Provides translations for several winit types
-version = "0.21"
+version = "0.22"
 optional = true
 
 [workspace]
