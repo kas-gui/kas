@@ -178,9 +178,6 @@ impl<M> HasBool for RadioBoxBare<M> {
     fn set_bool(&mut self, mgr: &mut Manager, state: bool) {
         self.state = state;
         mgr.redraw(self.id());
-        if state {
-            mgr.trigger_update(self.handle, self.id().into());
-        }
     }
 }
 
