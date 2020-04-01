@@ -268,6 +268,7 @@ where
     fn apply_size(&mut self) {
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         let rect = Rect::new(Coord::ZERO, size);
+        debug!("Resizing window to rect = {:?}", rect);
 
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
         let (min, ideal) =
@@ -297,12 +298,6 @@ where
             return;
         }
 
-        let rect = Rect::new(Coord::ZERO, size);
-        debug!("Resizing window to rect = {:?}", rect);
-        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
-        layout::solve_and_set(self.widget.as_widget_mut(), &mut size_handle, rect, true);
-        drop(size_handle);
-
         let buf = shared.draw.resize(&mut self.draw, &shared.device, size);
         shared.queue.submit(&[buf]);
 
@@ -312,7 +307,9 @@ where
             .device
             .create_swap_chain(&self.surface, &self.sc_desc);
 
-        self.window.request_redraw();
+        // Note that on resize, width adjustments may affect height
+        // requirements; we therefore refresh size restrictions.
+        self.apply_size();
     }
 
     pub(crate) fn do_draw<C, T>(&mut self, shared: &mut SharedState<C, T>)
