@@ -43,6 +43,27 @@ pub type BoxColumn<M> = BoxList<kas::Down, M>;
 /// See documentation of [`List`] type.
 pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
 
+/// A row of widget references
+///
+/// This is parameterised over handler message type.
+///
+/// See documentation of [`List`] type.
+pub type RefRow<'a, M> = RefList<'a, kas::Right, M>;
+
+/// A column of widget references
+///
+/// This is parameterised over handler message type.
+///
+/// See documentation of [`List`] type.
+pub type RefColumn<'a, M> = RefList<'a, kas::Down, M>;
+
+/// A row/column of widget references
+///
+/// This is parameterised over directionality and handler message type.
+///
+/// See documentation of [`List`] type.
+pub type RefList<'a, D, M> = List<D, &'a mut dyn Widget<Msg = M>>;
+
 /// A generic row/column widget
 ///
 /// This type is generic over both directionality and the type of child widgets.

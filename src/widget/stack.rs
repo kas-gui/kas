@@ -18,6 +18,11 @@ use kas::prelude::*;
 /// This is a parametrisation of [`Stack`].
 pub type BoxStack<M> = Stack<Box<dyn Widget<Msg = M>>>;
 
+/// A stack of widget references
+///
+/// This is a parametrisation of [`Stack`].
+pub type RefStack<'a, M> = Stack<&'a mut dyn Widget<Msg = M>>;
+
 /// A stack of widgets
 ///
 /// A stack consists a set of child widgets, all of equal size.
