@@ -34,7 +34,19 @@ impl WindowId {
     }
 }
 
-/// Toolkit actions needed after event handling, if any.
+/// Action required after processing
+///
+/// This type is returned by many widgets on modification to self and is tracked
+/// internally by [`event::Manager`] to determine which updates are needed to
+/// the UI.
+///
+/// Two `TkAction` values may be combined by taking their maximum. Since this
+/// is a common operation, the `+` operator is defined to do this job, together
+/// with `+=` on `TkAction` and [`event::Manager`].
+///
+/// Users receiving a value of this type from a widget update method should
+/// generally call `*mgr += action;` during event handling. Prior to
+/// starting the event loop (`toolkit.run()`), these values can be ignored.
 #[must_use]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
 pub enum TkAction {
@@ -68,6 +80,22 @@ pub enum TkAction {
     Close,
     /// All windows should close (toolkit exit)
     CloseAll,
+}
+
+impl std::ops::Add for TkAction {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, rhs: TkAction) -> Self {
+        self.max(rhs)
+    }
+}
+
+impl std::ops::AddAssign for TkAction {
+    #[inline]
+    fn add_assign(&mut self, rhs: TkAction) {
+        *self = (*self).max(rhs);
+    }
 }
 
 /// Toolkit-specific window management and style interface.

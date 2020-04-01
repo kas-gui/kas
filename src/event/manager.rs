@@ -271,6 +271,9 @@ impl ManagerState {
     }
 
     /// Set an action
+    ///
+    /// Since this is a commonly used operation, an operator overload is
+    /// available to do this job: `mgr << action;` or even `mgr << a << b;`.
     #[inline]
     pub fn send_action(&mut self, action: TkAction) {
         self.action = self.action.max(action);
@@ -284,6 +287,13 @@ impl ManagerState {
             mgr: self,
             tkw,
         }
+    }
+}
+
+impl<'a> std::ops::AddAssign<TkAction> for Manager<'a> {
+    #[inline]
+    fn add_assign(&mut self, action: TkAction) {
+        self.send_action(action);
     }
 }
 
