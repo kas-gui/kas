@@ -23,6 +23,7 @@ mod scroll;
 mod scrollbar;
 mod separator;
 mod slider;
+mod stack;
 mod window;
 
 pub use button::TextButton;
@@ -40,4 +41,5 @@ pub use scroll::ScrollRegion;
 pub use scrollbar::ScrollBar;
 pub use separator::Separator;
 pub use slider::Slider;
+pub use stack::{BoxStack, Stack};
 pub use window::Window;

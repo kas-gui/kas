@@ -127,7 +127,7 @@ impl Default for Align {
 ///     .apply(rect);
 /// // self.core.rect = rect;
 /// ```
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct AlignHints {
     pub horiz: Option<Align>,
     pub vert: Option<Align>,
