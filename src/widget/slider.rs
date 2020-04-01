@@ -108,21 +108,18 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
 
     /// Set the value
     ///
-    /// Returns true when the value differs from the old value
-    pub fn set_value(&mut self, mgr: &mut Manager, mut value: T) -> bool {
+    /// Returns [`TkAction::Redraw`] if a redraw is required.
+    pub fn set_value(&mut self, mut value: T) -> TkAction {
         if value < self.range.0 {
             value = self.range.0;
         } else if value > self.range.1 {
             value = self.range.1;
         }
-        if value != self.value {
-            self.value = value;
-            if self.handle.set_offset(self.offset()).1 {
-                mgr.redraw(self.handle.id());
-            }
-            true
+        if value == self.value {
+            TkAction::None
         } else {
-            false
+            self.value = value;
+            self.handle.set_offset(self.offset()).1
         }
     }
 
@@ -187,7 +184,7 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
         }
         self.core.rect = rect;
         self.handle.set_rect(size_handle, rect, align);
-        self.handle.set_size_and_offset(size, self.offset());
+        let _ = self.handle.set_size_and_offset(size, self.offset());
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
@@ -244,10 +241,12 @@ impl<T: SliderType, D: Directional> event::EventHandler for Slider<T, D> {
                         NavKey::End => self.range.1,
                         // _ => return Response::Unhandled(event),
                     };
-                    return if self.set_value(mgr, v) {
-                        Response::Msg(self.value)
-                    } else {
+                    let action = self.set_value(v);
+                    return if action == TkAction::None {
                         Response::None
+                    } else {
+                        mgr.send_action(action);
+                        Response::Msg(self.value)
                     };
                 }
                 Event::PressStart { source, coord, .. } => {
@@ -262,7 +261,7 @@ impl<T: SliderType, D: Directional> event::EventHandler for Slider<T, D> {
         } else {
             Response::None
         };
-        self.handle.set_offset(self.offset());
+        *mgr += self.handle.set_offset(self.offset()).1;
         r
     }
 }

@@ -526,12 +526,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
         impl {
             fn iter(&mut self, mgr: &mut Manager, iter: i32) -> VoidResponse {
                 self.mbrot.iter = iter;
-                self.label.set_text(mgr, self.mbrot.loc());
-                self.iters.set_text(mgr, format!("{}", iter));
+                *mgr += self.iters.set_text(format!("{}", iter));
                 Response::None
             }
             fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> VoidResponse {
-                self.label.set_text(mgr, self.mbrot.loc());
+                *mgr += self.label.set_text(self.mbrot.loc());
                 Response::None
             }
         }

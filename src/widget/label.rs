@@ -7,7 +7,7 @@
 
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Manager, ManagerState};
+use kas::event::ManagerState;
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
@@ -73,8 +73,8 @@ impl HasText for Label {
         &self.text
     }
 
-    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString) {
+    fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.text = text.into();
-        mgr.redraw(self.id());
+        TkAction::Redraw
     }
 }

@@ -108,10 +108,10 @@ impl<M: Clone + Debug> ComboBox<M> {
     }
 
     /// Add a choice to the combobox, in last position
-    pub fn push<T: Into<CowString>>(&mut self, mgr: &mut Manager, label: CowString, msg: M) {
+    pub fn push<T: Into<CowString>>(&mut self, label: CowString, msg: M) -> TkAction {
         let len = self.column.len() as u64;
-        self.column.push(mgr, TextButton::new(label, len));
         self.messages.push(msg);
+        self.column.push(TextButton::new(label, len))
     }
 }
 

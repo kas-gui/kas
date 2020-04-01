@@ -175,9 +175,9 @@ impl<M> HasBool for RadioBoxBare<M> {
         self.state
     }
 
-    fn set_bool(&mut self, mgr: &mut Manager, state: bool) {
+    fn set_bool(&mut self, state: bool) -> TkAction {
         self.state = state;
-        mgr.redraw(self.id());
+        TkAction::Redraw
     }
 }
 
@@ -282,7 +282,7 @@ impl<M> HasBool for RadioBox<M> {
     }
 
     #[inline]
-    fn set_bool(&mut self, mgr: &mut Manager, state: bool) {
-        self.radiobox.set_bool(mgr, state);
+    fn set_bool(&mut self, state: bool) -> TkAction {
+        self.radiobox.set_bool(state)
     }
 }

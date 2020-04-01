@@ -60,12 +60,12 @@ impl<D: Directional> ScrollBar<D> {
         }
     }
 
-    /// Set the page length
+    /// Set the initial page length
     ///
     /// See [`ScrollBar::set_limits`].
     #[inline]
     pub fn with_limits(mut self, max_value: u32, handle_value: u32) -> Self {
-        self.set_limits(max_value, handle_value);
+        let _ = self.set_limits(max_value, handle_value);
         self
     }
 
@@ -91,8 +91,8 @@ impl<D: Directional> ScrollBar<D> {
     /// The choice of units is not important (e.g. can be pixels or lines),
     /// so long as both parameters use the same units.
     ///
-    /// Returns true if a redraw is required.
-    pub fn set_limits(&mut self, max_value: u32, handle_value: u32) -> bool {
+    /// Returns [`TkAction::Redraw`] if a redraw is required.
+    pub fn set_limits(&mut self, max_value: u32, handle_value: u32) -> TkAction {
         // We should gracefully handle zero, though appearance may be wrong.
         self.handle_value = handle_value.max(1);
 
@@ -108,13 +108,13 @@ impl<D: Directional> ScrollBar<D> {
     }
 
     /// Set the value
-    pub fn set_value(&mut self, mgr: &mut Manager, value: u32) {
+    pub fn set_value(&mut self, value: u32) -> TkAction {
         let value = value.min(self.max_value);
-        if value != self.value {
+        if value == self.value {
+            TkAction::None
+        } else {
             self.value = value;
-            if self.handle.set_offset(self.offset()).1 {
-                mgr.redraw(self.handle.id());
-            }
+            self.handle.set_offset(self.offset()).1
         }
     }
 
@@ -126,7 +126,7 @@ impl<D: Directional> ScrollBar<D> {
         }
     }
 
-    fn update_handle(&mut self) -> bool {
+    fn update_handle(&mut self) -> TkAction {
         let len = self.len();
         let total = self.max_value as u64 + self.handle_value as u64;
         let handle_len = self.handle_value as u64 * len as u64 / total;
@@ -202,7 +202,7 @@ impl<D: Directional> Layout for ScrollBar<D> {
         self.min_handle_len = size.0;
         self.core.rect = rect;
         self.handle.set_rect(size_handle, rect, align);
-        self.update_handle();
+        let _ = self.update_handle();
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
@@ -237,6 +237,7 @@ impl<D: Directional> event::EventHandler for ScrollBar<D> {
         };
 
         if self.set_offset(offset) {
+            mgr.redraw(self.handle.id());
             Response::Msg(self.value)
         } else {
             Response::None

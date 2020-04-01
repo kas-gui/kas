@@ -373,9 +373,9 @@ impl<G> HasText for EditBox<G> {
         &self.text
     }
 
-    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString) {
+    fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.text = text.to_string();
-        mgr.redraw(self.id());
+        TkAction::Redraw
     }
 }
 

@@ -46,11 +46,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     match msg {
                         Message::Decr => {
                             self.counter = self.counter.saturating_sub(1);
-                            self.display.set_text(mgr, self.counter.to_string());
+                            *mgr += self.display.set_text(self.counter.to_string());
                         }
                         Message::Incr => {
                             self.counter = self.counter.saturating_add(1);
-                            self.display.set_text(mgr, self.counter.to_string());
+                            *mgr += self.display.set_text(self.counter.to_string());
                         }
                     };
                     VoidResponse::None

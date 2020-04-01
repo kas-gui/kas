@@ -5,8 +5,7 @@
 
 //! Class-specific widget traits
 
-use crate::event::Manager;
-use crate::CowString;
+use crate::{CowString, TkAction};
 
 /// Functionality for widgets which can be toggled or selected: check boxes,
 /// radio buttons, toggle switches.
@@ -17,7 +16,7 @@ pub trait HasBool {
     fn get_bool(&self) -> bool;
 
     /// Set the widget's state
-    fn set_bool(&mut self, mgr: &mut Manager, state: bool);
+    fn set_bool(&mut self, state: bool) -> TkAction;
 }
 
 /// Functionality for widgets with visible text.
@@ -31,18 +30,18 @@ pub trait HasText {
     fn get_text(&self) -> &str;
 
     /// Set the widget's text.
-    fn set_text<T: Into<CowString>>(&mut self, mgr: &mut Manager, text: T)
+    fn set_text<T: Into<CowString>>(&mut self, text: T) -> TkAction
     where
         Self: Sized,
     {
-        self.set_cow_string(mgr, text.into());
+        self.set_cow_string(text.into())
     }
 
     /// Set the widget's text ([`CowString`])
     ///
     /// This method is for implementation. It is recommended to use
     /// [`HasText::set_text`] instead.
-    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString);
+    fn set_cow_string(&mut self, text: CowString) -> TkAction;
 }
 
 /// Additional functionality required by the `EditBox` widget.

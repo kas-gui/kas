@@ -100,8 +100,8 @@ impl<W: HasBool + Widget> HasBool for Frame<W> {
         self.child.get_bool()
     }
 
-    fn set_bool(&mut self, mgr: &mut Manager, state: bool) {
-        self.child.set_bool(mgr, state);
+    fn set_bool(&mut self, state: bool) -> TkAction {
+        self.child.set_bool(state)
     }
 }
 
@@ -110,8 +110,8 @@ impl<W: HasText + Widget> HasText for Frame<W> {
         self.child.get_text()
     }
 
-    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString) {
-        self.child.set_cow_string(mgr, text);
+    fn set_cow_string(&mut self, text: CowString) -> TkAction {
+        self.child.set_cow_string(text)
     }
 }
 

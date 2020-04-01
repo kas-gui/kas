@@ -113,16 +113,17 @@ impl<W: Widget> ScrollRegion<W> {
 
     /// Set the scroll offset
     ///
-    /// Returns true if the offset is not identical to the old offset.
+    /// Returns [`TkAction::None`] if the offset is identical to the old offset,
+    /// or a greater action if not identical.
     #[inline]
-    pub fn set_offset(&mut self, mgr: &mut Manager, offset: Coord) -> bool {
+    pub fn set_offset(&mut self, offset: Coord) -> TkAction {
         let offset = offset.clamp(Coord::ZERO, self.max_offset);
-        if offset != self.offset {
+        if offset == self.offset {
+            TkAction::None
+        } else {
             self.offset = offset;
-            mgr.send_action(TkAction::RegionMoved);
-            return true;
+            TkAction::RegionMoved
         }
-        false
     }
 }
 
@@ -179,7 +180,8 @@ impl<W: Widget> Layout for ScrollRegion<W> {
             let size = Size(self.inner_size.0, width);
             self.horiz_bar
                 .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
-            self.horiz_bar
+            let _ = self
+                .horiz_bar
                 .set_limits(self.max_offset.0 as u32, rect.size.0);
         }
         if self.show_bars.1 {
@@ -187,7 +189,8 @@ impl<W: Widget> Layout for ScrollRegion<W> {
             let size = Size(width, self.core.rect.size.1);
             self.vert_bar
                 .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
-            self.vert_bar
+            let _ = self
+                .vert_bar
                 .set_limits(self.max_offset.1 as u32, rect.size.1);
         }
     }
@@ -229,9 +232,11 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
                     }
                     event::ScrollDelta::PixelDelta(d) => d,
                 };
-                if w.set_offset(mgr, w.offset - d) {
-                    w.horiz_bar.set_value(mgr, w.offset.0 as u32);
-                    w.vert_bar.set_value(mgr, w.offset.1 as u32);
+                let action = w.set_offset(w.offset - d);
+                if action != TkAction::None {
+                    *mgr += action
+                        + w.horiz_bar.set_value(w.offset.0 as u32)
+                        + w.vert_bar.set_value(w.offset.1 as u32);
                     Response::None
                 } else {
                     Response::unhandled_action(Action::Scroll(delta))
@@ -255,7 +260,7 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
                 Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
-                    self.set_offset(mgr, Coord(msg as i32, self.offset.1));
+                    *mgr += self.set_offset(Coord(msg as i32, self.offset.1));
                     Response::None
                 }
             };
@@ -264,16 +269,18 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
                 Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
-                    self.set_offset(mgr, Coord(self.offset.0, msg as i32));
+                    *mgr += self.set_offset(Coord(self.offset.0, msg as i32));
                     Response::None
                 }
             };
         } else if id == self.id() {
             return match event {
                 Event::PressMove { delta, .. } => {
-                    if self.set_offset(mgr, self.offset - delta) {
-                        self.horiz_bar.set_value(mgr, self.offset.0 as u32);
-                        self.vert_bar.set_value(mgr, self.offset.1 as u32);
+                    let action = self.set_offset(self.offset - delta);
+                    if action != TkAction::None {
+                        *mgr += action
+                            + self.horiz_bar.set_value(self.offset.0 as u32)
+                            + self.vert_bar.set_value(self.offset.1 as u32);
                     }
                     Response::None
                 }

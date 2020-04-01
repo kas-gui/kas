@@ -104,9 +104,9 @@ impl<M: Clone + Debug> HasText for TextButton<M> {
         &self.label
     }
 
-    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString) {
+    fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.label = text;
-        mgr.redraw(self.id());
+        TkAction::Redraw
     }
 }
 
