@@ -17,7 +17,7 @@ use kas::event::{self, Action, Event, Handler, Manager, ManagerState, Response};
 use kas::geom::*;
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::widget::Window;
-use kas::{Align, AlignHints, Direction, Layout, WidgetConfig, WidgetCore};
+use kas::{Align, AlignHints, Layout, WidgetConfig, WidgetCore};
 use kas_wgpu::draw::DrawWindow;
 
 #[handler(event)]
@@ -37,7 +37,7 @@ struct Clock {
 impl Layout for Clock {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
         // Always use value for horiz axis: we want a square shape
-        let axis = AxisInfo::new(Direction::Horizontal, None);
+        let axis = AxisInfo::new(false, None);
         let text_req = size_handle.text_bound("0000-00-00", TextClass::Label, axis);
         // extra makes default size larger without affecting min size
         let extra = SizeRules::new(0, 100, (0, 0), StretchPolicy::HighUtility);

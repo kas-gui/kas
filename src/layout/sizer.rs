@@ -11,7 +11,6 @@ use std::fmt;
 use super::{AxisInfo, SizeRules};
 use crate::draw::SizeHandle;
 use crate::geom::{Coord, Rect, Size};
-use crate::Direction::{Horizontal, Vertical};
 use crate::{AlignHints, WidgetConfig};
 
 /// A [`SizeRules`] solver for layouts
@@ -61,8 +60,8 @@ pub trait RulesSetter {
 pub fn solve(widget: &mut dyn WidgetConfig, size_handle: &mut dyn SizeHandle) -> (Size, Size) {
     // We call size_rules not because we want the result, but because our
     // spec requires that we do so before calling set_rect.
-    let w = widget.size_rules(size_handle, AxisInfo::new(Horizontal, None));
-    let h = widget.size_rules(size_handle, AxisInfo::new(Vertical, Some(w.ideal_size())));
+    let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
+    let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(w.ideal_size())));
 
     let min = Size(w.min_size(), h.min_size());
     let ideal = Size(w.ideal_size(), h.ideal_size());
@@ -81,14 +80,14 @@ pub fn solve_and_set(
 ) -> (Size, Size) {
     // We call size_rules not because we want the result, but because our
     // spec requires that we do so before calling set_rect.
-    let w = widget.size_rules(size_handle, AxisInfo::new(Horizontal, None));
+    let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
     let wm = w.margins();
     let mut width = rect.size.0;
     if include_margins {
         width -= (wm.0 + wm.1) as u32;
     }
 
-    let h = widget.size_rules(size_handle, AxisInfo::new(Vertical, Some(width)));
+    let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(width)));
     let hm = h.margins();
 
     if include_margins {

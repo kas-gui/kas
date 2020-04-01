@@ -16,7 +16,7 @@
 pub use kas::geom::{Coord, Rect, Size};
 pub use kas::macros::*;
 pub use kas::{class, draw, event, geom, layout, widget};
-pub use kas::{Align, AlignHints, Direction, Directional, Horizontal, Vertical, WidgetId};
+pub use kas::{Align, AlignHints, Direction, Directional, WidgetId};
 pub use kas::{CloneTo, Layout, ThemeApi, Widget, WidgetChildren, WidgetConfig, WidgetCore};
 pub use kas::{CoreData, LayoutData};
 pub use kas::{CowString, CowStringL};

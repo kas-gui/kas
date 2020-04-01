@@ -13,7 +13,6 @@ use std::f32;
 use kas::draw::{self, DrawText, FontId, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
-use kas::Direction::{Horizontal, Vertical};
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -151,9 +150,9 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
         let font_scale = self.dims.font_scale;
         let line_height = self.dims.line_height;
         let mut bounds = (f32::INFINITY, f32::INFINITY);
-        if let Some(size) = axis.size_other_if_fixed(Horizontal) {
+        if let Some(size) = axis.size_other_if_fixed(false) {
             bounds.1 = size as f32;
-        } else if let Some(size) = axis.size_other_if_fixed(Vertical) {
+        } else if let Some(size) = axis.size_other_if_fixed(true) {
             bounds.0 = size as f32;
         }
         let line_wrap = match class {

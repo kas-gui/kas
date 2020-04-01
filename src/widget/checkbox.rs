@@ -41,7 +41,7 @@ impl<M> Layout for CheckBoxBare<M> {
         let size = size_handle.checkbox();
         self.core.rect.size = size;
         let margins = size_handle.outer_margins();
-        SizeRules::extract_fixed(axis.dir(), size, margins)
+        SizeRules::extract_fixed(axis.is_vertical(), size, margins)
     }
 
     fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
@@ -148,7 +148,7 @@ impl<M> event::Handler for CheckBoxBare<M> {
 
 /// A checkable box with optional label
 // TODO: use a generic wrapper for CheckBox and RadioBox?
-#[layout(horizontal, area=checkbox)]
+#[layout(row, area=checkbox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<M> {

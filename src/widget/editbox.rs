@@ -154,7 +154,7 @@ impl<G: 'static> Layout for EditBox<G> {
         let frame_size = frame_offset + frame_sides.1 + inner;
 
         let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis.dir(), frame_size, margins);
+        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), frame_size, margins);
 
         let class = if self.multi_line {
             TextClass::EditMulti

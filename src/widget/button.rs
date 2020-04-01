@@ -43,7 +43,7 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.button_surround();
         let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis.dir(), sides.0 + sides.1, margins);
+        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
 
         let content_rules = size_handle.text_bound(&self.label, TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)

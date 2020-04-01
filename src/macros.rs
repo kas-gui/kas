@@ -112,7 +112,8 @@
 //!
 //! The following attribute parameters are expected:
 //!
-//! -   (first position): one of `single`, `horizontal`, `vertical`, `grid`
+//! -   (first position): one of `single`, `grid`,
+//!     `right`, `left`, `down`, `up`, `col`, `column`, `row`
 //! -   (optional): `area=FIELD` where `FIELD` is a child widget; if specified,
 //!     the area of self is considered to refer to child `FIELD`. This causes
 //!     the [`kas::Layout::find_id`] function to directly return the child's Id.
@@ -120,10 +121,12 @@
 //! Child widgets are arranged as specified by the first parameter:
 //!
 //! -   `single` — the widget wraps a single child, with no border or margin
-//! -   `vertical` — child widgets are arranged in a vertical column, in order
-//!     of child fields
-//! -   `horizontal` — child widgets are arranged in a horizontal row, in order
-//!     of child fields
+//! -   `col`, `column` or `down` — child widgets are arranged in a vertical
+//!     column, top-to-bottom
+//! -   `up` — reversed column
+//! -   `row` or `right` — child widgets are arranged in a horizontal row,
+//!     left-to-right
+//! -   `left` — reversed row
 //! -   `grid` — child widgets are arranged in a grid; position is specified
 //!     via parameters to the `#[widget]` attribute on child fields
 //!
@@ -203,7 +206,7 @@
 //!
 //! The first four affect positioning are only used by the `grid` layout:
 //!
-//! -   `col = ...` — grid column, from left (defaults to 0)
+//! -   `col = ...` or `column = ...` — grid column, from left (defaults to 0)
 //! -   `row = ...` — grid row, from top (defaults to 0)
 //! -   `cspan = ...` — number of columns to span (defaults to 1)
 //! -   `rspan = ...` — number of rows to span (defaults to 1)
@@ -242,7 +245,7 @@
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
 //!
-//! #[layout(vertical)]
+//! #[layout(column)]
 //! #[handler(generics = <> where W: Widget<Msg = ChildMessage>)]
 //! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
@@ -285,7 +288,7 @@
 //!     Check(bool),
 //! }
 //! let widget = make_widget! {
-//!     #[layout(vertical)]
+//!     #[layout(column)]
 //!     #[handler(msg = VoidMsg)]
 //!     struct {
 //!         #[widget] _ = Label::new("Widget Gallery"),
@@ -342,7 +345,7 @@
 //! ```nocompile
 //! let widget = make_widget! {
 //!     #[widget]
-//!     #[layout(vertical)]
+//!     #[layout(column)]
 //!     #[handler(msg = VoidMsg)]
 //!     struct {
 //!         ...
@@ -383,7 +386,7 @@
 //! }
 //!
 //! let button_box = make_widget!{
-//!     #[layout(horizontal)]
+//!     #[layout(row)]
 //!     #[handler(msg = OkCancel)]
 //!     struct {
 //!         #[widget] _ = TextButton::new("Ok", OkCancel::Ok),

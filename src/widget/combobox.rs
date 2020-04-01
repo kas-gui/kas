@@ -45,7 +45,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.button_surround();
         let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis.dir(), sides.0 + sides.1, margins);
+        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
 
         // TODO: should we calculate a bound over all choices or assume some default?
         let content_rules = size_handle.text_bound(self.text(), TextClass::Button, axis);
@@ -160,7 +160,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 } else {
                     let id = mgr.add_popup(kas::Popup {
                         parent: self.id(),
-                        direction: Direction::Vertical,
+                        direction: Direction::Down,
                         overlay: Box::new(ComboPopup::new(self.column.clone(), self.handle)),
                     });
                     self.popup = Some(id);

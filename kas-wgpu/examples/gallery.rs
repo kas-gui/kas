@@ -9,7 +9,7 @@
 use kas::event::{Manager, Response, UpdateHandle, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::*;
-use kas::{Horizontal, WidgetId};
+use kas::{Right, WidgetId};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Item {
@@ -52,10 +52,10 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 [("One", 1), ("Two", 2), ("Three", 3)].iter().cloned().collect(),
             #[widget(row=7, col=0)] _ = Label::new("Slider"),
             #[widget(row=7, col=1, handler = handle_slider)] _ =
-                Slider::<i32, Horizontal>::new(-2, 2, 1).with_value(0),
+                Slider::<i32, Right>::new(-2, 2, 1).with_value(0),
             #[widget(row=8, col=0)] _ = Label::new("ScrollBar"),
             #[widget(row=8, col=1, handler = handle_scroll)] _ =
-                ScrollBar::<Horizontal>::new().with_limits(5, 2),
+                ScrollBar::<Right>::new().with_limits(5, 2),
             #[widget(row=9)] _ = Label::new("Child window"),
             #[widget(row=9, col = 1)] _ = TextButton::new("Open", Item::Popup),
         }
@@ -73,12 +73,12 @@ fn main() -> Result<(), kas_wgpu::Error> {
     };
 
     let top_box = Frame::new(make_widget! {
-        #[layout(vertical)]
+        #[layout(column)]
         #[handler(msg = VoidMsg)]
         struct {
             #[widget(halign=centre)] _ = Label::new("Widget Gallery"),
             #[widget(handler=set_theme)] _ = make_widget! {
-                #[layout(horizontal)]
+                #[layout(row)]
                 #[handler(msg = &'static str)]
                 struct {
                     #[widget] _ = TextButton::new("Flat", "flat"),
@@ -86,7 +86,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 }
             },
             #[widget(handler=set_colour)] _ = make_widget! {
-                #[layout(horizontal)]
+                #[layout(row)]
                 #[handler(msg = &'static str)]
                 struct {
                     #[widget] _ = TextButton::new("Default", "default"),
@@ -119,7 +119,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new(
         "Widget Gallery",
         make_widget! {
-            #[layout(vertical)]
+            #[layout(column)]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = top_box,

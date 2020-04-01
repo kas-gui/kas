@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 
 use super::{AxisInfo, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::{Coord, Rect};
-use crate::{Directional, Widget};
+use crate::{Direction, Directional, Widget};
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
@@ -21,6 +21,7 @@ pub struct RowSolver<T: RowTemp, S: RowStorage> {
     // Generalisation implies that axis.vert() is incorrect
     axis: AxisInfo,
     axis_is_vertical: bool,
+    axis_is_reversed: bool,
     rules: SizeRules,
     widths: T,
     _s: PhantomData<S>,
@@ -32,13 +33,13 @@ impl<T: RowTemp, S: RowStorage> RowSolver<T, S> {
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `dim`: direction and number of items
     /// - `storage`: reference to persistent storage
-    pub fn new<D: Directional>(axis: AxisInfo, dim: (D, usize), storage: &mut S) -> Self {
+    pub fn new<D: Directional>(axis: AxisInfo, (dir, len): (D, usize), storage: &mut S) -> Self {
         let mut widths = T::default();
-        widths.set_len(dim.1);
+        widths.set_len(len);
         assert!(widths.as_ref().iter().all(|w| *w == 0));
-        storage.set_len(dim.1 + 1);
+        storage.set_len(len + 1);
 
-        let axis_is_vertical = axis.is_vertical() ^ dim.0.is_vertical();
+        let axis_is_vertical = axis.is_vertical() ^ dir.is_vertical();
 
         if axis.has_fixed && axis_is_vertical {
             // TODO: cache this for use by set_rect?
@@ -48,6 +49,7 @@ impl<T: RowTemp, S: RowStorage> RowSolver<T, S> {
         RowSolver {
             axis,
             axis_is_vertical,
+            axis_is_reversed: dir.is_reversed(),
             rules: SizeRules::EMPTY,
             widths,
             _s: Default::default(),
@@ -71,7 +73,11 @@ impl<T: RowTemp, S: RowStorage> RulesSolver for RowSolver<T, S> {
         let child_rules = child_rules(self.axis);
         if !self.axis_is_vertical {
             storage.as_mut()[child_info] = child_rules;
-            self.rules.append(child_rules);
+            if self.axis_is_reversed {
+                self.rules = child_rules.appended(self.rules);
+            } else {
+                self.rules.append(child_rules);
+            }
         } else {
             self.rules = self.rules.max(child_rules);
         }
@@ -103,27 +109,38 @@ pub struct RowSetter<D, T: RowTemp, S: RowStorage> {
 }
 
 impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
-    pub fn new(rect: Rect, dim: (D, usize), storage: &mut S) -> Self {
+    pub fn new(rect: Rect, (dir, len): (D, usize), storage: &mut S) -> Self {
         let mut widths = T::default();
-        widths.set_len(dim.1);
+        widths.set_len(len);
         let mut offsets = T::default();
-        offsets.set_len(dim.1);
-        storage.set_len(dim.1 + 1);
+        offsets.set_len(len);
+        storage.set_len(len + 1);
 
-        let (pos, width) = match dim.0.is_horizontal() {
+        let (pos, width) = match dir.is_horizontal() {
             true => (rect.pos.0, rect.size.0),
             false => (rect.pos.1, rect.size.1),
         };
 
-        if dim.1 > 0 {
+        if len > 0 {
             SizeRules::solve_seq(widths.as_mut(), storage.as_ref(), width);
-            offsets.as_mut()[0] = pos as u32;
-            for i in 1..offsets.as_ref().len() {
-                let i1 = i - 1;
-                let m1 = storage.as_ref()[i1].margins().1;
-                let m0 = storage.as_ref()[i].margins().0;
-                offsets.as_mut()[i] =
-                    offsets.as_ref()[i1] + widths.as_ref()[i1] + m1.max(m0) as u32;
+            if dir.is_reversed() {
+                offsets.as_mut()[len - 1] = pos as u32;
+                for i in (0..(len - 1)).rev() {
+                    let i1 = i + 1;
+                    let m1 = storage.as_ref()[i1].margins().1;
+                    let m0 = storage.as_ref()[i].margins().0;
+                    offsets.as_mut()[i] =
+                        offsets.as_ref()[i1] + widths.as_ref()[i1] + m1.max(m0) as u32;
+                }
+            } else {
+                offsets.as_mut()[0] = pos as u32;
+                for i in 1..len {
+                    let i1 = i - 1;
+                    let m1 = storage.as_ref()[i1].margins().1;
+                    let m0 = storage.as_ref()[i].margins().0;
+                    offsets.as_mut()[i] =
+                        offsets.as_ref()[i1] + widths.as_ref()[i1] + m1.max(m0) as u32;
+                }
             }
         }
 
@@ -131,7 +148,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
             crect: rect,
             widths,
             offsets,
-            direction: dim.0,
+            direction: dir,
             _s: Default::default(),
         }
     }
@@ -171,10 +188,11 @@ impl<D: Directional> RowPositionSolver<D> {
     }
 
     fn binary_search<W: Widget>(self, widgets: &[W], coord: Coord) -> Result<usize, usize> {
-        if self.direction.is_horizontal() {
-            widgets.binary_search_by_key(&coord.0, |w| w.rect().pos.0)
-        } else {
-            widgets.binary_search_by_key(&coord.1, |w| w.rect().pos.1)
+        match self.direction.as_direction() {
+            Direction::Right => widgets.binary_search_by_key(&coord.0, |w| w.rect().pos.0),
+            Direction::Down => widgets.binary_search_by_key(&coord.1, |w| w.rect().pos.1),
+            Direction::Left => widgets.binary_search_by(|w| w.rect().pos.0.cmp(&coord.0).reverse()),
+            Direction::Up => widgets.binary_search_by(|w| w.rect().pos.1.cmp(&coord.1).reverse()),
         }
     }
 
@@ -186,10 +204,17 @@ impl<D: Directional> RowPositionSolver<D> {
         let index = match self.binary_search(widgets, coord) {
             Ok(i) => i,
             Err(i) => {
-                if i == 0 || !widgets[i - 1].rect().contains(coord) {
-                    return None;
+                if self.direction.is_reversed() {
+                    if i == widgets.len() || !widgets[i].rect().contains(coord) {
+                        return None;
+                    }
+                    i
+                } else {
+                    if i == 0 || !widgets[i - 1].rect().contains(coord) {
+                        return None;
+                    }
+                    i - 1
                 }
-                i - 1
             }
         };
         Some(&widgets[index])
@@ -197,11 +222,15 @@ impl<D: Directional> RowPositionSolver<D> {
 
     /// Call `f` on each child intersecting the given `rect`
     pub fn for_children<W: Widget, F: FnMut(&W)>(self, widgets: &[W], rect: Rect, mut f: F) {
-        let start = match self.binary_search(widgets, rect.pos) {
+        let (pos, end) = match self.direction.is_reversed() {
+            false => (rect.pos, rect.pos + rect.size),
+            true => (rect.pos + rect.size, rect.pos),
+        };
+        let start = match self.binary_search(widgets, pos) {
             Ok(i) => i,
             Err(i) if i > 0 => {
                 let j = i - 1;
-                if widgets[j].rect().contains(rect.pos) {
+                if widgets[j].rect().contains(pos) {
                     j
                 } else {
                     i
@@ -210,18 +239,16 @@ impl<D: Directional> RowPositionSolver<D> {
             Err(_) => 0,
         };
 
-        let end = rect.pos + Coord::from(rect.size);
-
         for i in start..widgets.len() {
             let child = &widgets[i];
-            if self.direction.is_horizontal() {
-                if child.rect().pos.0 >= end.0 {
-                    break;
-                }
-            } else {
-                if child.rect().pos.1 >= end.1 {
-                    break;
-                }
+            let do_break = match self.direction.as_direction() {
+                Direction::Right => child.rect().pos.0 >= end.0,
+                Direction::Down => child.rect().pos.1 >= end.1,
+                Direction::Left => child.rect().pos_end().0 < end.0,
+                Direction::Up => child.rect().pos_end().1 < end.1,
+            };
+            if do_break {
+                break;
             }
             f(child);
         }

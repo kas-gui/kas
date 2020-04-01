@@ -47,7 +47,7 @@ impl<
 pub struct Slider<T: SliderType, D: Directional> {
     #[widget_core]
     core: CoreData,
-    direction: D, // TODO: also reversed direction
+    direction: D,
     // Terminology assumes vertical orientation:
     range: (T, T),
     step: T,
@@ -131,10 +131,13 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
         let a: f64 = (self.value - self.range.0).approx_into().unwrap();
         let b: f64 = (self.range.1 - self.range.0).approx_into().unwrap();
         let max_offset = self.handle.max_offset();
+        let mut frac = a / b;
+        if self.direction.is_reversed() {
+            frac = 1.0 - frac;
+        }
         match self.direction.is_vertical() {
-            false => Coord((max_offset.0 as f64 * a / b) as i32, 0),
-            true => Coord(0, (max_offset.1 as f64 * a / b) as i32),
-            // TODO: reversed vert => Coord(0, (max_offset.1 as f64 * (1.0 - a / b)) as i32),
+            false => Coord((max_offset.0 as f64 * frac) as i32, 0),
+            true => Coord(0, (max_offset.1 as f64 * frac) as i32),
         }
     }
 
@@ -142,11 +145,13 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
     fn set_offset(&mut self, offset: Coord) -> bool {
         let b: f64 = (self.range.1 - self.range.0).approx_into().unwrap();
         let max_offset = self.handle.max_offset();
-        let a = match self.direction.is_vertical() {
+        let mut a = match self.direction.is_vertical() {
             false => b * offset.0 as f64 / max_offset.0 as f64,
             true => b * offset.1 as f64 / max_offset.1 as f64,
-            // TODO: reversed vert => b * (1.0 - offset.1 as f64 / max_offset.1 as f64),
         };
+        if self.direction.is_reversed() {
+            a = b - a;
+        }
         let value = T::approx_from(a).unwrap() + self.range.0;
         let value = if !(value >= self.range.0) {
             self.range.0
@@ -214,19 +219,27 @@ impl<T: SliderType, D: Directional> event::EventHandler for Slider<T, D> {
         } else {
             match event {
                 Event::Action(Action::NavKey(key)) => {
-                    // Generics makes this easier than constructing a literal and multiplying!
-                    let sixteen_of = |mut x: T| -> T {
-                        x = x + x;
-                        x = x + x;
-                        x = x + x;
-                        x + x
-                    };
-
+                    let rev = self.direction.is_reversed();
                     let v = match key {
-                        NavKey::Left | NavKey::Up => self.value - self.step,
-                        NavKey::Right | NavKey::Down => self.value + self.step,
-                        NavKey::PageUp => self.value - sixteen_of(self.step),
-                        NavKey::PageDown => self.value + sixteen_of(self.step),
+                        NavKey::Left | NavKey::Up => match rev {
+                            false => self.value - self.step,
+                            true => self.value + self.step,
+                        },
+                        NavKey::Right | NavKey::Down => match rev {
+                            false => self.value + self.step,
+                            true => self.value - self.step,
+                        },
+                        NavKey::PageUp | NavKey::PageDown => {
+                            // Generics makes this easier than constructing a literal and multiplying!
+                            let mut x = self.step + self.step;
+                            x = x + x;
+                            x = x + x;
+                            x = x + x;
+                            match rev == (key == NavKey::PageDown) {
+                                false => self.value + x,
+                                true => self.value - x,
+                            }
+                        }
                         NavKey::Home => self.range.0,
                         NavKey::End => self.range.1,
                         // _ => return Response::Unhandled(event),

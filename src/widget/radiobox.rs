@@ -90,7 +90,7 @@ impl<M> Layout for RadioBoxBare<M> {
         let size = size_handle.radiobox();
         self.core.rect.size = size;
         let margins = size_handle.outer_margins();
-        SizeRules::extract_fixed(axis.dir(), size, margins)
+        SizeRules::extract_fixed(axis.is_vertical(), size, margins)
     }
 
     fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
@@ -185,7 +185,7 @@ impl<M> HasBool for RadioBoxBare<M> {
 }
 
 /// A radiobox with optional label
-#[layout(horizontal, area=radiobox)]
+#[layout(row, area=radiobox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Widget)]
 pub struct RadioBox<M> {

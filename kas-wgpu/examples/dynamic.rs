@@ -65,7 +65,7 @@ impl EditGuard for ListEntryGuard {
 // activating any RadioBox sends a message to all others using the same
 // UpdateHandle, which is quite slow with thousands of entries!
 // (This issue does not occur when RadioBoxes are independent.)
-#[layout(vertical)]
+#[layout(column)]
 #[handler(msg=EntryMsg)]
 #[derive(Clone, Debug, Widget)]
 struct ListEntry {
@@ -99,7 +99,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     let controls = make_widget! {
-        #[layout(horizontal)]
+        #[layout(row)]
         #[handler(msg = usize)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
@@ -137,7 +137,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new(
         "Dynamic widget demo",
         make_widget! {
-            #[layout(vertical)]
+            #[layout(column)]
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
