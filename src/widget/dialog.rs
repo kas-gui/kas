@@ -69,4 +69,5 @@ impl kas::Window for MessageBox {
     }
 
     fn remove_popup(&mut self, _: &mut Manager, _: WindowId) {}
+    fn resize_popups(&mut self, _: &mut dyn SizeHandle) {}
 }

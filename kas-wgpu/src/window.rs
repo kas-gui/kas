@@ -273,6 +273,7 @@ where
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
         let (min, ideal) =
             layout::solve_and_set(self.widget.as_widget_mut(), &mut size_handle, rect, true);
+        self.widget.resize_popups(&mut size_handle);
         let restrict_dimensions = self.widget.restrict_dimensions();
         let min = match restrict_dimensions.0 {
             false => None,

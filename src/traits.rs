@@ -336,6 +336,12 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
         popup: Popup,
     );
 
+    /// Resize popups
+    ///
+    /// This is called immediately after [`Layout::set_rect`] to resize
+    /// existing pop-ups.
+    fn resize_popups(&mut self, size_handle: &mut dyn SizeHandle);
+
     /// Trigger closure of a pop-up
     ///
     /// If the given `id` refers to a pop-up, it should be closed.
