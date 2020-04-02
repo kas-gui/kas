@@ -115,11 +115,8 @@ impl<D: Directional, W: Widget> WidgetChildren for List<D, W> {
 
 impl<D: Directional, W: Widget> Layout for List<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let mut solver = layout::RowSolver::<Vec<u32>, _>::new(
-            axis,
-            (self.direction, self.widgets.len()),
-            &mut self.data,
-        );
+        let mut solver =
+            layout::RowSolver::new(axis, (self.direction, self.widgets.len()), &mut self.data);
         for (n, child) in self.widgets.iter_mut().enumerate() {
             solver.for_child(&mut self.data, n, |axis| {
                 child.size_rules(size_handle, axis)
@@ -138,7 +135,7 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
 
         for (n, child) in self.widgets.iter_mut().enumerate() {
             let align = AlignHints::default();
-            child.set_rect(setter.child_rect(n), align);
+            child.set_rect(setter.child_rect(&mut self.data, n), align);
         }
     }
 

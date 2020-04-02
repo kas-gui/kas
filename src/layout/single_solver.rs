@@ -67,7 +67,7 @@ impl RulesSetter for SingleSetter {
     type Storage = ();
     type ChildInfo = ();
 
-    fn child_rect(&mut self, _child_info: Self::ChildInfo) -> Rect {
+    fn child_rect(&mut self, _storage: &mut Self::Storage, _child_info: Self::ChildInfo) -> Rect {
         self.crect
     }
 }

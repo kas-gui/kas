@@ -51,7 +51,7 @@ pub trait RulesSetter {
     type ChildInfo;
 
     /// Called once for each child. For most layouts the order is important.
-    fn child_rect(&mut self, child_info: Self::ChildInfo) -> Rect;
+    fn child_rect(&mut self, storage: &mut Self::Storage, child_info: Self::ChildInfo) -> Rect;
 }
 
 /// Calculate required size of widget

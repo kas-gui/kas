@@ -76,9 +76,9 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
         l @ LayoutType::Right | l @ LayoutType::Left => quote! {
             type Data = kas::layout::FixedRowStorage::<
                 [kas::layout::SizeRules; #cols + 1],
+                [u32; #cols],
             >;
             type Solver = kas::layout::RowSolver::<
-                #col_temp,
                 Self::Data,
             >;
             type Setter = kas::layout::RowSetter::<
@@ -90,9 +90,9 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
         l @ LayoutType::Down | l @ LayoutType::Up => quote! {
             type Data = kas::layout::FixedRowStorage::<
                 [kas::layout::SizeRules; #rows + 1],
+                [u32; #rows],
             >;
             type Solver = kas::layout::RowSolver::<
-                #row_temp,
                 Self::Data,
             >;
             type Setter = kas::layout::RowSetter::<
@@ -209,7 +209,7 @@ pub(crate) fn derive(
             set_rect.append_all(quote! { align.vert = Some(#toks); });
         }
         set_rect.append_all(quote! {
-            self.#ident.set_rect(setter.child_rect(#child_info), align);
+            self.#ident.set_rect(setter.child_rect(&mut #data, #child_info), align);
         });
 
         draw.append_all(quote! {
