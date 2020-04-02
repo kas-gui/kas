@@ -25,10 +25,8 @@ pub struct GridChildInfo {
 /// A [`RulesSolver`] for grids supporting cell-spans
 ///
 /// This implementation relies on the caller to provide storage for solver data.
-pub struct GridSolver<RT, CT, CSR, RSR, S: GridStorage> {
+pub struct GridSolver<CSR, RSR, S: GridStorage> {
     axis: AxisInfo,
-    widths: RT,
-    heights: CT,
     col_spans: CSR,
     row_spans: RSR,
     next_col_span: usize,
@@ -36,22 +34,13 @@ pub struct GridSolver<RT, CT, CSR, RSR, S: GridStorage> {
     _s: PhantomData<S>,
 }
 
-impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
-    GridSolver<RT, CT, CSR, RSR, S>
-{
+impl<CSR: Default, RSR: Default, S: GridStorage> GridSolver<CSR, RSR, S> {
     /// Construct.
     ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `(cols, rows)`: number of columns and rows
     /// - `storage`: reference to persistent storage
     pub fn new(axis: AxisInfo, (cols, rows): (usize, usize), storage: &mut S) -> Self {
-        let mut widths = RT::default();
-        let mut heights = CT::default();
-        widths.set_len(cols);
-        heights.set_len(rows);
-        assert!(widths.as_mut().iter().all(|w| *w == 0));
-        assert!(heights.as_mut().iter().all(|w| *w == 0));
-
         let col_spans = CSR::default();
         let row_spans = RSR::default();
 
@@ -59,8 +48,6 @@ impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
 
         let mut solver = GridSolver {
             axis,
-            widths,
-            heights,
             col_spans,
             row_spans,
             next_col_span: 0,
@@ -75,30 +62,27 @@ impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
         if self.axis.has_fixed {
             // TODO: cache this for use by set_rect?
             if self.axis.is_vertical() {
-                SizeRules::solve_seq(self.widths.as_mut(), storage.widths(), self.axis.other_axis);
+                let (rules, widths) = storage.rules_and_widths();
+                SizeRules::solve_seq(widths, rules, self.axis.other_axis);
             } else {
-                SizeRules::solve_seq(
-                    self.heights.as_mut(),
-                    storage.heights(),
-                    self.axis.other_axis,
-                );
+                let (rules, heights) = storage.rules_and_heights();
+                SizeRules::solve_seq(heights, rules, self.axis.other_axis);
             }
         }
 
         if self.axis.is_horizontal() {
-            for n in 0..storage.widths().len() {
-                storage.widths()[n] = SizeRules::EMPTY;
+            for n in 0..storage.width_rules().len() {
+                storage.width_rules()[n] = SizeRules::EMPTY;
             }
         } else {
-            for n in 0..storage.heights().len() {
-                storage.heights()[n] = SizeRules::EMPTY;
+            for n in 0..storage.height_rules().len() {
+                storage.height_rules()[n] = SizeRules::EMPTY;
             }
         }
     }
 }
 
-impl<RT: RowTemp, CT: RowTemp, CSR, RSR, S: GridStorage> RulesSolver
-    for GridSolver<RT, CT, CSR, RSR, S>
+impl<CSR, RSR, S: GridStorage> RulesSolver for GridSolver<CSR, RSR, S>
 where
     CSR: AsRef<[(SizeRules, u32, u32)]> + AsMut<[(SizeRules, u32, u32)]>,
     RSR: AsRef<[(SizeRules, u32, u32)]> + AsMut<[(SizeRules, u32, u32)]>,
@@ -115,13 +99,13 @@ where
         if self.axis.has_fixed {
             if self.axis.is_horizontal() {
                 self.axis.other_axis = ((child_info.row + 1)..child_info.row_end)
-                    .fold(self.heights.as_mut()[child_info.row as usize], |h, i| {
-                        h + self.heights.as_mut()[i as usize]
+                    .fold(storage.heights()[child_info.row as usize], |h, i| {
+                        h + storage.heights()[i as usize]
                     });
             } else {
                 self.axis.other_axis = ((child_info.col + 1)..child_info.col_end)
-                    .fold(self.widths.as_mut()[child_info.col as usize], |w, i| {
-                        w + self.widths.as_mut()[i as usize]
+                    .fold(storage.widths()[child_info.col as usize], |w, i| {
+                        w + storage.widths()[i as usize]
                     });
             }
         }
@@ -134,7 +118,7 @@ where
                 span.2 = child_info.col_end;
                 self.next_col_span += 1;
             } else {
-                storage.widths()[child_info.col as usize].max_with(child_rules);
+                storage.width_rules()[child_info.col as usize].max_with(child_rules);
             }
         } else {
             if child_info.row_end > child_info.row + 1 {
@@ -144,7 +128,7 @@ where
                 span.2 = child_info.row_end;
                 self.next_row_span += 1;
             } else {
-                storage.heights()[child_info.row as usize].max_with(child_rules);
+                storage.height_rules()[child_info.row as usize].max_with(child_rules);
             }
         };
     }
@@ -203,18 +187,16 @@ where
         }
 
         if self.axis.is_horizontal() {
-            let cols = storage.widths().len() - 1;
-            calculate(cols, storage.widths(), self.col_spans.as_mut())
+            let cols = storage.width_rules().len() - 1;
+            calculate(cols, storage.width_rules(), self.col_spans.as_mut())
         } else {
-            let rows = storage.heights().len() - 1;
-            calculate(rows, storage.heights(), self.row_spans.as_mut())
+            let rows = storage.height_rules().len() - 1;
+            calculate(rows, storage.height_rules(), self.row_spans.as_mut())
         }
     }
 }
 
 pub struct GridSetter<RT: RowTemp, CT: RowTemp, S: GridStorage> {
-    widths: RT,
-    heights: CT,
     w_offsets: RT,
     h_offsets: CT,
     pos: Coord,
@@ -228,10 +210,6 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
     /// - `(cols, rows)`: number of columns and rows
     /// - `storage`: reference to persistent storage
     pub fn new(rect: Rect, (cols, rows): (usize, usize), storage: &mut S) -> Self {
-        let mut widths = RT::default();
-        widths.set_len(cols);
-        let mut heights = CT::default();
-        heights.set_len(rows);
         let mut w_offsets = RT::default();
         w_offsets.set_len(cols);
         let mut h_offsets = CT::default();
@@ -240,32 +218,32 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
         storage.set_dims(cols, rows);
 
         if cols > 0 {
-            SizeRules::solve_seq(widths.as_mut(), storage.widths(), rect.size.0);
+            let (rules, widths) = storage.rules_and_widths();
+            SizeRules::solve_seq(widths, rules, rect.size.0);
             w_offsets.as_mut()[0] = 0;
             for i in 1..w_offsets.as_mut().len() {
                 let i1 = i - 1;
-                let m1 = storage.widths()[i1].margins().1;
-                let m0 = storage.widths()[i].margins().0;
+                let m1 = storage.width_rules()[i1].margins().1;
+                let m0 = storage.width_rules()[i].margins().0;
                 w_offsets.as_mut()[i] =
-                    w_offsets.as_mut()[i1] + widths.as_mut()[i1] + m1.max(m0) as u32;
+                    w_offsets.as_mut()[i1] + storage.widths()[i1] + m1.max(m0) as u32;
             }
         }
 
         if rows > 0 {
-            SizeRules::solve_seq(heights.as_mut(), storage.heights(), rect.size.1);
+            let (rules, heights) = storage.rules_and_heights();
+            SizeRules::solve_seq(heights, rules, rect.size.1);
             h_offsets.as_mut()[0] = 0;
             for i in 1..h_offsets.as_mut().len() {
                 let i1 = i - 1;
-                let m1 = storage.heights()[i1].margins().1;
-                let m0 = storage.heights()[i].margins().0;
+                let m1 = storage.height_rules()[i1].margins().1;
+                let m0 = storage.height_rules()[i].margins().0;
                 h_offsets.as_mut()[i] =
-                    h_offsets.as_mut()[i1] + heights.as_mut()[i1] + m1.max(m0) as u32;
+                    h_offsets.as_mut()[i1] + storage.heights()[i1] + m1.max(m0) as u32;
             }
         }
 
         GridSetter {
-            widths,
-            heights,
             w_offsets,
             h_offsets,
             pos: rect.pos,
@@ -278,16 +256,16 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> RulesSetter for GridSetter<RT, CT
     type Storage = S;
     type ChildInfo = GridChildInfo;
 
-    fn child_rect(&mut self, _storage: &mut Self::Storage, info: Self::ChildInfo) -> Rect {
+    fn child_rect(&mut self, storage: &mut Self::Storage, info: Self::ChildInfo) -> Rect {
         let x = self.w_offsets.as_mut()[info.col as usize] as i32;
         let y = self.h_offsets.as_mut()[info.row as usize] as i32;
         let pos = self.pos + Coord(x, y);
 
         let i1 = info.col_end as usize - 1;
-        let w = self.widths.as_mut()[i1] + self.w_offsets.as_mut()[i1]
+        let w = storage.widths()[i1] + self.w_offsets.as_mut()[i1]
             - self.w_offsets.as_mut()[info.col as usize];
         let i1 = info.row_end as usize - 1;
-        let h = self.heights.as_mut()[i1] + self.h_offsets.as_mut()[i1]
+        let h = storage.heights()[i1] + self.h_offsets.as_mut()[i1]
             - self.h_offsets.as_mut()[info.row as usize];
         let size = Size(w, h);
 

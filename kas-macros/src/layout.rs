@@ -105,10 +105,10 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
             type Data = kas::layout::FixedGridStorage::<
                 [kas::layout::SizeRules; #cols + 1],
                 [kas::layout::SizeRules; #rows + 1],
-            >;
-            type Solver = kas::layout::GridSolver::<
                 #col_temp,
                 #row_temp,
+            >;
+            type Solver = kas::layout::GridSolver::<
                 [(kas::layout::SizeRules, u32, u32); #col_spans],
                 [(kas::layout::SizeRules, u32, u32); #row_spans],
                 Self::Data,
