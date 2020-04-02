@@ -523,6 +523,18 @@ pub enum LayoutType {
     Grid,
 }
 
+impl ToTokens for LayoutType {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        tokens.append_all(match self {
+            LayoutType::Single | LayoutType::Grid => unreachable!(),
+            LayoutType::Right => quote! { kas::Right },
+            LayoutType::Left => quote! { kas::Left },
+            LayoutType::Down => quote! { kas::Down },
+            LayoutType::Up => quote! { kas::Up },
+        })
+    }
+}
+
 pub struct LayoutArgs {
     pub span: Span,
     pub layout: LayoutType,

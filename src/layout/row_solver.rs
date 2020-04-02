@@ -37,13 +37,13 @@ impl<T: RowTemp, S: RowStorage> RowSolver<T, S> {
         let mut widths = T::default();
         widths.set_len(len);
         assert!(widths.as_ref().iter().all(|w| *w == 0));
-        storage.set_len(len + 1);
+        storage.set_dim(len);
 
         let axis_is_vertical = axis.is_vertical() ^ dir.is_vertical();
 
         if axis.has_fixed && axis_is_vertical {
             // TODO: cache this for use by set_rect?
-            SizeRules::solve_seq(widths.as_mut(), storage.as_ref(), axis.other_axis);
+            SizeRules::solve_seq(widths.as_mut(), storage.rules_ref(), axis.other_axis);
         }
 
         RowSolver {
@@ -72,7 +72,7 @@ impl<T: RowTemp, S: RowStorage> RulesSolver for RowSolver<T, S> {
         }
         let child_rules = child_rules(self.axis);
         if !self.axis_is_vertical {
-            storage.as_mut()[child_info] = child_rules;
+            storage.rules_mut()[child_info] = child_rules;
             if self.axis_is_reversed {
                 self.rules = child_rules.appended(self.rules);
             } else {
@@ -84,9 +84,9 @@ impl<T: RowTemp, S: RowStorage> RulesSolver for RowSolver<T, S> {
     }
 
     fn finish(self, storage: &mut Self::Storage) -> SizeRules {
-        let cols = storage.as_ref().len() - 1;
+        let cols = storage.rules_ref().len() - 1;
         if !self.axis_is_vertical {
-            storage.as_mut()[cols] = self.rules;
+            storage.rules_mut()[cols] = self.rules;
         }
 
         self.rules
@@ -114,7 +114,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
         widths.set_len(len);
         let mut offsets = T::default();
         offsets.set_len(len);
-        storage.set_len(len + 1);
+        storage.set_dim(len);
 
         let (pos, width) = match dir.is_horizontal() {
             true => (rect.pos.0, rect.size.0),
@@ -122,13 +122,13 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
         };
 
         if len > 0 {
-            SizeRules::solve_seq(widths.as_mut(), storage.as_ref(), width);
+            SizeRules::solve_seq(widths.as_mut(), storage.rules_ref(), width);
             if dir.is_reversed() {
                 offsets.as_mut()[len - 1] = pos as u32;
                 for i in (0..(len - 1)).rev() {
                     let i1 = i + 1;
-                    let m1 = storage.as_ref()[i1].margins().1;
-                    let m0 = storage.as_ref()[i].margins().0;
+                    let m1 = storage.rules_ref()[i1].margins().1;
+                    let m0 = storage.rules_ref()[i].margins().0;
                     offsets.as_mut()[i] =
                         offsets.as_ref()[i1] + widths.as_ref()[i1] + m1.max(m0) as u32;
                 }
@@ -136,8 +136,8 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
                 offsets.as_mut()[0] = pos as u32;
                 for i in 1..len {
                     let i1 = i - 1;
-                    let m1 = storage.as_ref()[i1].margins().1;
-                    let m0 = storage.as_ref()[i].margins().0;
+                    let m1 = storage.rules_ref()[i1].margins().1;
+                    let m0 = storage.rules_ref()[i].margins().0;
                     offsets.as_mut()[i] =
                         offsets.as_ref()[i1] + widths.as_ref()[i1] + m1.max(m0) as u32;
                 }

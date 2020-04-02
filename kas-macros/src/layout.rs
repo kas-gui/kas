@@ -73,35 +73,21 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
             type Solver = kas::layout::SingleSolver;
             type Setter = kas::layout::SingleSetter;
         },
-        LayoutType::Right => quote! {
+        l @ LayoutType::Right | l @ LayoutType::Left => quote! {
             type Data = kas::layout::FixedRowStorage::<
-                [kas::layout::SizeRules; #cols + 1]
+                [kas::layout::SizeRules; #cols + 1],
             >;
             type Solver = kas::layout::RowSolver::<
                 #col_temp,
                 Self::Data,
             >;
             type Setter = kas::layout::RowSetter::<
-                kas::Right,
+                #l,
                 #col_temp,
                 Self::Data,
             >;
         },
-        LayoutType::Left => quote! {
-            type Data = kas::layout::FixedRowStorage::<
-                [kas::layout::SizeRules; #cols + 1]
-            >;
-            type Solver = kas::layout::RowSolver::<
-                #col_temp,
-                Self::Data,
-            >;
-            type Setter = kas::layout::RowSetter::<
-                kas::Left,
-                #col_temp,
-                Self::Data,
-            >;
-        },
-        LayoutType::Down => quote! {
+        l @ LayoutType::Down | l @ LayoutType::Up => quote! {
             type Data = kas::layout::FixedRowStorage::<
                 [kas::layout::SizeRules; #rows + 1],
             >;
@@ -110,21 +96,7 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
                 Self::Data,
             >;
             type Setter = kas::layout::RowSetter::<
-                kas::Down,
-                #row_temp,
-                Self::Data,
-            >;
-        },
-        LayoutType::Up => quote! {
-            type Data = kas::layout::FixedRowStorage::<
-                [kas::layout::SizeRules; #rows + 1],
-            >;
-            type Solver = kas::layout::RowSolver::<
-                #row_temp,
-                Self::Data,
-            >;
-            type Setter = kas::layout::RowSetter::<
-                kas::Up,
+                #l,
                 #row_temp,
                 Self::Data,
             >;

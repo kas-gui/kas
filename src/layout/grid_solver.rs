@@ -55,7 +55,7 @@ impl<RT: RowTemp, CT: RowTemp, CSR: Default, RSR: Default, S: GridStorage>
         let col_spans = CSR::default();
         let row_spans = RSR::default();
 
-        storage.set_dims(cols + 1, rows + 1);
+        storage.set_dims(cols, rows);
 
         let mut solver = GridSolver {
             axis,
@@ -237,7 +237,7 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
         let mut h_offsets = CT::default();
         h_offsets.set_len(rows);
 
-        storage.set_dims(cols + 1, rows + 1);
+        storage.set_dims(cols, rows);
 
         if cols > 0 {
             SizeRules::solve_seq(widths.as_mut(), storage.widths(), rect.size.0);
