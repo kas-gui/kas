@@ -34,7 +34,7 @@ impl Layout for Label {
         rules
     }
 
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.align = (
             align.horiz.unwrap_or(Align::Begin),
             align.vert.unwrap_or(Align::Centre),

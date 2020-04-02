@@ -237,7 +237,7 @@ pub(crate) fn derive(
             set_rect.append_all(quote! { align.vert = Some(#toks); });
         }
         set_rect.append_all(quote! {
-            self.#ident.set_rect(size_handle, setter.child_rect(#child_info), align);
+            self.#ident.set_rect(setter.child_rect(#child_info), align);
         });
 
         draw.append_all(quote! {
@@ -294,12 +294,7 @@ pub(crate) fn derive(
             solver.finish(&mut #data)
         }
 
-        fn set_rect(
-            &mut self,
-            size_handle: &mut dyn kas::draw::SizeHandle,
-            rect: kas::geom::Rect,
-            _: kas::AlignHints,
-        ) {
+        fn set_rect(&mut self, rect: kas::geom::Rect, _: kas::AlignHints) {
             use kas::{WidgetCore, Widget};
             use kas::layout::{Margins, RulesSetter};
             self.core.rect = rect;

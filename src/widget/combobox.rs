@@ -52,7 +52,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         content_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, _align: kas::AlignHints) {
+    fn set_rect(&mut self, rect: Rect, _align: kas::AlignHints) {
         self.core.rect = rect;
 
         // In theory, text rendering should be restricted as in EditBox.

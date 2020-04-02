@@ -45,7 +45,7 @@ impl Layout for Clock {
     }
 
     #[inline]
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, _align: AlignHints) {
         // Force to square
         let size = rect.size.0.min(rect.size.1);
         let size = Size::uniform(size);

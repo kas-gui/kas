@@ -44,7 +44,7 @@ impl<M> Layout for CheckBoxBare<M> {
         SizeRules::extract_fixed(axis.is_vertical(), size, margins)
     }
 
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         let rect = align
             .complete(Align::Centre, Align::Centre, self.rect().size)
             .apply(rect);

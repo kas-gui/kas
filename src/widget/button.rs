@@ -49,7 +49,7 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
         content_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, _align: AlignHints) {
         self.core.rect = rect;
 
         // In theory, text rendering should be restricted as in EditBox.

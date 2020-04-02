@@ -133,9 +133,9 @@ impl<W: Widget> Layout for Window<W> {
     }
 
     #[inline]
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.w.set_rect(size_handle, rect, align);
+        self.w.set_rect(rect, align);
     }
 
     #[inline]

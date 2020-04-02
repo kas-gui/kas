@@ -182,9 +182,9 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
         }
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.handle.set_rect(size_handle, rect, align);
+        self.handle.set_rect(rect, align);
         let size = self.handle_size.min(rect.size);
         let _ = self.handle.set_size_and_offset(size, self.offset());
     }

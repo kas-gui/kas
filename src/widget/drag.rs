@@ -138,7 +138,7 @@ impl Layout for DragHandle {
         SizeRules::EMPTY
     }
 
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, _: AlignHints) {
         self.track = rect;
     }
 

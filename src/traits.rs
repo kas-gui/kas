@@ -241,7 +241,7 @@ pub trait Layout: WidgetChildren {
     /// One may assume that `size_rules` has been called for each axis with the
     /// current widget configuration.
     #[inline]
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, _align: AlignHints) {
         self.core_data_mut().rect = rect;
     }
 

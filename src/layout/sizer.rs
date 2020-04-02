@@ -95,7 +95,7 @@ pub fn solve_and_set(
         rect.size.0 = width;
         rect.size.1 -= (hm.0 + hm.1) as u32;
     }
-    widget.set_rect(size_handle, rect, AlignHints::NONE);
+    widget.set_rect(rect, AlignHints::NONE);
 
     trace!(
         "layout::solve_and_set for size={:?} has rules {:?}, {:?} and hierarchy:{}",
