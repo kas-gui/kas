@@ -32,6 +32,7 @@ pub struct ScrollRegion<W: Widget> {
     max_offset: Coord,
     offset: Coord,
     scroll_rate: f32,
+    bar_width: u32,
     auto_bars: bool,
     show_bars: (bool, bool),
     #[widget]
@@ -53,6 +54,7 @@ impl<W: Widget> ScrollRegion<W> {
             max_offset: Coord::ZERO,
             offset: Coord::ZERO,
             scroll_rate: 30.0,
+            bar_width: 0,
             auto_bars: false,
             show_bars: (false, false),
             horiz_bar: ScrollBar::new(),
@@ -138,6 +140,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         let line_height = size_handle.line_height(TextClass::Label);
         self.scroll_rate = 3.0 * line_height as f32;
         rules.reduce_min_to(line_height);
+        self.bar_width = (size_handle.scrollbar().0).1;
 
         if axis.is_horizontal() && (self.auto_bars || self.show_bars.1) {
             rules.append(self.vert_bar.size_rules(size_handle, axis));
@@ -152,20 +155,18 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         // We use simplified layout code here
         let pos = rect.pos;
         self.inner_size = rect.size;
-        // using vertical-mode notation:
-        let width = (size_handle.scrollbar().0).1;
 
         if self.auto_bars {
             self.show_bars = (
-                self.min_child_size.0 + width > rect.size.0,
-                self.min_child_size.1 + width > rect.size.1,
+                self.min_child_size.0 + self.bar_width > rect.size.0,
+                self.min_child_size.1 + self.bar_width > rect.size.1,
             );
         }
         if self.show_bars.0 {
-            self.inner_size.1 -= width;
+            self.inner_size.1 -= self.bar_width;
         }
         if self.show_bars.1 {
-            self.inner_size.0 -= width;
+            self.inner_size.0 -= self.bar_width;
         }
 
         let child_size = self.inner_size.max(self.min_child_size);
@@ -177,7 +178,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
 
         if self.show_bars.0 {
             let pos = Coord(pos.0, pos.1 + self.inner_size.1 as i32);
-            let size = Size(self.inner_size.0, width);
+            let size = Size(self.inner_size.0, self.bar_width);
             self.horiz_bar
                 .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
             let _ = self
@@ -186,7 +187,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         }
         if self.show_bars.1 {
             let pos = Coord(pos.0 + self.inner_size.0 as i32, pos.1);
-            let size = Size(width, self.core.rect.size.1);
+            let size = Size(self.bar_width, self.core.rect.size.1);
             self.vert_bar
                 .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
             let _ = self

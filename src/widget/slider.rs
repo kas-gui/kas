@@ -52,6 +52,7 @@ pub struct Slider<T: SliderType, D: Directional> {
     range: (T, T),
     step: T,
     value: T,
+    handle_size: Size,
     #[widget]
     handle: DragHandle,
 }
@@ -89,6 +90,7 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
             range: (min, max),
             step,
             value,
+            handle_size: Default::default(),
             handle: DragHandle::new(),
         }
     }
@@ -167,7 +169,11 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
 
 impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let (size, min_len) = size_handle.slider();
+        let (mut size, min_len) = size_handle.slider();
+        if self.direction.is_vertical() {
+            size = size.transpose();
+        }
+        self.handle_size = size;
         let margins = (0, 0);
         if self.direction.is_vertical() == axis.is_vertical() {
             SizeRules::new(min_len, min_len, margins, StretchPolicy::HighUtility)
@@ -177,13 +183,9 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     }
 
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
-        let (size, _) = size_handle.slider();
-        let mut size = size.min(rect.size);
-        if self.direction.is_vertical() {
-            size = size.transpose();
-        }
         self.core.rect = rect;
         self.handle.set_rect(size_handle, rect, align);
+        let size = self.handle_size.min(rect.size);
         let _ = self.handle.set_size_and_offset(size, self.offset());
     }
 
