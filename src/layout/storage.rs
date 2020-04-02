@@ -21,9 +21,7 @@ pub trait RowStorage: sealed::Sealed + Clone {
     fn set_dim(&mut self, cols: usize);
 
     #[doc(hidden)]
-    fn rules_ref(&self) -> &[SizeRules];
-    #[doc(hidden)]
-    fn rules_mut(&mut self) -> &mut [SizeRules];
+    fn rules(&mut self) -> &mut [SizeRules];
 }
 
 /// Fixed-length row storage
@@ -46,10 +44,7 @@ where
         assert_eq!(self.rules.as_ref().len(), cols + 1);
     }
 
-    fn rules_ref(&self) -> &[SizeRules] {
-        self.rules.as_ref()
-    }
-    fn rules_mut(&mut self) -> &mut [SizeRules] {
+    fn rules(&mut self) -> &mut [SizeRules] {
         self.rules.as_mut()
     }
 }
@@ -67,10 +62,7 @@ impl RowStorage for DynRowStorage {
         self.rules.resize(cols + 1, SizeRules::EMPTY);
     }
 
-    fn rules_ref(&self) -> &[SizeRules] {
-        self.rules.as_ref()
-    }
-    fn rules_mut(&mut self) -> &mut [SizeRules] {
+    fn rules(&mut self) -> &mut [SizeRules] {
         self.rules.as_mut()
     }
 }
@@ -81,17 +73,12 @@ impl RowStorage for DynRowStorage {
 /// `Vec<u32>`. For fixed-length rows up to 16 items, use `[u32; rows]`.
 pub trait RowTemp: Default + sealed::Sealed {
     #[doc(hidden)]
-    fn as_ref(&self) -> &[u32];
-    #[doc(hidden)]
     fn as_mut(&mut self) -> &mut [u32];
     #[doc(hidden)]
     fn set_len(&mut self, len: usize);
 }
 
 impl RowTemp for Vec<u32> {
-    fn as_ref(&self) -> &[u32] {
-        self
-    }
     fn as_mut(&mut self) -> &mut [u32] {
         self
     }
@@ -104,9 +91,6 @@ impl RowTemp for Vec<u32> {
 macro_rules! impl_row_temporary {
     ($n:literal) => {
         impl RowTemp for [u32; $n] {
-            fn as_ref(&self) -> &[u32] {
-                self
-            }
             fn as_mut(&mut self) -> &mut [u32] {
                 self
             }
@@ -133,13 +117,9 @@ pub trait GridStorage: sealed::Sealed + Clone {
     #[doc(hidden)]
     fn set_dims(&mut self, cols: usize, rows: usize);
     #[doc(hidden)]
-    fn widths(&self) -> &[SizeRules];
+    fn widths(&mut self) -> &mut [SizeRules];
     #[doc(hidden)]
-    fn widths_mut(&mut self) -> &mut [SizeRules];
-    #[doc(hidden)]
-    fn heights(&self) -> &[SizeRules];
-    #[doc(hidden)]
-    fn heights_mut(&mut self) -> &mut [SizeRules];
+    fn heights(&mut self) -> &mut [SizeRules];
 }
 
 #[derive(Clone, Debug, Default)]
@@ -159,16 +139,10 @@ where
         assert_eq!(self.width_rules.as_ref().len(), cols + 1);
         assert_eq!(self.height_rules.as_ref().len(), rows + 1);
     }
-    fn widths(&self) -> &[SizeRules] {
-        self.width_rules.as_ref()
-    }
-    fn widths_mut(&mut self) -> &mut [SizeRules] {
+    fn widths(&mut self) -> &mut [SizeRules] {
         self.width_rules.as_mut()
     }
-    fn heights(&self) -> &[SizeRules] {
-        self.height_rules.as_ref()
-    }
-    fn heights_mut(&mut self) -> &mut [SizeRules] {
+    fn heights(&mut self) -> &mut [SizeRules] {
         self.height_rules.as_mut()
     }
 }
@@ -187,16 +161,10 @@ impl GridStorage for DynGridStorage {
         self.width_rules.resize(cols + 1, SizeRules::EMPTY);
         self.height_rules.resize(rows + 1, SizeRules::EMPTY);
     }
-    fn widths(&self) -> &[SizeRules] {
-        self.width_rules.as_ref()
-    }
-    fn widths_mut(&mut self) -> &mut [SizeRules] {
+    fn widths(&mut self) -> &mut [SizeRules] {
         self.width_rules.as_mut()
     }
-    fn heights(&self) -> &[SizeRules] {
-        self.height_rules.as_ref()
-    }
-    fn heights_mut(&mut self) -> &mut [SizeRules] {
+    fn heights(&mut self) -> &mut [SizeRules] {
         self.height_rules.as_mut()
     }
 }
