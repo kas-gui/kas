@@ -5,6 +5,8 @@
 
 //! [`SizeRules`] type
 
+use smallvec::SmallVec;
+use std::fmt;
 use std::iter::Sum;
 
 use crate::geom::Size;
@@ -124,7 +126,7 @@ impl Default for StretchPolicy {
 /// [`kas::Layout::set_rect`] and [`kas::AlignHints`].
 ///
 /// [`Rect`]: kas::geom::Rect
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Copy, Clone, Default)]
 pub struct SizeRules {
     // minimum good size
     a: u32,
@@ -133,6 +135,16 @@ pub struct SizeRules {
     // (pre, post) margins
     m: (u16, u16),
     stretch: StretchPolicy,
+}
+
+impl fmt::Debug for SizeRules {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "SizeRules {{ a: {}, b: {}, m: ({}, {}), stretch: {:?} }}",
+            self.a, self.b, self.m.0, self.m.1, self.stretch
+        )
+    }
 }
 
 impl SizeRules {
@@ -314,17 +326,31 @@ impl SizeRules {
 
     /// Solve a sequence of rules
     ///
-    /// Given a sequence of width / height `rules` from children (including a
-    /// final value which is the total) and a `target` size, find an appropriate
-    /// size and position for each child width / height.
+    /// Given a sequence of width (or height) `rules` from children and a
+    /// `target` size, find an appropriate size for each child.
+    /// The method attempts to ensure that:
+    ///
+    /// -   All widths are at least their minimum size requirement
+    /// -   All widths are at least their ideal size requirement, if this can be
+    ///     met without decreasing any widths
+    /// -   Excess space is divided evenly among members with the highest
+    ///     stretch policy
+    ///
+    /// Input requirements: `rules.len() == out.len() + 1`, where the last value
+    /// in `rules` is a summation over all prior rules.
+    ///
+    /// This method is idempotent: given satisfactory input widths, these will
+    /// be preserved. Moreover, this method attempts to ensure that if target
+    /// is increased, then decreased back to the previous value, this will
+    /// revert to the previous solution. (The reverse may not hold if widths
+    /// had previously been affected by a different agent.)
     ///
     /// This method's calculations are not affected by margins, except that it
     /// is assumed that the last entry of `rules` is a summation over all
     /// previous entries which does respect margins.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    // TODO (const generics):
-    // fn solve_seq<const N: usize>(out: &mut [u32; N], rules: &[Self; N + 1], target: u32)
     pub fn solve_seq(out: &mut [u32], rules: &[Self], target: u32) {
+        type Targets = SmallVec<[u32; 16]>;
         #[allow(non_snake_case)]
         let N = out.len();
         assert!(rules.len() == N + 1);
@@ -332,64 +358,206 @@ impl SizeRules {
             return;
         }
 
-        if target > rules[N].b {
-            // Over the ideal size
-            for i in 0..N {
-                out[i] = rules[i].b;
+        if target > rules[N].a {
+            // All minimum sizes can be met.
+            out[0] = out[0].max(rules[0].a);
+            let mut margin_sum = 0;
+            let mut sum = out[0];
+            let mut dist_under_b = rules[0].b.saturating_sub(out[0]);
+            let mut dist_over_b = out[0].saturating_sub(rules[0].b);
+            for i in 1..N {
+                out[i] = out[i].max(rules[i].a);
+                margin_sum += (rules[i - 1].m.1).max(rules[i].m.0) as u32;
+                sum += out[i];
+                dist_under_b += rules[i].b.saturating_sub(out[i]);
+                dist_over_b += out[i].saturating_sub(rules[i].b);
             }
+            let target = target - margin_sum;
 
-            let highest_stretch = rules[N].stretch;
-            let count = (0..N)
-                .filter(|i| rules[*i].stretch == highest_stretch)
-                .count() as u32;
-            let excess = target - rules[N].b;
-            let per_elt = excess / count;
-            let mut extra = excess - count * per_elt;
-            for i in 0..N {
-                if rules[i].stretch == highest_stretch {
-                    out[i] += per_elt;
-                    if extra > 0 {
-                        out[i] += 1;
-                        extra -= 1;
+            if sum == target {
+                return;
+            } else if sum < target {
+                fn increase_targets<F: Fn(usize) -> u32>(
+                    out: &mut [u32],
+                    targets: &mut Targets,
+                    base: F,
+                    mut avail: u32,
+                ) {
+                    // Calculate ceiling above which sizes will not be increased
+                    let mut any_removed = true;
+                    while any_removed {
+                        any_removed = false;
+                        let count = targets.len() as u32;
+                        let ceil = (avail + count - 1) / count; // round up
+                        let mut t = 0;
+                        while t < targets.len() {
+                            let i = targets[t] as usize;
+                            if out[i] >= base(i) + ceil {
+                                avail -= out[i] - base(i);
+                                targets.remove(t);
+                                any_removed = true;
+                                continue;
+                            }
+                            t += 1;
+                        }
+                        if targets.is_empty() {
+                            return;
+                        }
+                    }
+
+                    // Since no more are removed by a ceiling, all remaining
+                    // targets will be (approx) equal. Arbitrarily distribute
+                    // rounding errors to the first ones.
+                    let count = targets.len() as u32;
+                    let per_elt = avail / count;
+                    let extra = (avail - per_elt * count) as usize;
+                    assert!(extra < targets.len());
+                    for t in 0..extra {
+                        let i = targets[t] as usize;
+                        out[i] = base(i) + per_elt + 1;
+                    }
+                    for t in extra..targets.len() {
+                        let i = targets[t] as usize;
+                        out[i] = base(i) + per_elt;
                     }
                 }
-            }
-        } else if target >= rules[N].a {
-            // At or over minimum: distribute extra relative to preferences.
-            // TODO: perhaps this should not use the minimum except as a minimum?
 
-            let mut excess = target - rules[N].a;
-            let pref_excess = rules[N].b - rules[N].a;
+                if target - sum >= dist_under_b {
+                    // We can increase all sizes to their ideal. Since this may
+                    // not be enough, we also count the number with highest
+                    // stretch factor and how far these are over their ideal.
+                    sum = 0;
+                    let highest_stretch = rules[N].stretch;
+                    let mut targets = Targets::new();
+                    let mut over = 0;
+                    for i in 0..N {
+                        out[i] = out[i].max(rules[i].b);
+                        sum += out[i];
+                        if rules[i].stretch == highest_stretch {
+                            over += out[i] - rules[i].b;
+                            targets.push(i as u32);
+                        }
+                    }
 
-            if pref_excess > 0 {
-                let x = excess as f64 / pref_excess as f64;
+                    let avail = target - sum + over;
+                    increase_targets(out, &mut targets, |i| rules[i].b, avail);
+                    debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
+                } else {
+                    // We cannot increase sizes as far as their ideal: instead
+                    // increase over minimum size and under ideal
+                    let mut targets = Targets::new();
+                    let mut over = 0;
+                    for i in 0..N {
+                        if out[i] < rules[i].b {
+                            over += out[i] - rules[i].a;
+                            targets.push(i as u32);
+                        }
+                    }
 
-                for n in 0..N {
-                    // This will round down:
-                    let r = rules[n];
-                    let size = r.a + (x * (r.b - r.a) as f64) as u32;
-                    out[n] = size;
-                    excess -= size - r.a;
+                    let avail = target - sum + over;
+                    increase_targets(out, &mut targets, |i| rules[i].a, avail);
+                    debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
                 }
             } else {
-                // special case: pref_excess == 0
-                let add = excess / N as u32;
-                for n in 0..N {
-                    let r = rules[n];
-                    let size = r.a + add;
-                    out[n] = size;
-                    excess -= size - r.a;
+                // sum > target: we need to decrease some sizes
+                fn reduce_targets<F: Fn(usize) -> u32>(
+                    out: &mut [u32],
+                    targets: &mut Targets,
+                    base: F,
+                    mut avail: u32,
+                ) {
+                    // We can ignore everything below the floor
+                    let mut any_removed = true;
+                    while any_removed {
+                        any_removed = false;
+                        let floor = avail / targets.len() as u32;
+                        let mut t = 0;
+                        while t < targets.len() {
+                            let i = targets[t] as usize;
+                            if out[i] <= base(i) + floor {
+                                avail -= out[i] - base(i);
+                                targets.remove(t);
+                                any_removed = true;
+                                continue;
+                            }
+                            t += 1;
+                        }
+                    }
+
+                    // All targets remaining must be reduced to floor, bar rounding errors
+                    let floor = avail / targets.len() as u32;
+                    let extra = avail as usize - floor as usize * targets.len();
+                    assert!(extra < targets.len());
+                    for t in 0..extra {
+                        let i = targets[t] as usize;
+                        out[i] = base(i) + floor + 1;
+                    }
+                    for t in extra..targets.len() {
+                        let i = targets[t] as usize;
+                        out[i] = base(i) + floor;
+                    }
+                }
+
+                if dist_over_b > sum - target {
+                    // we do not go below ideal, and will keep at least one above
+                    // calculate distance over for each stretch policy
+                    const MAX_POLICY: usize = StretchPolicy::Maximise as usize + 1;
+                    let mut dists = [0; MAX_POLICY];
+                    for i in 0..N {
+                        dists[rules[i].stretch as usize] += out[i].saturating_sub(rules[i].b);
+                    }
+                    let mut accum = 0;
+                    let mut highest_affected = 0;
+                    for i in 0..MAX_POLICY {
+                        highest_affected = i;
+                        dists[i] += accum;
+                        accum = dists[i];
+                        if accum >= sum - target {
+                            break;
+                        }
+                    }
+
+                    let mut avail = 0;
+                    let mut targets = Targets::new();
+                    for i in 0..N {
+                        let stretch = rules[i].stretch as usize;
+                        if out[i] > rules[i].b {
+                            if stretch < highest_affected {
+                                sum -= out[i] - rules[i].b;
+                                out[i] = rules[i].b;
+                            } else if stretch == highest_affected {
+                                avail += out[i] - rules[i].b;
+                                targets.push(i as u32);
+                            }
+                        }
+                    }
+                    if sum > target {
+                        avail = avail + target - sum;
+                        reduce_targets(out, &mut targets, |i| rules[i].b, avail);
+                    }
+                    debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
+                } else {
+                    // No size can exceed the ideal
+                    // First, ensure nothing exceeds the ideal:
+                    let mut targets = Targets::new();
+                    sum = 0;
+                    for i in 0..N {
+                        out[i] = out[i].min(rules[i].b);
+                        sum += out[i];
+                        if out[i] > rules[i].a {
+                            targets.push(i as u32);
+                        }
+                    }
+                    if sum > target {
+                        let avail = target + margin_sum - rules[N].a;
+                        reduce_targets(out, &mut targets, |i| rules[i].a, avail);
+                    }
+                    debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
                 }
             }
-
-            // The above may round down, which may leave us a little short.
-            assert!(excess as usize <= N);
-            // Distribute to first rem. sizes.
-            for n in 0..(excess as usize) {
-                out[n] += 1;
-            }
         } else {
-            // Under minimum: reduce maximum allowed size.
+            // Below minimum size: in this case we can ignore prior contents
+            // of `out`.We reduce the maximum allowed size to hit our target.
             let mut excess = rules[N].a - target;
 
             let mut largest = 0;

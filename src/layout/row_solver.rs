@@ -37,7 +37,6 @@ impl<S: RowStorage> RowSolver<S> {
         let axis_is_vertical = axis.is_vertical() ^ dir.is_vertical();
 
         if axis.has_fixed && axis_is_vertical {
-            // TODO: cache this for use by set_rect?
             let (rules, widths) = storage.rules_and_widths();
             SizeRules::solve_seq(widths, rules, axis.other_axis);
         }
