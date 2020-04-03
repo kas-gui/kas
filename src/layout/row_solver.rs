@@ -21,7 +21,7 @@ pub struct RowSolver<S: RowStorage> {
     axis: AxisInfo,
     axis_is_vertical: bool,
     axis_is_reversed: bool,
-    rules: SizeRules,
+    rules: Option<SizeRules>,
     _s: PhantomData<S>,
 }
 
@@ -46,7 +46,7 @@ impl<S: RowStorage> RowSolver<S> {
             axis,
             axis_is_vertical,
             axis_is_reversed: dir.is_reversed(),
-            rules: SizeRules::EMPTY,
+            rules: None,
             _s: Default::default(),
         }
     }
@@ -68,23 +68,32 @@ impl<S: RowStorage> RulesSolver for RowSolver<S> {
         let child_rules = child_rules(self.axis);
         if !self.axis_is_vertical {
             storage.rules()[child_info] = child_rules;
-            if self.axis_is_reversed {
-                self.rules = child_rules.appended(self.rules);
+            if let Some(rules) = self.rules {
+                if self.axis_is_reversed {
+                    self.rules = Some(child_rules.appended(rules));
+                } else {
+                    self.rules = Some(rules.appended(child_rules));
+                }
             } else {
-                self.rules.append(child_rules);
+                self.rules = Some(child_rules);
             }
         } else {
-            self.rules = self.rules.max(child_rules);
+            self.rules = Some(
+                self.rules
+                    .map(|rules| rules.max(child_rules))
+                    .unwrap_or(child_rules),
+            );
         }
     }
 
     fn finish(self, storage: &mut Self::Storage) -> SizeRules {
         let cols = storage.rules().len() - 1;
+        let rules = self.rules.unwrap_or(SizeRules::EMPTY);
         if !self.axis_is_vertical {
-            storage.rules()[cols] = self.rules;
+            storage.rules()[cols] = rules;
         }
 
-        self.rules
+        rules
     }
 }
 

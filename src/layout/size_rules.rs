@@ -136,7 +136,12 @@ pub struct SizeRules {
 }
 
 impl SizeRules {
-    /// Empty (zero size)
+    /// Empty (zero size) widget
+    ///
+    /// Warning: appending or appending to `EMPTY` *does* add the usual margins
+    /// even though `EMPTY` itself has zero size. However, `EMPTY` itself has
+    /// zero-size margins, so this only affects appending an `EMPTY` with a
+    /// non-empty `SizeRules`.
     pub const EMPTY: Self = SizeRules::empty(StretchPolicy::Fixed);
 
     /// Empty space with the given stretch policy
@@ -242,6 +247,9 @@ impl SizeRules {
     ///
     /// This implies that `rhs` rules concern an element to the right of or
     /// below self. Note that order matters since margins may be combined.
+    ///
+    /// Note also that appending [`SizeRules::EMPTY`] does include interior
+    /// margins (those between `EMPTY` and the other rules) within the result.
     pub fn append(&mut self, rhs: SizeRules) {
         let c = self.m.1.max(rhs.m.0) as u32;
         self.a += rhs.a + c;
@@ -255,6 +263,9 @@ impl SizeRules {
     ///
     /// This implies that `rhs` rules concern an element to the right of or
     /// below self. Note that order matters since margins may be combined.
+    ///
+    /// Note also that appending [`SizeRules::EMPTY`] does include interior
+    /// margins (those between `EMPTY` and the other rules) within the result.
     #[inline]
     pub fn appended(self, rhs: SizeRules) -> Self {
         let c = self.m.1.max(rhs.m.0) as u32;
@@ -484,8 +495,12 @@ impl SizeRules {
 ///
 /// Uses [`SizeRules::appended`] on all rules in sequence.
 impl Sum for SizeRules {
-    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.fold(SizeRules::EMPTY, |x, y| x.appended(y))
+    fn sum<I: Iterator<Item = Self>>(mut iter: I) -> Self {
+        if let Some(first) = iter.next() {
+            iter.fold(first, |x, y| x.appended(y))
+        } else {
+            SizeRules::EMPTY
+        }
     }
 }
 
@@ -493,7 +508,11 @@ impl Sum for SizeRules {
 ///
 /// Uses [`SizeRules::appended`] on all rules in sequence.
 impl<'a> Sum<&'a Self> for SizeRules {
-    fn sum<I: Iterator<Item = &'a Self>>(iter: I) -> Self {
-        iter.fold(SizeRules::EMPTY, |x, y| x.appended(*y))
+    fn sum<I: Iterator<Item = &'a Self>>(mut iter: I) -> Self {
+        if let Some(first) = iter.next() {
+            iter.fold(*first, |x, y| x.appended(*y))
+        } else {
+            SizeRules::EMPTY
+        }
     }
 }
