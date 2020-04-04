@@ -8,7 +8,7 @@
 use log::trace;
 use std::fmt;
 
-use super::{AxisInfo, SizeRules};
+use super::{AxisInfo, Margins, SizeRules};
 use crate::draw::SizeHandle;
 use crate::geom::{Coord, Rect, Size};
 use crate::{AlignHints, WidgetConfig};
@@ -56,17 +56,24 @@ pub trait RulesSetter {
 
 /// Calculate required size of widget
 ///
-/// Return min and ideal sizes.
-pub fn solve(widget: &mut dyn WidgetConfig, size_handle: &mut dyn SizeHandle) -> (Size, Size) {
-    // We call size_rules not because we want the result, but because our
-    // spec requires that we do so before calling set_rect.
+/// Return min and ideal sizes plus margins.
+pub fn solve(
+    widget: &mut dyn WidgetConfig,
+    size_handle: &mut dyn SizeHandle,
+) -> (Size, Size, Margins) {
     let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
     let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(w.ideal_size())));
 
     let min = Size(w.min_size(), h.min_size());
     let ideal = Size(w.ideal_size(), h.ideal_size());
-    trace!("layout::solve: min={:?}, ideal={:?}", min, ideal);
-    (min, ideal)
+    let margins = Margins::hv(w.margins(), h.margins());
+    trace!(
+        "layout::solve: min={:?}, ideal={:?}, margins={:?}",
+        min,
+        ideal,
+        margins
+    );
+    (min, ideal, margins)
 }
 
 /// Solve and assign widget layout

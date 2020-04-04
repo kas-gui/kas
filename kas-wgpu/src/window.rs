@@ -60,7 +60,9 @@ where
         let mut theme_window = shared.theme.new_window(&mut draw, scale_factor);
 
         let mut size_handle = unsafe { theme_window.size_handle(&mut draw) };
-        let (min, ideal) = layout::solve(widget.as_widget_mut(), &mut size_handle);
+        let (mut min, mut ideal, margins) = layout::solve(widget.as_widget_mut(), &mut size_handle);
+        min = margins.pad(min);
+        ideal = margins.pad(ideal);
         drop(size_handle);
 
         let mut builder = WindowBuilder::new().with_inner_size(ideal);

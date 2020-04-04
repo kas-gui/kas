@@ -213,44 +213,44 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
     }
 
     fn resize_popups(&mut self, size_handle: &mut dyn SizeHandle) {
-        let rect = self.core.rect;
+        // Notation: p=point/coord, s=size, m=margin
+        // r=window/root rect, c=anchor rect
+        let r = self.core.rect;
         for (_id, popup) in &mut self.popups {
-            let ir = self.w.find(popup.parent).unwrap().rect();
+            let c = self.w.find(popup.parent).unwrap().rect();
             let widget = popup.overlay.as_widget_mut();
-            let (_, ideal) = layout::solve(widget, size_handle);
+            let (_, ideal, m) = layout::solve(widget, size_handle);
 
             let is_reversed = popup.direction.is_reversed();
-            let place_in = |p_out, s_out, p_in, s_in, ideal| -> (i32, u32) {
-                debug_assert!(p_in >= p_out);
-                let before = (p_in - p_out) as u32;
-                debug_assert!(s_out >= s_in + before);
-                let after = s_out - s_in - before;
+            let place_in = |rp, rs: u32, cp: i32, cs, ideal, m: (u16, u16)| -> (i32, u32) {
+                let before = (cp.saturating_sub(rp + m.1 as i32)) as u32;
+                let after = rs.saturating_sub(cs + before + m.0 as u32);
                 if after >= ideal {
                     if is_reversed && before >= ideal {
-                        (p_in - ideal as i32, ideal)
+                        (cp - ideal as i32 - m.1 as i32, ideal)
                     } else {
-                        (p_in + s_in as i32, ideal)
+                        (cp + cs as i32 + m.0 as i32, ideal)
                     }
                 } else if before >= ideal {
-                    (p_in - ideal as i32, ideal)
+                    (cp - ideal as i32 - m.1 as i32, ideal)
                 } else if before > after {
-                    (p_out, before)
+                    (rp, before)
                 } else {
-                    (p_in + s_in as i32, after)
+                    (cp + cs as i32 + m.0 as i32, after)
                 }
             };
-            let place_out = |p_out, s_out, p_in: i32, s_in, ideal: u32| -> (i32, u32) {
-                let pos = p_in.min(p_out + s_out as i32 - ideal as i32).max(p_out);
-                let size = ideal.max(s_in).min(s_out);
+            let place_out = |rp, rs, cp: i32, cs, ideal: u32| -> (i32, u32) {
+                let pos = cp.min(rp + rs as i32 - ideal as i32).max(rp);
+                let size = ideal.max(cs).min(rs);
                 (pos, size)
             };
             let rect = if popup.direction.is_horizontal() {
-                let (x, w) = place_in(rect.pos.0, rect.size.0, ir.pos.0, ir.size.0, ideal.0);
-                let (y, h) = place_out(rect.pos.1, rect.size.1, ir.pos.1, ir.size.1, ideal.1);
+                let (x, w) = place_in(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, m.horiz);
+                let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1);
                 Rect::new(Coord(x, y), Size(w, h))
             } else {
-                let (x, w) = place_out(rect.pos.0, rect.size.0, ir.pos.0, ir.size.0, ideal.0);
-                let (y, h) = place_in(rect.pos.1, rect.size.1, ir.pos.1, ir.size.1, ideal.1);
+                let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0);
+                let (y, h) = place_in(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, m.vert);
                 Rect::new(Coord(x, y), Size(w, h))
             };
 

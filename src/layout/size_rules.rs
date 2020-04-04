@@ -36,11 +36,24 @@ impl Margins {
 
     /// Margins via horizontal and vertical sizes
     #[inline]
+    pub const fn hv(horiz: (u16, u16), vert: (u16, u16)) -> Self {
+        Margins { horiz, vert }
+    }
+
+    /// Margins via horizontal and vertical sizes
+    #[inline]
     pub const fn hv_uniform(h: u16, v: u16) -> Self {
         Margins {
             horiz: (h, h),
             vert: (v, v),
         }
+    }
+
+    /// Pad a size with margins
+    pub fn pad(self, size: Size) -> Size {
+        let w = size.0 + (self.horiz.0 + self.horiz.1) as u32;
+        let h = size.1 + (self.vert.0 + self.vert.1) as u32;
+        Size(w, h)
     }
 }
 
