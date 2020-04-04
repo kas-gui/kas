@@ -18,10 +18,10 @@ use crate::geom::Size;
 /// drawn in and handle events like any other widget area.
 #[derive(Copy, Clone, Debug, Default)]
 pub struct Margins {
-    /// Size of top/left margin
-    pub first: (u16, u16),
-    /// Size of bottom/right margin
-    pub last: (u16, u16),
+    /// Size of horizontal margins
+    pub horiz: (u16, u16),
+    /// Size of vertical margins
+    pub vert: (u16, u16),
 }
 
 impl Margins {
@@ -31,15 +31,15 @@ impl Margins {
     /// Margins with equal size on each edge.
     #[inline]
     pub const fn uniform(size: u16) -> Self {
-        Margins::hv(size, size)
+        Margins::hv_uniform(size, size)
     }
 
     /// Margins via horizontal and vertical sizes
     #[inline]
-    pub const fn hv(h: u16, v: u16) -> Self {
+    pub const fn hv_uniform(h: u16, v: u16) -> Self {
         Margins {
-            first: (h, v),
-            last: (h, v),
+            horiz: (h, h),
+            vert: (v, v),
         }
     }
 }
@@ -185,14 +185,14 @@ impl SizeRules {
             SizeRules {
                 a: size.0,
                 b: size.0,
-                m: (margin.first.0, margin.last.0),
+                m: margin.horiz,
                 stretch: StretchPolicy::Fixed,
             }
         } else {
             SizeRules {
                 a: size.1,
                 b: size.1,
-                m: (margin.first.1, margin.last.1),
+                m: margin.vert,
                 stretch: StretchPolicy::Fixed,
             }
         }
