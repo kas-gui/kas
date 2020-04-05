@@ -219,7 +219,9 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         for (_id, popup) in &mut self.popups {
             let c = self.w.find(popup.parent).unwrap().rect();
             let widget = popup.overlay.as_widget_mut();
-            let (_, ideal, m) = layout::solve(widget, size_handle);
+            let mut cache = layout::SolveCache::new(widget, size_handle);
+            let ideal = cache.ideal(false);
+            let m = cache.margins();
 
             let is_reversed = popup.direction.is_reversed();
             let place_in = |rp, rs: u32, cp: i32, cs, ideal, m: (u16, u16)| -> (i32, u32) {
@@ -254,7 +256,7 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
                 Rect::new(Coord(x, y), Size(w, h))
             };
 
-            layout::solve_and_set(widget, size_handle, rect, false);
+            cache.apply_rect(widget, size_handle, rect, false);
         }
     }
 

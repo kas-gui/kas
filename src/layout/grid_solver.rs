@@ -60,7 +60,6 @@ impl<CSR: Default, RSR: Default, S: GridStorage> GridSolver<CSR, RSR, S> {
 
     fn prepare(&mut self, storage: &mut S) {
         if self.axis.has_fixed {
-            // TODO: cache this for use by set_rect?
             if self.axis.is_vertical() {
                 let (rules, widths) = storage.rules_and_widths();
                 SizeRules::solve_seq(widths, rules, self.axis.other_axis);

@@ -10,7 +10,7 @@ use std::time::Instant;
 
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
-use kas::layout;
+use kas::layout::SolveCache;
 use kas::{ThemeAction, ThemeApi, TkAction, WindowId};
 use kas_theme::Theme;
 use winit::dpi::PhysicalSize;
@@ -28,6 +28,7 @@ pub(crate) struct Window<CW: CustomWindow, TW> {
     pub(crate) widget: Box<dyn kas::Window>,
     pub(crate) window_id: WindowId,
     mgr: ManagerState,
+    solve_cache: SolveCache,
     /// The winit window
     pub(crate) window: winit::window::Window,
     surface: wgpu::Surface,
@@ -60,15 +61,14 @@ where
         let mut theme_window = shared.theme.new_window(&mut draw, scale_factor);
 
         let mut size_handle = unsafe { theme_window.size_handle(&mut draw) };
-        let (mut min, mut ideal, margins) = layout::solve(widget.as_widget_mut(), &mut size_handle);
-        min = margins.pad(min);
-        ideal = margins.pad(ideal);
+        let solve_cache = SolveCache::new(widget.as_widget_mut(), &mut size_handle);
+        let ideal = solve_cache.ideal(true);
         drop(size_handle);
 
         let mut builder = WindowBuilder::new().with_inner_size(ideal);
         let restrict_dimensions = widget.restrict_dimensions();
         if restrict_dimensions.0 {
-            builder = builder.with_min_inner_size(min);
+            builder = builder.with_min_inner_size(solve_cache.min(true));
         }
         if restrict_dimensions.1 {
             builder = builder.with_max_inner_size(ideal);
@@ -101,6 +101,7 @@ where
             widget,
             window_id,
             mgr,
+            solve_cache,
             window,
             surface,
             sc_desc,
@@ -134,6 +135,7 @@ where
         shared
             .theme
             .update_window(&mut self.theme_window, scale_factor);
+        self.solve_cache.invalidate_rule_cache();
         self.apply_size();
     }
 
@@ -156,6 +158,7 @@ where
                     .theme
                     .update_window(&mut self.theme_window, scale_factor as f32);
                 self.mgr.set_dpi_factor(scale_factor);
+                self.solve_cache.invalidate_rule_cache();
                 self.do_resize(shared, *new_inner_size);
             }
             event @ _ => {
@@ -273,20 +276,19 @@ where
         debug!("Resizing window to rect = {:?}", rect);
 
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
-        let (min, ideal) =
-            layout::solve_and_set(self.widget.as_widget_mut(), &mut size_handle, rect, true);
+        self.solve_cache
+            .apply_rect(self.widget.as_widget_mut(), &mut size_handle, rect, true);
         self.widget.resize_popups(&mut size_handle);
+
         let restrict_dimensions = self.widget.restrict_dimensions();
-        let min = match restrict_dimensions.0 {
-            false => None,
-            true => Some(min),
+        if restrict_dimensions.0 {
+            self.window
+                .set_min_inner_size(Some(self.solve_cache.min(true)));
         };
-        let max = match restrict_dimensions.1 {
-            false => None,
-            true => Some(ideal),
+        if restrict_dimensions.1 {
+            self.window
+                .set_max_inner_size(Some(self.solve_cache.ideal(true)));
         };
-        self.window.set_min_inner_size(min);
-        self.window.set_max_inner_size(max);
 
         self.window.request_redraw();
     }

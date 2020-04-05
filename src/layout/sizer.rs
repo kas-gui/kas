@@ -54,67 +54,132 @@ pub trait RulesSetter {
     fn child_rect(&mut self, storage: &mut Self::Storage, child_info: Self::ChildInfo) -> Rect;
 }
 
-/// Calculate required size of widget
-///
-/// Return min and ideal sizes plus margins.
-pub fn solve(
-    widget: &mut dyn WidgetConfig,
-    size_handle: &mut dyn SizeHandle,
-) -> (Size, Size, Margins) {
-    let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
-    let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(w.ideal_size())));
-
-    let min = Size(w.min_size(), h.min_size());
-    let ideal = Size(w.ideal_size(), h.ideal_size());
-    let margins = Margins::hv(w.margins(), h.margins());
-    trace!(
-        "layout::solve: min={:?}, ideal={:?}, margins={:?}",
-        min,
-        ideal,
-        margins
-    );
-    (min, ideal, margins)
+/// Cache used by [`solve`] and [`solve_and_set`]
+pub struct SolveCache {
+    // Technically we don't need to store min and ideal here, but it simplifies
+    // the API for very little real cost.
+    min: Size,
+    ideal: Size,
+    margins: Margins,
+    refresh_rules: bool,
+    last_width: u32,
 }
 
-/// Solve and assign widget layout
-///
-/// Return min and ideal sizes.
-pub fn solve_and_set(
-    widget: &mut dyn WidgetConfig,
-    size_handle: &mut dyn SizeHandle,
-    mut rect: Rect,
-    include_margins: bool,
-) -> (Size, Size) {
-    // We call size_rules not because we want the result, but because our
-    // spec requires that we do so before calling set_rect.
-    let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
-    let wm = w.margins();
-    let mut width = rect.size.0;
-    if include_margins {
-        width -= (wm.0 + wm.1) as u32;
+impl SolveCache {
+    /// Get the minimum size
+    ///
+    /// If `inner_margin` is true, margins are included in the result.
+    pub fn min(&self, inner_margin: bool) -> Size {
+        if inner_margin {
+            self.margins.pad(self.min)
+        } else {
+            self.min
+        }
     }
 
-    let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(width)));
-    let hm = h.margins();
-
-    if include_margins {
-        rect.pos += Coord(wm.0 as i32, hm.0 as i32);
-        rect.size.0 = width;
-        rect.size.1 -= (hm.0 + hm.1) as u32;
+    /// Get the ideal size
+    ///
+    /// If `inner_margin` is true, margins are included in the result.
+    pub fn ideal(&self, inner_margin: bool) -> Size {
+        if inner_margin {
+            self.margins.pad(self.ideal)
+        } else {
+            self.ideal
+        }
     }
-    widget.set_rect(rect, AlignHints::NONE);
 
-    trace!(
-        "layout::solve_and_set for size={:?} has rules {:?}, {:?} and hierarchy:{}",
-        rect.size,
-        w,
-        h,
-        WidgetHeirarchy(widget, 0),
-    );
+    /// Get the margins
+    pub fn margins(&self) -> Margins {
+        self.margins
+    }
 
-    let min = Size(w.min_size(), h.min_size());
-    let ideal = Size(w.ideal_size(), h.ideal_size());
-    (min, ideal)
+    /// Calculate required size of widget
+    pub fn new(widget: &mut dyn WidgetConfig, size_handle: &mut dyn SizeHandle) -> Self {
+        let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
+        let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(w.ideal_size())));
+
+        let min = Size(w.min_size(), h.min_size());
+        let ideal = Size(w.ideal_size(), h.ideal_size());
+        let margins = Margins::hv(w.margins(), h.margins());
+        trace!(
+            "layout::solve: min={:?}, ideal={:?}, margins={:?}",
+            min,
+            ideal,
+            margins
+        );
+        let refresh_rules = false;
+        let last_width = ideal.0;
+        SolveCache {
+            min,
+            ideal,
+            margins,
+            refresh_rules,
+            last_width,
+        }
+    }
+
+    /// Force updating of size rules
+    ///
+    /// This should be called whenever widget size rules have been changed. It
+    /// forces [`SolveCache::apply_rect`] to recompute these rules when next
+    /// called.
+    pub fn invalidate_rule_cache(&mut self) {
+        self.refresh_rules = true;
+    }
+
+    /// Apply layout solution to a widget
+    ///
+    /// The widget's layout is solved for the given `rect` and assigned.
+    /// If `inner_margin` is true, margins are internal to this `rect`; if not,
+    /// the caller is responsible for handling margins.
+    ///
+    /// If [`SolveCache::invalidate_rule_cache`] was called since rules were
+    /// last calculated then this method will recalculate all rules; otherwise
+    /// it will only do so if necessary (when dimensions do not match those
+    /// last used).
+    pub fn apply_rect(
+        &mut self,
+        widget: &mut dyn WidgetConfig,
+        size_handle: &mut dyn SizeHandle,
+        mut rect: Rect,
+        inner_margin: bool,
+    ) {
+        // We call size_rules not because we want the result, but because our
+        // spec requires that we do so before calling set_rect.
+        if self.refresh_rules {
+            let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
+            self.min.0 = w.min_size();
+            self.ideal.0 = w.ideal_size();
+            self.margins.horiz = w.margins();
+        }
+        let mut width = rect.size.0;
+        if inner_margin {
+            width -= (self.margins.horiz.0 + self.margins.horiz.1) as u32;
+        }
+
+        if self.refresh_rules || width != self.last_width {
+            let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(width)));
+            self.min.1 = h.min_size();
+            self.ideal.1 = h.ideal_size();
+            self.margins.vert = h.margins();
+            self.last_width = width;
+        }
+
+        if inner_margin {
+            rect.pos += Coord(self.margins.horiz.0 as i32, self.margins.vert.0 as i32);
+            rect.size.0 = width;
+            rect.size.1 -= (self.margins.vert.0 + self.margins.vert.1) as u32;
+        }
+        widget.set_rect(rect, AlignHints::NONE);
+
+        trace!(
+            "layout::solve_and_set for size={:?} has hierarchy:{}",
+            rect.size,
+            WidgetHeirarchy(widget, 0),
+        );
+
+        self.refresh_rules = false;
+    }
 }
 
 struct WidgetHeirarchy<'a>(&'a dyn WidgetConfig, usize);
