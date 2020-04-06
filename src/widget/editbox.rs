@@ -125,7 +125,8 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
 pub struct EditBox<G: 'static> {
     #[widget_core]
     core: CoreData,
-    // During sizing, text_rect is used for the frame+inner-margin dimensions
+    frame_offset: Coord,
+    frame_size: Size,
     text_rect: Rect,
     editable: bool,
     multi_line: bool,
@@ -167,17 +168,17 @@ impl<G: 'static> Layout for EditBox<G> {
         let rules = content_rules.surrounded_by(frame_rules, true);
         if axis.is_horizontal() {
             self.core.rect.size.0 = rules.ideal_size();
-            self.text_rect.pos.0 = frame_offset.0 as i32 + m.0 as i32;
-            self.text_rect.size.0 = frame_size.0 + (m.0 + m.1) as u32;
+            self.frame_offset.0 = frame_offset.0 as i32 + m.0 as i32;
+            self.frame_size.0 = frame_size.0 + (m.0 + m.1) as u32;
         } else {
             self.core.rect.size.1 = rules.ideal_size();
-            self.text_rect.pos.1 = frame_offset.1 as i32 + m.0 as i32;
-            self.text_rect.size.1 = frame_size.1 + (m.0 + m.1) as u32;
+            self.frame_offset.1 = frame_offset.1 as i32 + m.0 as i32;
+            self.frame_size.1 = frame_size.1 + (m.0 + m.1) as u32;
         }
         rules
     }
 
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         let valign = if self.multi_line {
             Align::Stretch
         } else {
@@ -188,8 +189,8 @@ impl<G: 'static> Layout for EditBox<G> {
             .apply(rect);
 
         self.core.rect = rect;
-        self.text_rect.pos += rect.pos;
-        self.text_rect.size = rect.size - self.text_rect.size;
+        self.text_rect.pos = rect.pos + self.frame_offset;
+        self.text_rect.size = rect.size - self.frame_size;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
@@ -217,6 +218,8 @@ impl EditBox<EditVoid> {
     pub fn new<S: Into<String>>(text: S) -> Self {
         EditBox {
             core: Default::default(),
+            frame_offset: Default::default(),
+            frame_size: Default::default(),
             text_rect: Default::default(),
             editable: true,
             multi_line: false,
@@ -234,6 +237,8 @@ impl EditBox<EditVoid> {
     pub fn with_guard<G>(self, guard: G) -> EditBox<G> {
         EditBox {
             core: self.core,
+            frame_offset: self.frame_offset,
+            frame_size: self.frame_size,
             text_rect: self.text_rect,
             editable: self.editable,
             multi_line: self.multi_line,
@@ -373,9 +378,9 @@ impl<G> HasText for EditBox<G> {
         &self.text
     }
 
-    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString) {
+    fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.text = text.to_string();
-        mgr.redraw(self.id());
+        TkAction::Redraw
     }
 }
 

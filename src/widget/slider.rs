@@ -52,6 +52,7 @@ pub struct Slider<T: SliderType, D: Directional> {
     range: (T, T),
     step: T,
     value: T,
+    handle_size: Size,
     #[widget]
     handle: DragHandle,
 }
@@ -89,6 +90,7 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
             range: (min, max),
             step,
             value,
+            handle_size: Default::default(),
             handle: DragHandle::new(),
         }
     }
@@ -108,21 +110,18 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
 
     /// Set the value
     ///
-    /// Returns true when the value differs from the old value
-    pub fn set_value(&mut self, mgr: &mut Manager, mut value: T) -> bool {
+    /// Returns [`TkAction::Redraw`] if a redraw is required.
+    pub fn set_value(&mut self, mut value: T) -> TkAction {
         if value < self.range.0 {
             value = self.range.0;
         } else if value > self.range.1 {
             value = self.range.1;
         }
-        if value != self.value {
-            self.value = value;
-            if self.handle.set_offset(self.offset()).1 {
-                mgr.redraw(self.handle.id());
-            }
-            true
+        if value == self.value {
+            TkAction::None
         } else {
-            false
+            self.value = value;
+            self.handle.set_offset(self.offset()).1
         }
     }
 
@@ -170,7 +169,11 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
 
 impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let (size, min_len) = size_handle.slider();
+        let (mut size, min_len) = size_handle.slider();
+        if self.direction.is_vertical() {
+            size = size.transpose();
+        }
+        self.handle_size = size;
         let margins = (0, 0);
         if self.direction.is_vertical() == axis.is_vertical() {
             SizeRules::new(min_len, min_len, margins, StretchPolicy::HighUtility)
@@ -179,15 +182,11 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
         }
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
-        let (size, _) = size_handle.slider();
-        let mut size = size.min(rect.size);
-        if self.direction.is_vertical() {
-            size = size.transpose();
-        }
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.handle.set_rect(size_handle, rect, align);
-        self.handle.set_size_and_offset(size, self.offset());
+        self.handle.set_rect(rect, align);
+        let size = self.handle_size.min(rect.size);
+        let _ = self.handle.set_size_and_offset(size, self.offset());
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
@@ -244,10 +243,12 @@ impl<T: SliderType, D: Directional> event::EventHandler for Slider<T, D> {
                         NavKey::End => self.range.1,
                         // _ => return Response::Unhandled(event),
                     };
-                    return if self.set_value(mgr, v) {
-                        Response::Msg(self.value)
-                    } else {
+                    let action = self.set_value(v);
+                    return if action == TkAction::None {
                         Response::None
+                    } else {
+                        mgr.send_action(action);
+                        Response::Msg(self.value)
                     };
                 }
                 Event::PressStart { source, coord, .. } => {
@@ -262,7 +263,7 @@ impl<T: SliderType, D: Directional> event::EventHandler for Slider<T, D> {
         } else {
             Response::None
         };
-        self.handle.set_offset(self.offset());
+        *mgr += self.handle.set_offset(self.offset()).1;
         r
     }
 }

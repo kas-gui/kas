@@ -39,7 +39,7 @@ fn make_window() -> Box<dyn kas::Window> {
                     Control::Reset => {
                         self.saved = Duration::default();
                         self.start = None;
-                        self.display.set_text(mgr, "0.000");
+                        *mgr += self.display.set_text( "0.000");
                     }
                     Control::Start => {
                         if let Some(start) = self.start {
@@ -61,7 +61,7 @@ fn make_window() -> Box<dyn kas::Window> {
                     Action::TimerUpdate => {
                         if let Some(start) = self.start {
                             let dur = self.saved + (Instant::now() - start);
-                            self.display.set_text(mgr, format!(
+                            *mgr += self.display.set_text(format!(
                                 "{}.{:03}",
                                 dur.as_secs(),
                                 dur.subsec_millis()

@@ -3,102 +3,47 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Dynamic widgets
+//! A stack
 
+use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
 
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{Event, Manager, Response};
-use kas::layout::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
+use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
-/// A generic row widget
+/// A stack of boxed widgets
 ///
-/// See documentation of [`List`] type.
-pub type Row<W> = List<kas::Right, W>;
+/// This is a parametrisation of [`Stack`].
+pub type BoxStack<M> = Stack<Box<dyn Widget<Msg = M>>>;
 
-/// A generic column widget
+/// A stack of widget references
 ///
-/// See documentation of [`List`] type.
-pub type Column<W> = List<kas::Down, W>;
+/// This is a parametrisation of [`Stack`].
+pub type RefStack<'a, M> = Stack<&'a mut dyn Widget<Msg = M>>;
 
-/// A row of boxed widgets
+/// A stack of widgets
 ///
-/// This is parameterised over handler message type.
+/// A stack consists a set of child widgets, all of equal size.
+/// Only a single member is visible at a time.
 ///
-/// See documentation of [`List`] type.
-pub type BoxRow<M> = BoxList<kas::Right, M>;
-
-/// A column of boxed widgets
-///
-/// This is parameterised over handler message type.
-///
-/// See documentation of [`List`] type.
-pub type BoxColumn<M> = BoxList<kas::Down, M>;
-
-/// A row/column of boxed widgets
-///
-/// This is parameterised over directionality and handler message type.
-///
-/// See documentation of [`List`] type.
-pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
-
-/// A row of widget references
-///
-/// This is parameterised over handler message type.
-///
-/// See documentation of [`List`] type.
-pub type RefRow<'a, M> = RefList<'a, kas::Right, M>;
-
-/// A column of widget references
-///
-/// This is parameterised over handler message type.
-///
-/// See documentation of [`List`] type.
-pub type RefColumn<'a, M> = RefList<'a, kas::Down, M>;
-
-/// A row/column of widget references
-///
-/// This is parameterised over directionality and handler message type.
-///
-/// See documentation of [`List`] type.
-pub type RefList<'a, D, M> = List<D, &'a mut dyn Widget<Msg = M>>;
-
-/// A generic row/column widget
-///
-/// This type is generic over both directionality and the type of child widgets.
-/// Essentially, it is a [`Vec`] which also implements the [`Widget`] trait.
-///
-/// [`Row`] and [`Column`] are parameterisations with set directionality.
-///
-/// [`BoxList`] (and its derivatives [`BoxRow`], [`BoxColumn`]) parameterise
-/// `W = Box<dyn Widget>`, thus supporting individually boxed child widgets.
-/// This allows use of multiple types of child widget at the cost of extra
-/// allocation, and requires dynamic dispatch of methods.
+/// This may only be parametrised with a single widget type; [`BoxStack`] is
+/// a parametrisation allowing run-time polymorphism of child widgets.
 ///
 /// Configuring and resizing elements is O(n) in the number of children.
-/// Drawing and event handling is O(log n) in the number of children (assuming
-/// only a small number are visible at any one time).
-///
-/// For fixed configurations of child widgets, [`make_widget`] can be used
-/// instead. [`make_widget`] has the advantage that it can support child widgets
-/// of multiple types without allocation and via static dispatch, but the
-/// disadvantage that drawing and event handling are O(n) in the number of
-/// children.
-///
-/// [`make_widget`]: ../macros/index.html#the-make_widget-macro
+/// Drawing and event handling is O(1).
 #[handler(action, msg=<W as event::Handler>::Msg)]
 #[widget(children=noauto)]
 #[derive(Clone, Default, Debug, Widget)]
-pub struct List<D: Directional, W: Widget> {
+pub struct Stack<W: Widget> {
     #[widget_core]
     core: CoreData,
     widgets: Vec<W>,
-    data: layout::DynRowStorage,
-    direction: D,
+    active: usize,
 }
 
-impl<D: Directional, W: Widget> WidgetChildren for List<D, W> {
+impl<W: Widget> WidgetChildren for Stack<W> {
     #[inline]
     fn len(&self) -> usize {
         self.widgets.len()
@@ -113,50 +58,37 @@ impl<D: Directional, W: Widget> WidgetChildren for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> Layout for List<D, W> {
+impl<W: Widget> Layout for Stack<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let mut solver =
-            layout::RowSolver::new(axis, (self.direction, self.widgets.len()), &mut self.data);
-        for (n, child) in self.widgets.iter_mut().enumerate() {
-            solver.for_child(&mut self.data, n, |axis| {
-                child.size_rules(size_handle, axis)
-            });
+        let mut rules = SizeRules::EMPTY;
+        for child in &mut self.widgets {
+            rules = rules.max(child.size_rules(size_handle, axis));
         }
-        solver.finish(&mut self.data)
+        rules
     }
 
-    fn set_rect(&mut self, rect: Rect, _: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(
-            rect,
-            (self.direction, self.widgets.len()),
-            &mut self.data,
-        );
-
-        for (n, child) in self.widgets.iter_mut().enumerate() {
-            let align = AlignHints::default();
-            child.set_rect(setter.child_rect(&mut self.data, n), align);
+        for child in &mut self.widgets {
+            child.set_rect(rect, align.clone());
         }
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        let solver = layout::RowPositionSolver::new(self.direction);
-        if let Some(child) = solver.find_child(&self.widgets, coord) {
-            return child.find_id(coord);
+        if self.active < self.widgets.len() {
+            return self.widgets[self.active].find_id(coord);
         }
-
-        Some(self.id())
+        None
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
-        let solver = layout::RowPositionSolver::new(self.direction);
-        solver.for_children(&self.widgets, draw_handle.target_rect(), |w| {
-            w.draw(draw_handle, mgr)
-        });
+        if self.active < self.widgets.len() {
+            self.widgets[self.active].draw(draw_handle, mgr);
+        }
     }
 }
 
-impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
+impl<W: Widget> event::EventHandler for Stack<W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         for child in &mut self.widgets {
             if id <= child.id() {
@@ -169,30 +101,49 @@ impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
     }
 }
 
-impl<D: Directional + Default, W: Widget> List<D, W> {
+impl<W: Widget> Stack<W> {
     /// Construct a new instance
     ///
-    /// This constructor is available where the direction is determined by the
-    /// type: for `D: Directional + Default`. In other cases, use
-    /// [`List::new_with_direction`].
-    pub fn new(widgets: Vec<W>) -> Self {
-        List {
+    /// If `active < widgets.len()`, then `widgets[active]` will initially be
+    /// visible; otherwise, no widget will be visible.
+    pub fn new(widgets: Vec<W>, active: usize) -> Self {
+        Stack {
             core: Default::default(),
             widgets,
-            data: Default::default(),
-            direction: Default::default(),
+            active,
         }
     }
-}
 
-impl<D: Directional, W: Widget> List<D, W> {
-    /// Construct a new instance with explicit direction
-    pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
-        List {
-            core: Default::default(),
-            widgets,
-            data: Default::default(),
-            direction,
+    /// Get the index of the active widget
+    pub fn active_index(&self) -> usize {
+        self.active
+    }
+
+    /// Change the active widget via index
+    ///
+    /// It is not required that `active < self.len()`; if not, no widget will be
+    /// drawn or respond to events, but the stack will still size as required by
+    /// child widgets.
+    pub fn set_active(&mut self, active: usize) -> TkAction {
+        self.active = active;
+        TkAction::RegionMoved
+    }
+
+    /// Get a direct reference to the active widget, if any
+    pub fn active(&self) -> Option<&W> {
+        if self.active < self.widgets.len() {
+            Some(&self.widgets[self.active])
+        } else {
+            None
+        }
+    }
+
+    /// Get a direct mutable reference to the active widget, if any
+    pub fn active_mut(&mut self) -> Option<&mut W> {
+        if self.active < self.widgets.len() {
+            Some(&mut self.widgets[self.active])
+        } else {
+            None
         }
     }
 
@@ -333,7 +284,7 @@ impl<D: Directional, W: Widget> List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> Index<usize> for List<D, W> {
+impl<W: Widget> Index<usize> for Stack<W> {
     type Output = W;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -341,7 +292,7 @@ impl<D: Directional, W: Widget> Index<usize> for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> IndexMut<usize> for List<D, W> {
+impl<W: Widget> IndexMut<usize> for Stack<W> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.widgets[index]
     }

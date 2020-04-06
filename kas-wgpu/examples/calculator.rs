@@ -82,7 +82,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         impl {
             fn handle_button(&mut self, mgr: &mut Manager, msg: Key) -> Response<VoidMsg> {
                 if self.calc.handle(msg) {
-                    self.display.set_text(mgr, self.calc.display());
+                    *mgr += self.display.set_text(self.calc.display());
                 }
                 Response::None
             }

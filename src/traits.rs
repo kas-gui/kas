@@ -241,7 +241,7 @@ pub trait Layout: WidgetChildren {
     /// One may assume that `size_rules` has been called for each axis with the
     /// current widget configuration.
     #[inline]
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, _align: AlignHints) {
         self.core_data_mut().rect = rect;
     }
 
@@ -335,6 +335,12 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
         id: WindowId,
         popup: Popup,
     );
+
+    /// Resize popups
+    ///
+    /// This is called immediately after [`Layout::set_rect`] to resize
+    /// existing pop-ups.
+    fn resize_popups(&mut self, size_handle: &mut dyn SizeHandle);
 
     /// Trigger closure of a pop-up
     ///

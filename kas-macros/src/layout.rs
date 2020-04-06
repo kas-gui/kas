@@ -73,58 +73,30 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
             type Solver = kas::layout::SingleSolver;
             type Setter = kas::layout::SingleSetter;
         },
-        LayoutType::Right => quote! {
+        l @ LayoutType::Right | l @ LayoutType::Left => quote! {
             type Data = kas::layout::FixedRowStorage::<
-                [kas::layout::SizeRules; #cols + 1]
+                [kas::layout::SizeRules; #cols + 1],
+                [u32; #cols],
             >;
             type Solver = kas::layout::RowSolver::<
-                #col_temp,
                 Self::Data,
             >;
             type Setter = kas::layout::RowSetter::<
-                kas::Right,
+                #l,
                 #col_temp,
                 Self::Data,
             >;
         },
-        LayoutType::Left => quote! {
-            type Data = kas::layout::FixedRowStorage::<
-                [kas::layout::SizeRules; #cols + 1]
-            >;
-            type Solver = kas::layout::RowSolver::<
-                #col_temp,
-                Self::Data,
-            >;
-            type Setter = kas::layout::RowSetter::<
-                kas::Left,
-                #col_temp,
-                Self::Data,
-            >;
-        },
-        LayoutType::Down => quote! {
+        l @ LayoutType::Down | l @ LayoutType::Up => quote! {
             type Data = kas::layout::FixedRowStorage::<
                 [kas::layout::SizeRules; #rows + 1],
+                [u32; #rows],
             >;
             type Solver = kas::layout::RowSolver::<
-                #row_temp,
                 Self::Data,
             >;
             type Setter = kas::layout::RowSetter::<
-                kas::Down,
-                #row_temp,
-                Self::Data,
-            >;
-        },
-        LayoutType::Up => quote! {
-            type Data = kas::layout::FixedRowStorage::<
-                [kas::layout::SizeRules; #rows + 1],
-            >;
-            type Solver = kas::layout::RowSolver::<
-                #row_temp,
-                Self::Data,
-            >;
-            type Setter = kas::layout::RowSetter::<
-                kas::Up,
+                #l,
                 #row_temp,
                 Self::Data,
             >;
@@ -133,10 +105,10 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
             type Data = kas::layout::FixedGridStorage::<
                 [kas::layout::SizeRules; #cols + 1],
                 [kas::layout::SizeRules; #rows + 1],
-            >;
-            type Solver = kas::layout::GridSolver::<
                 #col_temp,
                 #row_temp,
+            >;
+            type Solver = kas::layout::GridSolver::<
                 [(kas::layout::SizeRules, u32, u32); #col_spans],
                 [(kas::layout::SizeRules, u32, u32); #row_spans],
                 Self::Data,
@@ -237,7 +209,7 @@ pub(crate) fn derive(
             set_rect.append_all(quote! { align.vert = Some(#toks); });
         }
         set_rect.append_all(quote! {
-            self.#ident.set_rect(size_handle, setter.child_rect(#child_info), align);
+            self.#ident.set_rect(setter.child_rect(&mut #data, #child_info), align);
         });
 
         draw.append_all(quote! {
@@ -294,12 +266,7 @@ pub(crate) fn derive(
             solver.finish(&mut #data)
         }
 
-        fn set_rect(
-            &mut self,
-            size_handle: &mut dyn kas::draw::SizeHandle,
-            rect: kas::geom::Rect,
-            _: kas::AlignHints,
-        ) {
+        fn set_rect(&mut self, rect: kas::geom::Rect, _: kas::AlignHints) {
             use kas::{WidgetCore, Widget};
             use kas::layout::{Margins, RulesSetter};
             self.core.rect = rect;

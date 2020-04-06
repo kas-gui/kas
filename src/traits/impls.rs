@@ -76,8 +76,8 @@ impl<M> Layout for Box<dyn Widget<Msg = M>> {
         self.as_mut().size_rules(size_handle, axis)
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
-        self.as_mut().set_rect(size_handle, rect, align);
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
+        self.as_mut().set_rect(rect, align);
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {

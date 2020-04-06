@@ -65,8 +65,8 @@ impl Dimensions {
             font_scale,
             scale_factor,
             line_height,
-            min_line_length: line_height * 10,
-            max_line_length: line_height * 40,
+            min_line_length: line_height * 8,
+            max_line_length: line_height * 24,
             margin,
             frame,
             button_frame: (params.button_frame * scale_factor).round() as u32,
@@ -166,11 +166,12 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
         let margins = (self.dims.margin as u16, self.dims.margin as u16);
         if axis.is_horizontal() {
             let bound = bounds.0 as u32;
-            let min = match class {
-                TextClass::Edit | TextClass::EditMulti => self.dims.min_line_length,
-                _ => bound.min(self.dims.min_line_length),
+            let min = self.dims.min_line_length;
+            let ideal = self.dims.max_line_length;
+            let (min, ideal) = match class {
+                TextClass::Edit | TextClass::EditMulti => (min, ideal),
+                _ => (bound.min(min), bound.min(ideal)),
             };
-            let ideal = bound.min(self.dims.max_line_length);
             SizeRules::new(min, ideal, margins, StretchPolicy::LowUtility)
         } else {
             let min = match class {

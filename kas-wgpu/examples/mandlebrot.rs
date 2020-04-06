@@ -414,7 +414,7 @@ impl Layout for Mandlebrot {
     }
 
     #[inline]
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, _align: AlignHints) {
         self.core.rect = rect;
         let size = DVec2::from(rect.size);
         let rel_width = DVec2(size.0 / size.1, 1.0);
@@ -526,12 +526,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
         impl {
             fn iter(&mut self, mgr: &mut Manager, iter: i32) -> VoidResponse {
                 self.mbrot.iter = iter;
-                self.label.set_text(mgr, self.mbrot.loc());
-                self.iters.set_text(mgr, format!("{}", iter));
+                *mgr += self.iters.set_text(format!("{}", iter));
                 Response::None
             }
             fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> VoidResponse {
-                self.label.set_text(mgr, self.mbrot.loc());
+                *mgr += self.label.set_text(self.mbrot.loc());
                 Response::None
             }
         }

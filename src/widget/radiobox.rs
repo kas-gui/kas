@@ -93,7 +93,7 @@ impl<M> Layout for RadioBoxBare<M> {
         SizeRules::extract_fixed(axis.is_vertical(), size, margins)
     }
 
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         let rect = align
             .complete(Align::Centre, Align::Centre, self.rect().size)
             .apply(rect);
@@ -175,12 +175,9 @@ impl<M> HasBool for RadioBoxBare<M> {
         self.state
     }
 
-    fn set_bool(&mut self, mgr: &mut Manager, state: bool) {
+    fn set_bool(&mut self, state: bool) -> TkAction {
         self.state = state;
-        mgr.redraw(self.id());
-        if state {
-            mgr.trigger_update(self.handle, self.id().into());
-        }
+        TkAction::Redraw
     }
 }
 
@@ -285,7 +282,7 @@ impl<M> HasBool for RadioBox<M> {
     }
 
     #[inline]
-    fn set_bool(&mut self, mgr: &mut Manager, state: bool) {
-        self.radiobox.set_bool(mgr, state);
+    fn set_bool(&mut self, state: bool) -> TkAction {
+        self.radiobox.set_bool(state)
     }
 }

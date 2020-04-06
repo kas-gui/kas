@@ -32,6 +32,7 @@ pub struct ScrollRegion<W: Widget> {
     max_offset: Coord,
     offset: Coord,
     scroll_rate: f32,
+    bar_width: u32,
     auto_bars: bool,
     show_bars: (bool, bool),
     #[widget]
@@ -53,6 +54,7 @@ impl<W: Widget> ScrollRegion<W> {
             max_offset: Coord::ZERO,
             offset: Coord::ZERO,
             scroll_rate: 30.0,
+            bar_width: 0,
             auto_bars: false,
             show_bars: (false, false),
             horiz_bar: ScrollBar::new(),
@@ -113,16 +115,17 @@ impl<W: Widget> ScrollRegion<W> {
 
     /// Set the scroll offset
     ///
-    /// Returns true if the offset is not identical to the old offset.
+    /// Returns [`TkAction::None`] if the offset is identical to the old offset,
+    /// or a greater action if not identical.
     #[inline]
-    pub fn set_offset(&mut self, mgr: &mut Manager, offset: Coord) -> bool {
+    pub fn set_offset(&mut self, offset: Coord) -> TkAction {
         let offset = offset.clamp(Coord::ZERO, self.max_offset);
-        if offset != self.offset {
+        if offset == self.offset {
+            TkAction::None
+        } else {
             self.offset = offset;
-            mgr.send_action(TkAction::RegionMoved);
-            return true;
+            TkAction::RegionMoved
         }
-        false
     }
 }
 
@@ -137,6 +140,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         let line_height = size_handle.line_height(TextClass::Label);
         self.scroll_rate = 3.0 * line_height as f32;
         rules.reduce_min_to(line_height);
+        self.bar_width = (size_handle.scrollbar().0).1;
 
         if axis.is_horizontal() && (self.auto_bars || self.show_bars.1) {
             rules.append(self.vert_bar.size_rules(size_handle, axis));
@@ -146,48 +150,46 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, _: AlignHints) {
         self.core.rect = rect;
         // We use simplified layout code here
         let pos = rect.pos;
         self.inner_size = rect.size;
-        // using vertical-mode notation:
-        let width = (size_handle.scrollbar().0).1;
 
         if self.auto_bars {
             self.show_bars = (
-                self.min_child_size.0 + width > rect.size.0,
-                self.min_child_size.1 + width > rect.size.1,
+                self.min_child_size.0 + self.bar_width > rect.size.0,
+                self.min_child_size.1 + self.bar_width > rect.size.1,
             );
         }
         if self.show_bars.0 {
-            self.inner_size.1 -= width;
+            self.inner_size.1 -= self.bar_width;
         }
         if self.show_bars.1 {
-            self.inner_size.0 -= width;
+            self.inner_size.0 -= self.bar_width;
         }
 
         let child_size = self.inner_size.max(self.min_child_size);
         let child_rect = Rect::new(pos, child_size);
-        self.child
-            .set_rect(size_handle, child_rect, AlignHints::NONE);
+        self.child.set_rect(child_rect, AlignHints::NONE);
         self.max_offset = Coord::from(child_size) - Coord::from(self.inner_size);
         self.offset = self.offset.clamp(Coord::ZERO, self.max_offset);
 
         if self.show_bars.0 {
             let pos = Coord(pos.0, pos.1 + self.inner_size.1 as i32);
-            let size = Size(self.inner_size.0, width);
+            let size = Size(self.inner_size.0, self.bar_width);
             self.horiz_bar
-                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
-            self.horiz_bar
+                .set_rect(Rect { pos, size }, AlignHints::NONE);
+            let _ = self
+                .horiz_bar
                 .set_limits(self.max_offset.0 as u32, rect.size.0);
         }
         if self.show_bars.1 {
             let pos = Coord(pos.0 + self.inner_size.0 as i32, pos.1);
-            let size = Size(width, self.core.rect.size.1);
-            self.vert_bar
-                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
-            self.vert_bar
+            let size = Size(self.bar_width, self.core.rect.size.1);
+            self.vert_bar.set_rect(Rect { pos, size }, AlignHints::NONE);
+            let _ = self
+                .vert_bar
                 .set_limits(self.max_offset.1 as u32, rect.size.1);
         }
     }
@@ -229,9 +231,11 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
                     }
                     event::ScrollDelta::PixelDelta(d) => d,
                 };
-                if w.set_offset(mgr, w.offset - d) {
-                    w.horiz_bar.set_value(mgr, w.offset.0 as u32);
-                    w.vert_bar.set_value(mgr, w.offset.1 as u32);
+                let action = w.set_offset(w.offset - d);
+                if action != TkAction::None {
+                    *mgr += action
+                        + w.horiz_bar.set_value(w.offset.0 as u32)
+                        + w.vert_bar.set_value(w.offset.1 as u32);
                     Response::None
                 } else {
                     Response::unhandled_action(Action::Scroll(delta))
@@ -255,7 +259,7 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
                 Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
-                    self.set_offset(mgr, Coord(msg as i32, self.offset.1));
+                    *mgr += self.set_offset(Coord(msg as i32, self.offset.1));
                     Response::None
                 }
             };
@@ -264,16 +268,18 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
                 Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
-                    self.set_offset(mgr, Coord(self.offset.0, msg as i32));
+                    *mgr += self.set_offset(Coord(self.offset.0, msg as i32));
                     Response::None
                 }
             };
         } else if id == self.id() {
             return match event {
                 Event::PressMove { delta, .. } => {
-                    if self.set_offset(mgr, self.offset - delta) {
-                        self.horiz_bar.set_value(mgr, self.offset.0 as u32);
-                        self.vert_bar.set_value(mgr, self.offset.1 as u32);
+                    let action = self.set_offset(self.offset - delta);
+                    if action != TkAction::None {
+                        *mgr += action
+                            + self.horiz_bar.set_value(self.offset.0 as u32)
+                            + self.vert_bar.set_value(self.offset.1 as u32);
                     }
                     Response::None
                 }

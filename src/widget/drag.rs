@@ -51,8 +51,8 @@ impl DragHandle {
 
     /// Set a new handle size and offset
     ///
-    /// Returns true if a redraw is required.
-    pub fn set_size_and_offset(&mut self, size: Size, offset: Coord) -> bool {
+    /// Returns [`TkAction::Redraw`] if a redraw is required.
+    pub fn set_size_and_offset(&mut self, size: Size, offset: Coord) -> TkAction {
         self.core.rect.size = size;
         self.set_offset(offset).1
     }
@@ -73,16 +73,17 @@ impl DragHandle {
 
     /// Set a new handle offset
     ///
-    /// Returns the new offset (after clamping input), and a boolean which
-    /// is true if the offset is different from the previous offset.
-    pub fn set_offset(&mut self, offset: Coord) -> (Coord, bool) {
+    /// Returns the new offset (after clamping input) and an action: `None` if
+    /// the handle hasn't moved; `Redraw` if it has (though this widget is
+    /// not directly responsible for drawing, so this may not be accurate).
+    pub fn set_offset(&mut self, offset: Coord) -> (Coord, TkAction) {
         let offset = offset.clamp(Coord::ZERO, self.max_offset());
         let handle_pos = self.track.pos + offset;
         if handle_pos != self.core.rect.pos {
             self.core.rect.pos = handle_pos;
-            (offset, true)
+            (offset, TkAction::Redraw)
         } else {
-            (offset, false)
+            (offset, TkAction::None)
         }
     }
 
@@ -106,9 +107,9 @@ impl DragHandle {
         self.press_offset = Coord::from(self.core.rect.size / 2) + self.track.pos;
 
         // Since the press is not on the handle, we move the bar immediately.
-        let (offset, moved) = self.set_offset(coord - self.press_offset);
-        debug_assert!(moved);
-        mgr.redraw(self.id());
+        let (offset, action) = self.set_offset(coord - self.press_offset);
+        debug_assert!(action == TkAction::Redraw);
+        mgr.send_action(action);
         offset
     }
 
@@ -137,7 +138,7 @@ impl Layout for DragHandle {
         SizeRules::EMPTY
     }
 
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, _: AlignHints) {
         self.track = rect;
     }
 
@@ -158,12 +159,12 @@ impl event::EventHandler for DragHandle {
             }
             Event::PressMove { source, coord, .. } if Some(source) == self.press_source => {
                 let offset = coord - self.press_offset;
-                let (offset, moved) = self.set_offset(offset);
-                if moved {
-                    mgr.redraw(self.id());
-                    Response::Msg(offset)
-                } else {
+                let (offset, action) = self.set_offset(offset);
+                if action == TkAction::None {
                     Response::None
+                } else {
+                    mgr.send_action(action);
+                    Response::Msg(offset)
                 }
             }
             Event::PressEnd { source, .. } if Some(source) == self.press_source => {

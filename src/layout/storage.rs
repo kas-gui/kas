@@ -18,35 +18,48 @@ pub trait Storage {}
 /// even usable) yet. This will likely be implemented in the future.
 pub trait RowStorage: sealed::Sealed + Clone {
     #[doc(hidden)]
-    fn as_ref(&self) -> &[SizeRules];
+    fn set_dim(&mut self, cols: usize);
+
     #[doc(hidden)]
-    fn as_mut(&mut self) -> &mut [SizeRules];
+    fn rules(&mut self) -> &mut [SizeRules] {
+        self.rules_and_widths().0
+    }
+
     #[doc(hidden)]
-    fn set_len(&mut self, len: usize);
+    fn widths(&mut self) -> &mut [u32] {
+        self.rules_and_widths().1
+    }
+
+    #[doc(hidden)]
+    fn rules_and_widths(&mut self) -> (&mut [SizeRules], &mut [u32]);
 }
 
 /// Fixed-length row storage
 ///
-/// Argument type is expected to be `[SizeRules; n]` where `n = rows + 1`.
+/// Argument types:
+///
+/// - `R` is expected to be `[SizeRules; cols + 1]`
+/// - `W` is expected to be `[u32; cols]`
 #[derive(Clone, Debug, Default)]
-pub struct FixedRowStorage<S: Clone> {
-    rules: S,
+pub struct FixedRowStorage<R: Clone, W: Clone> {
+    rules: R,
+    widths: W,
 }
 
-impl<S: Clone> Storage for FixedRowStorage<S> {}
+impl<R: Clone, W: Clone> Storage for FixedRowStorage<R, W> {}
 
-impl<S> RowStorage for FixedRowStorage<S>
+impl<R, W> RowStorage for FixedRowStorage<R, W>
 where
-    S: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
+    R: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
+    W: Clone + AsRef<[u32]> + AsMut<[u32]>,
 {
-    fn as_ref(&self) -> &[SizeRules] {
-        self.rules.as_ref()
+    fn set_dim(&mut self, cols: usize) {
+        assert_eq!(self.rules.as_ref().len(), cols + 1);
+        assert_eq!(self.widths.as_ref().len(), cols);
     }
-    fn as_mut(&mut self) -> &mut [SizeRules] {
-        self.rules.as_mut()
-    }
-    fn set_len(&mut self, len: usize) {
-        assert_eq!(self.rules.as_ref().len(), len);
+
+    fn rules_and_widths(&mut self) -> (&mut [SizeRules], &mut [u32]) {
+        (self.rules.as_mut(), self.widths.as_mut())
     }
 }
 
@@ -54,19 +67,19 @@ where
 #[derive(Clone, Debug, Default)]
 pub struct DynRowStorage {
     rules: Vec<SizeRules>,
+    widths: Vec<u32>,
 }
 
 impl Storage for DynRowStorage {}
 
 impl RowStorage for DynRowStorage {
-    fn as_ref(&self) -> &[SizeRules] {
-        self.rules.as_ref()
+    fn set_dim(&mut self, cols: usize) {
+        self.rules.resize(cols + 1, SizeRules::EMPTY);
+        self.widths.resize(cols, 0);
     }
-    fn as_mut(&mut self) -> &mut [SizeRules] {
-        self.rules.as_mut()
-    }
-    fn set_len(&mut self, len: usize) {
-        self.rules.resize(len, SizeRules::EMPTY);
+
+    fn rules_and_widths(&mut self) -> (&mut [SizeRules], &mut [u32]) {
+        (&mut self.rules, &mut self.widths)
     }
 }
 
@@ -76,17 +89,12 @@ impl RowStorage for DynRowStorage {
 /// `Vec<u32>`. For fixed-length rows up to 16 items, use `[u32; rows]`.
 pub trait RowTemp: Default + sealed::Sealed {
     #[doc(hidden)]
-    fn as_ref(&self) -> &[u32];
-    #[doc(hidden)]
     fn as_mut(&mut self) -> &mut [u32];
     #[doc(hidden)]
     fn set_len(&mut self, len: usize);
 }
 
 impl RowTemp for Vec<u32> {
-    fn as_ref(&self) -> &[u32] {
-        self
-    }
     fn as_mut(&mut self) -> &mut [u32] {
         self
     }
@@ -99,9 +107,6 @@ impl RowTemp for Vec<u32> {
 macro_rules! impl_row_temporary {
     ($n:literal) => {
         impl RowTemp for [u32; $n] {
-            fn as_ref(&self) -> &[u32] {
-                self
-            }
             fn as_mut(&mut self) -> &mut [u32] {
                 self
             }
@@ -127,44 +132,58 @@ impl_row_temporary!(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16);
 pub trait GridStorage: sealed::Sealed + Clone {
     #[doc(hidden)]
     fn set_dims(&mut self, cols: usize, rows: usize);
+
     #[doc(hidden)]
-    fn widths(&self) -> &[SizeRules];
+    fn width_rules(&mut self) -> &mut [SizeRules] {
+        self.rules_and_widths().0
+    }
     #[doc(hidden)]
-    fn widths_mut(&mut self) -> &mut [SizeRules];
+    fn height_rules(&mut self) -> &mut [SizeRules] {
+        self.rules_and_heights().0
+    }
+
     #[doc(hidden)]
-    fn heights(&self) -> &[SizeRules];
+    fn widths(&mut self) -> &mut [u32] {
+        self.rules_and_widths().1
+    }
     #[doc(hidden)]
-    fn heights_mut(&mut self) -> &mut [SizeRules];
+    fn heights(&mut self) -> &mut [u32] {
+        self.rules_and_heights().1
+    }
+
+    #[doc(hidden)]
+    fn rules_and_widths(&mut self) -> (&mut [SizeRules], &mut [u32]);
+    #[doc(hidden)]
+    fn rules_and_heights(&mut self) -> (&mut [SizeRules], &mut [u32]);
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct FixedGridStorage<WR: Clone, HR: Clone> {
+pub struct FixedGridStorage<WR: Clone, HR: Clone, W: Clone, H: Clone> {
     width_rules: WR,
     height_rules: HR,
+    widths: W,
+    heights: H,
 }
 
-impl<WR: Clone, HR: Clone> Storage for FixedGridStorage<WR, HR> {}
+impl<WR: Clone, HR: Clone, W: Clone, H: Clone> Storage for FixedGridStorage<WR, HR, W, H> {}
 
-impl<WR, HR> GridStorage for FixedGridStorage<WR, HR>
+impl<WR, HR, W, H> GridStorage for FixedGridStorage<WR, HR, W, H>
 where
     WR: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
     HR: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
+    W: Clone + AsRef<[u32]> + AsMut<[u32]>,
+    H: Clone + AsRef<[u32]> + AsMut<[u32]>,
 {
     fn set_dims(&mut self, cols: usize, rows: usize) {
-        assert_eq!(self.width_rules.as_ref().len(), cols);
-        assert_eq!(self.height_rules.as_ref().len(), rows);
+        assert_eq!(self.width_rules.as_ref().len(), cols + 1);
+        assert_eq!(self.height_rules.as_ref().len(), rows + 1);
     }
-    fn widths(&self) -> &[SizeRules] {
-        self.width_rules.as_ref()
+
+    fn rules_and_widths(&mut self) -> (&mut [SizeRules], &mut [u32]) {
+        (self.width_rules.as_mut(), self.widths.as_mut())
     }
-    fn widths_mut(&mut self) -> &mut [SizeRules] {
-        self.width_rules.as_mut()
-    }
-    fn heights(&self) -> &[SizeRules] {
-        self.height_rules.as_ref()
-    }
-    fn heights_mut(&mut self) -> &mut [SizeRules] {
-        self.height_rules.as_mut()
+    fn rules_and_heights(&mut self) -> (&mut [SizeRules], &mut [u32]) {
+        (self.height_rules.as_mut(), self.heights.as_mut())
     }
 }
 
@@ -173,34 +192,31 @@ where
 pub struct DynGridStorage {
     width_rules: Vec<SizeRules>,
     height_rules: Vec<SizeRules>,
+    widths: Vec<u32>,
+    heights: Vec<u32>,
 }
 
 impl Storage for DynGridStorage {}
 
 impl GridStorage for DynGridStorage {
     fn set_dims(&mut self, cols: usize, rows: usize) {
-        self.width_rules.resize(cols, SizeRules::EMPTY);
-        self.height_rules.resize(rows, SizeRules::EMPTY);
+        self.width_rules.resize(cols + 1, SizeRules::EMPTY);
+        self.height_rules.resize(rows + 1, SizeRules::EMPTY);
     }
-    fn widths(&self) -> &[SizeRules] {
-        self.width_rules.as_ref()
+
+    fn rules_and_widths(&mut self) -> (&mut [SizeRules], &mut [u32]) {
+        (&mut self.width_rules, &mut self.widths)
     }
-    fn widths_mut(&mut self) -> &mut [SizeRules] {
-        self.width_rules.as_mut()
-    }
-    fn heights(&self) -> &[SizeRules] {
-        self.height_rules.as_ref()
-    }
-    fn heights_mut(&mut self) -> &mut [SizeRules] {
-        self.height_rules.as_mut()
+    fn rules_and_heights(&mut self) -> (&mut [SizeRules], &mut [u32]) {
+        (&mut self.height_rules, &mut self.heights)
     }
 }
 
 mod sealed {
     pub trait Sealed {}
-    impl<S: Clone> Sealed for super::FixedRowStorage<S> {}
+    impl<R: Clone, W: Clone> Sealed for super::FixedRowStorage<R, W> {}
     impl Sealed for super::DynRowStorage {}
     impl Sealed for Vec<u32> {}
-    impl<WR: Clone, HR: Clone> Sealed for super::FixedGridStorage<WR, HR> {}
+    impl<WR: Clone, HR: Clone, W: Clone, H: Clone> Sealed for super::FixedGridStorage<WR, HR, W, H> {}
     impl Sealed for super::DynGridStorage {}
 }

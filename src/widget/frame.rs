@@ -61,11 +61,11 @@ impl<W: Widget> Layout for Frame<W> {
         child_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, mut rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mut rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         rect.pos += self.m0;
         rect.size -= self.m0 + self.m1;
-        self.child.set_rect(size_handle, rect, align);
+        self.child.set_rect(rect, align);
     }
 
     #[inline]
@@ -100,8 +100,8 @@ impl<W: HasBool + Widget> HasBool for Frame<W> {
         self.child.get_bool()
     }
 
-    fn set_bool(&mut self, mgr: &mut Manager, state: bool) {
-        self.child.set_bool(mgr, state);
+    fn set_bool(&mut self, state: bool) -> TkAction {
+        self.child.set_bool(state)
     }
 }
 
@@ -110,8 +110,8 @@ impl<W: HasText + Widget> HasText for Frame<W> {
         self.child.get_text()
     }
 
-    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString) {
-        self.child.set_cow_string(mgr, text);
+    fn set_cow_string(&mut self, text: CowString) -> TkAction {
+        self.child.set_cow_string(text)
     }
 }
 

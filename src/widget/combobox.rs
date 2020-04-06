@@ -52,7 +52,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         content_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, _align: kas::AlignHints) {
+    fn set_rect(&mut self, rect: Rect, _align: kas::AlignHints) {
         self.core.rect = rect;
 
         // In theory, text rendering should be restricted as in EditBox.
@@ -108,10 +108,10 @@ impl<M: Clone + Debug> ComboBox<M> {
     }
 
     /// Add a choice to the combobox, in last position
-    pub fn push<T: Into<CowString>>(&mut self, mgr: &mut Manager, label: CowString, msg: M) {
+    pub fn push<T: Into<CowString>>(&mut self, label: CowString, msg: M) -> TkAction {
         let len = self.column.len() as u64;
-        self.column.push(mgr, TextButton::new(label, len));
         self.messages.push(msg);
+        self.column.push(TextButton::new(label, len))
     }
 }
 

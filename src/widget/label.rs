@@ -7,7 +7,7 @@
 
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Manager, ManagerState};
+use kas::event::ManagerState;
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
@@ -34,7 +34,7 @@ impl Layout for Label {
         rules
     }
 
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.align = (
             align.horiz.unwrap_or(Align::Begin),
             align.vert.unwrap_or(Align::Centre),
@@ -73,8 +73,8 @@ impl HasText for Label {
         &self.text
     }
 
-    fn set_cow_string(&mut self, mgr: &mut Manager, text: CowString) {
+    fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.text = text.into();
-        mgr.redraw(self.id());
+        TkAction::Redraw
     }
 }

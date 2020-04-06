@@ -61,7 +61,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     match action {
                         Action::HandleUpdate { .. } => {
                             let c = COUNTER.with(|c| *c.borrow());
-                            self.display.set_text(mgr, c.to_string());
+                            *mgr += self.display.set_text(c.to_string());
                             Response::None
                         }
                         a @ _ => Response::unhandled_action(a),
