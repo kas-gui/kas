@@ -321,6 +321,23 @@ impl SizeRules {
         }
     }
 
+    /// Return the result of appending all given ranges (min only)
+    ///
+    /// This is a specialised version of sum: only the minimum is calculated
+    pub fn min_sum(range: &[SizeRules]) -> SizeRules {
+        if range.is_empty() {
+            return SizeRules::EMPTY;
+        }
+
+        let mut rules = range[0];
+        for r in &range[1..] {
+            rules.a += rules.m.1.max(r.m.0) as u32 + r.a;
+        }
+        rules.b = rules.a;
+        rules.m.1 = range[range.len() - 1].m.1;
+        rules
+    }
+
     /// Set self to `self - x + y`
     pub fn sub_add(&mut self, x: Self, y: Self) {
         self.a = self.a + y.a - x.a;

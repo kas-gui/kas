@@ -162,9 +162,14 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
             if n >= self.handles.len() {
                 break;
             }
-            let align = AlignHints::default();
-            self.handles[n].set_rect(setter.child_rect(&mut self.data, (n << 1) + 1), align);
-            let _ = self.handles[n].set_size_and_offset(self.handle_size, Coord::ZERO);
+
+            // TODO(opt): calculate all maximal sizes simultaneously
+            let index = (n << 1) + 1;
+            let track = setter.maximal_rect_of(&mut self.data, index);
+            self.handles[n].set_rect(track, AlignHints::default());
+            let handle = setter.child_rect(&mut self.data, index);
+            let _ = self.handles[n].set_size_and_offset(handle.size, handle.pos - track.pos);
+
             n += 1;
         }
     }

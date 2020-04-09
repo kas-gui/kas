@@ -48,7 +48,7 @@ impl RulesSolver for SingleSolver {
 
 /// [`RulesSetter`] implementation for a fixed single-child layout
 pub struct SingleSetter {
-    crect: Rect,
+    rect: Rect,
 }
 
 impl SingleSetter {
@@ -57,9 +57,7 @@ impl SingleSetter {
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `storage`: irrelevent, but included for consistency
     pub fn new(rect: Rect, _: (), _: &mut ()) -> Self {
-        let crect = rect;
-
-        SingleSetter { crect }
+        SingleSetter { rect }
     }
 }
 
@@ -67,7 +65,11 @@ impl RulesSetter for SingleSetter {
     type Storage = ();
     type ChildInfo = ();
 
-    fn child_rect(&mut self, _storage: &mut Self::Storage, _child_info: Self::ChildInfo) -> Rect {
-        self.crect
+    fn child_rect(&mut self, _: &mut Self::Storage, _: Self::ChildInfo) -> Rect {
+        self.rect
+    }
+
+    fn maximal_rect_of(&mut self, _: &mut Self::Storage, _: Self::ChildInfo) -> Rect {
+        self.rect
     }
 }

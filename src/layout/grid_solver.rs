@@ -270,4 +270,8 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> RulesSetter for GridSetter<RT, CT
 
         Rect { pos, size }
     }
+
+    fn maximal_rect_of(&mut self, _storage: &mut Self::Storage, _index: Self::ChildInfo) -> Rect {
+        unimplemented!()
+    }
 }
