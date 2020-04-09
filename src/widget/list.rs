@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Dynamic widgets
+//! A row or column with run-time adjustable contents
 
 use std::ops::{Index, IndexMut};
 
@@ -115,8 +115,8 @@ impl<D: Directional, W: Widget> WidgetChildren for List<D, W> {
 
 impl<D: Directional, W: Widget> Layout for List<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let mut solver =
-            layout::RowSolver::new(axis, (self.direction, self.widgets.len()), &mut self.data);
+        let dim = (self.direction, self.widgets.len());
+        let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
         for (n, child) in self.widgets.iter_mut().enumerate() {
             solver.for_child(&mut self.data, n, |axis| {
                 child.size_rules(size_handle, axis)
@@ -127,11 +127,8 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
 
     fn set_rect(&mut self, rect: Rect, _: AlignHints) {
         self.core.rect = rect;
-        let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(
-            rect,
-            (self.direction, self.widgets.len()),
-            &mut self.data,
-        );
+        let dim = (self.direction, self.widgets.len());
+        let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(rect, dim, &mut self.data);
 
         for (n, child) in self.widgets.iter_mut().enumerate() {
             let align = AlignHints::default();

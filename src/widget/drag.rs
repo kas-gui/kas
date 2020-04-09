@@ -57,6 +57,12 @@ impl DragHandle {
         self.set_offset(offset).1
     }
 
+    /// Get the current tract `Rect`
+    #[inline]
+    pub fn track(&self) -> Rect {
+        self.track
+    }
+
     /// Get the current handle offset
     #[inline]
     pub fn offset(&self) -> Coord {

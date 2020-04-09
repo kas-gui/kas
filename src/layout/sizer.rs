@@ -50,8 +50,13 @@ pub trait RulesSetter {
     /// Type required by [`RulesSolver::for_child`] (see implementation documentation)
     type ChildInfo;
 
-    /// Called once for each child. For most layouts the order is important.
+    /// Called once for each child. The order is unimportant.
     fn child_rect(&mut self, storage: &mut Self::Storage, child_info: Self::ChildInfo) -> Rect;
+
+    /// Calculates the maximal rect of a given child
+    ///
+    /// This assumes that all other entries have minimum size.
+    fn maximal_rect_of(&mut self, storage: &mut Self::Storage, index: Self::ChildInfo) -> Rect;
 }
 
 /// Cache used by [`solve`] and [`solve_and_set`]

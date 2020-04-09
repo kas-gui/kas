@@ -95,9 +95,10 @@ where
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
         let mut mgr = ManagerState::new(scale_factor);
-        mgr.send_action(TkAction::Reconfigure);
+        let mut tkw = TkWindow::new(&window, shared);
+        mgr.configure(&mut tkw, &mut *widget);
 
-        Ok(Window {
+        let mut r = Window {
             widget,
             window_id,
             mgr,
@@ -108,7 +109,9 @@ where
             swap_chain,
             draw,
             theme_window,
-        })
+        };
+        r.apply_size();
+        Ok(r)
     }
 
     /// Recompute layout of widgets and redraw
@@ -122,6 +125,7 @@ where
         let mut tkw = TkWindow::new(&self.window, shared);
         self.mgr.configure(&mut tkw, &mut *self.widget);
 
+        self.solve_cache.invalidate_rule_cache();
         self.apply_size();
     }
 
