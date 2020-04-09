@@ -6,6 +6,7 @@
 //! Row / column solver
 
 use std::marker::PhantomData;
+use std::ops::Range;
 
 use super::{AxisInfo, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::{Coord, Rect};
@@ -111,46 +112,88 @@ pub struct RowSetter<D, T: RowTemp, S: RowStorage> {
 }
 
 impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
-    pub fn new(rect: Rect, (dir, len): (D, usize), storage: &mut S) -> Self {
+    /// Construct and solve widths
+    pub fn new(rect: Rect, (direction, len): (D, usize), storage: &mut S) -> Self {
         let mut offsets = T::default();
         offsets.set_len(len);
         storage.set_dim(len);
 
-        let (pos, width) = match dir.is_horizontal() {
-            true => (rect.pos.0, rect.size.0),
-            false => (rect.pos.1, rect.size.1),
-        };
+        let is_horiz = direction.is_horizontal();
+        let width = if is_horiz { rect.size.0 } else { rect.size.1 };
 
         if len > 0 {
             let (rules, widths) = storage.rules_and_widths();
             SizeRules::solve_seq_total(widths, rules, width);
-            if dir.is_reversed() {
-                offsets.as_mut()[len - 1] = pos as u32;
-                for i in (0..(len - 1)).rev() {
-                    let i1 = i + 1;
-                    let m1 = storage.rules()[i1].margins().1;
-                    let m0 = storage.rules()[i].margins().0;
-                    offsets.as_mut()[i] =
-                        offsets.as_mut()[i1] + storage.widths()[i1] + m1.max(m0) as u32;
-                }
-            } else {
-                offsets.as_mut()[0] = pos as u32;
-                for i in 1..len {
-                    let i1 = i - 1;
-                    let m1 = storage.rules()[i1].margins().1;
-                    let m0 = storage.rules()[i].margins().0;
-                    offsets.as_mut()[i] =
-                        offsets.as_mut()[i1] + storage.widths()[i1] + m1.max(m0) as u32;
-                }
-            }
         }
 
+        let _s = Default::default();
+        let mut row = RowSetter {
+            rect,
+            offsets,
+            direction,
+            _s,
+        };
+        row.update_offsets(storage);
+        row
+    }
+
+    /// Construct without solving
+    ///
+    /// In this case, it is assumed that the storage was already solved by a
+    /// previous `RowSetter`. The user should optionally call `solve_range` on
+    /// any ranges needing updating and finally call `update_offsets` before
+    /// using this `RowSetter` to calculate child positions.
+    pub fn new_unsolved(rect: Rect, (direction, len): (D, usize), storage: &mut S) -> Self {
+        let mut offsets = T::default();
+        offsets.set_len(len);
+        storage.set_dim(len);
+
+        let _s = Default::default();
         RowSetter {
             rect,
             offsets,
-            direction: dir,
-            _s: Default::default(),
+            direction,
+            _s,
         }
+    }
+
+    pub fn update_offsets(&mut self, storage: &mut S) {
+        let offsets = self.offsets.as_mut();
+        let len = offsets.len();
+        if len == 0 {
+            return;
+        }
+
+        let pos = if self.direction.is_horizontal() {
+            self.rect.pos.0
+        } else {
+            self.rect.pos.1
+        };
+
+        if self.direction.is_reversed() {
+            offsets[len - 1] = pos as u32;
+            for i in (0..(len - 1)).rev() {
+                let i1 = i + 1;
+                let m1 = storage.rules()[i1].margins().1;
+                let m0 = storage.rules()[i].margins().0;
+                offsets[i] = offsets[i1] + storage.widths()[i1] + m1.max(m0) as u32;
+            }
+        } else {
+            offsets[0] = pos as u32;
+            for i in 1..len {
+                let i1 = i - 1;
+                let m1 = storage.rules()[i1].margins().1;
+                let m0 = storage.rules()[i].margins().0;
+                offsets[i] = offsets[i1] + storage.widths()[i1] + m1.max(m0) as u32;
+            }
+        }
+    }
+
+    pub fn solve_range(&mut self, storage: &mut S, range: Range<usize>, width: u32) {
+        assert!(range.end <= self.offsets.as_mut().len());
+
+        let (rules, widths) = storage.rules_and_widths();
+        SizeRules::solve_seq(&mut widths[range.clone()], &rules[range], width);
     }
 }
 
@@ -182,10 +225,10 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, 
         let mut rect = self.rect;
         if self.direction.is_horizontal() {
             rect.pos.0 = self.rect.pos.0 + size1;
-            rect.size.0 = self.rect.size.0 - size2;
+            rect.size.0 = self.rect.size.0.saturating_sub(size2);
         } else {
             rect.pos.1 = self.rect.pos.1 + size1;
-            rect.size.1 = self.rect.size.1 - size2;
+            rect.size.1 = self.rect.size.1.saturating_sub(size2);
         }
         rect
     }

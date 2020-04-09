@@ -222,9 +222,15 @@ impl<D: Directional, W: Widget> event::EventHandler for Splitter<D, W> {
                     break;
                 }
                 if id <= self.handles[n].id() {
-                    // TODO: resize
-                    let _ = self.handles[n].event(mgr, id, event);
-                    return Response::None;
+                    return self.handles[n]
+                        .event(mgr, id, event)
+                        .try_into()
+                        .unwrap_or_else(|_| {
+                            // Message is the new offset relative to the track;
+                            // the handle has already adjusted its position
+                            self.adjust_size(n);
+                            Response::None
+                        });
                 }
                 n += 1;
             }
@@ -259,6 +265,45 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             handle_size: Size::ZERO,
             data: Default::default(),
             direction,
+        }
+    }
+
+    fn adjust_size(&mut self, n: usize) {
+        assert!(n < self.handles.len());
+        assert_eq!(self.widgets.len(), self.handles.len() + 1);
+        let index = 2 * n + 1;
+
+        let is_horiz = self.direction.is_horizontal();
+        let extract_p = |p: Coord| if is_horiz { p.0 } else { p.1 } as u32;
+        let extract_s = |s: Size| if is_horiz { s.0 } else { s.1 } as u32;
+        let hrect = self.handles[n].rect();
+        let width1 = extract_p(hrect.pos - self.core.rect.pos) as u32;
+        let width2 = extract_s(self.core.rect.size - hrect.size) - width1;
+
+        let dim = (self.direction, WidgetChildren::len(self));
+        let mut setter =
+            layout::RowSetter::<D, Vec<u32>, _>::new_unsolved(self.core.rect, dim, &mut self.data);
+        setter.solve_range(&mut self.data, 0..index, width1);
+        setter.solve_range(&mut self.data, (index + 1)..dim.1, width2);
+        setter.update_offsets(&mut self.data);
+
+        let mut n = 0;
+        loop {
+            assert!(n < self.widgets.len());
+            let align = AlignHints::default();
+            self.widgets[n].set_rect(setter.child_rect(&mut self.data, n << 1), align);
+
+            if n >= self.handles.len() {
+                break;
+            }
+
+            let index = (n << 1) + 1;
+            let track = self.handles[n].track();
+            self.handles[n].set_rect(track, AlignHints::default());
+            let handle = setter.child_rect(&mut self.data, index);
+            let _ = self.handles[n].set_size_and_offset(handle.size, handle.pos - track.pos);
+
+            n += 1;
         }
     }
 
