@@ -139,7 +139,7 @@ impl Default for StretchPolicy {
 /// [`kas::Layout::set_rect`] and [`kas::AlignHints`].
 ///
 /// [`Rect`]: kas::geom::Rect
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, PartialEq, Eq)]
 pub struct SizeRules {
     // minimum good size
     a: u32,
@@ -367,6 +367,11 @@ impl SizeRules {
         #[allow(non_snake_case)]
         let N = out.len();
         assert!(rules.len() == N + 1);
+        debug_assert_eq!(
+            rules[N],
+            rules[0..N].iter().sum(),
+            "solve_seq: invalid input (missing configure or invalid usage?)"
+        );
         if N == 0 {
             return;
         }

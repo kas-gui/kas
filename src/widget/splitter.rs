@@ -115,7 +115,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         self.handle_size = size_handle.frame();
         let handle_size = axis.extract_size(self.handle_size);
 
-        let dim = (self.direction, self.len());
+        let dim = (self.direction, WidgetChildren::len(self));
         let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
 
         let mut n = 0;
@@ -150,7 +150,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
             self.handle_size.0 = rect.size.0;
         }
 
-        let dim = (self.direction, self.len());
+        let dim = (self.direction, WidgetChildren::len(self));
         let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(rect, dim, &mut self.data);
 
         let mut n = 0;
