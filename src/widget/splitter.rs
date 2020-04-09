@@ -3,10 +3,11 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! A row or column with run-time adjustable contents
+//! A row or column with sizes adjustable via dividing handles
 
 use std::ops::{Index, IndexMut};
 
+use super::DragHandle;
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{Event, Manager, Response};
 use kas::layout::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
@@ -14,131 +15,172 @@ use kas::prelude::*;
 
 /// A generic row widget
 ///
-/// See documentation of [`List`] type.
-pub type Row<W> = List<kas::Right, W>;
+/// See documentation of [`Splitter`] type.
+pub type RowSplitter<W> = Splitter<kas::Right, W>;
 
 /// A generic column widget
 ///
-/// See documentation of [`List`] type.
-pub type Column<W> = List<kas::Down, W>;
+/// See documentation of [`Splitter`] type.
+pub type ColumnSplitter<W> = Splitter<kas::Down, W>;
 
 /// A row of boxed widgets
 ///
 /// This is parameterised over handler message type.
 ///
-/// See documentation of [`List`] type.
-pub type BoxRow<M> = BoxList<kas::Right, M>;
+/// See documentation of [`Splitter`] type.
+pub type BoxRowSplitter<M> = BoxSplitter<kas::Right, M>;
 
 /// A column of boxed widgets
 ///
 /// This is parameterised over handler message type.
 ///
-/// See documentation of [`List`] type.
-pub type BoxColumn<M> = BoxList<kas::Down, M>;
+/// See documentation of [`Splitter`] type.
+pub type BoxColumnSplitter<M> = BoxSplitter<kas::Down, M>;
 
 /// A row/column of boxed widgets
 ///
 /// This is parameterised over directionality and handler message type.
 ///
-/// See documentation of [`List`] type.
-pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
+/// See documentation of [`Splitter`] type.
+pub type BoxSplitter<D, M> = Splitter<D, Box<dyn Widget<Msg = M>>>;
 
 /// A row of widget references
 ///
 /// This is parameterised over handler message type.
 ///
-/// See documentation of [`List`] type.
-pub type RefRow<'a, M> = RefList<'a, kas::Right, M>;
+/// See documentation of [`Splitter`] type.
+pub type RefRowSplitter<'a, M> = RefSplitter<'a, kas::Right, M>;
 
 /// A column of widget references
 ///
 /// This is parameterised over handler message type.
 ///
-/// See documentation of [`List`] type.
-pub type RefColumn<'a, M> = RefList<'a, kas::Down, M>;
+/// See documentation of [`Splitter`] type.
+pub type RefColumnSplitter<'a, M> = RefSplitter<'a, kas::Down, M>;
 
 /// A row/column of widget references
 ///
 /// This is parameterised over directionality and handler message type.
 ///
-/// See documentation of [`List`] type.
-pub type RefList<'a, D, M> = List<D, &'a mut dyn Widget<Msg = M>>;
+/// See documentation of [`Splitter`] type.
+pub type RefSplitter<'a, D, M> = Splitter<D, &'a mut dyn Widget<Msg = M>>;
 
-/// A generic row/column widget
+/// A resizable row/column widget
 ///
-/// This type is generic over both directionality and the type of child widgets.
-/// Essentially, it is a [`Vec`] which also implements the [`Widget`] trait.
-///
-/// [`Row`] and [`Column`] are parameterisations with set directionality.
-///
-/// [`BoxList`] (and its derivatives [`BoxRow`], [`BoxColumn`]) parameterise
-/// `W = Box<dyn Widget>`, thus supporting individually boxed child widgets.
-/// This allows use of multiple types of child widget at the cost of extra
-/// allocation, and requires dynamic dispatch of methods.
-///
-/// Configuring and resizing elements is O(n) in the number of children.
-/// Drawing and event handling is O(log n) in the number of children (assuming
-/// only a small number are visible at any one time).
-///
-/// For fixed configurations of child widgets, [`make_widget`] can be used
-/// instead. [`make_widget`] has the advantage that it can support child widgets
-/// of multiple types without allocation and via static dispatch, but the
-/// disadvantage that drawing and event handling are O(n) in the number of
-/// children.
-///
-/// [`make_widget`]: ../macros/index.html#the-make_widget-macro
+/// Similar to [`kas::widget::Splitter`] but with draggable handles between items.
+// TODO: better doc
 #[handler(action, msg=<W as event::Handler>::Msg)]
 #[widget(children=noauto)]
 #[derive(Clone, Default, Debug, Widget)]
-pub struct List<D: Directional, W: Widget> {
+pub struct Splitter<D: Directional, W: Widget> {
     #[widget_core]
     core: CoreData,
     widgets: Vec<W>,
+    handles: Vec<DragHandle>,
+    handle_size: Size,
     data: layout::DynRowStorage,
     direction: D,
 }
 
-impl<D: Directional, W: Widget> WidgetChildren for List<D, W> {
+impl<D: Directional, W: Widget> WidgetChildren for Splitter<D, W> {
     #[inline]
     fn len(&self) -> usize {
-        self.widgets.len()
+        self.widgets.len() + self.handles.len()
     }
     #[inline]
     fn get(&self, index: usize) -> Option<&dyn WidgetConfig> {
-        self.widgets.get(index).map(|w| w.as_widget())
+        if (index & 1) != 0 {
+            self.handles.get(index >> 1).map(|w| w.as_widget())
+        } else {
+            self.widgets.get(index >> 1).map(|w| w.as_widget())
+        }
     }
     #[inline]
     fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
-        self.widgets.get_mut(index).map(|w| w.as_widget_mut())
+        if (index & 1) != 0 {
+            self.handles.get_mut(index >> 1).map(|w| w.as_widget_mut())
+        } else {
+            self.widgets.get_mut(index >> 1).map(|w| w.as_widget_mut())
+        }
     }
 }
 
-impl<D: Directional, W: Widget> Layout for List<D, W> {
+impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let dim = (self.direction, self.widgets.len());
+        if self.widgets.len() == 0 {
+            return SizeRules::EMPTY;
+        }
+        assert!(self.handles.len() + 1 == self.widgets.len());
+
+        self.handle_size = size_handle.frame();
+        let handle_size = axis.extract_size(self.handle_size);
+
+        let dim = (self.direction, self.len());
         let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
-        for (n, child) in self.widgets.iter_mut().enumerate() {
-            solver.for_child(&mut self.data, n, |axis| {
-                child.size_rules(size_handle, axis)
+
+        let mut n = 0;
+        loop {
+            assert!(n < self.widgets.len());
+            let widgets = &mut self.widgets;
+            solver.for_child(&mut self.data, n << 1, |axis| {
+                widgets[n].size_rules(size_handle, axis)
             });
+
+            if n >= self.handles.len() {
+                break;
+            }
+            solver.for_child(&mut self.data, (n << 1) + 1, |_axis| {
+                SizeRules::fixed(handle_size, (0, 0))
+            });
+            n += 1;
         }
         solver.finish(&mut self.data)
     }
 
     fn set_rect(&mut self, rect: Rect, _: AlignHints) {
         self.core.rect = rect;
-        let dim = (self.direction, self.widgets.len());
+        if self.widgets.len() == 0 {
+            return;
+        }
+        assert!(self.handles.len() + 1 == self.widgets.len());
+
+        if self.direction.is_horizontal() {
+            self.handle_size.1 = rect.size.1;
+        } else {
+            self.handle_size.0 = rect.size.0;
+        }
+
+        let dim = (self.direction, self.len());
         let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(rect, dim, &mut self.data);
 
-        for (n, child) in self.widgets.iter_mut().enumerate() {
+        let mut n = 0;
+        loop {
+            assert!(n < self.widgets.len());
             let align = AlignHints::default();
-            child.set_rect(setter.child_rect(&mut self.data, n), align);
+            self.widgets[n].set_rect(setter.child_rect(&mut self.data, n << 1), align);
+
+            if n >= self.handles.len() {
+                break;
+            }
+            let align = AlignHints::default();
+            self.handles[n].set_rect(setter.child_rect(&mut self.data, (n << 1) + 1), align);
+            let _ = self.handles[n].set_size_and_offset(self.handle_size, Coord::ZERO);
+            n += 1;
         }
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        // find_child should gracefully handle the case that a coord is between
+        // widgets, so there's no harm (and only a small performance loss) in
+        // calling it twice.
+
         let solver = layout::RowPositionSolver::new(self.direction);
         if let Some(child) = solver.find_child(&self.widgets, coord) {
+            return child.find_id(coord);
+        }
+
+        let solver = layout::RowPositionSolver::new(self.direction);
+        if let Some(child) = solver.find_child(&self.handles, coord) {
             return child.find_id(coord);
         }
 
@@ -146,18 +188,40 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+        // as with find_id, there's not much harm in invoking the solver twice
+
         let solver = layout::RowPositionSolver::new(self.direction);
         solver.for_children(&self.widgets, draw_handle.target_rect(), |w| {
             w.draw(draw_handle, mgr)
         });
+
+        let solver = layout::RowPositionSolver::new(self.direction);
+        solver.for_children(&self.handles, draw_handle.target_rect(), |w| {
+            draw_handle.separator(w.rect())
+        });
     }
 }
 
-impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
+impl<D: Directional, W: Widget> event::EventHandler for Splitter<D, W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        for child in &mut self.widgets {
-            if id <= child.id() {
-                return child.event(mgr, id, event);
+        if self.widgets.len() > 0 {
+            assert!(self.handles.len() + 1 == self.widgets.len());
+            let mut n = 0;
+            loop {
+                assert!(n < self.widgets.len());
+                if id <= self.widgets[n].id() {
+                    return self.widgets[n].event(mgr, id, event);
+                }
+
+                if n >= self.handles.len() {
+                    break;
+                }
+                if id <= self.handles[n].id() {
+                    // TODO: resize
+                    let _ = self.handles[n].event(mgr, id, event);
+                    return Response::None;
+                }
+                n += 1;
             }
         }
 
@@ -166,28 +230,28 @@ impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
     }
 }
 
-impl<D: Directional + Default, W: Widget> List<D, W> {
+impl<D: Directional + Default, W: Widget> Splitter<D, W> {
     /// Construct a new instance
     ///
     /// This constructor is available where the direction is determined by the
     /// type: for `D: Directional + Default`. In other cases, use
-    /// [`List::new_with_direction`].
+    /// [`Splitter::new_with_direction`].
     pub fn new(widgets: Vec<W>) -> Self {
-        List {
-            core: Default::default(),
-            widgets,
-            data: Default::default(),
-            direction: Default::default(),
-        }
+        let direction = D::default();
+        Self::new_with_direction(direction, widgets)
     }
 }
 
-impl<D: Directional, W: Widget> List<D, W> {
+impl<D: Directional, W: Widget> Splitter<D, W> {
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
-        List {
+        let mut handles = Vec::new();
+        handles.resize_with(widgets.len().saturating_sub(1), || DragHandle::new());
+        Splitter {
             core: Default::default(),
             widgets,
+            handles,
+            handle_size: Size::ZERO,
             data: Default::default(),
             direction,
         }
@@ -198,7 +262,7 @@ impl<D: Directional, W: Widget> List<D, W> {
         self.widgets.is_empty()
     }
 
-    /// Returns the number of child widgets
+    /// Returns the number of child widgets (excluding handles)
     pub fn len(&self) -> usize {
         self.widgets.len()
     }
@@ -212,6 +276,7 @@ impl<D: Directional, W: Widget> List<D, W> {
     /// into the list. See documentation of [`Vec::reserve`].
     pub fn reserve(&mut self, additional: usize) {
         self.widgets.reserve(additional);
+        self.handles.reserve(additional);
     }
 
     /// Remove all child widgets
@@ -224,6 +289,7 @@ impl<D: Directional, W: Widget> List<D, W> {
             false => TkAction::Reconfigure,
         };
         self.widgets.clear();
+        self.handles.clear();
         action
     }
 
@@ -231,6 +297,9 @@ impl<D: Directional, W: Widget> List<D, W> {
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn push(&mut self, widget: W) -> TkAction {
+        if !self.widgets.is_empty() {
+            self.handles.push(DragHandle::new());
+        }
         self.widgets.push(widget);
         TkAction::Reconfigure
     }
@@ -247,6 +316,7 @@ impl<D: Directional, W: Widget> List<D, W> {
             true => TkAction::None,
             false => TkAction::Reconfigure,
         };
+        let _ = self.handles.pop();
         (self.widgets.pop(), action)
     }
 
@@ -256,6 +326,9 @@ impl<D: Directional, W: Widget> List<D, W> {
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn insert(&mut self, index: usize, widget: W) -> TkAction {
+        if !self.widgets.is_empty() {
+            self.handles.push(DragHandle::new());
+        }
         self.widgets.insert(index, widget);
         TkAction::Reconfigure
     }
@@ -266,6 +339,7 @@ impl<D: Directional, W: Widget> List<D, W> {
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn remove(&mut self, index: usize) -> (W, TkAction) {
+        let _ = self.handles.pop();
         let r = self.widgets.remove(index);
         (r, TkAction::Reconfigure)
     }
@@ -290,6 +364,8 @@ impl<D: Directional, W: Widget> List<D, W> {
     pub fn extend<T: IntoIterator<Item = W>>(&mut self, iter: T) -> TkAction {
         let len = self.widgets.len();
         self.widgets.extend(iter);
+        self.handles
+            .resize_with(self.widgets.len().saturating_sub(1), || DragHandle::new());
         match len == self.widgets.len() {
             true => TkAction::None,
             false => TkAction::Reconfigure,
@@ -311,6 +387,8 @@ impl<D: Directional, W: Widget> List<D, W> {
                 self.widgets.push(f(i));
             }
         }
+        self.handles
+            .resize_with(self.widgets.len().saturating_sub(1), || DragHandle::new());
         TkAction::Reconfigure
     }
 
@@ -323,6 +401,8 @@ impl<D: Directional, W: Widget> List<D, W> {
     pub fn retain<F: FnMut(&W) -> bool>(&mut self, f: F) -> TkAction {
         let len = self.widgets.len();
         self.widgets.retain(f);
+        self.handles
+            .resize_with(self.widgets.len().saturating_sub(1), || DragHandle::new());
         match len == self.widgets.len() {
             true => TkAction::None,
             false => TkAction::Reconfigure,
@@ -330,7 +410,7 @@ impl<D: Directional, W: Widget> List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> Index<usize> for List<D, W> {
+impl<D: Directional, W: Widget> Index<usize> for Splitter<D, W> {
     type Output = W;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -338,7 +418,7 @@ impl<D: Directional, W: Widget> Index<usize> for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> IndexMut<usize> for List<D, W> {
+impl<D: Directional, W: Widget> IndexMut<usize> for Splitter<D, W> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.widgets[index]
     }
