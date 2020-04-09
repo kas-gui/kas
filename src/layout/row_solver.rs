@@ -38,7 +38,7 @@ impl<S: RowStorage> RowSolver<S> {
 
         if axis.has_fixed && axis_is_vertical {
             let (rules, widths) = storage.rules_and_widths();
-            SizeRules::solve_seq(widths, rules, axis.other_axis);
+            SizeRules::solve_seq_total(widths, rules, axis.other_axis);
         }
 
         RowSolver {
@@ -123,7 +123,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
 
         if len > 0 {
             let (rules, widths) = storage.rules_and_widths();
-            SizeRules::solve_seq(widths, rules, width);
+            SizeRules::solve_seq_total(widths, rules, width);
             if dir.is_reversed() {
                 offsets.as_mut()[len - 1] = pos as u32;
                 for i in (0..(len - 1)).rev() {

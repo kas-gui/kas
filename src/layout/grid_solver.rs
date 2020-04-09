@@ -62,10 +62,10 @@ impl<CSR: Default, RSR: Default, S: GridStorage> GridSolver<CSR, RSR, S> {
         if self.axis.has_fixed {
             if self.axis.is_vertical() {
                 let (rules, widths) = storage.rules_and_widths();
-                SizeRules::solve_seq(widths, rules, self.axis.other_axis);
+                SizeRules::solve_seq_total(widths, rules, self.axis.other_axis);
             } else {
                 let (rules, heights) = storage.rules_and_heights();
-                SizeRules::solve_seq(heights, rules, self.axis.other_axis);
+                SizeRules::solve_seq_total(heights, rules, self.axis.other_axis);
             }
         }
 
@@ -218,7 +218,7 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
 
         if cols > 0 {
             let (rules, widths) = storage.rules_and_widths();
-            SizeRules::solve_seq(widths, rules, rect.size.0);
+            SizeRules::solve_seq_total(widths, rules, rect.size.0);
             w_offsets.as_mut()[0] = 0;
             for i in 1..w_offsets.as_mut().len() {
                 let i1 = i - 1;
@@ -231,7 +231,7 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
 
         if rows > 0 {
             let (rules, heights) = storage.rules_and_heights();
-            SizeRules::solve_seq(heights, rules, rect.size.1);
+            SizeRules::solve_seq_total(heights, rules, rect.size.1);
             h_offsets.as_mut()[0] = 0;
             for i in 1..h_offsets.as_mut().len() {
                 let i1 = i - 1;

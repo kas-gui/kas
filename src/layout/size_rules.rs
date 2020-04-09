@@ -321,6 +321,11 @@ impl SizeRules {
         }
     }
 
+    /// Return the result of appending all given ranges
+    pub fn sum(range: &[SizeRules]) -> SizeRules {
+        range.iter().sum()
+    }
+
     /// Return the result of appending all given ranges (min only)
     ///
     /// This is a specialised version of sum: only the minimum is calculated
@@ -356,6 +361,24 @@ impl SizeRules {
 
     /// Solve a sequence of rules
     ///
+    /// This is the same as [`SizeRules::solve_seq`] except that it is assumed
+    /// the rules' sum is included as the last element of rules.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[inline]
+    pub fn solve_seq_total(out: &mut [u32], rules: &[Self], target: u32) {
+        let len = rules.len() - 1;
+        let total = rules[len];
+        let rules = &rules[0..len];
+        debug_assert_eq!(
+            SizeRules::sum(rules),
+            total,
+            "solve_seq_total: invalid input (missing configure or invalid usage?)"
+        );
+        Self::solve_seq_(out, rules, total, target);
+    }
+
+    /// Solve a sequence of rules
+    ///
     /// Given a sequence of width (or height) `rules` from children and a
     /// `target` size, find an appropriate size for each child.
     /// The method attempts to ensure that:
@@ -366,8 +389,7 @@ impl SizeRules {
     /// -   Excess space is divided evenly among members with the highest
     ///     stretch policy
     ///
-    /// Input requirements: `rules.len() == out.len() + 1`, where the last value
-    /// in `rules` is a summation over all prior rules.
+    /// Input requirements: `rules.len() == out.len()`.
     ///
     /// This method is idempotent: given satisfactory input widths, these will
     /// be preserved. Moreover, this method attempts to ensure that if target
@@ -380,20 +402,20 @@ impl SizeRules {
     /// previous entries which does respect margins.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     pub fn solve_seq(out: &mut [u32], rules: &[Self], target: u32) {
+        let total = SizeRules::sum(rules);
+        Self::solve_seq_(out, rules, total, target);
+    }
+
+    fn solve_seq_(out: &mut [u32], rules: &[Self], total: Self, target: u32) {
         type Targets = SmallVec<[u32; 16]>;
         #[allow(non_snake_case)]
         let N = out.len();
-        assert!(rules.len() == N + 1);
-        debug_assert_eq!(
-            rules[N],
-            rules[0..N].iter().sum(),
-            "solve_seq: invalid input (missing configure or invalid usage?)"
-        );
+        assert_eq!(rules.len(), N);
         if N == 0 {
             return;
         }
 
-        if target > rules[N].a {
+        if target > total.a {
             // All minimum sizes can be met.
             out[0] = out[0].max(rules[0].a);
             let mut margin_sum = 0;
@@ -462,7 +484,7 @@ impl SizeRules {
                     // not be enough, we also count the number with highest
                     // stretch factor and how far these are over their ideal.
                     sum = 0;
-                    let highest_stretch = rules[N].stretch;
+                    let highest_stretch = total.stretch;
                     let mut targets = Targets::new();
                     let mut over = 0;
                     for i in 0..N {
@@ -584,7 +606,7 @@ impl SizeRules {
                         }
                     }
                     if sum > target {
-                        let avail = target + margin_sum - rules[N].a;
+                        let avail = target + margin_sum - total.a;
                         reduce_targets(out, &mut targets, |i| rules[i].a, avail);
                     }
                     debug_assert_eq!(target, (0..N).fold(0, |x, i| x + out[i]));
@@ -593,7 +615,7 @@ impl SizeRules {
         } else {
             // Below minimum size: in this case we can ignore prior contents
             // of `out`.We reduce the maximum allowed size to hit our target.
-            let mut excess = rules[N].a - target;
+            let mut excess = total.a - target;
 
             let mut largest = 0;
             let mut num_equal = 0;
