@@ -92,42 +92,35 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[handler(msg = VoidMsg)]
         struct {
             #[widget(halign=centre)] _ = Label::new("Widget Gallery"),
-            #[widget(handler=set_theme)] _ = make_widget! {
+            #[widget] _ = make_widget! {
                 #[layout(row)]
-                #[handler(msg = &'static str)]
+                #[handler(msg = VoidMsg)]
                 struct {
-                    #[widget] _ = TextButton::new("Flat", "flat"),
-                    #[widget] _ = TextButton::new("Shaded", "shaded"),
+                    #[widget(handler=set_theme)] _: ComboBox<&'static str> =
+                        [("Shaded theme", "shaded"), ("Flat theme", "flat")].iter().cloned().collect(),
+                    #[widget(handler=set_colour)] _: ComboBox<&'static str> =
+                        [("Default", "default"), ("Light", "light"), ("Dark", "dark")].iter().cloned().collect(),
                 }
-            },
-            #[widget(handler=set_colour)] _ = make_widget! {
-                #[layout(row)]
-                #[handler(msg = &'static str)]
-                struct {
-                    #[widget] _ = TextButton::new("Default", "default"),
-                    #[widget] _ = TextButton::new("Light", "light"),
-                    #[widget] _ = TextButton::new("Dark", "dark"),
-                }
-            },
-        }
-        impl {
-            fn set_theme(&mut self, mgr: &mut Manager, name: &'static str)
-                -> VoidResponse
-            {
-                println!("Theme: {:?}", name);
-                #[cfg(not(feature = "stack_dst"))]
-                println!("Warning: switching themes requires feature 'stack_dst'");
+                impl {
+                    fn set_theme(&mut self, mgr: &mut Manager, name: &'static str)
+                        -> VoidResponse
+                    {
+                        println!("Theme: {:?}", name);
+                        #[cfg(not(feature = "stack_dst"))]
+                        println!("Warning: switching themes requires feature 'stack_dst'");
 
-                mgr.adjust_theme(|theme| theme.set_theme(name));
-                VoidResponse::None
-            }
-            fn set_colour(&mut self, mgr: &mut Manager, name: &'static str)
-                -> VoidResponse
-            {
-                println!("Colour scheme: {:?}", name);
-                mgr.adjust_theme(|theme| theme.set_colours(name));
-                VoidResponse::None
-            }
+                        mgr.adjust_theme(|theme| theme.set_theme(name));
+                        VoidResponse::None
+                    }
+                    fn set_colour(&mut self, mgr: &mut Manager, name: &'static str)
+                        -> VoidResponse
+                    {
+                        println!("Colour scheme: {:?}", name);
+                        mgr.adjust_theme(|theme| theme.set_colours(name));
+                        VoidResponse::None
+                    }
+                }
+            },
         }
     });
 
