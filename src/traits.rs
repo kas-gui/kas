@@ -62,6 +62,9 @@ pub trait WidgetCore: fmt::Debug {
     ///
     /// If disabled, a widget should not respond to input and should appear
     /// greyed out.
+    ///
+    /// The disabled status is inherited by children: events should not be
+    /// passed to them, and they should also be drawn greyed out.
     #[inline]
     fn set_disabled(&mut self, disabled: bool) -> TkAction {
         self.core_data_mut().disabled = disabled;
@@ -85,12 +88,15 @@ pub trait WidgetCore: fmt::Debug {
 
     /// Construct [`InputState`]
     ///
+    /// The `disabled` flag is inherited from parents. [`InputState::disabled`]
+    /// will be true if either `disabled` or `self.is_disabled()` are true.
+    ///
     /// The error state defaults to `false` since most widgets don't support
     /// this.
-    fn input_state(&self, mgr: &ManagerState) -> InputState {
+    fn input_state(&self, mgr: &ManagerState, disabled: bool) -> InputState {
         let id = self.core_data().id;
         InputState {
-            disabled: self.core_data().disabled,
+            disabled: self.core_data().disabled || disabled,
             error: false,
             hover: mgr.is_hovered(id),
             depress: mgr.is_depressed(id),
@@ -310,7 +316,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState);
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool);
 }
 
 /// Widget trait

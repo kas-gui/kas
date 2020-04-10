@@ -100,8 +100,8 @@ impl<M> Layout for RadioBoxBare<M> {
         self.core.rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
-        draw_handle.radiobox(self.core.rect, self.state, self.input_state(mgr));
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        draw_handle.radiobox(self.core.rect, self.state, self.input_state(mgr, disabled));
     }
 }
 

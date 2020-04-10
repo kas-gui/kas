@@ -85,9 +85,10 @@ impl<W: Widget> Layout for Stack<W> {
         None
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        let disabled = disabled || self.is_disabled();
         if self.active < self.widgets.len() {
-            self.widgets[self.active].draw(draw_handle, mgr);
+            self.widgets[self.active].draw(draw_handle, mgr, disabled);
         }
     }
 }

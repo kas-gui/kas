@@ -59,7 +59,7 @@ impl Layout for Clock {
         self.font_scale = size.1 as f32 * 0.125;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
         let col_face = Colour::grey(0.4);
         let col_hands = Colour::new(0.2, 0.2, 0.4);
         let col_secs = Colour::new(0.6, 0.2, 0.2);

@@ -153,11 +153,12 @@ impl<W: Widget> Layout for Window<W> {
     }
 
     #[inline]
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
-        self.w.draw(draw_handle, mgr);
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        let disabled = disabled || self.is_disabled();
+        self.w.draw(draw_handle, mgr, disabled);
         for popup in &self.popups {
             draw_handle.clip_region(self.core.rect, Coord::ZERO, &mut |draw_handle| {
-                popup.1.overlay.draw(draw_handle, mgr);
+                popup.1.overlay.draw(draw_handle, mgr, disabled);
             });
         }
     }

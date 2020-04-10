@@ -37,7 +37,7 @@ impl Layout for Separator {
         SizeRules::extract_fixed(axis.is_vertical(), size_handle.frame(), Default::default())
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
         draw_handle.separator(self.core.rect);
     }
 }

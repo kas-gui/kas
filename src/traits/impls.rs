@@ -84,8 +84,8 @@ impl<M> Layout for Box<dyn Widget<Msg = M>> {
         self.as_ref().find_id(coord)
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
-        self.as_ref().draw(draw_handle, mgr);
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        self.as_ref().draw(draw_handle, mgr, disabled);
     }
 }
 

@@ -337,7 +337,7 @@ where
                 .theme
                 .draw_handle(&mut self.draw, &mut self.theme_window, rect)
         };
-        self.widget.draw(&mut draw_handle, &self.mgr);
+        self.widget.draw(&mut draw_handle, &self.mgr, false);
         drop(draw_handle);
 
         let frame = self.swap_chain.get_next_texture();

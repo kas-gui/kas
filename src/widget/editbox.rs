@@ -194,13 +194,13 @@ impl<G: 'static> Layout for EditBox<G> {
         self.text_rect.size = rect.size - self.frame_size;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         let class = if self.multi_line {
             TextClass::EditMulti
         } else {
             TextClass::Edit
         };
-        let mut input_state = self.input_state(mgr);
+        let mut input_state = self.input_state(mgr, disabled);
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
         let align = (Align::Begin, Align::Begin);

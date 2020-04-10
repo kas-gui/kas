@@ -154,17 +154,21 @@ impl ThemeColours {
 
     /// Get colour for a checkbox mark, depending on state
     pub fn check_mark_state(&self, state: InputState, checked: bool) -> Option<Colour> {
-        if state.disabled {
-            Some(self.button_disabled)
+        Some(if checked {
+            if state.disabled {
+                self.button_disabled
+            } else if state.depress {
+                self.button_depressed
+            } else if state.hover {
+                self.button_highlighted
+            } else {
+                self.checkbox
+            }
         } else if state.depress {
-            Some(self.button_depressed)
-        } else if checked && state.hover {
-            Some(self.button_highlighted)
-        } else if checked {
-            Some(self.checkbox)
+            self.button_depressed
         } else {
-            None
-        }
+            return None;
+        })
     }
 
     /// Get colour of a scrollbar, depending on state

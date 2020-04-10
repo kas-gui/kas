@@ -81,7 +81,9 @@
 //!     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
 //!         todo!()
 //!     }
-//!     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+//!     fn draw(&self, draw_handle: &mut dyn DrawHandle,
+//!         mgr: &event::ManagerState, disabled: bool)
+//!     {
 //!         todo!()
 //!     }
 //! }

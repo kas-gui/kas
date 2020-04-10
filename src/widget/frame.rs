@@ -81,9 +81,10 @@ impl<W: Widget> Layout for Frame<W> {
         }
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.outer_frame(self.core_data().rect);
-        self.child.draw(draw_handle, mgr);
+        let disabled = disabled || self.is_disabled();
+        self.child.draw(draw_handle, mgr, disabled);
     }
 }
 

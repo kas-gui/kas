@@ -196,12 +196,13 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         Some(self.id())
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         // as with find_id, there's not much harm in invoking the solver twice
 
         let solver = layout::RowPositionSolver::new(self.direction);
+        let disabled = disabled || self.is_disabled();
         solver.for_children(&self.widgets, draw_handle.target_rect(), |w| {
-            w.draw(draw_handle, mgr)
+            w.draw(draw_handle, mgr, disabled)
         });
 
         let solver = layout::RowPositionSolver::new(self.direction);

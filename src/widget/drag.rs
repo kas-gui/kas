@@ -148,7 +148,7 @@ impl Layout for DragHandle {
         self.track = rect;
     }
 
-    fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState) {}
+    fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {}
 }
 
 impl event::EventHandler for DragHandle {
