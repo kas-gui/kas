@@ -19,6 +19,8 @@ pub struct ThemeColours {
     pub frame: Colour,
     /// Background colour of `EditBox`
     pub text_area: Colour,
+    /// Background colour of `EditBox` when marked erroneous
+    pub bg_error: Colour,
     /// Text colour in an `EditBox`
     pub text: Colour,
     /// Text colour in a `Label`
@@ -60,6 +62,7 @@ impl ThemeColours {
             background: Colour::grey(0.8),
             frame: Colour::grey(0.7),
             text_area: Colour::grey(1.0),
+            bg_error: Colour::new(1.0, 0.5, 0.5),
             text: Colour::grey(0.0),
             label_text: Colour::grey(0.0),
             button_text: Colour::grey(1.0),
@@ -77,6 +80,7 @@ impl ThemeColours {
             background: Colour::grey(0.9),
             frame: Colour::new(0.8, 0.8, 0.9),
             text_area: Colour::grey(1.0),
+            bg_error: Colour::new(1.0, 0.5, 0.5),
             text: Colour::grey(0.0),
             label_text: Colour::grey(0.0),
             button_text: Colour::grey(0.0),
@@ -94,6 +98,7 @@ impl ThemeColours {
             background: Colour::grey(0.2),
             frame: Colour::grey(0.4),
             text_area: Colour::grey(0.1),
+            bg_error: Colour::new(1.0, 0.5, 0.5),
             text: Colour::grey(1.0),
             label_text: Colour::grey(1.0),
             button_text: Colour::grey(1.0),

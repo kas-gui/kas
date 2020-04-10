@@ -136,12 +136,16 @@ impl ThemeApi for FlatTheme {
 impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
     /// Draw an edit region with optional navigation highlight.
     /// Return the inner rect.
-    fn draw_edit_region(&mut self, outer: Rect, nav_col: Option<Colour>) -> Quad {
+    ///
+    /// - `outer`: define position via outer rect
+    /// - `bg_col`: colour of background
+    /// - `nav_col`: colour of navigation highlight, if visible
+    fn draw_edit_region(&mut self, outer: Rect, bg_col: Colour, nav_col: Option<Colour>) -> Quad {
         let outer = Quad::from(outer);
         let inner1 = outer.shrink(self.window.dims.frame as f32 / 2.0);
         let inner2 = outer.shrink(self.window.dims.frame as f32);
 
-        self.draw.rect(self.pass, inner1, self.cols.text_area);
+        self.draw.rect(self.pass, inner1, bg_col);
 
         // We draw over the inner rect, taking advantage of the fact that
         // rounded frames get drawn after flat rects.
@@ -246,11 +250,16 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         }
     }
 
-    fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
-        self.draw_edit_region(rect + self.offset, self.cols.nav_region(highlights));
+    fn edit_box(&mut self, rect: Rect, highlights: HighlightState, has_error: bool) {
+        let bg_col = match has_error {
+            false => self.cols.text_area,
+            true => self.cols.bg_error,
+        };
+        self.draw_edit_region(rect + self.offset, bg_col, self.cols.nav_region(highlights));
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
+        let bg_col = self.cols.text_area;
         let nav_col = self.cols.nav_region(highlights).or_else(|| {
             if checked {
                 Some(self.cols.text_area)
@@ -259,7 +268,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             }
         });
 
-        let inner = self.draw_edit_region(rect + self.offset, nav_col);
+        let inner = self.draw_edit_region(rect + self.offset, bg_col, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(highlights, checked) {
             let radius = inner.size().sum() * (1.0 / 16.0);
@@ -273,6 +282,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     }
 
     fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
+        let bg_col = self.cols.text_area;
         let nav_col = self.cols.nav_region(highlights).or_else(|| {
             if checked {
                 Some(self.cols.text_area)
@@ -281,7 +291,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             }
         });
 
-        let inner = self.draw_edit_region(rect + self.offset, nav_col);
+        let inner = self.draw_edit_region(rect + self.offset, bg_col, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(highlights, checked) {
             let inner = inner.shrink(self.window.dims.margin as f32);

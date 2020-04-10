@@ -133,6 +133,7 @@ pub struct EditBox<G: 'static> {
     text: String,
     old_state: Option<String>,
     last_edit: LastEdit,
+    error_state: bool,
     /// The associated [`EditGuard`] implementation
     pub guard: G,
 }
@@ -200,7 +201,7 @@ impl<G: 'static> Layout for EditBox<G> {
             TextClass::Edit
         };
         let highlights = mgr.highlight_state(self.id());
-        draw_handle.edit_box(self.core.rect, highlights);
+        draw_handle.edit_box(self.core.rect, highlights, self.error_state);
         let align = (Align::Begin, Align::Begin);
         let mut text = &self.text;
         let mut _string;
@@ -226,6 +227,7 @@ impl EditBox<EditVoid> {
             text: text.into(),
             old_state: None,
             last_edit: LastEdit::None,
+            error_state: false,
             guard: EditVoid,
         }
     }
@@ -245,6 +247,7 @@ impl EditBox<EditVoid> {
             text: self.text,
             old_state: self.old_state,
             last_edit: self.last_edit,
+            error_state: self.error_state,
             guard,
         }
     }
@@ -296,6 +299,19 @@ impl<G> EditBox<G> {
     pub fn multi_line(mut self, multi_line: bool) -> Self {
         self.multi_line = multi_line;
         self
+    }
+
+    /// Get whether the input state is erroneous
+    pub fn has_error(&self) -> bool {
+        self.error_state
+    }
+
+    /// Set the error state
+    ///
+    /// When true, the input field's background is drawn red.
+    // TODO: possibly change type to Option<CowString> and display the error
+    pub fn set_error_state(&mut self, error_state: bool) {
+        self.error_state = error_state;
     }
 
     fn received_char(&mut self, mgr: &mut Manager, c: char) -> EditAction {

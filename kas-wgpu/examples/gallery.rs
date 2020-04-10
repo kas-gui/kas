@@ -6,6 +6,7 @@
 //! Gallery of all widgets
 #![feature(proc_macro_hygiene)]
 
+use kas::class::HasText;
 use kas::event::{Manager, Response, UpdateHandle, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::*;
@@ -23,6 +24,21 @@ enum Item {
     Popup,
 }
 
+struct Guard;
+impl EditGuard for Guard {
+    type Msg = Item;
+
+    fn activate(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
+        Some(Item::Edit(edit.get_text().to_string()))
+    }
+
+    fn edit(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
+        // 7a is the colour of *magic*!
+        edit.set_error_state(edit.get_text().len() % (7 + 1) == 0);
+        None
+    }
+}
+
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
@@ -34,8 +50,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=0, col=0)] _ = Label::new("Label"),
             #[widget(row=0, col=1)] _ = Label::new("Hello world"),
             #[widget(row=1, col=0)] _ = Label::new("EditBox"),
-            #[widget(row=1, col=1)] _ = EditBox::new("edit me")
-                .on_activate(|text| Some(Item::Edit(text.to_string()))),
+            #[widget(row=1, col=1)] _ = EditBox::new("edit me").with_guard(Guard),
             #[widget(row=2, col=0)] _ = Label::new("TextButton"),
             #[widget(row=2, col=1)] _ = TextButton::new("Press me", Item::Button),
             #[widget(row=3, col=0)] _ = Label::new("CheckBox"),

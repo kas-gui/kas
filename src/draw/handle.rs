@@ -174,7 +174,7 @@ pub trait DrawHandle {
     fn button(&mut self, rect: Rect, highlights: HighlightState);
 
     /// Draw edit box sides, background and margin-area highlight
-    fn edit_box(&mut self, rect: Rect, highlights: HighlightState);
+    fn edit_box(&mut self, rect: Rect, highlights: HighlightState, has_error: bool);
 
     /// Draw UI element: checkbox
     ///
@@ -317,8 +317,8 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn button(&mut self, rect: Rect, highlights: HighlightState) {
         self.deref_mut().button(rect, highlights)
     }
-    fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
-        self.deref_mut().edit_box(rect, highlights)
+    fn edit_box(&mut self, rect: Rect, highlights: HighlightState, has_error: bool) {
+        self.deref_mut().edit_box(rect, highlights, has_error)
     }
     fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
         self.deref_mut().checkbox(rect, checked, highlights)
@@ -360,8 +360,8 @@ where
     fn button(&mut self, rect: Rect, highlights: HighlightState) {
         self.deref_mut().button(rect, highlights)
     }
-    fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
-        self.deref_mut().edit_box(rect, highlights)
+    fn edit_box(&mut self, rect: Rect, highlights: HighlightState, has_error: bool) {
+        self.deref_mut().edit_box(rect, highlights, has_error)
     }
     fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
         self.deref_mut().checkbox(rect, checked, highlights)
