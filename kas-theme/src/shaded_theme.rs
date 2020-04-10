@@ -255,22 +255,13 @@ where
     }
 
     fn edit_box(&mut self, rect: Rect, state: InputState) {
-        let bg_col = match state.error {
-            false => self.cols.text_area,
-            true => self.cols.bg_error,
-        };
+        let bg_col = self.cols.bg_col(state);
         self.draw_edit_region(rect + self.offset, bg_col, self.cols.nav_region(state));
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
-        let bg_col = self.cols.text_area;
-        let nav_col = self.cols.nav_region(state).or_else(|| {
-            if checked {
-                Some(self.cols.text_area)
-            } else {
-                None
-            }
-        });
+        let bg_col = self.cols.bg_col(state);
+        let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
         let inner = self.draw_edit_region(rect + self.offset, bg_col, nav_col);
 
@@ -280,14 +271,8 @@ where
     }
 
     fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
-        let bg_col = self.cols.text_area;
-        let nav_col = self.cols.nav_region(state).or_else(|| {
-            if checked {
-                Some(self.cols.text_area)
-            } else {
-                None
-            }
-        });
+        let bg_col = self.cols.bg_col(state);
+        let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
         let inner = self.draw_edit_region(rect + self.offset, bg_col, nav_col);
 
