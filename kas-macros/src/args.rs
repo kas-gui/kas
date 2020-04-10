@@ -8,12 +8,14 @@ use std::collections::HashMap;
 use proc_macro2::{Punct, Spacing, Span, TokenStream, TokenTree};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::parse::{Error, Parse, ParseStream, Result};
+use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
-use syn::token::{Brace, Colon, Comma, Eq, Impl, Paren};
+use syn::token::{Brace, Colon, Comma, Eq, For, Impl, Paren};
 use syn::{braced, bracketed, parenthesized, parse_quote};
 use syn::{
-    Attribute, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed, Generics, Ident, Index,
-    Lit, Member, Token, Type, TypePath, TypeTraitObject,
+    Attribute, ConstParam, Data, DeriveInput, Expr, Fields, FieldsNamed, FieldsUnnamed,
+    GenericParam, Generics, Ident, Index, Lifetime, LifetimeDef, Lit, Member, Token, Type,
+    TypeParam, TypePath, TypeTraitObject,
 };
 
 #[derive(Debug)]
@@ -776,6 +778,8 @@ impl ToTokens for HandlerArgs {
 
 pub enum ChildType {
     Fixed(Type), // fixed type
+    // A given type using generics internally
+    InternGeneric(Punctuated<GenericParam, Comma>, Type),
     // Generic, optionally with specified handler msg type,
     // optionally with an additional trait bound.
     Generic(Option<Type>, Option<TypeTraitObject>),
@@ -897,7 +901,57 @@ impl Parse for WidgetField {
         // Note: Colon matches `::` but that results in confusing error messages
         let mut ty = if input.peek(Colon) && !input.peek2(Colon) {
             let _: Colon = input.parse()?;
-            if input.peek(Impl) {
+            if input.peek(For) {
+                // internal generic
+                let _: For = input.parse()?;
+
+                // copied from syn::Generic's Parse impl
+                let _: Token![<] = input.parse()?;
+
+                let mut params = Punctuated::new();
+                let mut allow_lifetime_param = true;
+                let mut allow_type_param = true;
+                loop {
+                    if input.peek(Token![>]) {
+                        break;
+                    }
+
+                    let attrs = input.call(Attribute::parse_outer)?;
+                    let lookahead = input.lookahead1();
+                    if allow_lifetime_param && lookahead.peek(Lifetime) {
+                        params.push_value(GenericParam::Lifetime(LifetimeDef {
+                            attrs,
+                            ..input.parse()?
+                        }));
+                    } else if allow_type_param && lookahead.peek(Ident) {
+                        allow_lifetime_param = false;
+                        params.push_value(GenericParam::Type(TypeParam {
+                            attrs,
+                            ..input.parse()?
+                        }));
+                    } else if lookahead.peek(Token![const]) {
+                        allow_lifetime_param = false;
+                        allow_type_param = false;
+                        params.push_value(GenericParam::Const(ConstParam {
+                            attrs,
+                            ..input.parse()?
+                        }));
+                    } else {
+                        return Err(lookahead.error());
+                    }
+
+                    if input.peek(Token![>]) {
+                        break;
+                    }
+                    let punct = input.parse()?;
+                    params.push_punct(punct);
+                }
+
+                let _: Token![>] = input.parse()?;
+
+                let ty = input.parse()?;
+                ChildType::InternGeneric(params, ty)
+            } else if input.peek(Impl) {
                 // generic with trait bound, optionally with msg type
                 let _: Impl = input.parse()?;
                 let bound: TypeTraitObject = input.parse()?;
@@ -919,10 +973,10 @@ impl Parse for WidgetField {
             }
             let msg: Type = input.parse()?;
             match &mut ty {
-                ChildType::Fixed(_) => {
+                ChildType::Fixed(_) | ChildType::InternGeneric(_, _) => {
                     return Err(Error::new(
                         arrow.span(),
-                        "cannot use `-> Msg` type restriction with fixed type",
+                        "cannot use `-> Msg` type restriction with fixed `type` or with `for<...> type`",
                     ));
                 }
                 ChildType::Generic(ref mut gen_r, _) => {

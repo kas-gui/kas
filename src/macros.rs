@@ -338,6 +338,13 @@
 //! #[widget] display: impl HasText = EditBox::new("editable"),
 //! ```
 //!
+//! Alternatively, generics can be introduced explicitly:
+//!
+//! ```nocompile
+//! #[widget] display: for<W: Widget<Msg = VoidMsg>> Frame<W> =
+//!     Frame::new(Label::new("example")),
+//! ```
+//!
 //! ### Implementations
 //!
 //! Now, back to the example above, we see attributes and an `impl` block:
