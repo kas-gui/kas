@@ -7,8 +7,7 @@
 
 use log::warn;
 
-use kas::draw::Colour;
-use kas::event::HighlightState;
+use kas::draw::{Colour, InputState};
 
 /// Provides standard theme colours
 #[derive(Clone, Debug)]
@@ -111,8 +110,8 @@ impl ThemeColours {
     }
 
     /// Get colour for navigation highlight region, if any
-    pub fn nav_region(&self, highlights: HighlightState) -> Option<Colour> {
-        if highlights.nav_focus {
+    pub fn nav_region(&self, state: InputState) -> Option<Colour> {
+        if state.nav_focus {
             Some(self.nav_focus)
         } else {
             None
@@ -120,10 +119,10 @@ impl ThemeColours {
     }
 
     /// Get colour for a button, depending on state
-    pub fn button_state(&self, highlights: HighlightState) -> Colour {
-        if highlights.depress {
+    pub fn button_state(&self, state: InputState) -> Colour {
+        if state.depress {
             self.button_depressed
-        } else if highlights.hover {
+        } else if state.hover {
             self.button_highlighted
         } else {
             self.button
@@ -131,10 +130,10 @@ impl ThemeColours {
     }
 
     /// Get colour for a checkbox mark, depending on state
-    pub fn check_mark_state(&self, highlights: HighlightState, checked: bool) -> Option<Colour> {
-        if highlights.depress {
+    pub fn check_mark_state(&self, state: InputState, checked: bool) -> Option<Colour> {
+        if state.depress {
             Some(self.button_depressed)
-        } else if checked && highlights.hover {
+        } else if checked && state.hover {
             Some(self.button_highlighted)
         } else if checked {
             Some(self.checkbox)
@@ -145,7 +144,7 @@ impl ThemeColours {
 
     /// Get colour of a scrollbar, depending on state
     #[inline]
-    pub fn scrollbar_state(&self, highlights: HighlightState) -> Colour {
-        self.button_state(highlights)
+    pub fn scrollbar_state(&self, state: InputState) -> Colour {
+        self.button_state(state)
     }
 }

@@ -62,7 +62,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
-        draw_handle.button(self.core.rect, mgr.highlight_state(self.id()));
+        draw_handle.button(self.core.rect, self.input_state(mgr));
         let align = (Align::Centre, Align::Centre);
         draw_handle.text(self.core.rect, self.text(), TextClass::Button, align);
     }

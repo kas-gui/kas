@@ -101,8 +101,7 @@ impl<M> Layout for RadioBoxBare<M> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
-        let highlights = mgr.highlight_state(self.id());
-        draw_handle.radiobox(self.core.rect, self.state, highlights);
+        draw_handle.radiobox(self.core.rect, self.state, self.input_state(mgr));
     }
 }
 

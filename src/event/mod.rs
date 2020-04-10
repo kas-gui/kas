@@ -76,7 +76,7 @@ pub use callback::Callback;
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
 pub use handler::{EventHandler, Handler};
-pub use manager::{GrabMode, HighlightState, Manager, ManagerState};
+pub use manager::{GrabMode, Manager, ManagerState};
 pub use response::Response;
 pub use update::UpdateHandle;
 

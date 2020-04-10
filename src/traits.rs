@@ -8,7 +8,7 @@
 use std::fmt;
 use std::ops::DerefMut;
 
-use crate::draw::{DrawHandle, SizeHandle};
+use crate::draw::{DrawHandle, InputState, SizeHandle};
 use crate::event::{self, Manager, ManagerState};
 use crate::geom::{Coord, Rect};
 use crate::layout::{self, AxisInfo, SizeRules};
@@ -82,6 +82,22 @@ pub trait WidgetCore: fmt::Debug {
     fn as_widget(&self) -> &dyn WidgetConfig;
     /// Erase type
     fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig;
+
+    /// Construct [`InputState`]
+    ///
+    /// The error state defaults to `false` since most widgets don't support
+    /// this.
+    fn input_state(&self, mgr: &ManagerState) -> InputState {
+        let id = self.core_data().id;
+        InputState {
+            disabled: self.core_data().disabled,
+            error: false,
+            hover: mgr.is_hovered(id),
+            depress: mgr.is_depressed(id),
+            nav_focus: mgr.nav_focus(id),
+            char_focus: mgr.char_focus(id),
+        }
+    }
 }
 
 /// Listing of a widget's children

@@ -10,9 +10,8 @@ use std::f32;
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
 use kas::draw::{
     self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, DrawTextShared, FontId,
-    Region, TextClass, TextProperties,
+    InputState, Region, TextClass, TextProperties,
 };
-use kas::event::HighlightState;
 use kas::geom::*;
 use kas::{Align, Direction, Directional, ThemeAction, ThemeApi};
 
@@ -156,15 +155,15 @@ impl<'a, D: Draw + DrawRounded + DrawShaded> DrawHandle<'a, D> {
     }
 
     /// Draw a handle (for slider, scrollbar)
-    fn draw_handle(&mut self, rect: Rect, highlights: HighlightState) {
+    fn draw_handle(&mut self, rect: Rect, state: InputState) {
         let outer = Quad::from(rect + self.offset);
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
-        let col = self.cols.scrollbar_state(highlights);
+        let col = self.cols.scrollbar_state(state);
         self.draw
             .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
 
-        if let Some(col) = self.cols.nav_region(highlights) {
+        if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(thickness / 4.0);
             self.draw
                 .rounded_frame(self.pass, outer, inner, 2.0 / 3.0, col);
@@ -240,32 +239,32 @@ where
         self.draw.text(rect + self.offset, text, props);
     }
 
-    fn button(&mut self, rect: Rect, highlights: HighlightState) {
+    fn button(&mut self, rect: Rect, state: InputState) {
         let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(self.window.dims.button_frame as f32);
-        let col = self.cols.button_state(highlights);
+        let col = self.cols.button_state(state);
 
         self.draw
             .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
         self.draw.rect(self.pass, inner, col);
 
-        if let Some(col) = self.cols.nav_region(highlights) {
+        if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(self.window.dims.button_frame as f32 / 3.0);
             self.draw.rounded_frame(self.pass, outer, inner, 0.5, col);
         }
     }
 
-    fn edit_box(&mut self, rect: Rect, highlights: HighlightState, has_error: bool) {
-        let bg_col = match has_error {
+    fn edit_box(&mut self, rect: Rect, state: InputState) {
+        let bg_col = match state.error {
             false => self.cols.text_area,
             true => self.cols.bg_error,
         };
-        self.draw_edit_region(rect + self.offset, bg_col, self.cols.nav_region(highlights));
+        self.draw_edit_region(rect + self.offset, bg_col, self.cols.nav_region(state));
     }
 
-    fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
+    fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
         let bg_col = self.cols.text_area;
-        let nav_col = self.cols.nav_region(highlights).or_else(|| {
+        let nav_col = self.cols.nav_region(state).or_else(|| {
             if checked {
                 Some(self.cols.text_area)
             } else {
@@ -275,14 +274,14 @@ where
 
         let inner = self.draw_edit_region(rect + self.offset, bg_col, nav_col);
 
-        if let Some(col) = self.cols.check_mark_state(highlights, checked) {
+        if let Some(col) = self.cols.check_mark_state(state, checked) {
             self.draw.shaded_square(self.pass, inner, (0.0, 0.4), col);
         }
     }
 
-    fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
+    fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
         let bg_col = self.cols.text_area;
-        let nav_col = self.cols.nav_region(highlights).or_else(|| {
+        let nav_col = self.cols.nav_region(state).or_else(|| {
             if checked {
                 Some(self.cols.text_area)
             } else {
@@ -292,12 +291,12 @@ where
 
         let inner = self.draw_edit_region(rect + self.offset, bg_col, nav_col);
 
-        if let Some(col) = self.cols.check_mark_state(highlights, checked) {
+        if let Some(col) = self.cols.check_mark_state(state, checked) {
             self.draw.shaded_circle(self.pass, inner, (0.0, 1.0), col);
         }
     }
 
-    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, _dir: Direction, highlights: HighlightState) {
+    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, _dir: Direction, state: InputState) {
         // track
         let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
@@ -307,10 +306,10 @@ where
             .shaded_round_frame(self.pass, outer, inner, norm, col);
 
         // handle
-        self.draw_handle(h_rect, highlights);
+        self.draw_handle(h_rect, state);
     }
 
-    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
         // track
         let mut outer = Quad::from(rect + self.offset);
         outer = match dir.is_horizontal() {
@@ -324,6 +323,6 @@ where
             .shaded_round_frame(self.pass, outer, inner, norm, col);
 
         // handle
-        self.draw_handle(h_rect, highlights);
+        self.draw_handle(h_rect, state);
     }
 }

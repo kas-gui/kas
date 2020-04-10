@@ -200,12 +200,13 @@ impl<G: 'static> Layout for EditBox<G> {
         } else {
             TextClass::Edit
         };
-        let highlights = mgr.highlight_state(self.id());
-        draw_handle.edit_box(self.core.rect, highlights, self.error_state);
+        let mut input_state = self.input_state(mgr);
+        input_state.error = self.error_state;
+        draw_handle.edit_box(self.core.rect, input_state);
         let align = (Align::Begin, Align::Begin);
         let mut text = &self.text;
         let mut _string;
-        if highlights.char_focus {
+        if input_state.char_focus {
             _string = self.text.clone();
             _string.push('|');
             text = &_string;

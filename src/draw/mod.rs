@@ -50,7 +50,7 @@ use std::any::Any;
 use crate::geom::{Quad, Rect, Vec2};
 
 pub use colour::Colour;
-pub use handle::{DrawHandle, SizeHandle, TextClass};
+pub use handle::{DrawHandle, InputState, SizeHandle, TextClass};
 pub use text::{DrawText, DrawTextShared, Font, FontId, TextProperties};
 
 /// Type returned by [`Draw::add_clip_region`].
