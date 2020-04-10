@@ -16,7 +16,7 @@ use crate::{AlignHints, WidgetConfig};
 /// A [`SizeRules`] solver for layouts
 ///
 /// Typically, a solver is invoked twice, once for each axis, before the
-/// corresponding [`RulesSetter`] is invoked. This is managed by [`solve`].
+/// corresponding [`RulesSetter`] is invoked. This is managed by [`SolveCache`].
 ///
 /// Implementations require access to storage able to persist between multiple
 /// solver runs and a subsequent setter run. This storage is of type
@@ -59,7 +59,16 @@ pub trait RulesSetter {
     fn maximal_rect_of(&mut self, storage: &mut Self::Storage, index: Self::ChildInfo) -> Rect;
 }
 
-/// Cache used by [`solve`] and [`solve_and_set`]
+/// Size solver
+///
+/// This struct is used to solve widget layout, read size constraints and
+/// cache the results until the next solver run.
+///
+/// [`SolveCache::find_constraints`] constructs an instance of this struct,
+/// solving for size constraints.
+///
+/// [`SolveCache::apply_rect`] accepts a [`Rect`], updates constraints as
+/// necessary and sets widget positions within this `rect`.
 pub struct SolveCache {
     // Technically we don't need to store min and ideal here, but it simplifies
     // the API for very little real cost.
@@ -99,7 +108,10 @@ impl SolveCache {
     }
 
     /// Calculate required size of widget
-    pub fn new(widget: &mut dyn WidgetConfig, size_handle: &mut dyn SizeHandle) -> Self {
+    pub fn find_constraints(
+        widget: &mut dyn WidgetConfig,
+        size_handle: &mut dyn SizeHandle,
+    ) -> Self {
         let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
         let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(w.ideal_size())));
 

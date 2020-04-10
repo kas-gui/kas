@@ -219,7 +219,7 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         for (_id, popup) in &mut self.popups {
             let c = self.w.find(popup.parent).unwrap().rect();
             let widget = popup.overlay.as_widget_mut();
-            let mut cache = layout::SolveCache::new(widget, size_handle);
+            let mut cache = layout::SolveCache::find_constraints(widget, size_handle);
             let ideal = cache.ideal(false);
             let m = cache.margins();
 
