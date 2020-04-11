@@ -1,0 +1,68 @@
+name: Rust
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  check:
+    name: Format and Doc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+      - run: rustup component add rustfmt
+      - uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+      - uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --all-features --no-deps
+      - uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --manifest-path kas-theme/Cargo.toml --all-features --no-deps
+      - uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --manifest-path kas-wgpu/Cargo.toml --all-features --no-deps
+        
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install latest nightly
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            override: true
+            components: rustfmt
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --manifest-path kas-macros/Cargo.toml --all-features
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --manifest-path kas-theme/Cargo.toml --all-features
+      - uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --manifest-path kas-wgpu/Cargo.toml --all-features
