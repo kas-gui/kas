@@ -58,8 +58,8 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
         // self.text_rect = ...
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
-        draw_handle.button(self.core.rect, mgr.highlight_state(self.id()));
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
         let align = (Align::Centre, Align::Centre);
         draw_handle.text(self.core.rect, &self.label, TextClass::Button, align);
     }

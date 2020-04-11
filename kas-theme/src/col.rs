@@ -7,8 +7,7 @@
 
 use log::warn;
 
-use kas::draw::Colour;
-use kas::event::HighlightState;
+use kas::draw::{Colour, InputState};
 
 /// Provides standard theme colours
 #[derive(Clone, Debug)]
@@ -18,7 +17,11 @@ pub struct ThemeColours {
     /// Colour for frames (not always used)
     pub frame: Colour,
     /// Background colour of `EditBox`
-    pub text_area: Colour,
+    pub bg: Colour,
+    /// Background colour of `EditBox` (disabled state)
+    pub bg_disabled: Colour,
+    /// Background colour of `EditBox` (error state)
+    pub bg_error: Colour,
     /// Text colour in an `EditBox`
     pub text: Colour,
     /// Text colour in a `Label`
@@ -29,6 +32,8 @@ pub struct ThemeColours {
     pub nav_focus: Colour,
     /// Colour of a `TextButton`
     pub button: Colour,
+    /// Colour of a `TextButton` (disabled state)
+    pub button_disabled: Colour,
     /// Colour of a `TextButton` when hovered by the mouse
     pub button_highlighted: Colour,
     /// Colour of a `TextButton` when depressed
@@ -59,12 +64,15 @@ impl ThemeColours {
         ThemeColours {
             background: Colour::grey(0.8),
             frame: Colour::grey(0.7),
-            text_area: Colour::grey(1.0),
+            bg: Colour::grey(1.0),
+            bg_disabled: Colour::grey(0.85),
+            bg_error: Colour::new(1.0, 0.5, 0.5),
             text: Colour::grey(0.0),
             label_text: Colour::grey(0.0),
             button_text: Colour::grey(1.0),
             nav_focus: Colour::new(1.0, 0.7, 0.5),
             button: Colour::new(0.2, 0.7, 1.0),
+            button_disabled: Colour::grey(0.5),
             button_highlighted: Colour::new(0.25, 0.8, 1.0),
             button_depressed: Colour::new(0.15, 0.525, 0.75),
             checkbox: Colour::new(0.2, 0.7, 1.0),
@@ -76,14 +84,17 @@ impl ThemeColours {
         ThemeColours {
             background: Colour::grey(0.9),
             frame: Colour::new(0.8, 0.8, 0.9),
-            text_area: Colour::grey(1.0),
+            bg: Colour::grey(1.0),
+            bg_disabled: Colour::grey(0.85),
+            bg_error: Colour::new(1.0, 0.5, 0.5),
             text: Colour::grey(0.0),
             label_text: Colour::grey(0.0),
             button_text: Colour::grey(0.0),
             nav_focus: Colour::new(1.0, 0.7, 0.5),
-            button: Colour::new(1.0, 1.0, 0.8),
-            button_highlighted: Colour::new(1.0, 1.0, 0.6),
-            button_depressed: Colour::new(0.8, 0.8, 0.6),
+            button: Colour::new(1.0, 0.9, 0.3),
+            button_disabled: Colour::grey(0.7),
+            button_highlighted: Colour::new(1.0, 0.93, 0.55),
+            button_depressed: Colour::new(0.9, 0.83, 0.45),
             checkbox: Colour::grey(0.4),
         }
     }
@@ -93,21 +104,35 @@ impl ThemeColours {
         ThemeColours {
             background: Colour::grey(0.2),
             frame: Colour::grey(0.4),
-            text_area: Colour::grey(0.1),
+            bg: Colour::grey(0.1),
+            bg_disabled: Colour::grey(0.3),
+            bg_error: Colour::new(1.0, 0.5, 0.5),
             text: Colour::grey(1.0),
             label_text: Colour::grey(1.0),
             button_text: Colour::grey(1.0),
             nav_focus: Colour::new(1.0, 0.7, 0.5),
             button: Colour::new(0.5, 0.1, 0.1),
+            button_disabled: Colour::grey(0.3),
             button_highlighted: Colour::new(0.6, 0.3, 0.1),
             button_depressed: Colour::new(0.3, 0.1, 0.1),
             checkbox: Colour::new(0.5, 0.1, 0.1),
         }
     }
 
+    /// Get colour of a [text] area, depending on state
+    pub fn bg_col(&self, state: InputState) -> Colour {
+        if state.disabled {
+            self.bg_disabled
+        } else if state.error {
+            self.bg_error
+        } else {
+            self.bg
+        }
+    }
+
     /// Get colour for navigation highlight region, if any
-    pub fn nav_region(&self, highlights: HighlightState) -> Option<Colour> {
-        if highlights.nav_focus {
+    pub fn nav_region(&self, state: InputState) -> Option<Colour> {
+        if state.nav_focus && !state.disabled {
             Some(self.nav_focus)
         } else {
             None
@@ -115,10 +140,12 @@ impl ThemeColours {
     }
 
     /// Get colour for a button, depending on state
-    pub fn button_state(&self, highlights: HighlightState) -> Colour {
-        if highlights.depress {
+    pub fn button_state(&self, state: InputState) -> Colour {
+        if state.disabled {
+            self.button_disabled
+        } else if state.depress {
             self.button_depressed
-        } else if highlights.hover {
+        } else if state.hover {
             self.button_highlighted
         } else {
             self.button
@@ -126,21 +153,27 @@ impl ThemeColours {
     }
 
     /// Get colour for a checkbox mark, depending on state
-    pub fn check_mark_state(&self, highlights: HighlightState, checked: bool) -> Option<Colour> {
-        if highlights.depress {
-            Some(self.button_depressed)
-        } else if checked && highlights.hover {
-            Some(self.button_highlighted)
-        } else if checked {
-            Some(self.checkbox)
+    pub fn check_mark_state(&self, state: InputState, checked: bool) -> Option<Colour> {
+        Some(if checked {
+            if state.disabled {
+                self.button_disabled
+            } else if state.depress {
+                self.button_depressed
+            } else if state.hover {
+                self.button_highlighted
+            } else {
+                self.checkbox
+            }
+        } else if state.depress {
+            self.button_depressed
         } else {
-            None
-        }
+            return None;
+        })
     }
 
     /// Get colour of a scrollbar, depending on state
     #[inline]
-    pub fn scrollbar_state(&self, highlights: HighlightState) -> Colour {
-        self.button_state(highlights)
+    pub fn scrollbar_state(&self, state: InputState) -> Colour {
+        self.button_state(state)
     }
 }

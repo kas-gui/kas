@@ -205,6 +205,10 @@ impl<D: Directional> Layout for ScrollBar<D> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if self.is_disabled() {
+            return None;
+        }
+
         if self.handle.rect().contains(coord) {
             Some(self.handle.id())
         } else {
@@ -212,10 +216,10 @@ impl<D: Directional> Layout for ScrollBar<D> {
         }
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         let dir = self.direction.as_direction();
-        let hl = mgr.highlight_state(self.handle.id());
-        draw_handle.scrollbar(self.core.rect, self.handle.rect(), dir, hl);
+        let state = self.input_state(mgr, disabled);
+        draw_handle.scrollbar(self.core.rect, self.handle.rect(), dir, state);
     }
 }
 

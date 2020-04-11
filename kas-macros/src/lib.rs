@@ -455,6 +455,10 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         let ty: Type = match field.ty {
             ChildType::Fixed(ty) => ty.clone(),
+            ChildType::InternGeneric(gen_args, ty) => {
+                args.generics.params.extend(gen_args);
+                ty.clone()
+            }
             ChildType::Generic(gen_msg, gen_bound) => {
                 name_buf.clear();
                 name_buf.write_fmt(format_args!("MWAnon{}", index)).unwrap();

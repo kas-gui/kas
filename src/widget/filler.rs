@@ -26,7 +26,7 @@ impl Layout for Filler {
         SizeRules::empty(self.policy)
     }
 
-    fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState) {}
+    fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {}
 }
 
 impl Filler {

@@ -216,7 +216,7 @@ pub(crate) fn derive(
             let c0 = self.#ident.rect().pos;
             let c1 = c0 + Coord::from(self.#ident.rect().size);
             if c0.0 <= pos1.0 && c1.0 >= pos0.0 && c0.1 <= pos1.1 && c1.1 >= pos0.1 {
-                self.#ident.draw(draw_handle, mgr);
+                self.#ident.draw(draw_handle, mgr, disabled);
             }
         });
 
@@ -281,6 +281,9 @@ pub(crate) fn derive(
 
         fn find_id(&self, coord: kas::geom::Coord) -> Option<kas::WidgetId> {
             use kas::WidgetCore;
+            if self.is_disabled() {
+                return None;
+            }
 
             #find_id_body else {
                 None
@@ -290,13 +293,15 @@ pub(crate) fn derive(
         fn draw(
             &self,
             draw_handle: &mut dyn kas::draw::DrawHandle,
-            mgr: &kas::event::ManagerState
+            mgr: &kas::event::ManagerState,
+            disabled: bool,
         ) {
             use kas::{geom::Coord, WidgetCore};
 
             let rect = draw_handle.target_rect();
             let pos0 = rect.pos;
             let pos1 = rect.pos + Coord::from(rect.size);
+            let disabled = disabled || self.is_disabled();
             #draw
         }
     })

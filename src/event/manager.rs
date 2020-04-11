@@ -19,33 +19,6 @@ use crate::geom::{Coord, DVec2};
 use crate::WidgetConfig; // for doc-links
 use crate::{ThemeAction, ThemeApi, TkAction, TkWindow, Widget, WidgetId, WindowId};
 
-/// Highlighting state of a widget
-#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
-pub struct HighlightState {
-    /// "Hover" is true if the mouse is over this element or if an active touch
-    /// event is over the element.
-    pub hover: bool,
-    /// Elements such as buttons may be depressed (visually pushed) by a click
-    /// or touch event, but in this state the action can still be cancelled.
-    /// Elements can also be depressed by keyboard activation.
-    ///
-    /// If true, this likely implies `hover` is also true.
-    pub depress: bool,
-    /// Keyboard navigation of UIs moves a "focus" from widget to widget.
-    pub nav_focus: bool,
-    /// "Character focus" implies this widget is ready to receive text input
-    /// (e.g. typing into an input field).
-    pub char_focus: bool,
-}
-
-impl HighlightState {
-    /// True if any part of the state is true
-    #[inline]
-    pub fn any(self) -> bool {
-        self.hover || self.depress || self.nav_focus || self.char_focus
-    }
-}
-
 /// Controls the types of events delivered by [`Manager::request_grab`]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum GrabMode {
@@ -250,6 +223,13 @@ impl ManagerState {
     pub fn region_moved<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         // Note: redraw is already implied.
 
+        self.nav_focus = self
+            .nav_focus
+            .and_then(|id| widget.find(id).map(|w| w.id()));
+        self.char_focus = self
+            .char_focus
+            .and_then(|id| widget.find(id).map(|w| w.id()));
+
         // Update hovered widget
         self.hover = widget.find_id(self.last_mouse_coord);
 
@@ -382,16 +362,6 @@ impl ManagerState {
 
 /// Public API (around event manager state)
 impl ManagerState {
-    /// Get the complete highlight state
-    pub fn highlight_state(&self, w_id: WidgetId) -> HighlightState {
-        HighlightState {
-            hover: self.is_hovered(w_id),
-            depress: self.is_depressed(w_id),
-            nav_focus: self.nav_focus(w_id),
-            char_focus: self.char_focus(w_id),
-        }
-    }
-
     /// Get whether this widget has a grab on character input
     #[inline]
     pub fn char_focus(&self, w_id: WidgetId) -> bool {

@@ -42,7 +42,7 @@ impl Layout for Label {
         self.core.rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
         draw_handle.text(self.core.rect, &self.text, TextClass::Label, self.align);
     }
 }

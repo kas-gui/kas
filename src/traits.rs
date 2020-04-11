@@ -8,7 +8,7 @@
 use std::fmt;
 use std::ops::DerefMut;
 
-use crate::draw::{DrawHandle, SizeHandle};
+use crate::draw::{DrawHandle, InputState, SizeHandle};
 use crate::event::{self, Manager, ManagerState};
 use crate::geom::{Coord, Rect};
 use crate::layout::{self, AxisInfo, SizeRules};
@@ -52,6 +52,26 @@ pub trait WidgetCore: fmt::Debug {
         self.core_data().id
     }
 
+    /// Get whether the widget is disabled
+    #[inline]
+    fn is_disabled(&self) -> bool {
+        self.core_data().disabled
+    }
+
+    /// Get the disabled state of a widget
+    ///
+    /// If disabled, a widget should not respond to input and should appear
+    /// greyed out.
+    ///
+    /// The disabled status is inherited by children: events should not be
+    /// passed to them, and they should also be drawn greyed out.
+    #[inline]
+    fn set_disabled(&mut self, disabled: bool) -> TkAction {
+        self.core_data_mut().disabled = disabled;
+        // Disabling affects find_id; we return RegionMoved to invalidate existing results
+        TkAction::RegionMoved
+    }
+
     /// Get the widget's region, relative to its parent.
     #[inline]
     fn rect(&self) -> Rect {
@@ -65,6 +85,25 @@ pub trait WidgetCore: fmt::Debug {
     fn as_widget(&self) -> &dyn WidgetConfig;
     /// Erase type
     fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig;
+
+    /// Construct [`InputState`]
+    ///
+    /// The `disabled` flag is inherited from parents. [`InputState::disabled`]
+    /// will be true if either `disabled` or `self.is_disabled()` are true.
+    ///
+    /// The error state defaults to `false` since most widgets don't support
+    /// this.
+    fn input_state(&self, mgr: &ManagerState, disabled: bool) -> InputState {
+        let id = self.core_data().id;
+        InputState {
+            disabled: self.core_data().disabled || disabled,
+            error: false,
+            hover: mgr.is_hovered(id),
+            depress: mgr.is_depressed(id),
+            nav_focus: mgr.nav_focus(id),
+            char_focus: mgr.char_focus(id),
+        }
+    }
 }
 
 /// Listing of a widget's children
@@ -97,7 +136,12 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
+    ///
+    /// If the widget is disabled, this returns `None` without recursing children.
     fn find(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+        if self.is_disabled() {
+            return None;
+        }
         if id == self.id() {
             return Some(self.as_widget());
         } else if id > self.id() {
@@ -258,8 +302,13 @@ pub trait Layout: WidgetChildren {
     /// (same behaviour as with events addressed by coordinate).
     /// The only case `None` should be expected is when `coord` is outside the
     /// initial widget's region; however this is not guaranteed.
+    ///
+    /// Disabled widgets should return `None`, without recursing to children.
     #[inline]
     fn find_id(&self, _coord: Coord) -> Option<WidgetId> {
+        if self.is_disabled() {
+            return None;
+        }
         Some(self.id())
     }
 
@@ -267,7 +316,7 @@ pub trait Layout: WidgetChildren {
     ///
     /// This method is called to draw each visible widget (and should not
     /// attempt recursion on child widgets).
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState);
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool);
 }
 
 /// Widget trait

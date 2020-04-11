@@ -423,7 +423,7 @@ impl Layout for Mandlebrot {
         self.rel_width = rel_width.0 as f32;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
         let (region, offset, draw) = draw_handle.draw_device();
         // TODO: our view transform assumes that offset = 0.
         // Here it is but in general we should be able to handle an offset here!

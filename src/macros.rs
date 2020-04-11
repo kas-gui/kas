@@ -81,7 +81,9 @@
 //!     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
 //!         todo!()
 //!     }
-//!     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+//!     fn draw(&self, draw_handle: &mut dyn DrawHandle,
+//!         mgr: &event::ManagerState, disabled: bool)
+//!     {
 //!         todo!()
 //!     }
 //! }
@@ -336,6 +338,13 @@
 //!
 //! ```nocompile
 //! #[widget] display: impl HasText = EditBox::new("editable"),
+//! ```
+//!
+//! Alternatively, generics can be introduced explicitly:
+//!
+//! ```nocompile
+//! #[widget] display: for<W: Widget<Msg = VoidMsg>> Frame<W> =
+//!     Frame::new(Label::new("example")),
 //! ```
 //!
 //! ### Implementations

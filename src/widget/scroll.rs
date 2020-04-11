@@ -195,6 +195,10 @@ impl<W: Widget> Layout for ScrollRegion<W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if self.is_disabled() {
+            return None;
+        }
+
         if self.horiz_bar.rect().contains(coord) {
             self.horiz_bar.find_id(coord)
         } else if self.vert_bar.rect().contains(coord) {
@@ -204,19 +208,20 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         }
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        let disabled = disabled || self.is_disabled();
         if self.show_bars.0 {
-            self.horiz_bar.draw(draw_handle, mgr);
+            self.horiz_bar.draw(draw_handle, mgr, disabled);
         }
         if self.show_bars.1 {
-            self.vert_bar.draw(draw_handle, mgr);
+            self.vert_bar.draw(draw_handle, mgr, disabled);
         }
         let rect = Rect {
             pos: self.core.rect.pos,
             size: self.inner_size,
         };
         draw_handle.clip_region(rect, self.offset, &mut |handle| {
-            self.child.draw(handle, mgr)
+            self.child.draw(handle, mgr, disabled)
         });
     }
 }

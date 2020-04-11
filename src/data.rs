@@ -84,6 +84,7 @@ impl fmt::Display for WidgetId {
 pub struct CoreData {
     pub rect: Rect,
     pub id: WidgetId,
+    pub disabled: bool,
 }
 
 /// Alignment of contents

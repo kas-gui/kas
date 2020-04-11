@@ -11,10 +11,9 @@ use std::f32;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShared, DrawText, DrawTextShared, FontId, Region,
-    TextClass, TextProperties,
+    self, Colour, Draw, DrawRounded, DrawShared, DrawText, DrawTextShared, FontId, InputState,
+    Region, TextClass, TextProperties,
 };
-use kas::event::HighlightState;
 use kas::geom::*;
 use kas::{Align, Direction, Directional, ThemeAction, ThemeApi};
 
@@ -136,12 +135,16 @@ impl ThemeApi for FlatTheme {
 impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
     /// Draw an edit region with optional navigation highlight.
     /// Return the inner rect.
-    fn draw_edit_region(&mut self, outer: Rect, nav_col: Option<Colour>) -> Quad {
+    ///
+    /// - `outer`: define position via outer rect
+    /// - `bg_col`: colour of background
+    /// - `nav_col`: colour of navigation highlight, if visible
+    fn draw_edit_region(&mut self, outer: Rect, bg_col: Colour, nav_col: Option<Colour>) -> Quad {
         let outer = Quad::from(outer);
         let inner1 = outer.shrink(self.window.dims.frame as f32 / 2.0);
         let inner2 = outer.shrink(self.window.dims.frame as f32);
 
-        self.draw.rect(self.pass, inner1, self.cols.text_area);
+        self.draw.rect(self.pass, inner1, bg_col);
 
         // We draw over the inner rect, taking advantage of the fact that
         // rounded frames get drawn after flat rects.
@@ -156,14 +159,14 @@ impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
     }
 
     /// Draw a handle (for slider, scrollbar)
-    fn draw_handle(&mut self, rect: Rect, highlights: HighlightState) {
+    fn draw_handle(&mut self, rect: Rect, state: InputState) {
         let outer = Quad::from(rect + self.offset);
         let thickness = outer.size().min_comp() / 2.0;
         let inner = outer.shrink(thickness);
-        let col = self.cols.scrollbar_state(highlights);
+        let col = self.cols.scrollbar_state(state);
         self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
 
-        if let Some(col) = self.cols.nav_region(highlights) {
+        if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(thickness / 4.0);
             self.draw
                 .rounded_frame(self.pass, outer, inner, 2.0 / 3.0, col);
@@ -232,36 +235,32 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         self.draw.text(rect + self.offset, text, props);
     }
 
-    fn button(&mut self, rect: Rect, highlights: HighlightState) {
+    fn button(&mut self, rect: Rect, state: InputState) {
         let outer = Quad::from(rect + self.offset);
-        let col = self.cols.button_state(highlights);
+        let col = self.cols.button_state(state);
 
         let inner = outer.shrink(self.window.dims.button_frame as f32);
         self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
         self.draw.rect(self.pass, inner, col);
 
-        if let Some(col) = self.cols.nav_region(highlights) {
+        if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(self.window.dims.button_frame as f32 / 3.0);
             self.draw.rounded_frame(self.pass, outer, inner, 0.5, col);
         }
     }
 
-    fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
-        self.draw_edit_region(rect + self.offset, self.cols.nav_region(highlights));
+    fn edit_box(&mut self, rect: Rect, state: InputState) {
+        let bg_col = self.cols.bg_col(state);
+        self.draw_edit_region(rect + self.offset, bg_col, self.cols.nav_region(state));
     }
 
-    fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
-        let nav_col = self.cols.nav_region(highlights).or_else(|| {
-            if checked {
-                Some(self.cols.text_area)
-            } else {
-                None
-            }
-        });
+    fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
+        let bg_col = self.cols.bg_col(state);
+        let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
-        let inner = self.draw_edit_region(rect + self.offset, nav_col);
+        let inner = self.draw_edit_region(rect + self.offset, bg_col, nav_col);
 
-        if let Some(col) = self.cols.check_mark_state(highlights, checked) {
+        if let Some(col) = self.cols.check_mark_state(state, checked) {
             let radius = inner.size().sum() * (1.0 / 16.0);
             let inner = inner.shrink(self.window.dims.margin as f32 + radius);
             let radius = radius as f32;
@@ -272,24 +271,19 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         }
     }
 
-    fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
-        let nav_col = self.cols.nav_region(highlights).or_else(|| {
-            if checked {
-                Some(self.cols.text_area)
-            } else {
-                None
-            }
-        });
+    fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
+        let bg_col = self.cols.bg_col(state);
+        let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
-        let inner = self.draw_edit_region(rect + self.offset, nav_col);
+        let inner = self.draw_edit_region(rect + self.offset, bg_col, nav_col);
 
-        if let Some(col) = self.cols.check_mark_state(highlights, checked) {
+        if let Some(col) = self.cols.check_mark_state(state, checked) {
             let inner = inner.shrink(self.window.dims.margin as f32);
             self.draw.circle(self.pass, inner, 0.3, col);
         }
     }
 
-    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, _dir: Direction, highlights: HighlightState) {
+    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, _dir: Direction, state: InputState) {
         // track
         let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
@@ -297,10 +291,10 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
 
         // handle
-        self.draw_handle(h_rect, highlights);
+        self.draw_handle(h_rect, state);
     }
 
-    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
         // track
         let mut outer = Quad::from(rect + self.offset);
         outer = match dir.is_horizontal() {
@@ -312,6 +306,6 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
 
         // handle
-        self.draw_handle(h_rect, highlights);
+        self.draw_handle(h_rect, state);
     }
 }

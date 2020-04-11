@@ -61,7 +61,7 @@ where
         let mut theme_window = shared.theme.new_window(&mut draw, scale_factor);
 
         let mut size_handle = unsafe { theme_window.size_handle(&mut draw) };
-        let solve_cache = SolveCache::new(widget.as_widget_mut(), &mut size_handle);
+        let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), &mut size_handle);
         let ideal = solve_cache.ideal(true);
         drop(size_handle);
 
@@ -337,7 +337,7 @@ where
                 .theme
                 .draw_handle(&mut self.draw, &mut self.theme_window, rect)
         };
-        self.widget.draw(&mut draw_handle, &self.mgr);
+        self.widget.draw(&mut draw_handle, &self.mgr, false);
         drop(draw_handle);
 
         let frame = self.swap_chain.get_next_texture();

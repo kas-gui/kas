@@ -190,6 +190,10 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if self.is_disabled() {
+            return None;
+        }
+
         if self.handle.rect().contains(coord) {
             Some(self.handle.id())
         } else {
@@ -197,14 +201,14 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
         }
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
-        // Depending on whether we get the highlight state for self.id() or
-        // self.handle.id() we can highlight when over the slider or just the
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        // Depending on whether we get the input state for self or
+        // self.handle we can highlight when over the slider or just the
         // handle. But for key-nav, we want highlight-state of self.
-        let hl = mgr.highlight_state(self.id());
+        let state = self.input_state(mgr, disabled);
 
         let dir = self.direction.as_direction();
-        draw_handle.slider(self.core.rect, self.handle.rect(), dir, hl);
+        draw_handle.slider(self.core.rect, self.handle.rect(), dir, state);
     }
 }
 

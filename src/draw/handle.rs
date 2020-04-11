@@ -8,10 +8,32 @@
 use std::ops::{Deref, DerefMut};
 
 use kas::draw::{Draw, Region};
-use kas::event::HighlightState;
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::{Align, Direction};
+
+/// Input and highlighting state of a widget
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
+pub struct InputState {
+    /// Is the widget disabled?
+    pub disabled: bool,
+    /// Is the input state erroneous?
+    pub error: bool,
+    /// "Hover" is true if the mouse is over this element or if an active touch
+    /// event is over the element.
+    pub hover: bool,
+    /// Elements such as buttons may be depressed (visually pushed) by a click
+    /// or touch event, but in this state the action can still be cancelled.
+    /// Elements can also be depressed by keyboard activation.
+    ///
+    /// If true, this likely implies `hover` is also true.
+    pub depress: bool,
+    /// Keyboard navigation of UIs moves a "focus" from widget to widget.
+    pub nav_focus: bool,
+    /// "Character focus" implies this widget is ready to receive text input
+    /// (e.g. typing into an input field).
+    pub char_focus: bool,
+}
 
 /// Class of text drawn
 ///
@@ -171,38 +193,38 @@ pub trait DrawHandle {
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align));
 
     /// Draw button sides, background and margin-area highlight
-    fn button(&mut self, rect: Rect, highlights: HighlightState);
+    fn button(&mut self, rect: Rect, state: InputState);
 
     /// Draw edit box sides, background and margin-area highlight
-    fn edit_box(&mut self, rect: Rect, highlights: HighlightState);
+    fn edit_box(&mut self, rect: Rect, state: InputState);
 
     /// Draw UI element: checkbox
     ///
     /// The checkbox is a small, usually square, box with or without a check
     /// mark. A checkbox widget may include a text label, but that label is not
     /// part of this element.
-    fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState);
+    fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState);
 
     /// Draw UI element: radiobox
     ///
     /// This is similar in appearance to a checkbox.
-    fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState);
+    fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState);
 
     /// Draw UI element: scrollbar
     ///
     /// -   `rect`: area of whole widget (slider track)
     /// -   `h_rect`: area of slider handle
     /// -   `dir`: direction of bar
-    /// -   `highlights`: highlighting information
-    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState);
+    /// -   `state`: highlighting information
+    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState);
 
     /// Draw UI element: slider
     ///
     /// -   `rect`: area of whole widget (slider track)
     /// -   `h_rect`: area of slider handle
     /// -   `dir`: direction of slider (currently only LTR or TTB)
-    /// -   `highlights`: highlighting information
-    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState);
+    /// -   `state`: highlighting information
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState);
 }
 
 impl<S: SizeHandle> SizeHandle for Box<S> {
@@ -314,23 +336,23 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
     }
-    fn button(&mut self, rect: Rect, highlights: HighlightState) {
-        self.deref_mut().button(rect, highlights)
+    fn button(&mut self, rect: Rect, state: InputState) {
+        self.deref_mut().button(rect, state)
     }
-    fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
-        self.deref_mut().edit_box(rect, highlights)
+    fn edit_box(&mut self, rect: Rect, state: InputState) {
+        self.deref_mut().edit_box(rect, state)
     }
-    fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
-        self.deref_mut().checkbox(rect, checked, highlights)
+    fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
+        self.deref_mut().checkbox(rect, checked, state)
     }
-    fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
-        self.deref_mut().radiobox(rect, checked, highlights)
+    fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
+        self.deref_mut().radiobox(rect, checked, state)
     }
-    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
-        self.deref_mut().scrollbar(rect, h_rect, dir, highlights)
+    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
+        self.deref_mut().scrollbar(rect, h_rect, dir, state)
     }
-    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
-        self.deref_mut().slider(rect, h_rect, dir, highlights)
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
+        self.deref_mut().slider(rect, h_rect, dir, state)
     }
 }
 
@@ -357,22 +379,22 @@ where
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
     }
-    fn button(&mut self, rect: Rect, highlights: HighlightState) {
-        self.deref_mut().button(rect, highlights)
+    fn button(&mut self, rect: Rect, state: InputState) {
+        self.deref_mut().button(rect, state)
     }
-    fn edit_box(&mut self, rect: Rect, highlights: HighlightState) {
-        self.deref_mut().edit_box(rect, highlights)
+    fn edit_box(&mut self, rect: Rect, state: InputState) {
+        self.deref_mut().edit_box(rect, state)
     }
-    fn checkbox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
-        self.deref_mut().checkbox(rect, checked, highlights)
+    fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
+        self.deref_mut().checkbox(rect, checked, state)
     }
-    fn radiobox(&mut self, rect: Rect, checked: bool, highlights: HighlightState) {
-        self.deref_mut().radiobox(rect, checked, highlights)
+    fn radiobox(&mut self, rect: Rect, checked: bool, state: InputState) {
+        self.deref_mut().radiobox(rect, checked, state)
     }
-    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
-        self.deref_mut().scrollbar(rect, h_rect, dir, highlights)
+    fn scrollbar(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
+        self.deref_mut().scrollbar(rect, h_rect, dir, state)
     }
-    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, highlights: HighlightState) {
-        self.deref_mut().slider(rect, h_rect, dir, highlights)
+    fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
+        self.deref_mut().slider(rect, h_rect, dir, state)
     }
 }

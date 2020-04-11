@@ -9,7 +9,7 @@ use std::fmt::Debug;
 
 use kas::class::*;
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, Handler, Manager, Response};
+use kas::event::Handler;
 use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::prelude::*;
 
@@ -17,7 +17,7 @@ use kas::prelude::*;
 ///
 /// This widget provides a simple abstraction: drawing a frame around its
 /// contents.
-#[handler(action, msg = <W as Handler>::Msg)]
+#[handler(msg = <W as Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Frame<W: Widget> {
     #[widget_core]
@@ -70,6 +70,10 @@ impl<W: Widget> Layout for Frame<W> {
 
     #[inline]
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if self.is_disabled() {
+            return None;
+        }
+
         if let Some(id) = self.child.find_id(coord) {
             Some(id)
         } else {
@@ -77,21 +81,10 @@ impl<W: Widget> Layout for Frame<W> {
         }
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.outer_frame(self.core_data().rect);
-        self.child.draw(draw_handle, mgr);
-    }
-}
-
-impl<W: Widget> event::EventHandler for Frame<W> {
-    #[inline]
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if id <= self.child.id() {
-            self.child.event(mgr, id, event)
-        } else {
-            debug_assert!(id == self.id(), "Layout::event: bad WidgetId");
-            Response::Unhandled(event)
-        }
+        let disabled = disabled || self.is_disabled();
+        self.child.draw(draw_handle, mgr, disabled);
     }
 }
 
