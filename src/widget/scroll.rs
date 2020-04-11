@@ -195,6 +195,10 @@ impl<W: Widget> Layout for ScrollRegion<W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if self.is_disabled() {
+            return None;
+        }
+
         if self.horiz_bar.rect().contains(coord) {
             self.horiz_bar.find_id(coord)
         } else if self.vert_bar.rect().contains(coord) {

@@ -190,6 +190,10 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if self.is_disabled() {
+            return None;
+        }
+
         if self.handle.rect().contains(coord) {
             Some(self.handle.id())
         } else {

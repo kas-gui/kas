@@ -140,6 +140,10 @@ impl<W: Widget> Layout for Window<W> {
 
     #[inline]
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if self.is_disabled() {
+            return None;
+        }
+
         for popup in self.popups.iter().rev() {
             if let Some(id) = popup.1.overlay.find_id(coord) {
                 return Some(id);

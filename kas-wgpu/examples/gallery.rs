@@ -10,7 +10,14 @@ use kas::class::HasText;
 use kas::event::{Manager, Response, UpdateHandle, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::*;
-use kas::{Right, WidgetId};
+use kas::{Right, Widget, WidgetCore, WidgetId};
+
+#[derive(Clone, Debug, VoidMsg)]
+struct Disabled(bool);
+
+trait ApplyDisabled {
+    fn apply_disabled(&mut self, mgr: &mut Manager, state: Disabled);
+}
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Item {
@@ -50,29 +57,29 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=0, col=0)] _ = Label::new("Label"),
             #[widget(row=0, col=1)] _ = Label::new("Hello world"),
             #[widget(row=1, col=0)] _ = Label::new("EditBox"),
-            #[widget(row=1, col=1)] _ = EditBox::new("edit me").with_guard(Guard),
+            #[widget(row=1, col=1)] edit = EditBox::new("edit me").with_guard(Guard),
             #[widget(row=2, col=0)] _ = Label::new("TextButton"),
-            #[widget(row=2, col=1)] _ = TextButton::new("Press me", Item::Button),
+            #[widget(row=2, col=1)] b = TextButton::new("Press me", Item::Button),
             #[widget(row=3, col=0)] _ = Label::new("CheckBox"),
-            #[widget(row=3, col=1)] _ = CheckBox::new("Check me").state(true)
+            #[widget(row=3, col=1)] c = CheckBox::new("Check me").state(true)
                 .on_toggle(|check| Item::Check(check)),
             #[widget(row=4, col=0)] _ = Label::new("RadioBox"),
-            #[widget(row=4, col=1)] _ = RadioBox::new(radio, "radio box 1").state(false)
+            #[widget(row=4, col=1)] r1 = RadioBox::new(radio, "radio box 1").state(false)
                 .on_activate(|id| Item::Radio(id)),
             #[widget(row=5, col=0)] _ = Label::new("RadioBox"),
-            #[widget(row=5, col=1)] _ = RadioBox::new(radio, "radio box 2").state(true)
+            #[widget(row=5, col=1)] r2 = RadioBox::new(radio, "radio box 2").state(true)
                 .on_activate(|id| Item::Radio(id)),
             #[widget(row=6, col=0)] _ = Label::new("ComboBox"),
-            #[widget(row=6, col=1, handler = handle_combo)] _: ComboBox<i32> =
+            #[widget(row=6, col=1, handler = handle_combo)] cb: ComboBox<i32> =
                 [("One", 1), ("Two", 2), ("Three", 3)].iter().cloned().collect(),
             #[widget(row=7, col=0)] _ = Label::new("Slider"),
-            #[widget(row=7, col=1, handler = handle_slider)] _ =
+            #[widget(row=7, col=1, handler = handle_slider)] s =
                 Slider::<i32, Right>::new(-2, 2, 1).with_value(0),
             #[widget(row=8, col=0)] _ = Label::new("ScrollBar"),
-            #[widget(row=8, col=1, handler = handle_scroll)] _ =
+            #[widget(row=8, col=1, handler = handle_scroll)] sc =
                 ScrollBar::<Right>::new().with_limits(5, 2),
             #[widget(row=9)] _ = Label::new("Child window"),
-            #[widget(row=9, col = 1)] _ = TextButton::new("Open", Item::Popup),
+            #[widget(row=9, col = 1)] p = TextButton::new("Open", Item::Popup),
         }
         impl {
             fn handle_combo(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {
@@ -85,39 +92,53 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 Response::Msg(Item::Scroll(msg))
             }
         }
+        impl ApplyDisabled {
+            fn apply_disabled(&mut self, mgr: &mut Manager, state: Disabled) {
+                *mgr += self.edit.set_disabled(state.0)
+                    + self.b.set_disabled(state.0)
+                    + self.c.set_disabled(state.0)
+                    + self.r1.set_disabled(state.0)
+                    + self.r2.set_disabled(state.0)
+                    + self.cb.set_disabled(state.0)
+                    + self.s.set_disabled(state.0)
+                    + self.sc.set_disabled(state.0)
+                    + self.p.set_disabled(state.0);
+            }
+        }
     };
 
     let top_box = Frame::new(make_widget! {
         #[layout(column)]
-        #[handler(msg = VoidMsg)]
+        #[handler(msg = Disabled)]
         struct {
             #[widget(halign=centre)] _ = Label::new("Widget Gallery"),
             #[widget] _ = make_widget! {
                 #[layout(row)]
-                #[handler(msg = VoidMsg)]
+                #[handler(msg = Disabled)]
                 struct {
                     #[widget(handler=set_theme)] _: ComboBox<&'static str> =
                         [("Shaded theme", "shaded"), ("Flat theme", "flat")].iter().cloned().collect(),
                     #[widget(handler=set_colour)] _: ComboBox<&'static str> =
                         [("Default", "default"), ("Light", "light"), ("Dark", "dark")].iter().cloned().collect(),
+                    #[widget] _ = CheckBox::new("Disabled").on_toggle(|state| Disabled(state)),
                 }
                 impl {
                     fn set_theme(&mut self, mgr: &mut Manager, name: &'static str)
-                        -> VoidResponse
+                        -> Response<Disabled>
                     {
                         println!("Theme: {:?}", name);
                         #[cfg(not(feature = "stack_dst"))]
                         println!("Warning: switching themes requires feature 'stack_dst'");
 
                         mgr.adjust_theme(|theme| theme.set_theme(name));
-                        VoidResponse::None
+                        Response::None
                     }
                     fn set_colour(&mut self, mgr: &mut Manager, name: &'static str)
-                        -> VoidResponse
+                        -> Response<Disabled>
                     {
                         println!("Colour scheme: {:?}", name);
                         mgr.adjust_theme(|theme| theme.set_colours(name));
-                        VoidResponse::None
+                        Response::None
                     }
                 }
             },
@@ -130,10 +151,15 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[layout(column)]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget] _ = top_box,
-                #[widget(handler = activations)] _ = ScrollRegion::new(widgets).with_auto_bars(true),
+                #[widget(handler = apply_disabled)] _ = top_box,
+                #[widget(handler = activations)] gallery: for<W: Widget<Msg = Item> + ApplyDisabled> ScrollRegion<W> =
+                    ScrollRegion::new(widgets).with_auto_bars(true),
             }
             impl {
+                fn apply_disabled(&mut self, mgr: &mut Manager, state: Disabled) -> VoidResponse {
+                    self.gallery.inner_mut().apply_disabled(mgr, state);
+                    Response::None
+                }
                 fn activations(&mut self, mgr: &mut Manager, item: Item)
                     -> VoidResponse
                 {
@@ -150,7 +176,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                             mgr.add_window(Box::new(window));
                         }
                     };
-                    VoidResponse::None
+                    Response::None
                 }
             }
         },

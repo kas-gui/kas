@@ -75,6 +75,10 @@ impl<W: Widget> Layout for Stack<W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if self.is_disabled() {
+            return None;
+        }
+
         if self.active < self.widgets.len() {
             return self.widgets[self.active].find_id(coord);
         }

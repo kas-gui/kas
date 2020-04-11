@@ -250,6 +250,13 @@ impl ManagerState {
     pub fn region_moved<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         // Note: redraw is already implied.
 
+        self.nav_focus = self
+            .nav_focus
+            .and_then(|id| widget.find(id).map(|w| w.id()));
+        self.char_focus = self
+            .char_focus
+            .and_then(|id| widget.find(id).map(|w| w.id()));
+
         // Update hovered widget
         self.hover = widget.find_id(self.last_mouse_coord);
 
