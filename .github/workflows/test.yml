@@ -1,0 +1,30 @@
+name: Rust
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: [ubuntu-latest, windows-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: kas-macros
+      run: cargo test --manifest-path kas-macros/Cargo.toml --all-features
+    - name: kas
+      run: |
+        cargo test --all-features
+        cargo doc --features winit,stack_dst --no-deps
+    - name: kas-theme
+      run: |
+        cargo test --manifest-path kas-theme/Cargo.toml --all-features
+        cargo doc --manifest-path kas-theme/Cargo.toml --features stack_dst --no-deps
+    - name: kas-wgpu
+      run: |
+        cargo test --manifest-path kas-wgpu/Cargo.toml
+        cargo test --manifest-path kas-wgpu/Cargo.toml --all-features
+        cargo doc --manifest-path kas-wgpu/Cargo.toml --features stack_dst --no-deps
