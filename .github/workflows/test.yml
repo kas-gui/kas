@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        rust-version: nightly
     - name: kas-macros
       run: cargo test --manifest-path kas-macros/Cargo.toml --all-features
     - name: kas
