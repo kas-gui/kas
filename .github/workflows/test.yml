@@ -1,4 +1,4 @@
-name: Rust
+name: Tests
 
 on:
   push:
@@ -12,35 +12,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - name: Install xcb libraries
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: nightly
           override: true
-      - run: rustup component add rustfmt
-      - uses: actions-rs/cargo@v1
+          components: rustfmt
+      - name: Rustfmt check
+        uses: actions-rs/cargo@v1
         with:
           command: fmt
           args: --all -- --check
-      - uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --all-features --no-deps
-      - uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --manifest-path kas-theme/Cargo.toml --all-features --no-deps
-      - uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --manifest-path kas-wgpu/Cargo.toml --all-features --no-deps
-        
+      - name: doc (kas)
+        run: cargo doc --all-features --no-deps
+      - name: doc (kas-theme)
+        run: cargo doc --manifest-path kas-theme/Cargo.toml --all-features --no-deps
+      - name: doc (kas-wgpu)
+        run: cargo doc --manifest-path kas-wgpu/Cargo.toml --all-features --no-deps
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
+        # disabled because of shaderc dependencies: windows-latest
 
     steps:
       - uses: actions/checkout@v2
@@ -49,20 +46,15 @@ jobs:
         with:
             toolchain: nightly
             override: true
-            components: rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --manifest-path kas-macros/Cargo.toml --all-features
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-features
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --manifest-path kas-theme/Cargo.toml --all-features
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --manifest-path kas-wgpu/Cargo.toml --all-features
+      - name: Install xcb libraries
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
+
+      - name: test (kas-macros)
+        run: cargo test --manifest-path kas-macros/Cargo.toml --all-features
+      - name: test (kas)
+        run: cargo test --all-features
+      - name: test (kas-theme)
+        run: cargo test --manifest-path kas-theme/Cargo.toml --all-features
+      - name: test (kas-wgpu)
+        run: cargo test --manifest-path kas-wgpu/Cargo.toml --all-features
