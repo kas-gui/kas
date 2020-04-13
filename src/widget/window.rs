@@ -173,9 +173,14 @@ impl<W: Widget<Msg = VoidMsg> + 'static> event::EventHandler for Window<W> {
                 let widget = &mut self.popups[i].1.overlay;
                 if id <= widget.id() {
                     let r = widget.event(mgr, id, event);
-                    if mgr.replace_action_close_with_reconfigure() {
-                        self.popups.remove(i);
-                    }
+                    let action = match mgr.pop_action() {
+                        TkAction::Close => {
+                            self.popups.remove(i);
+                            TkAction::Reconfigure
+                        }
+                        action => action,
+                    };
+                    *mgr += action;
                     return r;
                 }
             }

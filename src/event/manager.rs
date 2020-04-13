@@ -154,12 +154,13 @@ impl ManagerState {
         self.action = TkAction::None;
 
         let coord = self.last_mouse_coord;
-        let mut mgr = self.manager(tkw);
-        widget.walk_mut(&mut |widget| {
-            map.insert(widget.id(), id);
-            widget.core_data_mut().id = id;
-            widget.configure(&mut mgr);
-            id = id.next();
+        self.with(tkw, |mut mgr| {
+            widget.walk_mut(&mut |widget| {
+                map.insert(widget.id(), id);
+                widget.core_data_mut().id = id;
+                widget.configure(&mut mgr);
+                id = id.next();
+            });
         });
 
         self.hover = widget.find_id(coord);
@@ -260,13 +261,38 @@ impl ManagerState {
     }
 
     /// Construct a [`Manager`] referring to this state
+    ///
+    /// Invokes the given closure on this [`Manager`].
     #[inline]
-    pub fn manager<'a>(&'a mut self, tkw: &'a mut dyn TkWindow) -> Manager<'a> {
-        Manager {
+    pub fn with<F>(&mut self, tkw: &mut dyn TkWindow, f: F)
+    where
+        F: FnOnce(&mut Manager),
+    {
+        let mut mgr = Manager {
             read_only: false,
             mgr: self,
             tkw,
-        }
+            action: TkAction::None,
+        };
+        f(&mut mgr);
+        let action = mgr.action;
+        self.send_action(action);
+    }
+
+    /// Update, after receiving all events
+    #[inline]
+    pub fn update<W>(&mut self, tkw: &mut dyn TkWindow, widget: &mut W) -> TkAction
+    where
+        W: Widget<Msg = VoidMsg> + ?Sized,
+    {
+        let mgr = Manager {
+            read_only: false,
+            mgr: self,
+            tkw,
+            action: TkAction::None,
+        };
+        // we could inline this:
+        mgr.update(widget)
     }
 }
 
@@ -403,10 +429,12 @@ impl ManagerState {
 }
 
 /// Manager of event-handling and toolkit actions
+#[must_use]
 pub struct Manager<'a> {
     read_only: bool,
     mgr: &'a mut ManagerState,
     tkw: &'a mut dyn TkWindow,
+    action: TkAction,
 }
 
 /// Public API (around toolkit functionality)
@@ -476,7 +504,18 @@ impl<'a> Manager<'a> {
     /// affect the UI after a reconfigure action.
     #[inline]
     pub fn send_action(&mut self, action: TkAction) {
-        self.mgr.send_action(action);
+        self.action = self.action.max(action);
+    }
+
+    /// Get the current [`TkAction`], replacing with `None`
+    ///
+    /// The caller is responsible for ensuring the action is handled correctly;
+    /// generally this means matching only actions which can be handled locally
+    /// and downgrading the action, adding the result back to the [`Manager`].
+    pub fn pop_action(&mut self) -> TkAction {
+        let action = self.action;
+        self.action = TkAction::None;
+        action
     }
 
     /// Add an overlay (pop-up)
@@ -849,20 +888,7 @@ impl<'a> Manager<'a> {
 /// Toolkit API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl<'a> Manager<'a> {
-    // Hack to make TkAction::Close on an overlay close only that.
-    // This is not quite correct, since it could mask a legitimate Close
-    // event (e.g. a pop-up menu to close the window).
-    pub(crate) fn replace_action_close_with_reconfigure(&mut self) -> bool {
-        if self.mgr.action == TkAction::Close {
-            self.mgr.action = TkAction::Reconfigure;
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Update, after receiving all events
-    pub fn finish<W>(mut self, widget: &mut W) -> TkAction
+    fn update<W>(mut self, widget: &mut W) -> TkAction
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
@@ -923,7 +949,7 @@ impl<'a> Manager<'a> {
             }
         }
 
-        let action = self.mgr.action;
+        let action = self.mgr.action + self.action;
         self.mgr.action = TkAction::None;
         action
     }
