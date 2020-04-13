@@ -11,13 +11,13 @@ use std::iter::FromIterator;
 use super::{Column, TextButton};
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Action, Event, Manager, Response, UpdateHandle};
+use kas::event::{Action, Event, Manager, Response};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::WindowId;
 
 /// A pop-up multiple choice menu
-#[widget(config=noauto)]
+#[widget(config(key_nav = true))]
 #[derive(Clone, Debug, Widget)]
 pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
@@ -28,16 +28,6 @@ pub struct ComboBox<M: Clone + Debug + 'static> {
     messages: Vec<M>, // TODO: is this a useless lookup step?
     active: usize,
     popup_id: Option<WindowId>,
-}
-
-impl<M: Clone + Debug + 'static> kas::WidgetConfig for ComboBox<M> {
-    fn configure(&mut self, mgr: &mut Manager) {
-        mgr.update_on_handle(self.popup.handle, self.id());
-    }
-
-    fn key_nav(&self) -> bool {
-        true
-    }
 }
 
 impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
@@ -98,7 +88,6 @@ impl<M: Clone + Debug> ComboBox<M> {
             popup: ComboPopup {
                 core: Default::default(),
                 column: Column::new(column),
-                handle: UpdateHandle::new(),
             },
             messages,
             active: 0,
@@ -173,17 +162,6 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 }
                 Response::None
             }
-            Action::HandleUpdate { payload, .. } => {
-                let index = payload as usize;
-                assert!(index < self.messages.len());
-                self.active = index;
-                if let Some(id) = self.popup_id {
-                    mgr.close_window(id);
-                    self.popup_id = None;
-                }
-                mgr.redraw(self.id());
-                Response::Msg(self.messages[index].clone())
-            }
             a @ _ => Response::unhandled_action(a),
         }
     }
@@ -192,18 +170,24 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
 impl<M: Clone + Debug + 'static> event::EventHandler for ComboBox<M> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if id <= self.popup.id() {
-            let r = self.popup.event(mgr, id, event);
-            let action = match mgr.pop_action() {
-                TkAction::Close => {
+            let r = match self.popup.event(mgr, id, event).try_into() {
+                Ok(r) => r,
+                Err(msg) => {
+                    let index = msg as usize;
+                    assert!(index < self.messages.len());
+                    self.active = index;
                     if let Some(id) = self.popup_id {
                         mgr.close_window(id);
+                        self.popup_id = None;
                     }
-                    TkAction::Reconfigure
+                    mgr.redraw(self.id());
+                    Response::Msg(self.messages[index].clone())
                 }
-                a => a,
             };
-            *mgr += action;
-            r.void_into()
+            // NOTE: as part of the Popup API we are expected to trap
+            // TkAction::Close here, but we know our widget doesn't generate
+            // this action.
+            r
         } else {
             Manager::handle_generic(self, mgr, event)
         }
@@ -211,27 +195,19 @@ impl<M: Clone + Debug + 'static> event::EventHandler for ComboBox<M> {
 }
 
 #[layout(single)]
-#[handler(action)]
+#[handler(msg=u64, action)]
 #[derive(Clone, Debug, Widget)]
 struct ComboPopup {
     #[widget_core]
     core: CoreData,
     #[widget]
     column: Column<TextButton<u64>>,
-    handle: UpdateHandle,
 }
 
 impl event::EventHandler for ComboPopup {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if id <= self.column.id() {
-            match self.column.event(mgr, id, event).try_into() {
-                Ok(r) => r,
-                Err(msg) => {
-                    mgr.trigger_update(self.handle, msg);
-                    mgr.send_action(TkAction::Close);
-                    Response::None
-                }
-            }
+            self.column.event(mgr, id, event)
         } else {
             Response::Unhandled(event)
         }
