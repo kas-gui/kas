@@ -15,7 +15,7 @@ use kas::WindowId;
 
 /// The main instantiation of the [`Window`] trait.
 #[handler(action, generics = <> where W: Widget<Msg = VoidMsg>)]
-#[widget(children=noauto, config=noauto)]
+#[widget(config=noauto)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
     #[widget_core]
@@ -88,32 +88,6 @@ impl<W: Widget> Window<W> {
     }
 }
 
-impl<W: Widget> WidgetChildren for Window<W> {
-    fn len(&self) -> usize {
-        1 + self.popups.len()
-    }
-
-    fn get(&self, index: usize) -> Option<&dyn WidgetConfig> {
-        if index == 0 {
-            Some(&self.w)
-        } else {
-            self.popups
-                .get(index - 1)
-                .map(|popup| popup.1.overlay.as_widget())
-        }
-    }
-
-    fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
-        if index == 0 {
-            Some(&mut self.w)
-        } else {
-            self.popups
-                .get_mut(index - 1)
-                .map(|popup| popup.1.overlay.as_widget_mut())
-        }
-    }
-}
-
 impl<W: Widget> WidgetConfig for Window<W> {
     fn configure(&mut self, mgr: &mut Manager) {
         for (condition, f) in &self.fns {
@@ -145,7 +119,7 @@ impl<W: Widget> Layout for Window<W> {
         }
 
         for popup in self.popups.iter().rev() {
-            if let Some(id) = popup.1.overlay.find_id(coord) {
+            if let Some(id) = self.w.find(popup.1.id).and_then(|w| w.find_id(coord)) {
                 return Some(id);
             }
         }
@@ -158,7 +132,8 @@ impl<W: Widget> Layout for Window<W> {
         self.w.draw(draw_handle, mgr, disabled);
         for popup in &self.popups {
             draw_handle.clip_region(self.core.rect, Coord::ZERO, &mut |draw_handle| {
-                popup.1.overlay.draw(draw_handle, mgr, disabled);
+                self.find(popup.1.id)
+                    .map(|w| w.draw(draw_handle, mgr, disabled));
             });
         }
     }
@@ -169,22 +144,6 @@ impl<W: Widget<Msg = VoidMsg> + 'static> event::EventHandler for Window<W> {
         if id <= self.w.id() {
             self.w.event(mgr, id, event)
         } else {
-            for i in 0..self.popups.len() {
-                let widget = &mut self.popups[i].1.overlay;
-                if id <= widget.id() {
-                    let r = widget.event(mgr, id, event);
-                    let action = match mgr.pop_action() {
-                        TkAction::Close => {
-                            self.popups.remove(i);
-                            TkAction::Reconfigure
-                        }
-                        action => action,
-                    };
-                    *mgr += action;
-                    return r;
-                }
-            }
-
             debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
             Manager::handle_generic(self, mgr, event)
         }
@@ -228,7 +187,7 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         let r = self.core.rect;
         for (_id, popup) in &mut self.popups {
             let c = self.w.find(popup.parent).unwrap().rect();
-            let widget = popup.overlay.as_widget_mut();
+            let widget = self.w.find_mut(popup.id).unwrap();
             let mut cache = layout::SolveCache::find_constraints(widget, size_handle);
             let ideal = cache.ideal(false);
             let m = cache.margins();

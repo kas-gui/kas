@@ -5,7 +5,7 @@
 
 //! Event handling: Response type
 
-use super::{Action, Event};
+use super::{Action, Event, VoidResponse};
 
 /// Response type from [`Handler::action`].
 ///
@@ -86,6 +86,13 @@ impl<M> Response<M> {
     #[inline]
     pub fn try_into<N>(self) -> Result<Response<N>, M> {
         Response::try_from(self)
+    }
+}
+
+impl VoidResponse {
+    /// Convert a `Response<VoidMsg>` to another `Response`
+    pub fn void_into<M>(self) -> Response<M> {
+        self.try_into().unwrap_or(Response::None)
     }
 }
 
