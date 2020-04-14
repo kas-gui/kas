@@ -242,7 +242,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let (impl_generics, _ty, where_clause) = generics.split_for_impl();
         let ty_generics = SubstTyGenerics(&ast.generics, subs);
 
-        if handler.action {
+        if handler.handle {
             toks.append_all(quote! {
                 impl #impl_generics kas::event::Handler
                         for #name #ty_generics #where_clause

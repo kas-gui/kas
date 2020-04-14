@@ -118,7 +118,7 @@ impl<M: Clone + Debug> event::Handler for TextButton<M> {
         true
     }
 
-    fn action(&mut self, _: &mut Manager, event: Event) -> Response<M> {
+    fn handle(&mut self, _: &mut Manager, event: Event) -> Response<M> {
         match event {
             Event::Activate => self.msg.clone().into(),
             event => Response::Unhandled(event),

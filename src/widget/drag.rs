@@ -154,7 +154,7 @@ impl Layout for DragHandle {
 impl event::Handler for DragHandle {
     type Msg = Coord;
 
-    fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
             Event::PressStart { source, coord, .. } => {
                 if !self.grab_press(mgr, source, coord) {

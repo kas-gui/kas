@@ -56,7 +56,7 @@ fn make_window() -> Box<dyn kas::Window> {
         }
         impl Handler {
             type Msg = VoidMsg;
-            fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
+            fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
                 match event {
                     Event::TimerUpdate => {
                         if let Some(start) = self.start {

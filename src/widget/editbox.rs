@@ -419,7 +419,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
         true
     }
 
-    fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
             Event::Activate => {
                 mgr.request_char_focus(self.id());

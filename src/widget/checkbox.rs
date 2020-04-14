@@ -129,7 +129,7 @@ impl<M> event::Handler for CheckBoxBare<M> {
         true
     }
 
-    fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
         match event {
             Event::Activate => {
                 self.state = !self.state;

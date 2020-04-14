@@ -57,7 +57,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             }
             impl Handler {
                 type Msg = VoidMsg;
-                fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
+                fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
                     match event {
                         Event::HandleUpdate { .. } => {
                             let c = COUNTER.with(|c| *c.borrow());

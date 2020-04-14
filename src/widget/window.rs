@@ -14,7 +14,7 @@ use kas::prelude::*;
 use kas::WindowId;
 
 /// The main instantiation of the [`Window`] trait.
-#[handler(action, generics = <> where W: Widget<Msg = VoidMsg>)]
+#[handler(handle, generics = <> where W: Widget<Msg = VoidMsg>)]
 #[widget(config=noauto)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {

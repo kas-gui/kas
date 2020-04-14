@@ -148,8 +148,8 @@
 //! substitutions of generic parameters).
 //! This attribute accepts the following comma separated arguments:
 //!
-//! -   (optional) `none`, `all`, `action`, or `send` — derive only [`Handler`]
-//!     (`action`), [`SendEvent`] (`send`), neither, or both
+//! -   (optional) `none`, `all`, `handle`, or `send` — derive only
+//!     [`Handler::handle`], [`SendEvent::send`], neither, or both
 //! -   (optional) `msg = TYPE` — the [`Handler::Msg`] associated type; if not
 //!     specified, this type defaults to [`kas::event::VoidMsg`]
 //! -   (optional) `substitutions = LIST` — a list subsitutions for type

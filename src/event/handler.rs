@@ -5,39 +5,47 @@
 
 //! Event handling - handler
 
-use crate::event::{self, Event, Manager, Response};
+use super::*;
 #[allow(unused)]
 use crate::Widget; // for doc-links
 use crate::{WidgetConfig, WidgetId};
 
-/// High-level event handling for a [`Widget`]
+/// Event handling for a [`Widget`]
 ///
-/// This is implemented by `derive(Widget)` when a `#[handler]` attribute is
-/// present with parameter `action` or `all`.
+/// Interactive widgets should implement their event-handling logic here
+/// (although it is also possible to implement this in [`SendEvent::send`],
+/// which might be preferable when dealing with child widgets).
+///
+/// The default implementation does nothing, and is derived by `derive(Widget)`
+/// when a `#[handler]` attribute is present with parameter `handle` or `all`.
 pub trait Handler: WidgetConfig {
-    /// Type of message returned by this handler.
+    /// Type of message returned by this widget
     ///
-    /// This mechanism allows type-safe handling of user-defined responses to handled actions.
-    /// For example, a user may define a control panel where each button returns a unique code,
-    /// or a configuration editor may return a full copy of the new configuration on completion.
+    /// This mechanism allows type-safe handling of user-defined responses to
+    /// handled actions, for example an enum encoding button presses or a
+    /// floating-point value from a slider.
+    ///
+    /// The [`VoidMsg`] type may be used where messages are never generated.
+    /// This is distinct from `()`, which might be applicable when a widget only
+    /// needs to "wake up" a parent.
     type Msg;
 
-    /// Configuration for [`Manager::handle_generic`]
+    /// Generic handler: translate presses to activations
     ///
-    /// If this returns true, then click/touch events get translated to
-    /// [`Event::Activate`] as appropriate (on primary mouse button only).
+    /// This is configuration for [`Manager::handle_generic`], and can be used
+    /// to translate *press* (click/touch) events into [`Event::Activate`].
     // NOTE: not an associated constant because these are not object-safe
     #[inline]
     fn activation_via_press(&self) -> bool {
         false
     }
 
-    /// Handle a high-level "action" and return a user-defined message.
+    /// Handle an event and return a user-defined message
     ///
     /// Widgets should handle any events applicable to themselves here, and
     /// return all other events via [`Response::Unhandled`].
     #[inline]
-    fn action(&mut self, _: &mut Manager, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, _: &mut Manager, event: Event) -> Response<Self::Msg> {
         Response::Unhandled(event)
     }
 }
@@ -71,6 +79,10 @@ pub trait SendEvent: Handler {
     ///
     /// When the child's [`Handler::Msg`] type is not [`VoidMsg`], its response
     /// messages can be handled here (in place of `.into()` above).
+    ///
+    /// The example above uses [`Manager::handle_generic`], which is an optional
+    /// tool able to perform some simplifications on events. It is also valid to
+    /// call [`Handler::handle`] directly or simply to embed handling logic here.
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg>;
 }
 
@@ -92,7 +104,7 @@ impl<'a> Manager<'a> {
             // Translate press events
             match event {
                 Event::PressStart { source, coord } if source.is_primary() => {
-                    mgr.request_grab(widget.id(), source, coord, event::GrabMode::Grab, None);
+                    mgr.request_grab(widget.id(), source, coord, GrabMode::Grab, None);
                     return Response::None;
                 }
                 Event::PressMove { .. } => {
@@ -105,6 +117,6 @@ impl<'a> Manager<'a> {
                 _ => (),
             };
         }
-        widget.action(mgr, event)
+        widget.handle(mgr, event)
     }
 }

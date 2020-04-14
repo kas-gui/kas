@@ -151,7 +151,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
         true
     }
 
-    fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
         match event {
             Event::Activate => {
                 if let Some(id) = self.popup_id {

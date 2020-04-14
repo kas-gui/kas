@@ -122,7 +122,7 @@ impl Handler for Clock {
     type Msg = event::VoidMsg;
 
     #[inline]
-    fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
             Event::TimerUpdate => {
                 self.now = Local::now();

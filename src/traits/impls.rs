@@ -96,8 +96,8 @@ impl<M> event::Handler for Box<dyn Widget<Msg = M>> {
         self.as_ref().activation_via_press()
     }
 
-    fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
-        self.as_mut().action(mgr, event)
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        self.as_mut().handle(mgr, event)
     }
 }
 

@@ -194,7 +194,7 @@ mod kw {
     custom_keyword!(cursor_icon);
     custom_keyword!(none);
     custom_keyword!(all);
-    custom_keyword!(action);
+    custom_keyword!(handle);
     custom_keyword!(send);
     custom_keyword!(config);
     custom_keyword!(noauto);
@@ -616,7 +616,7 @@ impl Parse for LayoutArgs {
 
 #[derive(Debug)]
 pub struct HandlerArgs {
-    pub action: bool,
+    pub handle: bool,
     pub send: bool,
     pub msg: Type,
     pub substitutions: HashMap<Ident, Type>,
@@ -626,7 +626,7 @@ pub struct HandlerArgs {
 impl HandlerArgs {
     pub fn new(msg: Type) -> Self {
         HandlerArgs {
-            action: false,
+            handle: false,
             send: false,
             msg,
             substitutions: Default::default(),
@@ -659,12 +659,12 @@ impl Parse for HandlerArgs {
                     have_config = true;
                 } else if !have_config && lookahead.peek(kw::all) {
                     let _: kw::all = content.parse()?;
-                    args.action = true;
+                    args.handle = true;
                     args.send = true;
                     have_config = true;
-                } else if !have_config && lookahead.peek(kw::action) {
-                    let _: kw::action = content.parse()?;
-                    args.action = true;
+                } else if !have_config && lookahead.peek(kw::handle) {
+                    let _: kw::handle = content.parse()?;
+                    args.handle = true;
                     have_config = true;
                 } else if !have_config && lookahead.peek(kw::send) {
                     let _: kw::send = content.parse()?;
@@ -719,7 +719,7 @@ impl Parse for HandlerArgs {
 
         if !have_config {
             // default to all
-            args.action = true;
+            args.handle = true;
             args.send = true;
         }
 
@@ -733,10 +733,10 @@ impl ToTokens for HandlerArgs {
         syn::token::Bracket::default().surround(tokens, |tokens| {
             kw::handler::default().to_tokens(tokens);
             syn::token::Paren::default().surround(tokens, |tokens| {
-                match (self.action, self.send) {
+                match (self.handle, self.send) {
                     (false, false) => kw::none::default().to_tokens(tokens),
                     (false, true) => kw::send::default().to_tokens(tokens),
-                    (true, false) => kw::action::default().to_tokens(tokens),
+                    (true, false) => kw::handle::default().to_tokens(tokens),
                     (true, true) => kw::all::default().to_tokens(tokens),
                 };
                 Comma::default().to_tokens(tokens);

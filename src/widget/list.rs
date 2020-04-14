@@ -87,7 +87,7 @@ pub type RefList<'a, D, M> = List<D, &'a mut dyn Widget<Msg = M>>;
 /// children.
 ///
 /// [`make_widget`]: ../macros/index.html#the-make_widget-macro
-#[handler(action, msg=<W as event::Handler>::Msg)]
+#[handler(handle, msg=<W as event::Handler>::Msg)]
 #[widget(children=noauto)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct List<D: Directional, W: Widget> {
