@@ -172,14 +172,14 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> event::EventHandler for ComboBox<M> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<M: Clone + Debug + 'static> event::SendEvent for ComboBox<M> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);
         }
 
         if id <= self.popup.id() {
-            let r = match self.popup.event(mgr, id, event).try_into() {
+            let r = match self.popup.send(mgr, id, event).try_into() {
                 Ok(r) => r,
                 Err(msg) => {
                     let index = msg as usize;

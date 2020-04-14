@@ -101,9 +101,9 @@ impl<M> event::Handler for Box<dyn Widget<Msg = M>> {
     }
 }
 
-impl<M> event::EventHandler for Box<dyn Widget<Msg = M>> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        self.as_mut().event(mgr, id, event)
+impl<M> event::SendEvent for Box<dyn Widget<Msg = M>> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        self.as_mut().send(mgr, id, event)
     }
 }
 

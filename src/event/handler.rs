@@ -42,38 +42,36 @@ pub trait Handler: WidgetConfig {
     }
 }
 
-/// Low-level event handling for a [`Widget`]
+/// Event routing
 ///
-/// This is implemented by `derive(Widget)` when a `#[handler]` attribute is
-/// present with parameter `event` or `all`.
-pub trait EventHandler: Handler {
-    /// Handle a low-level event.
+/// This trait is responsible for routing events to the correct widget. It is
+/// separate from [`Handler`] since it can be derived for many parent widgets,
+/// even when event *handling* must be implemented manually.
+///
+/// This trait is implemented by `derive(Widget)` when a `#[handler]` attribute
+/// is present with parameter `send` or `all`.
+pub trait SendEvent: Handler {
+    /// Send an event
     ///
-    /// Most non-parent widgets will not need to implement this method manually.
-    /// The default implementation (which wraps [`Manager::handle_generic`])
-    /// forwards high-level events via [`event::Handler::action`], thus the only
-    /// reason for non-parent widgets to implement this manually is for
-    /// low-level event processing.
-    ///
-    /// Parent widgets should forward events to the appropriate child widget,
-    /// via logic like the following:
+    /// This method is responsible for routing events toward descendents.
+    /// [`WidgetId`] values are assigned via depth-first search with parents
+    /// ordered after all children.
+    /// The following logic is recommended for routing events:
     /// ```norun
     /// if id <= self.child1.id() {
     ///     self.child1.event(mgr, id, event).into()
     /// } else if id <= self.child2.id() {
     ///     self.child2.event(mgr, id, event).into()
+    /// } ... {
     /// } else {
-    ///     debug_assert!(id == self.id(), "Layout::event: bad WidgetId");
-    ///     // either handle `event`, or return:
-    ///     Response::Unhandled(event)
+    ///     debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
+    ///     Manager::handle_generic(self, mgr, event)
     /// }
     /// ```
-    /// Optionally, the return value of child event handlers may be intercepted
-    /// in order to handle returned messages and/or unhandled events.
-    #[inline]
-    fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
-        Manager::handle_generic(self, mgr, event)
-    }
+    ///
+    /// When the child's [`Handler::Msg`] type is not [`VoidMsg`], its response
+    /// messages can be handled here (in place of `.into()` above).
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg>;
 }
 
 impl<'a> Manager<'a> {

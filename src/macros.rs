@@ -148,15 +148,15 @@
 //! substitutions of generic parameters).
 //! This attribute accepts the following comma separated arguments:
 //!
-//! -   (optional) `none`, `all`, `action`, or `event` — derive only [`Handler`]
-//!     (`action`), [`EventHandler`] (`event`), neither, or both
+//! -   (optional) `none`, `all`, `action`, or `send` — derive only [`Handler`]
+//!     (`action`), [`SendEvent`] (`send`), neither, or both
 //! -   (optional) `msg = TYPE` — the [`Handler::Msg`] associated type; if not
 //!     specified, this type defaults to [`kas::event::VoidMsg`]
 //! -   (optional) `substitutions = LIST` — a list subsitutions for type
 //!     generics, for example: (T1 = MyType, T2 = some::other::Type`
 //! -   (optional): `generics = ...`; this parameter must appear last in the
 //!     list and allows extra type parameters and/or restrictions to appear on
-//!     the implementations of [`Handler`], [`EventHandler`] and [`Widget`].
+//!     the implementations of [`Handler`], [`SendEvent`] and [`Widget`].
 //!     It accepts any of the following:
 //!
 //!     -   `<TYPE_PARAMS>` where `TYPE_PARAMS` is the usual list of type
@@ -423,7 +423,7 @@
 // Imported for doc-links
 #[allow(unused)]
 use crate::{
-    event::{EventHandler, Handler},
+    event::{Handler, SendEvent},
     CoreData, Layout, LayoutData, Widget, WidgetConfig, WidgetCore,
 };
 

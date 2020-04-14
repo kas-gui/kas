@@ -751,8 +751,8 @@ impl<'a> Manager<'a> {
                 }
             }
 
-            if let Some((id, action)) = id_action {
-                let _ = widget.event(self, id, action);
+            if let Some((id, event)) = id_action {
+                let _ = widget.send(self, id, event);
 
                 // Add to key_events for visual feedback
                 for item in &self.mgr.key_events {
@@ -1037,8 +1037,8 @@ impl<'a> Manager<'a> {
 
             let id = grab.id;
             if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
-                let ev = Event::Pan { alpha, delta };
-                let _ = widget.event(&mut self, id, ev);
+                let event = Event::Pan { alpha, delta };
+                let _ = widget.send(&mut self, id, event);
             }
         }
 
@@ -1050,8 +1050,8 @@ impl<'a> Manager<'a> {
         for item in self.mgr.pending.pop() {
             match item {
                 Pending::LostCharFocus(id) => {
-                    let ev = Event::LostCharFocus;
-                    let _ = widget.event(&mut self, id, ev);
+                    let event = Event::LostCharFocus;
+                    let _ = widget.send(&mut self, id, event);
                 }
             }
         }
@@ -1073,9 +1073,9 @@ impl<'a> Manager<'a> {
 
             let update = self.mgr.time_updates.pop().unwrap();
             let w_id = update.1;
-            let action = Event::TimerUpdate;
-            trace!("Sending {:?} to widget {}", action, w_id);
-            let _ = widget.event(self, w_id, action);
+            let event = Event::TimerUpdate;
+            trace!("Sending {:?} to widget {}", event, w_id);
+            let _ = widget.send(self, w_id, event);
         }
 
         self.mgr.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
@@ -1091,9 +1091,9 @@ impl<'a> Manager<'a> {
         // NOTE: to avoid borrow conflict, we must clone values!
         if let Some(mut values) = self.mgr.handle_updates.get(&handle).cloned() {
             for w_id in values.drain(..) {
-                let action = Event::HandleUpdate { handle, payload };
-                trace!("Sending {:?} to widget {}", action, w_id);
-                let _ = widget.event(self, w_id, action);
+                let event = Event::HandleUpdate { handle, payload };
+                trace!("Sending {:?} to widget {}", event, w_id);
+                let _ = widget.send(self, w_id, event);
             }
         }
     }
@@ -1127,8 +1127,8 @@ impl<'a> Manager<'a> {
             // HoveredFileCancelled,
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = self.mgr.char_focus {
-                    let ev = Event::ReceivedCharacter(c);
-                    let _ = widget.event(self, id, ev);
+                    let event = Event::ReceivedCharacter(c);
+                    let _ = widget.send(self, id, event);
                 }
             }
             // Focused(bool),
@@ -1157,8 +1157,8 @@ impl<'a> Manager<'a> {
                     let delta = coord - self.mgr.last_mouse_coord;
                     if grab.mode == GrabMode::Grab {
                         let source = PressSource::Mouse(grab.button);
-                        let ev = Event::PressMove { source, coord, delta };
-                        let _ = widget.event(self, grab.start_id, ev);
+                        let event = Event::PressMove { source, coord, delta };
+                        let _ = widget.send(self, grab.start_id, event);
                     } else {
                         if let Some(pan) = self.mgr.pan_grab.get_mut(grab.pan_grab.0 as usize) {
                             pan.coords[grab.pan_grab.1 as usize].1 = coord;
@@ -1180,13 +1180,13 @@ impl<'a> Manager<'a> {
                 }
             }
             MouseWheel { delta, .. } => {
-                let action = Event::Scroll(match delta {
+                let event = Event::Scroll(match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
                     MouseScrollDelta::PixelDelta(pos) =>
                         ScrollDelta::PixelDelta(Coord::from_logical(pos, self.mgr.dpi_factor)),
                 });
                 if let Some(id) = self.mgr.hover {
-                    let _ = widget.event(self, id, action);
+                    let _ = widget.send(self, id, event);
                 }
             }
             MouseInput {
@@ -1201,7 +1201,7 @@ impl<'a> Manager<'a> {
                     match grab.mode {
                         GrabMode::Grab => {
                             // Mouse grab active: send events there
-                            let ev = match state {
+                            let event = match state {
                                 ElementState::Pressed => Event::PressStart { source, coord },
                                 ElementState::Released => Event::PressEnd {
                                     source,
@@ -1209,7 +1209,7 @@ impl<'a> Manager<'a> {
                                     coord,
                                 },
                             };
-                            let _ = widget.event(self, grab.start_id, ev);
+                            let _ = widget.send(self, grab.start_id, event);
                         }
                         // Pan events do not receive Start/End notifications
                         _ => (),
@@ -1221,8 +1221,8 @@ impl<'a> Manager<'a> {
                 } else if let Some(id) = self.mgr.hover {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
-                        let ev = Event::PressStart { source, coord };
-                        let _ = widget.event(self, id, ev);
+                        let event = Event::PressStart { source, coord };
+                        let _ = widget.send(self, id, event);
                     }
                 }
             }
@@ -1235,12 +1235,12 @@ impl<'a> Manager<'a> {
                 match touch.phase {
                     TouchPhase::Started => {
                         if let Some(id) = widget.find_id(coord) {
-                            let ev = Event::PressStart { source, coord };
-                            let _ = widget.event(self, id, ev);
+                            let event = Event::PressStart { source, coord };
+                            let _ = widget.send(self, id, event);
                         }
                     }
                     TouchPhase::Moved => {
-                        // NOTE: calling widget.event twice appears
+                        // NOTE: calling widget.send twice appears
                         // to be unavoidable (as with CursorMoved)
                         let cur_id = widget.find_id(coord);
 
@@ -1249,7 +1249,7 @@ impl<'a> Manager<'a> {
                         if let Some(grab) = self.get_touch(touch.id) {
                             if grab.mode == GrabMode::Grab {
                                 let id = grab.start_id;
-                                let action = Event::PressMove {
+                                let event = Event::PressMove {
                                     source,
                                     coord,
                                     delta: coord - grab.coord,
@@ -1261,17 +1261,17 @@ impl<'a> Manager<'a> {
                                 grab.cur_id = cur_id;
                                 grab.coord = coord;
 
-                                r = Some((id, action, redraw));
+                                r = Some((id, event, redraw));
                             } else {
                                 pan_grab = Some(grab.pan_grab);
                             }
                         }
 
-                        if let Some((id, action, redraw)) = r {
+                        if let Some((id, event, redraw)) = r {
                             if redraw {
                                 self.send_action(TkAction::Redraw);
                             }
-                            let _ = widget.event(self, id, action);
+                            let _ = widget.send(self, id, event);
                         } else if let Some(pan_grab) = pan_grab {
                             if (pan_grab.1 as usize) < MAX_PAN_GRABS {
                                 if let Some(pan) = self.mgr.pan_grab.get_mut(pan_grab.0 as usize) {
@@ -1283,7 +1283,7 @@ impl<'a> Manager<'a> {
                     TouchPhase::Ended => {
                         if let Some(grab) = self.remove_touch(touch.id) {
                             if grab.mode == GrabMode::Grab {
-                                let action = Event::PressEnd {
+                                let event = Event::PressEnd {
                                     source,
                                     end_id: grab.cur_id,
                                     coord,
@@ -1291,7 +1291,7 @@ impl<'a> Manager<'a> {
                                 if let Some(cur_id) = grab.cur_id {
                                     self.redraw(cur_id);
                                 }
-                                let _ = widget.event(self, grab.start_id, action);
+                                let _ = widget.send(self, grab.start_id, event);
                             } else {
                                 self.mgr.remove_pan_grab(grab.pan_grab);
                             }
@@ -1299,7 +1299,7 @@ impl<'a> Manager<'a> {
                     }
                     TouchPhase::Cancelled => {
                         if let Some(grab) = self.remove_touch(touch.id) {
-                            let action = Event::PressEnd {
+                            let event = Event::PressEnd {
                                 source,
                                 end_id: None,
                                 coord,
@@ -1307,7 +1307,7 @@ impl<'a> Manager<'a> {
                             if let Some(cur_id) = grab.cur_id {
                                 self.redraw(cur_id);
                             }
-                            let _ = widget.event(self, grab.start_id, action);
+                            let _ = widget.send(self, grab.start_id, event);
                         }
                     }
                 }

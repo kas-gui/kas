@@ -252,7 +252,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             });
         }
 
-        if handler.event {
+        if handler.send {
             let mut ev_to_num = TokenStream::new();
             for child in args.children.iter() {
                 let ident = &child.ident;
@@ -263,38 +263,33 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 };
                 ev_to_num.append_all(quote! {
                     if id <= self.#ident.id() {
-                        let r = self.#ident.event(mgr, id, event);
+                        let r = self.#ident.send(mgr, id, event);
                         #handler
                     } else
                 });
             }
 
-            let event = if args.children.is_empty() {
-                // rely on the default implementation
-                quote! {}
-            } else {
-                quote! {
-                    fn event(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
-                    -> kas::event::Response<Self::Msg>
-                    {
-                        use kas::{WidgetCore, event::Response};
-                        if self.is_disabled() {
-                            return Response::Unhandled(event);
-                        }
+            let send = quote! {
+                fn send(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
+                -> kas::event::Response<Self::Msg>
+                {
+                    use kas::{WidgetCore, event::Response};
+                    if self.is_disabled() {
+                        return Response::Unhandled(event);
+                    }
 
-                        #ev_to_num {
-                            debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
-                            kas::event::Manager::handle_generic(self, mgr, event)
-                        }
+                    #ev_to_num {
+                        debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
+                        kas::event::Manager::handle_generic(self, mgr, event)
                     }
                 }
             };
 
             toks.append_all(quote! {
-                impl #impl_generics kas::event::EventHandler
+                impl #impl_generics kas::event::SendEvent
                         for #name #ty_generics #where_clause
                 {
-                    #event
+                    #send
                 }
             });
         }

@@ -195,7 +195,7 @@ mod kw {
     custom_keyword!(none);
     custom_keyword!(all);
     custom_keyword!(action);
-    custom_keyword!(event);
+    custom_keyword!(send);
     custom_keyword!(config);
     custom_keyword!(noauto);
     custom_keyword!(children);
@@ -617,7 +617,7 @@ impl Parse for LayoutArgs {
 #[derive(Debug)]
 pub struct HandlerArgs {
     pub action: bool,
-    pub event: bool,
+    pub send: bool,
     pub msg: Type,
     pub substitutions: HashMap<Ident, Type>,
     pub generics: Generics,
@@ -627,7 +627,7 @@ impl HandlerArgs {
     pub fn new(msg: Type) -> Self {
         HandlerArgs {
             action: false,
-            event: false,
+            send: false,
             msg,
             substitutions: Default::default(),
             generics: Default::default(),
@@ -660,15 +660,15 @@ impl Parse for HandlerArgs {
                 } else if !have_config && lookahead.peek(kw::all) {
                     let _: kw::all = content.parse()?;
                     args.action = true;
-                    args.event = true;
+                    args.send = true;
                     have_config = true;
                 } else if !have_config && lookahead.peek(kw::action) {
                     let _: kw::action = content.parse()?;
                     args.action = true;
                     have_config = true;
-                } else if !have_config && lookahead.peek(kw::event) {
-                    let _: kw::event = content.parse()?;
-                    args.event = true;
+                } else if !have_config && lookahead.peek(kw::send) {
+                    let _: kw::send = content.parse()?;
+                    args.send = true;
                     have_config = true;
                 } else if !have_msg && lookahead.peek(kw::msg) {
                     have_msg = true;
@@ -720,7 +720,7 @@ impl Parse for HandlerArgs {
         if !have_config {
             // default to all
             args.action = true;
-            args.event = true;
+            args.send = true;
         }
 
         Ok(args)
@@ -733,9 +733,9 @@ impl ToTokens for HandlerArgs {
         syn::token::Bracket::default().surround(tokens, |tokens| {
             kw::handler::default().to_tokens(tokens);
             syn::token::Paren::default().surround(tokens, |tokens| {
-                match (self.action, self.event) {
+                match (self.action, self.send) {
                     (false, false) => kw::none::default().to_tokens(tokens),
-                    (false, true) => kw::event::default().to_tokens(tokens),
+                    (false, true) => kw::send::default().to_tokens(tokens),
                     (true, false) => kw::action::default().to_tokens(tokens),
                     (true, true) => kw::all::default().to_tokens(tokens),
                 };

@@ -222,8 +222,8 @@ impl<W: Widget> Layout for ScrollRegion<W> {
     }
 }
 
-impl<W: Widget> event::EventHandler for ScrollRegion<W> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<W: Widget> event::SendEvent for ScrollRegion<W> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);
         }
@@ -260,7 +260,7 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
         };
 
         if id <= self.horiz_bar.id() {
-            return match Response::<Self::Msg>::try_from(self.horiz_bar.event(mgr, id, event)) {
+            return match Response::<Self::Msg>::try_from(self.horiz_bar.send(mgr, id, event)) {
                 Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
@@ -269,7 +269,7 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
                 }
             };
         } else if id <= self.vert_bar.id() {
-            return match Response::<Self::Msg>::try_from(self.vert_bar.event(mgr, id, event)) {
+            return match Response::<Self::Msg>::try_from(self.vert_bar.send(mgr, id, event)) {
                 Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
@@ -322,7 +322,7 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
             event => event,
         };
 
-        match self.child.event(mgr, id, event) {
+        match self.child.send(mgr, id, event) {
             Response::None => Response::None,
             Response::Unhandled(event) => unhandled(self, mgr, event),
             e @ _ => e,

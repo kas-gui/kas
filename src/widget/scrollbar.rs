@@ -219,14 +219,14 @@ impl<D: Directional> Layout for ScrollBar<D> {
     }
 }
 
-impl<D: Directional> event::EventHandler for ScrollBar<D> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<D: Directional> event::SendEvent for ScrollBar<D> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);
         }
 
         let offset = if id <= self.handle.id() {
-            match self.handle.event(mgr, id, event).try_into() {
+            match self.handle.send(mgr, id, event).try_into() {
                 Ok(res) => return res,
                 Err(offset) => offset,
             }

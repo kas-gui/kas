@@ -208,8 +208,8 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> event::EventHandler for Splitter<D, W> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<D: Directional, W: Widget> event::SendEvent for Splitter<D, W> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);
         }
@@ -220,7 +220,7 @@ impl<D: Directional, W: Widget> event::EventHandler for Splitter<D, W> {
             loop {
                 assert!(n < self.widgets.len());
                 if id <= self.widgets[n].id() {
-                    return self.widgets[n].event(mgr, id, event);
+                    return self.widgets[n].send(mgr, id, event);
                 }
 
                 if n >= self.handles.len() {
@@ -228,7 +228,7 @@ impl<D: Directional, W: Widget> event::EventHandler for Splitter<D, W> {
                 }
                 if id <= self.handles[n].id() {
                     return self.handles[n]
-                        .event(mgr, id, event)
+                        .send(mgr, id, event)
                         .try_into()
                         .unwrap_or_else(|_| {
                             // Message is the new offset relative to the track;
@@ -241,7 +241,7 @@ impl<D: Directional, W: Widget> event::EventHandler for Splitter<D, W> {
             }
         }
 
-        debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
+        debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
         Manager::handle_generic(self, mgr, event)
     }
 }

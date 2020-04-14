@@ -208,14 +208,14 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     }
 }
 
-impl<T: SliderType, D: Directional> event::EventHandler for Slider<T, D> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<T: SliderType, D: Directional> event::SendEvent for Slider<T, D> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);
         }
 
         let offset = if id <= self.handle.id() {
-            match self.handle.event(mgr, id, event).try_into() {
+            match self.handle.send(mgr, id, event).try_into() {
                 Ok(res) => return res,
                 Err(offset) => offset,
             }

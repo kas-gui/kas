@@ -135,16 +135,16 @@ impl<W: Widget> Layout for Window<W> {
     }
 }
 
-impl<W: Widget<Msg = VoidMsg> + 'static> event::EventHandler for Window<W> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<W: Widget<Msg = VoidMsg> + 'static> event::SendEvent for Window<W> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);
         }
 
         if id <= self.w.id() {
-            self.w.event(mgr, id, event)
+            self.w.send(mgr, id, event)
         } else {
-            debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
+            debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
             Manager::handle_generic(self, mgr, event)
         }
     }
