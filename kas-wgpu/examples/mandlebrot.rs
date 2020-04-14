@@ -390,7 +390,7 @@ impl PipeWindow {
     }
 }
 
-#[handler(action, msg = ())]
+#[handler(event)]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Mandlebrot {
     #[widget_core]
@@ -438,8 +438,10 @@ impl Layout for Mandlebrot {
     }
 }
 
-impl event::EventHandler for Mandlebrot {
-    fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
+impl event::Handler for Mandlebrot {
+    type Msg = ();
+
+    fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
             Event::Scroll(delta) => {
                 let factor = match delta {

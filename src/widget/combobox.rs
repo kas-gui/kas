@@ -200,21 +200,11 @@ impl<M: Clone + Debug + 'static> event::EventHandler for ComboBox<M> {
 }
 
 #[layout(single)]
-#[handler(msg=u64, action)]
+#[handler(msg=u64, all)]
 #[derive(Clone, Debug, Widget)]
 struct ComboPopup {
     #[widget_core]
     core: CoreData,
     #[widget]
     column: Column<TextButton<u64>>,
-}
-
-impl event::EventHandler for ComboPopup {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if id <= self.column.id() {
-            self.column.event(mgr, id, event)
-        } else {
-            Response::Unhandled(event)
-        }
-    }
 }
