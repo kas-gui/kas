@@ -86,6 +86,10 @@ impl<'a> Manager<'a> {
     where
         W: Handler + ?Sized,
     {
+        if widget.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         if widget.activation_via_press() {
             // Translate press events
             match event {

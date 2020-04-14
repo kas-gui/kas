@@ -114,10 +114,6 @@ impl<W: Widget> Layout for Window<W> {
 
     #[inline]
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
-
         for popup in self.popups.iter().rev() {
             if let Some(id) = self.w.find(popup.1.id).and_then(|w| w.find_id(coord)) {
                 return Some(id);
@@ -141,6 +137,10 @@ impl<W: Widget> Layout for Window<W> {
 
 impl<W: Widget<Msg = VoidMsg> + 'static> event::EventHandler for Window<W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         if id <= self.w.id() {
             self.w.event(mgr, id, event)
         } else {

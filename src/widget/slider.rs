@@ -190,10 +190,6 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
-
         if self.handle.rect().contains(coord) {
             Some(self.handle.id())
         } else {
@@ -214,6 +210,10 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
 
 impl<T: SliderType, D: Directional> event::EventHandler for Slider<T, D> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         let offset = if id <= self.handle.id() {
             match self.handle.event(mgr, id, event).try_into() {
                 Ok(res) => return res,

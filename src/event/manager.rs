@@ -849,7 +849,9 @@ impl<'a> Manager<'a> {
         macro_rules! do_child {
             ($lt:lifetime, $nav_stack:ident, $widget:ident, $widget_stack:ident) => {{
                 let range = $widget.spatial_range();
-                if range.1 != std::usize::MAX {
+                if $widget.is_disabled() || range.1 == std::usize::MAX {
+                    false
+                } else {
                     // We have a child; the first is range.0 unless backward
                     let index = match backward {
                         false => range.0,
@@ -863,8 +865,6 @@ impl<'a> Manager<'a> {
                     $widget_stack.push($widget);
                     $widget = new;
                     true
-                } else {
-                    false
                 }
             }};
         };
@@ -883,7 +883,7 @@ impl<'a> Manager<'a> {
                     _ => break $lt,
                 };
                 let mut range = $widget.spatial_range();
-                if range.1 == std::usize::MAX {
+                if $widget.is_disabled() || range.1 == std::usize::MAX {
                     break $lt;
                 }
 

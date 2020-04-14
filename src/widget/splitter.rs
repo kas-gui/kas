@@ -175,10 +175,6 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
-
         // find_child should gracefully handle the case that a coord is between
         // widgets, so there's no harm (and only a small performance loss) in
         // calling it twice.
@@ -214,6 +210,10 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
 
 impl<D: Directional, W: Widget> event::EventHandler for Splitter<D, W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         if self.widgets.len() > 0 {
             assert!(self.handles.len() + 1 == self.widgets.len());
             let mut n = 0;

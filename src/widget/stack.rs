@@ -75,10 +75,6 @@ impl<W: Widget> Layout for Stack<W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
-
         if self.active < self.widgets.len() {
             return self.widgets[self.active].find_id(coord);
         }
@@ -95,6 +91,10 @@ impl<W: Widget> Layout for Stack<W> {
 
 impl<W: Widget> event::EventHandler for Stack<W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         for child in &mut self.widgets {
             if id <= child.id() {
                 return child.event(mgr, id, event);

@@ -68,8 +68,7 @@ pub trait WidgetCore: fmt::Debug {
     #[inline]
     fn set_disabled(&mut self, disabled: bool) -> TkAction {
         self.core_data_mut().disabled = disabled;
-        // Disabling affects find_id; we return RegionMoved to invalidate existing results
-        TkAction::RegionMoved
+        TkAction::Redraw
     }
 
     /// Get the widget's region, relative to its parent.
@@ -305,11 +304,7 @@ pub trait Layout: WidgetChildren {
     /// `(0, WidgetChildren::len(self).wrapping_sub(1))` when not disabled
     /// which should suffice for most widgets.
     fn spatial_range(&self) -> (usize, usize) {
-        if self.is_disabled() {
-            (0, std::usize::MAX)
-        } else {
-            (0, WidgetChildren::len(self).wrapping_sub(1))
-        }
+        (0, WidgetChildren::len(self).wrapping_sub(1))
     }
 
     /// Find a child widget by coordinate
@@ -325,13 +320,8 @@ pub trait Layout: WidgetChildren {
     /// (same behaviour as with events addressed by coordinate).
     /// The only case `None` should be expected is when `coord` is outside the
     /// initial widget's region; however this is not guaranteed.
-    ///
-    /// Disabled widgets should return `None`, without recursing to children.
     #[inline]
     fn find_id(&self, _coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
         Some(self.id())
     }
 

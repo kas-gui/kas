@@ -281,9 +281,6 @@ pub(crate) fn derive(
 
         fn find_id(&self, coord: kas::geom::Coord) -> Option<kas::WidgetId> {
             use kas::WidgetCore;
-            if self.is_disabled() {
-                return None;
-            }
 
             #find_id_body else {
                 None

@@ -137,22 +137,14 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
     }
 
     fn spatial_range(&self) -> (usize, usize) {
-        if self.is_disabled() {
-            (0, std::usize::MAX)
-        } else {
-            let last = WidgetChildren::len(self).wrapping_sub(1);
-            match self.direction.is_reversed() {
-                false => (0, last),
-                true => (last, 0),
-            }
+        let last = WidgetChildren::len(self).wrapping_sub(1);
+        match self.direction.is_reversed() {
+            false => (0, last),
+            true => (last, 0),
         }
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
-
         let solver = layout::RowPositionSolver::new(self.direction);
         if let Some(child) = solver.find_child(&self.widgets, coord) {
             return child.find_id(coord);
@@ -172,6 +164,10 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
 
 impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         for child in &mut self.widgets {
             if id <= child.id() {
                 return child.event(mgr, id, event);

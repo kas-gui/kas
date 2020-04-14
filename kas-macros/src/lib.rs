@@ -278,6 +278,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     -> kas::event::Response<Self::Msg>
                     {
                         use kas::{WidgetCore, event::Response};
+                        if self.is_disabled() {
+                            return Response::Unhandled(event);
+                        }
+
                         #ev_to_num {
                             debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
                             kas::event::Manager::handle_generic(self, mgr, event)

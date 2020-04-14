@@ -195,10 +195,6 @@ impl<W: Widget> Layout for ScrollRegion<W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
-
         if self.horiz_bar.rect().contains(coord) {
             self.horiz_bar.find_id(coord)
         } else if self.vert_bar.rect().contains(coord) {
@@ -228,6 +224,10 @@ impl<W: Widget> Layout for ScrollRegion<W> {
 
 impl<W: Widget> event::EventHandler for ScrollRegion<W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
             Event::Scroll(delta) => {
                 let d = match delta {
