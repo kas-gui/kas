@@ -9,7 +9,6 @@ use log::trace;
 use smallvec::SmallVec;
 use std::collections::HashMap;
 #[cfg(feature = "winit")]
-use std::convert::TryFrom;
 use std::time::{Duration, Instant};
 use std::u16;
 
@@ -85,6 +84,7 @@ pub struct ManagerState {
     modifiers: ModifiersState,
     char_focus: Option<WidgetId>,
     nav_focus: Option<WidgetId>,
+    nav_stack: SmallVec<[u32; 16]>,
     hover: Option<WidgetId>,
     hover_icon: CursorIcon,
     key_events: SmallVec<[(u32, WidgetId); 10]>,
@@ -116,6 +116,7 @@ impl ManagerState {
             modifiers: ModifiersState::empty(),
             char_focus: None,
             nav_focus: None,
+            nav_stack: SmallVec::new(),
             hover: None,
             hover_icon: CursorIcon::Default,
             key_events: Default::default(),
@@ -730,7 +731,7 @@ impl<'a> Manager<'a> {
         }
 
         if vkey == VK::Tab {
-            self.next_nav_focus(widget, self.mgr.modifiers.shift());
+            self.next_nav_focus(widget.as_widget(), self.mgr.modifiers.shift());
         } else if vkey == VK::Escape {
             self.unset_nav_focus();
         } else {
@@ -831,34 +832,140 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn next_nav_focus<W: Widget + ?Sized>(&mut self, widget: &mut W, backward: bool) {
-        let end = widget.id();
-        let mut n: u32 = if let Some(id) = self.mgr.nav_focus {
-            u32::from(id)
-        } else if backward {
-            end.into()
-        } else {
-            0
+    fn next_nav_focus<'b>(&mut self, mut widget: &'b dyn WidgetConfig, backward: bool) {
+        type WidgetStack<'b> = SmallVec<[&'b dyn WidgetConfig; 16]>;
+        let mut widget_stack = WidgetStack::new();
+
+        // Reconstruct widget_stack:
+        for index in self.mgr.nav_stack.iter().cloned() {
+            let new = widget.get(index as usize).unwrap();
+            widget_stack.push(widget);
+            widget = new;
+        }
+
+        // Progresses to the first child (or last if backward).
+        // Returns true if a child is found.
+        // Breaks to given lifetime on error.
+        macro_rules! do_child {
+            ($lt:lifetime, $nav_stack:ident, $widget:ident, $widget_stack:ident) => {{
+                let range = $widget.spatial_range();
+                if range.1 != std::usize::MAX {
+                    // We have a child; the first is range.0 unless backward
+                    let index = match backward {
+                        false => range.0,
+                        true => range.1,
+                    };
+                    let new = match $widget.get(index) {
+                        None => break $lt,
+                        Some(w) => w,
+                    };
+                    $nav_stack.push(index as u32);
+                    $widget_stack.push($widget);
+                    $widget = new;
+                    true
+                } else {
+                    false
+                }
+            }};
         };
-        loop {
-            if backward {
-                n = n.wrapping_sub(1);
-            } else {
-                n = n.wrapping_add(1);
-            }
-            if n == 0 || n > end.into() {
-                return self.unset_nav_focus();
-            }
 
-            let id = WidgetId::try_from(n).unwrap();
+        // Progresses to the next (or previous) sibling, otherwise pops to the
+        // parent. Returns true if a sibling is found.
+        // Breaks to given lifetime on error.
+        macro_rules! do_sibling_or_pop {
+            ($lt:lifetime, $nav_stack:ident, $widget:ident, $widget_stack:ident) => {{
+                let mut index;
+                match ($nav_stack.pop(), $widget_stack.pop()) {
+                    (Some(i), Some(w)) => {
+                        index = i as usize;
+                        $widget = w;
+                    }
+                    _ => break $lt,
+                };
+                let mut range = $widget.spatial_range();
+                if range.1 == std::usize::MAX {
+                    break $lt;
+                }
 
-            // TODO(opt): incorporate walk/find logic
-            if widget.find(id).map(|w| w.key_nav()).unwrap_or(false) {
-                self.send_action(TkAction::Redraw);
-                self.mgr.nav_focus = Some(id);
-                return;
+                let backward = (range.1 < range.0) ^ backward;
+                if range.1 < range.0 {
+                    std::mem::swap(&mut range.0, &mut range.1);
+                }
+
+                // Look for next sibling
+                let have_sibling = match backward {
+                    false if index < range.1 => {
+                        index += 1;
+                        true
+                    }
+                    true if range.0 < index => {
+                        index -= 1;
+                        true
+                    }
+                    _ => false,
+                };
+
+                if have_sibling {
+                    let new = match $widget.get(index) {
+                        None => break $lt,
+                        Some(w) => w,
+                    };
+                    $nav_stack.push(index as u32);
+                    $widget_stack.push($widget);
+                    $widget = new;
+                }
+                have_sibling
+            }};
+        };
+
+        // We redraw in all cases. Since this is not part of widget event
+        // processing, we can push directly to self.mgr.action.
+        self.mgr.send_action(TkAction::Redraw);
+        let nav_stack = &mut self.mgr.nav_stack;
+
+        if !backward {
+            // Depth-first search without function recursion. Our starting
+            // entry has already been used (if applicable); the next
+            // candidate is its first child.
+            'l1: loop {
+                if do_child!('l1, nav_stack, widget, widget_stack) {
+                    if widget.key_nav() && !widget.is_disabled() {
+                        self.mgr.nav_focus = Some(widget.id());
+                        return;
+                    }
+                    continue;
+                }
+
+                loop {
+                    if do_sibling_or_pop!('l1, nav_stack, widget, widget_stack) {
+                        if widget.key_nav() && !widget.is_disabled() {
+                            self.mgr.nav_focus = Some(widget.id());
+                            return;
+                        }
+                        break;
+                    }
+                }
+            }
+        } else {
+            // Reverse depth-first search
+            let mut start = self.mgr.nav_focus.is_none();
+            'l2: loop {
+                if start || do_sibling_or_pop!('l2, nav_stack, widget, widget_stack) {
+                    start = false;
+                    while do_child!('l2, nav_stack, widget, widget_stack) {}
+                }
+
+                if widget.key_nav() && !widget.is_disabled() {
+                    self.mgr.nav_focus = Some(widget.id());
+                    return;
+                }
             }
         }
+
+        // We end up here when there are no more nodes to walk and when
+        // an error occurs (unable to get widget within spatial_range).
+        self.mgr.nav_stack.clear();
+        self.mgr.nav_focus = None;
     }
 
     #[cfg(feature = "winit")]

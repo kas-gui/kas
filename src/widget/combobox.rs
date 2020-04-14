@@ -51,6 +51,11 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         // self.text_rect = ...
     }
 
+    fn spatial_range(&self) -> (usize, usize) {
+        // We have no child within our rect; return an empty range
+        (0, std::usize::MAX)
+    }
+
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
         let align = (Align::Centre, Align::Centre);

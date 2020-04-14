@@ -289,6 +289,29 @@ pub trait Layout: WidgetChildren {
         self.core_data_mut().rect = rect;
     }
 
+    /// Iterate through children in spatial order
+    ///
+    /// Returns a "range" of children, by index, in spatial order. Unlike
+    /// `std::ops::Range` this is inclusive and reversible, e.g. `(1, 3)` means
+    /// `1, 2, 3` and `(5, 2)` means `5, 4, 3, 2`. As a special case,
+    /// `(_, std::usize::MAX)` means the range is empty.
+    ///
+    /// Disabled widgets should return an empty range, otherwise they should
+    /// return a range over children in spatial order (left-to-right then
+    /// top-to-bottom). Widgets outside the parent's rect (i.e. popups) should
+    /// be excluded.
+    ///
+    /// The default implementation returns
+    /// `(0, WidgetChildren::len(self).wrapping_sub(1))` when not disabled
+    /// which should suffice for most widgets.
+    fn spatial_range(&self) -> (usize, usize) {
+        if self.is_disabled() {
+            (0, std::usize::MAX)
+        } else {
+            (0, WidgetChildren::len(self).wrapping_sub(1))
+        }
+    }
+
     /// Find a child widget by coordinate
     ///
     /// This is used by the event manager to target the correct widget given an

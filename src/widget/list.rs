@@ -136,6 +136,18 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
         }
     }
 
+    fn spatial_range(&self) -> (usize, usize) {
+        if self.is_disabled() {
+            (0, std::usize::MAX)
+        } else {
+            let last = WidgetChildren::len(self).wrapping_sub(1);
+            match self.direction.is_reversed() {
+                false => (0, last),
+                true => (last, 0),
+            }
+        }
+    }
+
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
         if self.is_disabled() {
             return None;
