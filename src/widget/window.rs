@@ -166,8 +166,8 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         id: WindowId,
         popup: kas::Popup,
     ) {
-        // TODO: using reconfigure here is inefficient
-        mgr.send_action(TkAction::Reconfigure);
+        // TODO: restrict popup resize to active popup?
+        mgr.send_action(TkAction::Popup);
         self.popups.push((id, popup));
     }
 
@@ -175,7 +175,7 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
-                mgr.send_action(TkAction::Reconfigure);
+                mgr.send_action(TkAction::RegionMoved);
                 return;
             }
         }

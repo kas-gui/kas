@@ -68,6 +68,8 @@ pub enum TkAction {
     /// This implies that a redraw is required.
     // NOTE: one could specify a Rect here, but there's not much advantage
     RegionMoved,
+    /// A pop-up opened/closed/needs resizing
+    Popup,
     /// Whole window requires reconfiguring (implies redrawing)
     ///
     /// *Configuring* widgets assigns [`WidgetId`] identifiers, updates
