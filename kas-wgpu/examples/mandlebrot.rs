@@ -441,7 +441,7 @@ impl Layout for Mandlebrot {
 impl event::EventHandler for Mandlebrot {
     fn event(&mut self, mgr: &mut Manager, _: WidgetId, event: Event) -> Response<Self::Msg> {
         match event {
-            Event::Action(event::Action::Scroll(delta)) => {
+            Event::Scroll(delta) => {
                 let factor = match delta {
                     event::ScrollDelta::LineDelta(_, y) => -0.5 * y as f64,
                     event::ScrollDelta::PixelDelta(coord) => -0.01 * coord.1 as f64,
@@ -450,7 +450,7 @@ impl event::EventHandler for Mandlebrot {
                 mgr.redraw(self.id());
                 Response::Msg(())
             }
-            Event::Action(event::Action::Pan { alpha, delta }) => {
+            Event::Pan { alpha, delta } => {
                 // Our full transform (from screen coordinates to world coordinates) is:
                 // f(p) = α_w * α_v * p + α_w * δ_v + δ_w
                 // where _w indicate world transforms (self.alpha, self.delta)

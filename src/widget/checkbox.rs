@@ -11,7 +11,7 @@ use std::rc::Rc;
 use super::Label;
 use kas::class::HasBool;
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Action, Manager, Response, VoidMsg};
+use kas::event::{Event, Manager, Response, VoidMsg};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
@@ -129,9 +129,9 @@ impl<M> event::Handler for CheckBoxBare<M> {
         true
     }
 
-    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
-        match action {
-            Action::Activate => {
+    fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+        match event {
+            Event::Activate => {
                 self.state = !self.state;
                 mgr.redraw(self.id());
                 if let Some(ref f) = self.on_toggle {
@@ -140,7 +140,7 @@ impl<M> event::Handler for CheckBoxBare<M> {
                     Response::None
                 }
             }
-            a @ _ => Response::unhandled_action(a),
+            event => Response::Unhandled(event),
         }
     }
 }

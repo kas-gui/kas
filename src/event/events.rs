@@ -12,15 +12,15 @@ use super::{MouseButton, UpdateHandle, VirtualKeyCode};
 use crate::geom::{Coord, DVec2};
 use crate::WidgetId;
 
-/// High-level events addressed to a widget by [`WidgetId`]
+/// Events addressed to a widget
 #[derive(Clone, Debug)]
-pub enum Action {
+pub enum Event {
     /// Widget activation, for example clicking a button or toggling a check-box
     Activate,
     /// Navigation key input
     ///
     /// This is received only when the widget has key-navigation focus. Note
-    /// that [`Action::Activate`] is also effectively a navigation key.
+    /// that [`Event::Activate`] is also effectively a navigation key.
     NavKey(NavKey),
     /// Widget lost keyboard input focus
     LostCharFocus,
@@ -81,30 +81,8 @@ pub enum Action {
         /// Translation component
         delta: DVec2,
     },
-    /// Update from a timer
-    ///
-    /// This event is received after requesting timed wake-up(s)
-    /// (see [`Manager::update_on_timer`]).
-    TimerUpdate,
-    /// Update triggerred via an [`UpdateHandle`]
-    ///
-    /// This event may be received after registering an [`UpdateHandle`] via
-    /// [`Manager::update_on_handle`].
-    ///
-    /// A user-defined payload is passed. Interpretation of this payload is
-    /// user-defined and unfortunately not type safe.
-    HandleUpdate { handle: UpdateHandle, payload: u64 },
-}
-
-/// Low-level events addressed to a widget by [`WidgetId`] or coordinate.
-#[derive(Clone, Debug)]
-pub enum Event {
-    Action(Action),
     /// A mouse button was pressed or touch event started
-    PressStart {
-        source: PressSource,
-        coord: Coord,
-    },
+    PressStart { source: PressSource, coord: Coord },
     /// Movement of mouse or a touch press
     ///
     /// Received only given a [press grab](super::Manager::request_grab).
@@ -124,9 +102,22 @@ pub enum Event {
         end_id: Option<WidgetId>,
         coord: Coord,
     },
+    /// Update from a timer
+    ///
+    /// This event is received after requesting timed wake-up(s)
+    /// (see [`Manager::update_on_timer`]).
+    TimerUpdate,
+    /// Update triggerred via an [`UpdateHandle`]
+    ///
+    /// This event may be received after registering an [`UpdateHandle`] via
+    /// [`Manager::update_on_handle`].
+    ///
+    /// A user-defined payload is passed. Interpretation of this payload is
+    /// user-defined and unfortunately not type safe.
+    HandleUpdate { handle: UpdateHandle, payload: u64 },
 }
 
-/// Navigation key ([`Action::NavKey`])
+/// Navigation key ([`Event::NavKey`])
 ///
 /// The purpose of this enum (instead of sending the active widget a
 /// [`VirtualKeyCode`]) is consistent behaviour: these "navigation keys" will
@@ -194,7 +185,7 @@ impl PressSource {
     }
 }
 
-/// Type used by [`Action::Scroll`]
+/// Type used by [`Event::Scroll`]
 #[derive(Clone, Copy, Debug)]
 pub enum ScrollDelta {
     /// Scroll a given number of lines

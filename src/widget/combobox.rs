@@ -11,7 +11,7 @@ use std::iter::FromIterator;
 use super::{Column, TextButton};
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Action, Event, Manager, Response};
+use kas::event::{Event, Manager, Response};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::WindowId;
@@ -151,9 +151,9 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
         true
     }
 
-    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
-        match action {
-            Action::Activate => {
+    fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+        match event {
+            Event::Activate => {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
                     self.popup_id = None;
@@ -167,7 +167,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 }
                 Response::None
             }
-            a @ _ => Response::unhandled_action(a),
+            event => Response::Unhandled(event),
         }
     }
 }

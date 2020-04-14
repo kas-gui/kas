@@ -5,7 +5,7 @@
 
 //! Event handling - handler
 
-use crate::event::{self, Action, Event, Manager, Response};
+use crate::event::{self, Event, Manager, Response};
 #[allow(unused)]
 use crate::Widget; // for doc-links
 use crate::{WidgetConfig, WidgetId};
@@ -25,7 +25,7 @@ pub trait Handler: WidgetConfig {
     /// Configuration for [`Manager::handle_generic`]
     ///
     /// If this returns true, then click/touch events get translated to
-    /// [`Action::Activate`] as appropriate (on primary mouse button only).
+    /// [`Event::Activate`] as appropriate (on primary mouse button only).
     // NOTE: not an associated constant because these are not object-safe
     #[inline]
     fn activation_via_press(&self) -> bool {
@@ -37,8 +37,8 @@ pub trait Handler: WidgetConfig {
     /// Widgets should handle any events applicable to themselves here, and
     /// return all other events via [`Response::Unhandled`].
     #[inline]
-    fn action(&mut self, _: &mut Manager, action: Action) -> Response<Self::Msg> {
-        Response::Unhandled(Event::Action(action))
+    fn action(&mut self, _: &mut Manager, event: Event) -> Response<Self::Msg> {
+        Response::Unhandled(event)
     }
 }
 
@@ -81,26 +81,28 @@ impl<'a> Manager<'a> {
     pub fn handle_generic<W>(
         widget: &mut W,
         mgr: &mut Manager,
-        event: Event,
+        mut event: Event,
     ) -> Response<<W as Handler>::Msg>
     where
         W: Handler + ?Sized,
     {
-        let activable = widget.activation_via_press();
-        match event {
-            Event::Action(action) => widget.action(mgr, action),
-            Event::PressStart { source, coord } if activable && source.is_primary() => {
-                mgr.request_grab(widget.id(), source, coord, event::GrabMode::Grab, None);
-                Response::None
-            }
-            Event::PressMove { .. } if activable => {
-                // We don't need these events, but they should not be considered *unhandled*
-                Response::None
-            }
-            Event::PressEnd { end_id, .. } if activable && end_id == Some(widget.id()) => {
-                widget.action(mgr, Action::Activate)
-            }
-            ev @ _ => Response::Unhandled(ev),
+        if widget.activation_via_press() {
+            // Translate press events
+            match event {
+                Event::PressStart { source, coord } if source.is_primary() => {
+                    mgr.request_grab(widget.id(), source, coord, event::GrabMode::Grab, None);
+                    return Response::None;
+                }
+                Event::PressMove { .. } => {
+                    // We don't need these events, but they should not be considered *unhandled*
+                    return Response::None;
+                }
+                Event::PressEnd { end_id, .. } if end_id == Some(widget.id()) => {
+                    event = Event::Activate;
+                }
+                _ => (),
+            };
         }
+        widget.action(mgr, event)
     }
 }

@@ -11,7 +11,7 @@ use std::ops::{Add, Sub};
 
 use super::DragHandle;
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Action, Event, Manager, NavKey, Response};
+use kas::event::{Event, Manager, NavKey, Response};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::prelude::*;
 
@@ -221,7 +221,7 @@ impl<T: SliderType, D: Directional> event::EventHandler for Slider<T, D> {
             }
         } else {
             match event {
-                Event::Action(Action::NavKey(key)) => {
+                Event::NavKey(key) => {
                     let rev = self.direction.is_reversed();
                     let v = match key {
                         NavKey::Left | NavKey::Up => match rev {

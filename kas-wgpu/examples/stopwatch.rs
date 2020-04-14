@@ -9,7 +9,7 @@
 use std::time::{Duration, Instant};
 
 use kas::class::HasText;
-use kas::event::{Action, Handler, Manager, Response, VoidMsg};
+use kas::event::{Event, Handler, Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Frame, Label, TextButton, Window};
 use kas::{ThemeApi, WidgetCore};
@@ -56,9 +56,9 @@ fn make_window() -> Box<dyn kas::Window> {
         }
         impl Handler {
             type Msg = VoidMsg;
-            fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<VoidMsg> {
-                match action {
-                    Action::TimerUpdate => {
+            fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
+                match event {
+                    Event::TimerUpdate => {
                         if let Some(start) = self.start {
                             let dur = self.saved + (Instant::now() - start);
                             *mgr += self.display.set_text(format!(
@@ -70,7 +70,7 @@ fn make_window() -> Box<dyn kas::Window> {
                         }
                         Response::None
                     }
-                    a @ _ => Response::unhandled_action(a),
+                    event => Response::Unhandled(event),
                 }
             }
         }

@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Action, Event, Manager, Response};
+use crate::event::{self, Event, Manager, Response};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, WidgetId};
@@ -96,8 +96,8 @@ impl<M> event::Handler for Box<dyn Widget<Msg = M>> {
         self.as_ref().activation_via_press()
     }
 
-    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
-        self.as_mut().action(mgr, action)
+    fn action(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        self.as_mut().action(mgr, event)
     }
 }
 

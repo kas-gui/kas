@@ -9,7 +9,7 @@ use std::fmt::Debug;
 
 use super::ScrollBar;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Action, Event, Manager, Response};
+use kas::event::{Event, Manager, Response};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
@@ -229,7 +229,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
 impl<W: Widget> event::EventHandler for ScrollRegion<W> {
     fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
-            Event::Action(Action::Scroll(delta)) => {
+            Event::Scroll(delta) => {
                 let d = match delta {
                     event::ScrollDelta::LineDelta(x, y) => {
                         Coord((-w.scroll_rate * x) as i32, (w.scroll_rate * y) as i32)
@@ -243,7 +243,7 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
                         + w.vert_bar.set_value(w.offset.1 as u32);
                     Response::None
                 } else {
-                    Response::unhandled_action(Action::Scroll(delta))
+                    Response::Unhandled(Event::Scroll(delta))
                 }
             }
             Event::PressStart { source, coord } if source.is_primary() => {
@@ -297,7 +297,6 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
         }
 
         let event = match event {
-            a @ Event::Action(_) => a,
             Event::PressStart { source, coord } => Event::PressStart {
                 source,
                 coord: coord + self.offset,
@@ -320,6 +319,7 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
                 end_id,
                 coord: coord + self.offset,
             },
+            event => event,
         };
 
         match self.child.event(mgr, id, event) {

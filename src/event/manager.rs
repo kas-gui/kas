@@ -23,13 +23,13 @@ use crate::{ThemeAction, ThemeApi, TkAction, TkWindow, Widget, WidgetId, WindowI
 pub enum GrabMode {
     /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each press
     Grab,
-    /// Deliver [`Action::Pan`] events, with scaling and rotation
+    /// Deliver [`Event::Pan`] events, with scaling and rotation
     PanFull,
-    /// Deliver [`Action::Pan`] events, with scaling
+    /// Deliver [`Event::Pan`] events, with scaling
     PanScale,
-    /// Deliver [`Action::Pan`] events, with rotation
+    /// Deliver [`Event::Pan`] events, with rotation
     PanRotate,
-    /// Deliver [`Action::Pan`] events, without scaling or rotation
+    /// Deliver [`Event::Pan`] events, without scaling or rotation
     PanOnly,
 }
 
@@ -443,7 +443,7 @@ impl<'a> Manager<'a> {
     /// Schedule an update
     ///
     /// Widgets requiring animation should schedule an update; as a result,
-    /// [`Action::TimerUpdate`] will be sent, roughly at time `now + duration`.
+    /// [`Event::TimerUpdate`] will be sent, roughly at time `now + duration`.
     ///
     /// Timings may be a few ms out, but should be sufficient for e.g. updating
     /// a clock each second. Very short positive durations (e.g. 1ns) may be
@@ -476,7 +476,7 @@ impl<'a> Manager<'a> {
     /// Subscribe to an update handle
     ///
     /// All widgets subscribed to an update handle will be sent
-    /// [`Action::HandleUpdate`] when [`Manager::trigger_update`]
+    /// [`Event::HandleUpdate`] when [`Manager::trigger_update`]
     /// is called with the corresponding handle.
     ///
     /// This should be called from [`WidgetConfig::configure`].
@@ -589,7 +589,7 @@ impl<'a> Manager<'a> {
     /// Adds an accelerator key for a widget
     ///
     /// If this key is pressed when the window has focus and no widget has a
-    /// key-grab, the given widget will receive an [`Action::Activate`] event.
+    /// key-grab, the given widget will receive an [`Event::Activate`] event.
     ///
     /// This should be set from [`WidgetConfig::configure`].
     #[inline]
@@ -601,7 +601,7 @@ impl<'a> Manager<'a> {
 
     /// Request character-input focus
     ///
-    /// If successful, [`Action::ReceivedCharacter`] events are sent to this
+    /// If successful, [`Event::ReceivedCharacter`] events are sent to this
     /// widget when character data is received.
     ///
     /// Currently, this method always succeeds.
@@ -621,7 +621,7 @@ impl<'a> Manager<'a> {
     /// -   [`GrabMode::Grab`]: simple / low-level interpretation of input
     ///     which delivers [`Event::PressMove`] and [`Event::PressEnd`] events.
     ///     Multiple event sources may be grabbed simultaneously.
-    /// -   All other [`GrabMode`] values: generates [`Action::Pan`] events.
+    /// -   All other [`GrabMode`] values: generates [`Event::Pan`] events.
     ///     Requesting additional grabs on the same widget from the same source
     ///     (i.e. multiple touches) allows generation of rotation and scale
     ///     factors (depending on the [`GrabMode`]).
@@ -739,20 +739,20 @@ impl<'a> Manager<'a> {
 
             if let Some(nav_id) = self.mgr.nav_focus {
                 if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
-                    id_action = Some((nav_id, Action::Activate));
+                    id_action = Some((nav_id, Event::Activate));
                 } else if let Some(nav_key) = NavKey::new(vkey) {
-                    id_action = Some((nav_id, Action::NavKey(nav_key)));
+                    id_action = Some((nav_id, Event::NavKey(nav_key)));
                 }
             }
 
             if id_action.is_none() {
                 if let Some(id) = self.mgr.accel_keys.get(&vkey).cloned() {
-                    id_action = Some((id, Action::Activate));
+                    id_action = Some((id, Event::Activate));
                 }
             }
 
             if let Some((id, action)) = id_action {
-                let _ = widget.event(self, id, Event::Action(action));
+                let _ = widget.event(self, id, action);
 
                 // Add to key_events for visual feedback
                 for item in &self.mgr.key_events {
@@ -1037,7 +1037,7 @@ impl<'a> Manager<'a> {
 
             let id = grab.id;
             if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
-                let ev = Event::Action(Action::Pan { alpha, delta });
+                let ev = Event::Pan { alpha, delta };
                 let _ = widget.event(&mut self, id, ev);
             }
         }
@@ -1050,7 +1050,7 @@ impl<'a> Manager<'a> {
         for item in self.mgr.pending.pop() {
             match item {
                 Pending::LostCharFocus(id) => {
-                    let ev = Event::Action(Action::LostCharFocus);
+                    let ev = Event::LostCharFocus;
                     let _ = widget.event(&mut self, id, ev);
                 }
             }
@@ -1073,9 +1073,9 @@ impl<'a> Manager<'a> {
 
             let update = self.mgr.time_updates.pop().unwrap();
             let w_id = update.1;
-            let action = Action::TimerUpdate;
+            let action = Event::TimerUpdate;
             trace!("Sending {:?} to widget {}", action, w_id);
-            let _ = widget.event(self, w_id, Event::Action(action));
+            let _ = widget.event(self, w_id, action);
         }
 
         self.mgr.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
@@ -1091,9 +1091,9 @@ impl<'a> Manager<'a> {
         // NOTE: to avoid borrow conflict, we must clone values!
         if let Some(mut values) = self.mgr.handle_updates.get(&handle).cloned() {
             for w_id in values.drain(..) {
-                let action = Action::HandleUpdate { handle, payload };
+                let action = Event::HandleUpdate { handle, payload };
                 trace!("Sending {:?} to widget {}", action, w_id);
-                let _ = widget.event(self, w_id, Event::Action(action));
+                let _ = widget.event(self, w_id, action);
             }
         }
     }
@@ -1127,7 +1127,7 @@ impl<'a> Manager<'a> {
             // HoveredFileCancelled,
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = self.mgr.char_focus {
-                    let ev = Event::Action(Action::ReceivedCharacter(c));
+                    let ev = Event::ReceivedCharacter(c);
                     let _ = widget.event(self, id, ev);
                 }
             }
@@ -1180,13 +1180,13 @@ impl<'a> Manager<'a> {
                 }
             }
             MouseWheel { delta, .. } => {
-                let action = Action::Scroll(match delta {
+                let action = Event::Scroll(match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
                     MouseScrollDelta::PixelDelta(pos) =>
                         ScrollDelta::PixelDelta(Coord::from_logical(pos, self.mgr.dpi_factor)),
                 });
                 if let Some(id) = self.mgr.hover {
-                    let _ = widget.event(self, id, Event::Action(action));
+                    let _ = widget.event(self, id, action);
                 }
             }
             MouseInput {

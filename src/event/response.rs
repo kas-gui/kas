@@ -5,7 +5,7 @@
 
 //! Event handling: Response type
 
-use super::{Action, Event, VoidResponse};
+use super::{Event, VoidResponse};
 
 /// Response type from [`Handler::action`].
 ///
@@ -35,14 +35,6 @@ impl<M> Response<M> {
             &Response::None => true,
             _ => false,
         }
-    }
-
-    /// Produce [`Response::Unhandled`] variant from an [`Action`]
-    ///
-    /// Convenience function for common usage.
-    #[inline]
-    pub fn unhandled_action(action: Action) -> Self {
-        Response::Unhandled(Event::Action(action))
     }
 
     /// Map from one `Response` type to another
