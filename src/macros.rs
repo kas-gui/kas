@@ -148,8 +148,8 @@
 //! substitutions of generic parameters).
 //! This attribute accepts the following comma separated arguments:
 //!
-//! -   (optional) `noderive` — do not derive [`Handler`] (but apply generics
-//!     to derivation of [`Layout`], if applicable)
+//! -   (optional) `none`, `all`, `action`, or `event` — derive only [`Handler`]
+//!     (`action`), [`EventHandler`] (`event`), neither, or both
 //! -   (optional) `msg = TYPE` — the [`Handler::Msg`] associated type; if not
 //!     specified, this type defaults to [`kas::event::VoidMsg`]
 //! -   (optional) `substitutions = LIST` — a list subsitutions for type
