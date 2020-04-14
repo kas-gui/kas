@@ -192,8 +192,6 @@ mod kw {
     custom_keyword!(valign);
     custom_keyword!(key_nav);
     custom_keyword!(cursor_icon);
-    custom_keyword!(none);
-    custom_keyword!(all);
     custom_keyword!(handle);
     custom_keyword!(send);
     custom_keyword!(config);
@@ -624,10 +622,10 @@ pub struct HandlerArgs {
 }
 
 impl HandlerArgs {
-    pub fn new(msg: Type) -> Self {
+    pub fn new(msg: Type, handle: bool, send: bool) -> Self {
         HandlerArgs {
-            handle: false,
-            send: false,
+            handle,
+            send,
             msg,
             substitutions: Default::default(),
             generics: Default::default(),
@@ -637,13 +635,15 @@ impl HandlerArgs {
 
 impl Default for HandlerArgs {
     fn default() -> Self {
-        HandlerArgs::new(parse_quote! { kas::event::VoidMsg })
+        let msg = parse_quote! { kas::event::VoidMsg };
+        HandlerArgs::new(msg, true, true)
     }
 }
 
 impl Parse for HandlerArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let mut have_config = false;
+        let mut have_handle = false;
+        let mut have_send = false;
         let mut have_msg = false;
         let mut have_gen = false;
         let mut args = HandlerArgs::default();
@@ -654,22 +654,22 @@ impl Parse for HandlerArgs {
 
             while !content.is_empty() {
                 let lookahead = content.lookahead1();
-                if !have_config && lookahead.peek(kw::none) {
-                    let _: kw::none = content.parse()?;
-                    have_config = true;
-                } else if !have_config && lookahead.peek(kw::all) {
-                    let _: kw::all = content.parse()?;
-                    args.handle = true;
-                    args.send = true;
-                    have_config = true;
-                } else if !have_config && lookahead.peek(kw::handle) {
+                if lookahead.peek(kw::noauto) {
+                    let _: kw::noauto = content.parse()?;
+                    args.handle = false;
+                    args.send = false;
+                } else if !have_handle && lookahead.peek(kw::handle) {
                     let _: kw::handle = content.parse()?;
-                    args.handle = true;
-                    have_config = true;
-                } else if !have_config && lookahead.peek(kw::send) {
+                    let _: Eq = content.parse()?;
+                    let _: kw::noauto = content.parse()?;
+                    have_handle = true;
+                    args.handle = false;
+                } else if !have_send && lookahead.peek(kw::send) {
                     let _: kw::send = content.parse()?;
-                    args.send = true;
-                    have_config = true;
+                    let _: Eq = content.parse()?;
+                    let _: kw::noauto = content.parse()?;
+                    have_send = true;
+                    args.send = false;
                 } else if !have_msg && lookahead.peek(kw::msg) {
                     have_msg = true;
                     let _: kw::msg = content.parse()?;
@@ -717,12 +717,6 @@ impl Parse for HandlerArgs {
             }
         }
 
-        if !have_config {
-            // default to all
-            args.handle = true;
-            args.send = true;
-        }
-
         Ok(args)
     }
 }
@@ -733,13 +727,18 @@ impl ToTokens for HandlerArgs {
         syn::token::Bracket::default().surround(tokens, |tokens| {
             kw::handler::default().to_tokens(tokens);
             syn::token::Paren::default().surround(tokens, |tokens| {
-                match (self.handle, self.send) {
-                    (false, false) => kw::none::default().to_tokens(tokens),
-                    (false, true) => kw::send::default().to_tokens(tokens),
-                    (true, false) => kw::handle::default().to_tokens(tokens),
-                    (true, true) => kw::all::default().to_tokens(tokens),
-                };
-                Comma::default().to_tokens(tokens);
+                if !self.handle {
+                    kw::handle::default().to_tokens(tokens);
+                    Eq::default().to_tokens(tokens);
+                    kw::noauto::default().to_tokens(tokens);
+                    Comma::default().to_tokens(tokens);
+                }
+                if !self.send {
+                    kw::send::default().to_tokens(tokens);
+                    Eq::default().to_tokens(tokens);
+                    kw::noauto::default().to_tokens(tokens);
+                    Comma::default().to_tokens(tokens);
+                }
 
                 kw::msg::default().to_tokens(tokens);
                 Eq::default().to_tokens(tokens);

@@ -198,7 +198,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         args.handler.push(Default::default());
     }
     for handler in args.handler.drain(..) {
-        let msg = handler.msg;
         let subs = handler.substitutions;
         let mut generics = ast.generics.clone();
         generics.params = generics
@@ -243,6 +242,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let ty_generics = SubstTyGenerics(&ast.generics, subs);
 
         if handler.handle {
+            let msg = handler.msg;
             toks.append_all(quote! {
                 impl #impl_generics kas::event::Handler
                         for #name #ty_generics #where_clause
@@ -398,32 +398,42 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut handler = if let Some(h) = args.handler {
         h
     } else {
+        // A little magic: try to deduce parameters, applying defaults otherwise
+        let mut handle = true;
+        let mut send = true;
         let mut msg = None;
         let msg_ident: Ident = parse_quote! { Msg };
         for (name, body) in &args.impls {
             if name == &Some(parse_quote! { Handler })
                 || name == &Some(parse_quote! { kas::Handler })
             {
+                handle = false;
+            
                 for item in body {
                     match item {
                         &syn::ImplItem::Type(syn::ImplItemType {
                             ref ident, ref ty, ..
                         }) if *ident == msg_ident => {
                             msg = Some(ty.clone());
-                            break;
+                            continue;
                         }
                         _ => (),
                     }
                 }
+            } else if name == &Some(parse_quote! { SendEvent })
+                || name == &Some(parse_quote! { kas::SendEvent }) {
+                send = false;
             }
         }
 
         if let Some(msg) = msg {
-            HandlerArgs::new(msg)
+            HandlerArgs::new(msg, handle, send)
         } else {
+            // We could default to msg=VoidMsg here. If error messages weren't
+            // so terrible this might even be a good idea!
             args.struct_span
                 .unwrap()
-                .error("no Handler impl and no #[handler] attribute")
+                .error("make_widget: cannot discover msg type from #[handler] attr or Handler impl")
                 .emit();
             return proc_macro::TokenStream::new();
         }

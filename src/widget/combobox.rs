@@ -18,6 +18,7 @@ use kas::WindowId;
 
 /// A pop-up multiple choice menu
 #[widget(config(key_nav = true))]
+#[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
 pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
@@ -204,7 +205,7 @@ impl<M: Clone + Debug + 'static> event::SendEvent for ComboBox<M> {
 }
 
 #[layout(single)]
-#[handler(msg=u64, all)]
+#[handler(msg=u64)]
 #[derive(Clone, Debug, Widget)]
 struct ComboPopup {
     #[widget_core]

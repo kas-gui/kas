@@ -17,7 +17,7 @@ use kas::prelude::*;
 
 /// A bare checkbox (no label)
 #[widget(config(key_nav = true))]
-#[handler(send)]
+#[handler(handle=noauto)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBoxBare<M> {
     #[widget_core]

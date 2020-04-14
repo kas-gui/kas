@@ -33,7 +33,7 @@ pub type RefStack<'a, M> = Stack<&'a mut dyn Widget<Msg = M>>;
 ///
 /// Configuring and resizing elements is O(n) in the number of children.
 /// Drawing and event handling is O(1).
-#[handler(handle, msg=<W as event::Handler>::Msg)]
+#[handler(send=noauto, msg=<W as event::Handler>::Msg)]
 #[widget(children=noauto)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Stack<W: Widget> {

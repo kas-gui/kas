@@ -15,7 +15,6 @@ use kas::prelude::*;
 ///
 /// This widget draws a bar when in a list. It may expand larger than expected
 /// if no other widget will fill spare space.
-#[handler]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Separator {
     #[widget_core]

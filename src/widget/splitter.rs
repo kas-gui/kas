@@ -69,7 +69,7 @@ pub type RefSplitter<'a, D, M> = Splitter<D, &'a mut dyn Widget<Msg = M>>;
 ///
 /// Similar to [`kas::widget::Splitter`] but with draggable handles between items.
 // TODO: better doc
-#[handler(handle, msg=<W as event::Handler>::Msg)]
+#[handler(send=noauto, msg=<W as event::Handler>::Msg)]
 #[widget(children=noauto)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Splitter<D: Directional, W: Widget> {

@@ -22,7 +22,7 @@ use kas::prelude::*;
 /// Scroll regions translate their contents by an `offset`, which has a
 /// minimum value of [`Coord::ZERO`] and a maximum value of
 /// [`ScrollRegion::max_offset`].
-#[handler(handle, msg = <W as event::Handler>::Msg)]
+#[handler(send=noauto, msg = <W as event::Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
     #[widget_core]

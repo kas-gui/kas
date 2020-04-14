@@ -390,7 +390,7 @@ impl PipeWindow {
     }
 }
 
-#[handler(send)]
+#[handler(handle=noauto)]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Mandlebrot {
     #[widget_core]

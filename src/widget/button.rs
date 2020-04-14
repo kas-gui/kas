@@ -15,7 +15,7 @@ use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// A push-button with a text label
-#[handler(send)]
+#[handler(handle=noauto)]
 #[widget(config=noauto)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug> {

@@ -17,7 +17,8 @@ use crate::{WidgetConfig, WidgetId};
 /// which might be preferable when dealing with child widgets).
 ///
 /// The default implementation does nothing, and is derived by `derive(Widget)`
-/// when a `#[handler]` attribute is present with parameter `handle` or `all`.
+/// when a `#[handler]` attribute is present (except with parameter
+/// `handler=noauto`).
 pub trait Handler: WidgetConfig {
     /// Type of message returned by this widget
     ///
@@ -57,7 +58,7 @@ pub trait Handler: WidgetConfig {
 /// even when event *handling* must be implemented manually.
 ///
 /// This trait is implemented by `derive(Widget)` when a `#[handler]` attribute
-/// is present with parameter `send` or `all`.
+/// is present (except with parameter `send=noauto`).
 pub trait SendEvent: Handler {
     /// Send an event
     ///

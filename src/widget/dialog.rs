@@ -21,7 +21,6 @@ enum DialogButton {
 
 /// A simple message box.
 #[layout(column)]
-#[handler]
 #[derive(Clone, Debug, Widget)]
 pub struct MessageBox {
     #[widget_core]

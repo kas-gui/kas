@@ -71,7 +71,6 @@
 //! use kas::{event, CoreData, Layout};
 //!
 //! #[widget(config(key_nav = true))]
-//! #[handler]
 //! #[derive(Clone, Debug, Default, Widget)]
 //! struct MyWidget {
 //!     #[widget_core] core: CoreData,
@@ -143,18 +142,18 @@
 //!
 //! #### Handler
 //!
-//! If one or more `#[handler]` attributes are present, then the [`Handler`]
-//! trait is implemented (potentially multiple times with different
-//! substitutions of generic parameters).
-//! This attribute accepts the following comma separated arguments:
+//! The [`Handler`] and [`SendEvent`] traits are derived, unless opted out.
+//! the `#[handler]` attribute allows control over this via the following
+//! arguments, all of which are optional:
 //!
-//! -   (optional) `none`, `all`, `handle`, or `send` — derive only
-//!     [`Handler::handle`], [`SendEvent::send`], neither, or both
-//! -   (optional) `msg = TYPE` — the [`Handler::Msg`] associated type; if not
+//! -   `noauto` — do not derive [`Handler`] or [`SendEvent`]
+//! -   `handle=noauto` — do not derive [`Handler::handle`]
+//!     `send=noauto` — do not derive [`SendEvent::send`]
+//! -   `msg = TYPE` — the [`Handler::Msg`] associated type; if not
 //!     specified, this type defaults to [`kas::event::VoidMsg`]
-//! -   (optional) `substitutions = LIST` — a list subsitutions for type
+//! -   `substitutions = LIST` — a list subsitutions for type
 //!     generics, for example: (T1 = MyType, T2 = some::other::Type`
-//! -   (optional): `generics = ...`; this parameter must appear last in the
+//! -   `generics = ...`; this parameter must appear last in the
 //!     list and allows extra type parameters and/or restrictions to appear on
 //!     the implementations of [`Handler`], [`SendEvent`] and [`Widget`].
 //!     It accepts any of the following:
@@ -371,7 +370,9 @@
 //! exceptions:
 //!
 //! 1.  `#[derive(Clone, Debug, kas::macros::Widget)]` is implied
-//! 2.  `#[handler(msg = ..)]` is required and most only have an `msg` parameter
+//! 2.  `#[handler(msg = ..)]` is required unless `msg` can be inferred from a
+//!     [`Handler`] implementation (this does not default to [`VoidMsg`] purely
+//!     to avoid some terrible error messages)
 //!
 //! `impl` blocks work like usual except that the struct name and type
 //! parameters are omitted. Traits may also be implemented this way:

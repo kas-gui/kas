@@ -17,7 +17,7 @@ use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// A bare radiobox (no label)
-#[handler(send)]
+#[handler(handle=noauto)]
 #[widget(config=noauto)]
 #[derive(Clone, Widget)]
 pub struct RadioBoxBare<M> {
