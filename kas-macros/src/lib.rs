@@ -408,7 +408,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 || name == &Some(parse_quote! { kas::Handler })
             {
                 handle = false;
-            
+
                 for item in body {
                     match item {
                         &syn::ImplItem::Type(syn::ImplItemType {
@@ -421,7 +421,8 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     }
                 }
             } else if name == &Some(parse_quote! { SendEvent })
-                || name == &Some(parse_quote! { kas::SendEvent }) {
+                || name == &Some(parse_quote! { kas::SendEvent })
+            {
                 send = false;
             }
         }

@@ -11,7 +11,7 @@ use std::iter::FromIterator;
 use super::{Column, TextButton};
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, Manager, Response};
+use kas::event::{Event, GrabMode, Manager, Response, SendEvent};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::WindowId;
@@ -28,6 +28,7 @@ pub struct ComboBox<M: Clone + Debug + 'static> {
     popup: ComboPopup,
     messages: Vec<M>, // TODO: is this a useless lookup step?
     active: usize,
+    opening: bool,
     popup_id: Option<WindowId>,
 }
 
@@ -97,6 +98,7 @@ impl<M: Clone + Debug> ComboBox<M> {
             },
             messages,
             active: 0,
+            opening: false,
             popup_id: None,
         }
     }
@@ -113,6 +115,26 @@ impl<M: Clone + Debug> ComboBox<M> {
         let len = column.len() as u64;
         column.push(TextButton::new(label, len))
         // TODO: localised reconfigure
+    }
+
+    fn map_response(&mut self, mgr: &mut Manager, r: Response<u64>) -> Response<M> {
+        match r.try_into() {
+            Ok(r) => r,
+            Err(msg) => {
+                let index = msg as usize;
+                assert!(index < self.messages.len());
+                self.active = index;
+                if let Some(id) = self.popup_id {
+                    mgr.close_window(id);
+                    self.popup_id = None;
+                }
+                mgr.redraw(self.id());
+                Response::Msg(self.messages[index].clone())
+            }
+        }
+        // NOTE: as part of the Popup API we are expected to trap
+        // TkAction::Close here, but we know our widget doesn't generate
+        // this action.
     }
 }
 
@@ -147,24 +169,53 @@ impl<'a, M: Clone + Debug + 'static> FromIterator<&'a (&'static str, M)> for Com
 impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
     type Msg = M;
 
-    #[inline]
-    fn activation_via_press(&self) -> bool {
-        true
-    }
-
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+        let open_popup = |w: &mut ComboBox<M>, mgr: &mut Manager| {
+            let id = mgr.add_popup(kas::Popup {
+                id: w.popup.id(),
+                parent: w.id(),
+                direction: Direction::Down,
+            });
+            w.popup_id = Some(id);
+        };
         match event {
             Event::Activate => {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
                     self.popup_id = None;
                 } else {
-                    let id = mgr.add_popup(kas::Popup {
-                        id: self.popup.id(),
-                        parent: self.id(),
-                        direction: Direction::Down,
-                    });
-                    self.popup_id = Some(id);
+                    open_popup(self, mgr);
+                }
+                Response::None
+            }
+            Event::PressStart { source, coord } if source.is_primary() => {
+                mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
+                self.opening = self.popup_id.is_none();
+                Response::None
+            }
+            Event::PressMove { .. } => {
+                if self.popup_id.is_none() {
+                    open_popup(self, mgr);
+                }
+                Response::None
+            }
+            Event::PressEnd { end_id, coord, .. } => {
+                if let Some(id) = end_id {
+                    if id == self.id() {
+                        if self.opening {
+                            if self.popup_id.is_none() {
+                                open_popup(self, mgr);
+                            }
+                            return Response::None;
+                        }
+                    } else if self.popup_id.is_some() && self.popup.rect().contains(coord) {
+                        let r = self.popup.send(mgr, id, Event::Activate);
+                        return self.map_response(mgr, r);
+                    }
+                }
+                if let Some(id) = self.popup_id {
+                    mgr.close_window(id);
+                    self.popup_id = None;
                 }
                 Response::None
             }
@@ -180,24 +231,8 @@ impl<M: Clone + Debug + 'static> event::SendEvent for ComboBox<M> {
         }
 
         if id <= self.popup.id() {
-            let r = match self.popup.send(mgr, id, event).try_into() {
-                Ok(r) => r,
-                Err(msg) => {
-                    let index = msg as usize;
-                    assert!(index < self.messages.len());
-                    self.active = index;
-                    if let Some(id) = self.popup_id {
-                        mgr.close_window(id);
-                        self.popup_id = None;
-                    }
-                    mgr.redraw(self.id());
-                    Response::Msg(self.messages[index].clone())
-                }
-            };
-            // NOTE: as part of the Popup API we are expected to trap
-            // TkAction::Close here, but we know our widget doesn't generate
-            // this action.
-            r
+            let r = self.popup.send(mgr, id, event);
+            self.map_response(mgr, r)
         } else {
             Manager::handle_generic(self, mgr, event)
         }
