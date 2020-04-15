@@ -13,9 +13,6 @@ use kas::widget::*;
 use kas::{Right, Widget, WidgetId};
 
 #[derive(Clone, Debug, VoidMsg)]
-struct Disabled(bool);
-
-#[derive(Clone, Debug, VoidMsg)]
 enum Item {
     Button,
     Check(bool),
@@ -44,6 +41,37 @@ impl EditGuard for Guard {
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
+
+    #[derive(Clone, Debug, VoidMsg)]
+    enum Menu {
+        Theme(&'static str),
+        Colour(&'static str),
+        Disabled(bool),
+    }
+
+    let menubar = Row::new(vec![
+        MenuButton::new(
+            "Theme",
+            Box::new(Column::new(vec![
+                TextButton::new("Shaded", Menu::Theme("shaded")),
+                TextButton::new("Flat", Menu::Theme("flat")),
+            ])) as Box<dyn Widget<Msg = Menu>>,
+        ),
+        MenuButton::new(
+            "Colours",
+            Box::new(Column::new(vec![
+                TextButton::new("Default", Menu::Colour("default")),
+                TextButton::new("Light", Menu::Colour("light")),
+                TextButton::new("Dark", Menu::Colour("dark")),
+            ])),
+        ),
+        MenuButton::new(
+            "Style",
+            Box::new(CheckBox::new("Disabled").on_toggle(|state| Menu::Disabled(state))),
+        ),
+    ]);
+
+    let frame = Frame::new(Label::new("Widget Gallery"));
 
     let radio = UpdateHandle::new();
     let widgets = make_widget! {
@@ -90,64 +118,36 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
-    let top_box = Frame::new(make_widget! {
-        #[layout(column)]
-        #[handler(msg = Disabled)]
-        struct {
-            #[widget(halign=centre)] _ = Label::new("Widget Gallery"),
-            #[widget] _ = make_widget! {
-                #[layout(row)]
-                #[handler(msg = Disabled)]
-                struct {
-                    #[widget(handler=set_theme)] _ = MenuButton::new("Theme", make_widget! {
-                        #[layout(column)]
-                        #[handler(msg = &'static str)]
-                        struct {
-                            #[widget] _ = TextButton::new("Shaded", "shaded"),
-                            #[widget] _ = TextButton::new("Flat", "flat"),
-                        }
-                    }),
-                    #[widget(handler=set_colour)] _: ComboBox<&'static str> =
-                        [("Default", "default"), ("Light", "light"), ("Dark", "dark")].iter().cloned().collect(),
-                    #[widget] _ = CheckBox::new("Disabled").on_toggle(|state| Disabled(state)),
-                }
-                impl {
-                    fn set_theme(&mut self, mgr: &mut Manager, name: &'static str)
-                        -> Response<Disabled>
-                    {
-                        println!("Theme: {:?}", name);
-                        #[cfg(not(feature = "stack_dst"))]
-                        println!("Warning: switching themes requires feature 'stack_dst'");
-
-                        mgr.adjust_theme(|theme| theme.set_theme(name));
-                        Response::None
-                    }
-                    fn set_colour(&mut self, mgr: &mut Manager, name: &'static str)
-                        -> Response<Disabled>
-                    {
-                        println!("Colour scheme: {:?}", name);
-                        mgr.adjust_theme(|theme| theme.set_colours(name));
-                        Response::None
-                    }
-                }
-            },
-        }
-    });
-
     let window = Window::new(
         "Widget Gallery",
         make_widget! {
             #[layout(column)]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(handler = apply_disabled)] _ = top_box,
+                #[widget(handler = menu)] _ = menubar,
+                #[widget] _ = frame,
                 #[widget(handler = activations)] gallery:
                     for<W: Widget<Msg = Item>> ScrollRegion<W> =
                     ScrollRegion::new(widgets).with_auto_bars(true),
             }
             impl {
-                fn apply_disabled(&mut self, mgr: &mut Manager, state: Disabled) -> VoidResponse {
-                    *mgr += self.gallery.inner_mut().set_disabled(state.0);
+                fn menu(&mut self, mgr: &mut Manager, msg: Menu) -> VoidResponse {
+                    match msg {
+                        Menu::Theme(name) => {
+                            println!("Theme: {:?}", name);
+                            #[cfg(not(feature = "stack_dst"))]
+                            println!("Warning: switching themes requires feature 'stack_dst'");
+
+                            mgr.adjust_theme(|theme| theme.set_theme(name));
+                        }
+                        Menu::Colour(name) => {
+                            println!("Colour scheme: {:?}", name);
+                            mgr.adjust_theme(|theme| theme.set_colours(name));
+                        }
+                        Menu::Disabled(state) => {
+                            *mgr += self.gallery.inner_mut().set_disabled(state);
+                        }
+                    }
                     Response::None
                 }
                 fn activations(&mut self, mgr: &mut Manager, item: Item)

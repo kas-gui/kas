@@ -197,7 +197,8 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
 
             let is_reversed = popup.direction.is_reversed();
             let place_in = |rp, rs: u32, cp: i32, cs, ideal, m: (u16, u16)| -> (i32, u32) {
-                let before = (cp.saturating_sub(rp + m.1 as i32)) as u32;
+                let before: i32 = cp - (rp + m.1 as i32);
+                let before = before.max(0) as u32;
                 let after = rs.saturating_sub(cs + before + m.0 as u32);
                 if after >= ideal {
                     if is_reversed && before >= ideal {
