@@ -8,8 +8,6 @@
 use log::trace;
 use smallvec::SmallVec;
 use std::collections::HashMap;
-#[cfg(feature = "winit")]
-use std::convert::TryFrom;
 use std::time::{Duration, Instant};
 use std::u16;
 
@@ -24,13 +22,13 @@ use crate::{ThemeAction, ThemeApi, TkAction, TkWindow, Widget, WidgetId, WindowI
 pub enum GrabMode {
     /// Deliver [`Event::PressMove`] and [`Event::PressEnd`] for each press
     Grab,
-    /// Deliver [`Action::Pan`] events, with scaling and rotation
+    /// Deliver [`Event::Pan`] events, with scaling and rotation
     PanFull,
-    /// Deliver [`Action::Pan`] events, with scaling
+    /// Deliver [`Event::Pan`] events, with scaling
     PanScale,
-    /// Deliver [`Action::Pan`] events, with rotation
+    /// Deliver [`Event::Pan`] events, with rotation
     PanRotate,
-    /// Deliver [`Action::Pan`] events, without scaling or rotation
+    /// Deliver [`Event::Pan`] events, without scaling or rotation
     PanOnly,
 }
 
@@ -85,6 +83,7 @@ pub struct ManagerState {
     modifiers: ModifiersState,
     char_focus: Option<WidgetId>,
     nav_focus: Option<WidgetId>,
+    nav_stack: SmallVec<[u32; 16]>,
     hover: Option<WidgetId>,
     hover_icon: CursorIcon,
     key_events: SmallVec<[(u32, WidgetId); 10]>,
@@ -116,6 +115,7 @@ impl ManagerState {
             modifiers: ModifiersState::empty(),
             char_focus: None,
             nav_focus: None,
+            nav_stack: SmallVec::new(),
             hover: None,
             hover_icon: CursorIcon::Default,
             key_events: Default::default(),
@@ -154,12 +154,13 @@ impl ManagerState {
         self.action = TkAction::None;
 
         let coord = self.last_mouse_coord;
-        let mut mgr = self.manager(tkw);
-        widget.walk_mut(&mut |widget| {
-            map.insert(widget.id(), id);
-            widget.core_data_mut().id = id;
-            widget.configure(&mut mgr);
-            id = id.next();
+        self.with(tkw, |mut mgr| {
+            widget.walk_mut(&mut |widget| {
+                map.insert(widget.id(), id);
+                widget.core_data_mut().id = id;
+                widget.configure(&mut mgr);
+                id = id.next();
+            });
         });
 
         self.hover = widget.find_id(coord);
@@ -260,13 +261,38 @@ impl ManagerState {
     }
 
     /// Construct a [`Manager`] referring to this state
+    ///
+    /// Invokes the given closure on this [`Manager`].
     #[inline]
-    pub fn manager<'a>(&'a mut self, tkw: &'a mut dyn TkWindow) -> Manager<'a> {
-        Manager {
+    pub fn with<F>(&mut self, tkw: &mut dyn TkWindow, f: F)
+    where
+        F: FnOnce(&mut Manager),
+    {
+        let mut mgr = Manager {
             read_only: false,
             mgr: self,
             tkw,
-        }
+            action: TkAction::None,
+        };
+        f(&mut mgr);
+        let action = mgr.action;
+        self.send_action(action);
+    }
+
+    /// Update, after receiving all events
+    #[inline]
+    pub fn update<W>(&mut self, tkw: &mut dyn TkWindow, widget: &mut W) -> TkAction
+    where
+        W: Widget<Msg = VoidMsg> + ?Sized,
+    {
+        let mgr = Manager {
+            read_only: false,
+            mgr: self,
+            tkw,
+            action: TkAction::None,
+        };
+        // we could inline this:
+        mgr.update(widget)
     }
 }
 
@@ -403,10 +429,12 @@ impl ManagerState {
 }
 
 /// Manager of event-handling and toolkit actions
+#[must_use]
 pub struct Manager<'a> {
     read_only: bool,
     mgr: &'a mut ManagerState,
     tkw: &'a mut dyn TkWindow,
+    action: TkAction,
 }
 
 /// Public API (around toolkit functionality)
@@ -414,7 +442,7 @@ impl<'a> Manager<'a> {
     /// Schedule an update
     ///
     /// Widgets requiring animation should schedule an update; as a result,
-    /// [`Action::TimerUpdate`] will be sent, roughly at time `now + duration`.
+    /// [`Event::TimerUpdate`] will be sent, roughly at time `now + duration`.
     ///
     /// Timings may be a few ms out, but should be sufficient for e.g. updating
     /// a clock each second. Very short positive durations (e.g. 1ns) may be
@@ -447,7 +475,7 @@ impl<'a> Manager<'a> {
     /// Subscribe to an update handle
     ///
     /// All widgets subscribed to an update handle will be sent
-    /// [`Action::HandleUpdate`] when [`Manager::trigger_update`]
+    /// [`Event::HandleUpdate`] when [`Manager::trigger_update`]
     /// is called with the corresponding handle.
     ///
     /// This should be called from [`WidgetConfig::configure`].
@@ -476,7 +504,18 @@ impl<'a> Manager<'a> {
     /// affect the UI after a reconfigure action.
     #[inline]
     pub fn send_action(&mut self, action: TkAction) {
-        self.mgr.send_action(action);
+        self.action = self.action.max(action);
+    }
+
+    /// Get the current [`TkAction`], replacing with `None`
+    ///
+    /// The caller is responsible for ensuring the action is handled correctly;
+    /// generally this means matching only actions which can be handled locally
+    /// and downgrading the action, adding the result back to the [`Manager`].
+    pub fn pop_action(&mut self) -> TkAction {
+        let action = self.action;
+        self.action = TkAction::None;
+        action
     }
 
     /// Add an overlay (pop-up)
@@ -549,7 +588,7 @@ impl<'a> Manager<'a> {
     /// Adds an accelerator key for a widget
     ///
     /// If this key is pressed when the window has focus and no widget has a
-    /// key-grab, the given widget will receive an [`Action::Activate`] event.
+    /// key-grab, the given widget will receive an [`Event::Activate`] event.
     ///
     /// This should be set from [`WidgetConfig::configure`].
     #[inline]
@@ -561,7 +600,7 @@ impl<'a> Manager<'a> {
 
     /// Request character-input focus
     ///
-    /// If successful, [`Action::ReceivedCharacter`] events are sent to this
+    /// If successful, [`Event::ReceivedCharacter`] events are sent to this
     /// widget when character data is received.
     ///
     /// Currently, this method always succeeds.
@@ -581,7 +620,7 @@ impl<'a> Manager<'a> {
     /// -   [`GrabMode::Grab`]: simple / low-level interpretation of input
     ///     which delivers [`Event::PressMove`] and [`Event::PressEnd`] events.
     ///     Multiple event sources may be grabbed simultaneously.
-    /// -   All other [`GrabMode`] values: generates [`Action::Pan`] events.
+    /// -   All other [`GrabMode`] values: generates [`Event::Pan`] events.
     ///     Requesting additional grabs on the same widget from the same source
     ///     (i.e. multiple touches) allows generation of rotation and scale
     ///     factors (depending on the [`GrabMode`]).
@@ -691,7 +730,7 @@ impl<'a> Manager<'a> {
         }
 
         if vkey == VK::Tab {
-            self.next_nav_focus(widget, self.mgr.modifiers.shift());
+            self.next_nav_focus(widget.as_widget(), self.mgr.modifiers.shift());
         } else if vkey == VK::Escape {
             self.unset_nav_focus();
         } else {
@@ -699,20 +738,20 @@ impl<'a> Manager<'a> {
 
             if let Some(nav_id) = self.mgr.nav_focus {
                 if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
-                    id_action = Some((nav_id, Action::Activate));
+                    id_action = Some((nav_id, Event::Activate));
                 } else if let Some(nav_key) = NavKey::new(vkey) {
-                    id_action = Some((nav_id, Action::NavKey(nav_key)));
+                    id_action = Some((nav_id, Event::NavKey(nav_key)));
                 }
             }
 
             if id_action.is_none() {
                 if let Some(id) = self.mgr.accel_keys.get(&vkey).cloned() {
-                    id_action = Some((id, Action::Activate));
+                    id_action = Some((id, Event::Activate));
                 }
             }
 
-            if let Some((id, action)) = id_action {
-                let _ = widget.event(self, id, Event::Action(action));
+            if let Some((id, event)) = id_action {
+                let _ = widget.send(self, id, event);
 
                 // Add to key_events for visual feedback
                 for item in &self.mgr.key_events {
@@ -792,34 +831,140 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn next_nav_focus<W: Widget + ?Sized>(&mut self, widget: &mut W, backward: bool) {
-        let end = widget.id();
-        let mut n: u32 = if let Some(id) = self.mgr.nav_focus {
-            u32::from(id)
-        } else if backward {
-            end.into()
-        } else {
-            0
+    fn next_nav_focus<'b>(&mut self, mut widget: &'b dyn WidgetConfig, backward: bool) {
+        type WidgetStack<'b> = SmallVec<[&'b dyn WidgetConfig; 16]>;
+        let mut widget_stack = WidgetStack::new();
+
+        // Reconstruct widget_stack:
+        for index in self.mgr.nav_stack.iter().cloned() {
+            let new = widget.get(index as usize).unwrap();
+            widget_stack.push(widget);
+            widget = new;
+        }
+
+        // Progresses to the first child (or last if backward).
+        // Returns true if a child is found.
+        // Breaks to given lifetime on error.
+        macro_rules! do_child {
+            ($lt:lifetime, $nav_stack:ident, $widget:ident, $widget_stack:ident) => {{
+                let range = $widget.spatial_range();
+                if $widget.is_disabled() || range.1 == std::usize::MAX {
+                    false
+                } else {
+                    // We have a child; the first is range.0 unless backward
+                    let index = match backward {
+                        false => range.0,
+                        true => range.1,
+                    };
+                    let new = match $widget.get(index) {
+                        None => break $lt,
+                        Some(w) => w,
+                    };
+                    $nav_stack.push(index as u32);
+                    $widget_stack.push($widget);
+                    $widget = new;
+                    true
+                }
+            }};
         };
-        loop {
-            if backward {
-                n = n.wrapping_sub(1);
-            } else {
-                n = n.wrapping_add(1);
-            }
-            if n == 0 || n > end.into() {
-                return self.unset_nav_focus();
-            }
 
-            let id = WidgetId::try_from(n).unwrap();
+        // Progresses to the next (or previous) sibling, otherwise pops to the
+        // parent. Returns true if a sibling is found.
+        // Breaks to given lifetime on error.
+        macro_rules! do_sibling_or_pop {
+            ($lt:lifetime, $nav_stack:ident, $widget:ident, $widget_stack:ident) => {{
+                let mut index;
+                match ($nav_stack.pop(), $widget_stack.pop()) {
+                    (Some(i), Some(w)) => {
+                        index = i as usize;
+                        $widget = w;
+                    }
+                    _ => break $lt,
+                };
+                let mut range = $widget.spatial_range();
+                if $widget.is_disabled() || range.1 == std::usize::MAX {
+                    break $lt;
+                }
 
-            // TODO(opt): incorporate walk/find logic
-            if widget.find(id).map(|w| w.key_nav()).unwrap_or(false) {
-                self.send_action(TkAction::Redraw);
-                self.mgr.nav_focus = Some(id);
-                return;
+                let backward = (range.1 < range.0) ^ backward;
+                if range.1 < range.0 {
+                    std::mem::swap(&mut range.0, &mut range.1);
+                }
+
+                // Look for next sibling
+                let have_sibling = match backward {
+                    false if index < range.1 => {
+                        index += 1;
+                        true
+                    }
+                    true if range.0 < index => {
+                        index -= 1;
+                        true
+                    }
+                    _ => false,
+                };
+
+                if have_sibling {
+                    let new = match $widget.get(index) {
+                        None => break $lt,
+                        Some(w) => w,
+                    };
+                    $nav_stack.push(index as u32);
+                    $widget_stack.push($widget);
+                    $widget = new;
+                }
+                have_sibling
+            }};
+        };
+
+        // We redraw in all cases. Since this is not part of widget event
+        // processing, we can push directly to self.mgr.action.
+        self.mgr.send_action(TkAction::Redraw);
+        let nav_stack = &mut self.mgr.nav_stack;
+
+        if !backward {
+            // Depth-first search without function recursion. Our starting
+            // entry has already been used (if applicable); the next
+            // candidate is its first child.
+            'l1: loop {
+                if do_child!('l1, nav_stack, widget, widget_stack) {
+                    if widget.key_nav() && !widget.is_disabled() {
+                        self.mgr.nav_focus = Some(widget.id());
+                        return;
+                    }
+                    continue;
+                }
+
+                loop {
+                    if do_sibling_or_pop!('l1, nav_stack, widget, widget_stack) {
+                        if widget.key_nav() && !widget.is_disabled() {
+                            self.mgr.nav_focus = Some(widget.id());
+                            return;
+                        }
+                        break;
+                    }
+                }
+            }
+        } else {
+            // Reverse depth-first search
+            let mut start = self.mgr.nav_focus.is_none();
+            'l2: loop {
+                if start || do_sibling_or_pop!('l2, nav_stack, widget, widget_stack) {
+                    start = false;
+                    while do_child!('l2, nav_stack, widget, widget_stack) {}
+                }
+
+                if widget.key_nav() && !widget.is_disabled() {
+                    self.mgr.nav_focus = Some(widget.id());
+                    return;
+                }
             }
         }
+
+        // We end up here when there are no more nodes to walk and when
+        // an error occurs (unable to get widget within spatial_range).
+        self.mgr.nav_stack.clear();
+        self.mgr.nav_focus = None;
     }
 
     #[cfg(feature = "winit")]
@@ -849,20 +994,7 @@ impl<'a> Manager<'a> {
 /// Toolkit API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl<'a> Manager<'a> {
-    // Hack to make TkAction::Close on an overlay close only that.
-    // This is not quite correct, since it could mask a legitimate Close
-    // event (e.g. a pop-up menu to close the window).
-    pub(crate) fn replace_action_close_with_reconfigure(&mut self) -> bool {
-        if self.mgr.action == TkAction::Close {
-            self.mgr.action = TkAction::Reconfigure;
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Update, after receiving all events
-    pub fn finish<W>(mut self, widget: &mut W) -> TkAction
+    fn update<W>(mut self, widget: &mut W) -> TkAction
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
@@ -904,8 +1036,8 @@ impl<'a> Manager<'a> {
 
             let id = grab.id;
             if alpha != DVec2(1.0, 0.0) || delta != DVec2::ZERO {
-                let ev = Event::Action(Action::Pan { alpha, delta });
-                let _ = widget.event(&mut self, id, ev);
+                let event = Event::Pan { alpha, delta };
+                let _ = widget.send(&mut self, id, event);
             }
         }
 
@@ -917,13 +1049,13 @@ impl<'a> Manager<'a> {
         for item in self.mgr.pending.pop() {
             match item {
                 Pending::LostCharFocus(id) => {
-                    let ev = Event::Action(Action::LostCharFocus);
-                    let _ = widget.event(&mut self, id, ev);
+                    let event = Event::LostCharFocus;
+                    let _ = widget.send(&mut self, id, event);
                 }
             }
         }
 
-        let action = self.mgr.action;
+        let action = self.mgr.action + self.action;
         self.mgr.action = TkAction::None;
         action
     }
@@ -940,9 +1072,9 @@ impl<'a> Manager<'a> {
 
             let update = self.mgr.time_updates.pop().unwrap();
             let w_id = update.1;
-            let action = Action::TimerUpdate;
-            trace!("Sending {:?} to widget {}", action, w_id);
-            let _ = widget.event(self, w_id, Event::Action(action));
+            let event = Event::TimerUpdate;
+            trace!("Sending {:?} to widget {}", event, w_id);
+            let _ = widget.send(self, w_id, event);
         }
 
         self.mgr.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
@@ -958,9 +1090,9 @@ impl<'a> Manager<'a> {
         // NOTE: to avoid borrow conflict, we must clone values!
         if let Some(mut values) = self.mgr.handle_updates.get(&handle).cloned() {
             for w_id in values.drain(..) {
-                let action = Action::HandleUpdate { handle, payload };
-                trace!("Sending {:?} to widget {}", action, w_id);
-                let _ = widget.event(self, w_id, Event::Action(action));
+                let event = Event::HandleUpdate { handle, payload };
+                trace!("Sending {:?} to widget {}", event, w_id);
+                let _ = widget.send(self, w_id, event);
             }
         }
     }
@@ -994,8 +1126,8 @@ impl<'a> Manager<'a> {
             // HoveredFileCancelled,
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = self.mgr.char_focus {
-                    let ev = Event::Action(Action::ReceivedCharacter(c));
-                    let _ = widget.event(self, id, ev);
+                    let event = Event::ReceivedCharacter(c);
+                    let _ = widget.send(self, id, event);
                 }
             }
             // Focused(bool),
@@ -1024,8 +1156,8 @@ impl<'a> Manager<'a> {
                     let delta = coord - self.mgr.last_mouse_coord;
                     if grab.mode == GrabMode::Grab {
                         let source = PressSource::Mouse(grab.button);
-                        let ev = Event::PressMove { source, coord, delta };
-                        let _ = widget.event(self, grab.start_id, ev);
+                        let event = Event::PressMove { source, coord, delta };
+                        let _ = widget.send(self, grab.start_id, event);
                     } else {
                         if let Some(pan) = self.mgr.pan_grab.get_mut(grab.pan_grab.0 as usize) {
                             pan.coords[grab.pan_grab.1 as usize].1 = coord;
@@ -1047,13 +1179,13 @@ impl<'a> Manager<'a> {
                 }
             }
             MouseWheel { delta, .. } => {
-                let action = Action::Scroll(match delta {
+                let event = Event::Scroll(match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
                     MouseScrollDelta::PixelDelta(pos) =>
                         ScrollDelta::PixelDelta(Coord::from_logical(pos, self.mgr.dpi_factor)),
                 });
                 if let Some(id) = self.mgr.hover {
-                    let _ = widget.event(self, id, Event::Action(action));
+                    let _ = widget.send(self, id, event);
                 }
             }
             MouseInput {
@@ -1068,7 +1200,7 @@ impl<'a> Manager<'a> {
                     match grab.mode {
                         GrabMode::Grab => {
                             // Mouse grab active: send events there
-                            let ev = match state {
+                            let event = match state {
                                 ElementState::Pressed => Event::PressStart { source, coord },
                                 ElementState::Released => Event::PressEnd {
                                     source,
@@ -1076,7 +1208,7 @@ impl<'a> Manager<'a> {
                                     coord,
                                 },
                             };
-                            let _ = widget.event(self, grab.start_id, ev);
+                            let _ = widget.send(self, grab.start_id, event);
                         }
                         // Pan events do not receive Start/End notifications
                         _ => (),
@@ -1088,8 +1220,8 @@ impl<'a> Manager<'a> {
                 } else if let Some(id) = self.mgr.hover {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
-                        let ev = Event::PressStart { source, coord };
-                        let _ = widget.event(self, id, ev);
+                        let event = Event::PressStart { source, coord };
+                        let _ = widget.send(self, id, event);
                     }
                 }
             }
@@ -1102,12 +1234,12 @@ impl<'a> Manager<'a> {
                 match touch.phase {
                     TouchPhase::Started => {
                         if let Some(id) = widget.find_id(coord) {
-                            let ev = Event::PressStart { source, coord };
-                            let _ = widget.event(self, id, ev);
+                            let event = Event::PressStart { source, coord };
+                            let _ = widget.send(self, id, event);
                         }
                     }
                     TouchPhase::Moved => {
-                        // NOTE: calling widget.event twice appears
+                        // NOTE: calling widget.send twice appears
                         // to be unavoidable (as with CursorMoved)
                         let cur_id = widget.find_id(coord);
 
@@ -1116,7 +1248,7 @@ impl<'a> Manager<'a> {
                         if let Some(grab) = self.get_touch(touch.id) {
                             if grab.mode == GrabMode::Grab {
                                 let id = grab.start_id;
-                                let action = Event::PressMove {
+                                let event = Event::PressMove {
                                     source,
                                     coord,
                                     delta: coord - grab.coord,
@@ -1128,17 +1260,17 @@ impl<'a> Manager<'a> {
                                 grab.cur_id = cur_id;
                                 grab.coord = coord;
 
-                                r = Some((id, action, redraw));
+                                r = Some((id, event, redraw));
                             } else {
                                 pan_grab = Some(grab.pan_grab);
                             }
                         }
 
-                        if let Some((id, action, redraw)) = r {
+                        if let Some((id, event, redraw)) = r {
                             if redraw {
                                 self.send_action(TkAction::Redraw);
                             }
-                            let _ = widget.event(self, id, action);
+                            let _ = widget.send(self, id, event);
                         } else if let Some(pan_grab) = pan_grab {
                             if (pan_grab.1 as usize) < MAX_PAN_GRABS {
                                 if let Some(pan) = self.mgr.pan_grab.get_mut(pan_grab.0 as usize) {
@@ -1150,7 +1282,7 @@ impl<'a> Manager<'a> {
                     TouchPhase::Ended => {
                         if let Some(grab) = self.remove_touch(touch.id) {
                             if grab.mode == GrabMode::Grab {
-                                let action = Event::PressEnd {
+                                let event = Event::PressEnd {
                                     source,
                                     end_id: grab.cur_id,
                                     coord,
@@ -1158,7 +1290,7 @@ impl<'a> Manager<'a> {
                                 if let Some(cur_id) = grab.cur_id {
                                     self.redraw(cur_id);
                                 }
-                                let _ = widget.event(self, grab.start_id, action);
+                                let _ = widget.send(self, grab.start_id, event);
                             } else {
                                 self.mgr.remove_pan_grab(grab.pan_grab);
                             }
@@ -1166,7 +1298,7 @@ impl<'a> Manager<'a> {
                     }
                     TouchPhase::Cancelled => {
                         if let Some(grab) = self.remove_touch(touch.id) {
-                            let action = Event::PressEnd {
+                            let event = Event::PressEnd {
                                 source,
                                 end_id: None,
                                 coord,
@@ -1174,7 +1306,7 @@ impl<'a> Manager<'a> {
                             if let Some(cur_id) = grab.cur_id {
                                 self.redraw(cur_id);
                             }
-                            let _ = widget.event(self, grab.start_id, action);
+                            let _ = widget.send(self, grab.start_id, event);
                         }
                     }
                 }

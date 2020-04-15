@@ -11,7 +11,7 @@ use std::ops::{Add, Sub};
 
 use super::DragHandle;
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Action, Event, Manager, NavKey, Response};
+use kas::event::{Event, Manager, NavKey, Response};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::prelude::*;
 
@@ -41,7 +41,7 @@ impl<
 /// A slider
 ///
 /// Sliders allow user input of a value from a fixed range.
-#[handler(action, msg = T)]
+#[handler(send=noauto, msg = T)]
 #[widget(config(key_nav = true))]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Slider<T: SliderType, D: Directional> {
@@ -190,10 +190,6 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
-
         if self.handle.rect().contains(coord) {
             Some(self.handle.id())
         } else {
@@ -212,16 +208,20 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     }
 }
 
-impl<T: SliderType, D: Directional> event::EventHandler for Slider<T, D> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<T: SliderType, D: Directional> event::SendEvent for Slider<T, D> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         let offset = if id <= self.handle.id() {
-            match self.handle.event(mgr, id, event).try_into() {
+            match self.handle.send(mgr, id, event).try_into() {
                 Ok(res) => return res,
                 Err(offset) => offset,
             }
         } else {
             match event {
-                Event::Action(Action::NavKey(key)) => {
+                Event::NavKey(key) => {
                     let rev = self.direction.is_reversed();
                     let v = match key {
                         NavKey::Left | NavKey::Up => match rev {

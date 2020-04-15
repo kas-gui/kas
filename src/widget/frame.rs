@@ -5,8 +5,6 @@
 
 //! A simple frame
 
-use std::fmt::Debug;
-
 use kas::class::*;
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::Handler;
@@ -70,10 +68,6 @@ impl<W: Widget> Layout for Frame<W> {
 
     #[inline]
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
-
         if let Some(id) = self.child.find_id(coord) {
             Some(id)
         } else {

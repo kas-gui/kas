@@ -167,9 +167,10 @@ where
             }
             event @ _ => {
                 let mut tkw = TkWindow::new(&self.window, shared);
-                self.mgr
-                    .manager(&mut tkw)
-                    .handle_winit(&mut *self.widget, event);
+                let widget = &mut *self.widget;
+                self.mgr.with(&mut tkw, |mgr| {
+                    mgr.handle_winit(widget, event);
+                });
             }
         }
     }
@@ -181,12 +182,19 @@ where
         T: Theme<DrawPipe<C>, Window = TW>,
     {
         let mut tkw = TkWindow::new(&self.window, shared);
-        let action = self.mgr.manager(&mut tkw).finish(&mut *self.widget);
+        let action = self.mgr.update(&mut tkw, &mut *self.widget);
 
         match action {
             TkAction::None => (),
             TkAction::Redraw => self.window.request_redraw(),
             TkAction::RegionMoved => {
+                self.mgr.region_moved(&mut *self.widget);
+                self.window.request_redraw();
+            }
+            TkAction::Popup => {
+                let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
+                self.widget.resize_popups(&mut size_handle);
+
                 self.mgr.region_moved(&mut *self.widget);
                 self.window.request_redraw();
             }
@@ -203,9 +211,11 @@ where
         T: Theme<DrawPipe<C>, Window = TW>,
     {
         let mut tkw = TkWindow::new(&self.window, shared);
-        let mut mgr = self.mgr.manager(&mut tkw);
-        self.widget.handle_closure(&mut mgr);
-        mgr.finish(&mut *self.widget)
+        let widget = &mut *self.widget;
+        self.mgr.with(&mut tkw, |mut mgr| {
+            widget.handle_closure(&mut mgr);
+        });
+        self.mgr.update(&mut tkw, &mut *self.widget)
     }
 
     pub fn update_timer<C, T>(&mut self, shared: &mut SharedState<C, T>) -> Option<Instant>
@@ -214,8 +224,10 @@ where
         T: Theme<DrawPipe<C>, Window = TW>,
     {
         let mut tkw = TkWindow::new(&self.window, shared);
-        let mut mgr = self.mgr.manager(&mut tkw);
-        mgr.update_timer(&mut *self.widget);
+        let widget = &mut *self.widget;
+        self.mgr.with(&mut tkw, |mgr| {
+            mgr.update_timer(widget);
+        });
         self.mgr.next_resume()
     }
 
@@ -229,8 +241,10 @@ where
         T: Theme<DrawPipe<C>, Window = TW>,
     {
         let mut tkw = TkWindow::new(&self.window, shared);
-        let mut mgr = self.mgr.manager(&mut tkw);
-        mgr.update_handle(&mut *self.widget, handle, payload);
+        let widget = &mut *self.widget;
+        self.mgr.with(&mut tkw, |mgr| {
+            mgr.update_handle(widget, handle, payload);
+        });
     }
 
     pub fn add_popup<C, T>(
@@ -245,8 +259,9 @@ where
         let window = &mut *self.widget;
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
         let mut tkw = TkWindow::new(&self.window, shared);
-        let mut mgr = self.mgr.manager(&mut tkw);
-        kas::Window::add_popup(window, &mut size_handle, &mut mgr, id, popup);
+        self.mgr.with(&mut tkw, |mut mgr| {
+            kas::Window::add_popup(window, &mut size_handle, &mut mgr, id, popup);
+        });
     }
 
     pub fn send_action(&mut self, action: TkAction) {
@@ -262,8 +277,10 @@ where
             self.mgr.send_action(TkAction::Close);
         } else {
             let mut tkw = TkWindow::new(&self.window, shared);
-            let mut mgr = self.mgr.manager(&mut tkw);
-            self.widget.remove_popup(&mut mgr, id);
+            let widget = &mut *self.widget;
+            self.mgr.with(&mut tkw, |mut mgr| {
+                widget.remove_popup(&mut mgr, id);
+            });
         }
     }
 }

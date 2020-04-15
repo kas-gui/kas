@@ -198,7 +198,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         args.handler.push(Default::default());
     }
     for handler in args.handler.drain(..) {
-        let msg = handler.msg;
         let subs = handler.substitutions;
         let mut generics = ast.generics.clone();
         generics.params = generics
@@ -242,7 +241,8 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         let (impl_generics, _ty, where_clause) = generics.split_for_impl();
         let ty_generics = SubstTyGenerics(&ast.generics, subs);
 
-        if handler.action {
+        if handler.handle {
+            let msg = handler.msg;
             toks.append_all(quote! {
                 impl #impl_generics kas::event::Handler
                         for #name #ty_generics #where_clause
@@ -252,7 +252,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             });
         }
 
-        if handler.event {
+        if handler.send {
             let mut ev_to_num = TokenStream::new();
             for child in args.children.iter() {
                 let ident = &child.ident;
@@ -263,34 +263,33 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 };
                 ev_to_num.append_all(quote! {
                     if id <= self.#ident.id() {
-                        let r = self.#ident.event(mgr, id, event);
+                        let r = self.#ident.send(mgr, id, event);
                         #handler
                     } else
                 });
             }
 
-            let event = if args.children.is_empty() {
-                // rely on the default implementation
-                quote! {}
-            } else {
-                quote! {
-                    fn event(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
-                    -> kas::event::Response<Self::Msg>
-                    {
-                        use kas::{WidgetCore, event::Response};
-                        #ev_to_num {
-                            debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
-                            kas::event::Manager::handle_generic(self, mgr, event)
-                        }
+            let send = quote! {
+                fn send(&mut self, mgr: &mut kas::event::Manager, id: kas::WidgetId, event: kas::event::Event)
+                -> kas::event::Response<Self::Msg>
+                {
+                    use kas::{WidgetCore, event::Response};
+                    if self.is_disabled() {
+                        return Response::Unhandled(event);
+                    }
+
+                    #ev_to_num {
+                        debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
+                        kas::event::Manager::handle_generic(self, mgr, event)
                     }
                 }
             };
 
             toks.append_all(quote! {
-                impl #impl_generics kas::event::EventHandler
+                impl #impl_generics kas::event::SendEvent
                         for #name #ty_generics #where_clause
                 {
-                    #event
+                    #send
                 }
             });
         }
@@ -399,32 +398,43 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut handler = if let Some(h) = args.handler {
         h
     } else {
+        // A little magic: try to deduce parameters, applying defaults otherwise
+        let mut handle = true;
+        let mut send = true;
         let mut msg = None;
         let msg_ident: Ident = parse_quote! { Msg };
         for (name, body) in &args.impls {
             if name == &Some(parse_quote! { Handler })
                 || name == &Some(parse_quote! { kas::Handler })
             {
+                handle = false;
+
                 for item in body {
                     match item {
                         &syn::ImplItem::Type(syn::ImplItemType {
                             ref ident, ref ty, ..
                         }) if *ident == msg_ident => {
                             msg = Some(ty.clone());
-                            break;
+                            continue;
                         }
                         _ => (),
                     }
                 }
+            } else if name == &Some(parse_quote! { SendEvent })
+                || name == &Some(parse_quote! { kas::SendEvent })
+            {
+                send = false;
             }
         }
 
         if let Some(msg) = msg {
-            HandlerArgs::new(msg)
+            HandlerArgs::new(msg, handle, send)
         } else {
+            // We could default to msg=VoidMsg here. If error messages weren't
+            // so terrible this might even be a good idea!
             args.struct_span
                 .unwrap()
-                .error("no Handler impl and no #[handler] attribute")
+                .error("make_widget: cannot discover msg type from #[handler] attr or Handler impl")
                 .emit();
             return proc_macro::TokenStream::new();
         }

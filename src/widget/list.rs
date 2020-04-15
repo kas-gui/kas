@@ -87,7 +87,7 @@ pub type RefList<'a, D, M> = List<D, &'a mut dyn Widget<Msg = M>>;
 /// children.
 ///
 /// [`make_widget`]: ../macros/index.html#the-make_widget-macro
-#[handler(action, msg=<W as event::Handler>::Msg)]
+#[handler(send=noauto, msg=<W as event::Handler>::Msg)]
 #[widget(children=noauto)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct List<D: Directional, W: Widget> {
@@ -136,11 +136,15 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
         }
     }
 
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
+    fn spatial_range(&self) -> (usize, usize) {
+        let last = WidgetChildren::len(self).wrapping_sub(1);
+        match self.direction.is_reversed() {
+            false => (0, last),
+            true => (last, 0),
         }
+    }
 
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
         let solver = layout::RowPositionSolver::new(self.direction);
         if let Some(child) = solver.find_child(&self.widgets, coord) {
             return child.find_id(coord);
@@ -158,15 +162,19 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> event::EventHandler for List<D, W> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<D: Directional, W: Widget> event::SendEvent for List<D, W> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         for child in &mut self.widgets {
             if id <= child.id() {
-                return child.event(mgr, id, event);
+                return child.send(mgr, id, event);
             }
         }
 
-        debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
+        debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
         Manager::handle_generic(self, mgr, event)
     }
 }

@@ -33,7 +33,7 @@ pub type RefStack<'a, M> = Stack<&'a mut dyn Widget<Msg = M>>;
 ///
 /// Configuring and resizing elements is O(n) in the number of children.
 /// Drawing and event handling is O(1).
-#[handler(action, msg=<W as event::Handler>::Msg)]
+#[handler(send=noauto, msg=<W as event::Handler>::Msg)]
 #[widget(children=noauto)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Stack<W: Widget> {
@@ -75,10 +75,6 @@ impl<W: Widget> Layout for Stack<W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
-
         if self.active < self.widgets.len() {
             return self.widgets[self.active].find_id(coord);
         }
@@ -93,15 +89,19 @@ impl<W: Widget> Layout for Stack<W> {
     }
 }
 
-impl<W: Widget> event::EventHandler for Stack<W> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<W: Widget> event::SendEvent for Stack<W> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         for child in &mut self.widgets {
             if id <= child.id() {
-                return child.event(mgr, id, event);
+                return child.send(mgr, id, event);
             }
         }
 
-        debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
+        debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
         Manager::handle_generic(self, mgr, event)
     }
 }

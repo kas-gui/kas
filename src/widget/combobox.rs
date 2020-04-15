@@ -11,34 +11,25 @@ use std::iter::FromIterator;
 use super::{Column, TextButton};
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Action, Event, Manager, Response, UpdateHandle};
+use kas::event::{Event, GrabMode, Manager, Response, SendEvent};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::WindowId;
 
 /// A pop-up multiple choice menu
-#[handler(event)]
-#[widget(config=noauto)]
+#[widget(config(key_nav = true))]
+#[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
 pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
     core: CoreData,
     // text_rect: Rect,
-    column: Column<TextButton<u64>>,
+    #[widget]
+    popup: ComboPopup,
     messages: Vec<M>, // TODO: is this a useless lookup step?
     active: usize,
-    handle: UpdateHandle,
-    popup: Option<WindowId>,
-}
-
-impl<M: Clone + Debug + 'static> kas::WidgetConfig for ComboBox<M> {
-    fn configure(&mut self, mgr: &mut Manager) {
-        mgr.update_on_handle(self.handle, self.id());
-    }
-
-    fn key_nav(&self) -> bool {
-        true
-    }
+    opening: bool,
+    popup_id: Option<WindowId>,
 }
 
 impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
@@ -48,7 +39,8 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
 
         // TODO: should we calculate a bound over all choices or assume some default?
-        let content_rules = size_handle.text_bound(self.text(), TextClass::Button, axis);
+        let text = &self.popup.column[self.active].get_text();
+        let content_rules = size_handle.text_bound(text, TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)
     }
 
@@ -61,10 +53,16 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         // self.text_rect = ...
     }
 
+    fn spatial_range(&self) -> (usize, usize) {
+        // We have no child within our rect; return an empty range
+        (0, std::usize::MAX)
+    }
+
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
         let align = (Align::Centre, Align::Centre);
-        draw_handle.text(self.core.rect, self.text(), TextClass::Button, align);
+        let text = &self.popup.column[self.active].get_text();
+        draw_handle.text(self.core.rect, text, TextClass::Button, align);
     }
 }
 
@@ -94,24 +92,49 @@ impl<M: Clone + Debug> ComboBox<M> {
         assert!(column.len() > 0, "ComboBox: expected at least one choice");
         ComboBox {
             core: Default::default(),
-            column: Column::new(column),
+            popup: ComboPopup {
+                core: Default::default(),
+                column: Column::new(column),
+            },
             messages,
             active: 0,
-            handle: UpdateHandle::new(),
-            popup: None,
+            opening: false,
+            popup_id: None,
         }
     }
 
     /// Get the text of the active choice
     pub fn text(&self) -> &str {
-        self.column[self.active].get_text()
+        self.popup.column[self.active].get_text()
     }
 
     /// Add a choice to the combobox, in last position
     pub fn push<T: Into<CowString>>(&mut self, label: CowString, msg: M) -> TkAction {
-        let len = self.column.len() as u64;
         self.messages.push(msg);
-        self.column.push(TextButton::new(label, len))
+        let column = &mut self.popup.column;
+        let len = column.len() as u64;
+        column.push(TextButton::new(label, len))
+        // TODO: localised reconfigure
+    }
+
+    fn map_response(&mut self, mgr: &mut Manager, r: Response<u64>) -> Response<M> {
+        match r.try_into() {
+            Ok(r) => r,
+            Err(msg) => {
+                let index = msg as usize;
+                assert!(index < self.messages.len());
+                self.active = index;
+                if let Some(id) = self.popup_id {
+                    mgr.close_window(id);
+                    self.popup_id = None;
+                }
+                mgr.redraw(self.id());
+                Response::Msg(self.messages[index].clone())
+            }
+        }
+        // NOTE: as part of the Popup API we are expected to trap
+        // TkAction::Close here, but we know our widget doesn't generate
+        // this action.
     }
 }
 
@@ -146,78 +169,82 @@ impl<'a, M: Clone + Debug + 'static> FromIterator<&'a (&'static str, M)> for Com
 impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
     type Msg = M;
 
-    #[inline]
-    fn activation_via_press(&self) -> bool {
-        true
-    }
-
-    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
-        match action {
-            Action::Activate => {
-                if let Some(id) = self.popup {
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+        let open_popup = |w: &mut ComboBox<M>, mgr: &mut Manager| {
+            let id = mgr.add_popup(kas::Popup {
+                id: w.popup.id(),
+                parent: w.id(),
+                direction: Direction::Down,
+            });
+            w.popup_id = Some(id);
+        };
+        match event {
+            Event::Activate => {
+                if let Some(id) = self.popup_id {
                     mgr.close_window(id);
-                    self.popup = None;
+                    self.popup_id = None;
                 } else {
-                    let id = mgr.add_popup(kas::Popup {
-                        parent: self.id(),
-                        direction: Direction::Down,
-                        overlay: Box::new(ComboPopup::new(self.column.clone(), self.handle)),
-                    });
-                    self.popup = Some(id);
+                    open_popup(self, mgr);
                 }
                 Response::None
             }
-            Action::HandleUpdate { payload, .. } => {
-                let index = payload as usize;
-                assert!(index < self.column.len());
-                self.active = index;
-                if let Some(id) = self.popup {
-                    mgr.close_window(id);
-                    self.popup = None;
-                }
-                mgr.redraw(self.id());
-                Response::Msg(self.messages[index].clone())
+            Event::PressStart { source, coord } if source.is_primary() => {
+                mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
+                self.opening = self.popup_id.is_none();
+                Response::None
             }
-            a @ _ => Response::unhandled_action(a),
+            Event::PressMove { .. } => {
+                if self.popup_id.is_none() {
+                    open_popup(self, mgr);
+                }
+                Response::None
+            }
+            Event::PressEnd { end_id, coord, .. } => {
+                if let Some(id) = end_id {
+                    if id == self.id() {
+                        if self.opening {
+                            if self.popup_id.is_none() {
+                                open_popup(self, mgr);
+                            }
+                            return Response::None;
+                        }
+                    } else if self.popup_id.is_some() && self.popup.rect().contains(coord) {
+                        let r = self.popup.send(mgr, id, Event::Activate);
+                        return self.map_response(mgr, r);
+                    }
+                }
+                if let Some(id) = self.popup_id {
+                    mgr.close_window(id);
+                    self.popup_id = None;
+                }
+                Response::None
+            }
+            event => Response::Unhandled(event),
+        }
+    }
+}
+
+impl<M: Clone + Debug + 'static> event::SendEvent for ComboBox<M> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
+        if id <= self.popup.id() {
+            let r = self.popup.send(mgr, id, event);
+            self.map_response(mgr, r)
+        } else {
+            Manager::handle_generic(self, mgr, event)
         }
     }
 }
 
 #[layout(single)]
-#[handler(action)]
+#[handler(msg=u64)]
 #[derive(Clone, Debug, Widget)]
 struct ComboPopup {
     #[widget_core]
     core: CoreData,
     #[widget]
     column: Column<TextButton<u64>>,
-    handle: UpdateHandle,
-}
-
-impl ComboPopup {
-    #[inline]
-    fn new(column: Column<TextButton<u64>>, handle: UpdateHandle) -> Self {
-        ComboPopup {
-            core: Default::default(),
-            column,
-            handle,
-        }
-    }
-}
-
-impl event::EventHandler for ComboPopup {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if id <= self.column.id() {
-            match self.column.event(mgr, id, event).try_into() {
-                Ok(r) => r,
-                Err(msg) => {
-                    mgr.trigger_update(self.handle, msg);
-                    mgr.send_action(TkAction::Close);
-                    Response::None
-                }
-            }
-        } else {
-            Response::Unhandled(event)
-        }
-    }
 }

@@ -7,7 +7,7 @@
 
 use super::*;
 use crate::draw::{DrawHandle, SizeHandle};
-use crate::event::{self, Action, Event, Manager, Response};
+use crate::event::{self, Event, Manager, Response};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, WidgetId};
@@ -96,14 +96,14 @@ impl<M> event::Handler for Box<dyn Widget<Msg = M>> {
         self.as_ref().activation_via_press()
     }
 
-    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
-        self.as_mut().action(mgr, action)
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        self.as_mut().handle(mgr, event)
     }
 }
 
-impl<M> event::EventHandler for Box<dyn Widget<Msg = M>> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        self.as_mut().event(mgr, id, event)
+impl<M> event::SendEvent for Box<dyn Widget<Msg = M>> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        self.as_mut().send(mgr, id, event)
     }
 }
 
@@ -113,7 +113,6 @@ impl<M: 'static> Clone for Box<dyn Widget<Msg = M>> {
     fn clone(&self) -> Self {
         #[cfg(feature = "nightly")]
         unsafe {
-            use crate::CloneTo;
             let mut x = Box::new_uninit();
             self.clone_to(x.as_mut_ptr());
             x.assume_init()

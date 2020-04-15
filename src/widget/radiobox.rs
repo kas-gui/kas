@@ -12,12 +12,12 @@ use std::rc::Rc;
 use super::Label;
 use kas::class::HasBool;
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Action, Manager, Response, UpdateHandle, VoidMsg};
+use kas::event::{Event, Manager, Response, UpdateHandle, VoidMsg};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// A bare radiobox (no label)
-#[handler(event)]
+#[handler(handle=noauto)]
 #[widget(config=noauto)]
 #[derive(Clone, Widget)]
 pub struct RadioBoxBare<M> {
@@ -56,9 +56,9 @@ impl<M> event::Handler for RadioBoxBare<M> {
         true
     }
 
-    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<M> {
-        match action {
-            Action::Activate => {
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
+        match event {
+            Event::Activate => {
                 if !self.state {
                     self.state = true;
                     mgr.redraw(self.id());
@@ -72,7 +72,7 @@ impl<M> event::Handler for RadioBoxBare<M> {
                     Response::None
                 }
             }
-            Action::HandleUpdate { payload, .. } => {
+            Event::HandleUpdate { payload, .. } => {
                 let id = WidgetId::try_from(payload).unwrap();
                 if id != self.id() {
                     self.state = false;
@@ -80,7 +80,7 @@ impl<M> event::Handler for RadioBoxBare<M> {
                 }
                 Response::None
             }
-            a @ _ => Response::unhandled_action(a),
+            event => Response::Unhandled(event),
         }
     }
 }

@@ -9,7 +9,7 @@ use std::fmt::Debug;
 
 use super::ScrollBar;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Action, Event, Manager, Response};
+use kas::event::{Event, Manager, Response};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
@@ -22,7 +22,7 @@ use kas::prelude::*;
 /// Scroll regions translate their contents by an `offset`, which has a
 /// minimum value of [`Coord::ZERO`] and a maximum value of
 /// [`ScrollRegion::max_offset`].
-#[handler(action, msg = <W as event::Handler>::Msg)]
+#[handler(send=noauto, msg = <W as event::Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
     #[widget_core]
@@ -195,10 +195,6 @@ impl<W: Widget> Layout for ScrollRegion<W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
-
         if self.horiz_bar.rect().contains(coord) {
             self.horiz_bar.find_id(coord)
         } else if self.vert_bar.rect().contains(coord) {
@@ -226,10 +222,14 @@ impl<W: Widget> Layout for ScrollRegion<W> {
     }
 }
 
-impl<W: Widget> event::EventHandler for ScrollRegion<W> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<W: Widget> event::SendEvent for ScrollRegion<W> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
-            Event::Action(Action::Scroll(delta)) => {
+            Event::Scroll(delta) => {
                 let d = match delta {
                     event::ScrollDelta::LineDelta(x, y) => {
                         Coord((-w.scroll_rate * x) as i32, (w.scroll_rate * y) as i32)
@@ -243,7 +243,7 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
                         + w.vert_bar.set_value(w.offset.1 as u32);
                     Response::None
                 } else {
-                    Response::unhandled_action(Action::Scroll(delta))
+                    Response::Unhandled(Event::Scroll(delta))
                 }
             }
             Event::PressStart { source, coord } if source.is_primary() => {
@@ -260,7 +260,7 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
         };
 
         if id <= self.horiz_bar.id() {
-            return match Response::<Self::Msg>::try_from(self.horiz_bar.event(mgr, id, event)) {
+            return match Response::<Self::Msg>::try_from(self.horiz_bar.send(mgr, id, event)) {
                 Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
@@ -269,7 +269,7 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
                 }
             };
         } else if id <= self.vert_bar.id() {
-            return match Response::<Self::Msg>::try_from(self.vert_bar.event(mgr, id, event)) {
+            return match Response::<Self::Msg>::try_from(self.vert_bar.send(mgr, id, event)) {
                 Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
                 Ok(r) => r,
                 Err(msg) => {
@@ -297,7 +297,6 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
         }
 
         let event = match event {
-            a @ Event::Action(_) => a,
             Event::PressStart { source, coord } => Event::PressStart {
                 source,
                 coord: coord + self.offset,
@@ -320,9 +319,10 @@ impl<W: Widget> event::EventHandler for ScrollRegion<W> {
                 end_id,
                 coord: coord + self.offset,
             },
+            event => event,
         };
 
-        match self.child.event(mgr, id, event) {
+        match self.child.send(mgr, id, event) {
             Response::None => Response::None,
             Response::Unhandled(event) => unhandled(self, mgr, event),
             e @ _ => e,

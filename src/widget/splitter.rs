@@ -69,7 +69,7 @@ pub type RefSplitter<'a, D, M> = Splitter<D, &'a mut dyn Widget<Msg = M>>;
 ///
 /// Similar to [`kas::widget::Splitter`] but with draggable handles between items.
 // TODO: better doc
-#[handler(action, msg=<W as event::Handler>::Msg)]
+#[handler(send=noauto, msg=<W as event::Handler>::Msg)]
 #[widget(children=noauto)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Splitter<D: Directional, W: Widget> {
@@ -175,10 +175,6 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
-
         // find_child should gracefully handle the case that a coord is between
         // widgets, so there's no harm (and only a small performance loss) in
         // calling it twice.
@@ -212,15 +208,19 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> event::EventHandler for Splitter<D, W> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<D: Directional, W: Widget> event::SendEvent for Splitter<D, W> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         if self.widgets.len() > 0 {
             assert!(self.handles.len() + 1 == self.widgets.len());
             let mut n = 0;
             loop {
                 assert!(n < self.widgets.len());
                 if id <= self.widgets[n].id() {
-                    return self.widgets[n].event(mgr, id, event);
+                    return self.widgets[n].send(mgr, id, event);
                 }
 
                 if n >= self.handles.len() {
@@ -228,7 +228,7 @@ impl<D: Directional, W: Widget> event::EventHandler for Splitter<D, W> {
                 }
                 if id <= self.handles[n].id() {
                     return self.handles[n]
-                        .event(mgr, id, event)
+                        .send(mgr, id, event)
                         .try_into()
                         .unwrap_or_else(|_| {
                             // Message is the new offset relative to the track;
@@ -241,7 +241,7 @@ impl<D: Directional, W: Widget> event::EventHandler for Splitter<D, W> {
             }
         }
 
-        debug_assert!(id == self.id(), "EventHandler::event: bad WidgetId");
+        debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
         Manager::handle_generic(self, mgr, event)
     }
 }

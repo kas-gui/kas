@@ -5,7 +5,7 @@
 
 //! Event handling: Response type
 
-use super::{Action, Event};
+use super::{Event, VoidResponse};
 
 /// Response type from [`Handler::action`].
 ///
@@ -37,12 +37,22 @@ impl<M> Response<M> {
         }
     }
 
-    /// Produce [`Response::Unhandled`] variant from an [`Action`]
-    ///
-    /// Convenience function for common usage.
+    /// True if variant is `Unhandled`
     #[inline]
-    pub fn unhandled_action(action: Action) -> Self {
-        Response::Unhandled(Event::Action(action))
+    pub fn is_unhandled(&self) -> bool {
+        match self {
+            &Response::Unhandled(_) => true,
+            _ => false,
+        }
+    }
+
+    /// True if variant is `Msg`
+    #[inline]
+    pub fn is_msg(&self) -> bool {
+        match self {
+            &Response::Msg(_) => true,
+            _ => false,
+        }
     }
 
     /// Map from one `Response` type to another
@@ -86,6 +96,13 @@ impl<M> Response<M> {
     #[inline]
     pub fn try_into<N>(self) -> Result<Response<N>, M> {
         Response::try_from(self)
+    }
+}
+
+impl VoidResponse {
+    /// Convert a `Response<VoidMsg>` to another `Response`
+    pub fn void_into<M>(self) -> Response<M> {
+        self.try_into().unwrap_or(Response::None)
     }
 }
 

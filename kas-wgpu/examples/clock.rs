@@ -13,14 +13,14 @@ use std::f32::consts::PI;
 use std::time::Duration;
 
 use kas::draw::{Colour, DrawHandle, DrawRounded, DrawText, SizeHandle, TextClass, TextProperties};
-use kas::event::{self, Action, Event, Handler, Manager, ManagerState, Response};
+use kas::event::{self, Event, Handler, Manager, ManagerState, Response};
 use kas::geom::*;
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::widget::Window;
 use kas::{Align, AlignHints, Layout, WidgetConfig, WidgetCore};
 use kas_wgpu::draw::DrawWindow;
 
-#[handler(event)]
+#[handler(handle=noauto)]
 #[widget(config = noauto)]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Clock {
@@ -122,9 +122,9 @@ impl Handler for Clock {
     type Msg = event::VoidMsg;
 
     #[inline]
-    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
-        match action {
-            Action::TimerUpdate => {
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        match event {
+            Event::TimerUpdate => {
                 self.now = Local::now();
                 mgr.redraw(self.id());
                 self.date = self.now.format("%Y-%m-%d").to_string();
@@ -134,7 +134,7 @@ impl Handler for Clock {
                 mgr.update_on_timer(Duration::new(0, ns), self.id());
                 Response::None
             }
-            a @ _ => Response::Unhandled(Event::Action(a)),
+            event => Response::Unhandled(event),
         }
     }
 }

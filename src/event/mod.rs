@@ -75,7 +75,7 @@ pub use callback::Callback;
 #[cfg(not(feature = "winit"))]
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
-pub use handler::{EventHandler, Handler};
+pub use handler::{Handler, SendEvent};
 pub use manager::{GrabMode, Manager, ManagerState};
 pub use response::Response;
 pub use update::UpdateHandle;

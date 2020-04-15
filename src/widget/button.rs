@@ -10,12 +10,12 @@ use std::fmt::Debug;
 
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Action, Manager, Response, VirtualKeyCode};
+use kas::event::{Event, Manager, Response, VirtualKeyCode};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// A push-button with a text label
-#[handler(event)]
+#[handler(handle=noauto)]
 #[widget(config=noauto)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct TextButton<M: Clone + Debug> {
@@ -118,10 +118,10 @@ impl<M: Clone + Debug> event::Handler for TextButton<M> {
         true
     }
 
-    fn action(&mut self, _: &mut Manager, action: Action) -> Response<M> {
-        match action {
-            Action::Activate => self.msg.clone().into(),
-            a @ _ => Response::unhandled_action(a),
+    fn handle(&mut self, _: &mut Manager, event: Event) -> Response<M> {
+        match event {
+            Event::Activate => self.msg.clone().into(),
+            event => Response::Unhandled(event),
         }
     }
 }

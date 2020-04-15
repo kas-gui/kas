@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 
 use kas::class::{Editable, HasText};
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Action, Manager, Response, VoidMsg};
+use kas::event::{Event, Manager, Response, VoidMsg};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
@@ -120,7 +120,7 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
 
 /// An editable, single-line text box.
 #[widget(config(key_nav = true, cursor_icon = event::CursorIcon::Text))]
-#[handler(event, generics = <> where G: EditGuard)]
+#[handler(handle=noauto, generics = <> where G: EditGuard)]
 #[derive(Clone, Default, Widget)]
 pub struct EditBox<G: 'static> {
     #[widget_core]
@@ -419,17 +419,17 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
         true
     }
 
-    fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<Self::Msg> {
-        match action {
-            Action::Activate => {
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        match event {
+            Event::Activate => {
                 mgr.request_char_focus(self.id());
                 Response::None
             }
-            Action::LostCharFocus => {
+            Event::LostCharFocus => {
                 let r = G::focus_lost(self);
                 r.map(|msg| msg.into()).unwrap_or(Response::None)
             }
-            Action::ReceivedCharacter(c) => {
+            Event::ReceivedCharacter(c) => {
                 let r = match self.received_char(mgr, c) {
                     EditAction::None => None,
                     EditAction::Activate => G::activate(self),
@@ -437,7 +437,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 };
                 r.map(|msg| msg.into()).unwrap_or(Response::None)
             }
-            a @ _ => Response::unhandled_action(a),
+            event => Response::Unhandled(event),
         }
     }
 }

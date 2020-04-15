@@ -17,7 +17,7 @@ use kas::prelude::*;
 ///
 /// Scroll bars allow user-input of a value between 0 and a defined maximum,
 /// and allow the size of the handle to be specified.
-#[handler(action, msg = u32)]
+#[handler(send=noauto, msg = u32)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollBar<D: Directional> {
     #[widget_core]
@@ -205,10 +205,6 @@ impl<D: Directional> Layout for ScrollBar<D> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
-
         if self.handle.rect().contains(coord) {
             Some(self.handle.id())
         } else {
@@ -223,10 +219,14 @@ impl<D: Directional> Layout for ScrollBar<D> {
     }
 }
 
-impl<D: Directional> event::EventHandler for ScrollBar<D> {
-    fn event(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<D: Directional> event::SendEvent for ScrollBar<D> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
         let offset = if id <= self.handle.id() {
-            match self.handle.event(mgr, id, event).try_into() {
+            match self.handle.send(mgr, id, event).try_into() {
                 Ok(res) => return res,
                 Err(offset) => offset,
             }

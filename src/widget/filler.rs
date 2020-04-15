@@ -13,7 +13,6 @@ use kas::prelude::*;
 ///
 /// This widget has zero minimum size but can expand according to the given
 /// stretch policy.
-#[handler]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Filler {
     #[widget_core]

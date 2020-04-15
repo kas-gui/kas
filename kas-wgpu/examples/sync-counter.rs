@@ -9,7 +9,7 @@
 use std::cell::RefCell;
 
 use kas::class::HasText;
-use kas::event::{Action, Handler, Manager, Response, UpdateHandle, VoidMsg};
+use kas::event::{Event, Handler, Manager, Response, UpdateHandle, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};
 use kas::{ThemeApi, WidgetConfig, WidgetCore};
@@ -43,7 +43,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
         "Counter",
         make_widget! {
             #[layout(column)]
-            #[handler(event)]
             #[widget(config=noauto)]
             struct {
                 #[widget(halign=centre)] display: Label = Label::new("0"),
@@ -57,14 +56,14 @@ fn main() -> Result<(), kas_wgpu::Error> {
             }
             impl Handler {
                 type Msg = VoidMsg;
-                fn action(&mut self, mgr: &mut Manager, action: Action) -> Response<VoidMsg> {
-                    match action {
-                        Action::HandleUpdate { .. } => {
+                fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
+                    match event {
+                        Event::HandleUpdate { .. } => {
                             let c = COUNTER.with(|c| *c.borrow());
                             *mgr += self.display.set_text(c.to_string());
                             Response::None
                         }
-                        a @ _ => Response::unhandled_action(a),
+                        event => Response::Unhandled(event),
                     }
                 }
             }

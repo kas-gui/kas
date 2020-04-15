@@ -68,8 +68,7 @@ pub trait WidgetCore: fmt::Debug {
     #[inline]
     fn set_disabled(&mut self, disabled: bool) -> TkAction {
         self.core_data_mut().disabled = disabled;
-        // Disabling affects find_id; we return RegionMoved to invalidate existing results
-        TkAction::RegionMoved
+        TkAction::Redraw
     }
 
     /// Get the widget's region, relative to its parent.
@@ -289,6 +288,25 @@ pub trait Layout: WidgetChildren {
         self.core_data_mut().rect = rect;
     }
 
+    /// Iterate through children in spatial order
+    ///
+    /// Returns a "range" of children, by index, in spatial order. Unlike
+    /// `std::ops::Range` this is inclusive and reversible, e.g. `(1, 3)` means
+    /// `1, 2, 3` and `(5, 2)` means `5, 4, 3, 2`. As a special case,
+    /// `(_, std::usize::MAX)` means the range is empty.
+    ///
+    /// Disabled widgets should return an empty range, otherwise they should
+    /// return a range over children in spatial order (left-to-right then
+    /// top-to-bottom). Widgets outside the parent's rect (i.e. popups) should
+    /// be excluded.
+    ///
+    /// The default implementation returns
+    /// `(0, WidgetChildren::len(self).wrapping_sub(1))` when not disabled
+    /// which should suffice for most widgets.
+    fn spatial_range(&self) -> (usize, usize) {
+        (0, WidgetChildren::len(self).wrapping_sub(1))
+    }
+
     /// Find a child widget by coordinate
     ///
     /// This is used by the event manager to target the correct widget given an
@@ -302,13 +320,8 @@ pub trait Layout: WidgetChildren {
     /// (same behaviour as with events addressed by coordinate).
     /// The only case `None` should be expected is when `coord` is outside the
     /// initial widget's region; however this is not guaranteed.
-    ///
-    /// Disabled widgets should return `None`, without recursing to children.
     #[inline]
     fn find_id(&self, _coord: Coord) -> Option<WidgetId> {
-        if self.is_disabled() {
-            return None;
-        }
         Some(self.id())
     }
 
@@ -330,7 +343,7 @@ pub trait Layout: WidgetChildren {
 /// `fn foo<M>(w: &mut dyn Widget<Msg = M>)`, or, e.g.
 /// `fn foo(w: &mut dyn WidgetConfig)` (note that `WidgetConfig` is the last unparameterised
 /// trait in the widget trait family).
-pub trait Widget: event::EventHandler {}
+pub trait Widget: event::SendEvent {}
 
 /// Trait to describe the type needed by the layout implementation.
 ///
@@ -350,11 +363,31 @@ pub trait LayoutData {
     type Setter: layout::RulesSetter;
 }
 
-/// A pop-up is an overlay with parent & position information
+/// A widget which escapes its parent's rect
+///
+/// A pop-up is in some ways an ordinary child widget and in some ways not.
+/// The pop-up widget should be a permanent child of its parent, but is not
+/// visible until [`Manager::add_popup`] is called.
+///
+/// A pop-up widget's rect is not contained by its parent, therefore the parent
+/// must not call any [`Layout`] methods on the pop-up (whether or not it is
+/// visible). The window is responsible for calling these methods.
+///
+/// Other methods on the pop-up, including event handlers, should be called
+/// normally, with one exception: after calling an event handler on the pop-up,
+/// the parent should invoke [`Manager::pop_action`] and handle the action
+/// itself, where possible (using [`Manager::close_window`] to close it).
+/// Remaining actions should be added back to the [`Manager`].
+//
+// NOTE: it's tempting to include a pointer to the widget here. There are two
+// options: (a) an unsafe aliased pointer or (b) Rc<RefCell<dyn WidgetConfig>>.
+// Option (a) should work but is an unnecessary performance hack; (b) could in
+// theory work but requires adjusting WidgetChildren::get, find etc. to take a
+// closure instead of returning a reference, causing *significant* complication.
 pub struct Popup {
+    pub id: WidgetId,
     pub parent: WidgetId,
     pub direction: Direction,
-    pub overlay: Box<dyn Widget<Msg = event::VoidMsg>>,
 }
 
 /// Functionality required by a window
