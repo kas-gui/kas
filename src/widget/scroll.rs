@@ -195,13 +195,15 @@ impl<W: Widget> Layout for ScrollRegion<W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.horiz_bar.rect().contains(coord) {
-            self.horiz_bar.find_id(coord)
-        } else if self.vert_bar.rect().contains(coord) {
-            self.vert_bar.find_id(coord)
-        } else {
-            self.child.find_id(coord + self.offset)
+        if !self.rect().contains(coord) {
+            return None;
         }
+
+        self.horiz_bar
+            .find_id(coord)
+            .or_else(|| self.vert_bar.find_id(coord))
+            .or_else(|| self.child.find_id(coord + self.offset))
+            .or(Some(self.id()))
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {

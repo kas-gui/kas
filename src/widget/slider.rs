@@ -190,11 +190,10 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.handle.rect().contains(coord) {
-            Some(self.handle.id())
-        } else {
-            Some(self.id())
+        if !self.rect().contains(coord) {
+            return None;
         }
+        self.handle.find_id(coord).or(Some(self.id()))
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {

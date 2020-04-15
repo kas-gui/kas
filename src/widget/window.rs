@@ -114,12 +114,15 @@ impl<W: Widget> Layout for Window<W> {
 
     #[inline]
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
         for popup in self.popups.iter().rev() {
             if let Some(id) = self.w.find(popup.1.id).and_then(|w| w.find_id(coord)) {
                 return Some(id);
             }
         }
-        self.w.find_id(coord)
+        self.w.find_id(coord).or(Some(self.id()))
     }
 
     #[inline]

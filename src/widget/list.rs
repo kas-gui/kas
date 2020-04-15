@@ -145,6 +145,10 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
+
         let solver = layout::RowPositionSolver::new(self.direction);
         if let Some(child) = solver.find_child(&self.widgets, coord) {
             return child.find_id(coord);

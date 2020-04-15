@@ -175,18 +175,22 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
+
         // find_child should gracefully handle the case that a coord is between
         // widgets, so there's no harm (and only a small performance loss) in
         // calling it twice.
 
         let solver = layout::RowPositionSolver::new(self.direction);
         if let Some(child) = solver.find_child(&self.widgets, coord) {
-            return child.find_id(coord);
+            return child.find_id(coord).or(Some(self.id()));
         }
 
         let solver = layout::RowPositionSolver::new(self.direction);
         if let Some(child) = solver.find_child(&self.handles, coord) {
-            return child.find_id(coord);
+            return child.find_id(coord).or(Some(self.id()));
         }
 
         Some(self.id())

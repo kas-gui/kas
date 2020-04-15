@@ -307,21 +307,29 @@ pub trait Layout: WidgetChildren {
         (0, WidgetChildren::len(self).wrapping_sub(1))
     }
 
-    /// Find a child widget by coordinate
+    /// Find a widget by coordinate
     ///
-    /// This is used by the event manager to target the correct widget given an
-    /// event from a coordinate source (mouse pointer, touch event).
-    /// Widgets may return their own Id over that of children in order to steal
-    /// events (e.g. a button using an inner label widget).
+    /// Returns the identifier of the widget containing this `coord`, if any.
+    /// Should only return `None` when `coord` is outside the widget's rect,
+    /// but this is not guaranteed.
+    ///
+    /// Implementations should:
+    ///
+    /// 1.  return `None` if `!self.rect().contains(coord)`
+    /// 2.  if, for any child (containing `coord`), `child.find_id(coord)`
+    ///     returns `Some(id)`, return that
+    /// 3.  otherwise, return `Some(self.id())`
+    ///
+    /// Exceptionally, a widget may deviate from this behaviour, but only when
+    /// the coord is within the widget's rect (example: `CheckBox` contains an
+    /// embedded `CheckBoxBare` and always forwards this child's id).
     ///
     /// This must not be called before [`Layout::set_rect`].
-    ///
-    /// In the case of an empty grid cell, the parent widget is returned
-    /// (same behaviour as with events addressed by coordinate).
-    /// The only case `None` should be expected is when `coord` is outside the
-    /// initial widget's region; however this is not guaranteed.
     #[inline]
-    fn find_id(&self, _coord: Coord) -> Option<WidgetId> {
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
         Some(self.id())
     }
 

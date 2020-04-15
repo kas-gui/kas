@@ -68,11 +68,10 @@ impl<W: Widget> Layout for Frame<W> {
 
     #[inline]
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if let Some(id) = self.child.find_id(coord) {
-            Some(id)
-        } else {
-            Some(self.id())
+        if !self.rect().contains(coord) {
+            return None;
         }
+        self.child.find_id(coord).or(Some(self.id()))
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
