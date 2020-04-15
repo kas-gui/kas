@@ -5,8 +5,6 @@
 
 //! A simple frame
 
-use std::fmt::Debug;
-
 use kas::class::*;
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::Handler;

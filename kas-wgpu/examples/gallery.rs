@@ -99,8 +99,14 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[layout(row)]
                 #[handler(msg = Disabled)]
                 struct {
-                    #[widget(handler=set_theme)] _: ComboBox<&'static str> =
-                        [("Shaded theme", "shaded"), ("Flat theme", "flat")].iter().cloned().collect(),
+                    #[widget(handler=set_theme)] _ = MenuButton::new("Theme", make_widget! {
+                        #[layout(column)]
+                        #[handler(msg = &'static str)]
+                        struct {
+                            #[widget] _ = TextButton::new("Shaded", "shaded"),
+                            #[widget] _ = TextButton::new("Flat", "flat"),
+                        }
+                    }),
                     #[widget(handler=set_colour)] _: ComboBox<&'static str> =
                         [("Default", "default"), ("Light", "light"), ("Dark", "dark")].iter().cloned().collect(),
                     #[widget] _ = CheckBox::new("Disabled").on_toggle(|state| Disabled(state)),

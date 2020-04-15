@@ -37,6 +37,24 @@ impl<M> Response<M> {
         }
     }
 
+    /// True if variant is `Unhandled`
+    #[inline]
+    pub fn is_unhandled(&self) -> bool {
+        match self {
+            &Response::Unhandled(_) => true,
+            _ => false,
+        }
+    }
+
+    /// True if variant is `Msg`
+    #[inline]
+    pub fn is_msg(&self) -> bool {
+        match self {
+            &Response::Msg(_) => true,
+            _ => false,
+        }
+    }
+
     /// Map from one `Response` type to another
     ///
     /// Once Rust supports specialisation, this will likely be replaced with a
