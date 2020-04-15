@@ -8,7 +8,6 @@
 use log::trace;
 use smallvec::SmallVec;
 use std::collections::HashMap;
-#[cfg(feature = "winit")]
 use std::time::{Duration, Instant};
 use std::u16;
 
