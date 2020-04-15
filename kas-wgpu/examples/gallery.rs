@@ -49,7 +49,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         Disabled(bool),
     }
 
-    let menubar = Row::new(vec![
+    let menubar = MenuBar::<Right, _>::new(vec![
         MenuButton::new(
             "Theme",
             Box::new(Column::new(vec![

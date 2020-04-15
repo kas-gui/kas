@@ -5,6 +5,7 @@
 
 //! Menus
 
+use super::List;
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
 use kas::event::{Event, GrabMode, Manager, Response};
@@ -78,27 +79,38 @@ impl<W: Widget> MenuButton<W> {
             popup_id: None,
         }
     }
+
+    /// Open the pop-up menu, if not already open
+    pub fn open_popup(&mut self, mgr: &mut Manager) {
+        if self.popup_id.is_none() {
+            let id = mgr.add_popup(kas::Popup {
+                id: self.popup.id(),
+                parent: self.id(),
+                direction: Direction::Down,
+            });
+            self.popup_id = Some(id);
+        }
+    }
+
+    /// Close the pop-up menu, if open
+    pub fn close_popup(&mut self, mgr: &mut Manager) {
+        if let Some(id) = self.popup_id {
+            mgr.close_window(id);
+            self.popup_id = None;
+        }
+    }
 }
 
 impl<M, W: Widget<Msg = M>> event::Handler for MenuButton<W> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
-        let open_popup = |w: &mut MenuButton<W>, mgr: &mut Manager| {
-            let id = mgr.add_popup(kas::Popup {
-                id: w.popup.id(),
-                parent: w.id(),
-                direction: Direction::Down,
-            });
-            w.popup_id = Some(id);
-        };
         match event {
             Event::Activate => {
-                if let Some(id) = self.popup_id {
-                    mgr.close_window(id);
-                    self.popup_id = None;
+                if self.popup_id.is_none() {
+                    self.open_popup(mgr);
                 } else {
-                    open_popup(self, mgr);
+                    self.close_popup(mgr);
                 }
                 Response::None
             }
@@ -107,37 +119,43 @@ impl<M, W: Widget<Msg = M>> event::Handler for MenuButton<W> {
                 self.opening = self.popup_id.is_none();
                 Response::None
             }
-            Event::PressMove { .. } => {
-                if self.popup_id.is_none() {
-                    open_popup(self, mgr);
+            // we deliberately leak some Unhandled move/end events for MenuBar
+            Event::PressMove { coord, .. } if self.rect().contains(coord) => {
+                self.open_popup(mgr);
+                Response::None
+            }
+            Event::PressEnd { end_id, coord, .. } if self.rect().contains(coord) => {
+                if end_id == Some(self.id()) && self.opening {
+                    self.open_popup(mgr);
+                } else {
+                    self.close_popup(mgr);
                 }
                 Response::None
             }
-            Event::PressEnd { end_id, coord, .. } => {
+            Event::PressEnd { end_id, coord, .. }
+                if self.popup_id.is_some() && self.popup.rect().contains(coord) =>
+            {
                 if let Some(id) = end_id {
-                    if id == self.id() {
-                        if self.opening {
-                            if self.popup_id.is_none() {
-                                open_popup(self, mgr);
-                            }
-                            return Response::None;
-                        }
-                    } else if let Some(wid) = self.popup_id {
-                        if self.popup.rect().contains(coord) {
-                            let r = self.popup.send(mgr, id, Event::Activate);
-                            if r.is_msg() {
-                                mgr.close_window(wid);
-                                self.popup_id = None;
-                            }
-                            return r;
-                        }
-                    }
+                    let r = self.popup.send(mgr, id, Event::Activate);
+                    self.close_popup(mgr);
+                    r
+                } else {
+                    Response::None
                 }
-                if let Some(id) = self.popup_id {
-                    mgr.close_window(id);
-                    self.popup_id = None;
-                }
-                Response::None
+            }
+            Event::PressEnd {
+                source,
+                end_id,
+                coord,
+            } => {
+                // We need to close our menu when not a child of a MenuBar,
+                self.close_popup(mgr);
+                // and allow the MenuBar to handle the event if we are:
+                Response::Unhandled(Event::PressEnd {
+                    source,
+                    end_id,
+                    coord,
+                })
             }
             event => Response::Unhandled(event),
         }
@@ -153,10 +171,7 @@ impl<W: Widget> event::SendEvent for MenuButton<W> {
         if id <= self.popup.id() {
             let r = self.popup.send(mgr, id, event);
             if r.is_msg() {
-                if let Some(id) = self.popup_id {
-                    mgr.close_window(id);
-                    self.popup_id = None;
-                }
+                self.close_popup(mgr);
             }
             r
         } else {
@@ -173,5 +188,97 @@ impl<W: Widget> HasText for MenuButton<W> {
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.label = text;
         TkAction::Redraw
+    }
+}
+
+/// A menubar
+///
+/// This widget houses a sequence of menu buttons, allowing input actions across
+/// menus.
+#[layout(single)]
+#[handler(send=noauto, msg=M, generics=<M> where W: Widget<Msg = M>)]
+#[derive(Clone, Debug, Widget)]
+pub struct MenuBar<D: Directional, W: Widget> {
+    #[widget_core]
+    core: CoreData,
+    #[widget]
+    pub bar: List<D, MenuButton<W>>,
+    active: usize,
+}
+
+impl<D: Directional + Default, W: Widget> MenuBar<D, W> {
+    /// Construct
+    pub fn new(menus: Vec<MenuButton<W>>) -> Self {
+        MenuBar::new_with_direction(D::default(), menus)
+    }
+}
+
+impl<D: Directional, W: Widget> MenuBar<D, W> {
+    /// Construct
+    pub fn new_with_direction(direction: D, menus: Vec<MenuButton<W>>) -> Self {
+        MenuBar {
+            core: Default::default(),
+            bar: List::new_with_direction(direction, menus),
+            active: 0,
+        }
+    }
+}
+
+impl<D: Directional, W: Widget> event::SendEvent for MenuBar<D, W> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
+        if id <= self.bar.id() {
+            return match self.bar.send(mgr, id, event) {
+                Response::Unhandled(event) => {
+                    match event {
+                        // HACK: code is tightly coupled with MenuButton,
+                        // relying on leaking "Unhandled" events, and the
+                        // result isn't quite correct.
+                        Event::PressMove { coord, .. } => {
+                            // We assume that a child requested a press grab
+                            if self.rect().contains(coord) {
+                                for i in 0..self.bar.len() {
+                                    let w = &mut self.bar[i];
+                                    if w.rect().contains(coord) {
+                                        w.open_popup(mgr);
+                                        self.active = i;
+                                    } else {
+                                        w.close_popup(mgr);
+                                    }
+                                }
+                            }
+                            Response::None
+                        }
+                        Event::PressEnd {
+                            source,
+                            coord,
+                            end_id,
+                        } => {
+                            if let Some(id) = end_id {
+                                if self.active < self.bar.len() {
+                                    // Let the MenuButton's handler do the work
+                                    let event = Event::PressEnd {
+                                        source,
+                                        coord,
+                                        end_id,
+                                    };
+                                    self.bar[self.active].opening = true;
+                                    return self.bar[self.active].send(mgr, id, event);
+                                }
+                            }
+                            Response::None
+                        }
+                        e => Response::Unhandled(e),
+                    }
+                }
+                r => r,
+            };
+        }
+
+        debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
+        Manager::handle_generic(self, mgr, event)
     }
 }

@@ -345,6 +345,14 @@ impl<D: Directional, W: Widget> List<D, W> {
             false => TkAction::Reconfigure,
         }
     }
+
+    /// Iterate over childern
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a W> {
+        ListIter {
+            list: self,
+            index: 0,
+        }
+    }
 }
 
 impl<D: Directional, W: Widget> Index<usize> for List<D, W> {
@@ -358,5 +366,31 @@ impl<D: Directional, W: Widget> Index<usize> for List<D, W> {
 impl<D: Directional, W: Widget> IndexMut<usize> for List<D, W> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.widgets[index]
+    }
+}
+
+struct ListIter<'a, D: Directional, W: Widget> {
+    list: &'a List<D, W>,
+    index: usize,
+}
+impl<'a, D: Directional, W: Widget> Iterator for ListIter<'a, D, W> {
+    type Item = &'a W;
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.index;
+        if index < self.list.widgets.len() {
+            self.index = index + 1;
+            Some(&self.list.widgets[index])
+        } else {
+            None
+        }
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+impl<'a, D: Directional, W: Widget> ExactSizeIterator for ListIter<'a, D, W> {
+    fn len(&self) -> usize {
+        self.list.widgets.len() - self.index
     }
 }
