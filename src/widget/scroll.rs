@@ -248,7 +248,7 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
                     Response::Unhandled(Event::Scroll(delta))
                 }
             }
-            Event::PressStart { source, coord } if source.is_primary() => {
+            Event::PressStart { source, coord, .. } if source.is_primary() => {
                 mgr.request_grab(
                     w.id(),
                     source,
@@ -299,8 +299,13 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
         }
 
         let event = match event {
-            Event::PressStart { source, coord } => Event::PressStart {
+            Event::PressStart {
                 source,
+                start_id,
+                coord,
+            } => Event::PressStart {
+                source,
+                start_id,
                 coord: coord + self.offset,
             },
             Event::PressMove {

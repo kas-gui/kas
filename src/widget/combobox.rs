@@ -192,7 +192,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 }
                 Response::None
             }
-            Event::PressStart { source, coord } if source.is_primary() => {
+            Event::PressStart { source, coord, .. } if source.is_primary() => {
                 mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
                 self.opening = self.popup_id.is_none();
                 Response::None

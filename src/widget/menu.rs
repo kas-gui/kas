@@ -118,7 +118,7 @@ impl<M, W: Widget<Msg = M>> event::Handler for MenuButton<W> {
                 }
                 Response::None
             }
-            Event::PressStart { source, coord } if source.is_primary() => {
+            Event::PressStart { source, coord, .. } if source.is_primary() => {
                 mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
                 self.opening = self.popup_id.is_none();
                 Response::None

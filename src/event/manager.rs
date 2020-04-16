@@ -1253,15 +1253,16 @@ impl<'a> Manager<'a> {
                     match grab.mode {
                         GrabMode::Grab => {
                             // Mouse grab active: send events there
+                            let start_id = grab.start_id;
                             let event = match state {
-                                ElementState::Pressed => Event::PressStart { source, coord },
+                                ElementState::Pressed => Event::PressStart { source, start_id, coord },
                                 ElementState::Released => Event::PressEnd {
                                     source,
                                     end_id: self.mgr.hover,
                                     coord,
                                 },
                             };
-                            self.send_event(widget, grab.start_id, event);
+                            self.send_event(widget, start_id, event);
                         }
                         // Pan events do not receive Start/End notifications
                         _ => (),
@@ -1270,11 +1271,11 @@ impl<'a> Manager<'a> {
                     if state == ElementState::Released {
                         self.end_mouse_grab(button);
                     }
-                } else if let Some(id) = self.mgr.hover {
+                } else if let Some(start_id) = self.mgr.hover {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
-                        let event = Event::PressStart { source, coord };
-                        self.send_event(widget, id, event);
+                        let event = Event::PressStart { source, start_id, coord };
+                        self.send_event(widget, start_id, event);
                     }
                 }
             }
@@ -1286,9 +1287,9 @@ impl<'a> Manager<'a> {
                 let coord = touch.location.into();
                 match touch.phase {
                     TouchPhase::Started => {
-                        if let Some(id) = widget.find_id(coord) {
-                            let event = Event::PressStart { source, coord };
-                            self.send_event(widget, id, event);
+                        if let Some(start_id) = widget.find_id(coord) {
+                            let event = Event::PressStart { source, start_id, coord };
+                            self.send_event(widget, start_id, event);
                         }
                     }
                     TouchPhase::Moved => {

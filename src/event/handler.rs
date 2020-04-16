@@ -112,7 +112,7 @@ impl<'a> Manager<'a> {
         if widget.activation_via_press() {
             // Translate press events
             match event {
-                Event::PressStart { source, coord } if source.is_primary() => {
+                Event::PressStart { source, coord, .. } if source.is_primary() => {
                     mgr.request_grab(widget.id(), source, coord, GrabMode::Grab, None);
                     return Response::None;
                 }

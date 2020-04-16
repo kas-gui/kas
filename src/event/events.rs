@@ -82,7 +82,11 @@ pub enum Event {
         delta: DVec2,
     },
     /// A mouse button was pressed or touch event started
-    PressStart { source: PressSource, coord: Coord },
+    PressStart {
+        source: PressSource,
+        start_id: WidgetId,
+        coord: Coord,
+    },
     /// Movement of mouse or a touch press
     ///
     /// Received only given a [press grab](super::Manager::request_grab).
