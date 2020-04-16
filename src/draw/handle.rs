@@ -13,26 +13,43 @@ use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::{Align, Direction};
 
 /// Input and highlighting state of a widget
+///
+/// Multiple instances can be combined via [`std::ops::BitOr`]: `lhs | rhs`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
 pub struct InputState {
     /// Is the widget disabled?
     pub disabled: bool,
     /// Is the input state erroneous?
     pub error: bool,
-    /// "Hover" is true if the mouse is over this element or if an active touch
-    /// event is over the element.
+    /// "Hover" is true if the mouse is over this element
     pub hover: bool,
-    /// Elements such as buttons may be depressed (visually pushed) by a click
-    /// or touch event, but in this state the action can still be cancelled.
-    /// Elements can also be depressed by keyboard activation.
+    /// Elements may be depressed during interaction
     ///
-    /// If true, this likely implies `hover` is also true.
+    /// Elements such as buttons, handles and menu entries may be depressed
+    /// (visually pushed) by a click or touch event or an accelerator key.
+    /// This is often visualised by a darker colour and/or by offsetting
+    /// graphics. The `hover` state should be ignored when depressed.
     pub depress: bool,
     /// Keyboard navigation of UIs moves a "focus" from widget to widget.
     pub nav_focus: bool,
     /// "Character focus" implies this widget is ready to receive text input
     /// (e.g. typing into an input field).
     pub char_focus: bool,
+}
+
+impl std::ops::BitOr for InputState {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self {
+        InputState {
+            disabled: self.disabled || rhs.disabled,
+            error: self.error || rhs.error,
+            hover: self.hover || rhs.hover,
+            depress: self.depress || rhs.depress,
+            nav_focus: self.nav_focus || rhs.nav_focus,
+            char_focus: self.char_focus || rhs.char_focus,
+        }
+    }
 }
 
 /// Class of text drawn

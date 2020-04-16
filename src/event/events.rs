@@ -88,6 +88,7 @@ pub enum Event {
     /// Received only given a [press grab](super::Manager::request_grab).
     PressMove {
         source: PressSource,
+        cur_id: Option<WidgetId>,
         coord: Coord,
         delta: Coord,
     },

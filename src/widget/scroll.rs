@@ -305,10 +305,12 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
             },
             Event::PressMove {
                 source,
+                cur_id,
                 coord,
                 delta,
             } => Event::PressMove {
                 source,
+                cur_id,
                 coord: coord + self.offset,
                 delta,
             },

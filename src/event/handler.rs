@@ -116,8 +116,10 @@ impl<'a> Manager<'a> {
                     mgr.request_grab(widget.id(), source, coord, GrabMode::Grab, None);
                     return Response::None;
                 }
-                Event::PressMove { .. } => {
-                    // We don't need these events, but they should not be considered *unhandled*
+                Event::PressMove { source, cur_id, .. } => {
+                    let cond = cur_id == Some(widget.id());
+                    let target = if cond { cur_id } else { None };
+                    mgr.set_grab_depress(source, target);
                     return Response::None;
                 }
                 Event::PressEnd { end_id, .. } if end_id == Some(widget.id()) => {

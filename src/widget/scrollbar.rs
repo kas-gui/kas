@@ -213,7 +213,7 @@ impl<D: Directional> Layout for ScrollBar<D> {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         let dir = self.direction.as_direction();
-        let state = self.input_state(mgr, disabled);
+        let state = self.handle.input_state(mgr, disabled);
         draw_handle.scrollbar(self.core.rect, self.handle.rect(), dir, state);
     }
 }

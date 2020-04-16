@@ -120,8 +120,9 @@ impl<M, W: Widget<Msg = M>> event::Handler for MenuButton<W> {
                 Response::None
             }
             // we deliberately leak some Unhandled move/end events for MenuBar
-            Event::PressMove { coord, .. } if self.rect().contains(coord) => {
+            Event::PressMove { source, cur_id, .. } if cur_id == Some(self.id()) => {
                 self.open_popup(mgr);
+                mgr.set_grab_depress(source, cur_id);
                 Response::None
             }
             Event::PressEnd { end_id, coord, .. } if self.rect().contains(coord) => {
@@ -237,13 +238,19 @@ impl<D: Directional, W: Widget> event::SendEvent for MenuBar<D, W> {
                         // HACK: code is tightly coupled with MenuButton,
                         // relying on leaking "Unhandled" events, and the
                         // result isn't quite correct.
-                        Event::PressMove { coord, .. } => {
+                        Event::PressMove {
+                            source,
+                            cur_id,
+                            coord,
+                            ..
+                        } => {
                             // We assume that a child requested a press grab
                             if self.rect().contains(coord) {
                                 for i in 0..self.bar.len() {
                                     let w = &mut self.bar[i];
-                                    if w.rect().contains(coord) {
+                                    if cur_id == Some(w.id()) {
                                         w.open_popup(mgr);
+                                        mgr.set_grab_depress(source, cur_id);
                                         self.active = i;
                                     } else {
                                         w.close_popup(mgr);

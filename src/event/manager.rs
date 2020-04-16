@@ -36,14 +36,16 @@ pub enum GrabMode {
 struct MouseGrab {
     button: MouseButton,
     start_id: WidgetId,
+    depress: Option<WidgetId>,
     mode: GrabMode,
     pan_grab: (u16, u16),
 }
 
 #[derive(Clone, Debug)]
-struct TouchEvent {
+struct TouchGrab {
     touch_id: u64,
     start_id: WidgetId,
+    depress: Option<WidgetId>,
     cur_id: Option<WidgetId>,
     coord: Coord,
     mode: GrabMode,
@@ -89,7 +91,7 @@ pub struct ManagerState {
     key_events: SmallVec<[(u32, WidgetId); 10]>,
     last_mouse_coord: Coord,
     mouse_grab: Option<MouseGrab>,
-    touch_grab: SmallVec<[TouchEvent; 10]>,
+    touch_grab: SmallVec<[TouchGrab; 10]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
 
@@ -172,6 +174,7 @@ impl ManagerState {
         self.mouse_grab = self.mouse_grab.as_ref().and_then(|grab| {
             map.get(&grab.start_id).map(|id| MouseGrab {
                 start_id: *id,
+                depress: grab.depress.and_then(|id| map.get(&id).cloned()),
                 button: grab.button,
                 mode: grab.mode,
                 pan_grab: grab.pan_grab,
@@ -207,7 +210,7 @@ impl ManagerState {
             };
         }
 
-        do_map!(self.touch_grab, |mut elt: TouchEvent| map
+        do_map!(self.touch_grab, |mut elt: TouchGrab| map
             .get(&elt.start_id)
             .map(|id| {
                 elt.start_id = *id;
@@ -420,13 +423,11 @@ impl ManagerState {
                 return true;
             }
         }
-        if let Some(grab) = &self.mouse_grab {
-            if grab.start_id == w_id && self.hover == Some(w_id) {
-                return true;
-            }
+        if self.mouse_grab.as_ref().and_then(|grab| grab.depress) == Some(w_id) {
+            return true;
         }
         for touch in &self.touch_grab {
-            if touch.start_id == w_id && touch.cur_id == Some(w_id) {
+            if touch.depress == Some(w_id) {
                 return true;
             }
         }
@@ -621,6 +622,11 @@ impl<'a> Manager<'a> {
     /// If successful, corresponding mouse/touch events will be forwarded to
     /// this widget. The grab terminates automatically.
     ///
+    /// Each grab can optionally visually depress one widget, and initially
+    /// depresses the widget owning the grab (the `id` passed here). Call
+    /// [`Manager::set_grab_depress`] to update the grab's depress target.
+    /// This is cleared automatically when the grab ends.
+    ///
     /// Behaviour depends on the `mode`:
     ///
     /// -   [`GrabMode::Grab`]: simple / low-level interpretation of input
@@ -667,6 +673,7 @@ impl<'a> Manager<'a> {
                 trace!("Manager: start mouse grab by {}", start_id);
                 self.mgr.mouse_grab = Some(MouseGrab {
                     start_id,
+                    depress: Some(id),
                     button,
                     mode,
                     pan_grab,
@@ -683,9 +690,10 @@ impl<'a> Manager<'a> {
                     pan_grab = self.mgr.set_pan_on(id, mode, true, coord);
                 }
                 trace!("Manager: start touch grab by {}", start_id);
-                self.mgr.touch_grab.push(TouchEvent {
+                self.mgr.touch_grab.push(TouchGrab {
                     touch_id,
                     start_id,
+                    depress: Some(id),
                     cur_id: Some(id),
                     coord,
                     mode,
@@ -697,6 +705,35 @@ impl<'a> Manager<'a> {
         self.set_char_focus(None);
         self.redraw(start_id);
         true
+    }
+
+    /// Set a grab's depress target
+    ///
+    /// When a grab on mouse or touch input is in effect
+    /// ([`Manager::request_grab`]), the widget owning the grab may set itself
+    /// or any other widget as *depressed* ("pushed down"). Each grab depresses
+    /// at most one widget, thus setting a new depress target clears any
+    /// existing target. Initially a grab depresses its owner.
+    ///
+    /// This effect is purely visual. A widget is depressed when one or more
+    /// grabs targets the widget to depress, or when a keyboard binding is used
+    /// to activate a widget (for the duration of the key-press).
+    pub fn set_grab_depress(&mut self, source: PressSource, target: Option<WidgetId>) {
+        match source {
+            PressSource::Mouse(_) => {
+                if let Some(grab) = self.mgr.mouse_grab.as_mut() {
+                    grab.depress = target;
+                }
+            }
+            PressSource::Touch(id) => {
+                for touch in &mut self.mgr.touch_grab {
+                    if touch.touch_id == id {
+                        touch.depress = target;
+                        break;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -815,7 +852,7 @@ impl<'a> Manager<'a> {
     }
 
     #[inline]
-    fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchEvent> {
+    fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
         self.mgr.touch_grab.iter_mut().find_map(|grab| {
             if grab.touch_id == touch_id {
                 Some(grab)
@@ -826,7 +863,7 @@ impl<'a> Manager<'a> {
     }
 
     #[cfg(feature = "winit")]
-    fn remove_touch(&mut self, touch_id: u64) -> Option<TouchEvent> {
+    fn remove_touch(&mut self, touch_id: u64) -> Option<TouchGrab> {
         let len = self.mgr.touch_grab.len();
         for i in 0..len {
             if self.mgr.touch_grab[i].touch_id == touch_id {
@@ -1165,13 +1202,14 @@ impl<'a> Manager<'a> {
                 let coord = position.into();
 
                 // Update hovered widget
-                self.set_hover(widget, widget.find_id(coord));
+                let cur_id = widget.find_id(coord);
+                self.set_hover(widget, cur_id);
 
                 if let Some(grab) = self.mouse_grab() {
                     let delta = coord - self.mgr.last_mouse_coord;
                     if grab.mode == GrabMode::Grab {
                         let source = PressSource::Mouse(grab.button);
-                        let event = Event::PressMove { source, coord, delta };
+                        let event = Event::PressMove { source, cur_id, coord, delta };
                         self.send_event(widget, grab.start_id, event);
                     } else {
                         if let Some(pan) = self.mgr.pan_grab.get_mut(grab.pan_grab.0 as usize) {
@@ -1263,6 +1301,7 @@ impl<'a> Manager<'a> {
                                 let id = grab.start_id;
                                 let event = Event::PressMove {
                                     source,
+                                    cur_id,
                                     coord,
                                     delta: coord - grab.coord,
                                 };

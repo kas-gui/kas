@@ -193,10 +193,18 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 self.opening = self.popup_id.is_none();
                 Response::None
             }
-            Event::PressMove { .. } => {
+            Event::PressMove {
+                source,
+                cur_id,
+                coord,
+                ..
+            } => {
                 if self.popup_id.is_none() {
                     open_popup(self, mgr);
                 }
+                let cond = cur_id == Some(self.id()) || self.popup.rect().contains(coord);
+                let target = if cond { cur_id } else { None };
+                mgr.set_grab_depress(source, target);
                 Response::None
             }
             Event::PressEnd { end_id, coord, .. } => {

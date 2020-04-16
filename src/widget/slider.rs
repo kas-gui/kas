@@ -197,12 +197,8 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        // Depending on whether we get the input state for self or
-        // self.handle we can highlight when over the slider or just the
-        // handle. But for key-nav, we want highlight-state of self.
-        let state = self.input_state(mgr, disabled);
-
         let dir = self.direction.as_direction();
+        let state = self.input_state(mgr, disabled) | self.handle.input_state(mgr, disabled);
         draw_handle.slider(self.core.rect, self.handle.rect(), dir, state);
     }
 }
