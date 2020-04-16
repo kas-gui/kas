@@ -59,7 +59,11 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
+        let mut state = self.input_state(mgr, disabled);
+        if self.popup_id.is_some() {
+            state.depress = true;
+        }
+        draw_handle.button(self.core.rect, state);
         let align = (Align::Centre, Align::Centre);
         let text = &self.popup.column[self.active].get_text();
         draw_handle.text(self.core.rect, text, TextClass::Button, align);
