@@ -2,6 +2,9 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] — 2020-04-16
+Bump version of `kas-wgpu` to fix build on docs.rs.
+
 ## [0.3.0] — 2020-02-24
 This is a decent sized release, focussing primarily on drawing, themes and
 layouts. Highlights include a new `FlatTheme`, many small visual improvements,
