@@ -163,9 +163,9 @@ impl ManagerState {
                 widget.configure(&mut mgr);
                 id = id.next();
             });
+            let hover = widget.find_id(coord);
+            mgr.set_hover(widget, hover);
         });
-
-        self.hover = widget.find_id(coord);
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.nav_focus = self.nav_focus.and_then(|id| map.get(&id).cloned());
@@ -223,7 +223,7 @@ impl ManagerState {
     }
 
     /// Update the widgets under the cursor and touch events
-    pub fn region_moved<W: Widget + ?Sized>(&mut self, widget: &mut W) {
+    pub fn region_moved<W: Widget + ?Sized>(&mut self, tkw: &mut dyn TkWindow, widget: &mut W) {
         trace!("Manager::region_moved");
         // Note: redraw is already implied.
 
@@ -235,7 +235,8 @@ impl ManagerState {
             .and_then(|id| widget.find(id).map(|w| w.id()));
 
         // Update hovered widget
-        self.hover = widget.find_id(self.last_mouse_coord);
+        let hover = widget.find_id(self.last_mouse_coord);
+        self.with(tkw, |mgr| mgr.set_hover(widget, hover));
 
         for touch in &mut self.touch_grab {
             touch.cur_id = widget.find_id(touch.coord);
@@ -701,7 +702,6 @@ impl<'a> Manager<'a> {
 
 /// Internal methods
 impl<'a> Manager<'a> {
-    #[cfg(feature = "winit")]
     fn set_hover<W: Widget + ?Sized>(&mut self, widget: &mut W, w_id: Option<WidgetId>) {
         if self.mgr.hover != w_id {
             trace!("Manager: hover = {:?}", w_id);
