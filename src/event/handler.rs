@@ -64,9 +64,14 @@ pub trait SendEvent: Handler {
     ///
     /// This method is responsible for routing events toward descendents.
     /// [`WidgetId`] values are assigned via depth-first search with parents
-    /// ordered after all children.
+    /// ordered after all children. Disabling a widget is recursive, hence
+    /// disabled widgets should not forward any events.
+    ///
     /// The following logic is recommended for routing events:
     /// ```norun
+    /// if self.is_disabled() {
+    ///     return Response::Unhandled(event);
+    /// }
     /// if id <= self.child1.id() {
     ///     self.child1.event(mgr, id, event).into()
     /// } else if id <= self.child2.id() {
@@ -76,6 +81,13 @@ pub trait SendEvent: Handler {
     ///     debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
     ///     Manager::handle_generic(self, mgr, event)
     /// }
+    /// ```
+    /// Parents which don't handle any events themselves may simplify this:
+    /// ```norun
+    /// if !self.is_disabled() && id <= self.w.id() {
+    ///     return self.w.send(mgr, id, event);
+    /// }
+    /// Response::Unhandled(event)
     /// ```
     ///
     /// When the child's [`Handler::Msg`] type is not [`VoidMsg`], its response
@@ -97,10 +109,6 @@ impl<'a> Manager<'a> {
     where
         W: Handler + ?Sized,
     {
-        if widget.is_disabled() {
-            return Response::Unhandled(event);
-        }
-
         if widget.activation_via_press() {
             // Translate press events
             match event {

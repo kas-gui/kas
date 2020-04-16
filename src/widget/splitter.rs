@@ -214,11 +214,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
 
 impl<D: Directional, W: Widget> event::SendEvent for Splitter<D, W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if self.is_disabled() {
-            return Response::Unhandled(event);
-        }
-
-        if self.widgets.len() > 0 {
+        if !self.is_disabled() && self.widgets.len() > 0 {
             assert!(self.handles.len() + 1 == self.widgets.len());
             let mut n = 0;
             loop {
@@ -245,8 +241,7 @@ impl<D: Directional, W: Widget> event::SendEvent for Splitter<D, W> {
             }
         }
 
-        debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-        Manager::handle_generic(self, mgr, event)
+        Response::Unhandled(event)
     }
 }
 

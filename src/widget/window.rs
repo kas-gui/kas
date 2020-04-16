@@ -140,16 +140,10 @@ impl<W: Widget> Layout for Window<W> {
 
 impl<W: Widget<Msg = VoidMsg> + 'static> event::SendEvent for Window<W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if self.is_disabled() {
-            return Response::Unhandled(event);
+        if !self.is_disabled() && id <= self.w.id() {
+            return self.w.send(mgr, id, event);
         }
-
-        if id <= self.w.id() {
-            self.w.send(mgr, id, event)
-        } else {
-            debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-            Manager::handle_generic(self, mgr, event)
-        }
+        Response::Unhandled(event)
     }
 }
 
