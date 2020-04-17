@@ -50,28 +50,29 @@ fn main() -> Result<(), kas_wgpu::Error> {
     }
 
     let menubar = MenuBar::<Right, _>::new(vec![
-        MenuButton::new(
+        SubMenu::new(
             "Theme",
-            Box::new(Column::new(vec![
-                TextButton::new("Shaded", Menu::Theme("shaded")),
-                TextButton::new("Flat", Menu::Theme("flat")),
-            ])) as Box<dyn Widget<Msg = Menu>>,
+            vec![
+                Box::new(TextButton::new("Shaded", Menu::Theme("shaded")))
+                    as Box<dyn Widget<Msg = Menu>>,
+                Box::new(TextButton::new("Flat", Menu::Theme("flat"))),
+            ],
         ),
-        MenuButton::new(
+        SubMenu::new(
             "Colours",
-            Box::new(Column::new(vec![
-                TextButton::new("Default", Menu::Colour("default")),
-                TextButton::new("Light", Menu::Colour("light")),
-                TextButton::new("Dark", Menu::Colour("dark")),
-            ])),
+            vec![
+                Box::new(TextButton::new("Default", Menu::Colour("default"))),
+                Box::new(TextButton::new("Light", Menu::Colour("light"))),
+                Box::new(TextButton::new("Dark", Menu::Colour("dark"))),
+            ],
         ),
-        MenuButton::new(
+        SubMenu::new(
             "Style",
-            Box::new(CheckBox::new("Disabled").on_toggle(|state| Menu::Disabled(state))),
+            vec![Box::new(
+                CheckBox::new("Disabled").on_toggle(|state| Menu::Disabled(state)),
+            )],
         ),
     ]);
-
-    let frame = Frame::new(Label::new("Widget Gallery"));
 
     let radio = UpdateHandle::new();
     let widgets = make_widget! {
@@ -125,7 +126,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(handler = menu)] _ = menubar,
-                #[widget] _ = frame,
+                #[widget(halign = centre)] _ = Frame::new(Label::new("Widget Gallery")),
                 #[widget(handler = activations)] gallery:
                     for<W: Widget<Msg = Item>> ScrollRegion<W> =
                     ScrollRegion::new(widgets).with_auto_bars(true),

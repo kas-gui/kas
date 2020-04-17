@@ -89,7 +89,7 @@ pub enum Event {
     },
     /// Movement of mouse or a touch press
     ///
-    /// Received only given a [press grab](super::Manager::request_grab).
+    /// Received only given a [press grab](Manager::request_grab).
     PressMove {
         source: PressSource,
         cur_id: Option<WidgetId>,
@@ -98,7 +98,7 @@ pub enum Event {
     },
     /// End of a click/touch press
     ///
-    /// Received only given a [press grab](super::Manager::request_grab).
+    /// Received only given a [press grab](Manager::request_grab).
     ///
     /// When `end_id == None`, this is a "cancelled press": the end of the press
     /// is outside the application window.
@@ -120,6 +120,11 @@ pub enum Event {
     /// A user-defined payload is passed. Interpretation of this payload is
     /// user-defined and unfortunately not type safe.
     HandleUpdate { handle: UpdateHandle, payload: u64 },
+    /// Open popup / menu
+    ///
+    /// This is a specific command from a parent, e.g. [`kas::widget::MenuBar`].
+    /// Most widgets can ignore this, even if they have a pop-up.
+    OpenPopup,
 }
 
 /// Navigation key ([`Event::NavKey`])
