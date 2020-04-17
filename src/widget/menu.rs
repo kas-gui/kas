@@ -414,7 +414,6 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                                         self.opening = true;
                                         self.delayed_open = Some(id);
                                         mgr.update_on_timer(Duration::from_millis(100), self.id());
-                                        mgr.set_press_focus(Some(self.id()));
                                     }
                                     break;
                                 }

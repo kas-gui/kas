@@ -156,7 +156,9 @@ impl<'a> Manager<'a> {
     /// `direction`.
     #[inline]
     pub fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
-        self.tkw.add_popup(popup)
+        let id = self.tkw.add_popup(popup.clone());
+        self.mgr.popups.push((id, popup));
+        id
     }
 
     /// Add a window
@@ -174,6 +176,15 @@ impl<'a> Manager<'a> {
     /// Close a window
     #[inline]
     pub fn close_window(&mut self, id: WindowId) {
+        if let Some(index) =
+            self.mgr
+                .popups
+                .iter()
+                .enumerate()
+                .find_map(|(i, p)| if p.0 == id { Some(i) } else { None })
+        {
+            self.mgr.popups.remove(index);
+        }
         self.tkw.close_window(id);
     }
 
@@ -352,21 +363,5 @@ impl<'a> Manager<'a> {
                 }
             }
         }
-    }
-
-    /// Request press focus priority
-    ///
-    /// The target widget will receive all new [`Event::PressStart`] events
-    /// until either press focus is explicitly cleared or the handler returns
-    /// [`Response::Unhandled`]. In the latter case, the actual payload of
-    /// `Unhandled` is ignored and the original event is sent to the usual
-    /// recipient (without press focus).
-    ///
-    /// Additionally, the target widget will receive [`Event::PressMove`]
-    /// events when the mouse cursor moves, even without a grab. (This does not
-    /// apply to touch events since these cannot occur without `PressStart`.
-    /// Also note that the `source` component uses a fake button!)
-    pub fn set_press_focus(&mut self, target: Option<WidgetId>) {
-        self.mgr.press_focus = target;
     }
 }

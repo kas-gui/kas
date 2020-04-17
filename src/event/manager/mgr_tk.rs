@@ -37,8 +37,8 @@ impl ManagerState {
             mouse_grab: None,
             touch_grab: Default::default(),
             pan_grab: SmallVec::new(),
-            press_focus: None,
             accel_keys: HashMap::new(),
+            popups: Default::default(),
 
             time_start: Instant::now(),
             time_updates: vec![],
@@ -84,7 +84,6 @@ impl ManagerState {
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.nav_focus = self.nav_focus.and_then(|id| map.get(&id).cloned());
-        self.press_focus = self.press_focus.and_then(|id| map.get(&id).cloned());
         self.mouse_grab = self.mouse_grab.as_ref().and_then(|grab| {
             map.get(&grab.start_id).map(|id| MouseGrab {
                 start_id: *id,
@@ -377,7 +376,7 @@ impl<'a> Manager<'a> {
                     } else if let Some(pan) = self.mgr.pan_grab.get_mut(grab.pan_grab.0 as usize) {
                         pan.coords[grab.pan_grab.1 as usize].1 = coord;
                     }
-                } else if let Some(id) = self.mgr.press_focus {
+                } else if let Some(id) = self.mgr.popups.last().map(|(_, p)| p.parent) {
                     // Use a fake button!
                     let source = PressSource::Mouse(MouseButton::Other(0));
                     let event = Event::PressMove { source, cur_id, coord, delta };

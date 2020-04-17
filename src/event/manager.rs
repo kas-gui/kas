@@ -15,7 +15,7 @@ use super::*;
 use crate::geom::Coord;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
-use crate::{TkAction, TkWindow, Widget, WidgetId};
+use crate::{TkAction, TkWindow, Widget, WidgetId, WindowId};
 
 mod mgr_pub;
 mod mgr_tk;
@@ -82,7 +82,7 @@ enum Pending {
 // drawing redraw, which requires iterating all grab & key events.
 // Thus for these collections, the preferred container is SmallVec.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ManagerState {
     dpi_factor: f64,
     modifiers: ModifiersState,
@@ -96,8 +96,8 @@ pub struct ManagerState {
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 10]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
-    press_focus: Option<WidgetId>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
+    popups: SmallVec<[(WindowId, kas::Popup); 16]>,
 
     time_start: Instant,
     time_updates: Vec<(Instant, WidgetId)>,
@@ -525,13 +525,12 @@ impl<'a> Manager<'a> {
             start_id,
             coord,
         };
-        if let Some(id) = self.mgr.press_focus {
-            trace!("Send to press focus target: {}: {:?}", id, event);
+        if let Some(id) = self.mgr.popups.last().map(|(_, p)| p.parent) {
+            trace!("Send to popup parent: {}: {:?}", id, event);
             match widget.send(self, id, event.clone()) {
                 Response::Unhandled(_) => (),
                 _ => return,
             }
-            self.mgr.press_focus = None;
         }
         self.send_event(widget, start_id, event);
     }

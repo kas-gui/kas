@@ -5,6 +5,7 @@
 
 //! Window widgets
 
+use smallvec::SmallVec;
 use std::fmt::{self, Debug};
 
 use kas::draw::{DrawHandle, SizeHandle};
@@ -24,7 +25,7 @@ pub struct Window<W: Widget + 'static> {
     title: CowString,
     #[widget]
     w: W,
-    popups: Vec<(WindowId, kas::Popup)>,
+    popups: SmallVec<[(WindowId, kas::Popup); 16]>,
     fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut Manager))>,
 }
 
@@ -53,7 +54,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
             restrict_dimensions: self.restrict_dimensions.clone(),
             title: self.title.clone(),
             w: self.w.clone(),
-            popups: vec![], // these are temporary; don't clone
+            popups: Default::default(), // these are temporary; don't clone
             fns: self.fns.clone(),
         }
     }
@@ -67,7 +68,7 @@ impl<W: Widget> Window<W> {
             restrict_dimensions: (true, false),
             title: title.into(),
             w,
-            popups: vec![],
+            popups: Default::default(),
             fns: Vec::new(),
         }
     }
