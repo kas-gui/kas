@@ -93,8 +93,8 @@ impl ThemeColours {
             nav_focus: Colour::new(1.0, 0.7, 0.5),
             button: Colour::new(1.0, 0.9, 0.3),
             button_disabled: Colour::grey(0.7),
-            button_highlighted: Colour::new(1.0, 0.93, 0.55),
-            button_depressed: Colour::new(0.9, 0.83, 0.45),
+            button_highlighted: Colour::new(1.0, 0.95, 0.6),
+            button_depressed: Colour::new(0.8, 0.72, 0.24),
             checkbox: Colour::grey(0.4),
         }
     }

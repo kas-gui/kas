@@ -127,6 +127,11 @@ pub enum Event {
     /// This is a specific command from a parent, e.g. [`kas::widget::MenuBar`].
     /// Most widgets can ignore this, even if they have a pop-up.
     OpenPopup,
+    /// Close popup / menu
+    ///
+    /// This is a specific command from a parent, e.g. [`kas::widget::MenuBar`].
+    /// Most widgets can ignore this, even if they have a pop-up.
+    ClosePopup,
 }
 
 /// Navigation key ([`Event::NavKey`])

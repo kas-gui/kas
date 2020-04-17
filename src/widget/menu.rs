@@ -5,6 +5,8 @@
 
 //! Menus
 
+use smallvec::SmallVec;
+
 use super::{Column, List};
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
@@ -268,6 +270,12 @@ impl<M, W: Widget<Msg = M>> event::Handler for SubMenu<W> {
                     self.open_menu(mgr);
                 }
             }
+            Event::ClosePopup => {
+                if let Some(id) = self.popup_id {
+                    mgr.close_window(id);
+                    self.popup_id = None;
+                }
+            }
             event => return Response::Unhandled(event),
         }
         Response::None
@@ -315,7 +323,10 @@ pub struct MenuBar<D: Directional, W: Widget> {
     core: CoreData,
     #[widget]
     pub bar: List<D, SubMenu<W>>,
+    // Open mode. Used to close with click on root only when previously open.
     opening: bool,
+    // Stack of open child windows. Each should be a descendant of the previous.
+    open: SmallVec<[WidgetId; 16]>,
 }
 
 impl<D: Directional + Default, W: Widget> MenuBar<D, W> {
@@ -332,6 +343,7 @@ impl<D: Directional, W: Widget> MenuBar<D, W> {
             core: Default::default(),
             bar: List::new_with_direction(direction, menus),
             opening: false,
+            open: Default::default(),
         }
     }
 }
@@ -340,6 +352,18 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        let open = |s: &mut Self, mgr: &mut Manager, id| {
+            while let Some(last_id) = s.open.last().cloned() {
+                if !s.find(last_id).map(|w| w.is_ancestor_of(id)).unwrap() {
+                    let _ = s.send(mgr, last_id, Event::ClosePopup);
+                    s.open.pop();
+                } else {
+                    break;
+                }
+            }
+            s.open.push(id);
+            s.send(mgr, id, Event::OpenPopup)
+        };
         match event {
             Event::PressStart {
                 source,
@@ -353,39 +377,38 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                         mgr.set_grab_depress(source, Some(start_id));
                         self.opening = false;
                         if self.rect().contains(coord) {
+                            // We could just send Event::OpenPopup, but we also
+                            // need to set self.opening
                             for i in 0..self.bar.len() {
                                 let w = &mut self.bar[i];
-                                if w.id() == start_id {
+                                let id = w.id();
+                                if id == start_id {
                                     if !w.menu_is_open() {
                                         self.opening = true;
-                                        w.open_menu(mgr);
                                         mgr.set_press_focus(Some(self.id()));
+                                        return open(self, mgr, id);
                                     }
                                     break;
                                 }
                             }
-                            Response::None
                         } else {
-                            self.send(mgr, start_id, Event::OpenPopup)
+                            return open(self, mgr, start_id);
                         }
-                    } else {
-                        Response::None
                     }
                 } else {
-                    // we don't know which, if any, might be open
-                    for i in 0..self.bar.len() {
-                        self.bar[i].close_menu(mgr);
+                    while let Some(id) = self.open.pop() {
+                        let _ = self.send(mgr, id, Event::ClosePopup);
                     }
-                    Response::Unhandled(Event::None)
+                    return Response::Unhandled(Event::None);
                 }
             }
             Event::PressMove { source, cur_id, .. } => {
                 if cur_id.map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                     let id = cur_id.unwrap();
                     mgr.set_grab_depress(source, Some(id));
-                    self.send(mgr, id, Event::OpenPopup)
+                    return open(self, mgr, id);
                 } else {
-                    Response::None
+                    mgr.set_grab_depress(source, None);
                 }
             }
             Event::PressEnd { coord, end_id, .. } => {
@@ -395,27 +418,22 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
 
                     if self.rect().contains(coord) {
                         if !self.opening {
-                            for i in 0..self.bar.len() {
-                                let w = &mut self.bar[i];
-                                if w.id() == id {
-                                    w.close_menu(mgr);
-                                }
+                            while let Some(id) = self.open.pop() {
+                                let _ = self.send(mgr, id, Event::ClosePopup);
                             }
                         }
-                        Response::None
                     } else {
-                        self.send(mgr, id, Event::Activate)
+                        return self.send(mgr, id, Event::Activate);
                     }
                 } else {
-                    // we don't know which, if any, might be open
-                    for i in 0..self.bar.len() {
-                        self.bar[i].close_menu(mgr);
+                    while let Some(id) = self.open.pop() {
+                        let _ = self.send(mgr, id, Event::ClosePopup);
                     }
-                    Response::None
                 }
             }
-            e => Response::Unhandled(e),
+            e => return Response::Unhandled(e),
         }
+        Response::None
     }
 }
 
