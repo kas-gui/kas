@@ -93,6 +93,7 @@ pub struct ManagerState {
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 10]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
+    press_focus: Option<WidgetId>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
 
     time_start: Instant,
@@ -125,6 +126,7 @@ impl ManagerState {
             mouse_grab: None,
             touch_grab: Default::default(),
             pan_grab: SmallVec::new(),
+            press_focus: None,
             accel_keys: HashMap::new(),
 
             time_start: Instant::now(),
@@ -171,6 +173,7 @@ impl ManagerState {
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.nav_focus = self.nav_focus.and_then(|id| map.get(&id).cloned());
+        self.press_focus = self.press_focus.and_then(|id| map.get(&id).cloned());
         self.mouse_grab = self.mouse_grab.as_ref().and_then(|grab| {
             map.get(&grab.start_id).map(|id| MouseGrab {
                 start_id: *id,
@@ -735,6 +738,17 @@ impl<'a> Manager<'a> {
             }
         }
     }
+
+    /// Request press focus priority
+    ///
+    /// The target widget will receive all new [`Event::PressStart`] events
+    /// until either press focus is explicitly cleared or the handler returns
+    /// [`Response::Unhandled`]. In the latter case, the actual payload of
+    /// `Unhandled` is ignored and the original event is sent to the usual
+    /// recipient (without press focus).
+    pub fn set_press_focus(&mut self, target: Option<WidgetId>) {
+        self.mgr.press_focus = target;
+    }
 }
 
 /// Internal methods
@@ -1117,6 +1131,28 @@ impl<'a> Manager<'a> {
         let _ = widget.send(self, id, event);
     }
 
+    fn send_press_start<W: Widget + ?Sized>(
+        &mut self,
+        widget: &mut W,
+        source: PressSource,
+        start_id: WidgetId,
+        coord: Coord,
+    ) {
+        let event = Event::PressStart {
+            source,
+            start_id,
+            coord,
+        };
+        if let Some(id) = self.mgr.press_focus {
+            trace!("Send to press focus target: {}: {:?}", id, event);
+            match widget.send(self, id, event.clone()) {
+                Response::Unhandled(_) => (),
+                _ => return,
+            }
+        }
+        self.send_event(widget, start_id, event);
+    }
+
     /// Update widgets due to timer
     pub fn update_timer<W: Widget + ?Sized>(&mut self, widget: &mut W) {
         let now = Instant::now();
@@ -1253,16 +1289,13 @@ impl<'a> Manager<'a> {
                     match grab.mode {
                         GrabMode::Grab => {
                             // Mouse grab active: send events there
-                            let start_id = grab.start_id;
-                            let event = match state {
-                                ElementState::Pressed => Event::PressStart { source, start_id, coord },
-                                ElementState::Released => Event::PressEnd {
-                                    source,
-                                    end_id: self.mgr.hover,
-                                    coord,
-                                },
+                            debug_assert_eq!(state, ElementState::Released);
+                            let event = Event::PressEnd {
+                                source,
+                                end_id: self.mgr.hover,
+                                coord,
                             };
-                            self.send_event(widget, start_id, event);
+                            self.send_event(widget, grab.start_id, event);
                         }
                         // Pan events do not receive Start/End notifications
                         _ => (),
@@ -1274,8 +1307,7 @@ impl<'a> Manager<'a> {
                 } else if let Some(start_id) = self.mgr.hover {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
-                        let event = Event::PressStart { source, start_id, coord };
-                        self.send_event(widget, start_id, event);
+                        self.send_press_start(widget, source, start_id, coord);
                     }
                 }
             }
@@ -1288,8 +1320,7 @@ impl<'a> Manager<'a> {
                 match touch.phase {
                     TouchPhase::Started => {
                         if let Some(start_id) = widget.find_id(coord) {
-                            let event = Event::PressStart { source, start_id, coord };
-                            self.send_event(widget, start_id, event);
+                            self.send_press_start(widget, source, start_id, coord);
                         }
                     }
                     TouchPhase::Moved => {

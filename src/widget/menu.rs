@@ -108,9 +108,24 @@ impl<M, W: Widget<Msg = M>> event::Handler for MenuButton<W> {
                     self.close_menu(mgr);
                 }
             }
-            Event::PressStart { source, coord, .. } if source.is_primary() => {
-                mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
-                self.opening = self.popup_id.is_none();
+            Event::PressStart {
+                source,
+                start_id,
+                coord,
+            } => {
+                if self.is_ancestor_of(start_id) {
+                    if source.is_primary() {
+                        mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
+                        mgr.set_grab_depress(source, Some(start_id));
+                        self.opening = self.popup_id.is_none();
+                    }
+                } else {
+                    if let Some(id) = self.popup_id {
+                        mgr.close_window(id);
+                        self.popup_id = None;
+                    }
+                    return Response::Unhandled(Event::None);
+                }
             }
             Event::PressMove { source, cur_id, .. } => {
                 if cur_id == Some(self.id()) {
@@ -331,27 +346,37 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                 start_id,
                 coord,
             } => {
-                // Assumption: start_id is descendent of self
-                if mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None) {
-                    mgr.set_grab_depress(source, Some(start_id));
-                    self.opening = false;
-                    if self.rect().contains(coord) {
-                        for i in 0..self.bar.len() {
-                            let w = &mut self.bar[i];
-                            if w.id() == start_id {
-                                if !w.menu_is_open() {
-                                    self.opening = true;
-                                    w.open_menu(mgr);
+                if self.is_ancestor_of(start_id) {
+                    if source.is_primary()
+                        && mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None)
+                    {
+                        mgr.set_grab_depress(source, Some(start_id));
+                        self.opening = false;
+                        if self.rect().contains(coord) {
+                            for i in 0..self.bar.len() {
+                                let w = &mut self.bar[i];
+                                if w.id() == start_id {
+                                    if !w.menu_is_open() {
+                                        self.opening = true;
+                                        w.open_menu(mgr);
+                                        mgr.set_press_focus(Some(self.id()));
+                                    }
+                                    break;
                                 }
-                                break;
                             }
+                            Response::None
+                        } else {
+                            self.send(mgr, start_id, Event::OpenPopup)
                         }
-                        Response::None
                     } else {
-                        self.send(mgr, start_id, Event::OpenPopup)
+                        Response::None
                     }
                 } else {
-                    Response::None
+                    // we don't know which, if any, might be open
+                    for i in 0..self.bar.len() {
+                        self.bar[i].close_menu(mgr);
+                    }
+                    Response::Unhandled(Event::None)
                 }
             }
             Event::PressMove { source, cur_id, .. } => {

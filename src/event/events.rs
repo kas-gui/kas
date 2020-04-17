@@ -15,6 +15,8 @@ use crate::WidgetId;
 /// Events addressed to a widget
 #[derive(Clone, Debug)]
 pub enum Event {
+    /// No event
+    None,
     /// Widget activation, for example clicking a button or toggling a check-box
     Activate,
     /// Navigation key input
