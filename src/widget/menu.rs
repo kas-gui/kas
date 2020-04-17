@@ -6,6 +6,7 @@
 //! Menus
 
 use smallvec::SmallVec;
+use std::time::Duration;
 
 use super::{Column, List};
 use kas::class::HasText;
@@ -348,6 +349,7 @@ pub struct MenuBar<D: Directional, W: Widget> {
     opening: bool,
     // Stack of open child windows. Each should be a descendant of the previous.
     open: SmallVec<[WidgetId; 16]>,
+    delayed_open: Option<WidgetId>,
 }
 
 impl<D: Directional + Default, W: Widget> MenuBar<D, W> {
@@ -365,6 +367,7 @@ impl<D: Directional, W: Widget> MenuBar<D, W> {
             bar: List::new_with_direction(direction, menus),
             opening: false,
             open: Default::default(),
+            delayed_open: None,
         }
     }
 }
@@ -373,19 +376,22 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
-        let open = |s: &mut Self, mgr: &mut Manager, id| {
-            while let Some(last_id) = s.open.last().cloned() {
-                if !s.find(last_id).map(|w| w.is_ancestor_of(id)).unwrap() {
-                    let _ = s.send(mgr, last_id, Event::ClosePopup);
-                    s.open.pop();
-                } else {
-                    break;
+        match event {
+            Event::TimerUpdate => {
+                if let Some(id) = self.delayed_open {
+                    self.delayed_open = None;
+                    while let Some(last_id) = self.open.last().cloned() {
+                        if !self.find(last_id).map(|w| w.is_ancestor_of(id)).unwrap() {
+                            let _ = self.send(mgr, last_id, Event::ClosePopup);
+                            self.open.pop();
+                        } else {
+                            break;
+                        }
+                    }
+                    self.open.push(id);
+                    return self.send(mgr, id, Event::OpenPopup);
                 }
             }
-            s.open.push(id);
-            s.send(mgr, id, Event::OpenPopup)
-        };
-        match event {
             Event::PressStart {
                 source,
                 start_id,
@@ -406,14 +412,16 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                                 if id == start_id {
                                     if !w.menu_is_open() {
                                         self.opening = true;
+                                        self.delayed_open = Some(id);
+                                        mgr.update_on_timer(Duration::from_millis(100), self.id());
                                         mgr.set_press_focus(Some(self.id()));
-                                        return open(self, mgr, id);
                                     }
                                     break;
                                 }
                             }
                         } else {
-                            return open(self, mgr, start_id);
+                            self.delayed_open = Some(start_id);
+                            mgr.update_on_timer(Duration::from_millis(100), self.id());
                         }
                     }
                 } else {
@@ -427,7 +435,8 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                 if cur_id.map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                     let id = cur_id.unwrap();
                     mgr.set_grab_depress(source, Some(id));
-                    return open(self, mgr, id);
+                    self.delayed_open = Some(id);
+                    mgr.update_on_timer(Duration::from_millis(300), self.id());
                 } else {
                     mgr.set_grab_depress(source, None);
                 }
