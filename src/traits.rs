@@ -359,7 +359,15 @@ pub trait Layout: WidgetChildren {
 /// `fn foo<M>(w: &mut dyn Widget<Msg = M>)`, or, e.g.
 /// `fn foo(w: &mut dyn WidgetConfig)` (note that `WidgetConfig` is the last unparameterised
 /// trait in the widget trait family).
-pub trait Widget: event::SendEvent {}
+pub trait Widget: event::SendEvent {
+    /// Return a boxed version of the widget
+    fn boxed(self) -> Box<dyn Widget<Msg = Self::Msg>>
+    where
+        Self: Sized + 'static,
+    {
+        Box::new(self)
+    }
+}
 
 /// Trait to describe the type needed by the layout implementation.
 ///

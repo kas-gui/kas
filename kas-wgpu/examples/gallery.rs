@@ -10,7 +10,7 @@ use kas::class::HasText;
 use kas::event::{Manager, Response, UpdateHandle, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::*;
-use kas::{Right, Widget, WidgetId};
+use kas::{Right, TkAction, Widget, WidgetId};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Item {
@@ -47,30 +47,34 @@ fn main() -> Result<(), kas_wgpu::Error> {
         Theme(&'static str),
         Colour(&'static str),
         Disabled(bool),
+        Quit,
     }
 
     let menubar = MenuBar::<Right, _>::new(vec![
+        SubMenu::new("App", vec![TextButton::new("Quit", Menu::Quit).boxed()]),
         SubMenu::new(
             "Theme",
             vec![
-                Box::new(TextButton::new("Shaded", Menu::Theme("shaded")))
-                    as Box<dyn Widget<Msg = Menu>>,
-                Box::new(TextButton::new("Flat", Menu::Theme("flat"))),
-            ],
-        ),
-        SubMenu::new(
-            "Colours",
-            vec![
-                Box::new(TextButton::new("Default", Menu::Colour("default"))),
-                Box::new(TextButton::new("Light", Menu::Colour("light"))),
-                Box::new(TextButton::new("Dark", Menu::Colour("dark"))),
+                TextButton::new("Shaded", Menu::Theme("shaded")).boxed(),
+                TextButton::new("Flat", Menu::Theme("flat")).boxed(),
             ],
         ),
         SubMenu::new(
             "Style",
-            vec![Box::new(
-                CheckBox::new("Disabled").on_toggle(|state| Menu::Disabled(state)),
-            )],
+            vec![
+                SubMenu::right(
+                    "Colours",
+                    vec![
+                        TextButton::new("Default", Menu::Colour("default")),
+                        TextButton::new("Light", Menu::Colour("light")),
+                        TextButton::new("Dark", Menu::Colour("dark")),
+                    ],
+                )
+                .boxed(),
+                CheckBox::new("Disabled")
+                    .on_toggle(|state| Menu::Disabled(state))
+                    .boxed(),
+            ],
         ),
     ]);
 
@@ -147,6 +151,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         }
                         Menu::Disabled(state) => {
                             *mgr += self.gallery.inner_mut().set_disabled(state);
+                        }
+                        Menu::Quit => {
+                            *mgr += TkAction::CloseAll;
                         }
                     }
                     Response::None

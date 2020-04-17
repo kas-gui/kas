@@ -188,21 +188,42 @@ impl<W: Widget> HasText for MenuButton<W> {
 /// A sub-menu
 #[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
-pub struct SubMenu<W: Widget> {
+pub struct SubMenu<D: Directional, W: Widget> {
     #[widget_core]
     core: CoreData,
+    direction: D,
     label: CowString,
     #[widget]
     pub list: Column<W>,
     popup_id: Option<WindowId>,
 }
 
-impl<W: Widget> SubMenu<W> {
+impl<D: Directional + Default, W: Widget> SubMenu<D, W> {
     /// Construct a sub-menu
     #[inline]
     pub fn new<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
+        SubMenu::new_with_direction(Default::default(), label, list)
+    }
+}
+
+impl<W: Widget> SubMenu<kas::Right, W> {
+    /// Construct a sub-menu, opening to the right
+    // NOTE: this is used since we can't infer direction of a boxed SubMenu.
+    // Consider only accepting an enum of special menu widgets?
+    // Then we can pass type information.
+    #[inline]
+    pub fn right<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
+        SubMenu::new(label, list)
+    }
+}
+
+impl<D: Directional, W: Widget> SubMenu<D, W> {
+    /// Construct a sub-menu
+    #[inline]
+    pub fn new_with_direction<S: Into<CowString>>(direction: D, label: S, list: Vec<W>) -> Self {
         SubMenu {
             core: Default::default(),
+            direction,
             label: label.into(),
             list: Column::new(list),
             popup_id: None,
@@ -217,7 +238,7 @@ impl<W: Widget> SubMenu<W> {
             let id = mgr.add_popup(kas::Popup {
                 id: self.list.id(),
                 parent: self.id(),
-                direction: Direction::Down,
+                direction: self.direction.as_direction(),
             });
             self.popup_id = Some(id);
         }
@@ -230,7 +251,7 @@ impl<W: Widget> SubMenu<W> {
     }
 }
 
-impl<W: Widget> kas::Layout for SubMenu<W> {
+impl<D: Directional, W: Widget> kas::Layout for SubMenu<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.button_surround();
         let margins = size_handle.outer_margins();
@@ -260,7 +281,7 @@ impl<W: Widget> kas::Layout for SubMenu<W> {
     }
 }
 
-impl<M, W: Widget<Msg = M>> event::Handler for SubMenu<W> {
+impl<D: Directional, M, W: Widget<Msg = M>> event::Handler for SubMenu<D, W> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
@@ -282,7 +303,7 @@ impl<M, W: Widget<Msg = M>> event::Handler for SubMenu<W> {
     }
 }
 
-impl<W: Widget> event::SendEvent for SubMenu<W> {
+impl<D: Directional, W: Widget> event::SendEvent for SubMenu<D, W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);
@@ -300,7 +321,7 @@ impl<W: Widget> event::SendEvent for SubMenu<W> {
     }
 }
 
-impl<W: Widget> HasText for SubMenu<W> {
+impl<D: Directional, W: Widget> HasText for SubMenu<D, W> {
     fn get_text(&self) -> &str {
         &self.label
     }
@@ -322,7 +343,7 @@ pub struct MenuBar<D: Directional, W: Widget> {
     #[widget_core]
     core: CoreData,
     #[widget]
-    pub bar: List<D, SubMenu<W>>,
+    pub bar: List<D, SubMenu<D::Flipped, W>>,
     // Open mode. Used to close with click on root only when previously open.
     opening: bool,
     // Stack of open child windows. Each should be a descendant of the previous.
@@ -331,14 +352,14 @@ pub struct MenuBar<D: Directional, W: Widget> {
 
 impl<D: Directional + Default, W: Widget> MenuBar<D, W> {
     /// Construct
-    pub fn new(menus: Vec<SubMenu<W>>) -> Self {
+    pub fn new(menus: Vec<SubMenu<D::Flipped, W>>) -> Self {
         MenuBar::new_with_direction(D::default(), menus)
     }
 }
 
 impl<D: Directional, W: Widget> MenuBar<D, W> {
     /// Construct
-    pub fn new_with_direction(direction: D, menus: Vec<SubMenu<W>>) -> Self {
+    pub fn new_with_direction(direction: D, menus: Vec<SubMenu<D::Flipped, W>>) -> Self {
         MenuBar {
             core: Default::default(),
             bar: List::new_with_direction(direction, menus),
