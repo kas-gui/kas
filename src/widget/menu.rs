@@ -355,7 +355,7 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                 }
             }
             Event::PressMove { source, cur_id, .. } => {
-                if cur_id.and_then(|id| self.find(id)).is_some() {
+                if cur_id.map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                     let id = cur_id.unwrap();
                     mgr.set_grab_depress(source, Some(id));
                     self.send(mgr, id, Event::OpenPopup)
@@ -364,7 +364,7 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                 }
             }
             Event::PressEnd { coord, end_id, .. } => {
-                if end_id.and_then(|id| self.find(id)).is_some() {
+                if end_id.map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                     // end_id is a child of self
                     let id = end_id.unwrap();
 

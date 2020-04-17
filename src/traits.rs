@@ -131,6 +131,14 @@ pub trait WidgetChildren: WidgetCore {
     /// This method may be removed in the future.
     fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
+    /// Check whether `id` is a descendant
+    ///
+    /// This function assumes that `id` is a valid widget.
+    #[inline]
+    fn is_ancestor_of(&self, id: WidgetId) -> bool {
+        self.find(id).is_some()
+    }
+
     /// Find a child widget by identifier
     ///
     /// This requires that the widget tree has already been configured by
