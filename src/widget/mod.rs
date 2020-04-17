@@ -38,7 +38,7 @@ pub use filler::Filler;
 pub use frame::Frame;
 pub use label::Label;
 pub use list::*;
-pub use menu::MenuButton;
+pub use menu::{MenuBar, MenuButton, SubMenu};
 pub use radiobox::{RadioBox, RadioBoxBare};
 pub use scroll::ScrollRegion;
 pub use scrollbar::ScrollBar;

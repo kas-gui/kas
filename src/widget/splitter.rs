@@ -175,18 +175,22 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
+
         // find_child should gracefully handle the case that a coord is between
         // widgets, so there's no harm (and only a small performance loss) in
         // calling it twice.
 
         let solver = layout::RowPositionSolver::new(self.direction);
         if let Some(child) = solver.find_child(&self.widgets, coord) {
-            return child.find_id(coord);
+            return child.find_id(coord).or(Some(self.id()));
         }
 
         let solver = layout::RowPositionSolver::new(self.direction);
         if let Some(child) = solver.find_child(&self.handles, coord) {
-            return child.find_id(coord);
+            return child.find_id(coord).or(Some(self.id()));
         }
 
         Some(self.id())
@@ -210,11 +214,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
 
 impl<D: Directional, W: Widget> event::SendEvent for Splitter<D, W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if self.is_disabled() {
-            return Response::Unhandled(event);
-        }
-
-        if self.widgets.len() > 0 {
+        if !self.is_disabled() && self.widgets.len() > 0 {
             assert!(self.handles.len() + 1 == self.widgets.len());
             let mut n = 0;
             loop {
@@ -241,8 +241,7 @@ impl<D: Directional, W: Widget> event::SendEvent for Splitter<D, W> {
             }
         }
 
-        debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-        Manager::handle_generic(self, mgr, event)
+        Response::Unhandled(event)
     }
 }
 

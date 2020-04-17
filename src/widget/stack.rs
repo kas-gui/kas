@@ -91,18 +91,15 @@ impl<W: Widget> Layout for Stack<W> {
 
 impl<W: Widget> event::SendEvent for Stack<W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if self.is_disabled() {
-            return Response::Unhandled(event);
-        }
-
-        for child in &mut self.widgets {
-            if id <= child.id() {
-                return child.send(mgr, id, event);
+        if !self.is_disabled() {
+            for child in &mut self.widgets {
+                if id <= child.id() {
+                    return child.send(mgr, id, event);
+                }
             }
         }
 
-        debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-        Manager::handle_generic(self, mgr, event)
+        Response::Unhandled(event)
     }
 }
 

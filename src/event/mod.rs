@@ -16,11 +16,22 @@
 //!
 //! ## Event delivery
 //!
-//! Events are processed from root to leaf, targetted either at a coordinate or
-//! at a [`WidgetId`]. Events targetted at coordinates are translated to a
-//! [`WidgetId`] by [`Manager::handle_generic`]; events targetted at a
-//! [`WidgetId`] are handled by widget-specific code or returned via
-//! [`Response::Unhandled`], in which case any caller may handle the event.
+//! Events can be addressed only to a [`WidgetId`], so the first step (for
+//! mouse and touch events) is to use [`kas::Layout::find_id`] to translate a
+//! coordinate to a [`WidgetId`].
+//!
+//! Events then process from root to leaf. [`SendEvent::send`] is responsible
+//! for forwarding an event to the appropriate child. Once the target widget is
+//! reached, `send` (usually) calls [`Manager::handle_generic`] which may apply
+//! some transformations to events, then calls [`Handler::handle`] on target
+//! widget. Finally, a [`Response`] is emitted.
+//!
+//! [`Response`] has three variants: `None`, `Msg(msg)` and `Unhandled(event)`,
+//! where `msg` is a message defined by type [`Handler::Msg`] and `event` is an
+//! [`Event`]. Both `Msg` and `Unhandled` may be trapped by a parent widget's
+//! [`SendEvent::send`], with `Msg` used to trigger a custom action and
+//! `Unhandled` used to interpret a few otherwise-unused events (for example,
+//! scroll by touch drag).
 //!
 //! ## Mouse and touch events
 //!

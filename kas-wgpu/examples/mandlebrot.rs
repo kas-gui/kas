@@ -470,7 +470,7 @@ impl event::Handler for Mandlebrot {
                 mgr.redraw(self.id());
                 Response::Msg(())
             }
-            Event::PressStart { source, coord } => {
+            Event::PressStart { source, coord, .. } => {
                 mgr.request_grab(
                     self.id(),
                     source,

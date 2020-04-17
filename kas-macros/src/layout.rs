@@ -141,9 +141,7 @@ pub(crate) fn derive(
 
     let find_id_area = layout.area.as_ref().map(|area_widget| {
         quote! {
-            if self.rect().contains(coord) {
-                Some(self.#area_widget.id())
-            }
+            Some(self.#area_widget.id())
         }
     });
 
@@ -152,7 +150,7 @@ pub(crate) fn derive(
     let mut size = TokenStream::new();
     let mut set_rect = TokenStream::new();
     let mut draw = TokenStream::new();
-    let mut find_id_else = TokenStream::new();
+    let mut find_id_child = TokenStream::new();
 
     for child in children.iter() {
         let ident = &child.ident;
@@ -221,10 +219,10 @@ pub(crate) fn derive(
         });
 
         // TODO: more efficient search strategy?
-        find_id_else.append_all(quote! {
-            if self.#ident.rect().contains(coord) {
-                self.#ident.find_id(coord)
-            } else
+        find_id_child.append_all(quote! {
+            if let Some(id) = self.#ident.find_id(coord) {
+                return Some(id);
+            }
         });
     }
 
@@ -239,9 +237,8 @@ pub(crate) fn derive(
 
     let find_id_body = find_id_area.unwrap_or_else(|| {
         quote! {
-            #find_id_else if self.rect().contains(coord) {
-                Some(self.id())
-            }
+            #find_id_child
+            Some(self.id())
         }
     });
 
@@ -281,10 +278,11 @@ pub(crate) fn derive(
 
         fn find_id(&self, coord: kas::geom::Coord) -> Option<kas::WidgetId> {
             use kas::WidgetCore;
-
-            #find_id_body else {
-                None
+            if !self.rect().contains(coord) {
+                return None;
             }
+
+            #find_id_body
         }
 
         fn draw(

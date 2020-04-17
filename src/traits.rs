@@ -131,6 +131,14 @@ pub trait WidgetChildren: WidgetCore {
     /// This method may be removed in the future.
     fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
+    /// Check whether `id` is a descendant
+    ///
+    /// This function assumes that `id` is a valid widget.
+    #[inline]
+    fn is_ancestor_of(&self, id: WidgetId) -> bool {
+        self.find(id).is_some()
+    }
+
     /// Find a child widget by identifier
     ///
     /// This requires that the widget tree has already been configured by
@@ -307,21 +315,29 @@ pub trait Layout: WidgetChildren {
         (0, WidgetChildren::len(self).wrapping_sub(1))
     }
 
-    /// Find a child widget by coordinate
+    /// Find a widget by coordinate
     ///
-    /// This is used by the event manager to target the correct widget given an
-    /// event from a coordinate source (mouse pointer, touch event).
-    /// Widgets may return their own Id over that of children in order to steal
-    /// events (e.g. a button using an inner label widget).
+    /// Returns the identifier of the widget containing this `coord`, if any.
+    /// Should only return `None` when `coord` is outside the widget's rect,
+    /// but this is not guaranteed.
+    ///
+    /// Implementations should:
+    ///
+    /// 1.  return `None` if `!self.rect().contains(coord)`
+    /// 2.  if, for any child (containing `coord`), `child.find_id(coord)`
+    ///     returns `Some(id)`, return that
+    /// 3.  otherwise, return `Some(self.id())`
+    ///
+    /// Exceptionally, a widget may deviate from this behaviour, but only when
+    /// the coord is within the widget's rect (example: `CheckBox` contains an
+    /// embedded `CheckBoxBare` and always forwards this child's id).
     ///
     /// This must not be called before [`Layout::set_rect`].
-    ///
-    /// In the case of an empty grid cell, the parent widget is returned
-    /// (same behaviour as with events addressed by coordinate).
-    /// The only case `None` should be expected is when `coord` is outside the
-    /// initial widget's region; however this is not guaranteed.
     #[inline]
-    fn find_id(&self, _coord: Coord) -> Option<WidgetId> {
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
         Some(self.id())
     }
 
@@ -343,7 +359,15 @@ pub trait Layout: WidgetChildren {
 /// `fn foo<M>(w: &mut dyn Widget<Msg = M>)`, or, e.g.
 /// `fn foo(w: &mut dyn WidgetConfig)` (note that `WidgetConfig` is the last unparameterised
 /// trait in the widget trait family).
-pub trait Widget: event::SendEvent {}
+pub trait Widget: event::SendEvent {
+    /// Return a boxed version of the widget
+    fn boxed(self) -> Box<dyn Widget<Msg = Self::Msg>>
+    where
+        Self: Sized + 'static,
+    {
+        Box::new(self)
+    }
+}
 
 /// Trait to describe the type needed by the layout implementation.
 ///

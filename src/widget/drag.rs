@@ -179,7 +179,7 @@ impl event::Handler for DragHandle {
                 self.press_source = None;
                 Response::None
             }
-            e @ _ => Manager::handle_generic(self, mgr, e),
+            event => Response::Unhandled(event),
         }
     }
 }

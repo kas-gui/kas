@@ -7,12 +7,12 @@
 
 use super::{Event, VoidResponse};
 
-/// Response type from [`Handler::action`].
+/// Response type from [`Handler::handle`].
 ///
 /// This type wraps [`Handler::Msg`] allowing both custom messages and toolkit
 /// messages.
 ///
-/// [`Handler::action`]: super::Handler::action
+/// [`Handler::handle`]: super::Handler::handle
 /// [`Handler::Msg`]: super::Handler::Msg
 #[derive(Clone, Debug)]
 #[must_use]

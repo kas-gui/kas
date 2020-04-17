@@ -145,6 +145,10 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
+
         let solver = layout::RowPositionSolver::new(self.direction);
         if let Some(child) = solver.find_child(&self.widgets, coord) {
             return child.find_id(coord);
@@ -164,18 +168,15 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
 
 impl<D: Directional, W: Widget> event::SendEvent for List<D, W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if self.is_disabled() {
-            return Response::Unhandled(event);
-        }
-
-        for child in &mut self.widgets {
-            if id <= child.id() {
-                return child.send(mgr, id, event);
+        if !self.is_disabled() {
+            for child in &mut self.widgets {
+                if id <= child.id() {
+                    return child.send(mgr, id, event);
+                }
             }
         }
 
-        debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-        Manager::handle_generic(self, mgr, event)
+        Response::Unhandled(event)
     }
 }
 
@@ -341,6 +342,14 @@ impl<D: Directional, W: Widget> List<D, W> {
             false => TkAction::Reconfigure,
         }
     }
+
+    /// Iterate over childern
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a W> {
+        ListIter {
+            list: self,
+            index: 0,
+        }
+    }
 }
 
 impl<D: Directional, W: Widget> Index<usize> for List<D, W> {
@@ -354,5 +363,31 @@ impl<D: Directional, W: Widget> Index<usize> for List<D, W> {
 impl<D: Directional, W: Widget> IndexMut<usize> for List<D, W> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.widgets[index]
+    }
+}
+
+struct ListIter<'a, D: Directional, W: Widget> {
+    list: &'a List<D, W>,
+    index: usize,
+}
+impl<'a, D: Directional, W: Widget> Iterator for ListIter<'a, D, W> {
+    type Item = &'a W;
+    fn next(&mut self) -> Option<Self::Item> {
+        let index = self.index;
+        if index < self.list.widgets.len() {
+            self.index = index + 1;
+            Some(&self.list.widgets[index])
+        } else {
+            None
+        }
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+impl<'a, D: Directional, W: Widget> ExactSizeIterator for ListIter<'a, D, W> {
+    fn len(&self) -> usize {
+        self.list.widgets.len() - self.index
     }
 }

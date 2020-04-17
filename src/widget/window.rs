@@ -114,12 +114,15 @@ impl<W: Widget> Layout for Window<W> {
 
     #[inline]
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
         for popup in self.popups.iter().rev() {
             if let Some(id) = self.w.find(popup.1.id).and_then(|w| w.find_id(coord)) {
                 return Some(id);
             }
         }
-        self.w.find_id(coord)
+        self.w.find_id(coord).or(Some(self.id()))
     }
 
     #[inline]
@@ -137,16 +140,10 @@ impl<W: Widget> Layout for Window<W> {
 
 impl<W: Widget<Msg = VoidMsg> + 'static> event::SendEvent for Window<W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if self.is_disabled() {
-            return Response::Unhandled(event);
+        if !self.is_disabled() && id <= self.w.id() {
+            return self.w.send(mgr, id, event);
         }
-
-        if id <= self.w.id() {
-            self.w.send(mgr, id, event)
-        } else {
-            debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-            Manager::handle_generic(self, mgr, event)
-        }
+        Response::Unhandled(event)
     }
 }
 
@@ -194,7 +191,8 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
 
             let is_reversed = popup.direction.is_reversed();
             let place_in = |rp, rs: u32, cp: i32, cs, ideal, m: (u16, u16)| -> (i32, u32) {
-                let before = (cp.saturating_sub(rp + m.1 as i32)) as u32;
+                let before: i32 = cp - (rp + m.1 as i32);
+                let before = before.max(0) as u32;
                 let after = rs.saturating_sub(cs + before + m.0 as u32);
                 if after >= ideal {
                     if is_reversed && before >= ideal {

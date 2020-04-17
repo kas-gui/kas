@@ -59,7 +59,11 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
+        let mut state = self.input_state(mgr, disabled);
+        if self.popup_id.is_some() {
+            state.depress = true;
+        }
+        draw_handle.button(self.core.rect, state);
         let align = (Align::Centre, Align::Centre);
         let text = &self.popup.column[self.active].get_text();
         draw_handle.text(self.core.rect, text, TextClass::Button, align);
@@ -177,6 +181,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 direction: Direction::Down,
             });
             w.popup_id = Some(id);
+            mgr.set_press_focus(Some(w.id()));
         };
         match event {
             Event::Activate => {
@@ -188,15 +193,38 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 }
                 Response::None
             }
-            Event::PressStart { source, coord } if source.is_primary() => {
-                mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
-                self.opening = self.popup_id.is_none();
-                Response::None
+            Event::PressStart {
+                source,
+                start_id,
+                coord,
+            } => {
+                if self.is_ancestor_of(start_id) {
+                    if source.is_primary() {
+                        mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
+                        mgr.set_grab_depress(source, Some(start_id));
+                        self.opening = self.popup_id.is_none();
+                    }
+                    Response::None
+                } else {
+                    if let Some(id) = self.popup_id {
+                        mgr.close_window(id);
+                        self.popup_id = None;
+                    }
+                    Response::Unhandled(Event::None)
+                }
             }
-            Event::PressMove { .. } => {
+            Event::PressMove {
+                source,
+                cur_id,
+                coord,
+                ..
+            } => {
                 if self.popup_id.is_none() {
                     open_popup(self, mgr);
                 }
+                let cond = cur_id == Some(self.id()) || self.popup.rect().contains(coord);
+                let target = if cond { cur_id } else { None };
+                mgr.set_grab_depress(source, target);
                 Response::None
             }
             Event::PressEnd { end_id, coord, .. } => {

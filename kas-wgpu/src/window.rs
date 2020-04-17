@@ -188,14 +188,14 @@ where
             TkAction::None => (),
             TkAction::Redraw => self.window.request_redraw(),
             TkAction::RegionMoved => {
-                self.mgr.region_moved(&mut *self.widget);
+                self.mgr.region_moved(&mut tkw, &mut *self.widget);
                 self.window.request_redraw();
             }
             TkAction::Popup => {
                 let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
                 self.widget.resize_popups(&mut size_handle);
 
-                self.mgr.region_moved(&mut *self.widget);
+                self.mgr.region_moved(&mut tkw, &mut *self.widget);
                 self.window.request_redraw();
             }
             TkAction::Reconfigure => self.reconfigure(shared),

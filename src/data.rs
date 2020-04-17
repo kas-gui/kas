@@ -193,13 +193,19 @@ impl CompleteAlignment {
 /// Using a generic `<D: Directional>` over [`Direction`] allows compile-time
 /// substitution via the [`Right`], [`Down`], [`Left`] and [`Up`] instantiations.
 pub trait Directional: Copy + Sized + std::fmt::Debug {
+    /// Direction flipped over diagonal (i.e. Down ↔ Right)
+    type Flipped: Directional;
+
+    /// Convert to the [`Direction`] enum
     fn as_direction(self) -> Direction;
 
+    /// Up or Down
     #[inline]
     fn is_vertical(self) -> bool {
         ((self.as_direction() as u32) & 1) == 1
     }
 
+    /// Left or Right
     #[inline]
     fn is_horizontal(self) -> bool {
         ((self.as_direction() as u32) & 1) == 0
@@ -213,23 +219,26 @@ pub trait Directional: Copy + Sized + std::fmt::Debug {
 }
 
 macro_rules! fixed {
-    ($d:ident) => {
+    [] => {};
+    [($d:ident, $df:ident)] => {
         /// Fixed instantiation of [`Directional`]
         #[derive(Copy, Clone, Default, Debug)]
         pub struct $d;
         impl Directional for $d {
+            type Flipped = $df;
             #[inline]
             fn as_direction(self) -> Direction {
                 Direction::$d
             }
         }
     };
-    ($d:ident, $($dd:ident),*) => {
-        fixed!($d);
-        fixed!($($dd),*);
+    [($d:ident, $df:ident), $(($d1:ident, $d2:ident),)*] => {
+        fixed![($d, $df)];
+        fixed![($df, $d)];
+        fixed![$(($d1, $d2),)*];
     };
 }
-fixed!(Right, Down, Left, Up);
+fixed![(Right, Down), (Left, Up),];
 
 /// Axis-aligned directions
 ///
@@ -243,6 +252,8 @@ pub enum Direction {
 }
 
 impl Directional for Direction {
+    type Flipped = Self;
+
     #[inline]
     fn as_direction(self) -> Direction {
         self

@@ -195,13 +195,15 @@ impl<W: Widget> Layout for ScrollRegion<W> {
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if self.horiz_bar.rect().contains(coord) {
-            self.horiz_bar.find_id(coord)
-        } else if self.vert_bar.rect().contains(coord) {
-            self.vert_bar.find_id(coord)
-        } else {
-            self.child.find_id(coord + self.offset)
+        if !self.rect().contains(coord) {
+            return None;
         }
+
+        self.horiz_bar
+            .find_id(coord)
+            .or_else(|| self.vert_bar.find_id(coord))
+            .or_else(|| self.child.find_id(coord + self.offset))
+            .or(Some(self.id()))
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
@@ -246,7 +248,7 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
                     Response::Unhandled(Event::Scroll(delta))
                 }
             }
-            Event::PressStart { source, coord } if source.is_primary() => {
+            Event::PressStart { source, coord, .. } if source.is_primary() => {
                 mgr.request_grab(
                     w.id(),
                     source,
@@ -297,16 +299,23 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
         }
 
         let event = match event {
-            Event::PressStart { source, coord } => Event::PressStart {
+            Event::PressStart {
                 source,
+                start_id,
+                coord,
+            } => Event::PressStart {
+                source,
+                start_id,
                 coord: coord + self.offset,
             },
             Event::PressMove {
                 source,
+                cur_id,
                 coord,
                 delta,
             } => Event::PressMove {
                 source,
+                cur_id,
                 coord: coord + self.offset,
                 delta,
             },
