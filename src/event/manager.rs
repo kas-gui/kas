@@ -1154,6 +1154,7 @@ impl<'a> Manager<'a> {
                 Response::Unhandled(_) => (),
                 _ => return,
             }
+            self.mgr.press_focus = None;
         }
         self.send_event(widget, start_id, event);
     }
