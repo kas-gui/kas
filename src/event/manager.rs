@@ -746,6 +746,11 @@ impl<'a> Manager<'a> {
     /// [`Response::Unhandled`]. In the latter case, the actual payload of
     /// `Unhandled` is ignored and the original event is sent to the usual
     /// recipient (without press focus).
+    ///
+    /// Additionally, the target widget will receive [`Event::PressMove`]
+    /// events when the mouse cursor moves, even without a grab. (This does not
+    /// apply to touch events since these cannot occur without `PressStart`.
+    /// Also note that the `source` component uses a fake button!)
     pub fn set_press_focus(&mut self, target: Option<WidgetId>) {
         self.mgr.press_focus = target;
     }
@@ -1239,19 +1244,22 @@ impl<'a> Manager<'a> {
 
                 // Update hovered widget
                 let cur_id = widget.find_id(coord);
+                let delta = coord - self.mgr.last_mouse_coord;
                 self.set_hover(widget, cur_id);
 
                 if let Some(grab) = self.mouse_grab() {
-                    let delta = coord - self.mgr.last_mouse_coord;
                     if grab.mode == GrabMode::Grab {
                         let source = PressSource::Mouse(grab.button);
                         let event = Event::PressMove { source, cur_id, coord, delta };
                         self.send_event(widget, grab.start_id, event);
-                    } else {
-                        if let Some(pan) = self.mgr.pan_grab.get_mut(grab.pan_grab.0 as usize) {
-                            pan.coords[grab.pan_grab.1 as usize].1 = coord;
-                        }
+                    } else if let Some(pan) = self.mgr.pan_grab.get_mut(grab.pan_grab.0 as usize) {
+                        pan.coords[grab.pan_grab.1 as usize].1 = coord;
                     }
+                } else if let Some(id) = self.mgr.press_focus {
+                    // Use a fake button!
+                    let source = PressSource::Mouse(MouseButton::Other(0));
+                    let event = Event::PressMove { source, cur_id, coord, delta };
+                    self.send_event(widget, id, event);
                 } else {
                     // We don't forward move events without a grab
                 }
