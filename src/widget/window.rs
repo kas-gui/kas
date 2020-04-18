@@ -5,6 +5,7 @@
 
 //! Window widgets
 
+use smallvec::SmallVec;
 use std::fmt::{self, Debug};
 
 use kas::draw::{DrawHandle, SizeHandle};
@@ -24,7 +25,7 @@ pub struct Window<W: Widget + 'static> {
     title: CowString,
     #[widget]
     w: W,
-    popups: Vec<(WindowId, kas::Popup)>,
+    popups: SmallVec<[(WindowId, kas::Popup); 16]>,
     fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut Manager))>,
 }
 
@@ -53,7 +54,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
             restrict_dimensions: self.restrict_dimensions.clone(),
             title: self.title.clone(),
             w: self.w.clone(),
-            popups: vec![], // these are temporary; don't clone
+            popups: Default::default(), // these are temporary; don't clone
             fns: self.fns.clone(),
         }
     }
@@ -67,7 +68,7 @@ impl<W: Widget> Window<W> {
             restrict_dimensions: (true, false),
             title: title.into(),
             w,
-            popups: vec![],
+            popups: Default::default(),
             fns: Vec::new(),
         }
     }
@@ -158,14 +159,15 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
 
     fn add_popup(
         &mut self,
-        _: &mut dyn SizeHandle,
+        size_handle: &mut dyn SizeHandle,
         mgr: &mut Manager,
         id: WindowId,
         popup: kas::Popup,
     ) {
-        // TODO: restrict popup resize to active popup?
-        mgr.send_action(TkAction::Popup);
+        let index = self.popups.len();
         self.popups.push((id, popup));
+        self.resize_popup(size_handle, index);
+        mgr.send_action(TkAction::Redraw);
     }
 
     fn remove_popup(&mut self, mgr: &mut Manager, id: WindowId) {
@@ -179,51 +181,8 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
     }
 
     fn resize_popups(&mut self, size_handle: &mut dyn SizeHandle) {
-        // Notation: p=point/coord, s=size, m=margin
-        // r=window/root rect, c=anchor rect
-        let r = self.core.rect;
-        for (_id, popup) in &mut self.popups {
-            let c = self.w.find(popup.parent).unwrap().rect();
-            let widget = self.w.find_mut(popup.id).unwrap();
-            let mut cache = layout::SolveCache::find_constraints(widget, size_handle);
-            let ideal = cache.ideal(false);
-            let m = cache.margins();
-
-            let is_reversed = popup.direction.is_reversed();
-            let place_in = |rp, rs: u32, cp: i32, cs, ideal, m: (u16, u16)| -> (i32, u32) {
-                let before: i32 = cp - (rp + m.1 as i32);
-                let before = before.max(0) as u32;
-                let after = rs.saturating_sub(cs + before + m.0 as u32);
-                if after >= ideal {
-                    if is_reversed && before >= ideal {
-                        (cp - ideal as i32 - m.1 as i32, ideal)
-                    } else {
-                        (cp + cs as i32 + m.0 as i32, ideal)
-                    }
-                } else if before >= ideal {
-                    (cp - ideal as i32 - m.1 as i32, ideal)
-                } else if before > after {
-                    (rp, before)
-                } else {
-                    (cp + cs as i32 + m.0 as i32, after)
-                }
-            };
-            let place_out = |rp, rs, cp: i32, cs, ideal: u32| -> (i32, u32) {
-                let pos = cp.min(rp + rs as i32 - ideal as i32).max(rp);
-                let size = ideal.max(cs).min(rs);
-                (pos, size)
-            };
-            let rect = if popup.direction.is_horizontal() {
-                let (x, w) = place_in(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, m.horiz);
-                let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1);
-                Rect::new(Coord(x, y), Size(w, h))
-            } else {
-                let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0);
-                let (y, h) = place_in(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, m.vert);
-                Rect::new(Coord(x, y), Size(w, h))
-            };
-
-            cache.apply_rect(widget, size_handle, rect, false);
+        for i in 0..self.popups.len() {
+            self.resize_popup(size_handle, i);
         }
     }
 
@@ -234,5 +193,56 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
                 Callback::Start => (),
             }
         }
+    }
+}
+
+impl<W: Widget> Window<W> {
+    fn resize_popup(&mut self, size_handle: &mut dyn SizeHandle, index: usize) {
+        // Notation: p=point/coord, s=size, m=margin
+        // r=window/root rect, c=anchor rect
+        let r = self.core.rect;
+        let popup = &mut self.popups[index].1;
+
+        let c = self.w.find(popup.parent).unwrap().rect();
+        let widget = self.w.find_mut(popup.id).unwrap();
+        let mut cache = layout::SolveCache::find_constraints(widget, size_handle);
+        let ideal = cache.ideal(false);
+        let m = cache.margins();
+
+        let is_reversed = popup.direction.is_reversed();
+        let place_in = |rp, rs: u32, cp: i32, cs, ideal, m: (u16, u16)| -> (i32, u32) {
+            let before: i32 = cp - (rp + m.1 as i32);
+            let before = before.max(0) as u32;
+            let after = rs.saturating_sub(cs + before + m.0 as u32);
+            if after >= ideal {
+                if is_reversed && before >= ideal {
+                    (cp - ideal as i32 - m.1 as i32, ideal)
+                } else {
+                    (cp + cs as i32 + m.0 as i32, ideal)
+                }
+            } else if before >= ideal {
+                (cp - ideal as i32 - m.1 as i32, ideal)
+            } else if before > after {
+                (rp, before)
+            } else {
+                (cp + cs as i32 + m.0 as i32, after)
+            }
+        };
+        let place_out = |rp, rs, cp: i32, cs, ideal: u32| -> (i32, u32) {
+            let pos = cp.min(rp + rs as i32 - ideal as i32).max(rp);
+            let size = ideal.max(cs).min(rs);
+            (pos, size)
+        };
+        let rect = if popup.direction.is_horizontal() {
+            let (x, w) = place_in(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, m.horiz);
+            let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1);
+            Rect::new(Coord(x, y), Size(w, h))
+        } else {
+            let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0);
+            let (y, h) = place_in(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, m.vert);
+            Rect::new(Coord(x, y), Size(w, h))
+        };
+
+        cache.apply_rect(widget, size_handle, rect, false);
     }
 }

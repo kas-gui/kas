@@ -408,6 +408,7 @@ pub trait LayoutData {
 // Option (a) should work but is an unnecessary performance hack; (b) could in
 // theory work but requires adjusting WidgetChildren::get, find etc. to take a
 // closure instead of returning a reference, causing *significant* complication.
+#[derive(Clone, Debug)]
 pub struct Popup {
     pub id: WidgetId,
     pub parent: WidgetId,

@@ -181,7 +181,6 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 direction: Direction::Down,
             });
             w.popup_id = Some(id);
-            mgr.set_press_focus(Some(w.id()));
         };
         match event {
             Event::Activate => {
