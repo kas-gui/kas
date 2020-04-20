@@ -66,6 +66,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             "Style",
             vec![
                 SubMenu::right("Colours", colours).boxed(),
+                Separator::infer().boxed(),
                 MenuToggle::new_on(|state| Menu::Disabled(state), "Disabled").boxed(),
             ],
         ),

@@ -6,6 +6,7 @@
 //! A separator
 
 use std::fmt::Debug;
+use std::marker::PhantomData;
 
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::layout::{AxisInfo, SizeRules};
@@ -15,23 +16,40 @@ use kas::prelude::*;
 ///
 /// This widget draws a bar when in a list. It may expand larger than expected
 /// if no other widget will fill spare space.
+#[handler(msg=M)]
 #[derive(Clone, Debug, Default, Widget)]
-pub struct Separator {
+pub struct Separator<M: Debug> {
     #[widget_core]
     core: CoreData,
+    _msg: PhantomData<M>,
 }
 
-impl Separator {
-    /// Construct a frame
+impl Separator<event::VoidMsg> {
+    /// Construct a frame, with void message type
     #[inline]
     pub fn new() -> Self {
         Separator {
             core: Default::default(),
+            _msg: Default::default(),
         }
     }
 }
 
-impl Layout for Separator {
+impl<M: Debug> Separator<M> {
+    /// Construct a frame, with inferred message type
+    ///
+    /// This may be useful when embedding a separator in a list with
+    /// a given message type.
+    #[inline]
+    pub fn infer() -> Self {
+        Separator {
+            core: Default::default(),
+            _msg: Default::default(),
+        }
+    }
+}
+
+impl<M: Debug> Layout for Separator<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         SizeRules::extract_fixed(axis.is_vertical(), size_handle.frame(), Default::default())
     }
