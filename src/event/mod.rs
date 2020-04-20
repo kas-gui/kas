@@ -106,7 +106,7 @@ pub use update::UpdateHandle;
 /// custom message types are required to implement this via the
 /// [`derive(VoidMsg)`](../macros/index.html#the-derivevoidmsg-macro) macro.
 #[derive(Clone, Debug)]
-pub struct VoidMsg;
+pub enum VoidMsg {}
 
 /// Alias for `Response<VoidMsg>`
 pub type VoidResponse = Response<VoidMsg>;
