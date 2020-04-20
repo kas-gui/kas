@@ -90,16 +90,7 @@ impl<D: Directional, W: Widget> SubMenu<D, W> {
 
 impl<D: Directional, W: Widget> kas::Layout for SubMenu<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let sides = size_handle.button_surround();
-        let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
-
-        let content_rules = size_handle.text_bound(&self.label, TextClass::Button, axis);
-        content_rules.surrounded_by(frame_rules, true)
-    }
-
-    fn set_rect(&mut self, rect: Rect, _align: kas::AlignHints) {
-        self.core.rect = rect;
+        size_handle.text_bound(&self.label, TextClass::Label, axis)
     }
 
     fn spatial_range(&self) -> (usize, usize) {
@@ -108,13 +99,9 @@ impl<D: Directional, W: Widget> kas::Layout for SubMenu<D, W> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        let mut state = self.input_state(mgr, disabled);
-        if self.popup_id.is_some() {
-            state.depress = true;
-        }
-        draw_handle.button(self.core.rect, state);
-        let align = (Align::Centre, Align::Centre);
-        draw_handle.text(self.core.rect, &self.label, TextClass::Button, align);
+        draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
+        let align = (Align::Begin, Align::Centre);
+        draw_handle.text(self.core.rect, &self.label, TextClass::Label, align);
     }
 }
 

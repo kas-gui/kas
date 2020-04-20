@@ -10,7 +10,7 @@ use std::fmt::{self, Debug};
 use kas::class::{HasBool, HasText};
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
 use kas::event::{Event, Manager, Response, VoidMsg};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::layout::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
 use kas::prelude::*;
 use kas::widget::{CheckBoxBare, Label};
 
@@ -26,22 +26,13 @@ pub struct MenuEntry<M: Clone + Debug> {
 
 impl<M: Clone + Debug> Layout for MenuEntry<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let sides = size_handle.button_surround();
-        let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
-
-        let content_rules = size_handle.text_bound(&self.label, TextClass::Button, axis);
-        content_rules.surrounded_by(frame_rules, true)
-    }
-
-    fn set_rect(&mut self, rect: Rect, _align: AlignHints) {
-        self.core.rect = rect;
+        size_handle.text_bound(&self.label, TextClass::Label, axis)
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
-        let align = (Align::Centre, Align::Centre);
-        draw_handle.text(self.core.rect, &self.label, TextClass::Button, align);
+        draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
+        let align = (Align::Begin, Align::Centre);
+        draw_handle.text(self.core.rect, &self.label, TextClass::Label, align);
     }
 }
 
@@ -88,14 +79,12 @@ impl<M: Clone + Debug> event::Handler for MenuEntry<M> {
 }
 
 /// A menu entry which can be toggled
-#[layout(row, area=checkbox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Default, Widget)]
 pub struct MenuToggle<M> {
     #[widget_core]
     core: CoreData,
-    #[layout_data]
-    layout_data: <Self as kas::LayoutData>::Data,
+    layout_data: layout::FixedRowStorage<[SizeRules; 3], [u32; 2]>,
     #[widget]
     checkbox: CheckBoxBare<M>,
     #[widget]
@@ -130,6 +119,13 @@ impl<M> MenuToggle<M> {
             label: Label::new(label),
         }
     }
+
+    /// Set the initial state of the checkbox.
+    #[inline]
+    pub fn state(mut self, state: bool) -> Self {
+        self.checkbox = self.checkbox.state(state);
+        self
+    }
 }
 
 impl MenuToggle<VoidMsg> {
@@ -162,15 +158,56 @@ impl MenuToggle<VoidMsg> {
     }
 }
 
-impl<M> MenuToggle<M> {
-    /// Set the initial state of the checkbox.
-    #[inline]
-    pub fn state(mut self, state: bool) -> Self {
-        self.checkbox = self.checkbox.state(state);
-        self
+impl<M> kas::Layout for MenuToggle<M> {
+    // NOTE: This code is mostly copied from the macro expansion.
+    // Only draw() is significantly different.
+    fn size_rules(
+        &mut self,
+        size_handle: &mut dyn SizeHandle,
+        axis: AxisInfo,
+    ) -> kas::layout::SizeRules {
+        let mut solver = layout::RowSolver::new(axis, (kas::Right, 2usize), &mut self.layout_data);
+        let child = &mut self.checkbox;
+        solver.for_child(&mut self.layout_data, 0usize, |axis| {
+            child.size_rules(size_handle, axis)
+        });
+        let child = &mut self.label;
+        solver.for_child(&mut self.layout_data, 1usize, |axis| {
+            child.size_rules(size_handle, axis)
+        });
+        solver.finish(&mut self.layout_data)
+    }
+
+    fn set_rect(&mut self, rect: Rect, _: AlignHints) {
+        self.core.rect = rect;
+        let mut setter = layout::RowSetter::<_, [u32; 2], _>::new(
+            rect,
+            (kas::Right, 2usize),
+            &mut self.layout_data,
+        );
+        let align = kas::AlignHints::NONE;
+        self.checkbox.set_rect(
+            setter.child_rect(&mut self.layout_data, 0usize),
+            align.clone(),
+        );
+        self.label
+            .set_rect(setter.child_rect(&mut self.layout_data, 1usize), align);
+    }
+
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
+        Some(self.checkbox.id())
+    }
+
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        let state = self.checkbox.input_state(mgr, disabled);
+        draw_handle.menu_entry(self.core.rect, state);
+        self.checkbox.draw(draw_handle, mgr, state.disabled);
+        self.label.draw(draw_handle, mgr, state.disabled);
     }
 }
-
 impl<M> HasBool for MenuToggle<M> {
     #[inline]
     fn get_bool(&self) -> bool {

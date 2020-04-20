@@ -246,11 +246,10 @@ pub(crate) fn derive(
         fn size_rules(
             &mut self,
             size_handle: &mut dyn kas::draw::SizeHandle,
-            mut axis: kas::layout::AxisInfo
+            axis: kas::layout::AxisInfo
         )
             -> kas::layout::SizeRules
         {
-            use std::iter;
             use kas::WidgetCore;
             use kas::layout::RulesSolver;
 

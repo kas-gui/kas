@@ -249,6 +249,13 @@ where
         self.draw.text(rect + self.offset, text, props);
     }
 
+    fn menu_entry(&mut self, rect: Rect, state: InputState) {
+        if let Some(col) = self.cols.menu_entry(state) {
+            let quad = Quad::from(rect + self.offset);
+            self.draw.rect(self.pass, quad, col);
+        }
+    }
+
     fn button(&mut self, rect: Rect, state: InputState) {
         let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(self.window.dims.button_frame as f32);

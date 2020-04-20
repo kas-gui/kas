@@ -214,6 +214,9 @@ pub trait DrawHandle {
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align));
 
+    /// Draw the background of a menu entry
+    fn menu_entry(&mut self, rect: Rect, state: InputState);
+
     /// Draw button sides, background and margin-area highlight
     fn button(&mut self, rect: Rect, state: InputState);
 
@@ -361,6 +364,9 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
     }
+    fn menu_entry(&mut self, rect: Rect, state: InputState) {
+        self.deref_mut().menu_entry(rect, state)
+    }
     fn button(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().button(rect, state)
     }
@@ -406,6 +412,9 @@ where
     }
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
+    }
+    fn menu_entry(&mut self, rect: Rect, state: InputState) {
+        self.deref_mut().menu_entry(rect, state)
     }
     fn button(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().button(rect, state)
