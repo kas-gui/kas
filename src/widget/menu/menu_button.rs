@@ -5,9 +5,10 @@
 
 //! Menu Button
 
+use super::SubMenu;
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, GrabMode, Manager, Response};
+use kas::event::{Event, GrabMode, Manager, Response, SendEvent};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::WindowId;
@@ -24,24 +25,24 @@ use kas::WindowId;
 #[widget(config(key_nav = true))]
 #[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
-pub struct MenuButton<W: Widget> {
+pub struct MenuButton<D: Directional, W: Widget> {
     #[widget_core]
     core: CoreData,
     label: CowString,
     #[widget]
-    popup: W,
+    menu: SubMenu<D, W>,
     opening: bool,
     popup_id: Option<WindowId>,
 }
 
-impl<W: Widget> MenuButton<W> {
+impl<D: Directional, W: Widget> MenuButton<D, W> {
     /// Construct a pop-up menu
     #[inline]
-    pub fn new<S: Into<CowString>>(label: S, popup: W) -> Self {
+    pub fn new<S: Into<CowString>>(label: S, menu: SubMenu<D, W>) -> Self {
         MenuButton {
             core: Default::default(),
             label: label.into(),
-            popup,
+            menu,
             opening: false,
             popup_id: None,
         }
@@ -50,7 +51,7 @@ impl<W: Widget> MenuButton<W> {
     fn open_menu(&mut self, mgr: &mut Manager) {
         if self.popup_id.is_none() {
             let id = mgr.add_popup(kas::Popup {
-                id: self.popup.id(),
+                id: self.menu.id(),
                 parent: self.id(),
                 direction: Direction::Down,
             });
@@ -65,7 +66,7 @@ impl<W: Widget> MenuButton<W> {
     }
 }
 
-impl<W: Widget> kas::Layout for MenuButton<W> {
+impl<D: Directional, W: Widget> kas::Layout for MenuButton<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.button_surround();
         let margins = size_handle.outer_margins();
@@ -95,7 +96,7 @@ impl<W: Widget> kas::Layout for MenuButton<W> {
     }
 }
 
-impl<M, W: Widget<Msg = M>> event::Handler for MenuButton<W> {
+impl<D: Directional, M, W: Widget<Msg = M>> event::Handler for MenuButton<D, W> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
@@ -139,9 +140,9 @@ impl<M, W: Widget<Msg = M>> event::Handler for MenuButton<W> {
                     } else {
                         self.close_menu(mgr);
                     }
-                } else if self.popup_id.is_some() && self.popup.rect().contains(coord) {
+                } else if self.popup_id.is_some() && self.menu.rect().contains(coord) {
                     if let Some(id) = end_id {
-                        let r = self.popup.send(mgr, id, Event::Activate);
+                        let r = self.menu.send(mgr, id, Event::Activate);
                         self.close_menu(mgr);
                         return r;
                     }
@@ -153,14 +154,14 @@ impl<M, W: Widget<Msg = M>> event::Handler for MenuButton<W> {
     }
 }
 
-impl<W: Widget> event::SendEvent for MenuButton<W> {
+impl<D: Directional, W: Widget> event::SendEvent for MenuButton<D, W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);
         }
 
-        if id <= self.popup.id() {
-            let r = self.popup.send(mgr, id, event);
+        if id <= self.menu.id() {
+            let r = self.menu.send(mgr, id, event);
             if r.is_msg() {
                 self.close_menu(mgr);
             }
@@ -171,7 +172,7 @@ impl<W: Widget> event::SendEvent for MenuButton<W> {
     }
 }
 
-impl<W: Widget> HasText for MenuButton<W> {
+impl<D: Directional, W: Widget> HasText for MenuButton<D, W> {
     fn get_text(&self) -> &str {
         &self.label
     }

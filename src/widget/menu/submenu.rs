@@ -45,6 +45,14 @@ impl<W: Widget> SubMenu<kas::Right, W> {
     }
 }
 
+impl<W: Widget> SubMenu<kas::Down, W> {
+    /// Construct a sub-menu, opening downwards
+    #[inline]
+    pub fn down<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
+        SubMenu::new(label, list)
+    }
+}
+
 impl<D: Directional, W: Widget> SubMenu<D, W> {
     /// Construct a sub-menu
     #[inline]
