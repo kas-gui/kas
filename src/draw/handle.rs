@@ -99,6 +99,15 @@ pub trait SizeHandle {
     /// Returns dimensions of the frame on each side.
     fn frame(&self) -> Size;
 
+    /// Menu frame
+    ///
+    /// Menu items have a larger-than-usual margin / invisible frame around
+    /// them. This should be drawn with [`DrawHandle::menu_frame`],
+    /// though likely the theme will only draw when highlighted.
+    ///
+    /// Like [`SizeHandle::frame`] this method returns the frame on each side.
+    fn menu_frame(&self) -> Size;
+
     /// The margin around content within a widget
     ///
     /// This area may be used to draw focus indicators.
@@ -260,6 +269,9 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn frame(&self) -> Size {
         self.deref().frame()
     }
+    fn menu_frame(&self) -> Size {
+        self.deref().menu_frame()
+    }
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
     }
@@ -306,6 +318,9 @@ where
 
     fn frame(&self) -> Size {
         self.deref().frame()
+    }
+    fn menu_frame(&self) -> Size {
+        self.deref().menu_frame()
     }
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()

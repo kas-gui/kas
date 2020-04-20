@@ -132,6 +132,10 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
         let f = self.dims.frame as u32;
         Size::uniform(f)
     }
+    fn menu_frame(&self) -> Size {
+        let f = self.dims.frame as u32;
+        Size(f, f / 2)
+    }
 
     fn inner_margin(&self) -> Size {
         Size::uniform(self.dims.margin as u32)

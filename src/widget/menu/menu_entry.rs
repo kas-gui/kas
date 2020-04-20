@@ -10,7 +10,7 @@ use std::fmt::{self, Debug};
 use kas::class::{HasBool, HasText};
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
 use kas::event::{Event, Manager, Response, VoidMsg};
-use kas::layout::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
+use kas::layout::{AxisInfo, Margins, RulesSetter, RulesSolver, SizeRules};
 use kas::prelude::*;
 use kas::widget::{CheckBoxBare, Label};
 
@@ -21,18 +21,27 @@ pub struct MenuEntry<M: Clone + Debug> {
     #[widget_core]
     core: kas::CoreData,
     label: CowString,
+    label_off: Coord,
     msg: M,
 }
 
 impl<M: Clone + Debug> Layout for MenuEntry<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        size_handle.text_bound(&self.label, TextClass::Label, axis)
+        let size = size_handle.menu_frame();
+        self.label_off = size.into();
+        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, Margins::ZERO);
+        let text_rules = size_handle.text_bound(&self.label, TextClass::Label, axis);
+        text_rules.surrounded_by(frame_rules, true)
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
+        let rect = Rect {
+            pos: self.core.rect.pos + self.label_off,
+            size: self.core.rect.size - self.label_off.into(),
+        };
         let align = (Align::Begin, Align::Centre);
-        draw_handle.text(self.core.rect, &self.label, TextClass::Label, align);
+        draw_handle.text(rect, &self.label, TextClass::Label, align);
     }
 }
 
@@ -46,6 +55,7 @@ impl<M: Clone + Debug> MenuEntry<M> {
         MenuEntry {
             core: Default::default(),
             label: label.into(),
+            label_off: Coord::ZERO,
             msg,
         }
     }
