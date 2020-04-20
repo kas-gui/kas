@@ -51,24 +51,22 @@ fn main() -> Result<(), kas_wgpu::Error> {
     }
 
     let themes = vec![
-        TextButton::new("Shaded", Menu::Theme("shaded")).boxed(),
-        TextButton::new("Flat", Menu::Theme("flat")).boxed(),
+        MenuEntry::new("Shaded", Menu::Theme("shaded")).boxed(),
+        MenuEntry::new("Flat", Menu::Theme("flat")).boxed(),
     ];
     let colours = vec![
-        TextButton::new("Default", Menu::Colour("default")),
-        TextButton::new("Light", Menu::Colour("light")),
-        TextButton::new("Dark", Menu::Colour("dark")),
+        MenuEntry::new("Default", Menu::Colour("default")),
+        MenuEntry::new("Light", Menu::Colour("light")),
+        MenuEntry::new("Dark", Menu::Colour("dark")),
     ];
     let menubar = MenuBar::<Right, _>::new(vec![
-        SubMenu::new("App", vec![TextButton::new("Quit", Menu::Quit).boxed()]),
+        SubMenu::new("App", vec![MenuEntry::new("Quit", Menu::Quit).boxed()]),
         SubMenu::new("Theme", themes),
         SubMenu::new(
             "Style",
             vec![
                 SubMenu::right("Colours", colours).boxed(),
-                CheckBox::new("Disabled")
-                    .on_toggle(|state| Menu::Disabled(state))
-                    .boxed(),
+                MenuToggle::new_on(|state| Menu::Disabled(state), "Disabled").boxed(),
             ],
         ),
     ]);

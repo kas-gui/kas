@@ -6,9 +6,11 @@
 //! Menus
 
 mod menu_button;
+mod menu_entry;
 mod menubar;
 mod submenu;
 
 pub use menu_button::MenuButton;
+pub use menu_entry::{MenuEntry, MenuToggle};
 pub use menubar::MenuBar;
 pub use submenu::SubMenu;
