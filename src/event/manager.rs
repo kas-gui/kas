@@ -81,7 +81,6 @@ enum Pending {
 // Note that the most frequent usage of fields is to check highlighting states
 // drawing redraw, which requires iterating all grab & key events.
 // Thus for these collections, the preferred container is SmallVec.
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 #[derive(Debug)]
 pub struct ManagerState {
     dpi_factor: f64,
