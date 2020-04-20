@@ -5,6 +5,7 @@
 
 //! Sub-menu
 
+use super::MenuFrame;
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
 use kas::event::{Event, Manager, Response};
@@ -22,7 +23,7 @@ pub struct SubMenu<D: Directional, W: Widget> {
     direction: D,
     label: CowString,
     #[widget]
-    pub list: Column<W>,
+    pub list: MenuFrame<Column<W>>,
     popup_id: Option<WindowId>,
 }
 
@@ -61,7 +62,7 @@ impl<D: Directional, W: Widget> SubMenu<D, W> {
             core: Default::default(),
             direction,
             label: label.into(),
-            list: Column::new(list),
+            list: MenuFrame::new(Column::new(list)),
             popup_id: None,
         }
     }
