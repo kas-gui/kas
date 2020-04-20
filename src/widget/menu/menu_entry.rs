@@ -178,11 +178,12 @@ impl<M> kas::Layout for MenuToggle<M> {
         solver.finish(&mut self.layout_data)
     }
 
-    fn set_rect(&mut self, rect: Rect, _: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         let mut setter = layout::RowSetter::<_, [u32; 2], _>::new(
             rect,
             (kas::Right, 2usize),
+            align,
             &mut self.layout_data,
         );
         let align = kas::AlignHints::NONE;

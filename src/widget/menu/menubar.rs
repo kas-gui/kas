@@ -9,7 +9,9 @@ use smallvec::SmallVec;
 use std::time::Duration;
 
 use super::SubMenu;
+use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{Event, GrabMode, Handler, Manager, Response, SendEvent};
+use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::widget::List;
 
@@ -17,7 +19,6 @@ use kas::widget::List;
 ///
 /// This widget houses a sequence of menu buttons, allowing input actions across
 /// menus.
-#[layout(single)]
 #[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
 pub struct MenuBar<D: Directional, W: Widget> {
@@ -52,6 +53,33 @@ impl<D: Directional, W: Widget> MenuBar<D, W> {
     }
 }
 
+// NOTE: we could use layout(single) except for alignment
+impl<D: Directional, W: Widget> Layout for MenuBar<D, W> {
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        self.bar.size_rules(size_handle, axis)
+    }
+
+    fn set_rect(&mut self, rect: Rect, _: AlignHints) {
+        self.core_data_mut().rect = rect;
+        let align = AlignHints::new(Some(Align::Begin), Some(Align::Begin));
+        self.bar.set_rect(rect, align);
+    }
+
+    #[inline]
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
+        if let Some(id) = self.bar.find_id(coord) {
+            return Some(id);
+        }
+        Some(self.id())
+    }
+
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        self.bar.draw(draw_handle, mgr, disabled);
+    }
+}
 impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
     type Msg = M;
 
