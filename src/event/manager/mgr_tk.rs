@@ -32,7 +32,7 @@ impl ManagerState {
             nav_stack: SmallVec::new(),
             hover: None,
             hover_icon: CursorIcon::Default,
-            key_events: Default::default(),
+            key_depress: Default::default(),
             last_mouse_coord: Coord::ZERO,
             mouse_grab: None,
             touch_grab: Default::default(),
@@ -133,7 +133,7 @@ impl ManagerState {
                 elt
             }));
 
-        do_map!(self.key_events, |elt: (u32, WidgetId)| map
+        do_map!(self.key_depress, |elt: (u32, WidgetId)| map
             .get(&elt.1)
             .map(|id| (elt.0, *id)));
     }

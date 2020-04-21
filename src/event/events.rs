@@ -13,7 +13,7 @@ use crate::geom::{Coord, DVec2};
 use crate::WidgetId;
 
 /// Events addressed to a widget
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Event {
     /// No event
     None,
@@ -203,7 +203,7 @@ impl PressSource {
 }
 
 /// Type used by [`Event::Scroll`]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ScrollDelta {
     /// Scroll a given number of lines
     LineDelta(f32, f32),

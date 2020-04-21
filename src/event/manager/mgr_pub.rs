@@ -45,7 +45,7 @@ impl ManagerState {
     /// Check whether the given widget is visually depressed
     #[inline]
     pub fn is_depressed(&self, w_id: WidgetId) -> bool {
-        for (_, id) in &self.key_events {
+        for (_, id) in &self.key_depress {
             if *id == w_id {
                 return true;
             }

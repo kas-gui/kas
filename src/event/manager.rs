@@ -90,7 +90,7 @@ pub struct ManagerState {
     nav_stack: SmallVec<[u32; 16]>,
     hover: Option<WidgetId>,
     hover_icon: CursorIcon,
-    key_events: SmallVec<[(u32, WidgetId); 10]>,
+    key_depress: SmallVec<[(u32, WidgetId); 10]>,
     last_mouse_coord: Coord,
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 10]>,
@@ -260,17 +260,20 @@ impl<'a> Manager<'a> {
             }
 
             if let Some((id, event)) = id_action {
+                let is_activate = event == Event::Activate;
                 self.send_event(widget, id, event);
 
-                // Add to key_events for visual feedback
-                for item in &self.mgr.key_events {
-                    if item.1 == id {
-                        return;
+                // Event::Activate causes buttons to be visually depressed
+                if is_activate {
+                    for item in &self.mgr.key_depress {
+                        if item.1 == id {
+                            return;
+                        }
                     }
-                }
 
-                self.mgr.key_events.push((scancode, id));
-                self.redraw(id);
+                    self.mgr.key_depress.push((scancode, id));
+                    self.redraw(id);
+                }
             }
         }
     }
@@ -278,7 +281,7 @@ impl<'a> Manager<'a> {
     #[cfg(feature = "winit")]
     fn end_key_event(&mut self, scancode: u32) {
         let r = 'outer: loop {
-            for (i, item) in self.mgr.key_events.iter().enumerate() {
+            for (i, item) in self.mgr.key_depress.iter().enumerate() {
                 // We must match scancode not vkey since the
                 // latter may have changed due to modifiers
                 if item.0 == scancode {
@@ -287,8 +290,8 @@ impl<'a> Manager<'a> {
             }
             return;
         };
-        self.redraw(self.mgr.key_events[r].1);
-        self.mgr.key_events.remove(r);
+        self.redraw(self.mgr.key_depress[r].1);
+        self.mgr.key_depress.remove(r);
     }
 
     #[cfg(feature = "winit")]
