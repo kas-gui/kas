@@ -9,7 +9,8 @@ use std::fmt::Debug;
 
 use super::ScrollBar;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, Manager, Response};
+use kas::event::ScrollDelta::{LineDelta, PixelDelta};
+use kas::event::{Event, Manager, NavKey, Response};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
@@ -230,24 +231,47 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
             return Response::Unhandled(event);
         }
 
-        let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
-            Event::Scroll(delta) => {
-                let d = match delta {
-                    event::ScrollDelta::LineDelta(x, y) => {
-                        Coord((-w.scroll_rate * x) as i32, (w.scroll_rate * y) as i32)
-                    }
-                    event::ScrollDelta::PixelDelta(d) => d,
-                };
-                let action = w.set_offset(w.offset - d);
-                if action != TkAction::None {
-                    *mgr += action
-                        + w.horiz_bar.set_value(w.offset.0 as u32)
-                        + w.vert_bar.set_value(w.offset.1 as u32);
-                    Response::None
-                } else {
-                    Response::Unhandled(Event::Scroll(delta))
-                }
+        let scroll = |w: &mut Self, mgr: &mut Manager, delta| {
+            let d = match delta {
+                LineDelta(x, y) => Coord((-w.scroll_rate * x) as i32, (w.scroll_rate * y) as i32),
+                PixelDelta(d) => d,
+            };
+            let action = w.set_offset(w.offset - d);
+            if action != TkAction::None {
+                *mgr += action
+                    + w.horiz_bar.set_value(w.offset.0 as u32)
+                    + w.vert_bar.set_value(w.offset.1 as u32);
+                Response::None
+            } else {
+                Response::Unhandled(Event::Scroll(delta))
             }
+        };
+
+        let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
+            Event::NavKey(key) => {
+                let delta = match key {
+                    NavKey::Left => LineDelta(-1.0, 0.0),
+                    NavKey::Right => LineDelta(1.0, 0.0),
+                    NavKey::Up => LineDelta(0.0, 1.0),
+                    NavKey::Down => LineDelta(0.0, -1.0),
+                    NavKey::Home | NavKey::End => {
+                        let action = w.set_offset(match key {
+                            NavKey::Home => Coord::ZERO,
+                            _ => w.max_offset,
+                        });
+                        if action != TkAction::None {
+                            *mgr += action
+                                + w.horiz_bar.set_value(w.offset.0 as u32)
+                                + w.vert_bar.set_value(w.offset.1 as u32);
+                        }
+                        return Response::None;
+                    }
+                    NavKey::PageUp => PixelDelta(Coord(0, w.core.rect.size.1 as i32 / 2)),
+                    NavKey::PageDown => PixelDelta(Coord(0, -(w.core.rect.size.1 as i32 / 2))),
+                };
+                scroll(w, mgr, delta)
+            }
+            Event::Scroll(delta) => scroll(w, mgr, delta),
             Event::PressStart { source, coord, .. } if source.is_primary() => {
                 mgr.request_grab(
                     w.id(),
