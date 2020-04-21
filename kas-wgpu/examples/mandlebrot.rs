@@ -14,7 +14,7 @@ use wgpu::ShaderModule;
 
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, Manager, Response, VoidResponse};
+use kas::event::{Event, Manager, NavKey, Response, VoidResponse};
 use kas::geom::{Coord, DVec2, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::prelude::*;
@@ -390,6 +390,7 @@ impl PipeWindow {
     }
 }
 
+#[widget(config=noauto)]
 #[handler(handle=noauto)]
 #[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Mandlebrot {
@@ -401,6 +402,42 @@ struct Mandlebrot {
     view_alpha: f64,
     rel_width: f32,
     iter: i32,
+}
+
+impl Mandlebrot {
+    fn new() -> Self {
+        Mandlebrot {
+            core: Default::default(),
+            alpha: DVec2(1.0, 0.0),
+            delta: DVec2(-0.5, 0.0),
+            view_delta: DVec2::ZERO,
+            view_alpha: 0.0,
+            rel_width: 0.0,
+            iter: 64,
+        }
+    }
+
+    fn reset_view(&mut self) {
+        self.alpha = DVec2(1.0, 0.0);
+        self.delta = DVec2(-0.5, 0.0);
+    }
+
+    fn loc(&self) -> String {
+        let op = if self.delta.1 < 0.0 { "−" } else { "+" };
+        format!(
+            "Location: {} {} {}i; scale: {}",
+            self.delta.0,
+            op,
+            self.delta.1.abs(),
+            self.alpha.sum_square().sqrt()
+        )
+    }
+}
+
+impl WidgetConfig for Mandlebrot {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.register_nav_fallback(self.id());
+    }
 }
 
 impl Layout for Mandlebrot {
@@ -443,6 +480,26 @@ impl event::Handler for Mandlebrot {
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
+            Event::NavKey(key) => {
+                match key {
+                    NavKey::Home | NavKey::End => self.reset_view(),
+                    NavKey::PageUp => self.alpha = self.alpha / 2f64.sqrt(),
+                    NavKey::PageDown => self.alpha = self.alpha * 2f64.sqrt(),
+                    key => {
+                        let d = 0.2;
+                        let delta = match key {
+                            NavKey::Up => DVec2(0.0, -d),
+                            NavKey::Down => DVec2(0.0, d),
+                            NavKey::Left => DVec2(-d, 0.0),
+                            NavKey::Right => DVec2(d, 0.0),
+                            _ => return Response::None,
+                        };
+                        self.delta = self.delta + self.alpha.complex_mul(delta);
+                    }
+                }
+                mgr.redraw(self.id());
+                Response::Msg(())
+            }
             Event::Scroll(delta) => {
                 let factor = match delta {
                     event::ScrollDelta::LineDelta(_, y) => -0.5 * y as f64,
@@ -482,31 +539,6 @@ impl event::Handler for Mandlebrot {
             }
             _ => Response::None,
         }
-    }
-}
-
-impl Mandlebrot {
-    fn new() -> Self {
-        Mandlebrot {
-            core: Default::default(),
-            alpha: DVec2(1.0, 0.0),
-            delta: DVec2(-0.5, 0.0),
-            view_delta: DVec2::ZERO,
-            view_alpha: 0.0,
-            rel_width: 0.0,
-            iter: 64,
-        }
-    }
-
-    fn loc(&self) -> String {
-        let op = if self.delta.1 < 0.0 { "−" } else { "+" };
-        format!(
-            "Location: {} {} {}i; scale: {}",
-            self.delta.0,
-            op,
-            self.delta.1.abs(),
-            self.alpha.sum_square().sqrt()
-        )
     }
 }
 
