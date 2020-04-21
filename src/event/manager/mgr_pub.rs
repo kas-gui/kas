@@ -5,7 +5,7 @@
 
 //! Event manager — public API
 
-use log::trace;
+use log::{debug, trace};
 use std::time::{Duration, Instant};
 use std::u16;
 
@@ -221,6 +221,24 @@ impl<'a> Manager<'a> {
 
 /// Public API (around event manager state)
 impl<'a> Manager<'a> {
+    /// Attempts to set a fallback to receive [`Event::NavKey`]
+    ///
+    /// In case a navigation key is pressed (e.g. Left arrow) but no widget has
+    /// navigation focus, then, if a fallback has been set, that widget will
+    /// receive the key via [`Event::NavKey`]. (This does not include
+    /// [`Event::Activate`].)
+    ///
+    /// Only one widget can be a fallback, and the *first* to set itself wins.
+    /// This is primarily used to allow [`ScrollRegion`] to respond to
+    /// navigation keys when no widget has focus.
+    pub fn register_nav_fallback(&mut self, id: WidgetId) {
+        if self.mgr.nav_fallback.is_none() {
+            debug!("Manager: nav_fallback = {}", id);
+            self.mgr.nav_fallback = Some(id);
+        }
+    }
+
+    ///
     /// Adds an accelerator key for a widget
     ///
     /// If this key is pressed when the window has focus and no widget has a

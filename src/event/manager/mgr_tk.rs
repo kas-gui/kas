@@ -29,6 +29,7 @@ impl ManagerState {
             modifiers: ModifiersState::empty(),
             char_focus: None,
             nav_focus: None,
+            nav_fallback: None,
             nav_stack: SmallVec::new(),
             hover: None,
             hover_icon: CursorIcon::Default,
@@ -69,6 +70,7 @@ impl ManagerState {
         self.handle_updates.clear();
         self.pending.clear();
         self.action = TkAction::None;
+        self.nav_fallback = None;
 
         let coord = self.last_mouse_coord;
         self.with(tkw, |mut mgr| {

@@ -87,6 +87,7 @@ pub struct ManagerState {
     modifiers: ModifiersState,
     char_focus: Option<WidgetId>,
     nav_focus: Option<WidgetId>,
+    nav_fallback: Option<WidgetId>,
     nav_stack: SmallVec<[u32; 16]>,
     hover: Option<WidgetId>,
     hover_icon: CursorIcon,
@@ -256,6 +257,14 @@ impl<'a> Manager<'a> {
             if id_action.is_none() {
                 if let Some(id) = self.mgr.accel_keys.get(&vkey).cloned() {
                     id_action = Some((id, Event::Activate));
+                }
+            }
+
+            if id_action.is_none() {
+                if let Some(id) = self.mgr.nav_fallback {
+                    if let Some(key) = NavKey::new(vkey) {
+                        id_action = Some((id, Event::NavKey(key)));
+                    }
                 }
             }
 
