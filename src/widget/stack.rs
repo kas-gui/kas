@@ -92,9 +92,15 @@ impl<W: Widget> Layout for Stack<W> {
 impl<W: Widget> event::SendEvent for Stack<W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if !self.is_disabled() {
-            for child in &mut self.widgets {
+            for (index, child) in self.widgets.iter_mut().enumerate() {
                 if id <= child.id() {
-                    return child.send(mgr, id, event);
+                    return match child.send(mgr, id, event) {
+                        Response::Focus(rect) => {
+                            *mgr += self.set_active(index);
+                            Response::Focus(rect)
+                        }
+                        r => r,
+                    };
                 }
             }
         }
@@ -127,8 +133,12 @@ impl<W: Widget> Stack<W> {
     /// drawn or respond to events, but the stack will still size as required by
     /// child widgets.
     pub fn set_active(&mut self, active: usize) -> TkAction {
-        self.active = active;
-        TkAction::RegionMoved
+        if self.active == active {
+            TkAction::None
+        } else {
+            self.active = active;
+            TkAction::RegionMoved
+        }
     }
 
     /// Get a direct reference to the active widget, if any

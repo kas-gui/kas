@@ -241,6 +241,9 @@ impl<'a> Manager<'a> {
 
         if vkey == VK::Tab {
             self.next_nav_focus(widget.as_widget(), self.mgr.modifiers.shift());
+            if let Some(id) = self.mgr.nav_focus {
+                self.send_event(widget, id, Event::NavFocus);
+            }
         } else if vkey == VK::Escape {
             self.unset_nav_focus();
         } else {

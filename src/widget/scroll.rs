@@ -292,6 +292,13 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
 
             match self.inner.send(mgr, id, event) {
                 Response::Unhandled(event) => event,
+                Response::Focus(rect) => {
+                    let mut offset = self.offset;
+                    offset = offset.max(rect.pos_end() - self.core.rect.pos_end());
+                    offset = offset.min(rect.pos - self.core.rect.pos);
+                    *mgr += self.set_offset(offset);
+                    return Response::Focus(rect - self.offset);
+                }
                 r => return r,
             }
         } else {

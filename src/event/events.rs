@@ -132,6 +132,10 @@ pub enum Event {
     /// This is a specific command from a parent, e.g. [`kas::widget::MenuBar`].
     /// Most widgets can ignore this, even if they have a pop-up.
     ClosePopup,
+    /// Sent when a widget receives keyboard navigation focus
+    ///
+    /// The widget should reply with [`Response::Focus`].
+    NavFocus,
 }
 
 /// Navigation key ([`Event::NavKey`])

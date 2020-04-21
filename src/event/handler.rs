@@ -128,6 +128,10 @@ impl<'a> Manager<'a> {
                 _ => (),
             };
         }
+        match event {
+            Event::NavFocus => return Response::Focus(widget.rect()),
+            _ => (),
+        }
         widget.handle(mgr, event)
     }
 }
