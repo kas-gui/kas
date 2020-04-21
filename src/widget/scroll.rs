@@ -23,6 +23,7 @@ use kas::prelude::*;
 /// Scroll regions translate their contents by an `offset`, which has a
 /// minimum value of [`Coord::ZERO`] and a maximum value of
 /// [`ScrollRegion::max_offset`].
+#[widget(config=noauto)]
 #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
@@ -41,13 +42,13 @@ pub struct ScrollRegion<W: Widget> {
     #[widget]
     vert_bar: ScrollBar<kas::Down>,
     #[widget]
-    child: W,
+    inner: W,
 }
 
 impl<W: Widget> ScrollRegion<W> {
-    /// Construct a new scroll region around a child widget
+    /// Construct a new scroll region around an inner widget
     #[inline]
-    pub fn new(child: W) -> Self {
+    pub fn new(inner: W) -> Self {
         ScrollRegion {
             core: Default::default(),
             min_child_size: Size::ZERO,
@@ -60,7 +61,7 @@ impl<W: Widget> ScrollRegion<W> {
             show_bars: (false, false),
             horiz_bar: ScrollBar::new(),
             vert_bar: ScrollBar::new(),
-            child,
+            inner,
         }
     }
 
@@ -93,13 +94,13 @@ impl<W: Widget> ScrollRegion<W> {
     /// Access inner widget directly
     #[inline]
     pub fn inner(&self) -> &W {
-        &self.child
+        &self.inner
     }
 
     /// Access inner widget directly
     #[inline]
     pub fn inner_mut(&mut self) -> &mut W {
-        &mut self.child
+        &mut self.inner
     }
 
     /// Get the maximum offset
@@ -130,9 +131,15 @@ impl<W: Widget> ScrollRegion<W> {
     }
 }
 
+impl<W: Widget> WidgetConfig for ScrollRegion<W> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.register_nav_fallback(self.id());
+    }
+}
+
 impl<W: Widget> Layout for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let mut rules = self.child.size_rules(size_handle, axis);
+        let mut rules = self.inner.size_rules(size_handle, axis);
         if axis.is_horizontal() {
             self.min_child_size.0 = rules.min_size();
         } else {
@@ -172,7 +179,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
 
         let child_size = self.inner_size.max(self.min_child_size);
         let child_rect = Rect::new(pos, child_size);
-        self.child.set_rect(child_rect, AlignHints::NONE);
+        self.inner.set_rect(child_rect, AlignHints::NONE);
         self.max_offset = Coord::from(child_size) - Coord::from(self.inner_size);
         self.offset = self.offset.clamp(Coord::ZERO, self.max_offset);
 
@@ -203,7 +210,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         self.horiz_bar
             .find_id(coord)
             .or_else(|| self.vert_bar.find_id(coord))
-            .or_else(|| self.child.find_id(coord + self.offset))
+            .or_else(|| self.inner.find_id(coord + self.offset))
             .or(Some(self.id()))
     }
 
@@ -220,7 +227,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
             size: self.inner_size,
         };
         draw_handle.clip_region(rect, self.offset, &mut |handle| {
-            self.child.draw(handle, mgr, disabled)
+            self.inner.draw(handle, mgr, disabled)
         });
     }
 }
@@ -230,6 +237,66 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
         if self.is_disabled() {
             return Response::Unhandled(event);
         }
+
+        let event = if id <= self.horiz_bar.id() {
+            match Response::<Self::Msg>::try_from(self.horiz_bar.send(mgr, id, event)) {
+                Ok(Response::Unhandled(event)) => event,
+                Ok(r) => return r,
+                Err(msg) => {
+                    *mgr += self.set_offset(Coord(msg as i32, self.offset.1));
+                    return Response::None;
+                }
+            }
+        } else if id <= self.vert_bar.id() {
+            match Response::<Self::Msg>::try_from(self.vert_bar.send(mgr, id, event)) {
+                Ok(Response::Unhandled(event)) => event,
+                Ok(r) => return r,
+                Err(msg) => {
+                    *mgr += self.set_offset(Coord(self.offset.0, msg as i32));
+                    return Response::None;
+                }
+            }
+        } else if id <= self.inner.id() {
+            let event = match event {
+                Event::PressStart {
+                    source,
+                    start_id,
+                    coord,
+                } => Event::PressStart {
+                    source,
+                    start_id,
+                    coord: coord + self.offset,
+                },
+                Event::PressMove {
+                    source,
+                    cur_id,
+                    coord,
+                    delta,
+                } => Event::PressMove {
+                    source,
+                    cur_id,
+                    coord: coord + self.offset,
+                    delta,
+                },
+                Event::PressEnd {
+                    source,
+                    end_id,
+                    coord,
+                } => Event::PressEnd {
+                    source,
+                    end_id,
+                    coord: coord + self.offset,
+                },
+                event => event,
+            };
+
+            match self.inner.send(mgr, id, event) {
+                Response::Unhandled(event) => event,
+                r => return r,
+            }
+        } else {
+            event
+        };
 
         let scroll = |w: &mut Self, mgr: &mut Manager, delta| {
             let d = match delta {
@@ -247,7 +314,7 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
             }
         };
 
-        let unhandled = |w: &mut Self, mgr: &mut Manager, event| match event {
+        match event {
             Event::NavKey(key) => {
                 let delta = match key {
                     NavKey::Left => LineDelta(-1.0, 0.0),
@@ -255,26 +322,26 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
                     NavKey::Up => LineDelta(0.0, 1.0),
                     NavKey::Down => LineDelta(0.0, -1.0),
                     NavKey::Home | NavKey::End => {
-                        let action = w.set_offset(match key {
+                        let action = self.set_offset(match key {
                             NavKey::Home => Coord::ZERO,
-                            _ => w.max_offset,
+                            _ => self.max_offset,
                         });
                         if action != TkAction::None {
                             *mgr += action
-                                + w.horiz_bar.set_value(w.offset.0 as u32)
-                                + w.vert_bar.set_value(w.offset.1 as u32);
+                                + self.horiz_bar.set_value(self.offset.0 as u32)
+                                + self.vert_bar.set_value(self.offset.1 as u32);
                         }
                         return Response::None;
                     }
-                    NavKey::PageUp => PixelDelta(Coord(0, w.core.rect.size.1 as i32 / 2)),
-                    NavKey::PageDown => PixelDelta(Coord(0, -(w.core.rect.size.1 as i32 / 2))),
+                    NavKey::PageUp => PixelDelta(Coord(0, self.core.rect.size.1 as i32 / 2)),
+                    NavKey::PageDown => PixelDelta(Coord(0, -(self.core.rect.size.1 as i32 / 2))),
                 };
-                scroll(w, mgr, delta)
+                scroll(self, mgr, delta)
             }
-            Event::Scroll(delta) => scroll(w, mgr, delta),
+            Event::Scroll(delta) => scroll(self, mgr, delta),
             Event::PressStart { source, coord, .. } if source.is_primary() => {
                 mgr.request_grab(
-                    w.id(),
+                    self.id(),
                     source,
                     coord,
                     event::GrabMode::Grab,
@@ -282,83 +349,20 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
                 );
                 Response::None
             }
+            Event::PressMove { delta, .. } => {
+                let action = self.set_offset(self.offset - delta);
+                if action != TkAction::None {
+                    *mgr += action
+                        + self.horiz_bar.set_value(self.offset.0 as u32)
+                        + self.vert_bar.set_value(self.offset.1 as u32);
+                }
+                Response::None
+            }
+            Event::PressEnd { .. } => {
+                // consume due to request
+                Response::None
+            }
             e @ _ => Response::Unhandled(e),
-        };
-
-        if id <= self.horiz_bar.id() {
-            return match Response::<Self::Msg>::try_from(self.horiz_bar.send(mgr, id, event)) {
-                Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
-                Ok(r) => r,
-                Err(msg) => {
-                    *mgr += self.set_offset(Coord(msg as i32, self.offset.1));
-                    Response::None
-                }
-            };
-        } else if id <= self.vert_bar.id() {
-            return match Response::<Self::Msg>::try_from(self.vert_bar.send(mgr, id, event)) {
-                Ok(Response::Unhandled(event)) => unhandled(self, mgr, event),
-                Ok(r) => r,
-                Err(msg) => {
-                    *mgr += self.set_offset(Coord(self.offset.0, msg as i32));
-                    Response::None
-                }
-            };
-        } else if id == self.id() {
-            return match event {
-                Event::PressMove { delta, .. } => {
-                    let action = self.set_offset(self.offset - delta);
-                    if action != TkAction::None {
-                        *mgr += action
-                            + self.horiz_bar.set_value(self.offset.0 as u32)
-                            + self.vert_bar.set_value(self.offset.1 as u32);
-                    }
-                    Response::None
-                }
-                Event::PressEnd { .. } => {
-                    // consume due to request
-                    Response::None
-                }
-                e @ _ => Response::Unhandled(e),
-            };
-        }
-
-        let event = match event {
-            Event::PressStart {
-                source,
-                start_id,
-                coord,
-            } => Event::PressStart {
-                source,
-                start_id,
-                coord: coord + self.offset,
-            },
-            Event::PressMove {
-                source,
-                cur_id,
-                coord,
-                delta,
-            } => Event::PressMove {
-                source,
-                cur_id,
-                coord: coord + self.offset,
-                delta,
-            },
-            Event::PressEnd {
-                source,
-                end_id,
-                coord,
-            } => Event::PressEnd {
-                source,
-                end_id,
-                coord: coord + self.offset,
-            },
-            event => event,
-        };
-
-        match self.child.send(mgr, id, event) {
-            Response::None => Response::None,
-            Response::Unhandled(event) => unhandled(self, mgr, event),
-            e @ _ => e,
         }
     }
 }
