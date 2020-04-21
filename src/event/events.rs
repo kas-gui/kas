@@ -13,7 +13,7 @@ use crate::geom::{Coord, DVec2};
 use crate::WidgetId;
 
 /// Events addressed to a widget
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Event {
     /// No event
     None,
@@ -132,6 +132,10 @@ pub enum Event {
     /// This is a specific command from a parent, e.g. [`kas::widget::MenuBar`].
     /// Most widgets can ignore this, even if they have a pop-up.
     ClosePopup,
+    /// Sent when a widget receives keyboard navigation focus
+    ///
+    /// The widget should reply with [`Response::Focus`].
+    NavFocus,
 }
 
 /// Navigation key ([`Event::NavKey`])
@@ -203,7 +207,7 @@ impl PressSource {
 }
 
 /// Type used by [`Event::Scroll`]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum ScrollDelta {
     /// Scroll a given number of lines
     LineDelta(f32, f32),

@@ -6,6 +6,7 @@
 //! Event handling: Response type
 
 use super::{Event, VoidResponse};
+use kas::geom::Rect;
 
 /// Response type from [`Handler::handle`].
 ///
@@ -21,6 +22,8 @@ pub enum Response<M> {
     None,
     /// Unhandled input events get returned back up the widget tree
     Unhandled(Event),
+    /// (Keyboard) focus has changed. This region should be made visible.
+    Focus(Rect),
     /// Custom message type
     Msg(M),
 }
@@ -87,6 +90,7 @@ impl<M> Response<M> {
         match r {
             None => Ok(None),
             Unhandled(e) => Ok(Unhandled(e)),
+            Focus(rect) => Ok(Focus(rect)),
             Msg(m) => Err(m),
         }
     }

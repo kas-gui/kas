@@ -29,10 +29,11 @@ impl ManagerState {
             modifiers: ModifiersState::empty(),
             char_focus: None,
             nav_focus: None,
+            nav_fallback: None,
             nav_stack: SmallVec::new(),
             hover: None,
             hover_icon: CursorIcon::Default,
-            key_events: Default::default(),
+            key_depress: Default::default(),
             last_mouse_coord: Coord::ZERO,
             mouse_grab: None,
             touch_grab: Default::default(),
@@ -69,6 +70,7 @@ impl ManagerState {
         self.handle_updates.clear();
         self.pending.clear();
         self.action = TkAction::None;
+        self.nav_fallback = None;
 
         let coord = self.last_mouse_coord;
         self.with(tkw, |mut mgr| {
@@ -133,7 +135,7 @@ impl ManagerState {
                 elt
             }));
 
-        do_map!(self.key_events, |elt: (u32, WidgetId)| map
+        do_map!(self.key_depress, |elt: (u32, WidgetId)| map
             .get(&elt.1)
             .map(|id| (elt.0, *id)));
     }

@@ -87,10 +87,11 @@ pub struct ManagerState {
     modifiers: ModifiersState,
     char_focus: Option<WidgetId>,
     nav_focus: Option<WidgetId>,
+    nav_fallback: Option<WidgetId>,
     nav_stack: SmallVec<[u32; 16]>,
     hover: Option<WidgetId>,
     hover_icon: CursorIcon,
-    key_events: SmallVec<[(u32, WidgetId); 10]>,
+    key_depress: SmallVec<[(u32, WidgetId); 10]>,
     last_mouse_coord: Coord,
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 10]>,
@@ -240,6 +241,9 @@ impl<'a> Manager<'a> {
 
         if vkey == VK::Tab {
             self.next_nav_focus(widget.as_widget(), self.mgr.modifiers.shift());
+            if let Some(id) = self.mgr.nav_focus {
+                self.send_event(widget, id, Event::NavFocus);
+            }
         } else if vkey == VK::Escape {
             self.unset_nav_focus();
         } else {
@@ -259,18 +263,29 @@ impl<'a> Manager<'a> {
                 }
             }
 
-            if let Some((id, event)) = id_action {
-                self.send_event(widget, id, event);
-
-                // Add to key_events for visual feedback
-                for item in &self.mgr.key_events {
-                    if item.1 == id {
-                        return;
+            if id_action.is_none() {
+                if let Some(id) = self.mgr.nav_fallback {
+                    if let Some(key) = NavKey::new(vkey) {
+                        id_action = Some((id, Event::NavKey(key)));
                     }
                 }
+            }
 
-                self.mgr.key_events.push((scancode, id));
-                self.redraw(id);
+            if let Some((id, event)) = id_action {
+                let is_activate = event == Event::Activate;
+                self.send_event(widget, id, event);
+
+                // Event::Activate causes buttons to be visually depressed
+                if is_activate {
+                    for item in &self.mgr.key_depress {
+                        if item.1 == id {
+                            return;
+                        }
+                    }
+
+                    self.mgr.key_depress.push((scancode, id));
+                    self.redraw(id);
+                }
             }
         }
     }
@@ -278,7 +293,7 @@ impl<'a> Manager<'a> {
     #[cfg(feature = "winit")]
     fn end_key_event(&mut self, scancode: u32) {
         let r = 'outer: loop {
-            for (i, item) in self.mgr.key_events.iter().enumerate() {
+            for (i, item) in self.mgr.key_depress.iter().enumerate() {
                 // We must match scancode not vkey since the
                 // latter may have changed due to modifiers
                 if item.0 == scancode {
@@ -287,8 +302,8 @@ impl<'a> Manager<'a> {
             }
             return;
         };
-        self.redraw(self.mgr.key_events[r].1);
-        self.mgr.key_events.remove(r);
+        self.redraw(self.mgr.key_depress[r].1);
+        self.mgr.key_depress.remove(r);
     }
 
     #[cfg(feature = "winit")]
