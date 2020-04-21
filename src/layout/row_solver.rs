@@ -10,7 +10,7 @@ use std::ops::Range;
 
 use super::{AxisInfo, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::{Coord, Rect};
-use crate::{Direction, Directional, Widget};
+use crate::{Align, AlignHints, Direction, Directional, Widget};
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///
@@ -112,17 +112,46 @@ pub struct RowSetter<D, T: RowTemp, S: RowStorage> {
 }
 
 impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
-    /// Construct and solve widths
-    pub fn new(rect: Rect, (direction, len): (D, usize), storage: &mut S) -> Self {
+    /// Construct
+    ///
+    /// All setter constructors take the following arguments:
+    ///
+    /// -   `rect`: the [`Rect`] within which to position children
+    /// -   `dim`: dimension information (specific to the setter, in this case
+    ///     the direction and number of columns/rows)
+    /// -   `align`: alignment hints
+    /// -   `storage`: access to the solver's storage
+    pub fn new(
+        mut rect: Rect,
+        (direction, len): (D, usize),
+        align: AlignHints,
+        storage: &mut S,
+    ) -> Self {
         let mut offsets = T::default();
         offsets.set_len(len);
         storage.set_dim(len);
 
-        let is_horiz = direction.is_horizontal();
-        let width = if is_horiz { rect.size.0 } else { rect.size.1 };
-
         if len > 0 {
+            let is_horiz = direction.is_horizontal();
+            let mut width = if is_horiz { rect.size.0 } else { rect.size.1 };
             let (rules, widths) = storage.rules_and_widths();
+            let ideal = rules[len].ideal_size();
+            let align = if is_horiz { align.horiz } else { align.vert };
+            let align = align.unwrap_or(Align::Stretch);
+            if align != Align::Stretch && width > ideal {
+                let extra = width - ideal;
+                width = ideal;
+                let offset = match align {
+                    Align::Begin | Align::Stretch => 0,
+                    Align::Centre => extra / 2,
+                    Align::End => extra,
+                } as i32;
+                if is_horiz {
+                    rect.pos.0 += offset;
+                } else {
+                    rect.pos.1 += offset;
+                }
+            }
             SizeRules::solve_seq_total(widths, rules, width);
         }
 
@@ -143,6 +172,8 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     /// previous `RowSetter`. The user should optionally call `solve_range` on
     /// any ranges needing updating and finally call `update_offsets` before
     /// using this `RowSetter` to calculate child positions.
+    ///
+    /// It is also assumed that alignment is [`Align::Stretch`].
     pub fn new_unsolved(rect: Rect, (direction, len): (D, usize), storage: &mut S) -> Self {
         let mut offsets = T::default();
         offsets.set_len(len);

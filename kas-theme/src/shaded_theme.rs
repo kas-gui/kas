@@ -212,6 +212,16 @@ where
             .shaded_round_frame(self.pass, outer, inner, norm, col);
     }
 
+    fn menu_frame(&mut self, rect: Rect) {
+        let outer = Quad::from(rect + self.offset);
+        let inner = outer.shrink(self.window.dims.frame as f32);
+        let norm = (0.7, 0.0);
+        let col = self.cols.background;
+        self.draw
+            .shaded_round_frame(self.pass, outer, inner, norm, col);
+        self.draw.rect(self.pass, inner, self.cols.background);
+    }
+
     fn separator(&mut self, rect: Rect) {
         let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
@@ -237,6 +247,13 @@ where
             },
         };
         self.draw.text(rect + self.offset, text, props);
+    }
+
+    fn menu_entry(&mut self, rect: Rect, state: InputState) {
+        if let Some(col) = self.cols.menu_entry(state) {
+            let quad = Quad::from(rect + self.offset);
+            self.draw.rect(self.pass, quad, col);
+        }
     }
 
     fn button(&mut self, rect: Rect, state: InputState) {

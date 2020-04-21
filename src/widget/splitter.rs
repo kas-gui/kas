@@ -5,6 +5,7 @@
 
 //! A row or column with sizes adjustable via dividing handles
 
+use log::warn;
 use std::ops::{Index, IndexMut};
 
 use super::DragHandle;
@@ -137,7 +138,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         solver.finish(&mut self.data)
     }
 
-    fn set_rect(&mut self, rect: Rect, _: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         if self.widgets.len() == 0 {
             return;
@@ -151,7 +152,12 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         }
 
         let dim = (self.direction, WidgetChildren::len(self));
-        let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(rect, dim, &mut self.data);
+        let is_horiz = dim.0.is_horizontal();
+        let aa = if is_horiz { align.horiz } else { align.vert };
+        if aa.unwrap_or(Align::Stretch) != Align::Stretch {
+            warn!("Splitter: found alignment != Stretch");
+        }
+        let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(rect, dim, align, &mut self.data);
 
         let mut n = 0;
         loop {

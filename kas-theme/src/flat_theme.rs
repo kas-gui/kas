@@ -210,6 +210,14 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
     }
 
+    fn menu_frame(&mut self, rect: Rect) {
+        let outer = Quad::from(rect + self.offset);
+        let inner = outer.shrink(self.window.dims.frame as f32);
+        self.draw
+            .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
+        self.draw.rect(self.pass, inner, self.cols.background);
+    }
+
     fn separator(&mut self, rect: Rect) {
         let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
@@ -233,6 +241,13 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             },
         };
         self.draw.text(rect + self.offset, text, props);
+    }
+
+    fn menu_entry(&mut self, rect: Rect, state: InputState) {
+        if let Some(col) = self.cols.menu_entry(state) {
+            let quad = Quad::from(rect + self.offset);
+            self.draw.rect(self.pass, quad, col);
+        }
     }
 
     fn button(&mut self, rect: Rect, state: InputState) {

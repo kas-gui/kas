@@ -7,6 +7,7 @@
 
 use super::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::Rect;
+use kas::AlignHints;
 
 /// [`RulesSolver`] implementation for a fixed single-child layout
 pub struct SingleSolver {
@@ -52,11 +53,19 @@ pub struct SingleSetter {
 }
 
 impl SingleSetter {
-    /// Construct.
+    /// Construct
     ///
-    /// - `axis`: `AxisInfo` instance passed into `size_rules`
-    /// - `storage`: irrelevent, but included for consistency
-    pub fn new(rect: Rect, _: (), _: &mut ()) -> Self {
+    /// All setter constructors take the following arguments:
+    ///
+    /// -   `rect`: the [`Rect`] within which to position children
+    /// -   `dim`: dimension information (specific to the setter, in this case
+    ///     nothing)
+    /// -   `align`: alignment hints
+    /// -   `storage`: access to the solver's storage
+    pub fn new(rect: Rect, _: (), _: AlignHints, _: &mut ()) -> Self {
+        // NOTE: possibly we should apply alignment here, but we can't without
+        // storing the ideal size for each dimension in the storage.
+        // If we do, we should do the same for the other axis of RowSetter.
         SingleSetter { rect }
     }
 }

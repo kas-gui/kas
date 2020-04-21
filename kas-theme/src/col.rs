@@ -171,6 +171,17 @@ impl ThemeColours {
         })
     }
 
+    /// Get background highlight colour of a menu entry, if any
+    pub fn menu_entry(&self, state: InputState) -> Option<Colour> {
+        if state.depress {
+            Some(self.button_depressed)
+        } else if state.hover {
+            Some(self.button_highlighted)
+        } else {
+            None
+        }
+    }
+
     /// Get colour of a scrollbar, depending on state
     #[inline]
     pub fn scrollbar_state(&self, state: InputState) -> Colour {

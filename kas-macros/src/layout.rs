@@ -246,11 +246,10 @@ pub(crate) fn derive(
         fn size_rules(
             &mut self,
             size_handle: &mut dyn kas::draw::SizeHandle,
-            mut axis: kas::layout::AxisInfo
+            axis: kas::layout::AxisInfo
         )
             -> kas::layout::SizeRules
         {
-            use std::iter;
             use kas::WidgetCore;
             use kas::layout::RulesSolver;
 
@@ -263,7 +262,7 @@ pub(crate) fn derive(
             solver.finish(&mut #data)
         }
 
-        fn set_rect(&mut self, rect: kas::geom::Rect, _: kas::AlignHints) {
+        fn set_rect(&mut self, rect: kas::geom::Rect, align: kas::AlignHints) {
             use kas::{WidgetCore, Widget};
             use kas::layout::{Margins, RulesSetter};
             self.core.rect = rect;
@@ -271,6 +270,7 @@ pub(crate) fn derive(
             let mut setter = <Self as kas::LayoutData>::Setter::new(
                 rect,
                 #dim,
+                align,
                 &mut #data,
             );
             #set_rect

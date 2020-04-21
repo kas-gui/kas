@@ -99,6 +99,15 @@ pub trait SizeHandle {
     /// Returns dimensions of the frame on each side.
     fn frame(&self) -> Size;
 
+    /// Menu frame
+    ///
+    /// Menu items have a larger-than-usual margin / invisible frame around
+    /// them. This should be drawn with [`DrawHandle::menu_frame`],
+    /// though likely the theme will only draw when highlighted.
+    ///
+    /// Like [`SizeHandle::frame`] this method returns the frame on each side.
+    fn menu_frame(&self) -> Size;
+
     /// The margin around content within a widget
     ///
     /// This area may be used to draw focus indicators.
@@ -201,6 +210,11 @@ pub trait DrawHandle {
     /// The frame dimensions equal those of [`SizeHandle::frame`] on each side.
     fn outer_frame(&mut self, rect: Rect);
 
+    /// Draw a menu frame and background inside the given `rect`
+    ///
+    /// The frame dimensions equal those of [`SizeHandle::frame`] on each side.
+    fn menu_frame(&mut self, rect: Rect);
+
     /// Draw a separator in the given `rect`
     fn separator(&mut self, rect: Rect);
 
@@ -208,6 +222,9 @@ pub trait DrawHandle {
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align));
+
+    /// Draw the background of a menu entry
+    fn menu_entry(&mut self, rect: Rect, state: InputState);
 
     /// Draw button sides, background and margin-area highlight
     fn button(&mut self, rect: Rect, state: InputState);
@@ -251,6 +268,9 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
 
     fn frame(&self) -> Size {
         self.deref().frame()
+    }
+    fn menu_frame(&self) -> Size {
+        self.deref().menu_frame()
     }
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
@@ -298,6 +318,9 @@ where
 
     fn frame(&self) -> Size {
         self.deref().frame()
+    }
+    fn menu_frame(&self) -> Size {
+        self.deref().menu_frame()
     }
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
@@ -347,11 +370,17 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn outer_frame(&mut self, rect: Rect) {
         self.deref_mut().outer_frame(rect);
     }
+    fn menu_frame(&mut self, rect: Rect) {
+        self.deref_mut().menu_frame(rect);
+    }
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
+    }
+    fn menu_entry(&mut self, rect: Rect, state: InputState) {
+        self.deref_mut().menu_entry(rect, state)
     }
     fn button(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().button(rect, state)
@@ -390,11 +419,17 @@ where
     fn outer_frame(&mut self, rect: Rect) {
         self.deref_mut().outer_frame(rect);
     }
+    fn menu_frame(&mut self, rect: Rect) {
+        self.deref_mut().menu_frame(rect);
+    }
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
+    }
+    fn menu_entry(&mut self, rect: Rect, state: InputState) {
+        self.deref_mut().menu_entry(rect, state)
     }
     fn button(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().button(rect, state)

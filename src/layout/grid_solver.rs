@@ -9,6 +9,7 @@ use std::marker::PhantomData;
 
 use super::{AxisInfo, GridStorage, RowTemp, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::{Coord, Rect, Size};
+use kas::{Align, AlignHints};
 
 /// Per-child information
 pub struct GridChildInfo {
@@ -203,12 +204,21 @@ pub struct GridSetter<RT: RowTemp, CT: RowTemp, S: GridStorage> {
 }
 
 impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
-    /// Construct.
+    /// Construct
     ///
-    /// - `rect`: target [`Rect`]
-    /// - `(cols, rows)`: number of columns and rows
-    /// - `storage`: reference to persistent storage
-    pub fn new(rect: Rect, (cols, rows): (usize, usize), storage: &mut S) -> Self {
+    /// All setter constructors take the following arguments:
+    ///
+    /// -   `rect`: the [`Rect`] within which to position children
+    /// -   `dim`: dimension information (specific to the setter, in this case
+    ///     number of columns and rows)
+    /// -   `align`: alignment hints
+    /// -   `storage`: access to the solver's storage
+    pub fn new(
+        rect: Rect,
+        (cols, rows): (usize, usize),
+        align: AlignHints,
+        storage: &mut S,
+    ) -> Self {
         let mut w_offsets = RT::default();
         w_offsets.set_len(cols);
         let mut h_offsets = CT::default();
@@ -217,9 +227,21 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
         storage.set_dims(cols, rows);
 
         if cols > 0 {
+            let align = align.horiz.unwrap_or(Align::Stretch);
             let (rules, widths) = storage.rules_and_widths();
-            SizeRules::solve_seq_total(widths, rules, rect.size.0);
+            let ideal = rules[cols].ideal_size();
+
             w_offsets.as_mut()[0] = 0;
+            if align != Align::Stretch && rect.size.0 > ideal {
+                let extra = rect.size.0 - ideal;
+                w_offsets.as_mut()[0] = match align {
+                    Align::Begin | Align::Stretch => 0,
+                    Align::Centre => extra / 2,
+                    Align::End => extra,
+                };
+            }
+
+            SizeRules::solve_seq_total(widths, rules, rect.size.0);
             for i in 1..w_offsets.as_mut().len() {
                 let i1 = i - 1;
                 let m1 = storage.width_rules()[i1].margins().1;
@@ -230,9 +252,21 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
         }
 
         if rows > 0 {
+            let align = align.vert.unwrap_or(Align::Stretch);
             let (rules, heights) = storage.rules_and_heights();
-            SizeRules::solve_seq_total(heights, rules, rect.size.1);
+            let ideal = rules[rows].ideal_size();
+
             h_offsets.as_mut()[0] = 0;
+            if align != Align::Stretch && rect.size.1 > ideal {
+                let extra = rect.size.1 - ideal;
+                h_offsets.as_mut()[0] = match align {
+                    Align::Begin | Align::Stretch => 0,
+                    Align::Centre => extra / 2,
+                    Align::End => extra,
+                };
+            }
+
+            SizeRules::solve_seq_total(heights, rules, rect.size.1);
             for i in 1..h_offsets.as_mut().len() {
                 let i1 = i - 1;
                 let m1 = storage.height_rules()[i1].margins().1;
