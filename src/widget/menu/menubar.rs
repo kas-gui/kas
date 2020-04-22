@@ -110,6 +110,7 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                         && mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None)
                     {
                         mgr.set_grab_depress(source, Some(start_id));
+                        mgr.set_nav_focus(Some(start_id));
                         self.opening = false;
                         if self.rect().contains(coord) {
                             // We could just send Event::OpenPopup, but we also
@@ -142,10 +143,12 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                 if cur_id.map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
                     let id = cur_id.unwrap();
                     mgr.set_grab_depress(source, Some(id));
+                    mgr.set_nav_focus(Some(id));
                     self.delayed_open = Some(id);
                     mgr.update_on_timer(Duration::from_millis(300), self.id());
                 } else {
                     mgr.set_grab_depress(source, None);
+                    mgr.set_nav_focus(None);
                 }
             }
             Event::PressEnd { coord, end_id, .. } => {

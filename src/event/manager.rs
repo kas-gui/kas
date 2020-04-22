@@ -5,7 +5,7 @@
 
 //! Event manager
 
-use log::trace;
+use log::{trace, warn};
 use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -98,6 +98,7 @@ pub struct ManagerState {
     pan_grab: SmallVec<[PanGrab; 4]>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
     popups: SmallVec<[(WindowId, kas::Popup); 16]>,
+    popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
 
     time_start: Instant,
     time_updates: Vec<(Instant, WidgetId)>,
@@ -245,7 +246,11 @@ impl<'a> Manager<'a> {
                 self.send_event(widget, id, Event::NavFocus);
             }
         } else if vkey == VK::Escape {
-            self.unset_nav_focus();
+            if let Some(id) = self.mgr.popups.last().map(|(id, _)| *id) {
+                self.close_window(id);
+            } else {
+                self.unset_nav_focus();
+            }
         } else {
             let mut id_action = None;
 
@@ -361,11 +366,40 @@ impl<'a> Manager<'a> {
         type WidgetStack<'b> = SmallVec<[&'b dyn WidgetConfig; 16]>;
         let mut widget_stack = WidgetStack::new();
 
-        // Reconstruct widget_stack:
-        for index in self.mgr.nav_stack.iter().cloned() {
-            let new = widget.get(index as usize).unwrap();
-            widget_stack.push(widget);
-            widget = new;
+        if let Some(id) = self.mgr.popups.last().map(|(_, p)| p.id) {
+            if let Some(w) = widget.find(id) {
+                widget = w;
+            } else {
+                panic!("Unable to find popup widget {}", id);
+            }
+        }
+
+        if self.mgr.nav_focus.is_some() && self.mgr.nav_stack.is_empty() {
+            // set_nav_focus causes this; we need to rebuild the stack now
+            let id = self.mgr.nav_focus.unwrap();
+            'l: while id != widget.id() {
+                for index in 0..widget.len() {
+                    let w = widget.get(index).unwrap();
+                    if w.is_ancestor_of(id) {
+                        self.mgr.nav_stack.push(index as u32);
+                        widget_stack.push(widget);
+                        widget = w;
+                        continue 'l;
+                    }
+                }
+
+                warn!("next_nav_focus: unable to find widget {}", id);
+                self.mgr.nav_focus = None;
+                self.mgr.nav_stack.clear();
+                return;
+            }
+        } else {
+            // Reconstruct widget_stack:
+            for index in self.mgr.nav_stack.iter().cloned() {
+                let new = widget.get(index as usize).unwrap();
+                widget_stack.push(widget);
+                widget = new;
+            }
         }
 
         // Progresses to the first child (or last if backward).
@@ -443,6 +477,16 @@ impl<'a> Manager<'a> {
             }};
         };
 
+        macro_rules! try_set_focus {
+            ($self:ident, $widget:ident) => {
+                if $widget.key_nav() && !$widget.is_disabled() {
+                    $self.mgr.nav_focus = Some($widget.id());
+                    trace!("Manager: nav_focus = {:?}", $self.mgr.nav_focus);
+                    return;
+                }
+            };
+        }
+
         // We redraw in all cases. Since this is not part of widget event
         // processing, we can push directly to self.mgr.action.
         self.mgr.send_action(TkAction::Redraw);
@@ -454,21 +498,13 @@ impl<'a> Manager<'a> {
             // candidate is its first child.
             'l1: loop {
                 if do_child!('l1, nav_stack, widget, widget_stack) {
-                    if widget.key_nav() && !widget.is_disabled() {
-                        self.mgr.nav_focus = Some(widget.id());
-                        trace!("Manager: nav_focus = {:?}", self.mgr.nav_focus);
-                        return;
-                    }
+                    try_set_focus!(self, widget);
                     continue;
                 }
 
                 loop {
                     if do_sibling_or_pop!('l1, nav_stack, widget, widget_stack) {
-                        if widget.key_nav() && !widget.is_disabled() {
-                            self.mgr.nav_focus = Some(widget.id());
-                            trace!("Manager: nav_focus = {:?}", self.mgr.nav_focus);
-                            return;
-                        }
+                        try_set_focus!(self, widget);
                         break;
                     }
                 }
@@ -482,11 +518,7 @@ impl<'a> Manager<'a> {
                     while do_child!('l2, nav_stack, widget, widget_stack) {}
                 }
 
-                if widget.key_nav() && !widget.is_disabled() {
-                    self.mgr.nav_focus = Some(widget.id());
-                    trace!("Manager: nav_focus = {:?}", self.mgr.nav_focus);
-                    return;
-                }
+                try_set_focus!(self, widget);
             }
         }
 
@@ -503,6 +535,7 @@ impl<'a> Manager<'a> {
             self.redraw(id);
         }
         self.mgr.nav_focus = None;
+        self.mgr.nav_stack.clear();
     }
 
     fn set_char_focus(&mut self, wid: Option<WidgetId>) {
@@ -539,12 +572,13 @@ impl<'a> Manager<'a> {
             start_id,
             coord,
         };
-        if let Some(id) = self.mgr.popups.last().map(|(_, p)| p.parent) {
-            trace!("Send to popup parent: {}: {:?}", id, event);
-            match widget.send(self, id, event.clone()) {
+        while let Some((wid, parent)) = self.mgr.popups.last().map(|(wid, p)| (*wid, p.parent)) {
+            trace!("Send to popup parent: {}: {:?}", parent, event);
+            match widget.send(self, parent, event.clone()) {
                 Response::Unhandled(_) => (),
                 _ => return,
             }
+            self.close_window(wid);
         }
         self.send_event(widget, start_id, event);
     }

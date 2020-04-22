@@ -15,6 +15,7 @@ use kas::widget::Column;
 use kas::WindowId;
 
 /// A sub-menu
+#[widget(config(key_nav = true))]
 #[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
 pub struct SubMenu<D: Directional, W: Widget> {
@@ -85,7 +86,6 @@ impl<D: Directional, W: Widget> SubMenu<D, W> {
     fn close_menu(&mut self, mgr: &mut Manager) {
         if let Some(id) = self.popup_id {
             mgr.close_window(id);
-            self.popup_id = None;
         }
     }
 }
@@ -128,8 +128,11 @@ impl<D: Directional, M, W: Widget<Msg = M>> event::Handler for SubMenu<D, W> {
             Event::ClosePopup => {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
-                    self.popup_id = None;
                 }
+            }
+            Event::PopupRemoved(id) => {
+                debug_assert_eq!(Some(id), self.popup_id);
+                self.popup_id = None;
             }
             event => return Response::Unhandled(event),
         }

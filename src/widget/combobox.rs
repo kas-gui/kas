@@ -8,7 +8,7 @@
 use std::fmt::Debug;
 use std::iter::FromIterator;
 
-use super::{Column, TextButton};
+use super::{Column, MenuEntry, MenuFrame};
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
 use kas::event::{Event, GrabMode, Manager, Response, SendEvent};
@@ -39,7 +39,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
 
         // TODO: should we calculate a bound over all choices or assume some default?
-        let text = &self.popup.column[self.active].get_text();
+        let text = &self.popup.inner.inner[self.active].get_text();
         let content_rules = size_handle.text_bound(text, TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)
     }
@@ -65,7 +65,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         }
         draw_handle.button(self.core.rect, state);
         let align = (Align::Centre, Align::Centre);
-        let text = &self.popup.column[self.active].get_text();
+        let text = &self.popup.inner.inner[self.active].get_text();
         draw_handle.text(self.core.rect, text, TextClass::Button, align);
     }
 }
@@ -92,13 +92,13 @@ impl<M: Clone + Debug> ComboBox<M> {
     }
 
     #[inline]
-    fn new_(column: Vec<TextButton<u64>>, messages: Vec<M>) -> Self {
+    fn new_(column: Vec<MenuEntry<u64>>, messages: Vec<M>) -> Self {
         assert!(column.len() > 0, "ComboBox: expected at least one choice");
         ComboBox {
             core: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
-                column: Column::new(column),
+                inner: MenuFrame::new(Column::new(column)),
             },
             messages,
             active: 0,
@@ -109,15 +109,15 @@ impl<M: Clone + Debug> ComboBox<M> {
 
     /// Get the text of the active choice
     pub fn text(&self) -> &str {
-        self.popup.column[self.active].get_text()
+        self.popup.inner.inner[self.active].get_text()
     }
 
     /// Add a choice to the combobox, in last position
     pub fn push<T: Into<CowString>>(&mut self, label: CowString, msg: M) -> TkAction {
         self.messages.push(msg);
-        let column = &mut self.popup.column;
+        let column = &mut self.popup.inner.inner;
         let len = column.len() as u64;
-        column.push(TextButton::new(label, len))
+        column.push(MenuEntry::new(label, len))
         // TODO: localised reconfigure
     }
 
@@ -130,7 +130,6 @@ impl<M: Clone + Debug> ComboBox<M> {
                 self.active = index;
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
-                    self.popup_id = None;
                 }
                 mgr.redraw(self.id());
                 Response::Msg(self.messages[index].clone())
@@ -149,7 +148,7 @@ impl<T: Into<CowString>, M: Clone + Debug> FromIterator<(T, M)> for ComboBox<M> 
         let mut choices = Vec::with_capacity(len);
         let mut messages = Vec::with_capacity(len);
         for (i, (label, msg)) in iter.enumerate() {
-            choices.push(TextButton::new(label, i as u64));
+            choices.push(MenuEntry::new(label, i as u64));
             messages.push(msg);
         }
         ComboBox::new_(choices, messages)
@@ -163,7 +162,7 @@ impl<'a, M: Clone + Debug + 'static> FromIterator<&'a (&'static str, M)> for Com
         let mut choices = Vec::with_capacity(len);
         let mut messages = Vec::with_capacity(len);
         for (i, (label, msg)) in iter.enumerate() {
-            choices.push(TextButton::new(*label, i as u64));
+            choices.push(MenuEntry::new(*label, i as u64));
             messages.push(msg.clone());
         }
         ComboBox::new_(choices, messages)
@@ -186,7 +185,6 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
             Event::Activate => {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
-                    self.popup_id = None;
                 } else {
                     open_popup(self, mgr);
                 }
@@ -207,7 +205,6 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 } else {
                     if let Some(id) = self.popup_id {
                         mgr.close_window(id);
-                        self.popup_id = None;
                     }
                     Response::Unhandled(Event::None)
                 }
@@ -242,8 +239,12 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 }
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
-                    self.popup_id = None;
                 }
+                Response::None
+            }
+            Event::PopupRemoved(id) => {
+                debug_assert_eq!(Some(id), self.popup_id);
+                self.popup_id = None;
                 Response::None
             }
             event => Response::Unhandled(event),
@@ -273,5 +274,5 @@ struct ComboPopup {
     #[widget_core]
     core: CoreData,
     #[widget]
-    column: Column<TextButton<u64>>,
+    inner: MenuFrame<Column<MenuEntry<u64>>>,
 }

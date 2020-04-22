@@ -10,7 +10,7 @@ use super::Manager; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
 
 use crate::geom::{Coord, DVec2};
-use crate::WidgetId;
+use crate::{WidgetId, WindowId};
 
 /// Events addressed to a widget
 #[derive(Clone, Debug, PartialEq)]
@@ -132,6 +132,12 @@ pub enum Event {
     /// This is a specific command from a parent, e.g. [`kas::widget::MenuBar`].
     /// Most widgets can ignore this, even if they have a pop-up.
     ClosePopup,
+    /// Notification that a popup has been destroyed
+    ///
+    /// This is sent to the popup's parent after a popup has been removed.
+    /// Since popups may be removed directly by the Manager, the parent should
+    /// clean up any associated state here.
+    PopupRemoved(WindowId),
     /// Sent when a widget receives keyboard navigation focus
     ///
     /// The widget should reply with [`Response::Focus`].
