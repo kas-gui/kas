@@ -497,6 +497,8 @@ impl Parse for WidgetArgs {
 
                         config = Some(conf);
                     }
+                } else {
+                    return Err(lookahead.error());
                 }
 
                 if content.peek(Comma) {
