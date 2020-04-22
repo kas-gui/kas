@@ -5,6 +5,9 @@
 
 //! Event manager
 
+// Without winit, several things go unused
+#![cfg_attr(not(feature = "winit"), allow(unused))]
+
 use log::{trace, warn};
 use smallvec::SmallVec;
 use std::collections::HashMap;
@@ -166,7 +169,6 @@ impl ManagerState {
         }
     }
 
-    #[cfg(feature = "winit")]
     fn remove_pan_grab(&mut self, g: (u16, u16)) {
         if let Some(grab) = self.pan_grab.get_mut(g.0 as usize) {
             grab.n -= 1;
@@ -226,7 +228,6 @@ impl<'a> Manager<'a> {
         }
     }
 
-    #[cfg(feature = "winit")]
     fn start_key_event<W>(&mut self, widget: &mut W, vkey: VirtualKeyCode, scancode: u32)
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
@@ -295,7 +296,6 @@ impl<'a> Manager<'a> {
         }
     }
 
-    #[cfg(feature = "winit")]
     fn end_key_event(&mut self, scancode: u32) {
         let r = 'outer: loop {
             for (i, item) in self.mgr.key_depress.iter().enumerate() {
@@ -311,12 +311,10 @@ impl<'a> Manager<'a> {
         self.mgr.key_depress.remove(r);
     }
 
-    #[cfg(feature = "winit")]
     fn mouse_grab(&self) -> Option<MouseGrab> {
         self.mgr.mouse_grab.clone()
     }
 
-    #[cfg(feature = "winit")]
     fn end_mouse_grab(&mut self, button: MouseButton) {
         if self
             .mgr
@@ -346,7 +344,6 @@ impl<'a> Manager<'a> {
         })
     }
 
-    #[cfg(feature = "winit")]
     fn remove_touch(&mut self, touch_id: u64) -> Option<TouchGrab> {
         let len = self.mgr.touch_grab.len();
         for i in 0..len {
@@ -361,7 +358,6 @@ impl<'a> Manager<'a> {
         None
     }
 
-    #[cfg(feature = "winit")]
     fn next_nav_focus<'b>(&mut self, mut widget: &'b dyn WidgetConfig, backward: bool) {
         type WidgetStack<'b> = SmallVec<[&'b dyn WidgetConfig; 16]>;
         let mut widget_stack = WidgetStack::new();
@@ -529,7 +525,6 @@ impl<'a> Manager<'a> {
         trace!("Manager: nav_focus = {:?}", self.mgr.nav_focus);
     }
 
-    #[cfg(feature = "winit")]
     fn unset_nav_focus(&mut self) {
         if let Some(id) = self.mgr.nav_focus {
             self.redraw(id);
@@ -559,7 +554,6 @@ impl<'a> Manager<'a> {
         let _ = widget.send(self, id, event);
     }
 
-    #[cfg(feature = "winit")]
     fn send_press_start<W: Widget + ?Sized>(
         &mut self,
         widget: &mut W,
