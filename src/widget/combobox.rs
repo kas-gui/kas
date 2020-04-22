@@ -130,7 +130,6 @@ impl<M: Clone + Debug> ComboBox<M> {
                 self.active = index;
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
-                    self.popup_id = None;
                 }
                 mgr.redraw(self.id());
                 Response::Msg(self.messages[index].clone())
@@ -186,7 +185,6 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
             Event::Activate => {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
-                    self.popup_id = None;
                 } else {
                     open_popup(self, mgr);
                 }
@@ -207,7 +205,6 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 } else {
                     if let Some(id) = self.popup_id {
                         mgr.close_window(id);
-                        self.popup_id = None;
                     }
                     Response::Unhandled(Event::None)
                 }
@@ -242,8 +239,12 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 }
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
-                    self.popup_id = None;
                 }
+                Response::None
+            }
+            Event::PopupRemoved(id) => {
+                debug_assert_eq!(Some(id), self.popup_id);
+                self.popup_id = None;
                 Response::None
             }
             event => Response::Unhandled(event),

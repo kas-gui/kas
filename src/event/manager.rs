@@ -98,6 +98,7 @@ pub struct ManagerState {
     pan_grab: SmallVec<[PanGrab; 4]>,
     accel_keys: HashMap<VirtualKeyCode, WidgetId>,
     popups: SmallVec<[(WindowId, kas::Popup); 16]>,
+    popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
 
     time_start: Instant,
     time_updates: Vec<(Instant, WidgetId)>,
@@ -245,7 +246,11 @@ impl<'a> Manager<'a> {
                 self.send_event(widget, id, Event::NavFocus);
             }
         } else if vkey == VK::Escape {
-            self.unset_nav_focus();
+            if let Some(id) = self.mgr.popups.last().map(|(id, _)| *id) {
+                self.close_window(id);
+            } else {
+                self.unset_nav_focus();
+            }
         } else {
             let mut id_action = None;
 
@@ -537,12 +542,13 @@ impl<'a> Manager<'a> {
             start_id,
             coord,
         };
-        if let Some(id) = self.mgr.popups.last().map(|(_, p)| p.parent) {
-            trace!("Send to popup parent: {}: {:?}", id, event);
-            match widget.send(self, id, event.clone()) {
+        while let Some((wid, parent)) = self.mgr.popups.last().map(|(wid, p)| (*wid, p.parent)) {
+            trace!("Send to popup parent: {}: {:?}", parent, event);
+            match widget.send(self, parent, event.clone()) {
                 Response::Unhandled(_) => (),
                 _ => return,
             }
+            self.close_window(wid);
         }
         self.send_event(widget, start_id, event);
     }

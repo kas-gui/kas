@@ -40,6 +40,7 @@ impl ManagerState {
             pan_grab: SmallVec::new(),
             accel_keys: HashMap::new(),
             popups: Default::default(),
+            popup_removed: Default::default(),
 
             time_start: Instant::now(),
             time_updates: vec![],
@@ -213,6 +214,10 @@ impl ManagerState {
             tkw,
             action: TkAction::None,
         };
+
+        while let Some((parent, wid)) = mgr.mgr.popup_removed.pop() {
+            mgr.send_event(widget, parent, Event::PopupRemoved(wid));
+        }
 
         for gi in 0..mgr.mgr.pan_grab.len() {
             let grab = &mut mgr.mgr.pan_grab[gi];

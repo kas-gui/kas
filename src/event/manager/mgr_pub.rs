@@ -176,15 +176,17 @@ impl<'a> Manager<'a> {
     /// Close a window
     #[inline]
     pub fn close_window(&mut self, id: WindowId) {
-        if let Some(index) =
-            self.mgr
-                .popups
-                .iter()
-                .enumerate()
-                .find_map(|(i, p)| if p.0 == id { Some(i) } else { None })
-        {
+        if let Some((index, parent)) = self.mgr.popups.iter().enumerate().find_map(|(i, p)| {
+            if p.0 == id {
+                Some((i, p.1.parent))
+            } else {
+                None
+            }
+        }) {
             self.mgr.popups.remove(index);
+            self.mgr.popup_removed.push((parent, id));
         }
+        self.mgr.send_action(TkAction::RegionMoved);
         self.tkw.close_window(id);
     }
 
