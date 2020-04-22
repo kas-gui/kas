@@ -443,6 +443,16 @@ impl<'a> Manager<'a> {
             }};
         };
 
+        macro_rules! try_set_focus {
+            ($self:ident, $widget:ident) => {
+                if $widget.key_nav() && !$widget.is_disabled() {
+                    $self.mgr.nav_focus = Some($widget.id());
+                    trace!("Manager: nav_focus = {:?}", $self.mgr.nav_focus);
+                    return;
+                }
+            };
+        }
+
         // We redraw in all cases. Since this is not part of widget event
         // processing, we can push directly to self.mgr.action.
         self.mgr.send_action(TkAction::Redraw);
@@ -454,21 +464,13 @@ impl<'a> Manager<'a> {
             // candidate is its first child.
             'l1: loop {
                 if do_child!('l1, nav_stack, widget, widget_stack) {
-                    if widget.key_nav() && !widget.is_disabled() {
-                        self.mgr.nav_focus = Some(widget.id());
-                        trace!("Manager: nav_focus = {:?}", self.mgr.nav_focus);
-                        return;
-                    }
+                    try_set_focus!(self, widget);
                     continue;
                 }
 
                 loop {
                     if do_sibling_or_pop!('l1, nav_stack, widget, widget_stack) {
-                        if widget.key_nav() && !widget.is_disabled() {
-                            self.mgr.nav_focus = Some(widget.id());
-                            trace!("Manager: nav_focus = {:?}", self.mgr.nav_focus);
-                            return;
-                        }
+                        try_set_focus!(self, widget);
                         break;
                     }
                 }
@@ -482,11 +484,7 @@ impl<'a> Manager<'a> {
                     while do_child!('l2, nav_stack, widget, widget_stack) {}
                 }
 
-                if widget.key_nav() && !widget.is_disabled() {
-                    self.mgr.nav_focus = Some(widget.id());
-                    trace!("Manager: nav_focus = {:?}", self.mgr.nav_focus);
-                    return;
-                }
+                try_set_focus!(self, widget);
             }
         }
 
