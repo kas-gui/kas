@@ -158,6 +158,8 @@ impl<'a> Manager<'a> {
     pub fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
         let id = self.tkw.add_popup(popup.clone());
         self.mgr.popups.push((id, popup));
+        self.mgr.nav_focus = None;
+        self.mgr.nav_stack.clear();
         id
     }
 
@@ -185,6 +187,8 @@ impl<'a> Manager<'a> {
         }) {
             self.mgr.popups.remove(index);
             self.mgr.popup_removed.push((parent, id));
+            self.mgr.nav_focus = None;
+            self.mgr.nav_stack.clear();
         }
         self.mgr.send_action(TkAction::RegionMoved);
         self.tkw.close_window(id);
@@ -383,5 +387,13 @@ impl<'a> Manager<'a> {
                 }
             }
         }
+        self.mgr.send_action(TkAction::Redraw);
+    }
+
+    /// Set the keyboard navigation focus directly
+    pub fn set_nav_focus(&mut self, id: Option<WidgetId>) {
+        self.mgr.nav_focus = id;
+        self.mgr.nav_stack.clear();
+        self.mgr.send_action(TkAction::Redraw);
     }
 }

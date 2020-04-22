@@ -15,6 +15,7 @@ use kas::widget::Column;
 use kas::WindowId;
 
 /// A sub-menu
+#[widget(config(key_nav = true))]
 #[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
 pub struct SubMenu<D: Directional, W: Widget> {

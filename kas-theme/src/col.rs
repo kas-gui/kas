@@ -173,7 +173,7 @@ impl ThemeColours {
 
     /// Get background highlight colour of a menu entry, if any
     pub fn menu_entry(&self, state: InputState) -> Option<Colour> {
-        if state.depress {
+        if state.depress || state.nav_focus {
             Some(self.button_depressed)
         } else if state.hover {
             Some(self.button_highlighted)

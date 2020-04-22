@@ -15,6 +15,7 @@ use kas::prelude::*;
 use kas::widget::{CheckBoxBare, Label};
 
 /// A standard menu entry
+#[widget(config(key_nav = true))]
 #[handler(handle=noauto)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct MenuEntry<M: Clone + Debug> {

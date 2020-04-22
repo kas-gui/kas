@@ -5,7 +5,7 @@
 
 //! Event manager
 
-use log::trace;
+use log::{trace, warn};
 use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -366,11 +366,40 @@ impl<'a> Manager<'a> {
         type WidgetStack<'b> = SmallVec<[&'b dyn WidgetConfig; 16]>;
         let mut widget_stack = WidgetStack::new();
 
-        // Reconstruct widget_stack:
-        for index in self.mgr.nav_stack.iter().cloned() {
-            let new = widget.get(index as usize).unwrap();
-            widget_stack.push(widget);
-            widget = new;
+        if let Some(id) = self.mgr.popups.last().map(|(_, p)| p.id) {
+            if let Some(w) = widget.find(id) {
+                widget = w;
+            } else {
+                panic!("Unable to find popup widget {}", id);
+            }
+        }
+
+        if self.mgr.nav_focus.is_some() && self.mgr.nav_stack.is_empty() {
+            // set_nav_focus causes this; we need to rebuild the stack now
+            let id = self.mgr.nav_focus.unwrap();
+            'l: while id != widget.id() {
+                for index in 0..widget.len() {
+                    let w = widget.get(index).unwrap();
+                    if w.is_ancestor_of(id) {
+                        self.mgr.nav_stack.push(index as u32);
+                        widget_stack.push(widget);
+                        widget = w;
+                        continue 'l;
+                    }
+                }
+
+                warn!("next_nav_focus: unable to find widget {}", id);
+                self.mgr.nav_focus = None;
+                self.mgr.nav_stack.clear();
+                return;
+            }
+        } else {
+            // Reconstruct widget_stack:
+            for index in self.mgr.nav_stack.iter().cloned() {
+                let new = widget.get(index as usize).unwrap();
+                widget_stack.push(widget);
+                widget = new;
+            }
         }
 
         // Progresses to the first child (or last if backward).
@@ -506,6 +535,7 @@ impl<'a> Manager<'a> {
             self.redraw(id);
         }
         self.mgr.nav_focus = None;
+        self.mgr.nav_stack.clear();
     }
 
     fn set_char_focus(&mut self, wid: Option<WidgetId>) {
