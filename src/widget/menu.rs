@@ -26,7 +26,7 @@ pub struct MenuFrame<W: Widget> {
     #[widget_core]
     core: CoreData,
     #[widget]
-    child: W,
+    pub inner: W,
     m0: Size,
     m1: Size,
 }
@@ -34,10 +34,10 @@ pub struct MenuFrame<W: Widget> {
 impl<W: Widget> MenuFrame<W> {
     /// Construct a frame
     #[inline]
-    pub fn new(child: W) -> Self {
+    pub fn new(inner: W) -> Self {
         MenuFrame {
             core: Default::default(),
-            child,
+            inner,
             m0: Size::ZERO,
             m1: Size::ZERO,
         }
@@ -50,7 +50,7 @@ impl<W: Widget> Layout for MenuFrame<W> {
         let margins = Margins::ZERO;
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, margins);
 
-        let child_rules = self.child.size_rules(size_handle, axis);
+        let child_rules = self.inner.size_rules(size_handle, axis);
         let m = child_rules.margins();
 
         if axis.is_horizontal() {
@@ -68,7 +68,7 @@ impl<W: Widget> Layout for MenuFrame<W> {
         self.core.rect = rect;
         rect.pos += self.m0;
         rect.size -= self.m0 + self.m1;
-        self.child.set_rect(rect, align);
+        self.inner.set_rect(rect, align);
     }
 
     #[inline]
@@ -76,42 +76,42 @@ impl<W: Widget> Layout for MenuFrame<W> {
         if !self.rect().contains(coord) {
             return None;
         }
-        self.child.find_id(coord).or(Some(self.id()))
+        self.inner.find_id(coord).or(Some(self.id()))
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.menu_frame(self.core_data().rect);
         let disabled = disabled || self.is_disabled();
-        self.child.draw(draw_handle, mgr, disabled);
+        self.inner.draw(draw_handle, mgr, disabled);
     }
 }
 
 impl<W: HasBool + Widget> HasBool for MenuFrame<W> {
     fn get_bool(&self) -> bool {
-        self.child.get_bool()
+        self.inner.get_bool()
     }
 
     fn set_bool(&mut self, state: bool) -> TkAction {
-        self.child.set_bool(state)
+        self.inner.set_bool(state)
     }
 }
 
 impl<W: HasText + Widget> HasText for MenuFrame<W> {
     fn get_text(&self) -> &str {
-        self.child.get_text()
+        self.inner.get_text()
     }
 
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.child.set_cow_string(text)
+        self.inner.set_cow_string(text)
     }
 }
 
 impl<W: Editable + Widget> Editable for MenuFrame<W> {
     fn is_editable(&self) -> bool {
-        self.child.is_editable()
+        self.inner.is_editable()
     }
 
     fn set_editable(&mut self, editable: bool) {
-        self.child.set_editable(editable);
+        self.inner.set_editable(editable);
     }
 }
