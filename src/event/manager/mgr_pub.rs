@@ -179,18 +179,27 @@ impl<'a> Manager<'a> {
     /// Close a window
     #[inline]
     pub fn close_window(&mut self, id: WindowId) {
-        if let Some((index, parent)) = self.mgr.popups.iter().enumerate().find_map(|(i, p)| {
-            if p.0 == id {
-                Some((i, p.1.parent))
-            } else {
-                None
+        if let Some(index) =
+            self.mgr.popups.iter().enumerate().find_map(
+                |(i, p)| {
+                    if p.0 == id {
+                        Some(i)
+                    } else {
+                        None
+                    }
+                },
+            )
+        {
+            let (_, popup) = self.mgr.popups.remove(index);
+            self.mgr.popup_removed.push((popup.parent, id));
+
+            if self.mgr.nav_focus.is_some() {
+                // We guess that the parent supports key_nav:
+                self.mgr.nav_focus = Some(popup.parent);
+                self.mgr.nav_stack.clear();
             }
-        }) {
-            self.mgr.popups.remove(index);
-            self.mgr.popup_removed.push((parent, id));
-            self.mgr.nav_focus = None;
-            self.mgr.nav_stack.clear();
         }
+
         self.mgr.send_action(TkAction::RegionMoved);
         self.tkw.close_window(id);
     }
@@ -412,6 +421,7 @@ impl<'a> Manager<'a> {
     /// otherwise navigation behaviour may not be correct.
     pub fn set_nav_focus(&mut self, id: WidgetId) {
         self.mgr.nav_focus = Some(id);
+        self.mgr.nav_stack.clear();
     }
 
     /// Advance the keyboard navigation focus
