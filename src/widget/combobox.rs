@@ -11,7 +11,7 @@ use std::iter::FromIterator;
 use super::{Column, MenuEntry, MenuFrame};
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, GrabMode, Manager, Response, SendEvent};
+use kas::event::{Event, GrabMode, Manager, NavKey, Response, SendEvent};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::WindowId;
@@ -122,9 +122,29 @@ impl<M: Clone + Debug> ComboBox<M> {
     }
 
     fn map_response(&mut self, mgr: &mut Manager, r: Response<u64>) -> Response<M> {
-        match r.try_into() {
-            Ok(r) => r,
-            Err(msg) => {
+        match r {
+            Response::None => Response::None,
+            Response::Unhandled(ev) => match ev {
+                Event::NavKey(key) => {
+                    let next = |mgr: &mut Manager, s, clr, rev| {
+                        if clr {
+                            mgr.clear_nav_focus();
+                        }
+                        mgr.next_nav_focus(s, rev);
+                        Response::None
+                    };
+                    match key {
+                        NavKey::Up => next(mgr, self, false, true),
+                        NavKey::Down => next(mgr, self, false, false),
+                        NavKey::Home => next(mgr, self, true, false),
+                        NavKey::End => next(mgr, self, true, true),
+                        key => Response::Unhandled(Event::NavKey(key)),
+                    }
+                }
+                ev => Response::Unhandled(ev),
+            },
+            Response::Focus(x) => Response::Focus(x),
+            Response::Msg(msg) => {
                 let index = msg as usize;
                 assert!(index < self.messages.len());
                 self.active = index;
