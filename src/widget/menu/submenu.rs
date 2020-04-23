@@ -81,6 +81,7 @@ impl<D: Directional, W: Widget> SubMenu<D, W> {
                 direction: self.direction.as_direction(),
             });
             self.popup_id = Some(id);
+            mgr.next_nav_focus(self, false);
         }
     }
     fn close_menu(&mut self, mgr: &mut Manager) {

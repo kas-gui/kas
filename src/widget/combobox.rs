@@ -180,6 +180,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 direction: Direction::Down,
             });
             w.popup_id = Some(id);
+            mgr.next_nav_focus(w, false);
         };
         match event {
             Event::Activate => {

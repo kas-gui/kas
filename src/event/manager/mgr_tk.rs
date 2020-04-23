@@ -443,7 +443,8 @@ impl<'a> Manager<'a> {
                 } else if let Some(start_id) = self.mgr.hover {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
-                        self.send_press_start(widget, source, start_id, coord);
+                        let event = Event::PressStart { source, start_id, coord };
+                        self.send_popup_first(widget, start_id, event);
                     }
                 }
             }
@@ -456,7 +457,8 @@ impl<'a> Manager<'a> {
                 match touch.phase {
                     TouchPhase::Started => {
                         if let Some(start_id) = widget.find_id(coord) {
-                            self.send_press_start(widget, source, start_id, coord);
+                            let event = Event::PressStart { source, start_id, coord };
+                            self.send_popup_first(widget, start_id, event);
                         }
                     }
                     TouchPhase::Moved => {
