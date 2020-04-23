@@ -133,6 +133,11 @@ impl<D: Directional, M, W: Widget<Msg = M>> event::Handler for SubMenu<D, W> {
                     mgr.close_window(id);
                 }
             }
+            Event::NewPopup(id) => {
+                if self.popup_id.is_some() && !self.is_ancestor_of(id) {
+                    self.close_menu(mgr);
+                }
+            }
             Event::PopupRemoved(id) => {
                 debug_assert_eq!(Some(id), self.popup_id);
                 self.popup_id = None;

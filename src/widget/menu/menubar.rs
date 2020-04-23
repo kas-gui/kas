@@ -5,7 +5,6 @@
 
 //! Menubar
 
-use smallvec::SmallVec;
 use std::time::Duration;
 
 use super::SubMenu;
@@ -28,8 +27,6 @@ pub struct MenuBar<D: Directional, W: Widget> {
     pub bar: List<D, SubMenu<D::Flipped, W>>,
     // Open mode. Used to close with click on root only when previously open.
     opening: bool,
-    // Stack of open child windows. Each should be a descendant of the previous.
-    open: SmallVec<[WidgetId; 16]>,
     delayed_open: Option<WidgetId>,
 }
 
@@ -47,7 +44,6 @@ impl<D: Directional, W: Widget> MenuBar<D, W> {
             core: Default::default(),
             bar: List::new_with_direction(direction, menus),
             opening: false,
-            open: Default::default(),
             delayed_open: None,
         }
     }
@@ -88,15 +84,6 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
             Event::TimerUpdate => {
                 if let Some(id) = self.delayed_open {
                     self.delayed_open = None;
-                    while let Some(last_id) = self.open.last().cloned() {
-                        if !self.find(last_id).map(|w| w.is_ancestor_of(id)).unwrap() {
-                            let _ = self.send(mgr, last_id, Event::ClosePopup);
-                            self.open.pop();
-                        } else {
-                            break;
-                        }
-                    }
-                    self.open.push(id);
                     return self.send(mgr, id, Event::OpenPopup);
                 }
             }
@@ -133,9 +120,7 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                         }
                     }
                 } else {
-                    while let Some(id) = self.open.pop() {
-                        let _ = self.send(mgr, id, Event::ClosePopup);
-                    }
+                    self.delayed_open = None;
                     return Response::Unhandled(Event::None);
                 }
             }
@@ -160,17 +145,14 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
 
                     if self.rect().contains(coord) {
                         if !self.opening {
-                            while let Some(id) = self.open.pop() {
-                                let _ = self.send(mgr, id, Event::ClosePopup);
-                            }
+                            // TODO: click on title should close menu,
+                            // but we don't have a mechanism to do that!
                         }
                     } else {
                         return self.send(mgr, id, Event::Activate);
                     }
                 } else {
-                    while let Some(id) = self.open.pop() {
-                        let _ = self.send(mgr, id, Event::ClosePopup);
-                    }
+                    // TODO: drag-click off menu should close menu
                 }
             }
             e => return Response::Unhandled(e),

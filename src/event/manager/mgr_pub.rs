@@ -157,6 +157,7 @@ impl<'a> Manager<'a> {
     #[inline]
     pub fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
         let id = self.tkw.add_popup(popup.clone());
+        self.mgr.new_popups.push(popup.id);
         self.mgr.popups.push((id, popup));
         self.mgr.nav_focus = None;
         self.mgr.nav_stack.clear();
