@@ -106,7 +106,9 @@ impl<D: Directional, W: Widget> kas::Layout for SubMenu<D, W> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
+        let mut state = self.input_state(mgr, disabled);
+        state.depress = state.depress || self.popup_id.is_some();
+        draw_handle.menu_entry(self.core.rect, state);
         let rect = Rect {
             pos: self.core.rect.pos + self.label_off,
             size: self.core.rect.size - self.label_off.into(),
