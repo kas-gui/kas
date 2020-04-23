@@ -127,6 +127,7 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
             Event::PressMove { source, cur_id, .. } => {
                 if let Some(w) = cur_id.and_then(|id| self.find(id)) {
                     if w.key_nav() {
+                        // TODO: potentially this should close a sibling's submenu
                         let id = cur_id.unwrap();
                         mgr.set_grab_depress(source, Some(id));
                         mgr.set_nav_focus(id);
@@ -135,7 +136,6 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                     }
                 } else {
                     mgr.set_grab_depress(source, None);
-                    mgr.clear_nav_focus();
                 }
             }
             Event::PressEnd { coord, end_id, .. } => {
@@ -155,6 +155,24 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                     // TODO: drag-click off menu should close menu
                 }
             }
+            /* TODO
+            Event::NavKey(key) => {
+                // Arrow keys can switch to the next / previous menu.
+                let is_vert = self.bar.direction().is_vertical();
+                let reverse = self.bar.direction().is_reversed()
+                    ^ match key {
+                        NavKey::Left if !is_vert => true,
+                        NavKey::Right if !is_vert => false,
+                        NavKey::Up if is_vert => true,
+                        NavKey::Down if is_vert => false,
+                        key => return Response::Unhandled(Event::NavKey(key)),
+                    };
+
+                let index = ?
+                let id = self.bar[index].id();
+                return self.send(mgr, id, Event::OpenPopup);
+            }
+             */
             e => return Response::Unhandled(e),
         }
         Response::None
