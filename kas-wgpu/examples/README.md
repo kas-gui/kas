@@ -7,7 +7,7 @@ Note that screenshots may be outdated since themes, draw routines and layout cod
 
 ### Gallery
 
-A gallery of all available widgets and themes.
+A testbed demoing most widgets along with theme and colour switching.
 
 ![Gallery](../../screenshots/gallery.png)
 

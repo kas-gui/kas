@@ -8,40 +8,6 @@ KAS GUI
 ![Minimum rustc version](https://img.shields.io/badge/rustc-nightly-lightgray.svg)
 
 KAS, the *toolKit Abstraction System*, is a general-purpose GUI toolkit.
-**Goals** of the project are:
-
--   Fully-functional, intuitive GUIs
--   Embeddable within games or any window manager
--   Fancy/highly flexible hardware-accelerated rendering
-    (but in theory software rendering could be supported too)
--   Easy, expressive specification within code (currently impeded by
-    Rust language limitations which will hopefully be solved in the future)
--   Custom widgets in user code without limitations
--   Bug-free, with an API facilitating compiler correctness lints
--   High performance / low resource usage, other than optional fancy graphics
-
-**Status** of the project is **alpha**: progress has been made towards all
-goals, with signficiant limitations to features and goofy graphics.
-Portability is somewhat limited, requiring nightly Rust and [`wgpu`] support.
-
-**Crates:**
-
--   `kas`: the *core* of the GUI library, providing most interfaces and logic
-    along with a selection of common widgets
--   `kas-macros`: a helper crate providing the procedural macros used by `kas`
--   `kas-theme`: theming support for KAS (API plus a couple of standard themes,
-    at least for now)
--   `kas-wgpu`: provides windowing via [`winit`] and rendering via [`wgpu`]
--   `kas-widgets`: (unrealised) - providing extra widgets
--   `kas-graphs`: (unrealised) - plotting widgets
-
-A user depends on `kas` to write their complete UI specification, and then
-pastes a few lines of code to initialise `kas_wgpu::Toolkit`, choose a theme,
-add window(s), and run the UI.
-
-[`winit`]: https://github.com/rust-windowing/winit/
-[`wgpu`]: https://github.com/gfx-rs/wgpu-rs
-
 
 Examples
 ---------
@@ -51,6 +17,62 @@ For details, see the [Examples README](kas-wgpu/examples/README.md).
 ![Calculator](screenshots/calculator.png) ![Dynamic](screenshots/dynamic.png)
 ![Clock](screenshots/clock.png) ![Gallery](screenshots/gallery.png)
 ![Mandlebrot](screenshots/mandlebrot.png)
+
+
+Goals and status
+------
+
+**Goals** of the project and *current status* are:
+
+-   Fully-functional, intuitive GUIs
+-   Support stand-alone and embedded GUIs (*only stand-alone is functional*)
+-   Support GPU-accelerated and CPU-only draw backends (*only GPU-accelerated is functional*)
+-   Custom widgets in user code with high- and low-level draw APIs *and* raw backend access (*fully functional*)
+-   Scalable to huge numbers of widgets (*partially realised: the dynamic example can run with >1'000'000 widgets but with some delays*)
+-   Concise, expressive specification within code (*partially realised via macros which push Rust to its limits*)
+-   User-customisable (*supports themes and colour schemes*)
+-   Desktop integration (*not yet realised*)
+
+### Stability
+
+The `master` branch has frequent breaking changes. Releases will respect
+[semver](https://semver.org/) rules. At this point, most releases will include
+breaking changes.
+
+The in-development version (0.4 — nearing release) has significant changes to
+core traits and macros. From 0.4 it is likely that *fewer* breaking changes will
+be needed to the core building blocks.
+
+The draw APIs saw a massive overhaul in version 0.3. It is too early to say
+whether more extensive changes are needed (except that raster graphics are not
+yet featured)!
+
+Text APIs are currently *very* primitive and will need changes.
+
+Widgets have matured to the point that not too many breaking changes are
+required, but are still primarily developed to prove capabilities rather than to
+provide a comprehensive collection of core widgets.
+
+### Features
+
+-   Persistent widgets with embedded state
+-   Type-safe user-defined event handlers
+-   Robust event handling model
+-   (Mostly) full keyboard and touch-screen support
+-   Disabled and error states for widgets
+-   Scalable (HiDPI) supporting fractional scaling
+-   Theme API, simple draw API and raw graphics access
+-   Grid layout with spans
+-   Width-for-height sizing
+
+### Missing features
+
+These aren't here yet!
+
+-   Text clipping
+-   Text editing (currently only very basic support)
+-   Raster graphics
+-   Flow-box layouts
 
 
 Installation and dependencies
@@ -68,7 +90,7 @@ A few other dependencies may require installation, depending on the system.
 On Ubuntu:
 
 ```sh
-sudo apt-get install build-essential git python3 cmake libxcb-shape0-dev libxcb-xfixes0-dev
+sudo apt-get install build-essential git cmake libxcb-shape0-dev libxcb-xfixes0-dev
 ```
 
 Next, clone the repository and run the examples as follows:
@@ -82,35 +104,36 @@ cargo test
 cargo run --example gallery
 ```
 
+### Crates
 
-Features
-----------
+-   `kas`: the *core* of the GUI library, providing most interfaces and logic
+    along with a selection of common widgets
+-   `kas-macros`: a helper crate providing the procedural macros used by `kas`
+-   `kas-theme`: theming support for KAS (API plus a couple of standard themes,
+    at least for now)
+-   `kas-wgpu`: provides windowing via [`winit`] and rendering via [`wgpu`]
+-   `kas-widgets`: (unrealised) - providing extra widgets
+-   `kas-graphs`: (unrealised) - plotting widgets
 
--   Custom parent widgets with embedded state (at in Qt)
--   Type-safe event handlers from the context of these widgets
--   Custom widgets over high- or low-level event API
--   Custom widgets over high-level draw API (TODO: low level option)
--   Column / row / grid+span layouts (TODO: flow boxes, manual positioning)
--   Width-for-height sizing
--   Custom themes (with full control of sizing and rendering)
--   Touch-screen support
--   Keyboard navigation & accelerator keys
--   Scalable (HiDPI) including fractional scaling
--   Memory and CPU efficient
+A user depends on `kas` to write their complete UI specification, and then
+pastes a few lines of code to initialise `kas_wgpu::Toolkit`, choose a theme,
+add window(s), and run the UI.
 
+[`winit`]: https://github.com/rust-windowing/winit/
+[`wgpu`]: https://github.com/gfx-rs/wgpu-rs
 
-Optional features
--------
+### Feature flags
 
-This crate has the following feature flags:
+The `kas` crate has the following feature flags:
 
 -   `internal_doc`: turns on some extra documentation intended for internal
     usage but not for end users. (This only affects documentation.)
 -   `nightly`: enables `new_uninit` feature to support cloning of
     `Box<dyn Handler>` objects
 -   `winit`: adds compatibility code for winit's event and geometry types.
-    Compatibility with other event sources is currently incomplete (TODO).
+    This is currently the only functional windowing/event library.
 -   `stack_dst`: some compatibility impls (see `kas-theme`'s documentation)
+
 
 
 Copyright and Licence

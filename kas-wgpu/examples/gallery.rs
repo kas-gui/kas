@@ -4,6 +4,9 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Gallery of all widgets
+//!
+//! This is a test-bed to demonstrate most toolkit functionality
+//! (excepting custom graphics).
 #![feature(proc_macro_hygiene)]
 
 use kas::class::HasText;
