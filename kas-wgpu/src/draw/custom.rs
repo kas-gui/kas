@@ -6,7 +6,7 @@
 //! Custom draw pipes
 
 use super::DrawWindow;
-use kas::draw::Region;
+use kas::draw::Pass;
 use kas::geom::{Rect, Size};
 
 /// Allows use of the low-level graphics API
@@ -15,7 +15,7 @@ use kas::geom::{Rect, Size};
 /// corresponding [`CustomPipeBuilder`] to [`crate::Toolkit::new_custom`].
 pub trait DrawCustom<CW: CustomWindow> {
     /// Call a custom draw pipe
-    fn custom(&mut self, region: Region, rect: Rect, param: CW::Param);
+    fn custom(&mut self, pass: Pass, rect: Rect, param: CW::Param);
 }
 
 /// Builder for a [`CustomPipe`]
@@ -39,7 +39,7 @@ pub trait CustomPipeBuilder {
 /// one, you will have to implement your own multiplexer (presumably using an
 /// enum for the `Param` type).
 pub trait CustomPipe {
-    /// Type for per-window data
+    /// Associated per-window state for the custom pipe
     type Window: CustomWindow + 'static;
 
     /// Construct a window associated with this pipeline
@@ -71,10 +71,8 @@ pub trait CustomPipe {
     /// Do a render pass.
     ///
     /// Rendering uses one pass per region, where each region has its own
-    /// scissor rect. This method may be called multiple times per frame.
-    /// Each widget invoking this pipe will give the correct `pass` number for
-    /// the widget in [`CustomWindow::invoke`]; multiple widgets may use the same
-    /// `pass`.
+    /// scissor rect. For example, scroll regions and popups are each rendered
+    /// in their own pass. This method may be called multiple times per frame.
     fn render(
         &self,
         window: &mut Self::Window,
@@ -84,6 +82,11 @@ pub trait CustomPipe {
     );
 }
 
+/// Per-window state for a custom draw pipe
+///
+/// One instance is constructed per window. Since the [`CustomPipe`] is not
+/// accessible during a widget's [`Layout::draw`] calls, this struct must batch
+/// per-frame draw data.
 pub trait CustomWindow {
     /// User parameter type
     type Param;
@@ -92,7 +95,7 @@ pub trait CustomWindow {
     ///
     /// Custom add-primitives / update function called from user code by
     /// [`DrawCustom::custom`].
-    fn invoke(&mut self, pass: usize, rect: Rect, param: Self::Param);
+    fn invoke(&mut self, pass: Pass, rect: Rect, param: Self::Param);
 }
 
 /// A dummy implementation (does nothing)
@@ -125,11 +128,11 @@ impl CustomPipe for () {
 /// A dummy implementation (does nothing)
 impl CustomWindow for () {
     type Param = Void;
-    fn invoke(&mut self, _: usize, _: Rect, _: Self::Param) {}
+    fn invoke(&mut self, _: Pass, _: Rect, _: Self::Param) {}
 }
 
 impl<CW: CustomWindow> DrawCustom<CW> for DrawWindow<CW> {
-    fn custom(&mut self, region: Region, rect: Rect, param: CW::Param) {
-        self.custom.invoke(region.0, rect, param);
+    fn custom(&mut self, pass: Pass, rect: Rect, param: CW::Param) {
+        self.custom.invoke(pass, rect, param);
     }
 }

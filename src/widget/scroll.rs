@@ -8,7 +8,7 @@
 use std::fmt::Debug;
 
 use super::ScrollBar;
-use kas::draw::{DrawHandle, SizeHandle, TextClass};
+use kas::draw::{ClipRegion, DrawHandle, SizeHandle, TextClass};
 use kas::event::ScrollDelta::{LineDelta, PixelDelta};
 use kas::event::{Event, Manager, NavKey, Response};
 use kas::layout::{AxisInfo, SizeRules};
@@ -226,7 +226,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
             pos: self.core.rect.pos,
             size: self.inner_size,
         };
-        draw_handle.clip_region(rect, self.offset, &mut |handle| {
+        draw_handle.clip_region(rect, self.offset, ClipRegion::Scroll, &mut |handle| {
             self.inner.draw(handle, mgr, disabled)
         });
     }

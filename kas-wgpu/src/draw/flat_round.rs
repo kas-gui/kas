@@ -8,7 +8,7 @@
 use std::mem::size_of;
 
 use crate::draw::{Rgb, ShaderManager};
-use kas::draw::Colour;
+use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Size, Vec2};
 
 /// Offset relative to the size of a pixel used by the fragment shader to
@@ -196,7 +196,7 @@ impl Window {
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);
     }
 
-    pub fn line(&mut self, pass: usize, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
+    pub fn line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
         if p1 == p2 {
             let a = p1 - radius;
             let b = p2 + radius;
@@ -229,7 +229,7 @@ impl Window {
         let p2 = Vertex(p2, col, 0.0, n0, p);
 
         #[rustfmt::skip]
-        self.add_vertices(pass, &[
+        self.add_vertices(pass.pass(), &[
             ab1, p1, mb1,
             aa1, p1, ab1,
             ma1, p1, aa1,
@@ -244,7 +244,7 @@ impl Window {
     }
 
     /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
-    pub fn circle(&mut self, pass: usize, rect: Quad, inner_radius: f32, col: Colour) {
+    pub fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Colour) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -277,7 +277,7 @@ impl Window {
         let mid = Vertex(mid, col, inner, n0, p);
 
         #[rustfmt::skip]
-        self.add_vertices(pass, &[
+        self.add_vertices(pass.pass(), &[
             ba, mid, aa,
             bb, mid, ba,
             ab, mid, bb,
@@ -288,7 +288,7 @@ impl Window {
     /// Bounds on input: `aa < cc < dd < bb`, `0 ≤ inner_radius ≤ 1`.
     pub fn rounded_frame(
         &mut self,
-        pass: usize,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         inner_radius: f32,
@@ -362,7 +362,7 @@ impl Window {
         // TODO: the four sides are simple rectangles, hence could use simpler rendering
 
         #[rustfmt::skip]
-        self.add_vertices(pass, &[
+        self.add_vertices(pass.pass(), &[
             // top bar: ba - dc - cc - aa
             ba, dc, da,
             da, dc, ca,

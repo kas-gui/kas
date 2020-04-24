@@ -9,7 +9,7 @@ use std::f32;
 use std::mem::size_of;
 
 use crate::draw::{Rgb, ShaderManager};
-use kas::draw::Colour;
+use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Size, Vec2};
 
 #[repr(C)]
@@ -198,7 +198,7 @@ impl Window {
     }
 
     /// Add a rectangle to the buffer
-    pub fn rect(&mut self, pass: usize, rect: Quad, col: Colour) {
+    pub fn rect(&mut self, pass: Pass, rect: Quad, col: Colour) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -214,7 +214,7 @@ impl Window {
         let t = Vec2(0.0, 0.0);
 
         #[rustfmt::skip]
-        self.add_vertices(pass, &[
+        self.add_vertices(pass.pass(), &[
             Vertex(aa, col, t), Vertex(ba, col, t), Vertex(ab, col, t),
             Vertex(ab, col, t), Vertex(ba, col, t), Vertex(bb, col, t),
         ]);
@@ -223,7 +223,7 @@ impl Window {
     /// Add a rect to the buffer, defined by two outer corners, `aa` and `bb`.
     ///
     /// Bounds on input: `aa < cc` and `-1 ≤ norm ≤ 1`.
-    pub fn shaded_rect(&mut self, pass: usize, rect: Quad, mut norm: Vec2, col: Colour) {
+    pub fn shaded_rect(&mut self, pass: Pass, rect: Quad, mut norm: Vec2, col: Colour) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -246,7 +246,7 @@ impl Window {
         let tr = (Vec2(norm.1, 0.0), Vec2(norm.0, 0.0));
 
         #[rustfmt::skip]
-        self.add_vertices(pass, &[
+        self.add_vertices(pass.pass(), &[
             Vertex(ba, col, tt.0), Vertex(mid, col, tt.1), Vertex(aa, col, tt.0),
             Vertex(aa, col, tl.0), Vertex(mid, col, tl.1), Vertex(ab, col, tl.0),
             Vertex(ab, col, tb.0), Vertex(mid, col, tb.1), Vertex(bb, col, tb.0),
@@ -255,7 +255,7 @@ impl Window {
     }
 
     #[inline]
-    pub fn frame(&mut self, pass: usize, outer: Quad, inner: Quad, col: Colour) {
+    pub fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Colour) {
         let norm = Vec2::splat(0.0);
         self.shaded_frame(pass, outer, inner, norm, col);
     }
@@ -266,7 +266,7 @@ impl Window {
     /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
     pub fn shaded_frame(
         &mut self,
-        pass: usize,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         mut norm: Vec2,
@@ -306,7 +306,7 @@ impl Window {
         let tr = (Vec2(norm.1, 0.0), Vec2(norm.0, 0.0));
 
         #[rustfmt::skip]
-        self.add_vertices(pass, &[
+        self.add_vertices(pass.pass(), &[
             // top bar: ba - dc - cc - aa
             Vertex(ba, col, tt.0), Vertex(dc, col, tt.1), Vertex(aa, col, tt.0),
             Vertex(aa, col, tt.0), Vertex(dc, col, tt.1), Vertex(cc, col, tt.1),

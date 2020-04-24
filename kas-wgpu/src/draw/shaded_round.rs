@@ -9,7 +9,7 @@ use std::f32::consts::FRAC_PI_2;
 use std::mem::size_of;
 
 use crate::draw::{Rgb, ShaderManager};
-use kas::draw::Colour;
+use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Size, Vec2};
 
 /// Offset relative to the size of a pixel used by the fragment shader to
@@ -219,7 +219,7 @@ impl Window {
     }
 
     /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
-    pub fn circle(&mut self, pass: usize, rect: Quad, mut norm: Vec2, col: Colour) {
+    pub fn circle(&mut self, pass: Pass, rect: Quad, mut norm: Vec2, col: Colour) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -254,7 +254,7 @@ impl Window {
         let mid = Vertex(mid, col, n0, adjust, p);
 
         #[rustfmt::skip]
-        self.add_vertices(pass, &[
+        self.add_vertices(pass.pass(), &[
             aa, ba, mid,
             mid, ba, bb,
             bb, ab, mid,
@@ -265,7 +265,7 @@ impl Window {
     /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
     pub fn shaded_frame(
         &mut self,
-        pass: usize,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         mut norm: Vec2,
@@ -339,7 +339,7 @@ impl Window {
         let dd = Vertex(dd, col, n0, adjust, pbb);
 
         #[rustfmt::skip]
-        self.add_vertices(pass, &[
+        self.add_vertices(pass.pass(), &[
             // top bar: ba - dc - cc - aa
             ba, dc, da,
             da, dc, ca,

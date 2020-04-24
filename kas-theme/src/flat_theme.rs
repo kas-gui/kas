@@ -11,8 +11,8 @@ use std::f32;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShared, DrawText, DrawTextShared, FontId, InputState,
-    Region, TextClass, TextProperties,
+    self, ClipRegion, Colour, Draw, DrawRounded, DrawShared, DrawText, DrawTextShared, FontId,
+    InputState, Pass, TextClass, TextProperties,
 };
 use kas::geom::*;
 use kas::{Align, Direction, Directional, ThemeAction, ThemeApi};
@@ -50,7 +50,7 @@ pub struct DrawHandle<'a, D: Draw> {
     cols: &'a ThemeColours,
     rect: Rect,
     offset: Coord,
-    pass: Region,
+    pass: Pass,
 }
 
 impl<D: DrawShared + DrawTextShared + 'static> Theme<D> for FlatTheme
@@ -91,7 +91,7 @@ where
             cols: transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
             rect,
             offset: Coord::ZERO,
-            pass: Region::default(),
+            pass: Pass::default(),
         }
     }
     #[cfg(feature = "gat")]
@@ -107,7 +107,7 @@ where
             cols: &self.cols,
             rect,
             offset: Coord::ZERO,
-            pass: Region::default(),
+            pass: Pass::default(),
         }
     }
 
@@ -133,13 +133,13 @@ impl ThemeApi for FlatTheme {
 }
 
 impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
-    /// Draw an edit region with optional navigation highlight.
+    /// Draw an edit box with optional navigation highlight.
     /// Return the inner rect.
     ///
     /// - `outer`: define position via outer rect
     /// - `bg_col`: colour of background
     /// - `nav_col`: colour of navigation highlight, if visible
-    fn draw_edit_region(&mut self, outer: Rect, bg_col: Colour, nav_col: Option<Colour>) -> Quad {
+    fn draw_edit_box(&mut self, outer: Rect, bg_col: Colour, nav_col: Option<Colour>) -> Quad {
         let outer = Quad::from(outer);
         let inner1 = outer.shrink(self.window.dims.frame as f32 / 2.0);
         let inner2 = outer.shrink(self.window.dims.frame as f32);
@@ -175,7 +175,7 @@ impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
 }
 
 impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D> {
-    fn draw_device(&mut self) -> (kas::draw::Region, Coord, &mut dyn kas::draw::Draw) {
+    fn draw_device(&mut self) -> (kas::draw::Pass, Coord, &mut dyn kas::draw::Draw) {
         (self.pass, self.offset, self.draw)
     }
 
@@ -183,10 +183,12 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         &mut self,
         rect: Rect,
         offset: Coord,
+        class: ClipRegion,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
         let rect = rect + self.offset;
-        let pass = self.draw.add_clip_region(rect);
+        let depth = self.pass.depth() + super::relative_region_depth(class);
+        let pass = self.draw.add_clip_region(rect, depth);
         let mut handle = DrawHandle {
             draw: self.draw,
             window: self.window,
@@ -266,14 +268,14 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
 
     fn edit_box(&mut self, rect: Rect, state: InputState) {
         let bg_col = self.cols.bg_col(state);
-        self.draw_edit_region(rect + self.offset, bg_col, self.cols.nav_region(state));
+        self.draw_edit_box(rect + self.offset, bg_col, self.cols.nav_region(state));
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
         let bg_col = self.cols.bg_col(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
-        let inner = self.draw_edit_region(rect + self.offset, bg_col, nav_col);
+        let inner = self.draw_edit_box(rect + self.offset, bg_col, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             let radius = inner.size().sum() * (1.0 / 16.0);
@@ -290,7 +292,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         let bg_col = self.cols.bg_col(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
-        let inner = self.draw_edit_region(rect + self.offset, bg_col, nav_col);
+        let inner = self.draw_edit_box(rect + self.offset, bg_col, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             let inner = inner.shrink(self.window.dims.margin as f32);

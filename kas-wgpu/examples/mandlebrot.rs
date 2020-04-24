@@ -13,9 +13,9 @@ use std::mem::size_of;
 use wgpu::ShaderModule;
 
 use kas::class::HasText;
-use kas::draw::{DrawHandle, SizeHandle};
+use kas::draw::{DrawHandle, Pass, SizeHandle};
 use kas::event::{Event, Manager, NavKey, Response, VoidResponse};
-use kas::geom::{Coord, DVec2, Rect, Size, Vec2};
+use kas::geom::{Coord, DVec2, Rect, Size, Vec2, Vec3};
 use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::prelude::*;
 use kas::widget::{Label, Slider, Window};
@@ -26,7 +26,7 @@ const VERTEX: &'static str = "
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout(location = 0) in vec2 a_pos;
+layout(location = 0) in vec3 a_pos;
 layout(location = 1) in vec2 a1;
 
 layout(location = 0) out vec2 b1;
@@ -38,7 +38,7 @@ layout(set = 0, binding = 0) uniform Locals {
 const vec2 offset = { 1.0, 1.0 };
 
 void main() {
-    gl_Position = vec4(scale * a_pos - offset, 0.0, 1.0);
+    gl_Position = vec4(scale * a_pos.xy - offset, a_pos.z, 1.0);
     b1 = a1;
 }
 ";
@@ -108,7 +108,7 @@ impl Shaders {
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec2, Vec2);
+struct Vertex(Vec3, Vec2);
 
 struct PipeBuilder;
 
@@ -174,13 +174,13 @@ impl CustomPipeBuilder for PipeBuilder {
                 step_mode: wgpu::InputStepMode::Vertex,
                 attributes: &[
                     wgpu::VertexAttributeDescriptor {
-                        format: wgpu::VertexFormat::Float2,
+                        format: wgpu::VertexFormat::Float3,
                         offset: 0,
                         shader_location: 0,
                     },
                     wgpu::VertexAttributeDescriptor {
                         format: wgpu::VertexFormat::Float2,
-                        offset: (size_of::<Vec2>()) as u64,
+                        offset: (size_of::<Vec3>()) as u64,
                         shader_location: 1,
                     },
                 ],
@@ -347,7 +347,7 @@ impl CustomPipe for Pipe {
 impl CustomWindow for PipeWindow {
     type Param = (DVec2, DVec2, f32, i32);
 
-    fn invoke(&mut self, pass: usize, rect: Rect, p: Self::Param) {
+    fn invoke(&mut self, pass: Pass, rect: Rect, p: Self::Param) {
         self.rect = (p.0, p.1);
         let rel_width = p.2;
         self.iterations = p.3;
@@ -355,8 +355,11 @@ impl CustomWindow for PipeWindow {
         let aa = Vec2::from(rect.pos);
         let bb = aa + Vec2::from(rect.size);
 
-        let ab = Vec2(aa.0, bb.1);
-        let ba = Vec2(bb.0, aa.1);
+        let depth = pass.depth();
+        let ab = Vec3(aa.0, bb.1, depth);
+        let ba = Vec3(bb.0, aa.1, depth);
+        let aa = Vec3::from2(aa, depth);
+        let bb = Vec3::from2(bb, depth);
 
         // Fix height to 2 here; width is relative:
         let cbb = Vec2(rel_width, 1.0);
@@ -372,7 +375,7 @@ impl CustomWindow for PipeWindow {
         // This is used to define view_alpha and view_delta (in Mandlebrot::set_rect).
 
         #[rustfmt::skip]
-        self.add_vertices(pass, &[
+        self.add_vertices(pass.pass(), &[
             Vertex(aa, caa), Vertex(ba, cba), Vertex(ab, cab),
             Vertex(ab, cab), Vertex(ba, cba), Vertex(bb, cbb),
         ]);
@@ -461,7 +464,7 @@ impl Layout for Mandlebrot {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
-        let (region, offset, draw) = draw_handle.draw_device();
+        let (pass, offset, draw) = draw_handle.draw_device();
         // TODO: our view transform assumes that offset = 0.
         // Here it is but in general we should be able to handle an offset here!
         assert_eq!(offset, Coord::ZERO, "view transform assumption violated");
@@ -471,7 +474,7 @@ impl Layout for Mandlebrot {
             .downcast_mut::<DrawWindow<PipeWindow>>()
             .unwrap();
         let p = (self.alpha, self.delta, self.rel_width, self.iter);
-        draw.custom(region, self.core.rect + offset, p);
+        draw.custom(pass, self.core.rect + offset, p);
     }
 }
 

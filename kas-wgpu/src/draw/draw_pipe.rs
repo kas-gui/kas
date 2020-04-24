@@ -13,7 +13,7 @@ use super::{
     flat_round, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow, DrawPipe,
     DrawWindow, ShaderManager, TEX_FORMAT,
 };
-use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Region};
+use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Pass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 
 impl<C: CustomPipe> DrawPipe<C> {
@@ -51,7 +51,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let f = a.0 / a.1;
         let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
 
-        let region = Rect {
+        let rect = Rect {
             pos: Coord::ZERO,
             size,
         };
@@ -65,7 +65,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             GlyphBrushBuilder::using_fonts(self.fonts.clone()).build(device, TEX_FORMAT);
 
         DrawWindow {
-            clip_regions: vec![region],
+            clip_regions: vec![rect],
             shaded_square,
             shaded_round,
             flat_round,
@@ -107,7 +107,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         self.custom.update(&mut window.custom, device, &mut encoder);
 
         // We use a separate render pass for each clipped region.
-        for (pass, region) in window.clip_regions.iter().enumerate() {
+        for (pass, rect) in window.clip_regions.iter().enumerate() {
             let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: frame_view,
@@ -119,10 +119,10 @@ impl<C: CustomPipe> DrawPipe<C> {
                 depth_stencil_attachment: None,
             });
             rpass.set_scissor_rect(
-                region.pos.0 as u32,
-                region.pos.1 as u32,
-                region.size.0,
-                region.size.1,
+                rect.pos.0 as u32,
+                rect.pos.1 as u32,
+                rect.size.0,
+                rect.size.1,
             );
 
             self.shaded_square
@@ -162,84 +162,83 @@ impl<CW: CustomWindow + 'static> Draw for DrawWindow<CW> {
         self
     }
 
-    fn add_clip_region(&mut self, region: Rect) -> Region {
+    fn add_clip_region(&mut self, rect: Rect, depth: f32) -> Pass {
         let pass = self.clip_regions.len();
-        self.clip_regions.push(region);
-        Region(pass)
+        self.clip_regions.push(rect);
+        Pass::new_pass_with_depth(pass as u32, depth)
     }
 
     #[inline]
-    fn rect(&mut self, pass: Region, rect: Quad, col: Colour) {
-        self.shaded_square.rect(pass.0, rect, col);
+    fn rect(&mut self, pass: Pass, rect: Quad, col: Colour) {
+        self.shaded_square.rect(pass, rect, col);
     }
 
     #[inline]
-    fn frame(&mut self, pass: Region, outer: Quad, inner: Quad, col: Colour) {
-        self.shaded_square.frame(pass.0, outer, inner, col);
+    fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Colour) {
+        self.shaded_square.frame(pass, outer, inner, col);
     }
 }
 
 impl<CW: CustomWindow + 'static> DrawRounded for DrawWindow<CW> {
     #[inline]
-    fn rounded_line(&mut self, pass: Region, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
-        self.flat_round.line(pass.0, p1, p2, radius, col);
+    fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
+        self.flat_round.line(pass, p1, p2, radius, col);
     }
 
     #[inline]
-    fn circle(&mut self, pass: Region, rect: Quad, inner_radius: f32, col: Colour) {
-        self.flat_round.circle(pass.0, rect, inner_radius, col);
+    fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Colour) {
+        self.flat_round.circle(pass, rect, inner_radius, col);
     }
 
     #[inline]
     fn rounded_frame(
         &mut self,
-        pass: Region,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         inner_radius: f32,
         col: Colour,
     ) {
         self.flat_round
-            .rounded_frame(pass.0, outer, inner, inner_radius, col);
+            .rounded_frame(pass, outer, inner, inner_radius, col);
     }
 }
 
 impl<CW: CustomWindow + 'static> DrawShaded for DrawWindow<CW> {
     #[inline]
-    fn shaded_square(&mut self, pass: Region, rect: Quad, norm: (f32, f32), col: Colour) {
+    fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Colour) {
         self.shaded_square
-            .shaded_rect(pass.0, rect, Vec2::from(norm), col);
+            .shaded_rect(pass, rect, Vec2::from(norm), col);
     }
 
     #[inline]
-    fn shaded_circle(&mut self, pass: Region, rect: Quad, norm: (f32, f32), col: Colour) {
-        self.shaded_round
-            .circle(pass.0, rect, Vec2::from(norm), col);
+    fn shaded_circle(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Colour) {
+        self.shaded_round.circle(pass, rect, Vec2::from(norm), col);
     }
 
     #[inline]
     fn shaded_square_frame(
         &mut self,
-        pass: Region,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
         col: Colour,
     ) {
         self.shaded_square
-            .shaded_frame(pass.0, outer, inner, Vec2::from(norm), col);
+            .shaded_frame(pass, outer, inner, Vec2::from(norm), col);
     }
 
     #[inline]
     fn shaded_round_frame(
         &mut self,
-        pass: Region,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
         col: Colour,
     ) {
         self.shaded_round
-            .shaded_frame(pass.0, outer, inner, Vec2::from(norm), col);
+            .shaded_frame(pass, outer, inner, Vec2::from(norm), col);
     }
 }

@@ -8,7 +8,7 @@
 use smallvec::SmallVec;
 use std::fmt::{self, Debug};
 
-use kas::draw::{DrawHandle, SizeHandle};
+use kas::draw::{ClipRegion, DrawHandle, SizeHandle};
 use kas::event::{Callback, Event, Manager, Response, VoidMsg};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
@@ -131,7 +131,8 @@ impl<W: Widget> Layout for Window<W> {
         let disabled = disabled || self.is_disabled();
         self.w.draw(draw_handle, mgr, disabled);
         for popup in &self.popups {
-            draw_handle.clip_region(self.core.rect, Coord::ZERO, &mut |draw_handle| {
+            let class = ClipRegion::Popup;
+            draw_handle.clip_region(self.core.rect, Coord::ZERO, class, &mut |draw_handle| {
                 self.find(popup.1.id)
                     .map(|w| w.draw(draw_handle, mgr, disabled));
             });

@@ -70,18 +70,18 @@ impl Layout for Clock {
         //
         // Note: offset is used for scroll-regions, and should be zero here;
         // we add it anyway as is recommended.
-        let (region, offset, draw) = draw_handle.draw_device();
+        let (pass, offset, draw) = draw_handle.draw_device();
         let draw = draw.as_any_mut().downcast_mut::<DrawWindow<()>>().unwrap();
 
         let rect = Quad::from(self.core.rect + offset);
-        draw.circle(region, rect, 0.95, col_face);
+        draw.circle(pass, rect, 0.95, col_face);
 
         let half = (rect.b.1 - rect.a.1) / 2.0;
         let centre = rect.a + half;
 
         let mut line_seg = |t: f32, r1: f32, r2: f32, w, col| {
             let v = Vec2(t.sin(), -t.cos());
-            draw.rounded_line(region, centre + v * r1, centre + v * r2, w, col);
+            draw.rounded_line(pass, centre + v * r1, centre + v * r2, w, col);
         };
 
         let w = half * 0.015625;
