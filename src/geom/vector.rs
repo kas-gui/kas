@@ -79,7 +79,7 @@ impl From<Rect> for Quad {
 /// Vectors are partially ordered and support component-wise comparison via
 /// methods like `lhs.lt(rhs)`. The `PartialOrd` trait is not implemented since
 /// it implements `lhs ≤ rhs` as `lhs < rhs || lhs == rhs` which is wrong for
-/// vectors (consider for `lhs = (0, 1), rhs = (1, 1)`).
+/// vectors (consider for `lhs = (0, 1), rhs = (1, 0)`).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Vec2(pub f32, pub f32);
@@ -92,7 +92,7 @@ pub struct Vec2(pub f32, pub f32);
 /// Vectors are partially ordered and support component-wise comparison via
 /// methods like `lhs.lt(rhs)`. The `PartialOrd` trait is not implemented since
 /// it implements `lhs ≤ rhs` as `lhs < rhs || lhs == rhs` which is wrong for
-/// vectors (consider for `lhs = (0, 1), rhs = (1, 1)`).
+/// vectors (consider for `lhs = (0, 1), rhs = (1, 0)`).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct DVec2(pub f64, pub f64);
@@ -299,3 +299,18 @@ macro_rules! impl_vec2 {
 
 impl_vec2!(Vec2, f32);
 impl_vec2!(DVec2, f64);
+
+/// 3D vector
+///
+/// Usually used for a 2D coordinate with a depth value.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Vec3(pub f32, pub f32, pub f32);
+
+impl Vec3 {
+    /// Construct from a [`Vec2`] and third value
+    #[inline]
+    pub fn from2(v: Vec2, z: f32) -> Self {
+        Vec3(v.0, v.1, z)
+    }
+}
