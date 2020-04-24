@@ -107,8 +107,8 @@ impl Layout for Clock {
             align: (Align::Centre, Align::Centre),
             ..TextProperties::default()
         };
-        draw.text(self.date_rect + offset, &self.date, props);
-        draw.text(self.time_rect + offset, &self.time, props);
+        draw.text(pass, self.date_rect + offset, &self.date, props);
+        draw.text(pass, self.time_rect + offset, &self.time, props);
     }
 }
 

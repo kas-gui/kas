@@ -248,7 +248,7 @@ where
                 TextClass::Button | TextClass::Edit => false,
             },
         };
-        self.draw.text(rect + self.offset, text, props);
+        self.draw.text(self.pass, rect + self.offset, text, props);
     }
 
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
