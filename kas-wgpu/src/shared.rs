@@ -53,19 +53,23 @@ where
         };
 
         let adapter_options = options.adapter_options();
+        let backend = options.backend();
 
-        let adapter = match wgpu::Adapter::request(&adapter_options) {
+        let req = wgpu::Adapter::request(&adapter_options, backend);
+        let adapter = match futures::executor::block_on(req) {
             Some(a) => a,
             None => return Err(Error::NoAdapter),
         };
         info!("Using graphics adapter: {}", adapter.get_info().name);
 
-        let (device, queue) = adapter.request_device(&wgpu::DeviceDescriptor {
+        let desc = wgpu::DeviceDescriptor {
             extensions: wgpu::Extensions {
                 anisotropic_filtering: false,
             },
             limits: wgpu::Limits::default(),
-        });
+        };
+        let req = adapter.request_device(&desc);
+        let (device, queue) = futures::executor::block_on(req);
 
         let shaders = ShaderManager::new(&device)?;
         let mut draw = DrawPipe::new(custom, &device, &shaders);

@@ -68,17 +68,17 @@ pub trait CustomPipe {
     ) {
     }
 
-    /// Do a render pass.
+    /// Do a render pass
     ///
     /// Rendering uses one pass per region, where each region has its own
     /// scissor rect. For example, scroll regions and popups are each rendered
     /// in their own pass. This method may be called multiple times per frame.
-    fn render(
-        &self,
-        window: &mut Self::Window,
+    fn render<'a>(
+        &'a self,
+        window: &'a mut Self::Window,
         device: &wgpu::Device,
         pass: usize,
-        rpass: &mut wgpu::RenderPass,
+        rpass: &mut wgpu::RenderPass<'a>,
     );
 }
 

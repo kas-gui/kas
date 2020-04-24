@@ -15,6 +15,8 @@ use kas::geom::{Quad, Size, Vec2};
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct Vertex(Vec2, Rgb, Vec2);
+unsafe impl bytemuck::Zeroable for Vertex {}
+unsafe impl bytemuck::Pod for Vertex {}
 
 /// A pipeline for rendering with flat and square-corner shading
 pub struct Pipeline {
@@ -29,22 +31,50 @@ pub struct Window {
     passes: Vec<Vec<Vertex>>,
 }
 
+/// Buffer used during render pass
+///
+/// This buffer must not be dropped before the render pass.
+pub struct RenderBuffer<'a> {
+    pipe: &'a wgpu::RenderPipeline,
+    vertices: &'a mut Vec<Vertex>,
+    bind_group: &'a wgpu::BindGroup,
+    buffer: wgpu::Buffer,
+}
+
+impl<'a> RenderBuffer<'a> {
+    /// Do the render
+    pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>) {
+        let count = self.vertices.len() as u32;
+        rpass.set_pipeline(self.pipe);
+        rpass.set_bind_group(0, self.bind_group, &[]);
+        rpass.set_vertex_buffer(0, &self.buffer, 0, 0);
+        rpass.draw(0..count, 0..1);
+    }
+}
+
+impl<'a> Drop for RenderBuffer<'a> {
+    fn drop(&mut self) {
+        self.vertices.clear();
+    }
+}
+
 impl Pipeline {
     /// Construct
     pub fn new(device: &wgpu::Device, shaders: &ShaderManager) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             bindings: &[
-                wgpu::BindGroupLayoutBinding {
+                wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::VERTEX,
                     ty: wgpu::BindingType::UniformBuffer { dynamic: false },
                 },
-                wgpu::BindGroupLayoutBinding {
+                wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
                     ty: wgpu::BindingType::UniformBuffer { dynamic: false },
                 },
             ],
+            label: None,
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -76,28 +106,30 @@ impl Pipeline {
                 write_mask: wgpu::ColorWrite::ALL,
             }],
             depth_stencil_state: None,
-            index_format: wgpu::IndexFormat::Uint16,
-            vertex_buffers: &[wgpu::VertexBufferDescriptor {
-                stride: size_of::<Vertex>() as wgpu::BufferAddress,
-                step_mode: wgpu::InputStepMode::Vertex,
-                attributes: &[
-                    wgpu::VertexAttributeDescriptor {
-                        format: wgpu::VertexFormat::Float2,
-                        offset: 0,
-                        shader_location: 0,
-                    },
-                    wgpu::VertexAttributeDescriptor {
-                        format: wgpu::VertexFormat::Float3,
-                        offset: size_of::<Vec2>() as u64,
-                        shader_location: 1,
-                    },
-                    wgpu::VertexAttributeDescriptor {
-                        format: wgpu::VertexFormat::Float2,
-                        offset: (size_of::<Vec2>() + size_of::<Rgb>()) as u64,
-                        shader_location: 2,
-                    },
-                ],
-            }],
+            vertex_state: wgpu::VertexStateDescriptor {
+                index_format: wgpu::IndexFormat::Uint16,
+                vertex_buffers: &[wgpu::VertexBufferDescriptor {
+                    stride: size_of::<Vertex>() as wgpu::BufferAddress,
+                    step_mode: wgpu::InputStepMode::Vertex,
+                    attributes: &[
+                        wgpu::VertexAttributeDescriptor {
+                            format: wgpu::VertexFormat::Float2,
+                            offset: 0,
+                            shader_location: 0,
+                        },
+                        wgpu::VertexAttributeDescriptor {
+                            format: wgpu::VertexFormat::Float3,
+                            offset: size_of::<Vec2>() as u64,
+                            shader_location: 1,
+                        },
+                        wgpu::VertexAttributeDescriptor {
+                            format: wgpu::VertexFormat::Float2,
+                            offset: (size_of::<Vec2>() + size_of::<Rgb>()) as u64,
+                            shader_location: 2,
+                        },
+                    ],
+                }],
+            },
             sample_count: 1,
             sample_mask: !0,
             alpha_to_coverage_enabled: false,
@@ -111,21 +143,14 @@ impl Pipeline {
 
     /// Construct per-window state
     pub fn new_window(&self, device: &wgpu::Device, size: Size, light_norm: [f32; 3]) -> Window {
-        type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
-        let scale_buf = device
-            .create_buffer_mapped(
-                scale_factor.len(),
-                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            )
-            .fill_from_slice(&scale_factor);
+        let usage = wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST;
 
-        let light_norm_buf = device
-            .create_buffer_mapped(
-                light_norm.len(),
-                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            )
-            .fill_from_slice(&light_norm);
+        type Scale = [f32; 2];
+        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
+        let scale_buf = device.create_buffer_with_data(bytemuck::cast_slice(&scale_factor), usage);
+
+        let light_norm_buf =
+            device.create_buffer_with_data(bytemuck::cast_slice(&light_norm), usage);
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.bind_group_layout,
@@ -145,6 +170,7 @@ impl Pipeline {
                     },
                 },
             ],
+            label: None,
         });
 
         Window {
@@ -154,29 +180,27 @@ impl Pipeline {
         }
     }
 
-    /// Render queued triangles and clear the queue
-    pub fn render(
-        &self,
-        window: &mut Window,
+    /// Construct a render buffer
+    pub fn render_buf<'a>(
+        &'a self,
+        window: &'a mut Window,
         device: &wgpu::Device,
         pass: usize,
-        rpass: &mut wgpu::RenderPass,
-    ) {
-        if pass >= window.passes.len() {
-            return;
+    ) -> Option<RenderBuffer<'a>> {
+        if pass >= window.passes.len() || window.passes[pass].len() == 0 {
+            return None;
         }
-        let v = &mut window.passes[pass];
+
+        let vertices = &mut window.passes[pass];
         let buffer = device
-            .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
-            .fill_from_slice(&v);
-        let count = v.len() as u32;
+            .create_buffer_with_data(bytemuck::cast_slice(&vertices), wgpu::BufferUsage::VERTEX);
 
-        rpass.set_pipeline(&self.render_pipeline);
-        rpass.set_bind_group(0, &window.bind_group, &[]);
-        rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
-        rpass.draw(0..count, 0..1);
-
-        v.clear();
+        Some(RenderBuffer {
+            pipe: &self.render_pipeline,
+            vertices,
+            bind_group: &window.bind_group,
+            buffer,
+        })
     }
 }
 
@@ -188,10 +212,11 @@ impl Window {
         size: Size,
     ) {
         type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
-        let scale_buf = device
-            .create_buffer_mapped(scale_factor.len(), wgpu::BufferUsage::COPY_SRC)
-            .fill_from_slice(&scale_factor);
+        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
+        let scale_buf = device.create_buffer_with_data(
+            bytemuck::cast_slice(&scale_factor),
+            wgpu::BufferUsage::COPY_SRC,
+        );
         let byte_len = size_of::<Scale>() as u64;
 
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);

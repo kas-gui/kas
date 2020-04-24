@@ -39,7 +39,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
     /// Construct per-window state
     // TODO: device should be &, not &mut (but for glyph_brush)
-    pub fn new_window(&self, device: &mut wgpu::Device, size: Size) -> DrawWindow<C::Window> {
+    pub fn new_window(&self, device: &wgpu::Device, size: Size) -> DrawWindow<C::Window> {
         // Light dir: `(a, b)` where `0 ≤ a < pi/2` is the angle to the screen
         // normal (i.e. `a = 0` is straight at the screen) and `b` is the bearing
         // (from UP, clockwise), both in radians.
@@ -82,8 +82,9 @@ impl<C: CustomPipe> DrawPipe<C> {
         size: Size,
     ) -> wgpu::CommandBuffer {
         window.clip_regions[0].size = size;
-        let mut encoder =
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("resize"),
+        });
         window.shaded_square.resize(device, &mut encoder, size);
         window.shaded_round.resize(device, &mut encoder, size);
         self.custom
@@ -100,40 +101,49 @@ impl<C: CustomPipe> DrawPipe<C> {
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) -> wgpu::CommandBuffer {
-        let desc = wgpu::CommandEncoderDescriptor { todo: 0 };
-        let mut encoder = device.create_command_encoder(&desc);
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("render"),
+        });
         let mut load_op = wgpu::LoadOp::Clear;
 
         self.custom.update(&mut window.custom, device, &mut encoder);
 
         // We use a separate render pass for each clipped region.
         for (pass, rect) in window.clip_regions.iter().enumerate() {
-            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                    attachment: frame_view,
-                    resolve_target: None,
-                    load_op: load_op,
-                    store_op: wgpu::StoreOp::Store,
-                    clear_color,
-                }],
-                depth_stencil_attachment: None,
-            });
-            rpass.set_scissor_rect(
-                rect.pos.0 as u32,
-                rect.pos.1 as u32,
-                rect.size.0,
-                rect.size.1,
-            );
+            let ss = self
+                .shaded_square
+                .render_buf(&mut window.shaded_square, device, pass);
+            let sr = self
+                .shaded_round
+                .render_buf(&mut window.shaded_round, device, pass);
+            let fr = self
+                .flat_round
+                .render_buf(&mut window.flat_round, device, pass);
 
-            self.shaded_square
-                .render(&mut window.shaded_square, device, pass, &mut rpass);
-            self.shaded_round
-                .render(&mut window.shaded_round, device, pass, &mut rpass);
-            self.flat_round
-                .render(&mut window.flat_round, device, pass, &mut rpass);
-            self.custom
-                .render(&mut window.custom, device, pass, &mut rpass);
-            drop(rpass);
+            {
+                let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                        attachment: frame_view,
+                        resolve_target: None,
+                        load_op: load_op,
+                        store_op: wgpu::StoreOp::Store,
+                        clear_color,
+                    }],
+                    depth_stencil_attachment: None,
+                });
+                rpass.set_scissor_rect(
+                    rect.pos.0 as u32,
+                    rect.pos.1 as u32,
+                    rect.size.0,
+                    rect.size.1,
+                );
+
+                ss.as_ref().map(|buf| buf.render(&mut rpass));
+                sr.as_ref().map(|buf| buf.render(&mut rpass));
+                fr.as_ref().map(|buf| buf.render(&mut rpass));
+                self.custom
+                    .render(&mut window.custom, device, pass, &mut rpass);
+            }
 
             load_op = wgpu::LoadOp::Load;
         }

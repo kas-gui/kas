@@ -10,7 +10,7 @@
 
 use shaderc::{Compiler, ShaderKind};
 use std::mem::size_of;
-use wgpu::ShaderModule;
+use wgpu::{Buffer, ShaderModule};
 
 use kas::class::HasText;
 use kas::draw::{DrawHandle, Pass, SizeHandle};
@@ -35,10 +35,10 @@ layout(set = 0, binding = 0) uniform Locals {
     vec2 scale;
 };
 
-const vec2 offset = { 1.0, 1.0 };
+const vec2 offset = { -1.0, 1.0 };
 
 void main() {
-    gl_Position = vec4(scale * a_pos.xy - offset, a_pos.z, 1.0);
+    gl_Position = vec4(scale * a_pos.xy + offset, a_pos.z, 1.0);
     b1 = a1;
 }
 ";
@@ -109,6 +109,8 @@ impl Shaders {
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct Vertex(Vec3, Vec2);
+unsafe impl bytemuck::Zeroable for Vertex {}
+unsafe impl bytemuck::Pod for Vertex {}
 
 struct PipeBuilder;
 
@@ -121,22 +123,23 @@ impl CustomPipeBuilder for PipeBuilder {
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             bindings: &[
-                wgpu::BindGroupLayoutBinding {
+                wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::VERTEX,
                     ty: wgpu::BindingType::UniformBuffer { dynamic: false },
                 },
-                wgpu::BindGroupLayoutBinding {
+                wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
                     ty: wgpu::BindingType::UniformBuffer { dynamic: false },
                 },
-                wgpu::BindGroupLayoutBinding {
+                wgpu::BindGroupLayoutEntry {
                     binding: 2,
                     visibility: wgpu::ShaderStage::FRAGMENT,
                     ty: wgpu::BindingType::UniformBuffer { dynamic: false },
                 },
             ],
+            label: None,
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -168,23 +171,25 @@ impl CustomPipeBuilder for PipeBuilder {
                 write_mask: wgpu::ColorWrite::ALL,
             }],
             depth_stencil_state: None,
-            index_format: wgpu::IndexFormat::Uint16,
-            vertex_buffers: &[wgpu::VertexBufferDescriptor {
-                stride: size_of::<Vertex>() as wgpu::BufferAddress,
-                step_mode: wgpu::InputStepMode::Vertex,
-                attributes: &[
-                    wgpu::VertexAttributeDescriptor {
-                        format: wgpu::VertexFormat::Float3,
-                        offset: 0,
-                        shader_location: 0,
-                    },
-                    wgpu::VertexAttributeDescriptor {
-                        format: wgpu::VertexFormat::Float2,
-                        offset: (size_of::<Vec3>()) as u64,
-                        shader_location: 1,
-                    },
-                ],
-            }],
+            vertex_state: wgpu::VertexStateDescriptor {
+                index_format: wgpu::IndexFormat::Uint16,
+                vertex_buffers: &[wgpu::VertexBufferDescriptor {
+                    stride: size_of::<Vertex>() as wgpu::BufferAddress,
+                    step_mode: wgpu::InputStepMode::Vertex,
+                    attributes: &[
+                        wgpu::VertexAttributeDescriptor {
+                            format: wgpu::VertexFormat::Float3,
+                            offset: 0,
+                            shader_location: 0,
+                        },
+                        wgpu::VertexAttributeDescriptor {
+                            format: wgpu::VertexFormat::Float2,
+                            offset: (size_of::<Vec3>()) as u64,
+                            shader_location: 1,
+                        },
+                    ],
+                }],
+            },
             sample_count: 1,
             sample_mask: !0,
             alpha_to_coverage_enabled: false,
@@ -215,7 +220,7 @@ struct PipeWindow {
     iter_buf: wgpu::Buffer,
     rect: UnifRect,
     iterations: i32,
-    passes: Vec<Vec<Vertex>>,
+    passes: Vec<(Vec<Vertex>, Option<Buffer>, u32)>,
 }
 
 impl CustomPipe for Pipe {
@@ -224,21 +229,15 @@ impl CustomPipe for Pipe {
     fn new_window(&self, device: &wgpu::Device, size: Size) -> Self::Window {
         let usage = wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST;
 
-        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
-        let scale_buf = device
-            .create_buffer_mapped(scale_factor.len(), usage)
-            .fill_from_slice(&scale_factor);
+        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
+        let scale_buf = device.create_buffer_with_data(bytemuck::cast_slice(&scale_factor), usage);
 
         let rect: UnifRect = (DVec2::splat(0.0), DVec2::splat(1.0));
         let rect_arr = unif_rect_as_arr(rect);
-        let rect_buf = device
-            .create_buffer_mapped(rect_arr.len(), usage)
-            .fill_from_slice(&rect_arr);
+        let rect_buf = device.create_buffer_with_data(bytemuck::cast_slice(&rect_arr), usage);
 
         let iter = [64];
-        let iter_buf = device
-            .create_buffer_mapped(iter.len(), usage)
-            .fill_from_slice(&iter);
+        let iter_buf = device.create_buffer_with_data(bytemuck::cast_slice(&iter), usage);
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.bind_group_layout,
@@ -265,6 +264,7 @@ impl CustomPipe for Pipe {
                     },
                 },
             ],
+            label: None,
         });
 
         PipeWindow {
@@ -286,10 +286,11 @@ impl CustomPipe for Pipe {
         size: Size,
     ) {
         type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
-        let scale_buf = device
-            .create_buffer_mapped(scale_factor.len(), wgpu::BufferUsage::COPY_SRC)
-            .fill_from_slice(&scale_factor);
+        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
+        let scale_buf = device.create_buffer_with_data(
+            bytemuck::cast_slice(&scale_factor),
+            wgpu::BufferUsage::COPY_SRC,
+        );
 
         let byte_len = size_of::<Scale>() as u64;
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &window.scale_buf, 0, byte_len);
@@ -301,46 +302,53 @@ impl CustomPipe for Pipe {
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
     ) {
+        let usage = wgpu::BufferUsage::COPY_SRC;
+
         let rect_arr = unif_rect_as_arr(window.rect);
-        let rect_buf = device
-            .create_buffer_mapped(rect_arr.len(), wgpu::BufferUsage::COPY_SRC)
-            .fill_from_slice(&rect_arr);
+        let rect_buf = device.create_buffer_with_data(bytemuck::cast_slice(&rect_arr), usage);
 
         let byte_len = size_of::<UnifRect>() as u64;
         encoder.copy_buffer_to_buffer(&rect_buf, 0, &window.rect_buf, 0, byte_len);
 
         let iter = [window.iterations];
-        let iter_buf = device
-            .create_buffer_mapped(iter.len(), wgpu::BufferUsage::COPY_SRC)
-            .fill_from_slice(&iter);
+        let iter_buf = device.create_buffer_with_data(bytemuck::cast_slice(&iter), usage);
 
         let byte_len = size_of::<i32>() as u64;
         encoder.copy_buffer_to_buffer(&iter_buf, 0, &window.iter_buf, 0, byte_len);
+
+        // NOTE: we prepare vertex buffers here. Due to lifetime restrictions on
+        // RenderPass we cannot currently create buffers in render().
+        // See https://github.com/gfx-rs/wgpu-rs/issues/188
+        for pass in &mut window.passes {
+            if pass.0.len() > 0 {
+                let buffer = device.create_buffer_with_data(
+                    bytemuck::cast_slice(&pass.0),
+                    wgpu::BufferUsage::VERTEX,
+                );
+                pass.1 = Some(buffer);
+                pass.2 = pass.0.len() as u32;
+                pass.0.clear();
+            } else {
+                pass.1 = None;
+            }
+        }
     }
 
-    fn render(
-        &self,
-        window: &mut Self::Window,
-        device: &wgpu::Device,
+    fn render<'a>(
+        &'a self,
+        window: &'a mut Self::Window,
+        _: &wgpu::Device,
         pass: usize,
-        rpass: &mut wgpu::RenderPass,
+        rpass: &mut wgpu::RenderPass<'a>,
     ) {
-        if pass >= window.passes.len() {
-            return;
+        if let Some(tuple) = window.passes.get(pass) {
+            if let Some(buffer) = tuple.1.as_ref() {
+                rpass.set_pipeline(&self.render_pipeline);
+                rpass.set_bind_group(0, &window.bind_group, &[]);
+                rpass.set_vertex_buffer(0, buffer, 0, 0);
+                rpass.draw(0..tuple.2, 0..1);
+            }
         }
-        let v = &mut window.passes[pass];
-
-        let buffer = device
-            .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
-            .fill_from_slice(&v);
-        let count = v.len() as u32;
-
-        rpass.set_pipeline(&self.render_pipeline);
-        rpass.set_bind_group(0, &window.bind_group, &[]);
-        rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
-        rpass.draw(0..count, 0..1);
-
-        v.clear();
     }
 }
 
@@ -386,10 +394,10 @@ impl PipeWindow {
     fn add_vertices(&mut self, pass: usize, slice: &[Vertex]) {
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
-            self.passes.resize(pass + 8, vec![]);
+            self.passes.resize_with(pass + 8, Default::default);
         }
 
-        self.passes[pass].extend_from_slice(slice);
+        self.passes[pass].0.extend_from_slice(slice);
     }
 }
 
