@@ -11,7 +11,7 @@ use std::iter::FromIterator;
 use super::{Column, MenuEntry, MenuFrame};
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, GrabMode, Manager, Response, SendEvent};
+use kas::event::{Event, GrabMode, Manager, NavKey, Response, SendEvent};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::WindowId;
@@ -122,9 +122,29 @@ impl<M: Clone + Debug> ComboBox<M> {
     }
 
     fn map_response(&mut self, mgr: &mut Manager, r: Response<u64>) -> Response<M> {
-        match r.try_into() {
-            Ok(r) => r,
-            Err(msg) => {
+        match r {
+            Response::None => Response::None,
+            Response::Unhandled(ev) => match ev {
+                Event::NavKey(key) => {
+                    let next = |mgr: &mut Manager, s, clr, rev| {
+                        if clr {
+                            mgr.clear_nav_focus();
+                        }
+                        mgr.next_nav_focus(s, rev);
+                        Response::None
+                    };
+                    match key {
+                        NavKey::Up => next(mgr, self, false, true),
+                        NavKey::Down => next(mgr, self, false, false),
+                        NavKey::Home => next(mgr, self, true, false),
+                        NavKey::End => next(mgr, self, true, true),
+                        key => Response::Unhandled(Event::NavKey(key)),
+                    }
+                }
+                ev => Response::Unhandled(ev),
+            },
+            Response::Focus(x) => Response::Focus(x),
+            Response::Msg(msg) => {
                 let index = msg as usize;
                 assert!(index < self.messages.len());
                 self.active = index;
@@ -173,13 +193,14 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
-        let open_popup = |w: &mut ComboBox<M>, mgr: &mut Manager| {
+        let open_popup = |s: &mut Self, mgr: &mut Manager| {
             let id = mgr.add_popup(kas::Popup {
-                id: w.popup.id(),
-                parent: w.id(),
+                id: s.popup.id(),
+                parent: s.id(),
                 direction: Direction::Down,
             });
-            w.popup_id = Some(id);
+            s.popup_id = Some(id);
+            mgr.next_nav_focus(s, false);
         };
         match event {
             Event::Activate => {
@@ -188,7 +209,6 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 } else {
                     open_popup(self, mgr);
                 }
-                Response::None
             }
             Event::PressStart {
                 source,
@@ -201,12 +221,11 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                         mgr.set_grab_depress(source, Some(start_id));
                         self.opening = self.popup_id.is_none();
                     }
-                    Response::None
                 } else {
                     if let Some(id) = self.popup_id {
                         mgr.close_window(id);
                     }
-                    Response::Unhandled(Event::None)
+                    return Response::Unhandled(Event::None);
                 }
             }
             Event::PressMove {
@@ -221,7 +240,6 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 let cond = cur_id == Some(self.id()) || self.popup.rect().contains(coord);
                 let target = if cond { cur_id } else { None };
                 mgr.set_grab_depress(source, target);
-                Response::None
             }
             Event::PressEnd { end_id, coord, .. } => {
                 if let Some(id) = end_id {
@@ -240,15 +258,22 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
                 }
-                Response::None
+            }
+            Event::NewPopup(id) => {
+                // For a ComboBox, for any new Popup we should close self
+                if id != self.popup.id() {
+                    if let Some(id) = self.popup_id {
+                        mgr.close_window(id);
+                    }
+                }
             }
             Event::PopupRemoved(id) => {
                 debug_assert_eq!(Some(id), self.popup_id);
                 self.popup_id = None;
-                Response::None
             }
-            event => Response::Unhandled(event),
+            event => return Response::Unhandled(event),
         }
+        Response::None
     }
 }
 

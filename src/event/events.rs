@@ -132,6 +132,12 @@ pub enum Event {
     /// This is a specific command from a parent, e.g. [`kas::widget::MenuBar`].
     /// Most widgets can ignore this, even if they have a pop-up.
     ClosePopup,
+    /// Notification that a new popup has been created
+    ///
+    /// This is sent to the parent of each open popup when a new popup is
+    /// created. This enables parents to close their popups when the new popup
+    /// is not a descendant of itself. The `WidgetId` is that of the popup.
+    NewPopup(WidgetId),
     /// Notification that a popup has been destroyed
     ///
     /// This is sent to the popup's parent after a popup has been removed.

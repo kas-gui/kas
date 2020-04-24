@@ -207,6 +207,11 @@ impl<D: Directional, W: Widget> List<D, W> {
         }
     }
 
+    /// Get the direction of contents
+    pub fn direction(&self) -> Direction {
+        self.direction.as_direction()
+    }
+
     /// True if there are no child widgets
     pub fn is_empty(&self) -> bool {
         self.widgets.is_empty()

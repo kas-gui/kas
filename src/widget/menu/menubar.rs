@@ -5,7 +5,6 @@
 
 //! Menubar
 
-use smallvec::SmallVec;
 use std::time::Duration;
 
 use super::SubMenu;
@@ -28,8 +27,6 @@ pub struct MenuBar<D: Directional, W: Widget> {
     pub bar: List<D, SubMenu<D::Flipped, W>>,
     // Open mode. Used to close with click on root only when previously open.
     opening: bool,
-    // Stack of open child windows. Each should be a descendant of the previous.
-    open: SmallVec<[WidgetId; 16]>,
     delayed_open: Option<WidgetId>,
 }
 
@@ -47,7 +44,6 @@ impl<D: Directional, W: Widget> MenuBar<D, W> {
             core: Default::default(),
             bar: List::new_with_direction(direction, menus),
             opening: false,
-            open: Default::default(),
             delayed_open: None,
         }
     }
@@ -88,15 +84,6 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
             Event::TimerUpdate => {
                 if let Some(id) = self.delayed_open {
                     self.delayed_open = None;
-                    while let Some(last_id) = self.open.last().cloned() {
-                        if !self.find(last_id).map(|w| w.is_ancestor_of(id)).unwrap() {
-                            let _ = self.send(mgr, last_id, Event::ClosePopup);
-                            self.open.pop();
-                        } else {
-                            break;
-                        }
-                    }
-                    self.open.push(id);
                     return self.send(mgr, id, Event::OpenPopup);
                 }
             }
@@ -110,7 +97,7 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                         && mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None)
                     {
                         mgr.set_grab_depress(source, Some(start_id));
-                        mgr.set_nav_focus(Some(start_id));
+                        self.find(start_id).map(|w| mgr.next_nav_focus(w, false));
                         self.opening = false;
                         if self.rect().contains(coord) {
                             // We could just send Event::OpenPopup, but we also
@@ -133,22 +120,22 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
                         }
                     }
                 } else {
-                    while let Some(id) = self.open.pop() {
-                        let _ = self.send(mgr, id, Event::ClosePopup);
-                    }
+                    self.delayed_open = None;
                     return Response::Unhandled(Event::None);
                 }
             }
             Event::PressMove { source, cur_id, .. } => {
-                if cur_id.map(|id| self.is_ancestor_of(id)).unwrap_or(false) {
-                    let id = cur_id.unwrap();
-                    mgr.set_grab_depress(source, Some(id));
-                    mgr.set_nav_focus(Some(id));
-                    self.delayed_open = Some(id);
-                    mgr.update_on_timer(Duration::from_millis(300), self.id());
+                if let Some(w) = cur_id.and_then(|id| self.find(id)) {
+                    if w.key_nav() {
+                        // TODO: potentially this should close a sibling's submenu
+                        let id = cur_id.unwrap();
+                        mgr.set_grab_depress(source, Some(id));
+                        mgr.set_nav_focus(id);
+                        self.delayed_open = Some(id);
+                        mgr.update_on_timer(Duration::from_millis(300), self.id());
+                    }
                 } else {
                     mgr.set_grab_depress(source, None);
-                    mgr.set_nav_focus(None);
                 }
             }
             Event::PressEnd { coord, end_id, .. } => {
@@ -158,19 +145,34 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
 
                     if self.rect().contains(coord) {
                         if !self.opening {
-                            while let Some(id) = self.open.pop() {
-                                let _ = self.send(mgr, id, Event::ClosePopup);
-                            }
+                            // TODO: click on title should close menu,
+                            // but we don't have a mechanism to do that!
                         }
                     } else {
                         return self.send(mgr, id, Event::Activate);
                     }
                 } else {
-                    while let Some(id) = self.open.pop() {
-                        let _ = self.send(mgr, id, Event::ClosePopup);
-                    }
+                    // TODO: drag-click off menu should close menu
                 }
             }
+            /* TODO
+            Event::NavKey(key) => {
+                // Arrow keys can switch to the next / previous menu.
+                let is_vert = self.bar.direction().is_vertical();
+                let reverse = self.bar.direction().is_reversed()
+                    ^ match key {
+                        NavKey::Left if !is_vert => true,
+                        NavKey::Right if !is_vert => false,
+                        NavKey::Up if is_vert => true,
+                        NavKey::Down if is_vert => false,
+                        key => return Response::Unhandled(Event::NavKey(key)),
+                    };
+
+                let index = ?
+                let id = self.bar[index].id();
+                return self.send(mgr, id, Event::OpenPopup);
+            }
+             */
             e => return Response::Unhandled(e),
         }
         Response::None

@@ -8,7 +8,7 @@
 use super::MenuFrame;
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, Manager, Response};
+use kas::event::{Event, Manager, NavKey, Response};
 use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::prelude::*;
 use kas::widget::Column;
@@ -81,6 +81,7 @@ impl<D: Directional, W: Widget> SubMenu<D, W> {
                 direction: self.direction.as_direction(),
             });
             self.popup_id = Some(id);
+            mgr.next_nav_focus(self, false);
         }
     }
     fn close_menu(&mut self, mgr: &mut Manager) {
@@ -105,7 +106,9 @@ impl<D: Directional, W: Widget> kas::Layout for SubMenu<D, W> {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
+        let mut state = self.input_state(mgr, disabled);
+        state.depress = state.depress || self.popup_id.is_some();
+        draw_handle.menu_entry(self.core.rect, state);
         let rect = Rect {
             pos: self.core.rect.pos + self.label_off,
             size: self.core.rect.size - self.label_off.into(),
@@ -130,10 +133,22 @@ impl<D: Directional, M, W: Widget<Msg = M>> event::Handler for SubMenu<D, W> {
                     mgr.close_window(id);
                 }
             }
+            Event::NewPopup(id) => {
+                if self.popup_id.is_some() && !self.is_ancestor_of(id) {
+                    self.close_menu(mgr);
+                }
+            }
             Event::PopupRemoved(id) => {
                 debug_assert_eq!(Some(id), self.popup_id);
                 self.popup_id = None;
             }
+            Event::NavKey(key) => match (self.direction.as_direction(), key) {
+                (Direction::Left, NavKey::Left) => self.open_menu(mgr),
+                (Direction::Right, NavKey::Right) => self.open_menu(mgr),
+                (Direction::Up, NavKey::Up) => self.open_menu(mgr),
+                (Direction::Down, NavKey::Down) => self.open_menu(mgr),
+                (_, key) => return Response::Unhandled(Event::NavKey(key)),
+            },
             event => return Response::Unhandled(event),
         }
         Response::None
@@ -148,10 +163,44 @@ impl<D: Directional, W: Widget> event::SendEvent for SubMenu<D, W> {
 
         if id <= self.list.id() {
             let r = self.list.send(mgr, id, event);
-            if r.is_msg() {
-                self.close_menu(mgr);
+            match r {
+                Response::Unhandled(ev) => match ev {
+                    Event::NavKey(key) if self.popup_id.is_some() => {
+                        if self.popup_id.is_some() {
+                            let dir = self.direction.as_direction();
+                            let inner_vert = self.list.inner.direction().is_vertical();
+                            let next = |mgr: &mut Manager, s, clr, rev| {
+                                if clr {
+                                    mgr.clear_nav_focus();
+                                }
+                                mgr.next_nav_focus(s, rev);
+                            };
+                            let rev = self.list.inner.direction().is_reversed();
+                            use Direction::*;
+                            match key {
+                                NavKey::Left if !inner_vert => next(mgr, self, false, !rev),
+                                NavKey::Right if !inner_vert => next(mgr, self, false, rev),
+                                NavKey::Up if inner_vert => next(mgr, self, false, !rev),
+                                NavKey::Down if inner_vert => next(mgr, self, false, rev),
+                                NavKey::Home => next(mgr, self, true, false),
+                                NavKey::End => next(mgr, self, true, true),
+                                NavKey::Left if dir == Right => self.close_menu(mgr),
+                                NavKey::Right if dir == Left => self.close_menu(mgr),
+                                NavKey::Up if dir == Down => self.close_menu(mgr),
+                                NavKey::Down if dir == Up => self.close_menu(mgr),
+                                key => return Response::Unhandled(Event::NavKey(key)),
+                            }
+                        }
+                        Response::None
+                    }
+                    ev => Response::Unhandled(ev),
+                },
+                Response::Msg(msg) => {
+                    self.close_menu(mgr);
+                    Response::Msg(msg)
+                }
+                r => r,
             }
-            r
         } else {
             Manager::handle_generic(self, mgr, event)
         }
