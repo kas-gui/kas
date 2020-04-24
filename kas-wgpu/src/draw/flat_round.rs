@@ -115,34 +115,12 @@ impl Pipeline {
                 vertex_buffers: &[wgpu::VertexBufferDescriptor {
                     stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
-                    attributes: &[
-                        wgpu::VertexAttributeDescriptor {
-                            format: wgpu::VertexFormat::Float2,
-                            offset: 0,
-                            shader_location: 0,
-                        },
-                        wgpu::VertexAttributeDescriptor {
-                            format: wgpu::VertexFormat::Float3,
-                            offset: size_of::<Vec2>() as u64,
-                            shader_location: 1,
-                        },
-                        wgpu::VertexAttributeDescriptor {
-                            format: wgpu::VertexFormat::Float,
-                            offset: (size_of::<Vec2>() + size_of::<Rgb>()) as u64,
-                            shader_location: 2,
-                        },
-                        wgpu::VertexAttributeDescriptor {
-                            format: wgpu::VertexFormat::Float2,
-                            offset: (size_of::<Vec2>() + size_of::<Rgb>() + size_of::<f32>())
-                                as u64,
-                            shader_location: 3,
-                        },
-                        wgpu::VertexAttributeDescriptor {
-                            format: wgpu::VertexFormat::Float2,
-                            offset: (2 * size_of::<Vec2>() + size_of::<Rgb>() + size_of::<f32>())
-                                as u64,
-                            shader_location: 4,
-                        },
+                    attributes: &wgpu::vertex_attr_array![
+                        0 => Float2,
+                        1 => Float3,
+                        2 => Float,
+                        3 => Float2,
+                        4 => Float2
                     ],
                 }],
             },

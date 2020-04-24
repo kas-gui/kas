@@ -176,18 +176,7 @@ impl CustomPipeBuilder for PipeBuilder {
                 vertex_buffers: &[wgpu::VertexBufferDescriptor {
                     stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
-                    attributes: &[
-                        wgpu::VertexAttributeDescriptor {
-                            format: wgpu::VertexFormat::Float3,
-                            offset: 0,
-                            shader_location: 0,
-                        },
-                        wgpu::VertexAttributeDescriptor {
-                            format: wgpu::VertexFormat::Float2,
-                            offset: (size_of::<Vec3>()) as u64,
-                            shader_location: 1,
-                        },
-                    ],
+                    attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Float2],
                 }],
             },
             sample_count: 1,
