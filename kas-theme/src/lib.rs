@@ -30,7 +30,7 @@ mod theme_dst;
 mod traits;
 
 pub use kas;
-use kas::draw::ClipRegion;
+use kas::draw::{ClipRegion, Pass};
 
 pub use col::ThemeColours;
 pub use dim::{Dimensions, DimensionsParams, DimensionsWindow};
@@ -54,9 +54,11 @@ pub use traits::{Theme, Window};
 /// **Feature gated**: this is only available with feature `stack_dst`.
 pub type StackDst<T> = stack_dst_::ValueA<T, [usize; 8]>;
 
+// NOTE: depth values between 0 and 1 are drawn.
+const START_PASS: Pass = Pass::new_pass_with_depth(0, 0.01);
 fn relative_region_depth(class: ClipRegion) -> f32 {
     match class {
-        ClipRegion::Popup => 100000.0,
-        ClipRegion::Scroll => -100.0,
+        ClipRegion::Popup => 0.01,
+        ClipRegion::Scroll => -1e-5,
     }
 }

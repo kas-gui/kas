@@ -58,14 +58,14 @@ pub use text::{DrawText, DrawTextShared, Font, FontId, TextProperties};
 /// Users normally need only pass this value.
 ///
 /// Custom render pipes should extract the pass number and depth value.
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 pub struct Pass(u32, f32);
 
 impl Pass {
     /// Construct a new pass from a `u32` identifier and depth value
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[inline]
-    pub fn new_pass_with_depth(n: u32, d: f32) -> Self {
+    pub const fn new_pass_with_depth(n: u32, d: f32) -> Self {
         Pass(n, d)
     }
 

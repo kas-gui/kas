@@ -10,7 +10,7 @@ use std::mem::size_of;
 
 use crate::draw::{Rgb, ShaderManager};
 use kas::draw::{Colour, Pass};
-use kas::geom::{Quad, Size, Vec2};
+use kas::geom::{Quad, Size, Vec2, Vec3};
 
 /// Offset relative to the size of a pixel used by the fragment shader to
 /// implement multi-sampling.
@@ -18,9 +18,16 @@ const OFFSET: f32 = 0.125;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec2, Rgb, Vec2, Vec2, Vec2);
+struct Vertex(Vec3, Rgb, Vec2, Vec2, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
+
+impl Vertex {
+    fn new2(v: Vec2, d: f32, col: Rgb, n: Vec2, adjust: Vec2, p: Vec2) -> Self {
+        let v = Vec3::from2(v, d);
+        Vertex(v, col, n, adjust, p)
+    }
+}
 
 /// A pipeline for rendering rounded shapes
 pub struct Pipeline {
@@ -123,7 +130,7 @@ impl Pipeline {
                     stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![
-                        0 => Float2,
+                        0 => Float3,
                         1 => Float3,
                         2 => Float2,
                         3 => Float2,
@@ -251,12 +258,13 @@ impl Window {
 
         // Since we take the mid-point, all offsets are uniform
         let p = nbb / (bb - mid) * OFFSET;
+        let depth = pass.depth();
 
-        let aa = Vertex(aa, col, naa, adjust, p);
-        let ab = Vertex(ab, col, nab, adjust, p);
-        let ba = Vertex(ba, col, nba, adjust, p);
-        let bb = Vertex(bb, col, nbb, adjust, p);
-        let mid = Vertex(mid, col, n0, adjust, p);
+        let aa = Vertex::new2(aa, depth, col, naa, adjust, p);
+        let ab = Vertex::new2(ab, depth, col, nab, adjust, p);
+        let ba = Vertex::new2(ba, depth, col, nba, adjust, p);
+        let bb = Vertex::new2(bb, depth, col, nbb, adjust, p);
+        let mid = Vertex::new2(mid, depth, col, n0, adjust, p);
 
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[
@@ -320,28 +328,29 @@ impl Window {
         let pab = nab / (ab - cd) * OFFSET;
         let pba = nba / (ba - dc) * OFFSET;
         let pbb = nbb / (bb - dd) * OFFSET;
+        let depth = pass.depth();
 
         // We must add corners separately to ensure correct interpolation of dir
         // values, hence need 16 points:
-        let ab = Vertex(ab, col, nab, adjust, pab);
-        let ba = Vertex(ba, col, nba, adjust, pba);
-        let cd = Vertex(cd, col, n0, adjust, pab);
-        let dc = Vertex(dc, col, n0, adjust, pba);
+        let ab = Vertex::new2(ab, depth, col, nab, adjust, pab);
+        let ba = Vertex::new2(ba, depth, col, nba, adjust, pba);
+        let cd = Vertex::new2(cd, depth, col, n0, adjust, pab);
+        let dc = Vertex::new2(dc, depth, col, n0, adjust, pba);
 
-        let ac = Vertex(Vec2(aa.0, cc.1), col, na0, adjust, paa);
-        let ad = Vertex(Vec2(aa.0, dd.1), col, na0, adjust, pab);
-        let bc = Vertex(Vec2(bb.0, cc.1), col, nb0, adjust, pba);
-        let bd = Vertex(Vec2(bb.0, dd.1), col, nb0, adjust, pbb);
+        let ac = Vertex(Vec3(aa.0, cc.1, depth), col, na0, adjust, paa);
+        let ad = Vertex(Vec3(aa.0, dd.1, depth), col, na0, adjust, pab);
+        let bc = Vertex(Vec3(bb.0, cc.1, depth), col, nb0, adjust, pba);
+        let bd = Vertex(Vec3(bb.0, dd.1, depth), col, nb0, adjust, pbb);
 
-        let ca = Vertex(Vec2(cc.0, aa.1), col, n0a, adjust, paa);
-        let cb = Vertex(Vec2(cc.0, bb.1), col, n0b, adjust, pab);
-        let da = Vertex(Vec2(dd.0, aa.1), col, n0a, adjust, pba);
-        let db = Vertex(Vec2(dd.0, bb.1), col, n0b, adjust, pbb);
+        let ca = Vertex(Vec3(cc.0, aa.1, depth), col, n0a, adjust, paa);
+        let cb = Vertex(Vec3(cc.0, bb.1, depth), col, n0b, adjust, pab);
+        let da = Vertex(Vec3(dd.0, aa.1, depth), col, n0a, adjust, pba);
+        let db = Vertex(Vec3(dd.0, bb.1, depth), col, n0b, adjust, pbb);
 
-        let aa = Vertex(aa, col, naa, adjust, paa);
-        let bb = Vertex(bb, col, nbb, adjust, pbb);
-        let cc = Vertex(cc, col, n0, adjust, paa);
-        let dd = Vertex(dd, col, n0, adjust, pbb);
+        let aa = Vertex::new2(aa, depth, col, naa, adjust, paa);
+        let bb = Vertex::new2(bb, depth, col, nbb, adjust, pbb);
+        let cc = Vertex::new2(cc, depth, col, n0, adjust, paa);
+        let dd = Vertex::new2(dd, depth, col, n0, adjust, pbb);
 
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[

@@ -91,7 +91,7 @@ where
             cols: transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
             rect,
             offset: Coord::ZERO,
-            pass: Pass::default(),
+            pass: super::START_PASS,
         }
     }
     #[cfg(feature = "gat")]
@@ -107,7 +107,7 @@ where
             cols: &self.cols,
             rect,
             offset: Coord::ZERO,
-            pass: Pass::default(),
+            pass: super::START_PASS,
         }
     }
 
