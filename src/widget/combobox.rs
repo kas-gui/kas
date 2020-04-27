@@ -200,7 +200,9 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 direction: Direction::Down,
             });
             s.popup_id = Some(id);
-            mgr.next_nav_focus(s, false);
+            if let Some(id) = s.popup.inner.inner.get(s.active).map(|w| w.id()) {
+                mgr.set_nav_focus(id);
+            }
         };
         match event {
             Event::Activate => {
@@ -237,9 +239,12 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 if self.popup_id.is_none() {
                     open_popup(self, mgr);
                 }
-                let cond = cur_id == Some(self.id()) || self.popup.rect().contains(coord);
+                let cond = self.popup.inner.inner.rect().contains(coord);
                 let target = if cond { cur_id } else { None };
                 mgr.set_grab_depress(source, target);
+                if let Some(id) = target {
+                    mgr.set_nav_focus(id);
+                }
             }
             Event::PressEnd { end_id, coord, .. } => {
                 if let Some(id) = end_id {
