@@ -7,6 +7,7 @@
 
 use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
+use wgpu::TextureView;
 use wgpu_glyph::GlyphBrushBuilder;
 
 use super::{
@@ -15,6 +16,31 @@ use super::{
 };
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Pass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
+
+fn make_depth_texture(device: &wgpu::Device, size: Size) -> Option<TextureView> {
+    // NOTE: initially the DrawWindow is created with Size::ZERO to calculate
+    // initial window size. Wgpu does not support creation of zero-sized
+    // textures, so as a special case we return None here:
+    if size.0 * size.1 == 0 {
+        return None;
+    }
+
+    let tex = device.create_texture(&wgpu::TextureDescriptor {
+        size: wgpu::Extent3d {
+            width: size.0,
+            height: size.1,
+            depth: 1,
+        },
+        array_layer_count: 1,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: super::DEPTH_FORMAT,
+        usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+        label: None,
+    });
+    Some(tex.create_default_view())
+}
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
@@ -61,10 +87,12 @@ impl<C: CustomPipe> DrawPipe<C> {
         let flat_round = self.flat_round.new_window(device, size);
         let custom = self.custom.new_window(device, size);
 
-        let glyph_brush =
-            GlyphBrushBuilder::using_fonts(self.fonts.clone()).build(device, TEX_FORMAT);
+        let glyph_brush = GlyphBrushBuilder::using_fonts(self.fonts.clone())
+            .depth_stencil_state(super::GLPYH_DEPTH_DESC)
+            .build(device, TEX_FORMAT);
 
         DrawWindow {
+            depth: make_depth_texture(device, size),
             clip_regions: vec![rect],
             shaded_square,
             shaded_round,
@@ -81,6 +109,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         device: &wgpu::Device,
         size: Size,
     ) -> wgpu::CommandBuffer {
+        window.depth = make_depth_texture(device, size);
         window.clip_regions[0].size = size;
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("resize"),
@@ -104,9 +133,25 @@ impl<C: CustomPipe> DrawPipe<C> {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("render"),
         });
-        let mut load_op = wgpu::LoadOp::Clear;
 
         self.custom.update(&mut window.custom, device, &mut encoder);
+
+        let mut color_attachments = [wgpu::RenderPassColorAttachmentDescriptor {
+            attachment: frame_view,
+            resolve_target: None,
+            load_op: wgpu::LoadOp::Clear,
+            store_op: wgpu::StoreOp::Store,
+            clear_color,
+        }];
+        let mut depth_stencil_attachment = wgpu::RenderPassDepthStencilAttachmentDescriptor {
+            attachment: window.depth.as_ref().unwrap(),
+            depth_load_op: wgpu::LoadOp::Clear,
+            depth_store_op: wgpu::StoreOp::Store,
+            stencil_load_op: wgpu::LoadOp::Clear,
+            stencil_store_op: wgpu::StoreOp::Store,
+            clear_depth: 0.0,
+            clear_stencil: 0,
+        };
 
         // We use a separate render pass for each clipped region.
         for (pass, rect) in window.clip_regions.iter().enumerate() {
@@ -122,14 +167,8 @@ impl<C: CustomPipe> DrawPipe<C> {
 
             {
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment: frame_view,
-                        resolve_target: None,
-                        load_op: load_op,
-                        store_op: wgpu::StoreOp::Store,
-                        clear_color,
-                    }],
-                    depth_stencil_attachment: None,
+                    color_attachments: &color_attachments,
+                    depth_stencil_attachment: Some(depth_stencil_attachment.clone()),
                 });
                 rpass.set_scissor_rect(
                     rect.pos.0 as u32,
@@ -145,14 +184,23 @@ impl<C: CustomPipe> DrawPipe<C> {
                     .render(&mut window.custom, device, pass, &mut rpass);
             }
 
-            load_op = wgpu::LoadOp::Load;
+            color_attachments[0].load_op = wgpu::LoadOp::Load;
+            depth_stencil_attachment.depth_load_op = wgpu::LoadOp::Load;
+            depth_stencil_attachment.stencil_load_op = wgpu::LoadOp::Load;
         }
 
         // Fonts use their own render pass(es).
         let size = window.clip_regions[0].size;
         window
             .glyph_brush
-            .draw_queued(device, &mut encoder, frame_view, size.0, size.1)
+            .draw_queued(
+                device,
+                &mut encoder,
+                frame_view,
+                depth_stencil_attachment,
+                size.0,
+                size.1,
+            )
             .expect("glyph_brush.draw_queued");
 
         // Keep only first clip region (which is the entire window)

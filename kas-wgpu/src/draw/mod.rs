@@ -17,13 +17,29 @@ mod shaders;
 
 use kas::draw::Font;
 use kas::geom::Rect;
+use wgpu::{CompareFunction, DepthStencilStateDescriptor, TextureFormat};
 use wgpu_glyph::GlyphBrush;
 
 pub(crate) use shaders::ShaderManager;
 
 pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};
 
-pub(crate) const TEX_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
+const DEPTH_FORMAT: TextureFormat = TextureFormat::Depth32Float;
+pub(crate) const TEX_FORMAT: TextureFormat = TextureFormat::Bgra8UnormSrgb;
+
+const fn new_depth_desc(depth_compare: CompareFunction) -> DepthStencilStateDescriptor {
+    DepthStencilStateDescriptor {
+        format: DEPTH_FORMAT,
+        depth_write_enabled: true,
+        depth_compare,
+        stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
+        stencil_back: wgpu::StencilStateFaceDescriptor::IGNORE,
+        stencil_read_mask: 0,
+        stencil_write_mask: 0,
+    }
+}
+const DEPTH_DESC: DepthStencilStateDescriptor = new_depth_desc(CompareFunction::Always);
+const GLPYH_DEPTH_DESC: DepthStencilStateDescriptor = new_depth_desc(CompareFunction::GreaterEqual);
 
 /// 3-part colour data
 #[repr(C)]
@@ -55,10 +71,11 @@ pub struct DrawPipe<C> {
 
 /// Per-window pipeline data
 pub struct DrawWindow<CW: CustomWindow> {
+    depth: Option<wgpu::TextureView>,
     clip_regions: Vec<Rect>,
     shaded_square: shaded_square::Window,
     shaded_round: shaded_round::Window,
     flat_round: flat_round::Window,
     custom: CW,
-    glyph_brush: GlyphBrush<'static, ()>, // TODO: should be in DrawPipe
+    glyph_brush: GlyphBrush<'static, DepthStencilStateDescriptor>, // TODO: should be in DrawPipe
 }
