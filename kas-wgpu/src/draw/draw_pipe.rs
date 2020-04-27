@@ -149,7 +149,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             depth_store_op: wgpu::StoreOp::Store,
             stencil_load_op: wgpu::LoadOp::Clear,
             stencil_store_op: wgpu::StoreOp::Store,
-            clear_depth: 0.0,
+            clear_depth: kas_theme::START_PASS.depth(),
             clear_stencil: 0,
         };
 

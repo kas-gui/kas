@@ -54,8 +54,9 @@ pub use traits::{Theme, Window};
 /// **Feature gated**: this is only available with feature `stack_dst`.
 pub type StackDst<T> = stack_dst_::ValueA<T, [usize; 8]>;
 
+/// The initial [`Pass`] value for a window
 // NOTE: depth values between 0 and 1 are drawn.
-const START_PASS: Pass = Pass::new_pass_with_depth(0, 0.01);
+pub const START_PASS: Pass = Pass::new_pass_with_depth(0, 0.01);
 fn relative_region_depth(class: ClipRegion) -> f32 {
     match class {
         ClipRegion::Popup => 0.01,

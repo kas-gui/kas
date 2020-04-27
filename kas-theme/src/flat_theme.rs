@@ -189,6 +189,11 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         let rect = rect + self.offset;
         let depth = self.pass.depth() + super::relative_region_depth(class);
         let pass = self.draw.add_clip_region(rect, depth);
+        if depth < self.pass.depth() {
+            // draw to depth buffer to enable correct text rendering
+            self.draw
+                .rect(pass, (rect + self.offset).into(), self.cols.background);
+        }
         let mut handle = DrawHandle {
             draw: self.draw,
             window: self.window,
