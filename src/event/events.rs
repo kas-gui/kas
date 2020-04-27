@@ -6,7 +6,7 @@
 //! Event handling: events
 
 #[allow(unused)]
-use super::Manager; // for doc-links
+use super::{Manager, Response}; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
 
 use crate::geom::{Coord, DVec2};

@@ -127,8 +127,8 @@ pub trait CustomPipe {
 /// Per-window state for a custom draw pipe
 ///
 /// One instance is constructed per window. Since the [`CustomPipe`] is not
-/// accessible during a widget's [`Layout::draw`] calls, this struct must batch
-/// per-frame draw data.
+/// accessible during a widget's [`kas::Layout::draw`] calls, this struct must
+/// batch per-frame draw data.
 pub trait CustomWindow {
     /// User parameter type
     type Param;

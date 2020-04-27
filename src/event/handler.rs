@@ -68,7 +68,7 @@ pub trait SendEvent: Handler {
     /// disabled widgets should not forward any events.
     ///
     /// The following logic is recommended for routing events:
-    /// ```norun
+    /// ```no_test
     /// if self.is_disabled() {
     ///     return Response::Unhandled(event);
     /// }
@@ -83,7 +83,7 @@ pub trait SendEvent: Handler {
     /// }
     /// ```
     /// Parents which don't handle any events themselves may simplify this:
-    /// ```norun
+    /// ```no_test
     /// if !self.is_disabled() && id <= self.w.id() {
     ///     return self.w.send(mgr, id, event);
     /// }
