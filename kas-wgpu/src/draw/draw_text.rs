@@ -9,7 +9,7 @@ use std::f32;
 use wgpu_glyph::{GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 use super::{CustomPipe, CustomWindow, DrawPipe, DrawWindow};
-use kas::draw::{DrawText, DrawTextShared, Font, FontId, TextProperties};
+use kas::draw::{DrawText, DrawTextShared, Font, FontId, Pass, TextProperties};
 use kas::geom::{Coord, Rect, Vec2};
 use kas::Align;
 
@@ -22,7 +22,7 @@ impl<C: CustomPipe + 'static> DrawTextShared for DrawPipe<C> {
 }
 
 impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
-    fn text(&mut self, rect: Rect, text: &str, props: TextProperties) {
+    fn text(&mut self, pass: Pass, rect: Rect, text: &str, props: TextProperties) {
         let bounds = Coord::from(rect.size);
 
         // TODO: support justified alignment
@@ -51,7 +51,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
             bounds: Vec2::from(bounds).into(),
             scale: Scale::uniform(props.scale),
             color: props.col.into(),
-            z: 0.0,
+            z: pass.depth(),
             layout,
             font_id: wgpu_glyph::FontId(props.font.0),
         });

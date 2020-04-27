@@ -9,8 +9,8 @@ use std::f32;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, DrawTextShared, FontId,
-    InputState, Region, TextClass, TextProperties,
+    self, ClipRegion, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, DrawTextShared,
+    FontId, InputState, Pass, TextClass, TextProperties,
 };
 use kas::geom::*;
 use kas::{Align, Direction, Directional, ThemeAction, ThemeApi};
@@ -48,7 +48,7 @@ pub struct DrawHandle<'a, D: Draw> {
     cols: &'a ThemeColours,
     rect: Rect,
     offset: Coord,
-    pass: Region,
+    pass: Pass,
 }
 
 impl<D: DrawShared + DrawTextShared + 'static> Theme<D> for ShadedTheme
@@ -89,7 +89,7 @@ where
             cols: transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
             rect,
             offset: Coord::ZERO,
-            pass: Region::default(),
+            pass: super::START_PASS,
         }
     }
     #[cfg(feature = "gat")]
@@ -105,7 +105,7 @@ where
             cols: &self.cols,
             rect,
             offset: Coord::ZERO,
-            pass: Region::default(),
+            pass: super::START_PASS,
         }
     }
 
@@ -131,13 +131,13 @@ impl ThemeApi for ShadedTheme {
 }
 
 impl<'a, D: Draw + DrawRounded + DrawShaded> DrawHandle<'a, D> {
-    /// Draw an edit region with optional navigation highlight.
+    /// Draw an edit box with optional navigation highlight.
     /// Return the inner rect.
     ///
     /// - `outer`: define position via outer rect
     /// - `bg_col`: colour of background
     /// - `nav_col`: colour of navigation highlight, if visible
-    fn draw_edit_region(&mut self, outer: Rect, bg_col: Colour, nav_col: Option<Colour>) -> Quad {
+    fn draw_edit_box(&mut self, outer: Rect, bg_col: Colour, nav_col: Option<Colour>) -> Quad {
         let mut outer = Quad::from(outer);
         let mut inner = outer.shrink(self.window.dims.frame as f32);
 
@@ -175,7 +175,7 @@ impl<'a, D> draw::DrawHandle for DrawHandle<'a, D>
 where
     D: Draw + DrawRounded + DrawShaded + DrawText + 'static,
 {
-    fn draw_device(&mut self) -> (kas::draw::Region, Coord, &mut dyn kas::draw::Draw) {
+    fn draw_device(&mut self) -> (kas::draw::Pass, Coord, &mut dyn kas::draw::Draw) {
         (self.pass, self.offset, self.draw)
     }
 
@@ -183,10 +183,17 @@ where
         &mut self,
         rect: Rect,
         offset: Coord,
+        class: ClipRegion,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
         let rect = rect + self.offset;
-        let pass = self.draw.add_clip_region(rect);
+        let depth = self.pass.depth() + super::relative_region_depth(class);
+        let pass = self.draw.add_clip_region(rect, depth);
+        if depth < self.pass.depth() {
+            // draw to depth buffer to enable correct text rendering
+            self.draw
+                .rect(pass, (rect + self.offset).into(), self.cols.background);
+        }
         let mut handle = DrawHandle {
             draw: self.draw,
             window: self.window,
@@ -246,7 +253,7 @@ where
                 TextClass::Button | TextClass::Edit => false,
             },
         };
-        self.draw.text(rect + self.offset, text, props);
+        self.draw.text(self.pass, rect + self.offset, text, props);
     }
 
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
@@ -273,14 +280,14 @@ where
 
     fn edit_box(&mut self, rect: Rect, state: InputState) {
         let bg_col = self.cols.bg_col(state);
-        self.draw_edit_region(rect + self.offset, bg_col, self.cols.nav_region(state));
+        self.draw_edit_box(rect + self.offset, bg_col, self.cols.nav_region(state));
     }
 
     fn checkbox(&mut self, rect: Rect, checked: bool, state: InputState) {
         let bg_col = self.cols.bg_col(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
-        let inner = self.draw_edit_region(rect + self.offset, bg_col, nav_col);
+        let inner = self.draw_edit_box(rect + self.offset, bg_col, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             self.draw.shaded_square(self.pass, inner, (0.0, 0.4), col);
@@ -291,7 +298,7 @@ where
         let bg_col = self.cols.bg_col(state);
         let nav_col = self.cols.nav_region(state).or(Some(bg_col));
 
-        let inner = self.draw_edit_region(rect + self.offset, bg_col, nav_col);
+        let inner = self.draw_edit_box(rect + self.offset, bg_col, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             self.draw.shaded_circle(self.pass, inner, (0.0, 1.0), col);

@@ -50,14 +50,39 @@ use std::any::Any;
 use crate::geom::{Quad, Rect, Vec2};
 
 pub use colour::Colour;
-pub use handle::{DrawHandle, InputState, SizeHandle, TextClass};
+pub use handle::{ClipRegion, DrawHandle, InputState, SizeHandle, TextClass};
 pub use text::{DrawText, DrawTextShared, Font, FontId, TextProperties};
 
-/// Type returned by [`Draw::add_clip_region`].
+/// Pass identifier
 ///
-/// Supports [`Default`], which may be used to target the root region.
-#[derive(Copy, Clone, Default)]
-pub struct Region(pub usize);
+/// Users normally need only pass this value.
+///
+/// Custom render pipes should extract the pass number and depth value.
+#[derive(Copy, Clone)]
+pub struct Pass(u32, f32);
+
+impl Pass {
+    /// Construct a new pass from a `u32` identifier and depth value
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[inline]
+    pub const fn new_pass_with_depth(n: u32, d: f32) -> Self {
+        Pass(n, d)
+    }
+
+    /// The pass number
+    ///
+    /// This value is returned as `usize` but is always safe to store `as u32`.
+    #[inline]
+    pub fn pass(self) -> usize {
+        self.0 as usize
+    }
+
+    /// The depth value
+    #[inline]
+    pub fn depth(self) -> f32 {
+        self.1
+    }
+}
 
 /// Bounds on type shared across [`Draw`] implementations
 pub trait DrawShared {
@@ -71,10 +96,9 @@ pub trait DrawShared {
 /// type conversions can be performed with `from` and `into`. Integral
 /// coordinates align with pixels, non-integral coordinates may also be used.
 ///
-/// All draw operations target some region identified by a handle of type
-/// [`Region`]; this may be the whole window, some sub-region, or perhaps
-/// something else such as a texture. In general the user doesn't need to know
-/// what this is, but merely pass the given handle.
+/// Draw operations take place over multiple render passes, identified by a
+/// handle of type [`Pass`]. In general the user only needs to pass this value
+/// into methods as required. [`Draw::add_clip_region`] creates a new [`Pass`].
 ///
 /// The primitives provided by this trait all draw solid areas, replacing prior
 /// contents.
@@ -88,15 +112,17 @@ pub trait Draw: Any {
     /// Add a clip region
     ///
     /// Clip regions are cleared each frame and so must be recreated on demand.
-    fn add_clip_region(&mut self, region: Rect) -> Region;
+    /// Each region has an associated depth value. The theme is responsible for
+    /// assigning depth values.
+    fn add_clip_region(&mut self, rect: Rect, depth: f32) -> Pass;
 
     /// Draw a rectangle of uniform colour
-    fn rect(&mut self, region: Region, rect: Quad, col: Colour);
+    fn rect(&mut self, pass: Pass, rect: Quad, col: Colour);
 
     /// Draw a frame of uniform colour
     ///
     /// The frame is defined by the area inside `outer` and not inside `inner`.
-    fn frame(&mut self, region: Region, outer: Quad, inner: Quad, col: Colour);
+    fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Colour);
 }
 
 /// Drawing commands for rounded shapes
@@ -115,7 +141,7 @@ pub trait DrawRounded: Draw {
     ///
     /// Note that for rectangular, axis-aligned lines, [`Draw::rect`] should be
     /// preferred.
-    fn rounded_line(&mut self, region: Region, p1: Vec2, p2: Vec2, radius: f32, col: Colour);
+    fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Colour);
 
     /// Draw a circle or oval of uniform colour
     ///
@@ -124,7 +150,7 @@ pub trait DrawRounded: Draw {
     /// The `inner_radius` parameter gives the inner radius relative to the
     /// outer radius: a value of `0.0` will result in the whole shape being
     /// painted, while `1.0` will result in a zero-width line on the outer edge.
-    fn circle(&mut self, region: Region, rect: Quad, inner_radius: f32, col: Colour);
+    fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Colour);
 
     /// Draw a frame with rounded corners and uniform colour
     ///
@@ -139,7 +165,7 @@ pub trait DrawRounded: Draw {
     /// allocated area.
     fn rounded_frame(
         &mut self,
-        region: Region,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         inner_radius: f32,
@@ -160,15 +186,15 @@ pub trait DrawRounded: Draw {
 /// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
 pub trait DrawShaded: Draw {
     /// Add a shaded square to the draw buffer
-    fn shaded_square(&mut self, region: Region, rect: Quad, norm: (f32, f32), col: Colour);
+    fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Colour);
 
     /// Add a shaded circle to the draw buffer
-    fn shaded_circle(&mut self, region: Region, rect: Quad, norm: (f32, f32), col: Colour);
+    fn shaded_circle(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Colour);
 
     /// Add a square shaded frame to the draw buffer.
     fn shaded_square_frame(
         &mut self,
-        region: Region,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
@@ -178,7 +204,7 @@ pub trait DrawShaded: Draw {
     /// Add a rounded shaded frame to the draw buffer.
     fn shaded_round_frame(
         &mut self,
-        region: Region,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),

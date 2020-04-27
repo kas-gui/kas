@@ -90,7 +90,7 @@ where
             format: TEX_FORMAT,
             width: size.0,
             height: size.1,
-            present_mode: wgpu::PresentMode::Vsync,
+            present_mode: wgpu::PresentMode::Fifo,
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
@@ -357,7 +357,7 @@ where
         self.widget.draw(&mut draw_handle, &self.mgr, false);
         drop(draw_handle);
 
-        let frame = self.swap_chain.get_next_texture();
+        let frame = self.swap_chain.get_next_texture().unwrap();
         let clear_color = to_wgpu_color(shared.theme.clear_colour());
         shared.render(&mut self.draw, &frame.view, clear_color);
     }

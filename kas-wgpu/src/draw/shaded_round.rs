@@ -9,8 +9,8 @@ use std::f32::consts::FRAC_PI_2;
 use std::mem::size_of;
 
 use crate::draw::{Rgb, ShaderManager};
-use kas::draw::Colour;
-use kas::geom::{Quad, Size, Vec2};
+use kas::draw::{Colour, Pass};
+use kas::geom::{Quad, Size, Vec2, Vec3};
 
 /// Offset relative to the size of a pixel used by the fragment shader to
 /// implement multi-sampling.
@@ -18,7 +18,16 @@ const OFFSET: f32 = 0.125;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec2, Rgb, Vec2, Vec2, Vec2);
+struct Vertex(Vec3, Rgb, Vec2, Vec2, Vec2);
+unsafe impl bytemuck::Zeroable for Vertex {}
+unsafe impl bytemuck::Pod for Vertex {}
+
+impl Vertex {
+    fn new2(v: Vec2, d: f32, col: Rgb, n: Vec2, adjust: Vec2, p: Vec2) -> Self {
+        let v = Vec3::from2(v, d);
+        Vertex(v, col, n, adjust, p)
+    }
+}
 
 /// A pipeline for rendering rounded shapes
 pub struct Pipeline {
@@ -33,22 +42,50 @@ pub struct Window {
     passes: Vec<Vec<Vertex>>,
 }
 
+/// Buffer used during render pass
+///
+/// This buffer must not be dropped before the render pass.
+pub struct RenderBuffer<'a> {
+    pipe: &'a wgpu::RenderPipeline,
+    vertices: &'a mut Vec<Vertex>,
+    bind_group: &'a wgpu::BindGroup,
+    buffer: wgpu::Buffer,
+}
+
+impl<'a> RenderBuffer<'a> {
+    /// Do the render
+    pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>) {
+        let count = self.vertices.len() as u32;
+        rpass.set_pipeline(self.pipe);
+        rpass.set_bind_group(0, self.bind_group, &[]);
+        rpass.set_vertex_buffer(0, &self.buffer, 0, 0);
+        rpass.draw(0..count, 0..1);
+    }
+}
+
+impl<'a> Drop for RenderBuffer<'a> {
+    fn drop(&mut self) {
+        self.vertices.clear();
+    }
+}
+
 impl Pipeline {
     /// Construct
     pub fn new(device: &wgpu::Device, shaders: &ShaderManager) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             bindings: &[
-                wgpu::BindGroupLayoutBinding {
+                wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::VERTEX,
                     ty: wgpu::BindingType::UniformBuffer { dynamic: false },
                 },
-                wgpu::BindGroupLayoutBinding {
+                wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
                     ty: wgpu::BindingType::UniformBuffer { dynamic: false },
                 },
             ],
+            label: None,
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             bind_group_layouts: &[&bind_group_layout],
@@ -86,39 +123,21 @@ impl Pipeline {
                 },
                 write_mask: wgpu::ColorWrite::ALL,
             }],
-            depth_stencil_state: None,
-            index_format: wgpu::IndexFormat::Uint16,
-            vertex_buffers: &[wgpu::VertexBufferDescriptor {
-                stride: size_of::<Vertex>() as wgpu::BufferAddress,
-                step_mode: wgpu::InputStepMode::Vertex,
-                attributes: &[
-                    wgpu::VertexAttributeDescriptor {
-                        format: wgpu::VertexFormat::Float2,
-                        offset: 0,
-                        shader_location: 0,
-                    },
-                    wgpu::VertexAttributeDescriptor {
-                        format: wgpu::VertexFormat::Float3,
-                        offset: size_of::<Vec2>() as u64,
-                        shader_location: 1,
-                    },
-                    wgpu::VertexAttributeDescriptor {
-                        format: wgpu::VertexFormat::Float2,
-                        offset: (size_of::<Vec2>() + size_of::<Rgb>()) as u64,
-                        shader_location: 2,
-                    },
-                    wgpu::VertexAttributeDescriptor {
-                        format: wgpu::VertexFormat::Float2,
-                        offset: (2 * size_of::<Vec2>() + size_of::<Rgb>()) as u64,
-                        shader_location: 3,
-                    },
-                    wgpu::VertexAttributeDescriptor {
-                        format: wgpu::VertexFormat::Float2,
-                        offset: (3 * size_of::<Vec2>() + size_of::<Rgb>()) as u64,
-                        shader_location: 4,
-                    },
-                ],
-            }],
+            depth_stencil_state: Some(super::DEPTH_DESC),
+            vertex_state: wgpu::VertexStateDescriptor {
+                index_format: wgpu::IndexFormat::Uint16,
+                vertex_buffers: &[wgpu::VertexBufferDescriptor {
+                    stride: size_of::<Vertex>() as wgpu::BufferAddress,
+                    step_mode: wgpu::InputStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![
+                        0 => Float3,
+                        1 => Float3,
+                        2 => Float2,
+                        3 => Float2,
+                        4 => Float2
+                    ],
+                }],
+            },
             sample_count: 1,
             sample_mask: !0,
             alpha_to_coverage_enabled: false,
@@ -132,21 +151,14 @@ impl Pipeline {
 
     /// Construct per-window state
     pub fn new_window(&self, device: &wgpu::Device, size: Size, light_norm: [f32; 3]) -> Window {
-        type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
-        let scale_buf = device
-            .create_buffer_mapped(
-                scale_factor.len(),
-                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            )
-            .fill_from_slice(&scale_factor);
+        let usage = wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST;
 
-        let light_norm_buf = device
-            .create_buffer_mapped(
-                light_norm.len(),
-                wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-            )
-            .fill_from_slice(&light_norm);
+        type Scale = [f32; 2];
+        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
+        let scale_buf = device.create_buffer_with_data(bytemuck::cast_slice(&scale_factor), usage);
+
+        let light_norm_buf =
+            device.create_buffer_with_data(bytemuck::cast_slice(&light_norm), usage);
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.bind_group_layout,
@@ -166,6 +178,7 @@ impl Pipeline {
                     },
                 },
             ],
+            label: None,
         });
 
         Window {
@@ -175,29 +188,27 @@ impl Pipeline {
         }
     }
 
-    /// Render queued triangles and clear the queue
-    pub fn render(
-        &self,
-        window: &mut Window,
+    /// Construct a render buffer
+    pub fn render_buf<'a>(
+        &'a self,
+        window: &'a mut Window,
         device: &wgpu::Device,
         pass: usize,
-        rpass: &mut wgpu::RenderPass,
-    ) {
-        if pass >= window.passes.len() {
-            return;
+    ) -> Option<RenderBuffer<'a>> {
+        if pass >= window.passes.len() || window.passes[pass].len() == 0 {
+            return None;
         }
-        let v = &mut window.passes[pass];
+
+        let vertices = &mut window.passes[pass];
         let buffer = device
-            .create_buffer_mapped(v.len(), wgpu::BufferUsage::VERTEX)
-            .fill_from_slice(&v);
-        let count = v.len() as u32;
+            .create_buffer_with_data(bytemuck::cast_slice(&vertices), wgpu::BufferUsage::VERTEX);
 
-        rpass.set_pipeline(&self.render_pipeline);
-        rpass.set_bind_group(0, &window.bind_group, &[]);
-        rpass.set_vertex_buffers(0, &[(&buffer, 0)]);
-        rpass.draw(0..count, 0..1);
-
-        v.clear();
+        Some(RenderBuffer {
+            pipe: &self.render_pipeline,
+            vertices,
+            bind_group: &window.bind_group,
+            buffer,
+        })
     }
 }
 
@@ -209,17 +220,18 @@ impl Window {
         size: Size,
     ) {
         type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, 2.0 / size.1 as f32];
-        let scale_buf = device
-            .create_buffer_mapped(scale_factor.len(), wgpu::BufferUsage::COPY_SRC)
-            .fill_from_slice(&scale_factor);
+        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
+        let scale_buf = device.create_buffer_with_data(
+            bytemuck::cast_slice(&scale_factor),
+            wgpu::BufferUsage::COPY_SRC,
+        );
         let byte_len = size_of::<Scale>() as u64;
 
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);
     }
 
     /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
-    pub fn circle(&mut self, pass: usize, rect: Quad, mut norm: Vec2, col: Colour) {
+    pub fn circle(&mut self, pass: Pass, rect: Quad, mut norm: Vec2, col: Colour) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -246,15 +258,16 @@ impl Window {
 
         // Since we take the mid-point, all offsets are uniform
         let p = nbb / (bb - mid) * OFFSET;
+        let depth = pass.depth();
 
-        let aa = Vertex(aa, col, naa, adjust, p);
-        let ab = Vertex(ab, col, nab, adjust, p);
-        let ba = Vertex(ba, col, nba, adjust, p);
-        let bb = Vertex(bb, col, nbb, adjust, p);
-        let mid = Vertex(mid, col, n0, adjust, p);
+        let aa = Vertex::new2(aa, depth, col, naa, adjust, p);
+        let ab = Vertex::new2(ab, depth, col, nab, adjust, p);
+        let ba = Vertex::new2(ba, depth, col, nba, adjust, p);
+        let bb = Vertex::new2(bb, depth, col, nbb, adjust, p);
+        let mid = Vertex::new2(mid, depth, col, n0, adjust, p);
 
         #[rustfmt::skip]
-        self.add_vertices(pass, &[
+        self.add_vertices(pass.pass(), &[
             aa, ba, mid,
             mid, ba, bb,
             bb, ab, mid,
@@ -265,7 +278,7 @@ impl Window {
     /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
     pub fn shaded_frame(
         &mut self,
-        pass: usize,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         mut norm: Vec2,
@@ -315,31 +328,32 @@ impl Window {
         let pab = nab / (ab - cd) * OFFSET;
         let pba = nba / (ba - dc) * OFFSET;
         let pbb = nbb / (bb - dd) * OFFSET;
+        let depth = pass.depth();
 
         // We must add corners separately to ensure correct interpolation of dir
         // values, hence need 16 points:
-        let ab = Vertex(ab, col, nab, adjust, pab);
-        let ba = Vertex(ba, col, nba, adjust, pba);
-        let cd = Vertex(cd, col, n0, adjust, pab);
-        let dc = Vertex(dc, col, n0, adjust, pba);
+        let ab = Vertex::new2(ab, depth, col, nab, adjust, pab);
+        let ba = Vertex::new2(ba, depth, col, nba, adjust, pba);
+        let cd = Vertex::new2(cd, depth, col, n0, adjust, pab);
+        let dc = Vertex::new2(dc, depth, col, n0, adjust, pba);
 
-        let ac = Vertex(Vec2(aa.0, cc.1), col, na0, adjust, paa);
-        let ad = Vertex(Vec2(aa.0, dd.1), col, na0, adjust, pab);
-        let bc = Vertex(Vec2(bb.0, cc.1), col, nb0, adjust, pba);
-        let bd = Vertex(Vec2(bb.0, dd.1), col, nb0, adjust, pbb);
+        let ac = Vertex(Vec3(aa.0, cc.1, depth), col, na0, adjust, paa);
+        let ad = Vertex(Vec3(aa.0, dd.1, depth), col, na0, adjust, pab);
+        let bc = Vertex(Vec3(bb.0, cc.1, depth), col, nb0, adjust, pba);
+        let bd = Vertex(Vec3(bb.0, dd.1, depth), col, nb0, adjust, pbb);
 
-        let ca = Vertex(Vec2(cc.0, aa.1), col, n0a, adjust, paa);
-        let cb = Vertex(Vec2(cc.0, bb.1), col, n0b, adjust, pab);
-        let da = Vertex(Vec2(dd.0, aa.1), col, n0a, adjust, pba);
-        let db = Vertex(Vec2(dd.0, bb.1), col, n0b, adjust, pbb);
+        let ca = Vertex(Vec3(cc.0, aa.1, depth), col, n0a, adjust, paa);
+        let cb = Vertex(Vec3(cc.0, bb.1, depth), col, n0b, adjust, pab);
+        let da = Vertex(Vec3(dd.0, aa.1, depth), col, n0a, adjust, pba);
+        let db = Vertex(Vec3(dd.0, bb.1, depth), col, n0b, adjust, pbb);
 
-        let aa = Vertex(aa, col, naa, adjust, paa);
-        let bb = Vertex(bb, col, nbb, adjust, pbb);
-        let cc = Vertex(cc, col, n0, adjust, paa);
-        let dd = Vertex(dd, col, n0, adjust, pbb);
+        let aa = Vertex::new2(aa, depth, col, naa, adjust, paa);
+        let bb = Vertex::new2(bb, depth, col, nbb, adjust, pbb);
+        let cc = Vertex::new2(cc, depth, col, n0, adjust, paa);
+        let dd = Vertex::new2(dd, depth, col, n0, adjust, pbb);
 
         #[rustfmt::skip]
-        self.add_vertices(pass, &[
+        self.add_vertices(pass.pass(), &[
             // top bar: ba - dc - cc - aa
             ba, dc, da,
             da, dc, ca,

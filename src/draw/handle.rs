@@ -7,10 +7,16 @@
 
 use std::ops::{Deref, DerefMut};
 
-use kas::draw::{Draw, Region};
+use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::{Align, Direction};
+
+/// Classification of a clip region
+pub enum ClipRegion {
+    Popup,
+    Scroll,
+}
 
 /// Input and highlighting state of a widget
 ///
@@ -173,7 +179,7 @@ pub trait SizeHandle {
 pub trait DrawHandle {
     /// Access the low-level draw device
     ///
-    /// Returns `(region, offset, draw)`.
+    /// Returns `(pass, offset, draw)`.
     ///
     /// One may use [`Draw::as_any_mut`] to downcast the `draw` object when necessary.
     ///
@@ -187,7 +193,7 @@ pub trait DrawHandle {
     /// # let rect = Rect::new(offset, Size::ZERO);
     /// let rect = rect + offset;
     /// ```
-    fn draw_device(&mut self) -> (Region, Coord, &mut dyn Draw);
+    fn draw_device(&mut self) -> (Pass, Coord, &mut dyn Draw);
 
     /// Construct a new draw-handle on a given region and pass to a callback.
     ///
@@ -196,7 +202,13 @@ pub trait DrawHandle {
     ///
     /// All content drawn by the new region is clipped to the given `rect`
     /// (in the current coordinate space, i.e. not translated by `offset`).
-    fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle));
+    fn clip_region(
+        &mut self,
+        rect: Rect,
+        offset: Coord,
+        class: ClipRegion,
+        f: &mut dyn FnMut(&mut dyn DrawHandle),
+    );
 
     /// Target area for drawing
     ///
@@ -358,11 +370,17 @@ where
 }
 
 impl<H: DrawHandle> DrawHandle for Box<H> {
-    fn draw_device(&mut self) -> (Region, Coord, &mut dyn Draw) {
+    fn draw_device(&mut self) -> (Pass, Coord, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
-    fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.deref_mut().clip_region(rect, offset, f)
+    fn clip_region(
+        &mut self,
+        rect: Rect,
+        offset: Coord,
+        class: ClipRegion,
+        f: &mut dyn FnMut(&mut dyn DrawHandle),
+    ) {
+        self.deref_mut().clip_region(rect, offset, class, f)
     }
     fn target_rect(&self) -> Rect {
         self.deref().target_rect()
@@ -407,11 +425,17 @@ impl<S> DrawHandle for stack_dst::ValueA<dyn DrawHandle, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
-    fn draw_device(&mut self) -> (Region, Coord, &mut dyn Draw) {
+    fn draw_device(&mut self) -> (Pass, Coord, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
-    fn clip_region(&mut self, rect: Rect, offset: Coord, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.deref_mut().clip_region(rect, offset, f)
+    fn clip_region(
+        &mut self,
+        rect: Rect,
+        offset: Coord,
+        class: ClipRegion,
+        f: &mut dyn FnMut(&mut dyn DrawHandle),
+    ) {
+        self.deref_mut().clip_region(rect, offset, class, f)
     }
     fn target_rect(&self) -> Rect {
         self.deref().target_rect()

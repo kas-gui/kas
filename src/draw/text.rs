@@ -7,7 +7,7 @@
 
 pub use rusttype::Font;
 
-use super::{Colour, Draw, DrawShared};
+use super::{Colour, Draw, DrawShared, Pass};
 use crate::geom::Rect;
 use crate::Align;
 
@@ -56,7 +56,7 @@ pub trait DrawText: Draw {
     ///
     /// This allows text to be drawn according to a high-level API, and should
     /// satisfy most uses.
-    fn text(&mut self, rect: Rect, text: &str, props: TextProperties);
+    fn text(&mut self, pass: Pass, rect: Rect, text: &str, props: TextProperties);
 
     /// Calculate size bound on text
     ///

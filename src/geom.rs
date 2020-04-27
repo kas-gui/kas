@@ -9,7 +9,7 @@
 use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize, Pixel};
 
 mod vector;
-pub use vector::{DVec2, Quad, Vec2};
+pub use vector::{DVec2, Quad, Vec2, Vec3};
 
 /// An `(x, y)` coordinate.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]

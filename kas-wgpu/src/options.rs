@@ -93,7 +93,11 @@ impl Options {
     pub(crate) fn adapter_options(&self) -> wgpu::RequestAdapterOptions {
         wgpu::RequestAdapterOptions {
             power_preference: self.power_preference,
-            backends: self.backends,
+            compatible_surface: None,
         }
+    }
+
+    pub(crate) fn backend(&self) -> BackendBit {
+        self.backends
     }
 }

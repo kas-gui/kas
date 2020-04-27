@@ -6,7 +6,7 @@
 //! Custom draw pipes
 
 use super::DrawWindow;
-use kas::draw::Region;
+use kas::draw::Pass;
 use kas::geom::{Rect, Size};
 
 /// Allows use of the low-level graphics API
@@ -15,7 +15,7 @@ use kas::geom::{Rect, Size};
 /// corresponding [`CustomPipeBuilder`] to [`crate::Toolkit::new_custom`].
 pub trait DrawCustom<CW: CustomWindow> {
     /// Call a custom draw pipe
-    fn custom(&mut self, region: Region, rect: Rect, param: CW::Param);
+    fn custom(&mut self, pass: Pass, rect: Rect, param: CW::Param);
 }
 
 /// Builder for a [`CustomPipe`]
@@ -23,7 +23,15 @@ pub trait CustomPipeBuilder {
     type Pipe: CustomPipe;
 
     /// Build a pipe
-    fn build(&mut self, device: &wgpu::Device, tex_format: wgpu::TextureFormat) -> Self::Pipe;
+    ///
+    /// The given texture format and depth format should be used to construct a
+    /// compatible [`wgpu::RenderPipeline`].
+    fn build(
+        &mut self,
+        device: &wgpu::Device,
+        tex_format: wgpu::TextureFormat,
+        depth_format: wgpu::TextureFormat,
+    ) -> Self::Pipe;
 }
 
 /// A custom draw pipe
@@ -39,7 +47,7 @@ pub trait CustomPipeBuilder {
 /// one, you will have to implement your own multiplexer (presumably using an
 /// enum for the `Param` type).
 pub trait CustomPipe {
-    /// Type for per-window data
+    /// Associated per-window state for the custom pipe
     type Window: CustomWindow + 'static;
 
     /// Construct a window associated with this pipeline
@@ -59,7 +67,7 @@ pub trait CustomPipe {
     /// This is called once per frame before rendering operations, and may for
     /// example be used to update uniform buffers.
     ///
-    /// The default implementation does nothing.
+    /// This method is optional; by default it does nothing.
     fn update(
         &self,
         _window: &mut Self::Window,
@@ -68,22 +76,59 @@ pub trait CustomPipe {
     ) {
     }
 
-    /// Do a render pass.
+    /// Render (pass)
     ///
-    /// Rendering uses one pass per region, where each region has its own
-    /// scissor rect. This method may be called multiple times per frame.
-    /// Each widget invoking this pipe will give the correct `pass` number for
-    /// the widget in [`CustomWindow::invoke`]; multiple widgets may use the same
-    /// `pass`.
-    fn render(
-        &self,
-        window: &mut Self::Window,
+    /// Each item drawn is associated with a clip region, and each of these
+    /// with a pass. This method will be called once for each clip region in use
+    /// (possibly also for other clip regions). Drawing uses an existing texture
+    /// and occurs after most other draw operations, but before text.
+    ///
+    /// Note that the pass in use has a depth stencil attachment, therefore the
+    /// render pipeline must be constructed with a compatible
+    /// [`wgpu::RenderPipelineDescriptor::depth_stencil_state`]. Since a
+    /// scissor rect is already applied to the draw pass, it is safe to use
+    /// `depth_compare: wgpu::CompareFunction::Always` here.
+    ///
+    /// This method is optional; by default it does nothing.
+    #[allow(unused)]
+    fn render_pass<'a>(
+        &'a self,
+        window: &'a mut Self::Window,
         device: &wgpu::Device,
         pass: usize,
-        rpass: &mut wgpu::RenderPass,
-    );
+        rpass: &mut wgpu::RenderPass<'a>,
+    ) {
+    }
+
+    /// Render (final)
+    ///
+    /// This method is the last step in drawing a frame except for text
+    /// rendering. Depending on the application, it may make more sense to draw
+    /// in [`CustomPipe::render_pass`] or in this method.
+    ///
+    /// A depth buffer is available and may be used with
+    /// `depth_compare: wgpu::CompareFunction::GreaterEqual` to avoid drawing
+    /// over pop-up elements and outside of scroll regions.
+    ///
+    /// This method is optional; by default it does nothing.
+    #[allow(unused)]
+    fn render_final<'a>(
+        &'a self,
+        window: &'a mut Self::Window,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        frame_view: &wgpu::TextureView,
+        depth_stencil_attachment: wgpu::RenderPassDepthStencilAttachmentDescriptor,
+        size: Size,
+    ) {
+    }
 }
 
+/// Per-window state for a custom draw pipe
+///
+/// One instance is constructed per window. Since the [`CustomPipe`] is not
+/// accessible during a widget's [`Layout::draw`] calls, this struct must batch
+/// per-frame draw data.
 pub trait CustomWindow {
     /// User parameter type
     type Param;
@@ -92,13 +137,18 @@ pub trait CustomWindow {
     ///
     /// Custom add-primitives / update function called from user code by
     /// [`DrawCustom::custom`].
-    fn invoke(&mut self, pass: usize, rect: Rect, param: Self::Param);
+    fn invoke(&mut self, pass: Pass, rect: Rect, param: Self::Param);
 }
 
 /// A dummy implementation (does nothing)
 impl CustomPipeBuilder for () {
     type Pipe = ();
-    fn build(&mut self, _: &wgpu::Device, _: wgpu::TextureFormat) -> Self::Pipe {
+    fn build(
+        &mut self,
+        _: &wgpu::Device,
+        _: wgpu::TextureFormat,
+        _: wgpu::TextureFormat,
+    ) -> Self::Pipe {
         ()
     }
 }
@@ -119,17 +169,16 @@ impl CustomPipe for () {
         _: Size,
     ) {
     }
-    fn render(&self, _: &mut Self::Window, _: &wgpu::Device, _: usize, _: &mut wgpu::RenderPass) {}
 }
 
 /// A dummy implementation (does nothing)
 impl CustomWindow for () {
     type Param = Void;
-    fn invoke(&mut self, _: usize, _: Rect, _: Self::Param) {}
+    fn invoke(&mut self, _: Pass, _: Rect, _: Self::Param) {}
 }
 
 impl<CW: CustomWindow> DrawCustom<CW> for DrawWindow<CW> {
-    fn custom(&mut self, region: Region, rect: Rect, param: CW::Param) {
-        self.custom.invoke(region.0, rect, param);
+    fn custom(&mut self, pass: Pass, rect: Rect, param: CW::Param) {
+        self.custom.invoke(pass, rect, param);
     }
 }

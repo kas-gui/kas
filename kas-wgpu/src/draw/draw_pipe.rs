@@ -7,14 +7,40 @@
 
 use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
+use wgpu::TextureView;
 use wgpu_glyph::GlyphBrushBuilder;
 
 use super::{
     flat_round, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow, DrawPipe,
     DrawWindow, ShaderManager, TEX_FORMAT,
 };
-use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Region};
+use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Pass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
+
+fn make_depth_texture(device: &wgpu::Device, size: Size) -> Option<TextureView> {
+    // NOTE: initially the DrawWindow is created with Size::ZERO to calculate
+    // initial window size. Wgpu does not support creation of zero-sized
+    // textures, so as a special case we return None here:
+    if size.0 * size.1 == 0 {
+        return None;
+    }
+
+    let tex = device.create_texture(&wgpu::TextureDescriptor {
+        size: wgpu::Extent3d {
+            width: size.0,
+            height: size.1,
+            depth: 1,
+        },
+        array_layer_count: 1,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: super::DEPTH_FORMAT,
+        usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+        label: None,
+    });
+    Some(tex.create_default_view())
+}
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
@@ -26,7 +52,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let shaded_square = shaded_square::Pipeline::new(device, shaders);
         let shaded_round = shaded_round::Pipeline::new(device, shaders);
         let flat_round = flat_round::Pipeline::new(device, shaders);
-        let custom = custom.build(&device, TEX_FORMAT);
+        let custom = custom.build(&device, TEX_FORMAT, super::DEPTH_FORMAT);
 
         DrawPipe {
             fonts: vec![],
@@ -39,7 +65,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
     /// Construct per-window state
     // TODO: device should be &, not &mut (but for glyph_brush)
-    pub fn new_window(&self, device: &mut wgpu::Device, size: Size) -> DrawWindow<C::Window> {
+    pub fn new_window(&self, device: &wgpu::Device, size: Size) -> DrawWindow<C::Window> {
         // Light dir: `(a, b)` where `0 ≤ a < pi/2` is the angle to the screen
         // normal (i.e. `a = 0` is straight at the screen) and `b` is the bearing
         // (from UP, clockwise), both in radians.
@@ -51,7 +77,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let f = a.0 / a.1;
         let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
 
-        let region = Rect {
+        let rect = Rect {
             pos: Coord::ZERO,
             size,
         };
@@ -61,11 +87,13 @@ impl<C: CustomPipe> DrawPipe<C> {
         let flat_round = self.flat_round.new_window(device, size);
         let custom = self.custom.new_window(device, size);
 
-        let glyph_brush =
-            GlyphBrushBuilder::using_fonts(self.fonts.clone()).build(device, TEX_FORMAT);
+        let glyph_brush = GlyphBrushBuilder::using_fonts(self.fonts.clone())
+            .depth_stencil_state(super::GLPYH_DEPTH_DESC)
+            .build(device, TEX_FORMAT);
 
         DrawWindow {
-            clip_regions: vec![region],
+            depth: make_depth_texture(device, size),
+            clip_regions: vec![rect],
             shaded_square,
             shaded_round,
             flat_round,
@@ -81,9 +109,11 @@ impl<C: CustomPipe> DrawPipe<C> {
         device: &wgpu::Device,
         size: Size,
     ) -> wgpu::CommandBuffer {
+        window.depth = make_depth_texture(device, size);
         window.clip_regions[0].size = size;
-        let mut encoder =
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("resize"),
+        });
         window.shaded_square.resize(device, &mut encoder, size);
         window.shaded_round.resize(device, &mut encoder, size);
         self.custom
@@ -100,49 +130,87 @@ impl<C: CustomPipe> DrawPipe<C> {
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) -> wgpu::CommandBuffer {
-        let desc = wgpu::CommandEncoderDescriptor { todo: 0 };
-        let mut encoder = device.create_command_encoder(&desc);
-        let mut load_op = wgpu::LoadOp::Clear;
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("render"),
+        });
 
         self.custom.update(&mut window.custom, device, &mut encoder);
 
+        let mut color_attachments = [wgpu::RenderPassColorAttachmentDescriptor {
+            attachment: frame_view,
+            resolve_target: None,
+            load_op: wgpu::LoadOp::Clear,
+            store_op: wgpu::StoreOp::Store,
+            clear_color,
+        }];
+        let mut depth_stencil_attachment = wgpu::RenderPassDepthStencilAttachmentDescriptor {
+            attachment: window.depth.as_ref().unwrap(),
+            depth_load_op: wgpu::LoadOp::Clear,
+            depth_store_op: wgpu::StoreOp::Store,
+            stencil_load_op: wgpu::LoadOp::Clear,
+            stencil_store_op: wgpu::StoreOp::Store,
+            clear_depth: kas_theme::START_PASS.depth(),
+            clear_stencil: 0,
+        };
+
         // We use a separate render pass for each clipped region.
-        for (pass, region) in window.clip_regions.iter().enumerate() {
-            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                    attachment: frame_view,
-                    resolve_target: None,
-                    load_op: load_op,
-                    store_op: wgpu::StoreOp::Store,
-                    clear_color,
-                }],
-                depth_stencil_attachment: None,
-            });
-            rpass.set_scissor_rect(
-                region.pos.0 as u32,
-                region.pos.1 as u32,
-                region.size.0,
-                region.size.1,
-            );
+        for (pass, rect) in window.clip_regions.iter().enumerate() {
+            let ss = self
+                .shaded_square
+                .render_buf(&mut window.shaded_square, device, pass);
+            let sr = self
+                .shaded_round
+                .render_buf(&mut window.shaded_round, device, pass);
+            let fr = self
+                .flat_round
+                .render_buf(&mut window.flat_round, device, pass);
 
-            self.shaded_square
-                .render(&mut window.shaded_square, device, pass, &mut rpass);
-            self.shaded_round
-                .render(&mut window.shaded_round, device, pass, &mut rpass);
-            self.flat_round
-                .render(&mut window.flat_round, device, pass, &mut rpass);
-            self.custom
-                .render(&mut window.custom, device, pass, &mut rpass);
-            drop(rpass);
+            {
+                let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    color_attachments: &color_attachments,
+                    depth_stencil_attachment: Some(depth_stencil_attachment.clone()),
+                });
+                rpass.set_scissor_rect(
+                    rect.pos.0 as u32,
+                    rect.pos.1 as u32,
+                    rect.size.0,
+                    rect.size.1,
+                );
 
-            load_op = wgpu::LoadOp::Load;
+                ss.as_ref().map(|buf| buf.render(&mut rpass));
+                sr.as_ref().map(|buf| buf.render(&mut rpass));
+                fr.as_ref().map(|buf| buf.render(&mut rpass));
+                self.custom
+                    .render_pass(&mut window.custom, device, pass, &mut rpass);
+            }
+
+            color_attachments[0].load_op = wgpu::LoadOp::Load;
+            depth_stencil_attachment.depth_load_op = wgpu::LoadOp::Load;
+            depth_stencil_attachment.stencil_load_op = wgpu::LoadOp::Load;
         }
 
-        // Fonts use their own render pass(es).
+        // Fonts and custom pipes use their own render pass(es).
         let size = window.clip_regions[0].size;
+
+        self.custom.render_final(
+            &mut window.custom,
+            device,
+            &mut encoder,
+            frame_view,
+            depth_stencil_attachment.clone(),
+            size,
+        );
+
         window
             .glyph_brush
-            .draw_queued(device, &mut encoder, frame_view, size.0, size.1)
+            .draw_queued(
+                device,
+                &mut encoder,
+                frame_view,
+                depth_stencil_attachment,
+                size.0,
+                size.1,
+            )
             .expect("glyph_brush.draw_queued");
 
         // Keep only first clip region (which is the entire window)
@@ -162,84 +230,83 @@ impl<CW: CustomWindow + 'static> Draw for DrawWindow<CW> {
         self
     }
 
-    fn add_clip_region(&mut self, region: Rect) -> Region {
+    fn add_clip_region(&mut self, rect: Rect, depth: f32) -> Pass {
         let pass = self.clip_regions.len();
-        self.clip_regions.push(region);
-        Region(pass)
+        self.clip_regions.push(rect);
+        Pass::new_pass_with_depth(pass as u32, depth)
     }
 
     #[inline]
-    fn rect(&mut self, pass: Region, rect: Quad, col: Colour) {
-        self.shaded_square.rect(pass.0, rect, col);
+    fn rect(&mut self, pass: Pass, rect: Quad, col: Colour) {
+        self.shaded_square.rect(pass, rect, col);
     }
 
     #[inline]
-    fn frame(&mut self, pass: Region, outer: Quad, inner: Quad, col: Colour) {
-        self.shaded_square.frame(pass.0, outer, inner, col);
+    fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Colour) {
+        self.shaded_square.frame(pass, outer, inner, col);
     }
 }
 
 impl<CW: CustomWindow + 'static> DrawRounded for DrawWindow<CW> {
     #[inline]
-    fn rounded_line(&mut self, pass: Region, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
-        self.flat_round.line(pass.0, p1, p2, radius, col);
+    fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
+        self.flat_round.line(pass, p1, p2, radius, col);
     }
 
     #[inline]
-    fn circle(&mut self, pass: Region, rect: Quad, inner_radius: f32, col: Colour) {
-        self.flat_round.circle(pass.0, rect, inner_radius, col);
+    fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Colour) {
+        self.flat_round.circle(pass, rect, inner_radius, col);
     }
 
     #[inline]
     fn rounded_frame(
         &mut self,
-        pass: Region,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         inner_radius: f32,
         col: Colour,
     ) {
         self.flat_round
-            .rounded_frame(pass.0, outer, inner, inner_radius, col);
+            .rounded_frame(pass, outer, inner, inner_radius, col);
     }
 }
 
 impl<CW: CustomWindow + 'static> DrawShaded for DrawWindow<CW> {
     #[inline]
-    fn shaded_square(&mut self, pass: Region, rect: Quad, norm: (f32, f32), col: Colour) {
+    fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Colour) {
         self.shaded_square
-            .shaded_rect(pass.0, rect, Vec2::from(norm), col);
+            .shaded_rect(pass, rect, Vec2::from(norm), col);
     }
 
     #[inline]
-    fn shaded_circle(&mut self, pass: Region, rect: Quad, norm: (f32, f32), col: Colour) {
-        self.shaded_round
-            .circle(pass.0, rect, Vec2::from(norm), col);
+    fn shaded_circle(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Colour) {
+        self.shaded_round.circle(pass, rect, Vec2::from(norm), col);
     }
 
     #[inline]
     fn shaded_square_frame(
         &mut self,
-        pass: Region,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
         col: Colour,
     ) {
         self.shaded_square
-            .shaded_frame(pass.0, outer, inner, Vec2::from(norm), col);
+            .shaded_frame(pass, outer, inner, Vec2::from(norm), col);
     }
 
     #[inline]
     fn shaded_round_frame(
         &mut self,
-        pass: Region,
+        pass: Pass,
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
         col: Colour,
     ) {
         self.shaded_round
-            .shaded_frame(pass.0, outer, inner, Vec2::from(norm), col);
+            .shaded_frame(pass, outer, inner, Vec2::from(norm), col);
     }
 }
