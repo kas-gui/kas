@@ -202,6 +202,14 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         }
     }
 
+    #[inline]
+    fn translation(&self, child_index: usize) -> Coord {
+        match child_index {
+            2 => self.offset,
+            _ => Coord::ZERO,
+        }
+    }
+
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
         if !self.rect().contains(coord) {
             return None;

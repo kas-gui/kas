@@ -197,6 +197,26 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
     }
 }
 
+// This is like WidgetChildren::find, but returns a translated Rect.
+fn find_rect(widget: &dyn WidgetConfig, id: WidgetId) -> Option<Rect> {
+    if id == widget.id() {
+        return Some(widget.rect());
+    } else if id > widget.id() {
+        return None;
+    }
+
+    for i in 0..widget.len() {
+        if let Some(w) = widget.get(i) {
+            if id > w.id() {
+                continue;
+            }
+            return find_rect(w, id).map(|rect| rect - widget.translation(i));
+        }
+        break;
+    }
+    None
+}
+
 impl<W: Widget> Window<W> {
     fn resize_popup(&mut self, size_handle: &mut dyn SizeHandle, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
@@ -204,7 +224,7 @@ impl<W: Widget> Window<W> {
         let r = self.core.rect;
         let popup = &mut self.popups[index].1;
 
-        let c = self.w.find(popup.parent).unwrap().rect();
+        let c = find_rect(self.w.as_widget(), popup.parent).unwrap();
         let widget = self.w.find_mut(popup.id).unwrap();
         let mut cache = layout::SolveCache::find_constraints(widget, size_handle);
         let ideal = cache.ideal(false);

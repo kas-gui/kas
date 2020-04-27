@@ -246,7 +246,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                     mgr.set_nav_focus(id);
                 }
             }
-            Event::PressEnd { end_id, coord, .. } => {
+            Event::PressEnd { end_id, .. } => {
                 if let Some(id) = end_id {
                     if id == self.id() {
                         if self.opening {
@@ -255,7 +255,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                             }
                             return Response::None;
                         }
-                    } else if self.popup_id.is_some() && self.popup.rect().contains(coord) {
+                    } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
                         let r = self.popup.send(mgr, id, Event::Activate);
                         return self.map_response(mgr, r);
                     }

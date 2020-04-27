@@ -146,9 +146,6 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// If the widget is disabled, this returns `None` without recursing children.
     fn find(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
-        if self.is_disabled() {
-            return None;
-        }
         if id == self.id() {
             return Some(self.as_widget());
         } else if id > self.id() {
@@ -294,6 +291,20 @@ pub trait Layout: WidgetChildren {
     #[inline]
     fn set_rect(&mut self, rect: Rect, _align: AlignHints) {
         self.core_data_mut().rect = rect;
+    }
+
+    /// Get translation of a child
+    ///
+    /// Children may live in a translated coordinate space relative to their
+    /// parent. This method returns an offset which should be *added* to a
+    /// coordinate to translate *into* the child's coordinate space or
+    /// subtracted to translate out.
+    ///
+    /// In most cases, the translation will be zero. Widgets should return
+    /// [`Coord::ZERO`] for non-existant children.
+    #[inline]
+    fn translation(&self, _child_index: usize) -> Coord {
+        Coord::ZERO
     }
 
     /// Iterate through children in spatial order
