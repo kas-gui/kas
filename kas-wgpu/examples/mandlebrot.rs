@@ -117,7 +117,12 @@ struct PipeBuilder;
 impl CustomPipeBuilder for PipeBuilder {
     type Pipe = Pipe;
 
-    fn build(&mut self, device: &wgpu::Device, _: wgpu::TextureFormat) -> Self::Pipe {
+    fn build(
+        &mut self,
+        device: &wgpu::Device,
+        tex_format: wgpu::TextureFormat,
+        depth_format: wgpu::TextureFormat,
+    ) -> Self::Pipe {
         // Note: real apps should compile shaders once and share between windows
         let shaders = Shaders::compile(device);
 
@@ -165,12 +170,20 @@ impl CustomPipeBuilder for PipeBuilder {
             }),
             primitive_topology: wgpu::PrimitiveTopology::TriangleList,
             color_states: &[wgpu::ColorStateDescriptor {
-                format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                format: tex_format,
                 color_blend: wgpu::BlendDescriptor::REPLACE,
                 alpha_blend: wgpu::BlendDescriptor::REPLACE,
                 write_mask: wgpu::ColorWrite::ALL,
             }],
-            depth_stencil_state: None,
+            depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
+                format: depth_format,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Always,
+                stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
+                stencil_back: wgpu::StencilStateFaceDescriptor::IGNORE,
+                stencil_read_mask: 0,
+                stencil_write_mask: 0,
+            }),
             vertex_state: wgpu::VertexStateDescriptor {
                 index_format: wgpu::IndexFormat::Uint16,
                 vertex_buffers: &[wgpu::VertexBufferDescriptor {
@@ -323,7 +336,7 @@ impl CustomPipe for Pipe {
         }
     }
 
-    fn render<'a>(
+    fn render_pass<'a>(
         &'a self,
         window: &'a mut Self::Window,
         _: &wgpu::Device,

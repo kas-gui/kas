@@ -52,7 +52,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let shaded_square = shaded_square::Pipeline::new(device, shaders);
         let shaded_round = shaded_round::Pipeline::new(device, shaders);
         let flat_round = flat_round::Pipeline::new(device, shaders);
-        let custom = custom.build(&device, TEX_FORMAT);
+        let custom = custom.build(&device, TEX_FORMAT, super::DEPTH_FORMAT);
 
         DrawPipe {
             fonts: vec![],
@@ -181,7 +181,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                 sr.as_ref().map(|buf| buf.render(&mut rpass));
                 fr.as_ref().map(|buf| buf.render(&mut rpass));
                 self.custom
-                    .render(&mut window.custom, device, pass, &mut rpass);
+                    .render_pass(&mut window.custom, device, pass, &mut rpass);
             }
 
             color_attachments[0].load_op = wgpu::LoadOp::Load;
@@ -189,8 +189,18 @@ impl<C: CustomPipe> DrawPipe<C> {
             depth_stencil_attachment.stencil_load_op = wgpu::LoadOp::Load;
         }
 
-        // Fonts use their own render pass(es).
+        // Fonts and custom pipes use their own render pass(es).
         let size = window.clip_regions[0].size;
+
+        self.custom.render_final(
+            &mut window.custom,
+            device,
+            &mut encoder,
+            frame_view,
+            depth_stencil_attachment.clone(),
+            size,
+        );
+
         window
             .glyph_brush
             .draw_queued(
