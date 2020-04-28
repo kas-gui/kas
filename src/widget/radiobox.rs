@@ -20,7 +20,7 @@ use kas::prelude::*;
 #[handler(handle=noauto)]
 #[widget(config=noauto)]
 #[derive(Clone, Widget)]
-pub struct RadioBoxBare<M> {
+pub struct RadioBoxBare<M: 'static> {
     #[widget_core]
     core: CoreData,
     state: bool,
@@ -28,7 +28,7 @@ pub struct RadioBoxBare<M> {
     on_activate: Option<Rc<dyn Fn(WidgetId) -> M>>,
 }
 
-impl<M> Debug for RadioBoxBare<M> {
+impl<M: 'static> Debug for RadioBoxBare<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -38,7 +38,7 @@ impl<M> Debug for RadioBoxBare<M> {
     }
 }
 
-impl<M> WidgetConfig for RadioBoxBare<M> {
+impl<M: 'static> WidgetConfig for RadioBoxBare<M> {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.update_on_handle(self.handle, self.id());
     }
@@ -48,7 +48,7 @@ impl<M> WidgetConfig for RadioBoxBare<M> {
     }
 }
 
-impl<M> event::Handler for RadioBoxBare<M> {
+impl<M: 'static> event::Handler for RadioBoxBare<M> {
     type Msg = M;
 
     #[inline]
@@ -85,7 +85,7 @@ impl<M> event::Handler for RadioBoxBare<M> {
     }
 }
 
-impl<M> Layout for RadioBoxBare<M> {
+impl<M: 'static> Layout for RadioBoxBare<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.radiobox();
         self.core.rect.size = size;
@@ -138,7 +138,7 @@ impl RadioBoxBare<VoidMsg> {
     }
 }
 
-impl<M> RadioBoxBare<M> {
+impl<M: 'static> RadioBoxBare<M> {
     /// Construct a radiobox which calls `f` when toggled
     ///
     /// This is a shortcut for `RadioBoxBare::new().on_activate(f)`.
@@ -169,7 +169,7 @@ impl<M> RadioBoxBare<M> {
     }
 }
 
-impl<M> HasBool for RadioBoxBare<M> {
+impl<M: 'static> HasBool for RadioBoxBare<M> {
     fn get_bool(&self) -> bool {
         self.state
     }
@@ -184,7 +184,7 @@ impl<M> HasBool for RadioBoxBare<M> {
 #[layout(row, area=radiobox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Widget)]
-pub struct RadioBox<M> {
+pub struct RadioBox<M: 'static> {
     #[widget_core]
     core: CoreData,
     #[layout_data]
@@ -195,7 +195,7 @@ pub struct RadioBox<M> {
     label: Label,
 }
 
-impl<M> Debug for RadioBox<M> {
+impl<M: 'static> Debug for RadioBox<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -205,7 +205,7 @@ impl<M> Debug for RadioBox<M> {
     }
 }
 
-impl<M> RadioBox<M> {
+impl<M: 'static> RadioBox<M> {
     /// Construct a radiobox with a given `label` which calls `f` when toggled.
     ///
     /// This is a shortcut for `RadioBox::new(label).on_activate(f)`.
@@ -265,7 +265,7 @@ impl RadioBox<VoidMsg> {
     }
 }
 
-impl<M> RadioBox<M> {
+impl<M: 'static> RadioBox<M> {
     /// Set the initial state of the radiobox.
     #[inline]
     pub fn state(mut self, state: bool) -> Self {
@@ -274,7 +274,7 @@ impl<M> RadioBox<M> {
     }
 }
 
-impl<M> HasBool for RadioBox<M> {
+impl<M: 'static> HasBool for RadioBox<M> {
     #[inline]
     fn get_bool(&self) -> bool {
         self.radiobox.get_bool()

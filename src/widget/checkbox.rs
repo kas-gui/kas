@@ -19,14 +19,14 @@ use kas::prelude::*;
 #[widget(config(key_nav = true))]
 #[handler(handle=noauto)]
 #[derive(Clone, Default, Widget)]
-pub struct CheckBoxBare<M> {
+pub struct CheckBoxBare<M: 'static> {
     #[widget_core]
     core: CoreData,
     state: bool,
     on_toggle: Option<Rc<dyn Fn(bool) -> M>>,
 }
 
-impl<M> Debug for CheckBoxBare<M> {
+impl<M: 'static> Debug for CheckBoxBare<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -36,7 +36,7 @@ impl<M> Debug for CheckBoxBare<M> {
     }
 }
 
-impl<M> Layout for CheckBoxBare<M> {
+impl<M: 'static> Layout for CheckBoxBare<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.checkbox();
         self.core.rect.size = size;
@@ -56,7 +56,7 @@ impl<M> Layout for CheckBoxBare<M> {
     }
 }
 
-impl<M> CheckBoxBare<M> {
+impl<M: 'static> CheckBoxBare<M> {
     /// Construct a checkbox which calls `f` when toggled
     ///
     /// This is a shortcut for `CheckBoxBare::new().on_toggle(f)`.
@@ -101,7 +101,7 @@ impl CheckBoxBare<VoidMsg> {
     }
 }
 
-impl<M> CheckBoxBare<M> {
+impl<M: 'static> CheckBoxBare<M> {
     /// Set the initial state of the checkbox.
     #[inline]
     pub fn state(mut self, state: bool) -> Self {
@@ -110,7 +110,7 @@ impl<M> CheckBoxBare<M> {
     }
 }
 
-impl<M> HasBool for CheckBoxBare<M> {
+impl<M: 'static> HasBool for CheckBoxBare<M> {
     fn get_bool(&self) -> bool {
         self.state
     }
@@ -121,7 +121,7 @@ impl<M> HasBool for CheckBoxBare<M> {
     }
 }
 
-impl<M> event::Handler for CheckBoxBare<M> {
+impl<M: 'static> event::Handler for CheckBoxBare<M> {
     type Msg = M;
 
     #[inline]
@@ -150,7 +150,7 @@ impl<M> event::Handler for CheckBoxBare<M> {
 #[layout(row, area=checkbox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Default, Widget)]
-pub struct CheckBox<M> {
+pub struct CheckBox<M: 'static> {
     #[widget_core]
     core: CoreData,
     #[layout_data]
@@ -161,7 +161,7 @@ pub struct CheckBox<M> {
     label: Label,
 }
 
-impl<M> Debug for CheckBox<M> {
+impl<M: 'static> Debug for CheckBox<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -171,7 +171,7 @@ impl<M> Debug for CheckBox<M> {
     }
 }
 
-impl<M> CheckBox<M> {
+impl<M: 'static> CheckBox<M> {
     /// Construct a checkbox with a given `label` which calls `f` when toggled.
     ///
     /// This is a shortcut for `CheckBox::new(label).on_toggle(f)`.
@@ -228,7 +228,7 @@ impl CheckBox<VoidMsg> {
     }
 }
 
-impl<M> CheckBox<M> {
+impl<M: 'static> CheckBox<M> {
     /// Set the initial state of the checkbox.
     #[inline]
     pub fn state(mut self, state: bool) -> Self {
@@ -237,7 +237,7 @@ impl<M> CheckBox<M> {
     }
 }
 
-impl<M> HasBool for CheckBox<M> {
+impl<M: 'static> HasBool for CheckBox<M> {
     #[inline]
     fn get_bool(&self) -> bool {
         self.checkbox.get_bool()

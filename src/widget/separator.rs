@@ -18,7 +18,7 @@ use kas::prelude::*;
 /// if no other widget will fill spare space.
 #[handler(msg=M)]
 #[derive(Clone, Debug, Default, Widget)]
-pub struct Separator<M: Debug> {
+pub struct Separator<M: Debug + 'static> {
     #[widget_core]
     core: CoreData,
     _msg: PhantomData<M>,

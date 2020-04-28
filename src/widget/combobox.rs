@@ -70,7 +70,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
     }
 }
 
-impl<M: Clone + Debug> ComboBox<M> {
+impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Construct a combobox
     ///
     /// A combobox presents a menu with a fixed set of choices when clicked.

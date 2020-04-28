@@ -5,6 +5,7 @@
 
 //! Widget traits
 
+use std::any::Any;
 use std::fmt;
 use std::ops::DerefMut;
 
@@ -36,7 +37,7 @@ impl<T: Clone + Sized> CloneTo for T {
 ///
 /// This trait is almost always implemented via the
 /// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro).
-pub trait WidgetCore: fmt::Debug {
+pub trait WidgetCore: Any + fmt::Debug {
     /// Get direct access to the [`CoreData`] providing property storage.
     fn core_data(&self) -> &CoreData;
 

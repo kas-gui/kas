@@ -18,7 +18,7 @@ use kas::widget::{CheckBoxBare, Label};
 #[widget(config(key_nav = true))]
 #[handler(handle=noauto)]
 #[derive(Clone, Debug, Default, Widget)]
-pub struct MenuEntry<M: Clone + Debug> {
+pub struct MenuEntry<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
     label: CowString,
@@ -26,7 +26,7 @@ pub struct MenuEntry<M: Clone + Debug> {
     msg: M,
 }
 
-impl<M: Clone + Debug> Layout for MenuEntry<M> {
+impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.menu_frame();
         self.label_off = size.into();
@@ -46,7 +46,7 @@ impl<M: Clone + Debug> Layout for MenuEntry<M> {
     }
 }
 
-impl<M: Clone + Debug> MenuEntry<M> {
+impl<M: Clone + Debug + 'static> MenuEntry<M> {
     /// Construct a menu item with a given `label` and `msg`
     ///
     /// The message `msg` is emitted on activation. Any
@@ -67,7 +67,7 @@ impl<M: Clone + Debug> MenuEntry<M> {
     }
 }
 
-impl<M: Clone + Debug> HasText for MenuEntry<M> {
+impl<M: Clone + Debug + 'static> HasText for MenuEntry<M> {
     fn get_text(&self) -> &str {
         &self.label
     }
@@ -78,7 +78,7 @@ impl<M: Clone + Debug> HasText for MenuEntry<M> {
     }
 }
 
-impl<M: Clone + Debug> event::Handler for MenuEntry<M> {
+impl<M: Clone + Debug + 'static> event::Handler for MenuEntry<M> {
     type Msg = M;
 
     fn handle(&mut self, _: &mut Manager, event: Event) -> Response<M> {
@@ -92,7 +92,7 @@ impl<M: Clone + Debug> event::Handler for MenuEntry<M> {
 /// A menu entry which can be toggled
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[derive(Clone, Default, Widget)]
-pub struct MenuToggle<M> {
+pub struct MenuToggle<M: 'static> {
     #[widget_core]
     core: CoreData,
     layout_data: layout::FixedRowStorage<[SizeRules; 3], [u32; 2]>,
@@ -102,7 +102,7 @@ pub struct MenuToggle<M> {
     label: Label,
 }
 
-impl<M> Debug for MenuToggle<M> {
+impl<M: 'static> Debug for MenuToggle<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -112,7 +112,7 @@ impl<M> Debug for MenuToggle<M> {
     }
 }
 
-impl<M> MenuToggle<M> {
+impl<M: 'static> MenuToggle<M> {
     /// Construct a togglable menu entry with a given `label` and closure
     ///
     /// This is a shortcut for `MenuToggle::new(label).on_toggle(f)`.
@@ -169,7 +169,7 @@ impl MenuToggle<VoidMsg> {
     }
 }
 
-impl<M> kas::Layout for MenuToggle<M> {
+impl<M: 'static> kas::Layout for MenuToggle<M> {
     // NOTE: This code is mostly copied from the macro expansion.
     // Only draw() is significantly different.
     fn size_rules(
@@ -220,7 +220,7 @@ impl<M> kas::Layout for MenuToggle<M> {
         self.label.draw(draw_handle, mgr, state.disabled);
     }
 }
-impl<M> HasBool for MenuToggle<M> {
+impl<M: 'static> HasBool for MenuToggle<M> {
     #[inline]
     fn get_bool(&self) -> bool {
         self.checkbox.get_bool()

@@ -12,7 +12,7 @@ use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, WidgetId};
 
-impl<M> WidgetCore for Box<dyn Widget<Msg = M>> {
+impl<M: 'static> WidgetCore for Box<dyn Widget<Msg = M>> {
     fn core_data(&self) -> &CoreData {
         self.as_ref().core_data()
     }
@@ -32,7 +32,7 @@ impl<M> WidgetCore for Box<dyn Widget<Msg = M>> {
     }
 }
 
-impl<M> WidgetChildren for Box<dyn Widget<Msg = M>> {
+impl<M: 'static> WidgetChildren for Box<dyn Widget<Msg = M>> {
     fn len(&self) -> usize {
         self.as_ref().len()
     }
@@ -58,7 +58,7 @@ impl<M> WidgetChildren for Box<dyn Widget<Msg = M>> {
     }
 }
 
-impl<M> WidgetConfig for Box<dyn Widget<Msg = M>> {
+impl<M: 'static> WidgetConfig for Box<dyn Widget<Msg = M>> {
     fn configure(&mut self, mgr: &mut Manager) {
         self.as_mut().configure(mgr);
     }
@@ -71,7 +71,7 @@ impl<M> WidgetConfig for Box<dyn Widget<Msg = M>> {
     }
 }
 
-impl<M> Layout for Box<dyn Widget<Msg = M>> {
+impl<M: 'static> Layout for Box<dyn Widget<Msg = M>> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         self.as_mut().size_rules(size_handle, axis)
     }
@@ -89,7 +89,7 @@ impl<M> Layout for Box<dyn Widget<Msg = M>> {
     }
 }
 
-impl<M> event::Handler for Box<dyn Widget<Msg = M>> {
+impl<M: 'static> event::Handler for Box<dyn Widget<Msg = M>> {
     type Msg = M;
 
     fn activation_via_press(&self) -> bool {
@@ -101,13 +101,13 @@ impl<M> event::Handler for Box<dyn Widget<Msg = M>> {
     }
 }
 
-impl<M> event::SendEvent for Box<dyn Widget<Msg = M>> {
+impl<M: 'static> event::SendEvent for Box<dyn Widget<Msg = M>> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         self.as_mut().send(mgr, id, event)
     }
 }
 
-impl<M> Widget for Box<dyn Widget<Msg = M>> {}
+impl<M: 'static> Widget for Box<dyn Widget<Msg = M>> {}
 
 impl<M: 'static> Clone for Box<dyn Widget<Msg = M>> {
     fn clone(&self) -> Self {
