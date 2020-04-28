@@ -13,6 +13,13 @@ use crate::layout::{AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, WidgetId};
 
 impl<M: 'static> WidgetCore for Box<dyn Widget<Msg = M>> {
+    fn as_any(&self) -> &dyn Any {
+        self.as_ref().as_any()
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self.as_mut().as_any_mut()
+    }
+
     fn core_data(&self) -> &CoreData {
         self.as_ref().core_data()
     }
