@@ -84,7 +84,7 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
             Event::TimerUpdate => {
                 if let Some(id) = self.delayed_open {
                     self.delayed_open = None;
-                    return self.send(mgr, id, Event::OpenPopup);
+                    self.menu_path(mgr, Some(id));
                 }
             }
             Event::PressStart {
@@ -144,15 +144,21 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                     let id = end_id.unwrap();
 
                     if self.rect().contains(coord) {
+                        // end coordinate is on the menubar
                         if !self.opening {
-                            // TODO: click on title should close menu,
-                            // but we don't have a mechanism to do that!
+                            for i in 0..self.bar.len() {
+                                if self.bar[i].id() == id {
+                                    self.bar[i].menu_path(mgr, None);
+                                }
+                            }
                         }
                     } else {
+                        // not on the menubar, thus on a sub-menu
                         return self.send(mgr, id, Event::Activate);
                     }
                 } else {
-                    // TODO: drag-click off menu should close menu
+                    // not on the menu
+                    self.menu_path(mgr, None);
                 }
             }
             /* TODO
@@ -193,5 +199,13 @@ impl<D: Directional, W: Menu> event::SendEvent for MenuBar<D, W> {
         }
 
         self.handle(mgr, event)
+    }
+}
+
+impl<D: Directional, W: Menu> Menu for MenuBar<D, W> {
+    fn menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
+        for i in 0..self.bar.len() {
+            self.bar[i].menu_path(mgr, target);
+        }
     }
 }

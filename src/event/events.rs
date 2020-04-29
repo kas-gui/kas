@@ -122,16 +122,6 @@ pub enum Event {
     /// A user-defined payload is passed. Interpretation of this payload is
     /// user-defined and unfortunately not type safe.
     HandleUpdate { handle: UpdateHandle, payload: u64 },
-    /// Open popup / menu
-    ///
-    /// This is a specific command from a parent, e.g. [`kas::widget::MenuBar`].
-    /// Most widgets can ignore this, even if they have a pop-up.
-    OpenPopup,
-    /// Close popup / menu
-    ///
-    /// This is a specific command from a parent, e.g. [`kas::widget::MenuBar`].
-    /// Most widgets can ignore this, even if they have a pop-up.
-    ClosePopup,
     /// Notification that a new popup has been created
     ///
     /// This is sent to the parent of each open popup when a new popup is

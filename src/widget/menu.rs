@@ -5,6 +5,8 @@
 
 //! Menus
 
+use std::ops::DerefMut;
+
 mod menu_entry;
 mod menu_frame;
 mod menubar;
@@ -21,7 +23,16 @@ use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// Trait governing menus, sub-menus and menu-entries
-pub trait Menu: Widget {}
+pub trait Menu: Widget {
+    /// Open or close a sub-menu, including parents
+    ///
+    /// Given `Some(id) = target`, the sub-menu with this `id` should open its
+    /// menu; if it has child-menus, these should close; and if any ancestors
+    /// are menus, these should open.
+    ///
+    /// `target == None` implies that all menus should close.
+    fn menu_path(&mut self, _mgr: &mut Manager, _target: Option<WidgetId>) {}
+}
 
 impl<M: 'static> WidgetCore for Box<dyn Menu<Msg = M>> {
     fn as_any(&self) -> &dyn std::any::Any {
@@ -127,7 +138,11 @@ impl<M: 'static> event::SendEvent for Box<dyn Menu<Msg = M>> {
 
 impl<M: 'static> Widget for Box<dyn Menu<Msg = M>> {}
 
-impl<M: 'static> Menu for Box<dyn Menu<Msg = M>> {}
+impl<M: 'static> Menu for Box<dyn Menu<Msg = M>> {
+    fn menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
+        self.deref_mut().menu_path(mgr, target)
+    }
+}
 
 impl<M: 'static> Clone for Box<dyn Menu<Msg = M>> {
     fn clone(&self) -> Self {

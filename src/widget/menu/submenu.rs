@@ -123,14 +123,9 @@ impl<D: Directional, M, W: Menu<Msg = M>> event::Handler for SubMenu<D, W> {
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
         match event {
-            Event::Activate | Event::OpenPopup => {
+            Event::Activate => {
                 if self.popup_id.is_none() {
                     self.open_menu(mgr);
-                }
-            }
-            Event::ClosePopup => {
-                if let Some(id) = self.popup_id {
-                    mgr.close_window(id);
                 }
             }
             Event::NewPopup(id) => {
@@ -207,7 +202,35 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {}
+impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
+    fn menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
+        match target {
+            Some(id) if id == self.id() => {
+                if self.popup_id.is_some() {
+                    for i in 0..self.list.inner.len() {
+                        self.list.inner[i].menu_path(mgr, None);
+                    }
+                } else {
+                    self.open_menu(mgr);
+                }
+            }
+            Some(id) if self.is_ancestor_of(id) => {
+                self.open_menu(mgr);
+                for i in 0..self.list.inner.len() {
+                    self.list.inner[i].menu_path(mgr, target);
+                }
+            }
+            _ => {
+                if self.popup_id.is_some() {
+                    for i in 0..self.list.inner.len() {
+                        self.list.inner[i].menu_path(mgr, None);
+                    }
+                    self.close_menu(mgr);
+                }
+            }
+        }
+    }
+}
 
 impl<D: Directional, W: Menu> HasText for SubMenu<D, W> {
     fn get_text(&self) -> &str {
