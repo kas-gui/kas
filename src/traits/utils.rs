@@ -22,10 +22,7 @@ impl<T: Clone + Sized> CloneTo for T {
 }
 
 /// Provides a convenient `.boxed()` method on implementors
-pub trait Boxed {
-    /// Target type (`dyn Trait`)
-    type T: ?Sized;
-
+pub trait Boxed<T: ?Sized> {
     /// Boxing method
-    fn boxed(self) -> Box<Self::T>;
+    fn boxed(self) -> Box<T>;
 }

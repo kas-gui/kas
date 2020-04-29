@@ -381,9 +381,8 @@ pub trait Layout: WidgetChildren {
 /// trait in the widget trait family).
 pub trait Widget: event::SendEvent {}
 
-impl<W: Widget + Sized> Boxed for W {
-    type T = dyn Widget<Msg = W::Msg>;
-    fn boxed(self) -> Box<Self::T> {
+impl<W: Widget + Sized> Boxed<dyn Widget<Msg = W::Msg>> for W {
+    fn boxed(self) -> Box<dyn Widget<Msg = W::Msg>> {
         Box::new(self)
     }
 }
