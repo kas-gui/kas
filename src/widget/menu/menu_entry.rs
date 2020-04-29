@@ -7,6 +7,7 @@
 
 use std::fmt::{self, Debug};
 
+use super::Menu;
 use kas::class::{HasBool, HasText};
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
 use kas::event::{Event, Manager, Response, VoidMsg};
@@ -88,6 +89,8 @@ impl<M: Clone + Debug + 'static> event::Handler for MenuEntry<M> {
         }
     }
 }
+
+impl<M: Clone + Debug> Menu for MenuEntry<M> {}
 
 /// A menu entry which can be toggled
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
@@ -220,6 +223,9 @@ impl<M: 'static> kas::Layout for MenuToggle<M> {
         self.label.draw(draw_handle, mgr, state.disabled);
     }
 }
+
+impl<M: From<VoidMsg>> Menu for MenuToggle<M> {}
+
 impl<M: 'static> HasBool for MenuToggle<M> {
     #[inline]
     fn get_bool(&self) -> bool {

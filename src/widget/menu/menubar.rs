@@ -7,7 +7,7 @@
 
 use std::time::Duration;
 
-use super::SubMenu;
+use super::{Menu, SubMenu};
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{Event, GrabMode, Handler, Manager, Response, SendEvent};
 use kas::layout::{AxisInfo, SizeRules};
@@ -20,7 +20,7 @@ use kas::widget::List;
 /// menus.
 #[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
-pub struct MenuBar<D: Directional, W: Widget> {
+pub struct MenuBar<D: Directional, W: Menu> {
     #[widget_core]
     core: CoreData,
     #[widget]
@@ -30,14 +30,14 @@ pub struct MenuBar<D: Directional, W: Widget> {
     delayed_open: Option<WidgetId>,
 }
 
-impl<D: Directional + Default, W: Widget> MenuBar<D, W> {
+impl<D: Directional + Default, W: Menu> MenuBar<D, W> {
     /// Construct
     pub fn new(menus: Vec<SubMenu<D::Flipped, W>>) -> Self {
         MenuBar::new_with_direction(D::default(), menus)
     }
 }
 
-impl<D: Directional, W: Widget> MenuBar<D, W> {
+impl<D: Directional, W: Menu> MenuBar<D, W> {
     /// Construct
     pub fn new_with_direction(direction: D, menus: Vec<SubMenu<D::Flipped, W>>) -> Self {
         MenuBar {
@@ -50,7 +50,7 @@ impl<D: Directional, W: Widget> MenuBar<D, W> {
 }
 
 // NOTE: we could use layout(single) except for alignment
-impl<D: Directional, W: Widget> Layout for MenuBar<D, W> {
+impl<D: Directional, W: Menu> Layout for MenuBar<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         self.bar.size_rules(size_handle, axis)
     }
@@ -76,7 +76,7 @@ impl<D: Directional, W: Widget> Layout for MenuBar<D, W> {
         self.bar.draw(draw_handle, mgr, disabled);
     }
 }
-impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
+impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
@@ -179,7 +179,7 @@ impl<D: Directional, W: Widget<Msg = M>, M> event::Handler for MenuBar<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> event::SendEvent for MenuBar<D, W> {
+impl<D: Directional, W: Menu> event::SendEvent for MenuBar<D, W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);

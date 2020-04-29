@@ -5,7 +5,7 @@
 
 //! Sub-menu
 
-use super::MenuFrame;
+use super::{Menu, MenuFrame};
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
 use kas::event::{Event, Manager, NavKey, Response};
@@ -18,7 +18,7 @@ use kas::WindowId;
 #[widget(config(key_nav = true))]
 #[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
-pub struct SubMenu<D: Directional, W: Widget> {
+pub struct SubMenu<D: Directional, W: Menu> {
     #[widget_core]
     core: CoreData,
     direction: D,
@@ -29,7 +29,7 @@ pub struct SubMenu<D: Directional, W: Widget> {
     popup_id: Option<WindowId>,
 }
 
-impl<D: Directional + Default, W: Widget> SubMenu<D, W> {
+impl<D: Directional + Default, W: Menu> SubMenu<D, W> {
     /// Construct a sub-menu
     #[inline]
     pub fn new<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
@@ -37,7 +37,7 @@ impl<D: Directional + Default, W: Widget> SubMenu<D, W> {
     }
 }
 
-impl<W: Widget> SubMenu<kas::Right, W> {
+impl<W: Menu> SubMenu<kas::Right, W> {
     /// Construct a sub-menu, opening to the right
     // NOTE: this is used since we can't infer direction of a boxed SubMenu.
     // Consider only accepting an enum of special menu widgets?
@@ -48,7 +48,7 @@ impl<W: Widget> SubMenu<kas::Right, W> {
     }
 }
 
-impl<W: Widget> SubMenu<kas::Down, W> {
+impl<W: Menu> SubMenu<kas::Down, W> {
     /// Construct a sub-menu, opening downwards
     #[inline]
     pub fn down<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
@@ -56,7 +56,7 @@ impl<W: Widget> SubMenu<kas::Down, W> {
     }
 }
 
-impl<D: Directional, W: Widget> SubMenu<D, W> {
+impl<D: Directional, W: Menu> SubMenu<D, W> {
     /// Construct a sub-menu
     #[inline]
     pub fn new_with_direction<S: Into<CowString>>(direction: D, label: S, list: Vec<W>) -> Self {
@@ -91,7 +91,7 @@ impl<D: Directional, W: Widget> SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> kas::Layout for SubMenu<D, W> {
+impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.menu_frame();
         self.label_off = size.into();
@@ -118,7 +118,7 @@ impl<D: Directional, W: Widget> kas::Layout for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, M, W: Widget<Msg = M>> event::Handler for SubMenu<D, W> {
+impl<D: Directional, M, W: Menu<Msg = M>> event::Handler for SubMenu<D, W> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
@@ -155,7 +155,7 @@ impl<D: Directional, M, W: Widget<Msg = M>> event::Handler for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> event::SendEvent for SubMenu<D, W> {
+impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);
@@ -207,7 +207,9 @@ impl<D: Directional, W: Widget> event::SendEvent for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> HasText for SubMenu<D, W> {
+impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {}
+
+impl<D: Directional, W: Menu> HasText for SubMenu<D, W> {
     fn get_text(&self) -> &str {
         &self.label
     }
