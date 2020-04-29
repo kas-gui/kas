@@ -14,6 +14,8 @@ use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::widget::List;
 
+const DELAY: Duration = Duration::from_millis(200);
+
 /// A menu-bar
 ///
 /// This widget houses a sequence of menu buttons, allowing input actions across
@@ -109,14 +111,14 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                                     if !w.menu_is_open() {
                                         self.opening = true;
                                         self.delayed_open = Some(id);
-                                        mgr.update_on_timer(Duration::from_millis(100), self.id());
+                                        mgr.update_on_timer(DELAY, self.id());
                                     }
                                     break;
                                 }
                             }
                         } else {
                             self.delayed_open = Some(start_id);
-                            mgr.update_on_timer(Duration::from_millis(100), self.id());
+                            mgr.update_on_timer(DELAY, self.id());
                         }
                     }
                 } else {
@@ -127,12 +129,11 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
             Event::PressMove { source, cur_id, .. } => {
                 if let Some(w) = cur_id.and_then(|id| self.find(id)) {
                     if w.key_nav() {
-                        // TODO: potentially this should close a sibling's submenu
                         let id = cur_id.unwrap();
                         mgr.set_grab_depress(source, Some(id));
                         mgr.set_nav_focus(id);
                         self.delayed_open = Some(id);
-                        mgr.update_on_timer(Duration::from_millis(300), self.id());
+                        mgr.update_on_timer(DELAY, self.id());
                     }
                 } else {
                     mgr.set_grab_depress(source, None);
@@ -146,6 +147,7 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                     if self.rect().contains(coord) {
                         // end coordinate is on the menubar
                         if !self.opening {
+                            self.delayed_open = None;
                             for i in 0..self.bar.len() {
                                 if self.bar[i].id() == id {
                                     self.bar[i].menu_path(mgr, None);
@@ -154,10 +156,12 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                         }
                     } else {
                         // not on the menubar, thus on a sub-menu
+                        self.delayed_open = None;
                         return self.send(mgr, id, Event::Activate);
                     }
                 } else {
                     // not on the menu
+                    self.delayed_open = None;
                     self.menu_path(mgr, None);
                 }
             }
@@ -177,6 +181,7 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                     if self.bar[i].menu_is_open() {
                         let index = if reverse { i.wrapping_sub(1) } else { i + 1 };
                         if index < self.bar.len() {
+                            self.delayed_open = None;
                             self.bar[i].menu_path(mgr, None);
                             let w = &mut self.bar[index];
                             w.menu_path(mgr, Some(w.id()));
@@ -210,8 +215,23 @@ impl<D: Directional, W: Menu> event::SendEvent for MenuBar<D, W> {
 
 impl<D: Directional, W: Menu> Menu for MenuBar<D, W> {
     fn menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
-        for i in 0..self.bar.len() {
-            self.bar[i].menu_path(mgr, target);
+        if let Some(id) = target {
+            // We should close other sub-menus before opening
+            let mut child = None;
+            for i in 0..self.bar.len() {
+                if self.bar[i].is_ancestor_of(id) {
+                    child = Some(i);
+                } else {
+                    self.bar[i].menu_path(mgr, None);
+                }
+            }
+            if let Some(i) = child {
+                self.bar[i].menu_path(mgr, target);
+            }
+        } else {
+            for i in 0..self.bar.len() {
+                self.bar[i].menu_path(mgr, None);
+            }
         }
     }
 }
