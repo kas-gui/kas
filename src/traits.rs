@@ -18,20 +18,9 @@ use crate::TkAction; // for doc links
 use crate::{AlignHints, CoreData, Direction, WidgetId, WindowId};
 
 mod impls;
+mod utils;
 
-/// Support trait for cloning boxed unsized objects
-#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-pub trait CloneTo {
-    unsafe fn clone_to(&self, out: *mut Self);
-}
-
-impl<T: Clone + Sized> CloneTo for T {
-    unsafe fn clone_to(&self, out: *mut Self) {
-        let x = self.clone();
-        std::ptr::copy(&x, out, 1);
-        std::mem::forget(x);
-    }
-}
+pub use utils::*;
 
 impl dyn WidgetCore {
     /// Forwards to the method defined on the type `Any`.
@@ -397,12 +386,11 @@ pub trait Layout: WidgetChildren {
 /// `fn foo<M>(w: &mut dyn Widget<Msg = M>)`, or, e.g.
 /// `fn foo(w: &mut dyn WidgetConfig)` (note that `WidgetConfig` is the last unparameterised
 /// trait in the widget trait family).
-pub trait Widget: event::SendEvent {
-    /// Return a boxed version of the widget
-    fn boxed(self) -> Box<dyn Widget<Msg = Self::Msg>>
-    where
-        Self: Sized + 'static,
-    {
+pub trait Widget: event::SendEvent {}
+
+impl<W: Widget + Sized> Boxed for W {
+    type T = dyn Widget<Msg = W::Msg>;
+    fn boxed(self) -> Box<Self::T> {
         Box::new(self)
     }
 }
