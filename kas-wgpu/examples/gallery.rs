@@ -11,9 +11,9 @@
 
 use kas::class::HasText;
 use kas::event::{Manager, Response, UpdateHandle, VoidMsg, VoidResponse};
-use kas::macros::{make_widget, VoidMsg};
+use kas::prelude::*;
 use kas::widget::*;
-use kas::{Right, TkAction, Widget, WidgetId};
+use kas::Right;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Item {

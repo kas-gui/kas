@@ -192,7 +192,7 @@ impl CompleteAlignment {
 ///
 /// Using a generic `<D: Directional>` over [`Direction`] allows compile-time
 /// substitution via the [`Right`], [`Down`], [`Left`] and [`Up`] instantiations.
-pub trait Directional: Copy + Sized + std::fmt::Debug {
+pub trait Directional: Copy + Sized + std::fmt::Debug + 'static {
     /// Direction flipped over diagonal (i.e. Down ↔ Right)
     type Flipped: Directional;
 

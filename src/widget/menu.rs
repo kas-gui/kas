@@ -5,113 +5,174 @@
 
 //! Menus
 
+use std::ops::{Deref, DerefMut};
+
 mod menu_entry;
+mod menu_frame;
 mod menubar;
 mod submenu;
 
 pub use menu_entry::{MenuEntry, MenuToggle};
+pub use menu_frame::MenuFrame;
 pub use menubar::MenuBar;
 pub use submenu::SubMenu;
 
-use kas::class::*;
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::Handler;
-use kas::layout::{AxisInfo, Margins, SizeRules};
+use kas::event::{Event, Manager, Response};
+use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
-/// A frame around content, plus background
-#[handler(msg = <W as Handler>::Msg)]
-#[derive(Clone, Debug, Default, Widget)]
-pub struct MenuFrame<W: Widget> {
-    #[widget_core]
-    core: CoreData,
-    #[widget]
-    pub inner: W,
-    m0: Size,
-    m1: Size,
+/// Trait governing menus, sub-menus and menu-entries
+pub trait Menu: Widget {
+    /// Report whether one's own menu is open
+    ///
+    /// By default, this is `false`.
+    fn menu_is_open(&self) -> bool {
+        false
+    }
+
+    /// Open or close a sub-menu, including parents
+    ///
+    /// Given `Some(id) = target`, the sub-menu with this `id` should open its
+    /// menu; if it has child-menus, these should close; and if any ancestors
+    /// are menus, these should open.
+    ///
+    /// `target == None` implies that all menus should close.
+    fn menu_path(&mut self, _mgr: &mut Manager, _target: Option<WidgetId>) {}
 }
 
-impl<W: Widget> MenuFrame<W> {
-    /// Construct a frame
-    #[inline]
-    pub fn new(inner: W) -> Self {
-        MenuFrame {
-            core: Default::default(),
-            inner,
-            m0: Size::ZERO,
-            m1: Size::ZERO,
-        }
+impl<M: 'static> WidgetCore for Box<dyn Menu<Msg = M>> {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self.as_ref().as_any()
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self.as_mut().as_any_mut()
+    }
+
+    fn core_data(&self) -> &CoreData {
+        self.as_ref().core_data()
+    }
+    fn core_data_mut(&mut self) -> &mut CoreData {
+        self.as_mut().core_data_mut()
+    }
+
+    fn widget_name(&self) -> &'static str {
+        self.as_ref().widget_name()
+    }
+
+    fn as_widget(&self) -> &dyn WidgetConfig {
+        self.as_ref().as_widget()
+    }
+    fn as_widget_mut(&mut self) -> &mut dyn WidgetConfig {
+        self.as_mut().as_widget_mut()
     }
 }
 
-impl<W: Widget> Layout for MenuFrame<W> {
+impl<M: 'static> WidgetChildren for Box<dyn Menu<Msg = M>> {
+    fn len(&self) -> usize {
+        self.as_ref().len()
+    }
+    fn get(&self, index: usize) -> Option<&dyn WidgetConfig> {
+        self.as_ref().get(index)
+    }
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+        self.as_mut().get_mut(index)
+    }
+
+    fn find(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+        self.as_ref().find(id)
+    }
+    fn find_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
+        self.as_mut().find_mut(id)
+    }
+
+    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
+        self.as_ref().walk(f);
+    }
+    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
+        self.as_mut().walk_mut(f);
+    }
+}
+
+impl<M: 'static> WidgetConfig for Box<dyn Menu<Msg = M>> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        self.as_mut().configure(mgr);
+    }
+
+    fn key_nav(&self) -> bool {
+        self.as_ref().key_nav()
+    }
+    fn cursor_icon(&self) -> event::CursorIcon {
+        self.as_ref().cursor_icon()
+    }
+}
+
+impl<M: 'static> Layout for Box<dyn Menu<Msg = M>> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let size = size_handle.frame();
-        let margins = Margins::ZERO;
-        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, margins);
-
-        let child_rules = self.inner.size_rules(size_handle, axis);
-        let m = child_rules.margins();
-
-        if axis.is_horizontal() {
-            self.m0.0 = size.0 + m.0 as u32;
-            self.m1.0 = size.0 + m.1 as u32;
-        } else {
-            self.m0.1 = size.1 + m.0 as u32;
-            self.m1.1 = size.1 + m.1 as u32;
-        }
-
-        child_rules.surrounded_by(frame_rules, true)
+        self.as_mut().size_rules(size_handle, axis)
     }
 
-    fn set_rect(&mut self, mut rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        rect.pos += self.m0;
-        rect.size -= self.m0 + self.m1;
-        self.inner.set_rect(rect, align);
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
+        self.as_mut().set_rect(rect, align);
     }
 
-    #[inline]
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if !self.rect().contains(coord) {
-            return None;
-        }
-        self.inner.find_id(coord).or(Some(self.id()))
+        self.as_ref().find_id(coord)
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        draw_handle.menu_frame(self.core_data().rect);
-        let disabled = disabled || self.is_disabled();
-        self.inner.draw(draw_handle, mgr, disabled);
+        self.as_ref().draw(draw_handle, mgr, disabled);
     }
 }
 
-impl<W: HasBool + Widget> HasBool for MenuFrame<W> {
-    fn get_bool(&self) -> bool {
-        self.inner.get_bool()
+impl<M: 'static> event::Handler for Box<dyn Menu<Msg = M>> {
+    type Msg = M;
+
+    fn activation_via_press(&self) -> bool {
+        self.as_ref().activation_via_press()
     }
 
-    fn set_bool(&mut self, state: bool) -> TkAction {
-        self.inner.set_bool(state)
-    }
-}
-
-impl<W: HasText + Widget> HasText for MenuFrame<W> {
-    fn get_text(&self) -> &str {
-        self.inner.get_text()
-    }
-
-    fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.inner.set_cow_string(text)
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        self.as_mut().handle(mgr, event)
     }
 }
 
-impl<W: Editable + Widget> Editable for MenuFrame<W> {
-    fn is_editable(&self) -> bool {
-        self.inner.is_editable()
+impl<M: 'static> event::SendEvent for Box<dyn Menu<Msg = M>> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        self.as_mut().send(mgr, id, event)
     }
+}
 
-    fn set_editable(&mut self, editable: bool) {
-        self.inner.set_editable(editable);
+impl<M: 'static> Widget for Box<dyn Menu<Msg = M>> {}
+
+impl<M: 'static> Menu for Box<dyn Menu<Msg = M>> {
+    fn menu_is_open(&self) -> bool {
+        self.deref().menu_is_open()
+    }
+    fn menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
+        self.deref_mut().menu_path(mgr, target)
+    }
+}
+
+impl<M: 'static> Clone for Box<dyn Menu<Msg = M>> {
+    fn clone(&self) -> Self {
+        #[cfg(feature = "nightly")]
+        unsafe {
+            let mut x = Box::new_uninit();
+            self.clone_to(x.as_mut_ptr());
+            x.assume_init()
+        }
+
+        // Run-time failure is not ideal — but we would hit compile-issues which
+        // don't necessarily correspond to actual usage otherwise due to
+        // `derive(Clone)` on any widget produced by `make_widget!`.
+        #[cfg(not(feature = "nightly"))]
+        panic!("Clone for Box<dyn Menu> only supported on nightly");
+    }
+}
+
+impl<M: Menu + Sized> Boxed<dyn Menu<Msg = M::Msg>> for M {
+    fn boxed(self) -> Box<dyn Menu<Msg = M::Msg>> {
+        Box::new(self)
     }
 }

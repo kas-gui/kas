@@ -245,8 +245,8 @@ impl<'a> Manager<'a> {
     /// [`Event::Activate`].)
     ///
     /// Only one widget can be a fallback, and the *first* to set itself wins.
-    /// This is primarily used to allow [`ScrollRegion`] to respond to
-    /// navigation keys when no widget has focus.
+    /// This is primarily used to allow [`kas::widget::ScrollRegion`] to
+    /// respond to navigation keys when no widget has focus.
     pub fn register_nav_fallback(&mut self, id: WidgetId) {
         if self.mgr.nav_fallback.is_none() {
             debug!("Manager: nav_fallback = {}", id);

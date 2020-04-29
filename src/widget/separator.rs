@@ -11,6 +11,7 @@ use std::marker::PhantomData;
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
+use kas::widget::Menu;
 
 /// A separator
 ///
@@ -18,7 +19,7 @@ use kas::prelude::*;
 /// if no other widget will fill spare space.
 #[handler(msg=M)]
 #[derive(Clone, Debug, Default, Widget)]
-pub struct Separator<M: Debug> {
+pub struct Separator<M: Debug + 'static> {
     #[widget_core]
     core: CoreData,
     _msg: PhantomData<M>,
@@ -58,3 +59,6 @@ impl<M: Debug> Layout for Separator<M> {
         draw_handle.separator(self.core.rect);
     }
 }
+
+/// A separator is a valid menu widget
+impl<M: Debug> Menu for Separator<M> {}

@@ -5,7 +5,7 @@
 
 //! Sub-menu
 
-use super::MenuFrame;
+use super::{Menu, MenuFrame};
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
 use kas::event::{Event, Manager, NavKey, Response};
@@ -18,7 +18,7 @@ use kas::WindowId;
 #[widget(config(key_nav = true))]
 #[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
-pub struct SubMenu<D: Directional, W: Widget> {
+pub struct SubMenu<D: Directional, W: Menu> {
     #[widget_core]
     core: CoreData,
     direction: D,
@@ -29,7 +29,7 @@ pub struct SubMenu<D: Directional, W: Widget> {
     popup_id: Option<WindowId>,
 }
 
-impl<D: Directional + Default, W: Widget> SubMenu<D, W> {
+impl<D: Directional + Default, W: Menu> SubMenu<D, W> {
     /// Construct a sub-menu
     #[inline]
     pub fn new<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
@@ -37,7 +37,7 @@ impl<D: Directional + Default, W: Widget> SubMenu<D, W> {
     }
 }
 
-impl<W: Widget> SubMenu<kas::Right, W> {
+impl<W: Menu> SubMenu<kas::Right, W> {
     /// Construct a sub-menu, opening to the right
     // NOTE: this is used since we can't infer direction of a boxed SubMenu.
     // Consider only accepting an enum of special menu widgets?
@@ -48,7 +48,7 @@ impl<W: Widget> SubMenu<kas::Right, W> {
     }
 }
 
-impl<W: Widget> SubMenu<kas::Down, W> {
+impl<W: Menu> SubMenu<kas::Down, W> {
     /// Construct a sub-menu, opening downwards
     #[inline]
     pub fn down<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
@@ -56,7 +56,7 @@ impl<W: Widget> SubMenu<kas::Down, W> {
     }
 }
 
-impl<D: Directional, W: Widget> SubMenu<D, W> {
+impl<D: Directional, W: Menu> SubMenu<D, W> {
     /// Construct a sub-menu
     #[inline]
     pub fn new_with_direction<S: Into<CowString>>(direction: D, label: S, list: Vec<W>) -> Self {
@@ -70,9 +70,6 @@ impl<D: Directional, W: Widget> SubMenu<D, W> {
         }
     }
 
-    pub(crate) fn menu_is_open(&self) -> bool {
-        self.popup_id.is_some()
-    }
     fn open_menu(&mut self, mgr: &mut Manager) {
         if self.popup_id.is_none() {
             let id = mgr.add_popup(kas::Popup {
@@ -91,7 +88,7 @@ impl<D: Directional, W: Widget> SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> kas::Layout for SubMenu<D, W> {
+impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.menu_frame();
         self.label_off = size.into();
@@ -118,19 +115,14 @@ impl<D: Directional, W: Widget> kas::Layout for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, M, W: Widget<Msg = M>> event::Handler for SubMenu<D, W> {
+impl<D: Directional, M, W: Menu<Msg = M>> event::Handler for SubMenu<D, W> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
         match event {
-            Event::Activate | Event::OpenPopup => {
+            Event::Activate => {
                 if self.popup_id.is_none() {
                     self.open_menu(mgr);
-                }
-            }
-            Event::ClosePopup => {
-                if let Some(id) = self.popup_id {
-                    mgr.close_window(id);
                 }
             }
             Event::NewPopup(id) => {
@@ -155,7 +147,7 @@ impl<D: Directional, M, W: Widget<Msg = M>> event::Handler for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> event::SendEvent for SubMenu<D, W> {
+impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);
@@ -207,7 +199,49 @@ impl<D: Directional, W: Widget> event::SendEvent for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, W: Widget> HasText for SubMenu<D, W> {
+impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
+    fn menu_is_open(&self) -> bool {
+        self.popup_id.is_some()
+    }
+
+    fn menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
+        match target {
+            Some(id) if self.is_ancestor_of(id) => {
+                if self.popup_id.is_some() {
+                    // We should close other sub-menus before opening
+                    let mut child = None;
+                    for i in 0..self.list.inner.len() {
+                        if self.list.inner[i].is_ancestor_of(id) {
+                            child = Some(i);
+                        } else {
+                            self.list.inner[i].menu_path(mgr, None);
+                        }
+                    }
+                    if let Some(i) = child {
+                        self.list.inner[i].menu_path(mgr, target);
+                    }
+                } else {
+                    self.open_menu(mgr);
+                    if id != self.id() {
+                        for i in 0..self.list.inner.len() {
+                            self.list.inner[i].menu_path(mgr, target);
+                        }
+                    }
+                }
+            }
+            _ => {
+                if self.popup_id.is_some() {
+                    for i in 0..self.list.inner.len() {
+                        self.list.inner[i].menu_path(mgr, None);
+                    }
+                    self.close_menu(mgr);
+                }
+            }
+        }
+    }
+}
+
+impl<D: Directional, W: Menu> HasText for SubMenu<D, W> {
     fn get_text(&self) -> &str {
         &self.label
     }

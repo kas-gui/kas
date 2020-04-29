@@ -23,6 +23,7 @@ pub trait SliderType:
     + Sub<Output = Self>
     + ApproxInto<f64>
     + ApproxFrom<f64, RoundToNearest>
+    + 'static
 {
 }
 
@@ -33,7 +34,8 @@ impl<
             + Add<Output = Self>
             + Sub<Output = T>
             + ApproxInto<f64>
-            + ApproxFrom<f64, RoundToNearest>,
+            + ApproxFrom<f64, RoundToNearest>
+            + 'static,
     > SliderType for T
 {
 }

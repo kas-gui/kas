@@ -18,7 +18,7 @@ use kas::prelude::*;
 #[handler(handle=noauto)]
 #[widget(config=noauto)]
 #[derive(Clone, Debug, Default, Widget)]
-pub struct TextButton<M: Clone + Debug> {
+pub struct TextButton<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
     keys: SmallVec<[VirtualKeyCode; 4]>,
@@ -27,7 +27,7 @@ pub struct TextButton<M: Clone + Debug> {
     msg: M,
 }
 
-impl<M: Clone + Debug> WidgetConfig for TextButton<M> {
+impl<M: Clone + Debug + 'static> WidgetConfig for TextButton<M> {
     fn configure(&mut self, mgr: &mut Manager) {
         for key in &self.keys {
             mgr.add_accel_key(*key, self.id());
@@ -39,7 +39,7 @@ impl<M: Clone + Debug> WidgetConfig for TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug> Layout for TextButton<M> {
+impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.button_surround();
         let margins = size_handle.outer_margins();
@@ -65,7 +65,7 @@ impl<M: Clone + Debug> Layout for TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug> TextButton<M> {
+impl<M: Clone + Debug + 'static> TextButton<M> {
     /// Construct a button with a given `label` and `msg`
     ///
     /// The message `msg` is returned to the parent widget on activation. Any
@@ -99,7 +99,7 @@ impl<M: Clone + Debug> TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug> HasText for TextButton<M> {
+impl<M: Clone + Debug + 'static> HasText for TextButton<M> {
     fn get_text(&self) -> &str {
         &self.label
     }
@@ -110,7 +110,7 @@ impl<M: Clone + Debug> HasText for TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug> event::Handler for TextButton<M> {
+impl<M: Clone + Debug + 'static> event::Handler for TextButton<M> {
     type Msg = M;
 
     #[inline]

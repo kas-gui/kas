@@ -119,7 +119,7 @@ impl ThemeColours {
         }
     }
 
-    /// Get colour of a [text] area, depending on state
+    /// Get colour of a text area, depending on state
     pub fn bg_col(&self, state: InputState) -> Colour {
         if state.disabled {
             self.bg_disabled
