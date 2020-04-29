@@ -5,7 +5,7 @@
 
 //! Menus
 
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 
 mod menu_entry;
 mod menu_frame;
@@ -24,6 +24,13 @@ use kas::prelude::*;
 
 /// Trait governing menus, sub-menus and menu-entries
 pub trait Menu: Widget {
+    /// Report whether one's own menu is open
+    ///
+    /// By default, this is `false`.
+    fn menu_is_open(&self) -> bool {
+        false
+    }
+
     /// Open or close a sub-menu, including parents
     ///
     /// Given `Some(id) = target`, the sub-menu with this `id` should open its
@@ -139,6 +146,9 @@ impl<M: 'static> event::SendEvent for Box<dyn Menu<Msg = M>> {
 impl<M: 'static> Widget for Box<dyn Menu<Msg = M>> {}
 
 impl<M: 'static> Menu for Box<dyn Menu<Msg = M>> {
+    fn menu_is_open(&self) -> bool {
+        self.deref().menu_is_open()
+    }
     fn menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
         self.deref_mut().menu_path(mgr, target)
     }

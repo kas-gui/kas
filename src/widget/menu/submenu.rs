@@ -70,9 +70,6 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
         }
     }
 
-    pub(crate) fn menu_is_open(&self) -> bool {
-        self.popup_id.is_some()
-    }
     fn open_menu(&mut self, mgr: &mut Manager) {
         if self.popup_id.is_none() {
             let id = mgr.add_popup(kas::Popup {
@@ -203,21 +200,33 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
 }
 
 impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
+    fn menu_is_open(&self) -> bool {
+        self.popup_id.is_some()
+    }
+
     fn menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
         match target {
-            Some(id) if id == self.id() => {
+            Some(id) if self.is_ancestor_of(id) => {
                 if self.popup_id.is_some() {
+                    // We should close other sub-menus before opening
+                    let mut child = None;
                     for i in 0..self.list.inner.len() {
-                        self.list.inner[i].menu_path(mgr, None);
+                        if self.list.inner[i].is_ancestor_of(id) {
+                            child = Some(i);
+                        } else {
+                            self.list.inner[i].menu_path(mgr, None);
+                        }
+                    }
+                    if let Some(i) = child {
+                        self.list.inner[i].menu_path(mgr, target);
                     }
                 } else {
                     self.open_menu(mgr);
-                }
-            }
-            Some(id) if self.is_ancestor_of(id) => {
-                self.open_menu(mgr);
-                for i in 0..self.list.inner.len() {
-                    self.list.inner[i].menu_path(mgr, target);
+                    if id != self.id() {
+                        for i in 0..self.list.inner.len() {
+                            self.list.inner[i].menu_path(mgr, target);
+                        }
+                    }
                 }
             }
             _ => {

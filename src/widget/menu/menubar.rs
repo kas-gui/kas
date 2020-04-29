@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use super::{Menu, SubMenu};
 use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, GrabMode, Handler, Manager, Response, SendEvent};
+use kas::event::{Event, GrabMode, Handler, Manager, NavKey, Response, SendEvent};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::widget::List;
@@ -161,7 +161,6 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                     self.menu_path(mgr, None);
                 }
             }
-            /* TODO
             Event::NavKey(key) => {
                 // Arrow keys can switch to the next / previous menu.
                 let is_vert = self.bar.direction().is_vertical();
@@ -174,11 +173,18 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                         key => return Response::Unhandled(Event::NavKey(key)),
                     };
 
-                let index = ?
-                let id = self.bar[index].id();
-                return self.send(mgr, id, Event::OpenPopup);
+                for i in 0..self.bar.len() {
+                    if self.bar[i].menu_is_open() {
+                        let index = if reverse { i.wrapping_sub(1) } else { i + 1 };
+                        if index < self.bar.len() {
+                            self.bar[i].menu_path(mgr, None);
+                            let w = &mut self.bar[index];
+                            w.menu_path(mgr, Some(w.id()));
+                        }
+                        break;
+                    }
+                }
             }
-             */
             e => return Response::Unhandled(e),
         }
         Response::None
