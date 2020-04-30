@@ -13,7 +13,7 @@ use kas::draw::{DrawHandle, SizeHandle, TextClass};
 use kas::event::{Event, Manager, Response, VoidMsg};
 use kas::layout::{AxisInfo, Margins, RulesSetter, RulesSolver, SizeRules};
 use kas::prelude::*;
-use kas::widget::{CheckBoxBare, Label};
+use kas::widget::{AccelLabel, CheckBoxBare};
 
 /// A standard menu entry
 #[widget(config(key_nav = true))]
@@ -102,7 +102,7 @@ pub struct MenuToggle<M: 'static> {
     #[widget]
     checkbox: CheckBoxBare<M>,
     #[widget]
-    label: Label,
+    label: AccelLabel,
 }
 
 impl<M: 'static> Debug for MenuToggle<M> {
@@ -130,7 +130,7 @@ impl<M: 'static> MenuToggle<M> {
             core: Default::default(),
             layout_data: Default::default(),
             checkbox: CheckBoxBare::new_on(f),
-            label: Label::new(label),
+            label: AccelLabel::new(label),
         }
     }
 
@@ -150,7 +150,7 @@ impl MenuToggle<VoidMsg> {
             core: Default::default(),
             layout_data: Default::default(),
             checkbox: CheckBoxBare::new(),
-            label: Label::new(label),
+            label: AccelLabel::new(label),
         }
     }
 

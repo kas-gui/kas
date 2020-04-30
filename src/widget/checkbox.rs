@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 use std::rc::Rc;
 
-use super::Label;
+use super::AccelLabel;
 use kas::class::HasBool;
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{Event, Manager, Response, VoidMsg};
@@ -158,7 +158,7 @@ pub struct CheckBox<M: 'static> {
     #[widget]
     checkbox: CheckBoxBare<M>,
     #[widget]
-    label: Label,
+    label: AccelLabel,
 }
 
 impl<M: 'static> Debug for CheckBox<M> {
@@ -190,7 +190,7 @@ impl<M: 'static> CheckBox<M> {
             core: Default::default(),
             layout_data: Default::default(),
             checkbox: CheckBoxBare::new_on(f),
-            label: Label::new(label),
+            label: AccelLabel::new(label),
         }
     }
 }
@@ -206,7 +206,7 @@ impl CheckBox<VoidMsg> {
             core: Default::default(),
             layout_data: Default::default(),
             checkbox: CheckBoxBare::new(),
-            label: Label::new(label),
+            label: AccelLabel::new(label),
         }
     }
 

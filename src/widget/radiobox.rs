@@ -9,7 +9,7 @@ use std::convert::TryFrom;
 use std::fmt::{self, Debug};
 use std::rc::Rc;
 
-use super::Label;
+use super::AccelLabel;
 use kas::class::HasBool;
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{Event, Manager, Response, UpdateHandle, VoidMsg};
@@ -192,7 +192,7 @@ pub struct RadioBox<M: 'static> {
     #[widget]
     radiobox: RadioBoxBare<M>,
     #[widget]
-    label: Label,
+    label: AccelLabel,
 }
 
 impl<M: 'static> Debug for RadioBox<M> {
@@ -224,7 +224,7 @@ impl<M: 'static> RadioBox<M> {
             core: Default::default(),
             layout_data: Default::default(),
             radiobox: RadioBoxBare::new_on(f, handle),
-            label: Label::new(label),
+            label: AccelLabel::new(label),
         }
     }
 }
@@ -243,7 +243,7 @@ impl RadioBox<VoidMsg> {
             core: Default::default(),
             layout_data: Default::default(),
             radiobox: RadioBoxBare::new(handle),
-            label: Label::new(label),
+            label: AccelLabel::new(label),
         }
     }
 
