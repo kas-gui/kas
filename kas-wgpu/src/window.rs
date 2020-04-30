@@ -151,6 +151,7 @@ where
     {
         // Note: resize must be handled here to update self.swap_chain.
         match event {
+            WindowEvent::Destroyed => (),
             WindowEvent::Resized(size) => self.do_resize(shared, size),
             WindowEvent::ScaleFactorChanged {
                 scale_factor,

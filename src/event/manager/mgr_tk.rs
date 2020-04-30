@@ -348,22 +348,18 @@ impl<'a> Manager<'a> {
         // Unhandled events here, so we can freely ignore all responses.
 
         match event {
-            // Resized(size) [handled by toolkit]
-            // Moved(position)
-            CloseRequested => {
-                self.send_action(TkAction::Close);
-            }
-            // Destroyed
-            // DroppedFile(PathBuf),
-            // HoveredFile(PathBuf),
-            // HoveredFileCancelled,
+            CloseRequested => self.send_action(TkAction::Close),
+            /* Not yet supported: see #98
+            DroppedFile(path) => ,
+            HoveredFile(path) => ,
+            HoveredFileCancelled => ,
+            */
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = self.mgr.char_focus {
                     let event = Event::ReceivedCharacter(c);
                     self.send_event(widget, id, event);
                 }
             }
-            // Focused(bool),
             KeyboardInput { input, is_synthetic, .. } => {
                 if input.state == ElementState::Pressed && !is_synthetic {
                     if let Some(vkey) = input.virtual_keycode {
@@ -462,7 +458,6 @@ impl<'a> Manager<'a> {
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
             // AxisMotion { axis: AxisId, value: f64, },
-            // RedrawRequested [handled by toolkit]
             Touch(touch) => {
                 let source = PressSource::Touch(touch.id);
                 let coord = touch.location.into();
@@ -545,7 +540,6 @@ impl<'a> Manager<'a> {
                     }
                 }
             }
-            // HiDpiFactorChanged(factor) [handled by toolkit]
             _ => (),
         }
     }
