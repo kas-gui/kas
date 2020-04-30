@@ -22,7 +22,7 @@ use kas::widget::{AccelLabel, CheckBoxBare};
 pub struct MenuEntry<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
-    label: CowString,
+    label: AccelString,
     label_off: Coord,
     msg: M,
 }
@@ -53,7 +53,7 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
     /// The message `msg` is emitted on activation. Any
     /// type supporting `Clone` is valid, though it is recommended to use a
     /// simple `Copy` type (e.g. an enum).
-    pub fn new<S: Into<CowString>>(label: S, msg: M) -> Self {
+    pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
         MenuEntry {
             core: Default::default(),
             label: label.into(),
@@ -74,7 +74,7 @@ impl<M: Clone + Debug + 'static> HasText for MenuEntry<M> {
     }
 
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.label = text;
+        self.label = text.into();
         TkAction::Redraw
     }
 }
@@ -122,7 +122,7 @@ impl<M: 'static> MenuToggle<M> {
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn new_on<T: Into<CowString>, F>(f: F, label: T) -> Self
+    pub fn new_on<T: Into<AccelString>, F>(f: F, label: T) -> Self
     where
         F: Fn(bool) -> M + 'static,
     {
@@ -145,7 +145,7 @@ impl<M: 'static> MenuToggle<M> {
 impl MenuToggle<VoidMsg> {
     /// Construct a togglable menu entry with a given `label`
     #[inline]
-    pub fn new<T: Into<CowString>>(label: T) -> Self {
+    pub fn new<T: Into<AccelString>>(label: T) -> Self {
         MenuToggle {
             core: Default::default(),
             layout_data: Default::default(),

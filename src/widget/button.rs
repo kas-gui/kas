@@ -23,7 +23,7 @@ pub struct TextButton<M: Clone + Debug + 'static> {
     core: kas::CoreData,
     keys: SmallVec<[VirtualKeyCode; 4]>,
     // text_rect: Rect,
-    label: CowString,
+    label: AccelString,
     msg: M,
 }
 
@@ -72,7 +72,7 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     /// type supporting `Clone` is valid, though it is recommended to use a
     /// simple `Copy` type (e.g. an enum). Click actions must be implemented on
     /// the parent (or other ancestor).
-    pub fn new<S: Into<CowString>>(label: S, msg: M) -> Self {
+    pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
         TextButton {
             core: Default::default(),
             keys: SmallVec::new(),
@@ -105,7 +105,7 @@ impl<M: Clone + Debug + 'static> HasText for TextButton<M> {
     }
 
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.label = text;
+        self.label = text.into();
         TkAction::Redraw
     }
 }

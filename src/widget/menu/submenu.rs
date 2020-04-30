@@ -22,7 +22,7 @@ pub struct SubMenu<D: Directional, W: Menu> {
     #[widget_core]
     core: CoreData,
     direction: D,
-    label: CowString,
+    label: AccelString,
     label_off: Coord,
     #[widget]
     pub list: MenuFrame<Column<W>>,
@@ -32,7 +32,7 @@ pub struct SubMenu<D: Directional, W: Menu> {
 impl<D: Directional + Default, W: Menu> SubMenu<D, W> {
     /// Construct a sub-menu
     #[inline]
-    pub fn new<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
+    pub fn new<S: Into<AccelString>>(label: S, list: Vec<W>) -> Self {
         SubMenu::new_with_direction(Default::default(), label, list)
     }
 }
@@ -43,7 +43,7 @@ impl<W: Menu> SubMenu<kas::Right, W> {
     // Consider only accepting an enum of special menu widgets?
     // Then we can pass type information.
     #[inline]
-    pub fn right<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
+    pub fn right<S: Into<AccelString>>(label: S, list: Vec<W>) -> Self {
         SubMenu::new(label, list)
     }
 }
@@ -51,7 +51,7 @@ impl<W: Menu> SubMenu<kas::Right, W> {
 impl<W: Menu> SubMenu<kas::Down, W> {
     /// Construct a sub-menu, opening downwards
     #[inline]
-    pub fn down<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
+    pub fn down<S: Into<AccelString>>(label: S, list: Vec<W>) -> Self {
         SubMenu::new(label, list)
     }
 }
@@ -59,7 +59,7 @@ impl<W: Menu> SubMenu<kas::Down, W> {
 impl<D: Directional, W: Menu> SubMenu<D, W> {
     /// Construct a sub-menu
     #[inline]
-    pub fn new_with_direction<S: Into<CowString>>(direction: D, label: S, list: Vec<W>) -> Self {
+    pub fn new_with_direction<S: Into<AccelString>>(direction: D, label: S, list: Vec<W>) -> Self {
         SubMenu {
             core: Default::default(),
             direction,
@@ -247,7 +247,7 @@ impl<D: Directional, W: Menu> HasText for SubMenu<D, W> {
     }
 
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.label = text;
+        self.label = text.into();
         TkAction::Redraw
     }
 }

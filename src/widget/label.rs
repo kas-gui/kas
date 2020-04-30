@@ -18,7 +18,7 @@ pub struct Label {
     core: CoreData,
     align: (Align, Align),
     reserve: Option<&'static str>,
-    text: CowString,
+    text: LabelString,
 }
 
 impl Layout for Label {
@@ -48,7 +48,7 @@ impl Layout for Label {
 
 impl Label {
     /// Construct a new, empty instance
-    pub fn new<T: Into<CowString>>(text: T) -> Self {
+    pub fn new<T: Into<LabelString>>(text: T) -> Self {
         Label {
             core: Default::default(),
             align: Default::default(),
@@ -84,7 +84,7 @@ pub struct AccelLabel {
     #[widget_core]
     core: CoreData,
     align: (Align, Align),
-    text: CowString,
+    text: AccelString,
 }
 
 impl Layout for AccelLabel {
@@ -113,7 +113,7 @@ impl Layout for AccelLabel {
 
 impl AccelLabel {
     /// Construct a new, empty instance
-    pub fn new<T: Into<CowString>>(text: T) -> Self {
+    pub fn new<T: Into<AccelString>>(text: T) -> Self {
         AccelLabel {
             core: Default::default(),
             align: Default::default(),

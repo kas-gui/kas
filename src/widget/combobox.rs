@@ -161,7 +161,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     }
 }
 
-impl<T: Into<CowString>, M: Clone + Debug> FromIterator<(T, M)> for ComboBox<M> {
+impl<T: Into<AccelString>, M: Clone + Debug> FromIterator<(T, M)> for ComboBox<M> {
     fn from_iter<I: IntoIterator<Item = (T, M)>>(iter: I) -> Self {
         let iter = iter.into_iter();
         let len = iter.size_hint().1.unwrap_or(0);

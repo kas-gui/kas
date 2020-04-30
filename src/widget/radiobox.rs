@@ -216,7 +216,7 @@ impl<M: 'static> RadioBox<M> {
     /// The closure `f` is called with the new state of the radiobox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn new_on<T: Into<CowString>, F>(f: F, handle: UpdateHandle, label: T) -> Self
+    pub fn new_on<T: Into<AccelString>, F>(f: F, handle: UpdateHandle, label: T) -> Self
     where
         F: Fn(WidgetId) -> M + 'static,
     {
@@ -238,7 +238,7 @@ impl RadioBox<VoidMsg> {
     /// RadioBox labels are optional; if no label is desired, use an empty
     /// string.
     #[inline]
-    pub fn new<T: Into<CowString>>(handle: UpdateHandle, label: T) -> Self {
+    pub fn new<T: Into<AccelString>>(handle: UpdateHandle, label: T) -> Self {
         RadioBox {
             core: Default::default(),
             layout_data: Default::default(),

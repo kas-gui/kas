@@ -15,7 +15,7 @@
 
 pub use kas::geom::{Coord, Rect, Size};
 pub use kas::macros::*;
-pub use kas::string::{CowString, CowStringL};
+pub use kas::string::{AccelString, CowString, CowStringL, LabelString};
 pub use kas::{class, draw, event, geom, layout, widget};
 pub use kas::{Align, AlignHints, Direction, Directional, WidgetId};
 pub use kas::{Boxed, TkAction, TkWindow};

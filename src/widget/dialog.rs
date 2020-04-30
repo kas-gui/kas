@@ -35,7 +35,7 @@ pub struct MessageBox {
 }
 
 impl MessageBox {
-    pub fn new<T: Into<CowString>, M: Into<CowString>>(title: T, message: M) -> Self {
+    pub fn new<T: Into<CowString>, M: Into<LabelString>>(title: T, message: M) -> Self {
         MessageBox {
             core: Default::default(),
             layout_data: Default::default(),

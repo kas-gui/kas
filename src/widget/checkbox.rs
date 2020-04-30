@@ -182,7 +182,7 @@ impl<M: 'static> CheckBox<M> {
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn new_on<T: Into<CowString>, F>(f: F, label: T) -> Self
+    pub fn new_on<T: Into<AccelString>, F>(f: F, label: T) -> Self
     where
         F: Fn(bool) -> M + 'static,
     {
@@ -201,7 +201,7 @@ impl CheckBox<VoidMsg> {
     /// CheckBox labels are optional; if no label is desired, use an empty
     /// string.
     #[inline]
-    pub fn new<T: Into<CowString>>(label: T) -> Self {
+    pub fn new<T: Into<AccelString>>(label: T) -> Self {
         CheckBox {
             core: Default::default(),
             layout_data: Default::default(),
