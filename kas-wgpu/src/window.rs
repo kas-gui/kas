@@ -11,6 +11,7 @@ use std::time::Instant;
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
+use kas::string::{CowString, CowStringL};
 use kas::{ThemeAction, ThemeApi, TkAction, WindowId};
 use kas_theme::Theme;
 use winit::dpi::PhysicalSize;
@@ -424,12 +425,12 @@ where
     }
 
     #[inline]
-    fn get_clipboard(&mut self) -> Option<kas::CowString> {
+    fn get_clipboard(&mut self) -> Option<CowString> {
         self.shared.get_clipboard()
     }
 
     #[inline]
-    fn set_clipboard<'c>(&mut self, content: kas::CowStringL<'c>) {
+    fn set_clipboard<'c>(&mut self, content: CowStringL<'c>) {
         self.shared.set_clipboard(content);
     }
 

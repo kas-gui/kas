@@ -11,7 +11,7 @@ use std::marker::Unsize;
 use crate::{StackDst, Theme, ThemeDst, WindowDst};
 use kas::draw::{Colour, DrawHandle, DrawShared};
 use kas::geom::Rect;
-use kas::{CowString, ThemeAction, ThemeApi};
+use kas::{string::CowString, ThemeAction, ThemeApi};
 
 /// Wrapper around mutliple themes, supporting run-time switching
 ///

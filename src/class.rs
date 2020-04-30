@@ -5,7 +5,7 @@
 
 //! Class-specific widget traits
 
-use crate::{CowString, TkAction};
+use crate::{string::CowString, TkAction};
 
 /// Functionality for widgets which can be toggled or selected: check boxes,
 /// radio buttons, toggle switches.

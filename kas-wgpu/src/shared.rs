@@ -11,6 +11,7 @@ use std::num::NonZeroU32;
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow, ShaderManager};
 use crate::{Error, Options, WindowId};
 use kas::event::UpdateHandle;
+use kas::string::{CowString, CowStringL};
 use kas_theme::Theme;
 
 #[cfg(feature = "clipboard")]
@@ -109,12 +110,12 @@ where
 
     #[cfg(not(feature = "clipboard"))]
     #[inline]
-    pub fn get_clipboard(&mut self) -> Option<kas::CowString> {
+    pub fn get_clipboard(&mut self) -> Option<CowString> {
         None
     }
 
     #[cfg(feature = "clipboard")]
-    pub fn get_clipboard(&mut self) -> Option<kas::CowString> {
+    pub fn get_clipboard(&mut self) -> Option<CowString> {
         self.clipboard
             .as_mut()
             .and_then(|cb| match cb.get_contents() {
@@ -128,10 +129,10 @@ where
 
     #[cfg(not(feature = "clipboard"))]
     #[inline]
-    pub fn set_clipboard<'c>(&mut self, content: kas::CowStringL<'c>) {}
+    pub fn set_clipboard<'c>(&mut self, content: CowStringL<'c>) {}
 
     #[cfg(feature = "clipboard")]
-    pub fn set_clipboard<'c>(&mut self, content: kas::CowStringL<'c>) {
+    pub fn set_clipboard<'c>(&mut self, content: CowStringL<'c>) {
         self.clipboard.as_mut().map(|cb| {
             cb.set_contents(content.into())
                 .unwrap_or_else(|e| warn!("Failed to set clipboard contents: {:?}", e))

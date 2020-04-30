@@ -11,6 +11,7 @@ use std::u16;
 
 use super::*;
 use crate::geom::Coord;
+use crate::string::{CowString, CowStringL};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{ThemeAction, ThemeApi, TkAction, WidgetId, WindowId};
@@ -218,13 +219,13 @@ impl<'a> Manager<'a> {
     /// In case of failure, paste actions will simply fail. The implementation
     /// may wish to log an appropriate warning message.
     #[inline]
-    pub fn get_clipboard(&mut self) -> Option<crate::CowString> {
+    pub fn get_clipboard(&mut self) -> Option<CowString> {
         self.tkw.get_clipboard()
     }
 
     /// Attempt to set clipboard contents
     #[inline]
-    pub fn set_clipboard<'c>(&mut self, content: crate::CowStringL<'c>) {
+    pub fn set_clipboard<'c>(&mut self, content: CowStringL<'c>) {
         self.tkw.set_clipboard(content)
     }
 
