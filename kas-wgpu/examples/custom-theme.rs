@@ -122,10 +122,10 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[handler(msg = Item)]
         struct {
             #[widget(row=1, col=1)] _ = Label::new("Custom theme demo\nChoose your colour!"),
-            #[widget(row=0, col=1)] _ = TextButton::new("White", Item::White),
-            #[widget(row=1, col=2)] _ = TextButton::new("Red", Item::Red),
-            #[widget(row=2, col=1)] _ = TextButton::new("Yellow", Item::Yellow),
-            #[widget(row=1, col=0)] _ = TextButton::new("Green", Item::Green),
+            #[widget(row=0, col=1)] _ = TextButton::new("&White", Item::White),
+            #[widget(row=1, col=2)] _ = TextButton::new("&Red", Item::Red),
+            #[widget(row=2, col=1)] _ = TextButton::new("&Yellow", Item::Yellow),
+            #[widget(row=1, col=0)] _ = TextButton::new("&Green", Item::Green),
         }
     };
 

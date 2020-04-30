@@ -27,8 +27,8 @@ fn make_window() -> Box<dyn kas::Window> {
         #[layout(row)]
         struct {
             #[widget] display: impl HasText = Frame::new(Label::new("0.000")),
-            #[widget(handler = handle_button)] b_reset = TextButton::new("reset", Control::Reset),
-            #[widget(handler = handle_button)] b_start = TextButton::new("start / stop", Control::Start),
+            #[widget(handler = handle_button)] b_reset = TextButton::new("&reset", Control::Reset),
+            #[widget(handler = handle_button)] b_start = TextButton::new("&start / &stop", Control::Start),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
         }

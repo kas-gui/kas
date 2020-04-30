@@ -54,23 +54,23 @@ fn main() -> Result<(), kas_wgpu::Error> {
     }
 
     let themes = vec![
-        MenuEntry::new("Shaded", Menu::Theme("shaded")).boxed(),
-        MenuEntry::new("Flat", Menu::Theme("flat")).boxed(),
+        MenuEntry::new("&Shaded", Menu::Theme("shaded")).boxed(),
+        MenuEntry::new("&Flat", Menu::Theme("flat")).boxed(),
     ];
     let colours = vec![
-        MenuEntry::new("Default", Menu::Colour("default")),
-        MenuEntry::new("Light", Menu::Colour("light")),
-        MenuEntry::new("Dark", Menu::Colour("dark")),
+        MenuEntry::new("&Default", Menu::Colour("default")),
+        MenuEntry::new("&Light", Menu::Colour("light")),
+        MenuEntry::new("Dar&k", Menu::Colour("dark")),
     ];
     let menubar = MenuBar::<Right, _>::new(vec![
-        SubMenu::new("App", vec![MenuEntry::new("Quit", Menu::Quit).boxed()]),
-        SubMenu::new("Theme", themes),
+        SubMenu::new("&App", vec![MenuEntry::new("&Quit", Menu::Quit).boxed()]),
+        SubMenu::new("&Theme", themes),
         SubMenu::new(
-            "Style",
+            "&Style",
             vec![
-                SubMenu::right("Colours", colours).boxed(),
+                SubMenu::right("&Colours", colours).boxed(),
                 Separator::infer().boxed(),
-                MenuToggle::new_on(|state| Menu::Disabled(state), "Disabled").boxed(),
+                MenuToggle::new_on(|state| Menu::Disabled(state), "&Disabled").boxed(),
             ],
         ),
     ]);
@@ -85,15 +85,15 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=1, col=0)] _ = Label::new("EditBox"),
             #[widget(row=1, col=1)] _ = EditBox::new("edit me").with_guard(Guard),
             #[widget(row=2, col=0)] _ = Label::new("TextButton"),
-            #[widget(row=2, col=1)] _ = TextButton::new("Press me", Item::Button),
+            #[widget(row=2, col=1)] _ = TextButton::new("&Press me", Item::Button),
             #[widget(row=3, col=0)] _ = Label::new("CheckBox"),
-            #[widget(row=3, col=1)] _ = CheckBox::new("Check me").state(true)
+            #[widget(row=3, col=1)] _ = CheckBox::new("&Check me").state(true)
                 .on_toggle(|check| Item::Check(check)),
             #[widget(row=4, col=0)] _ = Label::new("RadioBox"),
-            #[widget(row=4, col=1)] _ = RadioBox::new(radio, "radio box 1").state(false)
+            #[widget(row=4, col=1)] _ = RadioBox::new(radio, "radio box &1").state(false)
                 .on_activate(|id| Item::Radio(id)),
             #[widget(row=5, col=0)] _ = Label::new("RadioBox"),
-            #[widget(row=5, col=1)] _ = RadioBox::new(radio, "radio box 2").state(true)
+            #[widget(row=5, col=1)] _ = RadioBox::new(radio, "radio box &2").state(true)
                 .on_activate(|id| Item::Radio(id)),
             #[widget(row=6, col=0)] _ = Label::new("ComboBox"),
             #[widget(row=6, col=1, handler = handle_combo)] cb: ComboBox<i32> =
@@ -105,7 +105,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=8, col=1, handler = handle_scroll)] sc =
                 ScrollBar::<Right>::new().with_limits(5, 2),
             #[widget(row=9)] _ = Label::new("Child window"),
-            #[widget(row=9, col = 1)] _ = TextButton::new("Open", Item::Popup),
+            #[widget(row=9, col = 1)] _ = TextButton::new("&Open", Item::Popup),
         }
         impl {
             fn handle_combo(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {
