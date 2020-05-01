@@ -17,6 +17,9 @@ use crate::geom::{Rect, Size};
 /// All widgets are assigned an identifier which is unique within the window.
 /// This type may be tested for equality and order.
 ///
+/// This type is small and cheap to copy. Internally it is "NonZero", thus
+/// `Option<WidgetId>` is a free extension (requires no extra memory).
+///
 /// Identifiers are assigned when configured and when re-configured
 /// (via [`kas::TkAction::Reconfigure`]). Since user-code is not notified of a
 /// re-configure, user-code should not store a `WidgetId`.
@@ -75,6 +78,12 @@ impl fmt::Display for WidgetId {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "#{}", self.0)
     }
+}
+
+#[test]
+fn size_of_option_widget_id() {
+    use std::mem::size_of;
+    assert_eq!(size_of::<WidgetId>(), size_of::<Option<WidgetId>>());
 }
 
 /// Common widget data
