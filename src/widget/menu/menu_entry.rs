@@ -16,7 +16,7 @@ use kas::prelude::*;
 use kas::widget::{AccelLabel, CheckBoxBare};
 
 /// A standard menu entry
-#[widget(config(key_nav = true))]
+#[widget(config=noauto)]
 #[handler(handle=noauto)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct MenuEntry<M: Clone + Debug + 'static> {
@@ -25,6 +25,16 @@ pub struct MenuEntry<M: Clone + Debug + 'static> {
     label: AccelString,
     label_off: Coord,
     msg: M,
+}
+
+impl<M: Clone + Debug + 'static> WidgetConfig for MenuEntry<M> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.add_accel_keys(self.id(), self.label.keys());
+    }
+
+    fn key_nav(&self) -> bool {
+        true
+    }
 }
 
 impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {

@@ -41,7 +41,7 @@ impl MessageBox {
             layout_data: Default::default(),
             title: title.into(),
             label: Label::new(message),
-            button: TextButton::new("Ok", DialogButton::Close),
+            button: TextButton::new("&Ok", DialogButton::Close),
         }
     }
 

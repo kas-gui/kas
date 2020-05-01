@@ -120,6 +120,11 @@ impl AccelLabel {
             text: text.into(),
         }
     }
+
+    /// Get the accelerator keys
+    pub fn keys(&self) -> &[event::VirtualKeyCode] {
+        self.text.keys()
+    }
 }
 
 impl HasText for AccelLabel {

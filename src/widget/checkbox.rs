@@ -149,6 +149,7 @@ impl<M: 'static> event::Handler for CheckBoxBare<M> {
 // TODO: use a generic wrapper for CheckBox and RadioBox?
 #[layout(row, area=checkbox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
+#[widget(config=noauto)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<M: 'static> {
     #[widget_core]
@@ -234,6 +235,12 @@ impl<M: 'static> CheckBox<M> {
     pub fn state(mut self, state: bool) -> Self {
         self.checkbox = self.checkbox.state(state);
         self
+    }
+}
+
+impl<M: 'static> WidgetConfig for CheckBox<M> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
     }
 }
 

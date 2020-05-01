@@ -183,6 +183,7 @@ impl<M: 'static> HasBool for RadioBoxBare<M> {
 /// A radiobox with optional label
 #[layout(row, area=radiobox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
+#[widget(config=noauto)]
 #[derive(Clone, Widget)]
 pub struct RadioBox<M: 'static> {
     #[widget_core]
@@ -271,6 +272,12 @@ impl<M: 'static> RadioBox<M> {
     pub fn state(mut self, state: bool) -> Self {
         self.radiobox = self.radiobox.state(state);
         self
+    }
+}
+
+impl<M: 'static> WidgetConfig for RadioBox<M> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.add_accel_keys(self.radiobox.id(), self.label.keys());
     }
 }
 

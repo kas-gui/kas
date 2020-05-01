@@ -15,7 +15,7 @@ use kas::widget::Column;
 use kas::WindowId;
 
 /// A sub-menu
-#[widget(config(key_nav = true))]
+#[widget(config=noauto)]
 #[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
 pub struct SubMenu<D: Directional, W: Menu> {
@@ -85,6 +85,16 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
         if let Some(id) = self.popup_id {
             mgr.close_window(id);
         }
+    }
+}
+
+impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.add_accel_keys(self.id(), self.label.keys());
+    }
+
+    fn key_nav(&self) -> bool {
+        true
     }
 }
 

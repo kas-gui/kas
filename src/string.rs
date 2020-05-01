@@ -11,6 +11,8 @@
 
 use std::ops::Deref;
 
+use kas::event::{VirtualKeyCode, VirtualKeyCodes};
+
 /// Convenience definition: `Cow<'a, str>`
 pub type CowStringL<'a> = std::borrow::Cow<'a, str>;
 
@@ -98,6 +100,8 @@ impl Deref for LabelString {
 pub struct AccelString {
     label: CowString,
     underlined: CowString,
+    // TODO: is it worth using such a large structure here instead of Option?
+    keys: VirtualKeyCodes,
 }
 
 impl AccelString {
@@ -111,6 +115,8 @@ impl AccelString {
         // underlining, but Unicode diacritics are good enough.
         let underline = '\u{0332}';
         let mut bufu = String::with_capacity(s.len() + underline.len_utf8() - "&".len());
+        let mut keys = VirtualKeyCodes::new();
+
         while let Some(mut i) = s.find("&") {
             buf.push_str(&s[..i]);
             bufu.push_str(&s[..i]);
@@ -126,7 +132,10 @@ impl AccelString {
                 Some(c) => {
                     buf.push(c);
                     bufu.push(c);
-                    bufu.push(underline);
+                    if let Some(key) = find_vkey(c) {
+                        bufu.push(underline);
+                        keys.push(key);
+                    }
                     let i = c.len_utf8();
                     s = &s[i..];
                 }
@@ -137,7 +146,13 @@ impl AccelString {
         AccelString {
             label: buf.into(),
             underlined: bufu.into(),
+            keys,
         }
+    }
+
+    /// Get the key bindings
+    pub fn keys(&self) -> &[VirtualKeyCode] {
+        &self.keys
     }
 }
 
@@ -150,6 +165,7 @@ impl From<CowString> for AccelString {
             AccelString {
                 label: input.clone(),
                 underlined: input,
+                keys: Default::default(),
             }
         }
     }
@@ -172,4 +188,46 @@ impl Deref for AccelString {
     fn deref(&self) -> &str {
         &self.underlined // TODO
     }
+}
+
+fn find_vkey(c: char) -> Option<VirtualKeyCode> {
+    Some(match c.to_ascii_uppercase() {
+        '0' => VirtualKeyCode::Key0,
+        '1' => VirtualKeyCode::Key1,
+        '2' => VirtualKeyCode::Key2,
+        '3' => VirtualKeyCode::Key3,
+        '4' => VirtualKeyCode::Key4,
+        '5' => VirtualKeyCode::Key5,
+        '6' => VirtualKeyCode::Key6,
+        '7' => VirtualKeyCode::Key7,
+        '8' => VirtualKeyCode::Key8,
+        '9' => VirtualKeyCode::Key9,
+        'A' => VirtualKeyCode::A,
+        'B' => VirtualKeyCode::B,
+        'C' => VirtualKeyCode::C,
+        'D' => VirtualKeyCode::D,
+        'E' => VirtualKeyCode::E,
+        'F' => VirtualKeyCode::F,
+        'G' => VirtualKeyCode::G,
+        'H' => VirtualKeyCode::H,
+        'I' => VirtualKeyCode::I,
+        'J' => VirtualKeyCode::J,
+        'K' => VirtualKeyCode::K,
+        'L' => VirtualKeyCode::L,
+        'M' => VirtualKeyCode::M,
+        'N' => VirtualKeyCode::N,
+        'O' => VirtualKeyCode::O,
+        'P' => VirtualKeyCode::P,
+        'Q' => VirtualKeyCode::Q,
+        'R' => VirtualKeyCode::R,
+        'S' => VirtualKeyCode::S,
+        'T' => VirtualKeyCode::T,
+        'U' => VirtualKeyCode::U,
+        'V' => VirtualKeyCode::V,
+        'W' => VirtualKeyCode::W,
+        'X' => VirtualKeyCode::X,
+        'Y' => VirtualKeyCode::Y,
+        'Z' => VirtualKeyCode::Z,
+        _ => return None,
+    })
 }
