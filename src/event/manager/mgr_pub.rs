@@ -263,9 +263,11 @@ impl<'a> Manager<'a> {
     ///
     /// This should be set from [`WidgetConfig::configure`].
     #[inline]
-    pub fn add_accel_key(&mut self, key: VirtualKeyCode, id: WidgetId) {
+    pub fn add_accel_keys(&mut self, id: WidgetId, keys: &[VirtualKeyCode]) {
         if !self.read_only {
-            self.mgr.accel_keys.insert(key, id);
+            for key in keys {
+                self.mgr.accel_keys.insert(*key, id);
+            }
         }
     }
 

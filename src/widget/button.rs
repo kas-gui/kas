@@ -29,9 +29,7 @@ pub struct TextButton<M: Clone + Debug + 'static> {
 
 impl<M: Clone + Debug + 'static> WidgetConfig for TextButton<M> {
     fn configure(&mut self, mgr: &mut Manager) {
-        for key in &self.keys {
-            mgr.add_accel_key(*key, self.id());
-        }
+        mgr.add_accel_keys(self.id(), &self.keys);
     }
 
     fn key_nav(&self) -> bool {
