@@ -74,8 +74,8 @@ mod manager;
 mod response;
 mod update;
 
+use smallvec::SmallVec;
 use std::fmt::Debug;
-// use std::path::PathBuf;
 
 #[cfg(feature = "winit")]
 pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
@@ -90,6 +90,20 @@ pub use handler::{Handler, SendEvent};
 pub use manager::{GrabMode, Manager, ManagerState};
 pub use response::Response;
 pub use update::UpdateHandle;
+
+/// A type supporting a small number of key bindings
+///
+/// This type may be used where it is desirable to support a small number of
+/// key bindings. The type is allowed to silently ignore extra bindings beyond
+/// some *small* number of at least 3. (Currently numbers over 5 are accepted
+/// but cause allocation.)
+pub type VirtualKeyCodes = SmallVec<[VirtualKeyCode; 5]>;
+
+#[test]
+fn size_of_virtual_key_codes() {
+    // Currently sized to maximise use of available space on 64-bit platforms
+    assert!(std::mem::size_of::<VirtualKeyCodes>() <= 32);
+}
 
 /// A void message
 ///

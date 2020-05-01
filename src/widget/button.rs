@@ -10,7 +10,7 @@ use std::fmt::Debug;
 
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, Manager, Response, VirtualKeyCode};
+use kas::event::{Event, Manager, Response, VirtualKeyCode, VirtualKeyCodes};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
@@ -21,7 +21,7 @@ use kas::prelude::*;
 pub struct TextButton<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
-    keys: SmallVec<[VirtualKeyCode; 4]>,
+    keys: VirtualKeyCodes,
     // text_rect: Rect,
     label: AccelString,
     msg: M,
