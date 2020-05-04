@@ -292,14 +292,30 @@ impl<'a> Manager<'a> {
 
             if id_action.is_none() {
                 // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
-                let popup_id = self.mgr.popups.last().map(|(_, popup)| popup.parent);
-                let layer_id = popup_id.unwrap_or(widget.id());
-                if let Some(layer) = self.mgr.accel_layers.get(&layer_id) {
-                    // but only when Alt is held or alt-bypass is enabled:
-                    if !self.mgr.alt_keys.is_empty() || layer.0 {
-                        if let Some(id) = layer.1.get(&vkey).cloned() {
-                            id_action = Some((id, Event::Activate));
+                let mut n = 0;
+                for (i, id) in (self.mgr.popups.iter().rev())
+                    .map(|(_, popup)| popup.parent)
+                    .chain(std::iter::once(widget.id()))
+                    .enumerate()
+                {
+                    if let Some(layer) = self.mgr.accel_layers.get(&id) {
+                        // but only when Alt is held or alt-bypass is enabled:
+                        if !self.mgr.alt_keys.is_empty() || layer.0 {
+                            if let Some(id) = layer.1.get(&vkey).cloned() {
+                                id_action = Some((id, Event::Activate));
+                                n = i;
+                                break;
+                            }
                         }
+                    }
+                }
+
+                // If we had to look below the top pop-up, we should close it
+                if n > 0 {
+                    let last = self.mgr.popups.len() - 1;
+                    for i in 0..n {
+                        let id = self.mgr.popups[last - i].0;
+                        self.close_window(id);
                     }
                 }
             }
