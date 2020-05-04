@@ -25,6 +25,16 @@ impl<'a> std::ops::AddAssign<TkAction> for Manager<'a> {
 
 /// Public API (around event manager state)
 impl ManagerState {
+    /// True when accelerator key labels should be shown
+    ///
+    /// (True when Alt is held.)
+    ///
+    /// This is a fast check.
+    #[inline]
+    pub fn show_accel_labels(&self) -> bool {
+        !self.alt_keys.is_empty()
+    }
+
     /// Get whether this widget has a grab on character input
     #[inline]
     pub fn char_focus(&self, w_id: WidgetId) -> bool {

@@ -89,7 +89,7 @@ pub struct AccelLabel {
 
 impl Layout for AccelLabel {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let rules = size_handle.text_bound(&self.text, TextClass::Label, axis);
+        let rules = size_handle.text_bound(self.text.get(false), TextClass::Label, axis);
         if axis.is_horizontal() {
             self.core.rect.size.0 = rules.ideal_size();
         } else {
@@ -106,8 +106,9 @@ impl Layout for AccelLabel {
         self.core.rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        draw_handle.text(self.core.rect, &self.text, TextClass::Label, self.align);
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, _: bool) {
+        let text = self.text.get(mgr.show_accel_labels());
+        draw_handle.text(self.core.rect, text, TextClass::Label, self.align);
     }
 }
 
@@ -129,7 +130,7 @@ impl AccelLabel {
 
 impl HasText for AccelLabel {
     fn get_text(&self) -> &str {
-        &self.text
+        self.text.get(false)
     }
 
     fn set_cow_string(&mut self, text: CowString) -> TkAction {

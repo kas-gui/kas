@@ -245,6 +245,9 @@ impl<'a> Manager<'a> {
         }
 
         if vkey == VK::LAlt || vkey == VK::RAlt {
+            if self.mgr.alt_keys.is_empty() {
+                self.mgr.send_action(TkAction::Redraw);
+            }
             self.mgr.alt_keys.push(scancode);
         } else if vkey == VK::Tab {
             if !self.next_nav_focus(widget.as_widget(), self.mgr.modifiers.shift()) {
@@ -337,7 +340,9 @@ impl<'a> Manager<'a> {
         }
 
         if remove(&mut self.mgr.alt_keys, |item| *item == scancode).is_some() {
-            self.mgr.send_action(TkAction::Redraw);
+            if self.mgr.alt_keys.is_empty() {
+                self.mgr.send_action(TkAction::Redraw);
+            }
             return;
         }
 

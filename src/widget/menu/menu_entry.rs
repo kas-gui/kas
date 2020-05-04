@@ -42,7 +42,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
         let size = size_handle.menu_frame();
         self.label_off = size.into();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, Margins::ZERO);
-        let text_rules = size_handle.text_bound(&self.label, TextClass::Label, axis);
+        let text_rules = size_handle.text_bound(self.label.get(false), TextClass::Label, axis);
         text_rules.surrounded_by(frame_rules, true)
     }
 
@@ -52,8 +52,9 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
             pos: self.core.rect.pos + self.label_off,
             size: self.core.rect.size - self.label_off.into(),
         };
+        let text = self.label.get(mgr.show_accel_labels());
         let align = (Align::Begin, Align::Centre);
-        draw_handle.text(rect, &self.label, TextClass::Label, align);
+        draw_handle.text(rect, text, TextClass::Label, align);
     }
 }
 
@@ -80,7 +81,7 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
 
 impl<M: Clone + Debug + 'static> HasText for MenuEntry<M> {
     fn get_text(&self) -> &str {
-        &self.label
+        self.label.get(false)
     }
 
     fn set_cow_string(&mut self, text: CowString) -> TkAction {

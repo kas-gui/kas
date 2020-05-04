@@ -154,6 +154,15 @@ impl AccelString {
     pub fn keys(&self) -> &[VirtualKeyCode] {
         &self.keys
     }
+
+    /// Get the text, depending on mode
+    pub fn get(&self, show_labels: bool) -> &str {
+        if show_labels {
+            &self.underlined
+        } else {
+            &self.label
+        }
+    }
 }
 
 impl From<CowString> for AccelString {
@@ -180,13 +189,6 @@ impl From<&'static str> for AccelString {
 impl From<String> for AccelString {
     fn from(input: String) -> Self {
         CowString::from(input).into()
-    }
-}
-
-impl Deref for AccelString {
-    type Target = str;
-    fn deref(&self) -> &str {
-        &self.underlined // TODO
     }
 }
 
