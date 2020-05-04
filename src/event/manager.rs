@@ -398,3 +398,39 @@ impl<'a> Manager<'a> {
         self.send_event(widget, id, event);
     }
 }
+
+/// Helper used during widget configuration
+pub struct ConfigureManager<'a: 'b, 'b> {
+    id: &'b mut WidgetId,
+    map: &'b mut HashMap<WidgetId, WidgetId>,
+    mgr: &'b mut Manager<'a>,
+}
+
+impl<'a: 'b, 'b> ConfigureManager<'a, 'b> {
+    /// Reborrow self to pass to a child
+    pub fn child<'c>(&'c mut self) -> ConfigureManager<'a, 'c>
+    where
+        'b: 'c,
+    {
+        ConfigureManager {
+            id: &mut *self.id,
+            map: &mut *self.map,
+            mgr: &mut *self.mgr,
+        }
+    }
+
+    /// Get a new [`WidgetId`] for the widget
+    ///
+    /// Pass the old ID (`self.id()`), even if not yet configured.
+    pub fn next_id(&mut self, old_id: WidgetId) -> WidgetId {
+        let id = *self.id;
+        *self.id = id.next();
+        self.map.insert(old_id, id);
+        id
+    }
+
+    /// Get access to the wrapped [`Manager`]
+    pub fn mgr(&mut self) -> &mut Manager<'a> {
+        self.mgr
+    }
+}

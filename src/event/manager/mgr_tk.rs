@@ -76,11 +76,10 @@ impl ManagerState {
 
         let coord = self.last_mouse_coord;
         self.with(tkw, |mut mgr| {
-            widget.walk_mut(&mut |widget| {
-                map.insert(widget.id(), id);
-                widget.core_data_mut().id = id;
-                widget.configure(&mut mgr);
-                id = id.next();
+            widget.configure_recurse(ConfigureManager {
+                id: &mut id,
+                map: &mut map,
+                mgr: &mut mgr,
             });
             let hover = widget.find_id(coord);
             mgr.set_hover(widget, hover);
