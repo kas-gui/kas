@@ -99,8 +99,9 @@ pub struct ManagerState {
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 10]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
-    accel_stack: Vec<HashMap<VirtualKeyCode, WidgetId>>,
-    accel_layers: HashMap<WidgetId, HashMap<VirtualKeyCode, WidgetId>>,
+    accel_stack: Vec<(bool, HashMap<VirtualKeyCode, WidgetId>)>,
+    accel_layers: HashMap<WidgetId, (bool, HashMap<VirtualKeyCode, WidgetId>)>,
+    alt_keys: SmallVec<[u32; 4]>,
     popups: SmallVec<[(WindowId, kas::Popup); 16]>,
     new_popups: SmallVec<[WidgetId; 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
@@ -243,7 +244,9 @@ impl<'a> Manager<'a> {
             return;
         }
 
-        if vkey == VK::Tab {
+        if vkey == VK::LAlt || vkey == VK::RAlt {
+            self.mgr.alt_keys.push(scancode);
+        } else if vkey == VK::Tab {
             if !self.next_nav_focus(widget.as_widget(), self.mgr.modifiers.shift()) {
                 self.clear_nav_focus();
             }
@@ -259,32 +262,41 @@ impl<'a> Manager<'a> {
         } else {
             let mut id_action = None;
 
-            if let Some(nav_id) = self.mgr.nav_focus {
-                if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
-                    id_action = Some((nav_id, Event::Activate));
-                } else if let Some(nav_key) = NavKey::new(vkey) {
-                    id_action = Some((nav_id, Event::NavKey(nav_key)));
+            if self.mgr.alt_keys.is_empty() {
+                // First priority goes to the widget with nav focus,
+                // but only when Alt is not pressed.
+                if let Some(nav_id) = self.mgr.nav_focus {
+                    if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
+                        id_action = Some((nav_id, Event::Activate));
+                    } else if let Some(nav_key) = NavKey::new(vkey) {
+                        id_action = Some((nav_id, Event::NavKey(nav_key)));
+                    }
+                }
+
+                if id_action.is_none() {
+                    // Next priority goes to pop-up widget
+                    if let Some(popup) = self.mgr.popups.last() {
+                        if let Some(key) = NavKey::new(vkey) {
+                            id_action = Some((popup.1.parent, Event::NavKey(key)));
+                        }
+                    } else if let Some(id) = self.mgr.nav_fallback {
+                        if let Some(key) = NavKey::new(vkey) {
+                            id_action = Some((id, Event::NavKey(key)));
+                        }
+                    }
                 }
             }
 
             if id_action.is_none() {
+                // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
                 let popup_id = self.mgr.popups.last().map(|(_, popup)| popup.parent);
                 let layer_id = popup_id.unwrap_or(widget.id());
                 if let Some(layer) = self.mgr.accel_layers.get(&layer_id) {
-                    if let Some(id) = layer.get(&vkey).cloned() {
-                        id_action = Some((id, Event::Activate));
-                    }
-                }
-            }
-
-            if id_action.is_none() {
-                if let Some(popup) = self.mgr.popups.last() {
-                    if let Some(key) = NavKey::new(vkey) {
-                        id_action = Some((popup.1.parent, Event::NavKey(key)));
-                    }
-                } else if let Some(id) = self.mgr.nav_fallback {
-                    if let Some(key) = NavKey::new(vkey) {
-                        id_action = Some((id, Event::NavKey(key)));
+                    // but only when Alt is held or alt-bypass is enabled:
+                    if !self.mgr.alt_keys.is_empty() || layer.0 {
+                        if let Some(id) = layer.1.get(&vkey).cloned() {
+                            id_action = Some((id, Event::Activate));
+                        }
                     }
                 }
             }
@@ -309,18 +321,29 @@ impl<'a> Manager<'a> {
     }
 
     fn end_key_event(&mut self, scancode: u32) {
-        let r = 'outer: loop {
-            for (i, item) in self.mgr.key_depress.iter().enumerate() {
-                // We must match scancode not vkey since the
-                // latter may have changed due to modifiers
-                if item.0 == scancode {
-                    break 'outer i;
+        // We must match scancode not vkey since the latter may have changed due to modifiers
+
+        // TODO: it would be nice to replace alt_keys and key_depress with sets
+        fn remove<A: smallvec::Array, F: Fn(&A::Item) -> bool>(
+            v: &mut SmallVec<A>,
+            f: F,
+        ) -> Option<A::Item> {
+            for (i, item) in v.iter().enumerate() {
+                if f(item) {
+                    return Some(v.remove(i));
                 }
             }
+            return None;
+        }
+
+        if remove(&mut self.mgr.alt_keys, |item| *item == scancode).is_some() {
+            self.mgr.send_action(TkAction::Redraw);
             return;
-        };
-        self.redraw(self.mgr.key_depress[r].1);
-        self.mgr.key_depress.remove(r);
+        }
+
+        if let Some((_, id)) = remove(&mut self.mgr.key_depress, |item| item.0 == scancode) {
+            self.redraw(id);
+        }
     }
 
     fn mouse_grab(&self) -> Option<MouseGrab> {

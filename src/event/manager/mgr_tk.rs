@@ -40,6 +40,7 @@ impl ManagerState {
             pan_grab: SmallVec::new(),
             accel_stack: vec![],
             accel_layers: HashMap::new(),
+            alt_keys: SmallVec::new(),
             popups: Default::default(),
             new_popups: Default::default(),
             popup_removed: Default::default(),
@@ -78,7 +79,7 @@ impl ManagerState {
 
         let coord = self.last_mouse_coord;
         self.with(tkw, |mut mgr| {
-            mgr.push_accel_layer();
+            mgr.push_accel_layer(false);
             widget.configure_recurse(ConfigureManager {
                 id: &mut id,
                 map: &mut map,

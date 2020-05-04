@@ -264,10 +264,23 @@ impl<'a> Manager<'a> {
     /// widgets have been configured to finish configuration of this new layer
     /// and to make the previous layer in the stack current.
     ///
+    /// If `alt_bypass` is true, then this layer's accelerator keys will be
+    /// active even without Alt pressed.
+    ///
     /// When run, the base layer is used when no pop-up is active, otherwise
     /// the layer (if any) associated with the top pop-up is used.
-    pub fn push_accel_layer(&mut self) {
-        self.mgr.accel_stack.push(HashMap::new());
+    pub fn push_accel_layer(&mut self, alt_bypass: bool) {
+        self.mgr.accel_stack.push((alt_bypass, HashMap::new()));
+    }
+
+    /// Enable `alt_bypass` for the current layer
+    ///
+    /// This may be called by a child widget during configure, e.g. to enable
+    /// alt-bypass for the base layer. See also [`Manager::push_accel_layer`].
+    pub fn enable_alt_bypass(&mut self, alt_bypass: bool) {
+        if let Some(layer) = self.mgr.accel_stack.last_mut() {
+            layer.0 = alt_bypass;
+        }
     }
 
     /// Finish configuration of an accelerator key layer
@@ -302,7 +315,7 @@ impl<'a> Manager<'a> {
         if !self.read_only {
             if let Some(last) = self.mgr.accel_stack.last_mut() {
                 for key in keys {
-                    last.insert(*key, id);
+                    last.1.insert(*key, id);
                 }
             }
         }

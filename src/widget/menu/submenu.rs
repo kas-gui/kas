@@ -90,7 +90,7 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
 
 impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
     fn configure_recurse<'a, 'b>(&mut self, mut cmgr: ConfigureManager<'a, 'b>) {
-        cmgr.mgr().push_accel_layer();
+        cmgr.mgr().push_accel_layer(true);
         self.list.configure_recurse(cmgr.child());
         self.core_data_mut().id = cmgr.next_id(self.id());
         let mgr = cmgr.mgr();

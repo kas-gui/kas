@@ -9,7 +9,7 @@
 //! customisation.
 
 use kas::draw::SizeHandle;
-use kas::event::{Manager, Response, VoidMsg};
+use kas::event::{Manager, Response, VirtualKeyCode, VoidMsg};
 use kas::prelude::*;
 use kas::widget::{Label, TextButton};
 use kas::WindowId;
@@ -21,6 +21,7 @@ enum DialogButton {
 
 /// A simple message box.
 #[layout(column)]
+#[widget(config=noauto)]
 #[derive(Clone, Debug, Widget)]
 pub struct MessageBox {
     #[widget_core]
@@ -41,7 +42,11 @@ impl MessageBox {
             layout_data: Default::default(),
             title: title.into(),
             label: Label::new(message),
-            button: TextButton::new("&Ok", DialogButton::Close),
+            button: TextButton::new("Ok", DialogButton::Close).with_keys(&[
+                VirtualKeyCode::Return,
+                VirtualKeyCode::Space,
+                VirtualKeyCode::NumpadEnter,
+            ]),
         }
     }
 
@@ -50,6 +55,12 @@ impl MessageBox {
             DialogButton::Close => mgr.send_action(TkAction::Close),
         };
         Response::None
+    }
+}
+
+impl kas::WidgetConfig for MessageBox {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.enable_alt_bypass(true);
     }
 }
 

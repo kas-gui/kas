@@ -33,6 +33,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let buttons = make_widget! {
         #[layout(grid)]
         #[handler(msg = Key)]
+        #[widget(config=noauto)]
         struct {
             #[widget(col = 0, row = 0)]
             _ = TextButton::new("clear", Key::Clear).with_keys(&[VK::Delete]),
@@ -69,6 +70,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
             _ = TextButton::new("0", Key::Char('0')).with_keys(&[VK::Key0, VK::Numpad0]),
             #[widget(col = 2, row = 4)]
             _ = TextButton::new(".", Key::Char('.')).with_keys(&[VK::Period]),
+        }
+        impl kas::WidgetConfig {
+            fn configure(&mut self, mgr: &mut Manager) {
+                mgr.enable_alt_bypass(true);
+            }
         }
     };
     let content = make_widget! {
