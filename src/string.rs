@@ -9,9 +9,10 @@
 //! Hopefully it can be replaced with a real mark-up processor without too
 //! much API breakage.
 
+use smallvec::smallvec;
 use std::ops::Deref;
 
-use kas::event::{VirtualKeyCode, VirtualKeyCodes};
+use kas::event::{VirtualKeyCode as VK, VirtualKeyCodes};
 
 /// Convenience definition: `Cow<'a, str>`
 pub type CowStringL<'a> = std::borrow::Cow<'a, str>;
@@ -132,9 +133,10 @@ impl AccelString {
                 Some(c) => {
                     buf.push(c);
                     bufu.push(c);
-                    if let Some(key) = find_vkey(c) {
+                    let vkeys = find_vkeys(c);
+                    if !vkeys.is_empty() {
+                        keys.extend(vkeys);
                         bufu.push(underline);
-                        keys.push(key);
                     }
                     let i = c.len_utf8();
                     s = &s[i..];
@@ -151,7 +153,7 @@ impl AccelString {
     }
 
     /// Get the key bindings
-    pub fn keys(&self) -> &[VirtualKeyCode] {
+    pub fn keys(&self) -> &[VK] {
         &self.keys
     }
 
@@ -192,44 +194,64 @@ impl From<String> for AccelString {
     }
 }
 
-fn find_vkey(c: char) -> Option<VirtualKeyCode> {
-    Some(match c.to_ascii_uppercase() {
-        '0' => VirtualKeyCode::Key0,
-        '1' => VirtualKeyCode::Key1,
-        '2' => VirtualKeyCode::Key2,
-        '3' => VirtualKeyCode::Key3,
-        '4' => VirtualKeyCode::Key4,
-        '5' => VirtualKeyCode::Key5,
-        '6' => VirtualKeyCode::Key6,
-        '7' => VirtualKeyCode::Key7,
-        '8' => VirtualKeyCode::Key8,
-        '9' => VirtualKeyCode::Key9,
-        'A' => VirtualKeyCode::A,
-        'B' => VirtualKeyCode::B,
-        'C' => VirtualKeyCode::C,
-        'D' => VirtualKeyCode::D,
-        'E' => VirtualKeyCode::E,
-        'F' => VirtualKeyCode::F,
-        'G' => VirtualKeyCode::G,
-        'H' => VirtualKeyCode::H,
-        'I' => VirtualKeyCode::I,
-        'J' => VirtualKeyCode::J,
-        'K' => VirtualKeyCode::K,
-        'L' => VirtualKeyCode::L,
-        'M' => VirtualKeyCode::M,
-        'N' => VirtualKeyCode::N,
-        'O' => VirtualKeyCode::O,
-        'P' => VirtualKeyCode::P,
-        'Q' => VirtualKeyCode::Q,
-        'R' => VirtualKeyCode::R,
-        'S' => VirtualKeyCode::S,
-        'T' => VirtualKeyCode::T,
-        'U' => VirtualKeyCode::U,
-        'V' => VirtualKeyCode::V,
-        'W' => VirtualKeyCode::W,
-        'X' => VirtualKeyCode::X,
-        'Y' => VirtualKeyCode::Y,
-        'Z' => VirtualKeyCode::Z,
-        _ => return None,
-    })
+fn find_vkeys(c: char) -> VirtualKeyCodes {
+    // TODO: lots of keys aren't yet available in VirtualKeyCode!
+    // NOTE: some of these bindings are a little inaccurate. It isn't obvious
+    // whether prefer strict or more flexible bindings here.
+    // NOTE: we add a couple of non-unicode bindings. How many should we add?
+    match c.to_ascii_uppercase() {
+        '\'' => smallvec![VK::Apostrophe],
+        '+' => smallvec![VK::Add],
+        ',' => smallvec![VK::Comma],
+        '-' => smallvec![VK::Minus],
+        '.' => smallvec![VK::Period],
+        '/' => smallvec![VK::Slash],
+        '0' => smallvec![VK::Key0, VK::Numpad0],
+        '1' => smallvec![VK::Key1, VK::Numpad1],
+        '2' => smallvec![VK::Key2, VK::Numpad2],
+        '3' => smallvec![VK::Key3, VK::Numpad3],
+        '4' => smallvec![VK::Key4, VK::Numpad4],
+        '5' => smallvec![VK::Key5, VK::Numpad5],
+        '6' => smallvec![VK::Key6, VK::Numpad6],
+        '7' => smallvec![VK::Key7, VK::Numpad7],
+        '8' => smallvec![VK::Key8, VK::Numpad8],
+        '9' => smallvec![VK::Key9, VK::Numpad9],
+        ':' => smallvec![VK::Colon],
+        ';' => smallvec![VK::Semicolon],
+        '=' => smallvec![VK::Equals, VK::NumpadEquals],
+        '`' => smallvec![VK::Grave],
+        'A' => smallvec![VK::A],
+        'B' => smallvec![VK::B],
+        'C' => smallvec![VK::C],
+        'D' => smallvec![VK::D],
+        'E' => smallvec![VK::E],
+        'F' => smallvec![VK::F],
+        'G' => smallvec![VK::G],
+        'H' => smallvec![VK::H],
+        'I' => smallvec![VK::I],
+        'J' => smallvec![VK::J],
+        'K' => smallvec![VK::K],
+        'L' => smallvec![VK::L],
+        'M' => smallvec![VK::M],
+        'N' => smallvec![VK::N],
+        'O' => smallvec![VK::O],
+        'P' => smallvec![VK::P],
+        'Q' => smallvec![VK::Q],
+        'R' => smallvec![VK::R],
+        'S' => smallvec![VK::S],
+        'T' => smallvec![VK::T],
+        'U' => smallvec![VK::U],
+        'V' => smallvec![VK::V],
+        'W' => smallvec![VK::W],
+        'X' => smallvec![VK::X],
+        'Y' => smallvec![VK::Y],
+        'Z' => smallvec![VK::Z],
+        '[' => smallvec![VK::LBracket],
+        ']' => smallvec![VK::RBracket],
+        '^' => smallvec![VK::Caret],
+        '÷' => smallvec![VK::Divide],
+        '×' => smallvec![VK::Multiply],
+        '−' => smallvec![VK::Subtract],
+        _ => smallvec![],
+    }
 }

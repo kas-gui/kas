@@ -35,44 +35,47 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[handler(msg = Key)]
         #[widget(config=noauto)]
         struct {
+            // Buttons get keyboard bindings through the "&" item (e.g. "&1"
+            // binds both main and numpad 1 key) and via `with_keys`.
             #[widget(col = 0, row = 0)]
-            _ = TextButton::new("clear", Key::Clear).with_keys(&[VK::Delete]),
+            _ = TextButton::new("&clear", Key::Clear).with_keys(&[VK::Delete]),
             #[widget(col = 1, row = 0)]
-            _ = TextButton::new("÷", Key::Divide).with_keys(&[VK::Divide, VK::Slash]),
+            _ = TextButton::new("&÷", Key::Divide).with_keys(&[VK::Slash]),
             #[widget(col = 2, row = 0)]
-            _ = TextButton::new("×", Key::Multiply).with_keys(&[VK::Multiply]),
+            // TODO: bind VK::Asterisk when this gets added to winit!
+            _ = TextButton::new("&×", Key::Multiply),
             #[widget(col = 3, row = 0)]
-            _ = TextButton::new("−", Key::Subtract).with_keys(&[VK::Subtract]),
+            _ = TextButton::new("&−", Key::Subtract),
             #[widget(col = 0, row = 1)]
-            _ = TextButton::new("7", Key::Char('7')).with_keys(&[VK::Key7, VK::Numpad7]),
+            _ = TextButton::new("&7", Key::Char('7')),
             #[widget(col = 1, row = 1)]
-            _ = TextButton::new("8", Key::Char('8')).with_keys(&[VK::Key8, VK::Numpad8]),
+            _ = TextButton::new("&8", Key::Char('8')),
             #[widget(col = 2, row = 1)]
-            _ = TextButton::new("9", Key::Char('9')).with_keys(&[VK::Key9, VK::Numpad9]),
+            _ = TextButton::new("&9", Key::Char('9')),
             #[widget(col = 3, row = 1, rspan = 2)]
-            _ = TextButton::new("+", Key::Add).with_keys(&[VK::Add]),
+            _ = TextButton::new("&+", Key::Add),
             #[widget(col = 0, row = 2)]
-            _ = TextButton::new("4", Key::Char('4')).with_keys(&[VK::Key4, VK::Numpad4]),
+            _ = TextButton::new("&4", Key::Char('4')),
             #[widget(col = 1, row = 2)]
-            _ = TextButton::new("5", Key::Char('5')).with_keys(&[VK::Key5, VK::Numpad5]),
+            _ = TextButton::new("&5", Key::Char('5')),
             #[widget(col = 2, row = 2)]
-            _ = TextButton::new("6", Key::Char('6')).with_keys(&[VK::Key6, VK::Numpad6]),
+            _ = TextButton::new("&6", Key::Char('6')),
             #[widget(col = 0, row = 3)]
-            _ = TextButton::new("1", Key::Char('1')).with_keys(&[VK::Key1, VK::Numpad1]),
+            _ = TextButton::new("&1", Key::Char('1')),
             #[widget(col = 1, row = 3)]
-            _ = TextButton::new("2", Key::Char('2')).with_keys(&[VK::Key2, VK::Numpad2]),
+            _ = TextButton::new("&2", Key::Char('2')),
             #[widget(col = 2, row = 3)]
-            _ = TextButton::new("3", Key::Char('3')).with_keys(&[VK::Key3, VK::Numpad3]),
+            _ = TextButton::new("&3", Key::Char('3')),
             #[widget(col = 3, row = 3, rspan = 2)]
-            _ = TextButton::new("=", Key::Equals)
-                .with_keys(&[VK::Equals, VK::Return, VK::NumpadEnter, VK::NumpadEquals]),
+            _ = TextButton::new("&=", Key::Equals).with_keys(&[VK::Return, VK::NumpadEnter]),
             #[widget(col = 0, row = 4, cspan = 2)]
-            _ = TextButton::new("0", Key::Char('0')).with_keys(&[VK::Key0, VK::Numpad0]),
+            _ = TextButton::new("&0", Key::Char('0')),
             #[widget(col = 2, row = 4)]
-            _ = TextButton::new(".", Key::Char('.')).with_keys(&[VK::Period]),
+            _ = TextButton::new("&.", Key::Char('.')),
         }
         impl kas::WidgetConfig {
             fn configure(&mut self, mgr: &mut Manager) {
+                // Enable key bindings without Alt held:
                 mgr.enable_alt_bypass(true);
             }
         }
