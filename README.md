@@ -33,7 +33,20 @@ Goals and status
 -   User-customisable (*supports themes and colour schemes*)
 -   Desktop integration (*not yet realised*)
 
-### Stability
+
+### Rustc version
+
+KAS is compatible with **stable rustc**. Using nightly Rust is advantageous:
+
+-   Proceedural macros emit better diagnostics. In some cases, diagnostics are
+    missed without nightly rustc, hence **nightly is recommended for development**.
+-   The `make_widget!` macro will require nightly Rust until the
+    `proc_macro_hygiene` feature is complete.
+    Usage of this macro is optional; most examples do so for convenience.
+-   A few other minor features are nightly-only. See *feature flags*
+    documentation below and in other crates' READMEs.
+
+### Code stability
 
 The `master` branch has frequent breaking changes. Releases will respect
 [semver](https://semver.org/) rules. At this point, most releases will include
@@ -58,12 +71,11 @@ provide a comprehensive collection of core widgets.
 -   Persistent widgets with embedded state
 -   Type-safe user-defined event handlers
 -   Robust event handling model
--   (Mostly) full keyboard and touch-screen support
+-   Extensive support for keyboard and touch-screen control
 -   Disabled and error states for widgets
 -   Scalable (HiDPI) supporting fractional scaling
 -   Theme API, simple draw API and raw graphics access
--   Grid layout with spans
--   Width-for-height sizing
+-   Automatic widget layout including grids with spans and width-for-height sizing
 
 ### Missing features
 
