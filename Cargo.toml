@@ -24,7 +24,7 @@ conv = "0.3"
 log = "0.4"
 rusttype = "0.8"
 smallvec = "1.4"
-stack_dst = { version = "0.6", features = ["unsize"], optional = true }
+stack_dst = { version = "0.6", optional = true }
 bitflags = "1" # only used without winit
 
 [dependencies.kas-macros]

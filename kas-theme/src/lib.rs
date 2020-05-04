@@ -16,7 +16,7 @@
 //! between themes.
 
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
-#![cfg_attr(feature = "stack_dst", feature(unsize))]
+#![cfg_attr(feature = "unsize", feature(unsize))]
 
 mod col;
 mod dim;

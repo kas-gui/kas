@@ -84,7 +84,22 @@ where
     }
 
     fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<D::Draw>> {
-        StackDst::new_or_boxed(<T as Theme<D>>::new_window(self, draw, dpi_factor))
+        let window = <T as Theme<D>>::new_window(self, draw, dpi_factor);
+        #[cfg(feature = "unsize")]
+        {
+            StackDst::new_or_boxed(window)
+        }
+        #[cfg(not(feature = "unsize"))]
+        {
+            match StackDst::new_stable(window, |w| w as &dyn WindowDst<D::Draw>) {
+                Ok(s) => s,
+                Err(window) => {
+                    StackDst::new_stable(Box::new(window), |w| w as &dyn WindowDst<D::Draw>)
+                        .ok()
+                        .expect("boxed window too big for StackDst!")
+                }
+            }
+        }
     }
 
     fn update_window(&self, window: &mut dyn WindowDst<D::Draw>, dpi_factor: f32) {
@@ -100,7 +115,16 @@ where
     ) -> StackDst<dyn DrawHandle> {
         let window = window.as_any_mut().downcast_mut().unwrap();
         let h = <T as Theme<D>>::draw_handle(self, draw, window, rect);
-        StackDst::new_or_boxed(h)
+        #[cfg(feature = "unsize")]
+        {
+            StackDst::new_or_boxed(h)
+        }
+        #[cfg(not(feature = "unsize"))]
+        {
+            StackDst::new_stable(h, |h| h as &dyn DrawHandle)
+                .ok()
+                .expect("handle too big for StackDst!")
+        }
     }
 
     fn clear_colour(&self) -> Colour {
@@ -115,7 +139,8 @@ impl<'a, D: DrawShared + 'static, T: Theme<D>> ThemeDst<D> for T {
     }
 
     fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<D::Draw>> {
-        StackDst::new_or_boxed(<T as Theme<D>>::new_window(self, draw, dpi_factor))
+        let window = <T as Theme<D>>::new_window(self, draw, dpi_factor);
+        StackDst::new_or_boxed(window)
     }
 
     fn update_window(&self, window: &mut dyn WindowDst<D::Draw>, dpi_factor: f32) {
@@ -174,7 +199,16 @@ where
 {
     unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> StackDst<dyn SizeHandle> {
         let h = <W as Window<Draw>>::size_handle(self, draw);
-        StackDst::new_or_boxed(h)
+        #[cfg(feature = "unsize")]
+        {
+            StackDst::new_or_boxed(h)
+        }
+        #[cfg(not(feature = "unsize"))]
+        {
+            StackDst::new_stable(h, |h| h as &dyn SizeHandle)
+                .ok()
+                .expect("handle too big for StackDst!")
+        }
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {

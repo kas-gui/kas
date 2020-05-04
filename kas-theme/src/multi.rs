@@ -6,6 +6,7 @@
 //! Wrapper around mutliple themes, supporting run-time switching
 
 use std::collections::HashMap;
+#[cfg(feature = "unsize")]
 use std::marker::Unsize;
 
 use crate::{StackDst, Theme, ThemeDst, WindowDst};
@@ -13,12 +14,17 @@ use kas::draw::{Colour, DrawHandle, DrawShared};
 use kas::geom::Rect;
 use kas::{string::CowString, ThemeAction, ThemeApi};
 
+#[cfg(feature = "unsize")]
+type DynTheme<Draw> = StackDst<dyn ThemeDst<Draw>>;
+#[cfg(not(feature = "unsize"))]
+type DynTheme<Draw> = Box<dyn ThemeDst<Draw>>;
+
 /// Wrapper around mutliple themes, supporting run-time switching
 ///
 /// **Feature gated**: this is only available with feature `stack_dst`.
 pub struct MultiTheme<Draw> {
     names: HashMap<CowString, usize>,
-    themes: Vec<StackDst<dyn ThemeDst<Draw>>>,
+    themes: Vec<DynTheme<Draw>>,
     active: usize,
 }
 
@@ -27,7 +33,7 @@ pub struct MultiTheme<Draw> {
 /// Construct via [`MultiTheme::builder`].
 pub struct MultiThemeBuilder<Draw> {
     names: HashMap<CowString, usize>,
-    themes: Vec<StackDst<dyn ThemeDst<Draw>>>,
+    themes: Vec<DynTheme<Draw>>,
 }
 
 impl<Draw> MultiTheme<Draw> {
@@ -42,6 +48,10 @@ impl<Draw> MultiTheme<Draw> {
 
 impl<Draw> MultiThemeBuilder<Draw> {
     /// Add a theme
+    ///
+    /// Note: the constraints of this method vary depending on the `unsize`
+    /// feature.
+    #[cfg(feature = "unsize")]
     pub fn add<S: Into<CowString>, U>(mut self, name: S, theme: U) -> Self
     where
         U: Unsize<dyn ThemeDst<Draw>>,
@@ -50,6 +60,22 @@ impl<Draw> MultiThemeBuilder<Draw> {
         let index = self.themes.len();
         self.names.insert(name.into(), index);
         self.themes.push(StackDst::new_or_boxed(theme));
+        self
+    }
+
+    /// Add a theme
+    ///
+    /// Note: the constraints of this method vary depending on the `unsize`
+    /// feature.
+    #[cfg(not(feature = "unsize"))]
+    pub fn add<S: Into<CowString>, T>(mut self, name: S, theme: T) -> Self
+    where
+        Draw: DrawShared,
+        T: ThemeDst<Draw> + 'static,
+    {
+        let index = self.themes.len();
+        self.names.insert(name.into(), index);
+        self.themes.push(Box::new(theme));
         self
     }
 
