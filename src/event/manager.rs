@@ -99,7 +99,8 @@ pub struct ManagerState {
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 10]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
-    accel_keys: HashMap<VirtualKeyCode, WidgetId>,
+    accel_stack: Vec<HashMap<VirtualKeyCode, WidgetId>>,
+    accel_layers: HashMap<WidgetId, HashMap<VirtualKeyCode, WidgetId>>,
     popups: SmallVec<[(WindowId, kas::Popup); 16]>,
     new_popups: SmallVec<[WidgetId; 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
@@ -267,8 +268,12 @@ impl<'a> Manager<'a> {
             }
 
             if id_action.is_none() {
-                if let Some(id) = self.mgr.accel_keys.get(&vkey).cloned() {
-                    id_action = Some((id, Event::Activate));
+                let popup_id = self.mgr.popups.last().map(|(_, popup)| popup.parent);
+                let layer_id = popup_id.unwrap_or(widget.id());
+                if let Some(layer) = self.mgr.accel_layers.get(&layer_id) {
+                    if let Some(id) = layer.get(&vkey).cloned() {
+                        id_action = Some((id, Event::Activate));
+                    }
                 }
             }
 

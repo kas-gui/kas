@@ -255,18 +255,55 @@ impl<'a> Manager<'a> {
         }
     }
 
+    /// Add a new accelerator key layer and make it current
     ///
-    /// Adds an accelerator key for a widget
+    /// Accelerator keys are added to a layer; either the base layer or a layer
+    /// owned by a widget. This adds a new owned layer and makes it current so
+    /// that widgets configured after this will add their accelerator keys to
+    /// this layer. [`Manager::pop_accel_layer`] must be called after child
+    /// widgets have been configured to finish configuration of this new layer
+    /// and to make the previous layer in the stack current.
     ///
-    /// If this key is pressed when the window has focus and no widget has a
-    /// key-grab, the given widget will receive an [`Event::Activate`] event.
+    /// When run, the base layer is used when no pop-up is active, otherwise
+    /// the layer (if any) associated with the top pop-up is used.
+    pub fn push_accel_layer(&mut self) {
+        self.mgr.accel_stack.push(HashMap::new());
+    }
+
+    /// Finish configuration of an accelerator key layer
     ///
-    /// This should be set from [`WidgetConfig::configure`].
+    /// The `id` must be that of the widget which created this layer.
+    ///
+    /// Also makes the previous layer current (so that future calls to
+    /// [`Manager::add_accel_keys`] push to that layer).
+    ///
+    /// See [`Manager::push_accel_layer`] for documentation.
+    pub fn pop_accel_layer(&mut self, id: WidgetId) {
+        if let Some(layer) = self.mgr.accel_stack.pop() {
+            self.mgr.accel_layers.insert(id, layer);
+        } else {
+            debug_assert!(
+                false,
+                "pop_accel_layer without corresponding push_accel_layer"
+            );
+        }
+    }
+
+    /// Adds an accelerator key for a widget to the current layer
+    ///
+    /// When the layer is selected (see [`Manager::push_accel_layer`]),
+    /// if any of these keys are pressed,
+    /// the widget with this `id` will receive an [`Event::Activate`] event.
+    ///
+    /// This should only be called from [`WidgetConfig::configure`].
+    // TODO(type safety): consider only implementing on ConfigureManager
     #[inline]
     pub fn add_accel_keys(&mut self, id: WidgetId, keys: &[VirtualKeyCode]) {
         if !self.read_only {
-            for key in keys {
-                self.mgr.accel_keys.insert(*key, id);
+            if let Some(last) = self.mgr.accel_stack.last_mut() {
+                for key in keys {
+                    last.insert(*key, id);
+                }
             }
         }
     }

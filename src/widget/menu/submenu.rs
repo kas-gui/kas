@@ -8,7 +8,7 @@
 use super::{Menu, MenuFrame};
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, Manager, NavKey, Response};
+use kas::event::{ConfigureManager, Event, Manager, NavKey, Response};
 use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::prelude::*;
 use kas::widget::Column;
@@ -89,7 +89,12 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
 }
 
 impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
-    fn configure(&mut self, mgr: &mut Manager) {
+    fn configure_recurse<'a, 'b>(&mut self, mut cmgr: ConfigureManager<'a, 'b>) {
+        cmgr.mgr().push_accel_layer();
+        self.list.configure_recurse(cmgr.child());
+        self.core_data_mut().id = cmgr.next_id(self.id());
+        let mgr = cmgr.mgr();
+        mgr.pop_accel_layer(self.id());
         mgr.add_accel_keys(self.id(), self.label.keys());
     }
 

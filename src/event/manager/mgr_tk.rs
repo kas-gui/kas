@@ -38,7 +38,8 @@ impl ManagerState {
             mouse_grab: None,
             touch_grab: Default::default(),
             pan_grab: SmallVec::new(),
-            accel_keys: HashMap::new(),
+            accel_stack: vec![],
+            accel_layers: HashMap::new(),
             popups: Default::default(),
             new_popups: Default::default(),
             popup_removed: Default::default(),
@@ -67,7 +68,8 @@ impl ManagerState {
         let mut id = WidgetId::FIRST;
 
         // We re-set these instead of remapping:
-        self.accel_keys.clear();
+        self.accel_stack.clear();
+        self.accel_layers.clear();
         self.time_updates.clear();
         self.handle_updates.clear();
         self.pending.clear();
@@ -76,11 +78,15 @@ impl ManagerState {
 
         let coord = self.last_mouse_coord;
         self.with(tkw, |mut mgr| {
+            mgr.push_accel_layer();
             widget.configure_recurse(ConfigureManager {
                 id: &mut id,
                 map: &mut map,
                 mgr: &mut mgr,
             });
+            mgr.pop_accel_layer(widget.id());
+            debug_assert!(mgr.mgr.accel_stack.is_empty());
+
             let hover = widget.find_id(coord);
             mgr.set_hover(widget, hover);
         });
