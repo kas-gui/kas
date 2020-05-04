@@ -4,7 +4,7 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 #![recursion_limit = "128"]
-#![feature(proc_macro_diagnostic)]
+#![cfg_attr(nightly, feature(proc_macro_diagnostic))]
 
 extern crate proc_macro;
 
@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 use std::fmt::Write;
+#[cfg(nightly)]
 use syn::spanned::Spanned;
 use syn::Token;
 use syn::{parse_macro_input, parse_quote};
@@ -332,16 +333,19 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     syn::ImplItem::Method(syn::ImplItemMethod { sig, .. })
                         if sig.ident == *handler =>
                     {
-                        if let Some(x) = x {
+                        if let Some(_x) = x {
+                            #[cfg(nightly)]
                             handler
                                 .span()
                                 .unwrap()
                                 .error("multiple methods with this name")
                                 .emit();
-                            x.0.span()
+                            #[cfg(nightly)]
+                            _x.0.span()
                                 .unwrap()
                                 .error("first method with this name")
                                 .emit();
+                            #[cfg(nightly)]
                             sig.ident
                                 .span()
                                 .unwrap()
@@ -350,6 +354,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                             return None;
                         }
                         if sig.inputs.len() != 3 {
+                            #[cfg(nightly)]
                             sig.span()
                                 .unwrap()
                                 .error("handler functions must have signature: fn handler(&mut self, mgr: &mut Manager, msg: T)")
@@ -371,6 +376,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             find_handler_ty_buf.push((handler.clone(), x.1.clone()));
             Some(x.1)
         } else {
+            #[cfg(nightly)]
             handler
                 .span()
                 .unwrap()
@@ -435,6 +441,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         } else {
             // We could default to msg=VoidMsg here. If error messages weren't
             // so terrible this might even be a good idea!
+            #[cfg(nightly)]
             args.struct_span
                 .unwrap()
                 .error("make_widget: cannot discover msg type from #[handler] attr or Handler impl")

@@ -7,6 +7,18 @@ solely because procedural macros must current be in a dedicated crate.
 Users are advised not to depend on this library directly, but instead rely on
 the main KAS lib, which re-exports these macros in its API.
 
+
+Stable vs nightly
+-----------------
+
+This crate is compatible with **stable rustc**, however, usage of **nightly**
+has some benefits:
+
+-   More macro diagnostics are emitted, resulting in better error messages
+    (without this, some errors may not even be reported)
+-   With `#![feature(proc_macro_hygiene)]`, the `make_widget!` macro may be used
+
+
 Copyright and Licence
 -------
 

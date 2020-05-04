@@ -8,6 +8,7 @@ description = "GUI Toolkit Abstraction System (macros)"
 keywords = ["gui", "proc-macro"]
 categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
+build = "build.rs"
 
 [lib]
 proc-macro = true
@@ -21,3 +22,6 @@ version = "1.0.14"
 # We need 'extra-traits' for equality testing
 # We need 'full' for parsing macros within macro arguments
 features = ["extra-traits", "full"]
+
+[build-dependencies]
+version_check = "0.9"
