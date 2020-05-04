@@ -25,10 +25,11 @@ enum Control {
 fn make_window() -> Box<dyn kas::Window> {
     let stopwatch = make_widget! {
         #[layout(row)]
+        #[widget(config=noauto)]
         struct {
             #[widget] display: impl HasText = Frame::new(Label::new("0.000")),
-            #[widget(handler = handle_button)] b_reset = TextButton::new("reset", Control::Reset),
-            #[widget(handler = handle_button)] b_start = TextButton::new("start / stop", Control::Start),
+            #[widget(handler = handle_button)] b_reset = TextButton::new("&reset", Control::Reset),
+            #[widget(handler = handle_button)] b_start = TextButton::new("&start / &stop", Control::Start),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
         }
@@ -51,6 +52,11 @@ fn make_window() -> Box<dyn kas::Window> {
                     }
                 }
                 Response::None
+            }
+        }
+        impl kas::WidgetConfig {
+            fn configure(&mut self, mgr: &mut Manager) {
+                mgr.enable_alt_bypass(true);
             }
         }
         impl Handler {

@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 use std::rc::Rc;
 
-use super::Label;
+use super::AccelLabel;
 use kas::class::HasBool;
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{Event, Manager, Response, VoidMsg};
@@ -149,6 +149,7 @@ impl<M: 'static> event::Handler for CheckBoxBare<M> {
 // TODO: use a generic wrapper for CheckBox and RadioBox?
 #[layout(row, area=checkbox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
+#[widget(config=noauto)]
 #[derive(Clone, Default, Widget)]
 pub struct CheckBox<M: 'static> {
     #[widget_core]
@@ -158,7 +159,7 @@ pub struct CheckBox<M: 'static> {
     #[widget]
     checkbox: CheckBoxBare<M>,
     #[widget]
-    label: Label,
+    label: AccelLabel,
 }
 
 impl<M: 'static> Debug for CheckBox<M> {
@@ -182,7 +183,7 @@ impl<M: 'static> CheckBox<M> {
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn new_on<T: Into<CowString>, F>(f: F, label: T) -> Self
+    pub fn new_on<T: Into<AccelString>, F>(f: F, label: T) -> Self
     where
         F: Fn(bool) -> M + 'static,
     {
@@ -190,7 +191,7 @@ impl<M: 'static> CheckBox<M> {
             core: Default::default(),
             layout_data: Default::default(),
             checkbox: CheckBoxBare::new_on(f),
-            label: Label::new(label),
+            label: AccelLabel::new(label),
         }
     }
 }
@@ -201,12 +202,12 @@ impl CheckBox<VoidMsg> {
     /// CheckBox labels are optional; if no label is desired, use an empty
     /// string.
     #[inline]
-    pub fn new<T: Into<CowString>>(label: T) -> Self {
+    pub fn new<T: Into<AccelString>>(label: T) -> Self {
         CheckBox {
             core: Default::default(),
             layout_data: Default::default(),
             checkbox: CheckBoxBare::new(),
-            label: Label::new(label),
+            label: AccelLabel::new(label),
         }
     }
 
@@ -234,6 +235,12 @@ impl<M: 'static> CheckBox<M> {
     pub fn state(mut self, state: bool) -> Self {
         self.checkbox = self.checkbox.state(state);
         self
+    }
+}
+
+impl<M: 'static> WidgetConfig for CheckBox<M> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
     }
 }
 

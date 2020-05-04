@@ -13,18 +13,28 @@ use kas::draw::{DrawHandle, SizeHandle, TextClass};
 use kas::event::{Event, Manager, Response, VoidMsg};
 use kas::layout::{AxisInfo, Margins, RulesSetter, RulesSolver, SizeRules};
 use kas::prelude::*;
-use kas::widget::{CheckBoxBare, Label};
+use kas::widget::{AccelLabel, CheckBoxBare};
 
 /// A standard menu entry
-#[widget(config(key_nav = true))]
+#[widget(config=noauto)]
 #[handler(handle=noauto)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct MenuEntry<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
-    label: CowString,
+    label: AccelString,
     label_off: Coord,
     msg: M,
+}
+
+impl<M: Clone + Debug + 'static> WidgetConfig for MenuEntry<M> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.add_accel_keys(self.id(), self.label.keys());
+    }
+
+    fn key_nav(&self) -> bool {
+        true
+    }
 }
 
 impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
@@ -32,7 +42,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
         let size = size_handle.menu_frame();
         self.label_off = size.into();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, Margins::ZERO);
-        let text_rules = size_handle.text_bound(&self.label, TextClass::Label, axis);
+        let text_rules = size_handle.text_bound(self.label.get(false), TextClass::Label, axis);
         text_rules.surrounded_by(frame_rules, true)
     }
 
@@ -42,8 +52,9 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
             pos: self.core.rect.pos + self.label_off,
             size: self.core.rect.size - self.label_off.into(),
         };
+        let text = self.label.get(mgr.show_accel_labels());
         let align = (Align::Begin, Align::Centre);
-        draw_handle.text(rect, &self.label, TextClass::Label, align);
+        draw_handle.text(rect, text, TextClass::Label, align);
     }
 }
 
@@ -53,7 +64,7 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
     /// The message `msg` is emitted on activation. Any
     /// type supporting `Clone` is valid, though it is recommended to use a
     /// simple `Copy` type (e.g. an enum).
-    pub fn new<S: Into<CowString>>(label: S, msg: M) -> Self {
+    pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
         MenuEntry {
             core: Default::default(),
             label: label.into(),
@@ -70,11 +81,11 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
 
 impl<M: Clone + Debug + 'static> HasText for MenuEntry<M> {
     fn get_text(&self) -> &str {
-        &self.label
+        self.label.get(false)
     }
 
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.label = text;
+        self.label = text.into();
         TkAction::Redraw
     }
 }
@@ -94,6 +105,7 @@ impl<M: Clone + Debug> Menu for MenuEntry<M> {}
 
 /// A menu entry which can be toggled
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
+#[widget(config=noauto)]
 #[derive(Clone, Default, Widget)]
 pub struct MenuToggle<M: 'static> {
     #[widget_core]
@@ -102,7 +114,7 @@ pub struct MenuToggle<M: 'static> {
     #[widget]
     checkbox: CheckBoxBare<M>,
     #[widget]
-    label: Label,
+    label: AccelLabel,
 }
 
 impl<M: 'static> Debug for MenuToggle<M> {
@@ -122,7 +134,7 @@ impl<M: 'static> MenuToggle<M> {
     /// The closure `f` is called with the new state of the checkbox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn new_on<T: Into<CowString>, F>(f: F, label: T) -> Self
+    pub fn new_on<T: Into<AccelString>, F>(f: F, label: T) -> Self
     where
         F: Fn(bool) -> M + 'static,
     {
@@ -130,7 +142,7 @@ impl<M: 'static> MenuToggle<M> {
             core: Default::default(),
             layout_data: Default::default(),
             checkbox: CheckBoxBare::new_on(f),
-            label: Label::new(label),
+            label: AccelLabel::new(label),
         }
     }
 
@@ -145,12 +157,12 @@ impl<M: 'static> MenuToggle<M> {
 impl MenuToggle<VoidMsg> {
     /// Construct a togglable menu entry with a given `label`
     #[inline]
-    pub fn new<T: Into<CowString>>(label: T) -> Self {
+    pub fn new<T: Into<AccelString>>(label: T) -> Self {
         MenuToggle {
             core: Default::default(),
             layout_data: Default::default(),
             checkbox: CheckBoxBare::new(),
-            label: Label::new(label),
+            label: AccelLabel::new(label),
         }
     }
 
@@ -172,7 +184,13 @@ impl MenuToggle<VoidMsg> {
     }
 }
 
-impl<M: 'static> kas::Layout for MenuToggle<M> {
+impl<M: 'static> WidgetConfig for MenuToggle<M> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
+    }
+}
+
+impl<M: 'static> Layout for MenuToggle<M> {
     // NOTE: This code is mostly copied from the macro expansion.
     // Only draw() is significantly different.
     fn size_rules(

@@ -9,7 +9,7 @@ use std::convert::TryFrom;
 use std::fmt::{self, Debug};
 use std::rc::Rc;
 
-use super::Label;
+use super::AccelLabel;
 use kas::class::HasBool;
 use kas::draw::{DrawHandle, SizeHandle};
 use kas::event::{Event, Manager, Response, UpdateHandle, VoidMsg};
@@ -183,6 +183,7 @@ impl<M: 'static> HasBool for RadioBoxBare<M> {
 /// A radiobox with optional label
 #[layout(row, area=radiobox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
+#[widget(config=noauto)]
 #[derive(Clone, Widget)]
 pub struct RadioBox<M: 'static> {
     #[widget_core]
@@ -192,7 +193,7 @@ pub struct RadioBox<M: 'static> {
     #[widget]
     radiobox: RadioBoxBare<M>,
     #[widget]
-    label: Label,
+    label: AccelLabel,
 }
 
 impl<M: 'static> Debug for RadioBox<M> {
@@ -216,7 +217,7 @@ impl<M: 'static> RadioBox<M> {
     /// The closure `f` is called with the new state of the radiobox when
     /// toggled, and the result of `f` is returned from the event handler.
     #[inline]
-    pub fn new_on<T: Into<CowString>, F>(f: F, handle: UpdateHandle, label: T) -> Self
+    pub fn new_on<T: Into<AccelString>, F>(f: F, handle: UpdateHandle, label: T) -> Self
     where
         F: Fn(WidgetId) -> M + 'static,
     {
@@ -224,7 +225,7 @@ impl<M: 'static> RadioBox<M> {
             core: Default::default(),
             layout_data: Default::default(),
             radiobox: RadioBoxBare::new_on(f, handle),
-            label: Label::new(label),
+            label: AccelLabel::new(label),
         }
     }
 }
@@ -238,12 +239,12 @@ impl RadioBox<VoidMsg> {
     /// RadioBox labels are optional; if no label is desired, use an empty
     /// string.
     #[inline]
-    pub fn new<T: Into<CowString>>(handle: UpdateHandle, label: T) -> Self {
+    pub fn new<T: Into<AccelString>>(handle: UpdateHandle, label: T) -> Self {
         RadioBox {
             core: Default::default(),
             layout_data: Default::default(),
             radiobox: RadioBoxBare::new(handle),
-            label: Label::new(label),
+            label: AccelLabel::new(label),
         }
     }
 
@@ -271,6 +272,12 @@ impl<M: 'static> RadioBox<M> {
     pub fn state(mut self, state: bool) -> Self {
         self.radiobox = self.radiobox.state(state);
         self
+    }
+}
+
+impl<M: 'static> WidgetConfig for RadioBox<M> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.add_accel_keys(self.radiobox.id(), self.label.keys());
     }
 }
 

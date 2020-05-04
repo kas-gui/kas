@@ -10,7 +10,7 @@ use std::fmt;
 
 use super::Boxed;
 use crate::draw::{DrawHandle, InputState, SizeHandle};
-use crate::event::{self, Manager, ManagerState};
+use crate::event::{self, ConfigureManager, Manager, ManagerState};
 use crate::geom::{Coord, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, TkAction, WidgetId};
@@ -245,6 +245,21 @@ pub trait WidgetConfig: Layout {
     ///
     /// The default implementation of this method does nothing.
     fn configure(&mut self, _: &mut Manager) {}
+
+    /// Configure self and children
+    ///
+    /// In most cases one should not override the default implementation of this
+    /// method but instead use [`WidgetConfig::configure`]; the exception is
+    /// widgets with pop-ups.
+    fn configure_recurse<'a, 'b>(&mut self, mut cmgr: ConfigureManager<'a, 'b>) {
+        for i in 0..self.len() {
+            if let Some(w) = self.get_mut(i) {
+                w.configure_recurse(cmgr.child());
+            }
+        }
+        self.core_data_mut().id = cmgr.next_id(self.id());
+        self.configure(cmgr.mgr());
+    }
 
     /// Is this widget navigable via Tab key?
     ///

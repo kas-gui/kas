@@ -11,6 +11,7 @@ use std::u16;
 
 use super::*;
 use crate::geom::Coord;
+use crate::string::{CowString, CowStringL};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{ThemeAction, ThemeApi, TkAction, WidgetId, WindowId};
@@ -24,6 +25,16 @@ impl<'a> std::ops::AddAssign<TkAction> for Manager<'a> {
 
 /// Public API (around event manager state)
 impl ManagerState {
+    /// True when accelerator key labels should be shown
+    ///
+    /// (True when Alt is held.)
+    ///
+    /// This is a fast check.
+    #[inline]
+    pub fn show_accel_labels(&self) -> bool {
+        !self.alt_keys.is_empty()
+    }
+
     /// Get whether this widget has a grab on character input
     #[inline]
     pub fn char_focus(&self, w_id: WidgetId) -> bool {
@@ -218,13 +229,13 @@ impl<'a> Manager<'a> {
     /// In case of failure, paste actions will simply fail. The implementation
     /// may wish to log an appropriate warning message.
     #[inline]
-    pub fn get_clipboard(&mut self) -> Option<crate::CowString> {
+    pub fn get_clipboard(&mut self) -> Option<CowString> {
         self.tkw.get_clipboard()
     }
 
     /// Attempt to set clipboard contents
     #[inline]
-    pub fn set_clipboard<'c>(&mut self, content: crate::CowStringL<'c>) {
+    pub fn set_clipboard<'c>(&mut self, content: CowStringL<'c>) {
         self.tkw.set_clipboard(content)
     }
 
@@ -254,17 +265,69 @@ impl<'a> Manager<'a> {
         }
     }
 
+    /// Add a new accelerator key layer and make it current
     ///
-    /// Adds an accelerator key for a widget
+    /// Accelerator keys are added to a layer; either the base layer or a layer
+    /// owned by a widget. This adds a new owned layer and makes it current so
+    /// that widgets configured after this will add their accelerator keys to
+    /// this layer. [`Manager::pop_accel_layer`] must be called after child
+    /// widgets have been configured to finish configuration of this new layer
+    /// and to make the previous layer in the stack current.
     ///
-    /// If this key is pressed when the window has focus and no widget has a
-    /// key-grab, the given widget will receive an [`Event::Activate`] event.
+    /// If `alt_bypass` is true, then this layer's accelerator keys will be
+    /// active even without Alt pressed.
     ///
-    /// This should be set from [`WidgetConfig::configure`].
+    /// When run, the base layer is used when no pop-up is active, otherwise
+    /// the layer (if any) associated with the top pop-up is used.
+    pub fn push_accel_layer(&mut self, alt_bypass: bool) {
+        self.mgr.accel_stack.push((alt_bypass, HashMap::new()));
+    }
+
+    /// Enable `alt_bypass` for the current layer
+    ///
+    /// This may be called by a child widget during configure, e.g. to enable
+    /// alt-bypass for the base layer. See also [`Manager::push_accel_layer`].
+    pub fn enable_alt_bypass(&mut self, alt_bypass: bool) {
+        if let Some(layer) = self.mgr.accel_stack.last_mut() {
+            layer.0 = alt_bypass;
+        }
+    }
+
+    /// Finish configuration of an accelerator key layer
+    ///
+    /// The `id` must be that of the widget which created this layer.
+    ///
+    /// Also makes the previous layer current (so that future calls to
+    /// [`Manager::add_accel_keys`] push to that layer).
+    ///
+    /// See [`Manager::push_accel_layer`] for documentation.
+    pub fn pop_accel_layer(&mut self, id: WidgetId) {
+        if let Some(layer) = self.mgr.accel_stack.pop() {
+            self.mgr.accel_layers.insert(id, layer);
+        } else {
+            debug_assert!(
+                false,
+                "pop_accel_layer without corresponding push_accel_layer"
+            );
+        }
+    }
+
+    /// Adds an accelerator key for a widget to the current layer
+    ///
+    /// When the layer is selected (see [`Manager::push_accel_layer`]),
+    /// if any of these keys are pressed,
+    /// the widget with this `id` will receive an [`Event::Activate`] event.
+    ///
+    /// This should only be called from [`WidgetConfig::configure`].
+    // TODO(type safety): consider only implementing on ConfigureManager
     #[inline]
-    pub fn add_accel_key(&mut self, key: VirtualKeyCode, id: WidgetId) {
+    pub fn add_accel_keys(&mut self, id: WidgetId, keys: &[VirtualKeyCode]) {
         if !self.read_only {
-            self.mgr.accel_keys.insert(key, id);
+            if let Some(last) = self.mgr.accel_stack.last_mut() {
+                for key in keys {
+                    last.1.insert(*key, id);
+                }
+            }
         }
     }
 

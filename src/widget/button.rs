@@ -10,7 +10,7 @@ use std::fmt::Debug;
 
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, Manager, Response, VirtualKeyCode};
+use kas::event::{Event, Manager, Response, VirtualKeyCode, VirtualKeyCodes};
 use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
@@ -21,17 +21,17 @@ use kas::prelude::*;
 pub struct TextButton<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
-    keys: SmallVec<[VirtualKeyCode; 4]>,
+    keys: VirtualKeyCodes,
     // text_rect: Rect,
-    label: CowString,
+    label: AccelString,
     msg: M,
 }
 
 impl<M: Clone + Debug + 'static> WidgetConfig for TextButton<M> {
     fn configure(&mut self, mgr: &mut Manager) {
-        for key in &self.keys {
-            mgr.add_accel_key(*key, self.id());
-        }
+        // TODO: consider merging these two lists?
+        mgr.add_accel_keys(self.id(), &self.keys);
+        mgr.add_accel_keys(self.id(), self.label.keys());
     }
 
     fn key_nav(&self) -> bool {
@@ -45,7 +45,7 @@ impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
         let margins = size_handle.outer_margins();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
 
-        let content_rules = size_handle.text_bound(&self.label, TextClass::Button, axis);
+        let content_rules = size_handle.text_bound(self.label.get(false), TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)
     }
 
@@ -60,8 +60,9 @@ impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
+        let text = self.label.get(mgr.show_accel_labels());
         let align = (Align::Centre, Align::Centre);
-        draw_handle.text(self.core.rect, &self.label, TextClass::Button, align);
+        draw_handle.text(self.core.rect, text, TextClass::Button, align);
     }
 }
 
@@ -72,7 +73,7 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     /// type supporting `Clone` is valid, though it is recommended to use a
     /// simple `Copy` type (e.g. an enum). Click actions must be implemented on
     /// the parent (or other ancestor).
-    pub fn new<S: Into<CowString>>(label: S, msg: M) -> Self {
+    pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
         TextButton {
             core: Default::default(),
             keys: SmallVec::new(),
@@ -101,11 +102,11 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
 
 impl<M: Clone + Debug + 'static> HasText for TextButton<M> {
     fn get_text(&self) -> &str {
-        &self.label
+        self.label.get(false)
     }
 
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.label = text;
+        self.label = text.into();
         TkAction::Redraw
     }
 }

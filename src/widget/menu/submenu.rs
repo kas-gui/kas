@@ -8,21 +8,21 @@
 use super::{Menu, MenuFrame};
 use kas::class::HasText;
 use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, Manager, NavKey, Response};
+use kas::event::{ConfigureManager, Event, Manager, NavKey, Response};
 use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::prelude::*;
 use kas::widget::Column;
 use kas::WindowId;
 
 /// A sub-menu
-#[widget(config(key_nav = true))]
+#[widget(config=noauto)]
 #[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
 pub struct SubMenu<D: Directional, W: Menu> {
     #[widget_core]
     core: CoreData,
     direction: D,
-    label: CowString,
+    label: AccelString,
     label_off: Coord,
     #[widget]
     pub list: MenuFrame<Column<W>>,
@@ -32,7 +32,7 @@ pub struct SubMenu<D: Directional, W: Menu> {
 impl<D: Directional + Default, W: Menu> SubMenu<D, W> {
     /// Construct a sub-menu
     #[inline]
-    pub fn new<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
+    pub fn new<S: Into<AccelString>>(label: S, list: Vec<W>) -> Self {
         SubMenu::new_with_direction(Default::default(), label, list)
     }
 }
@@ -43,7 +43,7 @@ impl<W: Menu> SubMenu<kas::Right, W> {
     // Consider only accepting an enum of special menu widgets?
     // Then we can pass type information.
     #[inline]
-    pub fn right<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
+    pub fn right<S: Into<AccelString>>(label: S, list: Vec<W>) -> Self {
         SubMenu::new(label, list)
     }
 }
@@ -51,7 +51,7 @@ impl<W: Menu> SubMenu<kas::Right, W> {
 impl<W: Menu> SubMenu<kas::Down, W> {
     /// Construct a sub-menu, opening downwards
     #[inline]
-    pub fn down<S: Into<CowString>>(label: S, list: Vec<W>) -> Self {
+    pub fn down<S: Into<AccelString>>(label: S, list: Vec<W>) -> Self {
         SubMenu::new(label, list)
     }
 }
@@ -59,7 +59,7 @@ impl<W: Menu> SubMenu<kas::Down, W> {
 impl<D: Directional, W: Menu> SubMenu<D, W> {
     /// Construct a sub-menu
     #[inline]
-    pub fn new_with_direction<S: Into<CowString>>(direction: D, label: S, list: Vec<W>) -> Self {
+    pub fn new_with_direction<S: Into<AccelString>>(direction: D, label: S, list: Vec<W>) -> Self {
         SubMenu {
             core: Default::default(),
             direction,
@@ -88,12 +88,27 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
     }
 }
 
+impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
+    fn configure_recurse<'a, 'b>(&mut self, mut cmgr: ConfigureManager<'a, 'b>) {
+        cmgr.mgr().push_accel_layer(true);
+        self.list.configure_recurse(cmgr.child());
+        self.core_data_mut().id = cmgr.next_id(self.id());
+        let mgr = cmgr.mgr();
+        mgr.pop_accel_layer(self.id());
+        mgr.add_accel_keys(self.id(), self.label.keys());
+    }
+
+    fn key_nav(&self) -> bool {
+        true
+    }
+}
+
 impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.menu_frame();
         self.label_off = size.into();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, Margins::ZERO);
-        let text_rules = size_handle.text_bound(&self.label, TextClass::Label, axis);
+        let text_rules = size_handle.text_bound(self.label.get(false), TextClass::Label, axis);
         text_rules.surrounded_by(frame_rules, true)
     }
 
@@ -110,8 +125,9 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
             pos: self.core.rect.pos + self.label_off,
             size: self.core.rect.size - self.label_off.into(),
         };
+        let text = self.label.get(mgr.show_accel_labels());
         let align = (Align::Begin, Align::Centre);
-        draw_handle.text(rect, &self.label, TextClass::Label, align);
+        draw_handle.text(rect, text, TextClass::Label, align);
     }
 }
 
@@ -243,11 +259,11 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
 
 impl<D: Directional, W: Menu> HasText for SubMenu<D, W> {
     fn get_text(&self) -> &str {
-        &self.label
+        self.label.get(false)
     }
 
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.label = text;
+        self.label = text.into();
         TkAction::Redraw
     }
 }

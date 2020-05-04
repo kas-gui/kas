@@ -38,7 +38,9 @@ impl ManagerState {
             mouse_grab: None,
             touch_grab: Default::default(),
             pan_grab: SmallVec::new(),
-            accel_keys: HashMap::new(),
+            accel_stack: vec![],
+            accel_layers: HashMap::new(),
+            alt_keys: SmallVec::new(),
             popups: Default::default(),
             new_popups: Default::default(),
             popup_removed: Default::default(),
@@ -67,7 +69,8 @@ impl ManagerState {
         let mut id = WidgetId::FIRST;
 
         // We re-set these instead of remapping:
-        self.accel_keys.clear();
+        self.accel_stack.clear();
+        self.accel_layers.clear();
         self.time_updates.clear();
         self.handle_updates.clear();
         self.pending.clear();
@@ -76,12 +79,15 @@ impl ManagerState {
 
         let coord = self.last_mouse_coord;
         self.with(tkw, |mut mgr| {
-            widget.walk_mut(&mut |widget| {
-                map.insert(widget.id(), id);
-                widget.core_data_mut().id = id;
-                widget.configure(&mut mgr);
-                id = id.next();
+            mgr.push_accel_layer(false);
+            widget.configure_recurse(ConfigureManager {
+                id: &mut id,
+                map: &mut map,
+                mgr: &mut mgr,
             });
+            mgr.pop_accel_layer(widget.id());
+            debug_assert!(mgr.mgr.accel_stack.is_empty());
+
             let hover = widget.find_id(coord);
             mgr.set_hover(widget, hover);
         });
@@ -348,22 +354,18 @@ impl<'a> Manager<'a> {
         // Unhandled events here, so we can freely ignore all responses.
 
         match event {
-            // Resized(size) [handled by toolkit]
-            // Moved(position)
-            CloseRequested => {
-                self.send_action(TkAction::Close);
-            }
-            // Destroyed
-            // DroppedFile(PathBuf),
-            // HoveredFile(PathBuf),
-            // HoveredFileCancelled,
+            CloseRequested => self.send_action(TkAction::Close),
+            /* Not yet supported: see #98
+            DroppedFile(path) => ,
+            HoveredFile(path) => ,
+            HoveredFileCancelled => ,
+            */
             ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
                 if let Some(id) = self.mgr.char_focus {
                     let event = Event::ReceivedCharacter(c);
                     self.send_event(widget, id, event);
                 }
             }
-            // Focused(bool),
             KeyboardInput { input, is_synthetic, .. } => {
                 if input.state == ElementState::Pressed && !is_synthetic {
                     if let Some(vkey) = input.virtual_keycode {
@@ -462,7 +464,6 @@ impl<'a> Manager<'a> {
             }
             // TouchpadPressure { pressure: f32, stage: i64, },
             // AxisMotion { axis: AxisId, value: f64, },
-            // RedrawRequested [handled by toolkit]
             Touch(touch) => {
                 let source = PressSource::Touch(touch.id);
                 let coord = touch.location.into();
@@ -545,7 +546,6 @@ impl<'a> Manager<'a> {
                     }
                 }
             }
-            // HiDpiFactorChanged(factor) [handled by toolkit]
             _ => (),
         }
     }
