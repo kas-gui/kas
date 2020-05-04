@@ -105,6 +105,7 @@ impl<M: Clone + Debug> Menu for MenuEntry<M> {}
 
 /// A menu entry which can be toggled
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
+#[widget(config=noauto)]
 #[derive(Clone, Default, Widget)]
 pub struct MenuToggle<M: 'static> {
     #[widget_core]
@@ -183,7 +184,13 @@ impl MenuToggle<VoidMsg> {
     }
 }
 
-impl<M: 'static> kas::Layout for MenuToggle<M> {
+impl<M: 'static> WidgetConfig for MenuToggle<M> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
+    }
+}
+
+impl<M: 'static> Layout for MenuToggle<M> {
     // NOTE: This code is mostly copied from the macro expansion.
     // Only draw() is significantly different.
     fn size_rules(
