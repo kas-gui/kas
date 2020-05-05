@@ -105,7 +105,6 @@ pub struct ManagerState {
     pan_grab: SmallVec<[PanGrab; 4]>,
     accel_stack: Vec<(bool, HashMap<VirtualKeyCode, WidgetId>)>,
     accel_layers: HashMap<WidgetId, (bool, HashMap<VirtualKeyCode, WidgetId>)>,
-    alt_keys: SmallVec<[u32; 4]>,
     popups: SmallVec<[(WindowId, kas::Popup); 16]>,
     new_popups: SmallVec<[WidgetId; 16]>,
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
@@ -255,12 +254,7 @@ impl<'a> Manager<'a> {
             return;
         }
 
-        if vkey == VK::LAlt || vkey == VK::RAlt {
-            if self.mgr.alt_keys.is_empty() {
-                self.mgr.send_action(TkAction::Redraw);
-            }
-            self.mgr.alt_keys.push(scancode);
-        } else if vkey == VK::Tab {
+        if vkey == VK::Tab {
             if !self.next_nav_focus(widget.as_widget(), self.mgr.modifiers.shift()) {
                 self.clear_nav_focus();
             }
@@ -276,7 +270,7 @@ impl<'a> Manager<'a> {
         } else {
             let mut id_action = None;
 
-            if self.mgr.alt_keys.is_empty() {
+            if !self.mgr.modifiers.alt() {
                 // First priority goes to the widget with nav focus,
                 // but only when Alt is not pressed.
                 if let Some(nav_id) = self.mgr.nav_focus {
@@ -311,7 +305,7 @@ impl<'a> Manager<'a> {
                 {
                     if let Some(layer) = self.mgr.accel_layers.get(&id) {
                         // but only when Alt is held or alt-bypass is enabled:
-                        if !self.mgr.alt_keys.is_empty() || layer.0 {
+                        if self.mgr.modifiers.alt() || layer.0 {
                             if let Some(id) = layer.1.get(&vkey).cloned() {
                                 id_action = Some((id, Event::Activate));
                                 n = i;
@@ -353,7 +347,7 @@ impl<'a> Manager<'a> {
     fn end_key_event(&mut self, scancode: u32) {
         // We must match scancode not vkey since the latter may have changed due to modifiers
 
-        // TODO: it would be nice to replace alt_keys and key_depress with sets
+        // TODO: it would be nice to replace key_depress with a set
         fn remove<A: smallvec::Array, F: Fn(&A::Item) -> bool>(
             v: &mut SmallVec<A>,
             f: F,
@@ -364,13 +358,6 @@ impl<'a> Manager<'a> {
                 }
             }
             return None;
-        }
-
-        if remove(&mut self.mgr.alt_keys, |item| *item == scancode).is_some() {
-            if self.mgr.alt_keys.is_empty() {
-                self.mgr.send_action(TkAction::Redraw);
-            }
-            return;
         }
 
         if let Some((_, id)) = remove(&mut self.mgr.key_depress, |item| item.0 == scancode) {

@@ -32,7 +32,7 @@ impl ManagerState {
     /// This is a fast check.
     #[inline]
     pub fn show_accel_labels(&self) -> bool {
-        !self.alt_keys.is_empty()
+        self.modifiers.alt()
     }
 
     /// Get whether this widget has a grab on character input

@@ -40,7 +40,6 @@ impl ManagerState {
             pan_grab: SmallVec::new(),
             accel_stack: vec![],
             accel_layers: HashMap::new(),
-            alt_keys: SmallVec::new(),
             popups: Default::default(),
             new_popups: Default::default(),
             popup_removed: Default::default(),
@@ -376,6 +375,10 @@ impl<'a> Manager<'a> {
                 }
             }
             ModifiersChanged(state) => {
+                if state.alt() != self.mgr.modifiers.alt() {
+                    // This controls drawing of accelerator key indicators
+                    self.mgr.send_action(TkAction::Redraw);
+                }
                 self.mgr.modifiers = state;
             }
             CursorMoved {
