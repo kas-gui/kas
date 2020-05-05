@@ -4,10 +4,12 @@ version = "0.3.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
-description = "GUI Toolkit Abstraction System (macros)"
+description = "KAS GUI / macros"
 keywords = ["gui", "proc-macro"]
 categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
+readme = "README.md"
+documentation = "https://docs.rs/kas-macros/"
 build = "build.rs"
 
 [lib]
