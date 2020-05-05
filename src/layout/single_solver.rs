@@ -18,9 +18,11 @@ pub struct SingleSolver {
 impl SingleSolver {
     /// Construct.
     ///
+    /// Argument order is consistent with other [`RulesSolver`]s.
+    ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
-    /// - `_dim`: direction and number of items
-    /// - `_storage`: reference to persistent storage
+    /// - `_dim`: unused
+    /// - `_storage`: unused
     pub fn new(axis: AxisInfo, _dim: (), _storage: &mut ()) -> Self {
         SingleSolver {
             axis,
@@ -55,14 +57,13 @@ pub struct SingleSetter {
 impl SingleSetter {
     /// Construct
     ///
-    /// All setter constructors take the following arguments:
+    /// Argument order is consistent with other [`RulesSetter`]s.
     ///
     /// -   `rect`: the [`Rect`] within which to position children
-    /// -   `dim`: dimension information (specific to the setter, in this case
-    ///     nothing)
-    /// -   `align`: alignment hints
-    /// -   `storage`: access to the solver's storage
-    pub fn new(rect: Rect, _: (), _: AlignHints, _: &mut ()) -> Self {
+    /// -   `_dim`: unused
+    /// -   `_align`: unused
+    /// -   `_storage`: unused
+    pub fn new(rect: Rect, _dim: (), _align: AlignHints, _storage: &mut ()) -> Self {
         // NOTE: possibly we should apply alignment here, but we can't without
         // storing the ideal size for each dimension in the storage.
         // If we do, we should do the same for the other axis of RowSetter.

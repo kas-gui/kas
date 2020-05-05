@@ -5,7 +5,33 @@
 
 //! Layout solver
 //!
-//! This is only of interest if building a custom widget with children.
+//! Size units are physical (real) pixels. This applies to most of KAS.
+//!
+//! ## Data types
+//!
+//! [`SizeRules`] is the "heart" of widget layout, used to specify a widget's
+//! size requirements. It provides various methods to compute derived rules
+//! and [`SizeRules::solve_seq`], the "muscle" of the layout engine.
+//!
+//! [`AxisInfo`], [`Margins`] and [`StretchPolicy`] are auxilliary data types.
+//!
+//! ## Layout engines
+//!
+//! The [`RulesSolver`] and [`RulesSetter`] traits define interfaces for
+//! layout engines:
+//!
+//! -   [`SingleSolver`] and [`SingleSetter`] are trivial implementations for
+//!     single-child parents
+//! -   [`RowSolver`] and [`RowSetter`] set out a row or column of children.
+//!     These are parametrised over `S: RowStorage` allowing both efficient
+//!     operation on a small fixed number of children with [`FixedRowStorage`]
+//!     and operation on a over a `Vec` with [`DynRowStorage`].
+//! -   [`GridSolver`] and [`GridSetter`] set out children assigned to grid
+//!     cells with optional cell-spans. This is the most powerful and flexible
+//!     layout engine.
+//!
+//! [`RowPositionSolver`] may be used with widgets set out by [`RowSetter`]
+//! to quickly locate children from a `coord` or `rect`.
 
 mod grid_solver;
 mod row_solver;

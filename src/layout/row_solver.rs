@@ -29,8 +29,10 @@ pub struct RowSolver<S: RowStorage> {
 impl<S: RowStorage> RowSolver<S> {
     /// Construct.
     ///
+    /// Argument order is consistent with other [`RulesSolver`]s.
+    ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
-    /// - `dim`: direction and number of items
+    /// - `(dir, len)`: direction and number of items
     /// - `storage`: reference to persistent storage
     pub fn new<D: Directional>(axis: AxisInfo, (dir, len): (D, usize), storage: &mut S) -> Self {
         storage.set_dim(len);
@@ -114,11 +116,10 @@ pub struct RowSetter<D, T: RowTemp, S: RowStorage> {
 impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     /// Construct
     ///
-    /// All setter constructors take the following arguments:
+    /// Argument order is consistent with other [`RulesSetter`]s.
     ///
     /// -   `rect`: the [`Rect`] within which to position children
-    /// -   `dim`: dimension information (specific to the setter, in this case
-    ///     the direction and number of columns/rows)
+    /// - `(direction, len)`: direction and number of items
     /// -   `align`: alignment hints
     /// -   `storage`: access to the solver's storage
     pub fn new(
