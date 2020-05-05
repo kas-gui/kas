@@ -171,6 +171,18 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
 
         if id <= self.list.id() {
             let r = self.list.send(mgr, id, event);
+
+            // The pop-up API expects us to check actions here
+            // But NOTE: we don't actually use this. Should we remove from API?
+            match mgr.pop_action() {
+                TkAction::Close => {
+                    if let Some(id) = self.popup_id {
+                        mgr.close_window(id);
+                    }
+                }
+                other => mgr.send_action(other),
+            }
+
             match r {
                 Response::Unhandled(ev) => match ev {
                     Event::NavKey(key) if self.popup_id.is_some() => {
