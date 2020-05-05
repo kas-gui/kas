@@ -3,43 +3,39 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Drawing API
+//! Drawing APIs
 //!
-//! This module includes abstractions over the drawing API and some associated
-//! types.
+//! Multiple drawing APIs are available. Each has a slightly different purpose.
 //!
-//! All draw operations may be batched; when drawn primitives overlap, the
-//! results are only loosely defined. All opaque draw commands replace prior
-//! contents, and generally executed in the order queued.
-//! Any partially-transparent draw commands are executed after opaque commands.
+//! ### High-level themeable interface
 //!
-//! ### High-level interface
+//! The [`DrawHandle`] trait and companion [`SizeHandle`] trait provide the
+//! highest-level API over themeable widget components. These traits are
+//! implemented by a theme defined in `kas-theme` or another crate.
 //!
-//! High-level drawing primitives are provided by the [`DrawHandle`] trait, an
-//! implementation of which is passed to [`kas::Layout::draw`]. A companion
-//! trait, [`SizeHandle`], is passed to [`kas::Layout::size_rules`].
+//! ### Medium-level drawing interfaces
 //!
-//! This interface allows themes a degree of flexibility over both drawing and
-//! sizing of elements and provides users with a very high-level interface to
-//! common UI shapes. It is expected to be extended significantly.
-//!
-//! ### Medium-level interface
-//!
-//! The [`Draw`] trait and its extensions provide a simpler, limited, drawing
-//! API, covering shapes such as lines, circles and rectangles, with
-//! single-colour (flat) shading or (depending upon the implementation) some
-//! other shading options.
+//! The [`Draw`] trait and its extensions are provided as the building-blocks
+//! used to implement themes, but may also be used directly (as in the `clock`
+//! example). These traits allow drawing of simple shapes, mostly in the form of
+//! an axis-aligned box or frame with several shading options.
 //!
 //! The [`Draw`] trait itself contains very little; extension traits
-//! [`DrawRounded`], [`DrawShaded`] and [`DrawText`] provide some additionaol
-//! routines. Toolkits must implement support for [`Draw`] while other
-//! extensions are optional; toolkits may also provide their own extensions.
+//! [`DrawRounded`], [`DrawShaded`] and [`DrawText`] provide additional draw
+//! routines. Toolkits are required to implement only the base [`Draw`] trait,
+//! and may provide their own extension traits. For this reason, themes are
+//! parameterised over an object `D: Draw + ...` (with specified trait bounds).
+//!
+//! The medium-level API will be extended in the future to support texturing
+//! (not yet supported) and potentially a more comprehensive path-based API
+//! (e.g. Lyon).
 //!
 //! ### Low-level interface
 //!
 //! There is no universal graphics API, hence none is provided by this crate.
 //! Instead, toolkits may provide their own extensions allowing direct access
-//! to the host graphics API, for example `kas-wgpu::draw::CustomPipe`.
+//! to the host graphics API, for example
+//! [`kas-wgpu::draw::CustomPipe`](https://docs.rs/kas-wgpu/*/kas_wgpu/draw/trait.CustomPipe.html).
 
 mod colour;
 mod handle;
@@ -96,12 +92,16 @@ pub trait DrawShared {
 /// type conversions can be performed with `from` and `into`. Integral
 /// coordinates align with pixels, non-integral coordinates may also be used.
 ///
+/// All draw operations may be batched; when drawn primitives overlap, the
+/// results are only loosely defined. Draw operations involving transparency
+/// should be ordered after those without transparency.
+///
 /// Draw operations take place over multiple render passes, identified by a
 /// handle of type [`Pass`]. In general the user only needs to pass this value
 /// into methods as required. [`Draw::add_clip_region`] creates a new [`Pass`].
 ///
-/// The primitives provided by this trait all draw solid areas, replacing prior
-/// contents.
+/// Each [`Pass`] has an associated depth value which may be used to determine
+/// the result of overlapping draw commands.
 pub trait Draw: Any {
     /// Cast self to [`std::any::Any`] reference.
     ///

@@ -20,17 +20,19 @@ pub enum ClipRegion {
 
 /// Input and highlighting state of a widget
 ///
+/// This struct is used to adjust the appearance of [`DrawHandle`]'s primitives.
+///
 /// Multiple instances can be combined via [`std::ops::BitOr`]: `lhs | rhs`.
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
 pub struct InputState {
-    /// Is the widget disabled?
+    /// Disabled widgets are not responsive to input and usually drawn in grey.
+    ///
+    /// All other states should be ignored when disabled.
     pub disabled: bool,
-    /// Is the input state erroneous?
+    /// Some widgets, such as `EditBox`, use a red background on error
     pub error: bool,
     /// "Hover" is true if the mouse is over this element
     pub hover: bool,
-    /// Elements may be depressed during interaction
-    ///
     /// Elements such as buttons, handles and menu entries may be depressed
     /// (visually pushed) by a click or touch event or an accelerator key.
     /// This is often visualised by a darker colour and/or by offsetting
@@ -97,7 +99,8 @@ pub trait SizeHandle {
     /// ```
     ///
     /// This value may change during a program's execution (e.g. when a window
-    /// is moved to a different monitor).
+    /// is moved to a different monitor); in this case all widgets will be
+    /// resized via [`kas::Layout::size_rules`].
     fn scale_factor(&self) -> f32;
 
     /// Size of a frame around child widget(s)
