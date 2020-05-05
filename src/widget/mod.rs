@@ -3,10 +3,54 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Widgets
+//! Widget library
 //!
-//! KAS provides these common widgets for convenience, although there is no
-//! reason they cannot be implemented in user code.
+//! Unlike the rest of the `kas` crate, this module is not infrastructure but
+//! merely a library of useful widgets. It may be moved to a new crate in the
+//! future. Any implementation can be directly copied into user code if desired.
+//!
+//! ## Dialogs
+//!
+//! -   [`MessageBox`]: a simple window with a message and an "Ok" button
+//!
+//! ## Container widgets
+//!
+//! -   [`Frame`]: a simple frame around a single child
+//! -   [`ScrollRegion`]: may be larger on the inside than the outside
+//! -   [`Stack`]: a stack of widgets in the same rect (TODO: `TabbedStack`)
+//! -   [`List`]: a dynamic row / column of children
+//! -   [`Splitter`]: similar to [`List`] but with resizing handles
+//! -   [`Window`] is usually the root widget and has special handling for
+//!     pop-ups and callbacks
+//!
+//! ## Menus
+//!
+//! -   [`ComboBox`]: a simple pop-up selector
+//! -   [`MenuBar`], [`SubMenu`]: menu parent widgets
+//! -   [`MenuEntry`], [`MenuToggle`], [`Separator`]: menu entries
+//! -   [`MenuFrame`]: edges of a pop-up menu
+//!
+//! ## Controls
+//!
+//! -   [`TextButton`]: a simple button
+//! -   [`CheckBox`]: a checkable box
+//! -   [`RadioBox`]: a checkable box bound to a group
+//! -   [`EditBox`]: a text-editing box
+//! -   [`ScrollBar`]: a scrollbar
+//! -   [`Slider`]: a slider
+//!
+//! ## Static widgets
+//!
+//! -   [`Filler`]: an empty widget, sometimes used to fill space
+//! -   [`Separator`]: a visible bar to separate things
+//! -   [`Label`]: a simple text label
+//!
+//! ## Components
+//!
+//! -   [`AccelLabel`]: a label which parses accelerator keys
+//! -   [`CheckBoxBare`]: `CheckBox` without its label
+//! -   [`RadioBoxBare`]: `RadioBox` without its label
+//! -   [`DragHandle`]: a handle (e.g. for a slider, splitter or scrollbar)
 
 mod button;
 mod checkbox;
