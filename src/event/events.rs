@@ -13,6 +13,7 @@ use crate::geom::{Coord, DVec2};
 use crate::{WidgetId, WindowId};
 
 /// Events addressed to a widget
+#[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Event {
     /// No event
