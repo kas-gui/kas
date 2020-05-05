@@ -100,7 +100,10 @@ pub trait SendEvent: Handler {
 }
 
 impl<'a> Manager<'a> {
-    /// Generic handler for low-level events passed to leaf widgets
+    /// Generic event simplifier
+    ///
+    /// This is a free function often called from [`SendEvent::send`] to
+    /// simplify certain events and then invoke [`Handler::handle`].
     pub fn handle_generic<W>(
         widget: &mut W,
         mgr: &mut Manager,

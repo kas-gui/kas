@@ -184,7 +184,7 @@ impl ManagerState {
     /// Set an action
     ///
     /// Since this is a commonly used operation, an operator overload is
-    /// available to do this job: `mgr << action;` or even `mgr << a << b;`.
+    /// available to do this job: `*mgr += action;`.
     #[inline]
     pub fn send_action(&mut self, action: TkAction) {
         self.action = self.action.max(action);

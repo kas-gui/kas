@@ -26,12 +26,10 @@
 //! some transformations to events, then calls [`Handler::handle`] on target
 //! widget. Finally, a [`Response`] is emitted.
 //!
-//! [`Response`] has three variants: `None`, `Msg(msg)` and `Unhandled(event)`,
-//! where `msg` is a message defined by type [`Handler::Msg`] and `event` is an
-//! [`Event`]. Both `Msg` and `Unhandled` may be trapped by a parent widget's
-//! [`SendEvent::send`], with `Msg` used to trigger a custom action and
-//! `Unhandled` used to interpret a few otherwise-unused events (for example,
-//! scroll by touch drag).
+//! The [`Response`] enum has a few variants; most important is `Msg(msg)`
+//! which passes a user-defined payload up to a parent widget. The
+//! `Unhandled(event)` and `Focus(rect)` variants may be trapped by any parent
+//! for secondary purposes, e.g. to adjust a `ScrollRegion`.
 //!
 //! ## Mouse and touch events
 //!
@@ -39,29 +37,33 @@
 //! somewhere, moves, and ends somewhere. The main difference concerns move
 //! events, which may occur with any number of mouse buttons pressed.
 //!
-//! Each touch event is considered independent, allowing multiple fingers to
-//! interact with a UI simultaneously; only where the same widget receives
-//! multiple events can multi-finger gestures be processed. In contrast, mouse
-//! events are considered to come from a single mouse, and when a mouse-grab is
-//! in effect, all mouse events are delivered to the grabbing widget.
+//! Motion and release events are only delivered when a "press grab" is active.
+//! This is achieved by calling [`Manager::request_grab`] and allows receiving
+//! both relative and absolute press coordinates.
+//! A special "pan" grab allows receiving two-finger scroll/scale/rotate input.
 //!
-//! Press-start events are delivered to the widget at the cursor/touch location,
-//! with the exception of mouse events when a mouse grab is already in effect.
-//! If unhandled, the event is passed up to parent widgets who may choose to
-//! handle the event. The first widget processing the event may request a grab
-//! on the touch/mouse event in order to receive motion and press-end events.
-//! The grab automatically ends after the corresponding press-end event.
+//! Each touch event is considered independent. The mouse cursor and multiple
+//! fingers may all interact with different parts of a UI simultaneously. The
+//! same is partly true of keyboard input, though some actions force keyboard
+//! focus.
 //!
-//! Motion events are delivered to whichever widget has a grab on the touch
-//! event or the mouse. If no grab is enabled, such events are not delivered.
+//! ### Pop-ups
 //!
-//! Press-end events are delivered to whichever widget has a grab on the touch
-//! event or the mouse; otherwise (if no grab affects this event), the event is
-//! delivered to the widget at the event coordinates.
+//! When a pop-up widget is created, this forces keyboard focus to that widget
+//! and receives a "weak" grab on press actions, meaning that the widget
+//! receives this input first, but if returned via `Response::Unhandled` the
+//! input passes immediately to the next target. This allows pop-up menus to
+//! get first chance of handling input and to dismiss themselves when input is
+//! for other widgets without blocking other widgets from accepting that input.
+//! (This "weak grab" behaviour is intentional to align UI response with a
+//! user's intuition that any visible non-grey part of the UI is interactive.)
 //!
-//! Widgets should not normally need internal tracking of mouse/touch events.
-//! Highlighting information can be obtained directly in the `draw` method, and
-//! press events provide information on their start and end widget.
+//! ## Drawing
+//!
+//! Widgets do not usually track input events for the purpose of drawn effects
+//! such as mouse-hover. Instead, a widget calls [`WidgetCore::input_state`]
+//! with a reference to the [`ManagerState`] (which is passed to
+//! [`Layout::draw`] calls) in order to obtain an [`InputState`] instance.
 //!
 //! [`WidgetId`]: crate::WidgetId
 
@@ -76,6 +78,10 @@ mod update;
 
 use smallvec::SmallVec;
 use std::fmt::Debug;
+
+// doc imports
+#[allow(unused)]
+use kas::{draw::InputState, Layout, WidgetCore};
 
 #[cfg(feature = "winit")]
 pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};

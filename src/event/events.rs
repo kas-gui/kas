@@ -6,7 +6,7 @@
 //! Event handling: events
 
 #[allow(unused)]
-use super::{Manager, Response}; // for doc-links
+use super::{GrabMode, Manager, Response}; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
 
 use crate::geom::{Coord, DVec2};
@@ -21,8 +21,9 @@ pub enum Event {
     Activate,
     /// Navigation key input
     ///
-    /// This is received only when the widget has key-navigation focus. Note
-    /// that [`Event::Activate`] is also effectively a navigation key.
+    /// This is received when the widget has key-navigation focus. Note that
+    /// the Enter/Return/Space keys are not a [`NavKey`] but instead trigger
+    /// [`Event::Activate`] (depending on context).
     NavKey(NavKey),
     /// Widget lost keyboard input focus
     LostCharFocus,
@@ -33,7 +34,8 @@ pub enum Event {
     /// A mouse or touch-screen move/zoom/rotate event
     ///
     /// Mouse-grabs generate translation (`delta` component) only. Touch grabs
-    /// optionally also generate rotation and scaling components.
+    /// optionally also generate rotation and scaling components, depending on
+    /// the [`GrabMode`].
     ///
     /// In general, a point `p` on the screen should be transformed as follows:
     /// ```

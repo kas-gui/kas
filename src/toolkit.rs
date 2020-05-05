@@ -41,6 +41,9 @@ impl WindowId {
 /// internally by [`event::Manager`] to determine which updates are needed to
 /// the UI.
 ///
+/// All variants are *progressive*: e.g. `Reconfigure` implies all actions
+/// needed to handle `Popup`, `RegionMoved` and `Redraw`.
+///
 /// Two `TkAction` values may be combined by taking their maximum. Since this
 /// is a common operation, the `+` operator is defined to do this job, together
 /// with `+=` on `TkAction` and [`event::Manager`].
@@ -65,13 +68,11 @@ pub enum TkAction {
     /// This action should be emitted when e.g. a scroll-region is moved or
     /// widget layout is adjusted to allow for the fact that coordinates
     /// (e.g. mouse position) have changed relative to widgets.
-    ///
-    /// This implies that a redraw is required.
     // NOTE: one could specify a Rect here, but there's not much advantage
     RegionMoved,
     /// A pop-up opened/closed/needs resizing
     Popup,
-    /// Whole window requires reconfiguring (implies redrawing)
+    /// Whole window requires reconfiguring
     ///
     /// *Configuring* widgets assigns [`WidgetId`] identifiers, updates
     /// [`event::Manager`] state and resizes all widgets.
@@ -79,7 +80,7 @@ pub enum TkAction {
     /// [`WidgetId`]: crate::WidgetId
     /// [`event::Manager`]: crate::event::Manager
     Reconfigure,
-    /// Window should be closed
+    /// The window or pop-up should be closed
     Close,
     /// All windows should close (toolkit exit)
     CloseAll,
