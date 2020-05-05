@@ -6,7 +6,6 @@
 //! Mandlebrot example
 //!
 //! Demonstrates use of a custom draw pipe.
-#![feature(proc_macro_hygiene)]
 
 use shaderc::{Compiler, ShaderKind};
 use std::mem::size_of;
@@ -555,38 +554,56 @@ impl event::Handler for Mandlebrot {
     }
 }
 
+#[layout(grid)]
+#[handler(msg = event::VoidMsg)]
+#[derive(Debug, Widget)]
+struct MandlebrotWindow {
+    #[widget_core]
+    core: CoreData,
+    #[layout_data]
+    layout_data: <Self as kas::LayoutData>::Data,
+    #[widget(cspan = 2)]
+    label: Label,
+    #[widget(row=1, halign=centre)]
+    iters: Label,
+    #[widget(row=2, handler = iter)]
+    slider: Slider<i32, kas::Up>,
+    #[widget(col=1, row=1, rspan=2, handler = mbrot)]
+    mbrot: Mandlebrot,
+}
+impl MandlebrotWindow {
+    fn new_window() -> Window<MandlebrotWindow> {
+        let slider = Slider::new(0, 256, 1).with_value(64);
+        let mbrot = Mandlebrot::new();
+        let w = MandlebrotWindow {
+            core: Default::default(),
+            layout_data: Default::default(),
+            label: Label::new(mbrot.loc()),
+            iters: Label::new("64").reserve("000"),
+            slider,
+            mbrot,
+        };
+        Window::new("Mandlebrot", w)
+    }
+
+    fn iter(&mut self, mgr: &mut Manager, iter: i32) -> VoidResponse {
+        self.mbrot.iter = iter;
+        *mgr += self.iters.set_text(format!("{}", iter));
+        Response::None
+    }
+    fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> VoidResponse {
+        *mgr += self.label.set_text(self.mbrot.loc());
+        Response::None
+    }
+}
+
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let mbrot = Mandlebrot::new();
-    let slider = Slider::new(0, 256, 1).with_value(64);
-
-    let window = make_widget! {
-        #[layout(grid)]
-        #[handler(msg = event::VoidMsg)]
-        struct {
-            #[widget(cspan=2)] label: Label = Label::new(mbrot.loc()),
-            #[widget(row=1, halign=centre)] iters: Label = Label::new("64").reserve("000"),
-            #[widget(row=2, handler = iter)] _: Slider<i32, kas::Up> = slider,
-            #[widget(col=1, row=1, rspan=2, handler = mbrot)] mbrot: Mandlebrot = mbrot,
-        }
-        impl {
-            fn iter(&mut self, mgr: &mut Manager, iter: i32) -> VoidResponse {
-                self.mbrot.iter = iter;
-                *mgr += self.iters.set_text(format!("{}", iter));
-                Response::None
-            }
-            fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> VoidResponse {
-                *mgr += self.label.set_text(self.mbrot.loc());
-                Response::None
-            }
-        }
-    };
-    let window = Window::new("Mandlebrot", window);
-
     let mut theme = kas_theme::FlatTheme::new();
     theme.set_colours("dark");
+
     let mut toolkit = kas_wgpu::Toolkit::new_custom(PipeBuilder, theme, Options::from_env())?;
-    toolkit.add(window)?;
+    toolkit.add(MandlebrotWindow::new_window())?;
     toolkit.run()
 }

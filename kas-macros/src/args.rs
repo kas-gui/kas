@@ -64,6 +64,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
         for attr in field.attrs.drain(..) {
             if attr.path == parse_quote! { layout } || attr.path == parse_quote! { handler } {
                 // These are valid attributes according to proc_macro_derive, so we need to catch them
+                #[cfg(nightly)]
                 attr.span()
                     .unwrap()
                     .error("invalid attribute on Widget field (applicable to struct only)")
@@ -72,6 +73,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                 if core_data.is_none() {
                     core_data = Some(member(i, field.ident.clone()));
                 } else {
+                    #[cfg(nightly)]
                     attr.span()
                         .unwrap()
                         .error("multiple fields marked with #[widget_core]")
@@ -82,6 +84,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                     if field.ty != parse_quote! { <Self as kas::LayoutData>::Data }
                         && field.ty != parse_quote! { <Self as LayoutData>::Data }
                     {
+                        #[cfg(nightly)]
                         field
                             .ty
                             .span()
@@ -91,6 +94,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
                     }
                     layout_data = Some(member(i, field.ident.clone()));
                 } else {
+                    #[cfg(nightly)]
                     attr.span()
                         .unwrap()
                         .error("multiple fields marked with #[layout_data]")
@@ -111,6 +115,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
     for attr in ast.attrs.drain(..) {
         if attr.path == parse_quote! { widget_core } || attr.path == parse_quote! { layout_data } {
             // These are valid attributes according to proc_macro_derive, so we need to catch them
+            #[cfg(nightly)]
             attr.span()
                 .unwrap()
                 .error("invalid attribute on Widget struct (applicable to fields only)")
@@ -119,6 +124,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
             if widget.is_none() {
                 widget = Some(syn::parse2(attr.tokens)?);
             } else {
+                #[cfg(nightly)]
                 attr.span()
                     .unwrap()
                     .error("multiple #[widget(..)] attributes on type")
@@ -128,6 +134,7 @@ pub fn read_attrs(ast: &mut DeriveInput) -> Result<Args> {
             if layout.is_none() {
                 layout = Some(syn::parse2(attr.tokens)?);
             } else {
+                #[cfg(nightly)]
                 attr.span()
                     .unwrap()
                     .error("multiple #[layout(..)] attributes on type")

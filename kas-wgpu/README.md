@@ -14,6 +14,7 @@ This crate has the following feature flags:
 -   `gat`: enables usage of the Generic Associated Types feature (nightly only
     and currently unstable), allowing some usages of `unsafe` to be avoided.
     (The plan is to enable this by default once the feature is mature.)
+-   `unsize`: forwards this feature flag to `kas-theme`
 
 Copyright and Licence
 -------
