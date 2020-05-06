@@ -194,7 +194,6 @@ mod kw {
     custom_keyword!(down);
     custom_keyword!(up);
     custom_keyword!(grid);
-    custom_keyword!(substitutions);
     custom_keyword!(halign);
     custom_keyword!(valign);
     custom_keyword!(key_nav);

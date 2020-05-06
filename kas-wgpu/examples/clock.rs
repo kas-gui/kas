@@ -12,12 +12,10 @@ use log::info;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::draw::{Colour, DrawHandle, DrawRounded, DrawText, SizeHandle, TextClass, TextProperties};
-use kas::event::{self, Event, Handler, Manager, ManagerState, Response};
-use kas::geom::*;
-use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
+use kas::draw::{Colour, DrawRounded, DrawText, TextClass, TextProperties};
+use kas::geom::{Quad, Vec2};
+use kas::prelude::*;
 use kas::widget::Window;
-use kas::{Align, AlignHints, Layout, WidgetConfig, WidgetCore};
 use kas_wgpu::draw::DrawWindow;
 
 #[handler(handle=noauto)]

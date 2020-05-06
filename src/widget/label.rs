@@ -6,9 +6,7 @@
 //! Text widgets
 
 use kas::class::HasText;
-use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::ManagerState;
-use kas::layout::{AxisInfo, SizeRules};
+use kas::draw::TextClass;
 use kas::prelude::*;
 
 /// A simple text label

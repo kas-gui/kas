@@ -7,9 +7,7 @@
 
 use std::fmt::Debug;
 
-use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, Manager, PressSource, Response};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::event::PressSource;
 use kas::prelude::*;
 
 /// Draggable Handle

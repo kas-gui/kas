@@ -9,9 +9,8 @@ use smallvec::SmallVec;
 use std::fmt::Debug;
 
 use kas::class::HasText;
-use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, Manager, Response, VirtualKeyCode, VirtualKeyCodes};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::draw::TextClass;
+use kas::event::{VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
 
 /// A push-button with a text label

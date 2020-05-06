@@ -5,8 +5,6 @@
 
 //! Filler widget
 
-use kas::draw::{DrawHandle, SizeHandle};
-use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
 use kas::prelude::*;
 
 /// A space filler

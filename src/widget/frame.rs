@@ -6,9 +6,6 @@
 //! A simple frame
 
 use kas::class::*;
-use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::Handler;
-use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::prelude::*;
 
 /// A frame around content

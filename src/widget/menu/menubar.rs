@@ -8,9 +8,7 @@
 use std::time::Duration;
 
 use super::{Menu, SubMenu};
-use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, GrabMode, Handler, Manager, NavKey, Response, SendEvent};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::event::{GrabMode, NavKey};
 use kas::prelude::*;
 use kas::widget::List;
 

@@ -8,10 +8,9 @@
 use std::fmt::Debug;
 
 use super::ScrollBar;
-use kas::draw::{ClipRegion, DrawHandle, SizeHandle, TextClass};
+use kas::draw::{ClipRegion, TextClass};
+use kas::event::NavKey;
 use kas::event::ScrollDelta::{LineDelta, PixelDelta};
-use kas::event::{Event, Manager, NavKey, Response};
-use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// A scrollable region

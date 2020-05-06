@@ -10,7 +10,7 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::class::HasText;
-use kas::event::{Manager, Response, UpdateHandle, VoidMsg, VoidResponse};
+use kas::event::{UpdateHandle, VoidResponse};
 use kas::prelude::*;
 use kas::widget::*;
 use kas::Right;

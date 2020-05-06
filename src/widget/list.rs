@@ -7,9 +7,7 @@
 
 use std::ops::{Index, IndexMut};
 
-use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, Manager, Response};
-use kas::layout::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
+use kas::layout::{RulesSetter, RulesSolver};
 use kas::prelude::*;
 
 /// A generic row widget

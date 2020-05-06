@@ -7,9 +7,8 @@
 
 use super::{Menu, MenuFrame};
 use kas::class::HasText;
-use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{ConfigureManager, Event, Manager, NavKey, Response};
-use kas::layout::{AxisInfo, Margins, SizeRules};
+use kas::draw::TextClass;
+use kas::event::{ConfigureManager, NavKey};
 use kas::prelude::*;
 use kas::widget::Column;
 use kas::WindowId;

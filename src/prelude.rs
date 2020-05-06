@@ -13,7 +13,10 @@
 //! This prelude may be more useful when implementing widgets than when simply
 //! using widgets in a GUI.
 
+pub use kas::draw::{DrawHandle, SizeHandle};
+pub use kas::event::{Event, Handler, Manager, ManagerState, Response, SendEvent, VoidMsg};
 pub use kas::geom::{Coord, Rect, Size};
+pub use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
 pub use kas::macros::*;
 pub use kas::string::{AccelString, CowString, CowStringL, LabelString};
 pub use kas::{class, draw, event, geom, layout, widget};
