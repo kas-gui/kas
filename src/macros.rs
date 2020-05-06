@@ -5,27 +5,19 @@
 
 //! Library macros
 //!
-//! This documentation is provided as a reference. The macros may be easier to
-//! understand from the example apps provided with `kas-wgpu`.
+//! This documentation is provided as a reference. It may also be useful to
+//! refer to the widget library and example apps for examples of usage.
 //!
-//! This module provides two important macros:
+//! The following macros are provided:
 //!
-//! -   [`derive(Widget)`] implements the [`WidgetCore`] trait and optionally
-//!     also [`Layout`], [`Widget`] and [`Handler`]
-//! -   [`make_widget`] is a convenience macro to create a single instance of a
-//!     custom widget type
-//! -   [`derive(VoidMsg)`] is a convenience macro to implement
-//!     `From<VoidMsg>` for the deriving type
+//! -   [`derive(Widget)`] is used to implement the [`Widget`] trait family
+//! -   [`derive(VoidMsg)`] is a convenient way to implement `From<VoidMsg>`
+//! -   [`make_widget`] allows a custom widget to be defined and instantiated
+//!     simultaneously
 //!
 //! Note that these macros are defined in the external crate, `kas-macros`, only
 //! because procedural macros must be defined in a special crate. The
 //! `kas-macros` crate should not be used directly.
-//!
-//! Note further that these macros require gated functionality only available
-//! in nightly `rustc` builds:
-//! ```
-//! #![feature(proc_macro_hygiene)]
-//! ```
 //!
 //! [`make_widget`]: #the-make_widget-macro
 //! [`derive(Widget)`]: #the-derivewidget-macro
@@ -34,24 +26,38 @@
 //!
 //! ## The `derive(Widget)` macro
 //!
-//! The [`Widget`] trait requires the base traits [`WidgetCore`] and [`Layout`]
-//! be implemented; additionally, widgets should implement [`Handler`].
-//! This macro can generate implementations for all of these traits or only
-//! for [`WidgetCore`] as required.
+//! The [`Widget`] trait is one of a family, all of which must be
+//! implemented by a widget. This family may be extended with additional traits
+//! in the future, and users are forbidden (to avoid breakage) from directly
+//! implementing the [`Widget`] and [`WidgetCore`] traits. This `derive(Widget)`
+//! macro is key to making this trait-family design possible: it (potentially)
+//! implements all traits in the family at once, on an opt-out basis
+//! (exception: the [`Layout`] trait is opt-in).
 //!
-//! For parent widgets, the [`make_widget`] macro is even more concise.
+//! It is recommended to use **nightly rustc** when developing code using this
+//! macro for improved diagnostics using
+//! [`proc_macro_diagnostics`](https://github.com/rust-lang/rust/issues/54140)
+//! (this is enabled automatically). It is safe to use a stable Rust compiler
+//! but debugging macros will be harder.
 //!
-//! ### Type attributes
+//! The behaviour of this macro is controlled by attributes on struct fields and
+//! on the widget struct itself.
 //!
-//! This `derive` attribute may only be used on structs. Example:
+//! These attributes may be used on the struct: `widget`, `layout`, `handler`.
+//! These may each appear zero or once (except `handler`; see below).
+//! They support multiple parameters, e.g. `#[widget(config=noauto, children=noauto)]`.
 //!
+//! These attributes may be used on fields: `widget`, `widget_core`,
+//! `layout_data`. The `widget` attribute supports multiple parameters,
+//! discussed below (e.g. `#[widget(row=1, handler=f)]`).
+//! Fields without attributes (plain data fields) are fine too.
+//!
+//! A simple example:
 //! ```
-//! use kas::macros::Widget;
-//! use kas::event::VoidMsg;
-//! use kas::{CoreData, Layout, LayoutData, Widget};
+//! use kas::prelude::*;
 //!
 //! #[layout(single)]
-//! #[handler(generics = <> where W: Widget<Msg = VoidMsg>)]
+//! #[handler(generics = <> where W: Widget<Msg = event::VoidMsg>)]
 //! #[derive(Clone, Debug, Widget)]
 //! struct WrapperWidget<W: Widget> {
 //!     #[widget_core] core: CoreData,
@@ -59,67 +65,36 @@
 //! }
 //! ```
 //!
-//! #### WidgetCore
+//! We will now discuss each member of the [`Widget`] trait family in turn.
 //!
-//! The [`WidgetCore`] trait is always implemented by this macro. The
-//! `#[widget]` attribute may be used to parameterise this implementation,
-//! for example:
-//! ```
-//! use kas::draw::{DrawHandle, SizeHandle};
-//! use kas::layout::{AxisInfo, SizeRules};
-//! use kas::macros::Widget;
-//! use kas::{event, CoreData, Layout};
+//! ### Widget and WidgetCore
 //!
-//! #[widget(config(key_nav = true))]
-//! #[derive(Clone, Debug, Default, Widget)]
-//! struct MyWidget {
-//!     #[widget_core] core: CoreData,
-//! }
+//! The [`Widget`] and [`WidgetCore`] traits are always derived by this macro.
+//! No configuration is available.
 //!
-//! impl Layout for MyWidget {
-//!     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-//!         todo!()
-//!     }
-//!     fn draw(&self, draw_handle: &mut dyn DrawHandle,
-//!         mgr: &event::ManagerState, disabled: bool)
-//!     {
-//!         todo!()
-//!     }
-//! }
-//! ```
+//! One struct field with specification `#[widget_core] core: CoreData` is
+//! required to support [`WidgetCore`]. The field may be accessed directly.
 //!
-//! The `#[widget]` attribute supports the following syntax:
+//! ### WidgetChildren
 //!
-//! -   `config = noauto`: opt out of deriving the [`WidgetConfig`] trait; use
-//!     this to implement the trait manually (e.g. to use [`WidgetConfig::configure`])
-//! -   `confg(noauto)`: same as above
-//! -   `confg(PARAMS)`: derive [`WidgetConfig`] but with the following `PARAMS`
-//!     specified:
+//! The [`WidgetChildren`] trait is used to enumerate child widgets. Any struct
+//! field with the `#[widget]` attribute is identified as a child widget, and
+//! will be enumerated by the derived implementation of this trait, in the order
+//! of definition.
 //!
-//!     -   `key_nav = false`: a boolean, describing whether the widget supports
-//!         keyboard navigation (see [`WidgetConfig::key_nav`])
-//!     -   `cursor_icon = kas::event::CursorIcon::Default`: the cursor icon to use
-//!         when the mouse hovers over this widget (see [`WidgetConfig::cursor_icon`])
+//! In case child widgets are stored within a container (e.g. `Vec`), this macro
+//! is unable to enumerate the widgets correctly. In that case one must opt out
+//! of deriving this trait with `#[widget(children = noauto)]` on the struct.
 //!
-//! #### Widget
+//! ### Layout
 //!
-//! If the `#[widget]` attribute is present, the [`Widget`] trait is derived
-//! (with default method implementations).
+//! The [`Layout`] trait is used to define size, structure and appearance of a
+//! widget. Unlike other members of the trait family, this trait is not derived
+//! by default, and the derived implementation is only useful for widgets with
+//! at least one child and which don't directly draw themselves.
 //!
-//! #### Layout
-//!
-//! If the `#[layout(..)]` attribute is present, the [`Layout`] trait is
-//! derived. Derivation is only supported for parent widgets.
-//!
-//! The following attribute parameters are expected:
-//!
-//! -   (first position): one of `single`, `grid`,
-//!     `right`, `left`, `down`, `up`, `col`, `column`, `row`
-//! -   (optional): `area=FIELD` where `FIELD` is a child widget; if specified,
-//!     the area of self is considered to refer to child `FIELD`. This causes
-//!     the [`kas::Layout::find_id`] function to directly return the child's Id.
-//!
-//! Child widgets are arranged as specified by the first parameter:
+//! The trait may be derived via a `layout` attribute, e.g. `#[layout(single)]`.
+//! One of the following values must appear first in the parameter list:
 //!
 //! -   `single` — the widget wraps a single child, with no border or margin
 //! -   `col`, `column` or `down` — child widgets are arranged in a vertical
@@ -131,41 +106,90 @@
 //! -   `grid` — child widgets are arranged in a grid; position is specified
 //!     via parameters to the `#[widget]` attribute on child fields
 //!
-//! Derivation of [`Layout`] for non-single layouts requires a data storage
-//! field as follows; for the `single` layout this field is optional:
+//! Optionally, a second parameter of form `area=FIELD` is allowed (e.g.
+//! `#[layout(row, area=checkbox)]`). `FIELD` must identify a child widget.
+//! This parameter causes the [`Layout::find_id`] function to map all
+//! coordinates within the widget directly to the child's [`WidgetId`], causing
+//! clicks on the parent area to send events directly to the child.
+//!
+//! **Child widget placement**
+//!
+//! All fields with attribute `#[widget]` are considered child widgets. For most
+//! layouts, these are placed in order of definition.
+//!
+//! For the `grid` layout, parameters are used to specify position
+//! (e.g. `#[widget(col=1, cspan=2)]`). These each have a default value:
+//!
+//! -   `col=0` or `column=0` — grid column, from left, counting from 0
+//! -   `row=0` — grid row, from top, counting from 0
+//! -   `cspan=1` — number of columns to span
+//! -   `rspan=1` — number of rows to span
+//!
+//! Alignment may also be specified for children. The exact behaviour depends
+//! on the child widget, and usually is only relevant when the available space
+//! is greater than the child's ideal size. These parameters are used to
+//! construct an [`AlignHints`] which is passed into [`Layout::set_rect`].
+//!
+//! -   `halign = ...` — one of `begin`, `centre`, `end`, `stretch`
+//! -   `valign = ...` — one of `begin`, `centre`, `end`, `stretch`
+//!
+//! **Layout data storage**
+//!
+//! When deriving [`Layout`], data storage is required (exception: layout
+//! `single` requires no storage, but defining it anyway is harmless).
+//! The [`LayoutData`] trait is also derived and used to specify the required
+//! data type. The `#[layout_data]` attribute is required to identify this
+//! storage, resulting in a field like the following:
 //! ```none
 //! #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
 //! ```
-//! This field is supports `Default` and `Clone`, thus may be constructed with
+//! This field supports `Default` and `Clone`, thus may be constructed with
 //! `layout_data: Default::default()`.
-//! (Note: the [`LayoutData`] trait is also implemented by this macro.)
 //!
-//! #### Handler
+//! ### WidgetConfig
+//!
+//! The [`WidgetConfig`] trait allows additional configuration of widget
+//! behaviour. It is derived by default but may be customised via a `config`
+//! parameter to the `widget` attribute on the struct.
+//!
+//! `#[widget(config = noauto)]` or `#[widget(config(noauto))]` opts-out of
+//! deriving this trait.
+//!
+//! The `config` parameter itself accepts parameters, which may be used to
+//! modify the derived implementation, e.g. `#[widget(config(key_nav = true))]`.
+//! Parameter description with default values:
+//!
+//! -   `key_nav = false`: a boolean, describing whether the widget supports
+//!     keyboard navigation (see [`WidgetConfig::key_nav`])
+//!  -   `cursor_icon = kas::event::CursorIcon::Default`: the cursor icon to use
+//!     when the mouse hovers over this widget (see [`WidgetConfig::cursor_icon`])
+//!
+//! ### Handler and SendEvent
 //!
 //! The [`Handler`] and [`SendEvent`] traits are derived, unless opted out.
-//! the `#[handler]` attribute allows control over this via the following
+//! The `#[handler]` attribute allows control over this via the following
 //! arguments, all of which are optional:
 //!
 //! -   `noauto` — do not derive [`Handler`] or [`SendEvent`]
-//! -   `handle=noauto` — do not derive [`Handler::handle`]
-//!     `send=noauto` — do not derive [`SendEvent::send`]
+//! -   `handle=noauto` — do not derive [`Handler`] (whose main method is [`Handler::handle`])
+//! -   `send=noauto` — do not derive [`SendEvent`] (whose main method is [`SendEvent::send`])
 //! -   `msg = TYPE` — the [`Handler::Msg`] associated type; if not
 //!     specified, this type defaults to [`kas::event::VoidMsg`]
-//! -   `substitutions = LIST` — a list subsitutions for type
-//!     generics, for example: (T1 = MyType, T2 = some::other::Type`
 //! -   `generics = ...`; this parameter must appear last in the
 //!     list and allows extra type parameters and/or restrictions to appear on
 //!     the implementations of [`Handler`], [`SendEvent`] and [`Widget`].
 //!     It accepts any of the following:
 //!
-//!     -   `<TYPE_PARAMS>` where `TYPE_PARAMS` is the usual list of type
-//!         parameters (e.g. `T, W: Widget`)
-//!     -   `<TYPE_PARAMS> where CONDS` where `CONDS` are extra restrictions on
-//!         type parameters (these restrictions may be on type parameters used
-//!         in the struct signature as well as those in the `TYPE_PARAMS` list)
+//!     -   `<TYPE_PARAMS>`, for example `<T, W: Widget>` (these type parameters
+//!         are *added* to those appearing on the struct definition)
+//!     -   `<TYPE_PARAMS> where CONDS`, for example
+//!         `<> where W: Widget<Msg = event::VoidMsg>`; note that conditions may
+//!         apply to type parameters from the struct signature (in this example, `W`)
 //!     -   `SUBS` where `SUBS` is a list of substitutions; e.g. if `M` is a
 //!         type parameter of the struct, then `M => MyMsg` will substitute the
-//!         parameter `M` for concrete type `MyMsg`
+//!         parameter `M` for concrete type `MyMsg`.
+//!         (Once [rust#20041](https://github.com/rust-lang/rust/issues/20041) is
+//!         fixed, substitutions will no longer be required.)
 //!     -   `SUBS <TYPE_PARAMS> where CONDS`; e.g. if `M` is a type parameter
 //!         of the struct, one might use `M => <W as Handler>::Msg, <W: Widget>`
 //!
@@ -188,60 +212,43 @@
 //! }
 //! ```
 //!
-//! (Note that ideally we would use equality constraints in `where` predicates
-//! instead of adding special parameter substitution support, but type equality
-//! constraints are not supported by Rust yet: #20041.)
+//! Exceptionally, multiple `#[handler]` attributes may be used to generate
+//! multiple implementations. These must use `generics` parameters which result
+//! in non-overlapping bounds. This functionality is not well tested.
 //!
-//! ### Fields
+//! **Handling response messages from children**
 //!
-//! One struct field with specification `#[widget_core] core: CoreData` is required.
-//! When deriving layouts a `#[layout_data]` field is also required (see above).
+//! The [`Handler`] trait supports a user-defined message type, `Msg`.
+//! A "handler" maps a child's message type into the parent's message type.
 //!
-//! Other fields may be child widgets or simply data fields. Those with a
-//! `#[widget]` attribute are interpreted as child widgets, affecting the
-//! implementation of derived [`WidgetCore`], [`Layout`] and [`Handler`]
-//! methods.
+//! Where the child's message type can be converted into the parent's message
+//! type using [`From`], no explicit handler is needed.
+//! (This is why all message types must support `From<VoidMsg>`.)
+//! In other cases, if no explicit handler is provided, an error will result:
 //!
-//! The `#[widget]` attribute accepts several parameters affecting both layout
-//! and event-handling. All are optional.
+//! ```none
+//! error[E0277]: the trait bound `kas::event::VoidMsg: std::convert::From<Item>` is not satisfied
+//! ```
 //!
-//! The first four affect positioning are only used by the `grid` layout:
+//! A handler is a method on the parent struct with signature
+//! `fn f(&mut self, mgr: &mut Manager, item: Item) -> Response<Out>`
+//! (where `Item` is the child's message type and `Out` is the parent's message
+//! type).
 //!
-//! -   `col = ...` or `column = ...` — grid column, from left (defaults to 0)
-//! -   `row = ...` — grid row, from top (defaults to 0)
-//! -   `cspan = ...` — number of columns to span (defaults to 1)
-//! -   `rspan = ...` — number of rows to span (defaults to 1)
-//!
-//! These two affect alignment in the case that a widget finds itself within a
-//! cell larger than its ideal size. Application of alignment is determined by
-//! the child widget's implementation of [`Layout::set_rect`], which may simply
-//! ignore these alignment hints.
-//!
-//! -   `halign = ...` — one of `begin`, `centre`, `end`, `stretch`
-//! -   `valign = ...` — one of `begin`, `centre`, `end`, `stretch`
-//!
-//! Finally, a parent widget may handle event-responses from a child widget
-//! (see [`Handler`]). The parent widget should implement a utility method
-//! with signautre `fn f(&mut self, mgr: &mut Manager, msg: M) -> R` where
-//! `M` is the type [`Handler::Msg`] in the child widget's implementation,
-//! then reference this method:
-//!
-//! -   `handler = f` — the name `f` of a utility method defined on this type
-//!
-//! If there is no `handler` parameter, the child widget's [`Handler::Msg`] type
-//! should convert into the parent's [`Handler::Msg`] type via `From`.
+//! A handler is bound to a child via the `widget` attribute, for example
+//! `#[widget(handler = f)] child: ChildType`.
 //!
 //!
 //! ### Examples
 //!
-//! A simple example is included [above](#type-attributes).
+//! A simple example is included above.
 //! The example below includes multiple children and custom event handling.
 //!
 //! ```
-//! use kas::event::{Manager, VoidResponse, VoidMsg};
+//! use kas::event::{Manager, Response, VoidMsg};
 //! use kas::macros::Widget;
 //! use kas::widget::Label;
-//! use kas::{CoreData, Layout, LayoutData, Widget};
+//! use kas::{CoreData, LayoutData, Widget};
 //!
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
@@ -257,13 +264,29 @@
 //! }
 //!
 //! impl<W: Widget> MyWidget<W> {
-//!     fn handler(&mut self, mgr: &mut Manager, msg: ChildMessage) -> VoidResponse {
+//!     fn handler(&mut self, mgr: &mut Manager, msg: ChildMessage) -> Response<VoidMsg> {
 //!         match msg {
 //!             ChildMessage::A => { println!("handling ChildMessage::A"); }
 //!         }
-//!         VoidResponse::None
+//!         Response::None
 //!     }
 //! }
+//! ```
+//!
+//!
+//! ## The `derive(VoidMsg)` macro
+//!
+//! This macro implements `From<VoidMsg>` for the given type (see [`VoidMsg`]).
+//!
+//! [`VoidMsg`]: crate::event::VoidMsg
+//!
+//! ### Example
+//!
+//! ```
+//! use kas::macros::VoidMsg;
+//!
+//! #[derive(VoidMsg)]
+//! enum MyMessage { A, B };
 //! ```
 //!
 //!
@@ -404,28 +427,13 @@
 //!     }
 //! };
 //! ```
-//!
-//!
-//! ## The `derive(VoidMsg)` macro
-//!
-//! This macro implements `From<VoidMsg>` for the given type (see [`VoidMsg`]).
-//!
-//! [`VoidMsg`]: crate::event::VoidMsg
-//!
-//! ### Example
-//!
-//! ```
-//! use kas::macros::VoidMsg;
-//!
-//! #[derive(VoidMsg)]
-//! enum MyMessage { A, B };
-//! ```
 
 // Imported for doc-links
 #[allow(unused)]
 use crate::{
     event::{Handler, SendEvent},
-    CoreData, Layout, LayoutData, Widget, WidgetConfig, WidgetCore,
+    AlignHints, CoreData, Layout, LayoutData, Widget, WidgetChildren, WidgetConfig, WidgetCore,
+    WidgetId,
 };
 
 pub use kas_macros::{make_widget, VoidMsg, Widget};
