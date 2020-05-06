@@ -22,8 +22,10 @@ pub use widget::*;
 
 /// Trait to describe the type needed by the layout implementation.
 ///
-/// To allow the `derive(Widget)` macro to implement [`Widget`], we use an
-/// associated type to describe a data field of the following form:
+/// The (non-trivial) [`layout`] engines require a storage field within their
+/// widget. For manual [`Layout`] implementations this may be specified
+/// directly, but to allow the `derive(Widget)` macro to specify the appropriate
+/// data type, a widget should include a field of the following form:
 /// ```none
 /// #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
 /// ```

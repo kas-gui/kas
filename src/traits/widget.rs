@@ -37,8 +37,13 @@ impl dyn WidgetCore {
 
 /// Base widget functionality
 ///
-/// This trait is almost always implemented via the
-/// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro).
+/// See the [`Widget`] trait for documentation of the widget family.
+///
+/// This trait **must** be implement by the [`derive(Widget)`] macro.
+/// Users **must not** implement this `WidgetCore` trait manually or may face
+/// unexpected breaking changes.
+///
+/// [`derive(Widget)`]: macros/index.html#the-derivewidget-macro
 pub trait WidgetCore: Any + fmt::Debug {
     /// Get self as type `Any`
     fn as_any(&self) -> &dyn Any;
@@ -116,10 +121,18 @@ pub trait WidgetCore: Any + fmt::Debug {
 
 /// Listing of a widget's children
 ///
-/// Usually this is implemented by `derive(Widget)`, but for dynamic widgets it
-/// may have to be implemented manually. Note that if the results of these
-/// methods ever change, one must send [`TkAction::Reconfigure`].
-/// TODO: full reconfigure may be too slow; find a better option.
+/// This trait is part of the [`Widget`] family and is derived by
+/// [`derive(Widget)`] unless `#[widget(children = noauto)]` is used.
+///
+/// Dynamic widgets must implement this trait manually, since [`derive(Widget)`]
+/// cannot currently handle fields like `Vec<SomeWidget>`.
+///
+/// Whenever the number of child widgets changes or child widgets are replaced,
+/// one must send [`TkAction::Reconfigure`].
+/// (TODO: this is slow. Find an option for partial reconfigures. This requires
+/// better widget identifiers; see #91.)
+///
+/// [`derive(Widget)`]: macros/index.html#the-derivewidget-macro
 pub trait WidgetChildren: WidgetCore {
     /// Get the number of child widgets
     fn len(&self) -> usize;
@@ -225,11 +238,17 @@ pub trait WidgetChildren: WidgetCore {
 
 /// Widget configuration
 ///
-/// This trait allows some configuration of widget behaviour. All items have
-/// default values. This trait may be implemented by hand, or may be derived
-/// with the [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro)
-/// by use of a `#[widget_config]` attribute. Optionally, this attribute can
-/// contain parameters, e.g. `#[widget_config(key_nav = true)]`.
+/// This trait is part of the [`Widget`] family and is derived by
+/// [`derive(Widget)`] unless `#[widget(config = noauto)]` is used.
+/// `key_nav` and `cursor_icon` may be customised without a manual
+/// implementation (e.g. `#[widget(config(key_nav = true))]`).
+///
+/// This trait allows some configuration of widget behaviour. All methods have
+/// default implementations. Most frequently, this trait is used to implement
+/// some custom action during configure: [`WidgetConfig::configure`].
+///
+/// [`derive(Widget)`]: macros/index.html#the-derivewidget-macro
+//
 // TODO(specialization): provide a blanket implementation, so that users only
 // need implement manually when they have something to configure.
 pub trait WidgetConfig: Layout {
@@ -278,40 +297,52 @@ pub trait WidgetConfig: Layout {
 
 /// Positioning and drawing routines for widgets
 ///
+/// This trait is part of the [`Widget`] family. It may be derived by
+/// [`derive(Widget)`], but is not by default.
+///
 /// This trait contains methods concerned with positioning of contents
 /// as well as low-level event handling.
 ///
+/// For parent widgets, the implementation will often be derived (see
+/// [`kas::macros`]); otherwise, a layout engine may be used (see
+/// [`kas::layout`]). For leaf widgets, it is implemented directly.
+///
 /// For a description of the widget size model, see [`SizeRules`].
+///
+/// [`derive(Widget)`]: macros/index.html#the-derivewidget-macro
 pub trait Layout: WidgetChildren {
-    /// Get size rules for the given axis.
+    /// Get size rules for the given axis
     ///
     /// This method takes `&mut self` to allow local caching of child widget
     /// configuration for future `size_rules` and `set_rect` calls.
+    /// Fields written by `set_rect` should not be used for this cache since
+    /// `set_rect` may be called multiple times without re-calling `size_rules`.
     ///
-    /// Optionally, this method may set `self.rect().size` to the widget's ideal
-    /// size for use by [`Layout::set_rect`] when setting alignment.
+    /// To allow automatic flow of content over new lines, the width is sized
+    /// first, followed by the height; when sizing for height, [`AxisInfo`]
+    /// contains the size of the *other* axis (i.e. the width).
     ///
-    /// If operating on one axis and the other is fixed, then the `other`
-    /// parameter is used for the fixed dimension. Additionally, one may assume
-    /// that `size_rules` has previously been called on the fixed axis with the
-    /// current widget configuration.
+    /// For widgets with children, a [`kas::layout::RulesSolver`] engine may be
+    /// useful to calculate requirements of complex layouts.
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules;
 
-    /// Adjust to the given size.
+    /// Apply a given `rect` to self
     ///
-    /// For widgets with children, this is usually implemented via the derive
-    /// [macro](kas::macros). For non-parent widgets which stretch to fill
-    /// available space, the default implementation suffices. For non-parent
-    /// widgets which react to alignment, this is a little more complex to
-    /// implement, and can be done in one of two ways:
+    /// For widgets without children, the trivial default implementation of this
+    /// method often suffices, though some widgets choose to align themselves
+    /// within this space. Alignment may be applied in one of two ways:
     ///
     /// 1.  Shrinking to ideal area and aligning within available space (e.g.
     ///     `CheckBoxBare` widget)
     /// 2.  Filling available space and applying alignment to contents (e.g.
     ///     `Label` widget)
     ///
-    /// One may assume that `size_rules` has been called for each axis with the
-    /// current widget configuration.
+    /// For widgets with children, a [`kas::layout::RulesSetter`] engine may be
+    /// useful (used with a corresponding [`kas::layout::RulesSolver`]).
+    ///
+    /// One may assume that `size_rules` has been called at least once for each
+    /// axis with current size information before this method, however
+    /// `size_rules` might not be re-called before calling `set_rect` again.
     #[inline]
     fn set_rect(&mut self, rect: Rect, _align: AlignHints) {
         self.core_data_mut().rect = rect;
@@ -338,14 +369,12 @@ pub trait Layout: WidgetChildren {
     /// `1, 2, 3` and `(5, 2)` means `5, 4, 3, 2`. As a special case,
     /// `(_, std::usize::MAX)` means the range is empty.
     ///
-    /// Disabled widgets should return an empty range, otherwise they should
-    /// return a range over children in spatial order (left-to-right then
-    /// top-to-bottom). Widgets outside the parent's rect (i.e. popups) should
-    /// be excluded.
+    /// Widgets should return a range over children in spatial order
+    /// (left-to-right then top-to-bottom). Widgets outside the parent's rect
+    /// (i.e. popups) should be excluded.
     ///
-    /// The default implementation returns
-    /// `(0, WidgetChildren::len(self).wrapping_sub(1))` when not disabled
-    /// which should suffice for most widgets.
+    /// The default implementation should suffice for most widgets (excluding
+    /// pop-up parents and those with reversed child order).
     fn spatial_range(&self) -> (usize, usize) {
         (0, WidgetChildren::len(self).wrapping_sub(1))
     }
@@ -376,24 +405,49 @@ pub trait Layout: WidgetChildren {
         Some(self.id())
     }
 
-    /// Draw a widget
+    /// Draw a widget and its children
     ///
-    /// This method is called to draw each visible widget (and should not
-    /// attempt recursion on child widgets).
+    /// This method is invoked each frame to draw visible widgets. It should
+    /// draw itself and recurse into all visible children.
+    ///
+    /// The `disabled` argument is passed in from the *parent*; a widget should
+    /// use `let disabled = disabled || self.is_disabled();` to determine its
+    /// own disabled state, then pass this value on to children.
+    ///
+    /// [`WidgetCore::input_state`] may be used to obtain an [`InputState`] to
+    /// determine active visual effects.
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool);
 }
 
 /// Widget trait
 ///
-/// This is one of a family of widget traits, all of which must be implemented
-/// for a functional widget. In general, most traits will be implemented via the
-/// [`derive(Widget)` macro](macros/index.html#the-derivewidget-macro).
+/// Widgets must implement a family of traits, of which this trait is the final
+/// member:
 ///
-/// A [`Widget`] may be passed into a generic function via
-/// `fn foo<W: Widget>(w: &mut W)` or via
-/// `fn foo<M>(w: &mut dyn Widget<Msg = M>)`, or, e.g.
-/// `fn foo(w: &mut dyn WidgetConfig)` (note that `WidgetConfig` is the last unparameterised
-/// trait in the widget trait family).
+/// -   [`WidgetCore`] — base functionality (this trait is *always* derived)
+/// -   [`WidgetChildren`] — enumerates children and provides methods derived
+///     from this
+/// -   [`Layout`] — handles sizing and positioning of self and children
+/// -   [`WidgetConfig`] — the last unparametrised trait allows customisation of
+///     some aspects of widget behaviour
+/// -   [`event::Handler`] — parametrised widgets over a `Msg` type and handles
+///     events
+/// -   [`event::SendEvent`] — routes events to children and handles responses
+/// -   [`Widget`] — the final trait
+///
+/// Widgets **must** use the [`derive(Widget)`] macro to implement at least
+/// [`WidgetCore`] and [`Widget`]; these two traits **must not** be implemented
+/// manually or users may face unexpected breaking changes.
+/// This macro can optionally implement *all* above traits, and by default will
+/// implement *all except for `Layout`*. This opt-out derive behaviour means
+/// that adding additional traits into the family is not a breaking change.
+///
+/// To refer to a widget via dyn trait, use `&dyn WidgetConfig` (or, if the
+/// message type is known, one may use `&dyn Widget<Msg = M>`).
+/// To refer to a widget in generic functions, use `<W: Widget>` or
+/// `<M, W: Widget<Msg = M>>`.
+///
+/// [`derive(Widget)`]: macros/index.html#the-derivewidget-macro
 pub trait Widget: event::SendEvent {}
 
 impl<W: Widget + Sized> Boxed<dyn Widget<Msg = W::Msg>> for W {

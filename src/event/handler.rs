@@ -12,6 +12,10 @@ use crate::{WidgetConfig, WidgetId};
 
 /// Event handling for a [`Widget`]
 ///
+/// This trait is part of the [`Widget`] family and is derived by
+/// [`derive(Widget)`] unless `#[handler(handle = noauto)]`
+/// or `#[handler(noauto)]` is used.
+///
 /// Interactive widgets should implement their event-handling logic here
 /// (although it is also possible to implement this in [`SendEvent::send`],
 /// which might be preferable when dealing with child widgets).
@@ -19,6 +23,8 @@ use crate::{WidgetConfig, WidgetId};
 /// The default implementation does nothing, and is derived by `derive(Widget)`
 /// when a `#[handler]` attribute is present (except with parameter
 /// `handler=noauto`).
+///
+/// [`derive(Widget)`]: ../macros/index.html#the-derivewidget-macro
 pub trait Handler: WidgetConfig {
     /// Type of message returned by this widget
     ///
@@ -53,12 +59,18 @@ pub trait Handler: WidgetConfig {
 
 /// Event routing
 ///
+/// This trait is part of the [`Widget`] family and is derived by
+/// [`derive(Widget)`] unless `#[handler(send = noauto)]`
+/// or `#[handler(noauto)]` is used.
+///
 /// This trait is responsible for routing events to the correct widget. It is
 /// separate from [`Handler`] since it can be derived for many parent widgets,
 /// even when event *handling* must be implemented manually.
 ///
 /// This trait is implemented by `derive(Widget)` when a `#[handler]` attribute
 /// is present (except with parameter `send=noauto`).
+///
+/// [`derive(Widget)`]: ../macros/index.html#the-derivewidget-macro
 pub trait SendEvent: Handler {
     /// Send an event
     ///
