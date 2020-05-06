@@ -292,56 +292,98 @@
 //!
 //! ## The `make_widget` macro
 //!
-//! This macro allows easy creation of "layout" widgets (those whose purpose is
-//! to house one or more child widgets) by introducing syntax for a struct
-//! literal and adding the additional fields and implementations required by all
-//! widgets.
+//! The [`make_widget`] allows a custom widget to be defined and instantiated
+//! simultaneously. In syntax, it is largely similar to [`derive(Widget)`] but
+//! allows several details to be omitted, including field names and types.
+//! Its usage is convenient (and widespread in the examples) but not required.
 //!
-//! Syntax is similar to a Rust type definition, but with most of the types and
-//! identifiers omitted. It's easiest to study an example:
+//! But first, a **warning**: this macro is complex (especially with regards to
+//! elided types) and very dependent on **nightly rustc**. It would be much
+//! improved with [RFC 2524](https://github.com/rust-lang/rfcs/pull/2524)
+//! (essentially, anonymous types). And it requires the user enable the
+//! following feature:
+//! ```
+//! #![feature(proc_macro_hygiene)]
+//! ```
 //!
-//! ```rust
-//! # #![feature(proc_macro_hygiene)]
-//! # use kas::event::{VoidResponse, VoidMsg, Manager};
-//! # use kas::macros::make_widget;
-//! # use kas::widget::Label;
-//! # let inner_widgets = Label::new("");
-//! #[derive(Clone, Copy, Debug)]
-//! enum Item {
-//!     Button,
-//!     Check(bool),
+//! Lets start with some examples:
+//!
+//! ```
+//! #![feature(proc_macro_hygiene)]
+//!
+//! use kas::prelude::*;
+//! use kas::widget::{Label, TextButton, Window};
+//!
+//! let message = "A message to print.";
+//!
+//! #[derive(Copy, Clone, Debug, VoidMsg)]
+//! enum OkCancel {
+//!     Ok,
+//!     Cancel,
 //! }
-//! let widget = make_widget! {
+//!
+//! let button_box = make_widget!{
+//!     #[layout(row)]
+//!     #[handler(msg = OkCancel)]
+//!     struct {
+//!         #[widget] _ = TextButton::new("Ok", OkCancel::Ok),
+//!         #[widget] _ = TextButton::new("Cancel", OkCancel::Cancel),
+//!     }
+//! };
+//!
+//! let window = Window::new("Question", make_widget! {
 //!     #[layout(column)]
 //!     #[handler(msg = VoidMsg)]
 //!     struct {
-//!         #[widget] _ = Label::new("Widget Gallery"),
-//!         #[widget(handler = activations)] _ = inner_widgets,
-//!         last_item: Item = Item::Button,
+//!         #[widget] _ = Label::new("Would you like to print a message?"),
+//!         #[widget(handler = buttons)] _ = button_box,
+//!         message: String = message.into(),
 //!     }
 //!     impl {
-//!         fn activations(&mut self, mgr: &mut Manager, item: Item)
-//!             -> VoidResponse
-//!         {
-//!             match item {
-//!                 Item::Button => println!("Clicked!"),
-//!                 Item::Check(b) => println!("Checkbox: {}", b),
-//!             };
-//!             self.last_item = item;
-//!             VoidResponse::None
+//!         fn buttons(&mut self, mgr: &mut Manager, msg: OkCancel) -> Response<VoidMsg> {
+//!             match msg {
+//!                 OkCancel::Ok => {
+//!                     println!("Message: {}", self.message);
+//!                 }
+//!                 _ => (),
+//!             }
+//!             // Whichever button was pressed, we close the window:
+//!             *mgr += TkAction::Close;
+//!             Response::None
 //!         }
 //!     }
-//! };
+//! });
 //! ```
 //!
-//! ### Struct and fields
+//! In both `button_box` and the window we see widgets without name or type.
+//! Often enough, we don't need a name and the type can be inferred from the
+//! initialiser, hence we only need `_ = Label::new(...)`.
 //!
-//! Starting from the middle, we have a `struct` definition, though two things
-//! are unusual here: (1) the type is anonymous (unnamed), and (2) fields are
-//! simultaneously given both type and value.
+//! The `button_box`'s widgets both have message type `OkCancel`; since this
+//! matches the parent's message type no handler is needed (the messages are
+//! simply forwarded). However, where `button_box` appears in the window, a
+//! handler is needed; this works exactly as [above](#handler-and-sendevent).
 //!
-//! Field specifications can get more unusual too, since both the field name and
-//! the field type are optional. For example, all of the following are equivalent:
+//! We see both the `struct` and the `impl` block lack a name and lack generics
+//! parameters. `make_widget!` defines an *anonymous* type. This type in fact
+//! usually has generic parameters, but you don't see them anywhere (except for
+//! error messages). Any `impl` items appearing within `make_widget!` are
+//! assumed to be on this struct. Multiple `impl` items may
+//! appear, including trait impls (`impl HasText { ... }`).
+//!
+//! The structs are both defined with `layout` and `handler` attributes which
+//! are forwarded to the [`derive(Widget)]` macro. Attributes may be applied
+//! like usual, however `#[derive(Clone, Debug, kas::macros::Widget)]`
+//! is implied.
+//!
+//! Different from [`derive(Widget)`], one must specify the message type via
+//! either `#[handler(msg = ..)]` or a [`Handler`] implementation. The type does
+//! not default to [`VoidMsg`] (purely to avoid some terrible error messages).
+//!
+//! ### Struct fields
+//!
+//! Field specifications allow both the field name and the field type to be
+//! elided. For example, all of the following are equivalent:
 //!
 //! ```nocompile
 //! #[widget] l1: Label = Label::new("label 1"),
@@ -356,7 +398,9 @@
 //! deals with the necessary type arguments to implementations, however macro
 //! expansions (as sometimes seen in error messages) are ugly and, perhaps worst
 //! of all, the field will have opaque type (making methods and inner fields
-//! inaccessible). The latter can be partially remedied via trait bounds:
+//! inaccessible).
+//!
+//! The inner-field-acces problem can be worked around via trait bounds:
 //!
 //! ```nocompile
 //! #[widget] display: impl HasText = EditBox::new("editable"),
@@ -367,65 +411,6 @@
 //! ```nocompile
 //! #[widget] display: for<W: Widget<Msg = VoidMsg>> Frame<W> =
 //!     Frame::new(Label::new("example")),
-//! ```
-//!
-//! ### Implementations
-//!
-//! Now, back to the example above, we see attributes and an `impl` block:
-//!
-//! ```nocompile
-//! let widget = make_widget! {
-//!     #[widget]
-//!     #[layout(column)]
-//!     #[handler(msg = VoidMsg)]
-//!     struct {
-//!         ...
-//!     }
-//!     impl {
-//!         fn on_tick(&mut self, mgr: &mut Manager) {
-//!             ...
-//!         }
-//!     }
-//! };
-//! ```
-//!
-//! Attributes may be applied to the anonymous struct like normal, with two
-//! exceptions:
-//!
-//! 1.  `#[derive(Clone, Debug, kas::macros::Widget)]` is implied
-//! 2.  `#[handler(msg = ..)]` is required unless `msg` can be inferred from a
-//!     [`Handler`] implementation (this does not default to [`VoidMsg`] purely
-//!     to avoid some terrible error messages)
-//!
-//! `impl` blocks work like usual except that the struct name and type
-//! parameters are omitted. Traits may also be implemented this way:
-//!
-//! ```nocompile
-//! impl Trait { ... }
-//! ```
-//!
-//! ### Example
-//!
-//! ```
-//! #![feature(proc_macro_hygiene)]
-//!
-//! use kas::macros::{make_widget};
-//! use kas::widget::TextButton;
-//!
-//! #[derive(Copy, Clone, Debug)]
-//! enum OkCancel {
-//!     Ok,
-//!     Cancel,
-//! }
-//!
-//! let button_box = make_widget!{
-//!     #[layout(row)]
-//!     #[handler(msg = OkCancel)]
-//!     struct {
-//!         #[widget] _ = TextButton::new("Ok", OkCancel::Ok),
-//!         #[widget] _ = TextButton::new("Cancel", OkCancel::Cancel),
-//!     }
-//! };
 //! ```
 
 // Imported for doc-links
