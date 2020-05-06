@@ -12,10 +12,9 @@ use std::mem::size_of;
 use wgpu::{Buffer, ShaderModule};
 
 use kas::class::HasText;
-use kas::draw::{DrawHandle, Pass, SizeHandle};
-use kas::event::{Event, Manager, NavKey, Response, VoidResponse};
-use kas::geom::{Coord, DVec2, Rect, Size, Vec2, Vec3};
-use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
+use kas::draw::Pass;
+use kas::event::NavKey;
+use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widget::{Label, Slider, Window};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawWindow};
@@ -586,12 +585,12 @@ impl MandlebrotWindow {
         Window::new("Mandlebrot", w)
     }
 
-    fn iter(&mut self, mgr: &mut Manager, iter: i32) -> VoidResponse {
+    fn iter(&mut self, mgr: &mut Manager, iter: i32) -> Response<VoidMsg> {
         self.mbrot.iter = iter;
         *mgr += self.iters.set_text(format!("{}", iter));
         Response::None
     }
-    fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> VoidResponse {
+    fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
         *mgr += self.label.set_text(self.mbrot.loc());
         Response::None
     }

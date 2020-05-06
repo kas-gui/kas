@@ -157,6 +157,14 @@ pub trait GridStorage: sealed::Sealed + Clone {
     fn rules_and_heights(&mut self) -> (&mut [SizeRules], &mut [u32]);
 }
 
+/// Fixed-length grid storage
+///
+/// Argument types:
+///
+/// - `WR` is expected to be `[SizeRules; cols + 1]`
+/// - `HR` is expected to be `[SizeRules; rows + 1]`
+/// - `W` is expected to be `[u32; cols]` or `Vec<u32>`
+/// - `H` is expected to be `[u32; rows]` or `Vec<u32>`
 #[derive(Clone, Debug, Default)]
 pub struct FixedGridStorage<WR: Clone, HR: Clone, W: Clone, H: Clone> {
     width_rules: WR,
@@ -187,7 +195,7 @@ where
     }
 }
 
-/// Variable-length row storage
+/// Variable-length grid storage
 #[derive(Clone, Debug, Default)]
 pub struct DynGridStorage {
     width_rules: Vec<SizeRules>,

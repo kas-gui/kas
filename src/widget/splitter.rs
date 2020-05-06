@@ -9,9 +9,7 @@ use log::warn;
 use std::ops::{Index, IndexMut};
 
 use super::DragHandle;
-use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, Manager, Response};
-use kas::layout::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
+use kas::layout::{RulesSetter, RulesSolver};
 use kas::prelude::*;
 
 /// A generic row widget
@@ -68,7 +66,7 @@ pub type RefSplitter<'a, D, M> = Splitter<D, &'a mut dyn Widget<Msg = M>>;
 
 /// A resizable row/column widget
 ///
-/// Similar to [`kas::widget::Splitter`] but with draggable handles between items.
+/// Similar to [`kas::widget::List`] but with draggable handles between items.
 // TODO: better doc
 #[handler(send=noauto, msg=<W as event::Handler>::Msg)]
 #[widget(children=noauto)]

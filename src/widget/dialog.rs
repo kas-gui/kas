@@ -8,8 +8,7 @@
 //! KAS dialog boxes are pre-configured windows, usually allowing some
 //! customisation.
 
-use kas::draw::SizeHandle;
-use kas::event::{Manager, Response, VirtualKeyCode, VoidMsg};
+use kas::event::VirtualKeyCode;
 use kas::prelude::*;
 use kas::widget::{Label, TextButton};
 use kas::WindowId;

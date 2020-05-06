@@ -8,9 +8,7 @@
 use std::fmt::{self, Debug};
 
 use kas::class::{Editable, HasText};
-use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, Manager, Response, VoidMsg};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::draw::TextClass;
 use kas::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]

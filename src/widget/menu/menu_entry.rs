@@ -9,9 +9,8 @@ use std::fmt::{self, Debug};
 
 use super::Menu;
 use kas::class::{HasBool, HasText};
-use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, Manager, Response, VoidMsg};
-use kas::layout::{AxisInfo, Margins, RulesSetter, RulesSolver, SizeRules};
+use kas::draw::TextClass;
+use kas::layout::{RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::widget::{AccelLabel, CheckBoxBare};
 

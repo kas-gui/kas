@@ -8,8 +8,6 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use kas::draw::{DrawHandle, SizeHandle};
-use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 use kas::widget::Menu;
 

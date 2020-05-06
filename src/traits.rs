@@ -22,8 +22,10 @@ pub use widget::*;
 
 /// Trait to describe the type needed by the layout implementation.
 ///
-/// To allow the `derive(Widget)` macro to implement [`Widget`], we use an
-/// associated type to describe a data field of the following form:
+/// The (non-trivial) [`layout`] engines require a storage field within their
+/// widget. For manual [`Layout`] implementations this may be specified
+/// directly, but to allow the `derive(Widget)` macro to specify the appropriate
+/// data type, a widget should include a field of the following form:
 /// ```none
 /// #[layout_data] layout_data: <Self as kas::LayoutData>::Data,
 /// ```
@@ -39,6 +41,11 @@ pub trait LayoutData {
 }
 
 /// A widget which escapes its parent's rect
+///
+/// A pop-up is a special widget drawn either as a layer over the existing
+/// window or in a new borderless window. It should be precisely positioned
+/// *next to* it's `parent`'s `rect`, in the specified `direction` (or, if not
+/// possible, in the opposite direction).
 ///
 /// A pop-up is in some ways an ordinary child widget and in some ways not.
 /// The pop-up widget should be a permanent child of its parent, but is not
@@ -141,14 +148,14 @@ pub trait ThemeApi {
 
     /// Change the colour scheme
     ///
-    /// If no theme by this name is found, the theme is unchanged.
+    /// If no scheme by this name is found, the scheme is unchanged.
     // TODO: revise scheme identification and error handling?
     fn set_colours(&mut self, _scheme: &str) -> ThemeAction;
 
-    /// Change the theme itself
+    /// Switch the theme
     ///
-    /// Themes may do nothing, or may react according to their own
-    /// interpretation of this method.
+    /// Most themes do not react to this method; `kas_theme::MultiTheme` uses
+    /// it to switch themes.
     fn set_theme(&mut self, _theme: &str) -> ThemeAction {
         ThemeAction::None
     }

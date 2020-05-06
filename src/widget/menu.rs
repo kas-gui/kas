@@ -17,9 +17,6 @@ pub use menu_frame::MenuFrame;
 pub use menubar::MenuBar;
 pub use submenu::SubMenu;
 
-use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, Manager, Response};
-use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// Trait governing menus, sub-menus and menu-entries

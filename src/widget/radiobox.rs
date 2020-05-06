@@ -11,9 +11,7 @@ use std::rc::Rc;
 
 use super::AccelLabel;
 use kas::class::HasBool;
-use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, Manager, Response, UpdateHandle, VoidMsg};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::event::UpdateHandle;
 use kas::prelude::*;
 
 /// A bare radiobox (no label)

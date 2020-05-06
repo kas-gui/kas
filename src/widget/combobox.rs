@@ -10,9 +10,8 @@ use std::iter::FromIterator;
 
 use super::{Column, MenuEntry, MenuFrame};
 use kas::class::HasText;
-use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::{Event, GrabMode, Manager, NavKey, Response, SendEvent};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::draw::TextClass;
+use kas::event::{GrabMode, NavKey};
 use kas::prelude::*;
 use kas::WindowId;
 

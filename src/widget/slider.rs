@@ -10,9 +10,7 @@ use std::fmt::Debug;
 use std::ops::{Add, Sub};
 
 use super::DragHandle;
-use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, Manager, NavKey, Response};
-use kas::layout::{AxisInfo, SizeRules, StretchPolicy};
+use kas::event::NavKey;
 use kas::prelude::*;
 
 pub trait SliderType:

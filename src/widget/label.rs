@@ -6,9 +6,7 @@
 //! Text widgets
 
 use kas::class::HasText;
-use kas::draw::{DrawHandle, SizeHandle, TextClass};
-use kas::event::ManagerState;
-use kas::layout::{AxisInfo, SizeRules};
+use kas::draw::TextClass;
 use kas::prelude::*;
 
 /// A simple text label
@@ -79,6 +77,9 @@ impl HasText for Label {
 }
 
 /// A label supporting an accelerator key
+///
+/// Accelerator keys are not useful on plain labels, but this widget may be
+/// embedded within a parent (e.g. `CheckBox` uses this).
 #[derive(Clone, Default, Debug, Widget)]
 pub struct AccelLabel {
     #[widget_core]

@@ -19,7 +19,7 @@
 #![feature(proc_macro_hygiene)]
 
 use kas::class::HasText;
-use kas::event::{Manager, Response, UpdateHandle, VoidMsg};
+use kas::event::UpdateHandle;
 use kas::prelude::*;
 use kas::widget::*;
 

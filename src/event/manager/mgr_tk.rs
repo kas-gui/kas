@@ -40,7 +40,6 @@ impl ManagerState {
             pan_grab: SmallVec::new(),
             accel_stack: vec![],
             accel_layers: HashMap::new(),
-            alt_keys: SmallVec::new(),
             popups: Default::default(),
             new_popups: Default::default(),
             popup_removed: Default::default(),
@@ -184,7 +183,7 @@ impl ManagerState {
     /// Set an action
     ///
     /// Since this is a commonly used operation, an operator overload is
-    /// available to do this job: `mgr << action;` or even `mgr << a << b;`.
+    /// available to do this job: `*mgr += action;`.
     #[inline]
     pub fn send_action(&mut self, action: TkAction) {
         self.action = self.action.max(action);
@@ -376,6 +375,10 @@ impl<'a> Manager<'a> {
                 }
             }
             ModifiersChanged(state) => {
+                if state.alt() != self.mgr.modifiers.alt() {
+                    // This controls drawing of accelerator key indicators
+                    self.mgr.send_action(TkAction::Redraw);
+                }
                 self.mgr.modifiers = state;
             }
             CursorMoved {

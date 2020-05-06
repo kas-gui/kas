@@ -4,6 +4,9 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Class-specific widget traits
+//!
+//! These traits provide generic ways to interact with common widget properties,
+//! e.g. to read the text of a `Label` or set the state of a `CheckBox`.
 
 use crate::{string::CowString, TkAction};
 

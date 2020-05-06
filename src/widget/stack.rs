@@ -8,9 +8,6 @@
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
 
-use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, Manager, Response};
-use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// A stack of boxed widgets

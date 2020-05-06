@@ -4,10 +4,12 @@ version = "0.3.1"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
-description = "Native KAS toolkit using wgpu"
-keywords = ["gui"]
+description = "KAS GUI / wgpu front-end"
+keywords = ["gui", "wgpu"]
 categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
+readme = "README.md"
+documentation = "https://docs.rs/kas-wgpu/"
 
 [features]
 default = ["clipboard", "stack_dst"]

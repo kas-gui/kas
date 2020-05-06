@@ -11,6 +11,10 @@ use std::iter::Sum;
 
 use crate::geom::Size;
 
+// for doc use
+#[allow(unused)]
+use kas::draw::SizeHandle;
+
 // TODO: new Margin model
 /// Margin sizes
 ///
@@ -84,14 +88,13 @@ impl Default for StretchPolicy {
 /// describe size and margin requirements for widgets. This type only concerns
 /// size requirements along a *single* axis.
 ///
-/// All units are in pixels. Widgets should not hard-code size values but should
-/// get their sizes from the [`kas::draw::SizeHandle`] trait, which handles
-/// scaling for DPI factor.
+/// All units are in pixels. Sizes usually come directly from [`SizeHandle`]
+/// or from a fixed quantity multiplied by [`SizeHandle::scale_factor`].
 ///
 /// ### Sizes
 ///
 /// The widget size model is simple: a rectangular box, plus a margin on each
-/// side.Widget sizes are calculated from available space and the `SizeRules`;
+/// side. Widget sizes are calculated from available space and the `SizeRules`;
 /// these rules currently include:
 ///
 /// - the minimum size required for correct operation
@@ -163,13 +166,15 @@ impl fmt::Debug for SizeRules {
 impl SizeRules {
     /// Empty (zero size) widget
     ///
-    /// Warning: appending or appending to `EMPTY` *does* add the usual margins
+    /// Warning: appending another size to `EMPTY` *does* include margins
     /// even though `EMPTY` itself has zero size. However, `EMPTY` itself has
     /// zero-size margins, so this only affects appending an `EMPTY` with a
     /// non-empty `SizeRules`.
     pub const EMPTY: Self = SizeRules::empty(StretchPolicy::Fixed);
 
     /// Empty space with the given stretch policy
+    ///
+    /// See warning on [`SizeRules::EMPTY`].
     #[inline]
     pub const fn empty(stretch: StretchPolicy) -> Self {
         SizeRules {

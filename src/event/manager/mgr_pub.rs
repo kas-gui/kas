@@ -32,7 +32,7 @@ impl ManagerState {
     /// This is a fast check.
     #[inline]
     pub fn show_accel_labels(&self) -> bool {
-        !self.alt_keys.is_empty()
+        self.modifiers.alt()
     }
 
     /// Get whether this widget has a grab on character input
@@ -85,8 +85,9 @@ impl<'a> Manager<'a> {
     /// used to schedule an update on the next frame. Frames should in any case
     /// be limited by vsync, avoiding excessive frame rates.
     ///
-    /// This should be called from [`WidgetConfig::configure`] or from an event
-    /// handler. Note that scheduled updates are cleared if reconfigured.
+    /// This may be called from [`WidgetConfig::configure`] or from an event
+    /// handler. Note that previously-scheduled updates are cleared when
+    /// widgets are reconfigured.
     pub fn update_on_timer(&mut self, duration: Duration, w_id: WidgetId) {
         let time = Instant::now() + duration;
         'outer: loop {
@@ -124,6 +125,9 @@ impl<'a> Manager<'a> {
     }
 
     /// Notify that a widget must be redrawn
+    ///
+    /// Currently the entire window is redrawn on any redraw request and the
+    /// [`WidgetId`] is ignored. In the future partial redraws may be used.
     #[inline]
     pub fn redraw(&mut self, _id: WidgetId) {
         // Theoretically, notifying by WidgetId allows selective redrawing
@@ -163,8 +167,8 @@ impl<'a> Manager<'a> {
     /// window without borders and with precise placement, or may be a layer
     /// drawn in an existing window.
     ///
-    /// The pop-up should be placed *next to* the specified `rect`, in the given
-    /// `direction`.
+    /// A pop-up may be closed by calling [`Manager::close_window`] with
+    /// the [`WindowId`] returned by this method.
     #[inline]
     pub fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
         let id = self.tkw.add_popup(popup.clone());
@@ -177,17 +181,18 @@ impl<'a> Manager<'a> {
 
     /// Add a window
     ///
-    /// Toolkits typically allow windows to be added directly, before start of
-    /// the event loop (e.g. `kas_wgpu::Toolkit::add`).
+    /// Typically an application adds at least one window before the event-loop
+    /// starts (see `kas_wgpu::Toolkit::add`), however this method is not
+    /// available to a running UI. Instead, this method may be used.
     ///
-    /// This method is an alternative allowing a window to be added via event
-    /// processing, albeit without error handling.
+    /// Caveat: if an error occurs opening the new window it will not be
+    /// reported (except via log messages).
     #[inline]
     pub fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
         self.tkw.add_window(widget)
     }
 
-    /// Close a window
+    /// Close a window or pop-up
     #[inline]
     pub fn close_window(&mut self, id: WindowId) {
         if let Some(index) =
@@ -250,7 +255,7 @@ impl<'a> Manager<'a> {
 impl<'a> Manager<'a> {
     /// Attempts to set a fallback to receive [`Event::NavKey`]
     ///
-    /// In case a navigation key is pressed (e.g. Left arrow) but no widget has
+    /// In case a navigation key is pressed (see [`NavKey`]) but no widget has
     /// navigation focus, then, if a fallback has been set, that widget will
     /// receive the key via [`Event::NavKey`]. (This does not include
     /// [`Event::Activate`].)
@@ -267,18 +272,18 @@ impl<'a> Manager<'a> {
 
     /// Add a new accelerator key layer and make it current
     ///
-    /// Accelerator keys are added to a layer; either the base layer or a layer
-    /// owned by a widget. This adds a new owned layer and makes it current so
-    /// that widgets configured after this will add their accelerator keys to
-    /// this layer. [`Manager::pop_accel_layer`] must be called after child
-    /// widgets have been configured to finish configuration of this new layer
-    /// and to make the previous layer in the stack current.
+    /// This method affects the behaviour of [`Manager::add_accel_keys`] by
+    /// adding a new *layer* and making this new layer *current*.
+    ///
+    /// This method should only be called by parents of a pop-up: layers over
+    /// the base layer are *only* activated by an open pop-up.
+    ///
+    /// [`Manager::pop_accel_layer`] must be called after child widgets have
+    /// been configured to finish configuration of this new layer and to make
+    /// the previous layer current.
     ///
     /// If `alt_bypass` is true, then this layer's accelerator keys will be
-    /// active even without Alt pressed.
-    ///
-    /// When run, the base layer is used when no pop-up is active, otherwise
-    /// the layer (if any) associated with the top pop-up is used.
+    /// active even without Alt pressed (but only highlighted with Alt pressed).
     pub fn push_accel_layer(&mut self, alt_bypass: bool) {
         self.mgr.accel_stack.push((alt_bypass, HashMap::new()));
     }
@@ -295,12 +300,10 @@ impl<'a> Manager<'a> {
 
     /// Finish configuration of an accelerator key layer
     ///
+    /// This must be called after [`Manager::push_accel_layer`], after
+    /// configuration of any children using this layer.
+    ///
     /// The `id` must be that of the widget which created this layer.
-    ///
-    /// Also makes the previous layer current (so that future calls to
-    /// [`Manager::add_accel_keys`] push to that layer).
-    ///
-    /// See [`Manager::push_accel_layer`] for documentation.
     pub fn pop_accel_layer(&mut self, id: WidgetId) {
         if let Some(layer) = self.mgr.accel_stack.pop() {
             self.mgr.accel_layers.insert(id, layer);
@@ -314,9 +317,18 @@ impl<'a> Manager<'a> {
 
     /// Adds an accelerator key for a widget to the current layer
     ///
-    /// When the layer is selected (see [`Manager::push_accel_layer`]),
-    /// if any of these keys are pressed,
-    /// the widget with this `id` will receive an [`Event::Activate`] event.
+    /// An *accelerator key* is a shortcut key able to directly open menus,
+    /// activate buttons, etc. A user triggers the key by pressing `Alt+Key`,
+    /// or (if `alt_bypass` is enabled) by simply pressing the key.
+    /// The widget with this `id` then receives [`Event::Activate`].
+    ///
+    /// Note that accelerator keys may be automatically derived from labels:
+    /// see [`kas::string::AccelString`].
+    ///
+    /// Accelerator keys may be added to the base layer or to a new layer
+    /// associated with a pop-up (see [`Manager::push_accel_layer`]).
+    /// The top-most active layer gets first priority in matching input, but
+    /// does not block previous layers.
     ///
     /// This should only be called from [`WidgetConfig::configure`].
     // TODO(type safety): consider only implementing on ConfigureManager
@@ -345,8 +357,10 @@ impl<'a> Manager<'a> {
 
     /// Request a grab on the given input `source`
     ///
-    /// If successful, corresponding mouse/touch events will be forwarded to
-    /// this widget. The grab terminates automatically.
+    /// On success, this method returns true and corresponding mouse/touch
+    /// events will be forwarded to widget `id`. The grab terminates
+    /// automatically when the press is released.
+    /// Returns false when the grab-request fails.
     ///
     /// Each grab can optionally visually depress one widget, and initially
     /// depresses the widget owning the grab (the `id` passed here). Call
@@ -365,14 +379,14 @@ impl<'a> Manager<'a> {
     ///     Any previously existing `Pan` grabs by this widgets are replaced.
     ///
     /// Since these events are *requested*, the widget should consume them even
-    /// if not required (e.g. [`Event::PressMove`], although in practice this
+    /// if not required, although in practice this
     /// only affects parents intercepting [`Response::Unhandled`] events.
     ///
     /// This method normally succeeds, but fails when
     /// multiple widgets attempt a grab the same press source simultaneously
     /// (only the first grab is successful).
     ///
-    /// This method automatically cancels any active char grab
+    /// This method automatically cancels any active character grab
     /// and updates keyboard navigation focus.
     pub fn request_grab(
         &mut self,
@@ -490,7 +504,7 @@ impl<'a> Manager<'a> {
     /// Advance the keyboard navigation focus
     ///
     /// If some widget currently has nav focus, this will give focus to the next
-    /// (or previous) widget under `widget where [`WidgetConfig::key_nav`]
+    /// (or previous) widget under `widget` where [`WidgetConfig::key_nav`]
     /// returns true; otherwise this will give focus to the first (or last)
     /// such widget.
     ///

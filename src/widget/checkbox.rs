@@ -10,9 +10,6 @@ use std::rc::Rc;
 
 use super::AccelLabel;
 use kas::class::HasBool;
-use kas::draw::{DrawHandle, SizeHandle};
-use kas::event::{Event, Manager, Response, VoidMsg};
-use kas::layout::{AxisInfo, SizeRules};
 use kas::prelude::*;
 
 /// A bare checkbox (no label)

@@ -8,9 +8,8 @@
 use smallvec::SmallVec;
 use std::fmt::{self, Debug};
 
-use kas::draw::{ClipRegion, DrawHandle, SizeHandle};
-use kas::event::{Callback, Event, Manager, Response, VoidMsg};
-use kas::layout::{AxisInfo, SizeRules};
+use kas::draw::ClipRegion;
+use kas::event::Callback;
 use kas::prelude::*;
 use kas::WindowId;
 

@@ -38,6 +38,8 @@ pub struct GridSolver<CSR, RSR, S: GridStorage> {
 impl<CSR: Default, RSR: Default, S: GridStorage> GridSolver<CSR, RSR, S> {
     /// Construct.
     ///
+    /// Argument order is consistent with other [`RulesSolver`]s.
+    ///
     /// - `axis`: `AxisInfo` instance passed into `size_rules`
     /// - `(cols, rows)`: number of columns and rows
     /// - `storage`: reference to persistent storage
@@ -196,6 +198,7 @@ where
     }
 }
 
+/// A [`RulesSetter`] for grids supporting cell-spans
 pub struct GridSetter<RT: RowTemp, CT: RowTemp, S: GridStorage> {
     w_offsets: RT,
     h_offsets: CT,
@@ -206,11 +209,10 @@ pub struct GridSetter<RT: RowTemp, CT: RowTemp, S: GridStorage> {
 impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
     /// Construct
     ///
-    /// All setter constructors take the following arguments:
+    /// Argument order is consistent with other [`RulesSetter`]s.
     ///
     /// -   `rect`: the [`Rect`] within which to position children
-    /// -   `dim`: dimension information (specific to the setter, in this case
-    ///     number of columns and rows)
+    /// -   `(cols, rows)`: number of columns and rows
     /// -   `align`: alignment hints
     /// -   `storage`: access to the solver's storage
     pub fn new(
