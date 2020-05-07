@@ -9,19 +9,7 @@ Note that screenshots may be outdated since themes, draw routines and layout cod
 
 A testbed demoing most widgets along with theme and colour switching.
 
-![Gallery](../../screenshots/gallery.png)
-
-### Hello
-
-A message box.
-
-![Hello](../../screenshots/hello.png)
-
-### Clock
-
-A simple clock. An example of a custom widget using lower-level draw routines.
-
-![Clock](../../screenshots/clock.png)
+![Gallery](../../screenshots/gallery.gif)
 
 ### Counter
 
@@ -31,17 +19,35 @@ A simple clock. An example of a custom widget using lower-level draw routines.
 
 ![Counter](../../screenshots/counter.png)
 
-### Stopwatch
-
-Ready? Set! Go!
-
-![Stopwatch](../../screenshots/stopwatch.png)
-
 ### Calculator
 
 A simple calculator, with (limited) keyboard support.
 
 ![Calculator](../../screenshots/calculator.png)
+
+### Clock
+
+A simple clock. An example of a custom widget using lower-level draw routines.
+
+![Clock](../../screenshots/clock.png)
+
+### Splitter
+
+Demonstrates resizable panes.
+
+![Splitter](../../screenshots/splitter.gif)
+
+### Hello
+
+A message box.
+
+![Hello](../../screenshots/hello.png)
+
+### Stopwatch
+
+Ready? Set! Go!
+
+![Stopwatch](../../screenshots/stopwatch.png)
 
 ### Dynamic
 

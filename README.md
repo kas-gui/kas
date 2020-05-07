@@ -15,7 +15,8 @@ Examples
 For details, see the [Examples README](kas-wgpu/examples/README.md).
 
 ![Calculator](screenshots/calculator.png) ![Dynamic](screenshots/dynamic.png)
-![Clock](screenshots/clock.png) ![Gallery](screenshots/gallery.png)
+![Clock](screenshots/clock.png) ![Gallery](screenshots/gallery.gif)
+![Splitter](screenshots/splitter.gif)
 ![Mandlebrot](screenshots/mandlebrot.png)
 
 
