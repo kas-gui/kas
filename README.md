@@ -76,7 +76,6 @@ will be needed.
 
 These aren't here yet!
 
--   Text clipping
 -   Text editing (currently only very basic support)
 -   Raster graphics
 -   Flow-box layouts

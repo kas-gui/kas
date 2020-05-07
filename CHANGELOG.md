@@ -2,6 +2,9 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] — 2020-05-07
+Remove screenshots from package
+
 ## [0.4.0] — 2020-05-07
 Another fairly large release, with a lot of changes to input handling, a
 revision to the trait model, support for pop-up widgets, and
