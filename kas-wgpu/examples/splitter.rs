@@ -31,7 +31,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let _ = panes.resize_with(2, |n| Label::new(format!("Pane {}", n)));
 
     let window = Window::new(
-        "Counter",
+        "Slitter panes",
         make_widget! {
             // TODO: use vertical splitter
             #[layout(column)]

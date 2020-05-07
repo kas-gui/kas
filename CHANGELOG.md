@@ -2,6 +2,85 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2020-05-07
+Another fairly large release, with a lot of changes to input handling, a
+revision to the trait model, support for pop-up widgets, and
+(limited) support for **stable rustc**.
+
+### Widget traits and API
+The `Widget` trait model has seen significant revision (#75, #74, #85):
+
+-   `WidgetChildren` added (split out from `WidgetCore`)
+-   `WidgetConfig` added (taking all methods from `Widget`)
+-   `event::Handler` split into `Handler` and `SendEvent`
+-   `Widget` is now just a trait bound over all others
+-   All `Widget` traits are impl'd by `derive(Widget)` on an opt-out basis
+
+Widgets should now return a `TkAction` from methods modifying self and not
+take a `Manager` reference, if possible (#79).
+
+Widgets can now be downcast with `std::any::Any` (#97).
+
+### Pop-ups and menus
+Pop-up widgets are supported as a layer over an existing window (similar to a
+borderless window, but without requiring windowing support, which winit lacks).
+These are used for `ComboBox` and for (recursive) menus.
+Added in #76, #85, #87, #93.
+
+### Input behaviour
+-   Add `EditGuard` allowing user hooks on `EditBox` updates (#68)
+-   Add pan grabs — two-finger resize/rotate (#70)
+-   Use standard events for timer and handle updates (#74)
+-   Add reverse key navigation with Shift+Tab (#77)
+-   Allow `Slider` to respond to arrow keys (#77)
+-   Various small fixes (#73)
+-   Add error and disabled states (#84, #85)
+-   Merge `Action` and `Event` (#85)
+-   Allow `ScrollRegion` (and `Mandlebrot`) to respond to navigation keys
+    without focus (#90)
+-   Let widgets request `Focus` when responding to events (#90)
+-   Menu navigation with Tab key (#92) and arrows (#93, #97)
+-   Allow accelerator keys to be derived from labels (e.g. "&File"),
+    to use a separate layer for each pop-up,
+    to be visually indicated when Alt is held,
+    and to be activated with Alt held or `alt_bypass` set (#100)
+
+### Graphics
+-   Allow some wgpu state to be shared between windows (#69)
+-   Tracks for sliders and scrollbars (#76)
+-   Use floating-point types for mid-level draw API (#76)
+-   Add a depth buffer (#94)
+-   Fix: do not use `noperspective` in shaders (#99)
+
+### Widgets
+-   Add `DragHandle` component (#71)
+-   Add `Slider` widget (#71)
+-   Add `Frame` widget (#72)
+-   Add `ComboBox` widget (#76, #85)
+-   Add `Splitter` widget (#80)
+-   Add `MenuBar`, `SubMenu` (#86)
+-   Add `MenuEntry`, `MenuToggle` (#89)
+
+### Sizing and layouts
+-   Calculate window size before creation (#69)
+-   Add (real) margins (#72, #79)
+-   Replace `Horizontal` and `Vertical` with `Right`, `Left`, `Up`, `Down`,
+    allowing reversed layouts and better pop-up placement (#78).
+    Replace `layout(vertical)` with `layout(column)` or `layout(down)`, etc.
+-   Do not pass `SizeHandle` to `Layout::set_rect` (#79)
+-   Rewrite `SizeRules::solve_seq` to respect previous widths/heights and only modify minimally for validity (#79)
+-   Reduce calls to `Layout::size_rules` (#79)
+
+### Misc
+-   Move `Vec2` to `kas::geom`; add `DVec2` (#70)
+-   Add `CowString` and `CowStringL` as aliases over `std` types (#74)
+-   Add `prelude` module (#75, #102)
+-   Let `TkAction` support `Add<Output = Self>` and `Manager` support `AddAssign<TkAction>` (#79)
+-   Update to wgpu 0.5, font-kit 0.6 and smallvec 1.4 (#94)
+-   Support stable rustc, for a few examples only (#101)
+-   New `unsize` feature flag (#101)
+-   Revise documentation (#102)
+
 ## [0.3.1] — 2020-04-16
 Bump version of `kas-wgpu` to fix build on docs.rs.
 
