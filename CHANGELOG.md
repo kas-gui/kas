@@ -3,12 +3,20 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.4.1] — 2020-05-07
-Remove screenshots from package
+-   Remove screenshots from package
+-   Document main breaking changes below
 
 ## [0.4.0] — 2020-05-07
 Another fairly large release, with a lot of changes to input handling, a
 revision to the trait model, support for pop-up widgets, and
 (limited) support for **stable rustc**.
+
+### Main breaking changes
+The most likely changes needed to update 0.3 → 0.4:
+
+-   Replace `Label::from` with `Label::new`
+-   Replace `layout(horizontal)` with `layout(row)`, `layout(vertical)` with `layout(column)`
+-   For several methods like `set_text`, replace `w.set_text(mgr, text)` with `*mgr += w.set_text(text)`
 
 ### Widget traits and API
 The `Widget` trait model has seen significant revision (#75, #74, #85):
@@ -68,8 +76,7 @@ Added in #76, #85, #87, #93.
 -   Calculate window size before creation (#69)
 -   Add (real) margins (#72, #79)
 -   Replace `Horizontal` and `Vertical` with `Right`, `Left`, `Up`, `Down`,
-    allowing reversed layouts and better pop-up placement (#78).
-    Replace `layout(vertical)` with `layout(column)` or `layout(down)`, etc.
+    allowing reversed layouts and better pop-up placement (#78)
 -   Do not pass `SizeHandle` to `Layout::set_rect` (#79)
 -   Rewrite `SizeRules::solve_seq` to respect previous widths/heights and only modify minimally for validity (#79)
 -   Reduce calls to `Layout::size_rules` (#79)
