@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -30,7 +30,7 @@ stack_dst = { version = "0.6", optional = true }
 bitflags = "1" # only used without winit
 
 [dependencies.kas-macros]
-version = "0.3.0"
+version = "0.4.0"
 path = "kas-macros"
 
 [dependencies.winit]
