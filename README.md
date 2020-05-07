@@ -49,27 +49,21 @@ KAS is compatible with **stable rustc**. Using nightly Rust is advantageous:
 
 ### Code stability
 
-The `master` branch has frequent breaking changes. Releases will respect
-[semver](https://semver.org/) rules. At this point, most releases will include
-breaking changes.
+KAS is young and incomplete, yet has a reasonably robust core framework. Users
+should expect breaking changes when upgrading from one release to the next.
 
-The in-development version (0.4 — nearing release) has significant changes to
-core traits and macros. From 0.4 it is likely that *fewer* breaking changes will
-be needed to the core building blocks.
+The draw APIs saw a big overhaul in version 0.3, but may well need further
+revision. Text APIs are currently just placeholders. There is no translation
+support, persistent configuration or desktop integration.
 
-The draw APIs saw a massive overhaul in version 0.3. It is too early to say
-whether more extensive changes are needed (except that raster graphics are not
-yet featured)!
-
-Text APIs are currently *very* primitive and will need changes.
-
-Widgets have matured to the point that not too many breaking changes are
-required, but are still primarily developed to prove capabilities rather than to
-provide a comprehensive collection of core widgets.
+The widget traits, macros and, event model have seen significant changes in 0.4.
+These will be extended in the future but hopefully only minor breaking changes
+will be needed.
 
 ### Features
 
 -   Persistent widgets with embedded state
+-   Simple ownership model (no persistent pointers into widget state)
 -   Type-safe user-defined event handlers
 -   Robust event handling model
 -   Extensive support for keyboard and touch-screen control
