@@ -106,20 +106,94 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         }
     }
 
+    /// Get the index of the active choice
+    #[inline]
+    pub fn active(&self) -> usize {
+        self.active
+    }
+
+    /// Set the active choice
+    ///
+    /// Panics if `index >= self.len()`.
+    #[inline]
+    pub fn set_active(&mut self, index: usize) {
+        if index >= self.messages.len() {
+            panic!("ComboBox::set_active(index): index out of bounds");
+        }
+        self.active = index;
+    }
+
     /// Get the text of the active choice
+    #[inline]
     pub fn text(&self) -> &str {
         self.popup.inner.inner[self.active].get_text()
     }
 
+    /// Get the message associated with the active choice
+    #[inline]
+    pub fn msg(&self) -> M {
+        self.messages[self.active].clone()
+    }
+}
+
+impl<M: Clone + Debug + 'static> ComboBox<M> {
+    /// Get the number of entries
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.messages.len()
+    }
+
     /// Add a choice to the combobox, in last position
-    pub fn push<T: Into<CowString>>(&mut self, label: CowString, msg: M) -> TkAction {
+    ///
+    /// Triggers a [reconfigure action](Manager::send_action).
+    pub fn push<T: Into<CowString>>(&mut self, label: T, msg: M) -> TkAction {
         self.messages.push(msg);
         let column = &mut self.popup.inner.inner;
         let len = column.len() as u64;
-        column.push(MenuEntry::new(label, len))
+        column.push(MenuEntry::new(label.into(), len))
         // TODO: localised reconfigure
     }
 
+    // TODO: fn pop() -> Option<..> — but API is invalid if we can't remove last item
+
+    /// Add a choice at position `index`
+    ///
+    /// Panics if `index > len`.
+    ///
+    /// Triggers a [reconfigure action](Manager::send_action).
+    pub fn insert<T: Into<CowString>>(&mut self, index: usize, label: T, msg: M) -> TkAction {
+        self.messages.insert(index, msg);
+        let column = &mut self.popup.inner.inner;
+        let len = column.len() as u64;
+        column.insert(index, MenuEntry::new(label.into(), len))
+        // TODO: localised reconfigure
+    }
+
+    /// Removes the choice at position `index` and returns its message
+    ///
+    /// Panics if `index` is out of bounds or if the removal would leave the
+    /// `ComboBox` empty (which is not allowed).
+    ///
+    /// Triggers a [reconfigure action](Manager::send_action).
+    pub fn remove(&mut self, index: usize) -> (M, TkAction) {
+        if self.messages.len() < 2 {
+            panic!("ComboBox::remove: unable to remove last choice");
+        }
+        let m = self.messages.remove(index);
+        (m, self.popup.inner.inner.remove(index).1)
+    }
+
+    /// Replace the choice at `index`
+    ///
+    /// Panics if `index` is out of bounds.
+    pub fn replace<T: Into<CowString>>(&mut self, index: usize, label: T, msg: M) -> (M, TkAction) {
+        let mut m = msg;
+        std::mem::swap(&mut m, &mut self.messages[index]);
+        (m, self.popup.inner.inner[index].set_text(label))
+    }
+}
+
+impl<M: Clone + Debug + 'static> ComboBox<M> {
     fn map_response(&mut self, mgr: &mut Manager, r: Response<u64>) -> Response<M> {
         match r {
             Response::None => Response::None,
