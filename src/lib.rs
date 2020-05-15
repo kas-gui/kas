@@ -7,19 +7,19 @@
 //!
 //! KAS is a GUI library. This crate provides the following:
 //!
-//! -   a widget model: [`WidgetCore`], [`WidgetConfig`], [`Layout`],
-//!     [`Widget`], [`event::Handler`] traits
-//! -   a [`layout`] engine (mostly configured through [`macros`])
-//! -   a modular [`draw`] API
-//! -   widget [`event`] handling
-//! -   some data types: [`geom`], [`Align`], [`Direction`]
-//! -   some pre-build widgets: [`widget`] module
+//! -   the [`Widget`] trait family, with [`macros`] to implement them
+//! -   a [`layout`] solver and [`event`] handling for widgets
+//! -   building blocks including [`geom`] types and a [`draw`] API
+//! -   some pre-build widgets: the [`widget`] module
 //!
 //! See also these external crates:
 //!
-//! -   [`kas-theme`](https://crates.io/crates/kas-theme) - [docs.rs](https://docs.rs/crate/kas-theme) - theme API + themes
-//! -   [`kas-wgpu`](https://crates.io/crates/kas-wgpu) - [docs.rs](https://docs.rs/crate/kas-wgpu) - WebGPU + winit integration
-
+//! -   [`kas-theme`](https://crates.io/crates/kas-theme) - [docs.rs](https://docs.rs/kas-theme) - theme API + themes
+//! -   [`kas-wgpu`](https://crates.io/crates/kas-wgpu) - [docs.rs](https://docs.rs/kas-wgpu) - WebGPU + winit integration
+//!
+//! This document is a reference manual. There is currently no tutorial, but the
+//! [examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
+//! provide a starting point.
 #![cfg_attr(feature = "nightly", feature(new_uninit))]
 
 #[cfg(not(feature = "winit"))]
