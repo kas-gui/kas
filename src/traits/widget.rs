@@ -72,7 +72,7 @@ pub trait WidgetCore: Any + fmt::Debug {
         self.core_data().disabled
     }
 
-    /// Get the disabled state of a widget
+    /// Set the disabled state of a widget
     ///
     /// If disabled, a widget should not respond to input and should appear
     /// greyed out.
@@ -83,6 +83,23 @@ pub trait WidgetCore: Any + fmt::Debug {
     fn set_disabled(&mut self, disabled: bool) -> TkAction {
         self.core_data_mut().disabled = disabled;
         TkAction::Redraw
+    }
+
+    /// Set disabled state (chaining)
+    ///
+    /// This is identical to [`WidgetCore::set_disabled`], but can be called in
+    /// chaining fashion. Example:
+    /// ```
+    /// use kas::{WidgetCore, widget::MenuEntry};
+    /// let entry = MenuEntry::new("Disabled Item", ()).with_disabled(true);
+    /// ```
+    #[inline]
+    fn with_disabled(mut self, disabled: bool) -> Self
+    where
+        Self: Sized,
+    {
+        self.core_data_mut().disabled = disabled;
+        self
     }
 
     /// Get the widget's region, relative to its parent.
