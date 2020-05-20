@@ -73,7 +73,10 @@ pub trait EditGuard: Sized {
 
     /// Edit guard
     ///
-    /// This function is called on any edit of the contents.
+    /// This function is called on any edit of the contents, by the user or
+    /// programmatically. It is also called when the `EditGuard` is first set.
+    /// On programmatic edits and the initial call, the return value of this
+    /// method is discarded.
     fn edit(_: &mut EditBox<Self>) -> Option<Self::Msg> {
         None
     }
@@ -235,8 +238,11 @@ impl EditBox<EditVoid> {
     ///
     /// Technically, this consumes `self` and reconstructs another `EditBox`
     /// with a different parameterisation.
-    pub fn with_guard<G>(self, guard: G) -> EditBox<G> {
-        EditBox {
+    ///
+    /// This method calls [`EditGuard::edit`] after applying `guard` to `self`
+    /// and discards any message emitted.
+    pub fn with_guard<G: EditGuard>(self, guard: G) -> EditBox<G> {
+        let mut edit = EditBox {
             core: self.core,
             frame_offset: self.frame_offset,
             frame_size: self.frame_size,
@@ -248,7 +254,9 @@ impl EditBox<EditVoid> {
             last_edit: self.last_edit,
             error_state: self.error_state,
             guard,
-        }
+        };
+        let _ = G::edit(&mut edit);
+        edit
     }
 
     /// Set a guard function, called on activation
@@ -277,8 +285,12 @@ impl EditBox<EditVoid> {
 
     /// Set a guard function, called on edit
     ///
-    /// The closure `f` is called when the `EditBox` is edited.
+    /// The closure `f` is called when the `EditBox` is edited by the user.
     /// Its result, if not `None`, is the event handler's response.
+    ///
+    /// The closure `f` is also called initially (by this method) and on
+    /// programmatic edits, however in these cases any results returned by `f`
+    /// are discarded.
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
@@ -388,18 +400,19 @@ impl<G> EditBox<G> {
     }
 }
 
-impl<G> HasText for EditBox<G> {
+impl<G: EditGuard> HasText for EditBox<G> {
     fn get_text(&self) -> &str {
         &self.text
     }
 
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.text = text.to_string();
+        let _ = G::edit(self);
         TkAction::Redraw
     }
 }
 
-impl<G> Editable for EditBox<G> {
+impl<G: EditGuard> Editable for EditBox<G> {
     fn is_editable(&self) -> bool {
         self.editable
     }

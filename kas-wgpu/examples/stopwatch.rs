@@ -39,7 +39,7 @@ fn make_window() -> Box<dyn kas::Window> {
                     Control::Reset => {
                         self.saved = Duration::default();
                         self.start = None;
-                        *mgr += self.display.set_text( "0.000");
+                        *mgr += self.display.set_text("0.000");
                     }
                     Control::Start => {
                         if let Some(start) = self.start {
