@@ -279,6 +279,11 @@ pub trait WidgetConfig: Layout {
     /// a [`WidgetId`] has been assigned to self, and after `configure` has
     /// been called on each child.
     ///
+    /// It is not advised to perform any action requiring a reconfigure (e.g.
+    /// adding a child widget) during configure due to the possibility of
+    /// getting stuck in a reconfigure-loop. See issue kas#91 for more on this.
+    /// KAS has a crude mechanism to detect this and panic.
+    ///
     /// The default implementation of this method does nothing.
     fn configure(&mut self, _: &mut Manager) {}
 
