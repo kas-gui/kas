@@ -40,7 +40,7 @@ pub struct Dimensions {
     pub scale_factor: f32,
     pub line_height: u32,
     pub min_line_length: u32,
-    pub max_line_length: u32,
+    pub ideal_line_length: u32,
     pub margin: u32,
     pub frame: u32,
     pub button_frame: u32,
@@ -65,8 +65,10 @@ impl Dimensions {
             font_scale,
             scale_factor,
             line_height,
-            min_line_length: line_height * 8,
-            max_line_length: line_height * 24,
+            // We appear to average about 2 characters per line_height
+            // TODO: better to specify in terms of font's 'n' size?
+            min_line_length: line_height * 6,
+            ideal_line_length: line_height * 15,
             margin,
             frame,
             button_frame: (params.button_frame * scale_factor).round() as u32,
@@ -171,7 +173,7 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
         if axis.is_horizontal() {
             let bound = bounds.0 as u32;
             let min = self.dims.min_line_length;
-            let ideal = self.dims.max_line_length;
+            let ideal = self.dims.ideal_line_length;
             let (min, ideal) = match class {
                 TextClass::Edit | TextClass::EditMulti => (min, ideal),
                 _ => (bound.min(min), bound.min(ideal)),
