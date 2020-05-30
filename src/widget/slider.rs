@@ -5,37 +5,69 @@
 
 //! `Slider` control
 
-use conv::{ApproxFrom, ApproxInto, RoundToNearest};
 use std::fmt::Debug;
 use std::ops::{Add, Sub};
+use std::time::Duration;
 
 use super::DragHandle;
 use kas::event::NavKey;
 use kas::prelude::*;
 
+/// Requirements on type used by [`Slider`]
 pub trait SliderType:
-    Copy
-    + Debug
-    + PartialOrd
-    + Add<Output = Self>
-    + Sub<Output = Self>
-    + ApproxInto<f64>
-    + ApproxFrom<f64, RoundToNearest>
-    + 'static
+    Copy + Debug + PartialOrd + Add<Output = Self> + Sub<Output = Self> + 'static
 {
+    /// Divide self by another instance of this type, returning an `f64`
+    ///
+    /// Note: in practice, we always have `rhs >= self` and expect the result
+    /// to be between 0 and 1.
+    fn div_as_f64(self, rhs: Self) -> f64;
+
+    /// Return the result of multiplying self by an `f64` scalar
+    ///
+    /// Note: the `scalar` is expected to be between 0 and 1, hence this
+    /// operation should not produce a value outside the range of `Self`.
+    fn mul_f64(self, scalar: f64) -> Self;
 }
 
-impl<
-        T: Copy
-            + Debug
-            + PartialOrd
-            + Add<Output = Self>
-            + Sub<Output = T>
-            + ApproxInto<f64>
-            + ApproxFrom<f64, RoundToNearest>
-            + 'static,
-    > SliderType for T
-{
+impl SliderType for f64 {
+    fn div_as_f64(self, rhs: Self) -> f64 {
+        self / rhs
+    }
+    fn mul_f64(self, scalar: f64) -> Self {
+        self * scalar
+    }
+}
+
+macro_rules! impl_slider_ty {
+    ($ty:ty) => {
+        impl SliderType for $ty {
+            fn div_as_f64(self, rhs: Self) -> f64 {
+                self as f64 / rhs as f64
+            }
+            fn mul_f64(self, scalar: f64) -> Self {
+                let r = self as f64 * scalar;
+                assert!(<$ty>::MIN as f64 <= r && r <= <$ty>::MAX as f64);
+                r as $ty
+            }
+        }
+    };
+    ($ty:ty, $($tt:ty),*) => {
+        impl_slider_ty!($ty);
+        impl_slider_ty!($($tt),*);
+    };
+}
+impl_slider_ty!(i8, i16, i32, i64, i128, isize);
+impl_slider_ty!(u8, u16, u32, u64, u128, usize);
+impl_slider_ty!(f32);
+
+impl SliderType for Duration {
+    fn div_as_f64(self, rhs: Self) -> f64 {
+        self.as_secs_f64() / rhs.as_secs_f64()
+    }
+    fn mul_f64(self, scalar: f64) -> Self {
+        self.mul_f64(scalar)
+    }
 }
 
 /// A slider
@@ -127,10 +159,11 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
 
     // translate value to offset in local coordinates
     fn offset(&self) -> Coord {
-        let a: f64 = (self.value - self.range.0).approx_into().unwrap();
-        let b: f64 = (self.range.1 - self.range.0).approx_into().unwrap();
+        let a = self.value - self.range.0;
+        let b = self.range.1 - self.range.0;
         let max_offset = self.handle.max_offset();
-        let mut frac = a / b;
+        let mut frac = a.div_as_f64(b);
+        assert!(0.0 <= frac && frac <= 1.0);
         if self.direction.is_reversed() {
             frac = 1.0 - frac;
         }
@@ -142,16 +175,16 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
 
     // true if not equal to old value
     fn set_offset(&mut self, offset: Coord) -> bool {
-        let b: f64 = (self.range.1 - self.range.0).approx_into().unwrap();
+        let b = self.range.1 - self.range.0;
         let max_offset = self.handle.max_offset();
         let mut a = match self.direction.is_vertical() {
-            false => b * offset.0 as f64 / max_offset.0 as f64,
-            true => b * offset.1 as f64 / max_offset.1 as f64,
+            false => b.mul_f64(offset.0 as f64 / max_offset.0 as f64),
+            true => b.mul_f64(offset.1 as f64 / max_offset.1 as f64),
         };
         if self.direction.is_reversed() {
             a = b - a;
         }
-        let value = T::approx_from(a).unwrap() + self.range.0;
+        let value = a + self.range.0;
         let value = if !(value >= self.range.0) {
             self.range.0
         } else if !(value <= self.range.1) {
