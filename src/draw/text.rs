@@ -5,7 +5,7 @@
 
 //! Text-drawing API
 
-pub use rusttype::Font;
+pub use ab_glyph::FontArc;
 
 use super::{Colour, Draw, DrawShared, Pass};
 use crate::geom::Rect;
@@ -40,7 +40,7 @@ pub struct TextProperties {
 /// Abstraction over type shared by [`DrawText`] implementations
 pub trait DrawTextShared: DrawShared {
     /// Load a font
-    fn load_font(&mut self, font: Font<'static>) -> FontId;
+    fn load_font(&mut self, font: FontArc) -> FontId;
 }
 
 /// Abstraction over text rendering

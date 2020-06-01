@@ -6,15 +6,16 @@
 //! Text drawing API for `kas_wgpu`
 
 use std::f32;
-use wgpu_glyph::{GlyphCruncher, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
+use wgpu_glyph::ab_glyph::PxScale;
+use wgpu_glyph::{Extra, GlyphCruncher, HorizontalAlign, Layout, Section, Text, VerticalAlign};
 
 use super::{CustomPipe, CustomWindow, DrawPipe, DrawWindow};
-use kas::draw::{DrawText, DrawTextShared, Font, FontId, Pass, TextProperties};
+use kas::draw::{DrawText, DrawTextShared, FontArc, FontId, Pass, TextProperties};
 use kas::geom::{Coord, Rect, Vec2};
 use kas::Align;
 
 impl<C: CustomPipe + 'static> DrawTextShared for DrawPipe<C> {
-    fn load_font(&mut self, font: Font<'static>) -> FontId {
+    fn load_font(&mut self, font: FontArc) -> FontId {
         let id = FontId(self.fonts.len());
         self.fonts.push(font);
         id
@@ -45,15 +46,21 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         };
         let layout = layout.h_align(h_align).v_align(v_align);
 
-        self.glyph_brush.queue(Section {
+        let text = vec![Text {
             text,
+            scale: PxScale::from(props.scale),
+            font_id: wgpu_glyph::FontId(props.font.0),
+            extra: Extra {
+                color: props.col.into(),
+                z: pass.depth(),
+            },
+        }];
+
+        self.glyph_brush.queue(Section {
             screen_position: Vec2::from(text_pos).into(),
             bounds: Vec2::from(bounds).into(),
-            scale: Scale::uniform(props.scale),
-            color: props.col.into(),
-            z: pass.depth(),
             layout,
-            font_id: wgpu_glyph::FontId(props.font.0),
+            text,
         });
     }
 
@@ -71,16 +78,19 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
             false => Layout::default_single_line(),
         };
 
+        let text = vec![Text {
+            text,
+            scale: PxScale::from(font_scale),
+            font_id: wgpu_glyph::FontId(font_id.0),
+            extra: Default::default(),
+        }];
+
         self.glyph_brush
             .glyph_bounds(Section {
-                text,
                 screen_position: (0.0, 0.0),
                 bounds,
-                scale: Scale::uniform(font_scale),
-                color: Default::default(),
-                z: 0.0,
                 layout,
-                font_id: wgpu_glyph::FontId(font_id.0),
+                text,
             })
             .map(|rect| (Vec2(rect.min.x, rect.min.y), Vec2(rect.max.x, rect.max.y)))
             .map(|(min, max)| max - min)

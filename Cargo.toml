@@ -24,7 +24,7 @@ internal_doc = []
 
 [dependencies]
 log = "0.4"
-rusttype = "0.8"
+ab_glyph = "0.2.1"
 smallvec = "1.4"
 stack_dst = { version = "0.6", optional = true }
 bitflags = "1" # only used without winit
