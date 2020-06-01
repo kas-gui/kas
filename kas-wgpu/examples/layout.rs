@@ -8,7 +8,7 @@
 
 use kas::event::VoidMsg;
 use kas::macros::make_widget;
-use kas::widget::{CheckBox, EditBox, Label, Window};
+use kas::widget::{CheckBoxBare, EditBox, Label, Window};
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
@@ -24,7 +24,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             struct {
                 #[widget(row=0, col=2)] _ = Label::new("Layout demo"),
                 #[widget(row=1, col=1, cspan=3)] _ = Label::new(lipsum),
-                #[widget(row=1, col=4)] _ = CheckBox::new(""),
+                #[widget(row=1, col=4)] _ = CheckBoxBare::new(),
                 #[widget(row=2, col=0)] _ = Label::new("Text"),
                 #[widget(row=2, col=2, cspan=2, rspan=2)] _ = Label::new(crasit),
                 #[widget(row=3, col=1)] _ = EditBox::new("edit"),

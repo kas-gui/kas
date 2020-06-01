@@ -90,6 +90,7 @@ enum Pending {
 // `SmallVec` is used to keep contents in local memory.
 #[derive(Debug)]
 pub struct ManagerState {
+    end_id: WidgetId,
     dpi_factor: f64,
     modifiers: ModifiersState,
     char_focus: Option<WidgetId>,

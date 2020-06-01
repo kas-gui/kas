@@ -74,8 +74,8 @@ pub enum TkAction {
     Popup,
     /// Whole window requires reconfiguring
     ///
-    /// *Configuring* widgets assigns [`WidgetId`] identifiers, updates
-    /// [`event::Manager`] state and resizes all widgets.
+    /// *Configuring* widgets assigns [`WidgetId`] identifiers and calls
+    /// [`kas::WidgetConfig::configure`].
     ///
     /// [`WidgetId`]: crate::WidgetId
     /// [`event::Manager`]: crate::event::Manager

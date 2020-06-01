@@ -87,7 +87,7 @@ pub use radiobox::{RadioBox, RadioBoxBare};
 pub use scroll::ScrollRegion;
 pub use scrollbar::ScrollBar;
 pub use separator::Separator;
-pub use slider::Slider;
+pub use slider::{Slider, SliderType};
 pub use splitter::*;
 pub use stack::{BoxStack, RefStack, Stack};
 pub use window::Window;

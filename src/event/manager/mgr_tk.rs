@@ -5,7 +5,7 @@
 
 //! Event manager — toolkit API
 
-use log::trace;
+use log::*;
 use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -25,6 +25,7 @@ impl ManagerState {
     #[inline]
     pub fn new(dpi_factor: f64) -> Self {
         ManagerState {
+            end_id: Default::default(),
             dpi_factor,
             modifiers: ModifiersState::empty(),
             char_focus: None,
@@ -61,6 +62,7 @@ impl ManagerState {
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         trace!("Manager::configure");
+        self.action = TkAction::None;
 
         // Re-assigning WidgetIds might invalidate state; to avoid this we map
         // existing ids to new ids
@@ -73,9 +75,9 @@ impl ManagerState {
         self.time_updates.clear();
         self.handle_updates.clear();
         self.pending.clear();
-        self.action = TkAction::None;
         self.nav_fallback = None;
 
+        // Enumerate and configure all widgets:
         let coord = self.last_mouse_coord;
         self.with(tkw, |mut mgr| {
             mgr.push_accel_layer(false);
@@ -90,6 +92,15 @@ impl ManagerState {
             let hover = widget.find_id(coord);
             mgr.set_hover(widget, hover);
         });
+        if self.action == TkAction::Reconfigure {
+            warn!("Detected TkAction::Reconfigure during configure. This may cause a reconfigure-loop.");
+            if id == self.end_id {
+                panic!("Reconfigure occurred with the same number of widgets — we are probably stuck in a reconfigure-loop.");
+            }
+            self.end_id = id;
+        }
+
+        // The remaining code just updates all input states to new IDs via the map.
 
         self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
         self.nav_focus = self.nav_focus.and_then(|id| map.get(&id).cloned());
