@@ -5,7 +5,7 @@
 
 //! Text-drawing API
 
-pub use ab_glyph::FontArc;
+pub use ab_glyph::{FontArc, PxScale};
 
 use super::{Colour, Draw, DrawShared, Pass};
 use crate::geom::Rect;
@@ -22,19 +22,31 @@ use crate::Align;
 pub struct FontId(pub usize);
 
 /// Text properties for use by [`DrawText::text`]
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct TextProperties {
     /// The font
     pub font: FontId,
-    /// Font scale (approximately the pixel-height of a line of text or double
-    /// the "pt" size; currently not formally specified)
-    pub scale: f32,
+    /// Font scale
+    ///
+    /// This is approximately the pixel-height of a line of text or double the
+    /// "pt" size. Usually you want to use the same scale for both components,
+    /// e.g. `PxScale::from(18.0)`.
+    pub scale: PxScale,
     /// Font colour
     pub col: Colour,
     /// Text alignment in horizontal and vertical directions
     pub align: (Align, Align),
     /// True if text should automatically be line-wrapped
     pub line_wrap: bool,
+}
+
+impl Default for TextProperties {
+    fn default() -> Self {
+        TextProperties {
+            scale: 18.0.into(),
+            ..Default::default()
+        }
+    }
 }
 
 /// Abstraction over type shared by [`DrawText`] implementations

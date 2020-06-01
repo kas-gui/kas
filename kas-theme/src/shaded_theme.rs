@@ -241,7 +241,7 @@ where
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         let props = TextProperties {
             font: self.window.dims.font_id,
-            scale: self.window.dims.font_scale,
+            scale: self.window.dims.font_scale.into(),
             col: match class {
                 TextClass::Label => self.cols.label_text,
                 TextClass::Button => self.cols.button_text,
