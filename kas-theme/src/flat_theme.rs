@@ -133,6 +133,23 @@ impl ThemeApi for FlatTheme {
 }
 
 impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
+    fn text_props(&self, class: TextClass, align: (Align, Align)) -> TextProperties {
+        TextProperties {
+            font: self.window.dims.font_id,
+            scale: self.window.dims.font_scale.into(),
+            col: match class {
+                TextClass::Label => self.cols.label_text,
+                TextClass::Button => self.cols.button_text,
+                TextClass::Edit | TextClass::EditMulti => self.cols.text,
+            },
+            align,
+            line_wrap: match class {
+                TextClass::Label | TextClass::EditMulti => true,
+                TextClass::Button | TextClass::Edit => false,
+            },
+        }
+    }
+
     /// Draw an edit box with optional navigation highlight.
     /// Return the inner rect.
     ///
@@ -234,21 +251,25 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     }
 
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
-        let props = TextProperties {
-            font: self.window.dims.font_id,
-            scale: self.window.dims.font_scale.into(),
-            col: match class {
-                TextClass::Label => self.cols.label_text,
-                TextClass::Button => self.cols.button_text,
-                TextClass::Edit | TextClass::EditMulti => self.cols.text,
-            },
-            align,
-            line_wrap: match class {
-                TextClass::Label | TextClass::EditMulti => true,
-                TextClass::Button | TextClass::Edit => false,
-            },
-        };
+        let props = self.text_props(class, align);
         self.draw.text(self.pass, rect + self.offset, text, props);
+    }
+
+    fn edit_marker(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        class: TextClass,
+        align: (Align, Align),
+        byte: usize,
+    ) {
+        let props = self.text_props(class, align);
+        let pos = self
+            .draw
+            .text_glyph_pos(rect + self.offset, text, props, byte);
+        let size = self.window.dims.edit_marker_size();
+        let quad = Quad::with_pos_and_size(pos, size);
+        self.draw.rect(self.pass, quad, props.col);
     }
 
     fn menu_entry(&mut self, rect: Rect, state: InputState) {

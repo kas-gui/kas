@@ -8,7 +8,7 @@
 pub use ab_glyph::{FontArc, PxScale};
 
 use super::{Colour, Draw, DrawShared, Pass};
-use crate::geom::Rect;
+use crate::geom::{Rect, Vec2};
 use crate::Align;
 
 /// Font identifier
@@ -86,4 +86,15 @@ pub trait DrawText: Draw {
         bounds: (f32, f32),
         line_wrap: bool,
     ) -> (f32, f32);
+
+    /// Find the starting position (top-left) of the glyph at the given index
+    ///
+    /// May panic on invalid byte index.
+    fn text_glyph_pos(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        props: TextProperties,
+        byte: usize,
+    ) -> Vec2;
 }

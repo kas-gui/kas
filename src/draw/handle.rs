@@ -238,6 +238,16 @@ pub trait DrawHandle {
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align));
 
+    /// Draw an edit marker at the given `byte` index on this `text`
+    fn edit_marker(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        class: TextClass,
+        align: (Align, Align),
+        byte: usize,
+    );
+
     /// Draw the background of a menu entry
     fn menu_entry(&mut self, rect: Rect, state: InputState);
 
@@ -400,6 +410,16 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
     }
+    fn edit_marker(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        class: TextClass,
+        align: (Align, Align),
+        byte: usize,
+    ) {
+        self.deref_mut().edit_marker(rect, text, class, align, byte)
+    }
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().menu_entry(rect, state)
     }
@@ -454,6 +474,16 @@ where
     }
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
+    }
+    fn edit_marker(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        class: TextClass,
+        align: (Align, Align),
+        byte: usize,
+    ) {
+        self.deref_mut().edit_marker(rect, text, class, align, byte)
     }
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().menu_entry(rect, state)

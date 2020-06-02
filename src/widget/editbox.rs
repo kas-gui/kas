@@ -205,14 +205,11 @@ impl<G: 'static> Layout for EditBox<G> {
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
         let align = (Align::Begin, Align::Begin);
-        let mut text = &self.text;
-        let mut _string;
+        draw_handle.text(self.text_rect, &self.text, class, align);
         if input_state.char_focus {
-            _string = self.text.clone();
-            _string.push('|');
-            text = &_string;
+            let byte = self.text.len(); // FIXME
+            draw_handle.edit_marker(self.text_rect, &self.text, class, align, byte);
         }
-        draw_handle.text(self.text_rect, text, class, align);
     }
 }
 

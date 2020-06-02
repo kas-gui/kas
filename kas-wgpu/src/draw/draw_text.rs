@@ -6,7 +6,7 @@
 //! Text drawing API for `kas_wgpu`
 
 use std::f32;
-use wgpu_glyph::ab_glyph::PxScale;
+use wgpu_glyph::ab_glyph::{PxScale, PxScaleFont, ScaleFont};
 use wgpu_glyph::{Extra, GlyphCruncher, HorizontalAlign, Layout, Section, Text, VerticalAlign};
 
 use super::{CustomPipe, CustomWindow, DrawPipe, DrawWindow};
@@ -22,46 +22,51 @@ impl<C: CustomPipe + 'static> DrawTextShared for DrawPipe<C> {
     }
 }
 
+fn make_section(pass: Pass, rect: Rect, text: &str, props: TextProperties) -> Section {
+    let bounds = Coord::from(rect.size);
+
+    // TODO: support justified alignment
+    let (h_align, h_offset) = match props.align.0 {
+        Align::Begin | Align::Stretch => (HorizontalAlign::Left, 0),
+        Align::Centre => (HorizontalAlign::Center, bounds.0 / 2),
+        Align::End => (HorizontalAlign::Right, bounds.0),
+    };
+    let (v_align, v_offset) = match props.align.1 {
+        Align::Begin | Align::Stretch => (VerticalAlign::Top, 0),
+        Align::Centre => (VerticalAlign::Center, bounds.1 / 2),
+        Align::End => (VerticalAlign::Bottom, bounds.1),
+    };
+
+    let text_pos = rect.pos + Coord(h_offset, v_offset);
+
+    let layout = match props.line_wrap {
+        true => Layout::default_wrap(),
+        false => Layout::default_single_line(),
+    };
+    let layout = layout.h_align(h_align).v_align(v_align);
+
+    let text = vec![Text {
+        text,
+        scale: PxScale::from(props.scale),
+        font_id: wgpu_glyph::FontId(props.font.0),
+        extra: Extra {
+            color: props.col.into(),
+            z: pass.depth(),
+        },
+    }];
+
+    Section {
+        screen_position: Vec2::from(text_pos).into(),
+        bounds: Vec2::from(bounds).into(),
+        layout,
+        text,
+    }
+}
+
 impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
     fn text(&mut self, pass: Pass, rect: Rect, text: &str, props: TextProperties) {
-        let bounds = Coord::from(rect.size);
-
-        // TODO: support justified alignment
-        let (h_align, h_offset) = match props.align.0 {
-            Align::Begin | Align::Stretch => (HorizontalAlign::Left, 0),
-            Align::Centre => (HorizontalAlign::Center, bounds.0 / 2),
-            Align::End => (HorizontalAlign::Right, bounds.0),
-        };
-        let (v_align, v_offset) = match props.align.1 {
-            Align::Begin | Align::Stretch => (VerticalAlign::Top, 0),
-            Align::Centre => (VerticalAlign::Center, bounds.1 / 2),
-            Align::End => (VerticalAlign::Bottom, bounds.1),
-        };
-
-        let text_pos = rect.pos + Coord(h_offset, v_offset);
-
-        let layout = match props.line_wrap {
-            true => Layout::default_wrap(),
-            false => Layout::default_single_line(),
-        };
-        let layout = layout.h_align(h_align).v_align(v_align);
-
-        let text = vec![Text {
-            text,
-            scale: PxScale::from(props.scale),
-            font_id: wgpu_glyph::FontId(props.font.0),
-            extra: Extra {
-                color: props.col.into(),
-                z: pass.depth(),
-            },
-        }];
-
-        self.glyph_brush.queue(Section {
-            screen_position: Vec2::from(text_pos).into(),
-            bounds: Vec2::from(bounds).into(),
-            layout,
-            text,
-        });
+        self.glyph_brush
+            .queue(make_section(pass, rect, text, props));
     }
 
     #[inline]
@@ -96,5 +101,50 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
             .map(|(min, max)| max - min)
             .unwrap_or(Vec2::splat(0.0))
             .into()
+    }
+
+    fn text_glyph_pos(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        props: TextProperties,
+        byte: usize,
+    ) -> Vec2 {
+        if byte == 0 {
+            // Short-cut. We also cannot iterate since there may be no glyphs.
+            return rect.pos.into();
+        }
+        let pass = Pass::new_pass_with_depth(0, 0.0); // values are unimportant
+        let mut iter = self
+            .glyph_brush
+            .glyphs(make_section(pass, rect, text, props));
+
+        let mut advance = false;
+        let mut glyph;
+        if byte < text.len() {
+            glyph = iter.next().unwrap().clone();
+            for next in iter {
+                assert_eq!(next.section_index, 0);
+                if byte < next.byte_index {
+                    // Use the previous glyph, e.g. if in the middle of a
+                    // multi-byte sequence or index is a combining diacritic.
+                    break;
+                }
+                glyph = next.clone();
+            }
+        } else {
+            advance = true;
+            glyph = iter.last().unwrap().clone();
+        }
+
+        let mut pos = glyph.glyph.position;
+        let font = self.glyph_brush.fonts()[glyph.font_id.0].clone();
+        let scale = props.scale;
+        let scale_font = PxScaleFont { font, scale };
+        if advance {
+            pos.x += scale_font.h_advance(glyph.glyph.id);
+        }
+        pos.y -= scale_font.ascent();
+        return Vec2(pos.x, pos.y);
     }
 }
