@@ -19,6 +19,7 @@ enum LastEdit {
     Insert,
     Backspace,
     Delete,
+    Clear,
     Paste,
 }
 
@@ -354,6 +355,28 @@ impl<G> EditBox<G> {
         let pos = self.edit_pos;
         match key {
             ControlKey::Return => EditAction::Activate,
+            ControlKey::Left => {
+                let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
+                if let Some(prev) = cursor.prev_boundary(&self.text, 0).unwrap() {
+                    self.edit_pos = prev;
+                }
+                EditAction::None
+            }
+            ControlKey::Right => {
+                let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
+                if let Some(next) = cursor.next_boundary(&self.text, 0).unwrap() {
+                    self.edit_pos = next;
+                }
+                EditAction::None
+            }
+            ControlKey::Up | ControlKey::Home | ControlKey::PageUp => {
+                self.edit_pos = 0;
+                EditAction::None
+            }
+            ControlKey::Down | ControlKey::End | ControlKey::PageDown => {
+                self.edit_pos = self.text.len();
+                EditAction::None
+            }
             ControlKey::Delete => {
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
                 if let Some(next) = cursor.next_boundary(&self.text, 0).unwrap() {
@@ -382,6 +405,17 @@ impl<G> EditBox<G> {
                 } else {
                     EditAction::None
                 }
+            }
+            ControlKey::Cut => {
+                mgr.set_clipboard((&self.text).into());
+
+                if self.last_edit != LastEdit::Clear {
+                    self.old_state = Some((self.text.clone(), pos));
+                    self.last_edit = LastEdit::Clear;
+                }
+                self.text.clear();
+                self.edit_pos = 0;
+                EditAction::Edit
             }
             ControlKey::Copy => {
                 // we don't yet have selection support, so just copy everything
