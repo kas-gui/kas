@@ -5,10 +5,10 @@
 
 //! Text-drawing API
 
-pub use rusttype::Font;
+pub use ab_glyph::{FontArc, PxScale};
 
 use super::{Colour, Draw, DrawShared, Pass};
-use crate::geom::Rect;
+use crate::geom::{Rect, Vec2};
 use crate::Align;
 
 /// Font identifier
@@ -22,13 +22,16 @@ use crate::Align;
 pub struct FontId(pub usize);
 
 /// Text properties for use by [`DrawText::text`]
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct TextProperties {
     /// The font
     pub font: FontId,
-    /// Font scale (approximately the pixel-height of a line of text or double
-    /// the "pt" size; currently not formally specified)
-    pub scale: f32,
+    /// Font scale
+    ///
+    /// This is approximately the pixel-height of a line of text or double the
+    /// "pt" size. Usually you want to use the same scale for both components,
+    /// e.g. `PxScale::from(18.0)`.
+    pub scale: PxScale,
     /// Font colour
     pub col: Colour,
     /// Text alignment in horizontal and vertical directions
@@ -37,10 +40,19 @@ pub struct TextProperties {
     pub line_wrap: bool,
 }
 
+impl Default for TextProperties {
+    fn default() -> Self {
+        TextProperties {
+            scale: 18.0.into(),
+            ..Default::default()
+        }
+    }
+}
+
 /// Abstraction over type shared by [`DrawText`] implementations
 pub trait DrawTextShared: DrawShared {
     /// Load a font
-    fn load_font(&mut self, font: Font<'static>) -> FontId;
+    fn load_font(&mut self, font: FontArc) -> FontId;
 }
 
 /// Abstraction over text rendering
@@ -74,4 +86,15 @@ pub trait DrawText: Draw {
         bounds: (f32, f32),
         line_wrap: bool,
     ) -> (f32, f32);
+
+    /// Find the starting position (top-left) of the glyph at the given index
+    ///
+    /// May panic on invalid byte index.
+    fn text_glyph_pos(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        props: TextProperties,
+        byte: usize,
+    ) -> Vec2;
 }

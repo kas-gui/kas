@@ -18,14 +18,28 @@ use crate::{WidgetId, WindowId};
 pub enum Event {
     /// No event
     None,
-    /// Widget activation, for example clicking a button or toggling a check-box
-    Activate,
-    /// Navigation key input
+    /// Widget activation
     ///
-    /// This is received when the widget has key-navigation focus. Note that
-    /// the Enter/Return/Space keys are not a [`NavKey`] but instead trigger
-    /// [`Event::Activate`] (depending on context).
-    NavKey(NavKey),
+    /// For example, clicking a button, toggling a check-box, opening a menu or
+    /// requesting char focus (keyboard input).
+    ///
+    /// This event is triggered by keyboard navigation and accelerator key
+    /// bindings, and may be used by a parent widget to activate a child.
+    Activate,
+    /// Control / Navigation key input
+    ///
+    /// This represents a "control" actions, usually triggered by a key, and are
+    /// received with char focus ([`Manager::request_char_focus`]), nav focus
+    /// ([`Manager::nav_focus`]) or as a nav
+    /// fallback ([`Manager::register_nav_fallback`]).
+    ///
+    /// Behaviour differs slightly between char and nav focus. When a widget
+    /// has char focus, the Space key sends a space character via
+    /// [`Event::ReceivedCharacter`] while the Return key sends
+    /// [`ControlKey::Return`]. Without char focus, both Space and Return keys
+    /// send [`Event::Activate`] to the widget with nav focus (if any, otherwise
+    /// to the nav fallback, if any).
+    Control(ControlKey),
     /// Widget lost keyboard input focus
     LostCharFocus,
     /// Widget receives a character of text input
@@ -143,7 +157,14 @@ pub enum Event {
     NavFocus,
 }
 
-/// Navigation key ([`Event::NavKey`])
+/// Control / Navigation key ([`Event::Control`])
+///
+/// These codes are generated from keyboard events when a widget has char or
+/// nav focus. The codes generated differ slightly depending on which focus
+/// dominates; see notes on [`ControlKey::Return`] and [`ControlKey::Tab`].
+///
+/// The Escape key is notably absent: it always cancels char or nav focus, thus
+/// is never sent to a widget. The Tab key is only reported with char focus.
 ///
 /// The purpose of this enum (instead of sending the active widget a
 /// [`VirtualKeyCode`]) is consistent behaviour: these "navigation keys" will
@@ -151,10 +172,21 @@ pub enum Event {
 /// while alpha-numeric keys will always be available for accelerator keys
 /// (when a character input grab is not present). Additionally, this allows
 /// uniform behaviour with regards to num-pad keys.
-// TODO: possible expansion candidates: Cut/Copy/Paste,
-// Space, Enter, ScrollLock, Pause, Insert, Delete, Backspace
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum NavKey {
+pub enum ControlKey {
+    /// Line break (return / enter key)
+    ///
+    /// Note: this is generated *only* when a widget has char focus (see
+    /// [`Manager::request_char_focus`]), otherwise the Return key is mapped to
+    /// [`Event::Activate`] and sent to the widget with nav focus.
+    Return,
+    /// (Horizontal) tabulation
+    ///
+    /// Note: this is generated *only* when a widget has char focus (see
+    /// [`Manager::request_char_focus`]), otherwise the Tab key adjusts nav
+    /// focus.
+    Tab,
+
     /// Left arrow
     Left,
     /// Right arrow
@@ -171,21 +203,65 @@ pub enum NavKey {
     PageUp,
     /// Page down
     PageDown,
+
+    /// "Screenshot" key
+    Snapshot,
+    /// Scroll lock key
+    ScrollLock,
+    /// Pause key
+    Pause,
+    /// Insert key
+    Insert,
+    /// Delete forwards
+    Delete,
+    /// Delete backwards
+    Backspace,
+
+    /// Copy to clipboard and clear
+    Cut,
+    /// Copy to clipboard
+    Copy,
+    /// Copy from clipboard
+    Paste,
+    /// Undo the last action
+    Undo,
+    /// Redo the last undone action
+    Redo,
+
+    /// Navigate backwards one page/item
+    Backward,
+    /// Navigate forwards one page/item
+    Forward,
 }
 
-impl NavKey {
+impl ControlKey {
     /// Try constructing from a [`VirtualKeyCode`]
     pub fn new(vkey: VirtualKeyCode) -> Option<Self> {
+        use ControlKey as CK;
         use VirtualKeyCode::*;
         Some(match vkey {
-            Home => NavKey::Home,
-            End => NavKey::End,
-            PageDown => NavKey::PageDown,
-            PageUp => NavKey::PageUp,
-            Left => NavKey::Left,
-            Up => NavKey::Up,
-            Right => NavKey::Right,
-            Down => NavKey::Down,
+            Snapshot => CK::Snapshot,
+            Scroll => CK::ScrollLock,
+            Pause => CK::Pause,
+            Insert => CK::Insert,
+            Home => CK::Home,
+            Delete => CK::Delete,
+            End => CK::End,
+            PageDown => CK::PageDown,
+            PageUp => CK::PageUp,
+            Left => CK::Left,
+            Up => CK::Up,
+            Right => CK::Right,
+            Down => CK::Down,
+            Back => CK::Backspace,
+            Return => CK::Return,
+            NavigateForward => CK::Forward,
+            NavigateBackward => CK::Backward,
+            NumpadEnter => CK::Return,
+            Tab => CK::Tab,
+            Cut => CK::Cut,
+            Copy => CK::Copy,
+            Paste => CK::Paste,
             _ => return None,
         })
     }

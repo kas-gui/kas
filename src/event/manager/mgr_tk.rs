@@ -370,13 +370,36 @@ impl<'a> Manager<'a> {
             HoveredFile(path) => ,
             HoveredFileCancelled => ,
             */
-            ReceivedCharacter(c) if c != '\u{1b}' /* escape */ => {
+            ReceivedCharacter(c) => {
                 if let Some(id) = self.mgr.char_focus {
-                    let event = Event::ReceivedCharacter(c);
-                    self.send_event(widget, id, event);
+                    // Filter out control codes (Unicode 5.11) which
+                    // should be sent via Event::Control
+                    if c < '\u{20}' || (c >= '\u{7f}' && c <= '\u{9f}') {
+                        // We ignore these when winit also sends a corresponding
+                        // VirtualKeyCode but match those codes it doesn't.
+                        // Possibly we should instead directly match Control+Letter
+                        // combos and handle localisation ourselves, but we
+                        // don't yet have localisation or customisation support.
+                        let key = match c {
+                            '\u{03}' => ControlKey::Copy,
+                            '\u{16}' => ControlKey::Paste,
+                            '\u{18}' => ControlKey::Cut,
+                            '\u{1A}' => ControlKey::Undo, // also redo; we can't differentiate
+                            _ => return,
+                        };
+                        let event = Event::Control(key);
+                        self.send_event(widget, id, event);
+                    } else {
+                        let event = Event::ReceivedCharacter(c);
+                        self.send_event(widget, id, event);
+                    }
                 }
             }
-            KeyboardInput { input, is_synthetic, .. } => {
+            KeyboardInput {
+                input,
+                is_synthetic,
+                ..
+            } => {
                 if input.state == ElementState::Pressed && !is_synthetic {
                     if let Some(vkey) = input.virtual_keycode {
                         self.start_key_event(widget, vkey, input.scancode);
@@ -392,10 +415,7 @@ impl<'a> Manager<'a> {
                 }
                 self.mgr.modifiers = state;
             }
-            CursorMoved {
-                position,
-                ..
-            } => {
+            CursorMoved { position, .. } => {
                 let coord = position.into();
 
                 // Update hovered widget
@@ -406,7 +426,12 @@ impl<'a> Manager<'a> {
                 if let Some(grab) = self.mouse_grab() {
                     if grab.mode == GrabMode::Grab {
                         let source = PressSource::Mouse(grab.button);
-                        let event = Event::PressMove { source, cur_id, coord, delta };
+                        let event = Event::PressMove {
+                            source,
+                            cur_id,
+                            coord,
+                            delta,
+                        };
                         self.send_event(widget, grab.start_id, event);
                     } else if let Some(pan) = self.mgr.pan_grab.get_mut(grab.pan_grab.0 as usize) {
                         pan.coords[grab.pan_grab.1 as usize].1 = coord;
@@ -414,7 +439,12 @@ impl<'a> Manager<'a> {
                 } else if let Some(id) = self.mgr.popups.last().map(|(_, p)| p.parent) {
                     // Use a fake button!
                     let source = PressSource::Mouse(MouseButton::Other(0));
-                    let event = Event::PressMove { source, cur_id, coord, delta };
+                    let event = Event::PressMove {
+                        source,
+                        cur_id,
+                        coord,
+                        delta,
+                    };
                     self.send_event(widget, id, event);
                 } else {
                     // We don't forward move events without a grab
@@ -434,18 +464,15 @@ impl<'a> Manager<'a> {
             MouseWheel { delta, .. } => {
                 let event = Event::Scroll(match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
-                    MouseScrollDelta::PixelDelta(pos) =>
-                        ScrollDelta::PixelDelta(Coord::from_logical(pos, self.mgr.dpi_factor)),
+                    MouseScrollDelta::PixelDelta(pos) => {
+                        ScrollDelta::PixelDelta(Coord::from_logical(pos, self.mgr.dpi_factor))
+                    }
                 });
                 if let Some(id) = self.mgr.hover {
                     self.send_event(widget, id, event);
                 }
             }
-            MouseInput {
-                state,
-                button,
-                ..
-            } => {
+            MouseInput { state, button, .. } => {
                 let coord = self.mgr.last_mouse_coord;
                 let source = PressSource::Mouse(button);
 
@@ -471,7 +498,11 @@ impl<'a> Manager<'a> {
                 } else if let Some(start_id) = self.mgr.hover {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
-                        let event = Event::PressStart { source, start_id, coord };
+                        let event = Event::PressStart {
+                            source,
+                            start_id,
+                            coord,
+                        };
                         self.send_popup_first(widget, start_id, event);
                     }
                 }
@@ -484,7 +515,11 @@ impl<'a> Manager<'a> {
                 match touch.phase {
                     TouchPhase::Started => {
                         if let Some(start_id) = widget.find_id(coord) {
-                            let event = Event::PressStart { source, start_id, coord };
+                            let event = Event::PressStart {
+                                source,
+                                start_id,
+                                coord,
+                            };
                             self.send_popup_first(widget, start_id, event);
                         }
                     }
@@ -503,8 +538,9 @@ impl<'a> Manager<'a> {
                                     delta: coord - grab.coord,
                                 };
                                 // Only when 'depressed' status changes:
-                                let redraw = grab.cur_id != cur_id &&
-                                    (grab.cur_id == Some(grab.start_id) || cur_id == Some(grab.start_id));
+                                let redraw = grab.cur_id != cur_id
+                                    && (grab.cur_id == Some(grab.start_id)
+                                        || cur_id == Some(grab.start_id));
 
                                 grab.cur_id = cur_id;
                                 grab.coord = coord;

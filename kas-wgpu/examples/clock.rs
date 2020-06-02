@@ -100,7 +100,7 @@ impl Layout for Clock {
         line_seg(a_sec, 0.0, half * 0.9, half * 0.005, col_secs);
 
         let props = TextProperties {
-            scale: self.font_scale,
+            scale: self.font_scale.into(),
             col: col_text,
             align: (Align::Centre, Align::Centre),
             ..TextProperties::default()

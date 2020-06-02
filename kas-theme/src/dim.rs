@@ -37,6 +37,7 @@ pub struct DimensionsParams {
 pub struct Dimensions {
     pub font_id: FontId,
     pub font_scale: f32,
+    pub font_marker_width: f32,
     pub scale_factor: f32,
     pub line_height: u32,
     pub min_line_length: u32,
@@ -63,6 +64,7 @@ impl Dimensions {
         Dimensions {
             font_id,
             font_scale,
+            font_marker_width: (2.0 * scale_factor).round(),
             scale_factor,
             line_height,
             // We appear to average about 2 characters per line_height
@@ -76,6 +78,10 @@ impl Dimensions {
             scrollbar: Size::from(params.scrollbar_size * scale_factor),
             slider: Size::from(params.slider_size * scale_factor),
         }
+    }
+
+    pub fn edit_marker_size(&self) -> Vec2 {
+        Vec2(self.font_marker_width, self.font_scale)
     }
 }
 

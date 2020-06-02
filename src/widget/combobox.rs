@@ -11,7 +11,7 @@ use std::iter::FromIterator;
 use super::{Column, MenuEntry, MenuFrame};
 use kas::class::HasText;
 use kas::draw::TextClass;
-use kas::event::{GrabMode, NavKey};
+use kas::event::{ControlKey, GrabMode};
 use kas::prelude::*;
 use kas::WindowId;
 
@@ -198,7 +198,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         match r {
             Response::None => Response::None,
             Response::Unhandled(ev) => match ev {
-                Event::NavKey(key) => {
+                Event::Control(key) => {
                     let next = |mgr: &mut Manager, s, clr, rev| {
                         if clr {
                             mgr.clear_nav_focus();
@@ -207,11 +207,11 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
                         Response::None
                     };
                     match key {
-                        NavKey::Up => next(mgr, self, false, true),
-                        NavKey::Down => next(mgr, self, false, false),
-                        NavKey::Home => next(mgr, self, true, false),
-                        NavKey::End => next(mgr, self, true, true),
-                        key => Response::Unhandled(Event::NavKey(key)),
+                        ControlKey::Up => next(mgr, self, false, true),
+                        ControlKey::Down => next(mgr, self, false, false),
+                        ControlKey::Home => next(mgr, self, true, false),
+                        ControlKey::End => next(mgr, self, true, true),
+                        key => Response::Unhandled(Event::Control(key)),
                     }
                 }
                 ev => Response::Unhandled(ev),

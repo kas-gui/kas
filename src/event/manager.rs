@@ -247,10 +247,11 @@ impl<'a> Manager<'a> {
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         use VirtualKeyCode as VK;
-        if self.mgr.char_focus.is_some() {
-            match vkey {
-                VK::Escape => self.set_char_focus(None),
-                _ => (),
+        if let Some(id) = self.mgr.char_focus {
+            if vkey == VK::Escape {
+                self.set_char_focus(None);
+            } else if let Some(key) = ControlKey::new(vkey) {
+                self.send_event(widget, id, Event::Control(key));
             }
             return;
         }
@@ -277,20 +278,20 @@ impl<'a> Manager<'a> {
                 if let Some(nav_id) = self.mgr.nav_focus {
                     if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
                         id_action = Some((nav_id, Event::Activate));
-                    } else if let Some(nav_key) = NavKey::new(vkey) {
-                        id_action = Some((nav_id, Event::NavKey(nav_key)));
+                    } else if let Some(nav_key) = ControlKey::new(vkey) {
+                        id_action = Some((nav_id, Event::Control(nav_key)));
                     }
                 }
 
                 if id_action.is_none() {
                     // Next priority goes to pop-up widget
                     if let Some(popup) = self.mgr.popups.last() {
-                        if let Some(key) = NavKey::new(vkey) {
-                            id_action = Some((popup.1.parent, Event::NavKey(key)));
+                        if let Some(key) = ControlKey::new(vkey) {
+                            id_action = Some((popup.1.parent, Event::Control(key)));
                         }
                     } else if let Some(id) = self.mgr.nav_fallback {
-                        if let Some(key) = NavKey::new(vkey) {
-                            id_action = Some((id, Event::NavKey(key)));
+                        if let Some(key) = ControlKey::new(vkey) {
+                            id_action = Some((id, Event::Control(key)));
                         }
                     }
                 }

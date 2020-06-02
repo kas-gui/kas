@@ -10,7 +10,7 @@ use std::ops::{Add, Sub};
 use std::time::Duration;
 
 use super::DragHandle;
-use kas::event::NavKey;
+use kas::event::ControlKey;
 use kas::prelude::*;
 
 /// Requirements on type used by [`Slider`]
@@ -249,31 +249,31 @@ impl<T: SliderType, D: Directional> event::SendEvent for Slider<T, D> {
             }
         } else {
             match event {
-                Event::NavKey(key) => {
+                Event::Control(key) => {
                     let rev = self.direction.is_reversed();
                     let v = match key {
-                        NavKey::Left | NavKey::Up => match rev {
+                        ControlKey::Left | ControlKey::Up => match rev {
                             false => self.value - self.step,
                             true => self.value + self.step,
                         },
-                        NavKey::Right | NavKey::Down => match rev {
+                        ControlKey::Right | ControlKey::Down => match rev {
                             false => self.value + self.step,
                             true => self.value - self.step,
                         },
-                        NavKey::PageUp | NavKey::PageDown => {
+                        ControlKey::PageUp | ControlKey::PageDown => {
                             // Generics makes this easier than constructing a literal and multiplying!
                             let mut x = self.step + self.step;
                             x = x + x;
                             x = x + x;
                             x = x + x;
-                            match rev == (key == NavKey::PageDown) {
+                            match rev == (key == ControlKey::PageDown) {
                                 false => self.value + x,
                                 true => self.value - x,
                             }
                         }
-                        NavKey::Home => self.range.0,
-                        NavKey::End => self.range.1,
-                        // _ => return Response::Unhandled(event),
+                        ControlKey::Home => self.range.0,
+                        ControlKey::End => self.range.1,
+                        key => return Response::Unhandled(Event::Control(key)),
                     };
                     let action = self.set_value(v);
                     return if action == TkAction::None {

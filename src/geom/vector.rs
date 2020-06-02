@@ -21,6 +21,21 @@ pub struct Quad {
 }
 
 impl Quad {
+    /// Construct with two coords
+    #[inline]
+    pub fn with_coords(a: Vec2, b: Vec2) -> Self {
+        Quad { a, b }
+    }
+
+    /// Construct with position and size
+    #[inline]
+    pub fn with_pos_and_size(pos: Vec2, size: Vec2) -> Self {
+        Quad {
+            a: pos,
+            b: pos + size,
+        }
+    }
+
     /// Get the size
     #[inline]
     pub fn size(&self) -> Vec2 {

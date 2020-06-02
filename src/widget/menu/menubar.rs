@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use super::{Menu, SubMenu};
-use kas::event::{GrabMode, NavKey};
+use kas::event::{ControlKey, GrabMode};
 use kas::prelude::*;
 use kas::widget::List;
 
@@ -163,16 +163,16 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                     self.menu_path(mgr, None);
                 }
             }
-            Event::NavKey(key) => {
+            Event::Control(key) => {
                 // Arrow keys can switch to the next / previous menu.
                 let is_vert = self.bar.direction().is_vertical();
                 let reverse = self.bar.direction().is_reversed()
                     ^ match key {
-                        NavKey::Left if !is_vert => true,
-                        NavKey::Right if !is_vert => false,
-                        NavKey::Up if is_vert => true,
-                        NavKey::Down if is_vert => false,
-                        key => return Response::Unhandled(Event::NavKey(key)),
+                        ControlKey::Left if !is_vert => true,
+                        ControlKey::Right if !is_vert => false,
+                        ControlKey::Up if is_vert => true,
+                        ControlKey::Down if is_vert => false,
+                        key => return Response::Unhandled(Event::Control(key)),
                     };
 
                 for i in 0..self.bar.len() {

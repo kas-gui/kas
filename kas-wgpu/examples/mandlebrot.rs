@@ -13,7 +13,7 @@ use wgpu::{Buffer, ShaderModule};
 
 use kas::class::HasText;
 use kas::draw::Pass;
-use kas::event::NavKey;
+use kas::event::ControlKey;
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widget::{Label, Slider, Window};
@@ -491,18 +491,18 @@ impl event::Handler for Mandlebrot {
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
-            Event::NavKey(key) => {
+            Event::Control(key) => {
                 match key {
-                    NavKey::Home | NavKey::End => self.reset_view(),
-                    NavKey::PageUp => self.alpha = self.alpha / 2f64.sqrt(),
-                    NavKey::PageDown => self.alpha = self.alpha * 2f64.sqrt(),
+                    ControlKey::Home | ControlKey::End => self.reset_view(),
+                    ControlKey::PageUp => self.alpha = self.alpha / 2f64.sqrt(),
+                    ControlKey::PageDown => self.alpha = self.alpha * 2f64.sqrt(),
                     key => {
                         let d = 0.2;
                         let delta = match key {
-                            NavKey::Up => DVec2(0.0, -d),
-                            NavKey::Down => DVec2(0.0, d),
-                            NavKey::Left => DVec2(-d, 0.0),
-                            NavKey::Right => DVec2(d, 0.0),
+                            ControlKey::Up => DVec2(0.0, -d),
+                            ControlKey::Down => DVec2(0.0, d),
+                            ControlKey::Left => DVec2(-d, 0.0),
+                            ControlKey::Right => DVec2(d, 0.0),
                             _ => return Response::None,
                         };
                         self.delta = self.delta + self.alpha.complex_mul(delta);

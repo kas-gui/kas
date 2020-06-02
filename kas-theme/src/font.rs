@@ -17,52 +17,36 @@ use lazy_static::lazy_static;
 use std::sync::Once;
 // use wgpu_glyph::rusttype::FontCollection;
 
-use kas::draw::{DrawTextShared, Font, FontId};
+use kas::draw::{DrawTextShared, FontArc, FontId};
 
 #[cfg(feature = "font-kit")]
 use std::{fs::File, io::Read, sync::Arc};
 
 #[cfg(feature = "font-kit")]
-struct FontCollectionBytes {
-    bytes: Vec<u8>,
-    index: u32,
-}
+fn load_font() -> FontArc {
+    let handle = SystemSource::new()
+        .select_best_match(&[FamilyName::SansSerif], &Properties::new())
+        .unwrap();
 
-#[cfg(feature = "font-kit")]
-impl FontCollectionBytes {
-    fn load() -> Self {
-        let handle = SystemSource::new()
-            .select_best_match(&[FamilyName::SansSerif], &Properties::new())
-            .unwrap();
-        match handle {
-            Handle::Path { path, font_index } => {
-                let mut bytes = vec![];
-                File::open(path).unwrap().read_to_end(&mut bytes).unwrap();
-                FontCollectionBytes {
-                    bytes,
-                    index: font_index,
-                }
-            }
-            Handle::Memory { bytes, font_index } => {
-                let bytes = Arc::try_unwrap(bytes).unwrap();
-                FontCollectionBytes {
-                    bytes,
-                    index: font_index,
-                }
-            }
+    let (bytes, index) = match handle {
+        Handle::Path { path, font_index } => {
+            let mut bytes = vec![];
+            File::open(path).unwrap().read_to_end(&mut bytes).unwrap();
+            (bytes, font_index)
         }
-    }
-    fn font<'a>(&'a self) -> Font<'a> {
-        // FontCollection is in next version of rusttype
-        assert!(self.index == 0, "Font collections not yet supported");
-        Font::from_bytes(&self.bytes).unwrap()
-    }
+        Handle::Memory { bytes, font_index } => {
+            let bytes = Arc::try_unwrap(bytes).unwrap();
+            (bytes, font_index)
+        }
+    };
+
+    assert!(index == 0, "Font collections not yet supported");
+    FontArc::try_from_vec(bytes).unwrap()
 }
 
 #[cfg(feature = "font-kit")]
 lazy_static! {
-    static ref FCB: FontCollectionBytes = FontCollectionBytes::load();
-    static ref FONT: Font<'static> = FCB.font();
+    static ref FONT: FontArc = load_font();
 }
 
 #[cfg(not(feature = "font-kit"))]
@@ -70,7 +54,7 @@ const BYTES: &'static [u8] = include_bytes!("/usr/share/fonts/dejavu/DejaVuSerif
 
 #[cfg(not(feature = "font-kit"))]
 lazy_static! {
-    static ref FONT: Font<'static> = Font::from_bytes(BYTES).unwrap();
+    static ref FONT: FontArc = FontArc::try_from_slice(BYTES).unwrap();
 }
 
 /// Load fonts
