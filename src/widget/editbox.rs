@@ -10,6 +10,7 @@ use unicode_segmentation::GraphemeCursor;
 
 use kas::class::{Editable, HasText};
 use kas::draw::TextClass;
+use kas::event::ControlKey;
 use kas::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -333,82 +334,81 @@ impl<G> EditBox<G> {
         }
 
         let pos = self.edit_pos;
+        if self.last_edit != LastEdit::Insert {
+            self.old_state = Some((self.text.clone(), pos));
+            self.last_edit = LastEdit::Insert;
+        }
+        self.text.insert(pos, c);
+        self.edit_pos = pos + c.len_utf8();
 
-        // TODO: Text selection and editing (see Unicode std. section 5.11)
-        // Note that it may make sense to implement text shaping first.
-        // For now we just filter control characters and append the rest.
-        if c < '\u{20}' || (c >= '\u{7f}' && c <= '\u{9f}') {
-            match c {
-                '\u{03}' /* copy */ => {
-                    // we don't yet have selection support, so just copy everything
-                    mgr.set_clipboard((&self.text).into());
+        mgr.redraw(self.id());
+        EditAction::Edit
+    }
+
+    fn control_key(&mut self, mgr: &mut Manager, key: ControlKey) -> EditAction {
+        if !self.editable {
+            return EditAction::None;
+        }
+
+        let pos = self.edit_pos;
+        match key {
+            ControlKey::Return => return EditAction::Activate,
+            ControlKey::Delete => {
+                if self.last_edit != LastEdit::Delete {
+                    self.old_state = Some((self.text.clone(), pos));
+                    self.last_edit = LastEdit::Delete;
                 }
-                '\u{08}' /* backspace */  => {
-                    if self.last_edit != LastEdit::Backspace {
-                        self.old_state = Some((self.text.clone(), pos));
-                        self.last_edit = LastEdit::Backspace;
-                    }
-                    let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
-                    if let Some(prev) = cursor.prev_boundary(&self.text, 0).unwrap() {
-                        self.text.replace_range(prev..pos, "");
-                        self.edit_pos = prev;
-                    }
+                let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
+                if let Some(next) = cursor.next_boundary(&self.text, 0).unwrap() {
+                    self.text.replace_range(pos..next, "");
                 }
-                '\u{09}' /* tab */ => (),
-                '\u{0A}' /* line feed */ => (),
-                '\u{0B}' /* vertical tab */ => (),
-                '\u{0C}' /* form feed */ => (),
-                '\u{0D}' /* carriage return (\r) */ => return EditAction::Activate,
-                '\u{16}' /* paste */ => {
-                    if self.last_edit != LastEdit::Paste {
-                        self.old_state = Some((self.text.clone(), pos));
-                        self.last_edit = LastEdit::Paste;
-                    }
-                    if let Some(content) = mgr.get_clipboard() {
-                        // We cut the content short on control characters and
-                        // ignore them (preventing line-breaks and ignoring any
-                        // actions such as recursive-paste).
-                        let mut end = content.len();
-                        for (i, c) in content.char_indices() {
-                            if c < '\u{20}' || (c >= '\u{7f}' && c <= '\u{9f}') {
-                                end = i;
-                                break;
-                            }
-                        }
-                        self.text.insert_str(pos, &content[0..end]);
-                        self.edit_pos = pos + end;
-                    }
-                }
-                '\u{1A}' /* undo and redo */ => {
-                    // TODO: maintain full edit history (externally?)
-                    // NOTE: undo *and* redo shortcuts map to this control char
-                    if let Some((state, pos2)) = self.old_state.as_mut() {
-                        std::mem::swap(state, &mut self.text);
-                        self.edit_pos = *pos2;
-                        *pos2 = pos;
-                        self.last_edit = LastEdit::None;
-                    }
-                }
-                '\u{1B}' /* escape */ => (),
-                '\u{7f}' /* delete */ => {
-                    if self.last_edit != LastEdit::Delete {
-                        self.old_state = Some((self.text.clone(), pos));
-                        self.last_edit = LastEdit::Delete;
-                    }
-                    let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
-                    if let Some(next) = cursor.next_boundary(&self.text, 0).unwrap() {
-                        self.text.replace_range(pos..next, "");
-                    }
-                }
-                _ => (),
-            };
-        } else {
-            if self.last_edit != LastEdit::Insert {
-                self.old_state = Some((self.text.clone(), pos));
-                self.last_edit = LastEdit::Insert;
             }
-            self.text.insert(pos, c);
-            self.edit_pos = pos + c.len_utf8();
+            ControlKey::Backspace => {
+                if self.last_edit != LastEdit::Backspace {
+                    self.old_state = Some((self.text.clone(), pos));
+                    self.last_edit = LastEdit::Backspace;
+                }
+                let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
+                if let Some(prev) = cursor.prev_boundary(&self.text, 0).unwrap() {
+                    self.text.replace_range(prev..pos, "");
+                    self.edit_pos = prev;
+                }
+            }
+            ControlKey::Copy => {
+                // we don't yet have selection support, so just copy everything
+                mgr.set_clipboard((&self.text).into());
+            }
+            ControlKey::Paste => {
+                if self.last_edit != LastEdit::Paste {
+                    self.old_state = Some((self.text.clone(), pos));
+                    self.last_edit = LastEdit::Paste;
+                }
+                if let Some(content) = mgr.get_clipboard() {
+                    // We cut the content short on control characters and
+                    // ignore them (preventing line-breaks and ignoring any
+                    // actions such as recursive-paste).
+                    let mut end = content.len();
+                    for (i, c) in content.char_indices() {
+                        if c < '\u{20}' || (c >= '\u{7f}' && c <= '\u{9f}') {
+                            end = i;
+                            break;
+                        }
+                    }
+                    self.text.insert_str(pos, &content[0..end]);
+                    self.edit_pos = pos + end;
+                }
+            }
+            ControlKey::Undo | ControlKey::Redo => {
+                // TODO: maintain full edit history (externally?)
+                // NOTE: undo *and* redo shortcuts map to this control char
+                if let Some((state, pos2)) = self.old_state.as_mut() {
+                    std::mem::swap(state, &mut self.text);
+                    self.edit_pos = *pos2;
+                    *pos2 = pos;
+                    self.last_edit = LastEdit::None;
+                }
+            }
+            _ => (),
         }
         mgr.redraw(self.id());
         EditAction::Edit
@@ -455,14 +455,16 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 let r = G::focus_lost(self);
                 r.map(|msg| msg.into()).unwrap_or(Response::None)
             }
-            Event::ReceivedCharacter(c) => {
-                let r = match self.received_char(mgr, c) {
-                    EditAction::None => None,
-                    EditAction::Activate => G::activate(self),
-                    EditAction::Edit => G::edit(self),
-                };
-                r.map(|msg| msg.into()).unwrap_or(Response::None)
-            }
+            Event::Control(key) => match self.control_key(mgr, key) {
+                EditAction::None => Response::None,
+                EditAction::Activate => G::activate(self).into(),
+                EditAction::Edit => G::edit(self).into(),
+            },
+            Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
+                EditAction::None => Response::None,
+                EditAction::Activate => G::activate(self).into(),
+                EditAction::Edit => G::edit(self).into(),
+            },
             event => Response::Unhandled(event),
         }
     }

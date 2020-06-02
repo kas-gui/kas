@@ -115,3 +115,12 @@ impl<M> From<M> for Response<M> {
         Response::Msg(msg)
     }
 }
+
+impl<M> From<Option<M>> for Response<M> {
+    fn from(msg: Option<M>) -> Self {
+        match msg {
+            Some(msg) => Response::Msg(msg),
+            None => Response::None,
+        }
+    }
+}

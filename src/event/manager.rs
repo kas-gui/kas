@@ -247,10 +247,11 @@ impl<'a> Manager<'a> {
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         use VirtualKeyCode as VK;
-        if self.mgr.char_focus.is_some() {
-            match vkey {
-                VK::Escape => self.set_char_focus(None),
-                _ => (),
+        if let Some(id) = self.mgr.char_focus {
+            if vkey == VK::Escape {
+                self.set_char_focus(None);
+            } else if let Some(key) = ControlKey::new(vkey) {
+                self.send_event(widget, id, Event::Control(key));
             }
             return;
         }
