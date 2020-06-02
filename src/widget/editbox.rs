@@ -6,6 +6,7 @@
 //! Text widgets
 
 use std::fmt::{self, Debug};
+use unicode_segmentation::GraphemeCursor;
 
 use kas::class::{Editable, HasText};
 use kas::draw::TextClass;
@@ -16,7 +17,7 @@ enum LastEdit {
     None,
     Insert,
     Backspace,
-    Clear,
+    Delete,
     Paste,
 }
 
@@ -132,7 +133,8 @@ pub struct EditBox<G: 'static> {
     editable: bool,
     multi_line: bool,
     text: String,
-    old_state: Option<String>,
+    edit_pos: usize,
+    old_state: Option<(String, usize)>,
     last_edit: LastEdit,
     error_state: bool,
     /// The associated [`EditGuard`] implementation
@@ -207,8 +209,7 @@ impl<G: 'static> Layout for EditBox<G> {
         let align = (Align::Begin, Align::Begin);
         draw_handle.text(self.text_rect, &self.text, class, align);
         if input_state.char_focus {
-            let byte = self.text.len(); // FIXME
-            draw_handle.edit_marker(self.text_rect, &self.text, class, align, byte);
+            draw_handle.edit_marker(self.text_rect, &self.text, class, align, self.edit_pos);
         }
     }
 }
@@ -216,6 +217,8 @@ impl<G: 'static> Layout for EditBox<G> {
 impl EditBox<EditVoid> {
     /// Construct an `EditBox` with the given inital `text`.
     pub fn new<S: Into<String>>(text: S) -> Self {
+        let text = text.into();
+        let edit_pos = text.len();
         EditBox {
             core: Default::default(),
             frame_offset: Default::default(),
@@ -223,7 +226,8 @@ impl EditBox<EditVoid> {
             text_rect: Default::default(),
             editable: true,
             multi_line: false,
-            text: text.into(),
+            text,
+            edit_pos,
             old_state: None,
             last_edit: LastEdit::None,
             error_state: false,
@@ -247,6 +251,7 @@ impl EditBox<EditVoid> {
             editable: self.editable,
             multi_line: self.multi_line,
             text: self.text,
+            edit_pos: self.edit_pos,
             old_state: self.old_state,
             last_edit: self.last_edit,
             error_state: self.error_state,
@@ -327,6 +332,8 @@ impl<G> EditBox<G> {
             return EditAction::None;
         }
 
+        let pos = self.edit_pos;
+
         // TODO: Text selection and editing (see Unicode std. section 5.11)
         // Note that it may make sense to implement text shaping first.
         // For now we just filter control characters and append the rest.
@@ -338,10 +345,14 @@ impl<G> EditBox<G> {
                 }
                 '\u{08}' /* backspace */  => {
                     if self.last_edit != LastEdit::Backspace {
-                        self.old_state = Some(self.text.clone());
+                        self.old_state = Some((self.text.clone(), pos));
                         self.last_edit = LastEdit::Backspace;
                     }
-                    self.text.pop();
+                    let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
+                    if let Some(prev) = cursor.prev_boundary(&self.text, 0).unwrap() {
+                        self.text.replace_range(prev..pos, "");
+                        self.edit_pos = prev;
+                    }
                 }
                 '\u{09}' /* tab */ => (),
                 '\u{0A}' /* line feed */ => (),
@@ -350,7 +361,7 @@ impl<G> EditBox<G> {
                 '\u{0D}' /* carriage return (\r) */ => return EditAction::Activate,
                 '\u{16}' /* paste */ => {
                     if self.last_edit != LastEdit::Paste {
-                        self.old_state = Some(self.text.clone());
+                        self.old_state = Some((self.text.clone(), pos));
                         self.last_edit = LastEdit::Paste;
                     }
                     if let Some(content) = mgr.get_clipboard() {
@@ -364,33 +375,40 @@ impl<G> EditBox<G> {
                                 break;
                             }
                         }
-                        self.text.push_str(&content[0..end]);
+                        self.text.insert_str(pos, &content[0..end]);
+                        self.edit_pos = pos + end;
                     }
                 }
                 '\u{1A}' /* undo and redo */ => {
                     // TODO: maintain full edit history (externally?)
                     // NOTE: undo *and* redo shortcuts map to this control char
-                    if let Some(state) = self.old_state.as_mut() {
+                    if let Some((state, pos2)) = self.old_state.as_mut() {
                         std::mem::swap(state, &mut self.text);
+                        self.edit_pos = *pos2;
+                        *pos2 = pos;
                         self.last_edit = LastEdit::None;
                     }
                 }
                 '\u{1B}' /* escape */ => (),
                 '\u{7f}' /* delete */ => {
-                    if self.last_edit != LastEdit::Clear {
-                        self.old_state = Some(self.text.clone());
-                        self.last_edit = LastEdit::Clear;
+                    if self.last_edit != LastEdit::Delete {
+                        self.old_state = Some((self.text.clone(), pos));
+                        self.last_edit = LastEdit::Delete;
                     }
-                    self.text.clear();
+                    let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
+                    if let Some(next) = cursor.next_boundary(&self.text, 0).unwrap() {
+                        self.text.replace_range(pos..next, "");
+                    }
                 }
                 _ => (),
             };
         } else {
             if self.last_edit != LastEdit::Insert {
-                self.old_state = Some(self.text.clone());
+                self.old_state = Some((self.text.clone(), pos));
                 self.last_edit = LastEdit::Insert;
             }
-            self.text.push(c);
+            self.text.insert(pos, c);
+            self.edit_pos = pos + c.len_utf8();
         }
         mgr.redraw(self.id());
         EditAction::Edit
