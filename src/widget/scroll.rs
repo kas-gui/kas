@@ -9,7 +9,7 @@ use std::fmt::Debug;
 
 use super::ScrollBar;
 use kas::draw::{ClipRegion, TextClass};
-use kas::event::NavKey;
+use kas::event::ControlKey;
 use kas::event::ScrollDelta::{LineDelta, PixelDelta};
 use kas::prelude::*;
 
@@ -329,15 +329,15 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
         };
 
         match event {
-            Event::NavKey(key) => {
+            Event::Control(key) => {
                 let delta = match key {
-                    NavKey::Left => LineDelta(-1.0, 0.0),
-                    NavKey::Right => LineDelta(1.0, 0.0),
-                    NavKey::Up => LineDelta(0.0, 1.0),
-                    NavKey::Down => LineDelta(0.0, -1.0),
-                    NavKey::Home | NavKey::End => {
+                    ControlKey::Left => LineDelta(-1.0, 0.0),
+                    ControlKey::Right => LineDelta(1.0, 0.0),
+                    ControlKey::Up => LineDelta(0.0, 1.0),
+                    ControlKey::Down => LineDelta(0.0, -1.0),
+                    ControlKey::Home | ControlKey::End => {
                         let action = self.set_offset(match key {
-                            NavKey::Home => Coord::ZERO,
+                            ControlKey::Home => Coord::ZERO,
                             _ => self.max_offset,
                         });
                         if action != TkAction::None {
@@ -347,8 +347,11 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
                         }
                         return Response::None;
                     }
-                    NavKey::PageUp => PixelDelta(Coord(0, self.core.rect.size.1 as i32 / 2)),
-                    NavKey::PageDown => PixelDelta(Coord(0, -(self.core.rect.size.1 as i32 / 2))),
+                    ControlKey::PageUp => PixelDelta(Coord(0, self.core.rect.size.1 as i32 / 2)),
+                    ControlKey::PageDown => {
+                        PixelDelta(Coord(0, -(self.core.rect.size.1 as i32 / 2)))
+                    }
+                    key => return Response::Unhandled(Event::Control(key)),
                 };
                 scroll(self, mgr, delta)
             }

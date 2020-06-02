@@ -253,11 +253,11 @@ impl<'a> Manager<'a> {
 
 /// Public API (around event manager state)
 impl<'a> Manager<'a> {
-    /// Attempts to set a fallback to receive [`Event::NavKey`]
+    /// Attempts to set a fallback to receive [`Event::Control`]
     ///
-    /// In case a navigation key is pressed (see [`NavKey`]) but no widget has
+    /// In case a navigation key is pressed (see [`ControlKey`]) but no widget has
     /// navigation focus, then, if a fallback has been set, that widget will
-    /// receive the key via [`Event::NavKey`]. (This does not include
+    /// receive the key via [`Event::Control`]. (This does not include
     /// [`Event::Activate`].)
     ///
     /// Only one widget can be a fallback, and the *first* to set itself wins.
@@ -478,6 +478,8 @@ impl<'a> Manager<'a> {
     }
 
     /// Get the current keyboard navigation focus, if any
+    ///
+    /// This is the widget selected by navigating the UI with the Tab key.
     pub fn nav_focus(&self) -> Option<WidgetId> {
         self.mgr.nav_focus
     }

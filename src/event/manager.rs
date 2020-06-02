@@ -277,20 +277,20 @@ impl<'a> Manager<'a> {
                 if let Some(nav_id) = self.mgr.nav_focus {
                     if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
                         id_action = Some((nav_id, Event::Activate));
-                    } else if let Some(nav_key) = NavKey::new(vkey) {
-                        id_action = Some((nav_id, Event::NavKey(nav_key)));
+                    } else if let Some(nav_key) = ControlKey::new(vkey) {
+                        id_action = Some((nav_id, Event::Control(nav_key)));
                     }
                 }
 
                 if id_action.is_none() {
                     // Next priority goes to pop-up widget
                     if let Some(popup) = self.mgr.popups.last() {
-                        if let Some(key) = NavKey::new(vkey) {
-                            id_action = Some((popup.1.parent, Event::NavKey(key)));
+                        if let Some(key) = ControlKey::new(vkey) {
+                            id_action = Some((popup.1.parent, Event::Control(key)));
                         }
                     } else if let Some(id) = self.mgr.nav_fallback {
-                        if let Some(key) = NavKey::new(vkey) {
-                            id_action = Some((id, Event::NavKey(key)));
+                        if let Some(key) = ControlKey::new(vkey) {
+                            id_action = Some((id, Event::Control(key)));
                         }
                     }
                 }

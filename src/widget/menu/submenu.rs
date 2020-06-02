@@ -8,7 +8,7 @@
 use super::{Menu, MenuFrame};
 use kas::class::HasText;
 use kas::draw::TextClass;
-use kas::event::{ConfigureManager, NavKey};
+use kas::event::{ConfigureManager, ControlKey};
 use kas::prelude::*;
 use kas::widget::Column;
 use kas::WindowId;
@@ -149,12 +149,12 @@ impl<D: Directional, M, W: Menu<Msg = M>> event::Handler for SubMenu<D, W> {
                 debug_assert_eq!(Some(id), self.popup_id);
                 self.popup_id = None;
             }
-            Event::NavKey(key) => match (self.direction.as_direction(), key) {
-                (Direction::Left, NavKey::Left) => self.open_menu(mgr),
-                (Direction::Right, NavKey::Right) => self.open_menu(mgr),
-                (Direction::Up, NavKey::Up) => self.open_menu(mgr),
-                (Direction::Down, NavKey::Down) => self.open_menu(mgr),
-                (_, key) => return Response::Unhandled(Event::NavKey(key)),
+            Event::Control(key) => match (self.direction.as_direction(), key) {
+                (Direction::Left, ControlKey::Left) => self.open_menu(mgr),
+                (Direction::Right, ControlKey::Right) => self.open_menu(mgr),
+                (Direction::Up, ControlKey::Up) => self.open_menu(mgr),
+                (Direction::Down, ControlKey::Down) => self.open_menu(mgr),
+                (_, key) => return Response::Unhandled(Event::Control(key)),
             },
             event => return Response::Unhandled(event),
         }
@@ -184,7 +184,7 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
 
             match r {
                 Response::Unhandled(ev) => match ev {
-                    Event::NavKey(key) if self.popup_id.is_some() => {
+                    Event::Control(key) if self.popup_id.is_some() => {
                         if self.popup_id.is_some() {
                             let dir = self.direction.as_direction();
                             let inner_vert = self.list.inner.direction().is_vertical();
@@ -197,17 +197,17 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                             let rev = self.list.inner.direction().is_reversed();
                             use Direction::*;
                             match key {
-                                NavKey::Left if !inner_vert => next(mgr, self, false, !rev),
-                                NavKey::Right if !inner_vert => next(mgr, self, false, rev),
-                                NavKey::Up if inner_vert => next(mgr, self, false, !rev),
-                                NavKey::Down if inner_vert => next(mgr, self, false, rev),
-                                NavKey::Home => next(mgr, self, true, false),
-                                NavKey::End => next(mgr, self, true, true),
-                                NavKey::Left if dir == Right => self.close_menu(mgr),
-                                NavKey::Right if dir == Left => self.close_menu(mgr),
-                                NavKey::Up if dir == Down => self.close_menu(mgr),
-                                NavKey::Down if dir == Up => self.close_menu(mgr),
-                                key => return Response::Unhandled(Event::NavKey(key)),
+                                ControlKey::Left if !inner_vert => next(mgr, self, false, !rev),
+                                ControlKey::Right if !inner_vert => next(mgr, self, false, rev),
+                                ControlKey::Up if inner_vert => next(mgr, self, false, !rev),
+                                ControlKey::Down if inner_vert => next(mgr, self, false, rev),
+                                ControlKey::Home => next(mgr, self, true, false),
+                                ControlKey::End => next(mgr, self, true, true),
+                                ControlKey::Left if dir == Right => self.close_menu(mgr),
+                                ControlKey::Right if dir == Left => self.close_menu(mgr),
+                                ControlKey::Up if dir == Down => self.close_menu(mgr),
+                                ControlKey::Down if dir == Up => self.close_menu(mgr),
+                                key => return Response::Unhandled(Event::Control(key)),
                             }
                         }
                         Response::None
