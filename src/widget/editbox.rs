@@ -350,40 +350,51 @@ impl<G> EditBox<G> {
             return EditAction::None;
         }
 
+        mgr.redraw(self.id());
         let pos = self.edit_pos;
         match key {
-            ControlKey::Return => return EditAction::Activate,
+            ControlKey::Return => EditAction::Activate,
             ControlKey::Delete => {
-                if self.last_edit != LastEdit::Delete {
-                    self.old_state = Some((self.text.clone(), pos));
-                    self.last_edit = LastEdit::Delete;
-                }
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
                 if let Some(next) = cursor.next_boundary(&self.text, 0).unwrap() {
+                    if self.last_edit != LastEdit::Delete {
+                        self.old_state = Some((self.text.clone(), pos));
+                        self.last_edit = LastEdit::Delete;
+                    }
+
                     self.text.replace_range(pos..next, "");
+                    EditAction::Edit
+                } else {
+                    EditAction::None
                 }
             }
             ControlKey::Backspace => {
-                if self.last_edit != LastEdit::Backspace {
-                    self.old_state = Some((self.text.clone(), pos));
-                    self.last_edit = LastEdit::Backspace;
-                }
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
                 if let Some(prev) = cursor.prev_boundary(&self.text, 0).unwrap() {
+                    if self.last_edit != LastEdit::Backspace {
+                        self.old_state = Some((self.text.clone(), pos));
+                        self.last_edit = LastEdit::Backspace;
+                    }
+
                     self.text.replace_range(prev..pos, "");
                     self.edit_pos = prev;
+                    EditAction::Edit
+                } else {
+                    EditAction::None
                 }
             }
             ControlKey::Copy => {
                 // we don't yet have selection support, so just copy everything
                 mgr.set_clipboard((&self.text).into());
+                EditAction::None
             }
             ControlKey::Paste => {
-                if self.last_edit != LastEdit::Paste {
-                    self.old_state = Some((self.text.clone(), pos));
-                    self.last_edit = LastEdit::Paste;
-                }
                 if let Some(content) = mgr.get_clipboard() {
+                    if self.last_edit != LastEdit::Paste {
+                        self.old_state = Some((self.text.clone(), pos));
+                        self.last_edit = LastEdit::Paste;
+                    }
+
                     // We cut the content short on control characters and
                     // ignore them (preventing line-breaks and ignoring any
                     // actions such as recursive-paste).
@@ -396,6 +407,9 @@ impl<G> EditBox<G> {
                     }
                     self.text.insert_str(pos, &content[0..end]);
                     self.edit_pos = pos + end;
+                    EditAction::Edit
+                } else {
+                    EditAction::None
                 }
             }
             ControlKey::Undo | ControlKey::Redo => {
@@ -407,11 +421,10 @@ impl<G> EditBox<G> {
                     *pos2 = pos;
                     self.last_edit = LastEdit::None;
                 }
+                EditAction::Edit
             }
-            _ => (),
+            _ => EditAction::None,
         }
-        mgr.redraw(self.id());
-        EditAction::Edit
     }
 }
 
