@@ -369,8 +369,8 @@ impl<G> EditBox<G> {
                         // ignore them (preventing line-breaks and ignoring any
                         // actions such as recursive-paste).
                         let mut end = content.len();
-                        for (i, b) in content.as_bytes().iter().cloned().enumerate() {
-                            if b < 0x20 || (b >= 0x7f && b <= 0x9f) {
+                        for (i, c) in content.char_indices() {
+                            if c < '\u{20}' || (c >= '\u{7f}' && c <= '\u{9f}') {
                                 end = i;
                                 break;
                             }
