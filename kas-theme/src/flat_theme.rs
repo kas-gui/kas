@@ -9,10 +9,10 @@
 
 use std::f32;
 
-use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours};
+use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::draw::{
     self, ClipRegion, Colour, Draw, DrawRounded, DrawShared, DrawText, DrawTextShared, FontId,
-    InputState, Pass, TextClass, TextProperties,
+    InputState, Pass, SizeHandle, TextClass, TextProperties,
 };
 use kas::geom::*;
 use kas::{Align, Direction, Directional, ThemeAction, ThemeApi};
@@ -192,6 +192,13 @@ impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
 }
 
 impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D> {
+    fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
+        unsafe {
+            let mut size_handle = self.window.size_handle(self.draw);
+            f(&mut size_handle);
+        }
+    }
+
     fn draw_device(&mut self) -> (kas::draw::Pass, Coord, &mut dyn kas::draw::Draw) {
         (self.pass, self.offset, self.draw)
     }

@@ -180,6 +180,28 @@ pub trait SizeHandle {
 /// as a high-level drawing interface. See also the companion trait,
 /// [`SizeHandle`].
 pub trait DrawHandle {
+    /// Access a [`SizeHandle`]
+    fn size_handle<F: Fn(&mut dyn SizeHandle) -> T, T>(&mut self, f: F) -> T
+    where
+        Self: Sized,
+    {
+        let mut result = None;
+        self.size_handle_dyn(&mut |size_handle| {
+            result = Some(f(size_handle));
+        });
+        result.expect("DrawHandle::size_handle_dyn impl failed to call function argument")
+    }
+
+    /// Access a [`SizeHandle`] (object-safe version)
+    ///
+    /// User code is recommended to use [`DrawHandle::size_handle`] instead and
+    /// *must not* depend on `f` being called for memory safety.
+    ///
+    /// Implementations should call the given function argument once; not doing
+    /// so is memory-safe but will cause a panic when `size_handle` is called.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
+
     /// Access the low-level draw device
     ///
     /// Returns `(pass, offset, draw)`.
@@ -383,6 +405,9 @@ where
 }
 
 impl<H: DrawHandle> DrawHandle for Box<H> {
+    fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
+        self.deref_mut().size_handle_dyn(f)
+    }
     fn draw_device(&mut self) -> (Pass, Coord, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
@@ -448,6 +473,9 @@ impl<S> DrawHandle for stack_dst::ValueA<dyn DrawHandle, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
+    fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
+        self.deref_mut().size_handle_dyn(f)
+    }
     fn draw_device(&mut self) -> (Pass, Coord, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
