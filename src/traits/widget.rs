@@ -230,10 +230,18 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
+    fn walk<F: FnMut(&dyn WidgetConfig)>(&self, mut f: F)
+    where
+        Self: Sized,
+    {
+        self.walk_dyn(&mut f)
+    }
+
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    fn walk_dyn(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
         for i in 0..self.len() {
             if let Some(w) = self.get(i) {
-                w.walk(f);
+                w.walk_dyn(f);
             }
         }
         f(self.as_widget());
@@ -243,10 +251,18 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
+    fn walk_mut<F: FnMut(&mut dyn WidgetConfig)>(&mut self, mut f: F)
+    where
+        Self: Sized,
+    {
+        self.walk_mut_dyn(&mut f)
+    }
+
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    fn walk_mut_dyn(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
         for i in 0..self.len() {
             if let Some(w) = self.get_mut(i) {
-                w.walk_mut(f);
+                w.walk_mut_dyn(f);
             }
         }
         f(self.as_widget_mut());

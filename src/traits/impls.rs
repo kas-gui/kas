@@ -57,11 +57,11 @@ impl<M: 'static> WidgetChildren for Box<dyn Widget<Msg = M>> {
         self.as_mut().find_mut(id)
     }
 
-    fn walk(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
-        self.as_ref().walk(f);
+    fn walk_dyn(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
+        self.as_ref().walk_dyn(f);
     }
-    fn walk_mut(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
-        self.as_mut().walk_mut(f);
+    fn walk_mut_dyn(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
+        self.as_mut().walk_mut_dyn(f);
     }
 }
 
