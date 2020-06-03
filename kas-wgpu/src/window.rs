@@ -8,6 +8,7 @@
 use log::{debug, info, trace};
 use std::time::Instant;
 
+use kas::draw::SizeHandle;
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
@@ -96,7 +97,7 @@ where
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
         let mut mgr = ManagerState::new(scale_factor);
-        let mut tkw = TkWindow::new(&window, shared);
+        let mut tkw = TkWindow::new(shared, &window, &mut draw, &mut theme_window);
         mgr.configure(&mut tkw, &mut *widget);
 
         let mut r = Window {
@@ -123,7 +124,7 @@ where
     {
         debug!("Window::reconfigure");
 
-        let mut tkw = TkWindow::new(&self.window, shared);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
         self.mgr.configure(&mut tkw, &mut *self.widget);
 
         self.solve_cache.invalidate_rule_cache();
@@ -168,7 +169,8 @@ where
                 self.do_resize(shared, *new_inner_size);
             }
             event @ _ => {
-                let mut tkw = TkWindow::new(&self.window, shared);
+                let mut tkw =
+                    TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
                 let widget = &mut *self.widget;
                 self.mgr.with(&mut tkw, |mgr| {
                     mgr.handle_winit(widget, event);
@@ -183,7 +185,7 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
-        let mut tkw = TkWindow::new(&self.window, shared);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
         let action = self.mgr.update(&mut tkw, &mut *self.widget);
 
         match action {
@@ -197,6 +199,8 @@ where
                 let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
                 self.widget.resize_popups(&mut size_handle);
 
+                let mut tkw =
+                    TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
                 self.mgr.region_moved(&mut tkw, &mut *self.widget);
                 self.window.request_redraw();
             }
@@ -212,7 +216,7 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
-        let mut tkw = TkWindow::new(&self.window, shared);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
         let widget = &mut *self.widget;
         self.mgr.with(&mut tkw, |mut mgr| {
             widget.handle_closure(&mut mgr);
@@ -225,7 +229,7 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
-        let mut tkw = TkWindow::new(&self.window, shared);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
         let widget = &mut *self.widget;
         self.mgr.with(&mut tkw, |mgr| {
             mgr.update_timer(widget);
@@ -242,7 +246,7 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
-        let mut tkw = TkWindow::new(&self.window, shared);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
         let widget = &mut *self.widget;
         self.mgr.with(&mut tkw, |mgr| {
             mgr.update_handle(widget, handle, payload);
@@ -260,7 +264,7 @@ where
     {
         let window = &mut *self.widget;
         let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
-        let mut tkw = TkWindow::new(&self.window, shared);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
         self.mgr.with(&mut tkw, |mut mgr| {
             kas::Window::add_popup(window, &mut size_handle, &mut mgr, id, popup);
         });
@@ -278,7 +282,8 @@ where
         if id == self.window_id {
             self.mgr.send_action(TkAction::Close);
         } else {
-            let mut tkw = TkWindow::new(&self.window, shared);
+            let mut tkw =
+                TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
             let widget = &mut *self.widget;
             self.mgr.with(&mut tkw, |mut mgr| {
                 widget.remove_popup(&mut mgr, id);
@@ -374,14 +379,35 @@ fn to_wgpu_color(c: kas::draw::Colour) -> wgpu::Color {
     }
 }
 
-struct TkWindow<'a, C: CustomPipe, T> {
-    window: &'a winit::window::Window,
+struct TkWindow<'a, C: CustomPipe, T: Theme<DrawPipe<C>>>
+where
+    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+{
     shared: &'a mut SharedState<C, T>,
+    window: &'a winit::window::Window,
+    // Note: in nearly all cases we don't use the following fields, but for
+    // mouse text selection they are essential. Maybe later we can move the
+    // text layout engine into theme_window and drop the draw field.
+    draw: &'a mut DrawWindow<C::Window>,
+    theme_window: &'a mut T::Window,
 }
 
-impl<'a, C: CustomPipe, T> TkWindow<'a, C, T> {
-    fn new(window: &'a winit::window::Window, shared: &'a mut SharedState<C, T>) -> Self {
-        TkWindow { window, shared }
+impl<'a, C: CustomPipe, T: Theme<DrawPipe<C>>> TkWindow<'a, C, T>
+where
+    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+{
+    fn new(
+        shared: &'a mut SharedState<C, T>,
+        window: &'a winit::window::Window,
+        draw: &'a mut DrawWindow<C::Window>,
+        theme_window: &'a mut T::Window,
+    ) -> Self {
+        TkWindow {
+            shared,
+            window,
+            draw,
+            theme_window,
+        }
     }
 }
 
@@ -440,6 +466,12 @@ where
             ThemeAction::RedrawAll => self.shared.pending.push(PendingAction::RedrawAll),
             ThemeAction::ThemeResize => self.shared.pending.push(PendingAction::ThemeResize),
         }
+    }
+
+    fn size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
+        use kas_theme::Window;
+        let mut size_handle = unsafe { self.theme_window.size_handle(self.draw) };
+        f(&mut size_handle);
     }
 
     #[inline]
