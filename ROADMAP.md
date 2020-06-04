@@ -127,6 +127,18 @@ alignment.
 *Possibly* also within the same work-set, add a real multi-line text-edit
 widget.
 
+### Context menu and undo
+
+KAS supports pop-up menus since 0.4. Context menus are a little different, in
+that the widget opening the menu does not own it, yet can still customise it
+(enabling or disabling items like undo, paste, perhaps providing custom items,
+perhaps selecting a special context menu).
+
+At the same time, the undo history should probably be removed from widgets and
+stored in some shared state.
+
+This may also be a good time to review clipboard integration (see below).
+
 ### Widget identifiers
 
 Currently widgets are identified simply by enumerating all widgets. See #91
