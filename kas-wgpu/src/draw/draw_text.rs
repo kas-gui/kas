@@ -6,8 +6,10 @@
 //! Text drawing API for `kas_wgpu`
 
 use std::f32;
-use wgpu_glyph::ab_glyph::{PxScale, PxScaleFont, ScaleFont};
-use wgpu_glyph::{Extra, GlyphCruncher, HorizontalAlign, Layout, Section, Text, VerticalAlign};
+use wgpu_glyph::ab_glyph::{Glyph, PxScale, PxScaleFont, ScaleFont};
+use wgpu_glyph::{
+    Extra, GlyphCruncher, HorizontalAlign, Layout, Section, SectionGlyph, Text, VerticalAlign,
+};
 
 use super::{CustomPipe, CustomWindow, DrawPipe, DrawWindow};
 use kas::draw::{DrawText, DrawTextShared, FontArc, FontId, Pass, TextProperties};
@@ -146,5 +148,61 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         }
         pos.y -= scale_font.ascent();
         return Vec2(pos.x, pos.y);
+    }
+
+    fn text_index_nearest(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        props: TextProperties,
+        pos: Vec2,
+    ) -> usize {
+        if text.len() == 0 {
+            return 0; // short-cut
+        }
+        let scale_font = PxScaleFont {
+            font: self.glyph_brush.fonts()[props.font.0].clone(),
+            scale: props.scale,
+        };
+        let base_to_mid = -0.5 * scale_font.ascent();
+
+        let pass = Pass::new_pass_with_depth(0, 0.0); // values are unimportant
+        let mut iter = self
+            .glyph_brush
+            .glyphs(make_section(pass, rect, text, props));
+
+        // Find the (horiz, vert) distance between pos and the glyph.
+        let dist = |glyph: &Glyph| {
+            let p = glyph.position;
+            let glyph_pos = Vec2(p.x, p.y + base_to_mid);
+            (pos - glyph_pos).abs()
+        };
+
+        let mut last: SectionGlyph = iter.next().unwrap().clone();
+        let mut best = (last.byte_index, dist(&last.glyph));
+        for next in iter {
+            last = next.clone();
+            let dist = dist(&last.glyph);
+            if dist.1 < (best.1).1 {
+                best = (last.byte_index, dist);
+            } else if dist.1 == (best.1).1 && dist.0 < (best.1).0 {
+                best = (last.byte_index, dist);
+            }
+        }
+
+        // We must also consider the position after the last glyph
+        last.glyph.position.x += scale_font.h_advance(last.glyph.id);
+        let dist = dist(&last.glyph);
+        if dist.1 < (best.1).1 {
+            best = (last.byte_index, dist);
+        } else if dist.1 == (best.1).1 && dist.0 < (best.1).0 {
+            best = (last.byte_index, dist);
+        }
+
+        assert!(
+            best.0 <= text.len(),
+            "text_index_nearest: index beyond text length!"
+        );
+        best.0
     }
 }

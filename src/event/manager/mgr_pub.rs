@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use std::u16;
 
 use super::*;
+use crate::draw::SizeHandle;
 use crate::geom::Coord;
 use crate::string::{CowString, CowStringL};
 #[allow(unused)]
@@ -248,6 +249,15 @@ impl<'a> Manager<'a> {
     #[inline]
     pub fn adjust_theme<F: FnMut(&mut dyn ThemeApi) -> ThemeAction>(&mut self, mut f: F) {
         self.tkw.adjust_theme(&mut f);
+    }
+
+    /// Access a [`SizeHandle`]
+    pub fn size_handle<F: FnMut(&mut dyn SizeHandle) -> T, T>(&mut self, mut f: F) -> T {
+        let mut result = None;
+        self.tkw.size_handle(&mut |size_handle| {
+            result = Some(f(size_handle));
+        });
+        result.expect("TkWindow::size_handle_dyn impl failed to call function argument")
     }
 }
 

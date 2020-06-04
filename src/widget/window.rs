@@ -157,16 +157,10 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         self.restrict_dimensions
     }
 
-    fn add_popup(
-        &mut self,
-        size_handle: &mut dyn SizeHandle,
-        mgr: &mut Manager,
-        id: WindowId,
-        popup: kas::Popup,
-    ) {
+    fn add_popup(&mut self, mgr: &mut Manager, id: WindowId, popup: kas::Popup) {
         let index = self.popups.len();
         self.popups.push((id, popup));
-        self.resize_popup(size_handle, index);
+        mgr.size_handle(|size_handle| self.resize_popup(size_handle, index));
         mgr.send_action(TkAction::Redraw);
     }
 

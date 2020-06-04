@@ -16,6 +16,7 @@
 
 use std::num::NonZeroU32;
 
+use crate::draw::SizeHandle;
 use crate::string::{CowString, CowStringL};
 use crate::{event, ThemeAction, ThemeApi};
 
@@ -145,6 +146,13 @@ pub trait TkWindow {
 
     /// Adjust the theme
     fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> ThemeAction);
+
+    /// Access a [`SizeHandle`]
+    ///
+    /// Implementations should call the given function argument once; not doing
+    /// so is memory-safe but will cause a panic when `size_handle` is called.
+    /// User-code *must not* depend on `f` being called for memory safety.
+    fn size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
 
     /// Set the mouse cursor
     fn set_cursor_icon(&mut self, icon: event::CursorIcon);

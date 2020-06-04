@@ -130,6 +130,12 @@ macro_rules! impl_vec2 {
                 self.0.min(self.1)
             }
 
+            /// Take the absolute value of each component
+            #[inline]
+            pub fn abs(self) -> Self {
+                $T(self.0.abs(), self.1.abs())
+            }
+
             /// For each component, return `±1` with the same sign as `self`.
             #[inline]
             pub fn sign(self) -> Self {

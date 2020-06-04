@@ -93,13 +93,7 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
     /// Add a pop-up as a layer in the current window
     ///
     /// Each [`Popup`] is assigned a [`WindowId`]; both are passed.
-    fn add_popup(
-        &mut self,
-        size_handle: &mut dyn SizeHandle,
-        mgr: &mut Manager,
-        id: WindowId,
-        popup: Popup,
-    );
+    fn add_popup(&mut self, mgr: &mut Manager, id: WindowId, popup: Popup);
 
     /// Resize popups
     ///

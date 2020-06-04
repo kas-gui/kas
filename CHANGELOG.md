@@ -178,7 +178,7 @@ window size limits, and switchable themes and colour schemes.
 -   Re-added separate `Layout` trait (#42)
 -   Widget configure now happens on init and may run user-defined code (#36)
 -   Widgets can now directly schedule updates on timer (#42)
--   Widgets updates can now be triggerred via an `UpdateHandle` (#46)
+-   Widgets updates can now be triggered via an `UpdateHandle` (#46)
 -   Rename `WidgetCore::get_by_id` → `find` and add `find_mut` (#42)
 -   Add `WidgetCore::find_coord_mut` (#47)
 
