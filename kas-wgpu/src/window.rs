@@ -198,6 +198,7 @@ where
             TkAction::Popup => {
                 let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
                 self.widget.resize_popups(&mut size_handle);
+                drop(size_handle);
 
                 let mut tkw =
                     TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
@@ -263,10 +264,9 @@ where
         T: Theme<DrawPipe<C>, Window = TW>,
     {
         let window = &mut *self.widget;
-        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
         let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
         self.mgr.with(&mut tkw, |mut mgr| {
-            kas::Window::add_popup(window, &mut size_handle, &mut mgr, id, popup);
+            kas::Window::add_popup(window, &mut mgr, id, popup);
         });
     }
 

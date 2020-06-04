@@ -252,7 +252,7 @@ impl<'a> Manager<'a> {
     }
 
     /// Access a [`SizeHandle`]
-    pub fn size_handle<F: Fn(&mut dyn SizeHandle) -> T, T>(&mut self, f: F) -> T {
+    pub fn size_handle<F: FnMut(&mut dyn SizeHandle) -> T, T>(&mut self, mut f: F) -> T {
         let mut result = None;
         self.tkw.size_handle(&mut |size_handle| {
             result = Some(f(size_handle));
