@@ -43,8 +43,11 @@ pub struct TextProperties {
 impl Default for TextProperties {
     fn default() -> Self {
         TextProperties {
+            font: Default::default(),
             scale: 18.0.into(),
-            ..Default::default()
+            col: Default::default(),
+            align: Default::default(),
+            line_wrap: Default::default(),
         }
     }
 }
@@ -97,4 +100,16 @@ pub trait DrawText: Draw {
         props: TextProperties,
         byte: usize,
     ) -> Vec2;
+
+    /// Find the text index for the glyph nearest the given `pos`
+    ///
+    /// This includes the index immediately after the last glyph, thus
+    /// `result ≤ text.len()`.
+    fn text_index_nearest(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        props: TextProperties,
+        pos: Vec2,
+    ) -> usize;
 }

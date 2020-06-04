@@ -10,7 +10,7 @@ use unicode_segmentation::GraphemeCursor;
 
 use kas::class::{Editable, HasText};
 use kas::draw::TextClass;
-use kas::event::ControlKey;
+use kas::event::{ControlKey, GrabMode};
 use kas::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -460,6 +460,19 @@ impl<G> EditBox<G> {
             _ => EditAction::None,
         }
     }
+
+    fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
+        let class = if self.multi_line {
+            TextClass::EditMulti
+        } else {
+            TextClass::Edit
+        };
+        let align = (Align::Begin, Align::Begin);
+        self.edit_pos = mgr.size_handle(|h| {
+            h.text_index_nearest(self.text_rect, &self.text, class, align, coord.into())
+        });
+        mgr.redraw(self.id());
+    }
 }
 
 impl<G: EditGuard> HasText for EditBox<G> {
@@ -487,11 +500,6 @@ impl<G: EditGuard> Editable for EditBox<G> {
 impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
     type Msg = G::Msg;
 
-    #[inline]
-    fn activation_via_press(&self) -> bool {
-        true
-    }
-
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
             Event::Activate => {
@@ -512,6 +520,18 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 EditAction::Activate => G::activate(self).into(),
                 EditAction::Edit => G::edit(self).into(),
             },
+            Event::PressStart { source, coord, .. } if source.is_primary() => {
+                self.set_edit_pos_from_coord(mgr, coord);
+                mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
+                mgr.request_char_focus(self.id());
+                Response::None
+            }
+            Event::PressMove { coord, .. } => {
+                self.set_edit_pos_from_coord(mgr, coord);
+                // TODO: text selection
+                Response::None
+            }
+            Event::PressEnd { .. } => Response::None,
             event => Response::Unhandled(event),
         }
     }

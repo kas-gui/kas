@@ -10,9 +10,10 @@
 use std::any::Any;
 use std::f32;
 
-use kas::draw::{self, DrawText, FontId, TextClass};
-use kas::geom::{Size, Vec2};
+use kas::draw::{self, DrawText, FontId, TextClass, TextProperties};
+use kas::geom::{Rect, Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
+use kas::Align;
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -197,6 +198,30 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
             };
             SizeRules::new(min, ideal, margins, stretch)
         }
+    }
+
+    fn text_index_nearest(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        class: TextClass,
+        align: (Align, Align),
+        pos: Vec2,
+    ) -> usize {
+        let props = TextProperties {
+            font: self.dims.font_id,
+            scale: self.dims.font_scale.into(),
+            align,
+            line_wrap: match class {
+                TextClass::Label | TextClass::EditMulti => true,
+                TextClass::Button | TextClass::Edit => false,
+            },
+            ..Default::default()
+        };
+
+        // Note: we don't add offset here since it was already subtracted from
+        // pos (e.g. via ScrollRegion::send)
+        self.draw.text_index_nearest(rect, text, props, pos)
     }
 
     fn button_surround(&self) -> (Size, Size) {
