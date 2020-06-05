@@ -6,6 +6,7 @@
 //! Text drawing API for `kas_wgpu`
 
 use std::f32;
+use unicode_segmentation::GraphemeCursor;
 use wgpu_glyph::ab_glyph::{Glyph, PxScale, PxScaleFont, ScaleFont};
 use wgpu_glyph::{
     Extra, GlyphCruncher, HorizontalAlign, Layout, Section, SectionGlyph, Text, VerticalAlign,
@@ -124,6 +125,12 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         let mut advance = false;
         let mut glyph;
         if byte < text.len() {
+            // Tiny HACK: line-breaks don't have glyphs
+            let b = text.as_bytes()[byte];
+            if b == b'\r' || b == b'\n' {
+                advance = true;
+            }
+
             glyph = iter.next().unwrap().clone();
             for next in iter {
                 assert_eq!(next.section_index, 0);
@@ -177,26 +184,47 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
             let glyph_pos = Vec2(p.x, p.y + base_to_mid);
             (pos - glyph_pos).abs()
         };
+        let test_best = |best: Vec2, glyph: &Glyph| {
+            let dist = dist(glyph);
+            if dist.1 < best.1 {
+                Some(dist)
+            } else if dist.1 == best.1 && dist.0 < best.0 {
+                Some(dist)
+            } else {
+                None
+            }
+        };
 
         let mut last: SectionGlyph = iter.next().unwrap().clone();
+        let mut last_y = last.glyph.position.y;
         let mut best = (last.byte_index, dist(&last.glyph));
         for next in iter {
+            // Heuristic to detect a new line. This is a HACK to handle
+            // multi-line texts since line-end positions are not represented by
+            // virtual glyphs (unlike spaces).
+            if (next.glyph.position.y - last_y).abs() > base_to_mid {
+                last.glyph.position.x += scale_font.h_advance(last.glyph.id);
+                if let Some(new_best) = test_best(best.1, &last.glyph) {
+                    let mut cursor = GraphemeCursor::new(last.byte_index, text.len(), true);
+                    let byte = cursor
+                        .next_boundary(&text, 0)
+                        .unwrap()
+                        .unwrap_or(last.byte_index);
+                    best = (byte, new_best);
+                }
+            }
+
             last = next.clone();
-            let dist = dist(&last.glyph);
-            if dist.1 < (best.1).1 {
-                best = (last.byte_index, dist);
-            } else if dist.1 == (best.1).1 && dist.0 < (best.1).0 {
-                best = (last.byte_index, dist);
+            last_y = last.glyph.position.y;
+            if let Some(new_best) = test_best(best.1, &last.glyph) {
+                best = (last.byte_index, new_best);
             }
         }
 
         // We must also consider the position after the last glyph
         last.glyph.position.x += scale_font.h_advance(last.glyph.id);
-        let dist = dist(&last.glyph);
-        if dist.1 < (best.1).1 {
-            best = (last.byte_index, dist);
-        } else if dist.1 == (best.1).1 && dist.0 < (best.1).0 {
-            best = (last.byte_index, dist);
+        if let Some(new_best) = test_best(best.1, &last.glyph) {
+            best = (text.len(), new_best);
         }
 
         assert!(

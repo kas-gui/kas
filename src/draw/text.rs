@@ -93,6 +93,9 @@ pub trait DrawText: Draw {
     /// Find the starting position (top-left) of the glyph at the given index
     ///
     /// May panic on invalid byte index.
+    ///
+    /// This method is only partially compatible with mult-line text.
+    /// Ideally an external line-breaker should be used.
     fn text_glyph_pos(
         &mut self,
         rect: Rect,
@@ -105,6 +108,9 @@ pub trait DrawText: Draw {
     ///
     /// This includes the index immediately after the last glyph, thus
     /// `result ≤ text.len()`.
+    ///
+    /// This method is only partially compatible with mult-line text.
+    /// Ideally an external line-breaker should be used.
     fn text_index_nearest(
         &mut self,
         rect: Rect,

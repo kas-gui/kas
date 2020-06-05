@@ -362,7 +362,17 @@ impl<G> EditBox<G> {
         mgr.redraw(self.id());
         let pos = self.edit_pos;
         match key {
-            ControlKey::Return => EditAction::Activate,
+            ControlKey::Return if !self.multi_line => EditAction::Activate,
+            ControlKey::Return if self.multi_line => {
+                if self.last_edit != LastEdit::Insert {
+                    self.old_state = Some((self.text.clone(), pos));
+                    self.last_edit = LastEdit::Insert;
+                }
+                let c = '\n';
+                self.text.insert(pos, c);
+                self.edit_pos = pos + c.len_utf8();
+                EditAction::Edit
+            }
             ControlKey::Left => {
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
                 if let Some(prev) = cursor.prev_boundary(&self.text, 0).unwrap() {
