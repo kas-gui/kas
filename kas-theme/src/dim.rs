@@ -10,7 +10,7 @@
 use std::any::Any;
 use std::f32;
 
-use kas::draw::{self, DrawText, FontId, TextClass, TextProperties};
+use kas::draw::{self, DrawText, FontId, TextClass, TextPart, TextSection};
 use kas::geom::{Rect, Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
 use kas::Align;
@@ -159,8 +159,12 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
     }
 
     fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
-        let font_id = self.dims.font_id;
-        let font_scale = self.dims.font_scale;
+        let text = TextPart {
+            text,
+            scale: self.dims.font_scale.into(),
+            font: self.dims.font_id,
+            col: Default::default(),
+        };
         let line_height = self.dims.line_height;
         let mut bounds = (f32::INFINITY, f32::INFINITY);
         if let Some(size) = axis.size_other_if_fixed(false) {
@@ -172,9 +176,7 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
             TextClass::Label | TextClass::EditMulti => true,
             TextClass::Button | TextClass::Edit => false,
         };
-        let bounds = self
-            .draw
-            .text_bound(text, font_id, font_scale, bounds, line_wrap);
+        let bounds = self.draw.text_bound(bounds, line_wrap, &[text]);
 
         let margins = (self.dims.margin as u16, self.dims.margin as u16);
         if axis.is_horizontal() {
@@ -204,24 +206,24 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
         &mut self,
         rect: Rect,
         text: &str,
-        class: TextClass,
+        line_wrap: bool,
         align: (Align, Align),
         pos: Vec2,
     ) -> usize {
-        let props = TextProperties {
-            font: self.dims.font_id,
-            scale: self.dims.font_scale.into(),
-            align,
-            line_wrap: match class {
-                TextClass::Label | TextClass::EditMulti => true,
-                TextClass::Button | TextClass::Edit => false,
-            },
-            ..Default::default()
-        };
-
         // Note: we don't add offset here since it was already subtracted from
-        // pos (e.g. via ScrollRegion::send)
-        self.draw.text_index_nearest(rect, text, props, pos)
+        // pos (e.g. via ScrollRegion::send).
+        let text = TextSection {
+            rect,
+            align,
+            line_wrap,
+            parts: &[TextPart {
+                text,
+                scale: self.dims.font_scale.into(),
+                font: self.dims.font_id,
+                col: Default::default(),
+            }],
+        };
+        self.draw.text_index_nearest(text, pos)
     }
 
     fn button_surround(&self) -> (Size, Size) {

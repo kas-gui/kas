@@ -480,14 +480,15 @@ impl<G> EditBox<G> {
     }
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
-        let class = if self.multi_line {
-            TextClass::EditMulti
-        } else {
-            TextClass::Edit
-        };
         let align = (Align::Begin, Align::Begin);
         self.edit_pos = mgr.size_handle(|h| {
-            h.text_index_nearest(self.text_rect, &self.text, class, align, coord.into())
+            h.text_index_nearest(
+                self.text_rect,
+                &self.text,
+                self.multi_line,
+                align,
+                coord.into(),
+            )
         });
         mgr.redraw(self.id());
     }

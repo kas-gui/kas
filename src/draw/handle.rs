@@ -144,7 +144,7 @@ pub trait SizeHandle {
         &mut self,
         rect: Rect,
         text: &str,
-        class: TextClass,
+        line_wrap: bool,
         align: (Align, Align),
         pos: Vec2,
     ) -> usize;
@@ -352,12 +352,12 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
         &mut self,
         rect: Rect,
         text: &str,
-        class: TextClass,
+        line_wrap: bool,
         align: (Align, Align),
         pos: Vec2,
     ) -> usize {
         self.deref_mut()
-            .text_index_nearest(rect, text, class, align, pos)
+            .text_index_nearest(rect, text, line_wrap, align, pos)
     }
 
     fn button_surround(&self) -> (Size, Size) {
@@ -413,12 +413,12 @@ where
         &mut self,
         rect: Rect,
         text: &str,
-        class: TextClass,
+        line_wrap: bool,
         align: (Align, Align),
         pos: Vec2,
     ) -> usize {
         self.deref_mut()
-            .text_index_nearest(rect, text, class, align, pos)
+            .text_index_nearest(rect, text, line_wrap, align, pos)
     }
 
     fn button_surround(&self) -> (Size, Size) {

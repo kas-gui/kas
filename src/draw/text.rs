@@ -5,11 +5,43 @@
 
 //! Text-drawing API
 
-pub use ab_glyph::{FontArc, PxScale};
+pub use ab_glyph::FontArc;
 
 use super::{Colour, Draw, DrawShared, Pass};
 use crate::geom::{Rect, Vec2};
 use crate::Align;
+
+/// Font scale
+///
+/// This is approximately the pixel-height of a line of text or double the
+/// "pt" size. Usually you want to use the same scale for both components,
+/// e.g. `PxScale::from(18.0)`.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct PxScale {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl Default for PxScale {
+    fn default() -> Self {
+        PxScale::from(18.0)
+    }
+}
+
+impl From<f32> for PxScale {
+    fn from(scale: f32) -> Self {
+        PxScale { x: scale, y: scale }
+    }
+}
+
+impl From<PxScale> for ab_glyph::PxScale {
+    fn from(scale: PxScale) -> ab_glyph::PxScale {
+        ab_glyph::PxScale {
+            x: scale.x,
+            y: scale.y,
+        }
+    }
+}
 
 /// Font identifier
 ///
@@ -20,6 +52,36 @@ use crate::Align;
 /// An instance may be obtained by [`DrawTextShared::load_font`].
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FontId(pub usize);
+
+/// A part of a text section
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub struct TextPart<'a> {
+    /// The text
+    pub text: &'a str,
+    /// Font scale
+    ///
+    /// This is approximately the pixel-height of a line of text or double the
+    /// "pt" size. Usually you want to use the same scale for both components,
+    /// e.g. `PxScale::from(18.0)`.
+    pub scale: PxScale,
+    /// The font
+    pub font: FontId,
+    /// Font colour
+    pub col: Colour,
+}
+
+/// A text section, as drawn by [`DrawText::text`]
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct TextSection<'a> {
+    /// The rect within which the text is drawn
+    pub rect: Rect,
+    /// Text alignment in horizontal and vertical directions
+    pub align: (Align, Align),
+    /// True if text should automatically be line-wrapped
+    pub line_wrap: bool,
+    /// Text parts to draw
+    pub parts: &'a [TextPart<'a>],
+}
 
 /// Text properties for use by [`DrawText::text`]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -67,11 +129,32 @@ pub trait DrawTextShared: DrawShared {
 /// Note: the current API is designed to meet only current requirements since
 /// changes are expected to support external font shaping libraries.
 pub trait DrawText: Draw {
-    /// Simple text drawing
+    /// Text section (uniform)
     ///
-    /// This allows text to be drawn according to a high-level API, and should
-    /// satisfy most uses.
-    fn text(&mut self, pass: Pass, rect: Rect, text: &str, props: TextProperties);
+    /// This method provides a simpler API around [`DrawText::text_section`].
+    fn text(&mut self, pass: Pass, rect: Rect, text: &str, props: TextProperties) {
+        self.text_section(
+            pass,
+            TextSection {
+                rect,
+                align: props.align,
+                line_wrap: props.line_wrap,
+                parts: &[TextPart {
+                    text,
+                    scale: props.scale,
+                    font: props.font,
+                    col: props.col,
+                }],
+            },
+        );
+    }
+
+    /// Text section (varying)
+    ///
+    /// A "text section" represents a block of text (e.g. a line or paragraph)
+    /// with common layout, but potentially varying properties (including
+    /// colour, size and font).
+    fn text_section(&mut self, pass: Pass, text: TextSection);
 
     /// Calculate size bound on text
     ///
@@ -81,14 +164,8 @@ pub trait DrawText: Draw {
     /// Bounds of `(f32::INFINITY, f32::INFINITY)` may be used if there are no
     /// constraints. This parameter allows forcing line-wrapping behaviour
     /// within the given bounds.
-    fn text_bound(
-        &mut self,
-        text: &str,
-        font_id: FontId,
-        font_scale: f32,
-        bounds: (f32, f32),
-        line_wrap: bool,
-    ) -> (f32, f32);
+    fn text_bound(&mut self, bounds: (f32, f32), line_wrap: bool, parts: &[TextPart])
+        -> (f32, f32);
 
     /// Find the starting position (top-left) of the glyph at the given index
     ///
@@ -96,13 +173,7 @@ pub trait DrawText: Draw {
     ///
     /// This method is only partially compatible with mult-line text.
     /// Ideally an external line-breaker should be used.
-    fn text_glyph_pos(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        props: TextProperties,
-        byte: usize,
-    ) -> Vec2;
+    fn text_glyph_pos(&mut self, text: TextSection, byte: usize) -> Vec2;
 
     /// Find the text index for the glyph nearest the given `pos`
     ///
@@ -111,11 +182,5 @@ pub trait DrawText: Draw {
     ///
     /// This method is only partially compatible with mult-line text.
     /// Ideally an external line-breaker should be used.
-    fn text_index_nearest(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        props: TextProperties,
-        pos: Vec2,
-    ) -> usize;
+    fn text_index_nearest(&mut self, text: TextSection, pos: Vec2) -> usize;
 }

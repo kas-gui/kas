@@ -268,7 +268,7 @@ impl std::ops::SubAssign for Size {
 }
 
 /// A rectangular region.
-#[derive(Clone, Copy, Default, Debug)]
+#[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub struct Rect {
     pub pos: Coord,
     pub size: Size,
