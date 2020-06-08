@@ -46,7 +46,7 @@ use std::any::Any;
 use crate::geom::{Quad, Rect, Vec2};
 
 pub use colour::Colour;
-pub use handle::{ClipRegion, DrawHandle, InputState, SizeHandle, TextClass};
+pub use handle::{ClipRegion, DrawHandle, DrawHandleExt, InputState, SizeHandle, TextClass};
 pub use text::{DrawText, DrawTextShared, FontId, PxScale, TextPart, TextProperties, TextSection};
 
 /// Pass identifier

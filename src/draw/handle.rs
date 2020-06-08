@@ -193,28 +193,16 @@ pub trait SizeHandle {
 /// Handle passed to objects during draw and sizing operations
 ///
 /// This handle is provided by the toolkit (usually via a theme implementation)
-/// as a high-level drawing interface. See also the companion trait,
-/// [`SizeHandle`].
+/// as a high-level drawing interface. See also the extension trait,
+/// [`DrawHandleExt`], and the companion trait, [`SizeHandle`].
 pub trait DrawHandle {
-    /// Access a [`SizeHandle`]
-    fn size_handle<F: Fn(&mut dyn SizeHandle) -> T, T>(&mut self, f: F) -> T
-    where
-        Self: Sized,
-    {
-        let mut result = None;
-        self.size_handle_dyn(&mut |size_handle| {
-            result = Some(f(size_handle));
-        });
-        result.expect("DrawHandle::size_handle_dyn impl failed to call function argument")
-    }
-
     /// Access a [`SizeHandle`] (object-safe version)
     ///
-    /// User code is recommended to use [`DrawHandle::size_handle`] instead and
-    /// *must not* depend on `f` being called for memory safety.
+    /// Users may prefer to use [`DrawHandleExt::size_handle`] instead. If using
+    /// this method directly, note that there is no guarantee that `f` gets
+    /// called exactly once, or even that it gets called at all.
     ///
-    /// Implementations should call the given function argument once; not doing
-    /// so is memory-safe but will cause a panic when `size_handle` is called.
+    /// Implementations *should* call the given function argument once.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
 
@@ -323,6 +311,28 @@ pub trait DrawHandle {
     /// -   `state`: highlighting information
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState);
 }
+
+/// Extension trait over [`DrawHandle`]
+///
+/// Importing this trait allows use of additional methods (which cannot be
+/// defined directly on [`DrawHandle`]).
+pub trait DrawHandleExt: DrawHandle {
+    /// Access a [`SizeHandle`]
+    ///
+    /// The given closure is called with a reference to a [`SizeHandle`], and
+    /// the closure's result is returned.
+    ///
+    /// This method will panic if the implementation fails to call the closure.
+    fn size_handle<F: Fn(&mut dyn SizeHandle) -> T, T>(&mut self, f: F) -> T {
+        let mut result = None;
+        self.size_handle_dyn(&mut |size_handle| {
+            result = Some(f(size_handle));
+        });
+        result.expect("DrawHandle::size_handle_dyn impl failed to call function argument")
+    }
+}
+
+impl<D: DrawHandle + ?Sized> DrawHandleExt for D {}
 
 impl<S: SizeHandle> SizeHandle for Box<S> {
     fn scale_factor(&self) -> f32 {
@@ -571,5 +581,17 @@ where
     }
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
         self.deref_mut().slider(rect, h_rect, dir, state)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn _draw_handle_ext(draw_handle: &mut dyn DrawHandle) {
+        // We can't call this method without constructing an actual DrawHandle.
+        // But we don't need to: we just want to test that methods are callable.
+
+        let _size = draw_handle.size_handle(|h| h.frame());
     }
 }
