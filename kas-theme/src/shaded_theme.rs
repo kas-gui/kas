@@ -141,6 +141,7 @@ macro_rules! text_section {
                 TextClass::Button | TextClass::Edit => false,
             },
             parts: &[TextPart {
+                byte_start: 0,
                 text: $text,
                 scale: $self.window.dims.font_scale.into(),
                 font: $self.window.dims.font_id,
@@ -278,7 +279,11 @@ where
         class: TextClass,
         align: (Align, Align),
     ) {
+        let start = range.start.min(text.len());
+        let end = range.end.min(text.len());
+
         let part = TextPart {
+            byte_start: 0,
             text,
             scale: self.window.dims.font_scale.into(),
             font: self.window.dims.font_id,
@@ -287,17 +292,19 @@ where
         let mut parts = [part, part, part];
 
         let mut len = 0;
-        if range.start > 0 {
-            parts[len].text = &text[..range.start];
+        if start > 0 {
+            parts[len].text = &text[..start];
             len += 1;
         }
-        if range.start < range.end {
-            parts[len].text = &text[range.start..range.end];
+        if start < end {
+            parts[len].byte_start = start;
+            parts[len].text = &text[start..end];
             parts[len].col = self.cols.text_sel;
             len += 1;
         }
-        if range.end < text.len() {
-            parts[len].text = &text[range.end..];
+        if end < text.len() {
+            parts[len].byte_start = end;
+            parts[len].text = &text[end..];
             len += 1;
         }
 
@@ -308,6 +315,14 @@ where
             parts: &parts[0..len],
         };
         self.draw.text_section(self.pass, section);
+
+        if start < end {
+            let pos1 = self.draw.text_glyph_pos(section, start);
+            let mut pos2 = self.draw.text_glyph_pos(section, end);
+            pos2.1 += self.window.dims.font_scale;
+            let quad = Quad::with_coords(pos1, pos2);
+            self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
+        }
     }
 
     fn edit_marker(

@@ -45,6 +45,8 @@ pub struct FontId(pub usize);
 /// A part of a text section
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct TextPart<'a> {
+    /// The byte within the whole text at which this sub-text starts
+    pub byte_start: usize,
     /// The text
     pub text: &'a str,
     /// Font scale
@@ -60,7 +62,7 @@ pub struct TextPart<'a> {
 }
 
 /// A text section, as drawn by [`DrawText::text`]
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct TextSection<'a> {
     /// The rect within which the text is drawn
     pub rect: Rect,
@@ -138,6 +140,7 @@ pub trait DrawText: Draw {
                 align: props.align,
                 line_wrap: props.line_wrap,
                 parts: &[TextPart {
+                    byte_start: 0,
                     text,
                     scale: props.scale,
                     font: props.font,

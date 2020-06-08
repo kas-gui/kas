@@ -216,7 +216,7 @@ impl<G: 'static> Layout for EditBox<G> {
         let mut input_state = self.input_state(mgr, disabled);
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
-        let selection = 0..(self.text.len().min(5)); // TODO
+        let selection = 2..5;
         let align = (Align::Begin, Align::Begin);
         draw_handle.text_selected(self.text_rect, &self.text, selection, class, align);
         if input_state.char_focus {

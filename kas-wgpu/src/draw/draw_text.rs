@@ -154,8 +154,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
 
             glyph = iter.next().unwrap().clone();
             for next in iter {
-                assert_eq!(next.section_index, 0);
-                if index < next.byte_index {
+                if index < text.parts[next.section_index].byte_start + next.byte_index {
                     // Use the previous glyph, e.g. if in the middle of a
                     // multi-byte sequence or index is a combining diacritic.
                     break;

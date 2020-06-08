@@ -160,6 +160,7 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
 
     fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
         let text = TextPart {
+            byte_start: 0,
             text,
             scale: self.dims.font_scale.into(),
             font: self.dims.font_id,
@@ -217,6 +218,7 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
             align,
             line_wrap,
             parts: &[TextPart {
+                byte_start: 0,
                 text,
                 scale: self.dims.font_scale.into(),
                 font: self.dims.font_id,
