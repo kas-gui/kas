@@ -7,22 +7,38 @@
 
 use std::f32;
 use unicode_segmentation::GraphemeCursor;
-use wgpu_glyph::ab_glyph::{Glyph, PxScaleFont, ScaleFont};
+use wgpu_glyph::ab_glyph::{FontRef, FontVec, Glyph, PxScale, PxScaleFont, ScaleFont};
 use wgpu_glyph::{
     Extra, GlyphCruncher, HorizontalAlign, Layout, Section, SectionGlyph, Text, VerticalAlign,
 };
 
 use super::{CustomPipe, CustomWindow, DrawPipe, DrawWindow};
-use kas::draw::{DrawText, DrawTextShared, FontArc, FontId, Pass, TextPart, TextSection};
+use kas::draw::{DrawText, DrawTextShared, FontId, Pass, TextPart, TextSection};
 use kas::geom::{Coord, Vec2};
 use kas::Align;
 
 impl<C: CustomPipe + 'static> DrawTextShared for DrawPipe<C> {
-    fn load_font(&mut self, font: FontArc) -> FontId {
+    fn load_font_static_ref(&mut self, data: &'static [u8], index: u32) -> FontId {
+        let font = FontRef::try_from_slice_and_index(data, index).unwrap();
         let id = FontId(self.fonts.len());
-        self.fonts.push(font);
+        self.fonts.push(font.into());
         id
     }
+
+    /// Load a font
+    ///
+    /// For font collections, the `index` is used to identify the font;
+    /// otherwise it is expected to be 0.
+    fn load_font_vec(&mut self, data: Vec<u8>, index: u32) -> FontId {
+        let font = FontVec::try_from_vec_and_index(data, index).unwrap();
+        let id = FontId(self.fonts.len());
+        self.fonts.push(font.into());
+        id
+    }
+}
+
+fn to_px_scale(kas::draw::PxScale { x, y }: kas::draw::PxScale) -> PxScale {
+    PxScale { x, y }
 }
 
 fn make_section<'a>(pass: Pass, text: &'a TextSection) -> Section<'a> {
@@ -53,7 +69,7 @@ fn make_section<'a>(pass: Pass, text: &'a TextSection) -> Section<'a> {
         .iter()
         .map(|part| Text {
             text: part.text,
-            scale: part.scale.into(),
+            scale: to_px_scale(part.scale),
             font_id: wgpu_glyph::FontId(part.font.0),
             extra: Extra {
                 color: part.col.into(),
@@ -91,7 +107,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
             .iter()
             .map(|part| Text {
                 text: part.text,
-                scale: part.scale.into(),
+                scale: to_px_scale(part.scale),
                 font_id: wgpu_glyph::FontId(part.font.0),
                 extra: Default::default(),
             })
@@ -175,7 +191,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         let last_part = text.parts.as_ref().last().unwrap();
         let scale_font = PxScaleFont {
             font: self.glyph_brush.fonts()[last_part.font.0].clone(),
-            scale: last_part.scale.into(),
+            scale: to_px_scale(last_part.scale),
         };
         let base_to_mid = -0.5 * scale_font.ascent();
 

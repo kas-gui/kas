@@ -47,7 +47,7 @@ use crate::geom::{Quad, Rect, Vec2};
 
 pub use colour::Colour;
 pub use handle::{ClipRegion, DrawHandle, InputState, SizeHandle, TextClass};
-pub use text::{DrawText, DrawTextShared, FontArc, FontId, TextPart, TextProperties, TextSection};
+pub use text::{DrawText, DrawTextShared, FontId, PxScale, TextPart, TextProperties, TextSection};
 
 /// Pass identifier
 ///

@@ -5,8 +5,6 @@
 
 //! Text-drawing API
 
-pub use ab_glyph::FontArc;
-
 use super::{Colour, Draw, DrawShared, Pass};
 use crate::geom::{Rect, Vec2};
 use crate::Align;
@@ -31,15 +29,6 @@ impl Default for PxScale {
 impl From<f32> for PxScale {
     fn from(scale: f32) -> Self {
         PxScale { x: scale, y: scale }
-    }
-}
-
-impl From<PxScale> for ab_glyph::PxScale {
-    fn from(scale: PxScale) -> ab_glyph::PxScale {
-        ab_glyph::PxScale {
-            x: scale.x,
-            y: scale.y,
-        }
     }
 }
 
@@ -117,7 +106,16 @@ impl Default for TextProperties {
 /// Abstraction over type shared by [`DrawText`] implementations
 pub trait DrawTextShared: DrawShared {
     /// Load a font
-    fn load_font(&mut self, font: FontArc) -> FontId;
+    ///
+    /// For font collections, the `index` is used to identify the font;
+    /// otherwise it is expected to be 0.
+    fn load_font_static_ref(&mut self, data: &'static [u8], index: u32) -> FontId;
+
+    /// Load a font
+    ///
+    /// For font collections, the `index` is used to identify the font;
+    /// otherwise it is expected to be 0.
+    fn load_font_vec(&mut self, data: Vec<u8>, index: u32) -> FontId;
 }
 
 /// Abstraction over text rendering
