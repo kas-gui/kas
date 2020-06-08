@@ -5,7 +5,7 @@
 
 //! "Handle" types used by themes
 
-use std::ops::{Deref, DerefMut};
+use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Rect, Size, Vec2};
@@ -73,6 +73,13 @@ pub enum TextClass {
     Edit,
     /// Class of text drawn in a multi-line edit box
     EditMulti,
+}
+
+impl TextClass {
+    /// True if text should be automatically line-wrapped
+    pub fn line_wrap(self) -> bool {
+        self == TextClass::Label || self == TextClass::EditMulti
+    }
 }
 
 /// Default class: Label
@@ -264,6 +271,17 @@ pub trait DrawHandle {
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align));
 
+    /// Method used to implement [`DrawHandle::text_selected`]
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    fn text_selected_range(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        range: Range<usize>,
+        class: TextClass,
+        align: (Align, Align),
+    );
+
     /// Draw an edit marker at the given `byte` index on this `text`
     fn edit_marker(
         &mut self,
@@ -329,6 +347,33 @@ pub trait DrawHandleExt: DrawHandle {
             result = Some(f(size_handle));
         });
         result.expect("DrawHandle::size_handle_dyn impl failed to call function argument")
+    }
+
+    /// Draw some text using the standard font, with a subset selected
+    ///
+    /// Other than visually highlighting the selection, this method behaves
+    /// identically to [`DrawHandle::text`]. It is likely to be replaced in the
+    /// future by a higher-level API.
+    fn text_selected<R: RangeBounds<usize>>(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        range: R,
+        class: TextClass,
+        align: (Align, Align),
+    ) {
+        let start = match range.start_bound() {
+            Bound::Included(n) => *n,
+            Bound::Excluded(n) => *n + 1,
+            Bound::Unbounded => 0,
+        };
+        let end = match range.end_bound() {
+            Bound::Included(n) => *n + 1,
+            Bound::Excluded(n) => *n,
+            Bound::Unbounded => text.len(),
+        };
+        let range = Range { start, end };
+        self.text_selected_range(rect, text, range, class, align);
     }
 }
 
@@ -483,6 +528,17 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
     }
+    fn text_selected_range(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        range: Range<usize>,
+        class: TextClass,
+        align: (Align, Align),
+    ) {
+        self.deref_mut()
+            .text_selected_range(rect, text, range, class, align);
+    }
     fn edit_marker(
         &mut self,
         rect: Rect,
@@ -551,6 +607,17 @@ where
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
     }
+    fn text_selected_range(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        range: Range<usize>,
+        class: TextClass,
+        align: (Align, Align),
+    ) {
+        self.deref_mut()
+            .text_selected_range(rect, text, range, class, align);
+    }
     fn edit_marker(
         &mut self,
         rect: Rect,
@@ -593,5 +660,9 @@ mod test {
         // But we don't need to: we just want to test that methods are callable.
 
         let _size = draw_handle.size_handle(|h| h.frame());
+
+        let rect = Rect::new(Coord::ZERO, Size(100, 50));
+        let align = (Align::Centre, Align::Centre);
+        draw_handle.text_selected(rect, "text", .., TextClass::Label, align)
     }
 }

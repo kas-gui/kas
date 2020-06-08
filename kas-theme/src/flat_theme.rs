@@ -8,6 +8,7 @@
 //! Widget size and appearance can be modified through themes.
 
 use std::f32;
+use std::ops::Range;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::draw::{
@@ -145,11 +146,7 @@ macro_rules! text_section {
                 text: $text,
                 scale: $self.window.dims.font_scale.into(),
                 font: $self.window.dims.font_id,
-                col: match $class {
-                    TextClass::Label => $self.cols.label_text,
-                    TextClass::Button => $self.cols.button_text,
-                    TextClass::Edit | TextClass::EditMulti => $self.cols.text,
-                },
+                col: $self.cols.text_class($class),
             }],
         }
     };
@@ -266,6 +263,46 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         let text = text_section!(self, rect, text, class, align);
         self.draw.text_section(self.pass, text);
+    }
+
+    fn text_selected_range(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        range: Range<usize>,
+        class: TextClass,
+        align: (Align, Align),
+    ) {
+        let part = TextPart {
+            text,
+            scale: self.window.dims.font_scale.into(),
+            font: self.window.dims.font_id,
+            col: self.cols.text_class(class),
+        };
+        let mut parts = [part, part, part];
+
+        let mut len = 0;
+        if range.start > 0 {
+            parts[len].text = &text[..range.start];
+            len += 1;
+        }
+        if range.start < range.end {
+            parts[len].text = &text[range.start..range.end];
+            parts[len].col = self.cols.text_sel;
+            len += 1;
+        }
+        if range.end < text.len() {
+            parts[len].text = &text[range.end..];
+            len += 1;
+        }
+
+        let section = TextSection {
+            rect,
+            align,
+            line_wrap: class.line_wrap(),
+            parts: &parts[0..len],
+        };
+        self.draw.text_section(self.pass, section);
     }
 
     fn edit_marker(

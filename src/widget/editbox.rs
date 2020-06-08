@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 use unicode_segmentation::GraphemeCursor;
 
 use kas::class::{Editable, HasText};
-use kas::draw::TextClass;
+use kas::draw::{DrawHandleExt, TextClass};
 use kas::event::{ControlKey, GrabMode};
 use kas::prelude::*;
 
@@ -216,8 +216,9 @@ impl<G: 'static> Layout for EditBox<G> {
         let mut input_state = self.input_state(mgr, disabled);
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
+        let selection = 0..(self.text.len().min(5)); // TODO
         let align = (Align::Begin, Align::Begin);
-        draw_handle.text(self.text_rect, &self.text, class, align);
+        draw_handle.text_selected(self.text_rect, &self.text, selection, class, align);
         if input_state.char_focus {
             draw_handle.edit_marker(self.text_rect, &self.text, class, align, self.edit_pos);
         }
