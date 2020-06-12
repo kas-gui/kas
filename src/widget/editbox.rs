@@ -6,6 +6,7 @@
 //! Text widgets
 
 use std::fmt::{self, Debug};
+use std::ops::Range;
 use unicode_segmentation::GraphemeCursor;
 
 use kas::class::{Editable, HasText};
@@ -144,6 +145,7 @@ pub struct EditBox<G: 'static> {
     multi_line: bool,
     text: String,
     edit_pos: usize,
+    sel_pos: usize,
     old_state: Option<(String, usize)>,
     last_edit: LastEdit,
     error_state: bool,
@@ -216,9 +218,12 @@ impl<G: 'static> Layout for EditBox<G> {
         let mut input_state = self.input_state(mgr, disabled);
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
-        let selection = 2..5;
         let align = (Align::Begin, Align::Begin);
-        draw_handle.text_selected(self.text_rect, &self.text, selection, class, align);
+        if self.sel_pos == self.edit_pos {
+            draw_handle.text(self.text_rect, &self.text, class, align);
+        } else {
+            draw_handle.text_selected(self.text_rect, &self.text, self.selection(), class, align);
+        }
         if input_state.char_focus {
             draw_handle.edit_marker(self.text_rect, &self.text, class, align, self.edit_pos);
         }
@@ -239,6 +244,7 @@ impl EditBox<EditVoid> {
             multi_line: false,
             text,
             edit_pos,
+            sel_pos: edit_pos,
             old_state: None,
             last_edit: LastEdit::None,
             error_state: false,
@@ -263,6 +269,7 @@ impl EditBox<EditVoid> {
             multi_line: self.multi_line,
             text: self.text,
             edit_pos: self.edit_pos,
+            sel_pos: self.sel_pos,
             old_state: self.old_state,
             last_edit: self.last_edit,
             error_state: self.error_state,
@@ -338,18 +345,36 @@ impl<G> EditBox<G> {
         self.error_state = error_state;
     }
 
+    fn selection(&self) -> Range<usize> {
+        let mut range = self.edit_pos..self.sel_pos;
+        if range.start > range.end {
+            std::mem::swap(&mut range.start, &mut range.end);
+        }
+        range
+    }
+
     fn received_char(&mut self, mgr: &mut Manager, c: char) -> EditAction {
         if !self.editable {
             return EditAction::None;
         }
 
         let pos = self.edit_pos;
-        if self.last_edit != LastEdit::Insert {
+        let selection = self.selection();
+        let have_sel = selection.start < selection.end;
+        if self.last_edit != LastEdit::Insert || have_sel {
             self.old_state = Some((self.text.clone(), pos));
             self.last_edit = LastEdit::Insert;
         }
-        self.text.insert(pos, c);
-        self.edit_pos = pos + c.len_utf8();
+        if have_sel {
+            let mut buf = [0u8; 4];
+            let s = c.encode_utf8(&mut buf);
+            self.text.replace_range(selection.clone(), s);
+            self.edit_pos = selection.start + s.len();
+        } else {
+            self.text.insert(pos, c);
+            self.edit_pos = pos + c.len_utf8();
+        }
+        self.sel_pos = self.edit_pos;
 
         mgr.redraw(self.id());
         EditAction::Edit
@@ -542,13 +567,13 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
             },
             Event::PressStart { source, coord, .. } if source.is_primary() => {
                 self.set_edit_pos_from_coord(mgr, coord);
+                self.sel_pos = self.edit_pos;
                 mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
                 mgr.request_char_focus(self.id());
                 Response::None
             }
             Event::PressMove { coord, .. } => {
                 self.set_edit_pos_from_coord(mgr, coord);
-                // TODO: text selection
                 Response::None
             }
             Event::PressEnd { .. } => Response::None,
