@@ -198,7 +198,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         match r {
             Response::None => Response::None,
             Response::Unhandled(ev) => match ev {
-                Event::Control(key) => {
+                Event::Control(key, modifiers) => {
                     let next = |mgr: &mut Manager, s, clr, rev| {
                         if clr {
                             mgr.clear_nav_focus();
@@ -211,7 +211,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
                         ControlKey::Down => next(mgr, self, false, false),
                         ControlKey::Home => next(mgr, self, true, false),
                         ControlKey::End => next(mgr, self, true, true),
-                        key => Response::Unhandled(Event::Control(key)),
+                        key => Response::Unhandled(Event::Control(key, modifiers)),
                     }
                 }
                 ev => Response::Unhandled(ev),

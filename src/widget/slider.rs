@@ -249,7 +249,7 @@ impl<T: SliderType, D: Directional> event::SendEvent for Slider<T, D> {
             }
         } else {
             match event {
-                Event::Control(key) => {
+                Event::Control(key, modifiers) => {
                     let rev = self.direction.is_reversed();
                     let v = match key {
                         ControlKey::Left | ControlKey::Up => match rev {
@@ -273,7 +273,7 @@ impl<T: SliderType, D: Directional> event::SendEvent for Slider<T, D> {
                         }
                         ControlKey::Home => self.range.0,
                         ControlKey::End => self.range.1,
-                        key => return Response::Unhandled(Event::Control(key)),
+                        key => return Response::Unhandled(Event::Control(key, modifiers)),
                     };
                     let action = self.set_value(v);
                     return if action == TkAction::None {

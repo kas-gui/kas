@@ -11,16 +11,14 @@ use unicode_segmentation::GraphemeCursor;
 
 use kas::class::{Editable, HasText};
 use kas::draw::{DrawHandleExt, TextClass};
-use kas::event::{ControlKey, GrabMode};
+use kas::event::{ControlKey, GrabMode, ModifiersState};
 use kas::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
 enum LastEdit {
     None,
     Insert,
-    Backspace,
     Delete,
-    Clear,
     Paste,
 }
 
@@ -146,7 +144,7 @@ pub struct EditBox<G: 'static> {
     text: String,
     edit_pos: usize,
     sel_pos: usize,
-    old_state: Option<(String, usize)>,
+    old_state: Option<(String, usize, usize)>,
     last_edit: LastEdit,
     error_state: bool,
     /// The associated [`EditGuard`] implementation
@@ -362,7 +360,7 @@ impl<G> EditBox<G> {
         let selection = self.selection();
         let have_sel = selection.start < selection.end;
         if self.last_edit != LastEdit::Insert || have_sel {
-            self.old_state = Some((self.text.clone(), pos));
+            self.old_state = Some((self.text.clone(), pos, self.sel_pos));
             self.last_edit = LastEdit::Insert;
         }
         if have_sel {
@@ -380,99 +378,92 @@ impl<G> EditBox<G> {
         EditAction::Edit
     }
 
-    fn control_key(&mut self, mgr: &mut Manager, key: ControlKey) -> EditAction {
+    fn control_key(
+        &mut self,
+        mgr: &mut Manager,
+        key: ControlKey,
+        modifiers: ModifiersState,
+    ) -> EditAction {
         if !self.editable {
             return EditAction::None;
         }
 
         mgr.redraw(self.id());
+        let mut buf = [0u8; 4];
         let pos = self.edit_pos;
-        match key {
-            ControlKey::Return if !self.multi_line => EditAction::Activate,
+        let selection = self.selection();
+        let have_sel = selection.end > selection.start;
+        let shift = modifiers.shift();
+        let string;
+
+        enum Action<'a> {
+            None,
+            Activate,
+            Edit,
+            Insert(&'a str, LastEdit),
+            Delete(Range<usize>),
+            Move(usize),
+        }
+
+        let action = match key {
+            ControlKey::Return if shift || !self.multi_line => Action::Activate,
             ControlKey::Return if self.multi_line => {
-                if self.last_edit != LastEdit::Insert {
-                    self.old_state = Some((self.text.clone(), pos));
-                    self.last_edit = LastEdit::Insert;
-                }
-                let c = '\n';
-                self.text.insert(pos, c);
-                self.edit_pos = pos + c.len_utf8();
-                EditAction::Edit
+                Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
             ControlKey::Left => {
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
-                if let Some(prev) = cursor.prev_boundary(&self.text, 0).unwrap() {
-                    self.edit_pos = prev;
-                }
-                EditAction::None
+                cursor
+                    .prev_boundary(&self.text, 0)
+                    .unwrap()
+                    .map(|pos| Action::Move(pos))
+                    .unwrap_or(Action::None)
             }
             ControlKey::Right => {
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
-                if let Some(next) = cursor.next_boundary(&self.text, 0).unwrap() {
-                    self.edit_pos = next;
-                }
-                EditAction::None
+                cursor
+                    .next_boundary(&self.text, 0)
+                    .unwrap()
+                    .map(|pos| Action::Move(pos))
+                    .unwrap_or(Action::None)
             }
-            ControlKey::Up | ControlKey::Home | ControlKey::PageUp => {
-                self.edit_pos = 0;
-                EditAction::None
-            }
+            ControlKey::Up | ControlKey::Home | ControlKey::PageUp => Action::Move(0),
             ControlKey::Down | ControlKey::End | ControlKey::PageDown => {
-                self.edit_pos = self.text.len();
-                EditAction::None
+                Action::Move(self.text.len())
             }
             ControlKey::Delete => {
-                let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
-                if let Some(next) = cursor.next_boundary(&self.text, 0).unwrap() {
-                    if self.last_edit != LastEdit::Delete {
-                        self.old_state = Some((self.text.clone(), pos));
-                        self.last_edit = LastEdit::Delete;
-                    }
-
-                    self.text.replace_range(pos..next, "");
-                    EditAction::Edit
+                if have_sel {
+                    Action::Delete(selection.clone())
                 } else {
-                    EditAction::None
+                    let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
+                    cursor
+                        .next_boundary(&self.text, 0)
+                        .unwrap()
+                        .map(|next| Action::Delete(pos..next))
+                        .unwrap_or(Action::None)
                 }
             }
             ControlKey::Backspace => {
-                let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
-                if let Some(prev) = cursor.prev_boundary(&self.text, 0).unwrap() {
-                    if self.last_edit != LastEdit::Backspace {
-                        self.old_state = Some((self.text.clone(), pos));
-                        self.last_edit = LastEdit::Backspace;
-                    }
-
-                    self.text.replace_range(prev..pos, "");
-                    self.edit_pos = prev;
-                    EditAction::Edit
+                if have_sel {
+                    Action::Delete(selection.clone())
                 } else {
-                    EditAction::None
+                    let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
+                    cursor
+                        .prev_boundary(&self.text, 0)
+                        .unwrap()
+                        .map(|prev| Action::Delete(prev..pos))
+                        .unwrap_or(Action::None)
                 }
             }
-            ControlKey::Cut => {
-                mgr.set_clipboard((&self.text).into());
-
-                if self.last_edit != LastEdit::Clear {
-                    self.old_state = Some((self.text.clone(), pos));
-                    self.last_edit = LastEdit::Clear;
-                }
-                self.text.clear();
-                self.edit_pos = 0;
-                EditAction::Edit
+            ControlKey::Cut if have_sel => {
+                mgr.set_clipboard((&self.text[selection.clone()]).into());
+                Action::Delete(selection.clone())
             }
-            ControlKey::Copy => {
-                // we don't yet have selection support, so just copy everything
-                mgr.set_clipboard((&self.text).into());
-                EditAction::None
+            ControlKey::Copy if have_sel => {
+                mgr.set_clipboard((&self.text[selection.clone()]).into());
+                Action::None
             }
             ControlKey::Paste => {
                 if let Some(content) = mgr.get_clipboard() {
-                    if self.last_edit != LastEdit::Paste {
-                        self.old_state = Some((self.text.clone(), pos));
-                        self.last_edit = LastEdit::Paste;
-                    }
-
                     // We cut the content short on control characters and
                     // ignore them (preventing line-breaks and ignoring any
                     // actions such as recursive-paste).
@@ -483,25 +474,70 @@ impl<G> EditBox<G> {
                             break;
                         }
                     }
-                    self.text.insert_str(pos, &content[0..end]);
-                    self.edit_pos = pos + end;
-                    EditAction::Edit
+
+                    string = content;
+                    Action::Insert(&string[0..end], LastEdit::Paste)
                 } else {
-                    EditAction::None
+                    Action::None
                 }
             }
             ControlKey::Undo | ControlKey::Redo => {
                 // TODO: maintain full edit history (externally?)
                 // NOTE: undo *and* redo shortcuts map to this control char
-                if let Some((state, pos2)) = self.old_state.as_mut() {
+                if let Some((state, pos2, sel_pos)) = self.old_state.as_mut() {
                     std::mem::swap(state, &mut self.text);
                     self.edit_pos = *pos2;
                     *pos2 = pos;
+                    std::mem::swap(sel_pos, &mut self.sel_pos);
                     self.last_edit = LastEdit::None;
                 }
+                Action::Edit
+            }
+            _ => Action::None,
+        };
+
+        match action {
+            Action::None => EditAction::None,
+            Action::Activate => EditAction::Activate,
+            Action::Edit => EditAction::Edit,
+            Action::Insert(s, edit) => {
+                let mut pos = pos;
+                if have_sel {
+                    self.old_state = Some((self.text.clone(), pos, self.sel_pos));
+                    self.last_edit = edit;
+
+                    self.text.replace_range(selection.clone(), s);
+                    pos = selection.start;
+                } else {
+                    if self.last_edit != edit {
+                        self.old_state = Some((self.text.clone(), pos, self.sel_pos));
+                        self.last_edit = edit;
+                    }
+
+                    self.text.insert_str(pos, s);
+                }
+                self.edit_pos = pos + s.len();
+                self.sel_pos = self.edit_pos;
                 EditAction::Edit
             }
-            _ => EditAction::None,
+            Action::Delete(sel) => {
+                if self.last_edit != LastEdit::Delete {
+                    self.old_state = Some((self.text.clone(), pos, self.sel_pos));
+                    self.last_edit = LastEdit::Delete;
+                }
+
+                self.text.replace_range(sel.clone(), "");
+                self.edit_pos = sel.start;
+                self.sel_pos = sel.start;
+                EditAction::Edit
+            }
+            Action::Move(pos) => {
+                self.edit_pos = pos;
+                if !shift {
+                    self.sel_pos = self.edit_pos;
+                }
+                EditAction::None
+            }
         }
     }
 
@@ -555,7 +591,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 let r = G::focus_lost(self);
                 r.map(|msg| msg.into()).unwrap_or(Response::None)
             }
-            Event::Control(key) => match self.control_key(mgr, key) {
+            Event::Control(key, modifiers) => match self.control_key(mgr, key, modifiers) {
                 EditAction::None => Response::None,
                 EditAction::Activate => G::activate(self).into(),
                 EditAction::Edit => G::edit(self).into(),

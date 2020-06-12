@@ -163,7 +163,7 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                     self.menu_path(mgr, None);
                 }
             }
-            Event::Control(key) => {
+            Event::Control(key, modifiers) => {
                 // Arrow keys can switch to the next / previous menu.
                 let is_vert = self.bar.direction().is_vertical();
                 let reverse = self.bar.direction().is_reversed()
@@ -172,7 +172,7 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                         ControlKey::Right if !is_vert => false,
                         ControlKey::Up if is_vert => true,
                         ControlKey::Down if is_vert => false,
-                        key => return Response::Unhandled(Event::Control(key)),
+                        key => return Response::Unhandled(Event::Control(key, modifiers)),
                     };
 
                 for i in 0..self.bar.len() {

@@ -149,12 +149,12 @@ impl<D: Directional, M, W: Menu<Msg = M>> event::Handler for SubMenu<D, W> {
                 debug_assert_eq!(Some(id), self.popup_id);
                 self.popup_id = None;
             }
-            Event::Control(key) => match (self.direction.as_direction(), key) {
+            Event::Control(key, modifiers) => match (self.direction.as_direction(), key) {
                 (Direction::Left, ControlKey::Left) => self.open_menu(mgr),
                 (Direction::Right, ControlKey::Right) => self.open_menu(mgr),
                 (Direction::Up, ControlKey::Up) => self.open_menu(mgr),
                 (Direction::Down, ControlKey::Down) => self.open_menu(mgr),
-                (_, key) => return Response::Unhandled(Event::Control(key)),
+                (_, key) => return Response::Unhandled(Event::Control(key, modifiers)),
             },
             event => return Response::Unhandled(event),
         }
@@ -184,7 +184,7 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
 
             match r {
                 Response::Unhandled(ev) => match ev {
-                    Event::Control(key) if self.popup_id.is_some() => {
+                    Event::Control(key, modifiers) if self.popup_id.is_some() => {
                         if self.popup_id.is_some() {
                             let dir = self.direction.as_direction();
                             let inner_vert = self.list.inner.direction().is_vertical();
@@ -207,7 +207,7 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                                 ControlKey::Right if dir == Left => self.close_menu(mgr),
                                 ControlKey::Up if dir == Down => self.close_menu(mgr),
                                 ControlKey::Down if dir == Up => self.close_menu(mgr),
-                                key => return Response::Unhandled(Event::Control(key)),
+                                key => return Response::Unhandled(Event::Control(key, modifiers)),
                             }
                         }
                         Response::None
