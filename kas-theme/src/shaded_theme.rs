@@ -132,8 +132,10 @@ impl ThemeApi for ShadedTheme {
 }
 
 macro_rules! text_section {
-    ($self:ident, $rect:ident, $text:ident, $class:ident, $align:ident) => {
+    ($self:ident, $rect:ident, $text:ident, $class:ident, $align:ident) => {{
+        let end = $text.len() as u32;
         TextSection {
+            text: $text,
             rect: $rect + $self.offset,
             align: $align,
             line_wrap: match $class {
@@ -141,14 +143,14 @@ macro_rules! text_section {
                 TextClass::Button | TextClass::Edit => false,
             },
             parts: &[TextPart {
-                byte_start: 0,
-                text: $text,
+                start: 0,
+                end,
                 scale: $self.window.dims.font_scale.into(),
                 font: $self.window.dims.font_id,
                 col: $self.cols.text_class($class),
             }],
         }
-    };
+    }};
 }
 
 impl<'a, D: Draw + DrawRounded + DrawShaded> DrawHandle<'a, D> {
@@ -283,8 +285,8 @@ where
         let end = range.end.min(text.len());
 
         let part = TextPart {
-            byte_start: 0,
-            text,
+            start: 0,
+            end: text.len() as u32,
             scale: self.window.dims.font_scale.into(),
             font: self.window.dims.font_id,
             col: self.cols.text_class(class),
@@ -293,22 +295,22 @@ where
 
         let mut len = 0;
         if start > 0 {
-            parts[len].text = &text[..start];
+            parts[len].end = start as u32;
             len += 1;
         }
         if start < end {
-            parts[len].byte_start = start;
-            parts[len].text = &text[start..end];
+            parts[len].start = start as u32;
+            parts[len].end = end as u32;
             parts[len].col = self.cols.text_sel;
             len += 1;
         }
         if end < text.len() {
-            parts[len].byte_start = end;
-            parts[len].text = &text[end..];
+            parts[len].start = end as u32;
             len += 1;
         }
 
         let section = TextSection {
+            text,
             rect,
             align,
             line_wrap: class.line_wrap(),

@@ -44,11 +44,11 @@ pub struct FontId(pub usize);
 
 /// A part of a text section
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
-pub struct TextPart<'a> {
-    /// The byte within the whole text at which this sub-text starts
-    pub byte_start: usize,
-    /// The text
-    pub text: &'a str,
+pub struct TextPart {
+    /// The start (inclusive) of this text part within the whole text
+    pub start: u32,
+    /// The end (exclusive) of this text part within the whole text
+    pub end: u32,
     /// Font scale
     ///
     /// This is approximately the pixel-height of a line of text or double the
@@ -61,9 +61,28 @@ pub struct TextPart<'a> {
     pub col: Colour,
 }
 
+impl TextPart {
+    /// Byte-length of part (`end - start`)
+    #[inline]
+    pub fn len(&self) -> usize {
+        (self.end - self.start) as usize
+    }
+
+    /// Byte-range
+    #[inline]
+    pub fn range(&self) -> std::ops::Range<usize> {
+        (self.start as usize)..(self.end as usize)
+    }
+}
+
 /// A text section, as drawn by [`DrawText::text`]
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 pub struct TextSection<'a> {
+    /// The whole text
+    ///
+    /// Note: each [`TextPart`] references a sub-set of this. Sub-sets may
+    /// overlap and are not required to cover the whole of this text.
+    pub text: &'a str,
     /// The rect within which the text is drawn
     pub rect: Rect,
     /// Text alignment in horizontal and vertical directions
@@ -71,7 +90,7 @@ pub struct TextSection<'a> {
     /// True if text should automatically be line-wrapped
     pub line_wrap: bool,
     /// Text parts to draw
-    pub parts: &'a [TextPart<'a>],
+    pub parts: &'a [TextPart],
 }
 
 /// Text properties for use by [`DrawText::text`]
@@ -133,15 +152,17 @@ pub trait DrawText: Draw {
     ///
     /// This method provides a simpler API around [`DrawText::text_section`].
     fn text(&mut self, pass: Pass, rect: Rect, text: &str, props: TextProperties) {
+        let end = text.len() as u32;
         self.text_section(
             pass,
             TextSection {
+                text,
                 rect,
                 align: props.align,
                 line_wrap: props.line_wrap,
                 parts: &[TextPart {
-                    byte_start: 0,
-                    text,
+                    start: 0,
+                    end,
                     scale: props.scale,
                     font: props.font,
                     col: props.col,
@@ -165,8 +186,13 @@ pub trait DrawText: Draw {
     /// Bounds of `(f32::INFINITY, f32::INFINITY)` may be used if there are no
     /// constraints. This parameter allows forcing line-wrapping behaviour
     /// within the given bounds.
-    fn text_bound(&mut self, bounds: (f32, f32), line_wrap: bool, parts: &[TextPart])
-        -> (f32, f32);
+    fn text_bound(
+        &mut self,
+        bounds: (f32, f32),
+        line_wrap: bool,
+        text: &str,
+        parts: &[TextPart],
+    ) -> (f32, f32);
 
     /// Find the starting position (top-left) of the glyph at the given index
     ///

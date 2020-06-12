@@ -41,34 +41,35 @@ fn to_px_scale(kas::draw::PxScale { x, y }: kas::draw::PxScale) -> PxScale {
     PxScale { x, y }
 }
 
-fn make_section<'a>(pass: Pass, text: &'a TextSection) -> Section<'a> {
-    let bounds = Coord::from(text.rect.size);
+fn make_section<'a>(pass: Pass, ts: &'a TextSection) -> Section<'a> {
+    let bounds = Coord::from(ts.rect.size);
 
     // TODO: support justified alignment
-    let (h_align, h_offset) = match text.align.0 {
+    let (h_align, h_offset) = match ts.align.0 {
         Align::Begin | Align::Stretch => (HorizontalAlign::Left, 0),
         Align::Centre => (HorizontalAlign::Center, bounds.0 / 2),
         Align::End => (HorizontalAlign::Right, bounds.0),
     };
-    let (v_align, v_offset) = match text.align.1 {
+    let (v_align, v_offset) = match ts.align.1 {
         Align::Begin | Align::Stretch => (VerticalAlign::Top, 0),
         Align::Centre => (VerticalAlign::Center, bounds.1 / 2),
         Align::End => (VerticalAlign::Bottom, bounds.1),
     };
 
-    let text_pos = text.rect.pos + Coord(h_offset, v_offset);
+    let text_pos = ts.rect.pos + Coord(h_offset, v_offset);
 
-    let layout = match text.line_wrap {
+    let layout = match ts.line_wrap {
         true => Layout::default_wrap(),
         false => Layout::default_single_line(),
     };
     let layout = layout.h_align(h_align).v_align(v_align);
 
-    let text = text
+    let text = ts.text;
+    let text = ts
         .parts
         .iter()
         .map(|part| Text {
-            text: part.text,
+            text: &text[part.range()],
             scale: to_px_scale(part.scale),
             font_id: wgpu_glyph::FontId(part.font.0),
             extra: Extra {
@@ -87,8 +88,8 @@ fn make_section<'a>(pass: Pass, text: &'a TextSection) -> Section<'a> {
 }
 
 impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
-    fn text_section(&mut self, pass: Pass, text: TextSection) {
-        self.glyph_brush.queue(make_section(pass, &text));
+    fn text_section(&mut self, pass: Pass, ts: TextSection) {
+        self.glyph_brush.queue(make_section(pass, &ts));
     }
 
     #[inline]
@@ -96,6 +97,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         &mut self,
         bounds: (f32, f32),
         line_wrap: bool,
+        text: &str,
         parts: &[TextPart],
     ) -> (f32, f32) {
         let layout = match line_wrap {
@@ -106,7 +108,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         let text = parts
             .iter()
             .map(|part| Text {
-                text: part.text,
+                text: &text[part.range()],
                 scale: to_px_scale(part.scale),
                 font_id: wgpu_glyph::FontId(part.font.0),
                 extra: Default::default(),
@@ -126,23 +128,24 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
             .into()
     }
 
-    fn text_glyph_pos(&mut self, text: TextSection, index: usize) -> Vec2 {
+    fn text_glyph_pos(&mut self, ts: TextSection, index: usize) -> Vec2 {
         if index == 0 {
             // Short-cut. We also cannot iterate since there may be no glyphs.
-            return text.rect.pos.into();
+            return ts.rect.pos.into();
         }
         let mut byte = None;
         let mut cum_len = 0;
-        for part in text.parts {
-            if index < cum_len + part.text.len() {
-                byte = Some(part.text.as_bytes()[index - cum_len]);
+        for part in ts.parts {
+            let i = part.start as usize + index - cum_len;
+            if i < part.end as usize {
+                byte = Some(ts.text.as_bytes()[i]);
                 break;
             };
-            cum_len += part.text.len();
+            cum_len += part.len();
         }
 
         let pass = Pass::new_pass_with_depth(0, 0.0); // values are unimportant
-        let mut iter = self.glyph_brush.glyphs(make_section(pass, &text));
+        let mut iter = self.glyph_brush.glyphs(make_section(pass, &ts));
 
         let mut advance = false;
         let mut glyph;
@@ -154,7 +157,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
 
             glyph = iter.next().unwrap().clone();
             for next in iter {
-                if index < text.parts[next.section_index].byte_start + next.byte_index {
+                if index < ts.parts[next.section_index].start as usize + next.byte_index {
                     // Use the previous glyph, e.g. if in the middle of a
                     // multi-byte sequence or index is a combining diacritic.
                     break;
@@ -177,17 +180,17 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         return Vec2(pos.x, pos.y);
     }
 
-    fn text_index_nearest(&mut self, text: TextSection, pos: Vec2) -> usize {
-        if text.parts.len() == 0 {
+    fn text_index_nearest(&mut self, ts: TextSection, pos: Vec2) -> usize {
+        if ts.parts.len() == 0 {
             return 0; // short-cut
         }
-        let text_len = text.parts.iter().map(|part| part.text.len()).sum();
-        // NOTE: if text.parts.len() > 1 then base_to_mid may change, making the
+        let text_len = ts.parts.iter().map(|part| part.len()).sum();
+        // NOTE: if ts.parts.len() > 1 then base_to_mid may change, making the
         // row selection a little inaccurate. This method is best used with only
         // a single row of text anyway, so we consider this acceptable.
         // This also affects scale_font.h_advance at line-breaks. We consider
         // this a hack anyway and so tolerate some inaccuracy.
-        let last_part = text.parts.as_ref().last().unwrap();
+        let last_part = ts.parts.as_ref().last().unwrap();
         let scale_font = PxScaleFont {
             font: self.glyph_brush.fonts()[last_part.font.0].clone(),
             scale: to_px_scale(last_part.scale),
@@ -195,7 +198,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         let base_to_mid = -0.5 * scale_font.ascent();
 
         let pass = Pass::new_pass_with_depth(0, 0.0); // values are unimportant
-        let mut iter = self.glyph_brush.glyphs(make_section(pass, &text));
+        let mut iter = self.glyph_brush.glyphs(make_section(pass, &ts));
 
         // Find the (horiz, vert) distance between pos and the glyph.
         let dist = |glyph: &Glyph| {
@@ -228,11 +231,12 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
                     let mut cursor = GraphemeCursor::new(index, text_len, true);
                     let mut cum_len = 0;
                     let text = 'outer: loop {
-                        for part in text.parts {
-                            if index < cum_len + part.text.len() {
-                                break 'outer &part.text;
+                        for part in ts.parts {
+                            let len = part.len();
+                            if index < cum_len + len {
+                                break 'outer &ts.text[part.range()];
                             }
-                            cum_len += part.text.len();
+                            cum_len += len;
                         }
                         unreachable!();
                     };

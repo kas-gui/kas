@@ -159,9 +159,9 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
     }
 
     fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
-        let text = TextPart {
-            byte_start: 0,
-            text,
+        let part = TextPart {
+            start: 0,
+            end: text.len() as u32,
             scale: self.dims.font_scale.into(),
             font: self.dims.font_id,
             col: Default::default(),
@@ -177,7 +177,7 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
             TextClass::Label | TextClass::EditMulti => true,
             TextClass::Button | TextClass::Edit => false,
         };
-        let bounds = self.draw.text_bound(bounds, line_wrap, &[text]);
+        let bounds = self.draw.text_bound(bounds, line_wrap, text, &[part]);
 
         let margins = (self.dims.margin as u16, self.dims.margin as u16);
         if axis.is_horizontal() {
@@ -213,13 +213,15 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
     ) -> usize {
         // Note: we don't add offset here since it was already subtracted from
         // pos (e.g. via ScrollRegion::send).
+        let end = text.len() as u32;
         let text = TextSection {
+            text,
             rect,
             align,
             line_wrap,
             parts: &[TextPart {
-                byte_start: 0,
-                text,
+                start: 0,
+                end,
                 scale: self.dims.font_scale.into(),
                 font: self.dims.font_id,
                 col: Default::default(),
