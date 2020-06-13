@@ -6,11 +6,12 @@
 //! Shaded theme
 
 use std::f32;
+use std::ops::Range;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::draw::{
     self, ClipRegion, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, DrawTextShared,
-    FontId, InputState, Pass, SizeHandle, TextClass, TextProperties,
+    FontId, InputState, Pass, SizeHandle, TextClass, TextPart, TextSection,
 };
 use kas::geom::*;
 use kas::{Align, Direction, Directional, ThemeAction, ThemeApi};
@@ -130,24 +131,29 @@ impl ThemeApi for ShadedTheme {
     }
 }
 
-impl<'a, D: Draw + DrawRounded + DrawShaded> DrawHandle<'a, D> {
-    fn text_props(&self, class: TextClass, align: (Align, Align)) -> TextProperties {
-        TextProperties {
-            font: self.window.dims.font_id,
-            scale: self.window.dims.font_scale.into(),
-            col: match class {
-                TextClass::Label => self.cols.label_text,
-                TextClass::Button => self.cols.button_text,
-                TextClass::Edit | TextClass::EditMulti => self.cols.text,
-            },
-            align,
-            line_wrap: match class {
+macro_rules! text_section {
+    ($self:ident, $rect:ident, $text:ident, $class:ident, $align:ident) => {{
+        let end = $text.len() as u32;
+        TextSection {
+            text: $text,
+            rect: $rect + $self.offset,
+            align: $align,
+            line_wrap: match $class {
                 TextClass::Label | TextClass::EditMulti => true,
                 TextClass::Button | TextClass::Edit => false,
             },
+            parts: &[TextPart {
+                start: 0,
+                end,
+                scale: $self.window.dims.font_scale.into(),
+                font: $self.window.dims.font_id,
+                col: $self.cols.text_class($class),
+            }],
         }
-    }
+    }};
+}
 
+impl<'a, D: Draw + DrawRounded + DrawShaded> DrawHandle<'a, D> {
     /// Draw an edit box with optional navigation highlight.
     /// Return the inner rect.
     ///
@@ -263,8 +269,62 @@ where
     }
 
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
-        let props = self.text_props(class, align);
-        self.draw.text(self.pass, rect + self.offset, text, props);
+        let text = text_section!(self, rect, text, class, align);
+        self.draw.text_section(self.pass, text);
+    }
+
+    fn text_selected_range(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        range: Range<usize>,
+        class: TextClass,
+        align: (Align, Align),
+    ) {
+        let start = range.start.min(text.len());
+        let end = range.end.min(text.len());
+
+        let part = TextPart {
+            start: 0,
+            end: text.len() as u32,
+            scale: self.window.dims.font_scale.into(),
+            font: self.window.dims.font_id,
+            col: self.cols.text_class(class),
+        };
+        let mut parts = [part, part, part];
+
+        let mut len = 0;
+        if start > 0 {
+            parts[len].end = start as u32;
+            len += 1;
+        }
+        if start < end {
+            parts[len].start = start as u32;
+            parts[len].end = end as u32;
+            parts[len].col = self.cols.text_sel;
+            len += 1;
+        }
+        if end < text.len() {
+            parts[len].start = end as u32;
+            len += 1;
+        }
+
+        let section = TextSection {
+            text,
+            rect,
+            align,
+            line_wrap: class.line_wrap(),
+            parts: &parts[0..len],
+        };
+        self.draw.text_section(self.pass, section);
+
+        if start < end {
+            let pos1 = self.draw.text_glyph_pos(section, start);
+            let mut pos2 = self.draw.text_glyph_pos(section, end);
+            pos2.1 += self.window.dims.font_scale;
+            let quad = Quad::with_coords(pos1, pos2);
+            self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
+        }
     }
 
     fn edit_marker(
@@ -275,13 +335,12 @@ where
         align: (Align, Align),
         byte: usize,
     ) {
-        let props = self.text_props(class, align);
-        let pos = self
-            .draw
-            .text_glyph_pos(rect + self.offset, text, props, byte);
+        let text = text_section!(self, rect, text, class, align);
+        let col = text.parts[0].col;
+        let pos = self.draw.text_glyph_pos(text, byte);
         let size = self.window.dims.edit_marker_size();
         let quad = Quad::with_pos_and_size(pos, size);
-        self.draw.rect(self.pass, quad, props.col);
+        self.draw.rect(self.pass, quad, col);
     }
 
     fn menu_entry(&mut self, rect: Rect, state: InputState) {

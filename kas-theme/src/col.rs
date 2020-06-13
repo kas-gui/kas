@@ -7,7 +7,7 @@
 
 use log::warn;
 
-use kas::draw::{Colour, InputState};
+use kas::draw::{Colour, InputState, TextClass};
 
 /// Provides standard theme colours
 #[derive(Clone, Debug)]
@@ -24,6 +24,10 @@ pub struct ThemeColours {
     pub bg_error: Colour,
     /// Text colour in an `EditBox`
     pub text: Colour,
+    /// Selected tect colour
+    pub text_sel: Colour,
+    /// Selected text background colour
+    pub text_sel_bg: Colour,
     /// Text colour in a `Label`
     pub label_text: Colour,
     /// Text colour on a `TextButton`
@@ -68,6 +72,8 @@ impl ThemeColours {
             bg_disabled: Colour::grey(0.85),
             bg_error: Colour::new(1.0, 0.5, 0.5),
             text: Colour::grey(0.0),
+            text_sel: Colour::grey(1.0),
+            text_sel_bg: Colour::new(0.15, 0.525, 0.75),
             label_text: Colour::grey(0.0),
             button_text: Colour::grey(1.0),
             nav_focus: Colour::new(1.0, 0.7, 0.5),
@@ -88,6 +94,8 @@ impl ThemeColours {
             bg_disabled: Colour::grey(0.85),
             bg_error: Colour::new(1.0, 0.5, 0.5),
             text: Colour::grey(0.0),
+            text_sel: Colour::grey(0.0),
+            text_sel_bg: Colour::new(0.8, 0.72, 0.24),
             label_text: Colour::grey(0.0),
             button_text: Colour::grey(0.0),
             nav_focus: Colour::new(1.0, 0.7, 0.5),
@@ -108,6 +116,8 @@ impl ThemeColours {
             bg_disabled: Colour::grey(0.3),
             bg_error: Colour::new(1.0, 0.5, 0.5),
             text: Colour::grey(1.0),
+            text_sel: Colour::grey(1.0),
+            text_sel_bg: Colour::new(0.6, 0.3, 0.1),
             label_text: Colour::grey(1.0),
             button_text: Colour::grey(1.0),
             nav_focus: Colour::new(1.0, 0.7, 0.5),
@@ -186,5 +196,14 @@ impl ThemeColours {
     #[inline]
     pub fn scrollbar_state(&self, state: InputState) -> Colour {
         self.button_state(state)
+    }
+
+    /// Get text colour from class
+    pub fn text_class(&self, class: TextClass) -> Colour {
+        match class {
+            TextClass::Label => self.label_text,
+            TextClass::Button => self.button_text,
+            TextClass::Edit | TextClass::EditMulti => self.text,
+        }
     }
 }

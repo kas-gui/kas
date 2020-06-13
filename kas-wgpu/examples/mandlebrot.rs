@@ -491,7 +491,7 @@ impl event::Handler for Mandlebrot {
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
-            Event::Control(key) => {
+            Event::Control(key, _) => {
                 match key {
                     ControlKey::Home | ControlKey::End => self.reset_view(),
                     ControlKey::PageUp => self.alpha = self.alpha / 2f64.sqrt(),

@@ -15,9 +15,9 @@ mod shaded_round;
 mod shaded_square;
 mod shaders;
 
-use kas::draw::FontArc;
 use kas::geom::Rect;
 use wgpu::{CompareFunction, DepthStencilStateDescriptor, TextureFormat};
+use wgpu_glyph::ab_glyph::FontArc;
 use wgpu_glyph::GlyphBrush;
 
 pub(crate) use shaders::ShaderManager;

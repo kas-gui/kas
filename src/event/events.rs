@@ -7,7 +7,7 @@
 
 #[allow(unused)]
 use super::{GrabMode, Manager, Response}; // for doc-links
-use super::{MouseButton, UpdateHandle, VirtualKeyCode};
+use super::{ModifiersState, MouseButton, UpdateHandle, VirtualKeyCode};
 
 use crate::geom::{Coord, DVec2};
 use crate::{WidgetId, WindowId};
@@ -39,7 +39,7 @@ pub enum Event {
     /// [`ControlKey::Return`]. Without char focus, both Space and Return keys
     /// send [`Event::Activate`] to the widget with nav focus (if any, otherwise
     /// to the nav fallback, if any).
-    Control(ControlKey),
+    Control(ControlKey, ModifiersState),
     /// Widget lost keyboard input focus
     LostCharFocus,
     /// Widget receives a character of text input

@@ -5,7 +5,7 @@
 
 //! "Handle" types used by themes
 
-use std::ops::{Deref, DerefMut};
+use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Rect, Size, Vec2};
@@ -73,6 +73,13 @@ pub enum TextClass {
     Edit,
     /// Class of text drawn in a multi-line edit box
     EditMulti,
+}
+
+impl TextClass {
+    /// True if text should be automatically line-wrapped
+    pub fn line_wrap(self) -> bool {
+        self == TextClass::Label || self == TextClass::EditMulti
+    }
 }
 
 /// Default class: Label
@@ -144,7 +151,7 @@ pub trait SizeHandle {
         &mut self,
         rect: Rect,
         text: &str,
-        class: TextClass,
+        line_wrap: bool,
         align: (Align, Align),
         pos: Vec2,
     ) -> usize;
@@ -193,28 +200,16 @@ pub trait SizeHandle {
 /// Handle passed to objects during draw and sizing operations
 ///
 /// This handle is provided by the toolkit (usually via a theme implementation)
-/// as a high-level drawing interface. See also the companion trait,
-/// [`SizeHandle`].
+/// as a high-level drawing interface. See also the extension trait,
+/// [`DrawHandleExt`], and the companion trait, [`SizeHandle`].
 pub trait DrawHandle {
-    /// Access a [`SizeHandle`]
-    fn size_handle<F: Fn(&mut dyn SizeHandle) -> T, T>(&mut self, f: F) -> T
-    where
-        Self: Sized,
-    {
-        let mut result = None;
-        self.size_handle_dyn(&mut |size_handle| {
-            result = Some(f(size_handle));
-        });
-        result.expect("DrawHandle::size_handle_dyn impl failed to call function argument")
-    }
-
     /// Access a [`SizeHandle`] (object-safe version)
     ///
-    /// User code is recommended to use [`DrawHandle::size_handle`] instead and
-    /// *must not* depend on `f` being called for memory safety.
+    /// Users may prefer to use [`DrawHandleExt::size_handle`] instead. If using
+    /// this method directly, note that there is no guarantee that `f` gets
+    /// called exactly once, or even that it gets called at all.
     ///
-    /// Implementations should call the given function argument once; not doing
-    /// so is memory-safe but will cause a panic when `size_handle` is called.
+    /// Implementations *should* call the given function argument once.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
 
@@ -276,6 +271,17 @@ pub trait DrawHandle {
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align));
 
+    /// Method used to implement [`DrawHandle::text_selected`]
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    fn text_selected_range(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        range: Range<usize>,
+        class: TextClass,
+        align: (Align, Align),
+    );
+
     /// Draw an edit marker at the given `byte` index on this `text`
     fn edit_marker(
         &mut self,
@@ -324,6 +330,55 @@ pub trait DrawHandle {
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState);
 }
 
+/// Extension trait over [`DrawHandle`]
+///
+/// Importing this trait allows use of additional methods (which cannot be
+/// defined directly on [`DrawHandle`]).
+pub trait DrawHandleExt: DrawHandle {
+    /// Access a [`SizeHandle`]
+    ///
+    /// The given closure is called with a reference to a [`SizeHandle`], and
+    /// the closure's result is returned.
+    ///
+    /// This method will panic if the implementation fails to call the closure.
+    fn size_handle<F: Fn(&mut dyn SizeHandle) -> T, T>(&mut self, f: F) -> T {
+        let mut result = None;
+        self.size_handle_dyn(&mut |size_handle| {
+            result = Some(f(size_handle));
+        });
+        result.expect("DrawHandle::size_handle_dyn impl failed to call function argument")
+    }
+
+    /// Draw some text using the standard font, with a subset selected
+    ///
+    /// Other than visually highlighting the selection, this method behaves
+    /// identically to [`DrawHandle::text`]. It is likely to be replaced in the
+    /// future by a higher-level API.
+    fn text_selected<R: RangeBounds<usize>>(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        range: R,
+        class: TextClass,
+        align: (Align, Align),
+    ) {
+        let start = match range.start_bound() {
+            Bound::Included(n) => *n,
+            Bound::Excluded(n) => *n + 1,
+            Bound::Unbounded => 0,
+        };
+        let end = match range.end_bound() {
+            Bound::Included(n) => *n + 1,
+            Bound::Excluded(n) => *n,
+            Bound::Unbounded => text.len(),
+        };
+        let range = Range { start, end };
+        self.text_selected_range(rect, text, range, class, align);
+    }
+}
+
+impl<D: DrawHandle + ?Sized> DrawHandleExt for D {}
+
 impl<S: SizeHandle> SizeHandle for Box<S> {
     fn scale_factor(&self) -> f32 {
         self.deref().scale_factor()
@@ -352,12 +407,12 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
         &mut self,
         rect: Rect,
         text: &str,
-        class: TextClass,
+        line_wrap: bool,
         align: (Align, Align),
         pos: Vec2,
     ) -> usize {
         self.deref_mut()
-            .text_index_nearest(rect, text, class, align, pos)
+            .text_index_nearest(rect, text, line_wrap, align, pos)
     }
 
     fn button_surround(&self) -> (Size, Size) {
@@ -413,12 +468,12 @@ where
         &mut self,
         rect: Rect,
         text: &str,
-        class: TextClass,
+        line_wrap: bool,
         align: (Align, Align),
         pos: Vec2,
     ) -> usize {
         self.deref_mut()
-            .text_index_nearest(rect, text, class, align, pos)
+            .text_index_nearest(rect, text, line_wrap, align, pos)
     }
 
     fn button_surround(&self) -> (Size, Size) {
@@ -472,6 +527,17 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     }
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
+    }
+    fn text_selected_range(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        range: Range<usize>,
+        class: TextClass,
+        align: (Align, Align),
+    ) {
+        self.deref_mut()
+            .text_selected_range(rect, text, range, class, align);
     }
     fn edit_marker(
         &mut self,
@@ -541,6 +607,17 @@ where
     fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
         self.deref_mut().text(rect, text, class, align)
     }
+    fn text_selected_range(
+        &mut self,
+        rect: Rect,
+        text: &str,
+        range: Range<usize>,
+        class: TextClass,
+        align: (Align, Align),
+    ) {
+        self.deref_mut()
+            .text_selected_range(rect, text, range, class, align);
+    }
     fn edit_marker(
         &mut self,
         rect: Rect,
@@ -571,5 +648,21 @@ where
     }
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
         self.deref_mut().slider(rect, h_rect, dir, state)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn _draw_handle_ext(draw_handle: &mut dyn DrawHandle) {
+        // We can't call this method without constructing an actual DrawHandle.
+        // But we don't need to: we just want to test that methods are callable.
+
+        let _size = draw_handle.size_handle(|h| h.frame());
+
+        let rect = Rect::new(Coord::ZERO, Size(100, 50));
+        let align = (Align::Centre, Align::Centre);
+        draw_handle.text_selected(rect, "text", .., TextClass::Label, align)
     }
 }
