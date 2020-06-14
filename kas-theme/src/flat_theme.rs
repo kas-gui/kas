@@ -46,12 +46,12 @@ const DIMS: DimensionsParams = DimensionsParams {
 };
 
 pub struct DrawHandle<'a, D: Draw> {
-    draw: &'a mut D,
-    window: &'a mut DimensionsWindow,
-    cols: &'a ThemeColours,
-    rect: Rect,
-    offset: Coord,
-    pass: Pass,
+    pub(crate) draw: &'a mut D,
+    pub(crate) window: &'a mut DimensionsWindow,
+    pub(crate) cols: &'a ThemeColours,
+    pub(crate) rect: Rect,
+    pub(crate) offset: Coord,
+    pub(crate) pass: Pass,
 }
 
 impl<D: DrawShared + DrawTextShared + 'static> Theme<D> for FlatTheme
