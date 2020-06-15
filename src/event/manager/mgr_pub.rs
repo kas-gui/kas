@@ -413,7 +413,7 @@ impl<'a> Manager<'a> {
         let start_id = id;
         let mut pan_grab = (u16::MAX, 0);
         match source {
-            PressSource::Mouse(button) => {
+            PressSource::Mouse(button, repetitions) => {
                 if self.mgr.mouse_grab.is_some() {
                     return false;
                 }
@@ -422,9 +422,10 @@ impl<'a> Manager<'a> {
                 }
                 trace!("Manager: start mouse grab by {}", start_id);
                 self.mgr.mouse_grab = Some(MouseGrab {
+                    button,
+                    repetitions,
                     start_id,
                     depress: Some(id),
-                    button,
                     mode,
                     pan_grab,
                 });
@@ -470,7 +471,7 @@ impl<'a> Manager<'a> {
     /// to activate a widget (for the duration of the key-press).
     pub fn set_grab_depress(&mut self, source: PressSource, target: Option<WidgetId>) {
         match source {
-            PressSource::Mouse(_) => {
+            PressSource::Mouse(_, _) => {
                 if let Some(grab) = self.mgr.mouse_grab.as_mut() {
                     grab.depress = target;
                 }

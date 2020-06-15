@@ -8,13 +8,18 @@
 use log::*;
 use smallvec::SmallVec;
 use std::collections::HashMap;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use super::*;
 use crate::geom::{Coord, DVec2};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{TkAction, TkWindow, Widget, WidgetId};
+
+// TODO: this should be configurable or derived from the system
+const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
+
+const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 
 /// Toolkit API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -36,6 +41,9 @@ impl ManagerState {
             hover_icon: CursorIcon::Default,
             key_depress: Default::default(),
             last_mouse_coord: Coord::ZERO,
+            last_click_button: FAKE_MOUSE_BUTTON,
+            last_click_repetitions: 0,
+            last_click_timeout: Instant::now(), // unimportant value
             mouse_grab: None,
             touch_grab: Default::default(),
             pan_grab: SmallVec::new(),
@@ -106,9 +114,10 @@ impl ManagerState {
         self.nav_focus = self.nav_focus.and_then(|id| map.get(&id).cloned());
         self.mouse_grab = self.mouse_grab.as_ref().and_then(|grab| {
             map.get(&grab.start_id).map(|id| MouseGrab {
+                button: grab.button,
+                repetitions: grab.repetitions,
                 start_id: *id,
                 depress: grab.depress.and_then(|id| map.get(&id).cloned()),
-                button: grab.button,
                 mode: grab.mode,
                 pan_grab: grab.pan_grab,
             })
@@ -416,6 +425,7 @@ impl<'a> Manager<'a> {
                 self.mgr.modifiers = state;
             }
             CursorMoved { position, .. } => {
+                self.mgr.last_click_button = FAKE_MOUSE_BUTTON;
                 let coord = position.into();
 
                 // Update hovered widget
@@ -425,7 +435,7 @@ impl<'a> Manager<'a> {
 
                 if let Some(grab) = self.mouse_grab() {
                     if grab.mode == GrabMode::Grab {
-                        let source = PressSource::Mouse(grab.button);
+                        let source = PressSource::Mouse(grab.button, grab.repetitions);
                         let event = Event::PressMove {
                             source,
                             cur_id,
@@ -437,8 +447,7 @@ impl<'a> Manager<'a> {
                         pan.coords[grab.pan_grab.1 as usize].1 = coord;
                     }
                 } else if let Some(id) = self.mgr.popups.last().map(|(_, p)| p.parent) {
-                    // Use a fake button!
-                    let source = PressSource::Mouse(MouseButton::Other(0));
+                    let source = PressSource::Mouse(FAKE_MOUSE_BUTTON, 0);
                     let event = Event::PressMove {
                         source,
                         cur_id,
@@ -454,6 +463,8 @@ impl<'a> Manager<'a> {
             }
             // CursorEntered { .. },
             CursorLeft { .. } => {
+                self.mgr.last_click_button = FAKE_MOUSE_BUTTON;
+
                 if self.mouse_grab().is_none() {
                     // If there's a mouse grab, we will continue to receive
                     // coordinates; if not, set a fake coordinate off the window
@@ -462,6 +473,8 @@ impl<'a> Manager<'a> {
                 }
             }
             MouseWheel { delta, .. } => {
+                self.mgr.last_click_button = FAKE_MOUSE_BUTTON;
+
                 let event = Event::Scroll(match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
                     MouseScrollDelta::PixelDelta(pos) => {
@@ -474,13 +487,23 @@ impl<'a> Manager<'a> {
             }
             MouseInput { state, button, .. } => {
                 let coord = self.mgr.last_mouse_coord;
-                let source = PressSource::Mouse(button);
+
+                if state == ElementState::Pressed {
+                    let now = Instant::now();
+                    if button != self.mgr.last_click_button || self.mgr.last_click_timeout < now {
+                        self.mgr.last_click_button = button;
+                        self.mgr.last_click_repetitions = 0;
+                    }
+                    self.mgr.last_click_repetitions += 1;
+                    self.mgr.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
+                }
 
                 if let Some(grab) = self.mouse_grab() {
                     match grab.mode {
                         GrabMode::Grab => {
                             // Mouse grab active: send events there
                             debug_assert_eq!(state, ElementState::Released);
+                            let source = PressSource::Mouse(button, grab.repetitions);
                             let event = Event::PressEnd {
                                 source,
                                 end_id: self.mgr.hover,
@@ -498,6 +521,7 @@ impl<'a> Manager<'a> {
                 } else if let Some(start_id) = self.mgr.hover {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
+                        let source = PressSource::Mouse(button, self.mgr.last_click_repetitions);
                         let event = Event::PressStart {
                             source,
                             start_id,
