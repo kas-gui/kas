@@ -38,7 +38,7 @@ impl From<f32> for PxScale {
 /// first font loaded by the (first) theme.
 ///
 /// Other than this, users should treat this type as an opaque handle.
-/// An instance may be obtained by [`DrawTextShared::load_font`].
+/// An instance may be obtained from [`DrawTextShared`]'s methods.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FontId(pub usize);
 

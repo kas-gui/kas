@@ -126,7 +126,7 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
 /// This widget is intended for use with short input strings. Internally it
 /// uses a [`String`], for which edits have `O(n)` cost.
 ///
-/// Currently, this widget has a [`Widget::multi_line`] mode, with some
+/// Currently, this widget has a [`EditBox::multi_line`] mode, with some
 /// limitations (incorrect positioning of the edit cursor at line end,
 /// non-functional up/down keys, lack of scrolling). Later this will be replaced
 /// by a dedicated multi-line widget, probably using the `ropey` crate.
