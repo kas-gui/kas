@@ -64,7 +64,8 @@ where
 
         let mut size_handle = unsafe { theme_window.size_handle(&mut draw) };
         let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), &mut size_handle);
-        let ideal = solve_cache.ideal(true);
+        // Opening a zero-size window causes a crash, so force at least 1x1:
+        let ideal = solve_cache.ideal(true).max(Size(1, 1));
         drop(size_handle);
 
         let mut builder = WindowBuilder::new().with_inner_size(ideal);
