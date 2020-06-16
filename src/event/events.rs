@@ -271,7 +271,18 @@ impl ControlKey {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PressSource {
     /// A mouse click
-    Mouse(MouseButton),
+    ///
+    /// Arguments: `button, repeats`.
+    ///
+    /// The `repeats` argument is used for double-clicks and similar. For a
+    /// single-click, `repeats == 1`; for a double-click it is 2, for a
+    /// triple-click it is 3, and so on (without upper limit).
+    ///
+    /// For `PressMove` and `PressEnd` events delivered with a mouse-grab,
+    /// both arguments are copied from the initiating `PressStart` event.
+    /// For a `PressMove` delivered without a grab (only possible with pop-ups)
+    /// a fake `button` value is used and `repeats == 0`.
+    Mouse(MouseButton, u32),
     /// A touch event (with given `id`)
     Touch(u64),
 }
@@ -281,8 +292,20 @@ impl PressSource {
     #[inline]
     pub fn is_primary(self) -> bool {
         match self {
-            PressSource::Mouse(button) => button == MouseButton::Left,
+            PressSource::Mouse(button, _) => button == MouseButton::Left,
             PressSource::Touch(_) => true,
+        }
+    }
+
+    /// The `repetitions` value
+    ///
+    /// This is 1 for a single-click and all touch events, 2 for a double-click,
+    /// 3 for a triple-click, etc. For `PressMove` without a grab this is 0.
+    #[inline]
+    pub fn repetitions(self) -> u32 {
+        match self {
+            PressSource::Mouse(_, repetitions) => repetitions,
+            PressSource::Touch(_) => 1,
         }
     }
 }

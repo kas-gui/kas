@@ -41,6 +41,7 @@ pub enum GrabMode {
 #[derive(Clone, Debug)]
 struct MouseGrab {
     button: MouseButton,
+    repetitions: u32,
     start_id: WidgetId,
     depress: Option<WidgetId>,
     mode: GrabMode,
@@ -101,6 +102,9 @@ pub struct ManagerState {
     hover_icon: CursorIcon,
     key_depress: SmallVec<[(u32, WidgetId); 10]>,
     last_mouse_coord: Coord,
+    last_click_button: MouseButton,
+    last_click_repetitions: u32,
+    last_click_timeout: Instant,
     mouse_grab: Option<MouseGrab>,
     touch_grab: SmallVec<[TouchGrab; 10]>,
     pan_grab: SmallVec<[PanGrab; 4]>,
