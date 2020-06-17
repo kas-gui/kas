@@ -5,7 +5,7 @@
 
 //! Text-drawing API
 
-use super::{Colour, Draw, DrawShared, Pass};
+use super::{Colour, Pass};
 use crate::geom::{Rect, Vec2};
 use crate::Align;
 
@@ -125,7 +125,7 @@ impl Default for TextProperties {
 }
 
 /// Abstraction over type shared by [`DrawText`] implementations
-pub trait DrawTextShared: DrawShared {
+pub trait DrawTextShared {
     /// Load a font
     ///
     /// For font collections, the `index` is used to identify the font;
@@ -141,13 +141,9 @@ pub trait DrawTextShared: DrawShared {
 
 /// Abstraction over text rendering
 ///
-/// This trait is an extension over [`Draw`] providing basic text rendering.
-/// Rendering makes use of transparency and should occur last in
-/// implementations which buffer draw commands.
-///
 /// Note: the current API is designed to meet only current requirements since
 /// changes are expected to support external font shaping libraries.
-pub trait DrawText: Draw {
+pub trait DrawText {
     /// Text section (uniform)
     ///
     /// This method provides a simpler API around [`DrawText::text_section`].

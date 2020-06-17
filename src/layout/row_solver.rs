@@ -143,7 +143,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
                 let extra = width - ideal;
                 width = ideal;
                 let offset = match align {
-                    Align::Default | Align::TL| Align::Stretch => 0,
+                    Align::Default | Align::TL | Align::Stretch => 0,
                     Align::Centre => extra / 2,
                     Align::BR => extra,
                 } as i32;
