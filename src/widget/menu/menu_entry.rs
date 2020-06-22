@@ -52,7 +52,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
             size: self.core.rect.size - self.label_off.into(),
         };
         let text = self.label.get(mgr.show_accel_labels());
-        let align = (Align::Begin, Align::Centre);
+        let align = (Align::Default, Align::Centre);
         draw_handle.text(rect, text, TextClass::Label, align);
     }
 }

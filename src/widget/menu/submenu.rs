@@ -125,7 +125,7 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
             size: self.core.rect.size - self.label_off.into(),
         };
         let text = self.label.get(mgr.show_accel_labels());
-        let align = (Align::Begin, Align::Centre);
+        let align = (Align::Default, Align::Centre);
         draw_handle.text(rect, text, TextClass::Label, align);
     }
 }

@@ -33,7 +33,7 @@ impl Layout for Label {
 
     fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.align = (
-            align.horiz.unwrap_or(Align::Begin),
+            align.horiz.unwrap_or(Align::Default),
             align.vert.unwrap_or(Align::Centre),
         );
         self.core.rect = rect;
@@ -101,7 +101,7 @@ impl Layout for AccelLabel {
 
     fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.align = (
-            align.horiz.unwrap_or(Align::Begin),
+            align.horiz.unwrap_or(Align::Default),
             align.vert.unwrap_or(Align::Centre),
         );
         self.core.rect = rect;

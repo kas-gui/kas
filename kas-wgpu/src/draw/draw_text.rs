@@ -46,14 +46,14 @@ fn make_section<'a>(pass: Pass, ts: &'a TextSection) -> Section<'a> {
 
     // TODO: support justified alignment
     let (h_align, h_offset) = match ts.align.0 {
-        Align::Begin | Align::Stretch => (HorizontalAlign::Left, 0),
+        Align::Default | Align::TL | Align::Stretch => (HorizontalAlign::Left, 0),
         Align::Centre => (HorizontalAlign::Center, bounds.0 / 2),
-        Align::End => (HorizontalAlign::Right, bounds.0),
+        Align::BR => (HorizontalAlign::Right, bounds.0),
     };
     let (v_align, v_offset) = match ts.align.1 {
-        Align::Begin | Align::Stretch => (VerticalAlign::Top, 0),
+        Align::Default | Align::TL | Align::Stretch => (VerticalAlign::Top, 0),
         Align::Centre => (VerticalAlign::Center, bounds.1 / 2),
-        Align::End => (VerticalAlign::Bottom, bounds.1),
+        Align::BR => (VerticalAlign::Bottom, bounds.1),
     };
 
     let text_pos = ts.rect.pos + Coord(h_offset, v_offset);

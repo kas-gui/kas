@@ -216,7 +216,7 @@ impl<G: 'static> Layout for EditBox<G> {
         let mut input_state = self.input_state(mgr, disabled);
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
-        let align = (Align::Begin, Align::Begin);
+        let align = (Align::Default, Align::Default);
         if self.sel_pos == self.edit_pos {
             draw_handle.text(self.text_rect, &self.text, class, align);
         } else {
@@ -542,7 +542,7 @@ impl<G> EditBox<G> {
     }
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
-        let align = (Align::Begin, Align::Begin);
+        let align = (Align::Default, Align::Default);
         self.edit_pos = mgr.size_handle(|h| {
             h.text_index_nearest(
                 self.text_rect,

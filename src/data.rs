@@ -101,22 +101,26 @@ pub struct CoreData {
 /// Note that alignment information is often passed as a `(horiz, vert)` pair.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum Align {
-    /// Align to top or left (for left-to-right text)
-    Begin,
+    /// Default alignment
+    ///
+    /// This is context dependent: for things that want to stretch it means
+    /// stretch, for things which don't (text), it means align-to-start.
+    Default,
+    /// Align to top / left
+    TL,
     /// Align to centre
     Centre,
-    /// Align to bottom or right (for left-to-right text)
-    End,
-    /// Attempt to align to both margins
+    /// Align to bottom / right
+    BR,
+    /// Stretch to fill space
     ///
     /// For text, this is known as "justified alignment".
     Stretch,
 }
 
-/// Default alignment: Stretch
 impl Default for Align {
     fn default() -> Self {
-        Align::Stretch
+        Align::Default
     }
 }
 
@@ -180,16 +184,16 @@ impl CompleteAlignment {
         if self.halign != Align::Stretch && ideal.0 < size.0 {
             pos.0 += match self.halign {
                 Align::Centre => (size.0 - ideal.0) / 2,
-                Align::End => size.0 - ideal.0,
-                Align::Begin | Align::Stretch => 0,
+                Align::BR => size.0 - ideal.0,
+                Align::Default | Align::TL | Align::Stretch => 0,
             } as i32;
             size.0 = ideal.0;
         }
         if self.valign != Align::Stretch && ideal.1 < size.1 {
             pos.1 += match self.valign {
                 Align::Centre => (size.1 - ideal.1) / 2,
-                Align::End => size.1 - ideal.1,
-                Align::Begin | Align::Stretch => 0,
+                Align::BR => size.1 - ideal.1,
+                Align::Default | Align::TL | Align::Stretch => 0,
             } as i32;
             size.1 = ideal.1;
         }

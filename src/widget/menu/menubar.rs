@@ -57,7 +57,7 @@ impl<D: Directional, W: Menu> Layout for MenuBar<D, W> {
 
     fn set_rect(&mut self, rect: Rect, _: AlignHints) {
         self.core_data_mut().rect = rect;
-        let align = AlignHints::new(Some(Align::Begin), Some(Align::Begin));
+        let align = AlignHints::new(Some(Align::Default), Some(Align::Default));
         self.bar.set_rect(rect, align);
     }
 
