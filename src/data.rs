@@ -10,6 +10,7 @@ use std::fmt;
 use std::num::NonZeroU32;
 use std::u32;
 
+use super::Align;
 use crate::geom::{Rect, Size};
 
 /// Widget identifier
@@ -94,34 +95,6 @@ pub struct CoreData {
     pub rect: Rect,
     pub id: WidgetId,
     pub disabled: bool,
-}
-
-/// Alignment of contents
-///
-/// Note that alignment information is often passed as a `(horiz, vert)` pair.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum Align {
-    /// Default alignment
-    ///
-    /// This is context dependent: for things that want to stretch it means
-    /// stretch, for things which don't (text), it means align-to-start.
-    Default,
-    /// Align to top / left
-    TL,
-    /// Align to centre
-    Centre,
-    /// Align to bottom / right
-    BR,
-    /// Stretch to fill space
-    ///
-    /// For text, this is known as "justified alignment".
-    Stretch,
-}
-
-impl Default for Align {
-    fn default() -> Self {
-        Align::Default
-    }
 }
 
 /// Partial alignment information provided by the parent

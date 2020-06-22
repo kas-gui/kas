@@ -51,3 +51,5 @@ pub mod macros;
 pub use crate::data::*;
 pub use crate::toolkit::*;
 pub use crate::traits::*;
+pub use kas_text as text;
+pub use kas_text::Align;
