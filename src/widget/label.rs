@@ -5,7 +5,7 @@
 
 //! Text widgets
 
-use kas::class::HasText;
+use kas::class::{HasRichText, SetText};
 use kas::draw::TextClass;
 use kas::prelude::*;
 
@@ -65,14 +65,16 @@ impl Label {
     }
 }
 
-impl HasText for Label {
-    fn get_text(&self) -> &str {
-        &self.text
-    }
-
+impl SetText for Label {
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.text = text.into();
         TkAction::Redraw
+    }
+}
+
+impl HasRichText for Label {
+    fn get_rich_text(&self) -> &str {
+        &self.text
     }
 }
 
@@ -129,13 +131,15 @@ impl AccelLabel {
     }
 }
 
-impl HasText for AccelLabel {
-    fn get_text(&self) -> &str {
-        self.text.get(false)
-    }
-
+impl SetText for AccelLabel {
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.text = text.into();
         TkAction::Redraw
+    }
+}
+
+impl HasRichText for AccelLabel {
+    fn get_rich_text(&self) -> &str {
+        self.text.get(false)
     }
 }

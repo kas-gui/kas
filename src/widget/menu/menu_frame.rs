@@ -85,22 +85,20 @@ impl<W: HasBool + Widget> HasBool for MenuFrame<W> {
     }
 }
 
-impl<W: HasText + Widget> HasText for MenuFrame<W> {
-    fn get_text(&self) -> &str {
-        self.inner.get_text()
-    }
-
+impl<W: SetText + Widget> SetText for MenuFrame<W> {
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.inner.set_cow_string(text)
     }
 }
 
-impl<W: Editable + Widget> Editable for MenuFrame<W> {
-    fn is_editable(&self) -> bool {
-        self.inner.is_editable()
+impl<W: HasText + Widget> HasText for MenuFrame<W> {
+    fn get_text(&self) -> &str {
+        self.inner.get_text()
     }
+}
 
-    fn set_editable(&mut self, editable: bool) {
-        self.inner.set_editable(editable);
+impl<W: HasRichText + Widget> HasRichText for MenuFrame<W> {
+    fn get_rich_text(&self) -> &str {
+        self.inner.get_rich_text()
     }
 }

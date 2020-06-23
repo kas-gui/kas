@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::iter::FromIterator;
 
 use super::{Column, MenuEntry, MenuFrame};
-use kas::class::HasText;
+use kas::class::{HasRichText, SetText};
 use kas::draw::TextClass;
 use kas::event::{ControlKey, GrabMode};
 use kas::prelude::*;
@@ -38,7 +38,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
 
         // TODO: should we calculate a bound over all choices or assume some default?
-        let text = &self.popup.inner.inner[self.active].get_text();
+        let text = &self.popup.inner.inner[self.active].get_rich_text();
         let content_rules = size_handle.text_bound(text, TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)
     }
@@ -64,7 +64,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         }
         draw_handle.button(self.core.rect, state);
         let align = (Align::Centre, Align::Centre);
-        let text = &self.popup.inner.inner[self.active].get_text();
+        let text = &self.popup.inner.inner[self.active].get_rich_text();
         draw_handle.text(self.core.rect, text, TextClass::Button, align);
     }
 }
@@ -126,7 +126,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Get the text of the active choice
     #[inline]
     pub fn text(&self) -> &str {
-        self.popup.inner.inner[self.active].get_text()
+        self.popup.inner.inner[self.active].get_rich_text()
     }
 
     /// Get the message associated with the active choice

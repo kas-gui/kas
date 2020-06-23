@@ -6,7 +6,7 @@
 //! Sub-menu
 
 use super::{Menu, MenuFrame};
-use kas::class::HasText;
+use kas::class::{HasRichText, SetText};
 use kas::draw::TextClass;
 use kas::event::{ConfigureManager, ControlKey};
 use kas::prelude::*;
@@ -268,13 +268,15 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, W: Menu> HasText for SubMenu<D, W> {
-    fn get_text(&self) -> &str {
-        self.label.get(false)
-    }
-
+impl<D: Directional, W: Menu> SetText for SubMenu<D, W> {
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.label = text.into();
         TkAction::Redraw
+    }
+}
+
+impl<D: Directional, W: Menu> HasRichText for SubMenu<D, W> {
+    fn get_rich_text(&self) -> &str {
+        self.label.get(false)
     }
 }

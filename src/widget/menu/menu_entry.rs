@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use super::Menu;
-use kas::class::{HasBool, HasText};
+use kas::class::{HasBool, HasRichText, SetText};
 use kas::draw::TextClass;
 use kas::layout::{RulesSetter, RulesSolver};
 use kas::prelude::*;
@@ -78,14 +78,16 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> HasText for MenuEntry<M> {
-    fn get_text(&self) -> &str {
-        self.label.get(false)
-    }
-
+impl<M: Clone + Debug + 'static> SetText for MenuEntry<M> {
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.label = text.into();
         TkAction::Redraw
+    }
+}
+
+impl<M: Clone + Debug + 'static> HasRichText for MenuEntry<M> {
+    fn get_rich_text(&self) -> &str {
+        self.label.get(false)
     }
 }
 

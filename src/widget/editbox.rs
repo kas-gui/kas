@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 use std::ops::Range;
 use unicode_segmentation::GraphemeCursor;
 
-use kas::class::{Editable, HasText};
+use kas::class::{HasText, SetText};
 use kas::draw::{DrawHandleExt, TextClass};
 use kas::event::{ControlKey, GrabMode, ModifiersState};
 use kas::prelude::*;
@@ -318,10 +318,20 @@ impl EditBox<EditVoid> {
 }
 
 impl<G> EditBox<G> {
-    /// Set whether this `EditBox` is editable.
+    /// Set whether this `EditBox` is editable (inline)
     pub fn editable(mut self, editable: bool) -> Self {
         self.editable = editable;
         self
+    }
+
+    /// Get whether this `EditBox` is editable
+    pub fn is_editable(&self) -> bool {
+        self.editable
+    }
+
+    /// Set whether this `EditBox` is editable
+    pub fn set_editable(&mut self, editable: bool) {
+        self.editable = editable;
     }
 
     /// Set whether this `EditBox` shows multiple text lines
@@ -556,11 +566,7 @@ impl<G> EditBox<G> {
     }
 }
 
-impl<G: EditGuard> HasText for EditBox<G> {
-    fn get_text(&self) -> &str {
-        &self.text
-    }
-
+impl<G: EditGuard> SetText for EditBox<G> {
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.text = text.to_string();
         let _ = G::edit(self);
@@ -568,13 +574,9 @@ impl<G: EditGuard> HasText for EditBox<G> {
     }
 }
 
-impl<G: EditGuard> Editable for EditBox<G> {
-    fn is_editable(&self) -> bool {
-        self.editable
-    }
-
-    fn set_editable(&mut self, editable: bool) {
-        self.editable = editable;
+impl<G: EditGuard> HasText for EditBox<G> {
+    fn get_text(&self) -> &str {
+        &self.text
     }
 }
 

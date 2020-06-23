@@ -8,7 +8,7 @@
 use smallvec::SmallVec;
 use std::fmt::Debug;
 
-use kas::class::HasText;
+use kas::class::{HasRichText, SetText};
 use kas::draw::TextClass;
 use kas::event::{VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
@@ -99,14 +99,16 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> HasText for TextButton<M> {
-    fn get_text(&self) -> &str {
-        self.label.get(false)
-    }
-
+impl<M: Clone + Debug + 'static> SetText for TextButton<M> {
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.label = text.into();
         TkAction::Redraw
+    }
+}
+
+impl<M: Clone + Debug + 'static> HasRichText for TextButton<M> {
+    fn get_rich_text(&self) -> &str {
+        self.label.get(false)
     }
 }
 
