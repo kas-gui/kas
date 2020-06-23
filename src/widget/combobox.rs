@@ -22,7 +22,7 @@ use kas::WindowId;
 pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
     core: CoreData,
-    // text_rect: Rect,
+    label: String,
     #[widget]
     popup: ComboPopup,
     messages: Vec<M>, // TODO: is this a useless lookup step?
@@ -37,19 +37,12 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         let margins = size_handle.outer_margins();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
 
-        // TODO: should we calculate a bound over all choices or assume some default?
-        let text = &self.popup.inner.inner[self.active].get_rich_text();
-        let content_rules = size_handle.text_bound(text, TextClass::Button, axis);
+        let content_rules = size_handle.text_bound(&self.label, TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)
     }
 
     fn set_rect(&mut self, rect: Rect, _align: kas::AlignHints) {
         self.core.rect = rect;
-
-        // In theory, text rendering should be restricted as in EditBox.
-        // In practice, it sometimes overflows a tiny bit, and looks better if
-        // we let it overflow. Since the text is centred this is okay.
-        // self.text_rect = ...
     }
 
     fn spatial_range(&self) -> (usize, usize) {
@@ -64,8 +57,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         }
         draw_handle.button(self.core.rect, state);
         let align = (Align::Centre, Align::Centre);
-        let text = &self.popup.inner.inner[self.active].get_rich_text();
-        draw_handle.text(self.core.rect, text, TextClass::Button, align);
+        draw_handle.text(self.core.rect, &self.label, TextClass::Button, align);
     }
 }
 
@@ -93,8 +85,10 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     #[inline]
     fn new_(column: Vec<MenuEntry<u64>>, messages: Vec<M>) -> Self {
         assert!(column.len() > 0, "ComboBox: expected at least one choice");
+        let label = column[0].get_rich_text().to_string();
         ComboBox {
             core: Default::default(),
+            label,
             popup: ComboPopup {
                 core: Default::default(),
                 inner: MenuFrame::new(Column::new(column)),
@@ -120,13 +114,18 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         if index >= self.messages.len() {
             panic!("ComboBox::set_active(index): index out of bounds");
         }
-        self.active = index;
+        if self.active != index {
+            self.active = index;
+            self.label = self.popup.inner.inner[self.active]
+                .get_rich_text()
+                .to_string();
+        }
     }
 
     /// Get the text of the active choice
     #[inline]
     pub fn text(&self) -> &str {
-        self.popup.inner.inner[self.active].get_rich_text()
+        &self.label
     }
 
     /// Get the message associated with the active choice
@@ -219,8 +218,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             Response::Focus(x) => Response::Focus(x),
             Response::Msg(msg) => {
                 let index = msg as usize;
-                assert!(index < self.messages.len());
-                self.active = index;
+                self.set_active(index);
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
                 }
