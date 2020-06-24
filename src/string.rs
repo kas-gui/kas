@@ -157,7 +157,13 @@ impl AccelString {
         &self.keys
     }
 
+    /// Take the key bindings, destroying self
+    pub fn take_keys(self) -> VirtualKeyCodes {
+        self.keys
+    }
+
     /// Get the text, depending on mode
+    // TODO: we don't need get(true) any more
     pub fn get(&self, show_labels: bool) -> &str {
         if show_labels {
             &self.underlined

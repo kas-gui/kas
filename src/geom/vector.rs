@@ -315,6 +315,13 @@ macro_rules! impl_vec2 {
                 Size(arg.0.round() as u32, arg.1.round() as u32)
             }
         }
+
+        impl From<kas::text::Size> for $T {
+            #[inline]
+            fn from(size: kas::text::Size) -> Self {
+                $T(size.0 as $f, size.1 as $f)
+            }
+        }
     };
 }
 

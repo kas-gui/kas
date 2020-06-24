@@ -98,7 +98,7 @@ impl<W: HasText + Widget> HasText for MenuFrame<W> {
 }
 
 impl<W: HasRichText + Widget> HasRichText for MenuFrame<W> {
-    fn get_rich_text(&self) -> &str {
-        self.inner.get_rich_text()
+    fn clone_rich_text(&self) -> kas::text::RichText {
+        self.inner.clone_rich_text()
     }
 }

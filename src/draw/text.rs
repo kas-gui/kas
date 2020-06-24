@@ -7,40 +7,11 @@
 
 use super::{Colour, Pass};
 use crate::geom::{Rect, Vec2};
+use crate::text::{FontId, PreparedText};
 use crate::Align;
 
-/// Font scale
-///
-/// This is approximately the pixel-height of a line of text or double the
-/// "pt" size. Usually you want to use the same scale for both components,
-/// e.g. `PxScale::from(18.0)`.
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct PxScale {
-    pub x: f32,
-    pub y: f32,
-}
-
-impl Default for PxScale {
-    fn default() -> Self {
-        PxScale::from(18.0)
-    }
-}
-
-impl From<f32> for PxScale {
-    fn from(scale: f32) -> Self {
-        PxScale { x: scale, y: scale }
-    }
-}
-
-/// Font identifier
-///
-/// A default font may be obtained with `FontId(0)`, which refers to the
-/// first font loaded by the (first) theme.
-///
-/// Other than this, users should treat this type as an opaque handle.
-/// An instance may be obtained from [`DrawTextShared`]'s methods.
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct FontId(pub usize);
+// TODO: remove PxScale when removing TextPart
+pub use kas_text::FontScale as PxScale;
 
 /// A part of a text section
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
@@ -144,35 +115,8 @@ pub trait DrawTextShared {
 /// Note: the current API is designed to meet only current requirements since
 /// changes are expected to support external font shaping libraries.
 pub trait DrawText {
-    /// Text section (uniform)
-    ///
-    /// This method provides a simpler API around [`DrawText::text_section`].
-    fn text(&mut self, pass: Pass, rect: Rect, text: &str, props: TextProperties) {
-        let end = text.len() as u32;
-        self.text_section(
-            pass,
-            TextSection {
-                text,
-                rect,
-                align: props.align,
-                line_wrap: props.line_wrap,
-                parts: &[TextPart {
-                    start: 0,
-                    end,
-                    scale: props.scale,
-                    font: props.font,
-                    col: props.col,
-                }],
-            },
-        );
-    }
-
-    /// Text section (varying)
-    ///
-    /// A "text section" represents a block of text (e.g. a line or paragraph)
-    /// with common layout, but potentially varying properties (including
-    /// colour, size and font).
-    fn text_section(&mut self, pass: Pass, text: TextSection);
+    /// Draw text
+    fn text(&mut self, pass: Pass, pos: Vec2, col: Colour, text: &PreparedText);
 
     /// Calculate size bound on text
     ///
@@ -186,8 +130,7 @@ pub trait DrawText {
         &mut self,
         bounds: (f32, f32),
         line_wrap: bool,
-        text: &str,
-        parts: &[TextPart],
+        text: &PreparedText,
     ) -> (f32, f32);
 
     /// Find the starting position (top-left) of the glyph at the given index

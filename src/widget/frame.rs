@@ -101,7 +101,7 @@ impl<W: HasText + Widget> HasText for Frame<W> {
 }
 
 impl<W: HasRichText + Widget> HasRichText for Frame<W> {
-    fn get_rich_text(&self) -> &str {
-        self.child.get_rich_text()
+    fn clone_rich_text(&self) -> kas::text::RichText {
+        self.child.clone_rich_text()
     }
 }

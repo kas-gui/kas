@@ -10,9 +10,10 @@
 use std::any::Any;
 use std::f32;
 
-use kas::draw::{self, DrawText, FontId, TextClass, TextPart, TextSection};
+use kas::draw::{self, DrawText, TextClass, TextPart, TextSection};
 use kas::geom::{Rect, Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
+use kas::text::{FontId, PreparedText};
 use kas::Align;
 
 /// Parameterisation of [`Dimensions`]
@@ -158,14 +159,24 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
         self.dims.line_height
     }
 
-    fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
-        let part = TextPart {
-            start: 0,
-            end: text.len() as u32,
-            scale: self.dims.font_scale.into(),
-            font: self.dims.font_id,
-            col: Default::default(),
+    fn prepare_text(&self, size: Size, text: &str, class: TextClass) -> PreparedText {
+        let line_wrap = match class {
+            TextClass::Label | TextClass::EditMulti => true,
+            TextClass::Button | TextClass::Edit => false,
         };
+        let mut text = PreparedText::new(text.into(), line_wrap);
+        text.set_font(self.dims.font_id, self.dims.font_scale.into());
+        text.set_size(size.into());
+        text
+    }
+
+    fn text_bound(
+        &mut self,
+        text: &mut PreparedText,
+        class: TextClass,
+        axis: AxisInfo,
+    ) -> SizeRules {
+        text.set_font(self.dims.font_id, self.dims.font_scale.into());
         let line_height = self.dims.line_height;
         let mut bounds = (f32::INFINITY, f32::INFINITY);
         if let Some(size) = axis.size_other_if_fixed(false) {
@@ -177,7 +188,7 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
             TextClass::Label | TextClass::EditMulti => true,
             TextClass::Button | TextClass::Edit => false,
         };
-        let bounds = self.draw.text_bound(bounds, line_wrap, text, &[part]);
+        let bounds = self.draw.text_bound(bounds, line_wrap, text);
 
         let margins = (self.dims.margin as u16, self.dims.margin as u16);
         if axis.is_horizontal() {

@@ -26,6 +26,8 @@ pub use kas::macros::*;
 #[doc(no_inline)]
 pub use kas::string::{AccelString, CowString, CowStringL, LabelString};
 #[doc(no_inline)]
+pub use kas::text::PreparedText;
+#[doc(no_inline)]
 pub use kas::{class, draw, event, geom, layout, widget};
 #[doc(no_inline)]
 pub use kas::{Align, AlignHints, Direction, Directional, WidgetId};

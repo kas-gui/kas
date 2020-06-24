@@ -22,7 +22,7 @@ use kas::WindowId;
 pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
     core: CoreData,
-    label: String,
+    label: PreparedText,
     #[widget]
     popup: ComboPopup,
     messages: Vec<M>, // TODO: is this a useless lookup step?
@@ -37,12 +37,17 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         let margins = size_handle.outer_margins();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
 
-        let content_rules = size_handle.text_bound(&self.label, TextClass::Button, axis);
+        let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, rect: Rect, _align: kas::AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: kas::AlignHints) {
         self.core.rect = rect;
+        self.label.set_size(rect.size.into());
+        self.label.set_alignment(
+            align.horiz.unwrap_or(Align::Centre),
+            align.vert.unwrap_or(Align::Centre),
+        );
     }
 
     fn spatial_range(&self) -> (usize, usize) {
@@ -56,8 +61,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
             state.depress = true;
         }
         draw_handle.button(self.core.rect, state);
-        let align = (Align::Centre, Align::Centre);
-        draw_handle.text(self.core.rect, &self.label, TextClass::Button, align);
+        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Button);
     }
 }
 
@@ -85,7 +89,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     #[inline]
     fn new_(column: Vec<MenuEntry<u64>>, messages: Vec<M>) -> Self {
         assert!(column.len() > 0, "ComboBox: expected at least one choice");
-        let label = column[0].get_rich_text().to_string();
+        let label = PreparedText::new(column[0].clone_rich_text(), false);
         ComboBox {
             core: Default::default(),
             label,
@@ -116,16 +120,9 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         }
         if self.active != index {
             self.active = index;
-            self.label = self.popup.inner.inner[self.active]
-                .get_rich_text()
-                .to_string();
+            self.label
+                .set_text(self.popup.inner.inner[self.active].clone_rich_text());
         }
-    }
-
-    /// Get the text of the active choice
-    #[inline]
-    pub fn text(&self) -> &str {
-        &self.label
     }
 
     /// Get the message associated with the active choice

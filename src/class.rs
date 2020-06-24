@@ -56,8 +56,7 @@ pub trait HasText: SetText {
 
 /// Read a rich text value / label
 pub trait HasRichText {
-    // TODO: type
     // TODO: set_rich_text and auto impls?
     /// Get the widget's text label as rich text
-    fn get_rich_text(&self) -> &str;
+    fn clone_rich_text(&self) -> kas::text::RichText;
 }

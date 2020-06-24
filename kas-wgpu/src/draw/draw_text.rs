@@ -13,8 +13,9 @@ use wgpu_glyph::{
 };
 
 use super::{CustomPipe, CustomWindow, DrawPipe, DrawWindow};
-use kas::draw::{DrawText, DrawTextShared, FontId, Pass, TextPart, TextSection};
+use kas::draw::{Colour, DrawText, DrawTextShared, Pass, TextSection};
 use kas::geom::{Coord, Vec2};
+use kas::text::{FontId, PreparedText};
 use kas::Align;
 
 impl<C: CustomPipe + 'static> DrawTextShared for DrawPipe<C> {
@@ -88,8 +89,49 @@ fn make_section<'a>(pass: Pass, ts: &'a TextSection) -> Section<'a> {
 }
 
 impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
-    fn text_section(&mut self, pass: Pass, ts: TextSection) {
-        self.glyph_brush.queue(make_section(pass, &ts));
+    fn text(&mut self, pass: Pass, pos: Vec2, col: Colour, text: &PreparedText) {
+        let bounds = Vec2::from(text.size());
+
+        // TODO: support justified alignment
+        let (h_align, h_offset) = match text.align_horiz() {
+            Align::Default | Align::TL | Align::Stretch => (HorizontalAlign::Left, 0.0),
+            Align::Centre => (HorizontalAlign::Center, bounds.0 / 2.0),
+            Align::BR => (HorizontalAlign::Right, bounds.0),
+        };
+        let (v_align, v_offset) = match text.align_vert() {
+            Align::Default | Align::TL | Align::Stretch => (VerticalAlign::Top, 0.0),
+            Align::Centre => (VerticalAlign::Center, bounds.1 / 2.0),
+            Align::BR => (VerticalAlign::Bottom, bounds.1),
+        };
+
+        let text_pos = pos + Vec2(h_offset, v_offset);
+
+        let layout = match text.line_wrap() {
+            true => Layout::default_wrap(),
+            false => Layout::default_single_line(),
+        };
+        let layout = layout.h_align(h_align).v_align(v_align);
+
+        let text = text
+            .parts()
+            .map(|part| Text {
+                text: part.text(),
+                scale: to_px_scale(part.scale()),
+                font_id: wgpu_glyph::FontId(part.font_id().0),
+                extra: Extra {
+                    color: col.into(),
+                    z: pass.depth(),
+                },
+            })
+            .collect();
+
+        let section = Section {
+            screen_position: Vec2::from(text_pos).into(),
+            bounds: bounds.into(),
+            layout,
+            text,
+        };
+        self.glyph_brush.queue(section);
     }
 
     #[inline]
@@ -97,20 +139,19 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         &mut self,
         bounds: (f32, f32),
         line_wrap: bool,
-        text: &str,
-        parts: &[TextPart],
+        text: &PreparedText,
     ) -> (f32, f32) {
         let layout = match line_wrap {
             true => Layout::default_wrap(),
             false => Layout::default_single_line(),
         };
 
-        let text = parts
-            .iter()
+        let text = text
+            .parts()
             .map(|part| Text {
-                text: &text[part.range()],
-                scale: to_px_scale(part.scale),
-                font_id: wgpu_glyph::FontId(part.font.0),
+                text: part.text(),
+                scale: to_px_scale(part.scale()),
+                font_id: wgpu_glyph::FontId(part.font_id().0),
                 extra: Default::default(),
             })
             .collect();

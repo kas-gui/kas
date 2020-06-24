@@ -8,7 +8,8 @@
 //! Optionally, this uses font-kit to find a suitable font. Since this is a
 //! large dependency, an alternative is provided.
 
-use kas::draw::{DrawTextShared, FontId};
+use kas::draw::DrawTextShared;
+use kas::text::FontId;
 use std::sync::Once;
 
 #[cfg(feature = "font-kit")]

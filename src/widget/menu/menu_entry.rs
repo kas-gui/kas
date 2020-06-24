@@ -10,6 +10,7 @@ use std::fmt::{self, Debug};
 use super::Menu;
 use kas::class::{HasBool, HasRichText, SetText};
 use kas::draw::TextClass;
+use kas::event::VirtualKeyCodes;
 use kas::layout::{RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::widget::{AccelLabel, CheckBoxBare};
@@ -21,14 +22,15 @@ use kas::widget::{AccelLabel, CheckBoxBare};
 pub struct MenuEntry<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
-    label: AccelString,
+    keys: VirtualKeyCodes,
+    label: PreparedText,
     label_off: Coord,
     msg: M,
 }
 
 impl<M: Clone + Debug + 'static> WidgetConfig for MenuEntry<M> {
     fn configure(&mut self, mgr: &mut Manager) {
-        mgr.add_accel_keys(self.id(), self.label.keys());
+        mgr.add_accel_keys(self.id(), &self.keys);
     }
 
     fn key_nav(&self) -> bool {
@@ -41,19 +43,24 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
         let size = size_handle.menu_frame();
         self.label_off = size.into();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, Margins::ZERO);
-        let text_rules = size_handle.text_bound(self.label.get(false), TextClass::Label, axis);
+        let text_rules = size_handle.text_bound(&mut self.label, TextClass::Label, axis);
         text_rules.surrounded_by(frame_rules, true)
+    }
+
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
+        self.core.rect = rect;
+        self.label.set_size(rect.size.into());
+        self.label.set_alignment(
+            align.horiz.unwrap_or(Align::Default),
+            align.vert.unwrap_or(Align::Default),
+        );
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
-        let rect = Rect {
-            pos: self.core.rect.pos + self.label_off,
-            size: self.core.rect.size - self.label_off.into(),
-        };
-        let text = self.label.get(mgr.show_accel_labels());
-        let align = (Align::Default, Align::Centre);
-        draw_handle.text(rect, text, TextClass::Label, align);
+        // TODO: mgr.show_accel_labels();
+        let pos = self.core.rect.pos + self.label_off;
+        draw_handle.text(pos, &self.label, TextClass::Label);
     }
 }
 
@@ -64,9 +71,14 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
     /// type supporting `Clone` is valid, though it is recommended to use a
     /// simple `Copy` type (e.g. an enum).
     pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
+        let label = label.into();
+        let mut text = PreparedText::new(label.get(false).into(), false);
+        text.set_alignment(Align::Default, Align::Centre);
+        let keys = label.take_keys();
         MenuEntry {
             core: Default::default(),
-            label: label.into(),
+            keys,
+            label: text,
             label_off: Coord::ZERO,
             msg,
         }
@@ -79,15 +91,18 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
 }
 
 impl<M: Clone + Debug + 'static> SetText for MenuEntry<M> {
-    fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.label = text.into();
+    fn set_cow_string(&mut self, label: CowString) -> TkAction {
+        let label = AccelString::from(label);
+        let text = label.get(false).into();
+        self.keys = label.take_keys();
+        self.label.set_text(text);
         TkAction::Redraw
     }
 }
 
 impl<M: Clone + Debug + 'static> HasRichText for MenuEntry<M> {
-    fn get_rich_text(&self) -> &str {
-        self.label.get(false)
+    fn clone_rich_text(&self) -> kas::text::RichText {
+        self.label.clone_text()
     }
 }
 

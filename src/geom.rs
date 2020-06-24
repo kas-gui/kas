@@ -206,6 +206,12 @@ impl From<Size> for winit::dpi::Size {
     }
 }
 
+impl From<Size> for kas::text::Size {
+    fn from(size: Size) -> kas::text::Size {
+        kas::text::Size(size.0 as f32, size.1 as f32)
+    }
+}
+
 impl std::ops::Add for Size {
     type Output = Self;
 
