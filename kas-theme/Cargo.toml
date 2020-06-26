@@ -12,7 +12,7 @@ readme = "README.md"
 documentation = "https://docs.rs/kas-theme/"
 
 [features]
-default = ["font-kit", "stack_dst"]
+default = ["stack_dst"]
 
 # Use Generic Associated Types (experimental)
 # Currently (Feb 2020) compiler support is poor.
@@ -25,8 +25,6 @@ stack_dst = ["kas/stack_dst", "stack_dst_"]
 unsize = ["stack_dst_/unsize"]
 
 [dependencies]
-font-kit = { version = "0.8.0", optional = true }
-lazy_static = "1.4.0"
 log = "0.4"
 stack_dst_ = { version = "0.6", package = "stack_dst", optional = true }
 

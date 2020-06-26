@@ -10,8 +10,8 @@ use std::ops::Range;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::draw::{
-    self, ClipRegion, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, DrawTextShared,
-    InputState, Pass, SizeHandle, TextClass,
+    self, ClipRegion, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, InputState,
+    Pass, SizeHandle, TextClass,
 };
 use kas::geom::*;
 use kas::text::{FontId, PreparedText};
@@ -53,7 +53,7 @@ pub struct DrawHandle<'a, D: Draw> {
     pass: Pass,
 }
 
-impl<D: DrawShared + DrawTextShared + 'static> Theme<D> for ShadedTheme
+impl<D: DrawShared + 'static> Theme<D> for ShadedTheme
 where
     D::Draw: DrawRounded + DrawShaded + DrawText,
 {
@@ -64,8 +64,8 @@ where
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = DrawHandle<'a, D::Draw>;
 
-    fn init(&mut self, draw: &mut D) {
-        self.font_id = crate::load_fonts(draw);
+    fn init(&mut self, _draw: &mut D) {
+        self.font_id = kas::text::fonts().load_default().unwrap();
     }
 
     fn new_window(&self, _draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {

@@ -55,7 +55,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         let custom = custom.build(&device, TEX_FORMAT, super::DEPTH_FORMAT);
 
         DrawPipe {
-            fonts: vec![],
             shaded_square,
             shaded_round,
             flat_round,
@@ -87,7 +86,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let flat_round = self.flat_round.new_window(device, size);
         let custom = self.custom.new_window(device, size);
 
-        let glyph_brush = GlyphBrushBuilder::using_fonts(self.fonts.clone())
+        let glyph_brush = GlyphBrushBuilder::using_fonts(kas::text::fonts().fonts_vec())
             .depth_stencil_state(super::GLPYH_DEPTH_DESC)
             .build(device, TEX_FORMAT);
 

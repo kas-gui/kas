@@ -95,21 +95,6 @@ impl Default for TextProperties {
     }
 }
 
-/// Abstraction over type shared by [`DrawText`] implementations
-pub trait DrawTextShared {
-    /// Load a font
-    ///
-    /// For font collections, the `index` is used to identify the font;
-    /// otherwise it is expected to be 0.
-    fn load_font_static_ref(&mut self, data: &'static [u8], index: u32) -> FontId;
-
-    /// Load a font
-    ///
-    /// For font collections, the `index` is used to identify the font;
-    /// otherwise it is expected to be 0.
-    fn load_font_vec(&mut self, data: Vec<u8>, index: u32) -> FontId;
-}
-
 /// Abstraction over text rendering
 ///
 /// Note: the current API is designed to meet only current requirements since

@@ -7,39 +7,34 @@
 
 use std::f32;
 use unicode_segmentation::GraphemeCursor;
-use wgpu_glyph::ab_glyph::{FontRef, FontVec, Glyph, PxScale, PxScaleFont, ScaleFont};
+use wgpu_glyph::ab_glyph::{Glyph, PxScale, PxScaleFont, ScaleFont};
 use wgpu_glyph::{
-    Extra, GlyphCruncher, HorizontalAlign, Layout, Section, SectionGlyph, Text, VerticalAlign,
+    Extra, FontId, GlyphCruncher, HorizontalAlign, Layout, Section, SectionGlyph, Text,
+    VerticalAlign,
 };
 
-use super::{CustomPipe, CustomWindow, DrawPipe, DrawWindow};
-use kas::draw::{Colour, DrawText, DrawTextShared, Pass, TextSection};
+use super::{CustomWindow, DrawWindow};
+use kas::draw::{Colour, DrawText, Pass, TextSection};
 use kas::geom::{Coord, Vec2};
-use kas::text::{FontId, PreparedText};
+use kas::text::PreparedText;
 use kas::Align;
 
-impl<C: CustomPipe + 'static> DrawTextShared for DrawPipe<C> {
-    fn load_font_static_ref(&mut self, data: &'static [u8], index: u32) -> FontId {
-        let font = FontRef::try_from_slice_and_index(data, index).unwrap();
-        let id = FontId(self.fonts.len());
-        self.fonts.push(font.into());
-        id
-    }
+// Local trait so that we can implement for foreign types
+trait MyInto<T> {
+    fn my_into(self) -> T;
+}
 
-    /// Load a font
-    ///
-    /// For font collections, the `index` is used to identify the font;
-    /// otherwise it is expected to be 0.
-    fn load_font_vec(&mut self, data: Vec<u8>, index: u32) -> FontId {
-        let font = FontVec::try_from_vec_and_index(data, index).unwrap();
-        let id = FontId(self.fonts.len());
-        self.fonts.push(font.into());
-        id
+impl MyInto<PxScale> for kas::draw::PxScale {
+    fn my_into(self) -> PxScale {
+        let kas::draw::PxScale { x, y } = self;
+        PxScale { x, y }
     }
 }
 
-fn to_px_scale(kas::draw::PxScale { x, y }: kas::draw::PxScale) -> PxScale {
-    PxScale { x, y }
+impl MyInto<FontId> for kas::text::FontId {
+    fn my_into(self) -> FontId {
+        FontId(self.get())
+    }
 }
 
 fn make_section<'a>(pass: Pass, ts: &'a TextSection) -> Section<'a> {
@@ -71,8 +66,8 @@ fn make_section<'a>(pass: Pass, ts: &'a TextSection) -> Section<'a> {
         .iter()
         .map(|part| Text {
             text: &text[part.range()],
-            scale: to_px_scale(part.scale),
-            font_id: wgpu_glyph::FontId(part.font.0),
+            scale: part.scale.my_into(),
+            font_id: part.font.my_into(),
             extra: Extra {
                 color: part.col.into(),
                 z: pass.depth(),
@@ -116,8 +111,8 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
             .parts()
             .map(|part| Text {
                 text: part.text(),
-                scale: to_px_scale(part.scale()),
-                font_id: wgpu_glyph::FontId(part.font_id().0),
+                scale: part.scale().my_into(),
+                font_id: part.font_id().my_into(),
                 extra: Extra {
                     color: col.into(),
                     z: pass.depth(),
@@ -150,8 +145,8 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
             .parts()
             .map(|part| Text {
                 text: part.text(),
-                scale: to_px_scale(part.scale()),
-                font_id: wgpu_glyph::FontId(part.font_id().0),
+                scale: part.scale().my_into(),
+                font_id: part.font_id().my_into(),
                 extra: Default::default(),
             })
             .collect();
@@ -233,8 +228,8 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         // this a hack anyway and so tolerate some inaccuracy.
         let last_part = ts.parts.as_ref().last().unwrap();
         let scale_font = PxScaleFont {
-            font: self.glyph_brush.fonts()[last_part.font.0].clone(),
-            scale: to_px_scale(last_part.scale),
+            font: self.glyph_brush.fonts()[last_part.font.get()].clone(),
+            scale: last_part.scale.my_into(),
         };
         let base_to_mid = -0.5 * scale_font.ascent();
 

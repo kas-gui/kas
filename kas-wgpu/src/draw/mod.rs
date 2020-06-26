@@ -17,8 +17,6 @@ mod shaders;
 
 use kas::geom::Rect;
 use wgpu::{CompareFunction, DepthStencilStateDescriptor, TextureFormat};
-use wgpu_glyph::ab_glyph::FontArc;
-use wgpu_glyph::GlyphBrush;
 
 pub(crate) use shaders::ShaderManager;
 
@@ -62,12 +60,13 @@ impl From<kas::draw::Colour> for Rgb {
 
 /// Shared pipeline data
 pub struct DrawPipe<C> {
-    fonts: Vec<FontArc>,
     shaded_square: shaded_square::Pipeline,
     shaded_round: shaded_round::Pipeline,
     flat_round: flat_round::Pipeline,
     custom: C,
 }
+
+type GlyphBrush = wgpu_glyph::GlyphBrush<DepthStencilStateDescriptor, kas::text::Font>;
 
 /// Per-window pipeline data
 pub struct DrawWindow<CW: CustomWindow> {
@@ -77,5 +76,5 @@ pub struct DrawWindow<CW: CustomWindow> {
     shaded_round: shaded_round::Window,
     flat_round: flat_round::Window,
     custom: CW,
-    glyph_brush: GlyphBrush<DepthStencilStateDescriptor>, // TODO: should be in DrawPipe
+    glyph_brush: GlyphBrush, // TODO: should be in DrawPipe
 }

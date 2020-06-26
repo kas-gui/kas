@@ -33,10 +33,8 @@ pub trait Theme<D: DrawShared>: ThemeApi {
     /// The toolkit must call this method before [`Theme::new_window`]
     /// to allow initialisation specific to the `Draw` device.
     ///
-    /// At a minimum, a theme must load a font via [`load_font`].
+    /// At a minimum, a theme must load a font to [`kas::text::fonts`].
     /// The first font loaded (by any theme) becomes the default font.
-    ///
-    /// [`load_font`]: kas::draw::DrawTextShared::load_font
     fn init(&mut self, draw: &mut D);
 
     /// Construct per-window storage

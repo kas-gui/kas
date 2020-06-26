@@ -49,7 +49,7 @@ thread_local! {
     static BACKGROUND: Cell<Colour> = Cell::new(Colour::grey(1.0));
 }
 
-impl<D: DrawShared + DrawTextShared + 'static> Theme<D> for CustomTheme
+impl<D: DrawShared + 'static> Theme<D> for CustomTheme
 where
     D::Draw: DrawRounded + DrawText,
 {
