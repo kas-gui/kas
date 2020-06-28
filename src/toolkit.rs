@@ -73,6 +73,10 @@ pub enum TkAction {
     RegionMoved,
     /// A pop-up opened/closed/needs resizing
     Popup,
+    /// Reset size of all widgets without recalculating requirements
+    ResetSize,
+    /// Resize all widgets
+    Resize,
     /// Whole window requires reconfiguring
     ///
     /// *Configuring* widgets assigns [`WidgetId`] identifiers and calls

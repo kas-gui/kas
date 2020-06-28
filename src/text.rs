@@ -42,8 +42,9 @@ impl PreparedText {
     pub fn set_text(&mut self, text: RichText) -> TkAction {
         self.0.set_text(text);
         if self.0.require_font() {
-            // TODO: this should be Resize
-            TkAction::Reconfigure
+            // Currently, `set_font` must be called after updating text which at
+            // least requires calling `size_rules` once on the affected widget.
+            TkAction::Resize
         } else {
             TkAction::None
         }

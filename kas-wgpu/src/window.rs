@@ -206,6 +206,11 @@ where
                 self.mgr.region_moved(&mut tkw, &mut *self.widget);
                 self.window.request_redraw();
             }
+            TkAction::ResetSize => self.apply_size(),
+            TkAction::Resize => {
+                self.solve_cache.invalidate_rule_cache();
+                self.apply_size();
+            }
             TkAction::Reconfigure => self.reconfigure(shared),
             TkAction::Close | TkAction::CloseAll => (),
         }
