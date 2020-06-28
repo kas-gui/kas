@@ -95,8 +95,7 @@ impl<M: Clone + Debug + 'static> SetText for MenuEntry<M> {
         let label = AccelString::from(label);
         let text = label.get(false).into();
         self.keys = label.take_keys();
-        self.label.set_text(text);
-        TkAction::Redraw
+        self.label.set_text(text)
     }
 }
 

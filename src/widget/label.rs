@@ -75,8 +75,7 @@ impl Label {
 
 impl SetText for Label {
     fn set_cow_string(&mut self, string: CowString) -> TkAction {
-        self.label.set_text(string.to_string().into());
-        TkAction::Redraw
+        self.label.set_text(string.to_string().into())
     }
 }
 
@@ -149,8 +148,7 @@ impl SetText for AccelLabel {
         let label = AccelString::from(label);
         let text = label.get(false).into();
         self.keys = label.take_keys();
-        self.label.set_text(text);
-        TkAction::Redraw
+        self.label.set_text(text)
     }
 }
 

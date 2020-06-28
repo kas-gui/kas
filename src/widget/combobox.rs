@@ -114,14 +114,16 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     ///
     /// Panics if `index >= self.len()`.
     #[inline]
-    pub fn set_active(&mut self, index: usize) {
+    pub fn set_active(&mut self, index: usize) -> TkAction {
         if index >= self.messages.len() {
             panic!("ComboBox::set_active(index): index out of bounds");
         }
         if self.active != index {
             self.active = index;
             self.label
-                .set_text(self.popup.inner.inner[self.active].clone_rich_text());
+                .set_text(self.popup.inner.inner[self.active].clone_rich_text())
+        } else {
+            TkAction::None
         }
     }
 
@@ -215,11 +217,10 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             Response::Focus(x) => Response::Focus(x),
             Response::Msg(msg) => {
                 let index = msg as usize;
-                self.set_active(index);
+                *mgr += self.set_active(index);
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
                 }
-                mgr.redraw(self.id());
                 Response::Msg(self.messages[index].clone())
             }
         }

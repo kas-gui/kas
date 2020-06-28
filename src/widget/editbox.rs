@@ -387,9 +387,8 @@ impl<G> EditBox<G> {
             self.edit_pos = pos + c.len_utf8();
         }
         self.sel_pos = self.edit_pos;
-        self.prepared.set_text(self.text.clone().into());
 
-        mgr.redraw(self.id());
+        *mgr += self.prepared.set_text(self.text.clone().into());
         EditAction::Edit
     }
 
@@ -403,7 +402,7 @@ impl<G> EditBox<G> {
             return EditAction::None;
         }
 
-        mgr.redraw(self.id());
+        let mut mgr_action = TkAction::None;
         let mut buf = [0u8; 4];
         let pos = self.edit_pos;
         let selection = self.selection();
@@ -504,7 +503,7 @@ impl<G> EditBox<G> {
                     self.edit_pos = *pos2;
                     *pos2 = pos;
                     std::mem::swap(sel_pos, &mut self.sel_pos);
-                    self.prepared.set_text(self.text.clone().into());
+                    mgr_action += self.prepared.set_text(self.text.clone().into());
                     self.last_edit = LastEdit::None;
                 }
                 Action::Edit
@@ -512,7 +511,7 @@ impl<G> EditBox<G> {
             _ => Action::None,
         };
 
-        match action {
+        let result = match action {
             Action::None => EditAction::None,
             Action::Activate => EditAction::Activate,
             Action::Edit => EditAction::Edit,
@@ -534,7 +533,7 @@ impl<G> EditBox<G> {
                 }
                 self.edit_pos = pos + s.len();
                 self.sel_pos = self.edit_pos;
-                self.prepared.set_text(self.text.clone().into());
+                mgr_action += self.prepared.set_text(self.text.clone().into());
                 EditAction::Edit
             }
             Action::Delete(sel) => {
@@ -546,7 +545,7 @@ impl<G> EditBox<G> {
                 self.text.replace_range(sel.clone(), "");
                 self.edit_pos = sel.start;
                 self.sel_pos = sel.start;
-                self.prepared.set_text(self.text.clone().into());
+                mgr_action += self.prepared.set_text(self.text.clone().into());
                 EditAction::Edit
             }
             Action::Move(pos) => {
@@ -556,7 +555,10 @@ impl<G> EditBox<G> {
                 }
                 EditAction::None
             }
-        }
+        };
+
+        *mgr += mgr_action;
+        result
     }
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
@@ -572,9 +574,9 @@ impl<G> EditBox<G> {
 impl<G: EditGuard> SetText for EditBox<G> {
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.text = text.to_string();
-        self.prepared.set_text(self.text.clone().into());
+        let action = self.prepared.set_text(self.text.clone().into());
         let _ = G::edit(self);
-        TkAction::Redraw
+        action
     }
 }
 

@@ -206,9 +206,9 @@ impl From<Size> for winit::dpi::Size {
     }
 }
 
-impl From<Size> for kas::text::Size {
-    fn from(size: Size) -> kas::text::Size {
-        kas::text::Size(size.0 as f32, size.1 as f32)
+impl From<Size> for kas_text::Size {
+    fn from(size: Size) -> kas_text::Size {
+        kas_text::Size(size.0 as f32, size.1 as f32)
     }
 }
 
