@@ -40,7 +40,7 @@ impl Layout for Label {
 
     fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.label.set_size(rect.size.into());
+        self.label.set_size(rect.size);
         self.label.set_alignment(
             align.horiz.unwrap_or(Align::Default),
             align.vert.unwrap_or(Align::Centre),
@@ -110,7 +110,7 @@ impl Layout for AccelLabel {
 
     fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.label.set_size(rect.size.into());
+        self.label.set_size(rect.size);
         self.label.set_alignment(
             align.horiz.unwrap_or(Align::Default),
             align.vert.unwrap_or(Align::Centre),
@@ -127,8 +127,7 @@ impl AccelLabel {
     /// Construct a new, empty instance
     pub fn new<T: Into<AccelString>>(label: T) -> Self {
         let label = label.into();
-        let mut text = PreparedText::new(label.get(false).into(), false);
-        text.set_alignment(Align::Centre, Align::Centre);
+        let text = PreparedText::new(label.get(false).into(), false);
         let keys = label.take_keys();
         AccelLabel {
             core: Default::default(),

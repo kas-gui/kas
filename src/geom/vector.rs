@@ -322,6 +322,12 @@ macro_rules! impl_vec2 {
                 $T(size.0 as $f, size.1 as $f)
             }
         }
+
+        impl From<$T> for kas_text::Size {
+            fn from(size: $T) -> kas_text::Size {
+                kas_text::Size(size.0 as f32, size.1 as f32)
+            }
+        }
     };
 }
 

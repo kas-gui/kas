@@ -61,8 +61,7 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
     #[inline]
     pub fn new_with_direction<S: Into<AccelString>>(direction: D, label: S, list: Vec<W>) -> Self {
         let label = label.into();
-        let mut text = PreparedText::new(label.get(false).into(), false);
-        text.set_alignment(Align::Default, Align::Centre);
+        let text = PreparedText::new(label.get(false).into(), false);
         let keys = label.take_keys();
         SubMenu {
             core: Default::default(),
@@ -119,10 +118,10 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
 
     fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.label.set_size(rect.size.into());
+        self.label.set_size(rect.size);
         self.label.set_alignment(
             align.horiz.unwrap_or(Align::Default),
-            align.vert.unwrap_or(Align::Default),
+            align.vert.unwrap_or(Align::Centre),
         );
     }
 

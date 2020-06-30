@@ -206,7 +206,7 @@ impl<G: 'static> Layout for EditBox<G> {
 
         self.core.rect = rect;
         self.text_pos = rect.pos + self.frame_offset;
-        self.prepared.set_size((rect.size - self.frame_size).into());
+        self.prepared.set_size(rect.size - self.frame_size);
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {

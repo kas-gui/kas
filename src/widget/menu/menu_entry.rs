@@ -49,10 +49,10 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
 
     fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.label.set_size(rect.size.into());
+        self.label.set_size(rect.size);
         self.label.set_alignment(
             align.horiz.unwrap_or(Align::Default),
-            align.vert.unwrap_or(Align::Default),
+            align.vert.unwrap_or(Align::Centre),
         );
     }
 
@@ -72,8 +72,7 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
     /// simple `Copy` type (e.g. an enum).
     pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
         let label = label.into();
-        let mut text = PreparedText::new(label.get(false).into(), false);
-        text.set_alignment(Align::Default, Align::Centre);
+        let text = PreparedText::new(label.get(false).into(), false);
         let keys = label.take_keys();
         MenuEntry {
             core: Default::default(),

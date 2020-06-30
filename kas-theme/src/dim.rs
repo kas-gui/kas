@@ -159,36 +159,21 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
         self.dims.line_height
     }
 
-    fn prepare_text(&self, size: Size, text: &str, class: TextClass) -> PreparedText {
-        let line_wrap = match class {
-            TextClass::Label | TextClass::EditMulti => true,
-            TextClass::Button | TextClass::Edit => false,
-        };
-        let mut text = PreparedText::new(text.into(), line_wrap);
-        text.set_font(self.dims.font_id, self.dims.font_scale.into());
-        text.set_size(size.into());
-        text
-    }
-
     fn text_bound(
         &mut self,
         text: &mut PreparedText,
         class: TextClass,
         axis: AxisInfo,
     ) -> SizeRules {
-        text.set_font(self.dims.font_id, self.dims.font_scale.into());
         let line_height = self.dims.line_height;
-        let mut bounds = (f32::INFINITY, f32::INFINITY);
+        let mut bounds = Vec2(f32::INFINITY, f32::INFINITY);
         if let Some(size) = axis.size_other_if_fixed(false) {
             bounds.1 = size as f32;
         } else if let Some(size) = axis.size_other_if_fixed(true) {
             bounds.0 = size as f32;
         }
-        let line_wrap = match class {
-            TextClass::Label | TextClass::EditMulti => true,
-            TextClass::Button | TextClass::Edit => false,
-        };
-        let bounds = self.draw.text_bound(bounds, line_wrap, text);
+        text.prepare(bounds, self.dims.font_scale.into());
+        let bounds = text.required_size();
 
         let margins = (self.dims.margin as u16, self.dims.margin as u16);
         if axis.is_horizontal() {
@@ -205,7 +190,7 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
                 TextClass::EditMulti => line_height * 3,
                 _ => line_height,
             };
-            let ideal = (bounds.1 as u32).max(line_height);
+            let ideal = (bounds.1 as u32).max(min);
             let stretch = match class {
                 TextClass::Button | TextClass::Edit => StretchPolicy::Fixed,
                 _ => StretchPolicy::Filler,

@@ -7,7 +7,9 @@
 
 use kas::geom::{Size, Vec2};
 use kas::{Align, TkAction};
-pub use kas_text::{fonts, Font, FontId, FontScale, PreparedPart, RichText, TextPart};
+pub use kas_text::{
+    fonts, Font, FontId, FontScale, PreparedPart, RichText, SectionGlyph, TextPart,
+};
 
 /// Text, prepared for display in a given enviroment
 ///
@@ -38,12 +40,22 @@ impl PreparedText {
         self.0.total_len()
     }
 
+    /// Layout text
+    ///
+    /// The given bounds are used to influence line-wrapping (if enabled).
+    /// `f32::INFINITY` may be used where no bounds are required.
+    ///
+    /// The `scale` is used to set the base scale: rich text may adjust this.
+    pub fn prepare(&mut self, bounds: Vec2, scale: FontScale) {
+        self.0.set_bounds(bounds.into());
+        self.0.set_base_scale(scale);
+        self.0.prepare();
+    }
+
     /// Set the text
     pub fn set_text(&mut self, text: RichText) -> TkAction {
-        self.0.set_text(text);
-        if self.0.require_font() {
-            // Currently, `set_font` must be called after updating text which at
-            // least requires calling `size_rules` once on the affected widget.
+        if self.0.set_text(text) {
+            // Layout must be re-calculated which currently requires resizing
             TkAction::Resize
         } else {
             TkAction::None
@@ -51,40 +63,43 @@ impl PreparedText {
     }
 
     /// Adjust alignment
+    ///
+    /// This may be called before or after `prepare` and has immediate effect.
     pub fn set_alignment(&mut self, horiz: Align, vert: Align) {
-        self.0.set_alignment(horiz, vert)
+        self.0.set_alignment(horiz, vert);
     }
 
     /// Enable or disable line-wrapping
+    ///
+    /// This does not have immediate effect: one must call `prepare` afterwards.
     pub fn set_line_wrap(&mut self, line_wrap: bool) {
         self.0.set_line_wrap(line_wrap);
     }
 
-    /// Set fonts
-    pub fn set_font(&mut self, font_id: FontId, scale: FontScale) {
-        self.0.set_font(font_id, scale);
-    }
-
     /// Set size bounds
+    ///
+    /// This does not recalculate the layout. If the bounds are too small, text
+    /// will be cropped.
     pub fn set_size(&mut self, size: Size) {
-        self.0.set_size(size.into())
+        self.0.set_bounds(size.into());
     }
 
-    pub fn align_horiz(&self) -> Align {
-        self.0.align_horiz()
-    }
-    pub fn align_vert(&self) -> Align {
-        self.0.align_vert()
-    }
-    pub fn line_wrap(&self) -> bool {
-        self.0.line_wrap()
+    /// Get size bounds
+    ///
+    /// Returns the value last given via `prepare` or `set_size`.
+    pub fn bounds(&self) -> Vec2 {
+        self.0.bounds().into()
     }
 
-    pub fn size(&self) -> Vec2 {
-        self.0.size().into()
+    pub fn num_parts(&self) -> usize {
+        self.0.num_parts()
     }
 
-    pub fn parts<'a>(&'a self) -> impl Iterator<Item = &'a PreparedPart> {
-        self.0.parts()
+    pub fn positioned_glyphs(&self, offset: Vec2) -> Vec<SectionGlyph> {
+        self.0.positioned_glyphs(offset.into())
+    }
+
+    pub fn required_size(&self) -> Vec2 {
+        self.0.required_size().into()
     }
 }

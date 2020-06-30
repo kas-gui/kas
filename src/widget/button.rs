@@ -54,7 +54,7 @@ impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
         // In practice, it sometimes overflows a tiny bit, and looks better if
         // we let it overflow. Since the text is centred this is okay.
         // self.label_rect = ...
-        self.label.set_size(rect.size.into());
+        self.label.set_size(rect.size);
         self.label.set_alignment(
             align.horiz.unwrap_or(Align::Centre),
             align.vert.unwrap_or(Align::Centre),

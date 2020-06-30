@@ -103,21 +103,6 @@ pub trait DrawText {
     /// Draw text
     fn text(&mut self, pass: Pass, pos: Vec2, col: Colour, text: &PreparedText);
 
-    /// Calculate size bound on text
-    ///
-    /// This may be used with [`DrawText::text`] to calculate size requirements
-    /// within [`kas::Layout::size_rules`].
-    ///
-    /// Bounds of `(f32::INFINITY, f32::INFINITY)` may be used if there are no
-    /// constraints. This parameter allows forcing line-wrapping behaviour
-    /// within the given bounds.
-    fn text_bound(
-        &mut self,
-        bounds: (f32, f32),
-        line_wrap: bool,
-        text: &PreparedText,
-    ) -> (f32, f32);
-
     /// Find the starting position (top-left) of the glyph at the given index
     ///
     /// May panic on invalid byte index.

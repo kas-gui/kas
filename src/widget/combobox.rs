@@ -43,7 +43,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
 
     fn set_rect(&mut self, rect: Rect, align: kas::AlignHints) {
         self.core.rect = rect;
-        self.label.set_size(rect.size.into());
+        self.label.set_size(rect.size);
         self.label.set_alignment(
             align.horiz.unwrap_or(Align::Centre),
             align.vert.unwrap_or(Align::Centre),

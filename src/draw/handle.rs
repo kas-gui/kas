@@ -136,11 +136,6 @@ pub trait SizeHandle {
     /// The height of a line of text
     fn line_height(&self, class: TextClass) -> u32;
 
-    /// Prepare text
-    ///
-    /// This assumes default alignment of the text.
-    fn prepare_text(&self, size: Size, text: &str, class: TextClass) -> PreparedText;
-
     /// Get a text label size bound
     ///
     /// Sizing requirements of [`DrawHandle::text`].
@@ -402,9 +397,6 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn line_height(&self, class: TextClass) -> u32 {
         self.deref().line_height(class)
     }
-    fn prepare_text(&self, size: Size, text: &str, class: TextClass) -> PreparedText {
-        self.deref().prepare_text(size, text, class)
-    }
     fn text_bound(
         &mut self,
         text: &mut PreparedText,
@@ -470,9 +462,6 @@ where
 
     fn line_height(&self, class: TextClass) -> u32 {
         self.deref().line_height(class)
-    }
-    fn prepare_text(&self, size: Size, text: &str, class: TextClass) -> PreparedText {
-        self.deref().prepare_text(size, text, class)
     }
     fn text_bound(
         &mut self,
@@ -663,8 +652,8 @@ mod test {
 
         let _size = draw_handle.size_handle(|h| h.frame());
 
-        let rect = Rect::new(Coord::ZERO, Size(100, 50));
-        let align = (Align::Centre, Align::Centre);
-        draw_handle.text_selected(rect, "text", .., TextClass::Label, align)
+        let pos = Coord::ZERO;
+        let text = PreparedText::new("sample".into(), false);
+        draw_handle.text_selected(pos, &text, .., TextClass::Label)
     }
 }

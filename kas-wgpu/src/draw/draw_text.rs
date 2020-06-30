@@ -5,9 +5,8 @@
 
 //! Text drawing API for `kas_wgpu`
 
-use std::f32;
 use unicode_segmentation::GraphemeCursor;
-use wgpu_glyph::ab_glyph::{Glyph, PxScale, PxScaleFont, ScaleFont};
+use wgpu_glyph::ab_glyph::{self, Glyph, PxScale, PxScaleFont, ScaleFont};
 use wgpu_glyph::{
     Extra, FontId, GlyphCruncher, HorizontalAlign, Layout, Section, SectionGlyph, Text,
     VerticalAlign,
@@ -34,6 +33,15 @@ impl MyInto<PxScale> for kas::draw::PxScale {
 impl MyInto<FontId> for kas::text::FontId {
     fn my_into(self) -> FontId {
         FontId(self.get())
+    }
+}
+
+impl MyInto<ab_glyph::Point> for Vec2 {
+    fn my_into(self) -> ab_glyph::Point {
+        ab_glyph::Point {
+            x: self.0,
+            y: self.1,
+        }
     }
 }
 
@@ -85,83 +93,18 @@ fn make_section<'a>(pass: Pass, ts: &'a TextSection) -> Section<'a> {
 
 impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
     fn text(&mut self, pass: Pass, pos: Vec2, col: Colour, text: &PreparedText) {
-        let bounds = Vec2::from(text.size());
-
-        // TODO: support justified alignment
-        let (h_align, h_offset) = match text.align_horiz() {
-            Align::Default | Align::TL | Align::Stretch => (HorizontalAlign::Left, 0.0),
-            Align::Centre => (HorizontalAlign::Center, bounds.0 / 2.0),
-            Align::BR => (HorizontalAlign::Right, bounds.0),
-        };
-        let (v_align, v_offset) = match text.align_vert() {
-            Align::Default | Align::TL | Align::Stretch => (VerticalAlign::Top, 0.0),
-            Align::Centre => (VerticalAlign::Center, bounds.1 / 2.0),
-            Align::BR => (VerticalAlign::Bottom, bounds.1),
-        };
-
-        let text_pos = pos + Vec2(h_offset, v_offset);
-
-        let layout = match text.line_wrap() {
-            true => Layout::default_wrap(),
-            false => Layout::default_single_line(),
-        };
-        let layout = layout.h_align(h_align).v_align(v_align);
-
-        let text = text
-            .parts()
-            .map(|part| Text {
-                text: part.text(),
-                scale: part.scale().my_into(),
-                font_id: part.font_id().my_into(),
-                extra: Extra {
-                    color: col.into(),
-                    z: pass.depth(),
-                },
+        // TODO: perhaps glyph_brush can accept an offset for all glyphs?
+        let glyphs = text.positioned_glyphs(pos);
+        let extra = (0..text.num_parts())
+            .map(|_| Extra {
+                color: col.into(),
+                z: pass.depth(),
             })
             .collect();
-
-        let section = Section {
-            screen_position: Vec2::from(text_pos).into(),
-            bounds: bounds.into(),
-            layout,
-            text,
-        };
-        self.glyph_brush.queue(section);
-    }
-
-    #[inline]
-    fn text_bound(
-        &mut self,
-        bounds: (f32, f32),
-        line_wrap: bool,
-        text: &PreparedText,
-    ) -> (f32, f32) {
-        let layout = match line_wrap {
-            true => Layout::default_wrap(),
-            false => Layout::default_single_line(),
-        };
-
-        let text = text
-            .parts()
-            .map(|part| Text {
-                text: part.text(),
-                scale: part.scale().my_into(),
-                font_id: part.font_id().my_into(),
-                extra: Default::default(),
-            })
-            .collect();
-
-        self.glyph_brush
-            .glyph_bounds(Section {
-                screen_position: (0.0, 0.0),
-                bounds,
-                layout,
-                text,
-            })
-            .map(|rect| (Vec2(rect.min.x, rect.min.y), Vec2(rect.max.x, rect.max.y)))
-            .map(|(min, max)| max - min)
-            .unwrap_or(Vec2::splat(0.0))
-            .into()
+        let min = pos.my_into();
+        let max = (pos + text.bounds()).my_into();
+        let bounds = ab_glyph::Rect { min, max };
+        self.glyph_brush.queue_pre_positioned(glyphs, extra, bounds);
     }
 
     fn text_glyph_pos(&mut self, ts: TextSection, index: usize) -> Vec2 {

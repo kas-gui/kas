@@ -348,10 +348,13 @@ impl SizeRules {
         rules
     }
 
-    /// Set self to `self - x + y`
+    /// Set self to `self - x + y`, in this order
+    ///
+    /// This is a specialised operation to join two spans, subtracing the
+    /// common overlap (`x`), thus margins are `self.m.0` and `y.m.1`.
     pub fn sub_add(&mut self, x: Self, y: Self) {
-        self.a = self.a + y.a - x.a;
-        self.b = self.b + y.b - x.b;
+        self.a = (self.a + y.a).saturating_sub(x.a);
+        self.b = (self.b + y.b).saturating_sub(x.b);
         self.m.1 = y.m.1;
         self.stretch = self.stretch.max(y.stretch);
     }
