@@ -43,7 +43,7 @@ impl PreparedText {
     /// Layout text
     ///
     /// The given bounds are used to influence line-wrapping (if enabled).
-    /// `f32::INFINITY` may be used where no bounds are required.
+    /// [`Vec2::INFINITY`] may be used where no bounds are required.
     ///
     /// The `scale` is used to set the base scale: rich text may adjust this.
     pub fn prepare(&mut self, bounds: Vec2, scale: FontScale) {
@@ -53,8 +53,8 @@ impl PreparedText {
     }
 
     /// Set the text
-    pub fn set_text(&mut self, text: RichText) -> TkAction {
-        if self.0.set_text(text) {
+    pub fn set_text<T: Into<RichText>>(&mut self, text: T) -> TkAction {
+        if self.0.set_text(text.into()) {
             // Layout must be re-calculated which currently requires resizing
             TkAction::Resize
         } else {

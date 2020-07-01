@@ -116,7 +116,10 @@ macro_rules! impl_vec2 {
     ($T:ident, $f:ty) => {
         impl $T {
             /// Zero
-            pub const ZERO: $T = $T(0.0, 0.0);
+            pub const ZERO: $T = $T::splat(0.0);
+            
+            /// Positive infinity
+            pub const INFINITY: $T = $T::splat(<$f>::INFINITY);
 
             /// Constructs a new instance with each element initialized to `value`.
             #[inline]

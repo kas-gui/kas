@@ -388,7 +388,7 @@ impl<G> EditBox<G> {
         }
         self.sel_pos = self.edit_pos;
 
-        *mgr += self.prepared.set_text(self.text.clone().into());
+        *mgr += self.prepared.set_text(self.text.clone());
         EditAction::Edit
     }
 
@@ -503,7 +503,7 @@ impl<G> EditBox<G> {
                     self.edit_pos = *pos2;
                     *pos2 = pos;
                     std::mem::swap(sel_pos, &mut self.sel_pos);
-                    mgr_action += self.prepared.set_text(self.text.clone().into());
+                    mgr_action += self.prepared.set_text(self.text.clone());
                     self.last_edit = LastEdit::None;
                 }
                 Action::Edit
@@ -533,7 +533,7 @@ impl<G> EditBox<G> {
                 }
                 self.edit_pos = pos + s.len();
                 self.sel_pos = self.edit_pos;
-                mgr_action += self.prepared.set_text(self.text.clone().into());
+                mgr_action += self.prepared.set_text(self.text.clone());
                 EditAction::Edit
             }
             Action::Delete(sel) => {
@@ -545,7 +545,7 @@ impl<G> EditBox<G> {
                 self.text.replace_range(sel.clone(), "");
                 self.edit_pos = sel.start;
                 self.sel_pos = sel.start;
-                mgr_action += self.prepared.set_text(self.text.clone().into());
+                mgr_action += self.prepared.set_text(self.text.clone());
                 EditAction::Edit
             }
             Action::Move(pos) => {
@@ -571,7 +571,7 @@ impl<G> EditBox<G> {
 impl<G: EditGuard> SetText for EditBox<G> {
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.text = text.to_string();
-        let action = self.prepared.set_text(self.text.clone().into());
+        let action = self.prepared.set_text(self.text.clone());
         let _ = G::edit(self);
         action
     }

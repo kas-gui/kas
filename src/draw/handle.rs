@@ -136,7 +136,14 @@ pub trait SizeHandle {
     /// The height of a line of text
     fn line_height(&self, class: TextClass) -> u32;
 
+    /// Prepare a text
+    ///
+    /// This must be done before drawing to avoid a "not ready" error.
+    fn prepare(&mut self, text: &mut PreparedText, class: TextClass);
+
     /// Get a text label size bound
+    /// 
+    /// This also prepares the text.
     ///
     /// Sizing requirements of [`DrawHandle::text`].
     fn text_bound(
@@ -381,6 +388,9 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn line_height(&self, class: TextClass) -> u32 {
         self.deref().line_height(class)
     }
+    fn prepare(&mut self, text: &mut PreparedText, class: TextClass) {
+        self.deref_mut().prepare(text, class)
+    }
     fn text_bound(
         &mut self,
         text: &mut PreparedText,
@@ -435,6 +445,9 @@ where
 
     fn line_height(&self, class: TextClass) -> u32 {
         self.deref().line_height(class)
+    }
+    fn prepare(&mut self, text: &mut PreparedText, class: TextClass) {
+        self.deref_mut().prepare(text, class)
     }
     fn text_bound(
         &mut self,
