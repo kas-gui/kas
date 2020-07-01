@@ -252,11 +252,21 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         &mut self,
         pos: Coord,
         text: &PreparedText,
-        _range: Range<usize>,
+        range: Range<usize>,
         class: TextClass,
     ) {
-        // TODO: highlight range
-        self.text(pos, text, class);
+        let pos = pos + self.offset;
+        let col = self.cols.text_class(class);
+
+        // Draw background:
+        let pos1 = text.text_glyph_pos(pos, range.start);
+        let mut pos2 = text.text_glyph_pos(pos, range.end);
+        pos2.1 += self.window.dims.font_scale;
+        let quad = Quad::with_coords(pos1, pos2);
+        self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
+
+        // TODO: which should use self.cols.text_sel for the selected range!
+        self.draw.text(self.pass, pos.into(), col, text);
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
