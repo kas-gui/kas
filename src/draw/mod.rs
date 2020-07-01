@@ -39,15 +39,14 @@
 
 mod colour;
 mod handle;
-mod text;
 
 use std::any::Any;
 
 use crate::geom::{Quad, Rect, Vec2};
+use crate::text::PreparedText;
 
 pub use colour::Colour;
 pub use handle::*;
-pub use text::*;
 
 /// Pass identifier
 ///
@@ -210,4 +209,13 @@ pub trait DrawShaded: Draw {
         norm: (f32, f32),
         col: Colour,
     );
+}
+
+/// Abstraction over text rendering
+///
+/// Note: the current API is designed to meet only current requirements since
+/// changes are expected to support external font shaping libraries.
+pub trait DrawText {
+    /// Draw text
+    fn text(&mut self, pass: Pass, pos: Vec2, col: Colour, text: &PreparedText);
 }
