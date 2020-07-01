@@ -259,9 +259,9 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         self.text(pos, text, class);
     }
 
-    fn edit_marker(&mut self, pos: Coord, _text: &PreparedText, class: TextClass, _byte: usize) {
+    fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
         let col = self.cols.text_class(class);
-        // TODO: let pos = self.draw.text_glyph_pos(text, byte);
+        let pos = text.text_glyph_pos(pos + self.offset, byte);
         let size = self.window.dims.edit_marker_size();
         let quad = Quad::with_pos_and_size(pos.into(), size);
         self.draw.rect(self.pass, quad, col);

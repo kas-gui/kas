@@ -101,6 +101,12 @@ impl std::ops::Add<Size> for Coord {
     }
 }
 
+impl From<Coord> for kas_text::Size {
+    fn from(pos: Coord) -> kas_text::Size {
+        kas_text::Size(pos.0 as f32, pos.1 as f32)
+    }
+}
+
 #[cfg(feature = "winit")]
 impl<X: Pixel> From<PhysicalPosition<X>> for Coord {
     #[inline]

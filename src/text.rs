@@ -5,7 +5,7 @@
 
 //! Abstractions over `kas-text`
 
-use kas::geom::{Size, Vec2};
+use kas::geom::{Coord, Size, Vec2};
 use kas::{Align, TkAction};
 pub use kas_text::{
     fonts, Font, FontId, FontScale, PreparedPart, RichText, SectionGlyph, TextPart,
@@ -95,11 +95,32 @@ impl PreparedText {
         self.0.num_parts()
     }
 
-    pub fn positioned_glyphs(&self, offset: Vec2) -> Vec<SectionGlyph> {
-        self.0.positioned_glyphs(offset.into())
+    pub fn positioned_glyphs(&self, pos: Vec2) -> Vec<SectionGlyph> {
+        self.0.positioned_glyphs(pos.into())
     }
 
     pub fn required_size(&self) -> Vec2 {
         self.0.required_size().into()
+    }
+
+    /// Find the starting position (top-left) of the glyph at the given index
+    ///
+    /// May panic on invalid byte index.
+    ///
+    /// This method is only partially compatible with mult-line text.
+    /// Ideally an external line-breaker should be used.
+    pub fn text_glyph_pos(&self, pos: Coord, index: usize) -> Vec2 {
+        Vec2::from(pos) + Vec2::from(self.0.text_glyph_pos(index))
+    }
+
+    /// Find the text index for the glyph nearest the given `coord`, relative to `pos`
+    ///
+    /// This includes the index immediately after the last glyph, thus
+    /// `result ≤ text.len()`.
+    ///
+    /// This method is only partially compatible with mult-line text.
+    /// Ideally an external line-breaker should be used.
+    pub fn text_index_nearest(&self, pos: Coord, coord: Coord) -> usize {
+        self.0.text_index_nearest((coord - pos).into())
     }
 }

@@ -8,10 +8,10 @@
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use kas::draw::{Draw, Pass};
-use kas::geom::{Coord, Rect, Size, Vec2};
+use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::text::PreparedText;
-use kas::{Align, Direction};
+use kas::Direction;
 
 /// Classification of a clip region
 pub enum ClipRegion {
@@ -145,22 +145,6 @@ pub trait SizeHandle {
         class: TextClass,
         axis: AxisInfo,
     ) -> SizeRules;
-
-    /// Find the text index nearest to `pos`
-    ///
-    /// Text is assumed to be positioned as in [`DrawHandle::text`], except
-    /// that we do not adjust `rect` by the `clip_region`'s `offset`. Instead it
-    /// is assumed that any `offset` has already been subtracted from `pos`.
-    ///
-    /// The returned `index ≤ text.len()`.
-    fn text_index_nearest(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        line_wrap: bool,
-        align: (Align, Align),
-        pos: Vec2,
-    ) -> usize;
 
     /// Size of the sides of a button.
     ///
@@ -405,17 +389,6 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     ) -> SizeRules {
         self.deref_mut().text_bound(text, class, axis)
     }
-    fn text_index_nearest(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        line_wrap: bool,
-        align: (Align, Align),
-        pos: Vec2,
-    ) -> usize {
-        self.deref_mut()
-            .text_index_nearest(rect, text, line_wrap, align, pos)
-    }
 
     fn button_surround(&self) -> (Size, Size) {
         self.deref().button_surround()
@@ -470,17 +443,6 @@ where
         axis: AxisInfo,
     ) -> SizeRules {
         self.deref_mut().text_bound(text, class, axis)
-    }
-    fn text_index_nearest(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        line_wrap: bool,
-        align: (Align, Align),
-        pos: Vec2,
-    ) -> usize {
-        self.deref_mut()
-            .text_index_nearest(rect, text, line_wrap, align, pos)
     }
 
     fn button_surround(&self) -> (Size, Size) {

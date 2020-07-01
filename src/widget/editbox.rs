@@ -553,6 +553,7 @@ impl<G> EditBox<G> {
                 if !shift {
                     self.sel_pos = self.edit_pos;
                 }
+                mgr_action += TkAction::Redraw;
                 EditAction::None
             }
         };
@@ -562,11 +563,7 @@ impl<G> EditBox<G> {
     }
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
-        let align = (Align::Default, Align::Default);
-        let rect = Rect::new(self.text_pos, Size::ZERO);
-        self.edit_pos = mgr.size_handle(|h| {
-            h.text_index_nearest(rect, &self.text, self.multi_line, align, coord.into())
-        });
+        self.edit_pos = self.prepared.text_index_nearest(self.text_pos, coord);
         mgr.redraw(self.id());
     }
 }
