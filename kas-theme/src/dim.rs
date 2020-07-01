@@ -10,7 +10,7 @@
 use std::any::Any;
 use std::f32;
 
-use kas::draw::{self, DrawText, TextClass};
+use kas::draw::{self, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
 use kas::text::{FontId, PreparedText};
@@ -99,21 +99,20 @@ impl DimensionsWindow {
     }
 }
 
-// TODO: should we remove this Draw parameter?
-impl<Draw: DrawText + 'static> crate::Window<Draw> for DimensionsWindow {
+impl crate::Window for DimensionsWindow {
     #[cfg(not(feature = "gat"))]
     type SizeHandle = SizeHandle<'static>;
     #[cfg(feature = "gat")]
     type SizeHandle<'a> = SizeHandle<'a>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle<'a>(&'a mut self, _: &'a mut Draw) -> Self::SizeHandle {
+    unsafe fn size_handle<'a>(&'a mut self) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
         let h: SizeHandle<'a> = SizeHandle::new(&self.dims);
         std::mem::transmute(h)
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, _: &'a mut Draw) -> Self::SizeHandle<'a> {
+    fn size_handle<'a>(&'a mut self) -> Self::SizeHandle<'a> {
         SizeHandle::new(&self.dims)
     }
 

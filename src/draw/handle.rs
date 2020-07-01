@@ -142,7 +142,7 @@ pub trait SizeHandle {
     fn prepare(&mut self, text: &mut PreparedText, class: TextClass);
 
     /// Get a text label size bound
-    /// 
+    ///
     /// This also prepares the text.
     ///
     /// Sizing requirements of [`DrawHandle::text`].

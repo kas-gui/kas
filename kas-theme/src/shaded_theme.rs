@@ -195,7 +195,7 @@ where
 {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
-            let mut size_handle = self.window.size_handle(self.draw);
+            let mut size_handle = self.window.size_handle();
             f(&mut size_handle);
         }
     }

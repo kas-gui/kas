@@ -117,7 +117,7 @@ macro_rules! impl_vec2 {
         impl $T {
             /// Zero
             pub const ZERO: $T = $T::splat(0.0);
-            
+
             /// Positive infinity
             pub const INFINITY: $T = $T::splat(<$f>::INFINITY);
 
