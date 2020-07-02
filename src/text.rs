@@ -8,7 +8,8 @@
 use kas::geom::{Coord, Size, Vec2};
 use kas::{Align, TkAction};
 pub use kas_text::{
-    fonts, Font, FontId, FontScale, PreparedPart, RichText, SectionGlyph, TextPart,
+    fonts, Font, FontId, FontScale, PreparedGlyphIter, PreparedPart, RichText, SectionGlyph,
+    TextPart,
 };
 
 /// Text, prepared for display in a given enviroment
@@ -95,7 +96,7 @@ impl PreparedText {
         self.0.num_parts()
     }
 
-    pub fn positioned_glyphs(&self, pos: Vec2) -> Vec<SectionGlyph> {
+    pub fn positioned_glyphs(&self, pos: Vec2) -> PreparedGlyphIter {
         self.0.positioned_glyphs(pos.into())
     }
 
