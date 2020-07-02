@@ -103,7 +103,7 @@ impl<Draw> MultiThemeBuilder<Draw> {
 }
 
 impl<D: DrawShared + 'static> Theme<D> for MultiTheme<D> {
-    type Window = StackDst<dyn WindowDst<D::Draw>>;
+    type Window = StackDst<dyn WindowDst>;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = StackDst<dyn DrawHandle>;

@@ -10,10 +10,10 @@
 use std::any::Any;
 use std::f32;
 
-use kas::draw::{self, DrawText, FontId, TextClass, TextPart, TextSection};
-use kas::geom::{Rect, Size, Vec2};
+use kas::draw::{self, TextClass};
+use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
-use kas::Align;
+use kas::text::{FontId, PreparedText};
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -65,7 +65,7 @@ impl Dimensions {
         Dimensions {
             font_id,
             font_scale,
-            font_marker_width: (2.0 * scale_factor).round(),
+            font_marker_width: (font_size * (1.0 / 9.0)).round().max(1.0),
             scale_factor,
             line_height,
             // We appear to average about 2 characters per line_height
@@ -99,21 +99,21 @@ impl DimensionsWindow {
     }
 }
 
-impl<Draw: DrawText + 'static> crate::Window<Draw> for DimensionsWindow {
+impl crate::Window for DimensionsWindow {
     #[cfg(not(feature = "gat"))]
-    type SizeHandle = SizeHandle<'static, Draw>;
+    type SizeHandle = SizeHandle<'static>;
     #[cfg(feature = "gat")]
-    type SizeHandle<'a> = SizeHandle<'a, Draw>;
+    type SizeHandle<'a> = SizeHandle<'a>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle {
+    unsafe fn size_handle<'a>(&'a mut self) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        let h: SizeHandle<'a, Draw> = SizeHandle::new(draw, &self.dims);
+        let h: SizeHandle<'a> = SizeHandle::new(&self.dims);
         std::mem::transmute(h)
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle<'a> {
-        SizeHandle::new(draw, &self.dims)
+    fn size_handle<'a>(&'a mut self) -> Self::SizeHandle<'a> {
+        SizeHandle::new(&self.dims)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
@@ -121,18 +121,17 @@ impl<Draw: DrawText + 'static> crate::Window<Draw> for DimensionsWindow {
     }
 }
 
-pub struct SizeHandle<'a, Draw> {
-    draw: &'a mut Draw,
+pub struct SizeHandle<'a> {
     dims: &'a Dimensions,
 }
 
-impl<'a, Draw> SizeHandle<'a, Draw> {
-    pub fn new(draw: &'a mut Draw, dims: &'a Dimensions) -> Self {
-        SizeHandle { draw, dims }
+impl<'a> SizeHandle<'a> {
+    pub fn new(dims: &'a Dimensions) -> Self {
+        SizeHandle { dims }
     }
 }
 
-impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
+impl<'a> draw::SizeHandle for SizeHandle<'a> {
     fn scale_factor(&self) -> f32 {
         self.dims.scale_factor
     }
@@ -158,26 +157,25 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
         self.dims.line_height
     }
 
-    fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
-        let part = TextPart {
-            start: 0,
-            end: text.len() as u32,
-            scale: self.dims.font_scale.into(),
-            font: self.dims.font_id,
-            col: Default::default(),
-        };
+    fn prepare(&mut self, text: &mut PreparedText, _class: TextClass) {
+        text.prepare(Vec2::INFINITY, self.dims.font_scale.into());
+    }
+
+    fn text_bound(
+        &mut self,
+        text: &mut PreparedText,
+        class: TextClass,
+        axis: AxisInfo,
+    ) -> SizeRules {
         let line_height = self.dims.line_height;
-        let mut bounds = (f32::INFINITY, f32::INFINITY);
+        let mut bounds = Vec2::INFINITY;
         if let Some(size) = axis.size_other_if_fixed(false) {
             bounds.1 = size as f32;
         } else if let Some(size) = axis.size_other_if_fixed(true) {
             bounds.0 = size as f32;
         }
-        let line_wrap = match class {
-            TextClass::Label | TextClass::EditMulti => true,
-            TextClass::Button | TextClass::Edit => false,
-        };
-        let bounds = self.draw.text_bound(bounds, line_wrap, text, &[part]);
+        text.prepare(bounds, self.dims.font_scale.into());
+        let bounds = text.required_size();
 
         let margins = (self.dims.margin as u16, self.dims.margin as u16);
         if axis.is_horizontal() {
@@ -194,40 +192,13 @@ impl<'a, Draw: DrawText> draw::SizeHandle for SizeHandle<'a, Draw> {
                 TextClass::EditMulti => line_height * 3,
                 _ => line_height,
             };
-            let ideal = (bounds.1 as u32).max(line_height);
+            let ideal = (bounds.1 as u32).max(min);
             let stretch = match class {
                 TextClass::Button | TextClass::Edit => StretchPolicy::Fixed,
                 _ => StretchPolicy::Filler,
             };
             SizeRules::new(min, ideal, margins, stretch)
         }
-    }
-
-    fn text_index_nearest(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        line_wrap: bool,
-        align: (Align, Align),
-        pos: Vec2,
-    ) -> usize {
-        // Note: we don't add offset here since it was already subtracted from
-        // pos (e.g. via ScrollRegion::send).
-        let end = text.len() as u32;
-        let text = TextSection {
-            text,
-            rect,
-            align,
-            line_wrap,
-            parts: &[TextPart {
-                start: 0,
-                end,
-                scale: self.dims.font_scale.into(),
-                font: self.dims.font_id,
-                col: Default::default(),
-            }],
-        };
-        self.draw.text_index_nearest(text, pos)
     }
 
     fn button_surround(&self) -> (Size, Size) {

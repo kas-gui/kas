@@ -88,22 +88,20 @@ impl<W: HasBool + Widget> HasBool for Frame<W> {
     }
 }
 
-impl<W: HasText + Widget> HasText for Frame<W> {
-    fn get_text(&self) -> &str {
-        self.child.get_text()
-    }
-
+impl<W: SetText + Widget> SetText for Frame<W> {
     fn set_cow_string(&mut self, text: CowString) -> TkAction {
         self.child.set_cow_string(text)
     }
 }
 
-impl<W: Editable + Widget> Editable for Frame<W> {
-    fn is_editable(&self) -> bool {
-        self.child.is_editable()
+impl<W: HasText + Widget> HasText for Frame<W> {
+    fn get_text(&self) -> &str {
+        self.child.get_text()
     }
+}
 
-    fn set_editable(&mut self, editable: bool) {
-        self.child.set_editable(editable);
+impl<W: HasRichText + Widget> HasRichText for Frame<W> {
+    fn clone_rich_text(&self) -> kas::text::RichText {
+        self.child.clone_rich_text()
     }
 }

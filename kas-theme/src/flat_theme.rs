@@ -12,11 +12,12 @@ use std::ops::Range;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::draw::{
-    self, ClipRegion, Colour, Draw, DrawRounded, DrawShared, DrawText, DrawTextShared, FontId,
-    InputState, Pass, SizeHandle, TextClass, TextPart, TextSection,
+    self, ClipRegion, Colour, Draw, DrawRounded, DrawShared, DrawText, InputState, Pass,
+    SizeHandle, TextClass,
 };
 use kas::geom::*;
-use kas::{Align, Direction, Directional, ThemeAction, ThemeApi};
+use kas::text::{FontId, PreparedText};
+use kas::{Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
@@ -54,7 +55,7 @@ pub struct DrawHandle<'a, D: Draw> {
     pub(crate) pass: Pass,
 }
 
-impl<D: DrawShared + DrawTextShared + 'static> Theme<D> for FlatTheme
+impl<D: DrawShared + 'static> Theme<D> for FlatTheme
 where
     D::Draw: DrawRounded + DrawText,
 {
@@ -65,8 +66,8 @@ where
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = DrawHandle<'a, D::Draw>;
 
-    fn init(&mut self, draw: &mut D) {
-        self.font_id = crate::load_fonts(draw);
+    fn init(&mut self, _draw: &mut D) {
+        self.font_id = kas::text::fonts().load_default().unwrap();
     }
 
     fn new_window(&self, _draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
@@ -133,28 +134,6 @@ impl ThemeApi for FlatTheme {
     }
 }
 
-macro_rules! text_section {
-    ($self:ident, $rect:ident, $text:ident, $class:ident, $align:ident) => {{
-        let end = $text.len() as u32;
-        TextSection {
-            text: $text,
-            rect: $rect + $self.offset,
-            align: $align,
-            line_wrap: match $class {
-                TextClass::Label | TextClass::EditMulti => true,
-                TextClass::Button | TextClass::Edit => false,
-            },
-            parts: &[TextPart {
-                start: 0,
-                end,
-                scale: $self.window.dims.font_scale.into(),
-                font: $self.window.dims.font_id,
-                col: $self.cols.text_class($class),
-            }],
-        }
-    }};
-}
-
 impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
     /// Draw an edit box with optional navigation highlight.
     /// Return the inner rect.
@@ -200,7 +179,7 @@ impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
 impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D> {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
-            let mut size_handle = self.window.size_handle(self.draw);
+            let mut size_handle = self.window.size_handle();
             f(&mut size_handle);
         }
     }
@@ -263,78 +242,38 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
     }
 
-    fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
-        let text = text_section!(self, rect, text, class, align);
-        self.draw.text_section(self.pass, text);
+    fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass) {
+        let pos = pos + self.offset;
+        let col = self.cols.text_class(class);
+        self.draw.text(self.pass, pos.into(), col, text);
     }
 
     fn text_selected_range(
         &mut self,
-        rect: Rect,
-        text: &str,
+        pos: Coord,
+        text: &PreparedText,
         range: Range<usize>,
         class: TextClass,
-        align: (Align, Align),
     ) {
-        let start = range.start.min(text.len());
-        let end = range.end.min(text.len());
+        let pos = pos + self.offset;
+        let col = self.cols.text_class(class);
 
-        let part = TextPart {
-            start: 0,
-            end: text.len() as u32,
-            scale: self.window.dims.font_scale.into(),
-            font: self.window.dims.font_id,
-            col: self.cols.text_class(class),
-        };
-        let mut parts = [part, part, part];
+        // Draw background:
+        let pos1 = text.text_glyph_pos(pos, range.start);
+        let mut pos2 = text.text_glyph_pos(pos, range.end);
+        pos2.1 += self.window.dims.font_scale;
+        let quad = Quad::with_coords(pos1, pos2);
+        self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
 
-        let mut len = 0;
-        if start > 0 {
-            parts[len].end = start as u32;
-            len += 1;
-        }
-        if start < end {
-            parts[len].start = start as u32;
-            parts[len].end = end as u32;
-            parts[len].col = self.cols.text_sel;
-            len += 1;
-        }
-        if end < text.len() {
-            parts[len].start = end as u32;
-            len += 1;
-        }
-
-        let section = TextSection {
-            text,
-            rect,
-            align,
-            line_wrap: class.line_wrap(),
-            parts: &parts[0..len],
-        };
-        self.draw.text_section(self.pass, section);
-
-        if start < end {
-            let pos1 = self.draw.text_glyph_pos(section, start);
-            let mut pos2 = self.draw.text_glyph_pos(section, end);
-            pos2.1 += self.window.dims.font_scale;
-            let quad = Quad::with_coords(pos1, pos2);
-            self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
-        }
+        // TODO: which should use self.cols.text_sel for the selected range!
+        self.draw.text(self.pass, pos.into(), col, text);
     }
 
-    fn edit_marker(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        class: TextClass,
-        align: (Align, Align),
-        byte: usize,
-    ) {
-        let text = text_section!(self, rect, text, class, align);
-        let col = text.parts[0].col;
-        let pos = self.draw.text_glyph_pos(text, byte);
+    fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
+        let col = self.cols.text_class(class);
+        let pos = text.text_glyph_pos(pos + self.offset, byte);
         let size = self.window.dims.edit_marker_size();
-        let quad = Quad::with_pos_and_size(pos, size);
+        let quad = Quad::with_pos_and_size(pos.into(), size);
         self.draw.rect(self.pass, quad, col);
     }
 

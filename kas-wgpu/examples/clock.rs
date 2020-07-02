@@ -12,9 +12,10 @@ use log::info;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::draw::{Colour, DrawRounded, DrawText, TextClass, TextProperties};
+use kas::draw::{Colour, DrawRounded, DrawText};
 use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
+use kas::text::PreparedText;
 use kas::widget::Window;
 use kas_wgpu::draw::DrawWindow;
 
@@ -24,22 +25,17 @@ use kas_wgpu::draw::DrawWindow;
 struct Clock {
     #[widget_core]
     core: kas::CoreData,
-    date_rect: Rect,
-    time_rect: Rect,
-    font_scale: f32,
+    date_pos: Coord,
+    time_pos: Coord,
     now: DateTime<Local>,
-    date: String,
-    time: String,
+    date: PreparedText,
+    time: PreparedText,
 }
 
 impl Layout for Clock {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
-        // Always use value for horiz axis: we want a square shape
-        let axis = AxisInfo::new(false, None);
-        let text_req = size_handle.text_bound("0000-00-00", TextClass::Label, axis);
-        // extra makes default size larger without affecting min size
-        let extra = SizeRules::new(0, 100, (0, 0), StretchPolicy::HighUtility);
-        text_req.surrounded_by(extra, false)
+    fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
+        // We want a square shape and can resize freely. Numbers are arbitrary.
+        SizeRules::new(100, 200, (0, 0), StretchPolicy::HighUtility)
     }
 
     #[inline]
@@ -51,10 +47,15 @@ impl Layout for Clock {
         let pos = rect.pos + (excess * 0.5);
         self.core.rect = Rect { pos, size };
 
+        let font_scale = (size.1 as f32 * 0.125).into();
+        self.date.prepare(Vec2::INFINITY, font_scale);
+        self.time.prepare(Vec2::INFINITY, font_scale);
+
         let half_size = Size(size.0, size.1 / 2);
-        self.date_rect = Rect::new(pos + Size(0, size.1 - half_size.1), half_size);
-        self.time_rect = Rect::new(pos, half_size);
-        self.font_scale = size.1 as f32 * 0.125;
+        self.date.set_size(half_size);
+        self.time.set_size(half_size);
+        self.date_pos = pos + Size(0, size.1 - half_size.1);
+        self.time_pos = pos;
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
@@ -99,14 +100,8 @@ impl Layout for Clock {
         line_seg(a_min, 0.0, half * 0.8, half * 0.015, col_hands);
         line_seg(a_sec, 0.0, half * 0.9, half * 0.005, col_secs);
 
-        let props = TextProperties {
-            scale: self.font_scale.into(),
-            col: col_text,
-            align: (Align::Centre, Align::Centre),
-            ..TextProperties::default()
-        };
-        draw.text(pass, self.date_rect + offset, &self.date, props);
-        draw.text(pass, self.time_rect + offset, &self.time, props);
+        draw.text(pass, (self.date_pos + offset).into(), col_text, &self.date);
+        draw.text(pass, (self.time_pos + offset).into(), col_text, &self.time);
     }
 }
 
@@ -124,9 +119,8 @@ impl Handler for Clock {
         match event {
             Event::TimerUpdate => {
                 self.now = Local::now();
-                mgr.redraw(self.id());
-                self.date = self.now.format("%Y-%m-%d").to_string();
-                self.time = self.now.format("%H:%M:%S").to_string();
+                *mgr += self.date.set_text(self.now.format("%Y-%m-%d").to_string())
+                    + self.time.set_text(self.now.format("%H:%M:%S").to_string());
                 let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                 info!("Requesting update in {}ns", ns);
                 mgr.update_on_timer(Duration::new(0, ns), self.id());
@@ -139,14 +133,17 @@ impl Handler for Clock {
 
 impl Clock {
     fn new() -> Self {
+        let mut date = PreparedText::new("0000-00-00".into(), false);
+        let mut time = PreparedText::new("00:00:00".into(), false);
+        date.set_alignment(Align::Centre, Align::Centre);
+        time.set_alignment(Align::Centre, Align::Centre);
         Clock {
             core: Default::default(),
-            date_rect: Rect::default(),
-            time_rect: Rect::default(),
-            font_scale: 0.0,
+            date_pos: Coord::ZERO,
+            time_pos: Coord::ZERO,
             now: Local::now(),
-            date: "".to_string(),
-            time: "".to_string(),
+            date,
+            time,
         }
     }
 }

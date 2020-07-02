@@ -6,9 +6,9 @@
 //! Sub-menu
 
 use super::{Menu, MenuFrame};
-use kas::class::HasText;
+use kas::class::{HasRichText, SetText};
 use kas::draw::TextClass;
-use kas::event::{ConfigureManager, ControlKey};
+use kas::event::{ConfigureManager, ControlKey, VirtualKeyCodes};
 use kas::prelude::*;
 use kas::widget::Column;
 use kas::WindowId;
@@ -21,7 +21,8 @@ pub struct SubMenu<D: Directional, W: Menu> {
     #[widget_core]
     core: CoreData,
     direction: D,
-    label: AccelString,
+    keys: VirtualKeyCodes,
+    label: PreparedText,
     label_off: Coord,
     #[widget]
     pub list: MenuFrame<Column<W>>,
@@ -59,10 +60,14 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
     /// Construct a sub-menu
     #[inline]
     pub fn new_with_direction<S: Into<AccelString>>(direction: D, label: S, list: Vec<W>) -> Self {
+        let label = label.into();
+        let text = PreparedText::new(label.get(false).into(), false);
+        let keys = label.take_keys();
         SubMenu {
             core: Default::default(),
             direction,
-            label: label.into(),
+            keys,
+            label: text,
             label_off: Coord::ZERO,
             list: MenuFrame::new(Column::new(list)),
             popup_id: None,
@@ -94,7 +99,7 @@ impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
         self.core_data_mut().id = cmgr.next_id(self.id());
         let mgr = cmgr.mgr();
         mgr.pop_accel_layer(self.id());
-        mgr.add_accel_keys(self.id(), self.label.keys());
+        mgr.add_accel_keys(self.id(), &self.keys);
     }
 
     fn key_nav(&self) -> bool {
@@ -107,8 +112,17 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
         let size = size_handle.menu_frame();
         self.label_off = size.into();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, Margins::ZERO);
-        let text_rules = size_handle.text_bound(self.label.get(false), TextClass::Label, axis);
+        let text_rules = size_handle.text_bound(&mut self.label, TextClass::Label, axis);
         text_rules.surrounded_by(frame_rules, true)
+    }
+
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
+        self.core.rect = rect;
+        self.label.set_size(rect.size);
+        self.label.set_alignment(
+            align.horiz.unwrap_or(Align::Default),
+            align.vert.unwrap_or(Align::Centre),
+        );
     }
 
     fn spatial_range(&self) -> (usize, usize) {
@@ -120,13 +134,9 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
         let mut state = self.input_state(mgr, disabled);
         state.depress = state.depress || self.popup_id.is_some();
         draw_handle.menu_entry(self.core.rect, state);
-        let rect = Rect {
-            pos: self.core.rect.pos + self.label_off,
-            size: self.core.rect.size - self.label_off.into(),
-        };
-        let text = self.label.get(mgr.show_accel_labels());
-        let align = (Align::Begin, Align::Centre);
-        draw_handle.text(rect, text, TextClass::Label, align);
+        let pos = self.core.rect.pos + self.label_off;
+        // TODO: mgr.show_accel_labels();
+        draw_handle.text(pos, &self.label, TextClass::Label);
     }
 }
 
@@ -268,13 +278,17 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, W: Menu> HasText for SubMenu<D, W> {
-    fn get_text(&self) -> &str {
-        self.label.get(false)
+impl<D: Directional, W: Menu> SetText for SubMenu<D, W> {
+    fn set_cow_string(&mut self, label: CowString) -> TkAction {
+        let label = AccelString::from(label);
+        let text = label.get(false).to_string();
+        self.keys = label.take_keys();
+        self.label.set_text(text)
     }
+}
 
-    fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.label = text.into();
-        TkAction::Redraw
+impl<D: Directional, W: Menu> HasRichText for SubMenu<D, W> {
+    fn clone_rich_text(&self) -> kas::text::RichText {
+        self.label.clone_text()
     }
 }

@@ -8,7 +8,7 @@
 
 use std::cell::RefCell;
 
-use kas::class::HasText;
+use kas::class::SetText;
 use kas::event::{Event, Handler, Manager, Response, UpdateHandle, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};

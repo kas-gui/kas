@@ -5,10 +5,9 @@
 
 //! Push-buttons
 
-use smallvec::SmallVec;
 use std::fmt::Debug;
 
-use kas::class::HasText;
+use kas::class::{HasRichText, SetText};
 use kas::draw::TextClass;
 use kas::event::{VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
@@ -20,17 +19,17 @@ use kas::prelude::*;
 pub struct TextButton<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
-    keys: VirtualKeyCodes,
-    // text_rect: Rect,
-    label: AccelString,
+    keys1: VirtualKeyCodes,
+    keys2: VirtualKeyCodes,
+    // label_rect: Rect,
+    label: PreparedText,
     msg: M,
 }
 
 impl<M: Clone + Debug + 'static> WidgetConfig for TextButton<M> {
     fn configure(&mut self, mgr: &mut Manager) {
-        // TODO: consider merging these two lists?
-        mgr.add_accel_keys(self.id(), &self.keys);
-        mgr.add_accel_keys(self.id(), self.label.keys());
+        mgr.add_accel_keys(self.id(), &self.keys1);
+        mgr.add_accel_keys(self.id(), &self.keys2);
     }
 
     fn key_nav(&self) -> bool {
@@ -44,24 +43,28 @@ impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
         let margins = size_handle.outer_margins();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
 
-        let content_rules = size_handle.text_bound(self.label.get(false), TextClass::Button, axis);
+        let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
 
         // In theory, text rendering should be restricted as in EditBox.
         // In practice, it sometimes overflows a tiny bit, and looks better if
         // we let it overflow. Since the text is centred this is okay.
-        // self.text_rect = ...
+        // self.label_rect = ...
+        self.label.set_size(rect.size);
+        self.label.set_alignment(
+            align.horiz.unwrap_or(Align::Centre),
+            align.vert.unwrap_or(Align::Centre),
+        );
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
-        let text = self.label.get(mgr.show_accel_labels());
-        let align = (Align::Centre, Align::Centre);
-        draw_handle.text(self.core.rect, text, TextClass::Button, align);
+        // TODO: mgr.show_accel_labels();
+        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Button);
     }
 }
 
@@ -73,18 +76,25 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     /// simple `Copy` type (e.g. an enum). Click actions must be implemented on
     /// the parent (or other ancestor).
     pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
+        let label = label.into();
+        let text = PreparedText::new(label.get(false).into(), false);
+        let keys2 = label.take_keys();
         TextButton {
             core: Default::default(),
-            keys: SmallVec::new(),
-            // text_rect: Default::default(),
-            label: label.into(),
+            keys1: Default::default(),
+            keys2,
+            // label_rect: Default::default(),
+            label: text,
             msg,
         }
     }
 
-    /// Set accelerator keys (chain style)
+    /// Add accelerator keys (chain style)
+    ///
+    /// These keys are added to those inferred from the label via `&` marks.
     pub fn with_keys(mut self, keys: &[VirtualKeyCode]) -> Self {
-        self.set_keys(keys);
+        self.keys1.clear();
+        self.keys1.extend_from_slice(keys);
         self
     }
 
@@ -92,21 +102,20 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     pub fn set_msg(&mut self, msg: M) {
         self.msg = msg;
     }
+}
 
-    /// Set accelerator keys
-    pub fn set_keys(&mut self, keys: &[VirtualKeyCode]) {
-        self.keys = SmallVec::from_slice(keys);
+impl<M: Clone + Debug + 'static> SetText for TextButton<M> {
+    fn set_cow_string(&mut self, label: CowString) -> TkAction {
+        let label = AccelString::from(label);
+        let text = label.get(false).to_string();
+        self.keys2 = label.take_keys();
+        self.label.set_text(text)
     }
 }
 
-impl<M: Clone + Debug + 'static> HasText for TextButton<M> {
-    fn get_text(&self) -> &str {
-        self.label.get(false)
-    }
-
-    fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.label = text.into();
-        TkAction::Redraw
+impl<M: Clone + Debug + 'static> HasRichText for TextButton<M> {
+    fn clone_rich_text(&self) -> kas::text::RichText {
+        self.label.clone_text()
     }
 }
 

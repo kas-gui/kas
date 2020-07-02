@@ -237,9 +237,9 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
             if align != Align::Stretch && rect.size.0 > ideal {
                 let extra = rect.size.0 - ideal;
                 w_offsets.as_mut()[0] = match align {
-                    Align::Begin | Align::Stretch => 0,
+                    Align::Default | Align::TL | Align::Stretch => 0,
                     Align::Centre => extra / 2,
-                    Align::End => extra,
+                    Align::BR => extra,
                 };
             }
 
@@ -262,9 +262,9 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
             if align != Align::Stretch && rect.size.1 > ideal {
                 let extra = rect.size.1 - ideal;
                 h_offsets.as_mut()[0] = match align {
-                    Align::Begin | Align::Stretch => 0,
+                    Align::Default | Align::TL | Align::Stretch => 0,
                     Align::Centre => extra / 2,
-                    Align::End => extra,
+                    Align::BR => extra,
                 };
             }
 

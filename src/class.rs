@@ -10,8 +10,7 @@
 
 use crate::{string::CowString, TkAction};
 
-/// Functionality for widgets which can be toggled or selected: check boxes,
-/// radio buttons, toggle switches.
+/// Read / write a boolean value
 ///
 /// The value `true` means *checked*, *selected* or *toggled on*.
 pub trait HasBool {
@@ -22,17 +21,11 @@ pub trait HasBool {
     fn set_bool(&mut self, state: bool) -> TkAction;
 }
 
-/// Functionality for widgets with visible text.
-///
-/// This applies to both labels and the text content of interactive widgets.
-/// The only widgets supporting both labels and interactive content have
-/// boolean values (e.g. checkboxes); these may support *both* `HasText` and
-/// [`HasBool`].
-pub trait HasText {
-    /// Get the widget's text.
-    fn get_text(&self) -> &str;
-
-    /// Set the widget's text.
+/// Write a plain-text value or label
+pub trait SetText {
+    /// Set the widget's text
+    ///
+    /// Depending on the widget, this may set a label or a value.
     fn set_text<T: Into<CowString>>(&mut self, text: T) -> TkAction
     where
         Self: Sized,
@@ -42,23 +35,28 @@ pub trait HasText {
 
     /// Set the widget's text ([`CowString`])
     ///
+    /// Depending on the widget, this may set a label or a value.
+    ///
     /// This method is for implementation. It is recommended to use
     /// [`HasText::set_text`] instead.
     fn set_cow_string(&mut self, text: CowString) -> TkAction;
 }
 
-/// Additional functionality required by the `EditBox` widget.
-pub trait Editable: HasText {
-    /// Get whether this input field is editable.
-    fn is_editable(&self) -> bool;
-
-    /// Set whether this input field is editable.
-    fn set_editable(&mut self, editable: bool);
+/// Read a plain-text value / label
+///
+/// This is an extension over [`SetText`] allowing text to be read.
+///
+/// Note that widgets may support setting a plain-text label or value without
+/// supporting reading a plain text value, for example since rich-text labels
+/// are not easily converted to a plain-text representation.
+pub trait HasText: SetText {
+    /// Get the widget's text value (as plain text)
+    fn get_text(&self) -> &str;
 }
 
-/// Summation of [`HasBool`] and [`HasText`] traits.
-///
-/// Used because Rust doesn't (yet) support multi-trait objects.
-pub trait HasBoolText: HasBool + HasText {}
-
-impl<T> HasBoolText for T where T: HasBool + HasText {}
+/// Read a rich text value / label
+pub trait HasRichText {
+    // TODO: set_rich_text and auto impls?
+    /// Get the widget's text label as rich text
+    fn clone_rich_text(&self) -> kas::text::RichText;
+}

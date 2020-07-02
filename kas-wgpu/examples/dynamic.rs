@@ -18,7 +18,7 @@
 //!     long), but in many ways still performs well in release mode
 #![feature(proc_macro_hygiene)]
 
-use kas::class::HasText;
+use kas::class::{HasText, SetText};
 use kas::event::UpdateHandle;
 use kas::prelude::*;
 use kas::widget::*;
@@ -103,7 +103,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[handler(msg = usize)]
         struct {
             #[widget] _ = Label::new("Number of rows:"),
-            #[widget(handler = activate)] edit: impl HasText = EditBox::new("3")
+            #[widget(handler = activate)] edit: impl SetText = EditBox::new("3")
                 .on_afl(|text| text.parse::<usize>().ok()),
             #[widget(handler = button)] _ = TextButton::new("Set", Control::Set),
             #[widget(handler = button)] _ = TextButton::new("−", Control::Decr),

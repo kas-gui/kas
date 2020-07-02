@@ -11,7 +11,7 @@ use shaderc::{Compiler, ShaderKind};
 use std::mem::size_of;
 use wgpu::{Buffer, ShaderModule};
 
-use kas::class::HasText;
+use kas::class::SetText;
 use kas::draw::Pass;
 use kas::event::ControlKey;
 use kas::geom::{DVec2, Vec2, Vec3};

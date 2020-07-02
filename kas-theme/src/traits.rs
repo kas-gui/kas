@@ -20,7 +20,7 @@ use kas::ThemeApi;
 /// large resources (e.g. fonts and icons) consider using external storage.
 pub trait Theme<D: DrawShared>: ThemeApi {
     /// The associated [`Window`] implementation.
-    type Window: Window<D::Draw> + 'static;
+    type Window: Window + 'static;
 
     /// The associated [`DrawHandle`] implementation.
     #[cfg(not(feature = "gat"))]
@@ -33,10 +33,8 @@ pub trait Theme<D: DrawShared>: ThemeApi {
     /// The toolkit must call this method before [`Theme::new_window`]
     /// to allow initialisation specific to the `Draw` device.
     ///
-    /// At a minimum, a theme must load a font via [`load_font`].
+    /// At a minimum, a theme must load a font to [`kas::text::fonts`].
     /// The first font loaded (by any theme) becomes the default font.
-    ///
-    /// [`load_font`]: kas::draw::DrawTextShared::load_font
     fn init(&mut self, draw: &mut D);
 
     /// Construct per-window storage
@@ -89,7 +87,7 @@ pub trait Theme<D: DrawShared>: ThemeApi {
 ///
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
-pub trait Window<Draw> {
+pub trait Window {
     /// The associated [`SizeHandle`] implementation.
     #[cfg(not(feature = "gat"))]
     type SizeHandle: SizeHandle;
@@ -101,9 +99,9 @@ pub trait Window<Draw> {
     /// The `draw` reference is guaranteed to be identical to the one used to
     /// construct this object.
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&mut self, draw: &mut Draw) -> Self::SizeHandle;
+    unsafe fn size_handle(&mut self) -> Self::SizeHandle;
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle<'a>;
+    fn size_handle<'a>(&'a mut self) -> Self::SizeHandle<'a>;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -151,19 +149,19 @@ impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
     }
 }
 
-impl<W: Window<Draw>, Draw> Window<Draw> for Box<W> {
+impl<W: Window> Window for Box<W> {
     #[cfg(not(feature = "gat"))]
-    type SizeHandle = <W as Window<Draw>>::SizeHandle;
+    type SizeHandle = <W as Window>::SizeHandle;
     #[cfg(feature = "gat")]
-    type SizeHandle<'a> = <W as Window<Draw>>::SizeHandle<'a>;
+    type SizeHandle<'a> = <W as Window>::SizeHandle<'a>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&mut self, draw: &mut Draw) -> Self::SizeHandle {
-        self.deref_mut().size_handle(draw)
+    unsafe fn size_handle(&mut self) -> Self::SizeHandle {
+        self.deref_mut().size_handle()
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, draw: &'a mut Draw) -> Self::SizeHandle<'a> {
-        self.deref_mut().size_handle(draw)
+    fn size_handle<'a>(&'a mut self) -> Self::SizeHandle<'a> {
+        self.deref_mut().size_handle()
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {

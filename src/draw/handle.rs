@@ -8,9 +8,10 @@
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use kas::draw::{Draw, Pass};
-use kas::geom::{Coord, Rect, Size, Vec2};
+use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, Margins, SizeRules};
-use kas::{Align, Direction};
+use kas::text::PreparedText;
+use kas::Direction;
 
 /// Classification of a clip region
 pub enum ClipRegion {
@@ -135,26 +136,22 @@ pub trait SizeHandle {
     /// The height of a line of text
     fn line_height(&self, class: TextClass) -> u32;
 
+    /// Prepare a text
+    ///
+    /// This must be done before drawing to avoid a "not ready" error.
+    fn prepare(&mut self, text: &mut PreparedText, class: TextClass);
+
     /// Get a text label size bound
     ///
+    /// This also prepares the text.
+    ///
     /// Sizing requirements of [`DrawHandle::text`].
-    fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules;
-
-    /// Find the text index nearest to `pos`
-    ///
-    /// Text is assumed to be positioned as in [`DrawHandle::text`], except
-    /// that we do not adjust `rect` by the `clip_region`'s `offset`. Instead it
-    /// is assumed that any `offset` has already been subtracted from `pos`.
-    ///
-    /// The returned `index ≤ text.len()`.
-    fn text_index_nearest(
+    fn text_bound(
         &mut self,
-        rect: Rect,
-        text: &str,
-        line_wrap: bool,
-        align: (Align, Align),
-        pos: Vec2,
-    ) -> usize;
+        text: &mut PreparedText,
+        class: TextClass,
+        axis: AxisInfo,
+    ) -> SizeRules;
 
     /// Size of the sides of a button.
     ///
@@ -269,28 +266,20 @@ pub trait DrawHandle {
     /// Draw some text using the standard font
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align));
+    fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass);
 
     /// Method used to implement [`DrawHandle::text_selected`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     fn text_selected_range(
         &mut self,
-        rect: Rect,
-        text: &str,
+        pos: Coord,
+        text: &PreparedText,
         range: Range<usize>,
         class: TextClass,
-        align: (Align, Align),
     );
 
     /// Draw an edit marker at the given `byte` index on this `text`
-    fn edit_marker(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        class: TextClass,
-        align: (Align, Align),
-        byte: usize,
-    );
+    fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize);
 
     /// Draw the background of a menu entry
     fn menu_entry(&mut self, rect: Rect, state: InputState);
@@ -356,11 +345,10 @@ pub trait DrawHandleExt: DrawHandle {
     /// future by a higher-level API.
     fn text_selected<R: RangeBounds<usize>>(
         &mut self,
-        rect: Rect,
-        text: &str,
+        pos: Coord,
+        text: &PreparedText,
         range: R,
         class: TextClass,
-        align: (Align, Align),
     ) {
         let start = match range.start_bound() {
             Bound::Included(n) => *n,
@@ -370,10 +358,10 @@ pub trait DrawHandleExt: DrawHandle {
         let end = match range.end_bound() {
             Bound::Included(n) => *n + 1,
             Bound::Excluded(n) => *n,
-            Bound::Unbounded => text.len(),
+            Bound::Unbounded => text.total_len(),
         };
         let range = Range { start, end };
-        self.text_selected_range(rect, text, range, class, align);
+        self.text_selected_range(pos, text, range, class);
     }
 }
 
@@ -400,19 +388,16 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn line_height(&self, class: TextClass) -> u32 {
         self.deref().line_height(class)
     }
-    fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
-        self.deref_mut().text_bound(text, class, axis)
+    fn prepare(&mut self, text: &mut PreparedText, class: TextClass) {
+        self.deref_mut().prepare(text, class)
     }
-    fn text_index_nearest(
+    fn text_bound(
         &mut self,
-        rect: Rect,
-        text: &str,
-        line_wrap: bool,
-        align: (Align, Align),
-        pos: Vec2,
-    ) -> usize {
-        self.deref_mut()
-            .text_index_nearest(rect, text, line_wrap, align, pos)
+        text: &mut PreparedText,
+        class: TextClass,
+        axis: AxisInfo,
+    ) -> SizeRules {
+        self.deref_mut().text_bound(text, class, axis)
     }
 
     fn button_surround(&self) -> (Size, Size) {
@@ -461,19 +446,16 @@ where
     fn line_height(&self, class: TextClass) -> u32 {
         self.deref().line_height(class)
     }
-    fn text_bound(&mut self, text: &str, class: TextClass, axis: AxisInfo) -> SizeRules {
-        self.deref_mut().text_bound(text, class, axis)
+    fn prepare(&mut self, text: &mut PreparedText, class: TextClass) {
+        self.deref_mut().prepare(text, class)
     }
-    fn text_index_nearest(
+    fn text_bound(
         &mut self,
-        rect: Rect,
-        text: &str,
-        line_wrap: bool,
-        align: (Align, Align),
-        pos: Vec2,
-    ) -> usize {
-        self.deref_mut()
-            .text_index_nearest(rect, text, line_wrap, align, pos)
+        text: &mut PreparedText,
+        class: TextClass,
+        axis: AxisInfo,
+    ) -> SizeRules {
+        self.deref_mut().text_bound(text, class, axis)
     }
 
     fn button_surround(&self) -> (Size, Size) {
@@ -525,29 +507,21 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
-    fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
-        self.deref_mut().text(rect, text, class, align)
+    fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass) {
+        self.deref_mut().text(pos, text, class)
     }
     fn text_selected_range(
         &mut self,
-        rect: Rect,
-        text: &str,
+        pos: Coord,
+        text: &PreparedText,
         range: Range<usize>,
         class: TextClass,
-        align: (Align, Align),
     ) {
         self.deref_mut()
-            .text_selected_range(rect, text, range, class, align);
+            .text_selected_range(pos, text, range, class);
     }
-    fn edit_marker(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        class: TextClass,
-        align: (Align, Align),
-        byte: usize,
-    ) {
-        self.deref_mut().edit_marker(rect, text, class, align, byte)
+    fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
+        self.deref_mut().edit_marker(pos, text, class, byte)
     }
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().menu_entry(rect, state)
@@ -604,29 +578,21 @@ where
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
-    fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
-        self.deref_mut().text(rect, text, class, align)
+    fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass) {
+        self.deref_mut().text(pos, text, class)
     }
     fn text_selected_range(
         &mut self,
-        rect: Rect,
-        text: &str,
+        pos: Coord,
+        text: &PreparedText,
         range: Range<usize>,
         class: TextClass,
-        align: (Align, Align),
     ) {
         self.deref_mut()
-            .text_selected_range(rect, text, range, class, align);
+            .text_selected_range(pos, text, range, class);
     }
-    fn edit_marker(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        class: TextClass,
-        align: (Align, Align),
-        byte: usize,
-    ) {
-        self.deref_mut().edit_marker(rect, text, class, align, byte)
+    fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
+        self.deref_mut().edit_marker(pos, text, class, byte)
     }
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().menu_entry(rect, state)
@@ -661,8 +627,8 @@ mod test {
 
         let _size = draw_handle.size_handle(|h| h.frame());
 
-        let rect = Rect::new(Coord::ZERO, Size(100, 50));
-        let align = (Align::Centre, Align::Centre);
-        draw_handle.text_selected(rect, "text", .., TextClass::Label, align)
+        let pos = Coord::ZERO;
+        let text = PreparedText::new("sample".into(), false);
+        draw_handle.text_selected(pos, &text, .., TextClass::Label)
     }
 }

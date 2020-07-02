@@ -44,7 +44,7 @@ pub(crate) struct Window<CW: CustomWindow, TW> {
 impl<CW, TW> Window<CW, TW>
 where
     CW: CustomWindow + 'static,
-    TW: kas_theme::Window<DrawWindow<CW>> + 'static,
+    TW: kas_theme::Window + 'static,
 {
     /// Construct a window
     pub fn new<C, T>(
@@ -62,7 +62,7 @@ where
         let mut draw = shared.draw.new_window(&mut shared.device, Size::ZERO);
         let mut theme_window = shared.theme.new_window(&mut draw, scale_factor);
 
-        let mut size_handle = unsafe { theme_window.size_handle(&mut draw) };
+        let mut size_handle = unsafe { theme_window.size_handle() };
         let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), &mut size_handle);
         // Opening a zero-size window causes a crash, so force at least 1x1:
         let ideal = solve_cache.ideal(true).max(Size(1, 1));
@@ -98,7 +98,7 @@ where
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
         let mut mgr = ManagerState::new(scale_factor);
-        let mut tkw = TkWindow::new(shared, &window, &mut draw, &mut theme_window);
+        let mut tkw = TkWindow::new(shared, &window, &mut theme_window);
         mgr.configure(&mut tkw, &mut *widget);
 
         let mut r = Window {
@@ -125,7 +125,7 @@ where
     {
         debug!("Window::reconfigure");
 
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
         self.mgr.configure(&mut tkw, &mut *self.widget);
 
         self.solve_cache.invalidate_rule_cache();
@@ -170,8 +170,7 @@ where
                 self.do_resize(shared, *new_inner_size);
             }
             event @ _ => {
-                let mut tkw =
-                    TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
+                let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
                 let widget = &mut *self.widget;
                 self.mgr.with(&mut tkw, |mgr| {
                     mgr.handle_winit(widget, event);
@@ -186,7 +185,7 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
         let action = self.mgr.update(&mut tkw, &mut *self.widget);
 
         match action {
@@ -197,14 +196,18 @@ where
                 self.window.request_redraw();
             }
             TkAction::Popup => {
-                let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
+                let mut size_handle = unsafe { self.theme_window.size_handle() };
                 self.widget.resize_popups(&mut size_handle);
                 drop(size_handle);
 
-                let mut tkw =
-                    TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
+                let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
                 self.mgr.region_moved(&mut tkw, &mut *self.widget);
                 self.window.request_redraw();
+            }
+            TkAction::ResetSize => self.apply_size(),
+            TkAction::Resize => {
+                self.solve_cache.invalidate_rule_cache();
+                self.apply_size();
             }
             TkAction::Reconfigure => self.reconfigure(shared),
             TkAction::Close | TkAction::CloseAll => (),
@@ -218,7 +221,7 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
         let widget = &mut *self.widget;
         self.mgr.with(&mut tkw, |mut mgr| {
             widget.handle_closure(&mut mgr);
@@ -231,7 +234,7 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
         let widget = &mut *self.widget;
         self.mgr.with(&mut tkw, |mgr| {
             mgr.update_timer(widget);
@@ -248,7 +251,7 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
         let widget = &mut *self.widget;
         self.mgr.with(&mut tkw, |mgr| {
             mgr.update_handle(widget, handle, payload);
@@ -265,7 +268,7 @@ where
         T: Theme<DrawPipe<C>, Window = TW>,
     {
         let window = &mut *self.widget;
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
         self.mgr.with(&mut tkw, |mut mgr| {
             kas::Window::add_popup(window, &mut mgr, id, popup);
         });
@@ -283,8 +286,7 @@ where
         if id == self.window_id {
             self.mgr.send_action(TkAction::Close);
         } else {
-            let mut tkw =
-                TkWindow::new(shared, &self.window, &mut self.draw, &mut self.theme_window);
+            let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
             let widget = &mut *self.widget;
             self.mgr.with(&mut tkw, |mut mgr| {
                 widget.remove_popup(&mut mgr, id);
@@ -297,14 +299,14 @@ where
 impl<CW, TW> Window<CW, TW>
 where
     CW: CustomWindow + 'static,
-    TW: kas_theme::Window<DrawWindow<CW>> + 'static,
+    TW: kas_theme::Window + 'static,
 {
     fn apply_size(&mut self) {
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         let rect = Rect::new(Coord::ZERO, size);
         debug!("Resizing window to rect = {:?}", rect);
 
-        let mut size_handle = unsafe { self.theme_window.size_handle(&mut self.draw) };
+        let mut size_handle = unsafe { self.theme_window.size_handle() };
         self.solve_cache
             .apply_rect(self.widget.as_widget_mut(), &mut size_handle, rect, true);
         self.widget.resize_popups(&mut size_handle);
@@ -382,31 +384,25 @@ fn to_wgpu_color(c: kas::draw::Colour) -> wgpu::Color {
 
 struct TkWindow<'a, C: CustomPipe, T: Theme<DrawPipe<C>>>
 where
-    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+    T::Window: kas_theme::Window,
 {
     shared: &'a mut SharedState<C, T>,
     window: &'a winit::window::Window,
-    // Note: in nearly all cases we don't use the following fields, but for
-    // mouse text selection they are essential. Maybe later we can move the
-    // text layout engine into theme_window and drop the draw field.
-    draw: &'a mut DrawWindow<C::Window>,
     theme_window: &'a mut T::Window,
 }
 
 impl<'a, C: CustomPipe, T: Theme<DrawPipe<C>>> TkWindow<'a, C, T>
 where
-    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+    T::Window: kas_theme::Window,
 {
     fn new(
         shared: &'a mut SharedState<C, T>,
         window: &'a winit::window::Window,
-        draw: &'a mut DrawWindow<C::Window>,
         theme_window: &'a mut T::Window,
     ) -> Self {
         TkWindow {
             shared,
             window,
-            draw,
             theme_window,
         }
     }
@@ -416,7 +412,7 @@ impl<'a, C, T> kas::TkWindow for TkWindow<'a, C, T>
 where
     C: CustomPipe,
     T: Theme<DrawPipe<C>>,
-    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+    T::Window: kas_theme::Window,
 {
     fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
         let id = self.shared.next_window_id();
@@ -471,7 +467,7 @@ where
 
     fn size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         use kas_theme::Window;
-        let mut size_handle = unsafe { self.theme_window.size_handle(self.draw) };
+        let mut size_handle = unsafe { self.theme_window.size_handle() };
         f(&mut size_handle);
     }
 

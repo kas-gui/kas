@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 use std::ops::Range;
 use unicode_segmentation::GraphemeCursor;
 
-use kas::class::{Editable, HasText};
+use kas::class::{HasText, SetText};
 use kas::draw::{DrawHandleExt, TextClass};
 use kas::event::{ControlKey, GrabMode, ModifiersState};
 use kas::prelude::*;
@@ -138,10 +138,12 @@ pub struct EditBox<G: 'static> {
     core: CoreData,
     frame_offset: Coord,
     frame_size: Size,
-    text_rect: Rect,
+    text_pos: Coord,
     editable: bool,
     multi_line: bool,
+    // TODO: can we combine text and prepared?
     text: String,
+    prepared: PreparedText,
     edit_pos: usize,
     sel_pos: usize,
     old_state: Option<(String, usize, usize)>,
@@ -176,7 +178,7 @@ impl<G: 'static> Layout for EditBox<G> {
         } else {
             TextClass::Edit
         };
-        let content_rules = size_handle.text_bound(&self.text, class, axis);
+        let content_rules = size_handle.text_bound(&mut self.prepared, class, axis);
         let m = content_rules.margins();
 
         let rules = content_rules.surrounded_by(frame_rules, true);
@@ -203,8 +205,8 @@ impl<G: 'static> Layout for EditBox<G> {
             .apply(rect);
 
         self.core.rect = rect;
-        self.text_rect.pos = rect.pos + self.frame_offset;
-        self.text_rect.size = rect.size - self.frame_size;
+        self.text_pos = rect.pos + self.frame_offset;
+        self.prepared.set_size(rect.size - self.frame_size);
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
@@ -216,14 +218,13 @@ impl<G: 'static> Layout for EditBox<G> {
         let mut input_state = self.input_state(mgr, disabled);
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
-        let align = (Align::Begin, Align::Begin);
         if self.sel_pos == self.edit_pos {
-            draw_handle.text(self.text_rect, &self.text, class, align);
+            draw_handle.text(self.text_pos, &self.prepared, class);
         } else {
-            draw_handle.text_selected(self.text_rect, &self.text, self.selection(), class, align);
+            draw_handle.text_selected(self.text_pos, &self.prepared, self.selection(), class);
         }
         if input_state.char_focus {
-            draw_handle.edit_marker(self.text_rect, &self.text, class, align, self.edit_pos);
+            draw_handle.edit_marker(self.text_pos, &self.prepared, class, self.edit_pos);
         }
     }
 }
@@ -237,10 +238,11 @@ impl EditBox<EditVoid> {
             core: Default::default(),
             frame_offset: Default::default(),
             frame_size: Default::default(),
-            text_rect: Default::default(),
+            text_pos: Default::default(),
             editable: true,
             multi_line: false,
-            text,
+            text: text.clone(),
+            prepared: PreparedText::new(text.into(), false),
             edit_pos,
             sel_pos: edit_pos,
             old_state: None,
@@ -262,10 +264,11 @@ impl EditBox<EditVoid> {
             core: self.core,
             frame_offset: self.frame_offset,
             frame_size: self.frame_size,
-            text_rect: self.text_rect,
+            text_pos: self.text_pos,
             editable: self.editable,
             multi_line: self.multi_line,
             text: self.text,
+            prepared: self.prepared,
             edit_pos: self.edit_pos,
             sel_pos: self.sel_pos,
             old_state: self.old_state,
@@ -318,15 +321,26 @@ impl EditBox<EditVoid> {
 }
 
 impl<G> EditBox<G> {
-    /// Set whether this `EditBox` is editable.
+    /// Set whether this `EditBox` is editable (inline)
     pub fn editable(mut self, editable: bool) -> Self {
         self.editable = editable;
         self
     }
 
+    /// Get whether this `EditBox` is editable
+    pub fn is_editable(&self) -> bool {
+        self.editable
+    }
+
+    /// Set whether this `EditBox` is editable
+    pub fn set_editable(&mut self, editable: bool) {
+        self.editable = editable;
+    }
+
     /// Set whether this `EditBox` shows multiple text lines
     pub fn multi_line(mut self, multi_line: bool) -> Self {
         self.multi_line = multi_line;
+        self.prepared.set_line_wrap(multi_line);
         self
     }
 
@@ -374,7 +388,7 @@ impl<G> EditBox<G> {
         }
         self.sel_pos = self.edit_pos;
 
-        mgr.redraw(self.id());
+        *mgr += self.prepared.set_text(self.text.clone());
         EditAction::Edit
     }
 
@@ -388,7 +402,7 @@ impl<G> EditBox<G> {
             return EditAction::None;
         }
 
-        mgr.redraw(self.id());
+        let mut mgr_action = TkAction::None;
         let mut buf = [0u8; 4];
         let pos = self.edit_pos;
         let selection = self.selection();
@@ -489,6 +503,7 @@ impl<G> EditBox<G> {
                     self.edit_pos = *pos2;
                     *pos2 = pos;
                     std::mem::swap(sel_pos, &mut self.sel_pos);
+                    mgr_action += self.prepared.set_text(self.text.clone());
                     self.last_edit = LastEdit::None;
                 }
                 Action::Edit
@@ -496,7 +511,7 @@ impl<G> EditBox<G> {
             _ => Action::None,
         };
 
-        match action {
+        let result = match action {
             Action::None => EditAction::None,
             Action::Activate => EditAction::Activate,
             Action::Edit => EditAction::Edit,
@@ -518,6 +533,7 @@ impl<G> EditBox<G> {
                 }
                 self.edit_pos = pos + s.len();
                 self.sel_pos = self.edit_pos;
+                mgr_action += self.prepared.set_text(self.text.clone());
                 EditAction::Edit
             }
             Action::Delete(sel) => {
@@ -529,6 +545,7 @@ impl<G> EditBox<G> {
                 self.text.replace_range(sel.clone(), "");
                 self.edit_pos = sel.start;
                 self.sel_pos = sel.start;
+                mgr_action += self.prepared.set_text(self.text.clone());
                 EditAction::Edit
             }
             Action::Move(pos) => {
@@ -536,45 +553,33 @@ impl<G> EditBox<G> {
                 if !shift {
                     self.sel_pos = self.edit_pos;
                 }
+                mgr_action += TkAction::Redraw;
                 EditAction::None
             }
-        }
+        };
+
+        *mgr += mgr_action;
+        result
     }
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
-        let align = (Align::Begin, Align::Begin);
-        self.edit_pos = mgr.size_handle(|h| {
-            h.text_index_nearest(
-                self.text_rect,
-                &self.text,
-                self.multi_line,
-                align,
-                coord.into(),
-            )
-        });
+        self.edit_pos = self.prepared.text_index_nearest(self.text_pos, coord);
         mgr.redraw(self.id());
+    }
+}
+
+impl<G: EditGuard> SetText for EditBox<G> {
+    fn set_cow_string(&mut self, text: CowString) -> TkAction {
+        self.text = text.to_string();
+        let action = self.prepared.set_text(self.text.clone());
+        let _ = G::edit(self);
+        action
     }
 }
 
 impl<G: EditGuard> HasText for EditBox<G> {
     fn get_text(&self) -> &str {
         &self.text
-    }
-
-    fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.text = text.to_string();
-        let _ = G::edit(self);
-        TkAction::Redraw
-    }
-}
-
-impl<G: EditGuard> Editable for EditBox<G> {
-    fn is_editable(&self) -> bool {
-        self.editable
-    }
-
-    fn set_editable(&mut self, editable: bool) {
-        self.editable = editable;
     }
 }
 

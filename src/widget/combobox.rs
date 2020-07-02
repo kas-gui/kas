@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::iter::FromIterator;
 
 use super::{Column, MenuEntry, MenuFrame};
-use kas::class::HasText;
+use kas::class::{HasRichText, SetText};
 use kas::draw::TextClass;
 use kas::event::{ControlKey, GrabMode};
 use kas::prelude::*;
@@ -22,7 +22,7 @@ use kas::WindowId;
 pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
     core: CoreData,
-    // text_rect: Rect,
+    label: PreparedText,
     #[widget]
     popup: ComboPopup,
     messages: Vec<M>, // TODO: is this a useless lookup step?
@@ -37,19 +37,17 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         let margins = size_handle.outer_margins();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
 
-        // TODO: should we calculate a bound over all choices or assume some default?
-        let text = &self.popup.inner.inner[self.active].get_text();
-        let content_rules = size_handle.text_bound(text, TextClass::Button, axis);
+        let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, rect: Rect, _align: kas::AlignHints) {
+    fn set_rect(&mut self, rect: Rect, align: kas::AlignHints) {
         self.core.rect = rect;
-
-        // In theory, text rendering should be restricted as in EditBox.
-        // In practice, it sometimes overflows a tiny bit, and looks better if
-        // we let it overflow. Since the text is centred this is okay.
-        // self.text_rect = ...
+        self.label.set_size(rect.size);
+        self.label.set_alignment(
+            align.horiz.unwrap_or(Align::Centre),
+            align.vert.unwrap_or(Align::Centre),
+        );
     }
 
     fn spatial_range(&self) -> (usize, usize) {
@@ -63,9 +61,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
             state.depress = true;
         }
         draw_handle.button(self.core.rect, state);
-        let align = (Align::Centre, Align::Centre);
-        let text = &self.popup.inner.inner[self.active].get_text();
-        draw_handle.text(self.core.rect, text, TextClass::Button, align);
+        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Button);
     }
 }
 
@@ -93,8 +89,10 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     #[inline]
     fn new_(column: Vec<MenuEntry<u64>>, messages: Vec<M>) -> Self {
         assert!(column.len() > 0, "ComboBox: expected at least one choice");
+        let label = PreparedText::new(column[0].clone_rich_text(), false);
         ComboBox {
             core: Default::default(),
+            label,
             popup: ComboPopup {
                 core: Default::default(),
                 inner: MenuFrame::new(Column::new(column)),
@@ -116,17 +114,17 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     ///
     /// Panics if `index >= self.len()`.
     #[inline]
-    pub fn set_active(&mut self, index: usize) {
+    pub fn set_active(&mut self, index: usize) -> TkAction {
         if index >= self.messages.len() {
             panic!("ComboBox::set_active(index): index out of bounds");
         }
-        self.active = index;
-    }
-
-    /// Get the text of the active choice
-    #[inline]
-    pub fn text(&self) -> &str {
-        self.popup.inner.inner[self.active].get_text()
+        if self.active != index {
+            self.active = index;
+            self.label
+                .set_text(self.popup.inner.inner[self.active].clone_rich_text())
+        } else {
+            TkAction::None
+        }
     }
 
     /// Get the message associated with the active choice
@@ -219,12 +217,10 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             Response::Focus(x) => Response::Focus(x),
             Response::Msg(msg) => {
                 let index = msg as usize;
-                assert!(index < self.messages.len());
-                self.active = index;
+                *mgr += self.set_active(index);
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
                 }
-                mgr.redraw(self.id());
                 Response::Msg(self.messages[index].clone())
             }
         }

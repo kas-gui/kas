@@ -33,6 +33,10 @@ unicode-segmentation = "1.6"
 version = "0.4.0"
 path = "kas-macros"
 
+[dependencies.kas-text]
+git = "https://github.com/kas-gui/kas-text"
+rev = "a116a5543634201453f55a7ecbdb7d5d78ca54fb"
+
 [dependencies.winit]
 # Provides translations for several winit types
 version = "0.22"

@@ -116,7 +116,10 @@ macro_rules! impl_vec2 {
     ($T:ident, $f:ty) => {
         impl $T {
             /// Zero
-            pub const ZERO: $T = $T(0.0, 0.0);
+            pub const ZERO: $T = $T::splat(0.0);
+
+            /// Positive infinity
+            pub const INFINITY: $T = $T::splat(<$f>::INFINITY);
 
             /// Constructs a new instance with each element initialized to `value`.
             #[inline]
@@ -313,6 +316,19 @@ macro_rules! impl_vec2 {
             #[inline]
             fn from(arg: $T) -> Self {
                 Size(arg.0.round() as u32, arg.1.round() as u32)
+            }
+        }
+
+        impl From<kas_text::Size> for $T {
+            #[inline]
+            fn from(size: kas_text::Size) -> Self {
+                $T(size.0 as $f, size.1 as $f)
+            }
+        }
+
+        impl From<$T> for kas_text::Size {
+            fn from(size: $T) -> kas_text::Size {
+                kas_text::Size(size.0 as f32, size.1 as f32)
             }
         }
     };

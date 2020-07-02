@@ -17,14 +17,14 @@ use winit::window as ww;
 use kas::TkAction;
 use kas_theme::Theme;
 
-use crate::draw::{CustomPipe, DrawPipe, DrawWindow};
+use crate::draw::{CustomPipe, DrawPipe};
 use crate::shared::{PendingAction, SharedState};
 use crate::{ProxyAction, Window, WindowId};
 
 /// Event-loop data structure (i.e. all run-time state)
 pub(crate) struct Loop<C: CustomPipe + 'static, T: Theme<DrawPipe<C>>>
 where
-    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+    T::Window: kas_theme::Window,
 {
     /// Window states
     windows: HashMap<ww::WindowId, Window<C::Window, T::Window>>,
@@ -38,7 +38,7 @@ where
 
 impl<C: CustomPipe + 'static, T: Theme<DrawPipe<C>>> Loop<C, T>
 where
-    T::Window: kas_theme::Window<DrawWindow<C::Window>>,
+    T::Window: kas_theme::Window,
 {
     pub(crate) fn new(
         mut windows: Vec<Window<C::Window, T::Window>>,
@@ -143,6 +143,8 @@ where
                         | TkAction::Redraw
                         | TkAction::RegionMoved
                         | TkAction::Popup
+                        | TkAction::ResetSize
+                        | TkAction::Resize
                         | TkAction::Reconfigure => (),
                         TkAction::Close => to_close.push(*window_id),
                         TkAction::CloseAll => close_all = true,

@@ -10,11 +10,12 @@ use std::ops::Range;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::draw::{
-    self, ClipRegion, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, DrawTextShared,
-    FontId, InputState, Pass, SizeHandle, TextClass,
+    self, ClipRegion, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, InputState,
+    Pass, SizeHandle, TextClass,
 };
 use kas::geom::*;
-use kas::{Align, Direction, Directional, ThemeAction, ThemeApi};
+use kas::text::{FontId, PreparedText};
+use kas::{Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]
@@ -52,7 +53,7 @@ pub struct DrawHandle<'a, D: Draw> {
     pass: Pass,
 }
 
-impl<D: DrawShared + DrawTextShared + 'static> Theme<D> for ShadedTheme
+impl<D: DrawShared + 'static> Theme<D> for ShadedTheme
 where
     D::Draw: DrawRounded + DrawShaded + DrawText,
 {
@@ -63,8 +64,8 @@ where
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = DrawHandle<'a, D::Draw>;
 
-    fn init(&mut self, draw: &mut D) {
-        self.font_id = crate::load_fonts(draw);
+    fn init(&mut self, _draw: &mut D) {
+        self.font_id = kas::text::fonts().load_default().unwrap();
     }
 
     fn new_window(&self, _draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
@@ -194,7 +195,7 @@ where
 {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
-            let mut size_handle = self.window.size_handle(self.draw);
+            let mut size_handle = self.window.size_handle();
             f(&mut size_handle);
         }
     }
@@ -262,31 +263,22 @@ where
             .shaded_round_frame(self.pass, outer, inner, norm, col);
     }
 
-    fn text(&mut self, rect: Rect, text: &str, class: TextClass, align: (Align, Align)) {
-        self.as_flat().text(rect, text, class, align);
+    fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass) {
+        self.as_flat().text(pos, text, class);
     }
 
     fn text_selected_range(
         &mut self,
-        rect: Rect,
-        text: &str,
+        pos: Coord,
+        text: &PreparedText,
         range: Range<usize>,
         class: TextClass,
-        align: (Align, Align),
     ) {
-        self.as_flat()
-            .text_selected_range(rect, text, range, class, align);
+        self.as_flat().text_selected_range(pos, text, range, class);
     }
 
-    fn edit_marker(
-        &mut self,
-        rect: Rect,
-        text: &str,
-        class: TextClass,
-        align: (Align, Align),
-        byte: usize,
-    ) {
-        self.as_flat().edit_marker(rect, text, class, align, byte);
+    fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
+        self.as_flat().edit_marker(pos, text, class, byte);
     }
 
     fn menu_entry(&mut self, rect: Rect, state: InputState) {

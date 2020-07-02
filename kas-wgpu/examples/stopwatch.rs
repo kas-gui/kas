@@ -8,7 +8,7 @@
 
 use std::time::{Duration, Instant};
 
-use kas::class::HasText;
+use kas::class::SetText;
 use kas::event::{Event, Handler, Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Frame, Label, TextButton, Window};
@@ -27,7 +27,7 @@ fn make_window() -> Box<dyn kas::Window> {
         #[layout(row)]
         #[widget(config=noauto)]
         struct {
-            #[widget] display: impl HasText = Frame::new(Label::new("0.000")),
+            #[widget] display: impl SetText = Frame::new(Label::new("0.000")),
             #[widget(handler = handle_button)] b_reset = TextButton::new("&reset", Control::Reset),
             #[widget(handler = handle_button)] b_start = TextButton::new("&start / &stop", Control::Start),
             saved: Duration = Duration::default(),

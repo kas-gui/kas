@@ -6,7 +6,7 @@
 //! Counter example (simple button)
 #![feature(proc_macro_hygiene)]
 
-use kas::class::HasText;
+use kas::class::SetText;
 use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};

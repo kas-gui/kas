@@ -21,7 +21,6 @@
 mod col;
 mod dim;
 mod flat_theme;
-mod font;
 #[cfg(feature = "stack_dst")]
 mod multi;
 mod shaded_theme;
@@ -35,7 +34,6 @@ use kas::draw::{ClipRegion, Pass};
 pub use col::ThemeColours;
 pub use dim::{Dimensions, DimensionsParams, DimensionsWindow};
 pub use flat_theme::FlatTheme;
-pub(crate) use font::load_fonts;
 #[cfg(feature = "stack_dst")]
 pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use shaded_theme::ShadedTheme;
