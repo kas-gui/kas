@@ -319,16 +319,16 @@ macro_rules! impl_vec2 {
             }
         }
 
-        impl From<kas_text::Size> for $T {
+        impl From<kas_text::Vec2> for $T {
             #[inline]
-            fn from(size: kas_text::Size) -> Self {
+            fn from(size: kas_text::Vec2) -> Self {
                 $T(size.0 as $f, size.1 as $f)
             }
         }
 
-        impl From<$T> for kas_text::Size {
-            fn from(size: $T) -> kas_text::Size {
-                kas_text::Size(size.0 as f32, size.1 as f32)
+        impl From<$T> for kas_text::Vec2 {
+            fn from(size: $T) -> kas_text::Vec2 {
+                kas_text::Vec2(size.0 as f32, size.1 as f32)
             }
         }
     };
