@@ -21,8 +21,9 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         let glyphs = text
             .positioned_glyphs(pos)
             .map(|sg| SectionGlyph {
-                section_index: sg.section_index,
-                byte_index: sg.byte_index,
+                // Index fields are not used when drawing
+                section_index: 0,
+                byte_index: 0,
                 glyph: sg.glyph,
                 font_id: FontId(sg.font_id.get()),
             })
