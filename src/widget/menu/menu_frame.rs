@@ -85,20 +85,34 @@ impl<W: HasBool + Widget> HasBool for MenuFrame<W> {
     }
 }
 
-impl<W: SetText + Widget> SetText for MenuFrame<W> {
+impl<W: HasString + Widget> HasString for MenuFrame<W> {
+    fn get_str(&self) -> &str {
+        self.inner.get_str()
+    }
+
     fn set_string(&mut self, text: String) -> TkAction {
         self.inner.set_string(text)
     }
 }
 
-impl<W: HasText + Widget> HasText for MenuFrame<W> {
-    fn get_text(&self) -> &str {
-        self.inner.get_text()
+impl<W: CloneText + Widget> CloneText for MenuFrame<W> {
+    fn clone_string(&self) -> String {
+        self.inner.clone_string()
+    }
+
+    fn clone_text(&self) -> kas::text::RichText {
+        self.inner.clone_text()
     }
 }
 
-impl<W: HasRichText + Widget> HasRichText for MenuFrame<W> {
-    fn clone_rich_text(&self) -> kas::text::RichText {
-        self.inner.clone_rich_text()
+impl<W: SetText + Widget> SetText for MenuFrame<W> {
+    fn set_rich_text(&mut self, text: kas::text::RichText) -> TkAction {
+        self.inner.set_rich_text(text)
+    }
+}
+
+impl<W: SetAccel + Widget> SetAccel for MenuFrame<W> {
+    fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
+        self.inner.set_accel_string(accel)
     }
 }

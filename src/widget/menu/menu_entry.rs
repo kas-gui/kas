@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use super::Menu;
-use kas::class::{HasBool, HasRichText, SetText};
+use kas::class::{CloneText, HasBool, SetAccel};
 use kas::draw::TextClass;
 use kas::event::VirtualKeyCodes;
 use kas::layout::{RulesSetter, RulesSolver};
@@ -89,18 +89,17 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> SetText for MenuEntry<M> {
-    fn set_string(&mut self, label: String) -> TkAction {
-        let label = AccelString::from(label);
-        let text = label.get(false).to_string();
-        self.keys = label.take_keys();
-        self.label.set_text(text)
+impl<M: Clone + Debug + 'static> CloneText for MenuEntry<M> {
+    fn clone_text(&self) -> kas::text::RichText {
+        self.label.clone_text()
     }
 }
 
-impl<M: Clone + Debug + 'static> HasRichText for MenuEntry<M> {
-    fn clone_rich_text(&self) -> kas::text::RichText {
-        self.label.clone_text()
+impl<M: Clone + Debug + 'static> SetAccel for MenuEntry<M> {
+    fn set_accel_string(&mut self, label: AccelString) -> TkAction {
+        let text = label.get(false).to_string();
+        self.keys = label.take_keys();
+        self.label.set_text(text)
     }
 }
 

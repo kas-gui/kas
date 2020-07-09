@@ -6,7 +6,7 @@
 //! Sub-menu
 
 use super::{Menu, MenuFrame};
-use kas::class::{HasRichText, SetText};
+use kas::class::{CloneText, SetAccel};
 use kas::draw::TextClass;
 use kas::event::{ConfigureManager, ControlKey, VirtualKeyCodes};
 use kas::prelude::*;
@@ -278,17 +278,16 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, W: Menu> SetText for SubMenu<D, W> {
-    fn set_string(&mut self, label: String) -> TkAction {
-        let label = AccelString::from(label);
-        let text = label.get(false).to_string();
-        self.keys = label.take_keys();
-        self.label.set_text(text)
+impl<D: Directional, W: Menu> CloneText for SubMenu<D, W> {
+    fn clone_text(&self) -> kas::text::RichText {
+        self.label.clone_text()
     }
 }
 
-impl<D: Directional, W: Menu> HasRichText for SubMenu<D, W> {
-    fn clone_rich_text(&self) -> kas::text::RichText {
-        self.label.clone_text()
+impl<D: Directional, W: Menu> SetAccel for SubMenu<D, W> {
+    fn set_accel_string(&mut self, label: AccelString) -> TkAction {
+        let text = label.get(false).to_string();
+        self.keys = label.take_keys();
+        self.label.set_text(text)
     }
 }

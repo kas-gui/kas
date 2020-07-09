@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::iter::FromIterator;
 
 use super::{Column, MenuEntry, MenuFrame};
-use kas::class::{HasRichText, SetText};
+use kas::class::{CloneText, SetAccel};
 use kas::draw::TextClass;
 use kas::event::{ControlKey, GrabMode};
 use kas::prelude::*;
@@ -89,7 +89,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     #[inline]
     fn new_(column: Vec<MenuEntry<u64>>, messages: Vec<M>) -> Self {
         assert!(column.len() > 0, "ComboBox: expected at least one choice");
-        let label = PreparedText::new(column[0].clone_rich_text(), false);
+        let label = PreparedText::new(column[0].clone_text(), false);
         ComboBox {
             core: Default::default(),
             label,
@@ -121,7 +121,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         if self.active != index {
             self.active = index;
             self.label
-                .set_text(self.popup.inner.inner[self.active].clone_rich_text())
+                .set_text(self.popup.inner.inner[self.active].clone_text())
         } else {
             TkAction::None
         }
@@ -144,11 +144,11 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Add a choice to the combobox, in last position
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
-    pub fn push<T: ToString>(&mut self, label: T, msg: M) -> TkAction {
+    pub fn push<T: Into<AccelString>>(&mut self, label: T, msg: M) -> TkAction {
         self.messages.push(msg);
         let column = &mut self.popup.inner.inner;
         let len = column.len() as u64;
-        column.push(MenuEntry::new(label.to_string(), len))
+        column.push(MenuEntry::new(label, len))
         // TODO: localised reconfigure
     }
 
@@ -159,11 +159,11 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Panics if `index > len`.
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
-    pub fn insert<T: ToString>(&mut self, index: usize, label: T, msg: M) -> TkAction {
+    pub fn insert<T: Into<AccelString>>(&mut self, index: usize, label: T, msg: M) -> TkAction {
         self.messages.insert(index, msg);
         let column = &mut self.popup.inner.inner;
         let len = column.len() as u64;
-        column.insert(index, MenuEntry::new(label.to_string(), len))
+        column.insert(index, MenuEntry::new(label, len))
         // TODO: localised reconfigure
     }
 
@@ -184,10 +184,15 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Replace the choice at `index`
     ///
     /// Panics if `index` is out of bounds.
-    pub fn replace<T: ToString>(&mut self, index: usize, label: T, msg: M) -> (M, TkAction) {
+    pub fn replace<T: Into<AccelString>>(
+        &mut self,
+        index: usize,
+        label: T,
+        msg: M,
+    ) -> (M, TkAction) {
         let mut m = msg;
         std::mem::swap(&mut m, &mut self.messages[index]);
-        (m, self.popup.inner.inner[index].set_text(label))
+        (m, self.popup.inner.inner[index].set_accel(label))
     }
 }
 

@@ -9,7 +9,7 @@ use std::fmt::{self, Debug};
 use std::ops::Range;
 use unicode_segmentation::GraphemeCursor;
 
-use kas::class::{HasText, SetText};
+use kas::class::HasString;
 use kas::draw::{DrawHandleExt, TextClass};
 use kas::event::{ControlKey, GrabMode, ModifiersState};
 use kas::prelude::*;
@@ -568,18 +568,16 @@ impl<G> EditBox<G> {
     }
 }
 
-impl<G: EditGuard> SetText for EditBox<G> {
+impl<G: EditGuard> HasString for EditBox<G> {
+    fn get_str(&self) -> &str {
+        &self.text
+    }
+
     fn set_string(&mut self, text: String) -> TkAction {
         self.text = text;
         let action = self.prepared.set_text(self.text.clone());
         let _ = G::edit(self);
         action
-    }
-}
-
-impl<G: EditGuard> HasText for EditBox<G> {
-    fn get_text(&self) -> &str {
-        &self.text
     }
 }
 
