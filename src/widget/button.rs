@@ -105,7 +105,7 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
 }
 
 impl<M: Clone + Debug + 'static> SetText for TextButton<M> {
-    fn set_cow_string(&mut self, label: CowString) -> TkAction {
+    fn set_string(&mut self, label: String) -> TkAction {
         let label = AccelString::from(label);
         let text = label.get(false).to_string();
         self.keys2 = label.take_keys();

@@ -8,7 +8,7 @@
 //! These traits provide generic ways to interact with common widget properties,
 //! e.g. to read the text of a `Label` or set the state of a `CheckBox`.
 
-use crate::{string::CowString, TkAction};
+use crate::TkAction;
 
 /// Read / write a boolean value
 ///
@@ -23,23 +23,18 @@ pub trait HasBool {
 
 /// Write a plain-text value or label
 pub trait SetText {
-    /// Set the widget's text
-    ///
-    /// Depending on the widget, this may set a label or a value.
-    fn set_text<T: Into<CowString>>(&mut self, text: T) -> TkAction
+    /// Set text (unformatted)
+    fn set_text<T: ToString>(&mut self, text: T) -> TkAction
     where
         Self: Sized,
     {
-        self.set_cow_string(text.into())
+        self.set_string(text.to_string())
     }
 
-    /// Set the widget's text ([`CowString`])
+    /// Set text from a `String`
     ///
     /// Depending on the widget, this may set a label or a value.
-    ///
-    /// This method is for implementation. It is recommended to use
-    /// [`HasText::set_text`] instead.
-    fn set_cow_string(&mut self, text: CowString) -> TkAction;
+    fn set_string(&mut self, text: String) -> TkAction;
 }
 
 /// Read a plain-text value / label

@@ -21,7 +21,7 @@ pub struct Window<W: Widget + 'static> {
     #[widget_core]
     core: CoreData,
     restrict_dimensions: (bool, bool),
-    title: CowString,
+    title: String,
     #[widget]
     w: W,
     popups: SmallVec<[(WindowId, kas::Popup); 16]>,
@@ -61,11 +61,11 @@ impl<W: Widget + Clone> Clone for Window<W> {
 
 impl<W: Widget> Window<W> {
     /// Create
-    pub fn new<T: Into<CowString>>(title: T, w: W) -> Window<W> {
+    pub fn new<T: ToString>(title: T, w: W) -> Window<W> {
         Window {
             core: Default::default(),
             restrict_dimensions: (true, false),
-            title: title.into(),
+            title: title.to_string(),
             w,
             popups: Default::default(),
             fns: Vec::new(),

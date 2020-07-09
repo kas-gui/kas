@@ -14,12 +14,6 @@ use std::ops::Deref;
 
 use kas::event::{VirtualKeyCode as VK, VirtualKeyCodes};
 
-/// Convenience definition: `Cow<'a, str>`
-pub type CowStringL<'a> = std::borrow::Cow<'a, str>;
-
-/// Convenience definition: `Cow<'static, str>`
-pub type CowString = CowStringL<'static>;
-
 /// A label string
 ///
 /// This is a label which supports markup.
@@ -27,7 +21,7 @@ pub type CowString = CowStringL<'static>;
 /// Markup: `&&` translates to `&`; `&x` for any `x` translates to `x`.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LabelString {
-    label: CowString,
+    label: String,
 }
 
 impl LabelString {
@@ -60,8 +54,8 @@ impl LabelString {
     }
 }
 
-impl From<CowString> for LabelString {
-    fn from(input: CowString) -> Self {
+impl From<String> for LabelString {
+    fn from(input: String) -> Self {
         if input.as_bytes().contains(&b'&') {
             Self::parse(&input)
         } else {
@@ -73,13 +67,7 @@ impl From<CowString> for LabelString {
 
 impl From<&'static str> for LabelString {
     fn from(input: &'static str) -> Self {
-        CowString::from(input).into()
-    }
-}
-
-impl From<String> for LabelString {
-    fn from(input: String) -> Self {
-        CowString::from(input).into()
+        input.to_string().into()
     }
 }
 
@@ -99,8 +87,8 @@ impl Deref for LabelString {
 /// may support keyboard access via e.g. `Alt+X`.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AccelString {
-    label: CowString,
-    underlined: CowString,
+    label: String,
+    underlined: String,
     // TODO: is it worth using such a large structure here instead of Option?
     keys: VirtualKeyCodes,
 }
@@ -173,8 +161,8 @@ impl AccelString {
     }
 }
 
-impl From<CowString> for AccelString {
-    fn from(input: CowString) -> Self {
+impl From<String> for AccelString {
+    fn from(input: String) -> Self {
         if input.as_bytes().contains(&b'&') {
             Self::parse(&input)
         } else {
@@ -190,13 +178,7 @@ impl From<CowString> for AccelString {
 
 impl From<&'static str> for AccelString {
     fn from(input: &'static str) -> Self {
-        CowString::from(input).into()
-    }
-}
-
-impl From<String> for AccelString {
-    fn from(input: String) -> Self {
-        CowString::from(input).into()
+        input.to_string().into()
     }
 }
 

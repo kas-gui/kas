@@ -90,7 +90,7 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
 }
 
 impl<M: Clone + Debug + 'static> SetText for MenuEntry<M> {
-    fn set_cow_string(&mut self, label: CowString) -> TkAction {
+    fn set_string(&mut self, label: String) -> TkAction {
         let label = AccelString::from(label);
         let text = label.get(false).to_string();
         self.keys = label.take_keys();

@@ -279,7 +279,7 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
 }
 
 impl<D: Directional, W: Menu> SetText for SubMenu<D, W> {
-    fn set_cow_string(&mut self, label: CowString) -> TkAction {
+    fn set_string(&mut self, label: String) -> TkAction {
         let label = AccelString::from(label);
         let text = label.get(false).to_string();
         self.keys = label.take_keys();

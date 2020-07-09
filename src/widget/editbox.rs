@@ -352,7 +352,7 @@ impl<G> EditBox<G> {
     /// Set the error state
     ///
     /// When true, the input field's background is drawn red.
-    // TODO: possibly change type to Option<CowString> and display the error
+    // TODO: possibly change type to Option<String> and display the error
     pub fn set_error_state(&mut self, error_state: bool) {
         self.error_state = error_state;
     }
@@ -569,8 +569,8 @@ impl<G> EditBox<G> {
 }
 
 impl<G: EditGuard> SetText for EditBox<G> {
-    fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.text = text.to_string();
+    fn set_string(&mut self, text: String) -> TkAction {
+        self.text = text;
         let action = self.prepared.set_text(self.text.clone());
         let _ = G::edit(self);
         action

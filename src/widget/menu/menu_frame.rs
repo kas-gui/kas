@@ -86,8 +86,8 @@ impl<W: HasBool + Widget> HasBool for MenuFrame<W> {
 }
 
 impl<W: SetText + Widget> SetText for MenuFrame<W> {
-    fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.inner.set_cow_string(text)
+    fn set_string(&mut self, text: String) -> TkAction {
+        self.inner.set_string(text)
     }
 }
 

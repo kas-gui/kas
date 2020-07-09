@@ -89,8 +89,8 @@ impl<W: HasBool + Widget> HasBool for Frame<W> {
 }
 
 impl<W: SetText + Widget> SetText for Frame<W> {
-    fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.child.set_cow_string(text)
+    fn set_string(&mut self, text: String) -> TkAction {
+        self.child.set_string(text)
     }
 }
 
