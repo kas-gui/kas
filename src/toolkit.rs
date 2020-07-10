@@ -17,7 +17,6 @@
 use std::num::NonZeroU32;
 
 use crate::draw::SizeHandle;
-use crate::string::{CowString, CowStringL};
 use crate::{event, ThemeAction, ThemeApi};
 
 /// Identifier for a window or pop-up
@@ -143,10 +142,10 @@ pub trait TkWindow {
     ///
     /// In case of failure, paste actions will simply fail. The implementation
     /// may wish to log an appropriate warning message.
-    fn get_clipboard(&mut self) -> Option<CowString>;
+    fn get_clipboard(&mut self) -> Option<String>;
 
     /// Attempt to set clipboard contents
-    fn set_clipboard<'c>(&mut self, content: CowStringL<'c>);
+    fn set_clipboard<'c>(&mut self, content: std::borrow::Cow<'c, str>);
 
     /// Adjust the theme
     fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> ThemeAction);

@@ -88,20 +88,34 @@ impl<W: HasBool + Widget> HasBool for Frame<W> {
     }
 }
 
+impl<W: HasString + Widget> HasString for Frame<W> {
+    fn get_str(&self) -> &str {
+        self.child.get_str()
+    }
+
+    fn set_string(&mut self, text: String) -> TkAction {
+        self.child.set_string(text)
+    }
+}
+
+impl<W: CloneText + Widget> CloneText for Frame<W> {
+    fn clone_string(&self) -> String {
+        self.child.clone_string()
+    }
+
+    fn clone_text(&self) -> kas::text::RichText {
+        self.child.clone_text()
+    }
+}
+
 impl<W: SetText + Widget> SetText for Frame<W> {
-    fn set_cow_string(&mut self, text: CowString) -> TkAction {
-        self.child.set_cow_string(text)
+    fn set_rich_text(&mut self, text: kas::text::RichText) -> TkAction {
+        self.child.set_rich_text(text)
     }
 }
 
-impl<W: HasText + Widget> HasText for Frame<W> {
-    fn get_text(&self) -> &str {
-        self.child.get_text()
-    }
-}
-
-impl<W: HasRichText + Widget> HasRichText for Frame<W> {
-    fn clone_rich_text(&self) -> kas::text::RichText {
-        self.child.clone_rich_text()
+impl<W: SetAccel + Widget> SetAccel for Frame<W> {
+    fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
+        self.child.set_accel_string(accel)
     }
 }

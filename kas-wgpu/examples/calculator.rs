@@ -9,7 +9,7 @@
 use std::num::ParseFloatError;
 use std::str::FromStr;
 
-use kas::class::HasText;
+use kas::class::HasString;
 use kas::event::VirtualKeyCode as VK;
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
@@ -84,14 +84,14 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[layout(column)]
         #[handler(msg = VoidMsg)]
         struct {
-            #[widget] display: impl HasText = EditBox::new("0").editable(false).multi_line(true),
+            #[widget] display: impl HasString = EditBox::new("0").editable(false).multi_line(true),
             #[widget(handler = handle_button)] buttons -> Key = buttons,
             calc: Calculator = Calculator::new(),
         }
         impl {
             fn handle_button(&mut self, mgr: &mut Manager, msg: Key) -> Response<VoidMsg> {
                 if self.calc.handle(msg) {
-                    *mgr += self.display.set_text(self.calc.display());
+                    *mgr += self.display.set_string(self.calc.display());
                 }
                 Response::None
             }

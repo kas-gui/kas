@@ -9,7 +9,7 @@
 //! (excepting custom graphics).
 #![feature(proc_macro_hygiene)]
 
-use kas::class::HasText;
+use kas::class::HasString;
 use kas::event::{UpdateHandle, VoidResponse};
 use kas::prelude::*;
 use kas::widget::*;
@@ -32,12 +32,12 @@ impl EditGuard for Guard {
     type Msg = Item;
 
     fn activate(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
-        Some(Item::Edit(edit.get_text().to_string()))
+        Some(Item::Edit(edit.get_string()))
     }
 
     fn edit(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
         // 7a is the colour of *magic*!
-        edit.set_error_state(edit.get_text().len() % (7 + 1) == 0);
+        edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
         None
     }
 }

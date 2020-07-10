@@ -5,8 +5,7 @@
 
 //! Text drawing API for `kas_wgpu`
 
-use wgpu_glyph::ab_glyph;
-use wgpu_glyph::Extra;
+use wgpu_glyph::{ab_glyph, Extra, SectionGlyph};
 
 use super::{CustomWindow, DrawWindow};
 use kas::draw::{Colour, DrawText, Pass};
@@ -19,14 +18,20 @@ fn to_point(Vec2(x, y): Vec2) -> ab_glyph::Point {
 
 impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
     fn text(&mut self, pass: Pass, pos: Vec2, col: Colour, text: &PreparedText) {
-        // TODO: perhaps glyph_brush can accept an offset for all glyphs?
-        let glyphs = text.positioned_glyphs(pos);
-        let extra = (0..text.num_parts())
-            .map(|_| Extra {
-                color: col.into(),
-                z: pass.depth(),
+        let glyphs = text
+            .positioned_glyphs(pos)
+            .map(|sg| SectionGlyph {
+                // Index fields are not used when drawing
+                section_index: 0,
+                byte_index: 0,
+                glyph: sg.glyph,
+                font_id: sg.font_id,
             })
             .collect();
+        let extra = vec![Extra {
+            color: col.into(),
+            z: pass.depth(),
+        }];
         let min = to_point(pos);
         let max = to_point(pos + text.bounds());
         let bounds = ab_glyph::Rect { min, max };

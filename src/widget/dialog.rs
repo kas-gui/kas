@@ -27,7 +27,7 @@ pub struct MessageBox {
     core: CoreData,
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,
-    title: CowString,
+    title: String,
     #[widget]
     label: Label,
     #[widget(handler = handle_button)]
@@ -35,11 +35,11 @@ pub struct MessageBox {
 }
 
 impl MessageBox {
-    pub fn new<T: Into<CowString>, M: Into<LabelString>>(title: T, message: M) -> Self {
+    pub fn new<T: ToString, M: Into<LabelString>>(title: T, message: M) -> Self {
         MessageBox {
             core: Default::default(),
             layout_data: Default::default(),
-            title: title.into(),
+            title: title.to_string(),
             label: Label::new(message),
             button: TextButton::new("Ok", DialogButton::Close).with_keys(&[
                 VirtualKeyCode::Return,

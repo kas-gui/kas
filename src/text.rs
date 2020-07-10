@@ -7,9 +7,10 @@
 
 use kas::geom::{Coord, Size, Vec2};
 use kas::{Align, TkAction};
-pub use kas_text::{
-    fonts, Font, FontId, FontScale, PreparedPart, RichText, SectionGlyph, TextPart,
-};
+pub use kas_text::*;
+
+#[doc(no_inline)]
+pub use rich::Text as RichText;
 
 /// Text, prepared for display in a given enviroment
 ///
@@ -17,17 +18,17 @@ pub use kas_text::{
 ///
 /// The type can be default-constructed with no text.
 #[derive(Clone, Debug, Default)]
-pub struct PreparedText(kas_text::PreparedText);
+pub struct PreparedText(prepared::Text);
 
 impl PreparedText {
     /// Construct from a text model
     ///
-    /// This method assumes default alignment. To adjust, use [`PreparedText::set_alignment`].
+    /// This method assumes default alignment. To adjust, use [`Text::set_alignment`].
     ///
     /// This struct must be made ready for use before
-    /// To do so, call [`PreparedText::set_environment`].
+    /// To do so, call [`PreparedText::prepare`].
     pub fn new(text: RichText, line_wrap: bool) -> PreparedText {
-        PreparedText(kas_text::PreparedText::new(text, line_wrap))
+        PreparedText(prepared::Text::new(text, line_wrap))
     }
 
     /// Reconstruct the [`RichText`] defining this `PreparedText`
@@ -35,9 +36,12 @@ impl PreparedText {
         self.0.clone_text()
     }
 
-    /// Index at end of text
-    pub fn total_len(&self) -> usize {
-        self.0.total_len()
+    /// Length of raw text
+    ///
+    /// It is valid to reference text within the range `0..raw_text_len()`,
+    /// even if not all text within this range will be displayed (due to runs).
+    pub fn raw_text_len(&self) -> usize {
+        self.0.raw_text_len()
     }
 
     /// Layout text
@@ -53,6 +57,8 @@ impl PreparedText {
     }
 
     /// Set the text
+    ///
+    /// Returns [`TkAction::Resize`] when it is necessary to call [`PreparedText::prepare`].
     pub fn set_text<T: Into<RichText>>(&mut self, text: T) -> TkAction {
         if self.0.set_text(text.into()) {
             // Layout must be re-calculated which currently requires resizing
@@ -91,11 +97,7 @@ impl PreparedText {
         self.0.bounds().into()
     }
 
-    pub fn num_parts(&self) -> usize {
-        self.0.num_parts()
-    }
-
-    pub fn positioned_glyphs(&self, pos: Vec2) -> Vec<SectionGlyph> {
+    pub fn positioned_glyphs(&self, pos: Vec2) -> prepared::GlyphIter {
         self.0.positioned_glyphs(pos.into())
     }
 

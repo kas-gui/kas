@@ -5,7 +5,7 @@
 
 //! Text widgets
 
-use kas::class::{HasRichText, SetText};
+use kas::class::{CloneText, SetAccel, SetText};
 use kas::draw::TextClass;
 use kas::event::VirtualKeyCodes;
 use kas::prelude::*;
@@ -73,15 +73,15 @@ impl Label {
     }
 }
 
-impl SetText for Label {
-    fn set_cow_string(&mut self, string: CowString) -> TkAction {
-        self.label.set_text(string.to_string())
+impl CloneText for Label {
+    fn clone_text(&self) -> kas::text::RichText {
+        self.label.clone_text()
     }
 }
 
-impl HasRichText for Label {
-    fn clone_rich_text(&self) -> kas::text::RichText {
-        self.label.clone_text()
+impl SetText for Label {
+    fn set_rich_text(&mut self, text: kas::text::RichText) -> TkAction {
+        self.label.set_text(text)
     }
 }
 
@@ -142,17 +142,16 @@ impl AccelLabel {
     }
 }
 
-impl SetText for AccelLabel {
-    fn set_cow_string(&mut self, label: CowString) -> TkAction {
-        let label = AccelString::from(label);
-        let text = label.get(false).to_string();
-        self.keys = label.take_keys();
-        self.label.set_text(text)
+impl CloneText for AccelLabel {
+    fn clone_text(&self) -> kas::text::RichText {
+        self.label.clone_text()
     }
 }
 
-impl HasRichText for AccelLabel {
-    fn clone_rich_text(&self) -> kas::text::RichText {
-        self.label.clone_text()
+impl SetAccel for AccelLabel {
+    fn set_accel_string(&mut self, label: AccelString) -> TkAction {
+        let text = label.get(false).to_string();
+        self.keys = label.take_keys();
+        self.label.set_text(text)
     }
 }

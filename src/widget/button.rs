@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use kas::class::{HasRichText, SetText};
+use kas::class::{CloneText, SetAccel};
 use kas::draw::TextClass;
 use kas::event::{VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
@@ -104,18 +104,17 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> SetText for TextButton<M> {
-    fn set_cow_string(&mut self, label: CowString) -> TkAction {
-        let label = AccelString::from(label);
-        let text = label.get(false).to_string();
-        self.keys2 = label.take_keys();
-        self.label.set_text(text)
+impl<M: Clone + Debug + 'static> CloneText for TextButton<M> {
+    fn clone_text(&self) -> kas::text::RichText {
+        self.label.clone_text()
     }
 }
 
-impl<M: Clone + Debug + 'static> HasRichText for TextButton<M> {
-    fn clone_rich_text(&self) -> kas::text::RichText {
-        self.label.clone_text()
+impl<M: Clone + Debug + 'static> SetAccel for TextButton<M> {
+    fn set_accel_string(&mut self, label: AccelString) -> TkAction {
+        let text = label.get(false).to_string();
+        self.keys2 = label.take_keys();
+        self.label.set_text(text)
     }
 }
 

@@ -101,9 +101,9 @@ impl std::ops::Add<Size> for Coord {
     }
 }
 
-impl From<Coord> for kas_text::Size {
-    fn from(pos: Coord) -> kas_text::Size {
-        kas_text::Size(pos.0 as f32, pos.1 as f32)
+impl From<Coord> for kas_text::Vec2 {
+    fn from(pos: Coord) -> kas_text::Vec2 {
+        kas_text::Vec2(pos.0 as f32, pos.1 as f32)
     }
 }
 
@@ -212,9 +212,9 @@ impl From<Size> for winit::dpi::Size {
     }
 }
 
-impl From<Size> for kas_text::Size {
-    fn from(size: Size) -> kas_text::Size {
-        kas_text::Size(size.0 as f32, size.1 as f32)
+impl From<Size> for kas_text::Vec2 {
+    fn from(size: Size) -> kas_text::Vec2 {
+        kas_text::Vec2(size.0 as f32, size.1 as f32)
     }
 }
 
