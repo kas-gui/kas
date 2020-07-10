@@ -46,8 +46,7 @@ pub trait CloneText {
     /// though where an unformatted representation is available internally this
     /// may be used for a more efficient implementation.
     fn clone_string(&self) -> String {
-        todo!()
-        // self.clone_text().to_string()
+        self.clone_text().to_string()
     }
 
     /// Clone text as rich text

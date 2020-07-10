@@ -5,7 +5,7 @@
 
 //! Text drawing API for `kas_wgpu`
 
-use wgpu_glyph::{ab_glyph, Extra, FontId, SectionGlyph};
+use wgpu_glyph::{ab_glyph, Extra, SectionGlyph};
 
 use super::{CustomWindow, DrawWindow};
 use kas::draw::{Colour, DrawText, Pass};
@@ -25,15 +25,13 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
                 section_index: 0,
                 byte_index: 0,
                 glyph: sg.glyph,
-                font_id: FontId(sg.font_id.get()),
+                font_id: sg.font_id,
             })
             .collect();
-        let extra = (0..text.num_parts())
-            .map(|_| Extra {
-                color: col.into(),
-                z: pass.depth(),
-            })
-            .collect();
+        let extra = vec![Extra {
+            color: col.into(),
+            z: pass.depth(),
+        }];
         let min = to_point(pos);
         let max = to_point(pos + text.bounds());
         let bounds = ab_glyph::Rect { min, max };
