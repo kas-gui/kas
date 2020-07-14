@@ -24,7 +24,7 @@ impl Layout for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut prepared;
         let text = if let Some(s) = self.reserve {
-            prepared = PreparedText::new(s.into(), true);
+            prepared = PreparedText::new_wrap(s.into());
             &mut prepared
         } else {
             &mut self.label
@@ -40,11 +40,10 @@ impl Layout for Label {
 
     fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.label.set_size(rect.size);
-        self.label.set_alignment(
-            align.horiz.unwrap_or(Align::Default),
-            align.vert.unwrap_or(Align::Centre),
-        );
+        self.label.update_env(|env| {
+            env.set_bounds(rect.size.into());
+            env.set_align(align.unwrap_or(Align::Default, Align::Centre));
+        });
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
@@ -58,7 +57,7 @@ impl Label {
         Label {
             core: Default::default(),
             reserve: None,
-            label: PreparedText::new(label.into().deref().into(), true),
+            label: PreparedText::new_wrap(label.into().deref().into()),
         }
     }
 
@@ -110,11 +109,10 @@ impl Layout for AccelLabel {
 
     fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.label.set_size(rect.size);
-        self.label.set_alignment(
-            align.horiz.unwrap_or(Align::Default),
-            align.vert.unwrap_or(Align::Centre),
-        );
+        self.label.update_env(|env| {
+            env.set_bounds(rect.size.into());
+            env.set_align(align.unwrap_or(Align::Default, Align::Centre));
+        });
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _mgr: &ManagerState, _: bool) {
@@ -127,7 +125,7 @@ impl AccelLabel {
     /// Construct a new, empty instance
     pub fn new<T: Into<AccelString>>(label: T) -> Self {
         let label = label.into();
-        let text = PreparedText::new(label.get(false).into(), false);
+        let text = PreparedText::new(label.get(false).into());
         let keys = label.take_keys();
         AccelLabel {
             core: Default::default(),

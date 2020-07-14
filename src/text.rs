@@ -5,8 +5,8 @@
 
 //! Abstractions over `kas-text`
 
-use kas::geom::{Coord, Size, Vec2};
-use kas::{Align, TkAction};
+use kas::geom::{Coord, Vec2};
+use kas::TkAction;
 pub use kas_text::*;
 
 #[doc(no_inline)]
@@ -21,14 +21,30 @@ pub use rich::Text as RichText;
 pub struct PreparedText(prepared::Text);
 
 impl PreparedText {
-    /// Construct from a text model
+    /// New single-line text
     ///
-    /// This method assumes default alignment. To adjust, use [`Text::set_alignment`].
+    /// This method assumes single-line mode and default alignment.
+    /// To adjust, use [`Text::update_env`].
     ///
     /// This struct must be made ready for use before
     /// To do so, call [`PreparedText::prepare`].
-    pub fn new(text: RichText, line_wrap: bool) -> PreparedText {
-        PreparedText(prepared::Text::new(text, line_wrap))
+    pub fn new(text: rich::Text) -> Self {
+        Self::new_with_env(Environment::new(), text)
+    }
+
+    /// New multi-line text
+    ///
+    /// This differs from [`PreparedText::new`] only in that it enables line wrapping.
+    pub fn new_wrap(text: rich::Text) -> Self {
+        Self::new_with_env(Environment::new_wrap(), text)
+    }
+
+    /// New multi-line text
+    ///
+    /// This differs from [`PreparedText::new`] in that it allows explicit
+    /// setting of [`Environment`] parameters.
+    pub fn new_with_env(env: Environment, text: rich::Text) -> Self {
+        PreparedText(prepared::Text::new(env, text))
     }
 
     /// Reconstruct the [`RichText`] defining this `PreparedText`
@@ -51,8 +67,10 @@ impl PreparedText {
     ///
     /// The `scale` is used to set the base scale: rich text may adjust this.
     pub fn prepare(&mut self, bounds: Vec2, scale: FontScale) {
-        self.0.set_bounds(bounds.into());
-        self.0.set_base_scale(scale);
+        self.0.update_env(|env| {
+            env.set_bounds(bounds.into());
+            env.set_font_scale(scale);
+        });
         self.0.prepare();
     }
 
@@ -60,45 +78,32 @@ impl PreparedText {
     ///
     /// Returns [`TkAction::Resize`] when it is necessary to call [`PreparedText::prepare`].
     pub fn set_text<T: Into<RichText>>(&mut self, text: T) -> TkAction {
-        if self.0.set_text(text.into()) {
-            // Layout must be re-calculated which currently requires resizing
-            TkAction::Resize
-        } else {
-            TkAction::None
+        match self.0.set_text(text.into()) {
+            false => TkAction::None,
+            true => TkAction::Resize, // set_size calls prepare
         }
     }
 
-    /// Adjust alignment
+    /// Read the environment
     ///
-    /// This may be called before or after `prepare` and has immediate effect.
-    pub fn set_alignment(&mut self, horiz: Align, vert: Align) {
-        self.0.set_alignment(horiz, vert);
+    /// Returns [`TkAction::Resize`] when it is necessary to call [`PreparedText::prepare`].
+    pub fn env(&self) -> &Environment {
+        self.0.env()
     }
 
-    /// Enable or disable line-wrapping
+    /// Update the environment
     ///
-    /// This does not have immediate effect: one must call `prepare` afterwards.
-    pub fn set_line_wrap(&mut self, line_wrap: bool) {
-        self.0.set_line_wrap(line_wrap);
+    /// This calls [`PreparedText::prepare`] internally.
+    pub fn update_env<F: FnOnce(&mut UpdateEnv)>(&mut self, f: F) {
+        self.0.update_env(f);
+        self.0.prepare();
     }
 
-    /// Set size bounds
-    ///
-    /// This does not recalculate the layout. If the bounds are too small, text
-    /// will be cropped.
-    pub fn set_size(&mut self, size: Size) {
-        self.0.set_bounds(size.into());
-    }
-
-    /// Get size bounds
-    ///
-    /// Returns the value last given via `prepare` or `set_size`.
-    pub fn bounds(&self) -> Vec2 {
-        self.0.bounds().into()
-    }
-
-    pub fn positioned_glyphs(&self, pos: Vec2) -> prepared::GlyphIter {
-        self.0.positioned_glyphs(pos.into())
+    pub fn positioned_glyphs<G, F: Fn(&str, FontId, PxScale, Glyph) -> G>(&self, f: F) -> Vec<G> {
+        // TODO: Should we cache this result somewhere? Unfortunately we still
+        // don't have the type G here, and the caller (draw_text.rs) does not
+        // have storage directly associated with this PreparedText.
+        self.0.positioned_glyphs(f)
     }
 
     pub fn required_size(&self) -> Vec2 {

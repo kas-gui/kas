@@ -206,7 +206,12 @@ impl<G: 'static> Layout for EditBox<G> {
 
         self.core.rect = rect;
         self.text_pos = rect.pos + self.frame_offset;
-        self.prepared.set_size(rect.size - self.frame_size);
+        let size = rect.size - self.frame_size;
+        let multi_line = self.multi_line;
+        self.prepared.update_env(|env| {
+            env.set_bounds(size.into());
+            env.set_wrap(multi_line);
+        });
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
@@ -242,7 +247,7 @@ impl EditBox<EditVoid> {
             editable: true,
             multi_line: false,
             text: text.clone(),
-            prepared: PreparedText::new(text.into(), false),
+            prepared: PreparedText::new(text.into()),
             edit_pos,
             sel_pos: edit_pos,
             old_state: None,
@@ -340,7 +345,6 @@ impl<G> EditBox<G> {
     /// Set whether this `EditBox` shows multiple text lines
     pub fn multi_line(mut self, multi_line: bool) -> Self {
         self.multi_line = multi_line;
-        self.prepared.set_line_wrap(multi_line);
         self
     }
 

@@ -43,11 +43,10 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
 
     fn set_rect(&mut self, rect: Rect, align: kas::AlignHints) {
         self.core.rect = rect;
-        self.label.set_size(rect.size);
-        self.label.set_alignment(
-            align.horiz.unwrap_or(Align::Centre),
-            align.vert.unwrap_or(Align::Centre),
-        );
+        self.label.update_env(|env| {
+            env.set_bounds(rect.size.into());
+            env.set_align(align.unwrap_or(Align::Centre, Align::Centre));
+        });
     }
 
     fn spatial_range(&self) -> (usize, usize) {
@@ -89,7 +88,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     #[inline]
     fn new_(column: Vec<MenuEntry<u64>>, messages: Vec<M>) -> Self {
         assert!(column.len() > 0, "ComboBox: expected at least one choice");
-        let label = PreparedText::new(column[0].clone_text(), false);
+        let label = PreparedText::new(column[0].clone_text());
         ComboBox {
             core: Default::default(),
             label,
