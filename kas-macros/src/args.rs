@@ -238,30 +238,33 @@ impl WidgetAttrArgs {
         ))
     }
 
-    fn match_align(ident: &Ident) -> Result<TokenStream> {
+    fn match_align(ident: &Ident, horiz: bool) -> Result<TokenStream> {
         Ok(match ident {
-            ident if ident == "begin" => quote! { kas::Align::Begin },
+            ident if ident == "default" => quote! { kas::Align::Default },
+            ident if horiz && ident == "left" => quote! { kas::Align::TL },
+            ident if !horiz && ident == "top" => quote! { kas::Align::TL },
             ident if ident == "centre" || ident == "center" => quote! { kas::Align::Centre },
-            ident if ident == "end" => quote! { kas::Align::End },
+            ident if horiz && ident == "right" => quote! { kas::Align::BR },
+            ident if !horiz && ident == "bottom" => quote! { kas::Align::BR },
             ident if ident == "stretch" => quote! { kas::Align::Stretch },
             ident => {
                 return Err(Error::new(
                     ident.span(),
-                    "expected one of `begin`, `centre`, `center`, `end`, `stretch`",
+                    "expected one of `default`, `centre`, `stretch`, `top` or `bottom` (if vertical), `left` or `right` (if horizontal)",
                 ));
             }
         })
     }
     pub fn halign_toks(&self) -> Result<Option<TokenStream>> {
         if let Some(ref ident) = self.halign {
-            Ok(Some(Self::match_align(ident)?))
+            Ok(Some(Self::match_align(ident, true)?))
         } else {
             Ok(None)
         }
     }
     pub fn valign_toks(&self) -> Result<Option<TokenStream>> {
         if let Some(ref ident) = self.valign {
-            Ok(Some(Self::match_align(ident)?))
+            Ok(Some(Self::match_align(ident, false)?))
         } else {
             Ok(None)
         }
