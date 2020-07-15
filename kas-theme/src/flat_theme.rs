@@ -259,11 +259,15 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         let col = self.cols.text_class(class);
 
         // Draw background:
-        let pos1 = text.text_glyph_pos(pos, range.start);
-        let mut pos2 = text.text_glyph_pos(pos, range.end);
-        pos2.1 += self.window.dims.font_scale;
-        let quad = Quad::with_coords(pos1, pos2);
-        self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
+        // TODO: this should retrieve a list of rects!
+        let r1 = text.text_glyph_pos(pos, range.start);
+        let r2 = text.text_glyph_pos(pos, range.end);
+        if let (Some((mut p1, ascent, descent)), Some((mut p2, _, _))) = (r1, r2) {
+            p1.1 -= ascent;
+            p2.1 -= descent;
+            let quad = Quad::with_coords(p1, p2);
+            self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
+        }
 
         // TODO: which should use self.cols.text_sel for the selected range!
         self.draw.text(self.pass, pos.into(), col, text);
@@ -271,10 +275,14 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
 
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
         let col = self.cols.text_class(class);
-        let pos = text.text_glyph_pos(pos + self.offset, byte);
-        let size = self.window.dims.edit_marker_size();
-        let quad = Quad::with_pos_and_size(pos.into(), size);
-        self.draw.rect(self.pass, quad, col);
+        if let Some((mut p1, ascent, descent)) = text.text_glyph_pos(pos + self.offset, byte) {
+            let mut p2 = p1;
+            p1.1 -= ascent;
+            p2.1 -= descent;
+            p2.0 += self.window.dims.edit_marker_size().0;
+            let quad = Quad::with_coords(p1, p2);
+            self.draw.rect(self.pass, quad, col);
+        }
     }
 
     fn menu_entry(&mut self, rect: Rect, state: InputState) {

@@ -112,12 +112,20 @@ impl PreparedText {
 
     /// Find the starting position (top-left) of the glyph at the given index
     ///
-    /// May panic on invalid byte index.
+    /// Returns `Some(pos, ascent, descent)` on success, where `pos.1 - ascent`
+    /// and `pos.1 - descent` are the top and bottom of the glyph position.
     ///
-    /// This method is only partially compatible with mult-line text.
-    /// Ideally an external line-breaker should be used.
-    pub fn text_glyph_pos(&self, pos: Coord, index: usize) -> Vec2 {
-        Vec2::from(pos) + Vec2::from(self.0.text_glyph_pos(index))
+    /// Note that this only searches *visible* text sections for a valid index.
+    /// In case the `index` is not within a slice of visible text, this returns
+    /// `None`. So long as `index` is within a visible slice (or at its end),
+    /// it does not need to be on a valid code-point.
+    ///
+    /// Note: if the text's bounding rect does not start at the origin, then
+    /// the coordinates of the top-left corner should be added to this result.
+    pub fn text_glyph_pos(&self, pos: Coord, index: usize) -> Option<(Vec2, f32, f32)> {
+        self.0
+            .text_glyph_pos(index)
+            .map(|result| (Vec2::from(pos) + Vec2::from(result.0), result.1, result.2))
     }
 
     /// Find the text index for the glyph nearest the given `coord`, relative to `pos`
