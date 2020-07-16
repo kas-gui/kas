@@ -18,22 +18,24 @@ fn to_point(Vec2(x, y): Vec2) -> ab_glyph::Point {
 
 impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
     fn text(&mut self, pass: Pass, pos: Vec2, col: Colour, text: &PreparedText) {
-        let glyphs = text
-            .positioned_glyphs(pos)
-            .map(|sg| SectionGlyph {
-                // Index fields are not used when drawing
-                section_index: 0,
-                byte_index: 0,
-                glyph: sg.glyph,
-                font_id: sg.font_id,
-            })
-            .collect();
+        let pos = to_point(pos);
+        let glyphs = text.positioned_glyphs(|_, font_id, scale, glyph| SectionGlyph {
+            // Index fields are not used when drawing
+            section_index: 0,
+            byte_index: 0,
+            glyph: ab_glyph::Glyph {
+                id: glyph.id,
+                scale,
+                position: pos + glyph.position.into(),
+            },
+            font_id: font_id.into(),
+        });
         let extra = vec![Extra {
             color: col.into(),
             z: pass.depth(),
         }];
-        let min = to_point(pos);
-        let max = to_point(pos + text.bounds());
+        let min = pos;
+        let max = pos + text.env().bounds.into();
         let bounds = ab_glyph::Rect { min, max };
         self.glyph_brush.queue_pre_positioned(glyphs, extra, bounds);
     }

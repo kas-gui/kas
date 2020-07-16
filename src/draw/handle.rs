@@ -628,7 +628,7 @@ mod test {
         let _size = draw_handle.size_handle(|h| h.frame());
 
         let pos = Coord::ZERO;
-        let text = PreparedText::new("sample".into(), false);
+        let text = PreparedText::new("sample".into());
         draw_handle.text_selected(pos, &text, .., TextClass::Label)
     }
 }

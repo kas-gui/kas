@@ -114,7 +114,7 @@ pub struct CoreData {
 ///     .apply(rect);
 /// // self.core.rect = rect;
 /// ```
-#[derive(Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct AlignHints {
     pub horiz: Option<Align>,
     pub vert: Option<Align>,
@@ -127,6 +127,11 @@ impl AlignHints {
     /// Construct with optional horiz. and vert. alignment
     pub const fn new(horiz: Option<Align>, vert: Option<Align>) -> Self {
         Self { horiz, vert }
+    }
+
+    /// Unwrap type's alignments or substitute parameters
+    pub fn unwrap_or(self, horiz: Align, vert: Align) -> (Align, Align) {
+        (self.horiz.unwrap_or(horiz), self.vert.unwrap_or(vert))
     }
 
     /// Complete via defaults and ideal size information

@@ -52,8 +52,8 @@ impl Layout for Clock {
         self.time.prepare(Vec2::INFINITY, font_scale);
 
         let half_size = Size(size.0, size.1 / 2);
-        self.date.set_size(half_size);
-        self.time.set_size(half_size);
+        self.date.update_env(|env| env.set_bounds(half_size.into()));
+        self.time.update_env(|env| env.set_bounds(half_size.into()));
         self.date_pos = pos + Size(0, size.1 - half_size.1);
         self.time_pos = pos;
     }
@@ -133,10 +133,13 @@ impl Handler for Clock {
 
 impl Clock {
     fn new() -> Self {
-        let mut date = PreparedText::new("0000-00-00".into(), false);
-        let mut time = PreparedText::new("00:00:00".into(), false);
-        date.set_alignment(Align::Centre, Align::Centre);
-        time.set_alignment(Align::Centre, Align::Centre);
+        let env = kas::text::Environment {
+            halign: Align::Centre,
+            valign: Align::Centre,
+            ..Default::default()
+        };
+        let date = PreparedText::new_with_env(env.clone(), "0000-00-00".into());
+        let time = PreparedText::new_with_env(env, "00:00:00".into());
         Clock {
             core: Default::default(),
             date_pos: Coord::ZERO,

@@ -54,11 +54,10 @@ impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
         // In practice, it sometimes overflows a tiny bit, and looks better if
         // we let it overflow. Since the text is centred this is okay.
         // self.label_rect = ...
-        self.label.set_size(rect.size);
-        self.label.set_alignment(
-            align.horiz.unwrap_or(Align::Centre),
-            align.vert.unwrap_or(Align::Centre),
-        );
+        self.label.update_env(|env| {
+            env.set_bounds(rect.size.into());
+            env.set_align(align.unwrap_or(Align::Centre, Align::Centre));
+        });
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
@@ -77,7 +76,7 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     /// the parent (or other ancestor).
     pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
         let label = label.into();
-        let text = PreparedText::new(label.get(false).into(), false);
+        let text = PreparedText::new(label.get(false).into());
         let keys2 = label.take_keys();
         TextButton {
             core: Default::default(),
