@@ -358,7 +358,7 @@ pub trait DrawHandleExt: DrawHandle {
         let end = match range.end_bound() {
             Bound::Included(n) => *n + 1,
             Bound::Excluded(n) => *n,
-            Bound::Unbounded => text.raw_text_len(),
+            Bound::Unbounded => text.text_len(),
         };
         let range = Range { start, end };
         self.text_selected_range(pos, text, range, class);

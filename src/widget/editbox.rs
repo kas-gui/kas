@@ -146,6 +146,7 @@ pub struct EditBox<G: 'static> {
     prepared: PreparedText,
     edit_pos: usize,
     sel_pos: usize,
+    edit_x_coord: Option<f32>,
     old_state: Option<(String, usize, usize)>,
     last_edit: LastEdit,
     error_state: bool,
@@ -250,6 +251,7 @@ impl EditBox<EditVoid> {
             prepared: PreparedText::new(text.into()),
             edit_pos,
             sel_pos: edit_pos,
+            edit_x_coord: None,
             old_state: None,
             last_edit: LastEdit::None,
             error_state: false,
@@ -276,6 +278,7 @@ impl EditBox<EditVoid> {
             prepared: self.prepared,
             edit_pos: self.edit_pos,
             sel_pos: self.sel_pos,
+            edit_x_coord: self.edit_x_coord,
             old_state: self.old_state,
             last_edit: self.last_edit,
             error_state: self.error_state,
@@ -391,6 +394,7 @@ impl<G> EditBox<G> {
             self.edit_pos = pos + c.len_utf8();
         }
         self.sel_pos = self.edit_pos;
+        self.edit_x_coord = None;
 
         *mgr += self.prepared.set_text(self.text.clone());
         EditAction::Edit
@@ -420,7 +424,7 @@ impl<G> EditBox<G> {
             Edit,
             Insert(&'a str, LastEdit),
             Delete(Range<usize>),
-            Move(usize),
+            Move(usize, Option<f32>),
         }
 
         let action = match key {
@@ -428,26 +432,60 @@ impl<G> EditBox<G> {
             ControlKey::Return if self.multi_line => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
+            ControlKey::Home => {
+                let pos = self.prepared.find_line(pos).map(|r| r.1.start).unwrap_or(0);
+                Action::Move(pos, None)
+            }
+            ControlKey::End => {
+                let pos = self
+                    .prepared
+                    .find_line(pos)
+                    .map(|r| r.1.end)
+                    .unwrap_or(self.text.len());
+                Action::Move(pos, None)
+            }
             ControlKey::Left => {
+                // Works but not quite as expected (see notes on Text::nav_left)
+                // Action::Move(self.prepared.nav_left(pos), None)
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
                 cursor
                     .prev_boundary(&self.text, 0)
                     .unwrap()
-                    .map(|pos| Action::Move(pos))
+                    .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
             ControlKey::Right => {
+                // Action::Move(self.prepared.nav_right(pos), None)
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
                 cursor
                     .next_boundary(&self.text, 0)
                     .unwrap()
-                    .map(|pos| Action::Move(pos))
+                    .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
-            ControlKey::Up | ControlKey::Home | ControlKey::PageUp => Action::Move(0),
-            ControlKey::Down | ControlKey::End | ControlKey::PageDown => {
-                Action::Move(self.text.len())
+            ControlKey::Up | ControlKey::Down => {
+                let x = match self.edit_x_coord {
+                    Some(x) => x,
+                    None => self
+                        .prepared
+                        .text_glyph_rel_pos(pos)
+                        .map(|r| (r.0).0)
+                        .unwrap_or(0.0),
+                };
+                let mut line = self.prepared.find_line(pos).map(|r| r.0).unwrap_or(0);
+                // We can tolerate invalid line numbers here!
+                if key == ControlKey::Up {
+                    line = line.wrapping_sub(1);
+                } else {
+                    line = line.wrapping_add(1);
+                }
+                self.prepared
+                    .line_index_nearest(line, x)
+                    .map(|pos| Action::Move(pos, Some(x)))
+                    .unwrap_or(Action::None)
             }
+            ControlKey::PageUp => Action::Move(0, None),
+            ControlKey::PageDown => Action::Move(self.text.len(), None),
             ControlKey::Delete => {
                 if have_sel {
                     Action::Delete(selection.clone())
@@ -507,6 +545,7 @@ impl<G> EditBox<G> {
                     self.edit_pos = *pos2;
                     *pos2 = pos;
                     std::mem::swap(sel_pos, &mut self.sel_pos);
+                    self.edit_x_coord = None;
                     mgr_action += self.prepared.set_text(self.text.clone());
                     self.last_edit = LastEdit::None;
                 }
@@ -537,6 +576,7 @@ impl<G> EditBox<G> {
                 }
                 self.edit_pos = pos + s.len();
                 self.sel_pos = self.edit_pos;
+                self.edit_x_coord = None;
                 mgr_action += self.prepared.set_text(self.text.clone());
                 EditAction::Edit
             }
@@ -549,14 +589,16 @@ impl<G> EditBox<G> {
                 self.text.replace_range(sel.clone(), "");
                 self.edit_pos = sel.start;
                 self.sel_pos = sel.start;
+                self.edit_x_coord = None;
                 mgr_action += self.prepared.set_text(self.text.clone());
                 EditAction::Edit
             }
-            Action::Move(pos) => {
+            Action::Move(pos, x_coord) => {
                 self.edit_pos = pos;
                 if !shift {
                     self.sel_pos = self.edit_pos;
                 }
+                self.edit_x_coord = x_coord;
                 mgr_action += TkAction::Redraw;
                 EditAction::None
             }
@@ -568,6 +610,7 @@ impl<G> EditBox<G> {
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
         self.edit_pos = self.prepared.text_index_nearest(self.text_pos, coord);
+        self.edit_x_coord = None;
         mgr.redraw(self.id());
     }
 }

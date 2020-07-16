@@ -5,7 +5,7 @@
 
 //! Text drawing API for `kas_wgpu`
 
-use wgpu_glyph::{ab_glyph, Extra, SectionGlyph, FontId};
+use wgpu_glyph::{ab_glyph, Extra, FontId, SectionGlyph};
 
 use super::{CustomWindow, DrawWindow};
 use kas::draw::{Colour, DrawText, Pass};
