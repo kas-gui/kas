@@ -5,7 +5,7 @@
 
 //! Text drawing API for `kas_wgpu`
 
-use wgpu_glyph::{ab_glyph, Extra, SectionGlyph};
+use wgpu_glyph::{ab_glyph, Extra, SectionGlyph, FontId};
 
 use super::{CustomWindow, DrawWindow};
 use kas::draw::{Colour, DrawText, Pass};
@@ -28,7 +28,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
                 scale,
                 position: pos + glyph.position.into(),
             },
-            font_id: font_id.into(),
+            font_id: FontId(font_id.get()),
         });
         let extra = vec![Extra {
             color: col.into(),
