@@ -259,14 +259,8 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         let col = self.cols.text_class(class);
 
         // Draw background:
-        // TODO: this should retrieve a list of rects!
-        let r1 = text.text_glyph_pos(pos, range.start);
-        let r2 = text.text_glyph_pos(pos, range.end);
-        if let (Some((mut p1, ascent, descent)), Some((mut p2, _, _))) = (r1, r2) {
-            p1.1 -= ascent;
-            p2.1 -= descent;
-            let quad = Quad::with_coords(p1, p2);
-            self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
+        for quad in &text.highlight_lines(pos, range) {
+            self.draw.rect(self.pass, *quad, self.cols.text_sel_bg);
         }
 
         // TODO: which should use self.cols.text_sel for the selected range!

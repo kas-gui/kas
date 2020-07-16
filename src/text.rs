@@ -5,7 +5,7 @@
 
 //! Abstractions over `kas-text`
 
-use kas::geom::{Coord, Vec2};
+use kas::geom::{Coord, Quad, Vec2};
 use kas::TkAction;
 pub use kas_text::*;
 
@@ -128,13 +128,52 @@ impl PreparedText {
             .map(|result| (Vec2::from(pos) + Vec2::from(result.0), result.1, result.2))
     }
 
+    /// Yield a sequence of rectangles to highlight a given range, by lines
+    ///
+    /// Rectangles span to end and beginning of lines when wrapping lines.
+    ///
+    /// This locates the ends of a range as with [`PreparedText::text_glyph_pos`], but
+    /// yields a separate rect for each "run" within this range (where "run" is
+    /// is a line or part of a line). Rects are represented by the top-left
+    /// vertex and the bottom-right vertex.
+    pub fn highlight_lines<R: Into<std::ops::Range<usize>>>(
+        &self,
+        pos: Coord,
+        range: R,
+    ) -> Vec<Quad> {
+        let pos = Vec2::from(pos);
+        self.0
+            .highlight_lines(range)
+            .iter()
+            .map(|(p1, p2)| Quad::with_coords(pos + Vec2::from(*p1), pos + Vec2::from(*p2)))
+            .collect()
+    }
+
+    /// Yield a sequence of rectangles to highlight a given range, by runs
+    ///
+    /// Rectangles tightly fit each "run" (piece) of text highlighted.
+    ///
+    /// This locates the ends of a range as with [`PreparedText::text_glyph_pos`], but
+    /// yields a separate rect for each "run" within this range (where "run" is
+    /// is a line or part of a line). Rects are represented by the top-left
+    /// vertex and the bottom-right vertex.
+    pub fn highlight_runs<R: Into<std::ops::Range<usize>>>(
+        &self,
+        pos: Coord,
+        range: R,
+    ) -> Vec<Quad> {
+        let pos = Vec2::from(pos);
+        self.0
+            .highlight_runs(range)
+            .iter()
+            .map(|(p1, p2)| Quad::with_coords(pos + Vec2::from(*p1), pos + Vec2::from(*p2)))
+            .collect()
+    }
+
     /// Find the text index for the glyph nearest the given `coord`, relative to `pos`
     ///
     /// This includes the index immediately after the last glyph, thus
     /// `result ≤ text.len()`.
-    ///
-    /// This method is only partially compatible with mult-line text.
-    /// Ideally an external line-breaker should be used.
     pub fn text_index_nearest(&self, pos: Coord, coord: Coord) -> usize {
         self.0.text_index_nearest((coord - pos).into())
     }
