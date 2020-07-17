@@ -11,7 +11,7 @@ use unicode_segmentation::GraphemeCursor;
 
 use kas::class::HasString;
 use kas::draw::{DrawHandleExt, TextClass};
-use kas::event::{ControlKey, GrabMode, ModifiersState};
+use kas::event::{ControlKey, GrabMode};
 use kas::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -400,12 +400,7 @@ impl<G> EditBox<G> {
         EditAction::Edit
     }
 
-    fn control_key(
-        &mut self,
-        mgr: &mut Manager,
-        key: ControlKey,
-        modifiers: ModifiersState,
-    ) -> EditAction {
+    fn control_key(&mut self, mgr: &mut Manager, key: ControlKey) -> EditAction {
         if !self.editable {
             return EditAction::None;
         }
@@ -415,7 +410,7 @@ impl<G> EditBox<G> {
         let pos = self.edit_pos;
         let selection = self.selection();
         let have_sel = selection.end > selection.start;
-        let shift = modifiers.shift();
+        let shift = mgr.modifiers().shift();
         let string;
 
         enum Action<'a> {
@@ -641,7 +636,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 let r = G::focus_lost(self);
                 r.map(|msg| msg.into()).unwrap_or(Response::None)
             }
-            Event::Control(key, modifiers) => match self.control_key(mgr, key, modifiers) {
+            Event::Control(key) => match self.control_key(mgr, key) {
                 EditAction::None => Response::None,
                 EditAction::Activate => G::activate(self).into(),
                 EditAction::Edit => G::edit(self).into(),

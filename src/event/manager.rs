@@ -255,7 +255,7 @@ impl<'a> Manager<'a> {
             if vkey == VK::Escape {
                 self.set_char_focus(None);
             } else if let Some(key) = ControlKey::new(vkey) {
-                self.send_event(widget, id, Event::Control(key, self.mgr.modifiers));
+                self.send_event(widget, id, Event::Control(key));
             }
             return;
         }
@@ -283,7 +283,7 @@ impl<'a> Manager<'a> {
                     if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
                         id_action = Some((nav_id, Event::Activate));
                     } else if let Some(nav_key) = ControlKey::new(vkey) {
-                        id_action = Some((nav_id, Event::Control(nav_key, self.mgr.modifiers)));
+                        id_action = Some((nav_id, Event::Control(nav_key)));
                     }
                 }
 
@@ -291,12 +291,12 @@ impl<'a> Manager<'a> {
                     // Next priority goes to pop-up widget
                     if let Some(popup) = self.mgr.popups.last() {
                         if let Some(key) = ControlKey::new(vkey) {
-                            let ev = Event::Control(key, self.mgr.modifiers);
+                            let ev = Event::Control(key);
                             id_action = Some((popup.1.parent, ev));
                         }
                     } else if let Some(id) = self.mgr.nav_fallback {
                         if let Some(key) = ControlKey::new(vkey) {
-                            id_action = Some((id, Event::Control(key, self.mgr.modifiers)));
+                            id_action = Some((id, Event::Control(key)));
                         }
                     }
                 }

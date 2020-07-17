@@ -75,6 +75,12 @@ impl ManagerState {
 
 /// Public API (around toolkit functionality)
 impl<'a> Manager<'a> {
+    /// Get the current modifier state
+    #[inline]
+    pub fn modifiers(&self) -> ModifiersState {
+        self.mgr.modifiers
+    }
+
     /// Schedule an update
     ///
     /// Widgets requiring animation should schedule an update; as a result,
