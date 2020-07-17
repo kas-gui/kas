@@ -7,7 +7,6 @@
 //!
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
-#![feature(proc_macro_hygiene)]
 
 use kas::class::HasString;
 use kas::event::{UpdateHandle, VoidResponse};

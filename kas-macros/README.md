@@ -16,7 +16,6 @@ has some benefits:
 
 -   More macro diagnostics are emitted, resulting in better error messages
     (without this, some errors may not even be reported)
--   With `#![feature(proc_macro_hygiene)]`, the `make_widget!` macro may be used
 
 
 Copyright and Licence

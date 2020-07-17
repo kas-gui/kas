@@ -4,7 +4,6 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Gallery of all widgets
-#![feature(proc_macro_hygiene)]
 
 use kas::event::VoidMsg;
 use kas::macros::make_widget;
