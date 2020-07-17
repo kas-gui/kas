@@ -497,12 +497,14 @@ impl<G> EditBox<G> {
                 if have_sel {
                     Action::Delete(selection.clone())
                 } else {
-                    let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
-                    cursor
-                        .prev_boundary(&self.text, 0)
-                        .unwrap()
-                        .map(|prev| Action::Delete(prev..pos))
-                        .unwrap_or(Action::None)
+                    // We always delete one code-point, not one grapheme cluster:
+                    let prev = self.text[0..pos]
+                        .char_indices()
+                        .rev()
+                        .next()
+                        .map(|(i, _)| i)
+                        .unwrap_or(0);
+                    Action::Delete(prev..pos)
                 }
             }
             ControlKey::Cut if have_sel => {
@@ -648,7 +650,9 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
             },
             Event::PressStart { source, coord, .. } if source.is_primary() => {
                 self.set_edit_pos_from_coord(mgr, coord);
-                self.sel_pos = self.edit_pos;
+                if !mgr.modifiers().shift() {
+                    self.sel_pos = self.edit_pos;
+                }
                 mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
                 mgr.request_char_focus(self.id());
                 Response::None
