@@ -7,7 +7,7 @@
 
 use std::fmt::{self, Debug};
 use std::ops::Range;
-use unicode_segmentation::GraphemeCursor;
+use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 use kas::class::HasString;
 use kas::draw::{DrawHandleExt, TextClass};
@@ -410,6 +410,7 @@ impl<G> EditBox<G> {
         let pos = self.edit_pos;
         let selection = self.selection();
         let have_sel = selection.end > selection.start;
+        let ctrl = mgr.modifiers().ctrl();
         let shift = mgr.modifiers().shift();
         let string;
 
@@ -427,16 +428,29 @@ impl<G> EditBox<G> {
             ControlKey::Return if self.multi_line => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
+            ControlKey::Home if ctrl => Action::Move(0, None),
             ControlKey::Home => {
                 let pos = self.prepared.find_line(pos).map(|r| r.1.start).unwrap_or(0);
                 Action::Move(pos, None)
             }
+            ControlKey::End if ctrl => Action::Move(self.text.len(), None),
             ControlKey::End => {
                 let pos = self
                     .prepared
                     .find_line(pos)
                     .map(|r| r.1.end)
                     .unwrap_or(self.text.len());
+                Action::Move(pos, None)
+            }
+            ControlKey::Left if ctrl => {
+                // TODO: This should find the next word-start, not *all* word
+                // boundaries! Perhaps best to implement in kas-text since
+                // anything external will struggle with bidirectional text.
+                let pos = self.text[0..pos]
+                    .split_word_bound_indices()
+                    .next_back()
+                    .map(|(index, _)| index)
+                    .unwrap_or(0);
                 Action::Move(pos, None)
             }
             ControlKey::Left => {
@@ -449,6 +463,15 @@ impl<G> EditBox<G> {
                     .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
+            ControlKey::Right if ctrl => {
+                let pos = self.text[pos..]
+                    .split_word_bound_indices()
+                    .skip(1)
+                    .next()
+                    .map(|(index, _)| pos + index)
+                    .unwrap_or(self.text.len());
+                Action::Move(pos, None)
+            }
             ControlKey::Right => {
                 // Action::Move(self.prepared.nav_right(pos), None)
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
@@ -458,7 +481,7 @@ impl<G> EditBox<G> {
                     .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
-            ControlKey::Up | ControlKey::Down => {
+            ControlKey::Up | ControlKey::Down | ControlKey::PageUp | ControlKey::PageDown => {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
                     None => self
@@ -469,18 +492,24 @@ impl<G> EditBox<G> {
                 };
                 let mut line = self.prepared.find_line(pos).map(|r| r.0).unwrap_or(0);
                 // We can tolerate invalid line numbers here!
-                if key == ControlKey::Up {
-                    line = line.wrapping_sub(1);
-                } else {
-                    line = line.wrapping_add(1);
-                }
+                // TODO: PageUp/Down should depend on view size?
+                line = match key {
+                    ControlKey::Up => line.wrapping_sub(1),
+                    ControlKey::Down => line.wrapping_add(1),
+                    ControlKey::PageUp => line.wrapping_sub(30),
+                    ControlKey::PageDown => line.wrapping_add(30),
+                    _ => unreachable!(),
+                };
+                const HALF: usize = usize::MAX / 2;
+                let nearest_end = || match line {
+                    0..=HALF => self.text.len(),
+                    _ => 0,
+                };
                 self.prepared
                     .line_index_nearest(line, x)
                     .map(|pos| Action::Move(pos, Some(x)))
-                    .unwrap_or(Action::None)
+                    .unwrap_or(Action::Move(nearest_end(), None))
             }
-            ControlKey::PageUp => Action::Move(0, None),
-            ControlKey::PageDown => Action::Move(self.text.len(), None),
             ControlKey::Delete => {
                 if have_sel {
                     Action::Delete(selection.clone())
