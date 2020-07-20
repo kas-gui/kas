@@ -17,6 +17,9 @@ default = ["clipboard", "stack_dst"]
 # Use Generic Associated Types (experimental)
 gat = ["kas-theme/gat"]
 
+# Enables text shaping
+shaping = ["kas/shaping"]
+
 # Use stack_dst crate for sized unsized types
 stack_dst = ["kas-theme/stack_dst"]
 

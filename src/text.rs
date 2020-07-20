@@ -29,14 +29,18 @@ impl PreparedText {
     /// This struct must be made ready for use before
     /// To do so, call [`PreparedText::prepare`].
     pub fn new(text: rich::Text) -> Self {
-        Self::new_with_env(Environment::new(), text)
+        // Note: wrap is on by default for Environment, but here it makes more
+        // sense to turn it off in the default constructor.
+        let mut env = Environment::new();
+        env.wrap = false;
+        Self::new_with_env(env, text)
     }
 
     /// New multi-line text
     ///
     /// This differs from [`PreparedText::new`] only in that it enables line wrapping.
     pub fn new_wrap(text: rich::Text) -> Self {
-        Self::new_with_env(Environment::new_wrap(), text)
+        Self::new_with_env(Environment::new(), text)
     }
 
     /// New multi-line text
@@ -65,11 +69,12 @@ impl PreparedText {
     /// The given bounds are used to influence line-wrapping (if enabled).
     /// [`Vec2::INFINITY`] may be used where no bounds are required.
     ///
-    /// The `scale` is used to set the base scale: rich text may adjust this.
-    pub fn prepare(&mut self, bounds: Vec2, scale: FontScale) {
+    /// The `dpp` (pixels/point) and `pt_size` (points/em) values set font size.
+    pub fn prepare(&mut self, bounds: Vec2, dpp: f32, pt_size: f32) {
         self.0.update_env(|env| {
             env.set_bounds(bounds.into());
-            env.set_font_scale(scale);
+            env.set_dpp(dpp);
+            env.set_pt_size(pt_size);
         });
         self.0.prepare();
     }

@@ -30,7 +30,7 @@ impl ShadedTheme {
     pub fn new() -> Self {
         ShadedTheme {
             font_id: Default::default(),
-            font_size: 18.0,
+            font_size: 12.0,
             cols: ThemeColours::new(),
         }
     }
