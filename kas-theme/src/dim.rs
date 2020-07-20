@@ -150,10 +150,6 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         self.dims.line_height
     }
 
-    fn prepare(&mut self, text: &mut PreparedText, _class: TextClass) {
-        text.prepare(Vec2::INFINITY, self.dims.dpp, self.dims.pt_size);
-    }
-
     fn text_bound(
         &mut self,
         text: &mut PreparedText,
@@ -163,11 +159,17 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         let line_height = self.dims.line_height;
         let mut bounds = Vec2::INFINITY;
         if let Some(size) = axis.size_other_if_fixed(false) {
+            bounds.0 = text.env().bounds.0;
             bounds.1 = size as f32;
         } else if let Some(size) = axis.size_other_if_fixed(true) {
             bounds.0 = size as f32;
+            bounds.1 = text.env().bounds.1;
         }
-        text.prepare(bounds, self.dims.dpp, self.dims.pt_size);
+        text.update_env(|env| {
+            env.set_bounds(bounds.into());
+            env.set_dpp(self.dims.dpp);
+            env.set_pt_size(self.dims.pt_size);
+        });
         let bounds = text.required_size();
 
         let margins = (self.dims.margin as u16, self.dims.margin as u16);

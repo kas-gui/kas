@@ -64,21 +64,6 @@ impl PreparedText {
         self.0.text_len()
     }
 
-    /// Layout text
-    ///
-    /// The given bounds are used to influence line-wrapping (if enabled).
-    /// [`Vec2::INFINITY`] may be used where no bounds are required.
-    ///
-    /// The `dpp` (pixels/point) and `pt_size` (points/em) values set font size.
-    pub fn prepare(&mut self, bounds: Vec2, dpp: f32, pt_size: f32) {
-        self.0.update_env(|env| {
-            env.set_bounds(bounds.into());
-            env.set_dpp(dpp);
-            env.set_pt_size(pt_size);
-        });
-        self.0.prepare();
-    }
-
     /// Set the text
     ///
     /// Returns [`TkAction::Resize`] when it is necessary to call [`PreparedText::prepare`].
@@ -96,12 +81,9 @@ impl PreparedText {
         self.0.env()
     }
 
-    /// Update the environment
-    ///
-    /// This calls [`PreparedText::prepare`] internally.
+    /// Update the environment and prepare for drawing
     pub fn update_env<F: FnOnce(&mut UpdateEnv)>(&mut self, f: F) {
         self.0.update_env(f);
-        self.0.prepare();
     }
 
     pub fn positioned_glyphs<G, F: Fn(&str, FontId, PxScale, Glyph) -> G>(&self, f: F) -> Vec<G> {

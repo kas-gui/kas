@@ -47,13 +47,19 @@ impl Layout for Clock {
         let pos = rect.pos + (excess * 0.5);
         self.core.rect = Rect { pos, size };
 
-        let font_scale = (size.1 as f32 * 0.125).into();
-        self.date.prepare(Vec2::INFINITY, font_scale);
-        self.time.prepare(Vec2::INFINITY, font_scale);
-
+        // Note: font size is calculated as dpp * pt_size with units pixels/em.
+        // We leave dpp at its default 96/72 and set pt_size based on pixels.
+        // Dimensions are still dependent on fonts.
+        let pt_size = (size.1 as f32 * 0.09).into();
         let half_size = Size(size.0, size.1 / 2);
-        self.date.update_env(|env| env.set_bounds(half_size.into()));
-        self.time.update_env(|env| env.set_bounds(half_size.into()));
+        self.date.update_env(|env| {
+            env.set_pt_size(pt_size);
+            env.set_bounds(half_size.into());
+        });
+        self.time.update_env(|env| {
+            env.set_pt_size(pt_size);
+            env.set_bounds(half_size.into());
+        });
         self.date_pos = pos + Size(0, size.1 - half_size.1);
         self.time_pos = pos;
     }

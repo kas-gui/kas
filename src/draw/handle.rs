@@ -136,16 +136,15 @@ pub trait SizeHandle {
     /// The height of a line of text
     fn line_height(&self, class: TextClass) -> u32;
 
-    /// Prepare a text
+    /// Update a [`PreparedText`] and get a size bound
     ///
-    /// This must be done before drawing to avoid a "not ready" error.
-    fn prepare(&mut self, text: &mut PreparedText, class: TextClass);
-
-    /// Get a text label size bound
+    /// First, this method updates the text's [`Environment`]: `bounds`, `dpp`
+    /// and `pt_size` are set. Second, the text is prepared (which is necessary
+    /// to calculate size requirements). Finally, this converts the requirements
+    /// to a [`SizeRules`] value and returns it.
     ///
-    /// This also prepares the text.
-    ///
-    /// Sizing requirements of [`DrawHandle::text`].
+    /// Usually this method is used in [`Layout::size_rules`], then
+    /// [`PreparedText::update_env`] is used in [`Layout::set_rect`].
     fn text_bound(
         &mut self,
         text: &mut PreparedText,
@@ -388,9 +387,6 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn line_height(&self, class: TextClass) -> u32 {
         self.deref().line_height(class)
     }
-    fn prepare(&mut self, text: &mut PreparedText, class: TextClass) {
-        self.deref_mut().prepare(text, class)
-    }
     fn text_bound(
         &mut self,
         text: &mut PreparedText,
@@ -445,9 +441,6 @@ where
 
     fn line_height(&self, class: TextClass) -> u32 {
         self.deref().line_height(class)
-    }
-    fn prepare(&mut self, text: &mut PreparedText, class: TextClass) {
-        self.deref_mut().prepare(text, class)
     }
     fn text_bound(
         &mut self,
