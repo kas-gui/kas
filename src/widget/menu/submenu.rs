@@ -112,7 +112,7 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
         let size = size_handle.menu_frame();
         self.label_off = size.into();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, Margins::ZERO);
-        let text_rules = size_handle.text_bound(&mut self.label, TextClass::Label, axis);
+        let text_rules = size_handle.text_bound(&mut self.label, TextClass::LabelSingle, axis);
         text_rules.surrounded_by(frame_rules, true)
     }
 

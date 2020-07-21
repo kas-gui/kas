@@ -209,7 +209,7 @@ impl ThemeColours {
     /// Get text colour from class
     pub fn text_class(&self, class: TextClass) -> Colour {
         match class {
-            TextClass::Label => self.label_text,
+            TextClass::Label | TextClass::LabelSingle => self.label_text,
             TextClass::Button => self.button_text,
             TextClass::Edit | TextClass::EditMulti => self.text,
         }

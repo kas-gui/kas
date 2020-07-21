@@ -194,7 +194,9 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             };
             let ideal = (bounds.1 as u32).max(min);
             let stretch = match class {
-                TextClass::Button | TextClass::Edit => StretchPolicy::Fixed,
+                TextClass::Button | TextClass::Edit | TextClass::LabelSingle => {
+                    StretchPolicy::Fixed
+                }
                 TextClass::EditMulti => StretchPolicy::HighUtility,
                 _ => StretchPolicy::Filler,
             };
