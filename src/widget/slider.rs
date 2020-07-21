@@ -39,6 +39,15 @@ impl SliderType for f64 {
     }
 }
 
+impl SliderType for f32 {
+    fn div_as_f64(self, rhs: Self) -> f64 {
+        self as f64 / rhs as f64
+    }
+    fn mul_f64(self, scalar: f64) -> Self {
+        (self as f64 * scalar) as f32
+    }
+}
+
 macro_rules! impl_slider_ty {
     ($ty:ty) => {
         impl SliderType for $ty {
@@ -46,7 +55,7 @@ macro_rules! impl_slider_ty {
                 self as f64 / rhs as f64
             }
             fn mul_f64(self, scalar: f64) -> Self {
-                let r = self as f64 * scalar;
+                let r = (self as f64 * scalar).round();
                 assert!(<$ty>::MIN as f64 <= r && r <= <$ty>::MAX as f64);
                 r as $ty
             }
@@ -59,7 +68,6 @@ macro_rules! impl_slider_ty {
 }
 impl_slider_ty!(i8, i16, i32, i64, i128, isize);
 impl_slider_ty!(u8, u16, u32, u64, u128, usize);
-impl_slider_ty!(f32);
 
 impl SliderType for Duration {
     fn div_as_f64(self, rhs: Self) -> f64 {
