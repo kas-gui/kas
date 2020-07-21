@@ -161,7 +161,7 @@ impl<'a, D: Draw + DrawRounded + DrawShaded> DrawHandle<'a, D> {
         let mut inner = outer.shrink(self.window.dims.frame as f32);
 
         self.draw
-            .shaded_square_frame(self.pass, outer, inner, (-0.8, 0.0), self.cols.background);
+            .shaded_square_frame(self.pass, outer, inner, (-0.6, 0.0), self.cols.background);
 
         if let Some(col) = nav_col {
             outer = inner;
