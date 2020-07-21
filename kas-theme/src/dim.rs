@@ -67,8 +67,8 @@ impl Dimensions {
             pt_size,
             font_marker_width: (1.6 * scale_factor).round().max(1.0),
             line_height,
-            min_line_length: (12.0 * dpem).round() as u32,
-            ideal_line_length: (30.0 * dpem).round() as u32,
+            min_line_length: (8.0 * dpem).round() as u32,
+            ideal_line_length: (24.0 * dpem).round() as u32,
             margin,
             frame,
             button_frame: (params.button_frame * scale_factor).round() as u32,
@@ -177,11 +177,11 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             let bound = bounds.0 as u32;
             let min = self.dims.min_line_length;
             let ideal = self.dims.ideal_line_length;
-            let (min, ideal) = match class {
-                TextClass::Edit | TextClass::EditMulti => (min, ideal),
-                _ => (bound.min(min), bound.min(ideal)),
+            let (min, ideal, policy) = match class {
+                TextClass::Edit | TextClass::EditMulti => (min, ideal, StretchPolicy::HighUtility),
+                _ => (bound.min(min), bound.min(ideal), StretchPolicy::LowUtility),
             };
-            SizeRules::new(min, ideal, margins, StretchPolicy::LowUtility)
+            SizeRules::new(min, ideal, margins, policy)
         } else {
             let min = match class {
                 TextClass::EditMulti => line_height * 3,
@@ -190,6 +190,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             let ideal = (bounds.1 as u32).max(min);
             let stretch = match class {
                 TextClass::Button | TextClass::Edit => StretchPolicy::Fixed,
+                TextClass::EditMulti => StretchPolicy::HighUtility,
                 _ => StretchPolicy::Filler,
             };
             SizeRules::new(min, ideal, margins, stretch)
