@@ -21,8 +21,10 @@ use kas::text::{FontId, PreparedText};
 /// nearest integer. Example: `(2.0 * 1.25).round() = 3.0`.
 #[derive(Clone, Debug)]
 pub struct DimensionsParams {
-    /// Inner margin
-    pub margin: f32,
+    /// Space between elements
+    pub outer_margin: f32,
+    /// Margin inside a frame before contents
+    pub inner_margin: f32,
     /// Frame size
     pub frame_size: f32,
     /// Button frame size (non-flat outer region)
@@ -44,7 +46,8 @@ pub struct Dimensions {
     pub line_height: u32,
     pub min_line_length: u32,
     pub ideal_line_length: u32,
-    pub margin: u32,
+    pub outer_margin: u32,
+    pub inner_margin: u32,
     pub frame: u32,
     pub button_frame: u32,
     pub checkbox: u32,
@@ -58,7 +61,8 @@ impl Dimensions {
         let dpem = dpp * pt_size;
         let line_height = kas::text::fonts().get(font_id).line_height(dpem).ceil() as u32;
 
-        let margin = (params.margin * scale_factor).round() as u32;
+        let outer_margin = (params.outer_margin * scale_factor).round() as u32;
+        let inner_margin = (params.inner_margin * scale_factor).round() as u32;
         let frame = (params.frame_size * scale_factor).round() as u32;
         Dimensions {
             scale_factor,
@@ -67,12 +71,13 @@ impl Dimensions {
             pt_size,
             font_marker_width: (1.6 * scale_factor).round().max(1.0),
             line_height,
-            min_line_length: (12.0 * dpem).round() as u32,
-            ideal_line_length: (30.0 * dpem).round() as u32,
-            margin,
+            min_line_length: (8.0 * dpem).round() as u32,
+            ideal_line_length: (24.0 * dpem).round() as u32,
+            outer_margin,
+            inner_margin,
             frame,
             button_frame: (params.button_frame * scale_factor).round() as u32,
-            checkbox: (9.0 * dpp).round() as u32 + 2 * (margin + frame),
+            checkbox: (9.0 * dpp).round() as u32 + 2 * (inner_margin + frame),
             scrollbar: Size::from(params.scrollbar_size * scale_factor),
             slider: Size::from(params.slider_size * scale_factor),
         }
@@ -139,11 +144,11 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     }
 
     fn inner_margin(&self) -> Size {
-        Size::uniform(self.dims.margin as u32)
+        Size::uniform(self.dims.inner_margin as u32)
     }
 
     fn outer_margins(&self) -> Margins {
-        Margins::uniform(self.dims.margin as u16)
+        Margins::uniform(self.dims.outer_margin as u16)
     }
 
     fn line_height(&self, _: TextClass) -> u32 {
@@ -172,16 +177,16 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         });
         let bounds = text.required_size();
 
-        let margins = (self.dims.margin as u16, self.dims.margin as u16);
+        let margins = (self.dims.inner_margin as u16, self.dims.inner_margin as u16);
         if axis.is_horizontal() {
             let bound = bounds.0 as u32;
             let min = self.dims.min_line_length;
             let ideal = self.dims.ideal_line_length;
-            let (min, ideal) = match class {
-                TextClass::Edit | TextClass::EditMulti => (min, ideal),
-                _ => (bound.min(min), bound.min(ideal)),
+            let (min, ideal, policy) = match class {
+                TextClass::Edit | TextClass::EditMulti => (min, ideal, StretchPolicy::HighUtility),
+                _ => (bound.min(min), bound.min(ideal), StretchPolicy::LowUtility),
             };
-            SizeRules::new(min, ideal, margins, StretchPolicy::LowUtility)
+            SizeRules::new(min, ideal, margins, policy)
         } else {
             let min = match class {
                 TextClass::EditMulti => line_height * 3,
@@ -189,7 +194,10 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             };
             let ideal = (bounds.1 as u32).max(min);
             let stretch = match class {
-                TextClass::Button | TextClass::Edit => StretchPolicy::Fixed,
+                TextClass::Button | TextClass::Edit | TextClass::LabelSingle => {
+                    StretchPolicy::Fixed
+                }
+                TextClass::EditMulti => StretchPolicy::HighUtility,
                 _ => StretchPolicy::Filler,
             };
             SizeRules::new(min, ideal, margins, stretch)

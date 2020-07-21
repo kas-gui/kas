@@ -43,7 +43,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
         let size = size_handle.menu_frame();
         self.label_off = size.into();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, Margins::ZERO);
-        let text_rules = size_handle.text_bound(&mut self.label, TextClass::Label, axis);
+        let text_rules = size_handle.text_bound(&mut self.label, TextClass::LabelSingle, axis);
         text_rules.surrounded_by(frame_rules, true)
     }
 
@@ -59,7 +59,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
         draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
         // TODO: mgr.show_accel_labels();
         let pos = self.core.rect.pos + self.label_off;
-        draw_handle.text(pos, &self.label, TextClass::Label);
+        draw_handle.text(pos, &self.label, TextClass::LabelSingle);
     }
 }
 

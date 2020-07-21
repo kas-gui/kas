@@ -57,7 +57,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
         MenuEntry::new("&Flat", Menu::Theme("flat")).boxed(),
     ];
     let colours = vec![
-        MenuEntry::new("&Default", Menu::Colour("default")),
+        MenuEntry::new("&White", Menu::Colour("white")),
+        MenuEntry::new("&Grey", Menu::Colour("grey")),
         MenuEntry::new("&Light", Menu::Colour("light")),
         MenuEntry::new("Dar&k", Menu::Colour("dark")),
     ];

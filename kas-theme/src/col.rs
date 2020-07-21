@@ -53,7 +53,8 @@ impl ThemeColours {
     /// external resources. For now, we simply hard-code a few instances.
     pub fn open(scheme: &str) -> Option<Self> {
         Some(match scheme {
-            "default" => Self::new(),
+            "default" | "white" => Self::new(),
+            "grey" => Self::grey(),
             "light" => Self::light(),
             "dark" => Self::dark(),
             other => {
@@ -63,10 +64,10 @@ impl ThemeColours {
         })
     }
 
-    /// Default theme: grey with blue activable items
+    /// Default theme: white with blue activable items
     pub fn new() -> Self {
         ThemeColours {
-            background: Colour::grey(0.8),
+            background: Colour::grey(1.0),
             frame: Colour::grey(0.7),
             bg: Colour::grey(1.0),
             bg_disabled: Colour::grey(0.85),
@@ -85,6 +86,13 @@ impl ThemeColours {
         }
     }
 
+    /// Grey with blue activable items
+    pub fn grey() -> Self {
+        let mut col = ThemeColours::new();
+        col.background = Colour::grey(0.8);
+        col
+    }
+
     /// Light scheme
     pub fn light() -> Self {
         ThemeColours {
@@ -100,7 +108,7 @@ impl ThemeColours {
             button_text: Colour::grey(0.0),
             nav_focus: Colour::new(1.0, 0.7, 0.5),
             button: Colour::new(1.0, 0.9, 0.3),
-            button_disabled: Colour::grey(0.7),
+            button_disabled: Colour::grey(0.6),
             button_highlighted: Colour::new(1.0, 0.95, 0.6),
             button_depressed: Colour::new(0.8, 0.72, 0.24),
             checkbox: Colour::grey(0.4),
@@ -122,7 +130,7 @@ impl ThemeColours {
             button_text: Colour::grey(1.0),
             nav_focus: Colour::new(1.0, 0.7, 0.5),
             button: Colour::new(0.5, 0.1, 0.1),
-            button_disabled: Colour::grey(0.3),
+            button_disabled: Colour::grey(0.7),
             button_highlighted: Colour::new(0.6, 0.3, 0.1),
             button_depressed: Colour::new(0.3, 0.1, 0.1),
             checkbox: Colour::new(0.5, 0.1, 0.1),
@@ -201,7 +209,7 @@ impl ThemeColours {
     /// Get text colour from class
     pub fn text_class(&self, class: TextClass) -> Colour {
         match class {
-            TextClass::Label => self.label_text,
+            TextClass::Label | TextClass::LabelSingle => self.label_text,
             TextClass::Button => self.button_text,
             TextClass::Edit | TextClass::EditMulti => self.text,
         }

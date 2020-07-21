@@ -21,13 +21,12 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[layout(grid)]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(row=0, col=2)] _ = Label::new("Layout demo"),
-                #[widget(row=1, col=1, cspan=3)] _ = Label::new(lipsum),
-                #[widget(row=1, col=4)] _ = CheckBoxBare::new(),
-                #[widget(row=2, col=0)] _ = Label::new("Text"),
-                #[widget(row=2, col=2, cspan=2, rspan=2, halign=stretch)] _ = Label::new(crasit),
-                #[widget(row=3, col=1)] _ = EditBox::new("A small\nsample\nof text").multi_line(true),
-                #[widget(row=0, col=3)] _ = Label::new("<->"),
+                #[widget(row=0, col=1)] _ = Label::new("Layout demo"),
+                #[widget(row=1, col=0, cspan=3)] _ = Label::new(lipsum),
+                #[widget(row=2, col=0, halign=centre)] _ = Label::new("Text"),
+                #[widget(row=2, col=1, cspan=2, rspan=2, halign=stretch)] _ = Label::new(crasit),
+                #[widget(row=3, col=0)] _ = EditBox::new("A small\nsample\nof text").multi_line(true),
+                #[widget(row=0, col=2)] _ = CheckBoxBare::new(),
             }
         },
     );
