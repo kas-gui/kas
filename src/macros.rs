@@ -298,19 +298,14 @@
 //! Its usage is convenient (and widespread in the examples) but not required.
 //!
 //! But first, a **warning**: this macro is complex (especially with regards to
-//! elided types) and very dependent on **nightly rustc**. It would be much
+//! elided types) and tends to produce terrible error messages. Accessing fields
+//! of the generated widgets from outside code is complicated. It would be much
 //! improved with [RFC 2524](https://github.com/rust-lang/rfcs/pull/2524)
-//! (essentially, anonymous types). And it requires the user enable the
-//! following feature:
-//! ```
-//! #![feature(proc_macro_hygiene)]
-//! ```
+//! (essentially, anonymous types). And it requires Rust 1.45.0 (or nightly).
 //!
 //! Lets start with some examples:
 //!
 //! ```
-//! #![feature(proc_macro_hygiene)]
-//!
 //! use kas::prelude::*;
 //! use kas::widget::{Label, TextButton, Window};
 //!

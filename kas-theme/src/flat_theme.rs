@@ -32,7 +32,7 @@ impl FlatTheme {
     pub fn new() -> Self {
         FlatTheme {
             font_id: Default::default(),
-            font_size: 18.0,
+            font_size: 12.0,
             cols: ThemeColours::new(),
         }
     }
@@ -273,7 +273,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             let mut p2 = p1;
             p1.1 -= ascent;
             p2.1 -= descent;
-            p2.0 += self.window.dims.edit_marker_size().0;
+            p2.0 += self.window.dims.font_marker_width;
             let quad = Quad::with_coords(p1, p2);
             self.draw.rect(self.pass, quad, col);
         }

@@ -7,11 +7,11 @@
 
 use std::fmt::{self, Debug};
 use std::ops::Range;
-use unicode_segmentation::GraphemeCursor;
+use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 use kas::class::HasString;
 use kas::draw::{DrawHandleExt, TextClass};
-use kas::event::{ControlKey, GrabMode, ModifiersState};
+use kas::event::{ControlKey, GrabMode};
 use kas::prelude::*;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -146,6 +146,7 @@ pub struct EditBox<G: 'static> {
     prepared: PreparedText,
     edit_pos: usize,
     sel_pos: usize,
+    edit_x_coord: Option<f32>,
     old_state: Option<(String, usize, usize)>,
     last_edit: LastEdit,
     error_state: bool,
@@ -250,6 +251,7 @@ impl EditBox<EditVoid> {
             prepared: PreparedText::new(text.into()),
             edit_pos,
             sel_pos: edit_pos,
+            edit_x_coord: None,
             old_state: None,
             last_edit: LastEdit::None,
             error_state: false,
@@ -276,6 +278,7 @@ impl EditBox<EditVoid> {
             prepared: self.prepared,
             edit_pos: self.edit_pos,
             sel_pos: self.sel_pos,
+            edit_x_coord: self.edit_x_coord,
             old_state: self.old_state,
             last_edit: self.last_edit,
             error_state: self.error_state,
@@ -391,17 +394,13 @@ impl<G> EditBox<G> {
             self.edit_pos = pos + c.len_utf8();
         }
         self.sel_pos = self.edit_pos;
+        self.edit_x_coord = None;
 
         *mgr += self.prepared.set_text(self.text.clone());
         EditAction::Edit
     }
 
-    fn control_key(
-        &mut self,
-        mgr: &mut Manager,
-        key: ControlKey,
-        modifiers: ModifiersState,
-    ) -> EditAction {
+    fn control_key(&mut self, mgr: &mut Manager, key: ControlKey) -> EditAction {
         if !self.editable {
             return EditAction::None;
         }
@@ -411,7 +410,8 @@ impl<G> EditBox<G> {
         let pos = self.edit_pos;
         let selection = self.selection();
         let have_sel = selection.end > selection.start;
-        let shift = modifiers.shift();
+        let ctrl = mgr.modifiers().ctrl();
+        let shift = mgr.modifiers().shift();
         let string;
 
         enum Action<'a> {
@@ -420,7 +420,7 @@ impl<G> EditBox<G> {
             Edit,
             Insert(&'a str, LastEdit),
             Delete(Range<usize>),
-            Move(usize),
+            Move(usize, Option<f32>),
         }
 
         let action = match key {
@@ -428,25 +428,87 @@ impl<G> EditBox<G> {
             ControlKey::Return if self.multi_line => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
+            ControlKey::Home if ctrl => Action::Move(0, None),
+            ControlKey::Home => {
+                let pos = self.prepared.find_line(pos).map(|r| r.1.start).unwrap_or(0);
+                Action::Move(pos, None)
+            }
+            ControlKey::End if ctrl => Action::Move(self.text.len(), None),
+            ControlKey::End => {
+                let pos = self
+                    .prepared
+                    .find_line(pos)
+                    .map(|r| r.1.end)
+                    .unwrap_or(self.text.len());
+                Action::Move(pos, None)
+            }
+            ControlKey::Left if ctrl => {
+                // TODO: This should find the next word-start, not *all* word
+                // boundaries! Perhaps best to implement in kas-text since
+                // anything external will struggle with bidirectional text.
+                let pos = self.text[0..pos]
+                    .split_word_bound_indices()
+                    .next_back()
+                    .map(|(index, _)| index)
+                    .unwrap_or(0);
+                Action::Move(pos, None)
+            }
             ControlKey::Left => {
+                // Works but not quite as expected (see notes on Text::nav_left)
+                // Action::Move(self.prepared.nav_left(pos), None)
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
                 cursor
                     .prev_boundary(&self.text, 0)
                     .unwrap()
-                    .map(|pos| Action::Move(pos))
+                    .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
+            ControlKey::Right if ctrl => {
+                let pos = self.text[pos..]
+                    .split_word_bound_indices()
+                    .skip(1)
+                    .next()
+                    .map(|(index, _)| pos + index)
+                    .unwrap_or(self.text.len());
+                Action::Move(pos, None)
+            }
             ControlKey::Right => {
+                // Action::Move(self.prepared.nav_right(pos), None)
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
                 cursor
                     .next_boundary(&self.text, 0)
                     .unwrap()
-                    .map(|pos| Action::Move(pos))
+                    .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
-            ControlKey::Up | ControlKey::Home | ControlKey::PageUp => Action::Move(0),
-            ControlKey::Down | ControlKey::End | ControlKey::PageDown => {
-                Action::Move(self.text.len())
+            ControlKey::Up | ControlKey::Down | ControlKey::PageUp | ControlKey::PageDown => {
+                let x = match self.edit_x_coord {
+                    Some(x) => x,
+                    None => self
+                        .prepared
+                        .text_glyph_rel_pos(pos)
+                        .map(|r| (r.0).0)
+                        .unwrap_or(0.0),
+                };
+                let mut line = self.prepared.find_line(pos).map(|r| r.0).unwrap_or(0);
+                // We can tolerate invalid line numbers here!
+                // TODO: PageUp/Down should depend on view size?
+                line = match key {
+                    ControlKey::Up => line.wrapping_sub(1),
+                    ControlKey::Down => line.wrapping_add(1),
+                    ControlKey::PageUp => line.wrapping_sub(30),
+                    ControlKey::PageDown => line.wrapping_add(30),
+                    _ => unreachable!(),
+                };
+                const HALF: usize = usize::MAX / 2;
+                let nearest_end = || match line {
+                    0..=HALF => self.text.len(),
+                    _ => 0,
+                };
+                self.prepared
+                    .line_index_nearest(line, x)
+                    .map(|pos| Action::Move(pos, Some(x)))
+                    .unwrap_or(Action::Move(nearest_end(), None))
             }
             ControlKey::Delete => {
                 if have_sel {
@@ -464,12 +526,14 @@ impl<G> EditBox<G> {
                 if have_sel {
                     Action::Delete(selection.clone())
                 } else {
-                    let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
-                    cursor
-                        .prev_boundary(&self.text, 0)
-                        .unwrap()
-                        .map(|prev| Action::Delete(prev..pos))
-                        .unwrap_or(Action::None)
+                    // We always delete one code-point, not one grapheme cluster:
+                    let prev = self.text[0..pos]
+                        .char_indices()
+                        .rev()
+                        .next()
+                        .map(|(i, _)| i)
+                        .unwrap_or(0);
+                    Action::Delete(prev..pos)
                 }
             }
             ControlKey::Cut if have_sel => {
@@ -507,6 +571,7 @@ impl<G> EditBox<G> {
                     self.edit_pos = *pos2;
                     *pos2 = pos;
                     std::mem::swap(sel_pos, &mut self.sel_pos);
+                    self.edit_x_coord = None;
                     mgr_action += self.prepared.set_text(self.text.clone());
                     self.last_edit = LastEdit::None;
                 }
@@ -537,6 +602,7 @@ impl<G> EditBox<G> {
                 }
                 self.edit_pos = pos + s.len();
                 self.sel_pos = self.edit_pos;
+                self.edit_x_coord = None;
                 mgr_action += self.prepared.set_text(self.text.clone());
                 EditAction::Edit
             }
@@ -549,14 +615,16 @@ impl<G> EditBox<G> {
                 self.text.replace_range(sel.clone(), "");
                 self.edit_pos = sel.start;
                 self.sel_pos = sel.start;
+                self.edit_x_coord = None;
                 mgr_action += self.prepared.set_text(self.text.clone());
                 EditAction::Edit
             }
-            Action::Move(pos) => {
+            Action::Move(pos, x_coord) => {
                 self.edit_pos = pos;
                 if !shift {
                     self.sel_pos = self.edit_pos;
                 }
+                self.edit_x_coord = x_coord;
                 mgr_action += TkAction::Redraw;
                 EditAction::None
             }
@@ -568,6 +636,7 @@ impl<G> EditBox<G> {
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
         self.edit_pos = self.prepared.text_index_nearest(self.text_pos, coord);
+        self.edit_x_coord = None;
         mgr.redraw(self.id());
     }
 }
@@ -598,7 +667,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 let r = G::focus_lost(self);
                 r.map(|msg| msg.into()).unwrap_or(Response::None)
             }
-            Event::Control(key, modifiers) => match self.control_key(mgr, key, modifiers) {
+            Event::Control(key) => match self.control_key(mgr, key) {
                 EditAction::None => Response::None,
                 EditAction::Activate => G::activate(self).into(),
                 EditAction::Edit => G::edit(self).into(),
@@ -610,7 +679,9 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
             },
             Event::PressStart { source, coord, .. } if source.is_primary() => {
                 self.set_edit_pos_from_coord(mgr, coord);
-                self.sel_pos = self.edit_pos;
+                if !mgr.modifiers().shift() {
+                    self.sel_pos = self.edit_pos;
+                }
                 mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
                 mgr.request_char_focus(self.id());
                 Response::None

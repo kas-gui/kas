@@ -329,7 +329,7 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
         };
 
         match event {
-            Event::Control(key, modifiers) => {
+            Event::Control(key) => {
                 let delta = match key {
                     ControlKey::Left => LineDelta(-1.0, 0.0),
                     ControlKey::Right => LineDelta(1.0, 0.0),
@@ -351,7 +351,7 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
                     ControlKey::PageDown => {
                         PixelDelta(Coord(0, -(self.core.rect.size.1 as i32 / 2)))
                     }
-                    key => return Response::Unhandled(Event::Control(key, modifiers)),
+                    key => return Response::Unhandled(Event::Control(key)),
                 };
                 scroll(self, mgr, delta)
             }

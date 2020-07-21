@@ -309,8 +309,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// Macro to create a widget with anonymous type
 ///
 /// See the [`kas::macros`](../kas/macros/index.html) module documentation.
-///
-/// Currently usage of this macro requires `#![feature(proc_macro_hygiene)]`.
 #[proc_macro]
 pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];

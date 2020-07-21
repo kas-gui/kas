@@ -4,7 +4,6 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Counter example (simple button)
-#![feature(proc_macro_hygiene)]
 
 use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};

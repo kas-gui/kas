@@ -29,14 +29,18 @@ impl PreparedText {
     /// This struct must be made ready for use before
     /// To do so, call [`PreparedText::prepare`].
     pub fn new(text: rich::Text) -> Self {
-        Self::new_with_env(Environment::new(), text)
+        // Note: wrap is on by default for Environment, but here it makes more
+        // sense to turn it off in the default constructor.
+        let mut env = Environment::new();
+        env.wrap = false;
+        Self::new_with_env(env, text)
     }
 
     /// New multi-line text
     ///
     /// This differs from [`PreparedText::new`] only in that it enables line wrapping.
     pub fn new_wrap(text: rich::Text) -> Self {
-        Self::new_with_env(Environment::new_wrap(), text)
+        Self::new_with_env(Environment::new(), text)
     }
 
     /// New multi-line text
@@ -54,24 +58,10 @@ impl PreparedText {
 
     /// Length of raw text
     ///
-    /// It is valid to reference text within the range `0..raw_text_len()`,
+    /// It is valid to reference text within the range `0..text_len()`,
     /// even if not all text within this range will be displayed (due to runs).
-    pub fn raw_text_len(&self) -> usize {
-        self.0.raw_text_len()
-    }
-
-    /// Layout text
-    ///
-    /// The given bounds are used to influence line-wrapping (if enabled).
-    /// [`Vec2::INFINITY`] may be used where no bounds are required.
-    ///
-    /// The `scale` is used to set the base scale: rich text may adjust this.
-    pub fn prepare(&mut self, bounds: Vec2, scale: FontScale) {
-        self.0.update_env(|env| {
-            env.set_bounds(bounds.into());
-            env.set_font_scale(scale);
-        });
-        self.0.prepare();
+    pub fn text_len(&self) -> usize {
+        self.0.text_len()
     }
 
     /// Set the text
@@ -91,12 +81,9 @@ impl PreparedText {
         self.0.env()
     }
 
-    /// Update the environment
-    ///
-    /// This calls [`PreparedText::prepare`] internally.
+    /// Update the environment and prepare for drawing
     pub fn update_env<F: FnOnce(&mut UpdateEnv)>(&mut self, f: F) {
         self.0.update_env(f);
-        self.0.prepare();
     }
 
     pub fn positioned_glyphs<G, F: Fn(&str, FontId, PxScale, Glyph) -> G>(&self, f: F) -> Vec<G> {
@@ -108,6 +95,45 @@ impl PreparedText {
 
     pub fn required_size(&self) -> Vec2 {
         self.0.required_size().into()
+    }
+
+    /// Get the number of lines
+    pub fn num_lines(&self) -> usize {
+        self.0.num_lines()
+    }
+
+    /// Find the line containing text `index`
+    ///
+    /// Returns the line number and the text-range of the line.
+    ///
+    /// Returns `None` in case `index` does not line on or at the end of a line
+    /// (which means either that `index` is beyond the end of the text or that
+    /// `index` is within a mult-byte line break).
+    pub fn find_line(&self, index: usize) -> Option<(usize, std::ops::Range<usize>)> {
+        self.0.find_line(index)
+    }
+
+    /// Get the range of a line, by line number
+    pub fn line_range(&self, line: usize) -> Option<std::ops::Range<usize>> {
+        self.0.line_range(line)
+    }
+
+    /// Find the next glyph index to the left of the given glyph
+    ///
+    /// Warning: this counts *glyphs*, which makes the result dependent on
+    /// text shaping. Combining diacritics *may* count as discrete glyphs.
+    /// Ligatures will count as a single glyph.
+    pub fn nav_left(&self, index: usize) -> usize {
+        self.0.nav_left(index)
+    }
+
+    /// Find the next glyph index to the right of the given glyph
+    ///
+    /// Warning: this counts *glyphs*, which makes the result dependent on
+    /// text shaping. Combining diacritics *may* count as discrete glyphs.
+    /// Ligatures will count as a single glyph.
+    pub fn nav_right(&self, index: usize) -> usize {
+        self.0.nav_right(index)
     }
 
     /// Find the starting position (top-left) of the glyph at the given index
@@ -126,6 +152,32 @@ impl PreparedText {
         self.0
             .text_glyph_pos(index)
             .map(|result| (Vec2::from(pos) + Vec2::from(result.0), result.1, result.2))
+    }
+
+    /// Find the starting position (top-left) of the glyph at the given index
+    ///
+    /// This differs from [`PreparedText::text_glyph_pos`] in that it does not
+    /// offset the result by a coordinate `pos`.
+    pub fn text_glyph_rel_pos(&self, index: usize) -> Option<(Vec2, f32, f32)> {
+        self.0
+            .text_glyph_pos(index)
+            .map(|result| (Vec2::from(result.0), result.1, result.2))
+    }
+
+    /// Find the text index for the glyph nearest the given `coord`, relative to `pos`
+    ///
+    /// This includes the index immediately after the last glyph, thus
+    /// `result ≤ text.len()`.
+    pub fn text_index_nearest(&self, pos: Coord, coord: Coord) -> usize {
+        self.0.text_index_nearest((coord - pos).into())
+    }
+
+    /// Find the text index nearest horizontal-coordinate `x` on `line`
+    ///
+    /// Unlike [`PreparedText::text_index_nearest`], this does not offset `x`.
+    /// It also allows the line to be specified explicitly.
+    pub fn line_index_nearest(&self, line: usize, x: f32) -> Option<usize> {
+        self.0.line_index_nearest(line, x)
     }
 
     /// Yield a sequence of rectangles to highlight a given range, by lines
@@ -168,13 +220,5 @@ impl PreparedText {
             .iter()
             .map(|(p1, p2)| Quad::with_coords(pos + Vec2::from(*p1), pos + Vec2::from(*p2)))
             .collect()
-    }
-
-    /// Find the text index for the glyph nearest the given `coord`, relative to `pos`
-    ///
-    /// This includes the index immediately after the last glyph, thus
-    /// `result ≤ text.len()`.
-    pub fn text_index_nearest(&self, pos: Coord, coord: Coord) -> usize {
-        self.0.text_index_nearest((coord - pos).into())
     }
 }

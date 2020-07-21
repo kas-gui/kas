@@ -4,7 +4,6 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Custom theme demo
-#![feature(proc_macro_hygiene)]
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 
 use std::cell::Cell;

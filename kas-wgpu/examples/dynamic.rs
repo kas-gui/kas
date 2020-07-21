@@ -16,7 +16,6 @@
 //! -   hundreds of thousands of widgets has some issues (slow creation,
 //!     very slow activation of a RadioBox in a chain hundreds-of-thousands
 //!     long), but in many ways still performs well in release mode
-#![feature(proc_macro_hygiene)]
 
 use kas::class::{HasString, SetText};
 use kas::event::UpdateHandle;

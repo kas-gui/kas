@@ -36,10 +36,11 @@ pub struct DimensionsParams {
 /// Dimensions available within [`DimensionsWindow`]
 #[derive(Clone, Debug)]
 pub struct Dimensions {
-    pub font_id: FontId,
-    pub font_scale: f32,
-    pub font_marker_width: f32,
     pub scale_factor: f32,
+    pub dpp: f32,
+    pub font_id: FontId,
+    pub pt_size: f32,
+    pub font_marker_width: f32,
     pub line_height: u32,
     pub min_line_length: u32,
     pub ideal_line_length: u32,
@@ -52,37 +53,29 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-    pub fn new(
-        params: DimensionsParams,
-        font_id: FontId,
-        font_size: f32,
-        scale_factor: f32,
-    ) -> Self {
-        let font_scale = font_size * scale_factor;
-        let line_height = font_scale.round() as u32;
+    pub fn new(params: DimensionsParams, font_id: FontId, pt_size: f32, scale_factor: f32) -> Self {
+        let dpp = scale_factor * (96.0 / 72.0);
+        let dpem = dpp * pt_size;
+        let line_height = kas::text::fonts().get(font_id).line_height(dpem).ceil() as u32;
+
         let margin = (params.margin * scale_factor).round() as u32;
         let frame = (params.frame_size * scale_factor).round() as u32;
         Dimensions {
-            font_id,
-            font_scale,
-            font_marker_width: (font_size * (1.0 / 9.0)).round().max(1.0),
             scale_factor,
+            dpp,
+            font_id,
+            pt_size,
+            font_marker_width: (1.6 * scale_factor).round().max(1.0),
             line_height,
-            // We appear to average about 2 characters per line_height
-            // TODO: better to specify in terms of font's 'n' size?
-            min_line_length: line_height * 6,
-            ideal_line_length: line_height * 15,
+            min_line_length: (12.0 * dpem).round() as u32,
+            ideal_line_length: (30.0 * dpem).round() as u32,
             margin,
             frame,
             button_frame: (params.button_frame * scale_factor).round() as u32,
-            checkbox: (font_scale * 0.7).round() as u32 + 2 * (margin + frame),
+            checkbox: (9.0 * dpp).round() as u32 + 2 * (margin + frame),
             scrollbar: Size::from(params.scrollbar_size * scale_factor),
             slider: Size::from(params.slider_size * scale_factor),
         }
-    }
-
-    pub fn edit_marker_size(&self) -> Vec2 {
-        Vec2(self.font_marker_width, self.font_scale)
     }
 }
 
@@ -157,10 +150,6 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         self.dims.line_height
     }
 
-    fn prepare(&mut self, text: &mut PreparedText, _class: TextClass) {
-        text.prepare(Vec2::INFINITY, self.dims.font_scale.into());
-    }
-
     fn text_bound(
         &mut self,
         text: &mut PreparedText,
@@ -170,11 +159,17 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         let line_height = self.dims.line_height;
         let mut bounds = Vec2::INFINITY;
         if let Some(size) = axis.size_other_if_fixed(false) {
+            bounds.0 = text.env().bounds.0;
             bounds.1 = size as f32;
         } else if let Some(size) = axis.size_other_if_fixed(true) {
             bounds.0 = size as f32;
+            bounds.1 = text.env().bounds.1;
         }
-        text.prepare(bounds, self.dims.font_scale.into());
+        text.update_env(|env| {
+            env.set_bounds(bounds.into());
+            env.set_dpp(self.dims.dpp);
+            env.set_pt_size(self.dims.pt_size);
+        });
         let bounds = text.required_size();
 
         let margins = (self.dims.margin as u16, self.dims.margin as u16);

@@ -4,7 +4,6 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! A counter synchronised between multiple windows
-#![feature(proc_macro_hygiene)]
 
 use std::cell::RefCell;
 

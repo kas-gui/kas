@@ -41,9 +41,6 @@ KAS is compatible with **stable rustc**. Using nightly Rust is advantageous:
 
 -   Proceedural macros emit better diagnostics. In some cases, diagnostics are
     missed without nightly rustc, hence **nightly is recommended for development**.
--   The `make_widget!` macro will require nightly Rust until the
-    `proc_macro_hygiene` feature is complete.
-    Usage of this macro is optional; most examples do so for convenience.
 -   A few other minor features are nightly-only. See *feature flags*
     documentation below and in other crates' READMEs.
 

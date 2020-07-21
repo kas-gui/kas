@@ -396,7 +396,7 @@ impl<'a> Manager<'a> {
                             '\u{1A}' => ControlKey::Undo, // also redo; we can't differentiate
                             _ => return,
                         };
-                        let event = Event::Control(key, self.mgr.modifiers);
+                        let event = Event::Control(key);
                         self.send_event(widget, id, event);
                     } else {
                         let event = Event::ReceivedCharacter(c);

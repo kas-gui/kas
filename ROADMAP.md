@@ -189,9 +189,6 @@ features, though not all of these issues have a clear solution:
 
 -   #25 lists existing (optional) usage of Rust nightly features; all of these
     would be great to have in stable Rust but must are not essential
--   `proc_macro_hygiene` is used to enable the `make_widget!` macro; this is not
-    an *essential* part of KAS but is *extremely useful*; `proc-macro-hack`
-    provides a workaround (with significant limitations)
 -   #15 documents a major limitation of `make_widget!`; Rust's RFC 2524 provides
     a solution but has not been accepted or implemented
 -   #11 documents one example of a bad error message; another case of bad error

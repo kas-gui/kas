@@ -22,6 +22,11 @@ nightly = []
 # This flag does not change the API, only built documentation.
 internal_doc = []
 
+# Enables text shaping via HarfBuzz
+# Shaping is part of Complex Text Layout, used for ligatures and where form
+# depends on position and context (especially important for Arabic).
+shaping = ["kas-text/shaping"]
+
 [dependencies]
 log = "0.4"
 smallvec = "1.4"
@@ -35,7 +40,7 @@ path = "kas-macros"
 
 [dependencies.kas-text]
 git = "https://github.com/kas-gui/kas-text"
-rev = "06a2668a749b6ef4f20d5de451442f02629d749a"
+rev = "b9e19c2105d9734ba396841d4d0e64ae688584b0"
 
 [dependencies.winit]
 # Provides translations for several winit types
