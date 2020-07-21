@@ -39,7 +39,8 @@ impl FlatTheme {
 }
 
 const DIMS: DimensionsParams = DimensionsParams {
-    margin: 2.0,
+    outer_margin: 4.0,
+    inner_margin: 2.0,
     frame_size: 4.0,
     button_frame: 6.0,
     scrollbar_size: Vec2::splat(8.0),
@@ -313,7 +314,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             let radius = inner.size().sum() * (1.0 / 16.0);
-            let inner = inner.shrink(self.window.dims.margin as f32 + radius);
+            let inner = inner.shrink(self.window.dims.inner_margin as f32 + radius);
             let radius = radius as f32;
             self.draw
                 .rounded_line(self.pass, inner.a, inner.b, radius, col);
@@ -329,7 +330,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         let inner = self.draw_edit_box(rect + self.offset, bg_col, nav_col);
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
-            let inner = inner.shrink(self.window.dims.margin as f32);
+            let inner = inner.shrink(self.window.dims.inner_margin as f32);
             self.draw.circle(self.pass, inner, 0.3, col);
         }
     }

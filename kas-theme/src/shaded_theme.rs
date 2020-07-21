@@ -37,7 +37,8 @@ impl ShadedTheme {
 }
 
 const DIMS: DimensionsParams = DimensionsParams {
-    margin: 2.0,
+    outer_margin: 3.0,
+    inner_margin: 2.0,
     frame_size: 5.0,
     button_frame: 5.0,
     scrollbar_size: Vec2::splat(8.0),
@@ -164,7 +165,7 @@ impl<'a, D: Draw + DrawRounded + DrawShaded> DrawHandle<'a, D> {
 
         if let Some(col) = nav_col {
             outer = inner;
-            inner = outer.shrink(self.window.dims.margin as f32);
+            inner = outer.shrink(self.window.dims.inner_margin as f32);
             self.draw.frame(self.pass, outer, inner, col);
         }
 
