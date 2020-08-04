@@ -177,7 +177,11 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         });
         let bounds = text.required_size();
 
-        let margins = (self.dims.inner_margin as u16, self.dims.inner_margin as u16);
+        let margin = match class {
+            TextClass::Label | TextClass::LabelSingle => self.dims.outer_margin,
+            TextClass::Button | TextClass::Edit | TextClass::EditMulti => self.dims.inner_margin,
+        } as u16;
+        let margins = (margin, margin);
         if axis.is_horizontal() {
             let bound = bounds.0 as u32;
             let min = self.dims.min_line_length;
