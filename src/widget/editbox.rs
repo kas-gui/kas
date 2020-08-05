@@ -454,8 +454,6 @@ impl<G> EditBox<G> {
                 Action::Move(pos, None)
             }
             ControlKey::Left => {
-                // Works but not quite as expected (see notes on Text::nav_left)
-                // Action::Move(self.prepared.nav_left(pos), None)
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
                 cursor
                     .prev_boundary(&self.text, 0)
@@ -473,7 +471,6 @@ impl<G> EditBox<G> {
                 Action::Move(pos, None)
             }
             ControlKey::Right => {
-                // Action::Move(self.prepared.nav_right(pos), None)
                 let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
                 cursor
                     .next_boundary(&self.text, 0)
@@ -514,6 +511,14 @@ impl<G> EditBox<G> {
             ControlKey::Delete => {
                 if have_sel {
                     Action::Delete(selection.clone())
+                } else if ctrl {
+                    let next = self.text[pos..]
+                        .split_word_bound_indices()
+                        .skip(1)
+                        .next()
+                        .map(|(index, _)| pos + index)
+                        .unwrap_or(self.text.len());
+                    Action::Delete(pos..next)
                 } else {
                     let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
                     cursor
@@ -526,6 +531,13 @@ impl<G> EditBox<G> {
             ControlKey::Backspace => {
                 if have_sel {
                     Action::Delete(selection.clone())
+                } else if ctrl {
+                    let prev = self.text[0..pos]
+                        .split_word_bound_indices()
+                        .next_back()
+                        .map(|(index, _)| index)
+                        .unwrap_or(0);
+                    Action::Delete(prev..pos)
                 } else {
                     // We always delete one code-point, not one grapheme cluster:
                     let prev = self.text[0..pos]
@@ -547,14 +559,16 @@ impl<G> EditBox<G> {
             }
             ControlKey::Paste => {
                 if let Some(content) = mgr.get_clipboard() {
-                    // We cut the content short on control characters and
-                    // ignore them (preventing line-breaks and ignoring any
-                    // actions such as recursive-paste).
                     let mut end = content.len();
-                    for (i, c) in content.char_indices() {
-                        if c < '\u{20}' || (c >= '\u{7f}' && c <= '\u{9f}') {
-                            end = i;
-                            break;
+                    if !self.multi_line {
+                        // We cut the content short on control characters and
+                        // ignore them (preventing line-breaks and ignoring any
+                        // actions such as recursive-paste).
+                        for (i, c) in content.char_indices() {
+                            if c < '\u{20}' || (c >= '\u{7f}' && c <= '\u{9f}') {
+                                end = i;
+                                break;
+                            }
                         }
                     }
 
