@@ -270,7 +270,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
 
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
         let col = self.cols.text_class(class);
-        if let Some((mut p1, ascent, descent)) = text.text_glyph_pos(pos + self.offset, byte) {
+        for (mut p1, ascent, descent) in text.text_glyph_pos(pos + self.offset, byte) {
             let mut p2 = p1;
             p1.1 -= ascent;
             p2.1 -= descent;

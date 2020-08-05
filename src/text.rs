@@ -118,24 +118,6 @@ impl PreparedText {
         self.0.line_range(line)
     }
 
-    /// Find the next glyph index to the left of the given glyph
-    ///
-    /// Warning: this counts *glyphs*, which makes the result dependent on
-    /// text shaping. Combining diacritics *may* count as discrete glyphs.
-    /// Ligatures will count as a single glyph.
-    pub fn nav_left(&self, index: usize) -> usize {
-        self.0.nav_left(index)
-    }
-
-    /// Find the next glyph index to the right of the given glyph
-    ///
-    /// Warning: this counts *glyphs*, which makes the result dependent on
-    /// text shaping. Combining diacritics *may* count as discrete glyphs.
-    /// Ligatures will count as a single glyph.
-    pub fn nav_right(&self, index: usize) -> usize {
-        self.0.nav_right(index)
-    }
-
     /// Find the starting position (top-left) of the glyph at the given index
     ///
     /// Returns `Some(pos, ascent, descent)` on success, where `pos.1 - ascent`
@@ -148,20 +130,28 @@ impl PreparedText {
     ///
     /// Note: if the text's bounding rect does not start at the origin, then
     /// the coordinates of the top-left corner should be added to this result.
-    pub fn text_glyph_pos(&self, pos: Coord, index: usize) -> Option<(Vec2, f32, f32)> {
+    pub fn text_glyph_pos(
+        &self,
+        pos: Coord,
+        index: usize,
+    ) -> impl DoubleEndedIterator<Item = (Vec2, f32, f32)> {
+        let x = Vec2::from(pos);
         self.0
             .text_glyph_pos(index)
-            .map(|result| (Vec2::from(pos) + Vec2::from(result.0), result.1, result.2))
+            .map(move |item| (x + Vec2::from(item.pos), item.ascent, item.descent))
     }
 
     /// Find the starting position (top-left) of the glyph at the given index
     ///
     /// This differs from [`PreparedText::text_glyph_pos`] in that it does not
     /// offset the result by a coordinate `pos`.
-    pub fn text_glyph_rel_pos(&self, index: usize) -> Option<(Vec2, f32, f32)> {
+    pub fn text_glyph_rel_pos(
+        &self,
+        index: usize,
+    ) -> impl DoubleEndedIterator<Item = (Vec2, f32, f32)> {
         self.0
             .text_glyph_pos(index)
-            .map(|result| (Vec2::from(result.0), result.1, result.2))
+            .map(|item| (Vec2::from(item.pos), item.ascent, item.descent))
     }
 
     /// Find the text index for the glyph nearest the given `coord`, relative to `pos`

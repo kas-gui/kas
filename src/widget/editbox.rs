@@ -487,6 +487,7 @@ impl<G> EditBox<G> {
                     None => self
                         .prepared
                         .text_glyph_rel_pos(pos)
+                        .next_back()
                         .map(|r| (r.0).0)
                         .unwrap_or(0.0),
                 };
