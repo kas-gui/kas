@@ -12,6 +12,32 @@ pub use kas_text::*;
 #[doc(no_inline)]
 pub use rich::Text as RichText;
 
+/// Prepare action needed after text object updates
+#[must_use]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
+pub enum PrepareAction {
+    /// No action needed
+    None,
+    /// Prepare must be called
+    Prepare,
+}
+
+impl std::ops::Add for PrepareAction {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, rhs: PrepareAction) -> Self {
+        self.max(rhs)
+    }
+}
+
+impl std::ops::AddAssign for PrepareAction {
+    #[inline]
+    fn add_assign(&mut self, rhs: PrepareAction) {
+        *self = (*self).max(rhs);
+    }
+}
+
 /// Text, prepared for display in a given enviroment
 ///
 /// Text is laid out for display in a box with the given size.
@@ -86,10 +112,10 @@ impl PreparedText {
     /// Currently this is not significantly more efficent than
     /// [`PreparedText::set_text`]. This may change in the future (TODO).
     ///
-    /// Returns [`TkAction::SetSize`]: i.e. this does not cause resizing.
-    pub fn insert_char(&mut self, index: usize, c: char) -> TkAction {
+    /// Returns [`PrepareAction::Prepare`]: i.e. this does not cause resizing.
+    pub fn insert_char(&mut self, index: usize, c: char) -> PrepareAction {
         self.0.insert_char(index, c);
-        TkAction::SetSize
+        PrepareAction::Prepare
     }
 
     /// Replace a section of text
@@ -102,13 +128,13 @@ impl PreparedText {
     /// Currently this is not significantly more efficent than
     /// [`PreparedText::set_text`]. This may change in the future (TODO).
     ///
-    /// Returns [`TkAction::SetSize`]: i.e. this does not cause resizing.
-    pub fn replace_range<R>(&mut self, range: R, replace_with: &str) -> TkAction
+    /// Returns [`PrepareAction::Prepare`]: i.e. this does not cause resizing.
+    pub fn replace_range<R>(&mut self, range: R, replace_with: &str) -> PrepareAction
     where
         R: std::ops::RangeBounds<usize>,
     {
         self.0.replace_range(range, replace_with);
-        TkAction::SetSize
+        PrepareAction::Prepare
     }
 
     /// Swap the raw text with a `String`
@@ -121,25 +147,36 @@ impl PreparedText {
     /// Currently this is not significantly more efficent than
     /// [`PreparedText::set_text`]. This may change in the future (TODO).
     ///
-    /// Returns [`TkAction::SetSize`]: i.e. this does not cause resizing.
-    pub fn swap_string(&mut self, string: &mut String) -> TkAction {
+    /// Returns [`PrepareAction::Prepare`]: i.e. this does not cause resizing.
+    pub fn swap_string(&mut self, string: &mut String) -> PrepareAction {
         self.0.swap_string(string);
-        TkAction::SetSize
+        PrepareAction::Prepare
     }
 
     /// Set the text
     ///
-    /// Returns [`TkAction::Resize`] when it is necessary to call [`PreparedText::prepare`].
-    pub fn set_text<T: Into<RichText>>(&mut self, text: T) -> TkAction {
+    /// See also [`PreparedText::set_and_prepare`].
+    pub fn set_text<T: Into<RichText>>(&mut self, text: T) -> PrepareAction {
         match self.0.set_text(text.into()) {
-            false => TkAction::None,
-            true => TkAction::Resize, // set_size calls prepare
+            false => PrepareAction::None,
+            true => PrepareAction::Prepare, // set_size calls prepare
+        }
+    }
+
+    /// Set the text
+    ///
+    /// This calls [`PreparedText::prepare`] internally, then returns
+    /// [`TkAction::Redraw`]. (This does not force a resize.)
+    pub fn set_and_prepare<T: Into<RichText>>(&mut self, text: T) -> TkAction {
+        if self.0.set_text(text.into()) {
+            self.0.prepare();
+            TkAction::Redraw
+        } else {
+            TkAction::None
         }
     }
 
     /// Read the environment
-    ///
-    /// Returns [`TkAction::Resize`] when it is necessary to call [`PreparedText::prepare`].
     pub fn env(&self) -> &Environment {
         self.0.env()
     }

@@ -98,7 +98,7 @@ impl<M: Clone + Debug + 'static> SetAccel for MenuEntry<M> {
     fn set_accel_string(&mut self, label: AccelString) -> TkAction {
         let text = label.get(false).to_string();
         self.keys = label.take_keys();
-        self.label.set_text(text)
+        self.label.set_and_prepare(text)
     }
 }
 

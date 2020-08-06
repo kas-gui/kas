@@ -80,7 +80,7 @@ impl CloneText for Label {
 
 impl SetText for Label {
     fn set_rich_text(&mut self, text: kas::text::RichText) -> TkAction {
-        self.label.set_text(text)
+        self.label.set_and_prepare(text)
     }
 }
 
@@ -150,6 +150,6 @@ impl SetAccel for AccelLabel {
     fn set_accel_string(&mut self, label: AccelString) -> TkAction {
         let text = label.get(false).to_string();
         self.keys = label.take_keys();
-        self.label.set_text(text)
+        self.label.set_and_prepare(text)
     }
 }

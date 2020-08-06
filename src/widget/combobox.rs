@@ -120,7 +120,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         if self.active != index {
             self.active = index;
             self.label
-                .set_text(self.popup.inner.inner[self.active].clone_text())
+                .set_and_prepare(self.popup.inner.inner[self.active].clone_text())
         } else {
             TkAction::None
         }

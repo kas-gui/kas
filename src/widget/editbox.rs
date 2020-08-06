@@ -13,6 +13,7 @@ use kas::class::HasString;
 use kas::draw::{DrawHandleExt, TextClass};
 use kas::event::{ControlKey, GrabMode};
 use kas::prelude::*;
+use kas::text::PrepareAction;
 
 #[derive(Clone, Debug, PartialEq)]
 enum LastEdit {
@@ -385,14 +386,16 @@ impl<G> EditBox<G> {
         if have_sel {
             let mut buf = [0u8; 4];
             let s = c.encode_utf8(&mut buf);
-            *mgr += self.text.replace_range(selection.clone(), s);
+            let _ = self.text.replace_range(selection.clone(), s);
             self.edit_pos = selection.start + s.len();
         } else {
-            *mgr += self.text.insert_char(pos, c);
+            let _ = self.text.insert_char(pos, c);
             self.edit_pos = pos + c.len_utf8();
         }
         self.sel_pos = self.edit_pos;
         self.edit_x_coord = None;
+        self.text.prepare();
+        mgr.redraw(self.id());
         EditAction::Edit
     }
 
@@ -401,7 +404,7 @@ impl<G> EditBox<G> {
             return EditAction::None;
         }
 
-        let mut mgr_action = TkAction::None;
+        let mut prep_action = PrepareAction::None;
         let mut buf = [0u8; 4];
         let pos = self.edit_pos;
         let selection = self.selection();
@@ -547,7 +550,7 @@ impl<G> EditBox<G> {
             }
             ControlKey::Deselect => {
                 self.sel_pos = pos;
-                mgr_action += TkAction::Redraw;
+                mgr.redraw(self.id());
                 Action::None
             }
             ControlKey::SelectAll => {
@@ -588,7 +591,7 @@ impl<G> EditBox<G> {
                 // TODO: maintain full edit history (externally?)
                 // NOTE: undo *and* redo shortcuts map to this control char
                 if let Some((state, pos2, sel_pos)) = self.old_state.as_mut() {
-                    mgr_action += self.text.swap_string(state);
+                    prep_action += self.text.swap_string(state);
                     self.edit_pos = *pos2;
                     *pos2 = pos;
                     std::mem::swap(sel_pos, &mut self.sel_pos);
@@ -610,7 +613,7 @@ impl<G> EditBox<G> {
                     self.old_state = Some((self.text.clone_string(), pos, self.sel_pos));
                     self.last_edit = edit;
 
-                    mgr_action += self.text.replace_range(selection.clone(), s);
+                    prep_action += self.text.replace_range(selection.clone(), s);
                     pos = selection.start;
                 } else {
                     if self.last_edit != edit {
@@ -618,7 +621,7 @@ impl<G> EditBox<G> {
                         self.last_edit = edit;
                     }
 
-                    mgr_action += self.text.replace_range(pos..pos, s);
+                    prep_action += self.text.replace_range(pos..pos, s);
                 }
                 self.edit_pos = pos + s.len();
                 self.sel_pos = self.edit_pos;
@@ -631,7 +634,7 @@ impl<G> EditBox<G> {
                     self.last_edit = LastEdit::Delete;
                 }
 
-                mgr_action += self.text.replace_range(sel.clone(), "");
+                prep_action += self.text.replace_range(sel.clone(), "");
                 self.edit_pos = sel.start;
                 self.sel_pos = sel.start;
                 self.edit_x_coord = None;
@@ -643,12 +646,19 @@ impl<G> EditBox<G> {
                     self.sel_pos = self.edit_pos;
                 }
                 self.edit_x_coord = x_coord;
-                mgr_action += TkAction::Redraw;
+                mgr.redraw(self.id());
                 EditAction::None
             }
         };
 
-        *mgr += mgr_action;
+        match prep_action {
+            PrepareAction::None => (),
+            PrepareAction::Prepare => {
+                self.text.prepare();
+                mgr.redraw(self.id());
+            }
+        }
+
         result
     }
 
@@ -665,7 +675,7 @@ impl<G: EditGuard> HasString for EditBox<G> {
     }
 
     fn set_string(&mut self, text: String) -> TkAction {
-        let action = self.text.set_text(text);
+        let action = self.text.set_and_prepare(text);
         let _ = G::edit(self);
         action
     }
