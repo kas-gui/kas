@@ -143,7 +143,7 @@ where
                         | TkAction::Redraw
                         | TkAction::RegionMoved
                         | TkAction::Popup
-                        | TkAction::ResetSize
+                        | TkAction::SetSize
                         | TkAction::Resize
                         | TkAction::Reconfigure => (),
                         TkAction::Close => to_close.push(*window_id),

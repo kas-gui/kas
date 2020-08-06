@@ -73,7 +73,7 @@ pub enum TkAction {
     /// A pop-up opened/closed/needs resizing
     Popup,
     /// Reset size of all widgets without recalculating requirements
-    ResetSize,
+    SetSize,
     /// Resize all widgets
     Resize,
     /// Whole window requires reconfiguring

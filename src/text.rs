@@ -85,9 +85,11 @@ impl PreparedText {
     ///
     /// Currently this is not significantly more efficent than
     /// [`PreparedText::set_text`]. This may change in the future (TODO).
+    ///
+    /// Returns [`TkAction::SetSize`]: i.e. this does not cause resizing.
     pub fn insert_char(&mut self, index: usize, c: char) -> TkAction {
         self.0.insert_char(index, c);
-        TkAction::Resize
+        TkAction::SetSize
     }
 
     /// Replace a section of text
@@ -99,12 +101,14 @@ impl PreparedText {
     ///
     /// Currently this is not significantly more efficent than
     /// [`PreparedText::set_text`]. This may change in the future (TODO).
+    ///
+    /// Returns [`TkAction::SetSize`]: i.e. this does not cause resizing.
     pub fn replace_range<R>(&mut self, range: R, replace_with: &str) -> TkAction
     where
         R: std::ops::RangeBounds<usize>,
     {
         self.0.replace_range(range, replace_with);
-        TkAction::Resize
+        TkAction::SetSize
     }
 
     /// Swap the raw text with a `String`
@@ -116,9 +120,11 @@ impl PreparedText {
     ///
     /// Currently this is not significantly more efficent than
     /// [`PreparedText::set_text`]. This may change in the future (TODO).
+    ///
+    /// Returns [`TkAction::SetSize`]: i.e. this does not cause resizing.
     pub fn swap_string(&mut self, string: &mut String) -> TkAction {
         self.0.swap_string(string);
-        TkAction::Resize
+        TkAction::SetSize
     }
 
     /// Set the text
