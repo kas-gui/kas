@@ -125,8 +125,12 @@ impl Handler for Clock {
         match event {
             Event::TimerUpdate => {
                 self.now = Local::now();
-                *mgr += self.date.set_text(self.now.format("%Y-%m-%d").to_string())
-                    + self.time.set_text(self.now.format("%H:%M:%S").to_string());
+                *mgr += self
+                    .date
+                    .set_and_prepare(self.now.format("%Y-%m-%d").to_string())
+                    + self
+                        .time
+                        .set_and_prepare(self.now.format("%H:%M:%S").to_string());
                 let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                 info!("Requesting update in {}ns", ns);
                 mgr.update_on_timer(Duration::new(0, ns), self.id());
