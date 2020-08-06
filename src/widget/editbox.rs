@@ -96,7 +96,7 @@ pub struct EditActivate<F: Fn(&str) -> Option<M>, M>(pub F);
 impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditActivate<F, M> {
     type Msg = M;
     fn activate(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
-        (edit.guard.0)(&edit.text)
+        (edit.guard.0)(edit.text.text())
     }
 }
 
@@ -105,10 +105,10 @@ pub struct EditAFL<F: Fn(&str) -> Option<M>, M>(pub F);
 impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditAFL<F, M> {
     type Msg = M;
     fn activate(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
-        (edit.guard.0)(&edit.text)
+        (edit.guard.0)(edit.text.text())
     }
     fn focus_lost(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
-        (edit.guard.0)(&edit.text)
+        (edit.guard.0)(edit.text.text())
     }
 }
 
@@ -117,7 +117,7 @@ pub struct EditEdit<F: Fn(&str) -> Option<M>, M>(pub F);
 impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
     type Msg = M;
     fn edit(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
-        (edit.guard.0)(&edit.text)
+        (edit.guard.0)(edit.text.text())
     }
 }
 
@@ -141,9 +141,7 @@ pub struct EditBox<G: 'static> {
     text_pos: Coord,
     editable: bool,
     multi_line: bool,
-    // TODO: can we combine text and prepared?
-    text: String,
-    prepared: PreparedText,
+    text: PreparedText,
     edit_pos: usize,
     sel_pos: usize,
     edit_x_coord: Option<f32>,
@@ -159,7 +157,9 @@ impl<G> Debug for EditBox<G> {
         write!(
             f,
             "EditBox {{ core: {:?}, editable: {:?}, text: {:?}, ... }}",
-            self.core, self.editable, self.text
+            self.core,
+            self.editable,
+            self.text.text()
         )
     }
 }
@@ -179,7 +179,7 @@ impl<G: 'static> Layout for EditBox<G> {
         } else {
             TextClass::Edit
         };
-        let content_rules = size_handle.text_bound(&mut self.prepared, class, axis);
+        let content_rules = size_handle.text_bound(&mut self.text, class, axis);
         let m = content_rules.margins();
 
         let rules = content_rules.surrounded_by(frame_rules, true);
@@ -209,7 +209,7 @@ impl<G: 'static> Layout for EditBox<G> {
         self.text_pos = rect.pos + self.frame_offset;
         let size = rect.size - self.frame_size;
         let multi_line = self.multi_line;
-        self.prepared.update_env(|env| {
+        self.text.update_env(|env| {
             env.set_bounds(size.into());
             env.set_wrap(multi_line);
         });
@@ -225,12 +225,12 @@ impl<G: 'static> Layout for EditBox<G> {
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
         if self.sel_pos == self.edit_pos {
-            draw_handle.text(self.text_pos, &self.prepared, class);
+            draw_handle.text(self.text_pos, &self.text, class);
         } else {
-            draw_handle.text_selected(self.text_pos, &self.prepared, self.selection(), class);
+            draw_handle.text_selected(self.text_pos, &self.text, self.selection(), class);
         }
         if input_state.char_focus {
-            draw_handle.edit_marker(self.text_pos, &self.prepared, class, self.edit_pos);
+            draw_handle.edit_marker(self.text_pos, &self.text, class, self.edit_pos);
         }
     }
 }
@@ -247,8 +247,7 @@ impl EditBox<EditVoid> {
             text_pos: Default::default(),
             editable: true,
             multi_line: false,
-            text: text.clone(),
-            prepared: PreparedText::new(text.into()),
+            text: PreparedText::new(text.into()),
             edit_pos,
             sel_pos: edit_pos,
             edit_x_coord: None,
@@ -275,7 +274,6 @@ impl EditBox<EditVoid> {
             editable: self.editable,
             multi_line: self.multi_line,
             text: self.text,
-            prepared: self.prepared,
             edit_pos: self.edit_pos,
             sel_pos: self.sel_pos,
             edit_x_coord: self.edit_x_coord,
@@ -381,22 +379,20 @@ impl<G> EditBox<G> {
         let selection = self.selection();
         let have_sel = selection.start < selection.end;
         if self.last_edit != LastEdit::Insert || have_sel {
-            self.old_state = Some((self.text.clone(), pos, self.sel_pos));
+            self.old_state = Some((self.text.clone_string(), pos, self.sel_pos));
             self.last_edit = LastEdit::Insert;
         }
         if have_sel {
             let mut buf = [0u8; 4];
             let s = c.encode_utf8(&mut buf);
-            self.text.replace_range(selection.clone(), s);
+            *mgr += self.text.replace_range(selection.clone(), s);
             self.edit_pos = selection.start + s.len();
         } else {
-            self.text.insert(pos, c);
+            *mgr += self.text.insert_char(pos, c);
             self.edit_pos = pos + c.len_utf8();
         }
         self.sel_pos = self.edit_pos;
         self.edit_x_coord = None;
-
-        *mgr += self.prepared.set_text(self.text.clone());
         EditAction::Edit
     }
 
@@ -430,23 +426,23 @@ impl<G> EditBox<G> {
             }
             ControlKey::Home if ctrl => Action::Move(0, None),
             ControlKey::Home => {
-                let pos = self.prepared.find_line(pos).map(|r| r.1.start).unwrap_or(0);
+                let pos = self.text.find_line(pos).map(|r| r.1.start).unwrap_or(0);
                 Action::Move(pos, None)
             }
-            ControlKey::End if ctrl => Action::Move(self.text.len(), None),
+            ControlKey::End if ctrl => Action::Move(self.text.text_len(), None),
             ControlKey::End => {
                 let pos = self
-                    .prepared
+                    .text
                     .find_line(pos)
                     .map(|r| r.1.end)
-                    .unwrap_or(self.text.len());
+                    .unwrap_or(self.text.text_len());
                 Action::Move(pos, None)
             }
             ControlKey::Left if ctrl => {
                 // TODO: This should find the next word-start, not *all* word
                 // boundaries! Perhaps best to implement in kas-text since
                 // anything external will struggle with bidirectional text.
-                let pos = self.text[0..pos]
+                let pos = self.text.text()[0..pos]
                     .split_word_bound_indices()
                     .next_back()
                     .map(|(index, _)| index)
@@ -454,26 +450,26 @@ impl<G> EditBox<G> {
                 Action::Move(pos, None)
             }
             ControlKey::Left => {
-                let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
+                let mut cursor = GraphemeCursor::new(pos, self.text.text_len(), true);
                 cursor
-                    .prev_boundary(&self.text, 0)
+                    .prev_boundary(self.text.text(), 0)
                     .unwrap()
                     .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
             ControlKey::Right if ctrl => {
-                let pos = self.text[pos..]
+                let pos = self.text.text()[pos..]
                     .split_word_bound_indices()
                     .skip(1)
                     .next()
                     .map(|(index, _)| pos + index)
-                    .unwrap_or(self.text.len());
+                    .unwrap_or(self.text.text_len());
                 Action::Move(pos, None)
             }
             ControlKey::Right => {
-                let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
+                let mut cursor = GraphemeCursor::new(pos, self.text.text_len(), true);
                 cursor
-                    .next_boundary(&self.text, 0)
+                    .next_boundary(self.text.text(), 0)
                     .unwrap()
                     .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
@@ -482,13 +478,13 @@ impl<G> EditBox<G> {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
                     None => self
-                        .prepared
+                        .text
                         .text_glyph_rel_pos(pos)
                         .next_back()
                         .map(|r| (r.0).0)
                         .unwrap_or(0.0),
                 };
-                let mut line = self.prepared.find_line(pos).map(|r| r.0).unwrap_or(0);
+                let mut line = self.text.find_line(pos).map(|r| r.0).unwrap_or(0);
                 // We can tolerate invalid line numbers here!
                 // TODO: PageUp/Down should depend on view size?
                 line = match key {
@@ -500,10 +496,10 @@ impl<G> EditBox<G> {
                 };
                 const HALF: usize = usize::MAX / 2;
                 let nearest_end = || match line {
-                    0..=HALF => self.text.len(),
+                    0..=HALF => self.text.text_len(),
                     _ => 0,
                 };
-                self.prepared
+                self.text
                     .line_index_nearest(line, x)
                     .map(|pos| Action::Move(pos, Some(x)))
                     .unwrap_or(Action::Move(nearest_end(), None))
@@ -512,17 +508,17 @@ impl<G> EditBox<G> {
                 if have_sel {
                     Action::Delete(selection.clone())
                 } else if ctrl {
-                    let next = self.text[pos..]
+                    let next = self.text.text()[pos..]
                         .split_word_bound_indices()
                         .skip(1)
                         .next()
                         .map(|(index, _)| pos + index)
-                        .unwrap_or(self.text.len());
+                        .unwrap_or(self.text.text_len());
                     Action::Delete(pos..next)
                 } else {
-                    let mut cursor = GraphemeCursor::new(pos, self.text.len(), true);
+                    let mut cursor = GraphemeCursor::new(pos, self.text.text_len(), true);
                     cursor
-                        .next_boundary(&self.text, 0)
+                        .next_boundary(self.text.text(), 0)
                         .unwrap()
                         .map(|next| Action::Delete(pos..next))
                         .unwrap_or(Action::None)
@@ -532,7 +528,7 @@ impl<G> EditBox<G> {
                 if have_sel {
                     Action::Delete(selection.clone())
                 } else if ctrl {
-                    let prev = self.text[0..pos]
+                    let prev = self.text.text()[0..pos]
                         .split_word_bound_indices()
                         .next_back()
                         .map(|(index, _)| index)
@@ -540,7 +536,7 @@ impl<G> EditBox<G> {
                     Action::Delete(prev..pos)
                 } else {
                     // We always delete one code-point, not one grapheme cluster:
-                    let prev = self.text[0..pos]
+                    let prev = self.text.text()[0..pos]
                         .char_indices()
                         .rev()
                         .next()
@@ -550,11 +546,11 @@ impl<G> EditBox<G> {
                 }
             }
             ControlKey::Cut if have_sel => {
-                mgr.set_clipboard((&self.text[selection.clone()]).into());
+                mgr.set_clipboard((self.text.text()[selection.clone()]).into());
                 Action::Delete(selection.clone())
             }
             ControlKey::Copy if have_sel => {
-                mgr.set_clipboard((&self.text[selection.clone()]).into());
+                mgr.set_clipboard((self.text.text()[selection.clone()]).into());
                 Action::None
             }
             ControlKey::Paste => {
@@ -582,12 +578,11 @@ impl<G> EditBox<G> {
                 // TODO: maintain full edit history (externally?)
                 // NOTE: undo *and* redo shortcuts map to this control char
                 if let Some((state, pos2, sel_pos)) = self.old_state.as_mut() {
-                    std::mem::swap(state, &mut self.text);
+                    mgr_action += self.text.swap_string(state);
                     self.edit_pos = *pos2;
                     *pos2 = pos;
                     std::mem::swap(sel_pos, &mut self.sel_pos);
                     self.edit_x_coord = None;
-                    mgr_action += self.prepared.set_text(self.text.clone());
                     self.last_edit = LastEdit::None;
                 }
                 Action::Edit
@@ -602,36 +597,34 @@ impl<G> EditBox<G> {
             Action::Insert(s, edit) => {
                 let mut pos = pos;
                 if have_sel {
-                    self.old_state = Some((self.text.clone(), pos, self.sel_pos));
+                    self.old_state = Some((self.text.clone_string(), pos, self.sel_pos));
                     self.last_edit = edit;
 
-                    self.text.replace_range(selection.clone(), s);
+                    mgr_action += self.text.replace_range(selection.clone(), s);
                     pos = selection.start;
                 } else {
                     if self.last_edit != edit {
-                        self.old_state = Some((self.text.clone(), pos, self.sel_pos));
+                        self.old_state = Some((self.text.clone_string(), pos, self.sel_pos));
                         self.last_edit = edit;
                     }
 
-                    self.text.insert_str(pos, s);
+                    mgr_action += self.text.replace_range(pos..pos, s);
                 }
                 self.edit_pos = pos + s.len();
                 self.sel_pos = self.edit_pos;
                 self.edit_x_coord = None;
-                mgr_action += self.prepared.set_text(self.text.clone());
                 EditAction::Edit
             }
             Action::Delete(sel) => {
                 if self.last_edit != LastEdit::Delete {
-                    self.old_state = Some((self.text.clone(), pos, self.sel_pos));
+                    self.old_state = Some((self.text.clone_string(), pos, self.sel_pos));
                     self.last_edit = LastEdit::Delete;
                 }
 
-                self.text.replace_range(sel.clone(), "");
+                mgr_action += self.text.replace_range(sel.clone(), "");
                 self.edit_pos = sel.start;
                 self.sel_pos = sel.start;
                 self.edit_x_coord = None;
-                mgr_action += self.prepared.set_text(self.text.clone());
                 EditAction::Edit
             }
             Action::Move(pos, x_coord) => {
@@ -650,7 +643,7 @@ impl<G> EditBox<G> {
     }
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
-        self.edit_pos = self.prepared.text_index_nearest(self.text_pos, coord);
+        self.edit_pos = self.text.text_index_nearest(self.text_pos, coord);
         self.edit_x_coord = None;
         mgr.redraw(self.id());
     }
@@ -658,12 +651,11 @@ impl<G> EditBox<G> {
 
 impl<G: EditGuard> HasString for EditBox<G> {
     fn get_str(&self) -> &str {
-        &self.text
+        self.text.text()
     }
 
     fn set_string(&mut self, text: String) -> TkAction {
-        self.text = text;
-        let action = self.prepared.set_text(self.text.clone());
+        let action = self.text.set_text(text);
         let _ = G::edit(self);
         action
     }

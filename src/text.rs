@@ -56,12 +56,69 @@ impl PreparedText {
         self.0.clone_text()
     }
 
+    /// Clone the raw string
+    pub fn clone_string(&self) -> String {
+        self.0.text().to_string()
+    }
+
     /// Length of raw text
     ///
     /// It is valid to reference text within the range `0..text_len()`,
     /// even if not all text within this range will be displayed (due to runs).
     pub fn text_len(&self) -> usize {
         self.0.text_len()
+    }
+
+    /// Access to the raw text
+    ///
+    /// This is the contiguous raw text without formatting information.
+    pub fn text(&self) -> &str {
+        self.0.text()
+    }
+
+    /// Insert a char at the given position
+    ///
+    /// This may be used to edit the raw text instead of replacing it.
+    /// One must call [`PreparedText::prepare`] afterwards.
+    ///
+    /// TODO: document how this affects formatting.
+    ///
+    /// Currently this is not significantly more efficent than
+    /// [`PreparedText::set_text`]. This may change in the future (TODO).
+    pub fn insert_char(&mut self, index: usize, c: char) -> TkAction {
+        self.0.insert_char(index, c);
+        TkAction::Resize
+    }
+
+    /// Replace a section of text
+    ///
+    /// This may be used to edit the raw text instead of replacing it.
+    /// One must call [`PreparedText::prepare`] afterwards.
+    ///
+    /// TODO: document how this affects formatting.
+    ///
+    /// Currently this is not significantly more efficent than
+    /// [`PreparedText::set_text`]. This may change in the future (TODO).
+    pub fn replace_range<R>(&mut self, range: R, replace_with: &str) -> TkAction
+    where
+        R: std::ops::RangeBounds<usize>,
+    {
+        self.0.replace_range(range, replace_with);
+        TkAction::Resize
+    }
+
+    /// Swap the raw text with a `String`
+    ///
+    /// This may be used to edit the raw text instead of replacing it.
+    /// One must call [`PreparedText::prepare`] afterwards.
+    ///
+    /// TODO: document how this affects formatting.
+    ///
+    /// Currently this is not significantly more efficent than
+    /// [`PreparedText::set_text`]. This may change in the future (TODO).
+    pub fn swap_string(&mut self, string: &mut String) -> TkAction {
+        self.0.swap_string(string);
+        TkAction::Resize
     }
 
     /// Set the text
@@ -81,9 +138,16 @@ impl PreparedText {
         self.0.env()
     }
 
-    /// Update the environment and prepare for drawing
+    /// Update the environment and prepare for display
+    ///
+    /// This calls [`PreparedText::prepare`] to prepare text for display.
     pub fn update_env<F: FnOnce(&mut UpdateEnv)>(&mut self, f: F) {
         self.0.update_env(f);
+    }
+
+    /// Prepare text for display
+    pub fn prepare(&mut self) {
+        self.0.prepare();
     }
 
     pub fn positioned_glyphs<G, F: Fn(&str, FontId, PxScale, Glyph) -> G>(&self, f: F) -> Vec<G> {
