@@ -246,15 +246,39 @@ impl<'a> Manager<'a> {
         }
     }
 
+    /// Match global shortcuts.
+    ///
+    /// TODO: this should be configurable and extensible with the option for
+    /// global shortcuts to target specific widgets. Possibly we should just use
+    /// an integer with a large block for user-defined codes, and require that
+    /// apps register their short-cut codes with a name and optional WidgetId.
+    fn match_shortcuts(&self, vkey: VirtualKeyCode) -> Option<ControlKey> {
+        use VirtualKeyCode as VK;
+        let ctrl = self.mgr.modifiers.ctrl();
+        let shift = self.mgr.modifiers.shift();
+        Some(match (ctrl, shift, vkey) {
+            (true, false, VK::A) => ControlKey::SelectAll,
+            (true, true, VK::A) => ControlKey::Deselect,
+            (true, _, VK::C) => ControlKey::Copy,
+            (true, _, VK::V) => ControlKey::Paste,
+            (true, _, VK::X) => ControlKey::Cut,
+            (true, false, VK::Z) => ControlKey::Undo,
+            (true, true, VK::Z) => ControlKey::Redo,
+            (_, _, vkey) => return ControlKey::new(vkey),
+        })
+    }
+
     fn start_key_event<W>(&mut self, widget: &mut W, vkey: VirtualKeyCode, scancode: u32)
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         use VirtualKeyCode as VK;
+        let opt_control = self.match_shortcuts(vkey);
+
         if let Some(id) = self.mgr.char_focus {
             if vkey == VK::Escape {
                 self.set_char_focus(None);
-            } else if let Some(key) = ControlKey::new(vkey) {
+            } else if let Some(key) = opt_control {
                 self.send_event(widget, id, Event::Control(key));
             }
             return;
@@ -282,7 +306,7 @@ impl<'a> Manager<'a> {
                 if let Some(nav_id) = self.mgr.nav_focus {
                     if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
                         id_action = Some((nav_id, Event::Activate));
-                    } else if let Some(nav_key) = ControlKey::new(vkey) {
+                    } else if let Some(nav_key) = opt_control {
                         id_action = Some((nav_id, Event::Control(nav_key)));
                     }
                 }
@@ -290,12 +314,12 @@ impl<'a> Manager<'a> {
                 if id_action.is_none() {
                     // Next priority goes to pop-up widget
                     if let Some(popup) = self.mgr.popups.last() {
-                        if let Some(key) = ControlKey::new(vkey) {
+                        if let Some(key) = opt_control {
                             let ev = Event::Control(key);
                             id_action = Some((popup.1.parent, ev));
                         }
                     } else if let Some(id) = self.mgr.nav_fallback {
-                        if let Some(key) = ControlKey::new(vkey) {
+                        if let Some(key) = opt_control {
                             id_action = Some((id, Event::Control(key)));
                         }
                     }

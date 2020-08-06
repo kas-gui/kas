@@ -166,6 +166,9 @@ pub enum Event {
 /// The Escape key is notably absent: it always cancels char or nav focus, thus
 /// is never sent to a widget. The Tab key is only reported with char focus.
 ///
+/// In some cases, a widget's response will depend on the state of modifier
+/// keys. This state can be read via the [`Manager::modifiers`] method.
+///
 /// The purpose of this enum (instead of sending the active widget a
 /// [`VirtualKeyCode`]) is consistent behaviour: these "navigation keys" will
 /// always be sent to the widget highlighted for keyboard navigation, if active,
@@ -217,6 +220,10 @@ pub enum ControlKey {
     /// Delete backwards
     Backspace,
 
+    /// Clear any selections
+    Deselect,
+    /// Select all contents
+    SelectAll,
     /// Copy to clipboard and clear
     Cut,
     /// Copy to clipboard

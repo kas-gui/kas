@@ -407,7 +407,7 @@ impl<G> EditBox<G> {
         let selection = self.selection();
         let have_sel = selection.end > selection.start;
         let ctrl = mgr.modifiers().ctrl();
-        let shift = mgr.modifiers().shift();
+        let mut shift = mgr.modifiers().shift();
         let string;
 
         enum Action<'a> {
@@ -544,6 +544,16 @@ impl<G> EditBox<G> {
                         .unwrap_or(0);
                     Action::Delete(prev..pos)
                 }
+            }
+            ControlKey::Deselect => {
+                self.sel_pos = pos;
+                mgr_action += TkAction::Redraw;
+                Action::None
+            }
+            ControlKey::SelectAll => {
+                self.sel_pos = 0;
+                shift = true; // hack
+                Action::Move(self.text.text_len(), None)
             }
             ControlKey::Cut if have_sel => {
                 mgr.set_clipboard((self.text.text()[selection.clone()]).into());

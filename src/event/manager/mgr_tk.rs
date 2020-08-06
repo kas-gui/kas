@@ -381,24 +381,10 @@ impl<'a> Manager<'a> {
             */
             ReceivedCharacter(c) => {
                 if let Some(id) = self.mgr.char_focus {
-                    // Filter out control codes (Unicode 5.11) which
-                    // should be sent via Event::Control
-                    if c < '\u{20}' || (c >= '\u{7f}' && c <= '\u{9f}') {
-                        // We ignore these when winit also sends a corresponding
-                        // VirtualKeyCode but match those codes it doesn't.
-                        // Possibly we should instead directly match Control+Letter
-                        // combos and handle localisation ourselves, but we
-                        // don't yet have localisation or customisation support.
-                        let key = match c {
-                            '\u{03}' => ControlKey::Copy,
-                            '\u{16}' => ControlKey::Paste,
-                            '\u{18}' => ControlKey::Cut,
-                            '\u{1A}' => ControlKey::Undo, // also redo; we can't differentiate
-                            _ => return,
-                        };
-                        let event = Event::Control(key);
-                        self.send_event(widget, id, event);
-                    } else {
+                    // Filter out control codes (Unicode 5.11). These may be
+                    // generated from combinations such as Ctrl+C by some other
+                    // layer. We use our own shortcut system instead.
+                    if c >= '\u{20}' && (c < '\u{7f}' || c > '\u{9f}') {
                         let event = Event::ReceivedCharacter(c);
                         self.send_event(widget, id, event);
                     }
