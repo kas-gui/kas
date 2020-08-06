@@ -147,6 +147,10 @@ pub trait SizeHandle {
     ///
     /// Usually this method is used in [`Layout::size_rules`], then
     /// [`PreparedText::update_env`] is used in [`Layout::set_rect`].
+    ///
+    /// [`Environment`]: kas::text::Environment
+    /// [`Layout::set_rect`]: kas::Layout::set_rect
+    /// [`Layout::size_rules`]: kas::Layout::size_rules
     fn text_bound(
         &mut self,
         text: &mut PreparedText,
@@ -269,7 +273,7 @@ pub trait DrawHandle {
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
     fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass);
 
-    /// Method used to implement [`DrawHandle::text_selected`]
+    /// Method used to implement [`DrawHandleExt::text_selected`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     fn text_selected_range(
         &mut self,

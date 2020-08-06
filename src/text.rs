@@ -24,7 +24,7 @@ impl PreparedText {
     /// New single-line text
     ///
     /// This method assumes single-line mode and default alignment.
-    /// To adjust, use [`Text::update_env`].
+    /// To adjust, use [`PreparedText::update_env`].
     ///
     /// This struct must be made ready for use before
     /// To do so, call [`PreparedText::prepare`].
