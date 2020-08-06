@@ -1,11 +1,11 @@
 KAS GUI
 ==========
 
+[![Test Status](https://github.com/kas-gui/kas/workflows/Tests/badge.svg?event=push)](https://github.com/kas-gui/kas/actions)
 [![home](https://img.shields.io/badge/GitHub-home-blue)](https://github.com/kas-gui/kas)
 [![old-home](https://img.shields.io/badge/GitLab-old--home-blueviolet)](https://gitlab.com/dhardy/kas)
-[![Build Status](https://travis-ci.com/kas-gui/kas.svg?branch=master)](https://travis-ci.com/kas-gui/kas)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
-![Minimum rustc version](https://img.shields.io/badge/rustc-nightly-lightgray.svg)
+![Minimum rustc version](https://img.shields.io/badge/rustc-1.45+-lightgray.svg)
 
 KAS, the *toolKit Abstraction System*, is a general-purpose GUI toolkit.
 
