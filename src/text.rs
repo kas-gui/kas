@@ -285,11 +285,7 @@ impl PreparedText {
     /// yields a separate rect for each "run" within this range (where "run" is
     /// is a line or part of a line). Rects are represented by the top-left
     /// vertex and the bottom-right vertex.
-    pub fn highlight_lines<R: Into<std::ops::Range<usize>>>(
-        &self,
-        pos: Coord,
-        range: R,
-    ) -> Vec<Quad> {
+    pub fn highlight_lines(&self, pos: Coord, range: std::ops::Range<usize>) -> Vec<Quad> {
         let pos = Vec2::from(pos);
         self.0
             .highlight_lines(range)
@@ -306,11 +302,7 @@ impl PreparedText {
     /// yields a separate rect for each "run" within this range (where "run" is
     /// is a line or part of a line). Rects are represented by the top-left
     /// vertex and the bottom-right vertex.
-    pub fn highlight_runs<R: Into<std::ops::Range<usize>>>(
-        &self,
-        pos: Coord,
-        range: R,
-    ) -> Vec<Quad> {
+    pub fn highlight_runs(&self, pos: Coord, range: std::ops::Range<usize>) -> Vec<Quad> {
         let pos = Vec2::from(pos);
         self.0
             .highlight_runs(range)
