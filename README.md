@@ -8,92 +8,92 @@ KAS GUI
 ![Minimum rustc version](https://img.shields.io/badge/rustc-1.45+-lightgray.svg)
 
 KAS, the *toolKit Abstraction System*, is a general-purpose GUI toolkit.
+KAS's design provides:
 
-Examples
----------
+-   retained mode (library stores state), inspired by Qt (classic)
+-   concise, partially declarative specification of widgets
+-   type-safe, widget-local event handlers
+-   simple ownership with no retained pointers into widget state
+-   widgets embed state and handlers (easy reuse of complex components)
+-   scalability to millions of widgets (WIP)
+
+## Examples
 
 For details, see the [Examples README](kas-wgpu/examples/README.md).
 
-![Calculator](screenshots/calculator.png) ![Dynamic](screenshots/dynamic.png)
-![Clock](screenshots/clock.png) ![Gallery](screenshots/gallery.gif)
+![Calculator](screenshots/calculator.png) ![Gallery](screenshots/gallery.gif)
 ![Splitter](screenshots/splitter.gif)
+![Layout](screenshots/layout.png)
 ![Mandlebrot](screenshots/mandlebrot.png)
 
+## Features
 
-Goals and status
-------
-
-**Goals** of the project and *current status* are:
-
--   Fully-functional, intuitive GUIs
--   Support stand-alone and embedded GUIs (*only stand-alone is functional*)
--   Support GPU-accelerated and CPU-only draw backends (*only GPU-accelerated is functional*)
--   Custom widgets in user code with high- and low-level draw APIs *and* raw backend access (*fully functional*)
--   Scalable to huge numbers of widgets (*partially realised: the dynamic example can run with >1'000'000 widgets but with some delays*)
--   Concise, expressive specification within code (*partially realised via macros which push Rust to its limits*)
--   User-customisable (*supports themes and colour schemes*)
--   Desktop integration (*not yet realised*)
-
-
-### Rustc version
-
-KAS is compatible with **stable rustc**. Using nightly Rust is advantageous:
-
--   Proceedural macros emit better diagnostics. In some cases, diagnostics are
-    missed without nightly rustc, hence **nightly is recommended for development**.
--   A few other minor features are nightly-only. See *feature flags*
-    documentation below and in other crates' READMEs.
-
-### Code stability
-
-KAS is young and incomplete, yet has a reasonably robust core framework. Users
-should expect breaking changes when upgrading from one release to the next.
-
-The draw APIs saw a big overhaul in version 0.3, but may well need further
-revision. Text APIs are currently just placeholders. There is no translation
-support, persistent configuration or desktop integration.
-
-The widget traits, macros and, event model have seen significant changes in 0.4.
-These will be extended in the future but hopefully only minor breaking changes
-will be needed.
-
-### Features
-
--   Persistent widgets with embedded state
--   Simple ownership model (no persistent pointers into widget state)
--   Type-safe user-defined event handlers
--   Robust event handling model
--   Extensive support for keyboard and touch-screen control
--   Disabled and error states for widgets
+-   Touchscreen input, mouse input, full keyboard navigation, accelerator keys
 -   Scalable (HiDPI) supporting fractional scaling
--   Theme API, simple draw API and raw graphics access
--   Automatic widget layout including grids with spans and width-for-height sizing
+-   Complex glyph shaping and bidirectional text support
+-   Themes (sizing and rendering control) and colour schemes
+-   Embedded graphics via custom [WebGPU] graphics pipes
+-   Widget layout via grids (with spans), rows and columns
+-   Idempotent widget resizing
 
 ### Missing features
 
 These aren't here yet!
 
--   Text editing (currently only very basic support)
 -   Raster graphics
 -   Flow-box layouts
+-   Rich text formatting
+-   CPU and OpenGL rendering (currently only supports drawing via [WebGPU],
+    which should support most modern systems but not all)
+-   User-configuration and desktop integration
+-   And much more, see the [ROADMAP].
+
+## Widgets
+
+Below are some highlights. Find the full list in the [docs](docs.rs/kas/*/kas/widget).
+
+-   Single- and multi-line text editing via `EditBox`
+-   `ScrollRegion` with `ScrollBar`s
+-   Resizable `List` and `Splitter` with drag handles
+-   `MenuBar` featuring all expected input methods
+-   `RadioBox` with broadcast communication via a group identifier
+-   A simple `MessageBox` dialog
 
 
 Installation and dependencies
 ----------------
 
-Currently, KAS's only drawing method is [WebGPU](https://github.com/gfx-rs/wgpu-rs),
-which requires DirectX 11/12, Vulkan or Metal.
+#### Rust
+
+KAS requires [Rust] version 1.45 or greater. All examples are compatible with
+the **stable** channel, but using the **nightly** channel does have a couple of
+advantages:
+
+-   Proceedural macros emit better diagnostics. In some cases, diagnostics are
+    missed without nightly rustc, hence **nightly is recommended for development**.
+-   Documentation generated via `cargo doc` requires nightly for links
+-   A few minor option things: see [Feature flags](#feature-flags) below.
+
+#### WebGPU
+
+Currently, KAS's only drawing method is [WebGPU] which requires DirectX 11/12,
+Vulkan or Metal.
 In the future, there may be support for OpenGL and software rendering.
 
-If you haven't already, install [Rust](https://www.rust-lang.org/), including
-the *nightly* channel (`rustup toolchain install nightly`). Either make nightly
-the default (`rustup default nightly`) or use `cargo +nightly ...` below.
+#### HarfBuzz (optional)
 
-A few other dependencies may require installation, depending on the system.
-On Ubuntu:
+This is only needed if the `shaping` feature is enabled.
+
+### Quick-start
+
+Install dependencies:
 
 ```sh
-sudo apt-get install build-essential git cmake libxcb-shape0-dev libxcb-xfixes0-dev
+# For Ubuntu:
+sudo apt-get install build-essential git cmake libxcb-shape0-dev libxcb-xfixes0-dev libharfbuzz-dev
+
+# For Fedora:
+sudo dnf install cmake libxcb-devel harfbuzz-devel
 ```
 
 Next, clone the repository and run the examples as follows:
@@ -103,40 +103,45 @@ git clone https://github.com/kas-gui/kas.git
 cd kas
 cargo test
 cd kas-wgpu
-cargo test
+cargo build --examples
 cargo run --example gallery
+cargo run --example layout
+cargo run --example mandlebrot
 ```
 
 ### Crates
 
 -   `kas`: the *core* of the GUI library, providing most interfaces and logic
     along with a selection of common widgets
--   `kas-macros`: a helper crate providing the procedural macros used by `kas`
--   `kas-theme`: theming support for KAS (API plus a couple of standard themes,
-    at least for now)
--   `kas-wgpu`: provides windowing via [`winit`] and rendering via [`wgpu`]
+-   `kas-macros`: a helper crate for proc macros (do not use directly)
+-   [`kas-text`]: font loading, text layout, text navigation
+-   `kas-theme`: theming support for KAS (API plus two themes; organisation may change)
+-   `kas-wgpu`: provides windowing via [`winit`] and rendering via [WebGPU]
 -   `kas-widgets`: (unrealised) - providing extra widgets
--   `kas-graphs`: (unrealised) - plotting widgets
 
-A user depends on `kas` to write their complete UI specification, and then
-pastes a few lines of code to initialise `kas_wgpu::Toolkit`, choose a theme,
-add window(s), and run the UI.
-
-[`winit`]: https://github.com/rust-windowing/winit/
-[`wgpu`]: https://github.com/gfx-rs/wgpu-rs
+A user depends on `kas` to write their complete UI specification, selects a
+theme from `kas-theme`, instances a `kas_wgpu::Toolkit`, adds the window(s),
+and runs the UI.
 
 ### Feature flags
 
 The `kas` crate has the following feature flags:
 
+-   `shaping`: enables complex glyph forming for languages such as Arabic.
+    This requires that the HarfBuzz library is installed.
 -   `internal_doc`: turns on some extra documentation intended for internal
-    usage but not for end users. (This only affects documentation.)
+    usage but not for end users. (This only affects generated documentation.)
 -   `nightly`: enables `new_uninit` feature to support cloning of
     `Box<dyn Handler>` objects
 -   `winit`: adds compatibility code for winit's event and geometry types.
     This is currently the only functional windowing/event library.
 -   `stack_dst`: some compatibility impls (see `kas-theme`'s documentation)
 
+
+[`kas-text`]: https://github.com/kas-gui/kas-text/
+[`winit`]: https://github.com/rust-windowing/winit/
+[WebGPU]: https://github.com/gfx-rs/wgpu-rs
+[ROADMAP]: ROADMAP.md
 
 
 Copyright and Licence

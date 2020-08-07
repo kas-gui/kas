@@ -375,7 +375,7 @@ pub trait DrawHandleExt: DrawHandle {
     /// Draw some text using the standard font, with a subset selected
     ///
     /// Other than visually highlighting the selection, this method behaves
-    /// identically to [`DrawHandle::text`]. It is likely to be replaced in the
+    /// identically to [`DrawHandleExt::text`]. It is likely to be replaced in the
     /// future by a higher-level API.
     fn text_selected<R: RangeBounds<usize>>(
         &mut self,

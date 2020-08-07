@@ -53,14 +53,25 @@ Small additions included recursive disabled states for all widgets and an error
 state for `EditBox` (set via a user-defined input guard). Widgets included a
 `Slider`, a resizable `Splitter`, a `ComboBox` and menu widgets.
 
-
-Current work
------------
+### 0.5.0 — Aug 2020
 
 The next release will include proper text-edit handling (positionable edit
 marker, selection), and likely one further item from the list below.
 
 Additionly, it includes a `CONTRIBUTING` guide and this `ROADMAP`.
+
+### Text shaping
+
+Current text shaping uses the layout engine provided by `glyph_brush`. We should
+likely replace this with a full text shaping engine, possibly `allsorts` or
+`harfbuzz`.
+
+While doing this, we can probably remove the requirement that `SizeHandle` have
+a reference to per-window `draw` state, and possibly also support justified
+alignment.
+
+*Possibly* also within the same work-set, add a real multi-line text-edit
+widget.
 
 
 Future work
@@ -113,19 +124,6 @@ Support at least italic and bold fonts.
 
 Support reading text markup (e.g. Markdown or HTML) and rendering this text
 within e.g. the `Label` widget.
-
-### Text shaping
-
-Current text shaping uses the layout engine provided by `glyph_brush`. We should
-likely replace this with a full text shaping engine, possibly `allsorts` or
-`harfbuzz`.
-
-While doing this, we can probably remove the requirement that `SizeHandle` have
-a reference to per-window `draw` state, and possibly also support justified
-alignment.
-
-*Possibly* also within the same work-set, add a real multi-line text-edit
-widget.
 
 ### Context menu and undo
 
