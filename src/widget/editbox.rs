@@ -7,11 +7,12 @@
 
 use std::fmt::{self, Debug};
 use std::ops::Range;
+use std::time::Duration;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 use kas::class::HasString;
 use kas::draw::TextClass;
-use kas::event::{ControlKey, GrabMode};
+use kas::event::{ControlKey, GrabMode, PressSource};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::PrepareAction;
@@ -123,6 +124,22 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
     }
 }
 
+const TOUCH_DUR: Duration = Duration::from_secs(1);
+
+#[derive(Clone, Debug, PartialEq)]
+enum TouchPhase {
+    None,
+    Start(u64, Coord), // id, coord
+    Pan(u64),          // id
+    Cursor(u64),       // id
+}
+
+impl Default for TouchPhase {
+    fn default() -> Self {
+        TouchPhase::None
+    }
+}
+
 /// An editable, single-line text box.
 ///
 /// This widget is intended for use with short input strings. Internally it
@@ -152,6 +169,7 @@ pub struct EditBox<G: 'static> {
     old_state: Option<(String, usize, usize)>,
     last_edit: LastEdit,
     error_state: bool,
+    touch_phase: TouchPhase,
     /// The associated [`EditGuard`] implementation
     pub guard: G,
 }
@@ -276,6 +294,7 @@ impl EditBox<EditVoid> {
             old_state: None,
             last_edit: LastEdit::None,
             error_state: false,
+            touch_phase: TouchPhase::None,
             guard: EditVoid,
         }
     }
@@ -304,6 +323,7 @@ impl EditBox<EditVoid> {
             old_state: self.old_state,
             last_edit: self.last_edit,
             error_state: self.error_state,
+            touch_phase: self.touch_phase,
             guard,
         };
         let _ = G::edit(&mut edit);
@@ -755,13 +775,20 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 EditAction::Edit => G::edit(self).into(),
             },
             Event::PressStart { source, coord, .. } if source.is_primary() => {
-                if !mgr.modifiers().ctrl() {
-                    // With Ctrl held, we scroll instead of moving the cursor
-                    // (non-standard, but seems to work well)!
-                    self.set_edit_pos_from_coord(mgr, coord);
-                }
-                if !mgr.modifiers().shift() {
-                    self.sel_pos = self.edit_pos;
+                if let PressSource::Touch(touch_id) = source {
+                    if self.touch_phase == TouchPhase::None {
+                        self.touch_phase = TouchPhase::Start(touch_id, coord);
+                        mgr.update_on_timer(TOUCH_DUR, self.id());
+                    }
+                } else {
+                    if !mgr.modifiers().ctrl() {
+                        // With Ctrl held, we scroll instead of moving the cursor
+                        // (non-standard, but seems to work well)!
+                        self.set_edit_pos_from_coord(mgr, coord);
+                        if !mgr.modifiers().shift() {
+                            self.sel_pos = self.edit_pos;
+                        }
+                    }
                 }
                 mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
                 mgr.request_char_focus(self.id());
@@ -773,7 +800,20 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 delta,
                 ..
             } => {
-                if source.is_touch() || mgr.modifiers().ctrl() {
+                let ctrl = mgr.modifiers().ctrl();
+                let pan = match source {
+                    PressSource::Touch(touch_id) => match self.touch_phase {
+                        TouchPhase::Start(id, ..) if id == touch_id => {
+                            self.touch_phase = TouchPhase::Pan(id);
+                            true
+                        }
+                        TouchPhase::Pan(id) if id == touch_id => true,
+                        TouchPhase::Cursor(id) if id == touch_id => ctrl,
+                        _ => false,
+                    },
+                    _ => ctrl,
+                };
+                if pan {
                     let mut req = Vec2::from(self.text.required_size());
                     req.0 += self.marker_width;
                     let bounds = Vec2::from(self.text.env().bounds);
@@ -786,7 +826,41 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 }
                 Response::None
             }
-            Event::PressEnd { .. } => Response::None,
+            Event::PressEnd { source, .. } => {
+                match self.touch_phase {
+                    TouchPhase::Start(id, coord) if source == PressSource::Touch(id) => {
+                        if !mgr.modifiers().ctrl() {
+                            self.set_edit_pos_from_coord(mgr, coord);
+                            if !mgr.modifiers().shift() {
+                                self.sel_pos = self.edit_pos;
+                            }
+                        }
+                        self.touch_phase = TouchPhase::None;
+                    }
+                    TouchPhase::Pan(id) | TouchPhase::Cursor(id)
+                        if source == PressSource::Touch(id) =>
+                    {
+                        self.touch_phase = TouchPhase::None;
+                    }
+                    _ => (),
+                }
+                Response::None
+            }
+            Event::TimerUpdate => {
+                match self.touch_phase {
+                    TouchPhase::Start(touch_id, coord) => {
+                        if !mgr.modifiers().ctrl() {
+                            self.set_edit_pos_from_coord(mgr, coord);
+                            if !mgr.modifiers().shift() {
+                                self.sel_pos = self.edit_pos;
+                            }
+                        }
+                        self.touch_phase = TouchPhase::Cursor(touch_id);
+                    }
+                    _ => (),
+                }
+                Response::None
+            }
             event => Response::Unhandled(event),
         }
     }
