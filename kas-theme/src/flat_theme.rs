@@ -243,37 +243,52 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
     }
 
-    fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass) {
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &PreparedText, class: TextClass) {
         let pos = pos + self.offset;
         let col = self.cols.text_class(class);
-        self.draw.text(self.pass, pos.into(), col, text);
+        self.draw
+            .text(self.pass, pos.into(), offset.into(), col, text);
     }
 
     fn text_selected_range(
         &mut self,
         pos: Coord,
+        offset: Coord,
         text: &PreparedText,
         range: Range<usize>,
         class: TextClass,
     ) {
-        let pos = pos + self.offset;
+        let pos = Vec2::from(pos + self.offset);
+        let offset = Vec2::from(offset);
+        let bounds = Vec2::from(text.env().bounds);
         let col = self.cols.text_class(class);
 
         // Draw background:
-        for quad in &text.highlight_lines(pos, range) {
-            self.draw.rect(self.pass, *quad, self.cols.text_sel_bg);
+        for (p1, p2) in &text.highlight_lines(range) {
+            let mut p1 = Vec2::from(*p1) - offset;
+            let mut p2 = Vec2::from(*p2) - offset;
+            if !p2.gt(Vec2::ZERO) || !p1.lt(bounds) {
+                continue;
+            }
+            p1 = p1.max(Vec2::ZERO);
+            p2 = p2.min(bounds);
+
+            let quad = Quad::with_coords(pos + p1, pos + p2);
+            self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
         }
 
         // TODO: which should use self.cols.text_sel for the selected range!
-        self.draw.text(self.pass, pos.into(), col, text);
+        self.draw.text(self.pass, pos, offset, col, text);
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
         let col = self.cols.text_class(class);
-        for (mut p1, ascent, descent) in text.text_glyph_pos(pos + self.offset, byte) {
+        let pos = Vec2::from(pos + self.offset);
+        for m in text.text_glyph_pos(byte) {
+            let mut p1 = pos + Vec2::from(m.pos);
             let mut p2 = p1;
-            p1.1 -= ascent;
-            p2.1 -= descent;
+            p1.1 -= m.ascent;
+            p2.1 -= m.descent;
             p2.0 += self.window.dims.font_marker_width;
             let quad = Quad::with_coords(p1, p2);
             self.draw.rect(self.pass, quad, col);

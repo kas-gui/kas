@@ -7,11 +7,13 @@
 
 use std::fmt::{self, Debug};
 use std::ops::Range;
+use std::time::Duration;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 use kas::class::HasString;
-use kas::draw::{DrawHandleExt, TextClass};
-use kas::event::{ControlKey, GrabMode};
+use kas::draw::TextClass;
+use kas::event::{ControlKey, GrabMode, PressSource, ScrollDelta};
+use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::PrepareAction;
 
@@ -122,15 +124,30 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
     }
 }
 
+const TOUCH_DUR: Duration = Duration::from_secs(1);
+
+#[derive(Clone, Debug, PartialEq)]
+enum TouchPhase {
+    None,
+    Start(u64, Coord), // id, coord
+    Pan(u64),          // id
+    Cursor(u64),       // id
+}
+
+impl Default for TouchPhase {
+    fn default() -> Self {
+        TouchPhase::None
+    }
+}
+
 /// An editable, single-line text box.
 ///
 /// This widget is intended for use with short input strings. Internally it
 /// uses a [`String`], for which edits have `O(n)` cost.
 ///
-/// Currently, this widget has a [`EditBox::multi_line`] mode, with some
-/// limitations (incorrect positioning of the edit cursor at line end,
-/// non-functional up/down keys, lack of scrolling). Later this will be replaced
-/// by a dedicated multi-line widget, probably using the `ropey` crate.
+/// Optionally, [`EditBox::multi_line`] mode can be activated (enabling
+/// line-wrapping and a larger vertical height). This mode is only recommended
+/// for short texts for performance reasons.
 #[widget(config(key_nav = true, cursor_icon = event::CursorIcon::Text))]
 #[handler(handle=noauto, generics = <> where G: EditGuard)]
 #[derive(Clone, Default, Widget)]
@@ -140,6 +157,8 @@ pub struct EditBox<G: 'static> {
     frame_offset: Coord,
     frame_size: Size,
     text_pos: Coord,
+    view_offset: Coord,
+    marker_width: f32,
     editable: bool,
     multi_line: bool,
     text: PreparedText,
@@ -149,6 +168,7 @@ pub struct EditBox<G: 'static> {
     old_state: Option<(String, usize, usize)>,
     last_edit: LastEdit,
     error_state: bool,
+    touch_phase: TouchPhase,
     /// The associated [`EditGuard`] implementation
     pub guard: G,
 }
@@ -188,6 +208,7 @@ impl<G: 'static> Layout for EditBox<G> {
             self.core.rect.size.0 = rules.ideal_size();
             self.frame_offset.0 = frame_offset.0 as i32 + m.0 as i32;
             self.frame_size.0 = frame_size.0 + (m.0 + m.1) as u32;
+            self.marker_width = size_handle.edit_marker_width();
         } else {
             self.core.rect.size.1 = rules.ideal_size();
             self.frame_offset.1 = frame_offset.1 as i32 + m.0 as i32;
@@ -214,6 +235,7 @@ impl<G: 'static> Layout for EditBox<G> {
             env.set_bounds(size.into());
             env.set_wrap(multi_line);
         });
+        self.set_view_offset_from_edit_pos();
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
@@ -226,12 +248,26 @@ impl<G: 'static> Layout for EditBox<G> {
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
         if self.sel_pos == self.edit_pos {
-            draw_handle.text(self.text_pos, &self.text, class);
+            draw_handle.text_offset(self.text_pos, self.view_offset, &self.text, class);
         } else {
-            draw_handle.text_selected(self.text_pos, &self.text, self.selection(), class);
+            // TODO(opt): we could cache the selection rectangles here to make
+            // drawing more efficient (self.text.highlight_lines(range) output).
+            // The same applies to the edit marker below.
+            draw_handle.text_selected(
+                self.text_pos,
+                self.view_offset,
+                &self.text,
+                self.selection(),
+                class,
+            );
         }
         if input_state.char_focus {
-            draw_handle.edit_marker(self.text_pos, &self.text, class, self.edit_pos);
+            draw_handle.edit_marker(
+                self.text_pos - self.view_offset,
+                &self.text,
+                class,
+                self.edit_pos,
+            );
         }
     }
 }
@@ -246,15 +282,18 @@ impl EditBox<EditVoid> {
             frame_offset: Default::default(),
             frame_size: Default::default(),
             text_pos: Default::default(),
+            view_offset: Default::default(),
+            marker_width: Default::default(),
             editable: true,
             multi_line: false,
-            text: PreparedText::new(text.into()),
+            text: PreparedText::new_single(text.into()),
             edit_pos,
             sel_pos: edit_pos,
             edit_x_coord: None,
             old_state: None,
             last_edit: LastEdit::None,
             error_state: false,
+            touch_phase: TouchPhase::None,
             guard: EditVoid,
         }
     }
@@ -272,6 +311,8 @@ impl EditBox<EditVoid> {
             frame_offset: self.frame_offset,
             frame_size: self.frame_size,
             text_pos: self.text_pos,
+            view_offset: self.view_offset,
+            marker_width: self.marker_width,
             editable: self.editable,
             multi_line: self.multi_line,
             text: self.text,
@@ -281,6 +322,7 @@ impl EditBox<EditVoid> {
             old_state: self.old_state,
             last_edit: self.last_edit,
             error_state: self.error_state,
+            touch_phase: self.touch_phase,
             guard,
         };
         let _ = G::edit(&mut edit);
@@ -395,6 +437,7 @@ impl<G> EditBox<G> {
         self.sel_pos = self.edit_pos;
         self.edit_x_coord = None;
         self.text.prepare();
+        self.set_view_offset_from_edit_pos();
         mgr.redraw(self.id());
         EditAction::Edit
     }
@@ -404,7 +447,7 @@ impl<G> EditBox<G> {
             return EditAction::None;
         }
 
-        let mut prep_action = PrepareAction::None;
+        let mut prep_action = PrepareAction::from(false);
         let mut buf = [0u8; 4];
         let pos = self.edit_pos;
         let selection = self.selection();
@@ -482,9 +525,9 @@ impl<G> EditBox<G> {
                     Some(x) => x,
                     None => self
                         .text
-                        .text_glyph_rel_pos(pos)
+                        .text_glyph_pos(pos)
                         .next_back()
-                        .map(|r| (r.0).0)
+                        .map(|r| r.pos.0)
                         .unwrap_or(0.0),
                 };
                 let mut line = self.text.find_line(pos).map(|r| r.0).unwrap_or(0);
@@ -591,7 +634,7 @@ impl<G> EditBox<G> {
                 // TODO: maintain full edit history (externally?)
                 // NOTE: undo *and* redo shortcuts map to this control char
                 if let Some((state, pos2, sel_pos)) = self.old_state.as_mut() {
-                    prep_action += self.text.swap_string(state);
+                    prep_action |= self.text.swap_string(state);
                     self.edit_pos = *pos2;
                     *pos2 = pos;
                     std::mem::swap(sel_pos, &mut self.sel_pos);
@@ -613,7 +656,7 @@ impl<G> EditBox<G> {
                     self.old_state = Some((self.text.clone_string(), pos, self.sel_pos));
                     self.last_edit = edit;
 
-                    prep_action += self.text.replace_range(selection.clone(), s);
+                    prep_action |= self.text.replace_range(selection.clone(), s);
                     pos = selection.start;
                 } else {
                     if self.last_edit != edit {
@@ -621,7 +664,7 @@ impl<G> EditBox<G> {
                         self.last_edit = edit;
                     }
 
-                    prep_action += self.text.replace_range(pos..pos, s);
+                    prep_action |= self.text.replace_range(pos..pos, s);
                 }
                 self.edit_pos = pos + s.len();
                 self.sel_pos = self.edit_pos;
@@ -634,7 +677,7 @@ impl<G> EditBox<G> {
                     self.last_edit = LastEdit::Delete;
                 }
 
-                prep_action += self.text.replace_range(sel.clone(), "");
+                prep_action |= self.text.replace_range(sel.clone(), "");
                 self.edit_pos = sel.start;
                 self.sel_pos = sel.start;
                 self.edit_x_coord = None;
@@ -651,21 +694,57 @@ impl<G> EditBox<G> {
             }
         };
 
-        match prep_action {
-            PrepareAction::None => (),
-            PrepareAction::Prepare => {
-                self.text.prepare();
-                mgr.redraw(self.id());
-            }
+        if prep_action.prepare() {
+            self.text.prepare();
+            mgr.redraw(self.id());
+        }
+        if prep_action.prepare() || self.edit_pos != pos {
+            self.set_view_offset_from_edit_pos();
         }
 
         result
     }
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
-        self.edit_pos = self.text.text_index_nearest(self.text_pos, coord);
+        let rel_pos = (coord - self.text_pos + self.view_offset).into();
+        self.edit_pos = self.text.text_index_nearest(rel_pos);
+        self.set_view_offset_from_edit_pos();
         self.edit_x_coord = None;
         mgr.redraw(self.id());
+    }
+
+    fn pan_delta(&mut self, mgr: &mut Manager, delta: Coord) {
+        let mut req = Vec2::from(self.text.required_size());
+        req.0 += self.marker_width;
+        let bounds = Vec2::from(self.text.env().bounds);
+        let max_offset = (req - bounds).ceil();
+        let max_offset = Coord::from(max_offset).max(Coord::ZERO);
+        self.view_offset = (self.view_offset - delta).min(max_offset).max(Coord::ZERO);
+        mgr.redraw(self.id());
+    }
+
+    /// Update view_offset after edit_pos changes
+    ///
+    /// A redraw is assumed since edit_pos moved.
+    fn set_view_offset_from_edit_pos(&mut self) {
+        let bounds = self.text.env().bounds;
+        if let Some(marker) = self.text.text_glyph_pos(self.edit_pos).next_back() {
+            let min_x = (marker.pos.0 + self.marker_width - bounds.0).ceil();
+            let min_y = (marker.pos.1 - marker.descent - bounds.1).ceil();
+            let max_x = (marker.pos.0).floor();
+            let max_y = (marker.pos.1 - marker.ascent).floor();
+            let min = Coord(min_x as i32, min_y as i32);
+            let max = Coord(max_x as i32, max_y as i32);
+
+            let mut req = Vec2::from(self.text.required_size());
+            req.0 += self.marker_width;
+            let bounds = Vec2::from(self.text.env().bounds);
+            let max_offset = (req - bounds).ceil();
+            let max_offset = Coord::from(max_offset).max(Coord::ZERO);
+            let max = max.min(max_offset);
+
+            self.view_offset = self.view_offset.max(min).min(max);
+        }
     }
 }
 
@@ -705,19 +784,100 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 EditAction::Edit => G::edit(self).into(),
             },
             Event::PressStart { source, coord, .. } if source.is_primary() => {
-                self.set_edit_pos_from_coord(mgr, coord);
-                if !mgr.modifiers().shift() {
-                    self.sel_pos = self.edit_pos;
+                if let PressSource::Touch(touch_id) = source {
+                    if self.touch_phase == TouchPhase::None {
+                        self.touch_phase = TouchPhase::Start(touch_id, coord);
+                        mgr.update_on_timer(TOUCH_DUR, self.id());
+                    }
+                } else {
+                    if !mgr.modifiers().ctrl() {
+                        // With Ctrl held, we scroll instead of moving the cursor
+                        // (non-standard, but seems to work well)!
+                        self.set_edit_pos_from_coord(mgr, coord);
+                        if !mgr.modifiers().shift() {
+                            self.sel_pos = self.edit_pos;
+                        }
+                    }
                 }
                 mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
                 mgr.request_char_focus(self.id());
                 Response::None
             }
-            Event::PressMove { coord, .. } => {
-                self.set_edit_pos_from_coord(mgr, coord);
+            Event::PressMove {
+                source,
+                coord,
+                delta,
+                ..
+            } => {
+                let ctrl = mgr.modifiers().ctrl();
+                let pan = match source {
+                    PressSource::Touch(touch_id) => match self.touch_phase {
+                        TouchPhase::Start(id, ..) if id == touch_id => {
+                            self.touch_phase = TouchPhase::Pan(id);
+                            true
+                        }
+                        TouchPhase::Pan(id) if id == touch_id => true,
+                        TouchPhase::Cursor(id) if id == touch_id => ctrl,
+                        _ => false,
+                    },
+                    _ => ctrl,
+                };
+                if pan {
+                    self.pan_delta(mgr, delta);
+                } else {
+                    self.set_edit_pos_from_coord(mgr, coord);
+                }
                 Response::None
             }
-            Event::PressEnd { .. } => Response::None,
+            Event::PressEnd { source, .. } => {
+                match self.touch_phase {
+                    TouchPhase::Start(id, coord) if source == PressSource::Touch(id) => {
+                        if !mgr.modifiers().ctrl() {
+                            self.set_edit_pos_from_coord(mgr, coord);
+                            if !mgr.modifiers().shift() {
+                                self.sel_pos = self.edit_pos;
+                            }
+                        }
+                        self.touch_phase = TouchPhase::None;
+                    }
+                    TouchPhase::Pan(id) | TouchPhase::Cursor(id)
+                        if source == PressSource::Touch(id) =>
+                    {
+                        self.touch_phase = TouchPhase::None;
+                    }
+                    _ => (),
+                }
+                Response::None
+            }
+            Event::Scroll(delta) => {
+                let delta = match delta {
+                    ScrollDelta::LineDelta(x, y) => {
+                        // We arbitrarily scroll 3 lines:
+                        let dist = 3.0 * self.text.env().line_height(Default::default());
+                        let x = (x * dist).round() as i32;
+                        let y = (y * dist).round() as i32;
+                        Coord(x, y)
+                    }
+                    ScrollDelta::PixelDelta(coord) => coord,
+                };
+                self.pan_delta(mgr, delta);
+                Response::None
+            }
+            Event::TimerUpdate => {
+                match self.touch_phase {
+                    TouchPhase::Start(touch_id, coord) => {
+                        if !mgr.modifiers().ctrl() {
+                            self.set_edit_pos_from_coord(mgr, coord);
+                            if !mgr.modifiers().shift() {
+                                self.sel_pos = self.edit_pos;
+                            }
+                        }
+                        self.touch_phase = TouchPhase::Cursor(touch_id);
+                    }
+                    _ => (),
+                }
+                Response::None
+            }
             event => Response::Unhandled(event),
         }
     }

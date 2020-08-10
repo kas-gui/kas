@@ -24,7 +24,7 @@ impl Layout for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut prepared;
         let text = if let Some(s) = self.reserve {
-            prepared = PreparedText::new_wrap(s.into());
+            prepared = PreparedText::new_multi(s.into());
             &mut prepared
         } else {
             &mut self.label
@@ -57,7 +57,7 @@ impl Label {
         Label {
             core: Default::default(),
             reserve: None,
-            label: PreparedText::new_wrap(label.into().deref().into()),
+            label: PreparedText::new_multi(label.into().deref().into()),
         }
     }
 
@@ -125,7 +125,7 @@ impl AccelLabel {
     /// Construct a new, empty instance
     pub fn new<T: Into<AccelString>>(label: T) -> Self {
         let label = label.into();
-        let text = PreparedText::new(label.get(false).into());
+        let text = PreparedText::new_single(label.get(false).into());
         let keys = label.take_keys();
         AccelLabel {
             core: Default::default(),

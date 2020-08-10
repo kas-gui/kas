@@ -88,7 +88,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     #[inline]
     fn new_(column: Vec<MenuEntry<u64>>, messages: Vec<M>) -> Self {
         assert!(column.len() > 0, "ComboBox: expected at least one choice");
-        let label = PreparedText::new(column[0].clone_text());
+        let label = PreparedText::new_single(column[0].clone_text());
         ComboBox {
             core: Default::default(),
             label,

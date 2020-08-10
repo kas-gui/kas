@@ -106,8 +106,10 @@ impl Layout for Clock {
         line_seg(a_min, 0.0, half * 0.8, half * 0.015, col_hands);
         line_seg(a_sec, 0.0, half * 0.9, half * 0.005, col_secs);
 
-        draw.text(pass, (self.date_pos + offset).into(), col_text, &self.date);
-        draw.text(pass, (self.time_pos + offset).into(), col_text, &self.time);
+        let date_pos = (self.date_pos + offset).into();
+        let time_pos = (self.time_pos + offset).into();
+        draw.text(pass, date_pos, Vec2::ZERO, col_text, &self.date);
+        draw.text(pass, time_pos, Vec2::ZERO, col_text, &self.time);
     }
 }
 
@@ -148,8 +150,8 @@ impl Clock {
             valign: Align::Centre,
             ..Default::default()
         };
-        let date = PreparedText::new_with_env(env.clone(), "0000-00-00".into());
-        let time = PreparedText::new_with_env(env, "00:00:00".into());
+        let date = PreparedText::new(env.clone(), "0000-00-00".into());
+        let time = PreparedText::new(env, "00:00:00".into());
         Clock {
             core: Default::default(),
             date_pos: Coord::ZERO,
