@@ -12,7 +12,7 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 use kas::class::HasString;
 use kas::draw::TextClass;
-use kas::event::{ControlKey, GrabMode, PressSource};
+use kas::event::{ControlKey, GrabMode, PressSource, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::PrepareAction;
@@ -714,6 +714,16 @@ impl<G> EditBox<G> {
         mgr.redraw(self.id());
     }
 
+    fn pan_delta(&mut self, mgr: &mut Manager, delta: Coord) {
+        let mut req = Vec2::from(self.text.required_size());
+        req.0 += self.marker_width;
+        let bounds = Vec2::from(self.text.env().bounds);
+        let max_offset = (req - bounds).ceil();
+        let max_offset = Coord::from(max_offset).max(Coord::ZERO);
+        self.view_offset = (self.view_offset - delta).min(max_offset).max(Coord::ZERO);
+        mgr.redraw(self.id());
+    }
+
     /// Update view_offset after edit_pos changes
     ///
     /// A redraw is assumed since edit_pos moved.
@@ -814,13 +824,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                     _ => ctrl,
                 };
                 if pan {
-                    let mut req = Vec2::from(self.text.required_size());
-                    req.0 += self.marker_width;
-                    let bounds = Vec2::from(self.text.env().bounds);
-                    let max_offset = (req - bounds).ceil();
-                    let max_offset = Coord::from(max_offset).max(Coord::ZERO);
-                    self.view_offset = (self.view_offset - delta).min(max_offset).max(Coord::ZERO);
-                    mgr.redraw(self.id());
+                    self.pan_delta(mgr, delta);
                 } else {
                     self.set_edit_pos_from_coord(mgr, coord);
                 }
@@ -844,6 +848,20 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                     }
                     _ => (),
                 }
+                Response::None
+            }
+            Event::Scroll(delta) => {
+                let delta = match delta {
+                    ScrollDelta::LineDelta(x, y) => {
+                        // We arbitrarily scroll 3 lines:
+                        let dist = 3.0 * self.text.env().line_height(Default::default());
+                        let x = (x * dist).round() as i32;
+                        let y = (y * dist).round() as i32;
+                        Coord(x, y)
+                    }
+                    ScrollDelta::PixelDelta(coord) => coord,
+                };
+                self.pan_delta(mgr, delta);
                 Response::None
             }
             Event::TimerUpdate => {
