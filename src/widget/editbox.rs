@@ -145,10 +145,9 @@ impl Default for TouchPhase {
 /// This widget is intended for use with short input strings. Internally it
 /// uses a [`String`], for which edits have `O(n)` cost.
 ///
-/// Currently, this widget has a [`EditBox::multi_line`] mode, with some
-/// limitations (incorrect positioning of the edit cursor at line end,
-/// non-functional up/down keys, lack of scrolling). Later this will be replaced
-/// by a dedicated multi-line widget, probably using the `ropey` crate.
+/// Optionally, [`EditBox::multi_line`] mode can be activated (enabling
+/// line-wrapping and a larger vertical height). This mode is only recommended
+/// for short texts for performance reasons.
 #[widget(config(key_nav = true, cursor_icon = event::CursorIcon::Text))]
 #[handler(handle=noauto, generics = <> where G: EditGuard)]
 #[derive(Clone, Default, Widget)]

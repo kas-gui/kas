@@ -170,10 +170,15 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             bounds.0 = size as f32;
             bounds.1 = text.env().bounds.1;
         }
+        let wrap = match class {
+            TextClass::Label | TextClass::EditMulti => true,
+            _ => false,
+        };
         text.update_env(|env| {
             env.set_bounds(bounds.into());
             env.set_dpp(self.dims.dpp);
             env.set_pt_size(self.dims.pt_size);
+            env.set_wrap(wrap);
         });
         let bounds = text.required_size();
 
