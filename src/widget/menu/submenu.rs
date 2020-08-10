@@ -61,7 +61,7 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
     #[inline]
     pub fn new_with_direction<S: Into<AccelString>>(direction: D, label: S, list: Vec<W>) -> Self {
         let label = label.into();
-        let text = PreparedText::new(label.get(false).into());
+        let text = PreparedText::new_single(label.get(false).into());
         let keys = label.take_keys();
         SubMenu {
             core: Default::default(),

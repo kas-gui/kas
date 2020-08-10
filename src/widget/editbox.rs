@@ -248,7 +248,7 @@ impl EditBox<EditVoid> {
             text_pos: Default::default(),
             editable: true,
             multi_line: false,
-            text: PreparedText::new(text.into()),
+            text: PreparedText::new_single(text.into()),
             edit_pos,
             sel_pos: edit_pos,
             edit_x_coord: None,
@@ -404,7 +404,7 @@ impl<G> EditBox<G> {
             return EditAction::None;
         }
 
-        let mut prep_action = PrepareAction::None;
+        let mut prep_action = PrepareAction::from(false);
         let mut buf = [0u8; 4];
         let pos = self.edit_pos;
         let selection = self.selection();
@@ -482,9 +482,9 @@ impl<G> EditBox<G> {
                     Some(x) => x,
                     None => self
                         .text
-                        .text_glyph_rel_pos(pos)
+                        .text_glyph_pos(pos)
                         .next_back()
-                        .map(|r| (r.0).0)
+                        .map(|r| r.pos.0)
                         .unwrap_or(0.0),
                 };
                 let mut line = self.text.find_line(pos).map(|r| r.0).unwrap_or(0);
@@ -591,7 +591,7 @@ impl<G> EditBox<G> {
                 // TODO: maintain full edit history (externally?)
                 // NOTE: undo *and* redo shortcuts map to this control char
                 if let Some((state, pos2, sel_pos)) = self.old_state.as_mut() {
-                    prep_action += self.text.swap_string(state);
+                    prep_action |= self.text.swap_string(state);
                     self.edit_pos = *pos2;
                     *pos2 = pos;
                     std::mem::swap(sel_pos, &mut self.sel_pos);
@@ -613,7 +613,7 @@ impl<G> EditBox<G> {
                     self.old_state = Some((self.text.clone_string(), pos, self.sel_pos));
                     self.last_edit = edit;
 
-                    prep_action += self.text.replace_range(selection.clone(), s);
+                    prep_action |= self.text.replace_range(selection.clone(), s);
                     pos = selection.start;
                 } else {
                     if self.last_edit != edit {
@@ -621,7 +621,7 @@ impl<G> EditBox<G> {
                         self.last_edit = edit;
                     }
 
-                    prep_action += self.text.replace_range(pos..pos, s);
+                    prep_action |= self.text.replace_range(pos..pos, s);
                 }
                 self.edit_pos = pos + s.len();
                 self.sel_pos = self.edit_pos;
@@ -634,7 +634,7 @@ impl<G> EditBox<G> {
                     self.last_edit = LastEdit::Delete;
                 }
 
-                prep_action += self.text.replace_range(sel.clone(), "");
+                prep_action |= self.text.replace_range(sel.clone(), "");
                 self.edit_pos = sel.start;
                 self.sel_pos = sel.start;
                 self.edit_x_coord = None;
@@ -651,19 +651,17 @@ impl<G> EditBox<G> {
             }
         };
 
-        match prep_action {
-            PrepareAction::None => (),
-            PrepareAction::Prepare => {
-                self.text.prepare();
-                mgr.redraw(self.id());
-            }
+        if prep_action.prepare() {
+            self.text.prepare();
+            mgr.redraw(self.id());
         }
 
         result
     }
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
-        self.edit_pos = self.text.text_index_nearest(self.text_pos, coord);
+        let rel_pos = (coord - self.text_pos).into();
+        self.edit_pos = self.text.text_index_nearest(rel_pos);
         self.edit_x_coord = None;
         mgr.redraw(self.id());
     }

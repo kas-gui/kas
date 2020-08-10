@@ -256,12 +256,13 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         range: Range<usize>,
         class: TextClass,
     ) {
-        let pos = pos + self.offset;
+        let pos = Vec2::from(pos + self.offset);
         let col = self.cols.text_class(class);
 
         // Draw background:
-        for quad in &text.highlight_lines(pos, range) {
-            self.draw.rect(self.pass, *quad, self.cols.text_sel_bg);
+        for (p1, p2) in &text.highlight_lines(range) {
+            let quad = Quad::with_coords(pos + Vec2::from(*p1), pos + Vec2::from(*p2));
+            self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
         }
 
         // TODO: which should use self.cols.text_sel for the selected range!
@@ -270,10 +271,12 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
 
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
         let col = self.cols.text_class(class);
-        for (mut p1, ascent, descent) in text.text_glyph_pos(pos + self.offset, byte) {
+        let pos = Vec2::from(pos + self.offset);
+        for m in text.text_glyph_pos(byte) {
+            let mut p1 = pos + Vec2::from(m.pos);
             let mut p2 = p1;
-            p1.1 -= ascent;
-            p2.1 -= descent;
+            p1.1 -= m.ascent;
+            p2.1 -= m.descent;
             p2.0 += self.window.dims.font_marker_width;
             let quad = Quad::with_coords(p1, p2);
             self.draw.rect(self.pass, quad, col);

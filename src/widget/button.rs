@@ -76,7 +76,7 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     /// the parent (or other ancestor).
     pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
         let label = label.into();
-        let text = PreparedText::new(label.get(false).into());
+        let text = PreparedText::new_single(label.get(false).into());
         let keys2 = label.take_keys();
         TextButton {
             core: Default::default(),

@@ -148,8 +148,8 @@ impl Clock {
             valign: Align::Centre,
             ..Default::default()
         };
-        let date = PreparedText::new_with_env(env.clone(), "0000-00-00".into());
-        let time = PreparedText::new_with_env(env, "00:00:00".into());
+        let date = PreparedText::new(env.clone(), "0000-00-00".into());
+        let time = PreparedText::new(env, "00:00:00".into());
         Clock {
             core: Default::default(),
             date_pos: Coord::ZERO,
