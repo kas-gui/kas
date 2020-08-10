@@ -217,5 +217,5 @@ pub trait DrawShaded: Draw {
 /// changes are expected to support external font shaping libraries.
 pub trait DrawText {
     /// Draw text
-    fn text(&mut self, pass: Pass, pos: Vec2, col: Colour, text: &PreparedText);
+    fn text(&mut self, pass: Pass, pos: Vec2, offset: Vec2, col: Colour, text: &PreparedText);
 }

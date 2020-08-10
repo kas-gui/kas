@@ -264,18 +264,20 @@ where
             .shaded_round_frame(self.pass, outer, inner, norm, col);
     }
 
-    fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass) {
-        self.as_flat().text(pos, text, class);
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &PreparedText, class: TextClass) {
+        self.as_flat().text_offset(pos, offset, text, class);
     }
 
     fn text_selected_range(
         &mut self,
         pos: Coord,
+        offset: Coord,
         text: &PreparedText,
         range: Range<usize>,
         class: TextClass,
     ) {
-        self.as_flat().text_selected_range(pos, text, range, class);
+        self.as_flat()
+            .text_selected_range(pos, offset, text, range, class);
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {

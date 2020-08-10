@@ -14,7 +14,7 @@
 //! using widgets in a GUI.
 
 #[doc(no_inline)]
-pub use kas::draw::{DrawHandle, SizeHandle};
+pub use kas::draw::{DrawHandle, DrawHandleExt, SizeHandle};
 #[doc(no_inline)]
 pub use kas::event::{Event, Handler, Manager, ManagerState, Response, SendEvent, VoidMsg};
 #[doc(no_inline)]

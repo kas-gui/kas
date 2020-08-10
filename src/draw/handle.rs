@@ -158,6 +158,9 @@ pub trait SizeHandle {
         axis: AxisInfo,
     ) -> SizeRules;
 
+    /// Width of an edit marker
+    fn edit_marker_width(&self) -> f32;
+
     /// Size of the sides of a button.
     ///
     /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
@@ -270,14 +273,18 @@ pub trait DrawHandle {
 
     /// Draw some text using the standard font
     ///
+    /// The `text` is drawn within the rect from `pos` to `text.env().bounds`,
+    /// but offset by subtracting `offset` (allowing scrolling).
+    ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass);
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &PreparedText, class: TextClass);
 
     /// Method used to implement [`DrawHandleExt::text_selected`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     fn text_selected_range(
         &mut self,
         pos: Coord,
+        offset: Coord,
         text: &PreparedText,
         range: Range<usize>,
         class: TextClass,
@@ -343,6 +350,15 @@ pub trait DrawHandleExt: DrawHandle {
         result.expect("DrawHandle::size_handle_dyn impl failed to call function argument")
     }
 
+    /// Draw some text using the standard font
+    ///
+    /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
+    ///
+    /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
+    fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass) {
+        self.text_offset(pos, Coord::ZERO, text, class);
+    }
+
     /// Draw some text using the standard font, with a subset selected
     ///
     /// Other than visually highlighting the selection, this method behaves
@@ -351,6 +367,7 @@ pub trait DrawHandleExt: DrawHandle {
     fn text_selected<R: RangeBounds<usize>>(
         &mut self,
         pos: Coord,
+        offset: Coord,
         text: &PreparedText,
         range: R,
         class: TextClass,
@@ -366,7 +383,7 @@ pub trait DrawHandleExt: DrawHandle {
             Bound::Unbounded => text.text_len(),
         };
         let range = Range { start, end };
-        self.text_selected_range(pos, text, range, class);
+        self.text_selected_range(pos, offset, text, range, class);
     }
 }
 
@@ -400,6 +417,9 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
         axis: AxisInfo,
     ) -> SizeRules {
         self.deref_mut().text_bound(text, class, axis)
+    }
+    fn edit_marker_width(&self) -> f32 {
+        self.deref().edit_marker_width()
     }
 
     fn button_surround(&self) -> (Size, Size) {
@@ -456,6 +476,9 @@ where
     ) -> SizeRules {
         self.deref_mut().text_bound(text, class, axis)
     }
+    fn edit_marker_width(&self) -> f32 {
+        self.deref().edit_marker_width()
+    }
 
     fn button_surround(&self) -> (Size, Size) {
         self.deref().button_surround()
@@ -506,18 +529,19 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
-    fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass) {
-        self.deref_mut().text(pos, text, class)
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &PreparedText, class: TextClass) {
+        self.deref_mut().text_offset(pos, offset, text, class)
     }
     fn text_selected_range(
         &mut self,
         pos: Coord,
+        offset: Coord,
         text: &PreparedText,
         range: Range<usize>,
         class: TextClass,
     ) {
         self.deref_mut()
-            .text_selected_range(pos, text, range, class);
+            .text_selected_range(pos, offset, text, range, class);
     }
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
         self.deref_mut().edit_marker(pos, text, class, byte)
@@ -577,18 +601,19 @@ where
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
-    fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass) {
-        self.deref_mut().text(pos, text, class)
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &PreparedText, class: TextClass) {
+        self.deref_mut().text_offset(pos, offset, text, class)
     }
     fn text_selected_range(
         &mut self,
         pos: Coord,
+        offset: Coord,
         text: &PreparedText,
         range: Range<usize>,
         class: TextClass,
     ) {
         self.deref_mut()
-            .text_selected_range(pos, text, range, class);
+            .text_selected_range(pos, offset, text, range, class);
     }
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
         self.deref_mut().edit_marker(pos, text, class, byte)
@@ -626,8 +651,8 @@ mod test {
 
         let _size = draw_handle.size_handle(|h| h.frame());
 
-        let pos = Coord::ZERO;
+        let zero = Coord::ZERO;
         let text = PreparedText::new_single("sample".into());
-        draw_handle.text_selected(pos, &text, .., TextClass::Label)
+        draw_handle.text_selected(zero, zero, &text, .., TextClass::Label)
     }
 }

@@ -17,8 +17,9 @@ fn to_point(Vec2(x, y): Vec2) -> ab_glyph::Point {
 }
 
 impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
-    fn text(&mut self, pass: Pass, pos: Vec2, col: Colour, text: &PreparedText) {
+    fn text(&mut self, pass: Pass, pos: Vec2, offset: Vec2, col: Colour, text: &PreparedText) {
         let pos = to_point(pos);
+        let offset = pos - to_point(offset);
         let glyphs = text.positioned_glyphs(|_, font_id, scale, glyph| SectionGlyph {
             // Index fields are not used when drawing
             section_index: 0,
@@ -26,7 +27,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
             glyph: ab_glyph::Glyph {
                 id: glyph.id,
                 scale,
-                position: pos + glyph.position.into(),
+                position: offset + glyph.position.into(),
             },
             font_id: FontId(font_id.get()),
         });

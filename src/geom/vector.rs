@@ -133,6 +133,18 @@ macro_rules! impl_vec2 {
                 self.0.min(self.1)
             }
 
+            /// Return the minimum, componentwise
+            #[inline]
+            pub fn min(self, other: Self) -> Self {
+                $T(self.0.min(other.0), self.1.min(other.1))
+            }
+
+            /// Return the maximum, componentwise
+            #[inline]
+            pub fn max(self, other: Self) -> Self {
+                $T(self.0.max(other.0), self.1.max(other.1))
+            }
+
             /// Take the absolute value of each component
             #[inline]
             pub fn abs(self) -> Self {

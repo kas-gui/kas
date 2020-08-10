@@ -10,7 +10,7 @@ use std::ops::Range;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 use kas::class::HasString;
-use kas::draw::{DrawHandleExt, TextClass};
+use kas::draw::TextClass;
 use kas::event::{ControlKey, GrabMode};
 use kas::prelude::*;
 use kas::text::PrepareAction;
@@ -140,6 +140,8 @@ pub struct EditBox<G: 'static> {
     frame_offset: Coord,
     frame_size: Size,
     text_pos: Coord,
+    view_offset: Coord,
+    marker_width: f32,
     editable: bool,
     multi_line: bool,
     text: PreparedText,
@@ -188,6 +190,7 @@ impl<G: 'static> Layout for EditBox<G> {
             self.core.rect.size.0 = rules.ideal_size();
             self.frame_offset.0 = frame_offset.0 as i32 + m.0 as i32;
             self.frame_size.0 = frame_size.0 + (m.0 + m.1) as u32;
+            self.marker_width = size_handle.edit_marker_width();
         } else {
             self.core.rect.size.1 = rules.ideal_size();
             self.frame_offset.1 = frame_offset.1 as i32 + m.0 as i32;
@@ -214,6 +217,7 @@ impl<G: 'static> Layout for EditBox<G> {
             env.set_bounds(size.into());
             env.set_wrap(multi_line);
         });
+        self.set_view_offset_from_edit_pos();
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
@@ -226,12 +230,26 @@ impl<G: 'static> Layout for EditBox<G> {
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
         if self.sel_pos == self.edit_pos {
-            draw_handle.text(self.text_pos, &self.text, class);
+            draw_handle.text_offset(self.text_pos, self.view_offset, &self.text, class);
         } else {
-            draw_handle.text_selected(self.text_pos, &self.text, self.selection(), class);
+            // TODO(opt): we could cache the selection rectangles here to make
+            // drawing more efficient (self.text.highlight_lines(range) output).
+            // The same applies to the edit marker below.
+            draw_handle.text_selected(
+                self.text_pos,
+                self.view_offset,
+                &self.text,
+                self.selection(),
+                class,
+            );
         }
         if input_state.char_focus {
-            draw_handle.edit_marker(self.text_pos, &self.text, class, self.edit_pos);
+            draw_handle.edit_marker(
+                self.text_pos - self.view_offset,
+                &self.text,
+                class,
+                self.edit_pos,
+            );
         }
     }
 }
@@ -246,6 +264,8 @@ impl EditBox<EditVoid> {
             frame_offset: Default::default(),
             frame_size: Default::default(),
             text_pos: Default::default(),
+            view_offset: Default::default(),
+            marker_width: Default::default(),
             editable: true,
             multi_line: false,
             text: PreparedText::new_single(text.into()),
@@ -272,6 +292,8 @@ impl EditBox<EditVoid> {
             frame_offset: self.frame_offset,
             frame_size: self.frame_size,
             text_pos: self.text_pos,
+            view_offset: self.view_offset,
+            marker_width: self.marker_width,
             editable: self.editable,
             multi_line: self.multi_line,
             text: self.text,
@@ -395,6 +417,7 @@ impl<G> EditBox<G> {
         self.sel_pos = self.edit_pos;
         self.edit_x_coord = None;
         self.text.prepare();
+        self.set_view_offset_from_edit_pos();
         mgr.redraw(self.id());
         EditAction::Edit
     }
@@ -655,15 +678,35 @@ impl<G> EditBox<G> {
             self.text.prepare();
             mgr.redraw(self.id());
         }
+        if self.edit_pos != pos {
+            self.set_view_offset_from_edit_pos();
+        }
 
         result
     }
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
-        let rel_pos = (coord - self.text_pos).into();
+        let rel_pos = (coord - self.text_pos + self.view_offset).into();
         self.edit_pos = self.text.text_index_nearest(rel_pos);
+        self.set_view_offset_from_edit_pos();
         self.edit_x_coord = None;
         mgr.redraw(self.id());
+    }
+
+    /// Update view_offset after edit_pos changes
+    ///
+    /// A redraw is assumed since edit_pos moved.
+    fn set_view_offset_from_edit_pos(&mut self) {
+        let bounds = self.text.env().bounds;
+        if let Some(marker) = self.text.text_glyph_pos(self.edit_pos).next_back() {
+            let min_x = (marker.pos.0 + self.marker_width - bounds.0).ceil();
+            let min_y = (marker.pos.1 - marker.descent - bounds.1).ceil();
+            let max_x = (marker.pos.0).floor();
+            let max_y = (marker.pos.1 - marker.ascent).floor();
+            let min = Coord(min_x as i32, min_y as i32);
+            let max = Coord(max_x as i32, max_y as i32);
+            self.view_offset = self.view_offset.max(min).min(max);
+        }
     }
 }
 

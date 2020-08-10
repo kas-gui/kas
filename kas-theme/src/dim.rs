@@ -208,6 +208,10 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         }
     }
 
+    fn edit_marker_width(&self) -> f32 {
+        self.dims.font_marker_width
+    }
+
     fn button_surround(&self) -> (Size, Size) {
         let s = Size::uniform(self.dims.button_frame);
         (s, s)
