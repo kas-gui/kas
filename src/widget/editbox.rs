@@ -12,6 +12,7 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 use kas::class::HasString;
 use kas::draw::TextClass;
 use kas::event::{ControlKey, GrabMode};
+use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::PrepareAction;
 
@@ -678,7 +679,7 @@ impl<G> EditBox<G> {
             self.text.prepare();
             mgr.redraw(self.id());
         }
-        if self.edit_pos != pos {
+        if prep_action.prepare() || self.edit_pos != pos {
             self.set_view_offset_from_edit_pos();
         }
 
@@ -705,6 +706,14 @@ impl<G> EditBox<G> {
             let max_y = (marker.pos.1 - marker.ascent).floor();
             let min = Coord(min_x as i32, min_y as i32);
             let max = Coord(max_x as i32, max_y as i32);
+
+            let mut req = Vec2::from(self.text.required_size());
+            req.0 += self.marker_width;
+            let bounds = Vec2::from(self.text.env().bounds);
+            let max_offset = (req - bounds).ceil();
+            let max_offset = Coord::from(max_offset).max(Coord::ZERO);
+            let max = max.min(max_offset);
+
             self.view_offset = self.view_offset.max(min).min(max);
         }
     }
@@ -746,7 +755,11 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 EditAction::Edit => G::edit(self).into(),
             },
             Event::PressStart { source, coord, .. } if source.is_primary() => {
-                self.set_edit_pos_from_coord(mgr, coord);
+                if !mgr.modifiers().ctrl() {
+                    // With Ctrl held, we scroll instead of moving the cursor
+                    // (non-standard, but seems to work well)!
+                    self.set_edit_pos_from_coord(mgr, coord);
+                }
                 if !mgr.modifiers().shift() {
                     self.sel_pos = self.edit_pos;
                 }
@@ -754,8 +767,23 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 mgr.request_char_focus(self.id());
                 Response::None
             }
-            Event::PressMove { coord, .. } => {
-                self.set_edit_pos_from_coord(mgr, coord);
+            Event::PressMove {
+                source,
+                coord,
+                delta,
+                ..
+            } => {
+                if source.is_touch() || mgr.modifiers().ctrl() {
+                    let mut req = Vec2::from(self.text.required_size());
+                    req.0 += self.marker_width;
+                    let bounds = Vec2::from(self.text.env().bounds);
+                    let max_offset = (req - bounds).ceil();
+                    let max_offset = Coord::from(max_offset).max(Coord::ZERO);
+                    self.view_offset = (self.view_offset - delta).min(max_offset).max(Coord::ZERO);
+                    mgr.redraw(self.id());
+                } else {
+                    self.set_edit_pos_from_coord(mgr, coord);
+                }
                 Response::None
             }
             Event::PressEnd { .. } => Response::None,

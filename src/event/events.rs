@@ -304,6 +304,15 @@ impl PressSource {
         }
     }
 
+    /// Returns true if this represents a touch event
+    #[inline]
+    pub fn is_touch(self) -> bool {
+        match self {
+            PressSource::Touch(_) => true,
+            _ => false,
+        }
+    }
+
     /// The `repetitions` value
     ///
     /// This is 1 for a single-click and all touch events, 2 for a double-click,
