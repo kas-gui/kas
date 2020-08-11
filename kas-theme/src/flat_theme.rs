@@ -282,9 +282,9 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
-        let col = self.cols.text_class(class);
+        let mut col = self.cols.text_class(class);
         let pos = Vec2::from(pos + self.offset);
-        for m in text.text_glyph_pos(byte) {
+        for m in text.text_glyph_pos(byte).rev() {
             let mut p1 = pos + Vec2::from(m.pos);
             let mut p2 = p1;
             p1.1 -= m.ascent;
@@ -292,6 +292,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             p2.0 += self.window.dims.font_marker_width;
             let quad = Quad::with_coords(p1, p2);
             self.draw.rect(self.pass, quad, col);
+            col = self.cols.button_disabled; // hack to make secondary marker grey
         }
     }
 
