@@ -33,6 +33,7 @@ impl Default for LastEdit {
 
 enum EditAction {
     None,
+    Unhandled,
     Activate,
     Edit,
 }
@@ -418,7 +419,7 @@ impl<G> EditBox<G> {
 
     fn received_char(&mut self, mgr: &mut Manager, c: char) -> EditAction {
         if !self.editable {
-            return EditAction::None;
+            return EditAction::Unhandled;
         }
 
         let pos = self.edit_pos;
@@ -447,7 +448,7 @@ impl<G> EditBox<G> {
 
     fn control_key(&mut self, mgr: &mut Manager, key: ControlKey) -> EditAction {
         if !self.editable {
-            return EditAction::None;
+            return EditAction::Unhandled;
         }
 
         let mut prep_action = PrepareAction::from(false);
@@ -461,6 +462,7 @@ impl<G> EditBox<G> {
 
         enum Action<'a> {
             None,
+            Unhandled,
             Activate,
             Edit,
             Insert(&'a str, LastEdit),
@@ -469,6 +471,15 @@ impl<G> EditBox<G> {
         }
 
         let action = match key {
+            ControlKey::Escape => {
+                if self.sel_pos != self.edit_pos {
+                    self.sel_pos = self.edit_pos;
+                    mgr.redraw(self.id());
+                    Action::None
+                } else {
+                    Action::Unhandled
+                }
+            }
             ControlKey::Return if shift || !self.multi_line => Action::Activate,
             ControlKey::Return if self.multi_line => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
@@ -646,11 +657,12 @@ impl<G> EditBox<G> {
                 }
                 Action::Edit
             }
-            _ => Action::None,
+            _ => Action::Unhandled,
         };
 
         let result = match action {
             Action::None => EditAction::None,
+            Action::Unhandled => EditAction::Unhandled,
             Action::Activate => EditAction::Activate,
             Action::Edit => EditAction::Edit,
             Action::Insert(s, edit) => {
@@ -827,11 +839,13 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
             }
             Event::Control(key) => match self.control_key(mgr, key) {
                 EditAction::None => Response::None,
+                EditAction::Unhandled => Response::Unhandled(Event::Control(key)),
                 EditAction::Activate => G::activate(self).into(),
                 EditAction::Edit => G::edit(self).into(),
             },
             Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
                 EditAction::None => Response::None,
+                EditAction::Unhandled => Response::Unhandled(Event::ReceivedCharacter(c)),
                 EditAction::Activate => G::activate(self).into(),
                 EditAction::Edit => G::edit(self).into(),
             },

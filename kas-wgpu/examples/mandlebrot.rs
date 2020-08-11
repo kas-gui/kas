@@ -503,7 +503,7 @@ impl event::Handler for Mandlebrot {
                             ControlKey::Down => DVec2(0.0, d),
                             ControlKey::Left => DVec2(-d, 0.0),
                             ControlKey::Right => DVec2(d, 0.0),
-                            _ => return Response::None,
+                            _ => return Response::Unhandled(Event::Control(key)),
                         };
                         self.delta = self.delta + self.alpha.complex_mul(delta);
                     }
