@@ -9,46 +9,38 @@ use std::time::{Duration, Instant};
 
 use kas::class::SetText;
 use kas::event::{Event, Handler, Manager, Response, VoidMsg};
-use kas::macros::{make_widget, VoidMsg};
+use kas::macros::make_widget;
 use kas::widget::{Frame, Label, TextButton, Window};
 use kas::{ThemeApi, WidgetCore};
-
-#[derive(Clone, Debug, VoidMsg)]
-enum Control {
-    Reset,
-    Start,
-}
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
 fn make_window() -> Box<dyn kas::Window> {
+    // Construct a row widget, with state and children
     let stopwatch = make_widget! {
         #[layout(row)]
         #[widget(config=noauto)]
         struct {
             #[widget] display: impl SetText = Frame::new(Label::new("0.000")),
-            #[widget(handler = handle_button)] b_reset = TextButton::new("&reset", Control::Reset),
-            #[widget(handler = handle_button)] b_start = TextButton::new("&start / &stop", Control::Start),
+            #[widget(handler = reset)] _ = TextButton::new("&reset", ()),
+            #[widget(handler = start)] _ = TextButton::new("&start / &stop", ()),
             saved: Duration = Duration::default(),
             start: Option<Instant> = None,
         }
         impl {
-            fn handle_button(&mut self, mgr: &mut Manager, msg: Control) -> Response<VoidMsg> {
-                match msg {
-                    Control::Reset => {
-                        self.saved = Duration::default();
-                        self.start = None;
-                        *mgr += self.display.set_text("0.000");
-                    }
-                    Control::Start => {
-                        if let Some(start) = self.start {
-                            self.saved += Instant::now() - start;
-                            self.start = None;
-                        } else {
-                            self.start = Some(Instant::now());
-                            mgr.update_on_timer(Duration::new(0, 0), self.id());
-                        }
-                    }
+            fn reset(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
+                self.saved = Duration::default();
+                self.start = None;
+                *mgr += self.display.set_text("0.000");
+                Response::None
+            }
+            fn start(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
+                if let Some(start) = self.start {
+                    self.saved += Instant::now() - start;
+                    self.start = None;
+                } else {
+                    self.start = Some(Instant::now());
+                    mgr.update_on_timer(Duration::new(0, 0), self.id());
                 }
                 Response::None
             }
@@ -65,11 +57,8 @@ fn make_window() -> Box<dyn kas::Window> {
                     Event::TimerUpdate => {
                         if let Some(start) = self.start {
                             let dur = self.saved + (Instant::now() - start);
-                            *mgr += self.display.set_text(format!(
-                                "{}.{:03}",
-                                dur.as_secs(),
-                                dur.subsec_millis()
-                            ));
+                            let text = format!("{}.{:03}", dur.as_secs(), dur.subsec_millis());
+                            *mgr += self.display.set_text(text);
                             mgr.update_on_timer(Duration::new(0, 1), self.id());
                         }
                         Response::None
