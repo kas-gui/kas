@@ -164,6 +164,7 @@ pub struct EditBox<G: 'static> {
     text: PreparedText,
     edit_pos: usize,
     sel_pos: usize,
+    anchor_pos: usize,
     edit_x_coord: Option<f32>,
     old_state: Option<(String, usize, usize)>,
     last_edit: LastEdit,
@@ -289,6 +290,7 @@ impl EditBox<EditVoid> {
             text: PreparedText::new_single(text.into()),
             edit_pos,
             sel_pos: edit_pos,
+            anchor_pos: edit_pos,
             edit_x_coord: None,
             old_state: None,
             last_edit: LastEdit::None,
@@ -318,6 +320,7 @@ impl EditBox<EditVoid> {
             text: self.text,
             edit_pos: self.edit_pos,
             sel_pos: self.sel_pos,
+            anchor_pos: self.anchor_pos,
             edit_x_coord: self.edit_x_coord,
             old_state: self.old_state,
             last_edit: self.last_edit,
@@ -746,6 +749,48 @@ impl<G> EditBox<G> {
             self.view_offset = self.view_offset.max(min).min(max);
         }
     }
+
+    fn expand_selection(&mut self, repeats: u32) {
+        let mut range = self.edit_pos..self.anchor_pos;
+        if range.start > range.end {
+            std::mem::swap(&mut range.start, &mut range.end);
+        }
+        let (mut start, mut end);
+        if repeats <= 2 {
+            end = self.text.text_len().min(range.start + 1);
+            start = self.text.text()[0..end]
+                .split_word_bound_indices()
+                .next_back()
+                .map(|(index, _)| index)
+                .unwrap_or(0);
+            end = 'a: loop {
+                for (index, _) in self.text.text()[start..].split_word_bound_indices() {
+                    let pos = start + index;
+                    if pos >= range.end {
+                        break 'a pos;
+                    }
+                }
+                break 'a self.text.text_len();
+            };
+        } else {
+            start = self
+                .text
+                .find_line(range.start)
+                .map(|r| r.1.start)
+                .unwrap_or(0);
+            end = self
+                .text
+                .find_line(range.end)
+                .map(|r| r.1.end)
+                .unwrap_or(self.text.text_len());
+        }
+
+        if self.edit_pos < self.sel_pos {
+            std::mem::swap(&mut start, &mut end);
+        }
+        self.sel_pos = start;
+        self.edit_pos = end;
+    }
 }
 
 impl<G: EditGuard> HasString for EditBox<G> {
@@ -789,13 +834,17 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                         self.touch_phase = TouchPhase::Start(touch_id, coord);
                         mgr.update_on_timer(TOUCH_DUR, self.id());
                     }
-                } else {
+                } else if let PressSource::Mouse(_, repeats) = source {
                     if !mgr.modifiers().ctrl() {
                         // With Ctrl held, we scroll instead of moving the cursor
                         // (non-standard, but seems to work well)!
                         self.set_edit_pos_from_coord(mgr, coord);
                         if !mgr.modifiers().shift() {
                             self.sel_pos = self.edit_pos;
+                        }
+                        self.anchor_pos = self.sel_pos;
+                        if repeats > 1 {
+                            self.expand_selection(repeats);
                         }
                     }
                 }
@@ -810,6 +859,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 ..
             } => {
                 let ctrl = mgr.modifiers().ctrl();
+                let mut sel_mode = 1;
                 let pan = match source {
                     PressSource::Touch(touch_id) => match self.touch_phase {
                         TouchPhase::Start(id, ..) if id == touch_id => {
@@ -820,12 +870,19 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                         TouchPhase::Cursor(id) if id == touch_id => ctrl,
                         _ => false,
                     },
-                    _ => ctrl,
+                    PressSource::Mouse(..) if ctrl => true,
+                    PressSource::Mouse(_, repeats) => {
+                        sel_mode = repeats;
+                        false
+                    }
                 };
                 if pan {
                     self.pan_delta(mgr, delta);
                 } else {
                     self.set_edit_pos_from_coord(mgr, coord);
+                    if sel_mode > 1 {
+                        self.expand_selection(sel_mode);
+                    }
                 }
                 Response::None
             }
