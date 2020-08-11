@@ -402,7 +402,7 @@ impl<'a> Manager<'a> {
     /// (only the first grab is successful).
     ///
     /// This method automatically cancels any active character grab
-    /// and updates keyboard navigation focus.
+    /// on other widgets and updates keyboard navigation focus.
     pub fn request_grab(
         &mut self,
         id: WidgetId,
@@ -458,7 +458,9 @@ impl<'a> Manager<'a> {
             }
         }
 
-        self.set_char_focus(None);
+        if self.mgr.char_focus != Some(id) {
+            self.set_char_focus(None);
+        }
         self.redraw(start_id);
         true
     }

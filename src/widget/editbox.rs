@@ -822,6 +822,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
             }
             Event::LostCharFocus => {
                 let r = G::focus_lost(self);
+                self.sel_pos = self.edit_pos; // clear selection
                 r.map(|msg| msg.into()).unwrap_or(Response::None)
             }
             Event::Control(key) => match self.control_key(mgr, key) {
