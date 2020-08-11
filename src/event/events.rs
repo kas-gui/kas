@@ -163,9 +163,6 @@ pub enum Event {
 /// nav focus. The codes generated differ slightly depending on which focus
 /// dominates; see notes on [`ControlKey::Return`] and [`ControlKey::Tab`].
 ///
-/// The Escape key is notably absent: it always cancels char or nav focus, thus
-/// is never sent to a widget. The Tab key is only reported with char focus.
-///
 /// In some cases, a widget's response will depend on the state of modifier
 /// keys. This state can be read via the [`Manager::modifiers`] method.
 ///
@@ -177,6 +174,12 @@ pub enum Event {
 /// uniform behaviour with regards to num-pad keys.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ControlKey {
+    /// Escape key
+    ///
+    /// Each press of this key should somehow relax control. It is expected that
+    /// widgets receiving this key repeatedly eventually (soon) have no more
+    /// use for this themselves and return it via [`Response::Unhandled`].
+    Escape,
     /// Line break (return / enter key)
     ///
     /// Note: this is generated *only* when a widget has char focus (see
@@ -247,6 +250,7 @@ impl ControlKey {
         use ControlKey as CK;
         use VirtualKeyCode::*;
         Some(match vkey {
+            Escape => CK::Escape,
             Snapshot => CK::Snapshot,
             Scroll => CK::ScrollLock,
             Pause => CK::Pause,

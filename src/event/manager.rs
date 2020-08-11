@@ -276,10 +276,16 @@ impl<'a> Manager<'a> {
         let opt_control = self.match_shortcuts(vkey);
 
         if let Some(id) = self.mgr.char_focus {
-            if vkey == VK::Escape {
-                self.set_char_focus(None);
-            } else if let Some(key) = opt_control {
-                self.send_event(widget, id, Event::Control(key));
+            if let Some(key) = opt_control {
+                let event = Event::Control(key);
+                trace!("Send to {}: {:?}", id, event);
+                match widget.send(self, id, event) {
+                    Response::Unhandled(Event::Control(key)) => match key {
+                        ControlKey::Escape => self.set_char_focus(None),
+                        _ => (),
+                    },
+                    _ => (),
+                }
             }
             return;
         }
