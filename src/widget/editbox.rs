@@ -716,14 +716,20 @@ impl<G> EditBox<G> {
         mgr.redraw(self.id());
     }
 
-    fn pan_delta(&mut self, mgr: &mut Manager, delta: Coord) {
+    fn pan_delta(&mut self, mgr: &mut Manager, delta: Coord) -> bool {
         let mut req = Vec2::from(self.text.required_size());
         req.0 += self.marker_width;
         let bounds = Vec2::from(self.text.env().bounds);
         let max_offset = (req - bounds).ceil();
         let max_offset = Coord::from(max_offset).max(Coord::ZERO);
-        self.view_offset = (self.view_offset - delta).min(max_offset).max(Coord::ZERO);
-        mgr.redraw(self.id());
+        let new_offset = (self.view_offset - delta).min(max_offset).max(Coord::ZERO);
+        if new_offset != self.view_offset {
+            self.view_offset = new_offset;
+            mgr.redraw(self.id());
+            true
+        } else {
+            false
+        }
     }
 
     /// Update view_offset after edit_pos changes
@@ -907,7 +913,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 Response::None
             }
             Event::Scroll(delta) => {
-                let delta = match delta {
+                let delta2 = match delta {
                     ScrollDelta::LineDelta(x, y) => {
                         // We arbitrarily scroll 3 lines:
                         let dist = 3.0 * self.text.env().line_height(Default::default());
@@ -917,8 +923,11 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                     }
                     ScrollDelta::PixelDelta(coord) => coord,
                 };
-                self.pan_delta(mgr, delta);
-                Response::None
+                if self.pan_delta(mgr, delta2) {
+                    Response::None
+                } else {
+                    Response::Unhandled(Event::Scroll(delta))
+                }
             }
             Event::TimerUpdate => {
                 match self.touch_phase {
