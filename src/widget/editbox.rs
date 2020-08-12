@@ -499,15 +499,21 @@ impl<G> EditBox<G> {
                 Action::Move(pos, None)
             }
             ControlKey::Left if ctrl => {
-                // TODO: This should find the next word-start, not *all* word
-                // boundaries! Perhaps best to implement in kas-text since
-                // anything external will struggle with bidirectional text.
-                let pos = self.text.text()[0..pos]
-                    .split_word_bound_indices()
-                    .next_back()
-                    .map(|(index, _)| index)
-                    .unwrap_or(0);
-                Action::Move(pos, None)
+                let mut iter = self.text.text()[0..pos].split_word_bound_indices();
+                let mut p = iter.next_back().map(|(index, _)| index).unwrap_or(0);
+                while self.text.text()[p..]
+                    .chars()
+                    .next()
+                    .map(|c| c.is_whitespace())
+                    .unwrap_or(false)
+                {
+                    if let Some((index, _)) = iter.next_back() {
+                        p = index;
+                    } else {
+                        break;
+                    }
+                }
+                Action::Move(p, None)
             }
             ControlKey::Left => {
                 let mut cursor = GraphemeCursor::new(pos, self.text.text_len(), true);
@@ -518,13 +524,24 @@ impl<G> EditBox<G> {
                     .unwrap_or(Action::None)
             }
             ControlKey::Right if ctrl => {
-                let pos = self.text.text()[pos..]
-                    .split_word_bound_indices()
-                    .skip(1)
+                let mut iter = self.text.text()[pos..].split_word_bound_indices().skip(1);
+                let mut p = iter
                     .next()
                     .map(|(index, _)| pos + index)
                     .unwrap_or(self.text.text_len());
-                Action::Move(pos, None)
+                while self.text.text()[p..]
+                    .chars()
+                    .next()
+                    .map(|c| c.is_whitespace())
+                    .unwrap_or(false)
+                {
+                    if let Some((index, _)) = iter.next() {
+                        p = pos + index;
+                    } else {
+                        break;
+                    }
+                }
+                Action::Move(p, None)
             }
             ControlKey::Right => {
                 let mut cursor = GraphemeCursor::new(pos, self.text.text_len(), true);
