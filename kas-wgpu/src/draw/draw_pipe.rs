@@ -63,7 +63,6 @@ impl<C: CustomPipe> DrawPipe<C> {
     }
 
     /// Construct per-window state
-    // TODO: device should be &, not &mut (but for glyph_brush)
     pub fn new_window(&self, device: &wgpu::Device, size: Size) -> DrawWindow<C::Window> {
         // Light dir: `(a, b)` where `0 ≤ a < pi/2` is the angle to the screen
         // normal (i.e. `a = 0` is straight at the screen) and `b` is the bearing
