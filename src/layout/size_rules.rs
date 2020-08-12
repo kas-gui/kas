@@ -15,7 +15,6 @@ use crate::geom::Size;
 #[allow(unused)]
 use kas::draw::SizeHandle;
 
-// TODO: new Margin model
 /// Margin sizes
 ///
 /// Used by the layout system for margins around child widgets. Margins may be

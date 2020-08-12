@@ -23,6 +23,7 @@ pub struct TextButton<M: Clone + Debug + 'static> {
     keys2: VirtualKeyCodes,
     // label_rect: Rect,
     label: PreparedText,
+    underline: usize,
     msg: M,
 }
 
@@ -62,8 +63,17 @@ impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
-        // TODO: mgr.show_accel_labels();
-        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Button);
+        if mgr.show_accel_labels() {
+            draw_handle.text_with_underline(
+                self.core.rect.pos,
+                Coord::ZERO,
+                &self.label,
+                TextClass::Button,
+                self.underline,
+            );
+        } else {
+            draw_handle.text(self.core.rect.pos, &self.label, TextClass::Button);
+        }
     }
 }
 
@@ -76,7 +86,8 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     /// the parent (or other ancestor).
     pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
         let label = label.into();
-        let text = PreparedText::new_single(label.get(false).into());
+        let text = PreparedText::new_single(label.text().into());
+        let underline = label.underline();
         let keys2 = label.take_keys();
         TextButton {
             core: Default::default(),
@@ -84,6 +95,7 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
             keys2,
             // label_rect: Default::default(),
             label: text,
+            underline,
             msg,
         }
     }
@@ -111,7 +123,7 @@ impl<M: Clone + Debug + 'static> CloneText for TextButton<M> {
 
 impl<M: Clone + Debug + 'static> SetAccel for TextButton<M> {
     fn set_accel_string(&mut self, label: AccelString) -> TkAction {
-        let text = label.get(false).to_string();
+        let text = label.text().to_string();
         self.keys2 = label.take_keys();
         self.label.set_and_prepare(text)
     }

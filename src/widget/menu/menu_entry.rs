@@ -24,6 +24,7 @@ pub struct MenuEntry<M: Clone + Debug + 'static> {
     core: kas::CoreData,
     keys: VirtualKeyCodes,
     label: PreparedText,
+    underline: usize,
     label_off: Coord,
     msg: M,
 }
@@ -57,9 +58,18 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
-        // TODO: mgr.show_accel_labels();
         let pos = self.core.rect.pos + self.label_off;
-        draw_handle.text(pos, &self.label, TextClass::LabelSingle);
+        if mgr.show_accel_labels() {
+            draw_handle.text_with_underline(
+                pos,
+                Coord::ZERO,
+                &self.label,
+                TextClass::LabelSingle,
+                self.underline,
+            );
+        } else {
+            draw_handle.text(pos, &self.label, TextClass::LabelSingle);
+        }
     }
 }
 
@@ -71,12 +81,14 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
     /// simple `Copy` type (e.g. an enum).
     pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
         let label = label.into();
-        let text = PreparedText::new_single(label.get(false).into());
+        let text = PreparedText::new_single(label.text().into());
+        let underline = label.underline();
         let keys = label.take_keys();
         MenuEntry {
             core: Default::default(),
             keys,
             label: text,
+            underline,
             label_off: Coord::ZERO,
             msg,
         }
@@ -96,7 +108,7 @@ impl<M: Clone + Debug + 'static> CloneText for MenuEntry<M> {
 
 impl<M: Clone + Debug + 'static> SetAccel for MenuEntry<M> {
     fn set_accel_string(&mut self, label: AccelString) -> TkAction {
-        let text = label.get(false).to_string();
+        let text = label.text().to_string();
         self.keys = label.take_keys();
         self.label.set_and_prepare(text)
     }

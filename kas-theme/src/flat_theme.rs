@@ -13,7 +13,7 @@ use std::ops::Range;
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::draw::{
     self, ClipRegion, Colour, Draw, DrawRounded, DrawShared, DrawText, InputState, Pass,
-    SizeHandle, TextClass,
+    SizeHandle, TextClass, TextEffect,
 };
 use kas::geom::*;
 use kas::text::{FontId, PreparedText};
@@ -250,6 +250,33 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .text(self.pass, pos.into(), offset.into(), col, text);
     }
 
+    fn text_with_underline(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &PreparedText,
+        class: TextClass,
+        underline: usize,
+    ) {
+        let pos = pos + self.offset;
+        let mut end = usize::MAX;
+        if underline < text.text_len() {
+            end = text.text()[underline..]
+                .char_indices()
+                .skip(1)
+                .next()
+                .map(|(i, _)| underline + i)
+                .unwrap_or(text.text_len());
+        }
+        let effects = [
+            TextEffect::col(0, self.cols.text_class(class)),
+            TextEffect::underline(underline, true),
+            TextEffect::underline(end, false),
+        ];
+        self.draw
+            .text_with_effects(self.pass, pos.into(), offset.into(), text, &effects);
+    }
+
     fn text_selected_range(
         &mut self,
         pos: Coord,
@@ -264,7 +291,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         let col = self.cols.text_class(class);
 
         // Draw background:
-        for (p1, p2) in &text.highlight_lines(range) {
+        for (p1, p2) in &text.highlight_lines(range.clone()) {
             let mut p1 = Vec2::from(*p1) - offset;
             let mut p2 = Vec2::from(*p2) - offset;
             if !p2.gt(Vec2::ZERO) || !p1.lt(bounds) {
@@ -277,8 +304,13 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
         }
 
-        // TODO: which should use self.cols.text_sel for the selected range!
-        self.draw.text(self.pass, pos, offset, col, text);
+        let effects = [
+            TextEffect::col(0, col),
+            TextEffect::col(range.start, self.cols.text_sel),
+            TextEffect::col(range.end, col),
+        ];
+        self.draw
+            .text_with_effects(self.pass, pos, offset, text, &effects);
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {

@@ -211,11 +211,61 @@ pub trait DrawShaded: Draw {
     );
 }
 
+/// Applies effects from the given `start` position in the text
+///
+/// This is a HACK to allow some formatting without full support in `kas_text`.
+/// It will likely transition into a similar system within `kas_text`.
+pub struct TextEffect {
+    /// The first index to apply this effect
+    pub start: u32,
+    /// New text colour
+    pub col: Option<Colour>,
+    /// Apply or remove underline
+    pub underline: Option<bool>,
+}
+
+impl TextEffect {
+    /// Set colour
+    pub fn col(start: usize, col: Colour) -> Self {
+        TextEffect {
+            start: start as u32,
+            col: Some(col),
+            underline: None,
+        }
+    }
+
+    // Apply or remove underline
+    pub fn underline(start: usize, underline: bool) -> Self {
+        TextEffect {
+            start: start as u32,
+            col: None,
+            underline: Some(underline),
+        }
+    }
+}
+
 /// Abstraction over text rendering
 ///
 /// Note: the current API is designed to meet only current requirements since
 /// changes are expected to support external font shaping libraries.
 pub trait DrawText {
     /// Draw text
-    fn text(&mut self, pass: Pass, pos: Vec2, offset: Vec2, col: Colour, text: &PreparedText);
+    fn text(&mut self, pass: Pass, pos: Vec2, offset: Vec2, col: Colour, text: &PreparedText) {
+        let effects = [TextEffect::col(0, col)];
+        self.text_with_effects(pass, pos, offset, text, &effects);
+    }
+
+    /// Draw text with effects
+    ///
+    /// The `effects` list must have length at least 1 and its first item
+    /// should have `start = 0` and supply the base text colour (otherwise
+    /// black will be used).
+    fn text_with_effects(
+        &mut self,
+        pass: Pass,
+        pos: Vec2,
+        offset: Vec2,
+        text: &PreparedText,
+        effects: &[TextEffect],
+    );
 }

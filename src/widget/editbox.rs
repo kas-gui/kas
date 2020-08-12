@@ -499,15 +499,21 @@ impl<G> EditBox<G> {
                 Action::Move(pos, None)
             }
             ControlKey::Left if ctrl => {
-                // TODO: This should find the next word-start, not *all* word
-                // boundaries! Perhaps best to implement in kas-text since
-                // anything external will struggle with bidirectional text.
-                let pos = self.text.text()[0..pos]
-                    .split_word_bound_indices()
-                    .next_back()
-                    .map(|(index, _)| index)
-                    .unwrap_or(0);
-                Action::Move(pos, None)
+                let mut iter = self.text.text()[0..pos].split_word_bound_indices();
+                let mut p = iter.next_back().map(|(index, _)| index).unwrap_or(0);
+                while self.text.text()[p..]
+                    .chars()
+                    .next()
+                    .map(|c| c.is_whitespace())
+                    .unwrap_or(false)
+                {
+                    if let Some((index, _)) = iter.next_back() {
+                        p = index;
+                    } else {
+                        break;
+                    }
+                }
+                Action::Move(p, None)
             }
             ControlKey::Left => {
                 let mut cursor = GraphemeCursor::new(pos, self.text.text_len(), true);
@@ -518,13 +524,24 @@ impl<G> EditBox<G> {
                     .unwrap_or(Action::None)
             }
             ControlKey::Right if ctrl => {
-                let pos = self.text.text()[pos..]
-                    .split_word_bound_indices()
-                    .skip(1)
+                let mut iter = self.text.text()[pos..].split_word_bound_indices().skip(1);
+                let mut p = iter
                     .next()
                     .map(|(index, _)| pos + index)
                     .unwrap_or(self.text.text_len());
-                Action::Move(pos, None)
+                while self.text.text()[p..]
+                    .chars()
+                    .next()
+                    .map(|c| c.is_whitespace())
+                    .unwrap_or(false)
+                {
+                    if let Some((index, _)) = iter.next() {
+                        p = pos + index;
+                    } else {
+                        break;
+                    }
+                }
+                Action::Move(p, None)
             }
             ControlKey::Right => {
                 let mut cursor = GraphemeCursor::new(pos, self.text.text_len(), true);
@@ -534,7 +551,7 @@ impl<G> EditBox<G> {
                     .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
-            ControlKey::Up | ControlKey::Down | ControlKey::PageUp | ControlKey::PageDown => {
+            ControlKey::Up | ControlKey::Down => {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
                     None => self
@@ -546,12 +563,9 @@ impl<G> EditBox<G> {
                 };
                 let mut line = self.text.find_line(pos).map(|r| r.0).unwrap_or(0);
                 // We can tolerate invalid line numbers here!
-                // TODO: PageUp/Down should depend on view size?
                 line = match key {
                     ControlKey::Up => line.wrapping_sub(1),
                     ControlKey::Down => line.wrapping_add(1),
-                    ControlKey::PageUp => line.wrapping_sub(30),
-                    ControlKey::PageDown => line.wrapping_add(30),
                     _ => unreachable!(),
                 };
                 const HALF: usize = usize::MAX / 2;
@@ -563,6 +577,24 @@ impl<G> EditBox<G> {
                     .line_index_nearest(line, x)
                     .map(|pos| Action::Move(pos, Some(x)))
                     .unwrap_or(Action::Move(nearest_end(), None))
+            }
+            ControlKey::PageUp | ControlKey::PageDown => {
+                let mut v = self
+                    .text
+                    .text_glyph_pos(pos)
+                    .next_back()
+                    .map(|r| r.pos.into())
+                    .unwrap_or(Vec2::ZERO);
+                if let Some(x) = self.edit_x_coord {
+                    v.0 = x;
+                }
+                const FACTOR: f32 = 2.0 / 3.0;
+                let mut h_dist = self.text.env().bounds.1 * FACTOR;
+                if key == ControlKey::PageUp {
+                    h_dist *= -1.0;
+                }
+                v.1 += h_dist;
+                Action::Move(self.text.text_index_nearest(v.into()), Some(v.0))
             }
             ControlKey::Delete => {
                 if have_sel {
@@ -775,7 +807,12 @@ impl<G> EditBox<G> {
         }
         let (mut start, mut end);
         if repeats <= 2 {
-            end = self.text.text_len().min(range.start + 1);
+            end = self.text.text()[range.start..]
+                .char_indices()
+                .skip(1)
+                .next()
+                .map(|(i, _)| range.start + i)
+                .unwrap_or(self.text.text_len());
             start = self.text.text()[0..end]
                 .split_word_bound_indices()
                 .next_back()
