@@ -31,16 +31,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         let mut section = 0;
         let mut next = 0;
         let mut next_start = effects.get(next).map(|e| e.start).unwrap_or(u32::MAX);
-        let mut last_index = 0;
         let glyphs = text.positioned_glyphs(|_, font_id, scale, glyph| {
-            // TODO: for RTL text, glyphs are not received in order of index.
-            // Find a better way to ensure we get the correct section!
-            if glyph.index < last_index {
-                section = 0;
-                next = 0;
-                next_start = effects.get(next).map(|e| e.start).unwrap_or(u32::MAX);
-            }
-            last_index = glyph.index;
             while glyph.index >= next_start {
                 section = next;
                 next += 1;
