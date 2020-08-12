@@ -23,6 +23,7 @@ pub struct SubMenu<D: Directional, W: Menu> {
     direction: D,
     keys: VirtualKeyCodes,
     label: PreparedText,
+    underline: usize,
     label_off: Coord,
     #[widget]
     pub list: MenuFrame<Column<W>>,
@@ -61,13 +62,15 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
     #[inline]
     pub fn new_with_direction<S: Into<AccelString>>(direction: D, label: S, list: Vec<W>) -> Self {
         let label = label.into();
-        let text = PreparedText::new_single(label.get(false).into());
+        let text = PreparedText::new_single(label.text().into());
+        let underline = label.underline();
         let keys = label.take_keys();
         SubMenu {
             core: Default::default(),
             direction,
             keys,
             label: text,
+            underline,
             label_off: Coord::ZERO,
             list: MenuFrame::new(Column::new(list)),
             popup_id: None,
@@ -134,8 +137,17 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
         state.depress = state.depress || self.popup_id.is_some();
         draw_handle.menu_entry(self.core.rect, state);
         let pos = self.core.rect.pos + self.label_off;
-        // TODO: mgr.show_accel_labels();
-        draw_handle.text(pos, &self.label, TextClass::Label);
+        if mgr.show_accel_labels() {
+            draw_handle.text_with_underline(
+                pos,
+                Coord::ZERO,
+                &self.label,
+                TextClass::Label,
+                self.underline,
+            );
+        } else {
+            draw_handle.text(pos, &self.label, TextClass::Label);
+        }
     }
 }
 
@@ -285,7 +297,7 @@ impl<D: Directional, W: Menu> CloneText for SubMenu<D, W> {
 
 impl<D: Directional, W: Menu> SetAccel for SubMenu<D, W> {
     fn set_accel_string(&mut self, label: AccelString) -> TkAction {
-        let text = label.get(false).to_string();
+        let text = label.text().to_string();
         self.keys = label.take_keys();
         self.label.set_and_prepare(text)
     }

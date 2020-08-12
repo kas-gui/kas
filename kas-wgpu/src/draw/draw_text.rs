@@ -50,11 +50,21 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         });
 
         let mut col = Colour::grey(0.0);
+        let mut col2 = col;
+        let mut underline = false;
         let extra = effects
             .iter()
             .map(|effect| {
                 if let Some(c) = effect.col {
-                    col = c;
+                    if !underline {
+                        col = c;
+                    }
+                    col2 = c;
+                }
+                if let Some(u) = effect.underline {
+                    // HACK: draw a real underline (instead we just change colour)
+                    underline = u;
+                    col = if u { Colour::new(0.9, 0.2, 0.5) } else { col2 };
                 }
                 Extra {
                     color: col.into(),

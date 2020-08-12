@@ -88,7 +88,7 @@ impl Deref for LabelString {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AccelString {
     label: String,
-    underlined: String,
+    underline: usize, // glyph to underline
     // TODO: is it worth using such a large structure here instead of Option?
     keys: VirtualKeyCodes,
 }
@@ -100,31 +100,28 @@ impl AccelString {
     /// specialisation, this parser always allocates. Prefer to use `from`.
     pub fn parse(mut s: &str) -> Self {
         let mut buf = String::with_capacity(s.len());
-        // NOTE: our text display doesn't yet support
-        // underlining, but Unicode diacritics are good enough.
-        let underline = '\u{0332}';
-        let mut bufu = String::with_capacity(s.len() + underline.len_utf8() - "&".len());
+        let mut count = 0;
+        let mut underline = usize::MAX;
         let mut keys = VirtualKeyCodes::new();
 
         while let Some(mut i) = s.find("&") {
+            count += 1;
             buf.push_str(&s[..i]);
-            bufu.push_str(&s[..i]);
             i += "&".len();
             s = &s[i..];
 
-            match s.chars().next() {
+            match s.char_indices().next() {
                 None => {
                     // Ending with '&' is an error, but we can ignore it
                     s = &s[0..0];
                     break;
                 }
-                Some(c) => {
+                Some((j, c)) => {
                     buf.push(c);
-                    bufu.push(c);
+                    underline = i + j - count;
                     let vkeys = find_vkeys(c);
                     if !vkeys.is_empty() {
                         keys.extend(vkeys);
-                        bufu.push(underline);
                     }
                     let i = c.len_utf8();
                     s = &s[i..];
@@ -132,10 +129,9 @@ impl AccelString {
             }
         }
         buf.push_str(s);
-        bufu.push_str(s);
         AccelString {
             label: buf.into(),
-            underlined: bufu.into(),
+            underline,
             keys,
         }
     }
@@ -150,14 +146,14 @@ impl AccelString {
         self.keys
     }
 
-    /// Get the text, depending on mode
-    // TODO: we don't need get(true) any more
-    pub fn get(&self, show_labels: bool) -> &str {
-        if show_labels {
-            &self.underlined
-        } else {
-            &self.label
-        }
+    /// Get the text
+    pub fn text(&self) -> &str {
+        &self.label
+    }
+
+    /// Get the glyph to be underlined
+    pub fn underline(&self) -> usize {
+        self.underline
     }
 }
 
@@ -169,7 +165,7 @@ impl From<String> for AccelString {
             // fast path: we can use the raw input
             AccelString {
                 label: input.clone(),
-                underlined: input,
+                underline: usize::MAX,
                 keys: Default::default(),
             }
         }

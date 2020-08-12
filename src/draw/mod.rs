@@ -220,6 +220,8 @@ pub struct TextEffect {
     pub start: u32,
     /// New text colour
     pub col: Option<Colour>,
+    /// Apply or remove underline
+    pub underline: Option<bool>,
 }
 
 impl TextEffect {
@@ -228,6 +230,16 @@ impl TextEffect {
         TextEffect {
             start: start as u32,
             col: Some(col),
+            underline: None,
+        }
+    }
+
+    // Apply or remove underline
+    pub fn underline(start: usize, underline: bool) -> Self {
+        TextEffect {
+            start: start as u32,
+            col: None,
+            underline: Some(underline),
         }
     }
 }

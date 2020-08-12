@@ -268,6 +268,18 @@ where
         self.as_flat().text_offset(pos, offset, text, class);
     }
 
+    fn text_with_underline(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &PreparedText,
+        class: TextClass,
+        underline: usize,
+    ) {
+        self.as_flat()
+            .text_with_underline(pos, offset, text, class, underline);
+    }
+
     fn text_selected_range(
         &mut self,
         pos: Coord,

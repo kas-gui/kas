@@ -94,6 +94,7 @@ pub struct AccelLabel {
     core: CoreData,
     keys: VirtualKeyCodes,
     label: PreparedText,
+    underline: usize,
 }
 
 impl Layout for AccelLabel {
@@ -115,9 +116,18 @@ impl Layout for AccelLabel {
         });
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, _mgr: &ManagerState, _: bool) {
-        // TODO: mgr.show_accel_labels();
-        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, _: bool) {
+        if mgr.show_accel_labels() {
+            draw_handle.text_with_underline(
+                self.core.rect.pos,
+                Coord::ZERO,
+                &self.label,
+                TextClass::Label,
+                self.underline,
+            );
+        } else {
+            draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
+        }
     }
 }
 
@@ -125,12 +135,14 @@ impl AccelLabel {
     /// Construct a new, empty instance
     pub fn new<T: Into<AccelString>>(label: T) -> Self {
         let label = label.into();
-        let text = PreparedText::new_single(label.get(false).into());
+        let text = PreparedText::new_single(label.text().into());
+        let underline = label.underline();
         let keys = label.take_keys();
         AccelLabel {
             core: Default::default(),
             keys,
             label: text,
+            underline,
         }
     }
 
@@ -148,7 +160,7 @@ impl CloneText for AccelLabel {
 
 impl SetAccel for AccelLabel {
     fn set_accel_string(&mut self, label: AccelString) -> TkAction {
-        let text = label.get(false).to_string();
+        let text = label.text().to_string();
         self.keys = label.take_keys();
         self.label.set_and_prepare(text)
     }

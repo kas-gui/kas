@@ -250,6 +250,33 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .text(self.pass, pos.into(), offset.into(), col, text);
     }
 
+    fn text_with_underline(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &PreparedText,
+        class: TextClass,
+        underline: usize,
+    ) {
+        let pos = pos + self.offset;
+        let mut end = usize::MAX;
+        if underline < text.text_len() {
+            end = text.text()[underline..]
+                .char_indices()
+                .skip(1)
+                .next()
+                .map(|(i, _)| underline + i)
+                .unwrap_or(text.text_len());
+        }
+        let effects = [
+            TextEffect::col(0, self.cols.text_class(class)),
+            TextEffect::underline(underline, true),
+            TextEffect::underline(end, false),
+        ];
+        self.draw
+            .text_with_effects(self.pass, pos.into(), offset.into(), text, &effects);
+    }
+
     fn text_selected_range(
         &mut self,
         pos: Coord,
