@@ -807,7 +807,12 @@ impl<G> EditBox<G> {
         }
         let (mut start, mut end);
         if repeats <= 2 {
-            end = self.text.text_len().min(range.start + 1);
+            end = self.text.text()[range.start..]
+                .char_indices()
+                .skip(1)
+                .next()
+                .map(|(i, _)| range.start + i)
+                .unwrap_or(self.text.text_len());
             start = self.text.text()[0..end]
                 .split_word_bound_indices()
                 .next_back()
