@@ -534,7 +534,7 @@ impl<G> EditBox<G> {
                     .map(|pos| Action::Move(pos, None))
                     .unwrap_or(Action::None)
             }
-            ControlKey::Up | ControlKey::Down | ControlKey::PageUp | ControlKey::PageDown => {
+            ControlKey::Up | ControlKey::Down => {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
                     None => self
@@ -546,12 +546,9 @@ impl<G> EditBox<G> {
                 };
                 let mut line = self.text.find_line(pos).map(|r| r.0).unwrap_or(0);
                 // We can tolerate invalid line numbers here!
-                // TODO: PageUp/Down should depend on view size?
                 line = match key {
                     ControlKey::Up => line.wrapping_sub(1),
                     ControlKey::Down => line.wrapping_add(1),
-                    ControlKey::PageUp => line.wrapping_sub(30),
-                    ControlKey::PageDown => line.wrapping_add(30),
                     _ => unreachable!(),
                 };
                 const HALF: usize = usize::MAX / 2;
@@ -563,6 +560,24 @@ impl<G> EditBox<G> {
                     .line_index_nearest(line, x)
                     .map(|pos| Action::Move(pos, Some(x)))
                     .unwrap_or(Action::Move(nearest_end(), None))
+            }
+            ControlKey::PageUp | ControlKey::PageDown => {
+                let mut v = self
+                    .text
+                    .text_glyph_pos(pos)
+                    .next_back()
+                    .map(|r| r.pos.into())
+                    .unwrap_or(Vec2::ZERO);
+                if let Some(x) = self.edit_x_coord {
+                    v.0 = x;
+                }
+                const FACTOR: f32 = 2.0 / 3.0;
+                let mut h_dist = self.text.env().bounds.1 * FACTOR;
+                if key == ControlKey::PageUp {
+                    h_dist *= -1.0;
+                }
+                v.1 += h_dist;
+                Action::Move(self.text.text_index_nearest(v.into()), Some(v.0))
             }
             ControlKey::Delete => {
                 if have_sel {
