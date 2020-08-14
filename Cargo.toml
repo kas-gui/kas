@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -35,7 +35,7 @@ bitflags = "1" # only used without winit
 unicode-segmentation = "1.6"
 
 [dependencies.kas-macros]
-version = "0.4.0"
+version = "0.5.0"
 path = "kas-macros"
 
 [dependencies.kas-text]
