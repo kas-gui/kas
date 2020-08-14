@@ -2,8 +2,6 @@ KAS GUI
 ==========
 
 [![Test Status](https://github.com/kas-gui/kas/workflows/Tests/badge.svg?event=push)](https://github.com/kas-gui/kas/actions)
-[![home](https://img.shields.io/badge/GitHub-home-blueviolet)](https://github.com/kas-gui/kas)
-[![old-home](https://img.shields.io/badge/GitLab-old--home-blueviolet)](https://gitlab.com/dhardy/kas)
 [![kas-text](https://img.shields.io/badge/GitHub-kas--text-blueviolet)](https://github.com/kas-gui/kas-text/)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
 ![Minimum rustc version](https://img.shields.io/badge/rustc-1.45+-lightgray.svg)
@@ -30,8 +28,8 @@ For details, see the [Examples README](kas-wgpu/examples/README.md).
 ## Features
 
 -   Touchscreen input, mouse input, full keyboard navigation, accelerator keys
+-   Bidirectional text support and complex glyph shaping via [HarfBuzz]
 -   Scalable (HiDPI) supporting fractional scaling
--   Complex glyph shaping and bidirectional text support
 -   Themes (sizing and rendering control) and colour schemes
 -   Embedded graphics via custom [WebGPU] graphics pipes
 -   Widget layout via grids (with spans), rows and columns
@@ -83,7 +81,9 @@ In the future, there may be support for OpenGL and software rendering.
 
 #### HarfBuzz (optional)
 
-This is only needed if the `shaping` feature is enabled.
+This is only needed if the `shaping` feature is enabled. On my system, the
+following libraries are used: `libharfbuzz.so.0`, `libglib-2.0.so.0`,
+`libgraphite2.so.3` and `libpcre.so.1`.
 
 ### Quick-start
 
@@ -141,6 +141,7 @@ The `kas` crate has the following feature flags:
 
 [`kas-text`]: https://github.com/kas-gui/kas-text/
 [`winit`]: https://github.com/rust-windowing/winit/
+[HarfBuzz]: https://harfbuzz.github.io/
 [WebGPU]: https://github.com/gfx-rs/wgpu-rs
 [ROADMAP]: ROADMAP.md
 
