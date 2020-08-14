@@ -75,6 +75,19 @@ impl Quad {
         debug_assert!(a.le(b));
         Quad { a, b }
     }
+
+    /// Calculate the intersection of two quads
+    #[inline]
+    pub fn intersection(&self, rhs: &Quad) -> Option<Quad> {
+        let a = Vec2(self.a.0.max(rhs.a.0), self.a.1.max(rhs.a.1));
+        let x = (self.b.0.min(rhs.b.0) - a.0).max(0.0);
+        let y = (self.b.1.min(rhs.b.1) - a.1).max(0.0);
+        if x * y > 0.0 {
+            Some(Quad::with_pos_and_size(a, Vec2(x, y)))
+        } else {
+            None
+        }
+    }
 }
 
 impl From<Rect> for Quad {

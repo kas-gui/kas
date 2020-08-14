@@ -314,17 +314,27 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
-        let mut col = self.cols.text_class(class);
         let pos = Vec2::from(pos + self.offset);
-        for m in text.text_glyph_pos(byte).rev() {
+        let width = self.window.dims.font_marker_width;
+        let mut iter = text.text_glyph_pos(byte).map(|m| {
             let mut p1 = pos + Vec2::from(m.pos);
             let mut p2 = p1;
             p1.1 -= m.ascent;
             p2.1 -= m.descent;
-            p2.0 += self.window.dims.font_marker_width;
-            let quad = Quad::with_coords(p1, p2);
-            self.draw.rect(self.pass, quad, col);
-            col = self.cols.button_disabled; // hack to make secondary marker grey
+            p2.0 += width;
+            Quad::with_coords(p1, p2)
+        });
+        if let Some(quad) = iter.next_back() {
+            // Note: this cursor is always visible due to scrolling
+            self.draw.rect(self.pass, quad, self.cols.text_class(class));
+        }
+        if let Some(quad) = iter.next_back() {
+            // This cursor may be outside of the bounding box!
+            let bounds = Quad::with_pos_and_size(pos, text.env().bounds.into());
+            if let Some(quad) = bounds.intersection(&quad) {
+                // hack to make secondary marker grey:
+                self.draw.rect(self.pass, quad, self.cols.button_disabled);
+            }
         }
     }
 
