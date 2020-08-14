@@ -304,7 +304,14 @@ pub trait DrawHandle {
     );
 
     /// Draw an edit marker at the given `byte` index on this `text`
-    fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize);
+    fn edit_marker(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &PreparedText,
+        class: TextClass,
+        byte: usize,
+    );
 
     /// Draw the background of a menu entry
     fn menu_entry(&mut self, rect: Rect, state: InputState);
@@ -567,8 +574,15 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         self.deref_mut()
             .text_selected_range(pos, offset, text, range, class);
     }
-    fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
-        self.deref_mut().edit_marker(pos, text, class, byte)
+    fn edit_marker(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &PreparedText,
+        class: TextClass,
+        byte: usize,
+    ) {
+        self.deref_mut().edit_marker(pos, offset, text, class, byte)
     }
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().menu_entry(rect, state)
@@ -650,8 +664,15 @@ where
         self.deref_mut()
             .text_selected_range(pos, offset, text, range, class);
     }
-    fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
-        self.deref_mut().edit_marker(pos, text, class, byte)
+    fn edit_marker(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &PreparedText,
+        class: TextClass,
+        byte: usize,
+    ) {
+        self.deref_mut().edit_marker(pos, offset, text, class, byte)
     }
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().menu_entry(rect, state)

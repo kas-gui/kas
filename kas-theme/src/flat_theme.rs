@@ -313,9 +313,17 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .text_with_effects(self.pass, pos, offset, text, &effects);
     }
 
-    fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
-        let pos = Vec2::from(pos + self.offset);
-        let bounds = Quad::with_pos_and_size(pos, text.env().bounds.into());
+    fn edit_marker(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &PreparedText,
+        class: TextClass,
+        byte: usize,
+    ) {
+        let p = Vec2::from(pos + self.offset);
+        let bounds = Quad::with_pos_and_size(p, text.env().bounds.into());
+        let pos = Vec2::from(pos - offset + self.offset);
         let width = self.window.dims.font_marker_width;
 
         let mut col = self.cols.text_class(class);
