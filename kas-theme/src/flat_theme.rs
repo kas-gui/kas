@@ -313,18 +313,44 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .text_with_effects(self.pass, pos, offset, text, &effects);
     }
 
-    fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
+    fn edit_marker(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &PreparedText,
+        class: TextClass,
+        byte: usize,
+    ) {
+        let p = Vec2::from(pos + self.offset);
+        let bounds = Quad::with_pos_and_size(p, text.env().bounds.into());
+        let pos = Vec2::from(pos - offset + self.offset);
+        let width = self.window.dims.font_marker_width;
+
         let mut col = self.cols.text_class(class);
-        let pos = Vec2::from(pos + self.offset);
-        for m in text.text_glyph_pos(byte).rev() {
-            let mut p1 = pos + Vec2::from(m.pos);
+        for cursor in text.text_glyph_pos(byte).rev() {
+            let mut p1 = pos + Vec2::from(cursor.pos);
             let mut p2 = p1;
-            p1.1 -= m.ascent;
-            p2.1 -= m.descent;
-            p2.0 += self.window.dims.font_marker_width;
+            p1.1 -= cursor.ascent;
+            p2.1 -= cursor.descent;
+            p2.0 += width;
             let quad = Quad::with_coords(p1, p2);
-            self.draw.rect(self.pass, quad, col);
-            col = self.cols.button_disabled; // hack to make secondary marker grey
+            if let Some(quad) = bounds.intersection(&quad) {
+                self.draw.rect(self.pass, quad, col);
+            }
+            if cursor.embedding_level() > 0 {
+                // Add a hat to indicate directionality.
+                let height = width;
+                let quad = if cursor.is_ltr() {
+                    Quad::with_coords(Vec2(p2.0, p1.1), Vec2(p2.0 + width, p1.1 + height))
+                } else {
+                    Quad::with_coords(Vec2(p1.0 - width, p1.1), Vec2(p1.0, p1.1 + height))
+                };
+                if let Some(quad) = bounds.intersection(&quad) {
+                    self.draw.rect(self.pass, quad, col);
+                }
+            }
+            // hack to make secondary marker grey:
+            col = self.cols.button_disabled;
         }
     }
 

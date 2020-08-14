@@ -265,7 +265,8 @@ impl<G: 'static> Layout for EditBox<G> {
         }
         if input_state.char_focus {
             draw_handle.edit_marker(
-                self.text_pos - self.view_offset,
+                self.text_pos,
+                self.view_offset,
                 &self.text,
                 class,
                 self.edit_pos,

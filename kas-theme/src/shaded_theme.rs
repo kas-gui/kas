@@ -292,8 +292,15 @@ where
             .text_selected_range(pos, offset, text, range, class);
     }
 
-    fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
-        self.as_flat().edit_marker(pos, text, class, byte);
+    fn edit_marker(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &PreparedText,
+        class: TextClass,
+        byte: usize,
+    ) {
+        self.as_flat().edit_marker(pos, offset, text, class, byte);
     }
 
     fn menu_entry(&mut self, rect: Rect, state: InputState) {

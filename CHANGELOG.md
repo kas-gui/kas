@@ -2,6 +2,68 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] — 2020-08-14
+This release largely concerns text formatting, with the new `kas-text` library.
+
+It also saw the addition of the [CONTRIBUTING](CONTRIBUTING.md) and
+[ROADMAP](ROADMAP.md) documents and, as usual, several doc improvements.
+
+### text and kas-text library
+This is a new library written for use with KAS and integrated from #110 onwards,
+supporting glyph shaping, bidirectional text and much better line-wrapping
+(faster, line metrics and direct support for coord/glyph-position translation).
+For more on this library, see [kas-text](https://github.com/kas-gui/kas-text/).
+
+-   Initial integration (#110)
+-   Move `Align` to `kas-text` and re-export (#110)
+-   Remove `CowString` (#111)
+-   Support shaping via HarfBuzz (#113)
+-   Add `PreparedTextExt` extension trait (#116)
+-   Initial (hacky) support for text effects (#119)
+
+### Text editing and EditBox
+-   Draw a real text edit marker (#106)
+-   Use `unicode-segmentation` for prev/next grapheme (#106)
+-   Keyboard and mouse text navigation (#106, #113, #115, #119)
+-   Enable text selection (#108, #113, #118)
+-   Enable double-click and triple-click selection modes (#117)
+-   Draw text selection (#108, #110, #112)
+-   Support scrolling within `EditBox` (#116, #118)
+-   PageUp/Down distance depends on view size (#119)
+
+### Input handling
+
+-   Widgets may now handle the Escape key (#118)
+-   Initial support for shortcuts (hard-coded) (#116)
+-   `ModifiersState` is no longer passed with `EventControl` but accessed via `Manager` (#113)
+-   `Manager` now tracks double-clicks (and triple-, etc.)
+-   Rename `event::NavKey` → `event::ControlKey` (#106)
+
+### Sizing and styles
+
+-   Setting a string no longer automatically resizes the UI (#116)
+-   Separate inner and outer margins (#114, #115)
+-   Various style tweaks (#105, #114)
+-   `ShadedTheme` now re-uses parts of `FlatTheme` (#109)
+-   New `DrawHandleExt` extension trait (#108)
+-   Add `DrawHandleExt::size_handle` and `Manager::size_handle` (#107, #108)
+
+### Widgets
+
+-   Add `WidgetCore::with_disabled` (#104)
+-   Adjust `SliderType` trait requirements (#105)
+-   `Slider`: round to nearest int instead of rounding down (#114)
+-   Extend `ComboBox` API (#104)
+
+### Misc
+
+-   Update for Rust 1.45: `proc_macro_hygiene` is obsolete (#113)
+-   Revise class traits regarding text (#110, #111)
+-   Align type now has `Default`, `TL`, `BR`, `Centre` and `Stretch` values (#110)
+-   Update `wgpu_glyph` and `font-kit` dependencies (#106, #110)
+-   Force window size to be at least 1×1 to avoid crash (#109)
+
+
 ## [0.4.1] — 2020-05-07
 -   Remove screenshots from package
 -   Document main breaking changes below

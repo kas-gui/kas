@@ -55,23 +55,18 @@ state for `EditBox` (set via a user-defined input guard). Widgets included a
 
 ### 0.5.0 — Aug 2020
 
-The next release will include proper text-edit handling (positionable edit
-marker, selection), and likely one further item from the list below.
+This release focussed on text presentation and editing with a new library,
+[kas-text](https://github.com/kas-gui/kas-text/). The text editing experience
+has been massively improved, especially for multi-line text, and now supports
+bidirectional text, glyph shaping, and all the expected selection, navigation
+and editing functionality. Text presentation now supports justified text and
+faster re-wrapping when resizing the window.
 
-Additionly, it includes a `CONTRIBUTING` guide and this `ROADMAP`.
+Some tweaks to input handling and resizing landed, including (unconfigurable)
+short-cuts, double-click tracking and separate inner and outer margins.
 
-### Text shaping
-
-Current text shaping uses the layout engine provided by `glyph_brush`. We should
-likely replace this with a full text shaping engine, possibly `allsorts` or
-`harfbuzz`.
-
-While doing this, we can probably remove the requirement that `SizeHandle` have
-a reference to per-window `draw` state, and possibly also support justified
-alignment.
-
-*Possibly* also within the same work-set, add a real multi-line text-edit
-widget.
+Additionally, a [CONTRIBUTING](CONTRIBUTING.md) guide and this `ROADMAP`
+have been added.
 
 
 Future work
@@ -100,7 +95,7 @@ Possibly as part of this topic, implement colour management #59.
 
 ### Configuration and resource management
 
-Currently KAS has an ad-hoc font loader and fixed colour-schemes.
+Currently KAS has an ad-hoc font loader and fixed colour-schemes and shortcuts.
 This work item includes:
 
 -   discovery of resources (fonts, icons, colour-schemes) from the system and
@@ -120,7 +115,8 @@ inherited from the desktop, but otherwise KAS should provide them.
 
 ### Multiple fonts and text markup
 
-Support at least italic and bold fonts.
+Support font selection, italic and bold fonts, underline, and strike-through.
+This is [a kas-text issue](https://github.com/kas-gui/kas-text/issues/14).
 
 Support reading text markup (e.g. Markdown or HTML) and rendering this text
 within e.g. the `Label` widget.
