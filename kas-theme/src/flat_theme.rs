@@ -314,10 +314,6 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
-        // TODO: with bidirectional text, it is important to show the cursor's
-        // direction. Additionally, we move the cursor right which makes it
-        // invisible at the start of a line of right-to-left text.
-
         let pos = Vec2::from(pos + self.offset);
         let bounds = Quad::with_pos_and_size(pos, text.env().bounds.into());
         let width = self.window.dims.font_marker_width;
@@ -332,6 +328,18 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             let quad = Quad::with_coords(p1, p2);
             if let Some(quad) = bounds.intersection(&quad) {
                 self.draw.rect(self.pass, quad, col);
+            }
+            if cursor.embedding_level() > 0 {
+                // Add a hat to indicate directionality.
+                let height = width;
+                let quad = if cursor.is_ltr() {
+                    Quad::with_coords(Vec2(p2.0, p1.1), Vec2(p2.0 + width, p1.1 + height))
+                } else {
+                    Quad::with_coords(Vec2(p1.0 - width, p1.1), Vec2(p1.0, p1.1 + height))
+                };
+                if let Some(quad) = bounds.intersection(&quad) {
+                    self.draw.rect(self.pass, quad, col);
+                }
             }
             // hack to make secondary marker grey:
             col = self.cols.button_disabled;
