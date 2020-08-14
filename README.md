@@ -2,8 +2,9 @@ KAS GUI
 ==========
 
 [![Test Status](https://github.com/kas-gui/kas/workflows/Tests/badge.svg?event=push)](https://github.com/kas-gui/kas/actions)
-[![home](https://img.shields.io/badge/GitHub-home-blue)](https://github.com/kas-gui/kas)
+[![home](https://img.shields.io/badge/GitHub-home-blueviolet)](https://github.com/kas-gui/kas)
 [![old-home](https://img.shields.io/badge/GitLab-old--home-blueviolet)](https://gitlab.com/dhardy/kas)
+[![kas-text](https://img.shields.io/badge/GitHub-kas--text-blueviolet)](https://github.com/kas-gui/kas-text/)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
 ![Minimum rustc version](https://img.shields.io/badge/rustc-1.45+-lightgray.svg)
 
