@@ -314,27 +314,27 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &PreparedText, class: TextClass, byte: usize) {
+        // TODO: with bidirectional text, it is important to show the cursor's
+        // direction. Additionally, we move the cursor right which makes it
+        // invisible at the start of a line of right-to-left text.
+
         let pos = Vec2::from(pos + self.offset);
+        let bounds = Quad::with_pos_and_size(pos, text.env().bounds.into());
         let width = self.window.dims.font_marker_width;
-        let mut iter = text.text_glyph_pos(byte).map(|m| {
-            let mut p1 = pos + Vec2::from(m.pos);
+
+        let mut col = self.cols.text_class(class);
+        for cursor in text.text_glyph_pos(byte).rev() {
+            let mut p1 = pos + Vec2::from(cursor.pos);
             let mut p2 = p1;
-            p1.1 -= m.ascent;
-            p2.1 -= m.descent;
+            p1.1 -= cursor.ascent;
+            p2.1 -= cursor.descent;
             p2.0 += width;
-            Quad::with_coords(p1, p2)
-        });
-        if let Some(quad) = iter.next_back() {
-            // Note: this cursor is always visible due to scrolling
-            self.draw.rect(self.pass, quad, self.cols.text_class(class));
-        }
-        if let Some(quad) = iter.next_back() {
-            // This cursor may be outside of the bounding box!
-            let bounds = Quad::with_pos_and_size(pos, text.env().bounds.into());
+            let quad = Quad::with_coords(p1, p2);
             if let Some(quad) = bounds.intersection(&quad) {
-                // hack to make secondary marker grey:
-                self.draw.rect(self.pass, quad, self.cols.button_disabled);
+                self.draw.rect(self.pass, quad, col);
             }
+            // hack to make secondary marker grey:
+            col = self.cols.button_disabled;
         }
     }
 
