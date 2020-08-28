@@ -7,7 +7,7 @@
 
 use shaderc::ShaderKind::{Fragment, Vertex};
 use shaderc::{Compiler, Error};
-use wgpu::ShaderModule;
+use wgpu::{ShaderModule, ShaderModuleSource};
 
 /// Shader manager
 ///
@@ -24,44 +24,28 @@ pub struct ShaderManager {
     pub frag_shaded_round: ShaderModule,
 }
 
+macro_rules! compile {
+    ($device:ident, $compiler:ident, $type:ident, $path:expr) => {{
+        let fname = $path;
+        let source = include_str!($path);
+        let artifact = $compiler.compile_into_spirv(source, $type, fname, "main", None)?;
+        let bin = ShaderModuleSource::SpirV(artifact.as_binary().into());
+        $device.create_shader_module(bin)
+    }};
+}
+
 impl ShaderManager {
     pub fn new(device: &wgpu::Device) -> Result<Self, Error> {
         let mut compiler = Compiler::new().unwrap();
 
-        let fname = "shaders/scaled3122.vert";
-        let source = include_str!("shaders/scaled3122.vert");
-        let artifact = compiler.compile_into_spirv(source, Vertex, fname, "main", None)?;
-        let vert_3122 = device.create_shader_module(&artifact.as_binary());
+        let vert_3122 = compile!(device, compiler, Vertex, "shaders/scaled3122.vert");
+        let vert_32 = compile!(device, compiler, Vertex, "shaders/scaled32.vert");
+        let vert_322 = compile!(device, compiler, Vertex, "shaders/scaled322.vert");
+        let vert_3222 = compile!(device, compiler, Vertex, "shaders/scaled3222.vert");
 
-        let fname = "shaders/scaled32.vert";
-        let source = include_str!("shaders/scaled32.vert");
-        let artifact = compiler.compile_into_spirv(source, Vertex, fname, "main", None)?;
-        let vert_32 = device.create_shader_module(&artifact.as_binary());
-
-        let fname = "shaders/scaled322.vert";
-        let source = include_str!("shaders/scaled322.vert");
-        let artifact = compiler.compile_into_spirv(source, Vertex, fname, "main", None)?;
-        let vert_322 = device.create_shader_module(&artifact.as_binary());
-
-        let fname = "shaders/scaled3222.vert";
-        let source = include_str!("shaders/scaled3222.vert");
-        let artifact = compiler.compile_into_spirv(source, Vertex, fname, "main", None)?;
-        let vert_3222 = device.create_shader_module(&artifact.as_binary());
-
-        let fname = "shaders/flat_round.frag";
-        let source = include_str!("shaders/flat_round.frag");
-        let artifact = compiler.compile_into_spirv(source, Fragment, fname, "main", None)?;
-        let frag_flat_round = device.create_shader_module(&artifact.as_binary());
-
-        let fname = "shaders/shaded_square.frag";
-        let source = include_str!("shaders/shaded_square.frag");
-        let artifact = compiler.compile_into_spirv(source, Fragment, fname, "main", None)?;
-        let frag_shaded_square = device.create_shader_module(&artifact.as_binary());
-
-        let fname = "shaders/shaded_round.frag";
-        let source = include_str!("shaders/shaded_round.frag");
-        let artifact = compiler.compile_into_spirv(source, Fragment, fname, "main", None)?;
-        let frag_shaded_round = device.create_shader_module(&artifact.as_binary());
+        let frag_flat_round = compile!(device, compiler, Fragment, "shaders/flat_round.frag");
+        let frag_shaded_square = compile!(device, compiler, Fragment, "shaders/shaded_square.frag");
+        let frag_shaded_round = compile!(device, compiler, Fragment, "shaders/shaded_round.frag");
 
         Ok(ShaderManager {
             vert_3122,

@@ -6,6 +6,7 @@
 //! Rounded flat pipeline
 
 use std::mem::size_of;
+use wgpu::util::DeviceExt;
 
 use crate::draw::{Rgb, ShaderManager};
 use kas::draw::{Colour, Pass};
@@ -57,7 +58,7 @@ impl<'a> RenderBuffer<'a> {
         let count = self.vertices.len() as u32;
         rpass.set_pipeline(self.pipe);
         rpass.set_bind_group(0, self.bind_group, &[]);
-        rpass.set_vertex_buffer(0, &self.buffer, 0, 0);
+        rpass.set_vertex_buffer(0, self.buffer.slice(..));
         rpass.draw(0..count, 0..1);
     }
 }
@@ -72,20 +73,27 @@ impl Pipeline {
     /// Construct
     pub fn new(device: &wgpu::Device, shaders: &ShaderManager) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            bindings: &[wgpu::BindGroupLayoutEntry {
+            entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStage::VERTEX,
-                ty: wgpu::BindingType::UniformBuffer { dynamic: false },
+                ty: wgpu::BindingType::UniformBuffer {
+                    dynamic: false,
+                    min_binding_size: None, // TODO
+                },
+                count: None,
             }],
             label: None,
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None,
             bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            layout: &pipeline_layout,
+            label: None,
+            layout: Some(&pipeline_layout),
             vertex_stage: wgpu::ProgrammableStageDescriptor {
                 module: &shaders.vert_3122,
                 entry_point: "main",
@@ -97,6 +105,7 @@ impl Pipeline {
             rasterization_state: Some(wgpu::RasterizationStateDescriptor {
                 front_face: wgpu::FrontFace::Ccw,
                 cull_mode: wgpu::CullMode::None,
+                clamp_depth: false,
                 depth_bias: 0,
                 depth_bias_slope_scale: 0.0,
                 depth_bias_clamp: 0.0,
@@ -144,20 +153,19 @@ impl Pipeline {
 
     /// Construct per-window state
     pub fn new_window(&self, device: &wgpu::Device, size: Size) -> Window {
-        let usage = wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST;
-
         type Scale = [f32; 2];
         let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        let scale_buf = device.create_buffer_with_data(bytemuck::cast_slice(&scale_factor), usage);
+        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&scale_factor),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.bind_group_layout,
-            bindings: &[wgpu::Binding {
+            entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: wgpu::BindingResource::Buffer {
-                    buffer: &scale_buf,
-                    range: 0..(size_of::<Scale>() as u64),
-                },
+                resource: wgpu::BindingResource::Buffer(scale_buf.slice(..)),
             }],
             label: None,
         });
@@ -181,8 +189,11 @@ impl Pipeline {
         }
 
         let vertices = &mut window.passes[pass];
-        let buffer = device
-            .create_buffer_with_data(bytemuck::cast_slice(&vertices), wgpu::BufferUsage::VERTEX);
+        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsage::VERTEX,
+        });
 
         Some(RenderBuffer {
             pipe: &self.render_pipeline,
@@ -202,10 +213,11 @@ impl Window {
     ) {
         type Scale = [f32; 2];
         let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        let scale_buf = device.create_buffer_with_data(
-            bytemuck::cast_slice(&scale_factor),
-            wgpu::BufferUsage::COPY_SRC,
-        );
+        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&scale_factor),
+            usage: wgpu::BufferUsage::COPY_SRC,
+        });
         let byte_len = size_of::<Scale>() as u64;
 
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);

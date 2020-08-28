@@ -31,7 +31,6 @@ fn make_depth_texture(device: &wgpu::Device, size: Size) -> Option<TextureView> 
             height: size.1,
             depth: 1,
         },
-        array_layer_count: 1,
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
@@ -39,7 +38,7 @@ fn make_depth_texture(device: &wgpu::Device, size: Size) -> Option<TextureView> 
         usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
         label: None,
     });
-    Some(tex.create_default_view())
+    Some(tex.create_view(&Default::default()))
 }
 
 impl<C: CustomPipe> DrawPipe<C> {
@@ -49,12 +48,18 @@ impl<C: CustomPipe> DrawPipe<C> {
         device: &wgpu::Device,
         shaders: &ShaderManager,
     ) -> Self {
+        // Create staging belt and a local pool
+        let staging_belt = wgpu::util::StagingBelt::new(1024);
+        let local_pool = futures::executor::LocalPool::new();
+
         let shaded_square = shaded_square::Pipeline::new(device, shaders);
         let shaded_round = shaded_round::Pipeline::new(device, shaders);
         let flat_round = flat_round::Pipeline::new(device, shaders);
         let custom = custom.build(&device, TEX_FORMAT, super::DEPTH_FORMAT);
 
         DrawPipe {
+            local_pool,
+            staging_belt,
             shaded_square,
             shaded_round,
             flat_round,
@@ -123,12 +128,13 @@ impl<C: CustomPipe> DrawPipe<C> {
 
     /// Render batched draw instructions via `rpass`
     pub fn render(
-        &self,
+        &mut self,
         window: &mut DrawWindow<C::Window>,
         device: &mut wgpu::Device,
+        queue: &mut wgpu::Queue,
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
-    ) -> wgpu::CommandBuffer {
+    ) {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("render"),
         });
@@ -138,18 +144,21 @@ impl<C: CustomPipe> DrawPipe<C> {
         let mut color_attachments = [wgpu::RenderPassColorAttachmentDescriptor {
             attachment: frame_view,
             resolve_target: None,
-            load_op: wgpu::LoadOp::Clear,
-            store_op: wgpu::StoreOp::Store,
-            clear_color,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(clear_color),
+                store: true,
+            },
         }];
         let mut depth_stencil_attachment = wgpu::RenderPassDepthStencilAttachmentDescriptor {
             attachment: window.depth.as_ref().unwrap(),
-            depth_load_op: wgpu::LoadOp::Clear,
-            depth_store_op: wgpu::StoreOp::Store,
-            stencil_load_op: wgpu::LoadOp::Clear,
-            stencil_store_op: wgpu::StoreOp::Store,
-            clear_depth: kas_theme::START_PASS.depth(),
-            clear_stencil: 0,
+            depth_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(kas_theme::START_PASS.depth()),
+                store: true,
+            }),
+            stencil_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(0),
+                store: true,
+            }),
         };
 
         // We use a separate render pass for each clipped region.
@@ -183,9 +192,15 @@ impl<C: CustomPipe> DrawPipe<C> {
                     .render_pass(&mut window.custom, device, pass, &mut rpass);
             }
 
-            color_attachments[0].load_op = wgpu::LoadOp::Load;
-            depth_stencil_attachment.depth_load_op = wgpu::LoadOp::Load;
-            depth_stencil_attachment.stencil_load_op = wgpu::LoadOp::Load;
+            color_attachments[0].ops.load = wgpu::LoadOp::Load;
+            depth_stencil_attachment.depth_ops = Some(wgpu::Operations {
+                load: wgpu::LoadOp::Load,
+                store: true,
+            });
+            depth_stencil_attachment.stencil_ops = Some(wgpu::Operations {
+                load: wgpu::LoadOp::Load,
+                store: true,
+            });
         }
 
         // Fonts and custom pipes use their own render pass(es).
@@ -204,6 +219,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             .glyph_brush
             .draw_queued(
                 device,
+                &mut self.staging_belt,
                 &mut encoder,
                 frame_view,
                 depth_stencil_attachment,
@@ -215,7 +231,15 @@ impl<C: CustomPipe> DrawPipe<C> {
         // Keep only first clip region (which is the entire window)
         window.clip_regions.truncate(1);
 
-        encoder.finish()
+        queue.submit(std::iter::once(encoder.finish()));
+
+        // TODO: does this have to be after queue.submit?
+        use futures::task::SpawnExt;
+        self.local_pool
+            .spawner()
+            .spawn(self.staging_belt.recall())
+            .expect("Recall staging belt");
+        self.local_pool.run_until_stalled();
     }
 }
 

@@ -84,9 +84,9 @@ where
 
         // draw was initially created with Size::ZERO; we must resize
         let buf = shared.draw.resize(&mut draw, &shared.device, size);
-        shared.queue.submit(&[buf]);
+        shared.queue.submit(std::iter::once(buf));
 
-        let surface = wgpu::Surface::create(&window);
+        let surface = unsafe { shared.instance.create_surface(&window) };
         let sc_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
             format: TEX_FORMAT,
@@ -334,7 +334,7 @@ where
         }
 
         let buf = shared.draw.resize(&mut self.draw, &shared.device, size);
-        shared.queue.submit(&[buf]);
+        shared.queue.submit(std::iter::once(buf));
 
         self.sc_desc.width = size.0;
         self.sc_desc.height = size.1;
@@ -366,9 +366,10 @@ where
         self.widget.draw(&mut draw_handle, &self.mgr, false);
         drop(draw_handle);
 
-        let frame = self.swap_chain.get_next_texture().unwrap();
+        let frame = self.swap_chain.get_current_frame().unwrap();
+        // TODO: check frame.optimal ?
         let clear_color = to_wgpu_color(shared.theme.clear_colour());
-        shared.render(&mut self.draw, &frame.view, clear_color);
+        shared.render(&mut self.draw, &frame.output.view, clear_color);
     }
 }
 

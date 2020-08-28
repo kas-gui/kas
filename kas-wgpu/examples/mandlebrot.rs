@@ -9,7 +9,8 @@
 
 use shaderc::{Compiler, ShaderKind};
 use std::mem::size_of;
-use wgpu::{Buffer, ShaderModule};
+use wgpu::util::DeviceExt;
+use wgpu::{Buffer, ShaderModule, ShaderModuleSource};
 
 use kas::class::SetText;
 use kas::draw::Pass;
@@ -93,12 +94,14 @@ impl Shaders {
         let artifact = compiler
             .compile_into_spirv(VERTEX, ShaderKind::Vertex, "VERTEX", "main", None)
             .unwrap();
-        let vertex = device.create_shader_module(&artifact.as_binary());
+        let spirv = ShaderModuleSource::SpirV(artifact.as_binary().into());
+        let vertex = device.create_shader_module(spirv);
 
         let artifact = compiler
             .compile_into_spirv(FRAGMENT, ShaderKind::Fragment, "FRAGMENT", "main", None)
             .unwrap();
-        let fragment = device.create_shader_module(&artifact.as_binary());
+        let spirv = ShaderModuleSource::SpirV(artifact.as_binary().into());
+        let fragment = device.create_shader_module(spirv);
 
         Shaders { vertex, fragment }
     }
@@ -125,32 +128,47 @@ impl CustomPipeBuilder for PipeBuilder {
         let shaders = Shaders::compile(device);
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            bindings: &[
+            entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::UniformBuffer { dynamic: false },
+                    ty: wgpu::BindingType::UniformBuffer {
+                        dynamic: false,
+                        min_binding_size: None, // TODO
+                    },
+                    count: None,
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::UniformBuffer { dynamic: false },
+                    ty: wgpu::BindingType::UniformBuffer {
+                        dynamic: false,
+                        min_binding_size: None, // TODO
+                    },
+                    count: None,
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 2,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::UniformBuffer { dynamic: false },
+                    ty: wgpu::BindingType::UniformBuffer {
+                        dynamic: false,
+                        min_binding_size: None, // TODO
+                    },
+                    count: None,
                 },
             ],
             label: None,
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None,
             bind_group_layouts: &[&bind_group_layout],
+            push_constant_ranges: &[],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            layout: &pipeline_layout,
+            label: None,
+            layout: Some(&pipeline_layout),
             vertex_stage: wgpu::ProgrammableStageDescriptor {
                 module: &shaders.vertex,
                 entry_point: "main",
@@ -162,6 +180,7 @@ impl CustomPipeBuilder for PipeBuilder {
             rasterization_state: Some(wgpu::RasterizationStateDescriptor {
                 front_face: wgpu::FrontFace::Ccw,
                 cull_mode: wgpu::CullMode::None,
+                clamp_depth: false,
                 depth_bias: 0,
                 depth_bias_slope_scale: 0.0,
                 depth_bias_clamp: 0.0,
@@ -177,10 +196,12 @@ impl CustomPipeBuilder for PipeBuilder {
                 format: depth_format,
                 depth_write_enabled: true,
                 depth_compare: wgpu::CompareFunction::Always,
-                stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
-                stencil_back: wgpu::StencilStateFaceDescriptor::IGNORE,
-                stencil_read_mask: 0,
-                stencil_write_mask: 0,
+                stencil: wgpu::StencilStateDescriptor {
+                    front: wgpu::StencilStateFaceDescriptor::IGNORE,
+                    back: wgpu::StencilStateFaceDescriptor::IGNORE,
+                    read_mask: 0,
+                    write_mask: 0,
+                },
             }),
             vertex_state: wgpu::VertexStateDescriptor {
                 index_format: wgpu::IndexFormat::Uint16,
@@ -227,41 +248,42 @@ impl CustomPipe for Pipe {
     type Window = PipeWindow;
 
     fn new_window(&self, device: &wgpu::Device, size: Size) -> Self::Window {
-        let usage = wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST;
-
         let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        let scale_buf = device.create_buffer_with_data(bytemuck::cast_slice(&scale_factor), usage);
+        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&scale_factor),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
 
         let rect: UnifRect = (DVec2::splat(0.0), DVec2::splat(1.0));
         let rect_arr = unif_rect_as_arr(rect);
-        let rect_buf = device.create_buffer_with_data(bytemuck::cast_slice(&rect_arr), usage);
+        let rect_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&rect_arr),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
 
         let iter = [64];
-        let iter_buf = device.create_buffer_with_data(bytemuck::cast_slice(&iter), usage);
+        let iter_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&iter),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.bind_group_layout,
-            bindings: &[
-                wgpu::Binding {
+            entries: &[
+                wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &scale_buf,
-                        range: 0..(size_of::<Scale>() as u64),
-                    },
+                    resource: wgpu::BindingResource::Buffer(scale_buf.slice(..)),
                 },
-                wgpu::Binding {
+                wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &rect_buf,
-                        range: 0..(size_of::<UnifRect>() as u64),
-                    },
+                    resource: wgpu::BindingResource::Buffer(rect_buf.slice(..)),
                 },
-                wgpu::Binding {
+                wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &iter_buf,
-                        range: 0..(size_of::<i32>() as u64),
-                    },
+                    resource: wgpu::BindingResource::Buffer(iter_buf.slice(..)),
                 },
             ],
             label: None,
@@ -287,10 +309,11 @@ impl CustomPipe for Pipe {
     ) {
         type Scale = [f32; 2];
         let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        let scale_buf = device.create_buffer_with_data(
-            bytemuck::cast_slice(&scale_factor),
-            wgpu::BufferUsage::COPY_SRC,
-        );
+        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&scale_factor),
+            usage: wgpu::BufferUsage::COPY_SRC,
+        });
 
         let byte_len = size_of::<Scale>() as u64;
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &window.scale_buf, 0, byte_len);
@@ -302,16 +325,22 @@ impl CustomPipe for Pipe {
         device: &wgpu::Device,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        let usage = wgpu::BufferUsage::COPY_SRC;
-
         let rect_arr = unif_rect_as_arr(window.rect);
-        let rect_buf = device.create_buffer_with_data(bytemuck::cast_slice(&rect_arr), usage);
+        let rect_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&rect_arr),
+            usage: wgpu::BufferUsage::COPY_SRC,
+        });
 
         let byte_len = size_of::<UnifRect>() as u64;
         encoder.copy_buffer_to_buffer(&rect_buf, 0, &window.rect_buf, 0, byte_len);
 
         let iter = [window.iterations];
-        let iter_buf = device.create_buffer_with_data(bytemuck::cast_slice(&iter), usage);
+        let iter_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&iter),
+            usage: wgpu::BufferUsage::COPY_SRC,
+        });
 
         let byte_len = size_of::<i32>() as u64;
         encoder.copy_buffer_to_buffer(&iter_buf, 0, &window.iter_buf, 0, byte_len);
@@ -321,10 +350,11 @@ impl CustomPipe for Pipe {
         // See https://github.com/gfx-rs/wgpu-rs/issues/188
         for pass in &mut window.passes {
             if pass.0.len() > 0 {
-                let buffer = device.create_buffer_with_data(
-                    bytemuck::cast_slice(&pass.0),
-                    wgpu::BufferUsage::VERTEX,
-                );
+                let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: None,
+                    contents: bytemuck::cast_slice(&pass.0),
+                    usage: wgpu::BufferUsage::VERTEX,
+                });
                 pass.1 = Some(buffer);
                 pass.2 = pass.0.len() as u32;
                 pass.0.clear();
@@ -345,7 +375,7 @@ impl CustomPipe for Pipe {
             if let Some(buffer) = tuple.1.as_ref() {
                 rpass.set_pipeline(&self.render_pipeline);
                 rpass.set_bind_group(0, &window.bind_group, &[]);
-                rpass.set_vertex_buffer(0, buffer, 0, 0);
+                rpass.set_vertex_buffer(0, buffer.slice(..));
                 rpass.draw(0..tuple.2, 0..1);
             }
         }
