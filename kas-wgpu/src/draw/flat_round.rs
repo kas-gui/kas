@@ -73,6 +73,7 @@ impl Pipeline {
     /// Construct
     pub fn new(device: &wgpu::Device, shaders: &ShaderManager) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("FR bind_group_layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
                 visibility: wgpu::ShaderStage::VERTEX,
@@ -82,17 +83,16 @@ impl Pipeline {
                 },
                 count: None,
             }],
-            label: None,
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
+            label: Some("FR pipeline_layout"),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: None,
+            label: Some("FR render_pipeline"),
             layout: Some(&pipeline_layout),
             vertex_stage: wgpu::ProgrammableStageDescriptor {
                 module: &shaders.vert_3122,
@@ -156,18 +156,18 @@ impl Pipeline {
         type Scale = [f32; 2];
         let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
         let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
+            label: Some("FR scale_buf"),
             contents: bytemuck::cast_slice(&scale_factor),
             usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
         });
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("FR bind_group"),
             layout: &self.bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: wgpu::BindingResource::Buffer(scale_buf.slice(..)),
             }],
-            label: None,
         });
 
         Window {
@@ -190,7 +190,7 @@ impl Pipeline {
 
         let vertices = &mut window.passes[pass];
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
+            label: Some("FR render_buf"),
             contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsage::VERTEX,
         });
@@ -214,7 +214,7 @@ impl Window {
         type Scale = [f32; 2];
         let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
         let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
+            label: Some("FR scale_buf copy"),
             contents: bytemuck::cast_slice(&scale_factor),
             usage: wgpu::BufferUsage::COPY_SRC,
         });

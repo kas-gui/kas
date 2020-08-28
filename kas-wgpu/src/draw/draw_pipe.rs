@@ -26,6 +26,7 @@ fn make_depth_texture(device: &wgpu::Device, size: Size) -> Option<TextureView> 
     }
 
     let tex = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("window depth"),
         size: wgpu::Extent3d {
             width: size.0,
             height: size.1,
@@ -36,7 +37,6 @@ fn make_depth_texture(device: &wgpu::Device, size: Size) -> Option<TextureView> 
         dimension: wgpu::TextureDimension::D2,
         format: super::DEPTH_FORMAT,
         usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-        label: None,
     });
     Some(tex.create_view(&Default::default()))
 }
