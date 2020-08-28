@@ -1,6 +1,6 @@
 [package]
 name = "kas-theme"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -30,7 +30,7 @@ stack_dst_ = { version = "0.6", package = "stack_dst", optional = true }
 
 [dependencies.kas]
 path = ".."
-version = "0.4.0"
+version = "0.5.0"
 
 [package.metadata.docs.rs]
 features = ["stack_dst"]

@@ -20,6 +20,7 @@ use clipboard::{ClipboardContext, ClipboardProvider};
 pub struct SharedState<C: CustomPipe, T> {
     #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
+    pub instance: wgpu::Instance,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
     pub shaders: ShaderManager,
@@ -52,10 +53,9 @@ where
             }
         };
 
+        let instance = wgpu::Instance::new(options.backend());
         let adapter_options = options.adapter_options();
-        let backend = options.backend();
-
-        let req = wgpu::Adapter::request(&adapter_options, backend);
+        let req = instance.request_adapter(&adapter_options);
         let adapter = match futures::executor::block_on(req) {
             Some(a) => a,
             None => return Err(Error::NoAdapter),
@@ -63,13 +63,12 @@ where
         info!("Using graphics adapter: {}", adapter.get_info().name);
 
         let desc = wgpu::DeviceDescriptor {
-            extensions: wgpu::Extensions {
-                anisotropic_filtering: false,
-            },
-            limits: wgpu::Limits::default(),
+            features: Default::default(),
+            limits: Default::default(),
+            shader_validation: true,
         };
-        let req = adapter.request_device(&desc);
-        let (device, queue) = futures::executor::block_on(req);
+        let req = adapter.request_device(&desc, None);
+        let (device, queue) = futures::executor::block_on(req)?;
 
         let shaders = ShaderManager::new(&device)?;
         let mut draw = DrawPipe::new(custom, &device, &shaders);
@@ -79,6 +78,7 @@ where
         Ok(SharedState {
             #[cfg(feature = "clipboard")]
             clipboard,
+            instance,
             device,
             queue,
             shaders,
@@ -101,10 +101,13 @@ where
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) {
-        let buf = self
-            .draw
-            .render(window, &mut self.device, frame_view, clear_color);
-        self.queue.submit(&[buf]);
+        self.draw.render(
+            window,
+            &mut self.device,
+            &mut self.queue,
+            frame_view,
+            clear_color,
+        );
     }
 
     #[cfg(not(feature = "clipboard"))]

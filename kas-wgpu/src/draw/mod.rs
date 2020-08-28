@@ -31,10 +31,12 @@ const fn new_depth_desc(depth_compare: CompareFunction) -> DepthStencilStateDesc
         format: DEPTH_FORMAT,
         depth_write_enabled: true,
         depth_compare,
-        stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
-        stencil_back: wgpu::StencilStateFaceDescriptor::IGNORE,
-        stencil_read_mask: 0,
-        stencil_write_mask: 0,
+        stencil: wgpu::StencilStateDescriptor {
+            front: wgpu::StencilStateFaceDescriptor::IGNORE,
+            back: wgpu::StencilStateFaceDescriptor::IGNORE,
+            read_mask: 0,
+            write_mask: 0,
+        },
     }
 }
 const DEPTH_DESC: DepthStencilStateDescriptor = new_depth_desc(CompareFunction::Always);
@@ -61,6 +63,8 @@ impl From<kas::draw::Colour> for Rgb {
 
 /// Shared pipeline data
 pub struct DrawPipe<C> {
+    local_pool: futures::executor::LocalPool,
+    staging_belt: wgpu::util::StagingBelt,
     shaded_square: shaded_square::Pipeline,
     shaded_round: shaded_round::Pipeline,
     flat_round: flat_round::Pipeline,
