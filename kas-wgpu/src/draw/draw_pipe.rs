@@ -231,6 +231,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         // Keep only first clip region (which is the entire window)
         window.clip_regions.truncate(1);
 
+        self.staging_belt.finish();
         queue.submit(std::iter::once(encoder.finish()));
 
         // TODO: does this have to be after queue.submit?
