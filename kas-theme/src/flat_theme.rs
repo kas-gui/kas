@@ -16,13 +16,12 @@ use kas::draw::{
     SizeHandle, TextClass, TextEffect,
 };
 use kas::geom::*;
-use kas::text::{FontId, PreparedText};
+use kas::text::PreparedText;
 use kas::{Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
 pub struct FlatTheme {
-    font_id: FontId,
     font_size: f32,
     cols: ThemeColours,
 }
@@ -31,7 +30,6 @@ impl FlatTheme {
     /// Construct
     pub fn new() -> Self {
         FlatTheme {
-            font_id: Default::default(),
             font_size: 12.0,
             cols: ThemeColours::new(),
         }
@@ -68,15 +66,17 @@ where
     type DrawHandle<'a> = DrawHandle<'a, D::Draw>;
 
     fn init(&mut self, _draw: &mut D) {
-        self.font_id = kas::text::fonts().load_default().unwrap();
+        if let Err(e) = kas::text::fonts().load_default() {
+            panic!("Error loading font: {}", e);
+        }
     }
 
     fn new_window(&self, _draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
-        DimensionsWindow::new(DIMS, self.font_id, self.font_size, dpi_factor)
+        DimensionsWindow::new(DIMS, self.font_size, dpi_factor)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        window.dims = Dimensions::new(DIMS, self.font_id, self.font_size, dpi_factor);
+        window.dims = Dimensions::new(DIMS, self.font_size, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
