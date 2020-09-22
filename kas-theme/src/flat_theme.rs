@@ -321,10 +321,12 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         class: TextClass,
         byte: usize,
     ) {
-        let p = Vec2::from(pos + self.offset);
-        let bounds = Quad::with_pos_and_size(p, text.env().bounds.into());
-        let pos = Vec2::from(pos - offset + self.offset);
         let width = self.window.dims.font_marker_width;
+        let p = Vec2::from(pos + self.offset);
+        let mut size: Vec2 = text.env().bounds.into();
+        size.0 += width;
+        let bounds = Quad::with_pos_and_size(p, size);
+        let pos = Vec2::from(pos - offset + self.offset);
 
         let mut col = self.cols.text_class(class);
         for cursor in text.text_glyph_pos(byte).rev() {

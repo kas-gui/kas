@@ -159,7 +159,6 @@ pub struct EditBox<G: 'static> {
     frame_size: Size,
     text_pos: Coord,
     view_offset: Coord,
-    marker_width: f32,
     editable: bool,
     multi_line: bool,
     text: PreparedText,
@@ -205,12 +204,14 @@ impl<G: 'static> Layout for EditBox<G> {
         let content_rules = size_handle.text_bound(&mut self.text, class, axis);
         let m = content_rules.margins();
 
+        // Note: we do not allocate space for the edit marker (size_handle.edit_marker_width());
+        // instead we simply draw it in the margin (inner_margin() should be sufficient).
+
         let rules = content_rules.surrounded_by(frame_rules, true);
         if axis.is_horizontal() {
             self.core.rect.size.0 = rules.ideal_size();
             self.frame_offset.0 = frame_offset.0 as i32 + m.0 as i32;
             self.frame_size.0 = frame_size.0 + (m.0 + m.1) as u32;
-            self.marker_width = size_handle.edit_marker_width();
         } else {
             self.core.rect.size.1 = rules.ideal_size();
             self.frame_offset.1 = frame_offset.1 as i32 + m.0 as i32;
@@ -286,7 +287,6 @@ impl EditBox<EditVoid> {
             frame_size: Default::default(),
             text_pos: Default::default(),
             view_offset: Default::default(),
-            marker_width: Default::default(),
             editable: true,
             multi_line: false,
             text: PreparedText::new_single(text.into()),
@@ -316,7 +316,6 @@ impl EditBox<EditVoid> {
             frame_size: self.frame_size,
             text_pos: self.text_pos,
             view_offset: self.view_offset,
-            marker_width: self.marker_width,
             editable: self.editable,
             multi_line: self.multi_line,
             text: self.text,
@@ -762,8 +761,7 @@ impl<G> EditBox<G> {
     }
 
     fn pan_delta(&mut self, mgr: &mut Manager, delta: Coord) -> bool {
-        let mut req = Vec2::from(self.text.required_size());
-        req.0 += self.marker_width;
+        let req = Vec2::from(self.text.required_size());
         let bounds = Vec2::from(self.text.env().bounds);
         let max_offset = (req - bounds).ceil();
         let max_offset = Coord::from(max_offset).max(Coord::ZERO);
@@ -783,15 +781,14 @@ impl<G> EditBox<G> {
     fn set_view_offset_from_edit_pos(&mut self) {
         let bounds = self.text.env().bounds;
         if let Some(marker) = self.text.text_glyph_pos(self.edit_pos).next_back() {
-            let min_x = (marker.pos.0 + self.marker_width - bounds.0).ceil();
+            let min_x = (marker.pos.0 - bounds.0).ceil();
             let min_y = (marker.pos.1 - marker.descent - bounds.1).ceil();
             let max_x = (marker.pos.0).floor();
             let max_y = (marker.pos.1 - marker.ascent).floor();
             let min = Coord(min_x as i32, min_y as i32);
             let max = Coord(max_x as i32, max_y as i32);
 
-            let mut req = Vec2::from(self.text.required_size());
-            req.0 += self.marker_width;
+            let req = Vec2::from(self.text.required_size());
             let bounds = Vec2::from(self.text.env().bounds);
             let max_offset = (req - bounds).ceil();
             let max_offset = Coord::from(max_offset).max(Coord::ZERO);
