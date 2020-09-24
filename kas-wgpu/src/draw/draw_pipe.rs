@@ -90,7 +90,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let flat_round = self.flat_round.new_window(device, size);
         let custom = self.custom.new_window(device, size);
 
-        let fonts = kas::text::fonts().ab_glyph_fonts_vec();
+        let fonts = kas::text::fonts::fonts().ab_glyph_fonts_vec();
         let glyph_brush = GlyphBrushBuilder::using_fonts(fonts)
             .depth_stencil_state(super::GLPYH_DEPTH_DESC)
             .build(device, TEX_FORMAT);
