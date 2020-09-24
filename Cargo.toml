@@ -27,6 +27,9 @@ internal_doc = []
 # depends on position and context (especially important for Arabic).
 shaping = ["kas-text/shaping"]
 
+# Enable Markdown parsing
+markdown = ["kas-text/markdown"]
+
 [dependencies]
 log = "0.4"
 smallvec = "1.4"
@@ -41,7 +44,7 @@ path = "kas-macros"
 [dependencies.kas-text]
 version = "0.1.2"
 git = "https://github.com/kas-gui/kas-text"
-rev = "dc975386ed7f018a219b7231995b52c28ab7ebf0"
+rev = "eaca89195625f2c7a98737a4a882c8082f6d0568"
 
 [dependencies.winit]
 # Provides translations for several winit types

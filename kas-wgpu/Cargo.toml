@@ -46,6 +46,7 @@ optional = true
 [dev-dependencies]
 chrono = "0.4"
 env_logger = "0.7"
+kas = { path = "..", features = ["markdown", "winit"] }
 
 [package.metadata.docs.rs]
 # NOTE: clipboard feature is causing build failures
