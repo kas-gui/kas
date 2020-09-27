@@ -5,9 +5,7 @@
 
 //! Shader management
 
-use shaderc::ShaderKind::{Fragment, Vertex};
-use shaderc::{Compiler, Error};
-use wgpu::{ShaderModule, ShaderModuleSource};
+use wgpu::{include_spirv, ShaderModule};
 
 /// Shader manager
 ///
@@ -25,29 +23,23 @@ pub struct ShaderManager {
 }
 
 macro_rules! compile {
-    ($device:ident, $compiler:ident, $type:ident, $path:expr) => {{
-        let fname = $path;
-        let source = include_str!($path);
-        let artifact = $compiler.compile_into_spirv(source, $type, fname, "main", None)?;
-        let bin = ShaderModuleSource::SpirV(artifact.as_binary().into());
-        $device.create_shader_module(bin)
+    ($device:ident, $path:expr) => {{
+        $device.create_shader_module(include_spirv!($path))
     }};
 }
 
 impl ShaderManager {
-    pub fn new(device: &wgpu::Device) -> Result<Self, Error> {
-        let mut compiler = Compiler::new().unwrap();
+    pub fn new(device: &wgpu::Device) -> Self {
+        let vert_3122 = compile!(device, "shaders/scaled3122.vert.spv");
+        let vert_32 = compile!(device, "shaders/scaled32.vert.spv");
+        let vert_322 = compile!(device, "shaders/scaled322.vert.spv");
+        let vert_3222 = compile!(device, "shaders/scaled3222.vert.spv");
 
-        let vert_3122 = compile!(device, compiler, Vertex, "shaders/scaled3122.vert");
-        let vert_32 = compile!(device, compiler, Vertex, "shaders/scaled32.vert");
-        let vert_322 = compile!(device, compiler, Vertex, "shaders/scaled322.vert");
-        let vert_3222 = compile!(device, compiler, Vertex, "shaders/scaled3222.vert");
+        let frag_flat_round = compile!(device, "shaders/flat_round.frag.spv");
+        let frag_shaded_square = compile!(device, "shaders/shaded_square.frag.spv");
+        let frag_shaded_round = compile!(device, "shaders/shaded_round.frag.spv");
 
-        let frag_flat_round = compile!(device, compiler, Fragment, "shaders/flat_round.frag");
-        let frag_shaded_square = compile!(device, compiler, Fragment, "shaders/shaded_square.frag");
-        let frag_shaded_round = compile!(device, compiler, Fragment, "shaders/shaded_round.frag");
-
-        Ok(ShaderManager {
+        ShaderManager {
             vert_3122,
             vert_32,
             vert_322,
@@ -55,6 +47,6 @@ impl ShaderManager {
             frag_flat_round,
             frag_shaded_square,
             frag_shaded_round,
-        })
+        }
     }
 }
