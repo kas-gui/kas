@@ -46,6 +46,9 @@ optional = true
 chrono = "0.4"
 env_logger = "0.7"
 
+[build-dependencies]
+glob = "0.3"
+
 [package.metadata.docs.rs]
 # NOTE: clipboard feature is causing build failures
 # https://github.com/kas-gui/kas/issues/83
