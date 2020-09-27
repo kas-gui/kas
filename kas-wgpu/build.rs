@@ -1,3 +1,18 @@
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License in the LICENSE-APACHE file or at:
+//     https://www.apache.org/licenses/LICENSE-2.0
+
+//! Build script — shader compiler
+//!
+//! This script scans the directory (of the Cargo.toml manifest) for *.vert and
+//! *.frag files, and compiles each to *.vert.spv etc., but only if missing or
+//! out-of-date.
+//!
+//! Expects to find `glslc` (part of shaderc) on your path. On Linux this can
+//! be installed with `sudo dnf install glslc` or similar. If all shaders are
+//! up-to-date then this should not be required.
+
 #![deny(warnings)]
 
 use glob::glob;
