@@ -4,6 +4,24 @@ KAS WGPU
 Toolkit rendering over the [wgpu](https://crates.io/crates/wgpu) lib.
 
 
+Compiling shaders
+-----------------
+
+This library uses GLSL shaders. Pre-compiled SPIR-V modules are distributed so
+that users do not need a shader compiler.
+
+For working on GLSL shaders, a compiler such as `glslc` (part of the [shaderc]
+project) is required. `glslc` can be installed from Fedora packages, but on
+other platforms manual installation may be required. Alternatively a web-based
+tool such as [glslang.js] may be used.
+
+Automatic re-compilation may be enabled by setting e.g. `SHADERC=glslc`.
+See [`build.rs`] for details.
+
+[glslang.js]: https://alexaltea.github.io/glslang.js/
+[shaderc]: https://github.com/google/shaderc
+
+
 Optional features
 -------
 

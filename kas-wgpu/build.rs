@@ -5,13 +5,19 @@
 
 //! Build script — shader compiler
 //!
-//! This script scans the directory (of the Cargo.toml manifest) for *.vert and
-//! *.frag files, and compiles each to *.vert.spv etc., but only if missing or
-//! out-of-date.
+//! This script scans the directory (of the Cargo.toml manifest) for `*.vert`
+//! and `*.frag` files, and compiles each to `*.vert.spv` etc., but only if
+//! missing or out-of-date.
 //!
-//! Expects to find `glslc` (part of shaderc) on your path. On Linux this can
-//! be installed with `sudo dnf install glslc` or similar. If all shaders are
-//! up-to-date then this should not be required.
+//! To enable shader compilation, install a compiler such as glslc and set
+//! `SHADERC=<PATH>`. For example, add this to your `~/.bash_profile`:
+//! ```
+//! export SHADERC=glslc
+//! ```
+//!
+//! Warning: change detection is not perfect: this script will not automatically
+//! be run when new `.vert` or `.frag` files are created. The easiest way to fix
+//! this is to touch (re-save) any existing `.vert`/`.frag` file.
 
 #![deny(warnings)]
 
@@ -23,11 +29,18 @@ use std::process::{Child, Command};
 fn main() {
     let mut runners = Vec::new();
 
+    println!("cargo:rerun-if-env-changed=SHADERC");
+    let shaderc = match env::var("SHADERC") {
+        Ok(s) => Some(s),
+        Err(env::VarError::NotPresent) => None,
+        Err(e) => panic!("failed to read env var SHADERC: {}", e),
+    };
+
     let mut pat = String::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     pat.push_str("/**/*.vert");
-    walk(&pat, &mut runners);
+    walk(&pat, &shaderc, &mut runners);
     pat.replace_range((pat.len() - 4).., "frag");
-    walk(&pat, &mut runners);
+    walk(&pat, &shaderc, &mut runners);
 
     for mut r in runners {
         let status = r.wait().unwrap();
@@ -37,8 +50,10 @@ fn main() {
     }
 }
 
-fn walk(pat: &str, runners: &mut Vec<Child>) {
+fn walk(pat: &str, shaderc: &Option<String>, runners: &mut Vec<Child>) {
     for path in glob(pat).unwrap().filter_map(Result::ok) {
+        println!("cargo:rerun-if-changed={}", path.display());
+
         let mut path_spv = path.clone().into_os_string();
         path_spv.push(".spv");
         let path_spv = PathBuf::from(path_spv);
@@ -50,11 +65,18 @@ fn walk(pat: &str, runners: &mut Vec<Child>) {
             Err(_) => true,
         };
         if gen {
-            // Shader compilation uses glslc (part of shaderc).
-            let mut cmd = Command::new("glslc");
-            cmd.arg(&path).arg("-o").arg(&path_spv);
-            println!("Launching: {:?}", cmd);
-            runners.push(cmd.spawn().expect("shader compiler failed to start"));
+            if let Some(bin) = shaderc.as_ref() {
+                let mut cmd = Command::new(bin);
+                cmd.arg(&path).arg("-o").arg(&path_spv);
+                println!("Launching: {:?}", cmd);
+                runners.push(cmd.spawn().expect("shader compiler failed to start"));
+            } else {
+                println!(
+                    "cargo:warning=Shader compilation required: {}",
+                    path.display()
+                );
+                println!("cargo:warning=No shader found. If you have a shader compiler such as glslc installed, try setting SHADERC=glslc");
+            }
         }
     }
 }

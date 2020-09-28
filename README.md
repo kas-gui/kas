@@ -94,6 +94,7 @@ Install dependencies:
 sudo apt-get install build-essential git libxcb-shape0-dev libxcb-xfixes0-dev libharfbuzz-dev
 
 # For Fedora:
+# glslc is optional; see kas-wgpu/README.md
 sudo dnf install libxcb-devel harfbuzz-devel glslc
 ```
 
@@ -109,17 +110,6 @@ cargo run --example gallery
 cargo run --example layout
 cargo run --example mandlebrot
 ```
-
-#### Shader compiler
-
-For working on GLSL shaders, `glslc` is required. This is part of the [shaderc]
-project, and packaged directly for Fedora, but on other platforms manual
-installation or use of user repositories may be required. It is expected to be
-found on your path. See `kas-wgpu/build.rs`.
-
-If not working on shaders, this tool should not be required.
-
-[shaderc]: https://github.com/google/shaderc
 
 ### Crates
 
