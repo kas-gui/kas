@@ -13,7 +13,7 @@ use std::f32;
 use kas::draw::{self, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
-use kas::text::{FontId, PreparedText};
+use kas::text::PreparedText;
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -40,7 +40,6 @@ pub struct DimensionsParams {
 pub struct Dimensions {
     pub scale_factor: f32,
     pub dpp: f32,
-    pub font_id: FontId,
     pub pt_size: f32,
     pub font_marker_width: f32,
     pub line_height: u32,
@@ -56,10 +55,14 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
-    pub fn new(params: DimensionsParams, font_id: FontId, pt_size: f32, scale_factor: f32) -> Self {
+    pub fn new(params: DimensionsParams, pt_size: f32, scale_factor: f32) -> Self {
+        let font_id = Default::default();
         let dpp = scale_factor * (96.0 / 72.0);
         let dpem = dpp * pt_size;
-        let line_height = kas::text::fonts().get(font_id).line_height(dpem).ceil() as u32;
+        let line_height = kas::text::fonts::fonts()
+            .get(font_id)
+            .line_height(dpem)
+            .ceil() as u32;
 
         let outer_margin = (params.outer_margin * scale_factor).round() as u32;
         let inner_margin = (params.inner_margin * scale_factor).round() as u32;
@@ -67,7 +70,6 @@ impl Dimensions {
         Dimensions {
             scale_factor,
             dpp,
-            font_id,
             pt_size,
             font_marker_width: (1.6 * scale_factor).round().max(1.0),
             line_height,
@@ -90,9 +92,9 @@ pub struct DimensionsWindow {
 }
 
 impl DimensionsWindow {
-    pub fn new(dims: DimensionsParams, font_id: FontId, font_size: f32, scale_factor: f32) -> Self {
+    pub fn new(dims: DimensionsParams, font_size: f32, scale_factor: f32) -> Self {
         DimensionsWindow {
-            dims: Dimensions::new(dims, font_id, font_size, scale_factor),
+            dims: Dimensions::new(dims, font_size, scale_factor),
         }
     }
 }

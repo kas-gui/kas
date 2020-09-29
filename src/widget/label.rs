@@ -52,12 +52,23 @@ impl Layout for Label {
 }
 
 impl Label {
-    /// Construct a new, empty instance
+    /// Construct from label text
     pub fn new<T: Into<LabelString>>(label: T) -> Self {
         Label {
             core: Default::default(),
             reserve: None,
             label: PreparedText::new_multi(label.into().deref().into()),
+        }
+    }
+
+    /// Construct from Markdown
+    #[cfg(feature = "markdown")]
+    pub fn from_md(text: &str) -> Self {
+        let text = kas::text::rich::Text::from_md(text);
+        Label {
+            core: Default::default(),
+            reserve: None,
+            label: PreparedText::new_multi(text),
         }
     }
 
