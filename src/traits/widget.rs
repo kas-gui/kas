@@ -8,7 +8,6 @@
 use std::any::Any;
 use std::fmt;
 
-use super::Boxed;
 use crate::draw::{DrawHandle, InputState, SizeHandle};
 use crate::event::{self, ConfigureManager, Manager, ManagerState};
 use crate::geom::{Coord, Rect};
@@ -487,6 +486,12 @@ pub trait Layout: WidgetChildren {
 ///
 /// [`derive(Widget)`]: macros/index.html#the-derivewidget-macro
 pub trait Widget: event::SendEvent {}
+
+/// Provides a convenient `.boxed()` method on implementors
+pub trait Boxed<T: ?Sized> {
+    /// Boxing method
+    fn boxed(self) -> Box<T>;
+}
 
 impl<W: Widget + Sized> Boxed<dyn Widget<Msg = W::Msg>> for W {
     fn boxed(self) -> Box<dyn Widget<Msg = W::Msg>> {

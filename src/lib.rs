@@ -20,7 +20,6 @@
 //! This document is a reference manual. There is currently no tutorial, but the
 //! [examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
 //! provide a starting point.
-#![cfg_attr(feature = "nightly", feature(new_uninit))]
 
 #[cfg(not(feature = "winit"))]
 #[macro_use]

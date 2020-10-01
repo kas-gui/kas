@@ -34,6 +34,6 @@ pub use kas::{Align, AlignHints, Direction, Directional, WidgetId};
 #[doc(no_inline)]
 pub use kas::{Boxed, TkAction, TkWindow};
 #[doc(no_inline)]
-pub use kas::{CloneTo, Layout, ThemeApi, Widget, WidgetChildren, WidgetConfig, WidgetCore};
-#[doc(no_inline)]
 pub use kas::{CoreData, LayoutData};
+#[doc(no_inline)]
+pub use kas::{Layout, ThemeApi, Widget, WidgetChildren, WidgetConfig, WidgetCore};
