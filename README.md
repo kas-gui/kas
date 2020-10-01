@@ -91,10 +91,11 @@ Install dependencies:
 
 ```sh
 # For Ubuntu:
-sudo apt-get install build-essential git cmake libxcb-shape0-dev libxcb-xfixes0-dev libharfbuzz-dev
+sudo apt-get install build-essential git libxcb-shape0-dev libxcb-xfixes0-dev libharfbuzz-dev
 
 # For Fedora:
-sudo dnf install cmake libxcb-devel harfbuzz-devel
+# glslc is optional; see kas-wgpu/README.md
+sudo dnf install libxcb-devel harfbuzz-devel glslc
 ```
 
 Next, clone the repository and run the examples as follows:

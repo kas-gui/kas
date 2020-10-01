@@ -70,7 +70,7 @@ where
         let req = adapter.request_device(&desc, None);
         let (device, queue) = futures::executor::block_on(req)?;
 
-        let shaders = ShaderManager::new(&device)?;
+        let shaders = ShaderManager::new(&device);
         let mut draw = DrawPipe::new(custom, &device, &shaders);
 
         theme.init(&mut draw);

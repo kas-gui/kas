@@ -7,10 +7,9 @@
 //!
 //! Demonstrates use of a custom draw pipe.
 
-use shaderc::{Compiler, ShaderKind};
 use std::mem::size_of;
 use wgpu::util::DeviceExt;
-use wgpu::{Buffer, ShaderModule, ShaderModuleSource};
+use wgpu::{include_spirv, Buffer, ShaderModule};
 
 use kas::class::SetText;
 use kas::draw::Pass;
@@ -21,87 +20,15 @@ use kas::widget::{Label, Slider, Window};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawWindow};
 use kas_wgpu::Options;
 
-const VERTEX: &'static str = "
-#version 450
-#extension GL_ARB_separate_shader_objects : enable
-
-layout(location = 0) in vec3 a_pos;
-layout(location = 1) in vec2 a1;
-
-layout(location = 0) out vec2 b1;
-
-layout(set = 0, binding = 0) uniform Locals {
-    vec2 scale;
-};
-
-const vec2 offset = { -1.0, 1.0 };
-
-void main() {
-    gl_Position = vec4(scale * a_pos.xy + offset, a_pos.z, 1.0);
-    b1 = a1;
-}
-";
-const FRAGMENT: &'static str = "
-#version 450
-#extension GL_ARB_separate_shader_objects : enable
-
-precision highp float;
-
-layout(location = 0) noperspective in vec2 cf;
-
-layout(location = 0) out vec4 outColor;
-
-layout(set = 0, binding = 1) uniform Locals {
-    dvec2 alpha;
-    dvec2 delta;
-};
-
-layout(set = 0, binding = 2) uniform Iters {
-    int iter;
-};
-
-void main() {
-    dvec2 cd = cf;
-    dvec2 c = dvec2(alpha.x * cd.x - alpha.y * cd.y, alpha.x * cd.y + alpha.y * cd.x) + delta;
-
-    dvec2 z = c;
-    int i;
-    for(i=0; i<iter; i++) {
-        double x = (z.x * z.x - z.y * z.y) + c.x;
-        double y = (z.y * z.x + z.x * z.y) + c.y;
-
-        if((x * x + y * y) > 4.0) break;
-        z.x = x;
-        z.y = y;
-    }
-
-    float r = (i == iter) ? 0.0 : float(i) / iter;
-    float g = r * r;
-    float b = g * g;
-    outColor = vec4(r, g, b, 1.0);
-}
-";
-
 struct Shaders {
     vertex: ShaderModule,
     fragment: ShaderModule,
 }
 
 impl Shaders {
-    fn compile(device: &wgpu::Device) -> Self {
-        let mut compiler = Compiler::new().unwrap();
-
-        let artifact = compiler
-            .compile_into_spirv(VERTEX, ShaderKind::Vertex, "VERTEX", "main", None)
-            .unwrap();
-        let spirv = ShaderModuleSource::SpirV(artifact.as_binary().into());
-        let vertex = device.create_shader_module(spirv);
-
-        let artifact = compiler
-            .compile_into_spirv(FRAGMENT, ShaderKind::Fragment, "FRAGMENT", "main", None)
-            .unwrap();
-        let spirv = ShaderModuleSource::SpirV(artifact.as_binary().into());
-        let fragment = device.create_shader_module(spirv);
+    fn new(device: &wgpu::Device) -> Self {
+        let vertex = device.create_shader_module(include_spirv!("mandlebrot/shader.vert.spv"));
+        let fragment = device.create_shader_module(include_spirv!("mandlebrot/shader.frag.spv"));
 
         Shaders { vertex, fragment }
     }
@@ -125,7 +52,7 @@ impl CustomPipeBuilder for PipeBuilder {
         depth_format: wgpu::TextureFormat,
     ) -> Self::Pipe {
         // Note: real apps should compile shaders once and share between windows
-        let shaders = Shaders::compile(device);
+        let shaders = Shaders::new(device);
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
