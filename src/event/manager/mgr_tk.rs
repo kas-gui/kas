@@ -25,13 +25,10 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl ManagerState {
     /// Construct an event manager per-window data struct
-    ///
-    /// The DPI factor may be required for event coordinate translation.
     #[inline]
-    pub fn new(dpi_factor: f64) -> Self {
+    pub fn new() -> Self {
         ManagerState {
             end_id: Default::default(),
-            dpi_factor,
             modifiers: ModifiersState::empty(),
             char_focus: None,
             nav_focus: None,
@@ -186,13 +183,6 @@ impl ManagerState {
         for touch in &mut self.touch_grab {
             touch.cur_id = widget.find_id(touch.coord);
         }
-    }
-
-    /// Set the DPI factor. Must be updated for correct event translation by
-    /// [`Manager::handle_winit`].
-    #[inline]
-    pub fn set_dpi_factor(&mut self, dpi_factor: f64) {
-        self.dpi_factor = dpi_factor;
     }
 
     /// Get the next resume time
@@ -463,9 +453,7 @@ impl<'a> Manager<'a> {
 
                 let event = Event::Scroll(match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
-                    MouseScrollDelta::PixelDelta(pos) => {
-                        ScrollDelta::PixelDelta(Coord::from_logical(pos, self.mgr.dpi_factor))
-                    }
+                    MouseScrollDelta::PixelDelta(pos) => ScrollDelta::PixelDelta(pos.into()),
                 });
                 if let Some(id) = self.mgr.hover {
                     self.send_event(widget, id, event);

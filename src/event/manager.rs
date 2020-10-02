@@ -92,7 +92,6 @@ enum Pending {
 #[derive(Debug)]
 pub struct ManagerState {
     end_id: WidgetId,
-    dpi_factor: f64,
     modifiers: ModifiersState,
     char_focus: Option<WidgetId>,
     nav_focus: Option<WidgetId>,

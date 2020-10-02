@@ -41,8 +41,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(col = 1, row = 0)]
             _ = TextButton::new("&÷", Key::Divide).with_keys(&[VK::Slash]),
             #[widget(col = 2, row = 0)]
-            // TODO: bind VK::Asterisk when this gets added to winit!
-            _ = TextButton::new("&×", Key::Multiply),
+            _ = TextButton::new("&×", Key::Multiply).with_keys(&[VK::Asterisk]),
             #[widget(col = 3, row = 0)]
             _ = TextButton::new("&−", Key::Subtract),
             #[widget(col = 0, row = 1)]
