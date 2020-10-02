@@ -7,7 +7,7 @@
 
 use std::cell::RefCell;
 
-use kas::class::SetText;
+use kas::class::HasString;
 use kas::event::{Event, Handler, Manager, Response, UpdateHandle, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};
@@ -59,7 +59,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     match event {
                         Event::HandleUpdate { .. } => {
                             let c = COUNTER.with(|c| *c.borrow());
-                            *mgr += self.display.set_text(c.to_string());
+                            *mgr += self.display.set_string(c.to_string());
                             Response::None
                         }
                         event => Response::Unhandled(event),

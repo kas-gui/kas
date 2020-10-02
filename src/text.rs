@@ -8,27 +8,25 @@
 use kas::TkAction;
 pub use kas_text::*;
 
-#[doc(no_inline)]
-pub use rich::Text as RichText;
+mod string;
+pub use string::AccelString;
 
-#[doc(no_inline)]
-pub use prepared::Text as PreparedText;
-
-#[doc(no_inline)]
-pub use prepared::Prepare as PrepareAction;
-
-/// Extension trait over [`prepared::Text`]
-pub trait PreparedTextExt {
+/// Extension trait over [`Text`]
+pub trait TextExt {
     /// Set the text
     ///
-    /// This calls [`PreparedText::prepare`] internally, then returns
+    /// This calls [`Text::prepare`] internally, then returns
     /// [`TkAction::Redraw`]. (This does not force a resize.)
-    fn set_and_prepare<T: Into<RichText>>(&mut self, text: T) -> TkAction;
+    fn set_and_prepare<S: Into<FormattedString>>(&mut self, text: S) -> TkAction {
+        self.set_and_prepare_formatted(text.into())
+    }
+
+    fn set_and_prepare_formatted(&mut self, text: FormattedString) -> TkAction;
 }
 
-impl PreparedTextExt for PreparedText {
-    fn set_and_prepare<T: Into<RichText>>(&mut self, text: T) -> TkAction {
-        if self.set_text(text.into()).prepare() {
+impl TextExt for Text {
+    fn set_and_prepare_formatted(&mut self, text: FormattedString) -> TkAction {
+        if self.set_text(text).prepare() {
             self.prepare();
             TkAction::Redraw
         } else {

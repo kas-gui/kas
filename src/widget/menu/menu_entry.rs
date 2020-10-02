@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 
 use super::Menu;
-use kas::class::{CloneText, HasBool, SetAccel};
+use kas::class::{HasBool, HasString, SetAccel};
 use kas::draw::TextClass;
 use kas::event::VirtualKeyCodes;
 use kas::layout::{RulesSetter, RulesSolver};
@@ -23,7 +23,7 @@ pub struct MenuEntry<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
     keys: VirtualKeyCodes,
-    label: PreparedText,
+    label: Text,
     underline: usize,
     label_off: Coord,
     msg: M,
@@ -81,7 +81,7 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
     /// simple `Copy` type (e.g. an enum).
     pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
         let label = label.into();
-        let text = PreparedText::new_single(label.text().into());
+        let text = Text::new_single(label.text().into());
         let underline = label.underline();
         let keys = label.take_keys();
         MenuEntry {
@@ -100,9 +100,14 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> CloneText for MenuEntry<M> {
-    fn clone_text(&self) -> kas::text::RichText {
-        self.label.clone_text()
+impl<M: Clone + Debug + 'static> HasString for MenuEntry<M> {
+    fn get_str(&self) -> &str {
+        self.label.text()
+    }
+
+    fn set_string(&mut self, text: String) -> TkAction {
+        self.keys.clear();
+        self.label.set_and_prepare(text)
     }
 }
 

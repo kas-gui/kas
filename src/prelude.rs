@@ -24,9 +24,9 @@ pub use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
 #[doc(no_inline)]
 pub use kas::macros::*;
 #[doc(no_inline)]
-pub use kas::string::{AccelString, LabelString};
+pub use kas::text::AccelString;
 #[doc(no_inline)]
-pub use kas::text::{PreparedText, PreparedTextExt, RichText};
+pub use kas::text::{FormattedString, Text, TextExt};
 #[doc(no_inline)]
 pub use kas::{class, draw, event, geom, layout, widget};
 #[doc(no_inline)]
@@ -34,6 +34,6 @@ pub use kas::{Align, AlignHints, Direction, Directional, WidgetId};
 #[doc(no_inline)]
 pub use kas::{Boxed, TkAction, TkWindow};
 #[doc(no_inline)]
-pub use kas::{CloneTo, Layout, ThemeApi, Widget, WidgetChildren, WidgetConfig, WidgetCore};
-#[doc(no_inline)]
 pub use kas::{CoreData, LayoutData};
+#[doc(no_inline)]
+pub use kas::{Layout, ThemeApi, Widget, WidgetChildren, WidgetConfig, WidgetCore};

@@ -11,7 +11,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     // Build widgets.
     // Message is a Window with an "Ok" button and notification status.
     // Each Window::new method creates objects then solves constraints.
-    let window = MessageBox::new(/*Notify::Info,*/ "Message", "Hello world");
+    let window = MessageBox::from_md("Message", "Hello *world*!");
 
     let theme = kas_theme::FlatTheme::new();
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;

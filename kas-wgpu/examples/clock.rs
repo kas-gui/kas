@@ -15,7 +15,6 @@ use std::time::Duration;
 use kas::draw::{Colour, DrawRounded, DrawText};
 use kas::geom::{Quad, Vec2};
 use kas::prelude::*;
-use kas::text::PreparedText;
 use kas::widget::Window;
 use kas_wgpu::draw::DrawWindow;
 
@@ -28,8 +27,8 @@ struct Clock {
     date_pos: Coord,
     time_pos: Coord,
     now: DateTime<Local>,
-    date: PreparedText,
-    time: PreparedText,
+    date: Text,
+    time: Text,
 }
 
 impl Layout for Clock {
@@ -150,8 +149,8 @@ impl Clock {
             valign: Align::Centre,
             ..Default::default()
         };
-        let date = PreparedText::new(env.clone(), "0000-00-00".into());
-        let time = PreparedText::new(env, "00:00:00".into());
+        let date = Text::new(env.clone(), "0000-00-00".into());
+        let time = Text::new(env, "00:00:00".into());
         Clock {
             core: Default::default(),
             date_pos: Coord::ZERO,

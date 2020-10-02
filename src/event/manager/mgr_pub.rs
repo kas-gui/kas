@@ -338,7 +338,7 @@ impl<'a> Manager<'a> {
     /// The widget with this `id` then receives [`Event::Activate`].
     ///
     /// Note that accelerator keys may be automatically derived from labels:
-    /// see [`kas::string::AccelString`].
+    /// see [`kas::text::AccelString`].
     ///
     /// Accelerator keys may be added to the base layer or to a new layer
     /// associated with a pop-up (see [`Manager::push_accel_layer`]).

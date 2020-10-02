@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use std::iter::FromIterator;
 
 use super::{Column, MenuEntry, MenuFrame};
-use kas::class::{CloneText, SetAccel};
+use kas::class::{HasString, SetAccel};
 use kas::draw::TextClass;
 use kas::event::{ControlKey, GrabMode};
 use kas::prelude::*;
@@ -22,7 +22,7 @@ use kas::WindowId;
 pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
     core: CoreData,
-    label: PreparedText,
+    label: Text,
     #[widget]
     popup: ComboPopup,
     messages: Vec<M>, // TODO: is this a useless lookup step?
@@ -88,7 +88,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     #[inline]
     fn new_(column: Vec<MenuEntry<u64>>, messages: Vec<M>) -> Self {
         assert!(column.len() > 0, "ComboBox: expected at least one choice");
-        let label = PreparedText::new_single(column[0].clone_text());
+        let label = Text::new_single(column[0].get_string().into());
         ComboBox {
             core: Default::default(),
             label,
@@ -119,8 +119,8 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         }
         if self.active != index {
             self.active = index;
-            self.label
-                .set_and_prepare(self.popup.inner.inner[self.active].clone_text())
+            let string = self.popup.inner.inner[self.active].get_string();
+            self.label.set_and_prepare(string)
         } else {
             TkAction::None
         }

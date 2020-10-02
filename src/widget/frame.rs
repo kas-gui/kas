@@ -98,19 +98,13 @@ impl<W: HasString + Widget> HasString for Frame<W> {
     }
 }
 
-impl<W: CloneText + Widget> CloneText for Frame<W> {
-    fn clone_string(&self) -> String {
-        self.child.clone_string()
+impl<W: HasFormatted + Widget> HasFormatted for Frame<W> {
+    fn get_formatted(&self) -> FormattedString {
+        self.child.get_formatted()
     }
 
-    fn clone_text(&self) -> kas::text::RichText {
-        self.child.clone_text()
-    }
-}
-
-impl<W: SetText + Widget> SetText for Frame<W> {
-    fn set_rich_text(&mut self, text: kas::text::RichText) -> TkAction {
-        self.child.set_rich_text(text)
+    fn set_formatted_string(&mut self, text: FormattedString) -> TkAction {
+        self.child.set_formatted_string(text)
     }
 }
 

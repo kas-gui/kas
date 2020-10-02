@@ -133,8 +133,6 @@ The `kas` crate has the following feature flags:
     This requires that the HarfBuzz library is installed.
 -   `internal_doc`: turns on some extra documentation intended for internal
     usage but not for end users. (This only affects generated documentation.)
--   `nightly`: enables `new_uninit` feature to support cloning of
-    `Box<dyn Handler>` objects
 -   `winit`: adds compatibility code for winit's event and geometry types.
     This is currently the only functional windowing/event library.
 -   `stack_dst`: some compatibility impls (see `kas-theme`'s documentation)

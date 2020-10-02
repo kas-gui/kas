@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use kas::class::{CloneText, SetAccel};
+use kas::class::{HasString, SetAccel};
 use kas::draw::TextClass;
 use kas::event::{VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
@@ -22,7 +22,7 @@ pub struct TextButton<M: Clone + Debug + 'static> {
     keys1: VirtualKeyCodes,
     keys2: VirtualKeyCodes,
     // label_rect: Rect,
-    label: PreparedText,
+    label: Text,
     underline: usize,
     msg: M,
 }
@@ -86,7 +86,7 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     /// the parent (or other ancestor).
     pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
         let label = label.into();
-        let text = PreparedText::new_single(label.text().into());
+        let text = Text::new_single(label.text().into());
         let underline = label.underline();
         let keys2 = label.take_keys();
         TextButton {
@@ -115,9 +115,14 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> CloneText for TextButton<M> {
-    fn clone_text(&self) -> kas::text::RichText {
-        self.label.clone_text()
+impl<M: Clone + Debug + 'static> HasString for TextButton<M> {
+    fn get_str(&self) -> &str {
+        self.label.text()
+    }
+
+    fn set_string(&mut self, text: String) -> TkAction {
+        self.keys2.clear();
+        self.label.set_and_prepare(text)
     }
 }
 

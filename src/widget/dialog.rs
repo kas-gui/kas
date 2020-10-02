@@ -35,12 +35,12 @@ pub struct MessageBox {
 }
 
 impl MessageBox {
-    pub fn new<T: ToString, M: Into<LabelString>>(title: T, message: M) -> Self {
+    pub fn new<A: ToString, B: Into<FormattedString>>(title: A, message: B) -> Self {
         MessageBox {
             core: Default::default(),
             layout_data: Default::default(),
             title: title.to_string(),
-            label: Label::new(message),
+            label: Label::from(message.into()),
             button: TextButton::new("Ok", DialogButton::Close).with_keys(&[
                 VirtualKeyCode::Return,
                 VirtualKeyCode::Space,
@@ -49,6 +49,15 @@ impl MessageBox {
         }
     }
 
+    /// Construct from Markdown
+    #[cfg(feature = "markdown")]
+    pub fn from_md<A: ToString>(title: A, text: &str) -> Self {
+        let text = kas::text::parser::Markdown::new(text);
+        MessageBox::new(title, text)
+    }
+}
+
+impl MessageBox {
     fn handle_button(&mut self, mgr: &mut Manager, msg: DialogButton) -> Response<VoidMsg> {
         match msg {
             DialogButton::Close => mgr.send_action(TkAction::Close),

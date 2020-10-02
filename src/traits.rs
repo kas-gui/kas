@@ -14,10 +14,8 @@ use crate::event::{self, Manager};
 use crate::{layout, Direction, WidgetId, WindowId};
 
 mod impls;
-mod utils;
 mod widget;
 
-pub use utils::*;
 pub use widget::*;
 
 /// Trait to describe the type needed by the layout implementation.

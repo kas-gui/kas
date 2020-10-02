@@ -13,7 +13,7 @@ use std::f32;
 use kas::draw::{self, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
-use kas::text::PreparedText;
+use kas::text::Text;
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -157,12 +157,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         self.dims.line_height
     }
 
-    fn text_bound(
-        &mut self,
-        text: &mut PreparedText,
-        class: TextClass,
-        axis: AxisInfo,
-    ) -> SizeRules {
+    fn text_bound(&mut self, text: &mut Text, class: TextClass, axis: AxisInfo) -> SizeRules {
         let line_height = self.dims.line_height;
         let mut bounds = Vec2::INFINITY;
         if let Some(size) = axis.size_other_if_fixed(false) {

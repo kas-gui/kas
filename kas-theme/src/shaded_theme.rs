@@ -14,7 +14,7 @@ use kas::draw::{
     Pass, SizeHandle, TextClass,
 };
 use kas::geom::*;
-use kas::text::PreparedText;
+use kas::text::Text;
 use kas::{Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme using simple shading to give apparent depth to elements
@@ -84,6 +84,8 @@ where
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle {
+        draw.prepare_fonts();
+
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
         use std::mem::transmute;
         DrawHandle {
@@ -102,6 +104,8 @@ where
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle<'a> {
+        draw.prepare_fonts();
+
         DrawHandle {
             draw,
             window,
@@ -264,7 +268,7 @@ where
             .shaded_round_frame(self.pass, outer, inner, norm, col);
     }
 
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &PreparedText, class: TextClass) {
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &Text, class: TextClass) {
         self.as_flat().text_offset(pos, offset, text, class);
     }
 
@@ -272,7 +276,7 @@ where
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         class: TextClass,
         underline: usize,
     ) {
@@ -284,7 +288,7 @@ where
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         range: Range<usize>,
         class: TextClass,
     ) {
@@ -296,7 +300,7 @@ where
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         class: TextClass,
         byte: usize,
     ) {

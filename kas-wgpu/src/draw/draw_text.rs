@@ -10,19 +10,33 @@ use wgpu_glyph::{ab_glyph, Extra, FontId, SectionGlyph};
 use super::{CustomWindow, DrawWindow};
 use kas::draw::{Colour, DrawText, Pass, TextEffect};
 use kas::geom::Vec2;
-use kas::text::PreparedText;
+use kas::text::{fonts::fonts, Text};
 
 fn to_point(Vec2(x, y): Vec2) -> ab_glyph::Point {
     ab_glyph::Point { x, y }
 }
 
 impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
+    fn prepare_fonts(&mut self) {
+        let fonts = fonts();
+        let n1 = self.glyph_brush.fonts().len();
+        let n2 = fonts.num_fonts();
+        let mut count = n1;
+        if n2 > n1 {
+            for font in fonts.ab_glyph_fonts_from(n1) {
+                let id = self.glyph_brush.add_font(font);
+                assert_eq!(id.0, count);
+                count += 1;
+            }
+        }
+    }
+
     fn text_with_effects(
         &mut self,
         pass: Pass,
         pos: Vec2,
         offset: Vec2,
-        text: &PreparedText,
+        text: &Text,
         effects: &[TextEffect],
     ) {
         let pos = to_point(pos);

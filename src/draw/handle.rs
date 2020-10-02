@@ -10,7 +10,7 @@ use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, Margins, SizeRules};
-use kas::text::PreparedText;
+use kas::text::Text;
 use kas::Direction;
 
 /// Classification of a clip region
@@ -138,7 +138,7 @@ pub trait SizeHandle {
     /// The height of a line of text
     fn line_height(&self, class: TextClass) -> u32;
 
-    /// Update a [`PreparedText`] and get a size bound
+    /// Update a [`Text`] and get a size bound
     ///
     /// First, this method updates the text's [`Environment`]: `bounds`, `dpp`
     /// and `pt_size` are set. Second, the text is prepared (which is necessary
@@ -146,17 +146,12 @@ pub trait SizeHandle {
     /// to a [`SizeRules`] value and returns it.
     ///
     /// Usually this method is used in [`Layout::size_rules`], then
-    /// [`PreparedText::update_env`] is used in [`Layout::set_rect`].
+    /// [`Text::update_env`] is used in [`Layout::set_rect`].
     ///
     /// [`Environment`]: kas::text::Environment
     /// [`Layout::set_rect`]: kas::Layout::set_rect
     /// [`Layout::size_rules`]: kas::Layout::size_rules
-    fn text_bound(
-        &mut self,
-        text: &mut PreparedText,
-        class: TextClass,
-        axis: AxisInfo,
-    ) -> SizeRules;
+    fn text_bound(&mut self, text: &mut Text, class: TextClass, axis: AxisInfo) -> SizeRules;
 
     /// Width of an edit marker
     fn edit_marker_width(&self) -> f32;
@@ -277,7 +272,7 @@ pub trait DrawHandle {
     /// but offset by subtracting `offset` (allowing scrolling).
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &PreparedText, class: TextClass);
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &Text, class: TextClass);
 
     /// Draw some text, with an underlined glyph
     ///
@@ -287,7 +282,7 @@ pub trait DrawHandle {
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         class: TextClass,
         underline: usize,
     );
@@ -298,7 +293,7 @@ pub trait DrawHandle {
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         range: Range<usize>,
         class: TextClass,
     );
@@ -308,7 +303,7 @@ pub trait DrawHandle {
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         class: TextClass,
         byte: usize,
     );
@@ -375,7 +370,7 @@ pub trait DrawHandleExt: DrawHandle {
     /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text(&mut self, pos: Coord, text: &PreparedText, class: TextClass) {
+    fn text(&mut self, pos: Coord, text: &Text, class: TextClass) {
         self.text_offset(pos, Coord::ZERO, text, class);
     }
 
@@ -388,7 +383,7 @@ pub trait DrawHandleExt: DrawHandle {
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         range: R,
         class: TextClass,
     ) {
@@ -430,12 +425,7 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn line_height(&self, class: TextClass) -> u32 {
         self.deref().line_height(class)
     }
-    fn text_bound(
-        &mut self,
-        text: &mut PreparedText,
-        class: TextClass,
-        axis: AxisInfo,
-    ) -> SizeRules {
+    fn text_bound(&mut self, text: &mut Text, class: TextClass, axis: AxisInfo) -> SizeRules {
         self.deref_mut().text_bound(text, class, axis)
     }
     fn edit_marker_width(&self) -> f32 {
@@ -488,12 +478,7 @@ where
     fn line_height(&self, class: TextClass) -> u32 {
         self.deref().line_height(class)
     }
-    fn text_bound(
-        &mut self,
-        text: &mut PreparedText,
-        class: TextClass,
-        axis: AxisInfo,
-    ) -> SizeRules {
+    fn text_bound(&mut self, text: &mut Text, class: TextClass, axis: AxisInfo) -> SizeRules {
         self.deref_mut().text_bound(text, class, axis)
     }
     fn edit_marker_width(&self) -> f32 {
@@ -549,14 +534,14 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &PreparedText, class: TextClass) {
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &Text, class: TextClass) {
         self.deref_mut().text_offset(pos, offset, text, class)
     }
     fn text_with_underline(
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         class: TextClass,
         underline: usize,
     ) {
@@ -567,7 +552,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         range: Range<usize>,
         class: TextClass,
     ) {
@@ -578,7 +563,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         class: TextClass,
         byte: usize,
     ) {
@@ -639,14 +624,14 @@ where
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &PreparedText, class: TextClass) {
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &Text, class: TextClass) {
         self.deref_mut().text_offset(pos, offset, text, class)
     }
     fn text_with_underline(
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         class: TextClass,
         underline: usize,
     ) {
@@ -657,7 +642,7 @@ where
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         range: Range<usize>,
         class: TextClass,
     ) {
@@ -668,7 +653,7 @@ where
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         class: TextClass,
         byte: usize,
     ) {
@@ -708,7 +693,7 @@ mod test {
         let _size = draw_handle.size_handle(|h| h.frame());
 
         let zero = Coord::ZERO;
-        let text = PreparedText::new_single("sample".into());
+        let text = Text::new_single("sample".into());
         draw_handle.text_selected(zero, zero, &text, .., TextClass::Label)
     }
 }

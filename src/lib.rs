@@ -20,7 +20,6 @@
 //! This document is a reference manual. There is currently no tutorial, but the
 //! [examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
 //! provide a starting point.
-#![cfg_attr(feature = "nightly", feature(new_uninit))]
 
 #[cfg(not(feature = "winit"))]
 #[macro_use]
@@ -41,7 +40,6 @@ pub mod event;
 pub mod geom;
 pub mod layout;
 pub mod prelude;
-pub mod string;
 pub mod text;
 pub mod widget;
 
