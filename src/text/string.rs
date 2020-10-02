@@ -9,9 +9,11 @@
 //! Hopefully it can be replaced with a real mark-up processor without too
 //! much API breakage.
 
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 
 use kas::event::{VirtualKeyCode as VK, VirtualKeyCodes};
+use kas::text::parser::{Format, FormatData, Parser};
+use kas::text::{fonts::FontId, Environment};
 
 /// An accelerator key string
 ///
@@ -23,7 +25,8 @@ use kas::event::{VirtualKeyCode as VK, VirtualKeyCodes};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AccelString {
     label: String,
-    underline: usize, // glyph to underline
+    /// Even entries: position to start underline; odd entries: stop pos
+    ulines: Ulines,
     // TODO: is it worth using such a large structure here instead of Option?
     keys: VirtualKeyCodes,
 }
@@ -33,19 +36,18 @@ impl AccelString {
     ///
     /// Since we require `'static` for references and don't yet have
     /// specialisation, this parser always allocates. Prefer to use `from`.
-    pub fn parse(mut s: &str) -> Self {
+    fn parse(mut s: &str) -> Self {
         let mut buf = String::with_capacity(s.len());
-        let mut count = 0;
-        let mut underline = usize::MAX;
+        let mut ulines = Ulines::default();
         let mut keys = VirtualKeyCodes::new();
 
         while let Some(mut i) = s.find("&") {
-            count += 1;
             buf.push_str(&s[..i]);
             i += "&".len();
             s = &s[i..];
+            let mut chars = s.char_indices();
 
-            match s.char_indices().next() {
+            match chars.next() {
                 None => {
                     // Ending with '&' is an error, but we can ignore it
                     s = &s[0..0];
@@ -53,20 +55,25 @@ impl AccelString {
                 }
                 Some((j, c)) => {
                     buf.push(c);
-                    underline = i + j - count;
+                    let pos = buf.len() as u32;
+                    ulines.0.push(pos);
                     let vkeys = find_vkeys(c);
                     if !vkeys.is_empty() {
                         keys.extend(vkeys);
                     }
                     let i = c.len_utf8();
                     s = &s[i..];
+
+                    if let Some((k, _)) = chars.next() {
+                        ulines.0.push(pos + (k - j) as u32);
+                    }
                 }
             }
         }
         buf.push_str(s);
         AccelString {
             label: buf.into(),
-            underline,
+            ulines,
             keys,
         }
     }
@@ -88,7 +95,101 @@ impl AccelString {
 
     /// Get the glyph to be underlined
     pub fn underline(&self) -> usize {
-        self.underline
+        // TODO: this is not the intended way to pass on this information!
+        self.ulines
+            .0
+            .get(0)
+            .map(|pos| *pos as usize)
+            .unwrap_or(usize::MAX)
+    }
+}
+
+impl Parser for AccelString {
+    type FormatData = Ulines;
+
+    fn finish(self) -> (String, Self::FormatData) {
+        (self.label, self.ulines)
+    }
+}
+
+#[derive(Clone, Default, Debug, PartialEq)]
+pub struct Ulines(SmallVec<[u32; 2]>);
+
+impl FormatData for Ulines {
+    fn clone_boxed(&self) -> Box<dyn FormatData> {
+        Box::new(self.clone())
+    }
+
+    fn remove_range(&mut self, start: u32, end: u32) {
+        let len = end - start;
+        let mut last = None;
+        let mut i = 0;
+        let ulines_len = self.0.len();
+        while i < ulines_len {
+            let pos = &mut self.0[i];
+            if *pos >= start {
+                if *pos < end {
+                    *pos = start;
+                } else {
+                    *pos -= len;
+                }
+                if let Some((index, start)) = last {
+                    if start == *pos {
+                        self.0.remove(index as usize);
+                        continue;
+                    }
+                }
+                last = Some((i, *pos));
+            }
+            i += 1;
+        }
+    }
+
+    fn insert_range(&mut self, start: u32, len: u32) {
+        for pos in &mut self.0 {
+            if *pos >= start {
+                *pos += len;
+            }
+        }
+    }
+
+    fn fmt_iter<'a>(&'a self, env: &'a Environment) -> Box<dyn Iterator<Item = Format> + 'a> {
+        Box::new(UlinesIter::new(&[], env))
+    }
+}
+
+pub struct UlinesIter<'a> {
+    index: usize,
+    ulines: &'a [u32],
+    dpem: f32,
+}
+
+impl<'a> UlinesIter<'a> {
+    fn new(ulines: &'a [u32], env: &Environment) -> Self {
+        UlinesIter {
+            index: 0,
+            ulines,
+            dpem: env.dpp * env.pt_size,
+        }
+    }
+}
+
+impl<'a> Iterator for UlinesIter<'a> {
+    type Item = Format;
+
+    fn next(&mut self) -> Option<Format> {
+        if self.index < self.ulines.len() {
+            // TODO: if index is even, this starts an underline; if odd, it ends one
+            let pos = self.ulines[self.index];
+            self.index += 1;
+            Some(Format {
+                start: pos,
+                font_id: FontId::default(),
+                dpem: self.dpem,
+            })
+        } else {
+            None
+        }
     }
 }
 
@@ -99,9 +200,8 @@ impl From<String> for AccelString {
         } else {
             // fast path: we can use the raw input
             AccelString {
-                label: input.clone(),
-                underline: usize::MAX,
-                keys: Default::default(),
+                label: input,
+                ..Default::default()
             }
         }
     }
@@ -109,7 +209,7 @@ impl From<String> for AccelString {
 
 impl From<&'static str> for AccelString {
     fn from(input: &'static str) -> Self {
-        input.to_string().into()
+        Self::parse(input)
     }
 }
 

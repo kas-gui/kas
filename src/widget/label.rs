@@ -158,7 +158,6 @@ impl Layout for AccelLabel {
 
 impl AccelLabel {
     /// Construct a new, empty instance
-    // TODO: use new Parser type
     pub fn new<T: Into<AccelString>>(label: T) -> Self {
         let label = label.into();
         let text = Text::new_single(label.text().into());

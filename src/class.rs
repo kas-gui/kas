@@ -8,8 +8,7 @@
 //! These traits provide generic ways to interact with common widget properties,
 //! e.g. to read the text of a `Label` or set the state of a `CheckBox`.
 
-use crate::string::AccelString;
-use crate::text::FormattedString;
+use crate::text::{AccelString, FormattedString};
 use crate::TkAction;
 
 /// Read / write a boolean value
@@ -33,11 +32,13 @@ pub trait HasString {
     fn get_str(&self) -> &str;
 
     /// Get text as a `String`
+    #[inline]
     fn get_string(&self) -> String {
         self.get_str().to_string()
     }
 
     /// Set text from a `&str`
+    #[inline]
     fn set_str(&mut self, text: &str) -> TkAction {
         self.set_string(text.to_string())
     }
@@ -52,7 +53,10 @@ pub trait HasFormatted {
     fn get_formatted(&self) -> FormattedString;
 
     /// Set from a formatted string
-    fn set_formatted<S: Into<FormattedString>>(&mut self, text: S) -> TkAction {
+    fn set_formatted<S: Into<FormattedString>>(&mut self, text: S) -> TkAction
+    where
+        Self: Sized,
+    {
         self.set_formatted_string(text.into())
     }
 

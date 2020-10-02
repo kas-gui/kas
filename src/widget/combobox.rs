@@ -88,7 +88,6 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     #[inline]
     fn new_(column: Vec<MenuEntry<u64>>, messages: Vec<M>) -> Self {
         assert!(column.len() > 0, "ComboBox: expected at least one choice");
-        // TODO: preserve formatting here?
         let label = Text::new_single(column[0].get_string().into());
         ComboBox {
             core: Default::default(),
@@ -120,7 +119,6 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         }
         if self.active != index {
             self.active = index;
-            // TODO: preserve formatting here?
             let string = self.popup.inner.inner[self.active].get_string();
             self.label.set_and_prepare(string)
         } else {

@@ -40,7 +40,6 @@ pub mod event;
 pub mod geom;
 pub mod layout;
 pub mod prelude;
-pub mod string;
 pub mod text;
 pub mod widget;
 

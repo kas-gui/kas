@@ -8,6 +8,9 @@
 use kas::TkAction;
 pub use kas_text::*;
 
+mod string;
+pub use string::AccelString;
+
 /// Extension trait over [`Text`]
 pub trait TextExt {
     /// Set the text
