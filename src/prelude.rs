@@ -24,7 +24,7 @@ pub use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
 #[doc(no_inline)]
 pub use kas::macros::*;
 #[doc(no_inline)]
-pub use kas::string::{AccelString, LabelString};
+pub use kas::string::AccelString;
 #[doc(no_inline)]
 pub use kas::text::{FormattedString, Text, TextExt};
 #[doc(no_inline)]

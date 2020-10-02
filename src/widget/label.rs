@@ -9,7 +9,6 @@ use kas::class::{HasFormatted, HasString, SetAccel};
 use kas::draw::TextClass;
 use kas::event::VirtualKeyCodes;
 use kas::prelude::*;
-use std::ops::Deref;
 
 /// A simple text label
 #[derive(Clone, Default, Debug, Widget)]
@@ -53,12 +52,11 @@ impl Layout for Label {
 
 impl Label {
     /// Construct from label text
-    // TODO: take FormattedString arg
-    pub fn new<T: Into<LabelString>>(label: T) -> Self {
+    pub fn new<T: Into<FormattedString>>(label: T) -> Self {
         Label {
             core: Default::default(),
             reserve: None,
-            label: Text::new_multi(label.into().deref().into()),
+            label: Text::new_multi(label.into()),
         }
     }
 

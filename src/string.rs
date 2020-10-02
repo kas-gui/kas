@@ -10,73 +10,8 @@
 //! much API breakage.
 
 use smallvec::smallvec;
-use std::ops::Deref;
 
 use kas::event::{VirtualKeyCode as VK, VirtualKeyCodes};
-
-/// A label string
-///
-/// This is a label which supports markup.
-///
-/// Markup: `&&` translates to `&`; `&x` for any `x` translates to `x`.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct LabelString {
-    label: String,
-}
-
-impl LabelString {
-    /// Parse a `&str`
-    ///
-    /// Since we require `'static` for references and don't yet have
-    /// specialisation, this parser always allocates. Prefer to use `from`.
-    pub fn parse(mut s: &str) -> Self {
-        let mut buf = String::with_capacity(s.len());
-        while let Some(mut i) = s.find("&") {
-            buf.push_str(&s[..i]);
-            i += "&".len();
-            s = &s[i..];
-
-            match s.chars().next() {
-                None => {
-                    // Ending with '&' is an error, but we can ignore it
-                    s = &s[0..0];
-                    break;
-                }
-                Some(c) => {
-                    buf.push(c);
-                    let i = c.len_utf8();
-                    s = &s[i..];
-                }
-            }
-        }
-        buf.push_str(s);
-        LabelString { label: buf.into() }
-    }
-}
-
-impl From<String> for LabelString {
-    fn from(input: String) -> Self {
-        if input.as_bytes().contains(&b'&') {
-            Self::parse(&input)
-        } else {
-            // fast path: we can use the raw input
-            LabelString { label: input }
-        }
-    }
-}
-
-impl From<&'static str> for LabelString {
-    fn from(input: &'static str) -> Self {
-        input.to_string().into()
-    }
-}
-
-impl Deref for LabelString {
-    type Target = str;
-    fn deref(&self) -> &str {
-        &self.label
-    }
-}
 
 /// An accelerator key string
 ///
