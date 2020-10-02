@@ -12,7 +12,7 @@ use std::mem::size_of;
 use wgpu::util::DeviceExt;
 use wgpu::{Buffer, ShaderModule, ShaderModuleSource};
 
-use kas::class::SetText;
+use kas::class::HasString;
 use kas::draw::Pass;
 use kas::event::ControlKey;
 use kas::geom::{DVec2, Vec2, Vec3};
@@ -617,11 +617,11 @@ impl MandlebrotWindow {
 
     fn iter(&mut self, mgr: &mut Manager, iter: i32) -> Response<VoidMsg> {
         self.mbrot.iter = iter;
-        *mgr += self.iters.set_text(format!("{}", iter));
+        *mgr += self.iters.set_string(format!("{}", iter));
         Response::None
     }
     fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
-        *mgr += self.label.set_text(self.mbrot.loc());
+        *mgr += self.label.set_string(self.mbrot.loc());
         Response::None
     }
 }

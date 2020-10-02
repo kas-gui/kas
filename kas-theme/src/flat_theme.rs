@@ -16,7 +16,7 @@ use kas::draw::{
     SizeHandle, TextClass, TextEffect,
 };
 use kas::geom::*;
-use kas::text::PreparedText;
+use kas::text::Text;
 use kas::{Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme with flat (unshaded) rendering
@@ -243,7 +243,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
     }
 
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &PreparedText, class: TextClass) {
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &Text, class: TextClass) {
         let pos = pos + self.offset;
         let col = self.cols.text_class(class);
         self.draw
@@ -254,7 +254,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         class: TextClass,
         underline: usize,
     ) {
@@ -281,7 +281,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         range: Range<usize>,
         class: TextClass,
     ) {
@@ -317,7 +317,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &PreparedText,
+        text: &Text,
         class: TextClass,
         byte: usize,
     ) {

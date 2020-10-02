@@ -6,7 +6,7 @@
 //! Sub-menu
 
 use super::{Menu, MenuFrame};
-use kas::class::{CloneText, SetAccel};
+use kas::class::{HasString, SetAccel};
 use kas::draw::TextClass;
 use kas::event::{ConfigureManager, ControlKey, VirtualKeyCodes};
 use kas::prelude::*;
@@ -22,7 +22,7 @@ pub struct SubMenu<D: Directional, W: Menu> {
     core: CoreData,
     direction: D,
     keys: VirtualKeyCodes,
-    label: PreparedText,
+    label: Text,
     underline: usize,
     label_off: Coord,
     #[widget]
@@ -62,7 +62,7 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
     #[inline]
     pub fn new_with_direction<S: Into<AccelString>>(direction: D, label: S, list: Vec<W>) -> Self {
         let label = label.into();
-        let text = PreparedText::new_single(label.text().into());
+        let text = Text::new_single(label.text().into());
         let underline = label.underline();
         let keys = label.take_keys();
         SubMenu {
@@ -289,9 +289,14 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, W: Menu> CloneText for SubMenu<D, W> {
-    fn clone_text(&self) -> kas::text::RichText {
-        self.label.clone_text()
+impl<D: Directional, W: Menu> HasString for SubMenu<D, W> {
+    fn get_str(&self) -> &str {
+        self.label.text()
+    }
+
+    fn set_string(&mut self, text: String) -> TkAction {
+        self.keys.clear();
+        self.label.set_and_prepare(text)
     }
 }
 

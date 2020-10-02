@@ -17,7 +17,7 @@
 //!     very slow activation of a RadioBox in a chain hundreds-of-thousands
 //!     long), but in many ways still performs well in release mode
 
-use kas::class::{HasString, SetText};
+use kas::class::HasString;
 use kas::event::UpdateHandle;
 use kas::prelude::*;
 use kas::widget::*;
@@ -161,11 +161,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         EntryMsg::Select(n) => {
                             self.active = n;
                             let text = self.list.inner()[n].entry.get_string();
-                            *mgr += self.display.set_text(text);
+                            *mgr += self.display.set_string(text);
                         }
                         EntryMsg::Update(n, text) => {
                             if n == self.active {
-                                *mgr += self.display.set_text(text);
+                                *mgr += self.display.set_string(text);
                             }
                         }
                     }

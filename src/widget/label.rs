@@ -5,7 +5,7 @@
 
 //! Text widgets
 
-use kas::class::{CloneText, SetAccel, SetText};
+use kas::class::{HasFormatted, HasString, SetAccel};
 use kas::draw::TextClass;
 use kas::event::VirtualKeyCodes;
 use kas::prelude::*;
@@ -16,15 +16,15 @@ use std::ops::Deref;
 pub struct Label {
     #[widget_core]
     core: CoreData,
-    reserve: Option<&'static str>,
-    label: PreparedText,
+    reserve: Option<FormattedString>,
+    label: Text,
 }
 
 impl Layout for Label {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut prepared;
-        let text = if let Some(s) = self.reserve {
-            prepared = PreparedText::new_multi(s.into());
+        let text = if let Some(ref s) = self.reserve {
+            prepared = Text::new_multi(s.clone());
             &mut prepared
         } else {
             &mut self.label
@@ -53,44 +53,60 @@ impl Layout for Label {
 
 impl Label {
     /// Construct from label text
+    // TODO: take FormattedString arg
     pub fn new<T: Into<LabelString>>(label: T) -> Self {
         Label {
             core: Default::default(),
             reserve: None,
-            label: PreparedText::new_multi(label.into().deref().into()),
+            label: Text::new_multi(label.into().deref().into()),
         }
     }
 
     /// Construct from Markdown
     #[cfg(feature = "markdown")]
     pub fn from_md(text: &str) -> Self {
-        let text = kas::text::rich::Text::from_md(text);
+        let text = kas::text::parser::Markdown::new(text);
+        Label::from(FormattedString::from(text))
+    }
+}
+
+impl From<FormattedString> for Label {
+    fn from(text: FormattedString) -> Self {
         Label {
             core: Default::default(),
             reserve: None,
-            label: PreparedText::new_multi(text),
+            label: Text::new_multi(text),
         }
     }
+}
 
+impl Label {
     /// Reserve sufficient room for the given text
     ///
     /// If this option is used, the label will be sized to fit this text, not
     /// the actual text.
-    // TODO: use rich-text model
-    pub fn reserve(mut self, text: &'static str) -> Self {
-        self.reserve = Some(text);
+    pub fn reserve<A: Into<FormattedString>>(mut self, text: A) -> Self {
+        self.reserve = Some(text.into());
         self
     }
 }
 
-impl CloneText for Label {
-    fn clone_text(&self) -> kas::text::RichText {
-        self.label.clone_text()
+impl HasString for Label {
+    fn get_str(&self) -> &str {
+        self.label.text()
+    }
+
+    fn set_string(&mut self, text: String) -> TkAction {
+        self.label.set_and_prepare(text)
     }
 }
 
-impl SetText for Label {
-    fn set_rich_text(&mut self, text: kas::text::RichText) -> TkAction {
+impl HasFormatted for Label {
+    fn get_formatted(&self) -> FormattedString {
+        self.label.clone_text()
+    }
+
+    fn set_formatted_string(&mut self, text: FormattedString) -> TkAction {
         self.label.set_and_prepare(text)
     }
 }
@@ -104,7 +120,7 @@ pub struct AccelLabel {
     #[widget_core]
     core: CoreData,
     keys: VirtualKeyCodes,
-    label: PreparedText,
+    label: Text,
     underline: usize,
 }
 
@@ -144,9 +160,10 @@ impl Layout for AccelLabel {
 
 impl AccelLabel {
     /// Construct a new, empty instance
+    // TODO: use new Parser type
     pub fn new<T: Into<AccelString>>(label: T) -> Self {
         let label = label.into();
-        let text = PreparedText::new_single(label.text().into());
+        let text = Text::new_single(label.text().into());
         let underline = label.underline();
         let keys = label.take_keys();
         AccelLabel {
@@ -163,9 +180,14 @@ impl AccelLabel {
     }
 }
 
-impl CloneText for AccelLabel {
-    fn clone_text(&self) -> kas::text::RichText {
-        self.label.clone_text()
+impl HasString for AccelLabel {
+    fn get_str(&self) -> &str {
+        self.label.text()
+    }
+
+    fn set_string(&mut self, text: String) -> TkAction {
+        self.keys.clear();
+        self.label.set_and_prepare(text)
     }
 }
 

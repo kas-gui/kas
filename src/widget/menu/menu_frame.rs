@@ -95,19 +95,13 @@ impl<W: HasString + Widget> HasString for MenuFrame<W> {
     }
 }
 
-impl<W: CloneText + Widget> CloneText for MenuFrame<W> {
-    fn clone_string(&self) -> String {
-        self.inner.clone_string()
+impl<W: HasFormatted + Widget> HasFormatted for MenuFrame<W> {
+    fn get_formatted(&self) -> FormattedString {
+        self.inner.get_formatted()
     }
 
-    fn clone_text(&self) -> kas::text::RichText {
-        self.inner.clone_text()
-    }
-}
-
-impl<W: SetText + Widget> SetText for MenuFrame<W> {
-    fn set_rich_text(&mut self, text: kas::text::RichText) -> TkAction {
-        self.inner.set_rich_text(text)
+    fn set_formatted_string(&mut self, text: FormattedString) -> TkAction {
+        self.inner.set_formatted_string(text)
     }
 }
 

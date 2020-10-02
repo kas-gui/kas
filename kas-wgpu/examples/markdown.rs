@@ -5,10 +5,10 @@
 
 //! Markdown parsing demo
 
-use kas::class::{HasString, SetText};
+use kas::class::{HasFormatted, HasString};
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::make_widget;
-use kas::text::rich;
+use kas::text::parser::Markdown;
 use kas::widget::{EditBox, EditBoxVoid, Label, TextButton, Window};
 
 fn main() -> Result<(), kas_wgpu::Error> {
@@ -46,8 +46,8 @@ It also supports lists:
             }
             impl {
                 fn update(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
-                    let text = rich::Text::from_md(self.editor.get_str());
-                    *mgr += self.label.set_rich_text(text);
+                    let parser = Markdown::new(self.editor.get_str());
+                    *mgr += self.label.set_formatted(parser);
                     Response::None
                 }
             }

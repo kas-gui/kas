@@ -26,7 +26,7 @@ pub use kas::macros::*;
 #[doc(no_inline)]
 pub use kas::string::{AccelString, LabelString};
 #[doc(no_inline)]
-pub use kas::text::{PreparedText, PreparedTextExt, RichText};
+pub use kas::text::{FormattedString, Text, TextExt};
 #[doc(no_inline)]
 pub use kas::{class, draw, event, geom, layout, widget};
 #[doc(no_inline)]

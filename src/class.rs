@@ -9,6 +9,7 @@
 //! e.g. to read the text of a `Label` or set the state of a `CheckBox`.
 
 use crate::string::AccelString;
+use crate::text::FormattedString;
 use crate::TkAction;
 
 /// Read / write a boolean value
@@ -23,6 +24,10 @@ pub trait HasBool {
 }
 
 /// Read / write an unformatted `String`
+///
+/// Rich-text APIs may also support `HasString`; in this case reading returns
+/// the text without formatting information and writing discards any existing
+/// formatting.
 pub trait HasString {
     /// Get text by reference
     fn get_str(&self) -> &str;
@@ -32,58 +37,27 @@ pub trait HasString {
         self.get_str().to_string()
     }
 
-    /// Set text from an unformatted string
+    /// Set text from a `&str`
+    fn set_str(&mut self, text: &str) -> TkAction {
+        self.set_string(text.to_string())
+    }
+
+    /// Set text from a string
     fn set_string(&mut self, text: String) -> TkAction;
 }
 
-/// Read a (rich) text value
-pub trait CloneText {
-    /// Clone text as a plain `String`
-    ///
-    /// For rich-text representations this strips formatting.
-    ///
-    /// An implementation is provided based on [`CloneText::clone_text`],
-    /// though where an unformatted representation is available internally this
-    /// may be used for a more efficient implementation.
-    fn clone_string(&self) -> String {
-        self.clone_text().to_string()
+/// Read / write a formatted `String`
+pub trait HasFormatted {
+    /// Get text as a `String`
+    fn get_formatted(&self) -> FormattedString;
+
+    /// Set from a formatted string
+    fn set_formatted<S: Into<FormattedString>>(&mut self, text: S) -> TkAction {
+        self.set_formatted_string(text.into())
     }
 
-    /// Clone text as rich text
-    ///
-    /// Can be implemented via `self.clone_string().into()` if there is no
-    /// rich-text representation.
-    fn clone_text(&self) -> kas::text::RichText;
-}
-
-// TODO(spec): it would be nice to provide this implementation
-// impl<T: HasString> CloneText for T {
-//     fn clone_string(&self) -> String {
-//         self.get_string().to_string()
-//     }
-//
-//     fn clone_text(&self) -> kas::text::RichText {
-//         self.get_string().into()
-//     }
-// }
-
-/// Set a text value
-///
-/// TODO: add convenience methods for parsing, e.g. `set_html`.
-pub trait SetText: CloneText {
-    /// Set text
-    ///
-    /// This method supports [`kas::text::RichText`] for formatted input and
-    /// `String` and `&str` for unformatted input.
-    fn set_text<T: Into<kas::text::RichText>>(&mut self, text: T) -> TkAction
-    where
-        Self: Sized,
-    {
-        self.set_rich_text(text.into())
-    }
-
-    /// Set rich text
-    fn set_rich_text(&mut self, text: kas::text::RichText) -> TkAction;
+    /// Set from a formatted string
+    fn set_formatted_string(&mut self, text: FormattedString) -> TkAction;
 }
 
 /// Set a control label

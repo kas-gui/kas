@@ -43,7 +43,7 @@ mod handle;
 use std::any::Any;
 
 use crate::geom::{Quad, Rect, Vec2};
-use crate::text::PreparedText;
+use crate::text::Text;
 
 pub use colour::Colour;
 pub use handle::*;
@@ -250,7 +250,7 @@ impl TextEffect {
 /// changes are expected to support external font shaping libraries.
 pub trait DrawText {
     /// Draw text
-    fn text(&mut self, pass: Pass, pos: Vec2, offset: Vec2, col: Colour, text: &PreparedText) {
+    fn text(&mut self, pass: Pass, pos: Vec2, offset: Vec2, col: Colour, text: &Text) {
         let effects = [TextEffect::col(0, col)];
         self.text_with_effects(pass, pos, offset, text, &effects);
     }
@@ -265,7 +265,7 @@ pub trait DrawText {
         pass: Pass,
         pos: Vec2,
         offset: Vec2,
-        text: &PreparedText,
+        text: &Text,
         effects: &[TextEffect],
     );
 }

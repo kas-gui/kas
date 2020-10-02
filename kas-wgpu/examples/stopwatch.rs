@@ -7,7 +7,7 @@
 
 use std::time::{Duration, Instant};
 
-use kas::class::SetText;
+use kas::class::HasString;
 use kas::event::{Event, Handler, Manager, Response, VoidMsg};
 use kas::macros::make_widget;
 use kas::widget::{Frame, Label, TextButton, Window};
@@ -21,7 +21,7 @@ fn make_window() -> Box<dyn kas::Window> {
         #[layout(row)]
         #[widget(config=noauto)]
         struct {
-            #[widget] display: impl SetText = Frame::new(Label::new("0.000")),
+            #[widget] display: impl HasString = Frame::new(Label::new("0.000")),
             #[widget(handler = reset)] _ = TextButton::new("&reset", ()),
             #[widget(handler = start)] _ = TextButton::new("&start / &stop", ()),
             saved: Duration = Duration::default(),
@@ -31,7 +31,7 @@ fn make_window() -> Box<dyn kas::Window> {
             fn reset(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
                 self.saved = Duration::default();
                 self.start = None;
-                *mgr += self.display.set_text("0.000");
+                *mgr += self.display.set_str("0.000");
                 Response::None
             }
             fn start(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
@@ -58,7 +58,7 @@ fn make_window() -> Box<dyn kas::Window> {
                         if let Some(start) = self.start {
                             let dur = self.saved + (Instant::now() - start);
                             let text = format!("{}.{:03}", dur.as_secs(), dur.subsec_millis());
-                            *mgr += self.display.set_text(text);
+                            *mgr += self.display.set_string(text);
                             mgr.update_on_timer(Duration::new(0, 1), self.id());
                         }
                         Response::None
