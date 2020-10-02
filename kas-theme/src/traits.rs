@@ -55,13 +55,21 @@ pub trait Theme<D: DrawShared>: ThemeApi {
     /// This is called when the DPI factor changes or theme dimensions change.
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32);
 
-    /// Construct a [`DrawHandle`] object
+    /// Prepare to draw and construct a [`DrawHandle`] object
+    ///
+    /// This is called once per window per frame and should do any necessary
+    /// preparation such as loading fonts and textures which are loaded on
+    /// demand.
     ///
     /// Drawing via this [`DrawHandle`] is restricted to the specified `rect`.
     ///
     /// The `window` is guaranteed to be one created by a call to
     /// [`Theme::new_window`] on `self`, and the `draw` reference is guaranteed
     /// to be identical to the one passed to [`Theme::new_window`].
+    ///
+    /// This method is marked *unsafe* since a lifetime restriction is required
+    /// on the return value which can only be expressed with the unstable
+    /// feature Generic Associated Types (rust#44265).
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,

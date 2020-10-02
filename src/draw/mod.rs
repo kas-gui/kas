@@ -249,6 +249,9 @@ impl TextEffect {
 /// Note: the current API is designed to meet only current requirements since
 /// changes are expected to support external font shaping libraries.
 pub trait DrawText {
+    /// Load resources needed for the next frame
+    fn prepare_fonts(&mut self);
+
     /// Draw text
     fn text(&mut self, pass: Pass, pos: Vec2, offset: Vec2, col: Colour, text: &Text) {
         let effects = [TextEffect::col(0, col)];

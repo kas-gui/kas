@@ -17,15 +17,7 @@ fn to_point(Vec2(x, y): Vec2) -> ab_glyph::Point {
 }
 
 impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
-    fn text_with_effects(
-        &mut self,
-        pass: Pass,
-        pos: Vec2,
-        offset: Vec2,
-        text: &Text,
-        effects: &[TextEffect],
-    ) {
-        // Check all fonts are loaded. TODO: move (only need to do this once per frame, at most).
+    fn prepare_fonts(&mut self) {
         let fonts = fonts();
         let n1 = self.glyph_brush.fonts().len();
         let n2 = fonts.num_fonts();
@@ -37,7 +29,16 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
                 count += 1;
             }
         }
+    }
 
+    fn text_with_effects(
+        &mut self,
+        pass: Pass,
+        pos: Vec2,
+        offset: Vec2,
+        text: &Text,
+        effects: &[TextEffect],
+    ) {
         let pos = to_point(pos);
         let offset = pos - to_point(offset);
 

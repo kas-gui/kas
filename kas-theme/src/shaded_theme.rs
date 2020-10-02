@@ -84,6 +84,8 @@ where
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle {
+        draw.prepare_fonts();
+
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
         use std::mem::transmute;
         DrawHandle {
@@ -102,6 +104,8 @@ where
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle<'a> {
+        draw.prepare_fonts();
+
         DrawHandle {
             draw,
             window,
