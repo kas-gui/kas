@@ -71,7 +71,7 @@ pub struct DrawPipe<C> {
     custom: C,
 }
 
-type GlyphBrush = wgpu_glyph::GlyphBrush<DepthStencilStateDescriptor, &'static FontRef<'static>>;
+type GlyphBrush = wgpu_glyph::GlyphBrush<DepthStencilStateDescriptor, FontRef<'static>>;
 
 /// Per-window pipeline data
 pub struct DrawWindow<CW: CustomWindow> {

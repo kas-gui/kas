@@ -44,7 +44,7 @@ path = "kas-macros"
 [dependencies.kas-text]
 version = "0.1.2"
 git = "https://github.com/kas-gui/kas-text"
-rev = "183bdbdda5f556501d823cf22247ec6f6ad23c91"
+rev = "124667c5f771a33f3c3e39d19c7d8abe2de0dbce"
 
 [dependencies.winit]
 # Provides translations for several winit types

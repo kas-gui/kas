@@ -8,7 +8,7 @@
 use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
 use wgpu::TextureView;
-use wgpu_glyph::GlyphBrushBuilder;
+use wgpu_glyph::{ab_glyph::FontRef, GlyphBrushBuilder};
 
 use super::{
     flat_round, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow, DrawPipe,
@@ -90,7 +90,13 @@ impl<C: CustomPipe> DrawPipe<C> {
         let flat_round = self.flat_round.new_window(device, size);
         let custom = self.custom.new_window(device, size);
 
-        let fonts = kas::text::fonts::fonts().ab_glyph_fonts_from(0);
+        // TODO: use extra caching so we don't load font for each window
+        let font_data = kas::text::fonts::fonts().font_data();
+        let mut fonts = Vec::with_capacity(font_data.len());
+        for i in 0..font_data.len() {
+            let (data, index) = font_data.get_data(i);
+            fonts.push(FontRef::try_from_slice_and_index(data, index).unwrap());
+        }
         let glyph_brush = GlyphBrushBuilder::using_fonts(fonts)
             .depth_stencil_state(super::GLPYH_DEPTH_DESC)
             .build(device, TEX_FORMAT);

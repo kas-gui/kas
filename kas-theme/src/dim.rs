@@ -61,7 +61,7 @@ impl Dimensions {
         let dpem = dpp * pt_size;
         let line_height = kas::text::fonts::fonts()
             .get(font_id)
-            .line_height(dpem)
+            .height(dpem)
             .ceil() as u32;
 
         let outer_margin = (params.outer_margin * scale_factor).round() as u32;

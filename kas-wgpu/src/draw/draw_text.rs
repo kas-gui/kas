@@ -16,17 +16,23 @@ fn to_point(Vec2(x, y): Vec2) -> ab_glyph::Point {
     ab_glyph::Point { x, y }
 }
 
+fn ktv_to_point(kas::text::Vec2(x, y): kas::text::Vec2) -> ab_glyph::Point {
+    ab_glyph::Point { x, y }
+}
+
 impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
     fn prepare_fonts(&mut self) {
         let fonts = fonts();
         let n1 = self.glyph_brush.fonts().len();
         let n2 = fonts.num_fonts();
-        let mut count = n1;
         if n2 > n1 {
-            for font in fonts.ab_glyph_fonts_from(n1) {
+            // TODO: use extra caching so we don't load font for each window
+            let font_data = kas::text::fonts::fonts().font_data();
+            for i in n1..n2 {
+                let (data, index) = font_data.get_data(i);
+                let font = ab_glyph::FontRef::try_from_slice_and_index(data, index).unwrap();
                 let id = self.glyph_brush.add_font(font);
-                assert_eq!(id.0, count);
-                count += 1;
+                assert_eq!(id.0, i);
             }
         }
     }
@@ -45,7 +51,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         let mut section = 0;
         let mut next = 0;
         let mut next_start = effects.get(next).map(|e| e.start).unwrap_or(u32::MAX);
-        let glyphs = text.positioned_glyphs(|_, font_id, scale, glyph| {
+        let glyphs = text.positioned_glyphs(|_, font_id, _, height, glyph| {
             while glyph.index >= next_start {
                 section = next;
                 next += 1;
@@ -55,9 +61,9 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
                 section_index: section,
                 byte_index: 0, // not used
                 glyph: ab_glyph::Glyph {
-                    id: glyph.id,
-                    scale,
-                    position: offset + glyph.position.into(),
+                    id: ab_glyph::GlyphId(glyph.id.0),
+                    scale: height.into(),
+                    position: offset + ktv_to_point(glyph.position),
                 },
                 font_id: FontId(font_id.get()),
             }
@@ -88,7 +94,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
             .collect();
 
         let min = pos;
-        let max = pos + text.env().bounds.into();
+        let max = pos + ktv_to_point(text.env().bounds);
         let bounds = ab_glyph::Rect { min, max };
 
         self.glyph_brush.queue_pre_positioned(glyphs, extra, bounds);
