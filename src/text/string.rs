@@ -54,8 +54,8 @@ impl AccelString {
                     break;
                 }
                 Some((j, c)) => {
-                    buf.push(c);
                     let pos = buf.len() as u32;
+                    buf.push(c);
                     ulines.0.push(pos);
                     let vkeys = find_vkeys(c);
                     if !vkeys.is_empty() {

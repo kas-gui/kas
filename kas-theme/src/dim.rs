@@ -59,10 +59,7 @@ impl Dimensions {
         let font_id = Default::default();
         let dpp = scale_factor * (96.0 / 72.0);
         let dpem = dpp * pt_size;
-        let line_height = kas::text::fonts::fonts()
-            .get(font_id)
-            .height(dpem)
-            .ceil() as u32;
+        let line_height = kas::text::fonts::fonts().get(font_id).height(dpem).ceil() as u32;
 
         let outer_margin = (params.outer_margin * scale_factor).round() as u32;
         let inner_margin = (params.inner_margin * scale_factor).round() as u32;

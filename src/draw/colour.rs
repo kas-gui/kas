@@ -31,3 +31,14 @@ impl From<Colour> for [f32; 4] {
         [c.r, c.g, c.b, c.a]
     }
 }
+
+impl From<[f32; 4]> for Colour {
+    fn from(c: [f32; 4]) -> Self {
+        Colour {
+            r: c[0],
+            g: c[1],
+            b: c[2],
+            a: c[3],
+        }
+    }
+}

@@ -215,6 +215,7 @@ pub trait DrawShaded: Draw {
 ///
 /// This is a HACK to allow some formatting without full support in `kas_text`.
 /// It will likely transition into a similar system within `kas_text`.
+#[derive(Clone, Debug)]
 pub struct TextEffect {
     /// The first index to apply this effect
     pub start: u32,
@@ -222,6 +223,8 @@ pub struct TextEffect {
     pub col: Option<Colour>,
     /// Apply or remove underline
     pub underline: Option<bool>,
+    /// Apply or remove strikethrough
+    pub strikethrough: Option<bool>,
 }
 
 impl TextEffect {
@@ -231,6 +234,7 @@ impl TextEffect {
             start: start as u32,
             col: Some(col),
             underline: None,
+            strikethrough: None,
         }
     }
 
@@ -240,6 +244,7 @@ impl TextEffect {
             start: start as u32,
             col: None,
             underline: Some(underline),
+            strikethrough: None,
         }
     }
 }

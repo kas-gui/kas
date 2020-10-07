@@ -5,12 +5,13 @@
 
 //! Text drawing API for `kas_wgpu`
 
-use wgpu_glyph::{ab_glyph, Extra, FontId, SectionGlyph};
+use wgpu_glyph::{ab_glyph, Extra, SectionGlyph};
 
 use super::{CustomWindow, DrawWindow};
-use kas::draw::{Colour, DrawText, Pass, TextEffect};
-use kas::geom::Vec2;
-use kas::text::{fonts::fonts, Text};
+use kas::draw::{Colour, Draw, DrawText, Pass, TextEffect};
+use kas::geom::{Quad, Vec2};
+use kas::text::fonts::{fonts, FontId};
+use kas::text::{Effect, EffectFlags, Glyph, Text};
 
 fn to_point(Vec2(x, y): Vec2) -> ab_glyph::Point {
     ab_glyph::Point { x, y }
@@ -45,56 +46,67 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         text: &Text,
         effects: &[TextEffect],
     ) {
-        let pos = to_point(pos);
-        let offset = pos - to_point(offset);
+        let ab_pos = to_point(pos);
+        let ab_offset = ab_pos - to_point(offset);
 
-        let mut section = 0;
-        let mut next = 0;
-        let mut next_start = effects.get(next).map(|e| e.start).unwrap_or(u32::MAX);
-        let glyphs = text.positioned_glyphs(|_, font_id, _, height, glyph| {
-            while glyph.index >= next_start {
-                section = next;
-                next += 1;
-                next_start = effects.get(next).map(|e| e.start).unwrap_or(u32::MAX);
+        let mut col = Colour::grey(0.0);
+        let mut underline = false;
+        let mut strikethrough = false;
+        let mut v = Vec::with_capacity(effects.len());
+        let mut extra = Vec::with_capacity(effects.len());
+        for (i, e) in effects.iter().enumerate() {
+            if let Some(c) = e.col {
+                col = c;
             }
-            SectionGlyph {
-                section_index: section,
+            if let Some(u) = e.underline {
+                underline = u;
+            }
+            if let Some(s) = e.strikethrough {
+                strikethrough = s;
+            }
+            v.push(Effect {
+                start: e.start,
+                flags: match (underline, strikethrough) {
+                    (false, false) => EffectFlags::default(),
+                    (true, false) => EffectFlags::UNDERLINE,
+                    (false, true) => EffectFlags::STRIKETHROUGH,
+                    (true, true) => EffectFlags::UNDERLINE | EffectFlags::STRIKETHROUGH,
+                },
+                aux: i,
+            });
+            extra.push(Extra {
+                color: col.into(),
+                z: pass.depth(),
+            });
+        }
+
+        let mut glyphs = Vec::with_capacity(text.num_glyphs());
+        let for_glyph = |font_id: FontId, _, height: f32, glyph: Glyph, aux| {
+            glyphs.push(SectionGlyph {
+                section_index: aux,
                 byte_index: 0, // not used
                 glyph: ab_glyph::Glyph {
                     id: ab_glyph::GlyphId(glyph.id.0),
                     scale: height.into(),
-                    position: offset + ktv_to_point(glyph.position),
+                    position: ab_offset + ktv_to_point(glyph.position),
                 },
-                font_id: FontId(font_id.get()),
+                font_id: wgpu_glyph::FontId(font_id.get()),
+            });
+        };
+        let for_rect = |x1, x2, mut y, h: f32, aux: usize| {
+            let y2 = y + h;
+            if h < 1.0 {
+                // h too small can make the line invisible due to rounding
+                // In this case we prefer to push the line up (nearer text).
+                y = y2 - 1.0;
             }
-        });
+            let quad = Quad::with_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
+            self.rect(pass, quad, extra[aux].color.into());
+        };
+        text.glyphs_with_effects(&v, for_glyph, for_rect);
 
-        let mut col = Colour::grey(0.0);
-        let mut col2 = col;
-        let mut underline = false;
-        let extra = effects
-            .iter()
-            .map(|effect| {
-                if let Some(c) = effect.col {
-                    if !underline {
-                        col = c;
-                    }
-                    col2 = c;
-                }
-                if let Some(u) = effect.underline {
-                    // HACK: draw a real underline (instead we just change colour)
-                    underline = u;
-                    col = if u { Colour::new(0.9, 0.2, 0.5) } else { col2 };
-                }
-                Extra {
-                    color: col.into(),
-                    z: pass.depth(),
-                }
-            })
-            .collect();
-
-        let min = pos;
-        let max = pos + ktv_to_point(text.env().bounds);
+        let min = ab_pos;
+        let max = ab_pos + ktv_to_point(text.env().bounds);
         let bounds = ab_glyph::Rect { min, max };
 
         self.glyph_brush.queue_pre_positioned(glyphs, extra, bounds);
