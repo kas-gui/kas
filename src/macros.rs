@@ -320,6 +320,7 @@
 //! let button_box = make_widget!{
 //!     #[layout(row)]
 //!     #[handler(msg = OkCancel)]
+//!     #[derive(Clone)] // optional
 //!     struct {
 //!         #[widget] _ = TextButton::new("Ok", OkCancel::Ok),
 //!         #[widget] _ = TextButton::new("Cancel", OkCancel::Cancel),

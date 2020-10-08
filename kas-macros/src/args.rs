@@ -823,7 +823,10 @@ impl Parse for MakeWidget {
         for attr in attrs.drain(..) {
             if attr.path == parse_quote! { handler } {
                 if handler.is_some() {
-                    return Err(Error::new(attr.span(), "duplicate `handler` attribute"));
+                    return Err(Error::new(
+                        attr.span(),
+                        "multiple `handler` attributes not supported by make_widget!",
+                    ));
                 }
                 handler = Some(syn::parse2(attr.tokens)?);
             } else {

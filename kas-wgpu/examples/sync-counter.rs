@@ -30,6 +30,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let buttons = make_widget! {
         #[layout(row)]
         #[handler(msg = Message)]
+        #[derive(Clone)]
         struct {
             #[widget] _ = TextButton::new("−", Message::Decr),
             #[widget] _ = TextButton::new("+", Message::Incr),
@@ -43,6 +44,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         make_widget! {
             #[layout(column)]
             #[widget(config=noauto)]
+            #[derive(Clone)]
             struct {
                 #[widget(halign=centre)] display: Label = Label::new("0"),
                 #[widget(handler = handle_button)] buttons -> Message = buttons,
