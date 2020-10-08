@@ -67,7 +67,6 @@
 //!
 //! [`WidgetId`]: crate::WidgetId
 
-mod callback;
 #[cfg(not(feature = "winit"))]
 mod enums;
 mod events;
@@ -88,7 +87,6 @@ pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
 #[cfg(feature = "winit")]
 pub use winit::window::CursorIcon;
 
-pub use callback::Callback;
 #[cfg(not(feature = "winit"))]
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;

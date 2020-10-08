@@ -9,13 +9,12 @@ use smallvec::SmallVec;
 use std::fmt::{self, Debug};
 
 use kas::draw::ClipRegion;
-use kas::event::Callback;
+use kas::event::UpdateHandle;
 use kas::prelude::*;
-use kas::WindowId;
+use kas::{Future, WindowId};
 
 /// The main instantiation of the [`Window`] trait.
 #[handler(send=noauto, generics = <> where W: Widget<Msg = VoidMsg>)]
-#[widget(config=noauto)]
 #[derive(Widget)]
 pub struct Window<W: Widget + 'static> {
     #[widget_core]
@@ -25,24 +24,22 @@ pub struct Window<W: Widget + 'static> {
     #[widget]
     w: W,
     popups: SmallVec<[(WindowId, kas::Popup); 16]>,
-    fns: Vec<(Callback, &'static dyn Fn(&mut W, &mut Manager))>,
+    drop: Option<(Box<dyn FnMut(&mut W)>, UpdateHandle)>,
 }
 
 impl<W: Widget> Debug for Window<W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "Window {{ core: {:?}, solver: <omitted>, w: {:?}, fns: [",
-            self.core, self.w
+            "Window {{ core: {:?}, restrict_dimensions: {:?}, title: {:?}, w: {:?}, popups: {:?}, drop: ",
+            self.core, self.restrict_dimensions, self.title, self.w, self.popups,
         )?;
-        let mut iter = self.fns.iter();
-        if let Some(first) = iter.next() {
-            write!(f, "({:?}, <Fn>)", first.0)?;
-            for next in iter {
-                write!(f, ", ({:?}, <Fn>)", next.0)?;
-            }
+        if let Some(ref d) = self.drop {
+            write!(f, "Some(<closure>, {:?})", d.1)?;
+        } else {
+            write!(f, "None")?;
         }
-        write!(f, "] }}")
+        write!(f, " }}")
     }
 }
 
@@ -54,7 +51,7 @@ impl<W: Widget + Clone> Clone for Window<W> {
             title: self.title.clone(),
             w: self.w.clone(),
             popups: Default::default(), // these are temporary; don't clone
-            fns: self.fns.clone(),
+            drop: None,                 // we cannot clone this!
         }
     }
 }
@@ -68,7 +65,7 @@ impl<W: Widget> Window<W> {
             title: title.to_string(),
             w,
             popups: Default::default(),
-            fns: Vec::new(),
+            drop: None,
         }
     }
 
@@ -79,23 +76,33 @@ impl<W: Widget> Window<W> {
         self.restrict_dimensions = (min, max);
     }
 
-    /// Add a closure to be called, with a reference to self, on the given
-    /// condition. The closure must be passed by reference.
-    // TODO: consider whether to keep this. The only functionality added is for
-    // actions which happen on destruction.
-    pub fn add_callback(&mut self, condition: Callback, f: &'static dyn Fn(&mut W, &mut Manager)) {
-        self.fns.push((condition, f));
-    }
-}
-
-impl<W: Widget> WidgetConfig for Window<W> {
-    fn configure(&mut self, mgr: &mut Manager) {
-        for (condition, f) in &self.fns {
-            match condition {
-                Callback::Start => f(&mut self.w, mgr),
-                Callback::Close => (),
-            }
+    /// Set a closure to be called on destruction, and return a future
+    ///
+    /// The closure `consume` is called when the window is destroyed, and yields
+    /// a user-defined value. This value is returned through the returned
+    /// [`Future`] object. In order to be notified when the future
+    /// completes, its owner should call [`Manager::update_on_handle`] with the
+    /// returned [`UpdateHandle`].
+    ///
+    /// Currently it is not possible for this closure to actually drop the
+    /// widget, but it may alter its contents: it is the last method call on
+    /// the widget. (TODO: given unsized rvalues (rfc#1909), the closure should
+    /// consume self.)
+    ///
+    /// Panics if called more than once. In case the window is cloned, this
+    /// closure is *not* inherited by the clone: in that case, `on_drop` may be
+    /// called on the clone.
+    pub fn on_drop<T>(
+        &mut self,
+        consume: Box<dyn FnMut(&mut W) -> T>,
+    ) -> (Future<T>, UpdateHandle) {
+        if self.drop.is_some() {
+            panic!("Window::on_drop: attempt to set multiple drop closures");
         }
+        let (future, finish) = Future::new_box_fnmut(consume);
+        let update = UpdateHandle::new();
+        self.drop = Some((finish, update));
+        (future, update)
     }
 }
 
@@ -181,11 +188,9 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
     }
 
     fn handle_closure(&mut self, mgr: &mut Manager) {
-        for (condition, f) in &self.fns {
-            match condition {
-                Callback::Close => f(&mut self.w, mgr),
-                Callback::Start => (),
-            }
+        if let Some((mut consume, update)) = self.drop.take() {
+            consume(&mut self.w);
+            mgr.trigger_update(update, 0);
         }
     }
 }
