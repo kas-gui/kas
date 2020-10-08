@@ -966,7 +966,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 let delta2 = match delta {
                     ScrollDelta::LineDelta(x, y) => {
                         // We arbitrarily scroll 3 lines:
-                        let dist = 3.0 * self.text.env().line_height(Default::default());
+                        let dist = 3.0 * self.text.env().height(Default::default());
                         let x = (x * dist).round() as i32;
                         let y = (y * dist).round() as i32;
                         Coord(x, y)

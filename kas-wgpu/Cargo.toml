@@ -35,7 +35,7 @@ log = "0.4"
 smallvec = "1.1"
 wgpu = "0.6.0"
 wgpu_glyph = "0.10.0"
-winit = "0.22.0"
+winit = "0.23.0"
 
 [dependencies.clipboard]
 # Provides clipboard support

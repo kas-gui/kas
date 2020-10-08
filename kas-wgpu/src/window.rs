@@ -96,7 +96,7 @@ where
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
-        let mut mgr = ManagerState::new(scale_factor);
+        let mut mgr = ManagerState::new();
         let mut tkw = TkWindow::new(shared, &window, &mut theme_window);
         mgr.configure(&mut tkw, &mut *widget);
 
@@ -164,7 +164,6 @@ where
                 shared
                     .theme
                     .update_window(&mut self.theme_window, scale_factor as f32);
-                self.mgr.set_dpi_factor(scale_factor);
                 self.solve_cache.invalidate_rule_cache();
                 self.do_resize(shared, *new_inner_size);
             }

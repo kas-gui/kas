@@ -26,7 +26,7 @@ use kas::event::UpdateHandle;
 use kas::WindowId;
 use kas_theme::Theme;
 use winit::error::OsError;
-use winit::event_loop::{EventLoop, EventLoopProxy};
+use winit::event_loop::{EventLoop, EventLoopProxy, EventLoopWindowTarget};
 
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe};
 use crate::shared::SharedState;
@@ -116,7 +116,7 @@ where
         options: Options,
     ) -> Result<Self, Error> {
         let el = EventLoop::with_user_event();
-        let scale_factor = el.primary_monitor().scale_factor();
+        let scale_factor = find_scale_factor(&el);
         Ok(Toolkit {
             el,
             windows: vec![],
@@ -154,6 +154,16 @@ where
         self.el
             .run(move |event, elwt, control_flow| el.handle(event, elwt, control_flow))
     }
+}
+
+fn find_scale_factor<T>(el: &EventLoopWindowTarget<T>) -> f64 {
+    if let Some(mon) = el.primary_monitor() {
+        return mon.scale_factor();
+    }
+    if let Some(mon) = el.available_monitors().next() {
+        return mon.scale_factor();
+    }
+    1.0
 }
 
 /// A proxy allowing control of a [`Toolkit`] from another thread.

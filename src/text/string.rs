@@ -54,8 +54,8 @@ impl AccelString {
                     break;
                 }
                 Some((j, c)) => {
-                    buf.push(c);
                     let pos = buf.len() as u32;
+                    buf.push(c);
                     ulines.0.push(pos);
                     let vkeys = find_vkeys(c);
                     if !vkeys.is_empty() {
@@ -217,12 +217,11 @@ fn find_vkeys(c: char) -> VirtualKeyCodes {
     // TODO: lots of keys aren't yet available in VirtualKeyCode!
     // NOTE: some of these bindings are a little inaccurate. It isn't obvious
     // whether prefer strict or more flexible bindings here.
-    // NOTE: we add a couple of non-unicode bindings. How many should we add?
     match c.to_ascii_uppercase() {
         '\'' => smallvec![VK::Apostrophe],
-        '+' => smallvec![VK::Add],
+        '+' => smallvec![VK::Plus, VK::NumpadAdd],
         ',' => smallvec![VK::Comma],
-        '-' => smallvec![VK::Minus],
+        '-' => smallvec![VK::Minus, VK::NumpadSubtract],
         '.' => smallvec![VK::Period],
         '/' => smallvec![VK::Slash],
         '0' => smallvec![VK::Key0, VK::Numpad0],
@@ -268,9 +267,9 @@ fn find_vkeys(c: char) -> VirtualKeyCodes {
         '[' => smallvec![VK::LBracket],
         ']' => smallvec![VK::RBracket],
         '^' => smallvec![VK::Caret],
-        '÷' => smallvec![VK::Divide],
-        '×' => smallvec![VK::Multiply],
-        '−' => smallvec![VK::Subtract],
+        '÷' => smallvec![VK::NumpadDivide],
+        '×' => smallvec![VK::NumpadMultiply],
+        '−' => smallvec![VK::Minus, VK::NumpadSubtract],
         _ => smallvec![],
     }
 }
