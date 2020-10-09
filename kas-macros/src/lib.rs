@@ -566,7 +566,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let toks = (quote! { {
         #handler
         #extra_attrs
-        #[derive(Clone, Debug, kas::macros::Widget)]
+        #[derive(Debug, kas::macros::Widget)]
         struct AnonWidget #impl_generics #where_clause {
             #field_toks
         }

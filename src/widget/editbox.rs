@@ -278,8 +278,8 @@ impl<G: 'static> Layout for EditBox<G> {
 
 impl EditBox<EditVoid> {
     /// Construct an `EditBox` with the given inital `text`.
-    pub fn new<S: Into<String>>(text: S) -> Self {
-        let text = text.into();
+    pub fn new<S: ToString>(text: S) -> Self {
+        let text = text.to_string();
         let edit_pos = text.len();
         EditBox {
             core: Default::default(),

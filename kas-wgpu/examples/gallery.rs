@@ -12,7 +12,7 @@ use kas::class::HasString;
 use kas::event::{UpdateHandle, VoidResponse};
 use kas::prelude::*;
 use kas::widget::*;
-use kas::Right;
+use kas::{Future, Right};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Item {
@@ -23,7 +23,6 @@ enum Item {
     Edit(String),
     Slider(i32),
     Scroll(u32),
-    Popup,
 }
 
 struct Guard;
@@ -38,6 +37,44 @@ impl EditGuard for Guard {
         // 7a is the colour of *magic*!
         edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
         None
+    }
+}
+
+#[layout(grid)]
+#[handler(msg = VoidMsg)]
+#[derive(Debug, Widget)]
+struct TextEditPopup {
+    #[widget_core]
+    core: CoreData,
+    #[layout_data]
+    layout_data: <Self as kas::LayoutData>::Data,
+    #[widget(cspan = 3)]
+    edit: EditBoxVoid,
+    #[widget(row = 1, col = 0)]
+    fill: Filler,
+    #[widget(row=1, col=1, handler = close)]
+    cancel: TextButton<bool>,
+    #[widget(row=1, col=2, handler = close)]
+    save: TextButton<bool>,
+    commit: bool,
+}
+impl TextEditPopup {
+    fn new<S: ToString>(text: S) -> Self {
+        TextEditPopup {
+            core: Default::default(),
+            layout_data: Default::default(),
+            edit: EditBox::new(text).multi_line(true),
+            fill: Filler::maximise(),
+            cancel: TextButton::new("Cancel", false),
+            save: TextButton::new("Save", true),
+            commit: false,
+        }
+    }
+
+    fn close(&mut self, mgr: &mut Manager, commit: bool) -> VoidResponse {
+        self.commit = commit;
+        mgr.send_action(TkAction::Close);
+        Response::None
     }
 }
 
@@ -75,6 +112,52 @@ fn main() -> Result<(), kas_wgpu::Error> {
         ),
     ]);
 
+    let popup_edit_box = make_widget! {
+        #[layout(row)]
+        #[handler(handle = noauto)]
+        struct {
+            #[widget] label: Label = Label::new("Use button to edit →"),
+            #[widget(handler = edit)] edit = TextButton::new("&Edit", ()),
+            future: Option<Future<Option<String>>> = None,
+        }
+        impl {
+            fn edit(&mut self, mgr: &mut Manager, _: ()) -> VoidResponse {
+                if self.future.is_none() {
+                    let text = self.label.get_string();
+                    let mut window = Window::new("Edit text", TextEditPopup::new(text));
+                    let (future, update) = window.on_drop(Box::new(|w: &mut TextEditPopup| if w.commit {
+                        Some(w.edit.get_string())
+                    } else {
+                        None
+                    }));
+                    self.future = Some(future);
+                    mgr.update_on_handle(update, self.id());
+                    mgr.add_window(Box::new(window));
+                }
+                Response::None
+            }
+        }
+        impl Handler {
+            type Msg = VoidMsg;
+            fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+                match event {
+                    Event::HandleUpdate { .. } => {
+                        // There should be no other source of this event,
+                        // so we can assume our future is finished
+                        if let Some(future) = self.future.take() {
+                            let result = future.try_finish().unwrap();
+                            if let Some(text) = result {
+                                *mgr += self.label.set_string(text);
+                            }
+                        }
+                        Response::None
+                    }
+                    _ => Response::Unhandled(event),
+                }
+            }
+        }
+    };
+
     let radio = UpdateHandle::new();
     let widgets = make_widget! {
         #[layout(grid)]
@@ -105,7 +188,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=8, col=1, handler = handle_scroll)] sc =
                 ScrollBar::<Right>::new().with_limits(5, 2),
             #[widget(row=9)] _ = Label::new("Child window"),
-            #[widget(row=9, col = 1)] _ = TextButton::new("&Open", Item::Popup),
+            #[widget(row=9, col = 1)] _ = popup_edit_box,
         }
         impl {
             fn handle_combo(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {
@@ -155,9 +238,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     }
                     Response::None
                 }
-                fn activations(&mut self, mgr: &mut Manager, item: Item)
-                    -> VoidResponse
-                {
+                fn activations(&mut self, _: &mut Manager, item: Item) -> VoidResponse {
                     match item {
                         Item::Button => println!("Clicked!"),
                         Item::Check(b) => println!("CheckBox: {}", b),
@@ -166,10 +247,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         Item::Edit(s) => println!("Edited: {}", s),
                         Item::Slider(p) => println!("Slider: {}", p),
                         Item::Scroll(p) => println!("ScrollBar: {}", p),
-                        Item::Popup => {
-                            let window = MessageBox::new("Popup", "Hello!");
-                            mgr.add_window(Box::new(window));
-                        }
                     };
                     Response::None
                 }
