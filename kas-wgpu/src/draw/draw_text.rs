@@ -46,6 +46,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         text: &Text,
         effects: &[TextEffect],
     ) {
+        let time = std::time::Instant::now();
         let ab_pos = to_point(pos);
         let ab_offset = ab_pos - to_point(offset);
 
@@ -110,5 +111,6 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         let bounds = ab_glyph::Rect { min, max };
 
         self.glyph_brush.queue_pre_positioned(glyphs, extra, bounds);
+        self.dur_text += time.elapsed();
     }
 }

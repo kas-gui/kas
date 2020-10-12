@@ -56,6 +56,8 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
+        let time = Instant::now();
+
         // Create draw immediately (with Size::ZERO) to find ideal window size
         let scale_factor = shared.scale_factor as f32;
         let mut draw = shared.draw.new_window(&mut shared.device, Size::ZERO);
@@ -113,22 +115,9 @@ where
             theme_window,
         };
         r.apply_size();
+
+        trace!("Window::new completed in {}µs", time.elapsed().as_micros());
         Ok(r)
-    }
-
-    /// Recompute layout of widgets and redraw
-    fn reconfigure<C, T>(&mut self, shared: &mut SharedState<C, T>)
-    where
-        C: CustomPipe<Window = CW>,
-        T: Theme<DrawPipe<C>, Window = TW>,
-    {
-        debug!("Window::reconfigure");
-
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
-        self.mgr.configure(&mut tkw, &mut *self.widget);
-
-        self.solve_cache.invalidate_rule_cache();
-        self.apply_size();
     }
 
     pub fn theme_resize<C, T>(&mut self, shared: &SharedState<C, T>)
@@ -299,7 +288,24 @@ where
     CW: CustomWindow + 'static,
     TW: kas_theme::Window + 'static,
 {
+    fn reconfigure<C, T>(&mut self, shared: &mut SharedState<C, T>)
+    where
+        C: CustomPipe<Window = CW>,
+        T: Theme<DrawPipe<C>, Window = TW>,
+    {
+        let time = Instant::now();
+        debug!("Window::reconfigure");
+
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+        self.mgr.configure(&mut tkw, &mut *self.widget);
+
+        self.solve_cache.invalidate_rule_cache();
+        self.apply_size();
+        trace!("reconfigure completed in {}µs", time.elapsed().as_micros());
+    }
+
     fn apply_size(&mut self) {
+        let time = Instant::now();
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         let rect = Rect::new(Coord::ZERO, size);
         debug!("Resizing window to rect = {:?}", rect);
@@ -320,6 +326,7 @@ where
         };
 
         self.window.request_redraw();
+        trace!("apply_size completed in {}µs", time.elapsed().as_micros());
     }
 
     fn do_resize<C, T>(&mut self, shared: &mut SharedState<C, T>, size: PhysicalSize<u32>)
@@ -327,6 +334,7 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
+        let time = Instant::now();
         let size = size.into();
         if size == Size(self.sc_desc.width, self.sc_desc.height) {
             return;
@@ -344,6 +352,11 @@ where
         // Note that on resize, width adjustments may affect height
         // requirements; we therefore refresh size restrictions.
         self.apply_size();
+
+        trace!(
+            "do_resize completed in {}µs (including apply_size time)",
+            time.elapsed().as_micros()
+        );
     }
 
     pub(crate) fn do_draw<C, T>(&mut self, shared: &mut SharedState<C, T>)
@@ -351,24 +364,41 @@ where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
     {
-        trace!("Window::do_draw");
+        let time = Instant::now();
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         let rect = Rect {
             pos: Coord::ZERO,
             size,
         };
-        let mut draw_handle = unsafe {
-            shared
-                .theme
-                .draw_handle(&mut self.draw, &mut self.theme_window, rect)
-        };
-        self.widget.draw(&mut draw_handle, &self.mgr, false);
-        drop(draw_handle);
 
+        unsafe {
+            // Safety: we must drop draw_handle after draw call (wrong lifetime)
+            let mut draw_handle =
+                shared
+                    .theme
+                    .draw_handle(&mut self.draw, &mut self.theme_window, rect);
+            self.widget.draw(&mut draw_handle, &self.mgr, false);
+        }
+
+        let time2 = Instant::now();
         let frame = self.swap_chain.get_current_frame().unwrap();
+
+        let time3 = Instant::now();
         // TODO: check frame.optimal ?
         let clear_color = to_wgpu_color(shared.theme.clear_colour());
         shared.render(&mut self.draw, &frame.output.view, clear_color);
+
+        let end = Instant::now();
+        // Explanation: 'text' is the time to prepare positioned glyphs, 'frame-
+        // swap' is mostly about sync, 'render' is time to feed the GPU.
+        trace!(
+            "do_draw completed in {}µs ({}µs text, {}µs frame-swap, {}µs render)",
+            (end - time).as_micros(),
+            self.draw.dur_text.as_micros(),
+            (time3 - time2).as_micros(),
+            (end - time3).as_micros()
+        );
+        self.draw.dur_text = Default::default();
     }
 }
 
