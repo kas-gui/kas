@@ -107,8 +107,8 @@ impl Layout for Clock {
 
         let date_pos = (self.date_pos + offset).into();
         let time_pos = (self.time_pos + offset).into();
-        draw.text(pass, date_pos, Vec2::ZERO, col_text, &self.date);
-        draw.text(pass, time_pos, Vec2::ZERO, col_text, &self.time);
+        draw.text(pass, date_pos, Vec2::ZERO, col_text, self.date.as_ref());
+        draw.text(pass, time_pos, Vec2::ZERO, col_text, self.time.as_ref());
     }
 }
 

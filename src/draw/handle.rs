@@ -5,12 +5,13 @@
 
 //! "Handle" types used by themes
 
+use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, Margins, SizeRules};
-use kas::text::Text;
+use kas::text::{Text, TextDisplay};
 use kas::Direction;
 
 /// Classification of a clip region
@@ -272,7 +273,7 @@ pub trait DrawHandle {
     /// but offset by subtracting `offset` (allowing scrolling).
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &Text, class: TextClass);
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &TextDisplay, class: TextClass);
 
     /// Draw some text, with an underlined glyph
     ///
@@ -282,7 +283,7 @@ pub trait DrawHandle {
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         class: TextClass,
         underline: usize,
     );
@@ -293,7 +294,7 @@ pub trait DrawHandle {
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     );
@@ -303,7 +304,7 @@ pub trait DrawHandle {
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         class: TextClass,
         byte: usize,
     );
@@ -370,8 +371,8 @@ pub trait DrawHandleExt: DrawHandle {
     /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text(&mut self, pos: Coord, text: &Text, class: TextClass) {
-        self.text_offset(pos, Coord::ZERO, text, class);
+    fn text<T: AsRef<TextDisplay>>(&mut self, pos: Coord, text: T, class: TextClass) {
+        self.text_offset(pos, Coord::ZERO, text.as_ref(), class);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -379,11 +380,11 @@ pub trait DrawHandleExt: DrawHandle {
     /// Other than visually highlighting the selection, this method behaves
     /// identically to [`DrawHandleExt::text`]. It is likely to be replaced in the
     /// future by a higher-level API.
-    fn text_selected<R: RangeBounds<usize>>(
+    fn text_selected<T: AsRef<TextDisplay>, R: RangeBounds<usize>>(
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: T,
         range: R,
         class: TextClass,
     ) {
@@ -395,10 +396,10 @@ pub trait DrawHandleExt: DrawHandle {
         let end = match range.end_bound() {
             Bound::Included(n) => *n + 1,
             Bound::Excluded(n) => *n,
-            Bound::Unbounded => text.text_len(),
+            Bound::Unbounded => usize::MAX,
         };
         let range = Range { start, end };
-        self.text_selected_range(pos, offset, text, range, class);
+        self.text_selected_range(pos, offset, text.as_ref(), range, class);
     }
 }
 
@@ -534,14 +535,14 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &Text, class: TextClass) {
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &TextDisplay, class: TextClass) {
         self.deref_mut().text_offset(pos, offset, text, class)
     }
     fn text_with_underline(
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         class: TextClass,
         underline: usize,
     ) {
@@ -552,7 +553,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     ) {
@@ -563,7 +564,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         class: TextClass,
         byte: usize,
     ) {
@@ -624,14 +625,14 @@ where
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &Text, class: TextClass) {
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &TextDisplay, class: TextClass) {
         self.deref_mut().text_offset(pos, offset, text, class)
     }
     fn text_with_underline(
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         class: TextClass,
         underline: usize,
     ) {
@@ -642,7 +643,7 @@ where
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     ) {
@@ -653,7 +654,7 @@ where
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         class: TextClass,
         byte: usize,
     ) {

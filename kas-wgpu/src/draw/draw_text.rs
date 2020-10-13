@@ -11,7 +11,7 @@ use super::{CustomWindow, DrawWindow};
 use kas::draw::{Colour, Draw, DrawText, Pass, TextEffect};
 use kas::geom::{Quad, Vec2};
 use kas::text::fonts::{fonts, FontId};
-use kas::text::{Effect, EffectFlags, Glyph, Text};
+use kas::text::{Effect, EffectFlags, Glyph, TextDisplay};
 
 fn to_point(Vec2(x, y): Vec2) -> ab_glyph::Point {
     ab_glyph::Point { x, y }
@@ -43,7 +43,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         pass: Pass,
         pos: Vec2,
         offset: Vec2,
-        text: &Text,
+        text: &TextDisplay,
         effects: &[TextEffect],
     ) {
         let time = std::time::Instant::now();

@@ -141,7 +141,7 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
             draw_handle.text_with_underline(
                 pos,
                 Coord::ZERO,
-                &self.label,
+                self.label.as_ref(),
                 TextClass::Label,
                 self.underline,
             );

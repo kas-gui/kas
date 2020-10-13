@@ -16,7 +16,7 @@ use kas::draw::{
     SizeHandle, TextClass, TextEffect,
 };
 use kas::geom::*;
-use kas::text::Text;
+use kas::text::TextDisplay;
 use kas::{Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme with flat (unshaded) rendering
@@ -247,7 +247,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
     }
 
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &Text, class: TextClass) {
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &TextDisplay, class: TextClass) {
         let pos = pos + self.offset;
         let col = self.cols.text_class(class);
         self.draw
@@ -258,34 +258,19 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         class: TextClass,
-        underline: usize,
+        _underline: usize,
     ) {
-        let pos = pos + self.offset;
-        let mut end = usize::MAX;
-        if underline < text.text_len() {
-            end = text.text()[underline..]
-                .char_indices()
-                .skip(1)
-                .next()
-                .map(|(i, _)| underline + i)
-                .unwrap_or(text.text_len());
-        }
-        let effects = [
-            TextEffect::col(0, self.cols.text_class(class)),
-            TextEffect::underline(underline, true),
-            TextEffect::underline(end, false),
-        ];
-        self.draw
-            .text_with_effects(self.pass, pos.into(), offset.into(), text, &effects);
+        // FIXME: enable underline
+        self.text_offset(pos, offset, text, class);
     }
 
     fn text_selected_range(
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     ) {
@@ -321,7 +306,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         class: TextClass,
         byte: usize,
     ) {

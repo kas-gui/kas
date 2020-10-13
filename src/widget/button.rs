@@ -67,7 +67,7 @@ impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
             draw_handle.text_with_underline(
                 self.core.rect.pos,
                 Coord::ZERO,
-                &self.label,
+                self.label.as_ref(),
                 TextClass::Button,
                 self.underline,
             );

@@ -63,7 +63,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
             draw_handle.text_with_underline(
                 pos,
                 Coord::ZERO,
-                &self.label,
+                self.label.as_ref(),
                 TextClass::LabelSingle,
                 self.underline,
             );

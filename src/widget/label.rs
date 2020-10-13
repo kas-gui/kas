@@ -146,7 +146,7 @@ impl Layout for AccelLabel {
             draw_handle.text_with_underline(
                 self.core.rect.pos,
                 Coord::ZERO,
-                &self.label,
+                self.label.as_ref(),
                 TextClass::Label,
                 self.underline,
             );

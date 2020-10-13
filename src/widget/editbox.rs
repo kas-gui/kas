@@ -251,7 +251,7 @@ impl<G: 'static> Layout for EditBox<G> {
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
         if self.sel_pos == self.edit_pos {
-            draw_handle.text_offset(self.text_pos, self.view_offset, &self.text, class);
+            draw_handle.text_offset(self.text_pos, self.view_offset, self.text.as_ref(), class);
         } else {
             // TODO(opt): we could cache the selection rectangles here to make
             // drawing more efficient (self.text.highlight_lines(range) output).
@@ -268,7 +268,7 @@ impl<G: 'static> Layout for EditBox<G> {
             draw_handle.edit_marker(
                 self.text_pos,
                 self.view_offset,
-                &self.text,
+                self.text.as_ref(),
                 class,
                 self.edit_pos,
             );
