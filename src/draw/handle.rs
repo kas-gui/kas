@@ -11,7 +11,7 @@ use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::{AxisInfo, Margins, SizeRules};
-use kas::text::{Text, TextDisplay};
+use kas::text::{TextApi, TextDisplay};
 use kas::Direction;
 
 /// Classification of a clip region
@@ -152,7 +152,8 @@ pub trait SizeHandle {
     /// [`Environment`]: kas::text::Environment
     /// [`Layout::set_rect`]: kas::Layout::set_rect
     /// [`Layout::size_rules`]: kas::Layout::size_rules
-    fn text_bound(&mut self, text: &mut Text, class: TextClass, axis: AxisInfo) -> SizeRules;
+    fn text_bound(&mut self, text: &mut dyn TextApi, class: TextClass, axis: AxisInfo)
+        -> SizeRules;
 
     /// Width of an edit marker
     fn edit_marker_width(&self) -> f32;
@@ -426,7 +427,12 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn line_height(&self, class: TextClass) -> u32 {
         self.deref().line_height(class)
     }
-    fn text_bound(&mut self, text: &mut Text, class: TextClass, axis: AxisInfo) -> SizeRules {
+    fn text_bound(
+        &mut self,
+        text: &mut dyn TextApi,
+        class: TextClass,
+        axis: AxisInfo,
+    ) -> SizeRules {
         self.deref_mut().text_bound(text, class, axis)
     }
     fn edit_marker_width(&self) -> f32 {
@@ -479,7 +485,12 @@ where
     fn line_height(&self, class: TextClass) -> u32 {
         self.deref().line_height(class)
     }
-    fn text_bound(&mut self, text: &mut Text, class: TextClass, axis: AxisInfo) -> SizeRules {
+    fn text_bound(
+        &mut self,
+        text: &mut dyn TextApi,
+        class: TextClass,
+        axis: AxisInfo,
+    ) -> SizeRules {
         self.deref_mut().text_bound(text, class, axis)
     }
     fn edit_marker_width(&self) -> f32 {
@@ -694,7 +705,7 @@ mod test {
         let _size = draw_handle.size_handle(|h| h.frame());
 
         let zero = Coord::ZERO;
-        let text = Text::new_single("sample".into());
+        let text = kas::text::Text::new_single("sample".into());
         draw_handle.text_selected(zero, zero, &text, .., TextClass::Label)
     }
 }
