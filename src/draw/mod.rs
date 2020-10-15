@@ -43,7 +43,7 @@ mod handle;
 use std::any::Any;
 
 use crate::geom::{Quad, Rect, Vec2};
-use crate::text::TextDisplay;
+use crate::text::{Effect, TextDisplay};
 
 pub use colour::Colour;
 pub use handle::*;
@@ -211,44 +211,6 @@ pub trait DrawShaded: Draw {
     );
 }
 
-/// Applies effects from the given `start` position in the text
-///
-/// This is a HACK to allow some formatting without full support in `kas_text`.
-/// It will likely transition into a similar system within `kas_text`.
-#[derive(Clone, Debug)]
-pub struct TextEffect {
-    /// The first index to apply this effect
-    pub start: u32,
-    /// New text colour
-    pub col: Option<Colour>,
-    /// Apply or remove underline
-    pub underline: Option<bool>,
-    /// Apply or remove strikethrough
-    pub strikethrough: Option<bool>,
-}
-
-impl TextEffect {
-    /// Set colour
-    pub fn col(start: usize, col: Colour) -> Self {
-        TextEffect {
-            start: start as u32,
-            col: Some(col),
-            underline: None,
-            strikethrough: None,
-        }
-    }
-
-    // Apply or remove underline
-    pub fn underline(start: usize, underline: bool) -> Self {
-        TextEffect {
-            start: start as u32,
-            col: None,
-            underline: Some(underline),
-            strikethrough: None,
-        }
-    }
-}
-
 /// Abstraction over text rendering
 ///
 /// Note: the current API is designed to meet only current requirements since
@@ -259,7 +221,11 @@ pub trait DrawText {
 
     /// Draw text
     fn text(&mut self, pass: Pass, pos: Vec2, offset: Vec2, col: Colour, text: &TextDisplay) {
-        let effects = [TextEffect::col(0, col)];
+        let effects = [Effect {
+            start: 0,
+            flags: Default::default(),
+            aux: col,
+        }];
         self.text_with_effects(pass, pos, offset, text, &effects);
     }
 
@@ -274,6 +240,6 @@ pub trait DrawText {
         pos: Vec2,
         offset: Vec2,
         text: &TextDisplay,
-        effects: &[TextEffect],
+        effects: &[Effect<Colour>],
     );
 }

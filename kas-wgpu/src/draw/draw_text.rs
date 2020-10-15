@@ -8,10 +8,10 @@
 use wgpu_glyph::{ab_glyph, Extra, SectionGlyph};
 
 use super::{CustomWindow, DrawWindow};
-use kas::draw::{Colour, Draw, DrawText, Pass, TextEffect};
+use kas::draw::{Colour, Draw, DrawText, Pass};
 use kas::geom::{Quad, Vec2};
 use kas::text::fonts::{fonts, FontId};
-use kas::text::{Effect, EffectFlags, Glyph, TextDisplay};
+use kas::text::{Effect, Glyph, TextDisplay};
 
 fn to_point(Vec2(x, y): Vec2) -> ab_glyph::Point {
     ab_glyph::Point { x, y }
@@ -38,53 +38,15 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         }
     }
 
-    fn text_with_effects(
-        &mut self,
-        pass: Pass,
-        pos: Vec2,
-        offset: Vec2,
-        text: &TextDisplay,
-        effects: &[TextEffect],
-    ) {
+    fn text(&mut self, pass: Pass, pos: Vec2, offset: Vec2, col: Colour, text: &TextDisplay) {
         let time = std::time::Instant::now();
         let ab_pos = to_point(pos);
         let ab_offset = ab_pos - to_point(offset);
 
-        let mut col = Colour::grey(0.0);
-        let mut underline = false;
-        let mut strikethrough = false;
-        let mut v = Vec::with_capacity(effects.len());
-        let mut extra = Vec::with_capacity(effects.len());
-        for (i, e) in effects.iter().enumerate() {
-            if let Some(c) = e.col {
-                col = c;
-            }
-            if let Some(u) = e.underline {
-                underline = u;
-            }
-            if let Some(s) = e.strikethrough {
-                strikethrough = s;
-            }
-            v.push(Effect {
-                start: e.start,
-                flags: match (underline, strikethrough) {
-                    (false, false) => EffectFlags::default(),
-                    (true, false) => EffectFlags::UNDERLINE,
-                    (false, true) => EffectFlags::STRIKETHROUGH,
-                    (true, true) => EffectFlags::UNDERLINE | EffectFlags::STRIKETHROUGH,
-                },
-                aux: i,
-            });
-            extra.push(Extra {
-                color: col.into(),
-                z: pass.depth(),
-            });
-        }
-
         let mut glyphs = Vec::with_capacity(text.num_glyphs());
-        let for_glyph = |font_id: FontId, _, height: f32, glyph: Glyph, aux| {
+        let for_glyph = |font_id: FontId, _, height: f32, glyph: Glyph| {
             glyphs.push(SectionGlyph {
-                section_index: aux,
+                section_index: 0,
                 byte_index: 0, // not used
                 glyph: ab_glyph::Glyph {
                     id: ab_glyph::GlyphId(glyph.id.0),
@@ -94,7 +56,47 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
                 font_id: wgpu_glyph::FontId(font_id.get()),
             });
         };
-        let for_rect = |x1, x2, mut y, h: f32, aux: usize| {
+        text.glyphs(for_glyph);
+
+        let min = ab_pos;
+        let max = ab_pos + ktv_to_point(text.env().bounds);
+        let bounds = ab_glyph::Rect { min, max };
+
+        let extra = vec![Extra {
+            color: col.into(),
+            z: pass.depth(),
+        }];
+
+        self.glyph_brush.queue_pre_positioned(glyphs, extra, bounds);
+        self.dur_text += time.elapsed();
+    }
+
+    fn text_with_effects(
+        &mut self,
+        pass: Pass,
+        pos: Vec2,
+        offset: Vec2,
+        text: &TextDisplay,
+        effects: &[Effect<Colour>],
+    ) {
+        let time = std::time::Instant::now();
+        let ab_pos = to_point(pos);
+        let ab_offset = ab_pos - to_point(offset);
+
+        let mut glyphs = Vec::with_capacity(text.num_glyphs());
+        let for_glyph = |font_id: FontId, _, height: f32, glyph: Glyph, i, _| {
+            glyphs.push(SectionGlyph {
+                section_index: i,
+                byte_index: 0, // not used
+                glyph: ab_glyph::Glyph {
+                    id: ab_glyph::GlyphId(glyph.id.0),
+                    scale: height.into(),
+                    position: ab_offset + ktv_to_point(glyph.position),
+                },
+                font_id: wgpu_glyph::FontId(font_id.get()),
+            });
+        };
+        let for_rect = |x1, x2, mut y, h: f32, i: usize, _| {
             let y2 = y + h;
             if h < 1.0 {
                 // h too small can make the line invisible due to rounding
@@ -102,13 +104,21 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
                 y = y2 - 1.0;
             }
             let quad = Quad::with_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
-            self.rect(pass, quad, extra[aux].color.into());
+            self.rect(pass, quad, effects[i].aux);
         };
-        text.glyphs_with_effects(&v, for_glyph, for_rect);
+        text.glyphs_with_effects(effects, for_glyph, for_rect);
 
         let min = ab_pos;
         let max = ab_pos + ktv_to_point(text.env().bounds);
         let bounds = ab_glyph::Rect { min, max };
+
+        let extra = effects
+            .iter()
+            .map(|e| Extra {
+                color: e.aux.into(),
+                z: pass.depth(),
+            })
+            .collect();
 
         self.glyph_brush.queue_pre_positioned(glyphs, extra, bounds);
         self.dur_text += time.elapsed();

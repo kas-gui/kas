@@ -13,10 +13,10 @@ use std::ops::Range;
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::draw::{
     self, ClipRegion, Colour, Draw, DrawRounded, DrawShared, DrawText, InputState, Pass,
-    SizeHandle, TextClass, TextEffect,
+    SizeHandle, TextClass,
 };
 use kas::geom::*;
-use kas::text::TextDisplay;
+use kas::text::{Effect, TextDisplay};
 use kas::{Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme with flat (unshaded) rendering
@@ -294,9 +294,21 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         }
 
         let effects = [
-            TextEffect::col(0, col),
-            TextEffect::col(range.start, self.cols.text_sel),
-            TextEffect::col(range.end, col),
+            Effect {
+                start: 0,
+                flags: Default::default(),
+                aux: col,
+            },
+            Effect {
+                start: range.start as u32,
+                flags: Default::default(),
+                aux: self.cols.text_sel,
+            },
+            Effect {
+                start: range.end as u32,
+                flags: Default::default(),
+                aux: col,
+            },
         ];
         self.draw
             .text_with_effects(self.pass, pos, offset, text, &effects);
