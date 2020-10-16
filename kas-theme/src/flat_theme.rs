@@ -254,18 +254,6 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .text(self.pass, pos.into(), offset.into(), col, text);
     }
 
-    fn text_with_underline(
-        &mut self,
-        pos: Coord,
-        offset: Coord,
-        text: &TextDisplay,
-        class: TextClass,
-        _underline: usize,
-    ) {
-        // FIXME: enable underline
-        self.text_offset(pos, offset, text, class);
-    }
-
     fn text_selected_range(
         &mut self,
         pos: Coord,

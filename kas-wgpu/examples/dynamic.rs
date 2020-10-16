@@ -17,7 +17,6 @@
 //!     very slow activation of a RadioBox in a chain hundreds-of-thousands
 //!     long), but in many ways still performs well in release mode
 
-use kas::class::HasString;
 use kas::event::UpdateHandle;
 use kas::prelude::*;
 use kas::widget::*;
@@ -70,7 +69,7 @@ struct ListEntry {
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,
     #[widget]
-    label: Label,
+    label: StringLabel,
     #[widget]
     radio: RadioBox<EntryMsg>,
     #[widget]
@@ -139,7 +138,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget] _ = Label::new("Demonstration of dynamic widget creation / deletion"),
                 #[widget(handler = set_len)] controls -> usize = controls,
                 #[widget] _ = Label::new("Contents of selected entry:"),
-                #[widget] display: Label = Label::new("Entry #0"),
+                #[widget] display: StringLabel = Label::from("Entry #0"),
                 #[widget] _ = Separator::new(),
                 #[widget(handler = set_radio)] list: ScrollRegion<Column<ListEntry>> =
                     ScrollRegion::new(Column::new(entries)).with_bars(false, true),

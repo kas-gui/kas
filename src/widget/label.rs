@@ -5,30 +5,35 @@
 
 //! Text widgets
 
-use kas::class::{HasFormatted, HasString, SetAccel};
 use kas::draw::TextClass;
-use kas::event::VirtualKeyCodes;
-use kas::prelude::*;
+use kas::text::format::{EditableText, FormattableText};
+use kas::{event, prelude::*};
 
-/// A simple text label
+/// A text label
+///
+/// This type is generic over the text type. Some aliases are available:
+/// [`StrLabel`], [`StringLabel`], [`AccelLabel`].
 #[derive(Clone, Default, Debug, Widget)]
-pub struct Label {
+pub struct Label<T: FormattableText + 'static> {
     #[widget_core]
     core: CoreData,
-    reserve: Option<FormattedString>,
-    label: Text,
+    reserve: Option<T>,
+    label: Text<T>,
 }
 
-impl Layout for Label {
+impl<T: FormattableText + 'static> Layout for Label<T> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let mut prepared;
-        let text = if let Some(ref s) = self.reserve {
-            prepared = Text::new_multi(s.clone());
-            &mut prepared
+        let mut prepared = None;
+        let text = if let Some(s) = self.reserve.take() {
+            prepared = Some(Text::new_multi(s));
+            prepared.as_mut().unwrap()
         } else {
             &mut self.label
         };
         let rules = size_handle.text_bound(text, TextClass::Label, axis);
+        if let Some(text) = prepared {
+            self.reserve = Some(text.take_text());
+        }
         if axis.is_horizontal() {
             self.core.rect.size.0 = rules.ideal_size();
         } else {
@@ -50,148 +55,89 @@ impl Layout for Label {
     }
 }
 
-impl Label {
-    /// Construct from label text
-    pub fn new<T: Into<FormattedString>>(label: T) -> Self {
-        Label {
-            core: Default::default(),
-            reserve: None,
-            label: Text::new_multi(label.into()),
-        }
-    }
+// TODO(specialization): support this?
+// impl<U, T: From<U> + FormattableText + 'static> From<U> for Label<T>
 
-    /// Construct from Markdown
-    #[cfg(feature = "markdown")]
-    pub fn from_md(text: &str) -> Self {
-        let text = kas::text::parser::Markdown::new(text);
-        Label::from(FormattedString::from(text))
+impl<T: FormattableText + 'static> From<T> for Label<T> {
+    fn from(label: T) -> Self {
+        Label::new(label)
     }
 }
 
-impl From<FormattedString> for Label {
-    fn from(text: FormattedString) -> Self {
-        Label {
-            core: Default::default(),
-            reserve: None,
-            label: Text::new_multi(text),
-        }
+impl<'a> From<&'a str> for Label<String> {
+    fn from(label: &'a str) -> Self {
+        Label::new(label.to_string())
     }
 }
 
-impl Label {
+impl<T: FormattableText + 'static> Label<T> {
+    /// Construct from `label`
+    pub fn new(label: T) -> Self {
+        Label {
+            core: Default::default(),
+            reserve: None,
+            label: Text::new_multi(label),
+        }
+    }
+
     /// Reserve sufficient room for the given text
     ///
     /// If this option is used, the label will be sized to fit this text, not
     /// the actual text.
-    pub fn reserve<A: Into<FormattedString>>(mut self, text: A) -> Self {
-        self.reserve = Some(text.into());
+    pub fn with_reserve(mut self, text: T) -> Self {
+        self.reserve = Some(text);
         self
     }
+
+    /// Set text in an existing `Label`
+    ///
+    /// Note: this must not be called before fonts have been initialised
+    /// (usually done by the theme when the main loop starts).
+    pub fn set_text(&mut self, text: T) -> TkAction {
+        kas::text::util::set_text_and_prepare(&mut self.label, text)
+    }
 }
 
-impl HasString for Label {
+impl<T: FormattableText + 'static> HasStr for Label<T> {
     fn get_str(&self) -> &str {
-        self.label.text()
-    }
-
-    fn set_string(&mut self, text: String) -> TkAction {
-        self.label.set_and_prepare(text)
+        self.label.as_str()
     }
 }
 
-impl HasFormatted for Label {
-    fn get_formatted(&self) -> FormattedString {
-        self.label.clone_text()
-    }
-
-    fn set_formatted_string(&mut self, text: FormattedString) -> TkAction {
-        self.label.set_and_prepare(text)
+impl<T: FormattableText + EditableText + 'static> HasString for Label<T> {
+    fn set_string(&mut self, string: String) -> TkAction {
+        kas::text::util::set_string_and_prepare(&mut self.label, string)
     }
 }
+
+/// Label with `&'static str` as backing type
+///
+/// Warning: this type does not support [`HasString`]. Assignment is possible
+/// via [`Label::set_text`], but only for `&'static str`, so most of the time
+/// [`StringLabel`] will be preferred when assignment is required.
+/// (Also note that the overhead of allocating and copying a `String` is
+/// irrelevant considering those used for text layout and drawing.)
+pub type StrLabel = Label<&'static str>;
+
+/// Label with `String` as backing type
+pub type StringLabel = Label<String>;
 
 /// A label supporting an accelerator key
 ///
 /// Accelerator keys are not useful on plain labels, but this widget may be
 /// embedded within a parent (e.g. `CheckBox` uses this).
-#[derive(Clone, Default, Debug, Widget)]
-pub struct AccelLabel {
-    #[widget_core]
-    core: CoreData,
-    keys: VirtualKeyCodes,
-    label: Text,
-    underline: usize,
-}
-
-impl Layout for AccelLabel {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let rules = size_handle.text_bound(&mut self.label, TextClass::Label, axis);
-        if axis.is_horizontal() {
-            self.core.rect.size.0 = rules.ideal_size();
-        } else {
-            self.core.rect.size.1 = rules.ideal_size();
-        }
-        rules
-    }
-
-    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        self.label.update_env(|env| {
-            env.set_bounds(rect.size.into());
-            env.set_align(align.unwrap_or(Align::Default, Align::Centre));
-        });
-    }
-
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, _: bool) {
-        if mgr.show_accel_labels() {
-            draw_handle.text_with_underline(
-                self.core.rect.pos,
-                Coord::ZERO,
-                self.label.as_ref(),
-                TextClass::Label,
-                self.underline,
-            );
-        } else {
-            draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
-        }
-    }
-}
+// TODO: we probably don't need `reserve` for AccelLabel
+pub type AccelLabel = Label<AccelString>;
 
 impl AccelLabel {
-    /// Construct a new, empty instance
-    pub fn new<T: Into<AccelString>>(label: T) -> Self {
-        let label = label.into();
-        let text = Text::new_single(label.text().into());
-        let underline = label.underline();
-        let keys = label.take_keys();
-        AccelLabel {
-            core: Default::default(),
-            keys,
-            label: text,
-            underline,
-        }
-    }
-
     /// Get the accelerator keys
     pub fn keys(&self) -> &[event::VirtualKeyCode] {
-        &self.keys
-    }
-}
-
-impl HasString for AccelLabel {
-    fn get_str(&self) -> &str {
-        self.label.text()
-    }
-
-    fn set_string(&mut self, text: String) -> TkAction {
-        self.keys.clear();
-        self.label.set_and_prepare(text)
+        &self.label.text().keys()
     }
 }
 
 impl SetAccel for AccelLabel {
-    fn set_accel_string(&mut self, label: AccelString) -> TkAction {
-        let text = label.text().to_string();
-        self.keys = label.take_keys();
-        self.label.set_and_prepare(text)
+    fn set_accel_string(&mut self, string: AccelString) -> TkAction {
+        kas::text::util::set_text_and_prepare(&mut self.label, string)
     }
 }

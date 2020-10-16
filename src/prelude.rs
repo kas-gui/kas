@@ -14,6 +14,8 @@
 //! using widgets in a GUI.
 
 #[doc(no_inline)]
+pub use kas::class::*;
+#[doc(no_inline)]
 pub use kas::draw::{DrawHandle, DrawHandleExt, SizeHandle};
 #[doc(no_inline)]
 pub use kas::event::{Event, Handler, Manager, ManagerState, Response, SendEvent, VoidMsg};
@@ -26,9 +28,7 @@ pub use kas::macros::*;
 #[doc(no_inline)]
 pub use kas::text::AccelString;
 #[doc(no_inline)]
-pub use kas::text::{FormattedString, Text, TextExt};
-#[doc(no_inline)]
-pub use kas::{class, draw, event, geom, layout, widget};
+pub use kas::text::Text;
 #[doc(no_inline)]
 pub use kas::{Align, AlignHints, Direction, Directional, WidgetId};
 #[doc(no_inline)]

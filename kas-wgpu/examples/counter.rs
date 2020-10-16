@@ -34,7 +34,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[layout(column)]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(halign=centre)] display: Label = Label::new("0"),
+                #[widget(halign=centre)] display: Label<String> = Label::from("0"),
                 #[widget(handler = handle_button)] buttons -> Message = buttons,
                 counter: usize = 0,
             }

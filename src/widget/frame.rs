@@ -5,8 +5,7 @@
 
 //! A simple frame
 
-use kas::class::*;
-use kas::prelude::*;
+use kas::{event, prelude::*};
 
 /// A frame around content
 ///
@@ -88,25 +87,19 @@ impl<W: HasBool + Widget> HasBool for Frame<W> {
     }
 }
 
-impl<W: HasString + Widget> HasString for Frame<W> {
+impl<W: HasStr + Widget> HasStr for Frame<W> {
     fn get_str(&self) -> &str {
         self.child.get_str()
     }
+}
 
+impl<W: HasString + Widget> HasString for Frame<W> {
     fn set_string(&mut self, text: String) -> TkAction {
         self.child.set_string(text)
     }
 }
 
-impl<W: HasFormatted + Widget> HasFormatted for Frame<W> {
-    fn get_formatted(&self) -> FormattedString {
-        self.child.get_formatted()
-    }
-
-    fn set_formatted_string(&mut self, text: FormattedString) -> TkAction {
-        self.child.set_formatted_string(text)
-    }
-}
+// TODO: HasFormatted
 
 impl<W: SetAccel + Widget> SetAccel for Frame<W> {
     fn set_accel_string(&mut self, accel: AccelString) -> TkAction {

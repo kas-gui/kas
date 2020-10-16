@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use kas::event::PressSource;
+use kas::event::{self, PressSource};
 use kas::prelude::*;
 
 /// Draggable Handle

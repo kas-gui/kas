@@ -9,9 +9,8 @@ use std::fmt::Debug;
 use std::iter::FromIterator;
 
 use super::{Column, MenuEntry, MenuFrame};
-use kas::class::{HasString, SetAccel};
 use kas::draw::TextClass;
-use kas::event::{ControlKey, GrabMode};
+use kas::event::{self, ControlKey, GrabMode};
 use kas::prelude::*;
 use kas::WindowId;
 
@@ -22,7 +21,7 @@ use kas::WindowId;
 pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
     core: CoreData,
-    label: Text,
+    label: Text<String>,
     #[widget]
     popup: ComboPopup,
     messages: Vec<M>, // TODO: is this a useless lookup step?
@@ -120,7 +119,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         if self.active != index {
             self.active = index;
             let string = self.popup.inner.inner[self.active].get_string();
-            self.label.set_and_prepare(string)
+            kas::text::util::set_text_and_prepare(&mut self.label, string)
         } else {
             TkAction::None
         }

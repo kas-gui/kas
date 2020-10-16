@@ -7,9 +7,8 @@
 
 use std::fmt::Debug;
 
-use kas::class::{HasString, SetAccel};
 use kas::draw::TextClass;
-use kas::event::{VirtualKeyCode, VirtualKeyCodes};
+use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
 
 /// A push-button with a text label
@@ -20,17 +19,15 @@ pub struct TextButton<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
     keys1: VirtualKeyCodes,
-    keys2: VirtualKeyCodes,
     // label_rect: Rect,
-    label: Text,
-    underline: usize,
+    label: Text<AccelString>,
     msg: M,
 }
 
 impl<M: Clone + Debug + 'static> WidgetConfig for TextButton<M> {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.add_accel_keys(self.id(), &self.keys1);
-        mgr.add_accel_keys(self.id(), &self.keys2);
+        mgr.add_accel_keys(self.id(), &self.label.text().keys());
     }
 
     fn key_nav(&self) -> bool {
@@ -63,17 +60,8 @@ impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
-        if mgr.show_accel_labels() {
-            draw_handle.text_with_underline(
-                self.core.rect.pos,
-                Coord::ZERO,
-                self.label.as_ref(),
-                TextClass::Button,
-                self.underline,
-            );
-        } else {
-            draw_handle.text(self.core.rect.pos, &self.label, TextClass::Button);
-        }
+        // TODO: draw state is mgr.show_accel_labels()
+        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Button);
     }
 }
 
@@ -86,16 +74,12 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     /// the parent (or other ancestor).
     pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
         let label = label.into();
-        let text = Text::new_single(label.text().into());
-        let underline = label.underline();
-        let keys2 = label.take_keys();
+        let text = Text::new_single(label);
         TextButton {
             core: Default::default(),
             keys1: Default::default(),
-            keys2,
             // label_rect: Default::default(),
             label: text,
-            underline,
             msg,
         }
     }
@@ -115,22 +99,15 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> HasString for TextButton<M> {
+impl<M: Clone + Debug + 'static> HasStr for TextButton<M> {
     fn get_str(&self) -> &str {
-        self.label.text()
-    }
-
-    fn set_string(&mut self, text: String) -> TkAction {
-        self.keys2.clear();
-        self.label.set_and_prepare(text)
+        self.label.as_str()
     }
 }
 
 impl<M: Clone + Debug + 'static> SetAccel for TextButton<M> {
-    fn set_accel_string(&mut self, label: AccelString) -> TkAction {
-        let text = label.text().to_string();
-        self.keys2 = label.take_keys();
-        self.label.set_and_prepare(text)
+    fn set_accel_string(&mut self, string: AccelString) -> TkAction {
+        kas::text::util::set_text_and_prepare(&mut self.label, string)
     }
 }
 

@@ -14,6 +14,10 @@ use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::text::{TextApi, TextDisplay};
 use kas::Direction;
 
+// for doc use
+#[allow(unused)]
+use kas::text::Text;
+
 /// Classification of a clip region
 pub enum ClipRegion {
     Popup,
@@ -276,19 +280,6 @@ pub trait DrawHandle {
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
     fn text_offset(&mut self, pos: Coord, offset: Coord, text: &TextDisplay, class: TextClass);
 
-    /// Draw some text, with an underlined glyph
-    ///
-    /// This is identical to [`DrawHandle::text_offset`] except that the glyph
-    /// starting at the given index is underlined.
-    fn text_with_underline(
-        &mut self,
-        pos: Coord,
-        offset: Coord,
-        text: &TextDisplay,
-        class: TextClass,
-        underline: usize,
-    );
-
     /// Method used to implement [`DrawHandleExt::text_selected`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     fn text_selected_range(
@@ -549,17 +540,6 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn text_offset(&mut self, pos: Coord, offset: Coord, text: &TextDisplay, class: TextClass) {
         self.deref_mut().text_offset(pos, offset, text, class)
     }
-    fn text_with_underline(
-        &mut self,
-        pos: Coord,
-        offset: Coord,
-        text: &TextDisplay,
-        class: TextClass,
-        underline: usize,
-    ) {
-        self.deref_mut()
-            .text_with_underline(pos, offset, text, class, underline)
-    }
     fn text_selected_range(
         &mut self,
         pos: Coord,
@@ -639,17 +619,6 @@ where
     fn text_offset(&mut self, pos: Coord, offset: Coord, text: &TextDisplay, class: TextClass) {
         self.deref_mut().text_offset(pos, offset, text, class)
     }
-    fn text_with_underline(
-        &mut self,
-        pos: Coord,
-        offset: Coord,
-        text: &TextDisplay,
-        class: TextClass,
-        underline: usize,
-    ) {
-        self.deref_mut()
-            .text_with_underline(pos, offset, text, class, underline)
-    }
     fn text_selected_range(
         &mut self,
         pos: Coord,
@@ -705,7 +674,7 @@ mod test {
         let _size = draw_handle.size_handle(|h| h.frame());
 
         let zero = Coord::ZERO;
-        let text = kas::text::Text::new_single("sample".into());
+        let text = kas::text::Text::new_single("sample");
         draw_handle.text_selected(zero, zero, &text, .., TextClass::Label)
     }
 }

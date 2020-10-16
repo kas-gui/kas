@@ -6,9 +6,8 @@
 //! Sub-menu
 
 use super::{Menu, MenuFrame};
-use kas::class::{HasString, SetAccel};
 use kas::draw::TextClass;
-use kas::event::{ConfigureManager, ControlKey, VirtualKeyCodes};
+use kas::event::{self, ConfigureManager, ControlKey};
 use kas::prelude::*;
 use kas::widget::Column;
 use kas::WindowId;
@@ -21,9 +20,7 @@ pub struct SubMenu<D: Directional, W: Menu> {
     #[widget_core]
     core: CoreData,
     direction: D,
-    keys: VirtualKeyCodes,
-    label: Text,
-    underline: usize,
+    label: Text<AccelString>,
     label_off: Coord,
     #[widget]
     pub list: MenuFrame<Column<W>>,
@@ -61,16 +58,10 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
     /// Construct a sub-menu
     #[inline]
     pub fn new_with_direction<S: Into<AccelString>>(direction: D, label: S, list: Vec<W>) -> Self {
-        let label = label.into();
-        let text = Text::new_single(label.text().into());
-        let underline = label.underline();
-        let keys = label.take_keys();
         SubMenu {
             core: Default::default(),
             direction,
-            keys,
-            label: text,
-            underline,
+            label: Text::new_single(label.into()),
             label_off: Coord::ZERO,
             list: MenuFrame::new(Column::new(list)),
             popup_id: None,
@@ -102,7 +93,7 @@ impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
         self.core_data_mut().id = cmgr.next_id(self.id());
         let mgr = cmgr.mgr();
         mgr.pop_accel_layer(self.id());
-        mgr.add_accel_keys(self.id(), &self.keys);
+        mgr.add_accel_keys(self.id(), &self.label.text().keys());
     }
 
     fn key_nav(&self) -> bool {
@@ -137,17 +128,8 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
         state.depress = state.depress || self.popup_id.is_some();
         draw_handle.menu_entry(self.core.rect, state);
         let pos = self.core.rect.pos + self.label_off;
-        if mgr.show_accel_labels() {
-            draw_handle.text_with_underline(
-                pos,
-                Coord::ZERO,
-                self.label.as_ref(),
-                TextClass::Label,
-                self.underline,
-            );
-        } else {
-            draw_handle.text(pos, &self.label, TextClass::Label);
-        }
+        // TODO: draw state is mgr.show_accel_labels()
+        draw_handle.text(pos, &self.label, TextClass::Label);
     }
 }
 
@@ -289,21 +271,14 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
     }
 }
 
-impl<D: Directional, W: Menu> HasString for SubMenu<D, W> {
+impl<D: Directional, W: Menu> HasStr for SubMenu<D, W> {
     fn get_str(&self) -> &str {
-        self.label.text()
-    }
-
-    fn set_string(&mut self, text: String) -> TkAction {
-        self.keys.clear();
-        self.label.set_and_prepare(text)
+        self.label.as_str()
     }
 }
 
 impl<D: Directional, W: Menu> SetAccel for SubMenu<D, W> {
-    fn set_accel_string(&mut self, label: AccelString) -> TkAction {
-        let text = label.text().to_string();
-        self.keys = label.take_keys();
-        self.label.set_and_prepare(text)
+    fn set_accel_string(&mut self, string: AccelString) -> TkAction {
+        kas::text::util::set_text_and_prepare(&mut self.label, string)
     }
 }

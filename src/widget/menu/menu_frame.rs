@@ -5,8 +5,7 @@
 
 //! Menus
 
-use kas::class::*;
-use kas::prelude::*;
+use kas::{event, prelude::*};
 
 /// A frame around content, plus background
 #[handler(msg = <W as Handler>::Msg)]
@@ -85,25 +84,19 @@ impl<W: HasBool + Widget> HasBool for MenuFrame<W> {
     }
 }
 
-impl<W: HasString + Widget> HasString for MenuFrame<W> {
+impl<W: HasStr + Widget> HasStr for MenuFrame<W> {
     fn get_str(&self) -> &str {
         self.inner.get_str()
     }
+}
 
+impl<W: HasString + Widget> HasString for MenuFrame<W> {
     fn set_string(&mut self, text: String) -> TkAction {
         self.inner.set_string(text)
     }
 }
 
-impl<W: HasFormatted + Widget> HasFormatted for MenuFrame<W> {
-    fn get_formatted(&self) -> FormattedString {
-        self.inner.get_formatted()
-    }
-
-    fn set_formatted_string(&mut self, text: FormattedString) -> TkAction {
-        self.inner.set_formatted_string(text)
-    }
-}
+// TODO: HasFormatted
 
 impl<W: SetAccel + Widget> SetAccel for MenuFrame<W> {
     fn set_accel_string(&mut self, accel: AccelString) -> TkAction {

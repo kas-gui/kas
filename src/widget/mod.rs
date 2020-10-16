@@ -80,7 +80,7 @@ pub use drag::DragHandle;
 pub use editbox::{EditBox, EditBoxVoid, EditGuard};
 pub use filler::Filler;
 pub use frame::Frame;
-pub use label::{AccelLabel, Label};
+pub use label::{AccelLabel, Label, StrLabel, StringLabel};
 pub use list::*;
 pub use menu::*;
 pub use radiobox::{RadioBox, RadioBoxBare};

@@ -17,7 +17,7 @@ pub use menu_frame::MenuFrame;
 pub use menubar::MenuBar;
 pub use submenu::SubMenu;
 
-use kas::prelude::*;
+use kas::{event, prelude::*};
 
 /// Trait governing menus, sub-menus and menu-entries
 pub trait Menu: Widget {

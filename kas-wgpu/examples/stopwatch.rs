@@ -21,7 +21,7 @@ fn make_window() -> Box<dyn kas::Window> {
         #[layout(row)]
         #[widget(config=noauto)]
         struct {
-            #[widget] display: impl HasString = Frame::new(Label::new("0.000")),
+            #[widget] display: impl HasString = Frame::new(Label::new("0.000".to_string())),
             #[widget(handler = reset)] _ = TextButton::new("&reset", ()),
             #[widget(handler = start)] _ = TextButton::new("&start / &stop", ()),
             saved: Duration = Duration::default(),

@@ -11,9 +11,8 @@ use std::mem::size_of;
 use wgpu::util::DeviceExt;
 use wgpu::{include_spirv, Buffer, ShaderModule};
 
-use kas::class::HasString;
 use kas::draw::Pass;
-use kas::event::ControlKey;
+use kas::event::{self, ControlKey};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widget::{Label, Slider, Window};
@@ -519,9 +518,9 @@ struct MandlebrotWindow {
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,
     #[widget(cspan = 2)]
-    label: Label,
+    label: Label<String>,
     #[widget(row=1, halign=centre)]
-    iters: Label,
+    iters: Label<String>,
     #[widget(row=2, handler = iter)]
     slider: Slider<i32, kas::Up>,
     #[widget(col=1, row=1, rspan=2, handler = mbrot)]
@@ -535,7 +534,7 @@ impl MandlebrotWindow {
             core: Default::default(),
             layout_data: Default::default(),
             label: Label::new(mbrot.loc()),
-            iters: Label::new("64").reserve("000"),
+            iters: Label::from("64").with_reserve("000".to_string()),
             slider,
             mbrot,
         };

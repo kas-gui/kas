@@ -14,8 +14,9 @@ use std::time::Duration;
 
 use kas::draw::{Colour, DrawRounded, DrawText};
 use kas::geom::{Quad, Vec2};
-use kas::prelude::*;
+use kas::text::util::set_text_and_prepare;
 use kas::widget::Window;
+use kas::{event, prelude::*};
 use kas_wgpu::draw::DrawWindow;
 
 #[handler(handle=noauto)]
@@ -27,8 +28,8 @@ struct Clock {
     date_pos: Coord,
     time_pos: Coord,
     now: DateTime<Local>,
-    date: Text,
-    time: Text,
+    date: Text<String>,
+    time: Text<String>,
 }
 
 impl Layout for Clock {
@@ -126,12 +127,10 @@ impl Handler for Clock {
         match event {
             Event::TimerUpdate => {
                 self.now = Local::now();
-                *mgr += self
-                    .date
-                    .set_and_prepare(self.now.format("%Y-%m-%d").to_string())
-                    + self
-                        .time
-                        .set_and_prepare(self.now.format("%H:%M:%S").to_string());
+                let date = self.now.format("%Y-%m-%d").to_string();
+                let time = self.now.format("%H:%M:%S").to_string();
+                *mgr += set_text_and_prepare(&mut self.date, date)
+                    + set_text_and_prepare(&mut self.time, time);
                 let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                 info!("Requesting update in {}ns", ns);
                 mgr.update_on_timer(Duration::new(0, ns), self.id());

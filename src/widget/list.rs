@@ -7,8 +7,8 @@
 
 use std::ops::{Index, IndexMut};
 
-use kas::layout::{RulesSetter, RulesSolver};
-use kas::prelude::*;
+use kas::layout::{self, RulesSetter, RulesSolver};
+use kas::{event, prelude::*};
 
 /// A generic row widget
 ///

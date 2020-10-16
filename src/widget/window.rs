@@ -9,7 +9,8 @@ use smallvec::SmallVec;
 use std::fmt::{self, Debug};
 
 use kas::draw::ClipRegion;
-use kas::event::UpdateHandle;
+use kas::event::{self, UpdateHandle};
+use kas::layout;
 use kas::prelude::*;
 use kas::{Future, WindowId};
 

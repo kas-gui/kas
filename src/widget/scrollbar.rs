@@ -8,7 +8,7 @@
 use std::fmt::Debug;
 
 use super::DragHandle;
-use kas::prelude::*;
+use kas::{event, prelude::*};
 
 /// A scroll bar
 ///

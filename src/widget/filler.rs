@@ -5,7 +5,7 @@
 
 //! Filler widget
 
-use kas::prelude::*;
+use kas::{event, prelude::*};
 
 /// A space filler
 ///

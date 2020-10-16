@@ -9,8 +9,8 @@ use std::fmt::Debug;
 
 use super::ScrollBar;
 use kas::draw::{ClipRegion, TextClass};
-use kas::event::ControlKey;
 use kas::event::ScrollDelta::{LineDelta, PixelDelta};
+use kas::event::{self, ControlKey};
 use kas::prelude::*;
 
 /// A scrollable region
