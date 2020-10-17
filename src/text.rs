@@ -5,29 +5,44 @@
 
 //! Abstractions over `kas-text`
 
-use kas::TkAction;
 pub use kas_text::*;
 
 mod string;
 pub use string::AccelString;
 
-/// Extension trait over [`Text`]
-pub trait TextExt {
-    /// Set the text
+pub mod util {
+    use super::{format, Text};
+    use kas::TkAction;
+
+    /// Set the text and prepare
+    ///
+    /// This is a convenience function to (1) set the text, (2) call prepare
+    /// and (3) return `TkAction` to trigger a redraw.
     ///
     /// This calls [`Text::prepare`] internally, then returns
     /// [`TkAction::Redraw`]. (This does not force a resize.)
-    fn set_and_prepare<S: Into<FormattedString>>(&mut self, text: S) -> TkAction {
-        self.set_and_prepare_formatted(text.into())
+    pub fn set_text_and_prepare<T: format::FormattableText>(text: &mut Text<T>, s: T) -> TkAction {
+        if text.set_text(s).prepare() {
+            text.prepare();
+            TkAction::Redraw
+        } else {
+            TkAction::None
+        }
     }
 
-    fn set_and_prepare_formatted(&mut self, text: FormattedString) -> TkAction;
-}
-
-impl TextExt for Text {
-    fn set_and_prepare_formatted(&mut self, text: FormattedString) -> TkAction {
-        if self.set_text(text).prepare() {
-            self.prepare();
+    /// Set the text from a string and prepare
+    ///
+    /// This is a convenience function to (1) set the text, (2) call prepare
+    /// and (3) return `TkAction` to trigger a redraw.
+    ///
+    /// This calls [`Text::prepare`] internally, then returns
+    /// [`TkAction::Redraw`]. (This does not force a resize.)
+    pub fn set_string_and_prepare<T: format::EditableText>(
+        text: &mut Text<T>,
+        s: String,
+    ) -> TkAction {
+        if text.set_string(s).prepare() {
+            text.prepare();
             TkAction::Redraw
         } else {
             TkAction::None

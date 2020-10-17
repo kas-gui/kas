@@ -9,7 +9,8 @@ use log::warn;
 use std::ops::{Index, IndexMut};
 
 use super::DragHandle;
-use kas::layout::{RulesSetter, RulesSolver};
+use kas::event;
+use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 
 /// A generic row widget

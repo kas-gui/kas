@@ -10,9 +10,8 @@ use std::ops::Range;
 use std::time::Duration;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
-use kas::class::HasString;
 use kas::draw::TextClass;
-use kas::event::{ControlKey, GrabMode, PressSource, ScrollDelta};
+use kas::event::{self, ControlKey, GrabMode, PressSource, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::PrepareAction;
@@ -161,7 +160,7 @@ pub struct EditBox<G: 'static> {
     view_offset: Coord,
     editable: bool,
     multi_line: bool,
-    text: Text,
+    text: Text<String>,
     edit_pos: usize,
     sel_pos: usize,
     anchor_pos: usize,
@@ -251,7 +250,7 @@ impl<G: 'static> Layout for EditBox<G> {
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
         if self.sel_pos == self.edit_pos {
-            draw_handle.text_offset(self.text_pos, self.view_offset, &self.text, class);
+            draw_handle.text_offset(self.text_pos, self.view_offset, self.text.as_ref(), class);
         } else {
             // TODO(opt): we could cache the selection rectangles here to make
             // drawing more efficient (self.text.highlight_lines(range) output).
@@ -268,7 +267,7 @@ impl<G: 'static> Layout for EditBox<G> {
             draw_handle.edit_marker(
                 self.text_pos,
                 self.view_offset,
-                &self.text,
+                self.text.as_ref(),
                 class,
                 self.edit_pos,
             );
@@ -489,13 +488,13 @@ impl<G> EditBox<G> {
                 let pos = self.text.find_line(pos).map(|r| r.1.start).unwrap_or(0);
                 Action::Move(pos, None)
             }
-            ControlKey::End if ctrl => Action::Move(self.text.text_len(), None),
+            ControlKey::End if ctrl => Action::Move(self.text.str_len(), None),
             ControlKey::End => {
                 let pos = self
                     .text
                     .find_line(pos)
                     .map(|r| r.1.end)
-                    .unwrap_or(self.text.text_len());
+                    .unwrap_or(self.text.str_len());
                 Action::Move(pos, None)
             }
             ControlKey::Left if ctrl => {
@@ -516,7 +515,7 @@ impl<G> EditBox<G> {
                 Action::Move(p, None)
             }
             ControlKey::Left => {
-                let mut cursor = GraphemeCursor::new(pos, self.text.text_len(), true);
+                let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
                 cursor
                     .prev_boundary(self.text.text(), 0)
                     .unwrap()
@@ -528,7 +527,7 @@ impl<G> EditBox<G> {
                 let mut p = iter
                     .next()
                     .map(|(index, _)| pos + index)
-                    .unwrap_or(self.text.text_len());
+                    .unwrap_or(self.text.str_len());
                 while self.text.text()[p..]
                     .chars()
                     .next()
@@ -544,7 +543,7 @@ impl<G> EditBox<G> {
                 Action::Move(p, None)
             }
             ControlKey::Right => {
-                let mut cursor = GraphemeCursor::new(pos, self.text.text_len(), true);
+                let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
                 cursor
                     .next_boundary(self.text.text(), 0)
                     .unwrap()
@@ -570,7 +569,7 @@ impl<G> EditBox<G> {
                 };
                 const HALF: usize = usize::MAX / 2;
                 let nearest_end = || match line {
-                    0..=HALF => self.text.text_len(),
+                    0..=HALF => self.text.str_len(),
                     _ => 0,
                 };
                 self.text
@@ -605,10 +604,10 @@ impl<G> EditBox<G> {
                         .skip(1)
                         .next()
                         .map(|(index, _)| pos + index)
-                        .unwrap_or(self.text.text_len());
+                        .unwrap_or(self.text.str_len());
                     Action::Delete(pos..next)
                 } else {
-                    let mut cursor = GraphemeCursor::new(pos, self.text.text_len(), true);
+                    let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
                     cursor
                         .next_boundary(self.text.text(), 0)
                         .unwrap()
@@ -645,7 +644,7 @@ impl<G> EditBox<G> {
             ControlKey::SelectAll => {
                 self.sel_pos = 0;
                 shift = true; // hack
-                Action::Move(self.text.text_len(), None)
+                Action::Move(self.text.str_len(), None)
             }
             ControlKey::Cut if have_sel => {
                 mgr.set_clipboard((self.text.text()[selection.clone()]).into());
@@ -810,7 +809,7 @@ impl<G> EditBox<G> {
                 .skip(1)
                 .next()
                 .map(|(i, _)| range.start + i)
-                .unwrap_or(self.text.text_len());
+                .unwrap_or(self.text.str_len());
             start = self.text.text()[0..end]
                 .split_word_bound_indices()
                 .next_back()
@@ -823,7 +822,7 @@ impl<G> EditBox<G> {
                         break 'a pos;
                     }
                 }
-                break 'a self.text.text_len();
+                break 'a self.text.str_len();
             };
         } else {
             start = self
@@ -835,7 +834,7 @@ impl<G> EditBox<G> {
                 .text
                 .find_line(range.end)
                 .map(|r| r.1.end)
-                .unwrap_or(self.text.text_len());
+                .unwrap_or(self.text.str_len());
         }
 
         if self.edit_pos < self.sel_pos {
@@ -846,13 +845,15 @@ impl<G> EditBox<G> {
     }
 }
 
-impl<G: EditGuard> HasString for EditBox<G> {
+impl<G: EditGuard> HasStr for EditBox<G> {
     fn get_str(&self) -> &str {
         self.text.text()
     }
+}
 
-    fn set_string(&mut self, text: String) -> TkAction {
-        let action = self.text.set_and_prepare(text);
+impl<G: EditGuard> HasString for EditBox<G> {
+    fn set_string(&mut self, string: String) -> TkAction {
+        let action = kas::text::util::set_string_and_prepare(&mut self.text, string);
         let _ = G::edit(self);
         action
     }

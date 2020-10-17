@@ -9,8 +9,7 @@ use std::fmt::{self, Debug};
 use std::rc::Rc;
 
 use super::AccelLabel;
-use kas::class::HasBool;
-use kas::prelude::*;
+use kas::{event, prelude::*};
 
 /// A bare checkbox (no label)
 #[widget(config(key_nav = true))]
@@ -188,7 +187,7 @@ impl<M: 'static> CheckBox<M> {
             core: Default::default(),
             layout_data: Default::default(),
             checkbox: CheckBoxBare::new_on(f),
-            label: AccelLabel::new(label),
+            label: AccelLabel::new(label.into()),
         }
     }
 }
@@ -204,7 +203,7 @@ impl CheckBox<VoidMsg> {
             core: Default::default(),
             layout_data: Default::default(),
             checkbox: CheckBoxBare::new(),
-            label: AccelLabel::new(label),
+            label: AccelLabel::new(label.into()),
         }
     }
 

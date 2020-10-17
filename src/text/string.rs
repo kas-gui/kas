@@ -12,7 +12,7 @@
 use smallvec::{smallvec, SmallVec};
 
 use kas::event::{VirtualKeyCode as VK, VirtualKeyCodes};
-use kas::text::parser::{Format, FormatData, Parser};
+use kas::text::format::{FontToken, FormattableText};
 use kas::text::{fonts::FontId, Environment};
 
 /// An accelerator key string
@@ -26,7 +26,7 @@ use kas::text::{fonts::FontId, Environment};
 pub struct AccelString {
     label: String,
     /// Even entries: position to start underline; odd entries: stop pos
-    ulines: Ulines,
+    ulines: SmallVec<[u32; 2]>,
     // TODO: is it worth using such a large structure here instead of Option?
     keys: VirtualKeyCodes,
 }
@@ -38,7 +38,7 @@ impl AccelString {
     /// specialisation, this parser always allocates. Prefer to use `from`.
     fn parse(mut s: &str) -> Self {
         let mut buf = String::with_capacity(s.len());
-        let mut ulines = Ulines::default();
+        let mut ulines = SmallVec::<[u32; 2]>::default();
         let mut keys = VirtualKeyCodes::new();
 
         while let Some(mut i) = s.find("&") {
@@ -56,7 +56,7 @@ impl AccelString {
                 Some((j, c)) => {
                     let pos = buf.len() as u32;
                     buf.push(c);
-                    ulines.0.push(pos);
+                    ulines.push(pos);
                     let vkeys = find_vkeys(c);
                     if !vkeys.is_empty() {
                         keys.extend(vkeys);
@@ -65,7 +65,7 @@ impl AccelString {
                     s = &s[i..];
 
                     if let Some((k, _)) = chars.next() {
-                        ulines.0.push(pos + (k - j) as u32);
+                        ulines.push(pos + (k - j) as u32);
                     }
                 }
             }
@@ -97,64 +97,26 @@ impl AccelString {
     pub fn underline(&self) -> usize {
         // TODO: this is not the intended way to pass on this information!
         self.ulines
-            .0
             .get(0)
             .map(|pos| *pos as usize)
             .unwrap_or(usize::MAX)
     }
 }
 
-impl Parser for AccelString {
-    type FormatData = Ulines;
-
-    fn finish(self) -> (String, Self::FormatData) {
-        (self.label, self.ulines)
-    }
-}
-
-#[derive(Clone, Default, Debug, PartialEq)]
-pub struct Ulines(SmallVec<[u32; 2]>);
-
-impl FormatData for Ulines {
-    fn clone_boxed(&self) -> Box<dyn FormatData> {
+impl FormattableText for AccelString {
+    #[inline]
+    fn clone_boxed(&self) -> Box<dyn FormattableText> {
         Box::new(self.clone())
     }
 
-    fn remove_range(&mut self, start: u32, end: u32) {
-        let len = end - start;
-        let mut last = None;
-        let mut i = 0;
-        let ulines_len = self.0.len();
-        while i < ulines_len {
-            let pos = &mut self.0[i];
-            if *pos >= start {
-                if *pos < end {
-                    *pos = start;
-                } else {
-                    *pos -= len;
-                }
-                if let Some((index, start)) = last {
-                    if start == *pos {
-                        self.0.remove(index as usize);
-                        continue;
-                    }
-                }
-                last = Some((i, *pos));
-            }
-            i += 1;
-        }
+    #[inline]
+    fn as_str(&self) -> &str {
+        &self.label
     }
 
-    fn insert_range(&mut self, start: u32, len: u32) {
-        for pos in &mut self.0 {
-            if *pos >= start {
-                *pos += len;
-            }
-        }
-    }
-
-    fn fmt_iter<'a>(&'a self, env: &'a Environment) -> Box<dyn Iterator<Item = Format> + 'a> {
-        Box::new(UlinesIter::new(&[], env))
+    #[inline]
+    fn font_tokens<'a>(&'a self, env: &'a Environment) -> Box<dyn Iterator<Item = FontToken> + 'a> {
+        Box::new(UlinesIter::new(&self.ulines, env))
     }
 }
 
@@ -175,14 +137,14 @@ impl<'a> UlinesIter<'a> {
 }
 
 impl<'a> Iterator for UlinesIter<'a> {
-    type Item = Format;
+    type Item = FontToken;
 
-    fn next(&mut self) -> Option<Format> {
+    fn next(&mut self) -> Option<FontToken> {
         if self.index < self.ulines.len() {
             // TODO: if index is even, this starts an underline; if odd, it ends one
             let pos = self.ulines[self.index];
             self.index += 1;
-            Some(Format {
+            Some(FontToken {
                 start: pos,
                 font_id: FontId::default(),
                 dpem: self.dpem,

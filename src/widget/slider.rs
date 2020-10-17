@@ -10,7 +10,7 @@ use std::ops::{Add, Sub};
 use std::time::Duration;
 
 use super::DragHandle;
-use kas::event::ControlKey;
+use kas::event::{self, ControlKey};
 use kas::prelude::*;
 
 /// Requirements on type used by [`Slider`]

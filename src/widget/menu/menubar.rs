@@ -8,7 +8,7 @@
 use std::time::Duration;
 
 use super::{Menu, SubMenu};
-use kas::event::{ControlKey, GrabMode};
+use kas::event::{self, ControlKey, GrabMode};
 use kas::prelude::*;
 use kas::widget::List;
 

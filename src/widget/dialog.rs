@@ -10,6 +10,7 @@
 
 use kas::event::VirtualKeyCode;
 use kas::prelude::*;
+use kas::text::format::FormattableText;
 use kas::widget::{Label, TextButton};
 use kas::WindowId;
 
@@ -22,25 +23,25 @@ enum DialogButton {
 #[layout(column)]
 #[widget(config=noauto)]
 #[derive(Clone, Debug, Widget)]
-pub struct MessageBox {
+pub struct MessageBox<T: FormattableText + 'static> {
     #[widget_core]
     core: CoreData,
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,
     title: String,
     #[widget]
-    label: Label,
+    label: Label<T>,
     #[widget(handler = handle_button)]
     button: TextButton<DialogButton>,
 }
 
-impl MessageBox {
-    pub fn new<A: ToString, B: Into<FormattedString>>(title: A, message: B) -> Self {
+impl<T: FormattableText + 'static> MessageBox<T> {
+    pub fn new<A: ToString>(title: A, message: T) -> Self {
         MessageBox {
             core: Default::default(),
             layout_data: Default::default(),
             title: title.to_string(),
-            label: Label::from(message.into()),
+            label: Label::new(message),
             button: TextButton::new("Ok", DialogButton::Close).with_keys(&[
                 VirtualKeyCode::Return,
                 VirtualKeyCode::Space,
@@ -49,15 +50,6 @@ impl MessageBox {
         }
     }
 
-    /// Construct from Markdown
-    #[cfg(feature = "markdown")]
-    pub fn from_md<A: ToString>(title: A, text: &str) -> Self {
-        let text = kas::text::parser::Markdown::new(text);
-        MessageBox::new(title, text)
-    }
-}
-
-impl MessageBox {
     fn handle_button(&mut self, mgr: &mut Manager, msg: DialogButton) -> Response<VoidMsg> {
         match msg {
             DialogButton::Close => mgr.send_action(TkAction::Close),
@@ -66,13 +58,13 @@ impl MessageBox {
     }
 }
 
-impl kas::WidgetConfig for MessageBox {
+impl<T: FormattableText + 'static> kas::WidgetConfig for MessageBox<T> {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.enable_alt_bypass(true);
     }
 }
 
-impl kas::Window for MessageBox {
+impl<T: FormattableText + 'static> kas::Window for MessageBox<T> {
     fn title(&self) -> &str {
         &self.title
     }

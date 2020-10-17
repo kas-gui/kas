@@ -82,4 +82,5 @@ pub struct DrawWindow<CW: CustomWindow> {
     flat_round: flat_round::Window,
     custom: CW,
     glyph_brush: GlyphBrush, // TODO: should be in DrawPipe
+    pub(crate) dur_text: std::time::Duration,
 }

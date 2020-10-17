@@ -8,7 +8,7 @@
 use std::fmt::Debug;
 use std::ops::{Index, IndexMut};
 
-use kas::prelude::*;
+use kas::{event, prelude::*};
 
 /// A stack of boxed widgets
 ///

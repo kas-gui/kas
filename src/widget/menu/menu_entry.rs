@@ -8,10 +8,9 @@
 use std::fmt::{self, Debug};
 
 use super::Menu;
-use kas::class::{HasBool, HasString, SetAccel};
 use kas::draw::TextClass;
-use kas::event::VirtualKeyCodes;
-use kas::layout::{RulesSetter, RulesSolver};
+use kas::event;
+use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::widget::{AccelLabel, CheckBoxBare};
 
@@ -22,16 +21,14 @@ use kas::widget::{AccelLabel, CheckBoxBare};
 pub struct MenuEntry<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
-    keys: VirtualKeyCodes,
-    label: Text,
-    underline: usize,
+    label: Text<AccelString>,
     label_off: Coord,
     msg: M,
 }
 
 impl<M: Clone + Debug + 'static> WidgetConfig for MenuEntry<M> {
     fn configure(&mut self, mgr: &mut Manager) {
-        mgr.add_accel_keys(self.id(), &self.keys);
+        mgr.add_accel_keys(self.id(), &self.label.text().keys());
     }
 
     fn key_nav(&self) -> bool {
@@ -59,17 +56,8 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
         let pos = self.core.rect.pos + self.label_off;
-        if mgr.show_accel_labels() {
-            draw_handle.text_with_underline(
-                pos,
-                Coord::ZERO,
-                &self.label,
-                TextClass::LabelSingle,
-                self.underline,
-            );
-        } else {
-            draw_handle.text(pos, &self.label, TextClass::LabelSingle);
-        }
+        // TODO: draw state is mgr.show_accel_labels()
+        draw_handle.text(pos, &self.label, TextClass::LabelSingle);
     }
 }
 
@@ -80,15 +68,9 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
     /// type supporting `Clone` is valid, though it is recommended to use a
     /// simple `Copy` type (e.g. an enum).
     pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
-        let label = label.into();
-        let text = Text::new_single(label.text().into());
-        let underline = label.underline();
-        let keys = label.take_keys();
         MenuEntry {
             core: Default::default(),
-            keys,
-            label: text,
-            underline,
+            label: Text::new_single(label.into()),
             label_off: Coord::ZERO,
             msg,
         }
@@ -100,22 +82,15 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> HasString for MenuEntry<M> {
+impl<M: Clone + Debug + 'static> HasStr for MenuEntry<M> {
     fn get_str(&self) -> &str {
-        self.label.text()
-    }
-
-    fn set_string(&mut self, text: String) -> TkAction {
-        self.keys.clear();
-        self.label.set_and_prepare(text)
+        self.label.as_str()
     }
 }
 
 impl<M: Clone + Debug + 'static> SetAccel for MenuEntry<M> {
-    fn set_accel_string(&mut self, label: AccelString) -> TkAction {
-        let text = label.text().to_string();
-        self.keys = label.take_keys();
-        self.label.set_and_prepare(text)
+    fn set_accel_string(&mut self, string: AccelString) -> TkAction {
+        kas::text::util::set_text_and_prepare(&mut self.label, string)
     }
 }
 
@@ -171,7 +146,7 @@ impl<M: 'static> MenuToggle<M> {
             core: Default::default(),
             layout_data: Default::default(),
             checkbox: CheckBoxBare::new_on(f),
-            label: AccelLabel::new(label),
+            label: AccelLabel::new(label.into()),
         }
     }
 
@@ -191,7 +166,7 @@ impl MenuToggle<VoidMsg> {
             core: Default::default(),
             layout_data: Default::default(),
             checkbox: CheckBoxBare::new(),
-            label: AccelLabel::new(label),
+            label: AccelLabel::new(label.into()),
         }
     }
 

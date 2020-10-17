@@ -7,7 +7,7 @@
 
 use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
-use kas::widget::{Label, RowSplitter, TextButton, Window};
+use kas::widget::{RowSplitter, StringLabel, TextButton, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {
@@ -26,8 +26,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget] _ = TextButton::new("+", Message::Incr),
         }
     };
-    let mut panes = RowSplitter::<Label>::default();
-    let _ = panes.resize_with(2, |n| Label::new(format!("Pane {}", n)));
+    let mut panes = RowSplitter::<StringLabel>::default();
+    let _ = panes.resize_with(2, |n| StringLabel::new(format!("Pane {}", n)));
 
     let window = Window::new(
         "Slitter panes",
@@ -37,7 +37,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(handler = handle_button)] buttons -> Message = buttons,
-                #[widget] panes: RowSplitter<Label> = panes,
+                #[widget] panes: RowSplitter<StringLabel> = panes,
                 counter: usize = 0,
             }
             impl {
@@ -50,7 +50,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         }
                         Message::Incr => {
                             let n = self.panes.len() + 1;
-                            *mgr += self.panes.push(Label::new(format!("Pane {}", n)));
+                            *mgr += self.panes.push(StringLabel::new(format!("Pane {}", n)));
                         }
                     };
                     VoidResponse::None

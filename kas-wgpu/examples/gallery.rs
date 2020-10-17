@@ -8,7 +8,6 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
-use kas::class::HasString;
 use kas::event::{UpdateHandle, VoidResponse};
 use kas::prelude::*;
 use kas::widget::*;
@@ -116,7 +115,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[layout(row)]
         #[handler(handle = noauto)]
         struct {
-            #[widget] label: Label = Label::new("Use button to edit →"),
+            #[widget] label: StringLabel = Label::from("Use button to edit →"),
             #[widget(handler = edit)] edit = TextButton::new("&Edit", ()),
             future: Option<Future<Option<String>>> = None,
         }

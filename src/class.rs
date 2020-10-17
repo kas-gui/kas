@@ -8,7 +8,7 @@
 //! These traits provide generic ways to interact with common widget properties,
 //! e.g. to read the text of a `Label` or set the state of a `CheckBox`.
 
-use crate::text::{AccelString, FormattedString};
+use crate::text::AccelString;
 use crate::TkAction;
 
 /// Read / write a boolean value
@@ -22,12 +22,12 @@ pub trait HasBool {
     fn set_bool(&mut self, state: bool) -> TkAction;
 }
 
-/// Read / write an unformatted `String`
+/// Read an unformatted `&str`
 ///
-/// Rich-text APIs may also support `HasString`; in this case reading returns
-/// the text without formatting information and writing discards any existing
-/// formatting.
-pub trait HasString {
+/// For write-support, see [`HasString`]. Alternatively, for e.g.
+/// `Label<&'static str>`, the `set_text` method which may be used, but in
+/// practice this is rarely sufficient.
+pub trait HasStr {
     /// Get text by reference
     fn get_str(&self) -> &str;
 
@@ -36,8 +36,13 @@ pub trait HasString {
     fn get_string(&self) -> String {
         self.get_str().to_string()
     }
+}
 
+/// Read / write an unformatted `String`
+pub trait HasString: HasStr {
     /// Set text from a `&str`
+    ///
+    /// This is a convenience method around `set_string(text.to_string())`.
     #[inline]
     fn set_str(&mut self, text: &str) -> TkAction {
         self.set_string(text.to_string())
@@ -47,6 +52,7 @@ pub trait HasString {
     fn set_string(&mut self, text: String) -> TkAction;
 }
 
+/*TODO: HasHtml with get and set?
 /// Read / write a formatted `String`
 pub trait HasFormatted {
     /// Get text as a `String`
@@ -63,6 +69,7 @@ pub trait HasFormatted {
     /// Set from a formatted string
     fn set_formatted_string(&mut self, text: FormattedString) -> TkAction;
 }
+*/
 
 /// Set a control label
 ///

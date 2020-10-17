@@ -14,7 +14,7 @@ use kas::draw::{
     Pass, SizeHandle, TextClass,
 };
 use kas::geom::*;
-use kas::text::Text;
+use kas::text::TextDisplay;
 use kas::{Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme using simple shading to give apparent depth to elements
@@ -268,27 +268,15 @@ where
             .shaded_round_frame(self.pass, outer, inner, norm, col);
     }
 
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &Text, class: TextClass) {
+    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &TextDisplay, class: TextClass) {
         self.as_flat().text_offset(pos, offset, text, class);
-    }
-
-    fn text_with_underline(
-        &mut self,
-        pos: Coord,
-        offset: Coord,
-        text: &Text,
-        class: TextClass,
-        underline: usize,
-    ) {
-        self.as_flat()
-            .text_with_underline(pos, offset, text, class, underline);
     }
 
     fn text_selected_range(
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     ) {
@@ -300,7 +288,7 @@ where
         &mut self,
         pos: Coord,
         offset: Coord,
-        text: &Text,
+        text: &TextDisplay,
         class: TextClass,
         byte: usize,
     ) {

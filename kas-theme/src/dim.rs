@@ -13,7 +13,7 @@ use std::f32;
 use kas::draw::{self, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
-use kas::text::Text;
+use kas::text::TextApi;
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -154,27 +154,30 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         self.dims.line_height
     }
 
-    fn text_bound(&mut self, text: &mut Text, class: TextClass, axis: AxisInfo) -> SizeRules {
-        let line_height = self.dims.line_height;
-        let mut bounds = Vec2::INFINITY;
+    fn text_bound(
+        &mut self,
+        text: &mut dyn TextApi,
+        class: TextClass,
+        axis: AxisInfo,
+    ) -> SizeRules {
+        let mut env = text.display().env().clone();
+        env.dpp = self.dims.dpp;
+        env.pt_size = self.dims.pt_size;
+        env.bounds = Vec2::INFINITY.into();
+
         if let Some(size) = axis.size_other_if_fixed(false) {
-            bounds.0 = text.env().bounds.0;
-            bounds.1 = size as f32;
+            env.bounds.1 = size as f32;
         } else if let Some(size) = axis.size_other_if_fixed(true) {
-            bounds.0 = size as f32;
-            bounds.1 = text.env().bounds.1;
+            env.bounds.0 = size as f32;
         }
-        let wrap = match class {
+
+        env.wrap = match class {
             TextClass::Label | TextClass::EditMulti => true,
             _ => false,
         };
-        text.update_env(|env| {
-            env.set_bounds(bounds.into());
-            env.set_dpp(self.dims.dpp);
-            env.set_pt_size(self.dims.pt_size);
-            env.set_wrap(wrap);
-        });
-        let bounds = text.required_size();
+
+        text.set_env(env);
+        let bounds = text.display().required_size();
 
         let margin = match class {
             TextClass::Label | TextClass::LabelSingle => self.dims.outer_margin,
@@ -192,8 +195,8 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             SizeRules::new(min, ideal, margins, policy)
         } else {
             let min = match class {
-                TextClass::EditMulti => line_height * 3,
-                _ => line_height,
+                TextClass::EditMulti => self.dims.line_height * 3,
+                _ => self.dims.line_height,
             };
             let ideal = (bounds.1 as u32).max(min);
             let stretch = match class {

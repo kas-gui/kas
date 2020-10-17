@@ -109,6 +109,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             flat_round,
             custom,
             glyph_brush,
+            dur_text: Default::default(),
         }
     }
 

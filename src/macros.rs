@@ -54,7 +54,7 @@
 //!
 //! A simple example:
 //! ```
-//! use kas::prelude::*;
+//! use kas::{event, prelude::*};
 //!
 //! #[layout(single)]
 //! #[handler(generics = <> where W: Widget<Msg = event::VoidMsg>)]
@@ -247,7 +247,7 @@
 //! ```
 //! use kas::event::{Manager, Response, VoidMsg};
 //! use kas::macros::Widget;
-//! use kas::widget::Label;
+//! use kas::widget::StrLabel;
 //! use kas::{CoreData, LayoutData, Widget};
 //!
 //! #[derive(Debug)]
@@ -259,7 +259,7 @@
 //! struct MyWidget<W: Widget> {
 //!     #[widget_core] core: CoreData,
 //!     #[layout_data] layout_data: <Self as LayoutData>::Data,
-//!     #[widget] label: Label,
+//!     #[widget] label: StrLabel,
 //!     #[widget(handler = handler)] child: W,
 //! }
 //!
