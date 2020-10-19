@@ -66,6 +66,12 @@ impl<M: 'static> WidgetCore for Box<dyn Menu<Msg = M>> {
 }
 
 impl<M: 'static> WidgetChildren for Box<dyn Menu<Msg = M>> {
+    fn first_id(&self) -> WidgetId {
+        self.as_ref().first_id()
+    }
+    fn record_first_id(&mut self, id: WidgetId) {
+        self.as_mut().record_first_id(id)
+    }
     fn len(&self) -> usize {
         self.as_ref().len()
     }

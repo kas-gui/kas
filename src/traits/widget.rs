@@ -150,6 +150,25 @@ pub trait WidgetCore: Any + fmt::Debug {
 ///
 /// [`derive(Widget)`]: macros/index.html#the-derivewidget-macro
 pub trait WidgetChildren: WidgetCore {
+    /// Get the first identifier of self or any children
+    ///
+    /// Widget identifiers are assigned sequentially by depth-first-search,
+    /// children before parents. Any widget thus has a range of identifiers,
+    /// from the first assigned to any descendent (or self) to its own
+    /// ([`WidgetCore::id`]). This method must return the first identifier.
+    fn first_id(&self) -> WidgetId;
+
+    /// Record first identifier
+    ///
+    /// This is called during [`WidgetConfig::configure_recurse`] with the first
+    /// identifier. This may be used to implement [`WidgetChildren::first_id`],
+    /// although in many cases the first identifier can be read directly from
+    /// the first child. This method has a default implementation doing nothing.
+    ///
+    /// This method should only be called from `configure_recurse`.
+    #[inline]
+    fn record_first_id(&mut self, _id: WidgetId) {}
+
     /// Get the number of child widgets
     fn len(&self) -> usize;
 
@@ -174,7 +193,7 @@ pub trait WidgetChildren: WidgetCore {
     /// This function assumes that `id` is a valid widget.
     #[inline]
     fn is_ancestor_of(&self, id: WidgetId) -> bool {
-        self.find(id).is_some()
+        id <= self.id() && self.first_id() <= id
     }
 
     /// Find a child widget by identifier
@@ -308,6 +327,7 @@ pub trait WidgetConfig: Layout {
     /// method but instead use [`WidgetConfig::configure`]; the exception is
     /// widgets with pop-ups.
     fn configure_recurse<'a, 'b>(&mut self, mut cmgr: ConfigureManager<'a, 'b>) {
+        self.record_first_id(cmgr.peek_next());
         for i in 0..self.len() {
             if let Some(w) = self.get_mut(i) {
                 w.configure_recurse(cmgr.child());

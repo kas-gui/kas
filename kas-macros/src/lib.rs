@@ -95,16 +95,6 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let widget_name = name.to_string();
 
     let core_data = args.core_data;
-    let count = args.children.len();
-
-    let mut get_rules = quote! {};
-    let mut get_mut_rules = quote! {};
-    for (i, child) in args.children.iter().enumerate() {
-        let ident = &child.ident;
-        get_rules.append_all(quote! { #i => Some(&self.#ident), });
-        get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
-    }
-
     let mut toks = quote! {
         impl #impl_generics kas::WidgetCore
             for #name #ty_generics #where_clause
@@ -130,10 +120,30 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     };
 
     if args.widget.children {
+        let first_id = if args.children.is_empty() {
+            quote! { self.id() }
+        } else {
+            let ident = &args.children[0].ident;
+            quote! { self.#ident.first_id() }
+        };
+
+        let count = args.children.len();
+
+        let mut get_rules = quote! {};
+        let mut get_mut_rules = quote! {};
+        for (i, child) in args.children.iter().enumerate() {
+            let ident = &child.ident;
+            get_rules.append_all(quote! { #i => Some(&self.#ident), });
+            get_mut_rules.append_all(quote! { #i => Some(&mut self.#ident), });
+        }
+
         toks.append_all(quote! {
             impl #impl_generics kas::WidgetChildren
                 for #name #ty_generics #where_clause
             {
+                fn first_id(&self) -> kas::WidgetId {
+                    #first_id
+                }
                 fn len(&self) -> usize {
                     #count
                 }

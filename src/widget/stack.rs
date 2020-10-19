@@ -34,6 +34,7 @@ pub type RefStack<'a, M> = Stack<&'a mut dyn Widget<Msg = M>>;
 #[widget(children=noauto)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Stack<W: Widget> {
+    first_id: WidgetId,
     #[widget_core]
     core: CoreData,
     widgets: Vec<W>,
@@ -41,6 +42,13 @@ pub struct Stack<W: Widget> {
 }
 
 impl<W: Widget> WidgetChildren for Stack<W> {
+    #[inline]
+    fn first_id(&self) -> WidgetId {
+        self.first_id
+    }
+    fn record_first_id(&mut self, id: WidgetId) {
+        self.first_id = id;
+    }
     #[inline]
     fn len(&self) -> usize {
         self.widgets.len()
@@ -113,6 +121,7 @@ impl<W: Widget> Stack<W> {
     /// visible; otherwise, no widget will be visible.
     pub fn new(widgets: Vec<W>, active: usize) -> Self {
         Stack {
+            first_id: Default::default(),
             core: Default::default(),
             widgets,
             active,
