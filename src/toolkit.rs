@@ -65,10 +65,9 @@ pub enum TkAction {
     Redraw,
     /// Some widgets within a region moved
     ///
-    /// This action should be emitted when e.g. a scroll-region is moved or
-    /// widget layout is adjusted to allow for the fact that coordinates
-    /// (e.g. mouse position) have changed relative to widgets.
-    // NOTE: one could specify a Rect here, but there's not much advantage
+    /// Used when a pop-up is closed or a region adjusted (e.g. scroll or switch
+    /// tab) to update which widget is under the mouse cursor / touch events.
+    /// Identifier is that of the parent widget/window encapsulating the region.
     RegionMoved,
     /// A pop-up opened/closed/needs resizing
     Popup,

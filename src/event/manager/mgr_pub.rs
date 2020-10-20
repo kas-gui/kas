@@ -222,7 +222,10 @@ impl<'a> Manager<'a> {
             }
         }
 
+        // For popups, we need to update mouse/keyboard focus.
+        // (For windows, focus gained/lost events do this job.)
         self.mgr.send_action(TkAction::RegionMoved);
+
         self.tkw.close_window(id);
     }
 
