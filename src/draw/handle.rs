@@ -9,9 +9,9 @@ use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use kas::draw::{Draw, Pass};
-use kas::geom::{Coord, Rect, Size};
+use kas::geom::{Coord, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules};
-use kas::text::{TextApi, TextDisplay};
+use kas::text::{format::FormattableText, TextApi, TextDisplay};
 use kas::Direction;
 
 // for doc use
@@ -278,13 +278,21 @@ pub trait DrawHandle {
     /// but offset by subtracting `offset` (allowing scrolling).
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &TextDisplay, class: TextClass);
+    fn text_offset(
+        &mut self,
+        pos: Coord,
+        bounds: Vec2,
+        offset: Coord,
+        text: &TextDisplay,
+        class: TextClass,
+    );
 
     /// Method used to implement [`DrawHandleExt::text_selected`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     fn text_selected_range(
         &mut self,
         pos: Coord,
+        bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
         range: Range<usize>,
@@ -295,6 +303,7 @@ pub trait DrawHandle {
     fn edit_marker(
         &mut self,
         pos: Coord,
+        bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
         class: TextClass,
@@ -363,8 +372,9 @@ pub trait DrawHandleExt: DrawHandle {
     /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
     ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text<T: AsRef<TextDisplay>>(&mut self, pos: Coord, text: T, class: TextClass) {
-        self.text_offset(pos, Coord::ZERO, text.as_ref(), class);
+    fn text<T: FormattableText>(&mut self, pos: Coord, text: &Text<T>, class: TextClass) {
+        let bounds = text.env().bounds.into();
+        self.text_offset(pos, bounds, Coord::ZERO, text.as_ref(), class);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -375,6 +385,7 @@ pub trait DrawHandleExt: DrawHandle {
     fn text_selected<T: AsRef<TextDisplay>, R: RangeBounds<usize>>(
         &mut self,
         pos: Coord,
+        bounds: Vec2,
         offset: Coord,
         text: T,
         range: R,
@@ -391,7 +402,7 @@ pub trait DrawHandleExt: DrawHandle {
             Bound::Unbounded => usize::MAX,
         };
         let range = Range { start, end };
-        self.text_selected_range(pos, offset, text.as_ref(), range, class);
+        self.text_selected_range(pos, bounds, offset, text.as_ref(), range, class);
     }
 }
 
@@ -537,29 +548,40 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &TextDisplay, class: TextClass) {
-        self.deref_mut().text_offset(pos, offset, text, class)
+    fn text_offset(
+        &mut self,
+        pos: Coord,
+        bounds: Vec2,
+        offset: Coord,
+        text: &TextDisplay,
+        class: TextClass,
+    ) {
+        self.deref_mut()
+            .text_offset(pos, bounds, offset, text, class)
     }
     fn text_selected_range(
         &mut self,
         pos: Coord,
+        bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     ) {
         self.deref_mut()
-            .text_selected_range(pos, offset, text, range, class);
+            .text_selected_range(pos, bounds, offset, text, range, class);
     }
     fn edit_marker(
         &mut self,
         pos: Coord,
+        bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
         class: TextClass,
         byte: usize,
     ) {
-        self.deref_mut().edit_marker(pos, offset, text, class, byte)
+        self.deref_mut()
+            .edit_marker(pos, bounds, offset, text, class, byte)
     }
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().menu_entry(rect, state)
@@ -616,29 +638,40 @@ where
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &TextDisplay, class: TextClass) {
-        self.deref_mut().text_offset(pos, offset, text, class)
+    fn text_offset(
+        &mut self,
+        pos: Coord,
+        bounds: Vec2,
+        offset: Coord,
+        text: &TextDisplay,
+        class: TextClass,
+    ) {
+        self.deref_mut()
+            .text_offset(pos, bounds, offset, text, class)
     }
     fn text_selected_range(
         &mut self,
         pos: Coord,
+        bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     ) {
         self.deref_mut()
-            .text_selected_range(pos, offset, text, range, class);
+            .text_selected_range(pos, bounds, offset, text, range, class);
     }
     fn edit_marker(
         &mut self,
         pos: Coord,
+        bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
         class: TextClass,
         byte: usize,
     ) {
-        self.deref_mut().edit_marker(pos, offset, text, class, byte)
+        self.deref_mut()
+            .edit_marker(pos, bounds, offset, text, class, byte)
     }
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().menu_entry(rect, state)

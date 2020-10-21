@@ -38,7 +38,15 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         }
     }
 
-    fn text(&mut self, pass: Pass, pos: Vec2, offset: Vec2, col: Colour, text: &TextDisplay) {
+    fn text(
+        &mut self,
+        pass: Pass,
+        pos: Vec2,
+        bounds: Vec2,
+        offset: Vec2,
+        col: Colour,
+        text: &TextDisplay,
+    ) {
         let time = std::time::Instant::now();
         let ab_pos = to_point(pos);
         let ab_offset = ab_pos - to_point(offset);
@@ -59,7 +67,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         text.glyphs(for_glyph);
 
         let min = ab_pos;
-        let max = ab_pos + ktv_to_point(text.env().bounds);
+        let max = ab_pos + to_point(bounds);
         let bounds = ab_glyph::Rect { min, max };
 
         let extra = vec![Extra {
@@ -75,6 +83,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         &mut self,
         pass: Pass,
         pos: Vec2,
+        bounds: Vec2,
         offset: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Colour>],
@@ -109,7 +118,7 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         text.glyphs_with_effects(effects, for_glyph, for_rect);
 
         let min = ab_pos;
-        let max = ab_pos + ktv_to_point(text.env().bounds);
+        let max = ab_pos + to_point(bounds);
         let bounds = ab_glyph::Rect { min, max };
 
         let extra = effects

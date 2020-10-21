@@ -220,13 +220,21 @@ pub trait DrawText {
     fn prepare_fonts(&mut self);
 
     /// Draw text
-    fn text(&mut self, pass: Pass, pos: Vec2, offset: Vec2, col: Colour, text: &TextDisplay) {
+    fn text(
+        &mut self,
+        pass: Pass,
+        pos: Vec2,
+        bounds: Vec2,
+        offset: Vec2,
+        col: Colour,
+        text: &TextDisplay,
+    ) {
         let effects = [Effect {
             start: 0,
             flags: Default::default(),
             aux: col,
         }];
-        self.text_with_effects(pass, pos, offset, text, &effects);
+        self.text_with_effects(pass, pos, bounds, offset, text, &effects);
     }
 
     /// Draw text with effects
@@ -238,6 +246,7 @@ pub trait DrawText {
         &mut self,
         pass: Pass,
         pos: Vec2,
+        bounds: Vec2,
         offset: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Colour>],

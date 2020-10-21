@@ -11,7 +11,7 @@ mod string;
 pub use string::AccelString;
 
 pub mod util {
-    use super::{format, Text};
+    use super::{format, EditableTextApi, Text, TextApi};
     use kas::TkAction;
 
     /// Set the text and prepare
@@ -22,12 +22,9 @@ pub mod util {
     /// This calls [`Text::prepare`] internally, then returns
     /// [`TkAction::Redraw`]. (This does not force a resize.)
     pub fn set_text_and_prepare<T: format::FormattableText>(text: &mut Text<T>, s: T) -> TkAction {
-        if text.set_text(s).prepare() {
-            text.prepare();
-            TkAction::Redraw
-        } else {
-            TkAction::None
-        }
+        text.set_text(s);
+        text.prepare();
+        TkAction::Redraw
     }
 
     /// Set the text from a string and prepare
@@ -41,11 +38,8 @@ pub mod util {
         text: &mut Text<T>,
         s: String,
     ) -> TkAction {
-        if text.set_string(s).prepare() {
-            text.prepare();
-            TkAction::Redraw
-        } else {
-            TkAction::None
-        }
+        text.set_string(s);
+        text.prepare();
+        TkAction::Redraw
     }
 }

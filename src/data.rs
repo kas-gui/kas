@@ -192,6 +192,7 @@ impl AlignHints {
 /// Provides alignment information on both axes along with ideal size
 ///
 /// Note that the `ideal` size detail is only used for non-stretch alignment.
+#[derive(Copy, Clone, Debug)]
 pub struct CompleteAlignment {
     halign: Align,
     valign: Align,
@@ -221,6 +222,11 @@ impl CompleteAlignment {
             size.1 = ideal.1;
         }
         Rect { pos, size }
+    }
+
+    /// Get `Align` members
+    pub fn align(&self) -> (Align, Align) {
+        (self.halign, self.valign)
     }
 }
 

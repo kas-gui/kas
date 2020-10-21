@@ -14,7 +14,6 @@ use kas::draw::TextClass;
 use kas::event::{self, ControlKey, GrabMode, PressSource, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
-use kas::text::PrepareAction;
 
 #[derive(Clone, Debug, PartialEq)]
 enum LastEdit {
@@ -161,6 +160,7 @@ pub struct EditBox<G: 'static> {
     editable: bool,
     multi_line: bool,
     text: Text<String>,
+    required: Vec2,
     edit_pos: usize,
     sel_pos: usize,
     anchor_pos: usize,
@@ -233,10 +233,13 @@ impl<G: 'static> Layout for EditBox<G> {
         self.text_pos = rect.pos + self.frame_offset;
         let size = rect.size - self.frame_size;
         let multi_line = self.multi_line;
-        self.text.update_env(|env| {
-            env.set_bounds(size.into());
-            env.set_wrap(multi_line);
-        });
+        self.required = self
+            .text
+            .update_env(|env| {
+                env.set_bounds(size.into());
+                env.set_wrap(multi_line);
+            })
+            .into();
         self.set_view_offset_from_edit_pos();
     }
 
@@ -249,14 +252,22 @@ impl<G: 'static> Layout for EditBox<G> {
         let mut input_state = self.input_state(mgr, disabled);
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
+        let bounds = self.text.env().bounds.into();
         if self.sel_pos == self.edit_pos {
-            draw_handle.text_offset(self.text_pos, self.view_offset, self.text.as_ref(), class);
+            draw_handle.text_offset(
+                self.text_pos,
+                bounds,
+                self.view_offset,
+                self.text.as_ref(),
+                class,
+            );
         } else {
             // TODO(opt): we could cache the selection rectangles here to make
             // drawing more efficient (self.text.highlight_lines(range) output).
             // The same applies to the edit marker below.
             draw_handle.text_selected(
                 self.text_pos,
+                bounds,
                 self.view_offset,
                 &self.text,
                 self.selection(),
@@ -266,6 +277,7 @@ impl<G: 'static> Layout for EditBox<G> {
         if input_state.char_focus {
             draw_handle.edit_marker(
                 self.text_pos,
+                bounds,
                 self.view_offset,
                 self.text.as_ref(),
                 class,
@@ -288,7 +300,8 @@ impl EditBox<EditVoid> {
             view_offset: Default::default(),
             editable: true,
             multi_line: false,
-            text: Text::new_single(text.into()),
+            text: Text::new(Default::default(), text.into()),
+            required: Vec2::ZERO,
             edit_pos,
             sel_pos: edit_pos,
             anchor_pos: edit_pos,
@@ -318,6 +331,7 @@ impl EditBox<EditVoid> {
             editable: self.editable,
             multi_line: self.multi_line,
             text: self.text,
+            required: self.required,
             edit_pos: self.edit_pos,
             sel_pos: self.sel_pos,
             anchor_pos: self.anchor_pos,
@@ -450,7 +464,6 @@ impl<G> EditBox<G> {
             return EditAction::Unhandled;
         }
 
-        let mut prep_action = PrepareAction::from(false);
         let mut buf = [0u8; 4];
         let pos = self.edit_pos;
         let selection = self.selection();
@@ -679,7 +692,7 @@ impl<G> EditBox<G> {
                 // TODO: maintain full edit history (externally?)
                 // NOTE: undo *and* redo shortcuts map to this control char
                 if let Some((state, pos2, sel_pos)) = self.old_state.as_mut() {
-                    prep_action |= self.text.swap_string(state);
+                    self.text.swap_string(state);
                     self.edit_pos = *pos2;
                     *pos2 = pos;
                     std::mem::swap(sel_pos, &mut self.sel_pos);
@@ -702,7 +715,7 @@ impl<G> EditBox<G> {
                     self.old_state = Some((self.text.clone_string(), pos, self.sel_pos));
                     self.last_edit = edit;
 
-                    prep_action |= self.text.replace_range(selection.clone(), s);
+                    self.text.replace_range(selection.clone(), s);
                     pos = selection.start;
                 } else {
                     if self.last_edit != edit {
@@ -710,7 +723,7 @@ impl<G> EditBox<G> {
                         self.last_edit = edit;
                     }
 
-                    prep_action |= self.text.replace_range(pos..pos, s);
+                    self.text.replace_range(pos..pos, s);
                 }
                 self.edit_pos = pos + s.len();
                 self.sel_pos = self.edit_pos;
@@ -723,7 +736,7 @@ impl<G> EditBox<G> {
                     self.last_edit = LastEdit::Delete;
                 }
 
-                prep_action |= self.text.replace_range(sel.clone(), "");
+                self.text.replace_range(sel.clone(), "");
                 self.edit_pos = sel.start;
                 self.sel_pos = sel.start;
                 self.edit_x_coord = None;
@@ -740,11 +753,13 @@ impl<G> EditBox<G> {
             }
         };
 
-        if prep_action.prepare() {
+        let mut set_offset = self.edit_pos != pos;
+        if !self.text.required_action().is_ready() {
             self.text.prepare();
+            set_offset = true;
             mgr.redraw(self.id());
         }
-        if prep_action.prepare() || self.edit_pos != pos {
+        if set_offset {
             self.set_view_offset_from_edit_pos();
         }
 
@@ -760,9 +775,8 @@ impl<G> EditBox<G> {
     }
 
     fn pan_delta(&mut self, mgr: &mut Manager, delta: Coord) -> bool {
-        let req = Vec2::from(self.text.required_size());
         let bounds = Vec2::from(self.text.env().bounds);
-        let max_offset = (req - bounds).ceil();
+        let max_offset = (self.required - bounds).ceil();
         let max_offset = Coord::from(max_offset).max(Coord::ZERO);
         let new_offset = (self.view_offset - delta).min(max_offset).max(Coord::ZERO);
         if new_offset != self.view_offset {
@@ -778,8 +792,8 @@ impl<G> EditBox<G> {
     ///
     /// A redraw is assumed since edit_pos moved.
     fn set_view_offset_from_edit_pos(&mut self) {
-        let bounds = self.text.env().bounds;
         if let Some(marker) = self.text.text_glyph_pos(self.edit_pos).next_back() {
+            let bounds = Vec2::from(self.text.env().bounds);
             let min_x = (marker.pos.0 - bounds.0).ceil();
             let min_y = (marker.pos.1 - marker.descent - bounds.1).ceil();
             let max_x = (marker.pos.0).floor();
@@ -787,9 +801,7 @@ impl<G> EditBox<G> {
             let min = Coord(min_x as i32, min_y as i32);
             let max = Coord(max_x as i32, max_y as i32);
 
-            let req = Vec2::from(self.text.required_size());
-            let bounds = Vec2::from(self.text.env().bounds);
-            let max_offset = (req - bounds).ceil();
+            let max_offset = (self.required - bounds).ceil();
             let max_offset = Coord::from(max_offset).max(Coord::ZERO);
             let max = max.min(max_offset);
 
