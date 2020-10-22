@@ -60,8 +60,8 @@ impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.button(self.core.rect, self.input_state(mgr, disabled));
-        // TODO: draw state is mgr.show_accel_labels()
-        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Button);
+        let state = mgr.show_accel_labels();
+        draw_handle.text_accel(self.core.rect.pos, &self.label, state, TextClass::Button);
     }
 }
 

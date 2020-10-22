@@ -11,7 +11,7 @@ use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules};
-use kas::text::{format::FormattableText, TextApi, TextDisplay};
+use kas::text::{format::FormattableText, AccelString, TextApi, TextDisplay};
 use kas::Direction;
 
 // for doc use
@@ -287,6 +287,13 @@ pub trait DrawHandle {
         class: TextClass,
     );
 
+    /// Draw an `AccelString` text
+    ///
+    /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
+    ///
+    /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
+    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass);
+
     /// Method used to implement [`DrawHandleExt::text_selected`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     fn text_selected_range(
@@ -559,6 +566,9 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         self.deref_mut()
             .text_offset(pos, bounds, offset, text, class)
     }
+    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
+        self.deref_mut().text_accel(pos, text, state, class);
+    }
     fn text_selected_range(
         &mut self,
         pos: Coord,
@@ -648,6 +658,9 @@ where
     ) {
         self.deref_mut()
             .text_offset(pos, bounds, offset, text, class)
+    }
+    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
+        self.deref_mut().text_accel(pos, text, state, class);
     }
     fn text_selected_range(
         &mut self,

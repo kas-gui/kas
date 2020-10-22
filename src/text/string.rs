@@ -95,13 +95,12 @@ impl AccelString {
         &self.label
     }
 
-    /// Get the glyph to be underlined
-    pub fn underline(&self) -> usize {
-        // TODO: this is not the intended way to pass on this information!
-        self.ulines
-            .get(0)
-            .map(|pos| *pos as usize)
-            .unwrap_or(usize::MAX)
+    /// Get the underline sequence
+    ///
+    /// Even entries (from 0) are positions to start underlining, odd entries
+    /// are positions to end underlines.
+    pub fn underlines(&self) -> &[u32] {
+        &self.ulines
     }
 }
 

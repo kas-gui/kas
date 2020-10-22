@@ -14,7 +14,7 @@ use kas::draw::{
     Pass, SizeHandle, TextClass,
 };
 use kas::geom::*;
-use kas::text::TextDisplay;
+use kas::text::{AccelString, Text, TextDisplay};
 use kas::{Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme using simple shading to give apparent depth to elements
@@ -277,6 +277,10 @@ where
         class: TextClass,
     ) {
         self.as_flat().text_offset(pos, bounds, offset, text, class);
+    }
+
+    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
+        self.as_flat().text_accel(pos, text, state, class);
     }
 
     fn text_selected_range(
