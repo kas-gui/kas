@@ -13,10 +13,10 @@ documentation = "https://docs.rs/kas-theme/"
 
 [features]
 default = ["stack_dst"]
+nightly = ["unsize", "kas/nightly"]
 
-# Use Generic Associated Types (experimental)
-# Currently (Feb 2020) compiler support is poor.
-gat = ["unsize"]
+# Use Generic Associated Types (this is too unstable to include in nightly!)
+gat = ["unsize", "kas/gat"]
 
 # Use stack_dst crate for sized unsized types
 stack_dst = ["kas/stack_dst", "stack_dst_"]

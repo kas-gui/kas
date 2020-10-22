@@ -502,6 +502,11 @@ impl<'a: 'b, 'b> ConfigureManager<'a, 'b> {
         }
     }
 
+    /// Get the next [`WidgetId`], without advancing the counter
+    pub fn peek_next(&self) -> WidgetId {
+        *self.id
+    }
+
     /// Get a new [`WidgetId`] for the widget
     ///
     /// Pass the old ID (`self.id()`), even if not yet configured.

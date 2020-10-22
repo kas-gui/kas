@@ -12,8 +12,10 @@
 use smallvec::{smallvec, SmallVec};
 
 use kas::event::{VirtualKeyCode as VK, VirtualKeyCodes};
+use kas::text::fonts::FontId;
 use kas::text::format::{FontToken, FormattableText};
-use kas::text::{fonts::FontId, Environment};
+#[cfg(not(feature = "gat"))]
+use kas::text::OwningVecIter;
 
 /// An accelerator key string
 ///
@@ -93,30 +95,34 @@ impl AccelString {
         &self.label
     }
 
-    /// Get the glyph to be underlined
-    pub fn underline(&self) -> usize {
-        // TODO: this is not the intended way to pass on this information!
-        self.ulines
-            .get(0)
-            .map(|pos| *pos as usize)
-            .unwrap_or(usize::MAX)
+    /// Get the underline sequence
+    ///
+    /// Even entries (from 0) are positions to start underlining, odd entries
+    /// are positions to end underlines.
+    pub fn underlines(&self) -> &[u32] {
+        &self.ulines
     }
 }
 
 impl FormattableText for AccelString {
-    #[inline]
-    fn clone_boxed(&self) -> Box<dyn FormattableText> {
-        Box::new(self.clone())
-    }
+    #[cfg(feature = "gat")]
+    type FontTokenIterator<'a> = UlinesIter<'a>;
 
     #[inline]
     fn as_str(&self) -> &str {
         &self.label
     }
 
+    #[cfg(feature = "gat")]
     #[inline]
-    fn font_tokens<'a>(&'a self, env: &'a Environment) -> Box<dyn Iterator<Item = FontToken> + 'a> {
-        Box::new(UlinesIter::new(&self.ulines, env))
+    fn font_tokens<'a>(&'a self, dpp: f32, pt_size: f32) -> Self::FontTokenIterator<'a> {
+        UlinesIter::new(&self.ulines, dpp * pt_size)
+    }
+    #[cfg(not(feature = "gat"))]
+    #[inline]
+    fn font_tokens(&self, dpp: f32, pt_size: f32) -> OwningVecIter<FontToken> {
+        let iter = UlinesIter::new(&self.ulines, dpp * pt_size);
+        OwningVecIter::new(iter.collect())
     }
 }
 
@@ -127,11 +133,11 @@ pub struct UlinesIter<'a> {
 }
 
 impl<'a> UlinesIter<'a> {
-    fn new(ulines: &'a [u32], env: &Environment) -> Self {
+    fn new(ulines: &'a [u32], dpem: f32) -> Self {
         UlinesIter {
             index: 0,
             ulines,
-            dpem: env.dpp * env.pt_size,
+            dpem,
         }
     }
 }

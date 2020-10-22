@@ -106,10 +106,12 @@ impl Layout for Clock {
         line_seg(a_min, 0.0, half * 0.8, half * 0.015, col_hands);
         line_seg(a_sec, 0.0, half * 0.9, half * 0.005, col_secs);
 
-        let date_pos = (self.date_pos + offset).into();
-        let time_pos = (self.time_pos + offset).into();
-        draw.text(pass, date_pos, Vec2::ZERO, col_text, self.date.as_ref());
-        draw.text(pass, time_pos, Vec2::ZERO, col_text, self.time.as_ref());
+        let pos = (self.date_pos + offset).into();
+        let bounds = self.date.env().bounds.into();
+        draw.text(pass, pos, bounds, Vec2::ZERO, col_text, self.date.as_ref());
+        let pos = (self.time_pos + offset).into();
+        let bounds = self.time.env().bounds.into();
+        draw.text(pass, pos, bounds, Vec2::ZERO, col_text, self.time.as_ref());
     }
 }
 
@@ -144,8 +146,7 @@ impl Handler for Clock {
 impl Clock {
     fn new() -> Self {
         let env = kas::text::Environment {
-            halign: Align::Centre,
-            valign: Align::Centre,
+            align: (Align::Centre, Align::Centre),
             ..Default::default()
         };
         let date = Text::new(env.clone(), "0000-00-00".into());

@@ -128,8 +128,7 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
         state.depress = state.depress || self.popup_id.is_some();
         draw_handle.menu_entry(self.core.rect, state);
         let pos = self.core.rect.pos + self.label_off;
-        // TODO: draw state is mgr.show_accel_labels()
-        draw_handle.text(pos, &self.label, TextClass::Label);
+        draw_handle.text_accel(pos, &self.label, mgr.show_accel_labels(), TextClass::Label);
     }
 }
 

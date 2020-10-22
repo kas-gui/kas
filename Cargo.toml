@@ -14,7 +14,13 @@ exclude = ["/screenshots"]
 
 [features]
 # Enables usage of unstable Rust features
-nightly = []
+nightly = ["min_spec"]
+
+# Use Generic Associated Types (this is too unstable to include in nightly!)
+gat = ["kas-text/gat"]
+
+# Use min_specialization (enables accelerator underlining for AccelLabel)
+min_spec = []
 
 # Enables documentation of APIs for toolkits and internal use.
 # This API is not intended for use by end-user applications and
@@ -44,7 +50,7 @@ path = "kas-macros"
 [dependencies.kas-text]
 version = "0.1.2"
 git = "https://github.com/kas-gui/kas-text"
-rev = "a3d4e426d05f7c728a10d89b56d3b9462767ba78"
+rev = "ce08a05df11081de0a638b8e6efa52afafe145d9"
 
 [dependencies.winit]
 # Provides translations for several winit types

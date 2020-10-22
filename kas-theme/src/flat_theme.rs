@@ -16,7 +16,7 @@ use kas::draw::{
     SizeHandle, TextClass,
 };
 use kas::geom::*;
-use kas::text::{Effect, TextDisplay};
+use kas::text::{AccelString, Effect, EffectFlags, Text, TextApi, TextDisplay};
 use kas::{Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme with flat (unshaded) rendering
@@ -247,16 +247,50 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
     }
 
-    fn text_offset(&mut self, pos: Coord, offset: Coord, text: &TextDisplay, class: TextClass) {
+    fn text_offset(
+        &mut self,
+        pos: Coord,
+        bounds: Vec2,
+        offset: Coord,
+        text: &TextDisplay,
+        class: TextClass,
+    ) {
         let pos = pos + self.offset;
         let col = self.cols.text_class(class);
         self.draw
-            .text(self.pass, pos.into(), offset.into(), col, text);
+            .text(self.pass, pos.into(), bounds, offset.into(), col, text);
+    }
+
+    fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
+        let pos = Vec2::from(pos + self.offset);
+        let offset = Vec2::ZERO;
+        let bounds = text.env().bounds.into();
+        let aux = self.cols.text_class(class);
+        if state {
+            let ulines = text.text().underlines();
+            let mut effects = Vec::with_capacity(1 + ulines.len());
+            effects.push(Effect {
+                start: 0,
+                flags: Default::default(),
+                aux,
+            });
+            let mut flags = EffectFlags::UNDERLINE;
+            for start in ulines.iter().cloned() {
+                effects.push(Effect { start, flags, aux });
+                flags.toggle(EffectFlags::UNDERLINE);
+            }
+            self.draw
+                .text_with_effects(self.pass, pos, bounds, offset, text.as_ref(), &effects);
+        } else {
+            self.draw
+                .text(self.pass, pos, bounds, offset, aux, text.as_ref());
+        }
     }
 
     fn text_selected_range(
         &mut self,
         pos: Coord,
+        bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
         range: Range<usize>,
@@ -264,7 +298,6 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     ) {
         let pos = Vec2::from(pos + self.offset);
         let offset = Vec2::from(offset);
-        let bounds = Vec2::from(text.env().bounds);
         let col = self.cols.text_class(class);
 
         // Draw background:
@@ -299,12 +332,13 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             },
         ];
         self.draw
-            .text_with_effects(self.pass, pos, offset, text, &effects);
+            .text_with_effects(self.pass, pos, bounds, offset, text, &effects);
     }
 
     fn edit_marker(
         &mut self,
         pos: Coord,
+        mut bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
         class: TextClass,
@@ -312,9 +346,8 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
     ) {
         let width = self.window.dims.font_marker_width;
         let p = Vec2::from(pos + self.offset);
-        let mut size: Vec2 = text.env().bounds.into();
-        size.0 += width;
-        let bounds = Quad::with_pos_and_size(p, size);
+        bounds.0 += width;
+        let bounds = Quad::with_pos_and_size(p, bounds);
         let pos = Vec2::from(pos - offset + self.offset);
 
         let mut col = self.cols.text_class(class);

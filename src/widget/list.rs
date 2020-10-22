@@ -89,6 +89,7 @@ pub type RefList<'a, D, M> = List<D, &'a mut dyn Widget<Msg = M>>;
 #[widget(children=noauto)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct List<D: Directional, W: Widget> {
+    first_id: WidgetId,
     #[widget_core]
     core: CoreData,
     widgets: Vec<W>,
@@ -97,6 +98,13 @@ pub struct List<D: Directional, W: Widget> {
 }
 
 impl<D: Directional, W: Widget> WidgetChildren for List<D, W> {
+    #[inline]
+    fn first_id(&self) -> WidgetId {
+        self.first_id
+    }
+    fn record_first_id(&mut self, id: WidgetId) {
+        self.first_id = id;
+    }
     #[inline]
     fn len(&self) -> usize {
         self.widgets.len()
@@ -186,6 +194,7 @@ impl<D: Directional + Default, W: Widget> List<D, W> {
     /// [`List::new_with_direction`].
     pub fn new(widgets: Vec<W>) -> Self {
         List {
+            first_id: Default::default(),
             core: Default::default(),
             widgets,
             data: Default::default(),
@@ -198,6 +207,7 @@ impl<D: Directional, W: Widget> List<D, W> {
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, widgets: Vec<W>) -> Self {
         List {
+            first_id: Default::default(),
             core: Default::default(),
             widgets,
             data: Default::default(),

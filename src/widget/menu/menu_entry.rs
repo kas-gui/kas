@@ -56,8 +56,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
         let pos = self.core.rect.pos + self.label_off;
-        // TODO: draw state is mgr.show_accel_labels()
-        draw_handle.text(pos, &self.label, TextClass::LabelSingle);
+        draw_handle.text_accel(pos, &self.label, mgr.show_accel_labels(), TextClass::Label);
     }
 }
 

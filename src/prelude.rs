@@ -28,7 +28,7 @@ pub use kas::macros::*;
 #[doc(no_inline)]
 pub use kas::text::AccelString;
 #[doc(no_inline)]
-pub use kas::text::Text;
+pub use kas::text::{EditableTextApi, Text, TextApi, TextApiExt};
 #[doc(no_inline)]
 pub use kas::{Align, AlignHints, Direction, Directional, WidgetId};
 #[doc(no_inline)]
