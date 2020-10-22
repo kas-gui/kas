@@ -21,42 +21,80 @@ pub struct Label<T: FormattableText + 'static> {
     label: Text<T>,
 }
 
-impl<T: FormattableText + 'static> Layout for Label<T> {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+mod impls {
+    use super::*;
+
+    pub fn size_rules<T: FormattableText + 'static>(
+        obj: &mut Label<T>,
+        size_handle: &mut dyn SizeHandle,
+        axis: AxisInfo,
+    ) -> SizeRules {
         let mut prepared = None;
-        let text = if let Some(s) = self.reserve.take() {
+        let text = if let Some(s) = obj.reserve.take() {
             prepared = Some(Text::new_multi(s));
             prepared.as_mut().unwrap()
         } else {
-            &mut self.label
+            &mut obj.label
         };
         let rules = size_handle.text_bound(text, TextClass::Label, axis);
         if let Some(text) = prepared {
-            self.reserve = Some(text.take_text());
+            obj.reserve = Some(text.take_text());
         }
         if axis.is_horizontal() {
-            self.core.rect.size.0 = rules.ideal_size();
+            obj.core.rect.size.0 = rules.ideal_size();
         } else {
-            self.core.rect.size.1 = rules.ideal_size();
+            obj.core.rect.size.1 = rules.ideal_size();
         }
         rules
     }
 
-    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        self.label.update_env(|env| {
+    pub fn set_rect<T: FormattableText + 'static>(
+        obj: &mut Label<T>,
+        rect: Rect,
+        align: AlignHints,
+    ) {
+        obj.core.rect = rect;
+        obj.label.update_env(|env| {
             env.set_bounds(rect.size.into());
             env.set_align(align.unwrap_or(Align::Default, Align::Centre));
         });
     }
+}
 
+impl<T: FormattableText + 'static> Layout for Label<T> {
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        impls::size_rules(self, size_handle, axis)
+    }
+
+    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
+        impls::set_rect(self, rect, align);
+    }
+
+    #[cfg(feature = "min_spec")]
+    default fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
+    }
+    #[cfg(not(feature = "min_spec"))]
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
         draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
     }
 }
 
-// TODO(specialization): support this?
-// impl<U, T: From<U> + FormattableText + 'static> From<U> for Label<T>
+#[cfg(feature = "min_spec")]
+impl Layout for AccelLabel {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, _: bool) {
+        let state = mgr.show_accel_labels();
+        draw_handle.text_accel(self.core.rect.pos, &self.label, state, TextClass::Label);
+    }
+}
+
+/* TODO(specialization): can we support this? min_specialization is not enough.
+impl<U, T: From<U> + FormattableText + 'static> From<U> for Label<T> {
+    default fn from(text: U) -> Self {
+        let text = T::from(text);
+        Label::new(text)
+    }
+}*/
 
 impl<T: FormattableText + 'static> From<T> for Label<T> {
     fn from(label: T) -> Self {

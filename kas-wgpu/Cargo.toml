@@ -13,8 +13,9 @@ documentation = "https://docs.rs/kas-wgpu/"
 
 [features]
 default = ["clipboard", "stack_dst"]
+nightly = ["unsize", "kas/nightly", "kas-theme/nightly"]
 
-# Use Generic Associated Types (experimental)
+# Use Generic Associated Types (this is too unstable to include in nightly!)
 gat = ["kas-theme/gat"]
 
 # Enables text shaping

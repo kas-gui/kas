@@ -14,10 +14,13 @@ exclude = ["/screenshots"]
 
 [features]
 # Enables usage of unstable Rust features
-nightly = []
+nightly = ["min_spec"]
 
-# Use Generic Associated Types (experimental)
+# Use Generic Associated Types (this is too unstable to include in nightly!)
 gat = ["kas-text/gat"]
+
+# Use min_specialization (enables accelerator underlining for AccelLabel)
+min_spec = []
 
 # Enables documentation of APIs for toolkits and internal use.
 # This API is not intended for use by end-user applications and

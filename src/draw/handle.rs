@@ -720,7 +720,8 @@ mod test {
         let _size = draw_handle.size_handle(|h| h.frame());
 
         let zero = Coord::ZERO;
+        let bounds = Vec2(100.0, 30.0);
         let text = kas::text::Text::new_single("sample");
-        draw_handle.text_selected(zero, zero, &text, .., TextClass::Label)
+        draw_handle.text_selected(zero, bounds, zero, &text, .., TextClass::Label)
     }
 }

@@ -62,4 +62,4 @@ jobs:
       - name: test (kas-wgpu)
         run: |
           # note: gat is broken
-          cargo test --manifest-path kas-wgpu/Cargo.toml --features stack_dst,unsize
+          cargo test --manifest-path kas-wgpu/Cargo.toml --features nightly,shaping
