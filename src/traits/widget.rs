@@ -203,22 +203,24 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// If the widget is disabled, this returns `None` without recursing children.
     fn find(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
-        if id == self.id() {
-            return Some(self.as_widget());
-        } else if id > self.id() {
-            return None;
+        if id < self.first_id() || id >= self.id() {
+            if id == self.id() {
+                return Some(self.as_widget());
+            } else {
+                return None;
+            }
         }
 
-        for i in 0..self.len() {
-            if let Some(w) = self.get(i) {
-                if id > w.id() {
-                    continue;
-                }
-                return w.find(id);
+        let (mut start, mut end) = (0, self.len());
+        while start + 1 < end {
+            let mid = start + (end - start) / 2;
+            if id <= self.get(mid - 1).unwrap().id() {
+                end = mid;
+            } else {
+                start = mid;
             }
-            break;
         }
-        None
+        self.get(start).unwrap().find(id)
     }
 
     /// Find a child widget by identifier
@@ -226,22 +228,24 @@ pub trait WidgetChildren: WidgetCore {
     /// This requires that the widget tree has already been configured by
     /// [`ManagerState::configure`].
     fn find_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
-        if id == self.id() {
-            return Some(self.as_widget_mut());
-        } else if id > self.id() {
-            return None;
+        if id < self.first_id() || id >= self.id() {
+            if id == self.id() {
+                return Some(self.as_widget_mut());
+            } else {
+                return None;
+            }
         }
 
-        for i in 0..self.len() {
-            if self.get(i).map(|w| id > w.id()).unwrap_or(true) {
-                continue;
+        let (mut start, mut end) = (0, self.len());
+        while start + 1 < end {
+            let mid = start + (end - start) / 2;
+            if id <= self.get(mid - 1).unwrap().id() {
+                end = mid;
+            } else {
+                start = mid;
             }
-            if let Some(w) = self.get_mut(i) {
-                return w.find_mut(id);
-            }
-            break;
         }
-        None
+        self.get_mut(start).unwrap().find_mut(id)
     }
 
     /// Walk through all widgets, calling `f` once on each.
