@@ -239,9 +239,8 @@ pub trait DrawText {
 
     /// Draw text with effects
     ///
-    /// The `effects` list must have length at least 1 and its first item
-    /// should have `start = 0` and supply the base text colour (otherwise
-    /// black will be used).
+    /// It is required that the `effects` list have length at least 1 and that
+    /// its first item has `start = 0`.
     fn text_with_effects(
         &mut self,
         pass: Pass,
