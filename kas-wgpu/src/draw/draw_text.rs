@@ -47,20 +47,31 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
         text: &TextDisplay,
         effects: &[Effect<Colour>],
     ) {
-        assert!(
-            effects.get(0).map(|e| e.start == 0).unwrap_or(false),
-            "DrawText::text_with_effects: effects list is empty or first item has start > 0"
-        );
-
         let time = std::time::Instant::now();
         let ab_pos = to_point(pos);
         let ab_offset = ab_pos - to_point(offset);
 
         let mut glyphs = Vec::with_capacity(text.num_glyphs());
-        if effects.len() > 1 {
-            let for_glyph = |font_id: FontId, _, height: f32, glyph: Glyph, i, _| {
+        let mut extra = Vec::with_capacity(effects.len() + 1);
+        if effects.len() > 1 || effects.get(1).map(|e| e.start > 0).unwrap_or(false) {
+            let mut index_incr = 0;
+            if effects.get(1).map(|e| e.start > 0).unwrap_or(true) {
+                index_incr = 1;
+                extra.push(Extra {
+                    color: Colour::default().into(),
+                    z: pass.depth(),
+                });
+            }
+            for e in effects {
+                extra.push(Extra {
+                    color: e.aux.into(),
+                    z: pass.depth(),
+                });
+            }
+
+            let for_glyph = |font_id: FontId, _, height: f32, glyph: Glyph, i: usize, _| {
                 glyphs.push(SectionGlyph {
-                    section_index: i,
+                    section_index: i.wrapping_add(index_incr),
                     byte_index: 0, // not used
                     glyph: ab_glyph::Glyph {
                         id: ab_glyph::GlyphId(glyph.id.0),
@@ -95,19 +106,20 @@ impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
                 });
             };
             text.glyphs(for_glyph);
+
+            extra.push(Extra {
+                color: effects
+                    .get(0)
+                    .map(|e| e.aux)
+                    .unwrap_or(Colour::default())
+                    .into(),
+                z: pass.depth(),
+            });
         }
 
         let min = ab_pos;
         let max = ab_pos + to_point(bounds);
         let bounds = ab_glyph::Rect { min, max };
-
-        let extra = effects
-            .iter()
-            .map(|e| Extra {
-                color: e.aux.into(),
-                z: pass.depth(),
-            })
-            .collect();
 
         self.glyph_brush.queue_pre_positioned(glyphs, extra, bounds);
         self.dur_text += time.elapsed();

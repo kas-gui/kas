@@ -239,8 +239,8 @@ pub trait DrawText {
 
     /// Draw text with effects
     ///
-    /// It is required that the `effects` list have length at least 1 and that
-    /// its first item has `start = 0`.
+    /// If the `effects` list is empty or the first entry has `start > 0`, a
+    /// default entity will be assumed.
     fn text_with_effects(
         &mut self,
         pass: Pass,
