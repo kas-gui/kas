@@ -12,10 +12,10 @@
 use smallvec::{smallvec, SmallVec};
 
 use kas::event::{VirtualKeyCode as VK, VirtualKeyCodes};
-use kas::text::fonts::FontId;
 use kas::text::format::{FontToken, FormattableText};
 #[cfg(not(feature = "gat"))]
 use kas::text::OwningVecIter;
+use kas::text::{Effect, EffectFlags};
 
 /// An accelerator key string
 ///
@@ -27,8 +27,7 @@ use kas::text::OwningVecIter;
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AccelString {
     label: String,
-    /// Even entries: position to start underline; odd entries: stop pos
-    ulines: SmallVec<[u32; 2]>,
+    effects: SmallVec<[Effect<()>; 2]>,
     // TODO: is it worth using such a large structure here instead of Option?
     keys: VirtualKeyCodes,
 }
@@ -40,7 +39,7 @@ impl AccelString {
     /// specialisation, this parser always allocates. Prefer to use `from`.
     fn parse(mut s: &str) -> Self {
         let mut buf = String::with_capacity(s.len());
-        let mut ulines = SmallVec::<[u32; 2]>::default();
+        let mut effects = SmallVec::<[Effect<()>; 2]>::default();
         let mut keys = VirtualKeyCodes::new();
 
         while let Some(mut i) = s.find("&") {
@@ -58,7 +57,15 @@ impl AccelString {
                 Some((j, c)) => {
                     let pos = buf.len() as u32;
                     buf.push(c);
-                    ulines.push(pos);
+                    if effects.last().map(|e| e.start == pos).unwrap_or(false) {
+                        effects.last_mut().unwrap().flags = EffectFlags::UNDERLINE;
+                    } else {
+                        effects.push(Effect {
+                            start: pos,
+                            flags: EffectFlags::UNDERLINE,
+                            aux: (),
+                        });
+                    }
                     let vkeys = find_vkeys(c);
                     if !vkeys.is_empty() {
                         keys.extend(vkeys);
@@ -67,7 +74,11 @@ impl AccelString {
                     s = &s[i..];
 
                     if let Some((k, _)) = chars.next() {
-                        ulines.push(pos + (k - j) as u32);
+                        effects.push(Effect {
+                            start: pos + (k - j) as u32,
+                            flags: EffectFlags::empty(),
+                            aux: (),
+                        });
                     }
                 }
             }
@@ -75,7 +86,7 @@ impl AccelString {
         buf.push_str(s);
         AccelString {
             label: buf.into(),
-            ulines,
+            effects,
             keys,
         }
     }
@@ -94,19 +105,14 @@ impl AccelString {
     pub fn text(&self) -> &str {
         &self.label
     }
-
-    /// Get the underline sequence
-    ///
-    /// Even entries (from 0) are positions to start underlining, odd entries
-    /// are positions to end underlines.
-    pub fn underlines(&self) -> &[u32] {
-        &self.ulines
-    }
 }
 
 impl FormattableText for AccelString {
     #[cfg(feature = "gat")]
-    type FontTokenIterator<'a> = UlinesIter<'a>;
+    type FontTokenIter<'a> = std::iter::Empty<FontToken>;
+
+    #[cfg(feature = "gat")]
+    type EffectTokenIter<'a, X: Clone> = std::iter::Empty<Effect<X>>;
 
     #[inline]
     fn as_str(&self) -> &str {
@@ -115,49 +121,28 @@ impl FormattableText for AccelString {
 
     #[cfg(feature = "gat")]
     #[inline]
-    fn font_tokens<'a>(&'a self, dpp: f32, pt_size: f32) -> Self::FontTokenIterator<'a> {
-        UlinesIter::new(&self.ulines, dpp * pt_size)
+    fn font_tokens<'a>(&'a self, _: f32, _: f32) -> Self::FontTokenIter<'a> {
+        std::iter::empty()
     }
     #[cfg(not(feature = "gat"))]
     #[inline]
-    fn font_tokens(&self, dpp: f32, pt_size: f32) -> OwningVecIter<FontToken> {
-        let iter = UlinesIter::new(&self.ulines, dpp * pt_size);
-        OwningVecIter::new(iter.collect())
+    fn font_tokens(&self, _: f32, _: f32) -> OwningVecIter<FontToken> {
+        OwningVecIter::new(vec![])
     }
-}
 
-pub struct UlinesIter<'a> {
-    index: usize,
-    ulines: &'a [u32],
-    dpem: f32,
-}
-
-impl<'a> UlinesIter<'a> {
-    fn new(ulines: &'a [u32], dpem: f32) -> Self {
-        UlinesIter {
-            index: 0,
-            ulines,
-            dpem,
-        }
+    #[cfg(feature = "gat")]
+    fn effect_tokens<'a, X: Clone>(&'a self, _: X) -> Self::EffectTokenIter<'a, X> {
+        todo!() // untestable with current state of GAT in nightly rustc
     }
-}
-
-impl<'a> Iterator for UlinesIter<'a> {
-    type Item = FontToken;
-
-    fn next(&mut self) -> Option<FontToken> {
-        if self.index < self.ulines.len() {
-            // TODO: if index is even, this starts an underline; if odd, it ends one
-            let pos = self.ulines[self.index];
-            self.index += 1;
-            Some(FontToken {
-                start: pos,
-                font_id: FontId::default(),
-                dpem: self.dpem,
-            })
-        } else {
-            None
-        }
+    #[cfg(not(feature = "gat"))]
+    fn effect_tokens<'a, X: Clone>(&'a self, aux: X) -> Vec<Effect<X>> {
+        // TODO(opt): avoid copy where X=() ?
+        let iter = self.effects.iter().map(|effect| Effect {
+            start: effect.start,
+            flags: effect.flags,
+            aux: aux.clone(),
+        });
+        iter.collect()
     }
 }
 
