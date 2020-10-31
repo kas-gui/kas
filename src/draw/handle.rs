@@ -287,6 +287,13 @@ pub trait DrawHandle {
         class: TextClass,
     );
 
+    /// Draw text with effects
+    ///
+    /// [`DrawHandle::text_offset`] already supports *font* effects: bold,
+    /// emphasis, text size. In addition, this method supports underline and
+    /// strikethrough effects.
+    fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass);
+
     /// Draw an `AccelString` text
     ///
     /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
@@ -566,6 +573,9 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         self.deref_mut()
             .text_offset(pos, bounds, offset, text, class)
     }
+    fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass) {
+        self.deref_mut().text_effects(pos, offset, text, class);
+    }
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         self.deref_mut().text_accel(pos, text, state, class);
     }
@@ -658,6 +668,9 @@ where
     ) {
         self.deref_mut()
             .text_offset(pos, bounds, offset, text, class)
+    }
+    fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass) {
+        self.deref_mut().text_effects(pos, offset, text, class);
     }
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         self.deref_mut().text_accel(pos, text, state, class);

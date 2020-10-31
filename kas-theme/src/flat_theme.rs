@@ -262,6 +262,18 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .text(self.pass, pos.into(), bounds, offset.into(), text, col);
     }
 
+    fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass) {
+        self.draw.text_col_effects(
+            self.pass,
+            (pos + self.offset).into(),
+            text.env().bounds.into(),
+            offset.into(),
+            text.display(),
+            self.cols.text_class(class),
+            text.effect_tokens(),
+        );
+    }
+
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         let pos = Vec2::from(pos + self.offset);
         let offset = Vec2::ZERO;

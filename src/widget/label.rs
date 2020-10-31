@@ -72,11 +72,21 @@ impl<T: FormattableText + 'static> Layout for Label<T> {
 
     #[cfg(feature = "min_spec")]
     default fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
+        draw_handle.text_effects(
+            self.core.rect.pos,
+            Coord::ZERO,
+            &self.label,
+            TextClass::Label,
+        );
     }
     #[cfg(not(feature = "min_spec"))]
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
+        draw_handle.text_effects(
+            self.core.rect.pos,
+            Coord::ZERO,
+            &self.label,
+            TextClass::Label,
+        );
     }
 }
 
@@ -85,6 +95,20 @@ impl Layout for AccelLabel {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, _: bool) {
         let state = mgr.show_accel_labels();
         draw_handle.text_accel(self.core.rect.pos, &self.label, state, TextClass::Label);
+    }
+}
+
+// Str/String representations have no effects, so use simpler draw call
+#[cfg(feature = "min_spec")]
+impl<'a> Layout for Label<&'a str> {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
+    }
+}
+#[cfg(feature = "min_spec")]
+impl Layout for StringLabel {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
+        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
     }
 }
 
