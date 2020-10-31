@@ -111,9 +111,6 @@ impl FormattableText for AccelString {
     #[cfg(feature = "gat")]
     type FontTokenIter<'a> = std::iter::Empty<FontToken>;
 
-    #[cfg(feature = "gat")]
-    type EffectTokenIter<'a, X: Clone> = std::iter::Empty<Effect<X>>;
-
     #[inline]
     fn as_str(&self) -> &str {
         &self.label

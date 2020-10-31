@@ -11,12 +11,12 @@ use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules};
-use kas::text::{format::FormattableText, AccelString, TextApi, TextDisplay};
+use kas::text::{format::FormattableText, AccelString, Text, TextApi, TextDisplay};
 use kas::Direction;
 
 // for doc use
 #[allow(unused)]
-use kas::text::Text;
+use kas::text::TextApiExt;
 
 /// Classification of a clip region
 pub enum ClipRegion {
@@ -151,7 +151,7 @@ pub trait SizeHandle {
     /// to a [`SizeRules`] value and returns it.
     ///
     /// Usually this method is used in [`Layout::size_rules`], then
-    /// [`Text::update_env`] is used in [`Layout::set_rect`].
+    /// [`TextApiExt::update_env`] is used in [`Layout::set_rect`].
     ///
     /// [`Environment`]: kas::text::Environment
     /// [`Layout::set_rect`]: kas::Layout::set_rect
