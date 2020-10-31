@@ -496,6 +496,7 @@ impl<G> EditBox<G> {
             ControlKey::Return if self.multi_line => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
+            ControlKey::Tab => Action::Insert('\t'.encode_utf8(&mut buf), LastEdit::Insert),
             ControlKey::Home if ctrl => Action::Move(0, None),
             ControlKey::Home => {
                 let pos = self.text.find_line(pos).map(|r| r.1.start).unwrap_or(0);
