@@ -11,12 +11,12 @@ use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules};
-use kas::text::{format::FormattableText, AccelString, TextApi, TextDisplay};
+use kas::text::{format::FormattableText, AccelString, Text, TextApi, TextDisplay};
 use kas::Direction;
 
 // for doc use
 #[allow(unused)]
-use kas::text::Text;
+use kas::text::TextApiExt;
 
 /// Classification of a clip region
 pub enum ClipRegion {
@@ -151,7 +151,7 @@ pub trait SizeHandle {
     /// to a [`SizeRules`] value and returns it.
     ///
     /// Usually this method is used in [`Layout::size_rules`], then
-    /// [`Text::update_env`] is used in [`Layout::set_rect`].
+    /// [`TextApiExt::update_env`] is used in [`Layout::set_rect`].
     ///
     /// [`Environment`]: kas::text::Environment
     /// [`Layout::set_rect`]: kas::Layout::set_rect
@@ -286,6 +286,13 @@ pub trait DrawHandle {
         text: &TextDisplay,
         class: TextClass,
     );
+
+    /// Draw text with effects
+    ///
+    /// [`DrawHandle::text_offset`] already supports *font* effects: bold,
+    /// emphasis, text size. In addition, this method supports underline and
+    /// strikethrough effects.
+    fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass);
 
     /// Draw an `AccelString` text
     ///
@@ -566,6 +573,9 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         self.deref_mut()
             .text_offset(pos, bounds, offset, text, class)
     }
+    fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass) {
+        self.deref_mut().text_effects(pos, offset, text, class);
+    }
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         self.deref_mut().text_accel(pos, text, state, class);
     }
@@ -658,6 +668,9 @@ where
     ) {
         self.deref_mut()
             .text_offset(pos, bounds, offset, text, class)
+    }
+    fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass) {
+        self.deref_mut().text_effects(pos, offset, text, class);
     }
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         self.deref_mut().text_accel(pos, text, state, class);

@@ -27,12 +27,12 @@ impl<'a> std::ops::AddAssign<TkAction> for Manager<'a> {
 impl ManagerState {
     /// True when accelerator key labels should be shown
     ///
-    /// (True when Alt is held.)
+    /// (True when Alt is held and no widget has character focus.)
     ///
     /// This is a fast check.
     #[inline]
     pub fn show_accel_labels(&self) -> bool {
-        self.modifiers.alt()
+        self.modifiers.alt() && self.char_focus.is_none()
     }
 
     /// Get whether this widget has a grab on character input

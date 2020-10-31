@@ -18,6 +18,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
 ================
 
 Markdown supports *italic* and **bold** highlighting, ***both***, even with*in* w**o**rds.
+As an extension, it also supports ~~strikethrough~~.
 
 Inline `code = 2;` is supported. Code blocks are supported:
 ```
@@ -25,6 +26,8 @@ let x = 1;
 let y = x + 1;
 ```
 
+Markdown supports explicit line breaks —  
+via two trailing spaces.  
 It also supports lists:
 
 1.  First item
