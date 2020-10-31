@@ -259,23 +259,21 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         let pos = pos + self.offset;
         let col = self.cols.text_class(class);
         self.draw
-            .text(self.pass, pos.into(), bounds, offset.into(), col, text);
+            .text(self.pass, pos.into(), bounds, offset.into(), text, col);
     }
 
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         let pos = Vec2::from(pos + self.offset);
         let offset = Vec2::ZERO;
         let bounds = text.env().bounds.into();
-        let aux = self.cols.text_class(class);
+        let col = self.cols.text_class(class);
         if state {
-            let effects = text.text().effect_tokens(aux);
-            #[cfg(feature = "gat")]
-            let effects: Vec<_> = effects.collect();
+            let effects = text.text().effect_tokens();
             self.draw
-                .text_with_effects(self.pass, pos, bounds, offset, text.as_ref(), &effects);
+                .text_col_effects(self.pass, pos, bounds, offset, text.as_ref(), col, effects);
         } else {
             self.draw
-                .text(self.pass, pos, bounds, offset, aux, text.as_ref());
+                .text(self.pass, pos, bounds, offset, text.as_ref(), col);
         }
     }
 
@@ -324,7 +322,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             },
         ];
         self.draw
-            .text_with_effects(self.pass, pos, bounds, offset, text, &effects);
+            .text_effects(self.pass, pos, bounds, offset, text, &effects);
     }
 
     fn edit_marker(

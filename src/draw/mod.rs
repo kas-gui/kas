@@ -219,29 +219,38 @@ pub trait DrawText {
     /// Load resources needed for the next frame
     fn prepare_fonts(&mut self);
 
-    /// Draw text
+    /// Draw text with a colour
     fn text(
         &mut self,
         pass: Pass,
         pos: Vec2,
         bounds: Vec2,
         offset: Vec2,
-        col: Colour,
         text: &TextDisplay,
-    ) {
-        let effects = [Effect {
-            start: 0,
-            flags: Default::default(),
-            aux: col,
-        }];
-        self.text_with_effects(pass, pos, bounds, offset, text, &effects);
-    }
+        col: Colour,
+    );
+
+    /// Draw text with a colour and effects
+    ///
+    /// The effects list does not contain colour information, but may contain
+    /// underlining/strikethrough information. It may be empty.
+    fn text_col_effects(
+        &mut self,
+        pass: Pass,
+        pos: Vec2,
+        bounds: Vec2,
+        offset: Vec2,
+        text: &TextDisplay,
+        col: Colour,
+        effects: &[Effect<()>],
+    );
 
     /// Draw text with effects
     ///
+    /// The `effects` list provides both underlining and colour information.
     /// If the `effects` list is empty or the first entry has `start > 0`, a
     /// default entity will be assumed.
-    fn text_with_effects(
+    fn text_effects(
         &mut self,
         pass: Pass,
         pos: Vec2,

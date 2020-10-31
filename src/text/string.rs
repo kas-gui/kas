@@ -130,19 +130,8 @@ impl FormattableText for AccelString {
         OwningVecIter::new(vec![])
     }
 
-    #[cfg(feature = "gat")]
-    fn effect_tokens<'a, X: Clone>(&'a self, _: X) -> Self::EffectTokenIter<'a, X> {
-        todo!() // untestable with current state of GAT in nightly rustc
-    }
-    #[cfg(not(feature = "gat"))]
-    fn effect_tokens<'a, X: Clone>(&'a self, aux: X) -> Vec<Effect<X>> {
-        // TODO(opt): avoid copy where X=() ?
-        let iter = self.effects.iter().map(|effect| Effect {
-            start: effect.start,
-            flags: effect.flags,
-            aux: aux.clone(),
-        });
-        iter.collect()
+    fn effect_tokens(&self) -> &[Effect<()>] {
+        &self.effects
     }
 }
 

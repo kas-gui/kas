@@ -108,10 +108,10 @@ impl Layout for Clock {
 
         let pos = (self.date_pos + offset).into();
         let bounds = self.date.env().bounds.into();
-        draw.text(pass, pos, bounds, Vec2::ZERO, col_text, self.date.as_ref());
+        draw.text(pass, pos, bounds, Vec2::ZERO, self.date.as_ref(), col_text);
         let pos = (self.time_pos + offset).into();
         let bounds = self.time.env().bounds.into();
-        draw.text(pass, pos, bounds, Vec2::ZERO, col_text, self.time.as_ref());
+        draw.text(pass, pos, bounds, Vec2::ZERO, self.time.as_ref(), col_text);
     }
 }
 
