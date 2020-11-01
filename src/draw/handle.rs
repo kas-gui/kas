@@ -185,7 +185,7 @@ pub trait SizeHandle {
     /// Returns:
     ///
     /// -   `size`: minimum size of handle in horizontal orientation;
-    ///     `size.1` is also the dimension of the scrollbar
+    ///     `size.1` is also the width of the scrollbar
     /// -   `min_len`: minimum length for the whole bar
     ///
     /// Required bound: `min_len >= size.0`.
@@ -196,7 +196,7 @@ pub trait SizeHandle {
     /// Returns:
     ///
     /// -   `size`: minimum size of handle in horizontal orientation;
-    ///     `size.1` is also the dimension of the slider
+    ///     `size.1` is also the width of the slider
     /// -   `min_len`: minimum length for the whole bar
     ///
     /// Required bound: `min_len >= size.0`.
