@@ -249,6 +249,12 @@ impl SizeRules {
         self.m
     }
 
+    /// Get the stretch policy
+    #[inline]
+    pub fn stretch(self) -> StretchPolicy {
+        self.stretch
+    }
+
     /// Set margins to max of own margins and given margins
     pub fn include_margins(&mut self, margins: (u16, u16)) {
         self.m.0 = self.m.0.max(margins.0);
@@ -673,6 +679,24 @@ impl SizeRules {
 
                 largest -= step;
                 num_equal += num_add;
+            }
+        }
+    }
+
+    /// Ensure at least one of `rules` has stretch policy at least as high as self
+    ///
+    /// The stretch policies are increased according to the heighest `scores`.
+    /// Required: `rules.len() == scores.len()`.
+    pub(crate) fn distribute_stretch_over_by(self, rules: &mut [Self], scores: &[u32]) {
+        assert_eq!(rules.len(), scores.len());
+        if rules.iter().any(|r| r.stretch >= self.stretch) {
+            return;
+        }
+
+        let highest = scores.iter().cloned().max().unwrap_or(0);
+        for i in 0..rules.len() {
+            if scores[i] == highest {
+                rules[i].stretch = self.stretch;
             }
         }
     }

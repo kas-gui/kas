@@ -143,6 +143,25 @@ where
         ) -> SizeRules {
             // spans: &mut [(rules, begin, end)]
 
+            // To avoid losing StretchPolicy, we distribute this first
+            const BASE_WEIGHT: u32 = 100;
+            const SPAN_WEIGHT: u32 = 10;
+            let mut scores: Vec<u32> = (&widths[0..(widths.len() - 1)])
+                .iter()
+                .map(|w| w.stretch() as u32 * BASE_WEIGHT)
+                .collect();
+            for span in spans.iter() {
+                let w = span.0.stretch() as u32 * SPAN_WEIGHT;
+                for score in &mut scores[(span.1 as usize)..(span.2 as usize)] {
+                    *score += w;
+                }
+            }
+            for span in spans.iter() {
+                let range = (span.1 as usize)..(span.2 as usize);
+                span.0
+                    .distribute_stretch_over_by(&mut widths[range.clone()], &scores[range]);
+            }
+
             // We merge all overlapping spans in arbitrary order.
             let (mut i, mut j) = (0, 1);
             let mut len = spans.len();
@@ -169,14 +188,20 @@ where
 
                 let overlap_sum = widths[second_begin..first_end].iter().sum();
                 spans[first].0.sub_add(overlap_sum, spans[second].0);
+                debug_assert!(spans[first].1 <= spans[second].1);
+                spans[first].2 = spans[first].2.max(spans[second].2);
 
                 spans.swap(second, len - 1);
                 len -= 1;
+                if j >= len {
+                    i += 1;
+                    j = i + 1;
+                }
             }
 
             // We are left with non-overlapping spans.
             // For each span, we ensure cell widths are sufficiently large.
-            for span in spans {
+            for span in &spans[..len] {
                 let rules = span.0;
                 let begin = span.1 as usize;
                 let end = span.2 as usize;
