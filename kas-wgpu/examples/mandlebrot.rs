@@ -523,7 +523,8 @@ struct MandlebrotWindow {
     iters: Label<String>,
     #[widget(row=2, handler = iter)]
     slider: Slider<i32, kas::Up>,
-    #[widget(col=1, row=1, rspan=2, handler = mbrot)]
+    // extra col span allows use of Label's margin
+    #[widget(col=1, cspan=2, row=1, rspan=2, handler = mbrot)]
     mbrot: Mandlebrot,
 }
 impl MandlebrotWindow {

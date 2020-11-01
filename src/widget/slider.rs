@@ -226,7 +226,12 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
     fn set_rect(&mut self, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         self.handle.set_rect(rect, align);
-        let size = self.handle_size.min(rect.size);
+        let mut size = rect.size;
+        if self.direction.is_horizontal() {
+            size.0 = self.handle_size.0.min(rect.size.0);
+        } else {
+            size.1 = self.handle_size.1.min(rect.size.1);
+        }
         let _ = self.handle.set_size_and_offset(size, self.offset());
     }
 
