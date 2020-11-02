@@ -32,13 +32,23 @@ impl ManagerState {
     /// This is a fast check.
     #[inline]
     pub fn show_accel_labels(&self) -> bool {
-        self.modifiers.alt() && self.char_focus.is_none()
+        self.modifiers.alt() && !self.char_focus
     }
 
-    /// Get whether this widget has a grab on character input
+    /// Get whether this widget has `(char_focus, sel_focus)`
+    ///
+    /// -   `char_focus`: implies this widget receives keyboard input
+    /// -   `sel_focus`: implies this widget is allowed to select things
+    ///
+    /// Note that `char_focus` implies `sel_focus`.
     #[inline]
-    pub fn char_focus(&self, w_id: WidgetId) -> bool {
-        self.char_focus == Some(w_id)
+    pub fn char_focus(&self, w_id: WidgetId) -> (bool, bool) {
+        if let Some(id) = self.sel_focus {
+            if id == w_id {
+                return (self.char_focus, true);
+            }
+        }
+        (false, false)
     }
 
     /// Get whether this widget has keyboard focus
@@ -461,7 +471,7 @@ impl<'a> Manager<'a> {
             }
         }
 
-        if self.mgr.char_focus != Some(id) {
+        if self.mgr.char_focus && self.mgr.sel_focus != Some(id) {
             self.set_char_focus(None);
         }
         self.redraw(start_id);

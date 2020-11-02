@@ -49,6 +49,9 @@ pub struct InputState {
     /// "Character focus" implies this widget is ready to receive text input
     /// (e.g. typing into an input field).
     pub char_focus: bool,
+    /// "Selection focus" allows things such as text to be selected. Selection
+    /// focus implies that the widget also has character focus.
+    pub sel_focus: bool,
 }
 
 impl std::ops::BitOr for InputState {
@@ -62,6 +65,7 @@ impl std::ops::BitOr for InputState {
             depress: self.depress || rhs.depress,
             nav_focus: self.nav_focus || rhs.nav_focus,
             char_focus: self.char_focus || rhs.char_focus,
+            sel_focus: self.sel_focus || rhs.sel_focus,
         }
     }
 }

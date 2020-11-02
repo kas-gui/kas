@@ -42,6 +42,11 @@ pub enum Event {
     Control(ControlKey),
     /// Widget lost keyboard input focus
     LostCharFocus,
+    /// Widget lost selection focus
+    ///
+    /// Selection focus implies character focus, so this event implies that the
+    /// widget has already received [`Event::LostCharFocus`].
+    LostSelFocus,
     /// Widget receives a character of text input
     ReceivedCharacter(char),
     /// A mouse or touchpad scroll event

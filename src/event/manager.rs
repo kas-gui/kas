@@ -73,6 +73,7 @@ struct PanGrab {
 #[derive(Clone, Debug)]
 enum Pending {
     LostCharFocus(WidgetId),
+    LostSelFocus(WidgetId),
 }
 
 /// Event manager state
@@ -93,7 +94,9 @@ enum Pending {
 pub struct ManagerState {
     end_id: WidgetId,
     modifiers: ModifiersState,
-    char_focus: Option<WidgetId>,
+    /// char focus is on same widget as sel_focus; otherwise its value is ignored
+    char_focus: bool,
+    sel_focus: Option<WidgetId>,
     nav_focus: Option<WidgetId>,
     nav_fallback: Option<WidgetId>,
     nav_stack: SmallVec<[u32; 16]>,
@@ -274,19 +277,21 @@ impl<'a> Manager<'a> {
         use VirtualKeyCode as VK;
         let opt_control = self.match_shortcuts(vkey);
 
-        if let Some(id) = self.mgr.char_focus {
-            if let Some(key) = opt_control {
-                let event = Event::Control(key);
-                trace!("Send to {}: {:?}", id, event);
-                match widget.send(self, id, event) {
-                    Response::Unhandled(Event::Control(key)) => match key {
-                        ControlKey::Escape => self.set_char_focus(None),
+        if self.mgr.char_focus {
+            if let Some(id) = self.mgr.sel_focus {
+                if let Some(key) = opt_control {
+                    let event = Event::Control(key);
+                    trace!("Send to {}: {:?}", id, event);
+                    match widget.send(self, id, event) {
+                        Response::Unhandled(Event::Control(key)) => match key {
+                            ControlKey::Escape => self.set_char_focus(None),
+                            _ => (),
+                        },
                         _ => (),
-                    },
-                    _ => (),
+                    }
                 }
+                return;
             }
-            return;
         }
 
         if vkey == VK::Tab {
@@ -449,19 +454,40 @@ impl<'a> Manager<'a> {
     }
 
     fn set_char_focus(&mut self, wid: Option<WidgetId>) {
-        if self.mgr.char_focus == wid {
+        trace!(
+            "Manager::set_char_focus: char_focus={:?}, new={:?}",
+            self.mgr.char_focus,
+            wid
+        );
+        if self.mgr.sel_focus == wid {
+            // We cannot lose char focus here
+            // Corner case: char_focus == true but sel_focus == None: ignore char_focus
+            self.mgr.char_focus = wid.is_some();
             return;
         }
 
-        if let Some(id) = self.mgr.char_focus {
-            self.mgr.pending.push(Pending::LostCharFocus(id));
-            self.redraw(id);
+        let had_char_focus = self.mgr.char_focus;
+        self.mgr.char_focus = wid.is_some();
+
+        if let Some(id) = self.mgr.sel_focus {
+            debug_assert!(Some(id) != wid);
+
+            if had_char_focus {
+                // If widget has char focus, this is lost
+                self.mgr.pending.push(Pending::LostCharFocus(id));
+            }
+
+            if wid.is_none() {
+                return;
+            }
+
+            // Selection focus is lost if another widget receives char focus
+            self.mgr.pending.push(Pending::LostSelFocus(id));
         }
+
         if let Some(id) = wid {
-            self.redraw(id);
+            self.mgr.sel_focus = Some(id);
         }
-        self.mgr.char_focus = wid;
-        trace!("Manager: char_focus = {:?}", wid);
     }
 
     fn send_event<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
