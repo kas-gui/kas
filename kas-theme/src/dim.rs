@@ -194,8 +194,11 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             SizeRules::new(min, ideal, margins, policy)
         } else {
             let min = match class {
+                TextClass::Label => required.1 as u32,
+                TextClass::LabelSingle | TextClass::Button | TextClass::Edit => {
+                    self.dims.line_height
+                }
                 TextClass::EditMulti => self.dims.line_height * 3,
-                _ => self.dims.line_height,
             };
             let ideal = (required.1 as u32).max(min);
             let stretch = match class {
