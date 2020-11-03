@@ -7,6 +7,9 @@
 
 pub use kas_text::*;
 
+mod selection;
+pub use selection::SelectionHelper;
+
 mod string;
 pub use string::AccelString;
 
