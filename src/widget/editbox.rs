@@ -252,27 +252,17 @@ impl<G: 'static> Layout for EditBox<G> {
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
         let bounds = self.text.env().bounds.into();
-        if self.selection.is_empty() {
-            draw_handle.text_offset(
-                self.text_pos,
-                bounds,
-                self.view_offset,
-                self.text.as_ref(),
-                class,
-            );
-        } else {
-            // TODO(opt): we could cache the selection rectangles here to make
-            // drawing more efficient (self.text.highlight_lines(range) output).
-            // The same applies to the edit marker below.
-            draw_handle.text_selected(
-                self.text_pos,
-                bounds,
-                self.view_offset,
-                &self.text,
-                self.selection.range(),
-                class,
-            );
-        }
+        // TODO(opt): we could cache the selection rectangles here to make
+        // drawing more efficient (self.text.highlight_lines(range) output).
+        // The same applies to the edit marker below.
+        draw_handle.text_selected(
+            self.text_pos,
+            bounds,
+            self.view_offset,
+            &self.text,
+            self.selection.range(),
+            class,
+        );
         if input_state.char_focus {
             draw_handle.edit_marker(
                 self.text_pos,

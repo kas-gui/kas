@@ -8,7 +8,6 @@
 //! Widget size and appearance can be modified through themes.
 
 use std::f32;
-use std::ops::Range;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::draw::{
@@ -17,7 +16,7 @@ use kas::draw::{
 };
 use kas::geom::*;
 use kas::text::format::FormattableText;
-use kas::text::{AccelString, Effect, Text, TextApi, TextDisplay};
+use kas::text::{AccelString, Effect, Range, Text, TextApi, TextApiExt, TextDisplay};
 use kas::{Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme with flat (unshaded) rendering
@@ -274,6 +273,90 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         );
     }
 
+    fn text_effects_selected(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &dyn TextApi,
+        range: Range,
+        class: TextClass,
+    ) {
+        if range.start >= range.end {
+            return self.text_effects(pos, offset, text, class);
+        }
+
+        let pos = Vec2::from(pos + self.offset);
+        let offset = Vec2::from(offset);
+        let bounds = text.env().bounds.into();
+        let col = self.cols.text_class(class);
+        let sel_col = self.cols.text_sel;
+
+        // Draw background:
+        for (p1, p2) in &text.highlight_lines(range.into()) {
+            let mut p1 = Vec2::from(*p1) - offset;
+            let mut p2 = Vec2::from(*p2) - offset;
+            if !p2.gt(Vec2::ZERO) || !p1.lt(bounds) {
+                continue;
+            }
+            p1 = p1.max(Vec2::ZERO);
+            p2 = p2.min(bounds);
+
+            let quad = Quad::with_coords(pos + p1, pos + p2);
+            self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
+        }
+
+        let et = text.effect_tokens();
+        let mut effects = Vec::with_capacity(et.len() + 3);
+        let mut iter = et.iter().peekable();
+        effects.push(Effect {
+            start: 0,
+            flags: Default::default(),
+            aux: col,
+        });
+        while iter.peek().map(|e| e.start <= range.start).unwrap_or(false) {
+            let e = iter.next().unwrap();
+            effects.push(Effect {
+                start: e.start,
+                flags: e.flags,
+                aux: col,
+            });
+        }
+        effects.push(Effect {
+            start: range.start,
+            flags: effects
+                .last()
+                .map(|e| e.flags)
+                .unwrap_or(Default::default()),
+            aux: sel_col,
+        });
+        while iter.peek().map(|e| e.start <= range.end).unwrap_or(false) {
+            let e = iter.next().unwrap();
+            effects.push(Effect {
+                start: e.start,
+                flags: e.flags,
+                aux: sel_col,
+            });
+        }
+        effects.push(Effect {
+            start: range.end,
+            flags: effects
+                .last()
+                .map(|e| e.flags)
+                .unwrap_or(Default::default()),
+            aux: col,
+        });
+        while let Some(e) = iter.next() {
+            effects.push(Effect {
+                start: e.start,
+                flags: e.flags,
+                aux: col,
+            });
+        }
+
+        self.draw
+            .text_effects(self.pass, pos, bounds, offset, text.display(), &effects);
+    }
+
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         let pos = Vec2::from(pos + self.offset);
         let offset = Vec2::ZERO;
@@ -295,15 +378,19 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
-        range: Range<usize>,
+        range: Range,
         class: TextClass,
     ) {
+        if range.start >= range.end {
+            return self.text_offset(pos, bounds, offset, text, class);
+        }
+
         let pos = Vec2::from(pos + self.offset);
         let offset = Vec2::from(offset);
         let col = self.cols.text_class(class);
 
         // Draw background:
-        for (p1, p2) in &text.highlight_lines(range.clone()) {
+        for (p1, p2) in &text.highlight_lines(range.into()) {
             let mut p1 = Vec2::from(*p1) - offset;
             let mut p2 = Vec2::from(*p2) - offset;
             if !p2.gt(Vec2::ZERO) || !p1.lt(bounds) {
@@ -323,12 +410,12 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
                 aux: col,
             },
             Effect {
-                start: range.start as u32,
+                start: range.start,
                 flags: Default::default(),
                 aux: self.cols.text_sel,
             },
             Effect {
-                start: range.end as u32,
+                start: range.end,
                 flags: Default::default(),
                 aux: col,
             },

@@ -6,12 +6,12 @@
 //! "Handle" types used by themes
 
 use std::convert::AsRef;
-use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
+use std::ops::{Bound, Deref, DerefMut, RangeBounds};
 
 use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules};
-use kas::text::{format::FormattableText, AccelString, Text, TextApi, TextDisplay};
+use kas::text::{format::FormattableText, AccelString, Range, Text, TextApi, TextDisplay};
 use kas::Direction;
 
 // for doc use
@@ -298,6 +298,16 @@ pub trait DrawHandle {
     /// strikethrough effects.
     fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass);
 
+    /// Draw text with effects and a selection range
+    fn text_effects_selected(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &dyn TextApi,
+        range: Range,
+        class: TextClass,
+    );
+
     /// Draw an `AccelString` text
     ///
     /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
@@ -313,7 +323,7 @@ pub trait DrawHandle {
         bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
-        range: Range<usize>,
+        range: Range,
         class: TextClass,
     );
 
@@ -419,7 +429,7 @@ pub trait DrawHandleExt: DrawHandle {
             Bound::Excluded(n) => *n,
             Bound::Unbounded => usize::MAX,
         };
-        let range = Range { start, end };
+        let range = (start..end).into();
         self.text_selected_range(pos, bounds, offset, text.as_ref(), range, class);
     }
 }
@@ -580,6 +590,17 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass) {
         self.deref_mut().text_effects(pos, offset, text, class);
     }
+    fn text_effects_selected(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &dyn TextApi,
+        range: Range,
+        class: TextClass,
+    ) {
+        self.deref_mut()
+            .text_effects_selected(pos, offset, text, range, class);
+    }
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         self.deref_mut().text_accel(pos, text, state, class);
     }
@@ -589,7 +610,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
-        range: Range<usize>,
+        range: Range,
         class: TextClass,
     ) {
         self.deref_mut()
@@ -676,6 +697,17 @@ where
     fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass) {
         self.deref_mut().text_effects(pos, offset, text, class);
     }
+    fn text_effects_selected(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &dyn TextApi,
+        range: Range,
+        class: TextClass,
+    ) {
+        self.deref_mut()
+            .text_effects_selected(pos, offset, text, range, class);
+    }
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         self.deref_mut().text_accel(pos, text, state, class);
     }
@@ -685,7 +717,7 @@ where
         bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
-        range: Range<usize>,
+        range: Range,
         class: TextClass,
     ) {
         self.deref_mut()

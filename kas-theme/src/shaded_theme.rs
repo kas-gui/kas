@@ -6,7 +6,6 @@
 //! Shaded theme
 
 use std::f32;
-use std::ops::Range;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::draw::{
@@ -14,7 +13,7 @@ use kas::draw::{
     Pass, SizeHandle, TextClass,
 };
 use kas::geom::*;
-use kas::text::{AccelString, Text, TextApi, TextDisplay};
+use kas::text::{AccelString, Range, Text, TextApi, TextDisplay};
 use kas::{Direction, Directional, ThemeAction, ThemeApi};
 
 /// A theme using simple shading to give apparent depth to elements
@@ -283,6 +282,18 @@ where
         self.as_flat().text_effects(pos, offset, text, class);
     }
 
+    fn text_effects_selected(
+        &mut self,
+        pos: Coord,
+        offset: Coord,
+        text: &dyn TextApi,
+        range: Range,
+        class: TextClass,
+    ) {
+        self.as_flat()
+            .text_effects_selected(pos, offset, text, range, class)
+    }
+
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         self.as_flat().text_accel(pos, text, state, class);
     }
@@ -293,7 +304,7 @@ where
         bounds: Vec2,
         offset: Coord,
         text: &TextDisplay,
-        range: Range<usize>,
+        range: Range,
         class: TextClass,
     ) {
         self.as_flat()

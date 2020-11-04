@@ -6,19 +6,23 @@
 //! Text widgets
 
 use kas::draw::TextClass;
+use kas::event::{self, GrabMode, PressSource};
+use kas::prelude::*;
 use kas::text::format::{EditableText, FormattableText};
-use kas::{event, prelude::*};
+use kas::text::SelectionHelper;
 
 /// A text label
 ///
 /// This type is generic over the text type. Some aliases are available:
 /// [`StrLabel`], [`StringLabel`], [`AccelLabel`].
+#[handler(handle=noauto)]
 #[derive(Clone, Default, Debug, Widget)]
 pub struct Label<T: FormattableText + 'static> {
     #[widget_core]
     core: CoreData,
     reserve: Option<T>,
     label: Text<T>,
+    selection: SelectionHelper,
 }
 
 mod impls {
@@ -59,6 +63,16 @@ mod impls {
             env.set_align(align.unwrap_or(Align::Default, Align::Centre));
         });
     }
+
+    pub fn draw<T: FormattableText + 'static>(obj: &Label<T>, draw_handle: &mut dyn DrawHandle) {
+        draw_handle.text_effects_selected(
+            obj.core.rect.pos,
+            Coord::ZERO,
+            &obj.label,
+            obj.selection.range().into(),
+            TextClass::Label,
+        );
+    }
 }
 
 impl<T: FormattableText + 'static> Layout for Label<T> {
@@ -72,27 +86,18 @@ impl<T: FormattableText + 'static> Layout for Label<T> {
 
     #[cfg(feature = "min_spec")]
     default fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        draw_handle.text_effects(
-            self.core.rect.pos,
-            Coord::ZERO,
-            &self.label,
-            TextClass::Label,
-        );
+        impls::draw(self, draw_handle);
     }
     #[cfg(not(feature = "min_spec"))]
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        draw_handle.text_effects(
-            self.core.rect.pos,
-            Coord::ZERO,
-            &self.label,
-            TextClass::Label,
-        );
+        impls::draw(self, draw_handle);
     }
 }
 
 #[cfg(feature = "min_spec")]
 impl Layout for AccelLabel {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, _: bool) {
+        // Ignore selection for AccelLabel
         let state = mgr.show_accel_labels();
         draw_handle.text_accel(self.core.rect.pos, &self.label, state, TextClass::Label);
     }
@@ -102,13 +107,74 @@ impl Layout for AccelLabel {
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
+        let bounds = self.label.env().bounds.into();
+        draw_handle.text_selected(
+            self.core.rect.pos,
+            bounds,
+            Coord::ZERO,
+            &self.label,
+            self.selection.range(),
+            TextClass::Label,
+        );
     }
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
+        let bounds = self.label.env().bounds.into();
+        draw_handle.text_selected(
+            self.core.rect.pos,
+            bounds,
+            Coord::ZERO,
+            &self.label,
+            self.selection.range(),
+            TextClass::Label,
+        );
+    }
+}
+
+impl<T: FormattableText + 'static> event::Handler for Label<T> {
+    type Msg = event::VoidMsg;
+
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        match event {
+            Event::LostSelFocus => {
+                self.selection.set_empty();
+                mgr.redraw(self.id());
+                Response::None
+            }
+            Event::PressStart { source, coord, .. }
+                if source.is_primary() && !mgr.modifiers().ctrl() =>
+            {
+                // TODO: this should handle touch on a timer (like EditBox) but
+                // without blocking panning if parent uses unhandled events
+                if let PressSource::Mouse(_, repeats) = source {
+                    // With Ctrl held, we let parent handle for scrolling
+                    self.set_edit_pos_from_coord(mgr, coord);
+                    if !mgr.modifiers().shift() {
+                        self.selection.set_empty();
+                    }
+                    self.selection.set_anchor();
+                    if repeats > 1 {
+                        self.selection.expand(&self.label, repeats);
+                    }
+                    mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
+                }
+                Response::None
+            }
+            Event::PressMove { source, coord, .. } => {
+                // TODO: if mgr.modifiers().ctrl() then this should pan, not select!
+                if let PressSource::Mouse(_, repeats) = source {
+                    self.set_edit_pos_from_coord(mgr, coord);
+                    if repeats > 1 {
+                        self.selection.expand(&self.label, repeats);
+                    }
+                }
+                Response::None
+            }
+            Event::PressEnd { .. } => Response::None,
+            event => Response::Unhandled(event),
+        }
     }
 }
 
@@ -139,6 +205,7 @@ impl<T: FormattableText + 'static> Label<T> {
             core: Default::default(),
             reserve: None,
             label: Text::new_multi(label),
+            selection: SelectionHelper::new(0, 0),
         }
     }
 
@@ -157,6 +224,13 @@ impl<T: FormattableText + 'static> Label<T> {
     /// (usually done by the theme when the main loop starts).
     pub fn set_text(&mut self, text: T) -> TkAction {
         kas::text::util::set_text_and_prepare(&mut self.label, text)
+    }
+
+    fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
+        let rel_pos = (coord - self.core.rect.pos).into();
+        self.selection
+            .set_edit_pos(self.label.text_index_nearest(rel_pos));
+        mgr.redraw(self.id());
     }
 }
 
