@@ -30,7 +30,8 @@ impl ManagerState {
         ManagerState {
             end_id: Default::default(),
             modifiers: ModifiersState::empty(),
-            char_focus: None,
+            char_focus: false,
+            sel_focus: None,
             nav_focus: None,
             nav_fallback: None,
             nav_stack: SmallVec::new(),
@@ -107,7 +108,7 @@ impl ManagerState {
 
         // The remaining code just updates all input states to new IDs via the map.
 
-        self.char_focus = self.char_focus.and_then(|id| map.get(&id).cloned());
+        self.sel_focus = self.sel_focus.and_then(|id| map.get(&id).cloned());
         self.nav_focus = self.nav_focus.and_then(|id| map.get(&id).cloned());
         self.mouse_grab = self.mouse_grab.as_ref().and_then(|grab| {
             map.get(&grab.start_id).map(|id| MouseGrab {
@@ -172,9 +173,18 @@ impl ManagerState {
         self.nav_focus = self
             .nav_focus
             .and_then(|id| widget.find(id).map(|w| w.id()));
-        self.char_focus = self
-            .char_focus
-            .and_then(|id| widget.find(id).map(|w| w.id()));
+        if let Some(id) = self.sel_focus {
+            if let Some(new_id) = widget.find(id).map(|w| w.id()) {
+                self.sel_focus = Some(new_id);
+            } else {
+                if self.char_focus {
+                    self.pending.push(Pending::LostCharFocus(id));
+                    self.char_focus = false;
+                }
+                self.pending.push(Pending::LostSelFocus(id));
+                self.sel_focus = None;
+            }
+        }
 
         // Update hovered widget
         let hover = widget.find_id(self.last_mouse_coord);
@@ -295,12 +305,11 @@ impl ManagerState {
         mgr.read_only = true;
 
         for item in mgr.mgr.pending.pop() {
-            match item {
-                Pending::LostCharFocus(id) => {
-                    let event = Event::LostCharFocus;
-                    mgr.send_event(widget, id, event);
-                }
-            }
+            let (id, event) = match item {
+                Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
+                Pending::LostSelFocus(id) => (id, Event::LostSelFocus),
+            };
+            mgr.send_event(widget, id, event);
         }
 
         let mut action = mgr.action;
@@ -370,13 +379,15 @@ impl<'a> Manager<'a> {
             HoveredFileCancelled => ,
             */
             ReceivedCharacter(c) => {
-                if let Some(id) = self.mgr.char_focus {
-                    // Filter out control codes (Unicode 5.11). These may be
-                    // generated from combinations such as Ctrl+C by some other
-                    // layer. We use our own shortcut system instead.
-                    if c >= '\u{20}' && (c < '\u{7f}' || c > '\u{9f}') {
-                        let event = Event::ReceivedCharacter(c);
-                        self.send_event(widget, id, event);
+                if let Some(id) = self.mgr.sel_focus {
+                    if self.mgr.char_focus {
+                        // Filter out control codes (Unicode 5.11). These may be
+                        // generated from combinations such as Ctrl+C by some other
+                        // layer. We use our own shortcut system instead.
+                        if c >= '\u{20}' && (c < '\u{7f}' || c > '\u{9f}') {
+                            let event = Event::ReceivedCharacter(c);
+                            self.send_event(widget, id, event);
+                        }
                     }
                 }
             }

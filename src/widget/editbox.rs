@@ -14,6 +14,7 @@ use kas::draw::TextClass;
 use kas::event::{self, ControlKey, GrabMode, PressSource, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
+use kas::text::SelectionHelper;
 
 #[derive(Clone, Debug, PartialEq)]
 enum LastEdit {
@@ -161,9 +162,7 @@ pub struct EditBox<G: 'static> {
     multi_line: bool,
     text: Text<String>,
     required: Vec2,
-    edit_pos: usize,
-    sel_pos: usize,
-    anchor_pos: usize,
+    selection: SelectionHelper,
     edit_x_coord: Option<f32>,
     old_state: Option<(String, usize, usize)>,
     last_edit: LastEdit,
@@ -253,7 +252,7 @@ impl<G: 'static> Layout for EditBox<G> {
         input_state.error = self.error_state;
         draw_handle.edit_box(self.core.rect, input_state);
         let bounds = self.text.env().bounds.into();
-        if self.sel_pos == self.edit_pos {
+        if self.selection.is_empty() {
             draw_handle.text_offset(
                 self.text_pos,
                 bounds,
@@ -270,7 +269,7 @@ impl<G: 'static> Layout for EditBox<G> {
                 bounds,
                 self.view_offset,
                 &self.text,
-                self.selection(),
+                self.selection.range(),
                 class,
             );
         }
@@ -281,7 +280,7 @@ impl<G: 'static> Layout for EditBox<G> {
                 self.view_offset,
                 self.text.as_ref(),
                 class,
-                self.edit_pos,
+                self.selection.edit_pos(),
             );
         }
     }
@@ -291,7 +290,7 @@ impl EditBox<EditVoid> {
     /// Construct an `EditBox` with the given inital `text`.
     pub fn new<S: ToString>(text: S) -> Self {
         let text = text.to_string();
-        let edit_pos = text.len();
+        let len = text.len();
         EditBox {
             core: Default::default(),
             frame_offset: Default::default(),
@@ -302,9 +301,7 @@ impl EditBox<EditVoid> {
             multi_line: false,
             text: Text::new(Default::default(), text.into()),
             required: Vec2::ZERO,
-            edit_pos,
-            sel_pos: edit_pos,
-            anchor_pos: edit_pos,
+            selection: SelectionHelper::new(len, len),
             edit_x_coord: None,
             old_state: None,
             last_edit: LastEdit::None,
@@ -332,9 +329,7 @@ impl EditBox<EditVoid> {
             multi_line: self.multi_line,
             text: self.text,
             required: self.required,
-            edit_pos: self.edit_pos,
-            sel_pos: self.sel_pos,
-            anchor_pos: self.anchor_pos,
+            selection: self.selection,
             edit_x_coord: self.edit_x_coord,
             old_state: self.old_state,
             last_edit: self.last_edit,
@@ -422,36 +417,27 @@ impl<G> EditBox<G> {
         self.error_state = error_state;
     }
 
-    fn selection(&self) -> Range<usize> {
-        let mut range = self.edit_pos..self.sel_pos;
-        if range.start > range.end {
-            std::mem::swap(&mut range.start, &mut range.end);
-        }
-        range
-    }
-
     fn received_char(&mut self, mgr: &mut Manager, c: char) -> EditAction {
         if !self.editable {
             return EditAction::Unhandled;
         }
 
-        let pos = self.edit_pos;
-        let selection = self.selection();
+        let pos = self.selection.edit_pos();
+        let selection = self.selection.range();
         let have_sel = selection.start < selection.end;
         if self.last_edit != LastEdit::Insert || have_sel {
-            self.old_state = Some((self.text.clone_string(), pos, self.sel_pos));
+            self.old_state = Some((self.text.clone_string(), pos, self.selection.sel_pos()));
             self.last_edit = LastEdit::Insert;
         }
         if have_sel {
             let mut buf = [0u8; 4];
             let s = c.encode_utf8(&mut buf);
             let _ = self.text.replace_range(selection.clone(), s);
-            self.edit_pos = selection.start + s.len();
+            self.selection.set_pos(selection.start + s.len());
         } else {
             let _ = self.text.insert_char(pos, c);
-            self.edit_pos = pos + c.len_utf8();
+            self.selection.set_pos(pos + c.len_utf8());
         }
-        self.sel_pos = self.edit_pos;
         self.edit_x_coord = None;
         self.text.prepare();
         self.set_view_offset_from_edit_pos();
@@ -465,8 +451,8 @@ impl<G> EditBox<G> {
         }
 
         let mut buf = [0u8; 4];
-        let pos = self.edit_pos;
-        let selection = self.selection();
+        let pos = self.selection.edit_pos();
+        let selection = self.selection.range();
         let have_sel = selection.end > selection.start;
         let ctrl = mgr.modifiers().ctrl();
         let mut shift = mgr.modifiers().shift();
@@ -484,8 +470,8 @@ impl<G> EditBox<G> {
 
         let action = match key {
             ControlKey::Escape => {
-                if self.sel_pos != self.edit_pos {
-                    self.sel_pos = self.edit_pos;
+                if !self.selection.is_empty() {
+                    self.selection.set_empty();
                     mgr.redraw(self.id());
                     Action::None
                 } else {
@@ -651,12 +637,12 @@ impl<G> EditBox<G> {
                 }
             }
             ControlKey::Deselect => {
-                self.sel_pos = pos;
+                self.selection.set_sel_pos(pos);
                 mgr.redraw(self.id());
                 Action::None
             }
             ControlKey::SelectAll => {
-                self.sel_pos = 0;
+                self.selection.set_sel_pos(0);
                 shift = true; // hack
                 Action::Move(self.text.str_len(), None)
             }
@@ -694,9 +680,11 @@ impl<G> EditBox<G> {
                 // NOTE: undo *and* redo shortcuts map to this control char
                 if let Some((state, pos2, sel_pos)) = self.old_state.as_mut() {
                     self.text.swap_string(state);
-                    self.edit_pos = *pos2;
+                    self.selection.set_edit_pos(*pos2);
                     *pos2 = pos;
-                    std::mem::swap(sel_pos, &mut self.sel_pos);
+                    let pos = *sel_pos;
+                    *sel_pos = self.selection.sel_pos();
+                    self.selection.set_sel_pos(pos);
                     self.edit_x_coord = None;
                     self.last_edit = LastEdit::None;
                 }
@@ -713,40 +701,41 @@ impl<G> EditBox<G> {
             Action::Insert(s, edit) => {
                 let mut pos = pos;
                 if have_sel {
-                    self.old_state = Some((self.text.clone_string(), pos, self.sel_pos));
+                    self.old_state =
+                        Some((self.text.clone_string(), pos, self.selection.sel_pos()));
                     self.last_edit = edit;
 
                     self.text.replace_range(selection.clone(), s);
                     pos = selection.start;
                 } else {
                     if self.last_edit != edit {
-                        self.old_state = Some((self.text.clone_string(), pos, self.sel_pos));
+                        self.old_state =
+                            Some((self.text.clone_string(), pos, self.selection.sel_pos()));
                         self.last_edit = edit;
                     }
 
                     self.text.replace_range(pos..pos, s);
                 }
-                self.edit_pos = pos + s.len();
-                self.sel_pos = self.edit_pos;
+                self.selection.set_pos(pos + s.len());
                 self.edit_x_coord = None;
                 EditAction::Edit
             }
             Action::Delete(sel) => {
                 if self.last_edit != LastEdit::Delete {
-                    self.old_state = Some((self.text.clone_string(), pos, self.sel_pos));
+                    self.old_state =
+                        Some((self.text.clone_string(), pos, self.selection.sel_pos()));
                     self.last_edit = LastEdit::Delete;
                 }
 
                 self.text.replace_range(sel.clone(), "");
-                self.edit_pos = sel.start;
-                self.sel_pos = sel.start;
+                self.selection.set_pos(sel.start);
                 self.edit_x_coord = None;
                 EditAction::Edit
             }
             Action::Move(pos, x_coord) => {
-                self.edit_pos = pos;
+                self.selection.set_edit_pos(pos);
                 if !shift {
-                    self.sel_pos = self.edit_pos;
+                    self.selection.set_empty();
                 }
                 self.edit_x_coord = x_coord;
                 mgr.redraw(self.id());
@@ -754,7 +743,7 @@ impl<G> EditBox<G> {
             }
         };
 
-        let mut set_offset = self.edit_pos != pos;
+        let mut set_offset = self.selection.edit_pos() != pos;
         if !self.text.required_action().is_ready() {
             self.text.prepare();
             set_offset = true;
@@ -769,7 +758,8 @@ impl<G> EditBox<G> {
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
         let rel_pos = (coord - self.text_pos + self.view_offset).into();
-        self.edit_pos = self.text.text_index_nearest(rel_pos);
+        self.selection
+            .set_edit_pos(self.text.text_index_nearest(rel_pos));
         self.set_view_offset_from_edit_pos();
         self.edit_x_coord = None;
         mgr.redraw(self.id());
@@ -793,7 +783,8 @@ impl<G> EditBox<G> {
     ///
     /// A redraw is assumed since edit_pos moved.
     fn set_view_offset_from_edit_pos(&mut self) {
-        if let Some(marker) = self.text.text_glyph_pos(self.edit_pos).next_back() {
+        let edit_pos = self.selection.edit_pos();
+        if let Some(marker) = self.text.text_glyph_pos(edit_pos).next_back() {
             let bounds = Vec2::from(self.text.env().bounds);
             let min_x = (marker.pos.0 - bounds.0).ceil();
             let min_y = (marker.pos.1 - marker.descent - bounds.1).ceil();
@@ -808,53 +799,6 @@ impl<G> EditBox<G> {
 
             self.view_offset = self.view_offset.max(min).min(max);
         }
-    }
-
-    fn expand_selection(&mut self, repeats: u32) {
-        let mut range = self.edit_pos..self.anchor_pos;
-        if range.start > range.end {
-            std::mem::swap(&mut range.start, &mut range.end);
-        }
-        let (mut start, mut end);
-        if repeats <= 2 {
-            end = self.text.text()[range.start..]
-                .char_indices()
-                .skip(1)
-                .next()
-                .map(|(i, _)| range.start + i)
-                .unwrap_or(self.text.str_len());
-            start = self.text.text()[0..end]
-                .split_word_bound_indices()
-                .next_back()
-                .map(|(index, _)| index)
-                .unwrap_or(0);
-            end = 'a: loop {
-                for (index, _) in self.text.text()[start..].split_word_bound_indices() {
-                    let pos = start + index;
-                    if pos >= range.end {
-                        break 'a pos;
-                    }
-                }
-                break 'a self.text.str_len();
-            };
-        } else {
-            start = self
-                .text
-                .find_line(range.start)
-                .map(|r| r.1.start)
-                .unwrap_or(0);
-            end = self
-                .text
-                .find_line(range.end)
-                .map(|r| r.1.end)
-                .unwrap_or(self.text.str_len());
-        }
-
-        if self.edit_pos < self.sel_pos {
-            std::mem::swap(&mut start, &mut end);
-        }
-        self.sel_pos = start;
-        self.edit_pos = end;
     }
 }
 
@@ -881,10 +825,13 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 mgr.request_char_focus(self.id());
                 Response::None
             }
-            Event::LostCharFocus => {
-                let r = G::focus_lost(self);
-                self.sel_pos = self.edit_pos; // clear selection
-                r.map(|msg| msg.into()).unwrap_or(Response::None)
+            Event::LostCharFocus => G::focus_lost(self)
+                .map(|msg| msg.into())
+                .unwrap_or(Response::None),
+            Event::LostSelFocus => {
+                self.selection.set_empty();
+                mgr.redraw(self.id());
+                Response::None
             }
             Event::Control(key) => match self.control_key(mgr, key) {
                 EditAction::None => Response::None,
@@ -910,11 +857,11 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                         // (non-standard, but seems to work well)!
                         self.set_edit_pos_from_coord(mgr, coord);
                         if !mgr.modifiers().shift() {
-                            self.sel_pos = self.edit_pos;
+                            self.selection.set_empty();
                         }
-                        self.anchor_pos = self.sel_pos;
+                        self.selection.set_anchor();
                         if repeats > 1 {
-                            self.expand_selection(repeats);
+                            self.selection.expand(&self.text, repeats);
                         }
                     }
                 }
@@ -951,7 +898,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 } else {
                     self.set_edit_pos_from_coord(mgr, coord);
                     if sel_mode > 1 {
-                        self.expand_selection(sel_mode);
+                        self.selection.expand(&self.text, sel_mode);
                     }
                 }
                 Response::None
@@ -962,7 +909,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                         if !mgr.modifiers().ctrl() {
                             self.set_edit_pos_from_coord(mgr, coord);
                             if !mgr.modifiers().shift() {
-                                self.sel_pos = self.edit_pos;
+                                self.selection.set_empty();
                             }
                         }
                         self.touch_phase = TouchPhase::None;
@@ -999,7 +946,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                         if !mgr.modifiers().ctrl() {
                             self.set_edit_pos_from_coord(mgr, coord);
                             if !mgr.modifiers().shift() {
-                                self.sel_pos = self.edit_pos;
+                                self.selection.set_empty();
                             }
                         }
                         self.touch_phase = TouchPhase::Cursor(touch_id);

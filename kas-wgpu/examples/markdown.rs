@@ -9,7 +9,7 @@ use kas::class::HasStr;
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::make_widget;
 use kas::text::format::Markdown;
-use kas::widget::{EditBox, EditBoxVoid, Label, TextButton, Window};
+use kas::widget::{EditBox, EditBoxVoid, Label, ScrollRegion, TextButton, Window};
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
@@ -44,13 +44,14 @@ It also supports lists:
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(row=0, col=0, rspan=2)] editor: EditBoxVoid = EditBox::new(doc).multi_line(true),
-                #[widget(row=0, col=1)] label: Label<Markdown> = Label::new(Markdown::new(doc)),
+                #[widget(row=0, col=1)] label: ScrollRegion<Label<Markdown>> = ScrollRegion::new(Label::new(Markdown::new(doc))).with_bars(false, true),
                 #[widget(row=1, col=1, handler=update)] _ = TextButton::new("&Update", ()),
             }
             impl {
                 fn update(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
                     let text = Markdown::new(self.editor.get_str());
-                    *mgr += self.label.set_text(text);
+                    // TODO: this should update the size requirements of the inner area
+                    *mgr += self.label.inner_mut().set_text(text);
                     Response::None
                 }
             }
