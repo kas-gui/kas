@@ -558,7 +558,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
 
     let theme = kas_theme::FlatTheme::new().with_colours("dark");
 
-    let mut toolkit = kas_wgpu::Toolkit::new_custom(PipeBuilder, theme, Options::from_env())?;
-    toolkit.add(MandlebrotWindow::new_window())?;
-    toolkit.run()
+    kas_wgpu::Toolkit::new_custom(PipeBuilder, theme, Options::from_env())?
+        .with(MandlebrotWindow::new_window())?
+        .run()
 }

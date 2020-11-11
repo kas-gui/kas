@@ -80,7 +80,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let theme = kas_theme::ShadedTheme::new()
         .with_colours("dark")
         .with_font_size(18.0);
-    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
-    toolkit.add_boxed(make_window())?;
-    toolkit.run()
+    kas_wgpu::Toolkit::new(theme)?
+        .with_boxed(make_window())?
+        .run()
 }

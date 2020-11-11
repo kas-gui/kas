@@ -97,9 +97,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new("Calculator", content);
 
     let theme = kas_theme::ShadedTheme::new().with_font_size(16.0);
-    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
-    toolkit.add(window)?;
-    toolkit.run()
+    kas_wgpu::Toolkit::new(theme)?.with(window)?.run()
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

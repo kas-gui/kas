@@ -65,7 +65,5 @@ It also supports lists:
     );
 
     let theme = kas_theme::FlatTheme::new();
-    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
-    toolkit.add(window)?;
-    toolkit.run()
+    kas_wgpu::Toolkit::new(theme)?.with(window)?.run()
 }
