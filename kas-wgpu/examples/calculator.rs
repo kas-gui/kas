@@ -13,7 +13,6 @@ use kas::event::VirtualKeyCode as VK;
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{EditBox, TextButton, Window};
-use kas::ThemeApi;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Key {
@@ -97,8 +96,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     };
     let window = Window::new("Calculator", content);
 
-    let mut theme = kas_theme::ShadedTheme::new();
-    theme.set_font_size(16.0);
+    let theme = kas_theme::ShadedTheme::new().with_font_size(16.0);
     let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
     toolkit.run()

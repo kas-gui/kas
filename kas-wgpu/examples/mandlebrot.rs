@@ -556,8 +556,7 @@ impl MandlebrotWindow {
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let mut theme = kas_theme::FlatTheme::new();
-    theme.set_colours("dark");
+    let theme = kas_theme::FlatTheme::new().with_colours("dark");
 
     let mut toolkit = kas_wgpu::Toolkit::new_custom(PipeBuilder, theme, Options::from_env())?;
     toolkit.add(MandlebrotWindow::new_window())?;
