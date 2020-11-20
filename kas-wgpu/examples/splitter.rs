@@ -60,7 +60,5 @@ fn main() -> Result<(), kas_wgpu::Error> {
     );
 
     let theme = kas_theme::ShadedTheme::new();
-    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
-    toolkit.add(window)?;
-    toolkit.run()
+    kas_wgpu::Toolkit::new(theme)?.with(window)?.run()
 }

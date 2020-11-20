@@ -9,7 +9,6 @@ use kas::class::HasString;
 use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::{Label, TextButton, Window};
-use kas::ThemeApi;
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {
@@ -58,9 +57,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
         },
     );
 
-    let mut theme = kas_theme::ShadedTheme::new();
-    theme.set_font_size(24.0);
-    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
-    toolkit.add(window)?;
-    toolkit.run()
+    let theme = kas_theme::ShadedTheme::new().with_font_size(24.0);
+    kas_wgpu::Toolkit::new(theme)?.with(window)?.run()
 }

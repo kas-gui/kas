@@ -11,7 +11,7 @@ use kas::class::HasString;
 use kas::event::{Event, Handler, Manager, Response, VoidMsg};
 use kas::macros::make_widget;
 use kas::widget::{Frame, Label, TextButton, Window};
-use kas::{ThemeApi, WidgetCore};
+use kas::WidgetCore;
 
 // Unlike most examples, we encapsulate the GUI configuration into a function.
 // There's no reason for this, but it demonstrates usage of Toolkit::add_boxed
@@ -77,9 +77,10 @@ fn make_window() -> Box<dyn kas::Window> {
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let mut theme = kas_theme::ShadedTheme::new();
-    let _ = theme.set_colours("dark");
-    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
-    toolkit.add_boxed(make_window())?;
-    toolkit.run()
+    let theme = kas_theme::ShadedTheme::new()
+        .with_colours("dark")
+        .with_font_size(18.0);
+    kas_wgpu::Toolkit::new(theme)?
+        .with_boxed(make_window())?
+        .run()
 }

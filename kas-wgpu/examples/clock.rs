@@ -47,17 +47,16 @@ impl Layout for Clock {
         let pos = rect.pos + (excess * 0.5);
         self.core.rect = Rect { pos, size };
 
-        // Note: font size is calculated as dpp * pt_size with units pixels/em.
-        // We leave dpp at its default 96/72 and set pt_size based on pixels.
-        // Dimensions are still dependent on fonts.
-        let pt_size = (size.1 as f32 * 0.09).into();
+        // Note: font size is calculated as dpem = dpp * pt_size. Instead of
+        // the usual semantics we set dpp=1 (in constructor) and pt_size=dpem.
+        let dpem = (size.1 as f32 * 0.12).into();
         let half_size = Size(size.0, size.1 / 2);
         self.date.update_env(|env| {
-            env.set_pt_size(pt_size);
+            env.set_pt_size(dpem);
             env.set_bounds(half_size.into());
         });
         self.time.update_env(|env| {
-            env.set_pt_size(pt_size);
+            env.set_pt_size(dpem);
             env.set_bounds(half_size.into());
         });
         self.date_pos = pos + Size(0, size.1 - half_size.1);
@@ -147,6 +146,7 @@ impl Clock {
     fn new() -> Self {
         let env = kas::text::Environment {
             align: (Align::Centre, Align::Centre),
+            dpp: 1.0,
             ..Default::default()
         };
         let date = Text::new(env.clone(), "0000-00-00".into());
@@ -168,7 +168,5 @@ fn main() -> Result<(), kas_wgpu::Error> {
     let window = Window::new("Clock", Clock::new());
 
     let theme = kas_theme::FlatTheme::new();
-    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
-    toolkit.add(window)?;
-    toolkit.run()
+    kas_wgpu::Toolkit::new(theme)?.with(window)?.run()
 }

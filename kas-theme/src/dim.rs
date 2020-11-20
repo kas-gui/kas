@@ -89,9 +89,9 @@ pub struct DimensionsWindow {
 }
 
 impl DimensionsWindow {
-    pub fn new(dims: DimensionsParams, font_size: f32, scale_factor: f32) -> Self {
+    pub fn new(dims: DimensionsParams, pt_size: f32, scale_factor: f32) -> Self {
         DimensionsWindow {
-            dims: Dimensions::new(dims, font_size, scale_factor),
+            dims: Dimensions::new(dims, pt_size, scale_factor),
         }
     }
 }

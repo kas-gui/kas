@@ -23,7 +23,7 @@ use kas::{Direction, Directional, ThemeAction, ThemeApi};
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
 pub struct FlatTheme {
-    font_size: f32,
+    pt_size: f32,
     cols: ThemeColours,
 }
 
@@ -31,9 +31,27 @@ impl FlatTheme {
     /// Construct
     pub fn new() -> Self {
         FlatTheme {
-            font_size: 12.0,
+            pt_size: 12.0,
             cols: ThemeColours::new(),
         }
+    }
+
+    /// Set font size
+    ///
+    /// Units: Points per Em (standard unit of font size)
+    pub fn with_font_size(mut self, pt_size: f32) -> Self {
+        self.pt_size = pt_size;
+        self
+    }
+
+    /// Set the colour scheme
+    ///
+    /// If no scheme by this name is found the scheme is left unchanged.
+    pub fn with_colours(mut self, scheme: &str) -> Self {
+        if let Some(scheme) = ThemeColours::open(scheme) {
+            self.cols = scheme;
+        }
+        self
     }
 }
 
@@ -73,11 +91,11 @@ where
     }
 
     fn new_window(&self, _draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
-        DimensionsWindow::new(DIMS, self.font_size, dpi_factor)
+        DimensionsWindow::new(DIMS, self.pt_size, dpi_factor)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        window.dims = Dimensions::new(DIMS, self.font_size, dpi_factor);
+        window.dims = Dimensions::new(DIMS, self.pt_size, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -126,7 +144,7 @@ where
 
 impl ThemeApi for FlatTheme {
     fn set_font_size(&mut self, size: f32) -> ThemeAction {
-        self.font_size = size;
+        self.pt_size = size;
         ThemeAction::ThemeResize
     }
 

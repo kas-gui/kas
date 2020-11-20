@@ -133,12 +133,30 @@ where
         self.add_boxed(Box::new(window))
     }
 
+    /// Assume ownership of and display a window, inline
+    ///
+    /// This is a convenience wrapper around [`Toolkit::add_boxed`].
+    ///
+    /// Note: typically, one should have `W: Clone`, enabling multiple usage.
+    pub fn with<W: kas::Window + 'static>(mut self, window: W) -> Result<Self, Error> {
+        self.add_boxed(Box::new(window))?;
+        Ok(self)
+    }
+
     /// Add a boxed window directly
     pub fn add_boxed(&mut self, widget: Box<dyn kas::Window>) -> Result<WindowId, Error> {
         let id = self.shared.next_window_id();
         let win = Window::new(&mut self.shared, &self.el, id, widget)?;
         self.windows.push(win);
         Ok(id)
+    }
+
+    /// Add a boxed window directly, inline
+    pub fn with_boxed(mut self, widget: Box<dyn kas::Window>) -> Result<Self, Error> {
+        let id = self.shared.next_window_id();
+        let win = Window::new(&mut self.shared, &self.el, id, widget)?;
+        self.windows.push(win);
+        Ok(self)
     }
 
     /// Create a proxy which can be used to update the UI from another thread
