@@ -75,12 +75,10 @@ impl ManagerState {
         let mut renames = HashMap::new();
         let mut id = WidgetId::FIRST;
 
-        // We re-set these instead of remapping:
+        // We re-create these instead of renaming IDs:
+        debug_assert!(self.accel_stack.is_empty());
         self.accel_stack.clear();
         self.accel_layers.clear();
-        self.time_updates.clear();
-        self.handle_updates.clear();
-        self.pending.clear();
         self.nav_fallback = None;
 
         // Enumerate and configure all widgets:
@@ -149,6 +147,48 @@ impl ManagerState {
                 true
             } else {
                 false
+            }
+        });
+
+        // TODO(nightly feature): use Vec::drain_filter when stable (also below)
+        let mut i = 0;
+        while i < self.time_updates.len() {
+            if let Some(id) = renames.get(&self.time_updates[i].1) {
+                self.time_updates[i].1 = *id;
+                i += 1;
+            } else {
+                self.time_updates.swap_remove(i);
+            }
+        }
+
+        for ids in self.handle_updates.values_mut() {
+            let mut i = 0;
+            while i < ids.len() {
+                if let Some(id) = renames.get(&ids[i]) {
+                    ids[i] = *id;
+                    i += 1;
+                } else {
+                    ids.swap_remove(i);
+                }
+            }
+        }
+
+        self.pending.retain(|item| match item {
+            Pending::LostCharFocus(id) => {
+                if let Some(new_id) = renames.get(id) {
+                    *item = Pending::LostCharFocus(*new_id);
+                    true
+                } else {
+                    false
+                }
+            }
+            Pending::LostSelFocus(id) => {
+                if let Some(new_id) = renames.get(id) {
+                    *item = Pending::LostSelFocus(*new_id);
+                    true
+                } else {
+                    false
+                }
             }
         });
     }
