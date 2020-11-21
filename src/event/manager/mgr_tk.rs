@@ -130,35 +130,18 @@ impl ManagerState {
                 self.remove_pan(i);
             }
         }
-        macro_rules! do_map {
-            ($seq:expr, $update:expr) => {
-                let update = $update;
-                let mut i = 0;
-                let mut j = $seq.len();
-                while i < j {
-                    // invariant: $seq[0..i] have been updated
-                    // invariant: $seq[j..len] are rejected
-                    if let Some(elt) = update($seq[i].clone()) {
-                        $seq[i] = elt;
-                        i += 1;
-                    } else {
-                        j -= 1;
-                        $seq.swap(i, j);
-                    }
-                }
-                $seq.truncate(j);
-            };
-        }
 
-        do_map!(self.touch_grab, |mut elt: TouchGrab| renames
-            .get(&elt.start_id)
-            .map(|id| {
-                elt.start_id = *id;
-                if let Some(cur_id) = elt.cur_id {
-                    elt.cur_id = renames.get(&cur_id).cloned();
+        self.touch_grab.retain(|_, grab| {
+            if let Some(id) = renames.get(&grab.start_id) {
+                grab.start_id = *id;
+                if let Some(cur_id) = grab.cur_id {
+                    grab.cur_id = renames.get(&cur_id).cloned();
                 }
-                elt
-            }));
+                true
+            } else {
+                false
+            }
+        });
 
         self.key_depress.retain(|_, depress_id| {
             if let Some(id) = renames.get(depress_id) {
@@ -195,8 +178,8 @@ impl ManagerState {
         let hover = widget.find_id(self.last_mouse_coord);
         self.with(tkw, |mgr| mgr.set_hover(widget, hover));
 
-        for touch in &mut self.touch_grab {
-            touch.cur_id = widget.find_id(touch.coord);
+        for grab in self.touch_grab.iter_mut() {
+            grab.1.cur_id = widget.find_id(grab.1.coord);
         }
     }
 
