@@ -72,7 +72,7 @@ impl ManagerState {
 
         // Re-assigning WidgetIds might invalidate state; to avoid this we map
         // existing ids to new ids
-        let mut map = HashMap::new();
+        let mut renames = HashMap::new();
         let mut id = WidgetId::FIRST;
 
         // We re-set these instead of remapping:
@@ -89,7 +89,7 @@ impl ManagerState {
             mgr.push_accel_layer(false);
             widget.configure_recurse(ConfigureManager {
                 id: &mut id,
-                map: &mut map,
+                map: &mut renames,
                 mgr: &mut mgr,
             });
             mgr.pop_accel_layer(widget.id());
@@ -106,16 +106,16 @@ impl ManagerState {
             self.end_id = id;
         }
 
-        // The remaining code just updates all input states to new IDs via the map.
+        // The remaining code just updates all input states to new IDs via renames.
 
-        self.sel_focus = self.sel_focus.and_then(|id| map.get(&id).cloned());
-        self.nav_focus = self.nav_focus.and_then(|id| map.get(&id).cloned());
+        self.sel_focus = self.sel_focus.and_then(|id| renames.get(&id).cloned());
+        self.nav_focus = self.nav_focus.and_then(|id| renames.get(&id).cloned());
         self.mouse_grab = self.mouse_grab.as_ref().and_then(|grab| {
-            map.get(&grab.start_id).map(|id| MouseGrab {
+            renames.get(&grab.start_id).map(|id| MouseGrab {
                 button: grab.button,
                 repetitions: grab.repetitions,
                 start_id: *id,
-                depress: grab.depress.and_then(|id| map.get(&id).cloned()),
+                depress: grab.depress.and_then(|id| renames.get(&id).cloned()),
                 mode: grab.mode,
                 pan_grab: grab.pan_grab,
             })
@@ -123,7 +123,7 @@ impl ManagerState {
 
         let mut i = 0;
         while i < self.pan_grab.len() {
-            if let Some(id) = map.get(&self.pan_grab[i].id) {
+            if let Some(id) = renames.get(&self.pan_grab[i].id) {
                 self.pan_grab[i].id = *id;
                 i += 1;
             } else {
@@ -150,19 +150,24 @@ impl ManagerState {
             };
         }
 
-        do_map!(self.touch_grab, |mut elt: TouchGrab| map
+        do_map!(self.touch_grab, |mut elt: TouchGrab| renames
             .get(&elt.start_id)
             .map(|id| {
                 elt.start_id = *id;
                 if let Some(cur_id) = elt.cur_id {
-                    elt.cur_id = map.get(&cur_id).cloned();
+                    elt.cur_id = renames.get(&cur_id).cloned();
                 }
                 elt
             }));
 
-        do_map!(self.key_depress, |elt: (u32, WidgetId)| map
-            .get(&elt.1)
-            .map(|id| (elt.0, *id)));
+        self.key_depress.retain(|_, depress_id| {
+            if let Some(id) = renames.get(depress_id) {
+                *depress_id = *id;
+                true
+            } else {
+                false
+            }
+        });
     }
 
     /// Update the widgets under the cursor and touch events
