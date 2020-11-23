@@ -90,7 +90,7 @@ where
         Theme::<D>::draw_handle(&self.inner, draw, window, rect)
     }
 
-    fn clear_colour(&self) -> Colour {
+    fn clear_color(&self) -> Colour {
         BACKGROUND.with(|b| b.get())
     }
 }

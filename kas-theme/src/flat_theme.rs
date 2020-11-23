@@ -137,7 +137,7 @@ where
         }
     }
 
-    fn clear_colour(&self) -> Colour {
+    fn clear_color(&self) -> Colour {
         self.cols.background
     }
 }

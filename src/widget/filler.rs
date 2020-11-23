@@ -32,9 +32,9 @@ impl Filler {
         Filler::with_policy(StretchPolicy::Filler)
     }
 
-    /// Construct a filler with policy [`StretchPolicy::Maximise`]
-    pub fn maximise() -> Self {
-        Filler::with_policy(StretchPolicy::Maximise)
+    /// Construct a filler with policy [`StretchPolicy::Maximize`]
+    pub fn maximize() -> Self {
+        Filler::with_policy(StretchPolicy::Maximize)
     }
 
     /// Construct with a custom stretch policy

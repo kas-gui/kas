@@ -385,7 +385,7 @@ where
 
         let time3 = Instant::now();
         // TODO: check frame.optimal ?
-        let clear_color = to_wgpu_color(shared.theme.clear_colour());
+        let clear_color = to_wgpu_color(shared.theme.clear_color());
         shared.render(&mut self.draw, &frame.output.view, clear_color);
 
         let end = Instant::now();

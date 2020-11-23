@@ -72,7 +72,7 @@ pub enum StretchPolicy {
     /// Extra space has high utility
     HighUtility,
     /// Greedily consume as much space as possible
-    Maximise,
+    Maximize,
 }
 
 impl Default for StretchPolicy {
@@ -571,7 +571,7 @@ impl SizeRules {
                 if dist_over_b > sum - target {
                     // we do not go below ideal, and will keep at least one above
                     // calculate distance over for each stretch policy
-                    const MAX_POLICY: usize = StretchPolicy::Maximise as usize + 1;
+                    const MAX_POLICY: usize = StretchPolicy::Maximize as usize + 1;
                     let mut dists = [0; MAX_POLICY];
                     for i in 0..N {
                         dists[rules[i].stretch as usize] += out[i].saturating_sub(rules[i].b);

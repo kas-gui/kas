@@ -69,8 +69,8 @@ pub trait ThemeDst<D: DrawShared>: ThemeApi {
 
     /// Background colour
     ///
-    /// See also [`Theme::clear_colour`].
-    fn clear_colour(&self) -> Colour;
+    /// See also [`Theme::clear_color`].
+    fn clear_color(&self) -> Colour;
 }
 
 #[cfg(not(feature = "gat"))]
@@ -125,8 +125,8 @@ where
         }
     }
 
-    fn clear_colour(&self) -> Colour {
-        self.clear_colour()
+    fn clear_color(&self) -> Colour {
+        self.clear_color()
     }
 }
 
@@ -157,8 +157,8 @@ impl<'a, D: DrawShared + 'static, T: Theme<D>> ThemeDst<D> for T {
         StackDst::new_or_boxed(h)
     }
 
-    fn clear_colour(&self) -> Colour {
-        self.clear_colour()
+    fn clear_color(&self) -> Colour {
+        self.clear_color()
     }
 }
 
