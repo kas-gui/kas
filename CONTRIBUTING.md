@@ -22,6 +22,12 @@ Code style is more art than science, but should:
 Sometimes introducing an extra `let` binding helps. Sometimes it makes sense
 to wrap a `match`. Sometimes it makes sense to use `return`.
 
+### Spelling
+
+As is industry standard, APIs should use US-English spellings.
+This rule is not enforced for documentation or local variables,
+so long readability is not significantly impaired.
+
 
 Crates and repositories
 --------------------------

@@ -414,7 +414,7 @@ impl Layout for Mandlebrot {
             false => 200.0,
         } * size_handle.scale_factor())
         .round() as u32;
-        SizeRules::new(size, size * 3, (0, 0), StretchPolicy::Maximise)
+        SizeRules::new(size, size * 3, (0, 0), StretchPolicy::Maximize)
     }
 
     #[inline]

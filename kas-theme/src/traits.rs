@@ -86,7 +86,7 @@ pub trait Theme<D: DrawShared>: ThemeApi {
     ) -> Self::DrawHandle<'a>;
 
     /// Background colour
-    fn clear_colour(&self) -> Colour;
+    fn clear_color(&self) -> Colour;
 }
 
 /// Per-window storage for the theme
@@ -152,8 +152,8 @@ impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
         self.deref().draw_handle(draw, window, rect)
     }
 
-    fn clear_colour(&self) -> Colour {
-        self.deref().clear_colour()
+    fn clear_color(&self) -> Colour {
+        self.deref().clear_color()
     }
 }
 

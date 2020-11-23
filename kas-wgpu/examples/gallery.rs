@@ -63,7 +63,7 @@ impl TextEditPopup {
             core: Default::default(),
             layout_data: Default::default(),
             edit: EditBox::new(text).multi_line(true),
-            fill: Filler::maximise(),
+            fill: Filler::maximize(),
             cancel: TextButton::new("Cancel", false),
             save: TextButton::new("Save", true),
             commit: false,

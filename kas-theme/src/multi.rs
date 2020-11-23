@@ -144,8 +144,8 @@ impl<D: DrawShared + 'static> Theme<D> for MultiTheme<D> {
         self.themes[self.active].draw_handle(draw, window, rect)
     }
 
-    fn clear_colour(&self) -> Colour {
-        self.themes[self.active].clear_colour()
+    fn clear_color(&self) -> Colour {
+        self.themes[self.active].clear_color()
     }
 }
 

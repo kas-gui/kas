@@ -6,6 +6,9 @@
 //! Colour type and theming
 
 /// Standard colour description
+///
+/// NOTE: spelling standardisation is omitted for this type on the basis that
+/// is expected to be replaced in the near future.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Colour {
     pub r: f32,
