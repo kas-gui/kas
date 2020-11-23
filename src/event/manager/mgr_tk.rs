@@ -72,15 +72,13 @@ impl ManagerState {
 
         // Re-assigning WidgetIds might invalidate state; to avoid this we map
         // existing ids to new ids
-        let mut map = HashMap::new();
+        let mut renames = HashMap::new();
         let mut id = WidgetId::FIRST;
 
-        // We re-set these instead of remapping:
+        // We re-create these instead of renaming IDs:
+        debug_assert!(self.accel_stack.is_empty());
         self.accel_stack.clear();
         self.accel_layers.clear();
-        self.time_updates.clear();
-        self.handle_updates.clear();
-        self.pending.clear();
         self.nav_fallback = None;
 
         // Enumerate and configure all widgets:
@@ -89,7 +87,7 @@ impl ManagerState {
             mgr.push_accel_layer(false);
             widget.configure_recurse(ConfigureManager {
                 id: &mut id,
-                map: &mut map,
+                map: &mut renames,
                 mgr: &mut mgr,
             });
             mgr.pop_accel_layer(widget.id());
@@ -106,16 +104,16 @@ impl ManagerState {
             self.end_id = id;
         }
 
-        // The remaining code just updates all input states to new IDs via the map.
+        // The remaining code just updates all input states to new IDs via renames.
 
-        self.sel_focus = self.sel_focus.and_then(|id| map.get(&id).cloned());
-        self.nav_focus = self.nav_focus.and_then(|id| map.get(&id).cloned());
+        self.sel_focus = self.sel_focus.and_then(|id| renames.get(&id).cloned());
+        self.nav_focus = self.nav_focus.and_then(|id| renames.get(&id).cloned());
         self.mouse_grab = self.mouse_grab.as_ref().and_then(|grab| {
-            map.get(&grab.start_id).map(|id| MouseGrab {
+            renames.get(&grab.start_id).map(|id| MouseGrab {
                 button: grab.button,
                 repetitions: grab.repetitions,
                 start_id: *id,
-                depress: grab.depress.and_then(|id| map.get(&id).cloned()),
+                depress: grab.depress.and_then(|id| renames.get(&id).cloned()),
                 mode: grab.mode,
                 pan_grab: grab.pan_grab,
             })
@@ -123,46 +121,76 @@ impl ManagerState {
 
         let mut i = 0;
         while i < self.pan_grab.len() {
-            if let Some(id) = map.get(&self.pan_grab[i].id) {
+            if let Some(id) = renames.get(&self.pan_grab[i].id) {
                 self.pan_grab[i].id = *id;
                 i += 1;
             } else {
                 self.remove_pan(i);
             }
         }
-        macro_rules! do_map {
-            ($seq:expr, $update:expr) => {
-                let update = $update;
-                let mut i = 0;
-                let mut j = $seq.len();
-                while i < j {
-                    // invariant: $seq[0..i] have been updated
-                    // invariant: $seq[j..len] are rejected
-                    if let Some(elt) = update($seq[i].clone()) {
-                        $seq[i] = elt;
-                        i += 1;
-                    } else {
-                        j -= 1;
-                        $seq.swap(i, j);
-                    }
+
+        self.touch_grab.retain(|_, grab| {
+            if let Some(id) = renames.get(&grab.start_id) {
+                grab.start_id = *id;
+                if let Some(cur_id) = grab.cur_id {
+                    grab.cur_id = renames.get(&cur_id).cloned();
                 }
-                $seq.truncate(j);
-            };
+                true
+            } else {
+                false
+            }
+        });
+
+        self.key_depress.retain(|_, depress_id| {
+            if let Some(id) = renames.get(depress_id) {
+                *depress_id = *id;
+                true
+            } else {
+                false
+            }
+        });
+
+        // TODO(nightly feature): use Vec::drain_filter when stable (also below)
+        let mut i = 0;
+        while i < self.time_updates.len() {
+            if let Some(id) = renames.get(&self.time_updates[i].1) {
+                self.time_updates[i].1 = *id;
+                i += 1;
+            } else {
+                self.time_updates.swap_remove(i);
+            }
         }
 
-        do_map!(self.touch_grab, |mut elt: TouchGrab| map
-            .get(&elt.start_id)
-            .map(|id| {
-                elt.start_id = *id;
-                if let Some(cur_id) = elt.cur_id {
-                    elt.cur_id = map.get(&cur_id).cloned();
+        for ids in self.handle_updates.values_mut() {
+            let mut i = 0;
+            while i < ids.len() {
+                if let Some(id) = renames.get(&ids[i]) {
+                    ids[i] = *id;
+                    i += 1;
+                } else {
+                    ids.swap_remove(i);
                 }
-                elt
-            }));
+            }
+        }
 
-        do_map!(self.key_depress, |elt: (u32, WidgetId)| map
-            .get(&elt.1)
-            .map(|id| (elt.0, *id)));
+        self.pending.retain(|item| match item {
+            Pending::LostCharFocus(id) => {
+                if let Some(new_id) = renames.get(id) {
+                    *item = Pending::LostCharFocus(*new_id);
+                    true
+                } else {
+                    false
+                }
+            }
+            Pending::LostSelFocus(id) => {
+                if let Some(new_id) = renames.get(id) {
+                    *item = Pending::LostSelFocus(*new_id);
+                    true
+                } else {
+                    false
+                }
+            }
+        });
     }
 
     /// Update the widgets under the cursor and touch events
@@ -190,8 +218,8 @@ impl ManagerState {
         let hover = widget.find_id(self.last_mouse_coord);
         self.with(tkw, |mgr| mgr.set_hover(widget, hover));
 
-        for touch in &mut self.touch_grab {
-            touch.cur_id = widget.find_id(touch.coord);
+        for grab in self.touch_grab.iter_mut() {
+            grab.1.cur_id = widget.find_id(grab.1.coord);
         }
     }
 

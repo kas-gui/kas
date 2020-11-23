@@ -74,8 +74,8 @@ impl ManagerState {
         if self.mouse_grab.as_ref().and_then(|grab| grab.depress) == Some(w_id) {
             return true;
         }
-        for touch in &self.touch_grab {
-            if touch.depress == Some(w_id) {
+        for grab in self.touch_grab.values() {
+            if grab.depress == Some(w_id) {
                 return true;
             }
         }
@@ -459,15 +459,17 @@ impl<'a> Manager<'a> {
                     pan_grab = self.mgr.set_pan_on(id, mode, true, coord);
                 }
                 trace!("Manager: start touch grab by {}", start_id);
-                self.mgr.touch_grab.push(TouchGrab {
+                self.mgr.touch_grab.insert(
                     touch_id,
-                    start_id,
-                    depress: Some(id),
-                    cur_id: Some(id),
-                    coord,
-                    mode,
-                    pan_grab,
-                });
+                    TouchGrab {
+                        start_id,
+                        depress: Some(id),
+                        cur_id: Some(id),
+                        coord,
+                        mode,
+                        pan_grab,
+                    },
+                );
             }
         }
 
@@ -497,11 +499,8 @@ impl<'a> Manager<'a> {
                 }
             }
             PressSource::Touch(id) => {
-                for touch in &mut self.mgr.touch_grab {
-                    if touch.touch_id == id {
-                        touch.depress = target;
-                        break;
-                    }
+                if let Some(grab) = self.mgr.touch_grab.get_mut(&id) {
+                    grab.depress = target;
                 }
             }
         }

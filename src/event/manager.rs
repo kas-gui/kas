@@ -8,6 +8,7 @@
 // Without winit, several things go unused
 #![cfg_attr(not(feature = "winit"), allow(unused))]
 
+use linear_map::LinearMap;
 use log::trace;
 use smallvec::SmallVec;
 use std::collections::HashMap;
@@ -50,7 +51,6 @@ struct MouseGrab {
 
 #[derive(Clone, Debug)]
 struct TouchGrab {
-    touch_id: u64,
     start_id: WidgetId,
     depress: Option<WidgetId>,
     cur_id: Option<WidgetId>,
@@ -102,13 +102,13 @@ pub struct ManagerState {
     nav_stack: SmallVec<[u32; 16]>,
     hover: Option<WidgetId>,
     hover_icon: CursorIcon,
-    key_depress: SmallVec<[(u32, WidgetId); 10]>,
+    key_depress: LinearMap<u32, WidgetId>,
     last_mouse_coord: Coord,
     last_click_button: MouseButton,
     last_click_repetitions: u32,
     last_click_timeout: Instant,
     mouse_grab: Option<MouseGrab>,
-    touch_grab: SmallVec<[TouchGrab; 10]>,
+    touch_grab: LinearMap<u64, TouchGrab>,
     pan_grab: SmallVec<[PanGrab; 4]>,
     accel_stack: Vec<(bool, HashMap<VirtualKeyCode, WidgetId>)>,
     accel_layers: HashMap<WidgetId, (bool, HashMap<VirtualKeyCode, WidgetId>)>,
@@ -174,10 +174,10 @@ impl ManagerState {
                 grab.pan_grab.0 = p0 - 1;
             }
         }
-        for grab in &mut self.touch_grab {
-            let p0 = grab.pan_grab.0;
+        for grab in self.touch_grab.iter_mut() {
+            let p0 = grab.1.pan_grab.0;
             if p0 >= index as u16 && p0 != u16::MAX {
-                grab.pan_grab.0 = p0 - 1;
+                grab.1.pan_grab.0 = p0 - 1;
             }
         }
     }
@@ -197,7 +197,8 @@ impl ManagerState {
         }
 
         // Note: the fact that grab.n > 0 implies source is a touch event!
-        for grab in &mut self.touch_grab {
+        for grab in self.touch_grab.iter_mut() {
+            let grab = grab.1;
             if grab.pan_grab.0 == g.0 && grab.pan_grab.1 > g.1 {
                 grab.pan_grab.1 -= 1;
                 if (grab.pan_grab.1 as usize) == MAX_PAN_GRABS - 1 {
@@ -372,13 +373,13 @@ impl<'a> Manager<'a> {
 
                 // Event::Activate causes buttons to be visually depressed
                 if is_activate {
-                    for item in &self.mgr.key_depress {
-                        if item.1 == id {
+                    for press_id in self.mgr.key_depress.values().cloned() {
+                        if press_id == id {
                             return;
                         }
                     }
 
-                    self.mgr.key_depress.push((scancode, id));
+                    self.mgr.key_depress.insert(scancode, id);
                     self.redraw(id);
                 }
             }
@@ -387,21 +388,7 @@ impl<'a> Manager<'a> {
 
     fn end_key_event(&mut self, scancode: u32) {
         // We must match scancode not vkey since the latter may have changed due to modifiers
-
-        // TODO: it would be nice to replace key_depress with a set
-        fn remove<A: smallvec::Array, F: Fn(&A::Item) -> bool>(
-            v: &mut SmallVec<A>,
-            f: F,
-        ) -> Option<A::Item> {
-            for (i, item) in v.iter().enumerate() {
-                if f(item) {
-                    return Some(v.remove(i));
-                }
-            }
-            return None;
-        }
-
-        if let Some((_, id)) = remove(&mut self.mgr.key_depress, |item| item.0 == scancode) {
+        if let Some(id) = self.mgr.key_depress.remove(&scancode) {
             self.redraw(id);
         }
     }
@@ -430,27 +417,14 @@ impl<'a> Manager<'a> {
 
     #[inline]
     fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
-        self.mgr.touch_grab.iter_mut().find_map(|grab| {
-            if grab.touch_id == touch_id {
-                Some(grab)
-            } else {
-                None
-            }
-        })
+        self.mgr.touch_grab.get_mut(&touch_id)
     }
 
     fn remove_touch(&mut self, touch_id: u64) -> Option<TouchGrab> {
-        let len = self.mgr.touch_grab.len();
-        for i in 0..len {
-            if self.mgr.touch_grab[i].touch_id == touch_id {
-                let grab = self.mgr.touch_grab[i].clone();
-                trace!("Manager: end touch grab by {}", grab.start_id);
-                self.mgr.touch_grab.swap(i, len - 1);
-                self.mgr.touch_grab.truncate(len - 1);
-                return Some(grab);
-            }
-        }
-        None
+        self.mgr.touch_grab.remove(&touch_id).map(|grab| {
+            trace!("Manager: end touch grab by {}", grab.start_id);
+            grab
+        })
     }
 
     fn set_char_focus(&mut self, wid: Option<WidgetId>) {
