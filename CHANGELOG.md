@@ -2,6 +2,59 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2020-11-24
+
+This release covers significant revisions to the KAS-text API along with initial
+support for rich text. It also includes several fixes and quality-of-life
+improvements.
+
+### Text
+
+-   Updates for new KAS-text API (#126, #131-133)
+-   Fix drawing of edit cursor in right-hand margin (#122)
+-   Add `markdown` example (#125, #139)
+-   Remove `LabelString`; make `AccelString` implement
+    `kas-text::parser::Parser` (#126)
+-   Support underline and strikethrough (#129, #133)
+-   New `SelectionHelper` struct to abstract over text-selection logic (#137)
+
+### Graphics
+
+-   Update to wgpu v0.6 (#121)
+-   Use pre-compiled GLSL shaders; add simple opt-in build system. This removes
+    the depencency on `shaderc`. (#124)
+-   Fix shader precision (#128)
+-   Add draw performance metrics (#131)
+
+### Layout
+
+Improve space allocation for grid spans (#134)
+Fix size of slider handle when slider is over-sized (#134)
+Remove the unwanted right-hand margin in the Mandlebrot example (#134)
+
+### Window and event management
+
+-   Update winit to 0.23 (#129)
+-   Add `Window::on_drop` method returning a future which can be used to
+    retrieve state from a dialog window on closure. This replaces window
+    callbacks. (#130)
+-   New `LostSelFocus` event to delay focus-clearing until another widget
+    supporting selection receives focus (#137)
+-   Use `LinearMap` for cleaner code in the event manager (#140)
+-   Fix: avoid clearing `time_updates`, `handle_updates` and `pending` fields
+    of event manager during reconfigure (#140)
+
+### Misc
+
+-   Remove broken `CloneTo` helper trait (#126)
+-   Add `min_spec` feature for optional usage of `min_specialization`. (#132)
+-   Let parent widgets store identifier range for descendents, allowing O(1)
+    `is_ancestor_of` check. (#132)
+-   Use binary-search in `WidgetChildren::find` and `find_mut` for `O(log n)`
+    performance. (#133)
+-   Add builder-style methods to `Theme` and `Toolkit` (#139)
+-   Switch to US-English spellings in API (#141)
+
 ## [0.5.0] — 2020-08-14
 This release largely concerns text formatting, with the new `kas-text` library.
 

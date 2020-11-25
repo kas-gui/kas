@@ -20,9 +20,8 @@ KAS's design provides:
 
 For details, see the [Examples README](kas-wgpu/examples/README.md).
 
-![Calculator](screenshots/calculator.png) ![Gallery](screenshots/gallery.gif)
+![Gallery](https://github.com/kas-gui/data-dump/blob/master/video/gallery.png)
 ![Splitter](screenshots/splitter.gif)
-![Layout](screenshots/layout.png)
 ![Mandlebrot](screenshots/mandlebrot.png)
 
 ## Features

@@ -9,7 +9,8 @@ Note that screenshots may be outdated since themes, draw routines and layout cod
 
 A testbed demoing most widgets along with theme and colour switching.
 
-![Gallery](../../screenshots/gallery.gif)
+![Gallery](../../screenshots/gallery.png)
+![Gallery](https://github.com/kas-gui/data-dump/blob/master/video/gallery.png)
 
 ### Counter
 
@@ -63,6 +64,16 @@ Demonstration of complex layout setting. Resizing is a little slow due to the
 text layout engine (may be improved in the future).
 
 ![Layout](../../screenshots/layout.png)
+
+### Markdown
+
+Markdown parsing and rich-text rendering. This is a demonstrator for
+[KAS-text](https://github.com/kas-gui/kas-text/)'s rich text support, using
+Markdown as an input language. Note that full support for Markdown requires a
+considerably more complex text layout engine as well as an HTML parser and
+potentially even CSS support; this is beyond the (immediate) goals of this feature.
+
+![Markdown](../../screenshots/markdown.png)
 
 ### Custom theme
 

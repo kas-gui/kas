@@ -105,6 +105,11 @@ impl<'a> Manager<'a> {
     /// handler. Note that previously-scheduled updates are cleared when
     /// widgets are reconfigured.
     pub fn update_on_timer(&mut self, duration: Duration, w_id: WidgetId) {
+        trace!(
+            "Manager::update_on_timer: queing update for {} at now+{}ms",
+            w_id,
+            duration.as_millis()
+        );
         let time = Instant::now() + duration;
         'outer: loop {
             for row in &mut self.mgr.time_updates {
@@ -133,11 +138,16 @@ impl<'a> Manager<'a> {
     ///
     /// This should be called from [`WidgetConfig::configure`].
     pub fn update_on_handle(&mut self, handle: UpdateHandle, w_id: WidgetId) {
+        trace!(
+            "Manager::update_on_handle: update {} on handle {:?}",
+            w_id,
+            handle
+        );
         self.mgr
             .handle_updates
             .entry(handle)
-            .or_insert(Vec::new())
-            .push(w_id);
+            .or_insert(Default::default())
+            .insert(w_id);
     }
 
     /// Notify that a widget must be redrawn

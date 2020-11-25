@@ -187,8 +187,11 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             let bound = required.0 as u32;
             let min = self.dims.min_line_length;
             let ideal = self.dims.ideal_line_length;
+            // NOTE: using different variable-width stretch policies here can
+            // cause problems (e.g. edit boxes greedily consuming too much
+            // space). This is a hard layout problem; for now don't do this.
             let (min, ideal, policy) = match class {
-                TextClass::Edit | TextClass::EditMulti => (min, ideal, StretchPolicy::HighUtility),
+                TextClass::Edit | TextClass::EditMulti => (min, ideal, StretchPolicy::LowUtility),
                 _ => (bound.min(min), bound.min(ideal), StretchPolicy::LowUtility),
             };
             SizeRules::new(min, ideal, margins, policy)

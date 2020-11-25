@@ -8,7 +8,7 @@
 // Without winit, several things go unused
 #![cfg_attr(not(feature = "winit"), allow(unused))]
 
-use linear_map::LinearMap;
+use linear_map::{set::LinearSet, LinearMap};
 use log::trace;
 use smallvec::SmallVec;
 use std::collections::HashMap;
@@ -120,7 +120,7 @@ pub struct ManagerState {
     time_updates: Vec<(Instant, WidgetId)>,
     // TODO(opt): consider other containers, e.g. C++ multimap
     // or sorted Vec with binary search yielding a range
-    handle_updates: HashMap<UpdateHandle, Vec<WidgetId>>,
+    handle_updates: HashMap<UpdateHandle, LinearSet<WidgetId>>,
     pending: SmallVec<[Pending; 8]>,
     action: TkAction,
 }
