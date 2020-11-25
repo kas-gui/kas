@@ -8,6 +8,7 @@
 use log::*;
 use smallvec::SmallVec;
 use std::collections::HashMap;
+use std::mem::swap;
 use std::time::{Duration, Instant};
 
 use super::*;
@@ -63,11 +64,16 @@ impl ManagerState {
     ///
     /// This should be called by the toolkit on the widget tree when the window
     /// is created (before or after resizing).
+    ///
+    /// This method calls [`WidgetConfig::configure_recurse`] in order to assign
+    /// [`WidgetId`] identifiers and call widgets' [`WidgetConfig::configure`]
+    /// method. Additionally, it updates the [`ManagerState`] to account for
+    /// renamed and removed widgets.
     pub fn configure<W>(&mut self, tkw: &mut dyn TkWindow, widget: &mut W)
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
-        trace!("Manager::configure");
+        debug!("Manager::configure");
         self.action = TkAction::None;
 
         // Re-assigning WidgetIds might invalidate state; to avoid this we map
@@ -80,6 +86,11 @@ impl ManagerState {
         self.accel_stack.clear();
         self.accel_layers.clear();
         self.nav_fallback = None;
+        // These we merge later:
+        let mut old_time_updates = Default::default();
+        swap(&mut self.time_updates, &mut old_time_updates);
+        let mut old_handle_updates = Default::default();
+        swap(&mut self.handle_updates, &mut old_handle_updates);
 
         // Enumerate and configure all widgets:
         let coord = self.last_mouse_coord;
@@ -104,7 +115,9 @@ impl ManagerState {
             self.end_id = id;
         }
 
-        // The remaining code just updates all input states to new IDs via renames.
+        // Update input state to account for renamed widgets. Assumption: none
+        // of this state is adjusted within widget configure methods.
+        // TODO(safety): ensure these fields cannot be updated by configure?
 
         self.sel_focus = self.sel_focus.and_then(|id| renames.get(&id).cloned());
         self.nav_focus = self.nav_focus.and_then(|id| renames.get(&id).cloned());
@@ -150,26 +163,38 @@ impl ManagerState {
             }
         });
 
-        // TODO(nightly feature): use Vec::drain_filter when stable (also below)
-        let mut i = 0;
-        while i < self.time_updates.len() {
-            if let Some(id) = renames.get(&self.time_updates[i].1) {
-                self.time_updates[i].1 = *id;
-                i += 1;
-            } else {
-                self.time_updates.swap_remove(i);
+        // We have to handle time_updates and handle_updates carefully since
+        // these may be set during configure, *and* may carry old state forward
+        // which must be renamed.
+        'old: for (time, old_id) in old_time_updates.drain(..) {
+            if let Some(new_id) = renames.get(&old_id).cloned() {
+                // Insert into our data structure. We sort everything below.
+                'insert: loop {
+                    for row in &mut self.time_updates {
+                        if row.1 == new_id {
+                            if row.0 <= time {
+                                continue 'old;
+                            } else {
+                                row.0 = time;
+                                break 'insert;
+                            }
+                        }
+                    }
+
+                    self.time_updates.push((time, new_id));
+                    break;
+                }
             }
         }
+        self.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
 
-        for ids in self.handle_updates.values_mut() {
-            let mut i = 0;
-            while i < ids.len() {
-                if let Some(id) = renames.get(&ids[i]) {
-                    ids[i] = *id;
-                    i += 1;
-                } else {
-                    ids.swap_remove(i);
-                }
+        for (handle, mut ids) in old_handle_updates.drain() {
+            let new_ids = self
+                .handle_updates
+                .entry(handle)
+                .or_insert(Default::default());
+            for id in ids.drain().filter_map(|id| renames.get(&id)).cloned() {
+                new_ids.insert(id);
             }
         }
 
@@ -376,7 +401,7 @@ impl<'a> Manager<'a> {
     ) {
         // NOTE: to avoid borrow conflict, we must clone values!
         if let Some(mut values) = self.mgr.handle_updates.get(&handle).cloned() {
-            for w_id in values.drain(..) {
+            for w_id in values.drain() {
                 let event = Event::HandleUpdate { handle, payload };
                 self.send_event(widget, w_id, event);
             }

@@ -5,7 +5,7 @@
 
 //! Event loop and handling
 
-use log::{debug, error, trace};
+use log::{debug, error};
 use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -186,7 +186,6 @@ where
                 } else if *control_flow == ControlFlow::Poll {
                     ControlFlow::Poll
                 } else if let Some((instant, _)) = self.resumes.first() {
-                    trace!("Requesting resume at {:?}", *instant);
                     ControlFlow::WaitUntil(*instant)
                 } else {
                     ControlFlow::Wait

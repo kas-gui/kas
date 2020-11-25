@@ -5,6 +5,7 @@
 
 //! Toggle widgets
 
+use log::trace;
 use std::convert::TryFrom;
 use std::fmt::{self, Debug};
 use std::rc::Rc;
@@ -57,6 +58,7 @@ impl<M: 'static> event::Handler for RadioBoxBare<M> {
         match event {
             Event::Activate => {
                 if !self.state {
+                    trace!("RadioBoxBare: set {}", self.id());
                     self.state = true;
                     mgr.redraw(self.id());
                     mgr.trigger_update(self.handle, self.id().into());
@@ -71,7 +73,8 @@ impl<M: 'static> event::Handler for RadioBoxBare<M> {
             }
             Event::HandleUpdate { payload, .. } => {
                 let id = WidgetId::try_from(payload).unwrap();
-                if id != self.id() {
+                if self.state && id != self.id() {
+                    trace!("RadioBoxBare: unset {}", self.id());
                     self.state = false;
                     mgr.redraw(self.id());
                 }
