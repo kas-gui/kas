@@ -184,10 +184,12 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=7, col=1, handler = handle_slider)] s =
                 Slider::<i32, Right>::new(-2, 2, 1).with_value(0),
             #[widget(row=8, col=0)] _ = Label::new("ScrollBar"),
-            #[widget(row=8, col=1, handler = handle_scroll)] sc =
-                ScrollBar::<Right>::new().with_limits(5, 2),
-            #[widget(row=9)] _ = Label::new("Child window"),
-            #[widget(row=9, col = 1)] _ = popup_edit_box,
+            #[widget(row=8, col=1, handler = handle_scroll)] sc: ScrollBar<Right> =
+                ScrollBar::new().with_limits(100, 20),
+            #[widget(row=9, col=1)] pg: ProgressBar<Right> = ProgressBar::new(),
+            #[widget(row=9, col=0)] _ = Label::new("ProgressBar"),
+            #[widget(row=10, col=0)] _ = Label::new("Child window"),
+            #[widget(row=10, col = 1)] _ = popup_edit_box,
         }
         impl {
             fn handle_combo(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {
@@ -196,7 +198,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
             fn handle_slider(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {
                 Response::Msg(Item::Slider(msg))
             }
-            fn handle_scroll(&mut self, _: &mut Manager, msg: u32) -> Response<Item> {
+            fn handle_scroll(&mut self, mgr: &mut Manager, msg: u32) -> Response<Item> {
+                let ratio = msg as f32 / self.sc.max_value() as f32;
+                *mgr += self.pg.set_value(ratio);
                 Response::Msg(Item::Scroll(msg))
             }
         }

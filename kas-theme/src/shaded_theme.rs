@@ -59,6 +59,7 @@ const DIMS: DimensionsParams = DimensionsParams {
     button_frame: 5.0,
     scrollbar_size: Vec2::splat(8.0),
     slider_size: Vec2(12.0, 25.0),
+    progress_bar: Vec2::splat(12.0),
 };
 
 pub struct DrawHandle<'a, D: Draw> {
@@ -405,5 +406,25 @@ where
 
         // handle
         self.draw_handle(h_rect, state);
+    }
+
+    fn progress_bar(&mut self, rect: Rect, dir: Direction, _: InputState, value: f32) {
+        let mut outer = Quad::from(rect + self.offset);
+        let inner = outer.shrink(outer.size().min_comp() / 2.0);
+        let norm = (0.0, -0.7);
+        let col = self.cols.frame;
+        self.draw
+            .shaded_round_frame(self.pass, outer, inner, norm, col);
+
+        if dir.is_horizontal() {
+            outer.b.0 = outer.a.0 + value * (outer.b.0 - outer.a.0);
+        } else {
+            outer.b.1 = outer.a.1 + value * (outer.b.1 - outer.a.1);
+        }
+        let thickness = outer.size().min_comp() / 2.0;
+        let inner = outer.shrink(thickness);
+        let col = self.cols.button;
+        self.draw
+            .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
     }
 }

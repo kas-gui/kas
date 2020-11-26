@@ -106,6 +106,7 @@ impl<T: SliderType, D: Directional + Default> Slider<T, D> {
     ///
     /// The initial value defaults to the range's
     /// lower bound but may be specified via [`Slider::with_value`].
+    #[inline]
     pub fn new(min: T, max: T, step: T) -> Self {
         Slider::new_with_direction(min, max, step, D::default())
     }
@@ -137,7 +138,12 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
 
     /// Set the initial value
     #[inline]
-    pub fn with_value(mut self, value: T) -> Self {
+    pub fn with_value(mut self, mut value: T) -> Self {
+        if value < self.range.0 {
+            value = self.range.0;
+        } else if value > self.range.1 {
+            value = self.range.1;
+        }
         self.value = value;
         self
     }
