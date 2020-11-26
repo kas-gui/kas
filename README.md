@@ -27,7 +27,7 @@ For details, see the [Examples README](kas-wgpu/examples/README.md).
 ## Features
 
 -   Touchscreen input, mouse input, full keyboard navigation, accelerator keys
--   Bidirectional text support and complex glyph shaping via [HarfBuzz]
+-   Bidirectional and rich text support via [KAS-text] with complex glyph shaping via [HarfBuzz]
 -   Scalable (HiDPI) supporting fractional scaling
 -   Themes (sizing and rendering control) and colour schemes
 -   Embedded graphics via custom [WebGPU] graphics pipes
@@ -40,7 +40,6 @@ These aren't here yet!
 
 -   Raster graphics
 -   Flow-box layouts
--   Rich text formatting
 -   CPU and OpenGL rendering (currently only supports drawing via [WebGPU],
     which should support most modern systems but not all)
 -   User-configuration and desktop integration
@@ -115,7 +114,7 @@ cargo run --example mandlebrot
 -   `kas`: the *core* of the GUI library, providing most interfaces and logic
     along with a selection of common widgets
 -   `kas-macros`: a helper crate for proc macros (do not use directly)
--   [`kas-text`]: font loading, text layout, text navigation
+-   [KAS-text]: font loading, text layout, text navigation
 -   `kas-theme`: theming support for KAS (API plus two themes; organisation may change)
 -   `kas-wgpu`: provides windowing via [`winit`] and rendering via [WebGPU]
 -   `kas-widgets`: (unrealised) - providing extra widgets
@@ -137,7 +136,7 @@ The `kas` crate has the following feature flags:
 -   `stack_dst`: some compatibility impls (see `kas-theme`'s documentation)
 
 
-[`kas-text`]: https://github.com/kas-gui/kas-text/
+[KAS-text]: https://github.com/kas-gui/kas-text/
 [`winit`]: https://github.com/rust-windowing/winit/
 [HarfBuzz]: https://harfbuzz.github.io/
 [WebGPU]: https://github.com/gfx-rs/wgpu-rs
