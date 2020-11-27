@@ -88,7 +88,7 @@ impl<'a> Manager<'a> {
     /// Get the current modifier state
     #[inline]
     pub fn modifiers(&self) -> ModifiersState {
-        self.mgr.modifiers
+        self.state.modifiers
     }
 
     /// Schedule an update
@@ -112,7 +112,7 @@ impl<'a> Manager<'a> {
         );
         let time = Instant::now() + duration;
         'outer: loop {
-            for row in &mut self.mgr.time_updates {
+            for row in &mut self.state.time_updates {
                 if row.1 == w_id {
                     if row.0 <= time {
                         return;
@@ -123,11 +123,11 @@ impl<'a> Manager<'a> {
                 }
             }
 
-            self.mgr.time_updates.push((time, w_id));
+            self.state.time_updates.push((time, w_id));
             break;
         }
 
-        self.mgr.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
+        self.state.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
     }
 
     /// Subscribe to an update handle
@@ -143,7 +143,7 @@ impl<'a> Manager<'a> {
             w_id,
             handle
         );
-        self.mgr
+        self.state
             .handle_updates
             .entry(handle)
             .or_insert(Default::default())
@@ -197,11 +197,11 @@ impl<'a> Manager<'a> {
     /// the [`WindowId`] returned by this method.
     #[inline]
     pub fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
-        let id = self.tkw.add_popup(popup.clone());
-        self.mgr.new_popups.push(popup.id);
-        self.mgr.popups.push((id, popup));
-        self.mgr.nav_focus = None;
-        self.mgr.nav_stack.clear();
+        let id = self.shell.add_popup(popup.clone());
+        self.state.new_popups.push(popup.id);
+        self.state.popups.push((id, popup));
+        self.state.nav_focus = None;
+        self.state.nav_stack.clear();
         id
     }
 
@@ -215,14 +215,14 @@ impl<'a> Manager<'a> {
     /// reported (except via log messages).
     #[inline]
     pub fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
-        self.tkw.add_window(widget)
+        self.shell.add_window(widget)
     }
 
     /// Close a window or pop-up
     #[inline]
     pub fn close_window(&mut self, id: WindowId) {
         if let Some(index) =
-            self.mgr.popups.iter().enumerate().find_map(
+            self.state.popups.iter().enumerate().find_map(
                 |(i, p)| {
                     if p.0 == id {
                         Some(i)
@@ -232,21 +232,21 @@ impl<'a> Manager<'a> {
                 },
             )
         {
-            let (_, popup) = self.mgr.popups.remove(index);
-            self.mgr.popup_removed.push((popup.parent, id));
+            let (_, popup) = self.state.popups.remove(index);
+            self.state.popup_removed.push((popup.parent, id));
 
-            if self.mgr.nav_focus.is_some() {
+            if self.state.nav_focus.is_some() {
                 // We guess that the parent supports key_nav:
-                self.mgr.nav_focus = Some(popup.parent);
-                self.mgr.nav_stack.clear();
+                self.state.nav_focus = Some(popup.parent);
+                self.state.nav_stack.clear();
             }
         }
 
         // For popups, we need to update mouse/keyboard focus.
         // (For windows, focus gained/lost events do this job.)
-        self.mgr.send_action(TkAction::RegionMoved);
+        self.state.send_action(TkAction::RegionMoved);
 
-        self.tkw.close_window(id);
+        self.shell.close_window(id);
     }
 
     /// Updates all subscribed widgets
@@ -255,7 +255,7 @@ impl<'a> Manager<'a> {
     /// windows, will receive an update.
     #[inline]
     pub fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
-        self.tkw.trigger_update(handle, payload);
+        self.shell.trigger_update(handle, payload);
     }
 
     /// Attempt to get clipboard contents
@@ -264,25 +264,25 @@ impl<'a> Manager<'a> {
     /// may wish to log an appropriate warning message.
     #[inline]
     pub fn get_clipboard(&mut self) -> Option<String> {
-        self.tkw.get_clipboard()
+        self.shell.get_clipboard()
     }
 
     /// Attempt to set clipboard contents
     #[inline]
     pub fn set_clipboard<'c>(&mut self, content: std::borrow::Cow<'c, str>) {
-        self.tkw.set_clipboard(content)
+        self.shell.set_clipboard(content)
     }
 
     /// Adjust the theme
     #[inline]
     pub fn adjust_theme<F: FnMut(&mut dyn ThemeApi) -> ThemeAction>(&mut self, mut f: F) {
-        self.tkw.adjust_theme(&mut f);
+        self.shell.adjust_theme(&mut f);
     }
 
     /// Access a [`SizeHandle`]
     pub fn size_handle<F: FnMut(&mut dyn SizeHandle) -> T, T>(&mut self, mut f: F) -> T {
         let mut result = None;
-        self.tkw.size_handle(&mut |size_handle| {
+        self.shell.size_handle(&mut |size_handle| {
             result = Some(f(size_handle));
         });
         result.expect("ShellWindow::size_handle impl failed to call function argument")
@@ -302,9 +302,9 @@ impl<'a> Manager<'a> {
     /// This is primarily used to allow [`kas::widget::ScrollRegion`] to
     /// respond to navigation keys when no widget has focus.
     pub fn register_nav_fallback(&mut self, id: WidgetId) {
-        if self.mgr.nav_fallback.is_none() {
+        if self.state.nav_fallback.is_none() {
             debug!("Manager: nav_fallback = {}", id);
-            self.mgr.nav_fallback = Some(id);
+            self.state.nav_fallback = Some(id);
         }
     }
 
@@ -323,7 +323,7 @@ impl<'a> Manager<'a> {
     /// If `alt_bypass` is true, then this layer's accelerator keys will be
     /// active even without Alt pressed (but only highlighted with Alt pressed).
     pub fn push_accel_layer(&mut self, alt_bypass: bool) {
-        self.mgr.accel_stack.push((alt_bypass, HashMap::new()));
+        self.state.accel_stack.push((alt_bypass, HashMap::new()));
     }
 
     /// Enable `alt_bypass` for the current layer
@@ -331,7 +331,7 @@ impl<'a> Manager<'a> {
     /// This may be called by a child widget during configure, e.g. to enable
     /// alt-bypass for the base layer. See also [`Manager::push_accel_layer`].
     pub fn enable_alt_bypass(&mut self, alt_bypass: bool) {
-        if let Some(layer) = self.mgr.accel_stack.last_mut() {
+        if let Some(layer) = self.state.accel_stack.last_mut() {
             layer.0 = alt_bypass;
         }
     }
@@ -343,8 +343,8 @@ impl<'a> Manager<'a> {
     ///
     /// The `id` must be that of the widget which created this layer.
     pub fn pop_accel_layer(&mut self, id: WidgetId) {
-        if let Some(layer) = self.mgr.accel_stack.pop() {
-            self.mgr.accel_layers.insert(id, layer);
+        if let Some(layer) = self.state.accel_stack.pop() {
+            self.state.accel_layers.insert(id, layer);
         } else {
             debug_assert!(
                 false,
@@ -373,7 +373,7 @@ impl<'a> Manager<'a> {
     #[inline]
     pub fn add_accel_keys(&mut self, id: WidgetId, keys: &[VirtualKeyCode]) {
         if !self.read_only {
-            if let Some(last) = self.mgr.accel_stack.last_mut() {
+            if let Some(last) = self.state.accel_stack.last_mut() {
                 for key in keys {
                     last.1.insert(*key, id);
                 }
@@ -442,14 +442,14 @@ impl<'a> Manager<'a> {
         let mut pan_grab = (u16::MAX, 0);
         match source {
             PressSource::Mouse(button, repetitions) => {
-                if self.mgr.mouse_grab.is_some() {
+                if self.state.mouse_grab.is_some() {
                     return false;
                 }
                 if mode != GrabMode::Grab {
-                    pan_grab = self.mgr.set_pan_on(id, mode, false, coord);
+                    pan_grab = self.state.set_pan_on(id, mode, false, coord);
                 }
                 trace!("Manager: start mouse grab by {}", start_id);
-                self.mgr.mouse_grab = Some(MouseGrab {
+                self.state.mouse_grab = Some(MouseGrab {
                     button,
                     repetitions,
                     start_id,
@@ -458,7 +458,7 @@ impl<'a> Manager<'a> {
                     pan_grab,
                 });
                 if let Some(icon) = cursor {
-                    self.tkw.set_cursor_icon(icon);
+                    self.shell.set_cursor_icon(icon);
                 }
             }
             PressSource::Touch(touch_id) => {
@@ -466,10 +466,10 @@ impl<'a> Manager<'a> {
                     return false;
                 }
                 if mode != GrabMode::Grab {
-                    pan_grab = self.mgr.set_pan_on(id, mode, true, coord);
+                    pan_grab = self.state.set_pan_on(id, mode, true, coord);
                 }
                 trace!("Manager: start touch grab by {}", start_id);
-                self.mgr.touch_grab.insert(
+                self.state.touch_grab.insert(
                     touch_id,
                     TouchGrab {
                         start_id,
@@ -483,7 +483,7 @@ impl<'a> Manager<'a> {
             }
         }
 
-        if self.mgr.char_focus && self.mgr.sel_focus != Some(id) {
+        if self.state.char_focus && self.state.sel_focus != Some(id) {
             self.set_char_focus(None);
         }
         self.redraw(start_id);
@@ -504,33 +504,33 @@ impl<'a> Manager<'a> {
     pub fn set_grab_depress(&mut self, source: PressSource, target: Option<WidgetId>) {
         match source {
             PressSource::Mouse(_, _) => {
-                if let Some(grab) = self.mgr.mouse_grab.as_mut() {
+                if let Some(grab) = self.state.mouse_grab.as_mut() {
                     grab.depress = target;
                 }
             }
             PressSource::Touch(id) => {
-                if let Some(grab) = self.mgr.touch_grab.get_mut(&id) {
+                if let Some(grab) = self.state.touch_grab.get_mut(&id) {
                     grab.depress = target;
                 }
             }
         }
-        self.mgr.send_action(TkAction::Redraw);
+        self.state.send_action(TkAction::Redraw);
     }
 
     /// Get the current keyboard navigation focus, if any
     ///
     /// This is the widget selected by navigating the UI with the Tab key.
     pub fn nav_focus(&self) -> Option<WidgetId> {
-        self.mgr.nav_focus
+        self.state.nav_focus
     }
 
     /// Clear keyboard navigation focus
     pub fn clear_nav_focus(&mut self) {
-        if let Some(id) = self.mgr.nav_focus {
+        if let Some(id) = self.state.nav_focus {
             self.redraw(id);
         }
-        self.mgr.nav_focus = None;
-        self.mgr.nav_stack.clear();
+        self.state.nav_focus = None;
+        self.state.nav_stack.clear();
         trace!("Manager: nav_focus = None");
     }
 
@@ -539,8 +539,8 @@ impl<'a> Manager<'a> {
     /// [`WidgetConfig::key_nav`] *should* return true for the given widget,
     /// otherwise navigation behaviour may not be correct.
     pub fn set_nav_focus(&mut self, id: WidgetId) {
-        self.mgr.nav_focus = Some(id);
-        self.mgr.nav_stack.clear();
+        self.state.nav_focus = Some(id);
+        self.state.nav_stack.clear();
     }
 
     /// Advance the keyboard navigation focus
@@ -557,7 +557,7 @@ impl<'a> Manager<'a> {
         type WidgetStack<'b> = SmallVec<[&'b dyn WidgetConfig; 16]>;
         let mut widget_stack = WidgetStack::new();
 
-        if let Some(id) = self.mgr.popups.last().map(|(_, p)| p.id) {
+        if let Some(id) = self.state.popups.last().map(|(_, p)| p.id) {
             if let Some(w) = widget.find(id) {
                 widget = w;
             } else {
@@ -566,14 +566,14 @@ impl<'a> Manager<'a> {
             }
         }
 
-        if self.mgr.nav_stack.is_empty() {
-            if let Some(id) = self.mgr.nav_focus {
+        if self.state.nav_stack.is_empty() {
+            if let Some(id) = self.state.nav_focus {
                 // This is caused by set_nav_focus; we need to rebuild nav_stack
                 'l: while id != widget.id() {
                     for index in 0..widget.len() {
                         let w = widget.get(index).unwrap();
                         if w.is_ancestor_of(id) {
-                            self.mgr.nav_stack.push(index as u32);
+                            self.state.nav_stack.push(index as u32);
                             widget_stack.push(widget);
                             widget = w;
                             continue 'l;
@@ -581,21 +581,21 @@ impl<'a> Manager<'a> {
                     }
 
                     warn!("next_nav_focus: unable to find widget {}", id);
-                    self.mgr.nav_focus = None;
-                    self.mgr.nav_stack.clear();
+                    self.state.nav_focus = None;
+                    self.state.nav_stack.clear();
                     return false;
                 }
             }
         } else if self
-            .mgr
+            .state
             .nav_focus
             .map(|id| !widget.is_ancestor_of(id))
             .unwrap_or(true)
         {
-            self.mgr.nav_stack.clear();
+            self.state.nav_stack.clear();
         } else {
             // Reconstruct widget_stack:
-            for index in self.mgr.nav_stack.iter().cloned() {
+            for index in self.state.nav_stack.iter().cloned() {
                 let new = widget.get(index as usize).unwrap();
                 widget_stack.push(widget);
                 widget = new;
@@ -680,17 +680,17 @@ impl<'a> Manager<'a> {
         macro_rules! try_set_focus {
             ($self:ident, $widget:ident) => {
                 if $widget.key_nav() && !$widget.is_disabled() {
-                    $self.mgr.nav_focus = Some($widget.id());
-                    trace!("Manager: nav_focus = {:?}", $self.mgr.nav_focus);
+                    $self.state.nav_focus = Some($widget.id());
+                    trace!("Manager: nav_focus = {:?}", $self.state.nav_focus);
                     return true;
                 }
             };
         }
 
         // We redraw in all cases. Since this is not part of widget event
-        // processing, we can push directly to self.mgr.action.
-        self.mgr.send_action(TkAction::Redraw);
-        let nav_stack = &mut self.mgr.nav_stack;
+        // processing, we can push directly to self.state.action.
+        self.state.send_action(TkAction::Redraw);
+        let nav_stack = &mut self.state.nav_stack;
 
         if !reverse {
             // Depth-first search without function recursion. Our starting
@@ -711,7 +711,7 @@ impl<'a> Manager<'a> {
             }
         } else {
             // Reverse depth-first search
-            let mut start = self.mgr.nav_focus.is_none();
+            let mut start = self.state.nav_focus.is_none();
             'l2: loop {
                 if start || do_sibling_or_pop!('l2, nav_stack, widget, widget_stack) {
                     start = false;

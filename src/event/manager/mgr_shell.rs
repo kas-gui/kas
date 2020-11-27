@@ -69,7 +69,7 @@ impl ManagerState {
     /// [`WidgetId`] identifiers and call widgets' [`WidgetConfig::configure`]
     /// method. Additionally, it updates the [`ManagerState`] to account for
     /// renamed and removed widgets.
-    pub fn configure<W>(&mut self, tkw: &mut dyn ShellWindow, widget: &mut W)
+    pub fn configure<W>(&mut self, shell: &mut dyn ShellWindow, widget: &mut W)
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
@@ -94,7 +94,7 @@ impl ManagerState {
 
         // Enumerate and configure all widgets:
         let coord = self.last_mouse_coord;
-        self.with(tkw, |mut mgr| {
+        self.with(shell, |mut mgr| {
             mgr.push_accel_layer(false);
             widget.configure_recurse(ConfigureManager {
                 id: &mut id,
@@ -102,7 +102,7 @@ impl ManagerState {
                 mgr: &mut mgr,
             });
             mgr.pop_accel_layer(widget.id());
-            debug_assert!(mgr.mgr.accel_stack.is_empty());
+            debug_assert!(mgr.state.accel_stack.is_empty());
 
             let hover = widget.find_id(coord);
             mgr.set_hover(widget, hover);
@@ -219,7 +219,11 @@ impl ManagerState {
     }
 
     /// Update the widgets under the cursor and touch events
-    pub fn region_moved<W: Widget + ?Sized>(&mut self, tkw: &mut dyn ShellWindow, widget: &mut W) {
+    pub fn region_moved<W: Widget + ?Sized>(
+        &mut self,
+        shell: &mut dyn ShellWindow,
+        widget: &mut W,
+    ) {
         trace!("Manager::region_moved");
         // Note: redraw is already implied.
 
@@ -241,7 +245,7 @@ impl ManagerState {
 
         // Update hovered widget
         let hover = widget.find_id(self.last_mouse_coord);
-        self.with(tkw, |mgr| mgr.set_hover(widget, hover));
+        self.with(shell, |mgr| mgr.set_hover(widget, hover));
 
         for grab in self.touch_grab.iter_mut() {
             grab.1.cur_id = widget.find_id(grab.1.coord);
@@ -266,14 +270,14 @@ impl ManagerState {
     ///
     /// Invokes the given closure on this [`Manager`].
     #[inline]
-    pub fn with<F>(&mut self, tkw: &mut dyn ShellWindow, f: F)
+    pub fn with<F>(&mut self, shell: &mut dyn ShellWindow, f: F)
     where
         F: FnOnce(&mut Manager),
     {
         let mut mgr = Manager {
             read_only: false,
-            mgr: self,
-            tkw,
+            state: self,
+            shell,
             action: TkAction::None,
         };
         f(&mut mgr);
@@ -283,23 +287,23 @@ impl ManagerState {
 
     /// Update, after receiving all events
     #[inline]
-    pub fn update<W>(&mut self, tkw: &mut dyn ShellWindow, widget: &mut W) -> TkAction
+    pub fn update<W>(&mut self, shell: &mut dyn ShellWindow, widget: &mut W) -> TkAction
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         let mut mgr = Manager {
             read_only: false,
-            mgr: self,
-            tkw,
+            state: self,
+            shell,
             action: TkAction::None,
         };
 
-        while let Some((parent, wid)) = mgr.mgr.popup_removed.pop() {
+        while let Some((parent, wid)) = mgr.state.popup_removed.pop() {
             mgr.send_event(widget, parent, Event::PopupRemoved(wid));
         }
-        while let Some(id) = mgr.mgr.new_popups.pop() {
+        while let Some(id) = mgr.state.new_popups.pop() {
             for parent in mgr
-                .mgr
+                .state
                 .popups
                 .iter()
                 .map(|(_, popup)| popup.parent)
@@ -309,8 +313,8 @@ impl ManagerState {
             }
         }
 
-        for gi in 0..mgr.mgr.pan_grab.len() {
-            let grab = &mut mgr.mgr.pan_grab[gi];
+        for gi in 0..mgr.state.pan_grab.len() {
+            let grab = &mut mgr.state.pan_grab[gi];
             debug_assert!(grab.mode != GrabMode::Grab);
             assert!(grab.n > 0);
 
@@ -357,7 +361,7 @@ impl ManagerState {
         // make mgr const, but merely pretend it is in the public API.
         mgr.read_only = true;
 
-        for item in mgr.mgr.pending.pop() {
+        for item in mgr.state.pending.pop() {
             let (id, event) = match item {
                 Pending::LostCharFocus(id) => (id, Event::LostCharFocus),
                 Pending::LostSelFocus(id) => (id, Event::LostSelFocus),
@@ -380,16 +384,16 @@ impl<'a> Manager<'a> {
         let now = Instant::now();
 
         // assumption: time_updates are sorted in reverse order
-        while !self.mgr.time_updates.is_empty() {
-            if self.mgr.time_updates.last().unwrap().0 > now {
+        while !self.state.time_updates.is_empty() {
+            if self.state.time_updates.last().unwrap().0 > now {
                 break;
             }
 
-            let update = self.mgr.time_updates.pop().unwrap();
+            let update = self.state.time_updates.pop().unwrap();
             self.send_event(widget, update.1, Event::TimerUpdate);
         }
 
-        self.mgr.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
+        self.state.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort
     }
 
     /// Update widgets due to handle
@@ -400,7 +404,7 @@ impl<'a> Manager<'a> {
         payload: u64,
     ) {
         // NOTE: to avoid borrow conflict, we must clone values!
-        if let Some(mut values) = self.mgr.handle_updates.get(&handle).cloned() {
+        if let Some(mut values) = self.state.handle_updates.get(&handle).cloned() {
             for w_id in values.drain() {
                 let event = Event::HandleUpdate { handle, payload };
                 self.send_event(widget, w_id, event);
@@ -432,8 +436,8 @@ impl<'a> Manager<'a> {
             HoveredFileCancelled => ,
             */
             ReceivedCharacter(c) => {
-                if let Some(id) = self.mgr.sel_focus {
-                    if self.mgr.char_focus {
+                if let Some(id) = self.state.sel_focus {
+                    if self.state.char_focus {
                         // Filter out control codes (Unicode 5.11). These may be
                         // generated from combinations such as Ctrl+C by some other
                         // layer. We use our own shortcut system instead.
@@ -458,19 +462,19 @@ impl<'a> Manager<'a> {
                 }
             }
             ModifiersChanged(state) => {
-                if state.alt() != self.mgr.modifiers.alt() {
+                if state.alt() != self.state.modifiers.alt() {
                     // This controls drawing of accelerator key indicators
-                    self.mgr.send_action(TkAction::Redraw);
+                    self.state.send_action(TkAction::Redraw);
                 }
-                self.mgr.modifiers = state;
+                self.state.modifiers = state;
             }
             CursorMoved { position, .. } => {
-                self.mgr.last_click_button = FAKE_MOUSE_BUTTON;
+                self.state.last_click_button = FAKE_MOUSE_BUTTON;
                 let coord = position.into();
 
                 // Update hovered widget
                 let cur_id = widget.find_id(coord);
-                let delta = coord - self.mgr.last_mouse_coord;
+                let delta = coord - self.state.last_mouse_coord;
                 self.set_hover(widget, cur_id);
 
                 if let Some(grab) = self.mouse_grab() {
@@ -483,10 +487,11 @@ impl<'a> Manager<'a> {
                             delta,
                         };
                         self.send_event(widget, grab.start_id, event);
-                    } else if let Some(pan) = self.mgr.pan_grab.get_mut(grab.pan_grab.0 as usize) {
+                    } else if let Some(pan) = self.state.pan_grab.get_mut(grab.pan_grab.0 as usize)
+                    {
                         pan.coords[grab.pan_grab.1 as usize].1 = coord;
                     }
-                } else if let Some(id) = self.mgr.popups.last().map(|(_, p)| p.parent) {
+                } else if let Some(id) = self.state.popups.last().map(|(_, p)| p.parent) {
                     let source = PressSource::Mouse(FAKE_MOUSE_BUTTON, 0);
                     let event = Event::PressMove {
                         source,
@@ -499,41 +504,42 @@ impl<'a> Manager<'a> {
                     // We don't forward move events without a grab
                 }
 
-                self.mgr.last_mouse_coord = coord;
+                self.state.last_mouse_coord = coord;
             }
             // CursorEntered { .. },
             CursorLeft { .. } => {
-                self.mgr.last_click_button = FAKE_MOUSE_BUTTON;
+                self.state.last_click_button = FAKE_MOUSE_BUTTON;
 
                 if self.mouse_grab().is_none() {
                     // If there's a mouse grab, we will continue to receive
                     // coordinates; if not, set a fake coordinate off the window
-                    self.mgr.last_mouse_coord = Coord(-1, -1);
+                    self.state.last_mouse_coord = Coord(-1, -1);
                     self.set_hover(widget, None);
                 }
             }
             MouseWheel { delta, .. } => {
-                self.mgr.last_click_button = FAKE_MOUSE_BUTTON;
+                self.state.last_click_button = FAKE_MOUSE_BUTTON;
 
                 let event = Event::Scroll(match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
                     MouseScrollDelta::PixelDelta(pos) => ScrollDelta::PixelDelta(pos.into()),
                 });
-                if let Some(id) = self.mgr.hover {
+                if let Some(id) = self.state.hover {
                     self.send_event(widget, id, event);
                 }
             }
             MouseInput { state, button, .. } => {
-                let coord = self.mgr.last_mouse_coord;
+                let coord = self.state.last_mouse_coord;
 
                 if state == ElementState::Pressed {
                     let now = Instant::now();
-                    if button != self.mgr.last_click_button || self.mgr.last_click_timeout < now {
-                        self.mgr.last_click_button = button;
-                        self.mgr.last_click_repetitions = 0;
+                    if button != self.state.last_click_button || self.state.last_click_timeout < now
+                    {
+                        self.state.last_click_button = button;
+                        self.state.last_click_repetitions = 0;
                     }
-                    self.mgr.last_click_repetitions += 1;
-                    self.mgr.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
+                    self.state.last_click_repetitions += 1;
+                    self.state.last_click_timeout = now + DOUBLE_CLICK_TIMEOUT;
                 }
 
                 if let Some(grab) = self.mouse_grab() {
@@ -544,7 +550,7 @@ impl<'a> Manager<'a> {
                             let source = PressSource::Mouse(button, grab.repetitions);
                             let event = Event::PressEnd {
                                 source,
-                                end_id: self.mgr.hover,
+                                end_id: self.state.hover,
                                 coord,
                             };
                             self.send_event(widget, grab.start_id, event);
@@ -556,10 +562,10 @@ impl<'a> Manager<'a> {
                     if state == ElementState::Released {
                         self.end_mouse_grab(button);
                     }
-                } else if let Some(start_id) = self.mgr.hover {
+                } else if let Some(start_id) = self.state.hover {
                     // No mouse grab but have a hover target
                     if state == ElementState::Pressed {
-                        let source = PressSource::Mouse(button, self.mgr.last_click_repetitions);
+                        let source = PressSource::Mouse(button, self.state.last_click_repetitions);
                         let event = Event::PressStart {
                             source,
                             start_id,
@@ -620,7 +626,8 @@ impl<'a> Manager<'a> {
                             self.send_event(widget, id, event);
                         } else if let Some(pan_grab) = pan_grab {
                             if (pan_grab.1 as usize) < MAX_PAN_GRABS {
-                                if let Some(pan) = self.mgr.pan_grab.get_mut(pan_grab.0 as usize) {
+                                if let Some(pan) = self.state.pan_grab.get_mut(pan_grab.0 as usize)
+                                {
                                     pan.coords[pan_grab.1 as usize].1 = coord;
                                 }
                             }
@@ -639,7 +646,7 @@ impl<'a> Manager<'a> {
                                 }
                                 self.send_event(widget, grab.start_id, event);
                             } else {
-                                self.mgr.remove_pan_grab(grab.pan_grab);
+                                self.state.remove_pan_grab(grab.pan_grab);
                             }
                         }
                     }

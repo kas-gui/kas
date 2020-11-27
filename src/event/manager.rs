@@ -224,17 +224,17 @@ impl ManagerState {
 #[must_use]
 pub struct Manager<'a> {
     read_only: bool,
-    mgr: &'a mut ManagerState,
-    tkw: &'a mut dyn ShellWindow,
+    state: &'a mut ManagerState,
+    shell: &'a mut dyn ShellWindow,
     action: TkAction,
 }
 
 /// Internal methods
 impl<'a> Manager<'a> {
     fn set_hover<W: Widget + ?Sized>(&mut self, widget: &mut W, w_id: Option<WidgetId>) {
-        if self.mgr.hover != w_id {
+        if self.state.hover != w_id {
             trace!("Manager: hover = {:?}", w_id);
-            self.mgr.hover = w_id;
+            self.state.hover = w_id;
             self.send_action(TkAction::Redraw);
 
             if let Some(id) = w_id {
@@ -242,10 +242,10 @@ impl<'a> Manager<'a> {
                     .find(id)
                     .map(|w| w.cursor_icon())
                     .unwrap_or(CursorIcon::Default);
-                if icon != self.mgr.hover_icon {
-                    self.mgr.hover_icon = icon;
-                    if self.mgr.mouse_grab.is_none() {
-                        self.tkw.set_cursor_icon(icon);
+                if icon != self.state.hover_icon {
+                    self.state.hover_icon = icon;
+                    if self.state.mouse_grab.is_none() {
+                        self.shell.set_cursor_icon(icon);
                     }
                 }
             }
@@ -260,8 +260,8 @@ impl<'a> Manager<'a> {
     /// apps register their short-cut codes with a name and optional WidgetId.
     fn match_shortcuts(&self, vkey: VirtualKeyCode) -> Option<ControlKey> {
         use VirtualKeyCode as VK;
-        let ctrl = self.mgr.modifiers.ctrl();
-        let shift = self.mgr.modifiers.shift();
+        let ctrl = self.state.modifiers.ctrl();
+        let shift = self.state.modifiers.shift();
         Some(match (ctrl, shift, vkey) {
             (true, false, VK::A) => ControlKey::SelectAll,
             (true, true, VK::A) => ControlKey::Deselect,
@@ -281,8 +281,8 @@ impl<'a> Manager<'a> {
         use VirtualKeyCode as VK;
         let opt_control = self.match_shortcuts(vkey);
 
-        if self.mgr.char_focus {
-            if let Some(id) = self.mgr.sel_focus {
+        if self.state.char_focus {
+            if let Some(id) = self.state.sel_focus {
                 if let Some(key) = opt_control {
                     let event = Event::Control(key);
                     trace!("Send to {}: {:?}", id, event);
@@ -299,14 +299,14 @@ impl<'a> Manager<'a> {
         }
 
         if vkey == VK::Tab {
-            if !self.next_nav_focus(widget.as_widget(), self.mgr.modifiers.shift()) {
+            if !self.next_nav_focus(widget.as_widget(), self.state.modifiers.shift()) {
                 self.clear_nav_focus();
             }
-            if let Some(id) = self.mgr.nav_focus {
+            if let Some(id) = self.state.nav_focus {
                 self.send_event(widget, id, Event::NavFocus);
             }
         } else if vkey == VK::Escape {
-            if let Some(id) = self.mgr.popups.last().map(|(id, _)| *id) {
+            if let Some(id) = self.state.popups.last().map(|(id, _)| *id) {
                 self.close_window(id);
             } else {
                 self.clear_nav_focus();
@@ -314,10 +314,10 @@ impl<'a> Manager<'a> {
         } else {
             let mut id_action = None;
 
-            if !self.mgr.modifiers.alt() {
+            if !self.state.modifiers.alt() {
                 // First priority goes to the widget with nav focus,
                 // but only when Alt is not pressed.
-                if let Some(nav_id) = self.mgr.nav_focus {
+                if let Some(nav_id) = self.state.nav_focus {
                     if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
                         id_action = Some((nav_id, Event::Activate));
                     } else if let Some(nav_key) = opt_control {
@@ -327,12 +327,12 @@ impl<'a> Manager<'a> {
 
                 if id_action.is_none() {
                     // Next priority goes to pop-up widget
-                    if let Some(popup) = self.mgr.popups.last() {
+                    if let Some(popup) = self.state.popups.last() {
                         if let Some(key) = opt_control {
                             let ev = Event::Control(key);
                             id_action = Some((popup.1.parent, ev));
                         }
-                    } else if let Some(id) = self.mgr.nav_fallback {
+                    } else if let Some(id) = self.state.nav_fallback {
                         if let Some(key) = opt_control {
                             id_action = Some((id, Event::Control(key)));
                         }
@@ -343,14 +343,14 @@ impl<'a> Manager<'a> {
             if id_action.is_none() {
                 // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
                 let mut n = 0;
-                for (i, id) in (self.mgr.popups.iter().rev())
+                for (i, id) in (self.state.popups.iter().rev())
                     .map(|(_, popup)| popup.parent)
                     .chain(std::iter::once(widget.id()))
                     .enumerate()
                 {
-                    if let Some(layer) = self.mgr.accel_layers.get(&id) {
+                    if let Some(layer) = self.state.accel_layers.get(&id) {
                         // but only when Alt is held or alt-bypass is enabled:
-                        if self.mgr.modifiers.alt() || layer.0 {
+                        if self.state.modifiers.alt() || layer.0 {
                             if let Some(id) = layer.1.get(&vkey).cloned() {
                                 id_action = Some((id, Event::Activate));
                                 n = i;
@@ -362,9 +362,9 @@ impl<'a> Manager<'a> {
 
                 // If we had to look below the top pop-up, we should close it
                 if n > 0 {
-                    let last = self.mgr.popups.len() - 1;
+                    let last = self.state.popups.len() - 1;
                     for i in 0..n {
-                        let id = self.mgr.popups[last - i].0;
+                        let id = self.state.popups[last - i].0;
                         self.close_window(id);
                     }
                 }
@@ -376,13 +376,13 @@ impl<'a> Manager<'a> {
 
                 // Event::Activate causes buttons to be visually depressed
                 if is_activate {
-                    for press_id in self.mgr.key_depress.values().cloned() {
+                    for press_id in self.state.key_depress.values().cloned() {
                         if press_id == id {
                             return;
                         }
                     }
 
-                    self.mgr.key_depress.insert(scancode, id);
+                    self.state.key_depress.insert(scancode, id);
                     self.redraw(id);
                 }
             }
@@ -391,18 +391,18 @@ impl<'a> Manager<'a> {
 
     fn end_key_event(&mut self, scancode: u32) {
         // We must match scancode not vkey since the latter may have changed due to modifiers
-        if let Some(id) = self.mgr.key_depress.remove(&scancode) {
+        if let Some(id) = self.state.key_depress.remove(&scancode) {
             self.redraw(id);
         }
     }
 
     fn mouse_grab(&self) -> Option<MouseGrab> {
-        self.mgr.mouse_grab.clone()
+        self.state.mouse_grab.clone()
     }
 
     fn end_mouse_grab(&mut self, button: MouseButton) {
         if self
-            .mgr
+            .state
             .mouse_grab
             .as_ref()
             .map(|grab| grab.button != button)
@@ -410,21 +410,21 @@ impl<'a> Manager<'a> {
         {
             return;
         }
-        if let Some(grab) = self.mgr.mouse_grab.take() {
+        if let Some(grab) = self.state.mouse_grab.take() {
             trace!("Manager: end mouse grab by {}", grab.start_id);
-            self.tkw.set_cursor_icon(self.mgr.hover_icon);
+            self.shell.set_cursor_icon(self.state.hover_icon);
             self.redraw(grab.start_id);
-            self.mgr.remove_pan_grab(grab.pan_grab);
+            self.state.remove_pan_grab(grab.pan_grab);
         }
     }
 
     #[inline]
     fn get_touch(&mut self, touch_id: u64) -> Option<&mut TouchGrab> {
-        self.mgr.touch_grab.get_mut(&touch_id)
+        self.state.touch_grab.get_mut(&touch_id)
     }
 
     fn remove_touch(&mut self, touch_id: u64) -> Option<TouchGrab> {
-        self.mgr.touch_grab.remove(&touch_id).map(|grab| {
+        self.state.touch_grab.remove(&touch_id).map(|grab| {
             trace!("Manager: end touch grab by {}", grab.start_id);
             grab
         })
@@ -433,25 +433,25 @@ impl<'a> Manager<'a> {
     fn set_char_focus(&mut self, wid: Option<WidgetId>) {
         trace!(
             "Manager::set_char_focus: char_focus={:?}, new={:?}",
-            self.mgr.char_focus,
+            self.state.char_focus,
             wid
         );
-        if self.mgr.sel_focus == wid {
+        if self.state.sel_focus == wid {
             // We cannot lose char focus here
             // Corner case: char_focus == true but sel_focus == None: ignore char_focus
-            self.mgr.char_focus = wid.is_some();
+            self.state.char_focus = wid.is_some();
             return;
         }
 
-        let had_char_focus = self.mgr.char_focus;
-        self.mgr.char_focus = wid.is_some();
+        let had_char_focus = self.state.char_focus;
+        self.state.char_focus = wid.is_some();
 
-        if let Some(id) = self.mgr.sel_focus {
+        if let Some(id) = self.state.sel_focus {
             debug_assert!(Some(id) != wid);
 
             if had_char_focus {
                 // If widget has char focus, this is lost
-                self.mgr.pending.push(Pending::LostCharFocus(id));
+                self.state.pending.push(Pending::LostCharFocus(id));
             }
 
             if wid.is_none() {
@@ -459,11 +459,11 @@ impl<'a> Manager<'a> {
             }
 
             // Selection focus is lost if another widget receives char focus
-            self.mgr.pending.push(Pending::LostSelFocus(id));
+            self.state.pending.push(Pending::LostSelFocus(id));
         }
 
         if let Some(id) = wid {
-            self.mgr.sel_focus = Some(id);
+            self.state.sel_focus = Some(id);
         }
     }
 
@@ -473,7 +473,7 @@ impl<'a> Manager<'a> {
     }
 
     fn send_popup_first<W: Widget + ?Sized>(&mut self, widget: &mut W, id: WidgetId, event: Event) {
-        while let Some((wid, parent)) = self.mgr.popups.last().map(|(wid, p)| (*wid, p.parent)) {
+        while let Some((wid, parent)) = self.state.popups.last().map(|(wid, p)| (*wid, p.parent)) {
             trace!("Send to popup parent: {}: {:?}", parent, event);
             match widget.send(self, parent, event.clone()) {
                 Response::Unhandled(_) => (),
