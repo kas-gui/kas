@@ -205,6 +205,13 @@ pub trait SizeHandle {
     ///
     /// Required bound: `min_len >= size.0`.
     fn slider(&self) -> (Size, u32);
+
+    /// Dimensions for a progress bar
+    ///
+    /// Returns the minimum size for a horizontal progress bar. It is assumed
+    /// that the width is adjustable while the height is (preferably) not.
+    /// For a vertical bar, the values are swapped.
+    fn progress_bar(&self) -> Size;
 }
 
 /// Handle passed to objects during draw and sizing operations
@@ -364,6 +371,14 @@ pub trait DrawHandle {
     /// -   `dir`: direction of slider (currently only LTR or TTB)
     /// -   `state`: highlighting information
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState);
+
+    /// Draw UI element: progress bar
+    ///
+    /// -   `rect`: area of whole widget
+    /// -   `dir`: direction of progress bar
+    /// -   `state`: highlighting information
+    /// -   `value`: progress value, between 0.0 and 1.0
+    fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32);
 }
 
 /// Extension trait over [`DrawHandle`]
@@ -478,6 +493,9 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn slider(&self) -> (Size, u32) {
         self.deref().slider()
     }
+    fn progress_bar(&self) -> Size {
+        self.deref().progress_bar()
+    }
 }
 
 #[cfg(feature = "stack_dst")]
@@ -535,6 +553,9 @@ where
     }
     fn slider(&self) -> (Size, u32) {
         self.deref().slider()
+    }
+    fn progress_bar(&self) -> Size {
+        self.deref().progress_bar()
     }
 }
 
@@ -627,6 +648,9 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     }
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
         self.deref_mut().slider(rect, h_rect, dir, state)
+    }
+    fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32) {
+        self.deref_mut().progress_bar(rect, dir, state, value);
     }
 }
 
@@ -723,6 +747,9 @@ where
     }
     fn slider(&mut self, rect: Rect, h_rect: Rect, dir: Direction, state: InputState) {
         self.deref_mut().slider(rect, h_rect, dir, state)
+    }
+    fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32) {
+        self.deref_mut().progress_bar(rect, dir, state, value);
     }
 }
 

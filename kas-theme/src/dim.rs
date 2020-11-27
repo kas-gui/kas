@@ -33,6 +33,8 @@ pub struct DimensionsParams {
     pub scrollbar_size: Vec2,
     /// Slider minimum handle size
     pub slider_size: Vec2,
+    /// Progress bar size (horizontal)
+    pub progress_bar: Vec2,
 }
 
 /// Dimensions available within [`DimensionsWindow`]
@@ -52,6 +54,7 @@ pub struct Dimensions {
     pub checkbox: u32,
     pub scrollbar: Size,
     pub slider: Size,
+    pub progress_bar: Size,
 }
 
 impl Dimensions {
@@ -79,6 +82,7 @@ impl Dimensions {
             checkbox: (9.0 * dpp).round() as u32 + 2 * (inner_margin + frame),
             scrollbar: Size::from(params.scrollbar_size * scale_factor),
             slider: Size::from(params.slider_size * scale_factor),
+            progress_bar: Size::from(params.progress_bar * scale_factor),
         }
     }
 }
@@ -246,5 +250,9 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     fn slider(&self) -> (Size, u32) {
         let size = self.dims.slider;
         (size, 2 * size.0)
+    }
+
+    fn progress_bar(&self) -> Size {
+        self.dims.progress_bar
     }
 }

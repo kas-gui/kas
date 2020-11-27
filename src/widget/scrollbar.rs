@@ -98,6 +98,22 @@ impl<D: Directional> ScrollBar<D> {
         self.update_handle()
     }
 
+    /// Read the current max value
+    ///
+    /// See also the [`ScrollBar::set_limits`] documentation.
+    #[inline]
+    pub fn max_value(&self) -> u32 {
+        self.max_value
+    }
+
+    /// Read the current handle value
+    ///
+    /// See also the [`ScrollBar::set_limits`] documentation.
+    #[inline]
+    pub fn handle_value(&self) -> u32 {
+        self.handle_value
+    }
+
     /// Get the current value
     #[inline]
     pub fn value(&self) -> u32 {
