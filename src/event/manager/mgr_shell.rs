@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Event manager — toolkit API
+//! Event manager — shell API
 
 use log::*;
 use smallvec::SmallVec;
@@ -15,14 +15,14 @@ use super::*;
 use crate::geom::{Coord, DVec2};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
-use crate::{TkAction, TkWindow, Widget, WidgetId};
+use crate::{ShellWindow, TkAction, Widget, WidgetId};
 
 // TODO: this should be configurable or derived from the system
 const DOUBLE_CLICK_TIMEOUT: Duration = Duration::from_secs(1);
 
 const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 
-/// Toolkit API
+/// Shell API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl ManagerState {
     /// Construct an event manager per-window data struct
@@ -69,7 +69,7 @@ impl ManagerState {
     /// [`WidgetId`] identifiers and call widgets' [`WidgetConfig::configure`]
     /// method. Additionally, it updates the [`ManagerState`] to account for
     /// renamed and removed widgets.
-    pub fn configure<W>(&mut self, tkw: &mut dyn TkWindow, widget: &mut W)
+    pub fn configure<W>(&mut self, tkw: &mut dyn ShellWindow, widget: &mut W)
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
@@ -219,7 +219,7 @@ impl ManagerState {
     }
 
     /// Update the widgets under the cursor and touch events
-    pub fn region_moved<W: Widget + ?Sized>(&mut self, tkw: &mut dyn TkWindow, widget: &mut W) {
+    pub fn region_moved<W: Widget + ?Sized>(&mut self, tkw: &mut dyn ShellWindow, widget: &mut W) {
         trace!("Manager::region_moved");
         // Note: redraw is already implied.
 
@@ -266,7 +266,7 @@ impl ManagerState {
     ///
     /// Invokes the given closure on this [`Manager`].
     #[inline]
-    pub fn with<F>(&mut self, tkw: &mut dyn TkWindow, f: F)
+    pub fn with<F>(&mut self, tkw: &mut dyn ShellWindow, f: F)
     where
         F: FnOnce(&mut Manager),
     {
@@ -283,7 +283,7 @@ impl ManagerState {
 
     /// Update, after receiving all events
     #[inline]
-    pub fn update<W>(&mut self, tkw: &mut dyn TkWindow, widget: &mut W) -> TkAction
+    pub fn update<W>(&mut self, tkw: &mut dyn ShellWindow, widget: &mut W) -> TkAction
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
@@ -372,7 +372,7 @@ impl ManagerState {
     }
 }
 
-/// Toolkit API
+/// Shell API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl<'a> Manager<'a> {
     /// Update widgets due to timer
@@ -410,8 +410,8 @@ impl<'a> Manager<'a> {
 
     /// Handle a winit `WindowEvent`.
     ///
-    /// Note that some event types are not *does not* handled, since for these
-    /// events the toolkit must take direct action anyway:
+    /// Note that some event types are not handled, since for these
+    /// events the shell must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(feature = "winit")]
     pub fn handle_winit<W>(&mut self, widget: &mut W, event: winit::event::WindowEvent)

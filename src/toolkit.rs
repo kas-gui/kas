@@ -5,14 +5,12 @@
 
 //! Toolkit interface
 //!
-//! In KAS, the "toolkit" is an external library handling system interfaces
-//! (windowing and event translation) plus rendering. This allows KAS's core
-//! to remain system-neutral.
-//!
-//! Note: although the choice of windowing library is left to the toolkit, for
-//! convenience KAS is able to use several [winit] types.
-//!
-//! [winit]: https://github.com/rust-windowing/winit
+//! This module provides the primary interface between the KAS toolkit and a
+//! KAS shell, though it is not the only interface. A KAS shell connects to the
+//! operating system (or further abstraction layers) by implementing
+//! [`ShellWindow`], the family of draw traits in [`kas::draw`], and
+//! constructing and using an event manager ([`kas::event::ManagerState`]).
+//! The shell also provides the entrypoint, a type named `Toolkit`.
 
 use std::num::NonZeroU32;
 
@@ -28,7 +26,7 @@ pub struct WindowId(NonZeroU32);
 impl WindowId {
     /// Construct a [`WindowId`]
     ///
-    /// Only for toolkit use!
+    /// Only for use by the shell!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     pub fn new(n: NonZeroU32) -> WindowId {
         WindowId(n)
@@ -105,11 +103,11 @@ impl std::ops::AddAssign for TkAction {
     }
 }
 
-/// Toolkit-specific window management and style interface.
+/// Shell-specific window management and style interface.
 ///
-/// This is implemented by a KAS toolkit on a window handle.
+/// This is implemented by a KAS shell, per window.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-pub trait TkWindow {
+pub trait ShellWindow {
     /// Add a pop-up
     ///
     /// A pop-up may be presented as an overlay layer in the current window or
@@ -124,8 +122,8 @@ pub trait TkWindow {
     /// Toolkits typically allow windows to be added directly, before start of
     /// the event loop (e.g. `kas_wgpu::Toolkit::add`).
     ///
-    /// This method is an alternative allowing a window to be added via event
-    /// processing, albeit without error handling.
+    /// This method is an alternative allowing a window to be added from an
+    /// event handler, albeit without error handling.
     fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId;
 
     /// Close a window

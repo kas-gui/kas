@@ -32,7 +32,7 @@ pub use kas::text::{EditableTextApi, Text, TextApi, TextApiExt};
 #[doc(no_inline)]
 pub use kas::{Align, AlignHints, Direction, Directional, WidgetId};
 #[doc(no_inline)]
-pub use kas::{Boxed, TkAction, TkWindow};
+pub use kas::{Boxed, TkAction};
 #[doc(no_inline)]
 pub use kas::{CoreData, LayoutData};
 #[doc(no_inline)]

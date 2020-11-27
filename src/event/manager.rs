@@ -19,10 +19,10 @@ use super::*;
 use crate::geom::Coord;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
-use crate::{TkAction, TkWindow, Widget, WidgetId, WindowId};
+use crate::{ShellWindow, TkAction, Widget, WidgetId, WindowId};
 
 mod mgr_pub;
-mod mgr_tk;
+mod mgr_shell;
 
 /// Controls the types of events delivered by [`Manager::request_grab`]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -84,8 +84,11 @@ enum Pending {
 ///
 /// Besides event handling, this struct also configures widgets.
 ///
-/// Some methods are intended only for toolkit usage and are hidden from
-/// documentation unless the `internal_doc` feature is enabled.
+/// Some methods are intended only for usage by KAS shells and are hidden from
+/// documentation unless the `internal_doc` feature is enabled. Only [winit]
+/// events are currently supported; changes will be required to generalise this.
+///
+/// [winit]: https://github.com/rust-windowing/winit
 //
 // Note that the most frequent usage of fields is to check highlighting states
 // for each widget during drawing. Most fields contain only a few values, hence
@@ -212,17 +215,17 @@ impl ManagerState {
 
 /// Manager of event-handling and toolkit actions
 ///
-/// A `Manager` is in fact a handle around [`ManagerState`] and [`TkWindow`]
+/// A `Manager` is in fact a handle around [`ManagerState`] and [`ShellWindow`]
 /// in order to provide a convenient user-interface during event processing.
 ///
 /// It exposes two interfaces: one aimed at users implementing widgets and UIs
-/// and one aimed at toolkit "frontends". The latter is hidden
+/// and one aimed at shells. The latter is hidden
 /// from documentation unless the `internal_doc` feature is enabled.
 #[must_use]
 pub struct Manager<'a> {
     read_only: bool,
     mgr: &'a mut ManagerState,
-    tkw: &'a mut dyn TkWindow,
+    tkw: &'a mut dyn ShellWindow,
     action: TkAction,
 }
 

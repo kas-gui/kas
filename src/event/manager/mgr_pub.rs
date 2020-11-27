@@ -83,7 +83,7 @@ impl ManagerState {
     }
 }
 
-/// Public API (around toolkit functionality)
+/// Public API (around toolkit and shell functionality)
 impl<'a> Manager<'a> {
     /// Get the current modifier state
     #[inline]
@@ -285,7 +285,7 @@ impl<'a> Manager<'a> {
         self.tkw.size_handle(&mut |size_handle| {
             result = Some(f(size_handle));
         });
-        result.expect("TkWindow::size_handle_dyn impl failed to call function argument")
+        result.expect("ShellWindow::size_handle impl failed to call function argument")
     }
 }
 

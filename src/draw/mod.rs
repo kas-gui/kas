@@ -22,9 +22,9 @@
 //!
 //! The [`Draw`] trait itself contains very little; extension traits
 //! [`DrawRounded`], [`DrawShaded`] and [`DrawText`] provide additional draw
-//! routines. Toolkits are required to implement only the base [`Draw`] trait,
-//! and may provide their own extension traits. For this reason, themes are
-//! parameterised over an object `D: Draw + ...` (with specified trait bounds).
+//! routines. Shells are only required to implement the base [`Draw`] trait,
+//! and may also provide their own extension traits. Themes may specify their
+//! own requirements, e.g. `D: Draw + DrawRounded + DrawText`.
 //!
 //! The medium-level API will be extended in the future to support texturing
 //! (not yet supported) and potentially a more comprehensive path-based API
@@ -33,7 +33,7 @@
 //! ### Low-level interface
 //!
 //! There is no universal graphics API, hence none is provided by this crate.
-//! Instead, toolkits may provide their own extensions allowing direct access
+//! Instead, shells may provide their own extensions allowing direct access
 //! to the host graphics API, for example
 //! [`kas-wgpu::draw::CustomPipe`](https://docs.rs/kas-wgpu/*/kas_wgpu/draw/trait.CustomPipe.html).
 
@@ -105,7 +105,7 @@ pub trait Draw: Any {
     /// Cast self to [`std::any::Any`] reference.
     ///
     /// A downcast on this value may be used to obtain a reference to a
-    /// toolkit-specific API.
+    /// shell-specific API.
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
     /// Add a clip region
