@@ -1,7 +1,10 @@
 KAS WGPU
 ======
 
-Toolkit rendering over the [wgpu](https://crates.io/crates/wgpu) lib.
+KAS shell interface over [winit] and [wgpu].
+
+[winit]: https://github.com/rust-windowing/winit/
+[wgpu]: https://github.com/gfx-rs/wgpu-rs
 
 
 Compiling shaders

@@ -6,7 +6,7 @@ KAS GUI
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
 ![Minimum rustc version](https://img.shields.io/badge/rustc-1.45+-lightgray.svg)
 
-KAS, the *toolKit Abstraction System*, is a general-purpose GUI toolkit.
+KAS, (historically the *toolKit Abstraction System*), is a general-purpose GUI toolkit.
 KAS's design provides:
 
 -   retained mode (library stores state), inspired by Qt (classic)

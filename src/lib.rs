@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! KAS, the toolKit Abstraction Library
+//! KAS GUI Toolkit
 //!
 //! KAS is a GUI library. This crate provides the following:
 //!

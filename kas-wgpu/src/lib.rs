@@ -3,14 +3,17 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Toolkit for KAS targeting winit + WebGPU
+//! KAS shell over [winit] and [WebGPU]
 //!
-//! This crate provides an implementation of KAS, using
-//! [WebGPU](https://github.com/gfx-rs/wgpu-rs) for GPU-based rendering.
+//! This crate provides an implementation of KAS, using [WebGPU] for
+//! GPU-accelerated rendering.
 //!
-//! Windowing is provided by [winit](https://github.com/rust-windowing/winit/).
-//! Clipboard functionality is (currently) provided by
-//! [clipboard](https://crates.io/crates/clipboard).
+//! Windowing is provided by [winit].
+//! Clipboard functionality is (currently) provided by the [clipboard] crate.
+//!
+//! [WebGPU]: https://github.com/gfx-rs/wgpu-rs
+//! [winit]: https://github.com/rust-windowing/winit
+//! [clipboard]: https://crates.io/crates/clipboard
 
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 
@@ -79,7 +82,11 @@ impl From<OsError> for Error {
     }
 }
 
-/// Builds a toolkit over a `winit::event_loop::EventLoop`.
+/// A toolkit over winit and WebGPU
+///
+/// All KAS shells are expected to provide a similar `Toolkit` type and API.
+/// There is no trait abstraction over this API simply because there is very
+/// little reason to do so (and some reason not to: KISS).
 pub struct Toolkit<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     el: EventLoop<ProxyAction>,
     windows: Vec<Window<C::Window, T::Window>>,
@@ -94,6 +101,7 @@ where
     ///
     /// Environment variables may affect option selection; see documentation
     /// of [`Options::from_env`].
+    #[inline]
     pub fn new(theme: T) -> Result<Self, Error> {
         Self::new_custom((), theme, Options::from_env())
     }
@@ -108,8 +116,9 @@ where
     /// The `custom` parameter accepts a custom draw pipe (see [`CustomPipeBuilder`]).
     /// Pass `()` if you don't have one.
     ///
-    /// The [`Options`] parameter allows direct specification of toolkit
+    /// The [`Options`] parameter allows direct specification of shell
     /// options; usually, these are provided by [`Options::from_env`].
+    #[inline]
     pub fn new_custom<CB: CustomPipeBuilder<Pipe = C>>(
         custom: CB,
         theme: T,
@@ -129,6 +138,7 @@ where
     /// This is a convenience wrapper around [`Toolkit::add_boxed`].
     ///
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
+    #[inline]
     pub fn add<W: kas::Window + 'static>(&mut self, window: W) -> Result<WindowId, Error> {
         self.add_boxed(Box::new(window))
     }
@@ -138,6 +148,7 @@ where
     /// This is a convenience wrapper around [`Toolkit::add_boxed`].
     ///
     /// Note: typically, one should have `W: Clone`, enabling multiple usage.
+    #[inline]
     pub fn with<W: kas::Window + 'static>(mut self, window: W) -> Result<Self, Error> {
         self.add_boxed(Box::new(window))?;
         Ok(self)
@@ -152,10 +163,9 @@ where
     }
 
     /// Add a boxed window directly, inline
+    #[inline]
     pub fn with_boxed(mut self, widget: Box<dyn kas::Window>) -> Result<Self, Error> {
-        let id = self.shared.next_window_id();
-        let win = Window::new(&mut self.shared, &self.el, id, widget)?;
-        self.windows.push(win);
+        self.add_boxed(widget)?;
         Ok(self)
     }
 
@@ -167,6 +177,7 @@ where
     }
 
     /// Run the main loop.
+    #[inline]
     pub fn run(self) -> ! {
         let mut el = event_loop::Loop::new(self.windows, self.shared);
         self.el

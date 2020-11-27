@@ -437,7 +437,7 @@ where
     }
 }
 
-impl<'a, C, T> kas::TkWindow for TkWindow<'a, C, T>
+impl<'a, C, T> kas::ShellWindow for TkWindow<'a, C, T>
 where
     C: CustomPipe,
     T: Theme<DrawPipe<C>>,

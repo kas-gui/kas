@@ -9,7 +9,7 @@ use log::warn;
 use std::env::var;
 pub use wgpu::{BackendBit, PowerPreference};
 
-/// Toolkit options
+/// Shell options
 #[derive(Clone, PartialEq, Hash)]
 pub struct Options {
     /// Adapter power preference. Default value: low power.

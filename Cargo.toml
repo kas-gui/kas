@@ -22,7 +22,7 @@ gat = ["kas-text/gat"]
 # Use min_specialization (enables accelerator underlining for AccelLabel)
 min_spec = []
 
-# Enables documentation of APIs for toolkits and internal use.
+# Enables documentation of APIs for shells and internal usage.
 # This API is not intended for use by end-user applications and
 # thus is omitted from built documentation by default.
 # This flag does not change the API, only built documentation.

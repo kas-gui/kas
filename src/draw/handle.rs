@@ -101,11 +101,12 @@ impl Default for TextClass {
     }
 }
 
-/// Handle passed to objects during draw and sizing operations
+/// Handle passed to objects during sizing operations
 ///
-/// This handle is provided by the toolkit (usually via a theme implementation)
-/// in order to provide sizing information of the elements drawn by
-/// [`DrawHandle`].
+/// Themes must implement both [`SizeHandle`] and [`DrawHandle`].
+///
+/// The toolkit provides a `&dyn SizeHandle` value when resizing widgets. The
+/// handle may also be accessed via [`kas::event::Manager::size_handle`].
 pub trait SizeHandle {
     /// Get the scale (DPI) factor
     ///
@@ -214,11 +215,13 @@ pub trait SizeHandle {
     fn progress_bar(&self) -> Size;
 }
 
-/// Handle passed to objects during draw and sizing operations
+/// Handle passed to objects during draw operations
 ///
-/// This handle is provided by the toolkit (usually via a theme implementation)
-/// as a high-level drawing interface. See also the extension trait,
-/// [`DrawHandleExt`], and the companion trait, [`SizeHandle`].
+/// Themes must implement both [`SizeHandle`] and [`DrawHandle`].
+///
+/// The toolkit provides a `&mut dyn DrawHandle` value when drawing widgets.
+/// The extension trait [`DrawHandleExt`] provides some additional methods on
+/// draw handles.
 pub trait DrawHandle {
     /// Access a [`SizeHandle`] (object-safe version)
     ///
