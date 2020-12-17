@@ -6,6 +6,7 @@
 //! A counter synchronised between multiple windows
 
 use std::cell::RefCell;
+use std::rc::Rc;
 
 use kas::class::HasString;
 use kas::event::{Event, Handler, Manager, Response, UpdateHandle, VoidMsg};
@@ -17,11 +18,6 @@ use kas::{WidgetConfig, WidgetCore};
 enum Message {
     Decr,
     Incr,
-}
-
-thread_local! {
-    // Save ourselves usage of thread-safe primitives by keeping to a single thread.
-    static COUNTER: RefCell<i32> = RefCell::new(0);
 }
 
 fn main() -> Result<(), kas_wgpu::Error> {
@@ -37,8 +33,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
-    let handle = UpdateHandle::new();
-
+    // We create one window, then clone it. The `handle` is copied (we want the
+    // same one for each window) and the `counter` is shared (due to Rc<..>).
     let window = Window::new(
         "Counter",
         make_widget! {
@@ -48,7 +44,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
             struct {
                 #[widget(halign=centre)] display: Label<String> = Label::from("0"),
                 #[widget(handler = handle_button)] buttons -> Message = buttons,
-                handle: UpdateHandle = handle,
+                handle: UpdateHandle = UpdateHandle::new(),
+                counter: Rc<RefCell<i32>> = Rc::new(RefCell::new(0)),
             }
             impl WidgetConfig {
                 fn configure(&mut self, mgr: &mut Manager) {
@@ -60,8 +57,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
                     match event {
                         Event::HandleUpdate { .. } => {
-                            let c = COUNTER.with(|c| *c.borrow());
-                            *mgr += self.display.set_string(c.to_string());
+                            let s = self.counter.borrow().to_string();
+                            *mgr += self.display.set_string(s);
                             Response::None
                         }
                         event => Response::Unhandled(event),
@@ -72,13 +69,10 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 fn handle_button(&mut self, mgr: &mut Manager, msg: Message)
                     -> Response<VoidMsg>
                 {
-                    COUNTER.with(|c| {
-                        let mut c = c.borrow_mut();
-                        *c += match msg {
-                            Message::Decr => -1,
-                            Message::Incr => 1,
-                        };
-                    });
+                    *self.counter.borrow_mut() += match msg {
+                        Message::Decr => -1,
+                        Message::Incr => 1,
+                    };
                     mgr.trigger_update(self.handle, 0);
                     Response::None
                 }
