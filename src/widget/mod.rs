@@ -78,7 +78,7 @@ pub use checkbox::{CheckBox, CheckBoxBare};
 pub use combobox::ComboBox;
 pub use dialog::MessageBox;
 pub use drag::DragHandle;
-pub use editbox::{EditBox, EditBoxVoid, EditGuard};
+pub use editbox::{EditBox, EditGuard};
 pub use filler::Filler;
 pub use frame::Frame;
 pub use label::{AccelLabel, Label, StrLabel, StringLabel};
