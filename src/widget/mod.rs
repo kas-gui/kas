@@ -73,6 +73,8 @@ mod splitter;
 mod stack;
 mod window;
 
+pub mod view;
+
 pub use button::TextButton;
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use combobox::ComboBox;
