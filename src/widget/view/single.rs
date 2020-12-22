@@ -7,32 +7,42 @@
 
 use super::{Accessor, DefaultView, ViewWidget};
 use kas::prelude::*;
+use std::fmt;
+use std::marker::PhantomData;
 
 /// Single view widget
-#[derive(Clone, Default, Debug, Widget)]
+#[derive(Clone, Default, Widget)]
 #[layout(single)]
 #[handler(msg=<W as Handler>::Msg)]
-pub struct SingleView<
-    A: Accessor<()>,
-    W: ViewWidget<A::Item> = <<A as Accessor<()>>::Item as DefaultView>::Widget,
-> {
-    first_id: WidgetId,
+pub struct SingleView<T: 'static, A: Accessor<(), T>, W: ViewWidget<T> = <T as DefaultView>::Widget>
+{
     #[widget_core]
     core: CoreData,
+    _t: PhantomData<T>,
     data: A,
     #[widget]
     child: W,
 }
 
-impl<A: Accessor<()>, W: ViewWidget<A::Item>> SingleView<A, W> {
+impl<T: 'static, A: Accessor<(), T>, W: ViewWidget<T>> SingleView<T, A, W> {
     /// Construct a new instance
     pub fn new(data: A) -> Self {
-        let value = data.get(());
+        let child = W::new(data.get(()));
         SingleView {
-            first_id: Default::default(),
             core: Default::default(),
+            _t: Default::default(),
             data,
-            child: W::new(value),
+            child,
         }
+    }
+}
+
+impl<T: 'static, A: Accessor<(), T>, W: ViewWidget<T>> fmt::Debug for SingleView<T, A, W> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "SingleView {{ core: {:?}, data: {:?}, child: {:?} }}",
+            self.core, self.data, self.child,
+        )
     }
 }

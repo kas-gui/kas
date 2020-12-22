@@ -24,24 +24,25 @@ pub use single::SingleView;
 /// View widgets
 ///
 /// Implementors are able to view data of type `T`.
+/// Note: we pass `&T` to better match up with [`Accessor::get`].
 pub trait ViewWidget<T>: Widget {
     /// Construct a default instance (with no data)
     fn default() -> Self;
     /// Construct an instance from a data value
-    fn new(data: T) -> Self;
+    fn new(data: &T) -> Self;
     /// Set the viewed data
-    fn set(&mut self, data: T) -> TkAction;
+    fn set(&mut self, data: &T) -> TkAction;
 }
 
-impl<T: Default + FormattableText + 'static> ViewWidget<T> for Label<T> {
+impl<T: Clone + Default + FormattableText + 'static> ViewWidget<T> for Label<T> {
     fn default() -> Self {
         Default::default()
     }
-    fn new(data: T) -> Self {
-        Self::new(data)
+    fn new(data: &T) -> Self {
+        Self::new(data.clone())
     }
-    fn set(&mut self, data: T) -> TkAction {
-        self.set_text(data)
+    fn set(&mut self, data: &T) -> TkAction {
+        self.set_text(data.clone())
     }
 }
 
@@ -53,37 +54,34 @@ pub trait DefaultView: Sized {
     type Widget: ViewWidget<Self>;
 }
 
-impl DefaultView for &'static str {
-    type Widget = Label<&'static str>;
-}
-impl DefaultView for String {
-    type Widget = Label<String>;
+impl<T: Clone + Default + FormattableText + 'static> DefaultView for T {
+    type Widget = Label<T>;
 }
 
 // Note: we require Debug + 'static to allow widgets using this to implement
 // WidgetCore, which requires Debug + Any.
-pub trait Accessor<Index: Copy>: Debug + 'static {
-    type Item;
-    fn len(&self) -> Index;
-    fn get(&self, index: Index) -> Self::Item;
+// Note: since there can be at most one impl for any (T, Self), it would make
+// sense for I to be an associated type; BUT this would make our generic impls
+// conflict (e.g. downstream *could* write `impl AsRef<S> for [S] { .. }`).
+pub trait Accessor<I, T: ?Sized>: Debug + 'static {
+    fn len(&self) -> I;
+    fn get(&self, index: I) -> &T;
 }
 
-impl<T: Clone + Debug + 'static> Accessor<usize> for [T] {
-    type Item = T;
+impl<T: Debug + 'static> Accessor<usize, T> for [T] {
     fn len(&self) -> usize {
         self.len()
     }
-    fn get(&self, index: usize) -> T {
-        self[index].clone()
+    fn get(&self, index: usize) -> &T {
+        &self[index]
     }
 }
 
-impl<Index: Copy, A: Accessor<Index> + ?Sized> Accessor<Index> for &'static A {
-    type Item = A::Item;
-    fn len(&self) -> Index {
-        (*self).len()
+impl<T: ?Sized, R: AsRef<T> + Debug + ?Sized + 'static> Accessor<(), T> for R {
+    fn len(&self) -> () {
+        ()
     }
-    fn get(&self, index: Index) -> Self::Item {
-        (*self).get(index)
+    fn get(&self, _: ()) -> &T {
+        self.as_ref()
     }
 }
