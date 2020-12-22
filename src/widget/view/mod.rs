@@ -15,9 +15,11 @@ use kas::prelude::*;
 use kas::text::format::FormattableText;
 use std::fmt::Debug;
 
-mod list;
+// mod list;
+mod single;
 
-pub use list::ListView;
+// pub use list::ListView;
+pub use single::SingleView;
 
 /// View widgets
 ///
