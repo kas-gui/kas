@@ -5,13 +5,14 @@
 
 //! Single view widget
 
-use super::{Accessor, DefaultView, ViewWidget};
+use super::{Accessor, AccessorMut, DefaultView, ViewWidget};
 use kas::prelude::*;
 use std::fmt;
 use std::marker::PhantomData;
 
 /// Single view widget
 #[derive(Clone, Default, Widget)]
+#[widget(config=noauto)]
 #[layout(single)]
 #[handler(msg=<W as Handler>::Msg)]
 pub struct SingleView<T: 'static, A: Accessor<(), T>, W: ViewWidget<T> = <T as DefaultView>::Widget>
@@ -19,20 +20,37 @@ pub struct SingleView<T: 'static, A: Accessor<(), T>, W: ViewWidget<T> = <T as D
     #[widget_core]
     core: CoreData,
     _t: PhantomData<T>,
-    data: A,
+    accessor: A,
     #[widget]
     child: W,
 }
 
 impl<T: 'static, A: Accessor<(), T>, W: ViewWidget<T>> SingleView<T, A, W> {
     /// Construct a new instance
-    pub fn new(data: A) -> Self {
-        let child = W::new(data.get(()));
+    pub fn new(accessor: A) -> Self {
+        let child = W::new(accessor.get(()));
         SingleView {
             core: Default::default(),
             _t: Default::default(),
-            data,
+            accessor,
             child,
+        }
+    }
+}
+
+impl<T: 'static, A: AccessorMut<(), T>, W: ViewWidget<T>> SingleView<T, A, W> {
+    pub fn update(&mut self, mgr: &mut Manager, data: T) {
+        self.accessor.set((), data);
+        if let Some(handle) = self.accessor.update_handle() {
+            mgr.trigger_update(handle, 0);
+        }
+    }
+}
+
+impl<T: 'static, A: Accessor<(), T>, W: ViewWidget<T>> WidgetConfig for SingleView<T, A, W> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        if let Some(handle) = self.accessor.update_handle() {
+            mgr.update_on_handle(handle, self.id());
         }
     }
 }
@@ -41,8 +59,8 @@ impl<T: 'static, A: Accessor<(), T>, W: ViewWidget<T>> fmt::Debug for SingleView
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "SingleView {{ core: {:?}, data: {:?}, child: {:?} }}",
-            self.core, self.data, self.child,
+            "SingleView {{ core: {:?}, accessor: {:?}, child: {:?} }}",
+            self.core, self.accessor, self.child,
         )
     }
 }

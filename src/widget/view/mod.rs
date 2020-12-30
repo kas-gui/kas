@@ -11,6 +11,7 @@
 // TODO: how do we allow fine-grained updates when a subset of data changes?
 
 use super::Label;
+use kas::event::UpdateHandle;
 use kas::prelude::*;
 use kas::text::format::FormattableText;
 use std::fmt::Debug;
@@ -66,6 +67,13 @@ impl<T: Clone + Default + FormattableText + 'static> DefaultView for T {
 pub trait Accessor<I, T: ?Sized>: Debug + 'static {
     fn len(&self) -> I;
     fn get(&self, index: I) -> &T;
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        None
+    }
+}
+
+pub trait AccessorMut<I, T: ?Sized>: Accessor<I, T> {
+    fn set(&mut self, index: I, value: T);
 }
 
 impl<T: Debug + 'static> Accessor<usize, T> for [T] {
