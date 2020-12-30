@@ -5,7 +5,7 @@
 
 //! Single view widget
 
-use super::{Accessor, AccessorMut, DefaultView, ViewWidget};
+use super::{Accessor, AccessorShared, DefaultView, ViewWidget};
 use kas::prelude::*;
 use std::fmt;
 use std::marker::PhantomData;
@@ -38,7 +38,10 @@ impl<T: 'static, A: Accessor<(), T>, W: ViewWidget<T>> SingleView<T, A, W> {
     }
 }
 
-impl<T: 'static, A: AccessorMut<(), T>, W: ViewWidget<T>> SingleView<T, A, W> {
+impl<T: 'static, A: AccessorShared<(), T>, W: ViewWidget<T>> SingleView<T, A, W> {
+    /// Update data
+    ///
+    /// Other widgets with a view of this data are notified of the update.
     pub fn update(&mut self, mgr: &mut Manager, data: T) {
         self.accessor.set((), data);
         if let Some(handle) = self.accessor.update_handle() {
