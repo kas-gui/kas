@@ -40,7 +40,7 @@ where
     ///
     /// This constructor is available where the direction is determined by the
     /// type: for `D: Directional + Default`. In other cases, use
-    /// [`List::new_with_direction`].
+    /// [`ListView::new_with_direction`].
     pub fn new(data: A) -> Self {
         ListView {
             first_id: Default::default(),

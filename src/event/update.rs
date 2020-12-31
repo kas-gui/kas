@@ -6,7 +6,7 @@
 //! Event handling: updates
 
 use std::num::NonZeroU32;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
 
 /// An update handle
 ///
@@ -25,12 +25,12 @@ impl UpdateHandle {
         static COUNT: AtomicU32 = AtomicU32::new(0);
 
         loop {
-            let c = COUNT.load(Ordering::Relaxed);
+            let c = COUNT.load(Relaxed);
             let h = c.wrapping_add(1);
             let nz = NonZeroU32::new(h).unwrap_or_else(|| {
                 panic!("UpdateHandle::new: all available handles have been issued")
             });
-            if COUNT.compare_and_swap(c, h, Ordering::Relaxed) == c {
+            if COUNT.compare_exchange(c, h, Relaxed, Relaxed).is_ok() {
                 break UpdateHandle(nz);
             }
         }

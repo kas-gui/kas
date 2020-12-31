@@ -627,7 +627,7 @@ impl<'a> Manager<'a> {
                     true
                 }
             }};
-        };
+        }
 
         // Progresses to the next (or previous) sibling, otherwise pops to the
         // parent. Returns true if a sibling is found.
@@ -676,7 +676,7 @@ impl<'a> Manager<'a> {
                 }
                 have_sibling
             }};
-        };
+        }
 
         macro_rules! try_set_focus {
             ($self:ident, $widget:ident) => {
