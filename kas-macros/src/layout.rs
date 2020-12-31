@@ -199,7 +199,6 @@ pub(crate) fn derive(
             );
         });
 
-        set_rect.append_all(quote! { let mut align = kas::AlignHints::NONE; });
         if let Some(toks) = args.halign_toks()? {
             set_rect.append_all(quote! { align.horiz = Some(#toks); });
         }
@@ -262,7 +261,7 @@ pub(crate) fn derive(
             solver.finish(&mut #data)
         }
 
-        fn set_rect(&mut self, rect: kas::geom::Rect, align: kas::AlignHints) {
+        fn set_rect(&mut self, rect: kas::geom::Rect, mut align: kas::AlignHints) {
             use kas::{WidgetCore, Widget};
             use kas::layout::{Margins, RulesSetter};
             self.core.rect = rect;
