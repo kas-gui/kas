@@ -10,11 +10,11 @@
 use super::Label;
 use kas::prelude::*;
 
-// mod list;
+mod list;
 mod shared;
 mod single;
 
-// pub use list::ListView;
+pub use list::ListView;
 pub use shared::{Accessor, AccessorShared, SharedConst, SharedRc};
 pub use single::SingleView;
 

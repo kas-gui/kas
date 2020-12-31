@@ -10,6 +10,7 @@ use kas::event::Manager;
 use kas::event::UpdateHandle;
 use std::cell::RefCell;
 use std::fmt::Debug;
+use std::ops::Deref;
 use std::rc::Rc;
 
 /// Base trait required by view widgets
@@ -46,16 +47,54 @@ pub trait AccessorShared<I>: Accessor<I> {
     fn set(&self, index: I, value: Self::Item) -> UpdateHandle;
 }
 
+impl<I, T: Debug + Deref + 'static> Accessor<I> for T
+where
+    <T as Deref>::Target: Accessor<I>,
+{
+    type Item = <<T as Deref>::Target as Accessor<I>>::Item;
+    fn len(&self) -> I {
+        self.deref().len()
+    }
+    fn get(&self, index: I) -> Self::Item {
+        self.deref().get(index)
+    }
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        self.deref().update_handle()
+    }
+}
+
+impl<I, T: Debug + Deref + 'static> AccessorShared<I> for T
+where
+    <T as Deref>::Target: AccessorShared<I>,
+{
+    fn set(&self, index: I, value: Self::Item) -> UpdateHandle {
+        self.deref().set(index, value)
+    }
+}
+
 /// Wrapper for shared constant data
 ///
 /// This may be useful with static data, e.g. `[&'static str]`.
 #[derive(Clone, Debug, Default)]
 pub struct SharedConst<T: Debug + 'static + ?Sized>(T);
 
-impl<T: Clone + Debug + 'static + ?Sized> SharedConst<T> {
+impl<T: Debug + 'static> SharedConst<T> {
     /// Construct with given data
     pub fn new(data: T) -> Self {
         SharedConst(data)
+    }
+}
+
+impl<T: Debug + 'static> From<T> for SharedConst<T> {
+    fn from(data: T) -> Self {
+        SharedConst(data)
+    }
+}
+
+impl<T: Debug + 'static + ?Sized> From<&T> for &SharedConst<T> {
+    fn from(data: &T) -> Self {
+        // SAFETY: SharedConst<T> is a thin wrapper around T
+        unsafe { &*(data as *const T as *const SharedConst<T>) }
     }
 }
 
@@ -69,7 +108,7 @@ impl<T: Clone + Debug + 'static> Accessor<()> for SharedConst<T> {
     }
 }
 
-impl<T: Clone + Debug + 'static + ?Sized> Accessor<usize> for SharedConst<[T]> {
+impl<T: Clone + Debug + 'static> Accessor<usize> for SharedConst<[T]> {
     type Item = T;
     fn len(&self) -> usize {
         self.0.len()

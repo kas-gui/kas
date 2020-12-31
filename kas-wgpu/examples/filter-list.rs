@@ -5,9 +5,10 @@
 
 //! Filter list example
 
-use kas::widget::{view::ListView, Window};
+use kas::widget::view::{ListView, SharedConst};
+use kas::widget::Window;
 
-const MONTHS: [&'static str; 12] = [
+const MONTHS: &[&str] = &[
     "January",
     "February",
     "March",
@@ -25,7 +26,8 @@ const MONTHS: [&'static str; 12] = [
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let window = Window::new("Filter-list", ListView::<kas::Down, _>::new(&MONTHS[..]));
+    let data: &SharedConst<[&str]> = MONTHS.into();
+    let window = Window::new("Filter-list", ListView::<kas::Down, _>::new(data));
 
     let theme = kas_theme::ShadedTheme::new();
     kas_wgpu::Toolkit::new(theme)?.with(window)?.run()

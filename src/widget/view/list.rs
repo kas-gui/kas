@@ -8,6 +8,8 @@
 use super::{Accessor, DefaultView, ViewWidget};
 use kas::prelude::*;
 
+// TODO: do we need to keep the A::Item: Default bound used by allocate?
+
 /// List view widget
 #[handler(send=noauto, msg=<W as Handler>::Msg)]
 #[widget(children=noauto)]
@@ -16,7 +18,9 @@ pub struct ListView<
     D: Directional,
     A: Accessor<usize>,
     W: ViewWidget<A::Item> = <<A as Accessor<usize>>::Item as DefaultView>::Widget,
-> {
+> where
+    A::Item: Default,
+{
     first_id: WidgetId,
     #[widget_core]
     core: CoreData,
@@ -28,7 +32,10 @@ pub struct ListView<
     child_inter_margin: i32,
 }
 
-impl<D: Directional + Default, A: Accessor<usize>, W: ViewWidget<A::Item>> ListView<D, A, W> {
+impl<D: Directional + Default, A: Accessor<usize>, W: ViewWidget<A::Item>> ListView<D, A, W>
+where
+    A::Item: Default,
+{
     /// Construct a new instance
     ///
     /// This constructor is available where the direction is determined by the
@@ -47,7 +54,10 @@ impl<D: Directional + Default, A: Accessor<usize>, W: ViewWidget<A::Item>> ListV
         }
     }
 }
-impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> ListView<D, A, W> {
+impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> ListView<D, A, W>
+where
+    A::Item: Default,
+{
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, data: A) -> Self {
         ListView {
@@ -82,6 +92,8 @@ impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> ListView<D, A, 
 
 impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> WidgetChildren
     for ListView<D, A, W>
+where
+    A::Item: Default,
 {
     #[inline]
     fn first_id(&self) -> WidgetId {
@@ -104,7 +116,10 @@ impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> WidgetChildren
     }
 }
 
-impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> Layout for ListView<D, A, W> {
+impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> Layout for ListView<D, A, W>
+where
+    A::Item: Default,
+{
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // TODO: when and how to allocate children?
         if self.widgets.len() < 1 {
@@ -186,7 +201,10 @@ impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> Layout for List
     }
 }
 
-impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> SendEvent for ListView<D, A, W> {
+impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> SendEvent for ListView<D, A, W>
+where
+    A::Item: Default,
+{
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if !self.is_disabled() {
             if id == self.id() {
