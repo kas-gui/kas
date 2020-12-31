@@ -89,10 +89,9 @@ impl<'a> DefaultView for &'a str {
 /// Base trait required by view widgets
 // Note: we require Debug + 'static to allow widgets using this to implement
 // WidgetCore, which requires Debug + Any.
-// Note: since there can be at most one impl for any (T, Self), it would make
-// sense for I to be an associated type; BUT this would make our generic impls
-// conflict (e.g. downstream *could* write `impl AsRef<S> for [S] { .. }`).
-pub trait Accessor<I, T: ?Sized>: Debug + 'static {
+pub trait Accessor<I>: Debug + 'static {
+    type Item;
+
     /// Size descriptor
     ///
     /// Note: for `I == ()` we consider `()` a valid index; in other cases we
@@ -100,7 +99,7 @@ pub trait Accessor<I, T: ?Sized>: Debug + 'static {
     fn len(&self) -> I;
 
     /// Access data by index
-    fn get(&self, index: I) -> T;
+    fn get(&self, index: I) -> Self::Item;
 
     /// Get an update handle, if any is used
     ///
@@ -111,31 +110,46 @@ pub trait Accessor<I, T: ?Sized>: Debug + 'static {
 }
 
 /// Extension trait for shared data for view widgets
-pub trait AccessorShared<I, T: ?Sized>: Accessor<I, T> {
+pub trait AccessorShared<I>: Accessor<I> {
     /// Set data at the given index
     ///
     /// The caller should call [`Manager::trigger_update`] using the returned
     /// update handle, using an appropriate transformation of the index for the
     /// payload (the transformation defined by implementing view widgets).
     /// Calling `trigger_update` is unnecessary before the UI has been started.
-    fn set(&self, index: I, value: T) -> UpdateHandle;
+    fn set(&self, index: I, value: Self::Item) -> UpdateHandle;
 }
 
-impl<T: Clone + Debug + 'static> Accessor<usize, T> for [T] {
-    fn len(&self) -> usize {
-        self.len()
-    }
-    fn get(&self, index: usize) -> T {
-        self[index].clone()
+/// Wrapper for shared constant data
+///
+/// This may be useful with static data, e.g. `[&'static str]`.
+#[derive(Clone, Debug, Default)]
+pub struct SharedConst<T: Debug + 'static + ?Sized>(T);
+
+impl<T: Clone + Debug + 'static + ?Sized> SharedConst<T> {
+    /// Construct with given data
+    pub fn new(data: T) -> Self {
+        SharedConst(data)
     }
 }
 
-impl<T: Clone + Debug + 'static> Accessor<(), T> for T {
+impl<T: Clone + Debug + 'static> Accessor<()> for SharedConst<T> {
+    type Item = T;
     fn len(&self) -> () {
         ()
     }
     fn get(&self, _: ()) -> T {
-        self.clone()
+        self.0.clone()
+    }
+}
+
+impl<T: Clone + Debug + 'static + ?Sized> Accessor<usize> for SharedConst<[T]> {
+    type Item = T;
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+    fn get(&self, index: usize) -> T {
+        self.0[index].to_owned()
     }
 }
 
@@ -165,7 +179,8 @@ impl<T: Clone + Debug + 'static> SharedRc<T> {
     }
 }
 
-impl<T: Clone + Debug + 'static> Accessor<(), T> for SharedRc<T> {
+impl<T: Clone + Debug + 'static> Accessor<()> for SharedRc<T> {
+    type Item = T;
     fn len(&self) -> () {
         ()
     }
@@ -177,7 +192,7 @@ impl<T: Clone + Debug + 'static> Accessor<(), T> for SharedRc<T> {
     }
 }
 
-impl<T: Clone + Debug + 'static> AccessorShared<(), T> for SharedRc<T> {
+impl<T: Clone + Debug + 'static> AccessorShared<()> for SharedRc<T> {
     fn set(&self, _: (), value: T) -> UpdateHandle {
         *self.data.borrow_mut() = value;
         self.handle

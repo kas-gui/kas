@@ -38,7 +38,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             struct {
                 // SingleView embeds a shared value, here default-constructed to 0
                 #[widget(halign=centre)] counter:
-                    SingleView<i32, SharedRc<i32>, Label<String>> = SingleView::default(),
+                    SingleView<SharedRc<i32>, Label<String>> = SingleView::default(),
                 #[widget(handler = handle_button)] buttons -> Message = buttons,
             }
             impl {
