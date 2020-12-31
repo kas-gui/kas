@@ -11,10 +11,10 @@ use std::fmt;
 use std::marker::PhantomData;
 
 /// Single view widget
-#[derive(Clone, Default, Widget)]
+#[derive(Clone, Widget)]
 #[widget(config=noauto)]
 #[layout(single)]
-#[handler(msg=<W as Handler>::Msg)]
+#[handler(handle=noauto)]
 pub struct SingleView<T: 'static, A: Accessor<(), T>, W: ViewWidget<T> = <T as DefaultView>::Widget>
 {
     #[widget_core]
@@ -23,6 +23,19 @@ pub struct SingleView<T: 'static, A: Accessor<(), T>, W: ViewWidget<T> = <T as D
     accessor: A,
     #[widget]
     child: W,
+}
+
+impl<T: 'static, A: Accessor<(), T> + Default, W: ViewWidget<T>> Default for SingleView<T, A, W> {
+    fn default() -> Self {
+        let accessor = A::default();
+        let child = W::new(accessor.get(()));
+        SingleView {
+            core: Default::default(),
+            _t: Default::default(),
+            accessor,
+            child,
+        }
+    }
 }
 
 impl<T: 'static, A: Accessor<(), T>, W: ViewWidget<T>> SingleView<T, A, W> {
@@ -36,17 +49,33 @@ impl<T: 'static, A: Accessor<(), T>, W: ViewWidget<T>> SingleView<T, A, W> {
             child,
         }
     }
+
+    /// Get the data accessor
+    pub fn accessor(&self) -> &A {
+        &self.accessor
+    }
+
+    /// Get a copy of the shared value
+    pub fn get_value(&self) -> T {
+        self.accessor.get(())
+    }
 }
 
 impl<T: 'static, A: AccessorShared<(), T>, W: ViewWidget<T>> SingleView<T, A, W> {
-    /// Update data
+    /// Set shared data
     ///
-    /// Other widgets with a view of this data are notified of the update.
-    pub fn update(&mut self, mgr: &mut Manager, data: T) {
-        self.accessor.set((), data);
-        if let Some(handle) = self.accessor.update_handle() {
-            mgr.trigger_update(handle, 0);
-        }
+    /// Other widgets sharing this data are notified of the update.
+    pub fn set_value(&self, mgr: &mut Manager, data: T) {
+        let handle = self.accessor.set((), data);
+        mgr.trigger_update(handle, 0);
+    }
+
+    /// Update shared data
+    ///
+    /// This is purely a convenience method over [`SingleView::get_value`] and
+    /// [`SingleView::set_value`]. It always notifies other widgets sharing the data.
+    pub fn update_value<F: Fn(T) -> T>(&self, mgr: &mut Manager, f: F) {
+        self.set_value(mgr, f(self.get_value()));
     }
 }
 
@@ -54,6 +83,20 @@ impl<T: 'static, A: Accessor<(), T>, W: ViewWidget<T>> WidgetConfig for SingleVi
     fn configure(&mut self, mgr: &mut Manager) {
         if let Some(handle) = self.accessor.update_handle() {
             mgr.update_on_handle(handle, self.id());
+        }
+    }
+}
+
+impl<T: 'static, A: Accessor<(), T>, W: ViewWidget<T>> Handler for SingleView<T, A, W> {
+    type Msg = <W as Handler>::Msg;
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        match event {
+            Event::HandleUpdate { .. } => {
+                let value = self.accessor.get(());
+                *mgr += self.child.set(value);
+                Response::None
+            }
+            event => Response::Unhandled(event),
         }
     }
 }

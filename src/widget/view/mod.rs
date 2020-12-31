@@ -7,13 +7,11 @@
 //!
 //! View widgets exist as a view over some shared data.
 
-// TODO: how do we notify widgets holding an Accessor when an update is required?
-// TODO: how do we allow fine-grained updates when a subset of data changes?
-
 use super::Label;
+#[allow(unused)]
+use kas::event::Manager;
 use kas::event::UpdateHandle;
 use kas::prelude::*;
-use kas::text::format::FormattableText;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -30,22 +28,40 @@ pub use single::SingleView;
 /// Note: we pass `&T` to better match up with [`Accessor::get`].
 pub trait ViewWidget<T>: Widget {
     /// Construct a default instance (with no data)
-    fn default() -> Self;
+    fn default() -> Self
+    where
+        T: Default;
     /// Construct an instance from a data value
     fn new(data: T) -> Self;
     /// Set the viewed data
-    fn set(&mut self, data: &T) -> TkAction;
+    fn set(&mut self, data: T) -> TkAction;
 }
 
+//TODO(spec): enable this as a specialisation of the T: ToString impl
+// In the mean-time we only lose the Markdown impl by disabling this
+/*
 impl<T: Clone + Default + FormattableText + 'static> ViewWidget<T> for Label<T> {
     fn default() -> Self {
-        Default::default()
+        Label::new(T::default())
     }
     fn new(data: T) -> Self {
-        Self::new(data.clone())
+        Label::new(data.clone())
     }
     fn set(&mut self, data: &T) -> TkAction {
         self.set_text(data.clone())
+    }
+}
+*/
+
+impl<T: Default + ToString> ViewWidget<T> for Label<String> {
+    fn default() -> Self {
+        Label::new(T::default().to_string())
+    }
+    fn new(data: T) -> Self {
+        Label::new(data.to_string())
+    }
+    fn set(&mut self, data: T) -> TkAction {
+        self.set_text(data.to_string())
     }
 }
 
@@ -57,8 +73,17 @@ pub trait DefaultView: Sized {
     type Widget: ViewWidget<Self>;
 }
 
+// TODO(spec): enable this over more specific implementations
+/*
 impl<T: Clone + Default + FormattableText + 'static> DefaultView for T {
     type Widget = Label<T>;
+}
+*/
+impl DefaultView for String {
+    type Widget = Label<String>;
+}
+impl<'a> DefaultView for &'a str {
+    type Widget = Label<String>;
 }
 
 /// Base trait required by view widgets
@@ -89,9 +114,11 @@ pub trait Accessor<I, T: ?Sized>: Debug + 'static {
 pub trait AccessorShared<I, T: ?Sized>: Accessor<I, T> {
     /// Set data at the given index
     ///
-    /// The caller is expected to arrange synchronisation as necessary, likely
-    /// using [`Accessor::update_handle`].
-    fn set(&mut self, index: I, value: T);
+    /// The caller should call [`Manager::trigger_update`] using the returned
+    /// update handle, using an appropriate transformation of the index for the
+    /// payload (the transformation defined by implementing view widgets).
+    /// Calling `trigger_update` is unnecessary before the UI has been started.
+    fn set(&self, index: I, value: T) -> UpdateHandle;
 }
 
 impl<T: Clone + Debug + 'static> Accessor<usize, T> for [T] {
@@ -119,6 +146,15 @@ pub struct SharedRc<T: Clone + Debug + 'static> {
     data: Rc<RefCell<T>>,
 }
 
+impl<T: Default + Clone + Debug + 'static> Default for SharedRc<T> {
+    fn default() -> Self {
+        SharedRc {
+            handle: UpdateHandle::new(),
+            data: Default::default(),
+        }
+    }
+}
+
 impl<T: Clone + Debug + 'static> SharedRc<T> {
     /// Construct with given data
     pub fn new(data: T) -> Self {
@@ -142,7 +178,8 @@ impl<T: Clone + Debug + 'static> Accessor<(), T> for SharedRc<T> {
 }
 
 impl<T: Clone + Debug + 'static> AccessorShared<(), T> for SharedRc<T> {
-    fn set(&mut self, _: (), value: T) {
+    fn set(&self, _: (), value: T) -> UpdateHandle {
         *self.data.borrow_mut() = value;
+        self.handle
     }
 }

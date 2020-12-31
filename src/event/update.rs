@@ -13,6 +13,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 /// Update handles are used to trigger an update event on all widgets which are
 /// subscribed to the same handle.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[must_use]
 pub struct UpdateHandle(NonZeroU32);
 
 impl UpdateHandle {

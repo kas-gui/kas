@@ -255,6 +255,7 @@ impl<'a> Manager<'a> {
     /// windows, will receive an update.
     #[inline]
     pub fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
+        debug!("trigger_update: handle={:?}, payload={}", handle, payload);
         self.shell.trigger_update(handle, payload);
     }
 
