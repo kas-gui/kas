@@ -48,7 +48,7 @@ struct TextEditPopup {
     #[layout_data]
     layout_data: <Self as kas::LayoutData>::Data,
     #[widget(cspan = 3)]
-    edit: EditBoxVoid,
+    edit: EditBox,
     #[widget(row = 1, col = 0)]
     fill: Filler,
     #[widget(row=1, col=1, handler = close)]

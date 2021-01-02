@@ -37,12 +37,6 @@ enum EditAction {
     Edit,
 }
 
-/// An [`EditBox`] with no [`EditGuard`]
-///
-/// This may be useful when requiring a fully-typed [`EditBox`]. Alternatively,
-/// one may implement an [`EditGuard`], `G`, and use `EditBox<G>`.
-pub type EditBoxVoid = EditBox<EditVoid>;
-
 /// A *guard* around an [`EditBox`]
 ///
 /// When an [`EditBox`] receives input, it updates its contents as expected,
@@ -55,6 +49,8 @@ pub type EditBoxVoid = EditBox<EditVoid>;
 /// [`EditBox::guard`] public field.
 ///
 /// All methods have a default implementation which does nothing.
+///
+/// This trait is implemented for `()` (does nothing; Msg = VoidMsg).
 pub trait EditGuard: Sized {
     /// The [`event::Handler::Msg`] type
     type Msg;
@@ -87,16 +83,13 @@ pub trait EditGuard: Sized {
     }
 }
 
-/// No-action [`EditGuard`]
-#[derive(Clone, Debug)]
-pub struct EditVoid;
-impl EditGuard for EditVoid {
+impl EditGuard for () {
     type Msg = VoidMsg;
 }
 
 /// An [`EditGuard`] impl which calls a closure when activated
-pub struct EditActivate<F: Fn(&str) -> Option<M>, M>(pub F);
-impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditActivate<F, M> {
+pub struct EditActivate<F: FnMut(&str) -> Option<M>, M>(pub F);
+impl<F: FnMut(&str) -> Option<M>, M> EditGuard for EditActivate<F, M> {
     type Msg = M;
     fn activate(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
         (edit.guard.0)(edit.text.text())
@@ -104,8 +97,8 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditActivate<F, M> {
 }
 
 /// An [`EditGuard`] impl which calls a closure when activated or focus is lost
-pub struct EditAFL<F: Fn(&str) -> Option<M>, M>(pub F);
-impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditAFL<F, M> {
+pub struct EditAFL<F: FnMut(&str) -> Option<M>, M>(pub F);
+impl<F: FnMut(&str) -> Option<M>, M> EditGuard for EditAFL<F, M> {
     type Msg = M;
     fn activate(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
         (edit.guard.0)(edit.text.text())
@@ -116,8 +109,8 @@ impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditAFL<F, M> {
 }
 
 /// An [`EditGuard`] impl which calls a closure when edited
-pub struct EditEdit<F: Fn(&str) -> Option<M>, M>(pub F);
-impl<F: Fn(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
+pub struct EditEdit<F: FnMut(&str) -> Option<M>, M>(pub F);
+impl<F: FnMut(&str) -> Option<M>, M> EditGuard for EditEdit<F, M> {
     type Msg = M;
     fn edit(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
         (edit.guard.0)(edit.text.text())
@@ -151,7 +144,7 @@ impl Default for TouchPhase {
 #[widget(config(key_nav = true, cursor_icon = event::CursorIcon::Text))]
 #[handler(handle=noauto, generics = <> where G: EditGuard)]
 #[derive(Clone, Default, Widget)]
-pub struct EditBox<G: 'static> {
+pub struct EditBox<G: 'static = ()> {
     #[widget_core]
     core: CoreData,
     frame_offset: Coord,
@@ -286,7 +279,7 @@ impl<G: 'static> Layout for EditBox<G> {
     }
 }
 
-impl EditBox<EditVoid> {
+impl EditBox<()> {
     /// Construct an `EditBox` with the given inital `text`.
     pub fn new<S: ToString>(text: S) -> Self {
         let text = text.to_string();
@@ -307,7 +300,7 @@ impl EditBox<EditVoid> {
             last_edit: LastEdit::None,
             error_state: false,
             touch_phase: TouchPhase::None,
-            guard: EditVoid,
+            guard: (),
         }
     }
 
@@ -349,7 +342,7 @@ impl EditBox<EditVoid> {
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
-    pub fn on_activate<F: Fn(&str) -> Option<M>, M>(self, f: F) -> EditBox<EditActivate<F, M>> {
+    pub fn on_activate<F: FnMut(&str) -> Option<M>, M>(self, f: F) -> EditBox<EditActivate<F, M>> {
         self.with_guard(EditActivate(f))
     }
 
@@ -361,7 +354,7 @@ impl EditBox<EditVoid> {
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
-    pub fn on_afl<F: Fn(&str) -> Option<M>, M>(self, f: F) -> EditBox<EditAFL<F, M>> {
+    pub fn on_afl<F: FnMut(&str) -> Option<M>, M>(self, f: F) -> EditBox<EditAFL<F, M>> {
         self.with_guard(EditAFL(f))
     }
 
@@ -376,7 +369,7 @@ impl EditBox<EditVoid> {
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
-    pub fn on_edit<F: Fn(&str) -> Option<M>, M>(self, f: F) -> EditBox<EditEdit<F, M>> {
+    pub fn on_edit<F: FnMut(&str) -> Option<M>, M>(self, f: F) -> EditBox<EditEdit<F, M>> {
         self.with_guard(EditEdit(f))
     }
 }

@@ -255,6 +255,7 @@ impl<'a> Manager<'a> {
     /// windows, will receive an update.
     #[inline]
     pub fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
+        debug!("trigger_update: handle={:?}, payload={}", handle, payload);
         self.shell.trigger_update(handle, payload);
     }
 
@@ -626,7 +627,7 @@ impl<'a> Manager<'a> {
                     true
                 }
             }};
-        };
+        }
 
         // Progresses to the next (or previous) sibling, otherwise pops to the
         // parent. Returns true if a sibling is found.
@@ -675,7 +676,7 @@ impl<'a> Manager<'a> {
                 }
                 have_sibling
             }};
-        };
+        }
 
         macro_rules! try_set_focus {
             ($self:ident, $widget:ident) => {
