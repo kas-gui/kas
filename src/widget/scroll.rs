@@ -157,7 +157,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         rules
     }
 
-    fn set_rect(&mut self, rect: Rect, _: AlignHints) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {
         self.core.rect = rect;
         // We use simplified layout code here
         let pos = rect.pos;
@@ -178,7 +178,8 @@ impl<W: Widget> Layout for ScrollRegion<W> {
 
         let child_size = self.inner_size.max(self.min_child_size);
         let child_rect = Rect::new(pos, child_size);
-        self.inner.set_rect(child_rect, AlignHints::NONE);
+        self.inner
+            .set_rect(size_handle, child_rect, AlignHints::NONE);
         self.max_offset = Coord::from(child_size) - Coord::from(self.inner_size);
         self.offset = self.offset.clamp(Coord::ZERO, self.max_offset);
 
@@ -186,7 +187,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
             let pos = Coord(pos.0, pos.1 + self.inner_size.1 as i32);
             let size = Size(self.inner_size.0, self.bar_width);
             self.horiz_bar
-                .set_rect(Rect { pos, size }, AlignHints::NONE);
+                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
             let _ = self
                 .horiz_bar
                 .set_limits(self.max_offset.0 as u32, rect.size.0);
@@ -194,7 +195,8 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         if self.show_bars.1 {
             let pos = Coord(pos.0 + self.inner_size.0 as i32, pos.1);
             let size = Size(self.bar_width, self.core.rect.size.1);
-            self.vert_bar.set_rect(Rect { pos, size }, AlignHints::NONE);
+            self.vert_bar
+                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
             let _ = self
                 .vert_bar
                 .set_limits(self.max_offset.1 as u32, rect.size.1);

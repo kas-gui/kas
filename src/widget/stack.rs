@@ -72,10 +72,10 @@ impl<W: Widget> Layout for Stack<W> {
         rules
     }
 
-    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         for child in &mut self.widgets {
-            child.set_rect(rect, align.clone());
+            child.set_rect(size_handle, rect, align.clone());
         }
     }
 

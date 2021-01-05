@@ -145,7 +145,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         solver.finish(&mut self.data)
     }
 
-    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         if self.widgets.len() == 0 {
             return;
@@ -170,7 +170,11 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         loop {
             assert!(n < self.widgets.len());
             let align = AlignHints::default();
-            self.widgets[n].set_rect(setter.child_rect(&mut self.data, n << 1), align);
+            self.widgets[n].set_rect(
+                size_handle,
+                setter.child_rect(&mut self.data, n << 1),
+                align,
+            );
 
             if n >= self.handles.len() {
                 break;
@@ -179,7 +183,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
             // TODO(opt): calculate all maximal sizes simultaneously
             let index = (n << 1) + 1;
             let track = setter.maximal_rect_of(&mut self.data, index);
-            self.handles[n].set_rect(track, AlignHints::default());
+            self.handles[n].set_rect(size_handle, track, AlignHints::default());
             let handle = setter.child_rect(&mut self.data, index);
             let _ = self.handles[n].set_size_and_offset(handle.size, handle.pos - track.pos);
 
@@ -246,7 +250,7 @@ impl<D: Directional, W: Widget> event::SendEvent for Splitter<D, W> {
                         .unwrap_or_else(|_| {
                             // Message is the new offset relative to the track;
                             // the handle has already adjusted its position
-                            self.adjust_size(n);
+                            mgr.size_handle(|sh| self.adjust_size(sh, n));
                             Response::None
                         });
                 }
@@ -286,7 +290,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         }
     }
 
-    fn adjust_size(&mut self, n: usize) {
+    fn adjust_size(&mut self, size_handle: &mut dyn SizeHandle, n: usize) {
         assert!(n < self.handles.len());
         assert_eq!(self.widgets.len(), self.handles.len() + 1);
         let index = 2 * n + 1;
@@ -309,7 +313,11 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         loop {
             assert!(n < self.widgets.len());
             let align = AlignHints::default();
-            self.widgets[n].set_rect(setter.child_rect(&mut self.data, n << 1), align);
+            self.widgets[n].set_rect(
+                size_handle,
+                setter.child_rect(&mut self.data, n << 1),
+                align,
+            );
 
             if n >= self.handles.len() {
                 break;
@@ -317,7 +325,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
 
             let index = (n << 1) + 1;
             let track = self.handles[n].track();
-            self.handles[n].set_rect(track, AlignHints::default());
+            self.handles[n].set_rect(size_handle, track, AlignHints::default());
             let handle = setter.child_rect(&mut self.data, index);
             let _ = self.handles[n].set_size_and_offset(handle.size, handle.pos - track.pos);
 

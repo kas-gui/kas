@@ -140,7 +140,7 @@ where
         rules
     }
 
-    fn set_rect(&mut self, rect: Rect, mut align: AlignHints) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, mut align: AlignHints) {
         self.core.rect = rect;
 
         let mut pos = rect.pos;
@@ -170,7 +170,7 @@ where
         }
 
         for child in self.widgets.iter_mut() {
-            child.set_rect(Rect::new(pos, child_size), align);
+            child.set_rect(size_handle, Rect::new(pos, child_size), align);
             pos += skip;
         }
     }

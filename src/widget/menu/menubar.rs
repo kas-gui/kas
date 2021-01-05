@@ -55,10 +55,10 @@ impl<D: Directional, W: Menu> Layout for MenuBar<D, W> {
         self.bar.size_rules(size_handle, axis)
     }
 
-    fn set_rect(&mut self, rect: Rect, _: AlignHints) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {
         self.core_data_mut().rect = rect;
         let align = AlignHints::new(Some(Align::Default), Some(Align::Default));
-        self.bar.set_rect(rect, align);
+        self.bar.set_rect(size_handle, rect, align);
     }
 
     #[inline]

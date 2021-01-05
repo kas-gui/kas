@@ -110,7 +110,7 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
         text_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         self.label.update_env(|env| {
             env.set_bounds(rect.size.into());

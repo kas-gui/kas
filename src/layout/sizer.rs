@@ -187,7 +187,7 @@ impl SolveCache {
             rect.size.0 = width;
             rect.size.1 -= (self.margins.vert.0 + self.margins.vert.1) as u32;
         }
-        widget.set_rect(rect, AlignHints::NONE);
+        widget.set_rect(size_handle, rect, AlignHints::NONE);
 
         trace!(
             "layout::solve_and_set for size={:?} has hierarchy:{}",

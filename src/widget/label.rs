@@ -66,7 +66,7 @@ impl<T: FormattableText + 'static> Layout for Label<T> {
         impls::size_rules(self, size_handle, axis)
     }
 
-    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
         impls::set_rect(self, rect, align);
     }
 
