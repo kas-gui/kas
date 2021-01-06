@@ -195,7 +195,7 @@ pub(crate) fn derive(
             solver.for_child(
                 &mut #data,
                 #child_info,
-                |axis| child.size_rules(size_handle, axis)
+                |axis| child.size_rules(sh, axis)
             );
         });
 
@@ -242,11 +242,7 @@ pub(crate) fn derive(
     });
 
     Ok(quote! {
-        fn size_rules(
-            &mut self,
-            size_handle: &mut dyn kas::draw::SizeHandle,
-            axis: kas::layout::AxisInfo
-        )
+        fn size_rules(&mut self, sh: &mut dyn kas::draw::SizeHandle, axis: kas::layout::AxisInfo)
             -> kas::layout::SizeRules
         {
             use kas::WidgetCore;
@@ -261,7 +257,12 @@ pub(crate) fn derive(
             solver.finish(&mut #data)
         }
 
-        fn set_rect(&mut self, _sh: &mut dyn kas::draw::SizeHandle, rect: kas::geom::Rect, mut align: kas::AlignHints) {
+        fn set_rect(
+            &mut self,
+            _sh: &mut dyn kas::draw::SizeHandle,
+            rect: kas::geom::Rect,
+            mut align: kas::AlignHints
+        ) {
             use kas::{WidgetCore, Widget};
             use kas::layout::{Margins, RulesSetter};
             self.core.rect = rect;
