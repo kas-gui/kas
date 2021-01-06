@@ -14,7 +14,7 @@ KAS's design provides:
 -   type-safe, widget-local event handlers
 -   simple ownership with no retained pointers into widget state
 -   widgets embed state and handlers (easy reuse of complex components)
--   scalability to millions of widgets (WIP)
+-   scalability to millions of widgets
 
 ## Examples
 
@@ -26,13 +26,12 @@ For details, see the [Examples README](kas-wgpu/examples/README.md).
 
 ## Features
 
--   Touchscreen input, mouse input, full keyboard navigation, accelerator keys
+-   Automatic window size and layout: just specify row/column/grid layout and
+    let KAS do the rest (with correct HiDPI scaling)
+-   Themes (sizing and rendering control) and colour schemes with run-time switching
+-   Accessibility/input: full keyboard control as well as touchscreen and mouse
 -   Bidirectional and rich text support via [KAS-text] with complex glyph shaping via [HarfBuzz]
--   Scalable (HiDPI) supporting fractional scaling
--   Themes (sizing and rendering control) and colour schemes
 -   Embedded graphics via custom [WebGPU] graphics pipes
--   Widget layout via grids (with spans), rows and columns
--   Idempotent widget resizing
 
 ### Missing features
 
