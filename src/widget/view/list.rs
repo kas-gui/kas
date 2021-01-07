@@ -6,6 +6,7 @@
 //! List view widget
 
 use super::{Accessor, DefaultView, ViewWidget};
+use kas::layout::solve_size_rules;
 use kas::prelude::*;
 
 // TODO: do we need to keep the A::Item: Default bound used by allocate?
@@ -185,10 +186,8 @@ where
         let old_len = self.widgets.len();
         self.allocate(num_visible as usize);
         for child in &mut self.widgets[old_len..] {
-            // Contract on set_rect is that size_rules was called first, so call now for new widgets
-            // NOTE: we solve for horiz axis first as in sizer.rs
-            child.size_rules(size_handle, AxisInfo::new(false, None));
-            child.size_rules(size_handle, AxisInfo::new(true, Some(child_size.0)));
+            // We must solve size rules on new widgets:
+            solve_size_rules(child, size_handle, Some(child_size.0), Some(child_size.1));
         }
         for child in self.widgets.iter_mut() {
             child.set_rect(size_handle, Rect::new(pos, child_size), align);

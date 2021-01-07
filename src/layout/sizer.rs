@@ -11,7 +11,7 @@ use std::fmt;
 use super::{AxisInfo, Margins, SizeRules};
 use crate::draw::SizeHandle;
 use crate::geom::{Coord, Rect, Size};
-use crate::{AlignHints, WidgetConfig};
+use crate::{AlignHints, Widget, WidgetConfig};
 
 /// A [`SizeRules`] solver for layouts
 ///
@@ -57,6 +57,31 @@ pub trait RulesSetter {
     ///
     /// This assumes that all other entries have minimum size.
     fn maximal_rect_of(&mut self, storage: &mut Self::Storage, index: Self::ChildInfo) -> Rect;
+}
+
+/// Solve size rules for a widget
+///
+/// Widget layout is normally a two-step process: (1) `size_rules` is called
+/// (twice: once for each axis), with parent widgets querying child size as part
+/// of this step, then (2) `set_rect` is called.
+///
+/// Some parent widgets do not call `size_rules` for all their children within
+/// their own `size_rules` method (perhaps because the children do not exist
+/// yet); in this case they should use this method to perform step (1) for
+/// those children before calling `set_rect` on them. (It is acceptable though
+/// not useful to perform step (1) multiple times. It is also acceptable never
+/// to do this if `set_rect` is also never called and the widget never drawn.)
+///
+/// Parameters `x_size` and `y_size` should be passed where this dimension is
+/// fixed and are used e.g. for text wrapping.
+pub fn solve_size_rules<W: Widget>(
+    widget: &mut W,
+    size_handle: &mut dyn SizeHandle,
+    x_size: Option<u32>,
+    y_size: Option<u32>,
+) {
+    widget.size_rules(size_handle, AxisInfo::new(false, y_size));
+    widget.size_rules(size_handle, AxisInfo::new(true, x_size));
 }
 
 /// Size solver
