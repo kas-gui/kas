@@ -40,11 +40,6 @@ mod impls {
         if let Some(text) = prepared {
             obj.reserve = Some(text.take_text());
         }
-        if axis.is_horizontal() {
-            obj.core.rect.size.0 = rules.ideal_size();
-        } else {
-            obj.core.rect.size.1 = rules.ideal_size();
-        }
         rules
     }
 

@@ -78,7 +78,6 @@ pub struct Splitter<D: Directional, W: Widget> {
     core: CoreData,
     widgets: Vec<W>,
     handles: Vec<DragHandle>,
-    handle_size: Size,
     data: layout::DynRowStorage,
     direction: D,
 }
@@ -120,8 +119,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         }
         assert!(self.handles.len() + 1 == self.widgets.len());
 
-        self.handle_size = size_handle.frame();
-        let handle_size = axis.extract_size(self.handle_size);
+        let handle_size = axis.extract_size(size_handle.frame());
 
         let dim = (self.direction, WidgetChildren::len(self));
         let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
@@ -151,12 +149,6 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
             return;
         }
         assert!(self.handles.len() + 1 == self.widgets.len());
-
-        if self.direction.is_horizontal() {
-            self.handle_size.1 = rect.size.1;
-        } else {
-            self.handle_size.0 = rect.size.0;
-        }
 
         let dim = (self.direction, WidgetChildren::len(self));
         let is_horiz = dim.0.is_horizontal();
@@ -284,7 +276,6 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             core: Default::default(),
             widgets,
             handles,
-            handle_size: Size::ZERO,
             data: Default::default(),
             direction,
         }
