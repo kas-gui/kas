@@ -89,7 +89,7 @@ pub use list::*;
 pub use menu::*;
 pub use progress::ProgressBar;
 pub use radiobox::{RadioBox, RadioBoxBare};
-pub use reserve::Reserve;
+pub use reserve::{Reserve, ReserveP};
 pub use scroll::ScrollRegion;
 pub use scrollbar::ScrollBar;
 pub use separator::Separator;

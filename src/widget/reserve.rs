@@ -8,6 +8,14 @@
 use kas::{event, prelude::*};
 use std::fmt::{self, Debug};
 
+/// Parameterisation of [`Reserve`] using a function pointer
+///
+/// Since it is impossible to name closures, using [`Reserve`] where a type is
+/// required (e.g. in a struct field) is only possible by making the containing
+/// struct generic over this field, which may be undesirable. As an alternative
+/// a function pointer may be preferred.
+pub type ReserveP<W> = Reserve<W, fn(&mut dyn SizeHandle, AxisInfo) -> SizeRules>;
+
 /// A generic widget for size reservations
 ///
 /// In a few cases it is desirable to reserve more space for a widget than

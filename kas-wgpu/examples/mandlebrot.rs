@@ -15,7 +15,7 @@ use kas::draw::Pass;
 use kas::event::{self, ControlKey};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
-use kas::widget::{Label, Slider, Window};
+use kas::widget::{Label, ReserveP, Slider, Window};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawWindow};
 use kas_wgpu::Options;
 
@@ -518,7 +518,7 @@ struct MandlebrotWindow {
     #[widget(cspan = 2)]
     label: Label<String>,
     #[widget(row=1, halign=centre)]
-    iters: Label<String>,
+    iters: ReserveP<Label<String>>,
     #[widget(row=2, handler = iter)]
     slider: Slider<i32, kas::Up>,
     // extra col span allows use of Label's margin
@@ -533,7 +533,9 @@ impl MandlebrotWindow {
             core: Default::default(),
             layout_data: Default::default(),
             label: Label::new(mbrot.loc()),
-            iters: Label::from("64").with_reserve("000".to_string()),
+            iters: ReserveP::new(Label::from("64"), |size_handle, axis| {
+                Label::new("000").size_rules(size_handle, axis)
+            }),
             slider,
             mbrot,
         };

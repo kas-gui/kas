@@ -17,52 +17,21 @@ use kas::{event, prelude::*};
 pub struct Label<T: FormattableText + 'static> {
     #[widget_core]
     core: CoreData,
-    reserve: Option<T>,
     label: Text<T>,
 }
 
-mod impls {
-    use super::*;
-
-    pub fn size_rules<T: FormattableText + 'static>(
-        obj: &mut Label<T>,
-        size_handle: &mut dyn SizeHandle,
-        axis: AxisInfo,
-    ) -> SizeRules {
-        let mut prepared = None;
-        let text = if let Some(s) = obj.reserve.take() {
-            prepared = Some(Text::new_multi(s));
-            prepared.as_mut().unwrap()
-        } else {
-            &mut obj.label
-        };
-        let rules = size_handle.text_bound(text, TextClass::Label, axis);
-        if let Some(text) = prepared {
-            obj.reserve = Some(text.take_text());
-        }
-        rules
-    }
-
-    pub fn set_rect<T: FormattableText + 'static>(
-        obj: &mut Label<T>,
-        rect: Rect,
-        align: AlignHints,
-    ) {
-        obj.core.rect = rect;
-        obj.label.update_env(|env| {
-            env.set_bounds(rect.size.into());
-            env.set_align(align.unwrap_or(Align::Default, Align::Centre));
-        });
-    }
-}
-
 impl<T: FormattableText + 'static> Layout for Label<T> {
+    #[inline]
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        impls::size_rules(self, size_handle, axis)
+        size_handle.text_bound(&mut self.label, TextClass::Label, axis)
     }
 
     fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
-        impls::set_rect(self, rect, align);
+        self.core.rect = rect;
+        self.label.update_env(|env| {
+            env.set_bounds(rect.size.into());
+            env.set_align(align.unwrap_or(Align::Default, Align::Centre));
+        });
     }
 
     #[cfg(feature = "min_spec")]
@@ -129,21 +98,12 @@ impl<'a> From<&'a str> for Label<String> {
 
 impl<T: FormattableText + 'static> Label<T> {
     /// Construct from `label`
+    #[inline]
     pub fn new(label: T) -> Self {
         Label {
             core: Default::default(),
-            reserve: None,
             label: Text::new_multi(label),
         }
-    }
-
-    /// Reserve sufficient room for the given text
-    ///
-    /// If this option is used, the label will be sized to fit this text, not
-    /// the actual text.
-    pub fn with_reserve(mut self, text: T) -> Self {
-        self.reserve = Some(text);
-        self
     }
 
     /// Set text in an existing `Label`
