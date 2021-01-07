@@ -103,3 +103,16 @@ impl<W: SetAccel + Widget> SetAccel for MenuFrame<W> {
         self.inner.set_accel_string(accel)
     }
 }
+
+impl<W: Widget> std::ops::Deref for MenuFrame<W> {
+    type Target = W;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<W: Widget> std::ops::DerefMut for MenuFrame<W> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}

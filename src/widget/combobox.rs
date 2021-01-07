@@ -118,7 +118,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         }
         if self.active != index {
             self.active = index;
-            let string = self.popup.inner.inner[self.active].get_string();
+            let string = self.popup.inner[self.active].get_string();
             kas::text::util::set_text_and_prepare(&mut self.label, string)
         } else {
             TkAction::None
@@ -176,7 +176,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             panic!("ComboBox::remove: unable to remove last choice");
         }
         let m = self.messages.remove(index);
-        (m, self.popup.inner.inner.remove(index).1)
+        (m, self.popup.inner.remove(index).1)
     }
 
     /// Replace the choice at `index`
@@ -190,7 +190,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     ) -> (M, TkAction) {
         let mut m = msg;
         std::mem::swap(&mut m, &mut self.messages[index]);
-        (m, self.popup.inner.inner[index].set_accel(label))
+        (m, self.popup.inner[index].set_accel(label))
     }
 }
 
@@ -272,7 +272,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 direction: Direction::Down,
             });
             s.popup_id = Some(id);
-            if let Some(id) = s.popup.inner.inner.get(s.active).map(|w| w.id()) {
+            if let Some(id) = s.popup.inner.get(s.active).map(|w| w.id()) {
                 mgr.set_nav_focus(id);
             }
         };
@@ -311,7 +311,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 if self.popup_id.is_none() {
                     open_popup(self, mgr);
                 }
-                let cond = self.popup.inner.inner.rect().contains(coord);
+                let cond = self.popup.inner.rect().contains(coord);
                 let target = if cond { cur_id } else { None };
                 mgr.set_grab_depress(source, target);
                 if let Some(id) = target {

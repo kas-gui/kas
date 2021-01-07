@@ -189,14 +189,14 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                     Event::Control(key) if self.popup_id.is_some() => {
                         if self.popup_id.is_some() {
                             let dir = self.direction.as_direction();
-                            let inner_vert = self.list.inner.direction().is_vertical();
+                            let inner_vert = self.list.direction().is_vertical();
                             let next = |mgr: &mut Manager, s, clr, rev| {
                                 if clr {
                                     mgr.clear_nav_focus();
                                 }
                                 mgr.next_nav_focus(s, rev);
                             };
-                            let rev = self.list.inner.direction().is_reversed();
+                            let rev = self.list.direction().is_reversed();
                             use Direction::*;
                             match key {
                                 ControlKey::Left if !inner_vert => next(mgr, self, false, !rev),
@@ -239,29 +239,29 @@ impl<D: Directional, W: Menu> Menu for SubMenu<D, W> {
                 if self.popup_id.is_some() {
                     // We should close other sub-menus before opening
                     let mut child = None;
-                    for i in 0..self.list.inner.len() {
-                        if self.list.inner[i].is_ancestor_of(id) {
+                    for i in 0..self.list.len() {
+                        if self.list[i].is_ancestor_of(id) {
                             child = Some(i);
                         } else {
-                            self.list.inner[i].menu_path(mgr, None);
+                            self.list[i].menu_path(mgr, None);
                         }
                     }
                     if let Some(i) = child {
-                        self.list.inner[i].menu_path(mgr, target);
+                        self.list[i].menu_path(mgr, target);
                     }
                 } else {
                     self.open_menu(mgr);
                     if id != self.id() {
-                        for i in 0..self.list.inner.len() {
-                            self.list.inner[i].menu_path(mgr, target);
+                        for i in 0..self.list.len() {
+                            self.list[i].menu_path(mgr, target);
                         }
                     }
                 }
             }
             _ => {
                 if self.popup_id.is_some() {
-                    for i in 0..self.list.inner.len() {
-                        self.list.inner[i].menu_path(mgr, None);
+                    for i in 0..self.list.len() {
+                        self.list[i].menu_path(mgr, None);
                     }
                     self.close_menu(mgr);
                 }
