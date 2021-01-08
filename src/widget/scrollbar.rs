@@ -211,9 +211,9 @@ impl<D: Directional> Layout for ScrollBar<D> {
         }
     }
 
-    fn set_rect(&mut self, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.handle.set_rect(rect, align);
+        self.handle.set_rect(size_handle, rect, align);
         let _ = self.update_handle();
     }
 

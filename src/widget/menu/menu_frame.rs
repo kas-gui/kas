@@ -52,11 +52,11 @@ impl<W: Widget> Layout for MenuFrame<W> {
         child_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, mut rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, mut rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         rect.pos += self.m0;
         rect.size -= self.m0 + self.m1;
-        self.inner.set_rect(rect, align);
+        self.inner.set_rect(size_handle, rect, align);
     }
 
     #[inline]
@@ -101,5 +101,18 @@ impl<W: HasString + Widget> HasString for MenuFrame<W> {
 impl<W: SetAccel + Widget> SetAccel for MenuFrame<W> {
     fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
         self.inner.set_accel_string(accel)
+    }
+}
+
+impl<W: Widget> std::ops::Deref for MenuFrame<W> {
+    type Target = W;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<W: Widget> std::ops::DerefMut for MenuFrame<W> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }

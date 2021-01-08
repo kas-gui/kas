@@ -17,7 +17,7 @@ pub struct Frame<W: Widget> {
     #[widget_core]
     core: CoreData,
     #[widget]
-    child: W,
+    pub inner: W,
     m0: Size,
     m1: Size,
 }
@@ -25,10 +25,10 @@ pub struct Frame<W: Widget> {
 impl<W: Widget> Frame<W> {
     /// Construct a frame
     #[inline]
-    pub fn new(child: W) -> Self {
+    pub fn new(inner: W) -> Self {
         Frame {
             core: Default::default(),
-            child,
+            inner,
             m0: Size::ZERO,
             m1: Size::ZERO,
         }
@@ -41,7 +41,7 @@ impl<W: Widget> Layout for Frame<W> {
         let margins = Margins::ZERO;
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, margins);
 
-        let child_rules = self.child.size_rules(size_handle, axis);
+        let child_rules = self.inner.size_rules(size_handle, axis);
         let m = child_rules.margins();
 
         if axis.is_horizontal() {
@@ -55,11 +55,11 @@ impl<W: Widget> Layout for Frame<W> {
         child_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, mut rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, mut rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         rect.pos += self.m0;
         rect.size -= self.m0 + self.m1;
-        self.child.set_rect(rect, align);
+        self.inner.set_rect(size_handle, rect, align);
     }
 
     #[inline]
@@ -67,35 +67,35 @@ impl<W: Widget> Layout for Frame<W> {
         if !self.rect().contains(coord) {
             return None;
         }
-        self.child.find_id(coord).or(Some(self.id()))
+        self.inner.find_id(coord).or(Some(self.id()))
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         draw_handle.outer_frame(self.core_data().rect);
         let disabled = disabled || self.is_disabled();
-        self.child.draw(draw_handle, mgr, disabled);
+        self.inner.draw(draw_handle, mgr, disabled);
     }
 }
 
 impl<W: HasBool + Widget> HasBool for Frame<W> {
     fn get_bool(&self) -> bool {
-        self.child.get_bool()
+        self.inner.get_bool()
     }
 
     fn set_bool(&mut self, state: bool) -> TkAction {
-        self.child.set_bool(state)
+        self.inner.set_bool(state)
     }
 }
 
 impl<W: HasStr + Widget> HasStr for Frame<W> {
     fn get_str(&self) -> &str {
-        self.child.get_str()
+        self.inner.get_str()
     }
 }
 
 impl<W: HasString + Widget> HasString for Frame<W> {
     fn set_string(&mut self, text: String) -> TkAction {
-        self.child.set_string(text)
+        self.inner.set_string(text)
     }
 }
 
@@ -103,6 +103,19 @@ impl<W: HasString + Widget> HasString for Frame<W> {
 
 impl<W: SetAccel + Widget> SetAccel for Frame<W> {
     fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
-        self.child.set_accel_string(accel)
+        self.inner.set_accel_string(accel)
+    }
+}
+
+impl<W: Widget> std::ops::Deref for Frame<W> {
+    type Target = W;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<W: Widget> std::ops::DerefMut for Frame<W> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }

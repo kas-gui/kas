@@ -15,7 +15,7 @@ use kas::draw::Pass;
 use kas::event::{self, ControlKey};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
-use kas::widget::{Label, Slider, Window};
+use kas::widget::{Label, ReserveP, Slider, Window};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawWindow};
 use kas_wgpu::Options;
 
@@ -409,16 +409,14 @@ impl WidgetConfig for Mandlebrot {
 
 impl Layout for Mandlebrot {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
-        let size = (match a.is_horizontal() {
-            true => 300.0,
-            false => 200.0,
-        } * size_handle.scale_factor())
-        .round() as u32;
-        SizeRules::new(size, size * 3, (0, 0), StretchPolicy::Maximize)
+        let virt_size = if a.is_horizontal() { 300.0 } else { 200.0 };
+        let min_size = (virt_size * size_handle.scale_factor()).round() as u32;
+        let ideal_size = min_size * 10; // prefer big but not larger than screen size
+        SizeRules::new(min_size, ideal_size, (0, 0), StretchPolicy::Maximize)
     }
 
     #[inline]
-    fn set_rect(&mut self, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
         self.core.rect = rect;
         let size = DVec2::from(rect.size);
         let rel_width = DVec2(size.0 / size.1, 1.0);
@@ -520,7 +518,7 @@ struct MandlebrotWindow {
     #[widget(cspan = 2)]
     label: Label<String>,
     #[widget(row=1, halign=centre)]
-    iters: Label<String>,
+    iters: ReserveP<Label<String>>,
     #[widget(row=2, handler = iter)]
     slider: Slider<i32, kas::Up>,
     // extra col span allows use of Label's margin
@@ -535,7 +533,9 @@ impl MandlebrotWindow {
             core: Default::default(),
             layout_data: Default::default(),
             label: Label::new(mbrot.loc()),
-            iters: Label::from("64").with_reserve("000".to_string()),
+            iters: ReserveP::new(Label::from("64"), |size_handle, axis| {
+                Label::new("000").size_rules(size_handle, axis)
+            }),
             slider,
             mbrot,
         };

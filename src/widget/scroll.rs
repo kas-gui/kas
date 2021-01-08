@@ -33,7 +33,6 @@ pub struct ScrollRegion<W: Widget> {
     max_offset: Coord,
     offset: Coord,
     scroll_rate: f32,
-    bar_width: u32,
     auto_bars: bool,
     show_bars: (bool, bool),
     #[widget]
@@ -55,7 +54,6 @@ impl<W: Widget> ScrollRegion<W> {
             max_offset: Coord::ZERO,
             offset: Coord::ZERO,
             scroll_rate: 30.0,
-            bar_width: 0,
             auto_bars: false,
             show_bars: (false, false),
             horiz_bar: ScrollBar::new(),
@@ -147,7 +145,6 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         let line_height = size_handle.line_height(TextClass::Label);
         self.scroll_rate = 3.0 * line_height as f32;
         rules.reduce_min_to(line_height);
-        self.bar_width = (size_handle.scrollbar().0).1;
 
         if axis.is_horizontal() && (self.auto_bars || self.show_bars.1) {
             rules.append(self.vert_bar.size_rules(size_handle, axis));
@@ -157,44 +154,47 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         rules
     }
 
-    fn set_rect(&mut self, rect: Rect, _: AlignHints) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, _: AlignHints) {
         self.core.rect = rect;
         // We use simplified layout code here
         let pos = rect.pos;
         self.inner_size = rect.size;
 
+        let bar_width = (size_handle.scrollbar().0).1;
         if self.auto_bars {
             self.show_bars = (
-                self.min_child_size.0 + self.bar_width > rect.size.0,
-                self.min_child_size.1 + self.bar_width > rect.size.1,
+                self.min_child_size.0 + bar_width > rect.size.0,
+                self.min_child_size.1 + bar_width > rect.size.1,
             );
         }
         if self.show_bars.0 {
-            self.inner_size.1 -= self.bar_width;
+            self.inner_size.1 -= bar_width;
         }
         if self.show_bars.1 {
-            self.inner_size.0 -= self.bar_width;
+            self.inner_size.0 -= bar_width;
         }
 
         let child_size = self.inner_size.max(self.min_child_size);
         let child_rect = Rect::new(pos, child_size);
-        self.inner.set_rect(child_rect, AlignHints::NONE);
+        self.inner
+            .set_rect(size_handle, child_rect, AlignHints::NONE);
         self.max_offset = Coord::from(child_size) - Coord::from(self.inner_size);
         self.offset = self.offset.clamp(Coord::ZERO, self.max_offset);
 
         if self.show_bars.0 {
             let pos = Coord(pos.0, pos.1 + self.inner_size.1 as i32);
-            let size = Size(self.inner_size.0, self.bar_width);
+            let size = Size(self.inner_size.0, bar_width);
             self.horiz_bar
-                .set_rect(Rect { pos, size }, AlignHints::NONE);
+                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
             let _ = self
                 .horiz_bar
                 .set_limits(self.max_offset.0 as u32, rect.size.0);
         }
         if self.show_bars.1 {
             let pos = Coord(pos.0 + self.inner_size.0 as i32, pos.1);
-            let size = Size(self.bar_width, self.core.rect.size.1);
-            self.vert_bar.set_rect(Rect { pos, size }, AlignHints::NONE);
+            let size = Size(bar_width, self.core.rect.size.1);
+            self.vert_bar
+                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
             let _ = self
                 .vert_bar
                 .set_limits(self.max_offset.1 as u32, rect.size.1);

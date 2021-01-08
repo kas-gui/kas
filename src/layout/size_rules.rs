@@ -255,6 +255,12 @@ impl SizeRules {
         self.stretch
     }
 
+    /// Set the stretch policy
+    #[inline]
+    pub fn set_stretch(&mut self, stretch: StretchPolicy) {
+        self.stretch = stretch;
+    }
+
     /// Set margins to max of own margins and given margins
     pub fn include_margins(&mut self, margins: (u16, u16)) {
         self.m.0 = self.m.0.max(margins.0);
@@ -276,6 +282,21 @@ impl SizeRules {
     #[inline]
     pub fn max_with(&mut self, rhs: Self) {
         *self = self.max(rhs);
+    }
+
+    /// Multiply the `(min, ideal)` size, including internal margins
+    ///
+    /// E.g. given `margin = margins.0 + margins.1` and factors `(2, 5)`, the
+    /// minimum size is set to `min * 2 + margin` and the ideal to
+    /// `ideal * 5 + 4 * margin`.
+    ///
+    /// Panics if either factor is 0.
+    pub fn multiply_with_margin(&mut self, min_factor: u32, ideal_factor: u32) {
+        let margin = self.m.0 as u32 + self.m.1 as u32;
+        assert!(min_factor > 0);
+        assert!(ideal_factor > 0);
+        self.a = min_factor * self.a + (min_factor - 1) * margin;
+        self.b = ideal_factor * self.b + (ideal_factor - 1) * margin;
     }
 
     /// Append the rules for `rhs` to self

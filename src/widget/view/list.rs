@@ -6,6 +6,7 @@
 //! List view widget
 
 use super::{Accessor, DefaultView, ViewWidget};
+use kas::layout::solve_size_rules;
 use kas::prelude::*;
 
 // TODO: do we need to keep the A::Item: Default bound used by allocate?
@@ -27,9 +28,10 @@ pub struct ListView<
     data: A,
     widgets: Vec<W>,
     direction: D,
+    ideal_visible: u32,
     child_size_min: u32,
     child_size_ideal: u32,
-    child_inter_margin: i32,
+    child_inter_margin: u32,
 }
 
 impl<D: Directional + Default, A: Accessor<usize>, W: ViewWidget<A::Item>> ListView<D, A, W>
@@ -48,6 +50,7 @@ where
             data,
             widgets: Default::default(),
             direction: Default::default(),
+            ideal_visible: 5,
             child_size_min: 0,
             child_size_ideal: 0,
             child_inter_margin: 0,
@@ -66,6 +69,7 @@ where
             data,
             widgets: Default::default(),
             direction,
+            ideal_visible: 5,
             child_size_min: 0,
             child_size_ideal: 0,
             child_inter_margin: 0,
@@ -77,15 +81,26 @@ where
         self.direction.as_direction()
     }
 
+    /// Set the preferred number of items visible (inline)
+    ///
+    /// This affects the (ideal) size request and whether children are sized
+    /// according to their ideal or minimum size but not the minimum size.
+    pub fn with_num_visible(mut self, number: u32) -> Self {
+        self.ideal_visible = number;
+        self
+    }
+
     fn allocate(&mut self, number: usize) {
+        dbg!(number);
+        let number = number.min(self.data.len());
         self.widgets.reserve(number);
-        let len = self.data.len();
         for i in self.widgets.len()..number {
-            self.widgets.push(if i < len {
-                W::new(self.data.get(i))
-            } else {
-                W::default()
-            });
+            self.widgets.push(W::new(self.data.get(i)));
+        }
+
+        // size_rules needs at least one widget
+        if self.widgets.is_empty() {
+            self.widgets.push(W::default());
         }
     }
 }
@@ -129,39 +144,38 @@ where
         if axis.is_vertical() == self.direction.is_vertical() {
             self.child_size_min = rules.min_size();
             self.child_size_ideal = rules.ideal_size();
-            self.child_inter_margin = rules.margins().0 as i32 + rules.margins().1 as i32;
-            rules = SizeRules::new(
-                rules.min_size(),
-                rules.appended(rules).appended(rules).ideal_size(),
-                rules.margins(),
-                rules.stretch().max(StretchPolicy::HighUtility),
-            );
+            self.child_inter_margin = rules.margins().0 as u32 + rules.margins().1 as u32;
+            rules.multiply_with_margin(2, self.ideal_visible);
+            rules.set_stretch(rules.stretch().max(StretchPolicy::HighUtility));
         }
         rules
     }
 
-    fn set_rect(&mut self, rect: Rect, mut align: AlignHints) {
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, mut align: AlignHints) {
         self.core.rect = rect;
 
         let mut pos = rect.pos;
         let mut child_size = rect.size;
-        let mut skip;
+        let mut skip: Coord;
+        let num_visible;
         if self.direction.is_horizontal() {
-            if child_size.0 >= 3 * self.child_size_ideal {
+            if child_size.0 >= self.ideal_visible * self.child_size_ideal {
                 child_size.0 = self.child_size_ideal;
             } else {
                 child_size.0 = self.child_size_min;
             }
-            skip = Coord(child_size.0 as i32 + self.child_inter_margin, 0);
+            skip = Size(child_size.0 + self.child_inter_margin, 0).into();
             align.horiz = None;
+            num_visible = rect.size.0 / (child_size.0 + self.child_inter_margin) + 2;
         } else {
-            if child_size.1 >= 3 * self.child_size_ideal {
+            if child_size.1 >= self.ideal_visible * self.child_size_ideal {
                 child_size.1 = self.child_size_ideal;
             } else {
                 child_size.1 = self.child_size_min;
             }
-            skip = Coord(0, child_size.0 as i32 + self.child_inter_margin);
+            skip = Size(0, child_size.1 + self.child_inter_margin).into();
             align.vert = None;
+            num_visible = rect.size.1 / (child_size.1 + self.child_inter_margin) + 2;
         }
 
         if self.direction.is_reversed() {
@@ -169,8 +183,14 @@ where
             skip = Coord::ZERO - skip;
         }
 
+        let old_len = self.widgets.len();
+        self.allocate(num_visible as usize);
+        for child in &mut self.widgets[old_len..] {
+            // We must solve size rules on new widgets:
+            solve_size_rules(child, size_handle, Some(child_size.0), Some(child_size.1));
+        }
         for child in self.widgets.iter_mut() {
-            child.set_rect(Rect::new(pos, child_size), align);
+            child.set_rect(size_handle, Rect::new(pos, child_size), align);
             pos += skip;
         }
     }
