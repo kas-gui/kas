@@ -211,14 +211,14 @@ impl<G: 'static> Layout for EditBox<G> {
         rules
     }
 
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, mut align: AlignHints) {
         let valign = if self.multi_line {
-            Align::Stretch
+            Some(Align::Stretch)
         } else {
-            Align::Centre
+            align.vert.take()
         };
-        let rect = align
-            .complete(Align::Stretch, valign, self.rect().size)
+        let rect = AlignHints::new(None, valign)
+            .complete(Align::Stretch, Align::Centre, self.rect().size)
             .apply(rect);
 
         self.core.rect = rect;
@@ -228,6 +228,7 @@ impl<G: 'static> Layout for EditBox<G> {
         self.required = self
             .text
             .update_env(|env| {
+                env.set_align(align.unwrap_or(Align::Default, Align::Default));
                 env.set_bounds(size.into());
                 env.set_wrap(multi_line);
             })
