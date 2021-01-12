@@ -148,7 +148,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             impl {
                 fn set_len(&mut self, mgr: &mut Manager, len: usize) -> Response<VoidMsg> {
                     let active = self.active;
-                    let old_len = self.list.inner().len();
+                    let old_len = self.list.len();
                     *mgr += self.list.inner_mut().resize_with(len, |n| ListEntry::new(n, n == active));
                     if active >= old_len && active < len {
                         let _ = self.set_radio(mgr, EntryMsg::Select(active));
@@ -159,7 +159,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     match msg {
                         EntryMsg::Select(n) => {
                             self.active = n;
-                            let text = self.list.inner()[n].entry.get_string();
+                            let text = self.list[n].entry.get_string();
                             *mgr += self.display.set_string(text);
                         }
                         EntryMsg::Update(n, text) => {

@@ -57,7 +57,7 @@ It also supports lists:
                         }
                     };
                     // TODO: this should update the size requirements of the inner area
-                    *mgr += self.label.inner_mut().set_text(text);
+                    *mgr += self.label.set_text(text);
                     Response::None
                 }
             }

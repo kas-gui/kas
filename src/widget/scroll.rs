@@ -383,3 +383,16 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
         }
     }
 }
+
+impl<W: Widget> std::ops::Deref for ScrollRegion<W> {
+    type Target = W;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<W: Widget> std::ops::DerefMut for ScrollRegion<W> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
