@@ -101,6 +101,15 @@ impl std::ops::Add<Size> for Coord {
     }
 }
 
+impl std::ops::Sub<Size> for Coord {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, other: Size) -> Self {
+        Coord(self.0 - other.0 as i32, self.1 - other.1 as i32)
+    }
+}
+
 impl From<Coord> for kas_text::Vec2 {
     fn from(pos: Coord) -> kas_text::Vec2 {
         kas_text::Vec2(pos.0 as f32, pos.1 as f32)

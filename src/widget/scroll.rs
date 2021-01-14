@@ -10,18 +10,238 @@ use std::fmt::Debug;
 use super::ScrollBar;
 use kas::draw::{ClipRegion, TextClass};
 use kas::event::ScrollDelta::{LineDelta, PixelDelta};
-use kas::event::{self, ControlKey};
+use kas::event::{self, ControlKey, PressSource};
 use kas::prelude::*;
+
+/// Logic for a scroll region
+///
+/// This struct handles some scroll logic. It does not provide scrollbars.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScrollComponent {
+    window_size: Size,
+    // TODO: offsets should be a vector, not a coord. This affects a number of conversions.
+    max_offset: Coord,
+    offset: Coord,
+    scroll_rate: f32,
+}
+
+impl Default for ScrollComponent {
+    #[inline]
+    fn default() -> Self {
+        ScrollComponent {
+            window_size: Size::ZERO,
+            max_offset: Coord::ZERO,
+            offset: Coord::ZERO,
+            scroll_rate: 30.0,
+        }
+    }
+}
+
+impl ScrollComponent {
+    /// Get the maximum offset
+    ///
+    /// Note: the minimum offset is always zero.
+    #[inline]
+    pub fn max_offset(&self) -> Coord {
+        self.max_offset
+    }
+
+    /// Get the current offset
+    ///
+    /// To translate a coordinate from the outer region to a coordinate of the
+    /// scrolled region, add this offset.
+    #[inline]
+    pub fn offset(&self) -> Coord {
+        self.offset
+    }
+
+    /// Get the window size
+    ///
+    /// This is the size on the outside: the "window" through which the scrolled
+    /// region is viewed (not the application window).
+    #[inline]
+    pub fn window_size(&self) -> Size {
+        self.window_size
+    }
+
+    /// Set sizes:
+    ///
+    /// -   `window_size`: size of scroll region on the outside
+    /// -   `content_size`: size of scroll region on the inside (usually larger)
+    ///
+    /// Like [`Self::set_offset`] this generates a [`TkAction`] due to potential
+    /// change in offset. In practice the caller will likely be performing all
+    /// required updates regardless and the return value can be safely ignored.
+    pub fn set_sizes(&mut self, window_size: Size, content_size: Size) -> TkAction {
+        self.window_size = window_size;
+        self.max_offset = Coord::from(content_size) - Coord::from(window_size);
+        self.set_offset(self.offset)
+    }
+
+    /// Set the scroll offset
+    ///
+    /// The offset is clamped to the available scroll range.
+    /// Returns [`TkAction::None`] if the offset is identical to the old offset,
+    /// or [`TkAction::RegionMoved`] if the offset changes.
+    #[inline]
+    pub fn set_offset(&mut self, offset: Coord) -> TkAction {
+        let offset = offset.clamp(Coord::ZERO, self.max_offset);
+        if offset == self.offset {
+            TkAction::None
+        } else {
+            self.offset = offset;
+            TkAction::RegionMoved
+        }
+    }
+
+    /// Set the scroll rate
+    ///
+    /// This affects how fast arrow keys and the mouse wheel scroll (but not
+    /// pixel offsets, as from touch devices supporting smooth scrolling).
+    #[inline]
+    pub fn set_scroll_rate(&mut self, rate: f32) {
+        self.scroll_rate = rate;
+    }
+
+    /// Apply offset to an event being sent to the scrolled child
+    #[inline]
+    pub fn offset_event(&self, mut event: Event) -> Event {
+        match &mut event {
+            Event::PressStart { coord, .. } => {
+                *coord = *coord + self.offset;
+            }
+            Event::PressMove { coord, .. } => {
+                *coord = *coord + self.offset;
+            }
+            Event::PressEnd { coord, .. } => {
+                *coord = *coord + self.offset;
+            }
+            _ => {}
+        };
+        event
+    }
+
+    /// Handle [`Response::Focus`]
+    ///
+    /// Inputs and outputs:
+    ///
+    /// -   `rect`: the focus rect
+    /// -   `pos`: the coordinate of the top-left of the scroll area (`rect` is relative to this)
+    /// -   returned `Rect`: the focus rect, adjusted for scroll offset; normally this should be
+    ///     returned via another [`Response::Focus`]
+    /// -   returned `TkAction`: action to pass to the event manager
+    #[inline]
+    pub fn focus_rect(&mut self, rect: Rect, pos: Coord) -> (Rect, TkAction) {
+        // TODO: we want vectors here, not coords (points) and sizes!
+        let rel_pos = Coord(rect.pos.0 - pos.0, rect.pos.1 - pos.1);
+        let mut offset = self.offset;
+        offset = offset.max(rel_pos + rect.size - self.window_size);
+        offset = offset.min(rel_pos);
+        let action = self.set_offset(offset);
+        (rect - self.offset, action)
+    }
+
+    /// Use an event to scroll, if possible
+    ///
+    /// Behaviour on [`Event::PressStart`] is configurable: the closure is called on
+    /// this event and should call [`Manager::request_grab`] if the press should
+    /// scroll by drag. This allows control of which mouse button(s) are used and
+    /// whether any modifiers must be pressed. For example:
+    /// ```
+    /// # use kas::prelude::*;
+    /// # type Msg = ();
+    /// fn dummy_event_handler(
+    ///     id: WidgetId,
+    ///     scroll: &mut ScrollComponent,
+    ///     mgr: &mut Manager,
+    ///     event: Event
+    /// )
+    ///     -> Response<Msg>
+    /// {
+    ///     let (action, response) = scroll.scroll_by_event(event, |source, _, coord| {
+    ///         if source.is_primary() {
+    ///             let icon = Some(event::CursorIcon::Grabbing);
+    ///             mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);
+    ///         }
+    ///     });
+    ///     *mgr += action;
+    ///     response.void_into()
+    /// }
+    /// ```
+    ///
+    /// If the returned [`TkAction`] is not `None`, the scroll offset has been
+    /// updated. The returned [`Response`] is either `None` or `Unhandled(..)`.
+    #[inline]
+    pub fn scroll_by_event<PS: FnMut(PressSource, WidgetId, Coord)>(
+        &mut self,
+        event: Event,
+        mut on_press_start: PS,
+    ) -> (TkAction, Response<VoidMsg>) {
+        let mut action = TkAction::None;
+        let mut response = Response::None;
+
+        match event {
+            Event::Control(ControlKey::Home) => {
+                action = self.set_offset(Coord::ZERO);
+            }
+            Event::Control(ControlKey::End) => {
+                action = self.set_offset(self.max_offset);
+            }
+            Event::Control(key) => {
+                let delta = match key {
+                    ControlKey::Left => LineDelta(-1.0, 0.0),
+                    ControlKey::Right => LineDelta(1.0, 0.0),
+                    ControlKey::Up => LineDelta(0.0, 1.0),
+                    ControlKey::Down => LineDelta(0.0, -1.0),
+                    ControlKey::PageUp => PixelDelta(Coord(0, self.window_size.1 as i32 / 2)),
+                    ControlKey::PageDown => PixelDelta(Coord(0, -(self.window_size.1 as i32 / 2))),
+                    key => return (action, Response::Unhandled(Event::Control(key))),
+                };
+
+                let d = match delta {
+                    LineDelta(x, y) => Coord(
+                        (-self.scroll_rate * x) as i32,
+                        (self.scroll_rate * y) as i32,
+                    ),
+                    PixelDelta(d) => d,
+                };
+                action = self.set_offset(self.offset - d);
+            }
+            Event::Scroll(delta) => {
+                let d = match delta {
+                    LineDelta(x, y) => Coord(
+                        (-self.scroll_rate * x) as i32,
+                        (self.scroll_rate * y) as i32,
+                    ),
+                    PixelDelta(d) => d,
+                };
+                action = self.set_offset(self.offset - d);
+                if action == TkAction::None {
+                    response = Response::Unhandled(Event::Scroll(delta));
+                }
+            }
+            Event::PressStart {
+                source,
+                start_id,
+                coord,
+            } => on_press_start(source, start_id, coord),
+            Event::PressMove { delta, .. } => {
+                action = self.set_offset(self.offset - delta);
+            }
+            Event::PressEnd { .. } => (), // consume due to request
+            e @ _ => {
+                response = Response::Unhandled(e);
+            }
+        }
+        (action, response)
+    }
+}
 
 /// A scrollable region
 ///
-/// This region supports scrolling via mouse wheel and drag.
+/// This region supports scrolling via mouse wheel and click/touch drag.
 /// Optionally, it can have scroll bars (see [`ScrollRegion::show_bars`] and
 /// [`ScrollRegion::with_bars`]).
-///
-/// Scroll regions translate their contents by an `offset`, which has a
-/// minimum value of [`Coord::ZERO`] and a maximum value of
-/// [`ScrollRegion::max_offset`].
 #[widget(config=noauto)]
 #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
@@ -29,10 +249,7 @@ pub struct ScrollRegion<W: Widget> {
     #[widget_core]
     core: CoreData,
     min_child_size: Size,
-    inner_size: Size,
-    max_offset: Coord,
-    offset: Coord,
-    scroll_rate: f32,
+    scroll: ScrollComponent,
     auto_bars: bool,
     show_bars: (bool, bool),
     #[widget]
@@ -50,10 +267,7 @@ impl<W: Widget> ScrollRegion<W> {
         ScrollRegion {
             core: Default::default(),
             min_child_size: Size::ZERO,
-            inner_size: Size::ZERO,
-            max_offset: Coord::ZERO,
-            offset: Coord::ZERO,
-            scroll_rate: 30.0,
+            scroll: Default::default(),
             auto_bars: false,
             show_bars: (false, false),
             horiz_bar: ScrollBar::new(),
@@ -100,31 +314,34 @@ impl<W: Widget> ScrollRegion<W> {
         &mut self.inner
     }
 
-    /// Get the maximum offset
+    /// Get the maximum scroll offset
+    ///
+    /// Note: the minimum scroll offset is always zero.
     #[inline]
-    pub fn max_offset(&self) -> Coord {
-        self.max_offset
+    pub fn max_scroll_offset(&self) -> Coord {
+        self.scroll.max_offset()
     }
 
-    /// Get the current offset
+    /// Get the current scroll offset
+    ///
+    /// Contents of the scroll region are translated by this offset (to convert
+    /// coordinates from the outer region to the scroll region, add this offset).
+    ///
+    /// The offset is restricted between [`Coord::ZERO`] and
+    /// [`ScrollRegion::max_scroll_offset`].
     #[inline]
-    pub fn offset(&self) -> Coord {
-        self.offset
+    pub fn scroll_offset(&self) -> Coord {
+        self.scroll.offset()
     }
 
     /// Set the scroll offset
     ///
+    /// The offset is clamped to the available scroll range.
     /// Returns [`TkAction::None`] if the offset is identical to the old offset,
     /// or a greater action if not identical.
     #[inline]
-    pub fn set_offset(&mut self, offset: Coord) -> TkAction {
-        let offset = offset.clamp(Coord::ZERO, self.max_offset);
-        if offset == self.offset {
-            TkAction::None
-        } else {
-            self.offset = offset;
-            TkAction::RegionMoved
-        }
+    pub fn set_scroll_offset(&mut self, offset: Coord) -> TkAction {
+        self.scroll.set_offset(offset)
     }
 }
 
@@ -143,7 +360,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
             self.min_child_size.1 = rules.min_size();
         }
         let line_height = size_handle.line_height(TextClass::Label);
-        self.scroll_rate = 3.0 * line_height as f32;
+        self.scroll.set_scroll_rate(3.0 * line_height as f32);
         rules.reduce_min_to(line_height);
 
         if axis.is_horizontal() && (self.auto_bars || self.show_bars.1) {
@@ -158,7 +375,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         self.core.rect = rect;
         // We use simplified layout code here
         let pos = rect.pos;
-        self.inner_size = rect.size;
+        let mut window_size = rect.size;
 
         let bar_width = (size_handle.scrollbar().0).1;
         if self.auto_bars {
@@ -168,43 +385,42 @@ impl<W: Widget> Layout for ScrollRegion<W> {
             );
         }
         if self.show_bars.0 {
-            self.inner_size.1 -= bar_width;
+            window_size.1 -= bar_width;
         }
         if self.show_bars.1 {
-            self.inner_size.0 -= bar_width;
+            window_size.0 -= bar_width;
         }
 
-        let child_size = self.inner_size.max(self.min_child_size);
+        let child_size = window_size.max(self.min_child_size);
         let child_rect = Rect::new(pos, child_size);
         self.inner
             .set_rect(size_handle, child_rect, AlignHints::NONE);
-        self.max_offset = Coord::from(child_size) - Coord::from(self.inner_size);
-        self.offset = self.offset.clamp(Coord::ZERO, self.max_offset);
+        let _ = self.scroll.set_sizes(window_size, child_size);
 
         if self.show_bars.0 {
-            let pos = Coord(pos.0, pos.1 + self.inner_size.1 as i32);
-            let size = Size(self.inner_size.0, bar_width);
+            let pos = Coord(pos.0, pos.1 + window_size.1 as i32);
+            let size = Size(window_size.0, bar_width);
             self.horiz_bar
                 .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
             let _ = self
                 .horiz_bar
-                .set_limits(self.max_offset.0 as u32, rect.size.0);
+                .set_limits(self.max_scroll_offset().0 as u32, rect.size.0);
         }
         if self.show_bars.1 {
-            let pos = Coord(pos.0 + self.inner_size.0 as i32, pos.1);
+            let pos = Coord(pos.0 + window_size.0 as i32, pos.1);
             let size = Size(bar_width, self.core.rect.size.1);
             self.vert_bar
                 .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
             let _ = self
                 .vert_bar
-                .set_limits(self.max_offset.1 as u32, rect.size.1);
+                .set_limits(self.max_scroll_offset().1 as u32, rect.size.1);
         }
     }
 
     #[inline]
     fn translation(&self, child_index: usize) -> Coord {
         match child_index {
-            2 => self.offset,
+            2 => self.scroll_offset(),
             _ => Coord::ZERO,
         }
     }
@@ -217,7 +433,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         self.horiz_bar
             .find_id(coord)
             .or_else(|| self.vert_bar.find_id(coord))
-            .or_else(|| self.inner.find_id(coord + self.offset))
+            .or_else(|| self.inner.find_id(coord + self.scroll_offset()))
             .or(Some(self.id()))
     }
 
@@ -231,11 +447,14 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         }
         let rect = Rect {
             pos: self.core.rect.pos,
-            size: self.inner_size,
+            size: self.scroll.window_size(),
         };
-        draw_handle.clip_region(rect, self.offset, ClipRegion::Scroll, &mut |handle| {
-            self.inner.draw(handle, mgr, disabled)
-        });
+        draw_handle.clip_region(
+            rect,
+            self.scroll_offset(),
+            ClipRegion::Scroll,
+            &mut |handle| self.inner.draw(handle, mgr, disabled),
+        );
     }
 }
 
@@ -250,7 +469,7 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
                 Ok(Response::Unhandled(event)) => event,
                 Ok(r) => return r,
                 Err(msg) => {
-                    *mgr += self.set_offset(Coord(msg as i32, self.offset.1));
+                    *mgr += self.set_scroll_offset(Coord(msg as i32, self.scroll_offset().1));
                     return Response::None;
                 }
             }
@@ -259,52 +478,18 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
                 Ok(Response::Unhandled(event)) => event,
                 Ok(r) => return r,
                 Err(msg) => {
-                    *mgr += self.set_offset(Coord(self.offset.0, msg as i32));
+                    *mgr += self.set_scroll_offset(Coord(self.scroll_offset().0, msg as i32));
                     return Response::None;
                 }
             }
         } else if id <= self.inner.id() {
-            let event = match event {
-                Event::PressStart {
-                    source,
-                    start_id,
-                    coord,
-                } => Event::PressStart {
-                    source,
-                    start_id,
-                    coord: coord + self.offset,
-                },
-                Event::PressMove {
-                    source,
-                    cur_id,
-                    coord,
-                    delta,
-                } => Event::PressMove {
-                    source,
-                    cur_id,
-                    coord: coord + self.offset,
-                    delta,
-                },
-                Event::PressEnd {
-                    source,
-                    end_id,
-                    coord,
-                } => Event::PressEnd {
-                    source,
-                    end_id,
-                    coord: coord + self.offset,
-                },
-                event => event,
-            };
-
+            let event = self.scroll.offset_event(event);
             match self.inner.send(mgr, id, event) {
                 Response::Unhandled(event) => event,
                 Response::Focus(rect) => {
-                    let mut offset = self.offset;
-                    offset = offset.max(rect.pos_end() - self.core.rect.pos_end());
-                    offset = offset.min(rect.pos - self.core.rect.pos);
-                    *mgr += self.set_offset(offset);
-                    return Response::Focus(rect - self.offset);
+                    let (rect, action) = self.scroll.focus_rect(rect, self.core.rect.pos);
+                    *mgr += action;
+                    return Response::Focus(rect);
                 }
                 r => return r,
             }
@@ -312,75 +497,19 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
             event
         };
 
-        let scroll = |w: &mut Self, mgr: &mut Manager, delta| {
-            let d = match delta {
-                LineDelta(x, y) => Coord((-w.scroll_rate * x) as i32, (w.scroll_rate * y) as i32),
-                PixelDelta(d) => d,
-            };
-            let action = w.set_offset(w.offset - d);
-            if action != TkAction::None {
-                *mgr += action
-                    + w.horiz_bar.set_value(w.offset.0 as u32)
-                    + w.vert_bar.set_value(w.offset.1 as u32);
-                Response::None
-            } else {
-                Response::Unhandled(Event::Scroll(delta))
+        let id = self.id();
+        let (action, response) = self.scroll.scroll_by_event(event, |source, _, coord| {
+            if source.is_primary() {
+                let icon = Some(event::CursorIcon::Grabbing);
+                mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);
             }
-        };
-
-        match event {
-            Event::Control(key) => {
-                let delta = match key {
-                    ControlKey::Left => LineDelta(-1.0, 0.0),
-                    ControlKey::Right => LineDelta(1.0, 0.0),
-                    ControlKey::Up => LineDelta(0.0, 1.0),
-                    ControlKey::Down => LineDelta(0.0, -1.0),
-                    ControlKey::Home | ControlKey::End => {
-                        let action = self.set_offset(match key {
-                            ControlKey::Home => Coord::ZERO,
-                            _ => self.max_offset,
-                        });
-                        if action != TkAction::None {
-                            *mgr += action
-                                + self.horiz_bar.set_value(self.offset.0 as u32)
-                                + self.vert_bar.set_value(self.offset.1 as u32);
-                        }
-                        return Response::None;
-                    }
-                    ControlKey::PageUp => PixelDelta(Coord(0, self.core.rect.size.1 as i32 / 2)),
-                    ControlKey::PageDown => {
-                        PixelDelta(Coord(0, -(self.core.rect.size.1 as i32 / 2)))
-                    }
-                    key => return Response::Unhandled(Event::Control(key)),
-                };
-                scroll(self, mgr, delta)
-            }
-            Event::Scroll(delta) => scroll(self, mgr, delta),
-            Event::PressStart { source, coord, .. } if source.is_primary() => {
-                mgr.request_grab(
-                    self.id(),
-                    source,
-                    coord,
-                    event::GrabMode::Grab,
-                    Some(event::CursorIcon::Grabbing),
-                );
-                Response::None
-            }
-            Event::PressMove { delta, .. } => {
-                let action = self.set_offset(self.offset - delta);
-                if action != TkAction::None {
-                    *mgr += action
-                        + self.horiz_bar.set_value(self.offset.0 as u32)
-                        + self.vert_bar.set_value(self.offset.1 as u32);
-                }
-                Response::None
-            }
-            Event::PressEnd { .. } => {
-                // consume due to request
-                Response::None
-            }
-            e @ _ => Response::Unhandled(e),
+        });
+        if action != TkAction::None {
+            *mgr += action
+                + self.horiz_bar.set_value(self.scroll_offset().0 as u32)
+                + self.vert_bar.set_value(self.scroll_offset().1 as u32);
         }
+        response.void_into()
     }
 }
 
