@@ -180,9 +180,8 @@ impl<G> Debug for EditBox<G> {
 impl<G: 'static> Layout for EditBox<G> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let frame_sides = size_handle.edit_surround();
-        let inner = size_handle.inner_margin();
-        let frame_offset = frame_sides.0 + inner;
-        let frame_size = frame_offset + frame_sides.1 + inner;
+        let frame_offset = frame_sides.0;
+        let frame_size = frame_offset + frame_sides.1;
 
         let margins = size_handle.outer_margins();
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), frame_size, margins);
@@ -194,9 +193,6 @@ impl<G: 'static> Layout for EditBox<G> {
         };
         let content_rules = size_handle.text_bound(&mut self.text, class, axis);
         let m = content_rules.margins();
-
-        // Note: we do not allocate space for the edit marker (size_handle.edit_marker_width());
-        // instead we simply draw it in the margin (inner_margin() should be sufficient).
 
         let rules = content_rules.surrounded_by(frame_rules, true);
         if axis.is_horizontal() {
