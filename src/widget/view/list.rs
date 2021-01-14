@@ -91,16 +91,10 @@ where
     }
 
     fn allocate(&mut self, number: usize) {
-        dbg!(number);
         let number = number.min(self.data.len());
         self.widgets.reserve(number);
         for i in self.widgets.len()..number {
             self.widgets.push(W::new(self.data.get(i)));
-        }
-
-        // size_rules needs at least one widget
-        if self.widgets.is_empty() {
-            self.widgets.push(W::default());
         }
     }
 }
@@ -136,9 +130,12 @@ where
     A::Item: Default,
 {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        // TODO: when and how to allocate children?
-        if self.widgets.len() < 1 {
-            self.allocate(1);
+        if self.widgets.is_empty() {
+            if self.data.len() > 0 {
+                self.widgets.push(W::new(self.data.get(0)));
+            } else {
+                self.widgets.push(W::default());
+            }
         }
         let mut rules = self.widgets[0].size_rules(size_handle, axis);
         if axis.is_vertical() == self.direction.is_vertical() {
