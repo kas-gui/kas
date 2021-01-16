@@ -6,8 +6,12 @@
 //! List view widget
 
 use super::{Accessor, DefaultView, ViewWidget};
+use kas::draw::ClipRegion;
+use kas::event::{CursorIcon, GrabMode};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
+use kas::widget::ScrollComponent;
+use std::convert::TryFrom;
 
 // TODO: do we need to keep the A::Item: Default bound used by allocate?
 
@@ -32,6 +36,7 @@ pub struct ListView<
     child_size_min: u32,
     child_size_ideal: u32,
     child_inter_margin: u32,
+    scroll: ScrollComponent,
 }
 
 impl<D: Directional + Default, A: Accessor<usize>, W: ViewWidget<A::Item>> ListView<D, A, W>
@@ -54,6 +59,7 @@ where
             child_size_min: 0,
             child_size_ideal: 0,
             child_inter_margin: 0,
+            scroll: Default::default(),
         }
     }
 }
@@ -73,6 +79,7 @@ where
             child_size_min: 0,
             child_size_ideal: 0,
             child_inter_margin: 0,
+            scroll: Default::default(),
         }
     }
 
@@ -88,6 +95,36 @@ where
     pub fn with_num_visible(mut self, number: u32) -> Self {
         self.ideal_visible = number;
         self
+    }
+
+    /// Get the maximum scroll offset
+    ///
+    /// Note: the minimum scroll offset is always zero.
+    #[inline]
+    pub fn max_scroll_offset(&self) -> Coord {
+        self.scroll.max_offset()
+    }
+
+    /// Get the current scroll offset
+    ///
+    /// Contents of the scroll region are translated by this offset (to convert
+    /// coordinates from the outer region to the scroll region, add this offset).
+    ///
+    /// The offset is restricted between [`Coord::ZERO`] and
+    /// [`ListView::max_scroll_offset`].
+    #[inline]
+    pub fn scroll_offset(&self) -> Coord {
+        self.scroll.offset()
+    }
+
+    /// Set the scroll offset
+    ///
+    /// The offset is clamped to the available scroll range.
+    /// Returns [`TkAction::None`] if the offset is identical to the old offset,
+    /// or a greater action if not identical.
+    #[inline]
+    pub fn set_scroll_offset(&mut self, offset: Coord) -> TkAction {
+        self.scroll.set_offset(offset)
     }
 
     fn allocate(&mut self, number: usize) {
@@ -151,8 +188,10 @@ where
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, mut align: AlignHints) {
         self.core.rect = rect;
 
+        let data_len = u32::try_from(self.data.len()).unwrap();
         let mut pos = rect.pos;
         let mut child_size = rect.size;
+        let content_size;
         let mut skip: Coord;
         let num_visible;
         if self.direction.is_horizontal() {
@@ -164,6 +203,10 @@ where
             skip = Size(child_size.0 + self.child_inter_margin, 0).into();
             align.horiz = None;
             num_visible = rect.size.0 / (child_size.0 + self.child_inter_margin) + 2;
+
+            let full_width =
+                (child_size.0 + self.child_inter_margin) * data_len - self.child_inter_margin;
+            content_size = Size(full_width, child_size.1);
         } else {
             if child_size.1 >= self.ideal_visible * self.child_size_ideal {
                 child_size.1 = self.child_size_ideal;
@@ -173,6 +216,10 @@ where
             skip = Size(0, child_size.1 + self.child_inter_margin).into();
             align.vert = None;
             num_visible = rect.size.1 / (child_size.1 + self.child_inter_margin) + 2;
+
+            let full_height =
+                (child_size.1 + self.child_inter_margin) * data_len - self.child_inter_margin;
+            content_size = Size(child_size.0, full_height);
         }
 
         if self.direction.is_reversed() {
@@ -190,6 +237,8 @@ where
             child.set_rect(size_handle, Rect::new(pos, child_size), align);
             pos += skip;
         }
+
+        let _ = self.scroll.set_sizes(rect.size, content_size);
     }
 
     fn spatial_range(&self) -> (usize, usize) {
@@ -211,10 +260,16 @@ where
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
-        // FIXME: cull invisible children and restrict draw region
-        for child in self.widgets.iter() {
-            child.draw(draw_handle, mgr, disabled)
-        }
+        draw_handle.clip_region(
+            self.core.rect,
+            self.scroll_offset(),
+            ClipRegion::Scroll,
+            &mut |draw_handle| {
+                for child in self.widgets.iter() {
+                    child.draw(draw_handle, mgr, disabled)
+                }
+            },
+        );
     }
 }
 
@@ -223,17 +278,45 @@ where
     A::Item: Default,
 {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if !self.is_disabled() {
-            if id == self.id() {
-                return self.handle(mgr, event);
-            }
-            for child in &mut self.widgets {
-                if id <= child.id() {
-                    return child.send(mgr, id, event);
-                }
-            }
+        if self.is_disabled() {
+            return Response::Unhandled(event);
         }
 
-        Response::Unhandled(event)
+        let event = if id < self.id() {
+            let response = 'outer: loop {
+                for child in &mut self.widgets {
+                    if id <= child.id() {
+                        let event = self.scroll.offset_event(event);
+                        break 'outer child.send(mgr, id, event);
+                    }
+                }
+                return Response::Unhandled(event);
+            };
+            match response {
+                Response::Unhandled(event) => event,
+                Response::Focus(rect) => {
+                    let (rect, action) = self.scroll.focus_rect(rect, self.core.rect.pos);
+                    // TODO: update widgets
+                    *mgr += action;
+                    return Response::Focus(rect);
+                }
+                r => return r,
+            }
+        } else {
+            event
+        };
+
+        let id = self.id();
+        let (action, response) = self.scroll.scroll_by_event(event, |source, _, coord| {
+            if source.is_primary() {
+                let icon = Some(CursorIcon::Grabbing);
+                mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
+            }
+        });
+        if action != TkAction::None {
+            // TODO: update widgets
+            *mgr += action;
+        }
+        response.void_into()
     }
 }

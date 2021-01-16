@@ -488,7 +488,9 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
                 Response::Unhandled(event) => event,
                 Response::Focus(rect) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect.pos);
-                    *mgr += action;
+                    *mgr += action
+                        + self.horiz_bar.set_value(self.scroll_offset().0 as u32)
+                        + self.vert_bar.set_value(self.scroll_offset().1 as u32);
                     return Response::Focus(rect);
                 }
                 r => return r,
