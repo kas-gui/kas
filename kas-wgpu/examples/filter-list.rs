@@ -30,7 +30,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
     type SC = &'static SharedConst<[&'static str]>;
-    type FA = Rc<RefCell<FilterAccessor<SC>>>;
+    type FA = Rc<RefCell<FilterAccessor<usize, SC>>>;
     let data: SC = MONTHS.into();
     let data = Rc::new(RefCell::new(FilterAccessor::new_visible(data)));
     let data2 = data.clone();
