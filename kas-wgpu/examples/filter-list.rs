@@ -5,9 +5,8 @@
 
 //! Filter list example
 
-use kas::event::UpdateHandle;
 use kas::prelude::*;
-use kas::widget::view::{Accessor, ListView};
+use kas::widget::view::{FilterAccessor, ListView, SharedConst};
 use kas::widget::{EditBox, Window};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -27,41 +26,13 @@ const MONTHS: &[&str] = &[
     "December",
 ];
 
-// Naive implementation not intended for big data
-#[derive(Debug)]
-struct FilterAccessor {
-    data: &'static [&'static str],
-    filter: String,
-    update: UpdateHandle,
-}
-impl Accessor<usize> for FilterAccessor {
-    type Item = &'static str;
-    fn len(&self) -> usize {
-        self.data
-            .iter()
-            .filter(|d| d.contains(&self.filter))
-            .count()
-    }
-    fn get(&self, index: usize) -> &'static str {
-        self.data
-            .iter()
-            .filter(|d| d.contains(&self.filter))
-            .nth(index)
-            .unwrap()
-    }
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some(self.update)
-    }
-}
-
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let data = Rc::new(RefCell::new(FilterAccessor {
-        data: MONTHS,
-        filter: "".to_string(),
-        update: UpdateHandle::new(),
-    }));
+    type SC = &'static SharedConst<[&'static str]>;
+    type FA = Rc<RefCell<FilterAccessor<SC>>>;
+    let data: SC = MONTHS.into();
+    let data = Rc::new(RefCell::new(FilterAccessor::new_visible(data)));
     let data2 = data.clone();
     let window = Window::new(
         "Filter-list",
@@ -70,13 +41,16 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] filter = EditBox::new("").on_edit(move |text, mgr| {
-                    let mut data = data2.borrow_mut();
-                    data.filter.clear();
-                    data.filter.push_str(text);
-                    mgr.trigger_update(data.update, 0);
+                    // Note: this method of caseless matching is not unicode compliant!
+                    // https://stackoverflow.com/questions/47298336/case-insensitive-string-matching-in-rust
+                    let text = text.to_uppercase();
+                    let update = data2
+                        .borrow_mut()
+                        .update_filter(|s| s.to_uppercase().contains(&text));
+                    mgr.trigger_update(update, 0);
                     None
                 }),
-                #[widget] list = ListView::<kas::Down, Rc<RefCell<FilterAccessor>>>::new(data),
+                #[widget] list = ListView::<kas::Down, FA>::new(data),
             }
         },
     );

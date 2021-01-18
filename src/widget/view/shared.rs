@@ -25,6 +25,8 @@ pub trait Accessor<I>: Debug + 'static {
     fn len(&self) -> I;
 
     /// Access data by index
+    // TODO: note that we do not return a reference for compatibility with Rc, RefCell, Mutex etc.
+    // Investigate using a guard/lock for data access?
     fn get(&self, index: I) -> Self::Item;
 
     /// Get an update handle, if any is used
@@ -194,5 +196,58 @@ impl<T: Clone + Debug + 'static> AccessorShared<()> for SharedRc<T> {
     fn set(&self, _: (), value: T) -> UpdateHandle {
         *self.data.borrow_mut() = value;
         self.handle
+    }
+}
+
+/// Filter accessor over another accessor
+#[derive(Clone, Debug)]
+pub struct FilterAccessor<T: Accessor<usize>> {
+    data: T,
+    view: Vec<usize>, // TODO: u32
+    update: UpdateHandle,
+}
+
+impl<T: Accessor<usize>> FilterAccessor<T> {
+    /// Construct, with all data hidden (filtered out)
+    ///
+    /// This is the fastest constructor.
+    pub fn new_hidden(data: T) -> Self {
+        let view = Vec::with_capacity(data.len());
+        let update = UpdateHandle::new();
+        FilterAccessor { data, view, update }
+    }
+
+    /// Construct, with all data visible
+    pub fn new_visible(data: T) -> Self {
+        let mut x = Self::new_hidden(data);
+        x.view.extend(0..x.data.len());
+        x
+    }
+
+    /// Update the filtered view
+    ///
+    /// An update should be triggered using the returned handle.
+    pub fn update_filter<F: Fn(T::Item) -> bool>(&mut self, filter: F) -> UpdateHandle {
+        self.view.clear();
+        // TODO: is this slow?
+        for i in 0..self.data.len() {
+            if filter(self.data.get(i)) {
+                self.view.push(i);
+            }
+        }
+        self.update
+    }
+}
+
+impl<T: Accessor<usize>> Accessor<usize> for FilterAccessor<T> {
+    type Item = T::Item;
+    fn len(&self) -> usize {
+        self.view.len()
+    }
+    fn get(&self, index: usize) -> Self::Item {
+        self.data.get(self.view[index])
+    }
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        Some(self.update)
     }
 }
