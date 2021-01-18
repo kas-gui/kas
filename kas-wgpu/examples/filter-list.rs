@@ -5,8 +5,9 @@
 
 //! Filter list example
 
-use kas::widget::view::{ListView, SharedConst};
-use kas::widget::Window;
+use kas::prelude::*;
+use kas::widget::view::{Accessor, ListView};
+use kas::widget::{EditBox, Window};
 
 const MONTHS: &[&str] = &[
     "January",
@@ -23,11 +24,54 @@ const MONTHS: &[&str] = &[
     "December",
 ];
 
+// Naive implementation not intended for big data
+#[derive(Debug)]
+struct FilterAccessor {
+    data: &'static [&'static str],
+    filter: String,
+}
+impl Accessor<usize> for FilterAccessor {
+    type Item = &'static str;
+    fn len(&self) -> usize {
+        self.data
+            .iter()
+            .filter(|d| d.contains(&self.filter))
+            .count()
+    }
+    fn get(&self, index: usize) -> &'static str {
+        self.data
+            .iter()
+            .filter(|d| d.contains(&self.filter))
+            .nth(index)
+            .unwrap()
+    }
+}
+
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let data: &SharedConst<[&str]> = MONTHS.into();
-    let window = Window::new("Filter-list", ListView::<kas::Down, _>::new(data));
+    let data = FilterAccessor {
+        data: MONTHS,
+        filter: "".to_string(),
+    };
+    let window = Window::new(
+        "Filter-list",
+        make_widget! {
+            #[layout(down)]
+            #[handler(msg = VoidMsg)]
+            struct {
+                #[widget(handler=update_filter)] filter = EditBox::new("").on_edit(|text| Some(text.to_string())),
+                #[widget] list: ListView::<kas::Down, FilterAccessor> = ListView::new(data),
+            }
+            impl {
+                fn update_filter(&mut self, mgr: &mut Manager, text: String) -> Response<VoidMsg> {
+                    self.list.data_mut().filter = text;
+                    self.list.update_view(mgr);
+                    Response::None
+                }
+            }
+        },
+    );
 
     let theme = kas_theme::ShadedTheme::new();
     kas_wgpu::Toolkit::new(theme)?.with(window)?.run()

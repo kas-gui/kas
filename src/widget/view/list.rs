@@ -95,6 +95,25 @@ where
         }
     }
 
+    /// Access the stored data
+    pub fn data(&self) -> &A {
+        &self.data
+    }
+
+    /// Mutably access the stored data
+    ///
+    /// It may be necessary to use [`ListView::update_view`] to update the view of this data.
+    pub fn data_mut(&mut self) -> &mut A {
+        &mut self.data
+    }
+
+    /// Manually trigger an update to handle changed data
+    pub fn update_view(&mut self, mgr: &mut Manager) {
+        self.data_range.end = self.data_range.start;
+        let action = mgr.size_handle(|h| self.update_widgets(h));
+        *mgr += action;
+    }
+
     /// Get the direction of contents
     pub fn direction(&self) -> Direction {
         self.direction.as_direction()
@@ -252,7 +271,7 @@ where
             align.horiz = None;
             num = (rect.size.0 + skip.0 - 1) / skip.0 + 1;
 
-            let full_width = skip.0 * data_len - self.child_inter_margin;
+            let full_width = (skip.0 * data_len).saturating_sub(self.child_inter_margin);
             content_size = Size(full_width, child_size.1);
         } else {
             if child_size.1 >= self.ideal_visible * self.child_size_ideal {
@@ -266,7 +285,7 @@ where
             align.vert = None;
             num = (rect.size.1 + skip.1 - 1) / skip.1 + 1;
 
-            let full_height = skip.1 * data_len - self.child_inter_margin;
+            let full_height = (skip.1 * data_len).saturating_sub(self.child_inter_margin);
             content_size = Size(child_size.0, full_height);
         }
 
