@@ -62,23 +62,21 @@ fn main() -> Result<(), kas_wgpu::Error> {
         filter: "".to_string(),
         update: UpdateHandle::new(),
     }));
+    let data2 = data.clone();
     let window = Window::new(
         "Filter-list",
         make_widget! {
             #[layout(down)]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(handler=update_filter)] filter = EditBox::new("").on_edit(|text, _| Some(text.to_string())),
-                #[widget] list = ListView::<kas::Down, Rc<RefCell<FilterAccessor>>>::new(data.clone()),
-                data: Rc<RefCell<FilterAccessor>> = data,
-            }
-            impl {
-                fn update_filter(&mut self, mgr: &mut Manager, text: String) -> Response<VoidMsg> {
-                    let mut data = self.data.borrow_mut();
-                    data.filter = text;
+                #[widget] filter = EditBox::new("").on_edit(move |text, mgr| {
+                    let mut data = data2.borrow_mut();
+                    data.filter.clear();
+                    data.filter.push_str(text);
                     mgr.trigger_update(data.update, 0);
-                    Response::None
-                }
+                    None
+                }),
+                #[widget] list = ListView::<kas::Down, Rc<RefCell<FilterAccessor>>>::new(data),
             }
         },
     );
