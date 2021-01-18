@@ -152,7 +152,7 @@ impl ScrollComponent {
     /// # type Msg = ();
     /// fn dummy_event_handler(
     ///     id: WidgetId,
-    ///     scroll: &mut ScrollComponent,
+    ///     scroll: &mut kas::widget::ScrollComponent,
     ///     mgr: &mut Manager,
     ///     event: Event
     /// )
@@ -160,8 +160,8 @@ impl ScrollComponent {
     /// {
     ///     let (action, response) = scroll.scroll_by_event(event, |source, _, coord| {
     ///         if source.is_primary() {
-    ///             let icon = Some(event::CursorIcon::Grabbing);
-    ///             mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);
+    ///             let icon = Some(kas::event::CursorIcon::Grabbing);
+    ///             mgr.request_grab(id, source, coord, kas::event::GrabMode::Grab, icon);
     ///         }
     ///     });
     ///     *mgr += action;
