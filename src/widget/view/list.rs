@@ -17,7 +17,7 @@ use std::convert::TryFrom;
 
 /// List view widget
 #[handler(send=noauto, msg=<W as Handler>::Msg)]
-#[widget(children=noauto)]
+#[widget(children=noauto, config=noauto)]
 #[derive(Clone, Debug, Widget)]
 pub struct ListView<
     D: Directional,
@@ -228,6 +228,17 @@ where
     }
 }
 
+impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> WidgetConfig for ListView<D, A, W>
+where
+    A::Item: Default,
+{
+    fn configure(&mut self, mgr: &mut Manager) {
+        if let Some(handle) = self.data.update_handle() {
+            mgr.update_on_handle(handle, self.id());
+        }
+    }
+}
+
 impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> Layout for ListView<D, A, W>
 where
     A::Item: Default,
@@ -369,7 +380,13 @@ where
                 r => return r,
             }
         } else {
-            event
+            match event {
+                Event::HandleUpdate { .. } => {
+                    self.update_view(mgr);
+                    return Response::None;
+                }
+                event => event,
+            }
         };
 
         let id = self.id();

@@ -5,9 +5,12 @@
 
 //! Filter list example
 
+use kas::event::UpdateHandle;
 use kas::prelude::*;
 use kas::widget::view::{Accessor, ListView};
 use kas::widget::{EditBox, Window};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 const MONTHS: &[&str] = &[
     "January",
@@ -29,6 +32,7 @@ const MONTHS: &[&str] = &[
 struct FilterAccessor {
     data: &'static [&'static str],
     filter: String,
+    update: UpdateHandle,
 }
 impl Accessor<usize> for FilterAccessor {
     type Item = &'static str;
@@ -45,15 +49,19 @@ impl Accessor<usize> for FilterAccessor {
             .nth(index)
             .unwrap()
     }
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        Some(self.update)
+    }
 }
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let data = FilterAccessor {
+    let data = Rc::new(RefCell::new(FilterAccessor {
         data: MONTHS,
         filter: "".to_string(),
-    };
+        update: UpdateHandle::new(),
+    }));
     let window = Window::new(
         "Filter-list",
         make_widget! {
@@ -61,12 +69,14 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(handler=update_filter)] filter = EditBox::new("").on_edit(|text| Some(text.to_string())),
-                #[widget] list: ListView::<kas::Down, FilterAccessor> = ListView::new(data),
+                #[widget] list = ListView::<kas::Down, Rc<RefCell<FilterAccessor>>>::new(data.clone()),
+                data: Rc<RefCell<FilterAccessor>> = data,
             }
             impl {
                 fn update_filter(&mut self, mgr: &mut Manager, text: String) -> Response<VoidMsg> {
-                    self.list.data_mut().filter = text;
-                    self.list.update_view(mgr);
+                    let mut data = self.data.borrow_mut();
+                    data.filter = text;
+                    mgr.trigger_update(data.update, 0);
                     Response::None
                 }
             }
