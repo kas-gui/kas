@@ -45,7 +45,7 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Msg = EntryMsg;
 
-    fn edit(entry: &mut EditBox<Self>) -> Option<Self::Msg> {
+    fn edit(entry: &mut EditBox<Self>, _: &mut Manager) -> Option<Self::Msg> {
         Some(EntryMsg::Update(entry.guard.0, entry.get_string()))
     }
 }
@@ -99,7 +99,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         struct {
             #[widget] _ = Label::new("Number of rows:"),
             #[widget(handler = activate)] edit: impl HasString = EditBox::new("3")
-                .on_afl(|text| text.parse::<usize>().ok()),
+                .on_afl(|text, _| text.parse::<usize>().ok()),
             #[widget(handler = button)] _ = TextButton::new("Set", Control::Set),
             #[widget(handler = button)] _ = TextButton::new("−", Control::Decr),
             #[widget(handler = button)] _ = TextButton::new("+", Control::Incr),

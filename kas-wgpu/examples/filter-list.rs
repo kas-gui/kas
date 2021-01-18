@@ -68,7 +68,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[layout(down)]
             #[handler(msg = VoidMsg)]
             struct {
-                #[widget(handler=update_filter)] filter = EditBox::new("").on_edit(|text| Some(text.to_string())),
+                #[widget(handler=update_filter)] filter = EditBox::new("").on_edit(|text, _| Some(text.to_string())),
                 #[widget] list = ListView::<kas::Down, Rc<RefCell<FilterAccessor>>>::new(data.clone()),
                 data: Rc<RefCell<FilterAccessor>> = data,
             }
