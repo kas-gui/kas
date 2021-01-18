@@ -110,6 +110,15 @@ impl std::ops::Sub<Size> for Coord {
     }
 }
 
+impl std::ops::Mul<i32> for Coord {
+    type Output = Self;
+
+    #[inline]
+    fn mul(self, rhs: i32) -> Self {
+        Coord(self.0 * rhs, self.1 * rhs)
+    }
+}
+
 impl From<Coord> for kas_text::Vec2 {
     fn from(pos: Coord) -> kas_text::Vec2 {
         kas_text::Vec2(pos.0 as f32, pos.1 as f32)

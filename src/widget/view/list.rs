@@ -6,10 +6,10 @@
 //! List view widget
 
 use super::{Accessor, DefaultView, ViewWidget};
-use kas::draw::ClipRegion;
 use kas::event::{CursorIcon, GrabMode};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
+use kas::text::Range;
 use kas::widget::ScrollComponent;
 use std::convert::TryFrom;
 
@@ -18,7 +18,7 @@ use std::convert::TryFrom;
 /// List view widget
 #[handler(send=noauto, msg=<W as Handler>::Msg)]
 #[widget(children=noauto)]
-#[derive(Clone, Default, Debug, Widget)]
+#[derive(Clone, Debug, Widget)]
 pub struct ListView<
     D: Directional,
     A: Accessor<usize>,
@@ -32,10 +32,14 @@ pub struct ListView<
     data: A,
     widgets: Vec<W>,
     direction: D,
+    data_range: Range,
+    align_hints: AlignHints,
     ideal_visible: u32,
     child_size_min: u32,
     child_size_ideal: u32,
     child_inter_margin: u32,
+    child_skip: u32,
+    child_size: u32,
     scroll: ScrollComponent,
 }
 
@@ -55,10 +59,14 @@ where
             data,
             widgets: Default::default(),
             direction: Default::default(),
+            data_range: Range::from(0usize..0),
+            align_hints: Default::default(),
             ideal_visible: 5,
             child_size_min: 0,
             child_size_ideal: 0,
             child_inter_margin: 0,
+            child_skip: 0,
+            child_size: 0,
             scroll: Default::default(),
         }
     }
@@ -75,10 +83,14 @@ where
             data,
             widgets: Default::default(),
             direction,
+            data_range: Range::from(0usize..0),
+            align_hints: Default::default(),
             ideal_visible: 5,
             child_size_min: 0,
             child_size_ideal: 0,
             child_inter_margin: 0,
+            child_skip: 0,
+            child_size: 0,
             scroll: Default::default(),
         }
     }
@@ -127,12 +139,47 @@ where
         self.scroll.set_offset(offset)
     }
 
-    fn allocate(&mut self, number: usize) {
-        let number = number.min(self.data.len());
-        self.widgets.reserve(number);
-        for i in self.widgets.len()..number {
-            self.widgets.push(W::new(self.data.get(i)));
+    fn update_widgets(&mut self, size_handle: &mut dyn SizeHandle) -> TkAction {
+        // set_rect allocates enough widgets to view a page; we update widget-data allocations
+        // TODO: we may wish to notify self.data of the range it should cache
+        let w_len = self.widgets.len();
+        let (old_start, old_end) = (self.data_range.start(), self.data_range.end());
+        let offset = self.direction.extract_coord(self.scroll_offset()) as usize;
+        let mut first_data = offset / self.child_skip as usize;
+        first_data = (first_data + w_len)
+            .min(self.data.len())
+            .saturating_sub(w_len);
+        let data_range = first_data..(first_data + w_len).min(self.data.len());
+        let (child_size, mut skip) = match self.direction.is_vertical() {
+            false => (
+                Size(self.child_size, self.rect().size.1),
+                Coord(self.child_skip as i32, 0),
+            ),
+            true => (
+                Size(self.rect().size.0, self.child_size),
+                Coord(0, self.child_skip as i32),
+            ),
+        };
+        let mut pos_start = self.core.rect.pos;
+        if self.direction.is_reversed() {
+            pos_start += skip * (w_len - 1) as i32;
+            skip = skip * -1;
         }
+        let mut rect = Rect::new(pos_start, child_size);
+        let mut action = TkAction::None;
+        for data_num in data_range.clone() {
+            // HACK: self.widgets[0] is used in size_rules, which affects alignment, therefore we
+            // always need to call set_rect on this widget. Fix by adjusting how text_bound works?
+            let i = data_num % w_len;
+            if i == 0 || (data_num < old_start || data_num >= old_end) {
+                let w = &mut self.widgets[i];
+                action += w.set(self.data.get(data_num));
+                rect.pos = pos_start + skip * data_num as i32;
+                w.set_rect(size_handle, rect, self.align_hints);
+            }
+        }
+        self.data_range = data_range.into();
+        action
     }
 }
 
@@ -189,23 +236,23 @@ where
         self.core.rect = rect;
 
         let data_len = u32::try_from(self.data.len()).unwrap();
-        let mut pos = rect.pos;
         let mut child_size = rect.size;
         let content_size;
-        let mut skip: Coord;
-        let num_visible;
+        let skip;
+        let num;
         if self.direction.is_horizontal() {
             if child_size.0 >= self.ideal_visible * self.child_size_ideal {
                 child_size.0 = self.child_size_ideal;
             } else {
                 child_size.0 = self.child_size_min;
             }
-            skip = Size(child_size.0 + self.child_inter_margin, 0).into();
+            self.child_size = child_size.0;
+            skip = Size(child_size.0 + self.child_inter_margin, 0);
+            self.child_skip = skip.0;
             align.horiz = None;
-            num_visible = rect.size.0 / (child_size.0 + self.child_inter_margin) + 2;
+            num = (rect.size.0 + skip.0 - 1) / skip.0 + 1;
 
-            let full_width =
-                (child_size.0 + self.child_inter_margin) * data_len - self.child_inter_margin;
+            let full_width = skip.0 * data_len - self.child_inter_margin;
             content_size = Size(full_width, child_size.1);
         } else {
             if child_size.1 >= self.ideal_visible * self.child_size_ideal {
@@ -213,32 +260,31 @@ where
             } else {
                 child_size.1 = self.child_size_min;
             }
-            skip = Size(0, child_size.1 + self.child_inter_margin).into();
+            self.child_size = child_size.1;
+            skip = Size(0, child_size.1 + self.child_inter_margin);
+            self.child_skip = skip.1;
             align.vert = None;
-            num_visible = rect.size.1 / (child_size.1 + self.child_inter_margin) + 2;
+            num = (rect.size.1 + skip.1 - 1) / skip.1 + 1;
 
-            let full_height =
-                (child_size.1 + self.child_inter_margin) * data_len - self.child_inter_margin;
+            let full_height = skip.1 * data_len - self.child_inter_margin;
             content_size = Size(child_size.0, full_height);
         }
 
-        if self.direction.is_reversed() {
-            pos += rect.size - skip.into();
-            skip = Coord::ZERO - skip;
-        }
+        self.align_hints = align;
 
-        let old_len = self.widgets.len();
-        self.allocate(num_visible as usize);
-        for child in &mut self.widgets[old_len..] {
+        // FIXME: we should require TkAction::Reconfigure when number of widgets changes
+        let num = (num as usize).min(self.data.len());
+        self.widgets.reserve(num);
+        for i in self.widgets.len()..num {
+            let mut w = W::new(self.data.get(i));
             // We must solve size rules on new widgets:
-            solve_size_rules(child, size_handle, Some(child_size.0), Some(child_size.1));
+            solve_size_rules(&mut w, size_handle, Some(child_size.0), Some(child_size.1));
+            self.widgets.push(w);
         }
-        for child in self.widgets.iter_mut() {
-            child.set_rect(size_handle, Rect::new(pos, child_size), align);
-            pos += skip;
-        }
-
-        let _ = self.scroll.set_sizes(rect.size, content_size);
+        let mut action = self.scroll.set_sizes(rect.size, content_size);
+        action += self.update_widgets(size_handle);
+        // TODO: we should handle action
+        let _ = action;
     }
 
     fn spatial_range(&self) -> (usize, usize) {
@@ -254,22 +300,23 @@ where
             return None;
         }
 
-        // FIXME: find child
+        for child in &self.widgets[..self.data_range.len()] {
+            if let Some(id) = child.find_id(coord) {
+                return Some(id);
+            }
+        }
         Some(self.id())
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
-        draw_handle.clip_region(
-            self.core.rect,
-            self.scroll_offset(),
-            ClipRegion::Scroll,
-            &mut |draw_handle| {
-                for child in self.widgets.iter() {
-                    child.draw(draw_handle, mgr, disabled)
-                }
-            },
-        );
+        let offset = self.scroll_offset();
+        use kas::draw::ClipRegion::Scroll;
+        draw_handle.clip_region(self.core.rect, offset, Scroll, &mut |draw_handle| {
+            for child in &self.widgets[..self.data_range.len()] {
+                child.draw(draw_handle, mgr, disabled)
+            }
+        });
     }
 }
 
@@ -284,7 +331,7 @@ where
 
         let event = if id < self.id() {
             let response = 'outer: loop {
-                for child in &mut self.widgets {
+                for child in &mut self.widgets[..self.data_range.len()] {
                     if id <= child.id() {
                         let event = self.scroll.offset_event(event);
                         break 'outer child.send(mgr, id, event);
@@ -295,8 +342,8 @@ where
             match response {
                 Response::Unhandled(event) => event,
                 Response::Focus(rect) => {
-                    let (rect, action) = self.scroll.focus_rect(rect, self.core.rect.pos);
-                    // TODO: update widgets
+                    let (rect, mut action) = self.scroll.focus_rect(rect, self.core.rect.pos);
+                    action += mgr.size_handle(|h| self.update_widgets(h));
                     *mgr += action;
                     return Response::Focus(rect);
                 }
@@ -307,14 +354,14 @@ where
         };
 
         let id = self.id();
-        let (action, response) = self.scroll.scroll_by_event(event, |source, _, coord| {
+        let (mut action, response) = self.scroll.scroll_by_event(event, |source, _, coord| {
             if source.is_primary() {
                 let icon = Some(CursorIcon::Grabbing);
                 mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
             }
         });
         if action != TkAction::None {
-            // TODO: update widgets
+            action += mgr.size_handle(|h| self.update_widgets(h));
             *mgr += action;
         }
         response.void_into()
