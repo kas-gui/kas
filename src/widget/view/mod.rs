@@ -15,7 +15,7 @@ mod shared;
 mod single;
 
 pub use list::ListView;
-pub use shared::{Accessor, AccessorShared, SharedConst, SharedRc};
+pub use shared::{Accessor, AccessorShared, FilterAccessor, SharedConst, SharedRc};
 pub use single::SingleView;
 
 /// View widgets

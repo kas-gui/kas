@@ -229,7 +229,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     }
 
     fn edit_surround(&self) -> (Size, Size) {
-        let s = Size::uniform(self.dims.frame as u32);
+        let s = Size::uniform(self.dims.frame as u32 + self.dims.inner_margin as u32);
         (s, s)
     }
 

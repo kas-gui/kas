@@ -28,11 +28,11 @@ struct Guard;
 impl EditGuard for Guard {
     type Msg = Item;
 
-    fn activate(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
+    fn activate(edit: &mut EditBox<Self>, _: &mut Manager) -> Option<Self::Msg> {
         Some(Item::Edit(edit.get_string()))
     }
 
-    fn edit(edit: &mut EditBox<Self>) -> Option<Self::Msg> {
+    fn edit(edit: &mut EditBox<Self>, _: &mut Manager) -> Option<Self::Msg> {
         // 7a is the colour of *magic*!
         edit.set_error_state(edit.get_str().len() % (7 + 1) == 0);
         None
@@ -233,7 +233,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                             mgr.adjust_theme(|theme| theme.set_colours(name));
                         }
                         Menu::Disabled(state) => {
-                            *mgr += self.gallery.inner_mut().set_disabled(state);
+                            *mgr += self.gallery.set_disabled(state);
                         }
                         Menu::Quit => {
                             *mgr += TkAction::CloseAll;

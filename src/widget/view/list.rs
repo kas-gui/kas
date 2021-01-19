@@ -6,15 +6,19 @@
 //! List view widget
 
 use super::{Accessor, DefaultView, ViewWidget};
+use kas::event::{CursorIcon, GrabMode};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
+use kas::text::Range;
+use kas::widget::ScrollComponent;
+use std::convert::TryFrom;
 
 // TODO: do we need to keep the A::Item: Default bound used by allocate?
 
 /// List view widget
 #[handler(send=noauto, msg=<W as Handler>::Msg)]
-#[widget(children=noauto)]
-#[derive(Clone, Default, Debug, Widget)]
+#[widget(children=noauto, config=noauto)]
+#[derive(Clone, Debug, Widget)]
 pub struct ListView<
     D: Directional,
     A: Accessor<usize>,
@@ -28,10 +32,15 @@ pub struct ListView<
     data: A,
     widgets: Vec<W>,
     direction: D,
+    data_range: Range,
+    align_hints: AlignHints,
     ideal_visible: u32,
     child_size_min: u32,
     child_size_ideal: u32,
     child_inter_margin: u32,
+    child_skip: u32,
+    child_size: u32,
+    scroll: ScrollComponent,
 }
 
 impl<D: Directional + Default, A: Accessor<usize>, W: ViewWidget<A::Item>> ListView<D, A, W>
@@ -50,10 +59,15 @@ where
             data,
             widgets: Default::default(),
             direction: Default::default(),
+            data_range: Range::from(0usize..0),
+            align_hints: Default::default(),
             ideal_visible: 5,
             child_size_min: 0,
             child_size_ideal: 0,
             child_inter_margin: 0,
+            child_skip: 0,
+            child_size: 0,
+            scroll: Default::default(),
         }
     }
 }
@@ -69,11 +83,35 @@ where
             data,
             widgets: Default::default(),
             direction,
+            data_range: Range::from(0usize..0),
+            align_hints: Default::default(),
             ideal_visible: 5,
             child_size_min: 0,
             child_size_ideal: 0,
             child_inter_margin: 0,
+            child_skip: 0,
+            child_size: 0,
+            scroll: Default::default(),
         }
+    }
+
+    /// Access the stored data
+    pub fn data(&self) -> &A {
+        &self.data
+    }
+
+    /// Mutably access the stored data
+    ///
+    /// It may be necessary to use [`ListView::update_view`] to update the view of this data.
+    pub fn data_mut(&mut self) -> &mut A {
+        &mut self.data
+    }
+
+    /// Manually trigger an update to handle changed data
+    pub fn update_view(&mut self, mgr: &mut Manager) {
+        self.data_range.end = self.data_range.start;
+        let action = mgr.size_handle(|h| self.update_widgets(h));
+        *mgr += action;
     }
 
     /// Get the direction of contents
@@ -90,18 +128,77 @@ where
         self
     }
 
-    fn allocate(&mut self, number: usize) {
-        dbg!(number);
-        let number = number.min(self.data.len());
-        self.widgets.reserve(number);
-        for i in self.widgets.len()..number {
-            self.widgets.push(W::new(self.data.get(i)));
-        }
+    /// Get the maximum scroll offset
+    ///
+    /// Note: the minimum scroll offset is always zero.
+    #[inline]
+    pub fn max_scroll_offset(&self) -> Coord {
+        self.scroll.max_offset()
+    }
 
-        // size_rules needs at least one widget
-        if self.widgets.is_empty() {
-            self.widgets.push(W::default());
+    /// Get the current scroll offset
+    ///
+    /// Contents of the scroll region are translated by this offset (to convert
+    /// coordinates from the outer region to the scroll region, add this offset).
+    ///
+    /// The offset is restricted between [`Coord::ZERO`] and
+    /// [`ListView::max_scroll_offset`].
+    #[inline]
+    pub fn scroll_offset(&self) -> Coord {
+        self.scroll.offset()
+    }
+
+    /// Set the scroll offset
+    ///
+    /// The offset is clamped to the available scroll range.
+    /// Returns [`TkAction::None`] if the offset is identical to the old offset,
+    /// or a greater action if not identical.
+    #[inline]
+    pub fn set_scroll_offset(&mut self, offset: Coord) -> TkAction {
+        self.scroll.set_offset(offset)
+    }
+
+    fn update_widgets(&mut self, size_handle: &mut dyn SizeHandle) -> TkAction {
+        // set_rect allocates enough widgets to view a page; we update widget-data allocations
+        // TODO: we may wish to notify self.data of the range it should cache
+        let w_len = self.widgets.len();
+        let (old_start, old_end) = (self.data_range.start(), self.data_range.end());
+        let offset = self.direction.extract_coord(self.scroll_offset()) as usize;
+        let mut first_data = offset / self.child_skip as usize;
+        first_data = (first_data + w_len)
+            .min(self.data.len())
+            .saturating_sub(w_len);
+        let data_range = first_data..(first_data + w_len).min(self.data.len());
+        let (child_size, mut skip) = match self.direction.is_vertical() {
+            false => (
+                Size(self.child_size, self.rect().size.1),
+                Coord(self.child_skip as i32, 0),
+            ),
+            true => (
+                Size(self.rect().size.0, self.child_size),
+                Coord(0, self.child_skip as i32),
+            ),
+        };
+        let mut pos_start = self.core.rect.pos;
+        if self.direction.is_reversed() {
+            pos_start += skip * (w_len - 1) as i32;
+            skip = skip * -1;
         }
+        let mut rect = Rect::new(pos_start, child_size);
+        let mut action = TkAction::None;
+        for data_num in data_range.clone() {
+            // HACK: self.widgets[0] is used in size_rules, which affects alignment, therefore we
+            // always need to call set_rect on this widget. Fix by adjusting how text_bound works?
+            let i = data_num % w_len;
+            if i == 0 || (data_num < old_start || data_num >= old_end) {
+                let w = &mut self.widgets[i];
+                action += w.set(self.data.get(data_num));
+                rect.pos = pos_start + skip * data_num as i32;
+                w.set_rect(size_handle, rect, self.align_hints);
+            }
+        }
+        self.data_range = data_range.into();
+        action
     }
 }
 
@@ -131,14 +228,28 @@ where
     }
 }
 
+impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> WidgetConfig for ListView<D, A, W>
+where
+    A::Item: Default,
+{
+    fn configure(&mut self, mgr: &mut Manager) {
+        if let Some(handle) = self.data.update_handle() {
+            mgr.update_on_handle(handle, self.id());
+        }
+    }
+}
+
 impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> Layout for ListView<D, A, W>
 where
     A::Item: Default,
 {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        // TODO: when and how to allocate children?
-        if self.widgets.len() < 1 {
-            self.allocate(1);
+        if self.widgets.is_empty() {
+            if self.data.len() > 0 {
+                self.widgets.push(W::new(self.data.get(0)));
+            } else {
+                self.widgets.push(W::default());
+            }
         }
         let mut rules = self.widgets[0].size_rules(size_handle, axis);
         if axis.is_vertical() == self.direction.is_vertical() {
@@ -154,45 +265,56 @@ where
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, mut align: AlignHints) {
         self.core.rect = rect;
 
-        let mut pos = rect.pos;
+        let data_len = u32::try_from(self.data.len()).unwrap();
         let mut child_size = rect.size;
-        let mut skip: Coord;
-        let num_visible;
+        let content_size;
+        let skip;
+        let num;
         if self.direction.is_horizontal() {
             if child_size.0 >= self.ideal_visible * self.child_size_ideal {
                 child_size.0 = self.child_size_ideal;
             } else {
                 child_size.0 = self.child_size_min;
             }
-            skip = Size(child_size.0 + self.child_inter_margin, 0).into();
+            self.child_size = child_size.0;
+            skip = Size(child_size.0 + self.child_inter_margin, 0);
+            self.child_skip = skip.0;
             align.horiz = None;
-            num_visible = rect.size.0 / (child_size.0 + self.child_inter_margin) + 2;
+            num = (rect.size.0 + skip.0 - 1) / skip.0 + 1;
+
+            let full_width = (skip.0 * data_len).saturating_sub(self.child_inter_margin);
+            content_size = Size(full_width, child_size.1);
         } else {
             if child_size.1 >= self.ideal_visible * self.child_size_ideal {
                 child_size.1 = self.child_size_ideal;
             } else {
                 child_size.1 = self.child_size_min;
             }
-            skip = Size(0, child_size.1 + self.child_inter_margin).into();
+            self.child_size = child_size.1;
+            skip = Size(0, child_size.1 + self.child_inter_margin);
+            self.child_skip = skip.1;
             align.vert = None;
-            num_visible = rect.size.1 / (child_size.1 + self.child_inter_margin) + 2;
+            num = (rect.size.1 + skip.1 - 1) / skip.1 + 1;
+
+            let full_height = (skip.1 * data_len).saturating_sub(self.child_inter_margin);
+            content_size = Size(child_size.0, full_height);
         }
 
-        if self.direction.is_reversed() {
-            pos += rect.size - skip.into();
-            skip = Coord::ZERO - skip;
-        }
+        self.align_hints = align;
 
-        let old_len = self.widgets.len();
-        self.allocate(num_visible as usize);
-        for child in &mut self.widgets[old_len..] {
+        // FIXME: we should require TkAction::Reconfigure when number of widgets changes
+        let num = (num as usize).min(self.data.len());
+        self.widgets.reserve(num);
+        for i in self.widgets.len()..num {
+            let mut w = W::new(self.data.get(i));
             // We must solve size rules on new widgets:
-            solve_size_rules(child, size_handle, Some(child_size.0), Some(child_size.1));
+            solve_size_rules(&mut w, size_handle, Some(child_size.0), Some(child_size.1));
+            self.widgets.push(w);
         }
-        for child in self.widgets.iter_mut() {
-            child.set_rect(size_handle, Rect::new(pos, child_size), align);
-            pos += skip;
-        }
+        let mut action = self.scroll.set_sizes(rect.size, content_size);
+        action += self.update_widgets(size_handle);
+        // TODO: we should handle action
+        let _ = action;
     }
 
     fn spatial_range(&self) -> (usize, usize) {
@@ -208,16 +330,23 @@ where
             return None;
         }
 
-        // FIXME: find child
+        for child in &self.widgets[..self.data_range.len()] {
+            if let Some(id) = child.find_id(coord) {
+                return Some(id);
+            }
+        }
         Some(self.id())
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
-        // FIXME: cull invisible children and restrict draw region
-        for child in self.widgets.iter() {
-            child.draw(draw_handle, mgr, disabled)
-        }
+        let offset = self.scroll_offset();
+        use kas::draw::ClipRegion::Scroll;
+        draw_handle.clip_region(self.core.rect, offset, Scroll, &mut |draw_handle| {
+            for child in &self.widgets[..self.data_range.len()] {
+                child.draw(draw_handle, mgr, disabled)
+            }
+        });
     }
 }
 
@@ -226,17 +355,51 @@ where
     A::Item: Default,
 {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
-        if !self.is_disabled() {
-            if id == self.id() {
-                return self.handle(mgr, event);
-            }
-            for child in &mut self.widgets {
-                if id <= child.id() {
-                    return child.send(mgr, id, event);
-                }
-            }
+        if self.is_disabled() {
+            return Response::Unhandled(event);
         }
 
-        Response::Unhandled(event)
+        let event = if id < self.id() {
+            let response = 'outer: loop {
+                for child in &mut self.widgets[..self.data_range.len()] {
+                    if id <= child.id() {
+                        let event = self.scroll.offset_event(event);
+                        break 'outer child.send(mgr, id, event);
+                    }
+                }
+                return Response::Unhandled(event);
+            };
+            match response {
+                Response::Unhandled(event) => event,
+                Response::Focus(rect) => {
+                    let (rect, mut action) = self.scroll.focus_rect(rect, self.core.rect.pos);
+                    action += mgr.size_handle(|h| self.update_widgets(h));
+                    *mgr += action;
+                    return Response::Focus(rect);
+                }
+                r => return r,
+            }
+        } else {
+            match event {
+                Event::HandleUpdate { .. } => {
+                    self.update_view(mgr);
+                    return Response::None;
+                }
+                event => event,
+            }
+        };
+
+        let id = self.id();
+        let (mut action, response) = self.scroll.scroll_by_event(event, |source, _, coord| {
+            if source.is_primary() {
+                let icon = Some(CursorIcon::Grabbing);
+                mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
+            }
+        });
+        if action != TkAction::None {
+            action += mgr.size_handle(|h| self.update_widgets(h));
+            *mgr += action;
+        }
+        response.void_into()
     }
 }

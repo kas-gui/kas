@@ -139,10 +139,13 @@ pub trait SizeHandle {
 
     /// The margin around content within a widget
     ///
-    /// This area may be used to draw focus indicators.
+    /// Though inner margins are *usually* empty, they are sometimes drawn to,
+    /// for example focus indicators.
     fn inner_margin(&self) -> Size;
 
     /// The margin between UI elements, where desired
+    ///
+    /// Widgets must not draw in outer margins.
     fn outer_margins(&self) -> Margins;
 
     /// The height of a line of text
@@ -173,10 +176,13 @@ pub trait SizeHandle {
     /// Excludes size of content area.
     fn button_surround(&self) -> (Size, Size);
 
-    /// Size of the sides of an edit box.
+    /// Size of the frame around an edit box, including margin
     ///
-    /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
-    /// Excludes size of content area.
+    /// Returns two [`Size`] values, `(tl, br)`. `tl` is the size of left and
+    /// top sides, and `br` is the size of right and bottom sides.
+    ///
+    /// Note: though text should not be drawn in the margin, the edit cursor
+    /// may be. The margin included here should be large enough!
     fn edit_surround(&self) -> (Size, Size);
 
     /// Size of the element drawn by [`DrawHandle::checkbox`].

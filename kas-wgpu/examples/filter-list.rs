@@ -5,8 +5,11 @@
 
 //! Filter list example
 
-use kas::widget::view::{ListView, SharedConst};
-use kas::widget::Window;
+use kas::prelude::*;
+use kas::widget::view::{FilterAccessor, ListView, SharedConst};
+use kas::widget::{EditBox, Window};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 const MONTHS: &[&str] = &[
     "January",
@@ -26,8 +29,31 @@ const MONTHS: &[&str] = &[
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let data: &SharedConst<[&str]> = MONTHS.into();
-    let window = Window::new("Filter-list", ListView::<kas::Down, _>::new(data));
+    type SC = &'static SharedConst<[&'static str]>;
+    type FA = Rc<RefCell<FilterAccessor<usize, SC>>>;
+    let data: SC = MONTHS.into();
+    let data = Rc::new(RefCell::new(FilterAccessor::new_visible(data)));
+    let data2 = data.clone();
+    let window = Window::new(
+        "Filter-list",
+        make_widget! {
+            #[layout(down)]
+            #[handler(msg = VoidMsg)]
+            struct {
+                #[widget] filter = EditBox::new("").on_edit(move |text, mgr| {
+                    // Note: this method of caseless matching is not unicode compliant!
+                    // https://stackoverflow.com/questions/47298336/case-insensitive-string-matching-in-rust
+                    let text = text.to_uppercase();
+                    let update = data2
+                        .borrow_mut()
+                        .update_filter(|s| s.to_uppercase().contains(&text));
+                    mgr.trigger_update(update, 0);
+                    None
+                }),
+                #[widget] list = ListView::<kas::Down, FA>::new(data),
+            }
+        },
+    );
 
     let theme = kas_theme::ShadedTheme::new();
     kas_wgpu::Toolkit::new(theme)?.with(window)?.run()

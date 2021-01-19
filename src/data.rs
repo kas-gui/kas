@@ -13,7 +13,7 @@ use std::rc::Rc;
 use std::u32;
 
 use super::Align;
-use crate::geom::{Rect, Size};
+use crate::geom::{Coord, Rect, Size};
 
 // for doc use
 #[allow(unused)]
@@ -262,6 +262,26 @@ pub trait Directional: Copy + Sized + std::fmt::Debug + 'static {
     #[inline]
     fn is_reversed(self) -> bool {
         ((self.as_direction() as u32) & 2) == 2
+    }
+
+    /// Extract a coordinate
+    #[inline]
+    fn extract_coord(self, coord: Coord) -> i32 {
+        if self.is_horizontal() {
+            coord.0
+        } else {
+            coord.1
+        }
+    }
+
+    /// Extract a size
+    #[inline]
+    fn extract_size(self, size: Size) -> u32 {
+        if self.is_horizontal() {
+            size.0
+        } else {
+            size.1
+        }
     }
 }
 
