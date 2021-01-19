@@ -508,7 +508,7 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
 }
 
 #[cfg(feature = "stack_dst")]
-impl<S> SizeHandle for stack_dst::ValueA<dyn SizeHandle, S>
+impl<'a, S> SizeHandle for stack_dst::ValueA<dyn SizeHandle + 'a, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
@@ -664,7 +664,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
 }
 
 #[cfg(feature = "stack_dst")]
-impl<S> DrawHandle for stack_dst::ValueA<dyn DrawHandle, S>
+impl<'a, S> DrawHandle for stack_dst::ValueA<dyn DrawHandle + 'a, S>
 where
     S: Default + Copy + AsRef<[usize]> + AsMut<[usize]>,
 {
