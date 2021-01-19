@@ -7,7 +7,7 @@
 
 use kas::prelude::*;
 use kas::widget::view::{FilterAccessor, ListView, SharedConst};
-use kas::widget::{EditBox, Window};
+use kas::widget::{EditBox, ScrollBars, Window};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -50,7 +50,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     mgr.trigger_update(update, 0);
                     None
                 }),
-                #[widget] list = ListView::<kas::Down, FA>::new(data),
+                #[widget] list = ScrollBars::new(ListView::<kas::Down, FA>::new(data)),
             }
         },
     );

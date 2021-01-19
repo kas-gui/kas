@@ -10,7 +10,7 @@ use kas::event::{CursorIcon, GrabMode};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::text::Range;
-use kas::widget::ScrollComponent;
+use kas::widget::{ScrollComponent, ScrollWidget};
 use std::convert::TryFrom;
 
 // TODO: do we need to keep the A::Item: Default bound used by allocate?
@@ -111,7 +111,8 @@ where
     pub fn update_view(&mut self, mgr: &mut Manager) {
         self.data_range.end = self.data_range.start;
         let action = mgr.size_handle(|h| self.update_widgets(h));
-        *mgr += action;
+        // Force SetSize so that scroll-bar wrappers get updated
+        *mgr += action + TkAction::SetSize;
     }
 
     /// Get the direction of contents
@@ -126,36 +127,6 @@ where
     pub fn with_num_visible(mut self, number: u32) -> Self {
         self.ideal_visible = number;
         self
-    }
-
-    /// Get the maximum scroll offset
-    ///
-    /// Note: the minimum scroll offset is always zero.
-    #[inline]
-    pub fn max_scroll_offset(&self) -> Coord {
-        self.scroll.max_offset()
-    }
-
-    /// Get the current scroll offset
-    ///
-    /// Contents of the scroll region are translated by this offset (to convert
-    /// coordinates from the outer region to the scroll region, add this offset).
-    ///
-    /// The offset is restricted between [`Coord::ZERO`] and
-    /// [`ListView::max_scroll_offset`].
-    #[inline]
-    pub fn scroll_offset(&self) -> Coord {
-        self.scroll.offset()
-    }
-
-    /// Set the scroll offset
-    ///
-    /// The offset is clamped to the available scroll range.
-    /// Returns [`TkAction::None`] if the offset is identical to the old offset,
-    /// or a greater action if not identical.
-    #[inline]
-    pub fn set_scroll_offset(&mut self, offset: Coord) -> TkAction {
-        self.scroll.set_offset(offset)
     }
 
     fn update_widgets(&mut self, size_handle: &mut dyn SizeHandle) -> TkAction {
@@ -199,6 +170,37 @@ where
         }
         self.data_range = data_range.into();
         action
+    }
+}
+
+impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> ScrollWidget for ListView<D, A, W>
+where
+    A::Item: Default,
+{
+    fn scroll_axes(&self, size: Size) -> (bool, bool) {
+        // TODO: maybe we should support a scrollbar on the other axis?
+        // We would need to report a fake min-child-size to enable scrolling.
+        let min_size = ((self.child_size_min + self.child_inter_margin) * self.data.len() as u32)
+            .saturating_sub(self.child_inter_margin);
+        (
+            self.direction.is_horizontal() && min_size > size.0,
+            self.direction.is_vertical() && min_size > size.1,
+        )
+    }
+
+    #[inline]
+    fn max_scroll_offset(&self) -> Coord {
+        self.scroll.max_offset()
+    }
+
+    #[inline]
+    fn scroll_offset(&self) -> Coord {
+        self.scroll.offset()
+    }
+
+    #[inline]
+    fn set_scroll_offset(&mut self, offset: Coord) -> TkAction {
+        self.scroll.set_offset(offset)
     }
 }
 
