@@ -372,7 +372,7 @@ where
             match response {
                 Response::Unhandled(event) => event,
                 Response::Focus(rect) => {
-                    let (rect, mut action) = self.scroll.focus_rect(rect, self.core.rect.pos);
+                    let (rect, mut action) = self.scroll.focus_rect(rect, self.core.rect);
                     action += mgr.size_handle(|h| self.update_widgets(h));
                     *mgr += action;
                     return Response::Focus(rect);
@@ -390,12 +390,14 @@ where
         };
 
         let id = self.id();
-        let (mut action, response) = self.scroll.scroll_by_event(event, |source, _, coord| {
-            if source.is_primary() {
-                let icon = Some(CursorIcon::Grabbing);
-                mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
-            }
-        });
+        let (mut action, response) =
+            self.scroll
+                .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
+                    if source.is_primary() {
+                        let icon = Some(CursorIcon::Grabbing);
+                        mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
+                    }
+                });
         if action != TkAction::None {
             action += mgr.size_handle(|h| self.update_widgets(h));
             *mgr += action;

@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use super::DragHandle;
+use super::{DragHandle, ScrollRegion};
 use kas::{event, prelude::*};
 
 /// A scroll bar
@@ -289,6 +289,11 @@ pub trait ScrollWidget: Widget {
     fn set_scroll_offset(&mut self, offset: Coord) -> TkAction;
 }
 
+/// A scrollable region with bars
+///
+/// This is merely a typedef
+pub type ScrollBarRegion<W> = ScrollBars<ScrollRegion<W>>;
+
 /// Scrollbar controls
 ///
 /// This is a wrapper adding scrollbar controls around a child. Note that this
@@ -310,16 +315,26 @@ pub struct ScrollBars<W: ScrollWidget> {
     inner: W,
 }
 
+impl<W: Widget> ScrollBars<ScrollRegion<W>> {
+    /// Construct a `ScrollBars<ScrollRegion<W>>`
+    ///
+    /// This is a convenience constructor.
+    #[inline]
+    pub fn new2(inner: W) -> Self {
+        ScrollBars::new(ScrollRegion::new(inner))
+    }
+}
+
 impl<W: ScrollWidget> ScrollBars<W> {
     /// Construct
     ///
-    /// By default only the vertical scrollbar is enabled. See [`ScrollBars::with_bars`]
-    /// and [`ScrollBars::with_auto_bars`].
+    /// By default scrollbars are automatically enabled based on requirements.
+    /// See [`ScrollBars::with_auto_bars`] and [`ScrollBars::with_bars`].
     #[inline]
     pub fn new(inner: W) -> Self {
         ScrollBars {
             core: Default::default(),
-            auto_bars: false,
+            auto_bars: true,
             show_bars: (false, false),
             horiz_bar: ScrollBar::new(),
             vert_bar: ScrollBar::new(),
@@ -329,8 +344,8 @@ impl<W: ScrollWidget> ScrollBars<W> {
 
     /// Auto-enable bars
     ///
-    /// If enabled, this automatically enables/disables scroll bars as required
-    /// when resized.
+    /// If enabled (default), this automatically enables/disables scroll bars
+    /// as required when resized.
     ///
     /// This has the side-effect of reserving enough space for scroll bars even
     /// when not required.
@@ -341,15 +356,21 @@ impl<W: ScrollWidget> ScrollBars<W> {
     }
 
     /// Set which scroll bars are visible
+    ///
+    /// Calling this method also disables automatic scroll bars.
     #[inline]
     pub fn with_bars(mut self, horiz: bool, vert: bool) -> Self {
+        self.auto_bars = false;
         self.show_bars = (horiz, vert);
         self
     }
 
     /// Set which scroll bars are visible
+    ///
+    /// Calling this method also disables automatic scroll bars.
     #[inline]
     pub fn set_bars(&mut self, horiz: bool, vert: bool) {
+        self.auto_bars = false;
         self.show_bars = (horiz, vert);
     }
 
