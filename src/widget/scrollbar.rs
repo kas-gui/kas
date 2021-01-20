@@ -7,7 +7,7 @@
 
 use std::fmt::Debug;
 
-use super::DragHandle;
+use super::{DragHandle, ScrollRegion};
 use kas::{event, prelude::*};
 
 /// A scroll bar
@@ -257,5 +257,277 @@ impl<D: Directional> event::SendEvent for ScrollBar<D> {
         } else {
             Response::None
         }
+    }
+}
+
+/// Additional functionality on scrollable widgets
+///
+/// This may be used to add controls via the [`ScrollBars`] wrapper.
+pub trait ScrollWidget: Widget {
+    /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
+    fn scroll_axes(&self, size: Size) -> (bool, bool);
+
+    /// Get the maximum scroll offset
+    ///
+    /// Note: the minimum scroll offset is always zero.
+    fn max_scroll_offset(&self) -> Coord;
+
+    /// Get the current scroll offset
+    ///
+    /// Contents of the scroll region are translated by this offset (to convert
+    /// coordinates from the outer region to the scroll region, add this offset).
+    ///
+    /// The offset is restricted between [`Coord::ZERO`] and
+    /// [`ScrollRegion::max_scroll_offset`].
+    fn scroll_offset(&self) -> Coord;
+
+    /// Set the scroll offset
+    ///
+    /// The offset is clamped to the available scroll range.
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord);
+}
+
+/// A scrollable region with bars
+///
+/// This is merely a typedef
+pub type ScrollBarRegion<W> = ScrollBars<ScrollRegion<W>>;
+
+/// Scrollbar controls
+///
+/// This is a wrapper adding scrollbar controls around a child. Note that this
+/// widget does not enable scrolling; see [`ScrollRegion`] for that.
+/// This region supports scrolling via mouse wheel and click/touch drag.
+#[widget(config=noauto)]
+#[handler(send=noauto, msg = <W as event::Handler>::Msg)]
+#[derive(Clone, Debug, Default, Widget)]
+pub struct ScrollBars<W: ScrollWidget> {
+    #[widget_core]
+    core: CoreData,
+    auto_bars: bool,
+    show_bars: (bool, bool),
+    #[widget]
+    horiz_bar: ScrollBar<kas::Right>,
+    #[widget]
+    vert_bar: ScrollBar<kas::Down>,
+    #[widget]
+    inner: W,
+}
+
+impl<W: Widget> ScrollBars<ScrollRegion<W>> {
+    /// Construct a `ScrollBars<ScrollRegion<W>>`
+    ///
+    /// This is a convenience constructor.
+    #[inline]
+    pub fn new2(inner: W) -> Self {
+        ScrollBars::new(ScrollRegion::new(inner))
+    }
+}
+
+impl<W: ScrollWidget> ScrollBars<W> {
+    /// Construct
+    ///
+    /// By default scrollbars are automatically enabled based on requirements.
+    /// See [`ScrollBars::with_auto_bars`] and [`ScrollBars::with_bars`].
+    #[inline]
+    pub fn new(inner: W) -> Self {
+        ScrollBars {
+            core: Default::default(),
+            auto_bars: true,
+            show_bars: (false, false),
+            horiz_bar: ScrollBar::new(),
+            vert_bar: ScrollBar::new(),
+            inner,
+        }
+    }
+
+    /// Auto-enable bars
+    ///
+    /// If enabled (default), this automatically enables/disables scroll bars
+    /// as required when resized.
+    ///
+    /// This has the side-effect of reserving enough space for scroll bars even
+    /// when not required.
+    #[inline]
+    pub fn with_auto_bars(mut self, enable: bool) -> Self {
+        self.auto_bars = enable;
+        self
+    }
+
+    /// Set which scroll bars are visible
+    ///
+    /// Calling this method also disables automatic scroll bars.
+    #[inline]
+    pub fn with_bars(mut self, horiz: bool, vert: bool) -> Self {
+        self.auto_bars = false;
+        self.show_bars = (horiz, vert);
+        self
+    }
+
+    /// Set which scroll bars are visible
+    ///
+    /// Calling this method also disables automatic scroll bars.
+    #[inline]
+    pub fn set_bars(&mut self, horiz: bool, vert: bool) {
+        self.auto_bars = false;
+        self.show_bars = (horiz, vert);
+    }
+
+    /// Query which scroll bars are visible
+    ///
+    /// Returns `(horiz, vert)` tuple.
+    #[inline]
+    pub fn bars(&self) -> (bool, bool) {
+        self.show_bars
+    }
+
+    /// Access inner widget directly
+    #[inline]
+    pub fn inner(&self) -> &W {
+        &self.inner
+    }
+
+    /// Access inner widget directly
+    #[inline]
+    pub fn inner_mut(&mut self) -> &mut W {
+        &mut self.inner
+    }
+}
+
+impl<W: ScrollWidget> WidgetConfig for ScrollBars<W> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.register_nav_fallback(self.id());
+    }
+}
+
+impl<W: ScrollWidget> Layout for ScrollBars<W> {
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        let mut rules = self.inner.size_rules(size_handle, axis);
+        if axis.is_horizontal() && (self.auto_bars || self.show_bars.1) {
+            rules.append(self.vert_bar.size_rules(size_handle, axis));
+        } else if axis.is_vertical() && (self.auto_bars || self.show_bars.0) {
+            rules.append(self.horiz_bar.size_rules(size_handle, axis));
+        }
+        rules
+    }
+
+    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+        self.core.rect = rect;
+        let pos = rect.pos;
+        let mut child_size = rect.size;
+
+        let bar_width = (size_handle.scrollbar().0).1;
+        if self.auto_bars {
+            child_size -= Size(bar_width, bar_width);
+            self.show_bars = self.inner.scroll_axes(child_size);
+        } else {
+            if self.show_bars.0 {
+                child_size.1 -= bar_width;
+            }
+            if self.show_bars.1 {
+                child_size.0 -= bar_width;
+            }
+        }
+
+        let child_rect = Rect::new(pos, child_size);
+        self.inner.set_rect(size_handle, child_rect, align);
+        let max_scroll_offset = self.inner.max_scroll_offset();
+
+        if self.show_bars.0 {
+            let pos = Coord(pos.0, pos.1 + child_size.1 as i32);
+            let size = Size(child_size.0, bar_width);
+            self.horiz_bar
+                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
+            let _ = self
+                .horiz_bar
+                .set_limits(max_scroll_offset.0 as u32, rect.size.0);
+        }
+        if self.show_bars.1 {
+            let pos = Coord(pos.0 + child_size.0 as i32, pos.1);
+            let size = Size(bar_width, self.core.rect.size.1);
+            self.vert_bar
+                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
+            let _ = self
+                .vert_bar
+                .set_limits(max_scroll_offset.1 as u32, rect.size.1);
+        }
+    }
+
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
+
+        self.horiz_bar
+            .find_id(coord)
+            .or_else(|| self.vert_bar.find_id(coord))
+            .or_else(|| self.inner.find_id(coord))
+            .or(Some(self.id()))
+    }
+
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        let disabled = disabled || self.is_disabled();
+        if self.show_bars.0 {
+            self.horiz_bar.draw(draw_handle, mgr, disabled);
+        }
+        if self.show_bars.1 {
+            self.vert_bar.draw(draw_handle, mgr, disabled);
+        }
+        self.inner.draw(draw_handle, mgr, disabled);
+    }
+}
+
+impl<W: ScrollWidget> event::SendEvent for ScrollBars<W> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
+        if id <= self.horiz_bar.id() {
+            self.horiz_bar
+                .send(mgr, id, event)
+                .try_into()
+                .unwrap_or_else(|msg| {
+                    let offset = Coord(msg as i32, self.inner.scroll_offset().1);
+                    self.inner.set_scroll_offset(mgr, offset);
+                    Response::None
+                })
+        } else if id <= self.vert_bar.id() {
+            self.vert_bar
+                .send(mgr, id, event)
+                .try_into()
+                .unwrap_or_else(|msg| {
+                    let offset = Coord(self.inner.scroll_offset().0, msg as i32);
+                    self.inner.set_scroll_offset(mgr, offset);
+                    Response::None
+                })
+        } else if id <= self.inner.id() {
+            match self.inner.send(mgr, id, event) {
+                Response::Focus(rect) => {
+                    // We assume that the scrollable inner already updated its
+                    // offset; we just update the bar positions
+                    let offset = self.inner.scroll_offset();
+                    *mgr += self.horiz_bar.set_value(offset.0 as u32)
+                        + self.vert_bar.set_value(offset.1 as u32);
+                    Response::Focus(rect)
+                }
+                r => r,
+            }
+        } else {
+            debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
+            self.handle(mgr, event)
+        }
+    }
+}
+
+impl<W: ScrollWidget> std::ops::Deref for ScrollBars<W> {
+    type Target = W;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<W: ScrollWidget> std::ops::DerefMut for ScrollBars<W> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }

@@ -215,8 +215,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget(handler = menu)] _ = menubar,
                 #[widget(halign = centre)] _ = Frame::new(Label::new("Widget Gallery")),
                 #[widget(handler = activations)] gallery:
-                    for<W: Widget<Msg = Item>> ScrollRegion<W> =
-                    ScrollRegion::new(widgets).with_auto_bars(true),
+                    for<W: Widget<Msg = Item>> ScrollBarRegion<W> =
+                        ScrollBarRegion::new2(widgets),
             }
             impl {
                 fn menu(&mut self, mgr: &mut Manager, msg: Menu) -> VoidResponse {

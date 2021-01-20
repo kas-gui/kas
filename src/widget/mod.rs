@@ -91,7 +91,7 @@ pub use progress::ProgressBar;
 pub use radiobox::{RadioBox, RadioBoxBare};
 pub use reserve::{Reserve, ReserveP};
 pub use scroll::{ScrollComponent, ScrollRegion};
-pub use scrollbar::ScrollBar;
+pub use scrollbar::{ScrollBar, ScrollBarRegion, ScrollBars, ScrollWidget};
 pub use separator::Separator;
 pub use slider::{Slider, SliderType};
 pub use splitter::*;

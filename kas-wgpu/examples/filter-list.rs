@@ -6,33 +6,85 @@
 //! Filter list example
 
 use kas::prelude::*;
-use kas::widget::view::{FilterAccessor, ListView, SharedConst};
-use kas::widget::{EditBox, Window};
-use std::cell::RefCell;
-use std::rc::Rc;
+use kas::widget::view::{Accessor, ListView};
+use kas::widget::{EditBox, ScrollBars, Window};
 
-const MONTHS: &[&str] = &[
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-];
+#[cfg(not(feature = "generator"))]
+mod data {
+    use kas::widget::view::{FilterAccessor, SharedConst};
+    use std::{cell::RefCell, rc::Rc};
+
+    type SC = &'static SharedConst<[&'static str]>;
+    pub type Shared = Rc<RefCell<FilterAccessor<usize, SC>>>;
+
+    const MONTHS: &[&str] = &[
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ];
+
+    pub fn get() -> Shared {
+        Rc::new(RefCell::new(FilterAccessor::new_visible(MONTHS.into())))
+    }
+}
+
+// Implementation which generates dates, allowing testing with large numbers of entries
+// Since entries are generated on demand there is no penalty to having very large
+// numbers, *except* that this filter is O(n) in both memory usage and update time.
+#[cfg(feature = "generator")]
+mod data {
+    use chrono::{DateTime, Duration, Local};
+    use kas::widget::view::{Accessor, FilterAccessor};
+    use std::{cell::RefCell, rc::Rc};
+
+    // pub type Shared = Rc<RefCell<DateGenerator>>;
+    pub type Shared = Rc<RefCell<FilterAccessor<usize, DateGenerator>>>;
+
+    #[derive(Debug)]
+    pub struct DateGenerator {
+        start: DateTime<Local>,
+        end: DateTime<Local>,
+        step: Duration,
+    }
+
+    impl Accessor<usize> for DateGenerator {
+        type Item = String;
+        fn len(&self) -> usize {
+            let dur = self.end - self.start;
+            let secs = dur.num_seconds();
+            let step_secs = self.step.num_seconds();
+            1 + ((secs - 1) / step_secs) as usize
+        }
+
+        fn get(&self, index: usize) -> Self::Item {
+            let date = self.start + self.step * index as i32;
+            date.format("%A %e %B %Y, %T").to_string()
+        }
+    }
+
+    pub fn get() -> Shared {
+        Rc::new(RefCell::new(FilterAccessor::new_visible(DateGenerator {
+            start: Local::now(),
+            end: Local::now() + Duration::days(365),
+            step: Duration::seconds(999),
+        })))
+    }
+}
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    type SC = &'static SharedConst<[&'static str]>;
-    type FA = Rc<RefCell<FilterAccessor<usize, SC>>>;
-    let data: SC = MONTHS.into();
-    let data = Rc::new(RefCell::new(FilterAccessor::new_visible(data)));
+    let data = data::get();
+    println!("filter-list: {} entries", data.borrow().len());
     let data2 = data.clone();
     let window = Window::new(
         "Filter-list",
@@ -50,7 +102,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     mgr.trigger_update(update, 0);
                     None
                 }),
-                #[widget] list = ListView::<kas::Down, FA>::new(data),
+                #[widget] list = ScrollBars::new(ListView::<kas::Down, data::Shared>::new(data)),
             }
         },
     );

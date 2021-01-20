@@ -10,8 +10,10 @@ use kas::event::{CursorIcon, GrabMode};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::text::Range;
-use kas::widget::ScrollComponent;
+use kas::widget::{ScrollComponent, ScrollWidget};
+use log::trace;
 use std::convert::TryFrom;
+use std::time::Instant;
 
 // TODO: do we need to keep the A::Item: Default bound used by allocate?
 
@@ -111,7 +113,8 @@ where
     pub fn update_view(&mut self, mgr: &mut Manager) {
         self.data_range.end = self.data_range.start;
         let action = mgr.size_handle(|h| self.update_widgets(h));
-        *mgr += action;
+        // Force SetSize so that scroll-bar wrappers get updated
+        *mgr += action + TkAction::SetSize;
     }
 
     /// Get the direction of contents
@@ -128,37 +131,8 @@ where
         self
     }
 
-    /// Get the maximum scroll offset
-    ///
-    /// Note: the minimum scroll offset is always zero.
-    #[inline]
-    pub fn max_scroll_offset(&self) -> Coord {
-        self.scroll.max_offset()
-    }
-
-    /// Get the current scroll offset
-    ///
-    /// Contents of the scroll region are translated by this offset (to convert
-    /// coordinates from the outer region to the scroll region, add this offset).
-    ///
-    /// The offset is restricted between [`Coord::ZERO`] and
-    /// [`ListView::max_scroll_offset`].
-    #[inline]
-    pub fn scroll_offset(&self) -> Coord {
-        self.scroll.offset()
-    }
-
-    /// Set the scroll offset
-    ///
-    /// The offset is clamped to the available scroll range.
-    /// Returns [`TkAction::None`] if the offset is identical to the old offset,
-    /// or a greater action if not identical.
-    #[inline]
-    pub fn set_scroll_offset(&mut self, offset: Coord) -> TkAction {
-        self.scroll.set_offset(offset)
-    }
-
     fn update_widgets(&mut self, size_handle: &mut dyn SizeHandle) -> TkAction {
+        let time = Instant::now();
         // set_rect allocates enough widgets to view a page; we update widget-data allocations
         // TODO: we may wish to notify self.data of the range it should cache
         let w_len = self.widgets.len();
@@ -198,7 +172,42 @@ where
             }
         }
         self.data_range = data_range.into();
+        let dur = (Instant::now() - time).as_micros();
+        trace!("ListView::update_widgets completed in {}μs", dur);
         action
+    }
+}
+
+impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> ScrollWidget for ListView<D, A, W>
+where
+    A::Item: Default,
+{
+    fn scroll_axes(&self, size: Size) -> (bool, bool) {
+        // TODO: maybe we should support a scrollbar on the other axis?
+        // We would need to report a fake min-child-size to enable scrolling.
+        let min_size = ((self.child_size_min + self.child_inter_margin) * self.data.len() as u32)
+            .saturating_sub(self.child_inter_margin);
+        (
+            self.direction.is_horizontal() && min_size > size.0,
+            self.direction.is_vertical() && min_size > size.1,
+        )
+    }
+
+    #[inline]
+    fn max_scroll_offset(&self) -> Coord {
+        self.scroll.max_offset()
+    }
+
+    #[inline]
+    fn scroll_offset(&self) -> Coord {
+        self.scroll.offset()
+    }
+
+    #[inline]
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) {
+        let mut action = self.scroll.set_offset(offset);
+        action += mgr.size_handle(|h| self.update_widgets(h));
+        *mgr += action;
     }
 }
 
@@ -265,7 +274,8 @@ where
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, mut align: AlignHints) {
         self.core.rect = rect;
 
-        let data_len = u32::try_from(self.data.len()).unwrap();
+        let data_len = self.data.len();
+        let data_len32 = u32::try_from(data_len).unwrap();
         let mut child_size = rect.size;
         let content_size;
         let skip;
@@ -282,7 +292,7 @@ where
             align.horiz = None;
             num = (rect.size.0 + skip.0 - 1) / skip.0 + 1;
 
-            let full_width = (skip.0 * data_len).saturating_sub(self.child_inter_margin);
+            let full_width = (skip.0 * data_len32).saturating_sub(self.child_inter_margin);
             content_size = Size(full_width, child_size.1);
         } else {
             if child_size.1 >= self.ideal_visible * self.child_size_ideal {
@@ -296,14 +306,14 @@ where
             align.vert = None;
             num = (rect.size.1 + skip.1 - 1) / skip.1 + 1;
 
-            let full_height = (skip.1 * data_len).saturating_sub(self.child_inter_margin);
+            let full_height = (skip.1 * data_len32).saturating_sub(self.child_inter_margin);
             content_size = Size(child_size.0, full_height);
         }
 
         self.align_hints = align;
 
         // FIXME: we should require TkAction::Reconfigure when number of widgets changes
-        let num = (num as usize).min(self.data.len());
+        let num = (num as usize).min(data_len);
         self.widgets.reserve(num);
         for i in self.widgets.len()..num {
             let mut w = W::new(self.data.get(i));
@@ -372,7 +382,7 @@ where
             match response {
                 Response::Unhandled(event) => event,
                 Response::Focus(rect) => {
-                    let (rect, mut action) = self.scroll.focus_rect(rect, self.core.rect.pos);
+                    let (rect, mut action) = self.scroll.focus_rect(rect, self.core.rect);
                     action += mgr.size_handle(|h| self.update_widgets(h));
                     *mgr += action;
                     return Response::Focus(rect);
@@ -390,12 +400,14 @@ where
         };
 
         let id = self.id();
-        let (mut action, response) = self.scroll.scroll_by_event(event, |source, _, coord| {
-            if source.is_primary() {
-                let icon = Some(CursorIcon::Grabbing);
-                mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
-            }
-        });
+        let (mut action, response) =
+            self.scroll
+                .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
+                    if source.is_primary() {
+                        let icon = Some(CursorIcon::Grabbing);
+                        mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
+                    }
+                });
         if action != TkAction::None {
             action += mgr.size_handle(|h| self.update_widgets(h));
             *mgr += action;
