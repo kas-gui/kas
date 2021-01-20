@@ -11,7 +11,9 @@ use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::text::Range;
 use kas::widget::{ScrollComponent, ScrollWidget};
+use log::trace;
 use std::convert::TryFrom;
+use std::time::Instant;
 
 // TODO: do we need to keep the A::Item: Default bound used by allocate?
 
@@ -130,6 +132,7 @@ where
     }
 
     fn update_widgets(&mut self, size_handle: &mut dyn SizeHandle) -> TkAction {
+        let time = Instant::now();
         // set_rect allocates enough widgets to view a page; we update widget-data allocations
         // TODO: we may wish to notify self.data of the range it should cache
         let w_len = self.widgets.len();
@@ -169,6 +172,8 @@ where
             }
         }
         self.data_range = data_range.into();
+        let dur = (Instant::now() - time).as_micros();
+        trace!("ListView::update_widgets completed in {}μs", dur);
         action
     }
 }
@@ -269,7 +274,8 @@ where
     fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, mut align: AlignHints) {
         self.core.rect = rect;
 
-        let data_len = u32::try_from(self.data.len()).unwrap();
+        let data_len = self.data.len();
+        let data_len32 = u32::try_from(data_len).unwrap();
         let mut child_size = rect.size;
         let content_size;
         let skip;
@@ -286,7 +292,7 @@ where
             align.horiz = None;
             num = (rect.size.0 + skip.0 - 1) / skip.0 + 1;
 
-            let full_width = (skip.0 * data_len).saturating_sub(self.child_inter_margin);
+            let full_width = (skip.0 * data_len32).saturating_sub(self.child_inter_margin);
             content_size = Size(full_width, child_size.1);
         } else {
             if child_size.1 >= self.ideal_visible * self.child_size_ideal {
@@ -300,14 +306,14 @@ where
             align.vert = None;
             num = (rect.size.1 + skip.1 - 1) / skip.1 + 1;
 
-            let full_height = (skip.1 * data_len).saturating_sub(self.child_inter_margin);
+            let full_height = (skip.1 * data_len32).saturating_sub(self.child_inter_margin);
             content_size = Size(child_size.0, full_height);
         }
 
         self.align_hints = align;
 
         // FIXME: we should require TkAction::Reconfigure when number of widgets changes
-        let num = (num as usize).min(self.data.len());
+        let num = (num as usize).min(data_len);
         self.widgets.reserve(num);
         for i in self.widgets.len()..num {
             let mut w = W::new(self.data.get(i));
