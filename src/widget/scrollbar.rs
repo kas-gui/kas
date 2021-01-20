@@ -284,9 +284,7 @@ pub trait ScrollWidget: Widget {
     /// Set the scroll offset
     ///
     /// The offset is clamped to the available scroll range.
-    /// Returns [`TkAction::None`] if the offset is identical to the old offset,
-    /// or a greater action if not identical.
-    fn set_scroll_offset(&mut self, offset: Coord) -> TkAction;
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord);
 }
 
 /// A scrollable region with bars
@@ -490,7 +488,7 @@ impl<W: ScrollWidget> event::SendEvent for ScrollBars<W> {
                 .try_into()
                 .unwrap_or_else(|msg| {
                     let offset = Coord(msg as i32, self.inner.scroll_offset().1);
-                    *mgr += self.inner.set_scroll_offset(offset);
+                    self.inner.set_scroll_offset(mgr, offset);
                     Response::None
                 })
         } else if id <= self.vert_bar.id() {
@@ -499,7 +497,7 @@ impl<W: ScrollWidget> event::SendEvent for ScrollBars<W> {
                 .try_into()
                 .unwrap_or_else(|msg| {
                     let offset = Coord(self.inner.scroll_offset().0, msg as i32);
-                    *mgr += self.inner.set_scroll_offset(offset);
+                    self.inner.set_scroll_offset(mgr, offset);
                     Response::None
                 })
         } else if id <= self.inner.id() {

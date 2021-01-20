@@ -199,8 +199,10 @@ where
     }
 
     #[inline]
-    fn set_scroll_offset(&mut self, offset: Coord) -> TkAction {
-        self.scroll.set_offset(offset)
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) {
+        let mut action = self.scroll.set_offset(offset);
+        action += mgr.size_handle(|h| self.update_widgets(h));
+        *mgr += action;
     }
 }
 
