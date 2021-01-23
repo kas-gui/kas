@@ -204,10 +204,11 @@ where
     }
 
     #[inline]
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) {
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord {
         let mut action = self.scroll.set_offset(offset);
         action += mgr.size_handle(|h| self.update_widgets(h));
         *mgr += action;
+        self.scroll.offset()
     }
 }
 
@@ -411,7 +412,9 @@ where
         if action != TkAction::None {
             action += mgr.size_handle(|h| self.update_widgets(h));
             *mgr += action;
+            Response::Focus(self.rect())
+        } else {
+            response.void_into()
         }
-        response.void_into()
     }
 }

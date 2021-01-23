@@ -290,8 +290,9 @@ impl<W: Widget> ScrollWidget for ScrollRegion<W> {
     }
 
     #[inline]
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) {
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord {
         *mgr += self.scroll.set_offset(offset);
+        self.scroll.offset()
     }
 }
 

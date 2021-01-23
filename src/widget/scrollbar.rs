@@ -263,6 +263,11 @@ impl<D: Directional> event::SendEvent for ScrollBar<D> {
 /// Additional functionality on scrollable widgets
 ///
 /// This may be used to add controls via the [`ScrollBars`] wrapper.
+///
+/// The implementing widget may use event handlers to scroll itself (e.g. in
+/// reaction to a mouse wheel or touch-drag), but when doing so should emit
+/// [`Response::Focus`] to notify any wrapper of the new position (usually with
+/// `Response::Focus(self.rect())`).
 pub trait ScrollWidget: Widget {
     /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
     fn scroll_axes(&self, size: Size) -> (bool, bool);
@@ -283,8 +288,13 @@ pub trait ScrollWidget: Widget {
 
     /// Set the scroll offset
     ///
-    /// The offset is clamped to the available scroll range.
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord);
+    /// This may be used for programmatic scrolling, e.g. by a wrapping widget
+    /// with scroll controls. Note that calling this method directly on the
+    /// scrolling widget will not update any controls in a wrapping widget.
+    ///
+    /// The offset is clamped to the available scroll range and applied. The
+    /// resulting offset is returned.
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord;
 }
 
 /// A scrollable region with bars
@@ -390,6 +400,24 @@ impl<W: ScrollWidget> ScrollBars<W> {
     #[inline]
     pub fn inner_mut(&mut self) -> &mut W {
         &mut self.inner
+    }
+}
+
+impl<W: ScrollWidget> ScrollWidget for ScrollBars<W> {
+    fn scroll_axes(&self, size: Size) -> (bool, bool) {
+        self.inner.scroll_axes(size)
+    }
+    fn max_scroll_offset(&self) -> Coord {
+        self.inner.max_scroll_offset()
+    }
+    fn scroll_offset(&self) -> Coord {
+        self.inner.scroll_offset()
+    }
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord {
+        let offset = self.inner.set_scroll_offset(mgr, offset);
+        *mgr +=
+            self.horiz_bar.set_value(offset.0 as u32) + self.vert_bar.set_value(offset.1 as u32);
+        offset
     }
 }
 
