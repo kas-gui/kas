@@ -40,7 +40,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         content_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, align: kas::AlignHints) {
+    fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: kas::AlignHints) {
         self.core.rect = rect;
         self.label.update_env(|env| {
             env.set_bounds(rect.size.into());

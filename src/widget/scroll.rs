@@ -316,11 +316,11 @@ impl<W: Widget> Layout for ScrollRegion<W> {
         rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         let child_size = rect.size.max(self.min_child_size);
         let child_rect = Rect::new(rect.pos, child_size);
-        self.inner.set_rect(size_handle, child_rect, align);
+        self.inner.set_rect(mgr, child_rect, align);
         let _ = self.scroll.set_sizes(rect.size, child_size);
     }
 

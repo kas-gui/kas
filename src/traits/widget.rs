@@ -407,7 +407,8 @@ pub trait Layout: WidgetChildren {
     /// axis with current size information before this method, however
     /// `size_rules` might not be re-called before calling `set_rect` again.
     #[inline]
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        let _ = (mgr, align);
         self.core_data_mut().rect = rect;
     }
 

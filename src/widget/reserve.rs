@@ -76,9 +76,9 @@ impl<W: Widget, R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static> 
         inner_rules.max(reserve_rules)
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.inner.set_rect(size_handle, rect, align);
+        self.inner.set_rect(mgr, rect, align);
     }
 
     #[inline]

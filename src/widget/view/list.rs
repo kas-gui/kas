@@ -112,7 +112,7 @@ where
     /// Manually trigger an update to handle changed data
     pub fn update_view(&mut self, mgr: &mut Manager) {
         self.data_range.end = self.data_range.start;
-        let action = mgr.size_handle(|h| self.update_widgets(h));
+        let action = self.update_widgets(mgr);
         // Force SET_SIZE so that scroll-bar wrappers get updated
         *mgr |= action | TkAction::SET_SIZE;
     }
@@ -131,7 +131,7 @@ where
         self
     }
 
-    fn update_widgets(&mut self, size_handle: &mut dyn SizeHandle) -> TkAction {
+    fn update_widgets(&mut self, mgr: &mut Manager) -> TkAction {
         let time = Instant::now();
         // set_rect allocates enough widgets to view a page; we update widget-data allocations
         // TODO: we may wish to notify self.data of the range it should cache
@@ -168,7 +168,7 @@ where
                 let w = &mut self.widgets[i];
                 action |= w.set(self.data.get(data_num));
                 rect.pos = pos_start + skip * data_num as i32;
-                w.set_rect(size_handle, rect, self.align_hints);
+                w.set_rect(mgr, rect, self.align_hints);
             }
         }
         self.data_range = data_range.into();
@@ -206,7 +206,7 @@ where
     #[inline]
     fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord {
         let mut action = self.scroll.set_offset(offset);
-        action |= mgr.size_handle(|h| self.update_widgets(h));
+        action |= self.update_widgets(mgr);
         *mgr |= action;
         self.scroll.offset()
     }
@@ -272,7 +272,7 @@ where
         rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, mut align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, mut align: AlignHints) {
         self.core.rect = rect;
 
         let data_len = self.data.len();
@@ -316,14 +316,16 @@ where
         // FIXME: we should require TkAction::RECONFIGURE when number of widgets changes
         let num = (num as usize).min(data_len);
         self.widgets.reserve(num);
-        for i in self.widgets.len()..num {
-            let mut w = W::new(self.data.get(i));
-            // We must solve size rules on new widgets:
-            solve_size_rules(&mut w, size_handle, Some(child_size.0), Some(child_size.1));
-            self.widgets.push(w);
-        }
+        mgr.size_handle(|size_handle| {
+            for i in self.widgets.len()..num {
+                let mut w = W::new(self.data.get(i));
+                // We must solve size rules on new widgets:
+                solve_size_rules(&mut w, size_handle, Some(child_size.0), Some(child_size.1));
+                self.widgets.push(w);
+            }
+        });
         let mut action = self.scroll.set_sizes(rect.size, content_size);
-        action |= self.update_widgets(size_handle);
+        action |= self.update_widgets(mgr);
         // TODO: we should handle action
         let _ = action;
     }
@@ -384,7 +386,7 @@ where
                 Response::Unhandled(event) => event,
                 Response::Focus(rect) => {
                     let (rect, mut action) = self.scroll.focus_rect(rect, self.core.rect);
-                    action |= mgr.size_handle(|h| self.update_widgets(h));
+                    action |= self.update_widgets(mgr);
                     *mgr |= action;
                     return Response::Focus(rect);
                 }
@@ -410,7 +412,7 @@ where
                     }
                 });
         if !action.is_empty() {
-            action |= mgr.size_handle(|h| self.update_widgets(h));
+            action |= self.update_widgets(mgr);
             *mgr |= action;
             Response::Focus(self.rect())
         } else {

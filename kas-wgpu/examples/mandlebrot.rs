@@ -416,7 +416,7 @@ impl Layout for Mandlebrot {
     }
 
     #[inline]
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, _: &mut Manager, rect: Rect, _: AlignHints) {
         self.core.rect = rect;
         let size = DVec2::from(rect.size);
         let rel_width = DVec2(size.0 / size.1, 1.0);

@@ -228,7 +228,7 @@ impl<G: 'static> Layout for EditBox<G> {
         rules
     }
 
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, mut align: AlignHints) {
+    fn set_rect(&mut self, _: &mut Manager, rect: Rect, mut align: AlignHints) {
         let valign = if self.multi_line {
             Some(Align::Stretch)
         } else {

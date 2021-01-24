@@ -211,9 +211,9 @@ impl<D: Directional> Layout for ScrollBar<D> {
         }
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.handle.set_rect(size_handle, rect, align);
+        self.handle.set_rect(mgr, rect, align);
         let _ = self.update_handle();
     }
 
@@ -438,12 +438,12 @@ impl<W: ScrollWidget> Layout for ScrollBars<W> {
         rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         let pos = rect.pos;
         let mut child_size = rect.size;
 
-        let bar_width = (size_handle.scrollbar().0).1;
+        let bar_width = mgr.size_handle(|sh| (sh.scrollbar().0).1);
         if self.auto_bars {
             child_size -= Size(bar_width, bar_width);
             self.show_bars = self.inner.scroll_axes(child_size);
@@ -457,14 +457,14 @@ impl<W: ScrollWidget> Layout for ScrollBars<W> {
         }
 
         let child_rect = Rect::new(pos, child_size);
-        self.inner.set_rect(size_handle, child_rect, align);
+        self.inner.set_rect(mgr, child_rect, align);
         let max_scroll_offset = self.inner.max_scroll_offset();
 
         if self.show_bars.0 {
             let pos = Coord(pos.0, pos.1 + child_size.1 as i32);
             let size = Size(child_size.0, bar_width);
             self.horiz_bar
-                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
+                .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
             let _ = self
                 .horiz_bar
                 .set_limits(max_scroll_offset.0 as u32, rect.size.0);
@@ -473,7 +473,7 @@ impl<W: ScrollWidget> Layout for ScrollBars<W> {
             let pos = Coord(pos.0 + child_size.0 as i32, pos.1);
             let size = Size(bar_width, self.core.rect.size.1);
             self.vert_bar
-                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
+                .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
             let _ = self
                 .vert_bar
                 .set_limits(max_scroll_offset.1 as u32, rect.size.1);

@@ -45,7 +45,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
         text_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         self.label.update_env(|env| {
             env.set_bounds(rect.size.into());
@@ -213,7 +213,7 @@ impl<M: 'static> Layout for MenuToggle<M> {
         solver.finish(&mut self.layout_data)
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         let mut setter = layout::RowSetter::<_, [u32; 2], _>::new(
             rect,
@@ -223,12 +223,9 @@ impl<M: 'static> Layout for MenuToggle<M> {
         );
         let align = kas::AlignHints::NONE;
         let cb_rect = setter.child_rect(&mut self.layout_data, 0usize);
-        self.checkbox.set_rect(size_handle, cb_rect, align.clone());
-        self.label.set_rect(
-            size_handle,
-            setter.child_rect(&mut self.layout_data, 1usize),
-            align,
-        );
+        self.checkbox.set_rect(mgr, cb_rect, align.clone());
+        self.label
+            .set_rect(mgr, setter.child_rect(&mut self.layout_data, 1usize), align);
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {

@@ -55,11 +55,11 @@ impl<W: Widget> Layout for Frame<W> {
         child_rules.surrounded_by(frame_rules, true)
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, mut rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         rect.pos += self.m0;
         rect.size -= self.m0 + self.m1;
-        self.inner.set_rect(size_handle, rect, align);
+        self.inner.set_rect(mgr, rect, align);
     }
 
     #[inline]

@@ -26,7 +26,7 @@ impl<T: FormattableText + 'static> Layout for Label<T> {
         size_handle.text_bound(&mut self.label, TextClass::Label, axis)
     }
 
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         self.label.update_env(|env| {
             env.set_bounds(rect.size.into());
