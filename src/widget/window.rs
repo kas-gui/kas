@@ -168,7 +168,7 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
     fn add_popup(&mut self, mgr: &mut Manager, id: WindowId, popup: kas::Popup) {
         let index = self.popups.len();
         self.popups.push((id, popup));
-        mgr.size_handle(|size_handle| self.resize_popup(size_handle, index));
+        self.resize_popup(mgr, index);
         mgr.send_action(TkAction::REDRAW);
     }
 
@@ -182,9 +182,9 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         }
     }
 
-    fn resize_popups(&mut self, size_handle: &mut dyn SizeHandle) {
+    fn resize_popups(&mut self, mgr: &mut Manager) {
         for i in 0..self.popups.len() {
-            self.resize_popup(size_handle, i);
+            self.resize_popup(mgr, i);
         }
     }
 
@@ -217,7 +217,7 @@ fn find_rect(widget: &dyn WidgetConfig, id: WidgetId) -> Option<Rect> {
 }
 
 impl<W: Widget> Window<W> {
-    fn resize_popup(&mut self, size_handle: &mut dyn SizeHandle, index: usize) {
+    fn resize_popup(&mut self, mgr: &mut Manager, index: usize) {
         // Notation: p=point/coord, s=size, m=margin
         // r=window/root rect, c=anchor rect
         let r = self.core.rect;
@@ -225,7 +225,7 @@ impl<W: Widget> Window<W> {
 
         let c = find_rect(self.w.as_widget(), popup.parent).unwrap();
         let widget = self.w.find_mut(popup.id).unwrap();
-        let mut cache = layout::SolveCache::find_constraints(widget, size_handle);
+        let mut cache = mgr.size_handle(|sh| layout::SolveCache::find_constraints(widget, sh));
         let ideal = cache.ideal(false);
         let m = cache.margins();
 
@@ -263,6 +263,6 @@ impl<W: Widget> Window<W> {
             Rect::new(Coord(x, y), Size(w, h))
         };
 
-        cache.apply_rect(widget, size_handle, rect, false);
+        cache.apply_rect(widget, mgr, rect, false);
     }
 }

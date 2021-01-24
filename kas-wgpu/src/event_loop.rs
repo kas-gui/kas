@@ -234,7 +234,7 @@ where
                 }
                 PendingAction::ThemeResize => {
                     for (_, window) in self.windows.iter_mut() {
-                        window.theme_resize(&self.shared);
+                        window.theme_resize(&mut self.shared);
                     }
                 }
                 PendingAction::RedrawAll => {

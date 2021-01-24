@@ -10,6 +10,7 @@ use std::fmt;
 
 use super::{AxisInfo, Margins, SizeRules};
 use crate::draw::SizeHandle;
+use crate::event::Manager;
 use crate::geom::{Coord, Rect, Size};
 use crate::{AlignHints, Widget, WidgetConfig};
 
@@ -182,29 +183,32 @@ impl SolveCache {
     pub fn apply_rect(
         &mut self,
         widget: &mut dyn WidgetConfig,
-        size_handle: &mut dyn SizeHandle,
+        mgr: &mut Manager,
         mut rect: Rect,
         inner_margin: bool,
     ) {
-        // We call size_rules not because we want the result, but because our
-        // spec requires that we do so before calling set_rect.
-        if self.refresh_rules {
-            let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
-            self.min.0 = w.min_size();
-            self.ideal.0 = w.ideal_size();
-            self.margins.horiz = w.margins();
-        }
         let mut width = rect.size.0;
         if inner_margin {
             width -= (self.margins.horiz.0 + self.margins.horiz.1) as u32;
         }
 
+        // We call size_rules not because we want the result, but because our
+        // spec requires that we do so before calling set_rect.
         if self.refresh_rules || width != self.last_width {
-            let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(width)));
-            self.min.1 = h.min_size();
-            self.ideal.1 = h.ideal_size();
-            self.margins.vert = h.margins();
-            self.last_width = width;
+            mgr.size_handle(|size_handle| {
+                if self.refresh_rules {
+                    let w = widget.size_rules(size_handle, AxisInfo::new(false, None));
+                    self.min.0 = w.min_size();
+                    self.ideal.0 = w.ideal_size();
+                    self.margins.horiz = w.margins();
+                }
+
+                let h = widget.size_rules(size_handle, AxisInfo::new(true, Some(width)));
+                self.min.1 = h.min_size();
+                self.ideal.1 = h.ideal_size();
+                self.margins.vert = h.margins();
+                self.last_width = width;
+            });
         }
 
         if inner_margin {
@@ -212,7 +216,9 @@ impl SolveCache {
             rect.size.0 = width;
             rect.size.1 -= (self.margins.vert.0 + self.margins.vert.1) as u32;
         }
-        widget.set_rect(size_handle, rect, AlignHints::NONE);
+        mgr.size_handle(|size_handle| {
+            widget.set_rect(size_handle, rect, AlignHints::NONE);
+        });
 
         trace!(
             "layout::solve_and_set for size={:?} has hierarchy:{}",
