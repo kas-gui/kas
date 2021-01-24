@@ -72,7 +72,7 @@ impl TextEditPopup {
 
     fn close(&mut self, mgr: &mut Manager, commit: bool) -> VoidResponse {
         self.commit = commit;
-        mgr.send_action(TkAction::Close);
+        mgr.send_action(TkAction::CLOSE);
         Response::None
     }
 }
@@ -146,7 +146,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         if let Some(future) = self.future.take() {
                             let result = future.try_finish().unwrap();
                             if let Some(text) = result {
-                                *mgr += self.label.set_string(text);
+                                *mgr |= self.label.set_string(text);
                             }
                         }
                         Response::None
@@ -200,7 +200,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             }
             fn handle_scroll(&mut self, mgr: &mut Manager, msg: u32) -> Response<Item> {
                 let ratio = msg as f32 / self.sc.max_value() as f32;
-                *mgr += self.pg.set_value(ratio);
+                *mgr |= self.pg.set_value(ratio);
                 Response::Msg(Item::Scroll(msg))
             }
         }
@@ -233,10 +233,10 @@ fn main() -> Result<(), kas_wgpu::Error> {
                             mgr.adjust_theme(|theme| theme.set_colours(name));
                         }
                         Menu::Disabled(state) => {
-                            *mgr += self.gallery.set_disabled(state);
+                            *mgr |= self.gallery.set_disabled(state);
                         }
                         Menu::Quit => {
-                            *mgr += TkAction::CloseAll;
+                            *mgr |= TkAction::EXIT;
                         }
                     }
                     Response::None

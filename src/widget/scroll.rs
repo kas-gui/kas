@@ -68,16 +68,16 @@ impl ScrollComponent {
     /// Set the scroll offset
     ///
     /// The offset is clamped to the available scroll range.
-    /// Returns [`TkAction::None`] if the offset is identical to the old offset,
-    /// or [`TkAction::RegionMoved`] if the offset changes.
+    /// Returns [`TkAction::empty()`] if the offset is identical to the old offset,
+    /// or [`TkAction::REGION_MOVED`] if the offset changes.
     #[inline]
     pub fn set_offset(&mut self, offset: Coord) -> TkAction {
         let offset = offset.clamp(Coord::ZERO, self.max_offset);
         if offset == self.offset {
-            TkAction::None
+            TkAction::empty()
         } else {
             self.offset = offset;
-            TkAction::RegionMoved
+            TkAction::REGION_MOVED
         }
     }
 
@@ -155,7 +155,7 @@ impl ScrollComponent {
     ///             mgr.request_grab(id, source, coord, kas::event::GrabMode::Grab, icon);
     ///         }
     ///     });
-    ///     *mgr += action;
+    ///     *mgr |= action;
     ///     response.void_into()
     /// }
     /// ```
@@ -171,7 +171,7 @@ impl ScrollComponent {
         window_size: Size,
         mut on_press_start: PS,
     ) -> (TkAction, Response<VoidMsg>) {
-        let mut action = TkAction::None;
+        let mut action = TkAction::empty();
         let mut response = Response::None;
 
         match event {
@@ -210,7 +210,7 @@ impl ScrollComponent {
                     PixelDelta(d) => d,
                 };
                 action = self.set_offset(self.offset - d);
-                if action == TkAction::None {
+                if action.is_empty() {
                     response = Response::Unhandled(Event::Scroll(delta));
                 }
             }
@@ -291,7 +291,7 @@ impl<W: Widget> ScrollWidget for ScrollRegion<W> {
 
     #[inline]
     fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord {
-        *mgr += self.scroll.set_offset(offset);
+        *mgr |= self.scroll.set_offset(offset);
         self.scroll.offset()
     }
 }
@@ -365,7 +365,7 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
                 Response::Unhandled(event) => event,
                 Response::Focus(rect) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
-                    *mgr += action;
+                    *mgr |= action;
                     return Response::Focus(rect);
                 }
                 r => return r,
@@ -384,8 +384,8 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
                         mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);
                     }
                 });
-        if action != TkAction::None {
-            *mgr += action;
+        if !action.is_empty() {
+            *mgr |= action;
             Response::Focus(self.core.rect)
         } else {
             response.void_into()

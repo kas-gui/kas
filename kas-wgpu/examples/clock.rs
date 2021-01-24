@@ -130,8 +130,8 @@ impl Handler for Clock {
                 self.now = Local::now();
                 let date = self.now.format("%Y-%m-%d").to_string();
                 let time = self.now.format("%H:%M:%S").to_string();
-                *mgr += set_text_and_prepare(&mut self.date, date)
-                    + set_text_and_prepare(&mut self.time, time);
+                *mgr |= set_text_and_prepare(&mut self.date, date)
+                    | set_text_and_prepare(&mut self.time, time);
                 let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                 info!("Requesting update in {}ns", ns);
                 mgr.update_on_timer(Duration::new(0, ns), self.id());

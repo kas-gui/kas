@@ -113,7 +113,7 @@ impl<M: 'static> HasBool for CheckBoxBare<M> {
 
     fn set_bool(&mut self, state: bool) -> TkAction {
         self.state = state;
-        TkAction::Redraw
+        TkAction::REDRAW
     }
 }
 

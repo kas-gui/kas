@@ -52,7 +52,7 @@ impl<T: FormattableText + 'static> MessageBox<T> {
 
     fn handle_button(&mut self, mgr: &mut Manager, msg: DialogButton) -> Response<VoidMsg> {
         match msg {
-            DialogButton::Close => mgr.send_action(TkAction::Close),
+            DialogButton::Close => mgr.send_action(TkAction::CLOSE),
         };
         Response::None
     }

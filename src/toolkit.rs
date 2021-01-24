@@ -33,73 +33,54 @@ impl WindowId {
     }
 }
 
-/// Action required after processing
-///
-/// This type is returned by many widgets on modification to self and is tracked
-/// internally by [`event::Manager`] to determine which updates are needed to
-/// the UI.
-///
-/// All variants are *progressive*: e.g. `Reconfigure` implies all actions
-/// needed to handle `Popup`, `RegionMoved` and `Redraw`.
-///
-/// Two `TkAction` values may be combined by taking their maximum. Since this
-/// is a common operation, the `+` operator is defined to do this job, together
-/// with `+=` on `TkAction` and [`event::Manager`].
-///
-/// Users receiving a value of this type from a widget update method should
-/// generally call `*mgr += action;` during event handling. Prior to
-/// starting the event loop (`toolkit.run()`), these values can be ignored.
-#[must_use]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
-pub enum TkAction {
-    /// No action needed
-    None,
-    /// Whole window requires redrawing
+bitflags! {
+    /// Action required after processing
     ///
-    /// Note that [`Manager::redraw`] can instead be used for more selective
-    /// redrawing, if supported by the toolkit.
+    /// This type is returned by many widgets on modification to self and is tracked
+    /// internally by [`event::Manager`] to determine which updates are needed to
+    /// the UI.
     ///
-    /// [`Manager::redraw`]: crate::event::Manager::redraw
-    Redraw,
-    /// Some widgets within a region moved
+    /// Two `TkAction` values may be combined via bit-or (`a | b`). Bit-or
+    /// assignments are supported by both `TkAction` and [`event::Manager`].
     ///
-    /// Used when a pop-up is closed or a region adjusted (e.g. scroll or switch
-    /// tab) to update which widget is under the mouse cursor / touch events.
-    /// Identifier is that of the parent widget/window encapsulating the region.
-    RegionMoved,
-    /// A pop-up opened/closed/needs resizing
-    Popup,
-    /// Reset size of all widgets without recalculating requirements
-    SetSize,
-    /// Resize all widgets
-    Resize,
-    /// Whole window requires reconfiguring
-    ///
-    /// *Configuring* widgets assigns [`WidgetId`] identifiers and calls
-    /// [`kas::WidgetConfig::configure`].
-    ///
-    /// [`WidgetId`]: crate::WidgetId
-    /// [`event::Manager`]: crate::event::Manager
-    Reconfigure,
-    /// The window or pop-up should be closed
-    Close,
-    /// All windows should close (toolkit exit)
-    CloseAll,
-}
-
-impl std::ops::Add for TkAction {
-    type Output = Self;
-
-    #[inline]
-    fn add(self, rhs: TkAction) -> Self {
-        self.max(rhs)
-    }
-}
-
-impl std::ops::AddAssign for TkAction {
-    #[inline]
-    fn add_assign(&mut self, rhs: TkAction) {
-        *self = (*self).max(rhs);
+    /// Users receiving a value of this type from a widget update method should
+    /// generally call `*mgr |= action;` during event handling. Prior to
+    /// starting the event loop (`toolkit.run()`), these values can be ignored.
+    #[must_use]
+    #[derive(Default)]
+    pub struct TkAction: u32 {
+        /// The whole window requires redrawing
+        ///
+        /// Note that [`event::Manager::redraw`] can instead be used for more
+        /// selective redrawing.
+        const REDRAW = 1 << 0;
+        /// Some widgets within a region moved
+        ///
+        /// Used when a pop-up is closed or a region adjusted (e.g. scroll or switch
+        /// tab) to update which widget is under the mouse cursor / touch events.
+        /// Identifier is that of the parent widget/window encapsulating the region.
+        ///
+        /// Implies window redraw.
+        const REGION_MOVED = 1 << 1;
+        /*
+        /// A pop-up opened/closed/needs resizing
+        Popup,
+        */
+        /// Reset size of all widgets without recalculating requirements
+        const SET_SIZE = 1 << 8;
+        /// Resize all widgets
+        const RESIZE = 1 << 9;
+        /// Window requires reconfiguring
+        ///
+        /// *Configuring* widgets assigns [`WidgetId`] identifiers and calls
+        /// [`kas::WidgetConfig::configure`].
+        ///
+        /// [`WidgetId`]: crate::WidgetId
+        const RECONFIGURE = 1 << 16;
+        /// The current window or pop-up should be closed
+        const CLOSE = 1 << 30;
+        /// Close all windows and exit
+        const EXIT = 1 << 31;
     }
 }
 
@@ -156,17 +137,4 @@ pub trait ShellWindow {
 
     /// Set the mouse cursor
     fn set_cursor_icon(&mut self, icon: event::CursorIcon);
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn action_precedence() {
-        assert!(TkAction::None < TkAction::Redraw);
-        assert!(TkAction::Redraw < TkAction::Reconfigure);
-        assert!(TkAction::Reconfigure < TkAction::Close);
-        assert!(TkAction::Close < TkAction::CloseAll);
-    }
 }

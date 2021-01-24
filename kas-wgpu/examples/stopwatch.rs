@@ -31,7 +31,7 @@ fn make_window() -> Box<dyn kas::Window> {
             fn reset(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
                 self.saved = Duration::default();
                 self.start = None;
-                *mgr += self.display.set_str("0.000");
+                *mgr |= self.display.set_str("0.000");
                 Response::None
             }
             fn start(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
@@ -58,7 +58,7 @@ fn make_window() -> Box<dyn kas::Window> {
                         if let Some(start) = self.start {
                             let dur = self.saved + (Instant::now() - start);
                             let text = format!("{}.{:03}", dur.as_secs(), dur.subsec_millis());
-                            *mgr += self.display.set_string(text);
+                            *mgr |= self.display.set_string(text);
                             mgr.update_on_timer(Duration::new(0, 1), self.id());
                         }
                         Response::None

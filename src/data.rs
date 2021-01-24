@@ -67,7 +67,7 @@ impl<T: 'static> Future<T> {
 /// `Option<WidgetId>` is a free extension (requires no extra memory).
 ///
 /// Identifiers are assigned when configured and when re-configured
-/// (via [`kas::TkAction::Reconfigure`]). Since user-code is not notified of a
+/// (via [`kas::TkAction::RECONFIGURE`]). Since user-code is not notified of a
 /// re-configure, user-code should not store a `WidgetId`.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct WidgetId(NonZeroU32);

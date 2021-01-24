@@ -20,18 +20,18 @@ pub mod util {
     /// Set the text and prepare
     ///
     /// This is a convenience function to (1) set the text, (2) call
-    /// [`Text::prepare`] internally and (3) return [`TkAction::Resize`] to
+    /// [`Text::prepare`] internally and (3) return [`TkAction::RESIZE`] to
     /// trigger a resize.
     pub fn set_text_and_prepare<T: format::FormattableText>(text: &mut Text<T>, s: T) -> TkAction {
         text.set_text(s);
         text.prepare();
-        TkAction::Resize
+        TkAction::RESIZE
     }
 
     /// Set the text from a string and prepare
     ///
     /// This is a convenience function to (1) set the text, (2) call
-    /// [`Text::prepare`] internally and (3) return [`TkAction::Resize`] to
+    /// [`Text::prepare`] internally and (3) return [`TkAction::RESIZE`] to
     /// trigger a resize.
     pub fn set_string_and_prepare<T: format::EditableText>(
         text: &mut Text<T>,
@@ -39,6 +39,6 @@ pub mod util {
     ) -> TkAction {
         text.set_string(s);
         text.prepare();
-        TkAction::Resize
+        TkAction::RESIZE
     }
 }

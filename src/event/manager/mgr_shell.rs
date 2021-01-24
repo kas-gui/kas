@@ -56,7 +56,7 @@ impl ManagerState {
             time_updates: vec![],
             handle_updates: HashMap::new(),
             pending: SmallVec::new(),
-            action: TkAction::None,
+            action: TkAction::empty(),
         }
     }
 
@@ -74,7 +74,7 @@ impl ManagerState {
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         debug!("Manager::configure");
-        self.action = TkAction::None;
+        self.action = TkAction::empty();
 
         // Re-assigning WidgetIds might invalidate state; to avoid this we map
         // existing ids to new ids
@@ -107,8 +107,8 @@ impl ManagerState {
             let hover = widget.find_id(coord);
             mgr.set_hover(widget, hover);
         });
-        if self.action == TkAction::Reconfigure {
-            warn!("Detected TkAction::Reconfigure during configure. This may cause a reconfigure-loop.");
+        if self.action.contains(TkAction::RECONFIGURE) {
+            warn!("Detected TkAction::RECONFIGURE during configure. This may cause a reconfigure-loop.");
             if id == self.end_id {
                 panic!("Reconfigure occurred with the same number of widgets — we are probably stuck in a reconfigure-loop.");
             }
@@ -260,7 +260,7 @@ impl ManagerState {
     /// Set an action
     ///
     /// Since this is a commonly used operation, an operator overload is
-    /// available to do this job: `*mgr += action;`.
+    /// available to do this job: `*mgr |= action;`.
     #[inline]
     pub fn send_action(&mut self, action: TkAction) {
         self.action = self.action.max(action);
@@ -278,7 +278,7 @@ impl ManagerState {
             read_only: false,
             state: self,
             shell,
-            action: TkAction::None,
+            action: TkAction::empty(),
         };
         f(&mut mgr);
         let action = mgr.action;
@@ -295,7 +295,7 @@ impl ManagerState {
             read_only: false,
             state: self,
             shell,
-            action: TkAction::None,
+            action: TkAction::empty(),
         };
 
         while let Some((parent, wid)) = mgr.state.popup_removed.pop() {
@@ -369,9 +369,8 @@ impl ManagerState {
             mgr.send_event(widget, id, event);
         }
 
-        let mut action = mgr.action;
-        action += self.action;
-        self.action = TkAction::None;
+        let action = mgr.action | self.action;
+        self.action = TkAction::empty();
         action
     }
 }
@@ -429,7 +428,7 @@ impl<'a> Manager<'a> {
         // Unhandled events here, so we can freely ignore all responses.
 
         match event {
-            CloseRequested => self.send_action(TkAction::Close),
+            CloseRequested => self.send_action(TkAction::CLOSE),
             /* Not yet supported: see #98
             DroppedFile(path) => ,
             HoveredFile(path) => ,
@@ -464,7 +463,7 @@ impl<'a> Manager<'a> {
             ModifiersChanged(state) => {
                 if state.alt() != self.state.modifiers.alt() {
                     // This controls drawing of accelerator key indicators
-                    self.state.send_action(TkAction::Redraw);
+                    self.state.send_action(TkAction::REDRAW);
                 }
                 self.state.modifiers = state;
             }
@@ -621,7 +620,7 @@ impl<'a> Manager<'a> {
 
                         if let Some((id, event, redraw)) = r {
                             if redraw {
-                                self.send_action(TkAction::Redraw);
+                                self.send_action(TkAction::REDRAW);
                             }
                             self.send_event(widget, id, event);
                         } else if let Some(pan_grab) = pan_grab {

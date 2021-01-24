@@ -344,7 +344,7 @@
 //!                 _ => (),
 //!             }
 //!             // Whichever button was pressed, we close the window:
-//!             *mgr += TkAction::Close;
+//!             *mgr |= TkAction::CLOSE;
 //!             Response::None
 //!         }
 //!     }

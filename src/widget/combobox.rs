@@ -121,7 +121,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             let string = self.popup.inner[self.active].get_string();
             kas::text::util::set_text_and_prepare(&mut self.label, string)
         } else {
-            TkAction::None
+            TkAction::empty()
         }
     }
 
@@ -220,7 +220,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             Response::Focus(x) => Response::Focus(x),
             Response::Msg(msg) => {
                 let index = msg as usize;
-                *mgr += self.set_active(index);
+                *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
                 }
@@ -228,7 +228,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             }
         }
         // NOTE: as part of the Popup API we are expected to trap
-        // TkAction::Close here, but we know our widget doesn't generate
+        // TkAction::CLOSE here, but we know our widget doesn't generate
         // this action.
     }
 }

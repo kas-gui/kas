@@ -131,7 +131,7 @@ The most likely changes needed to update 0.3 → 0.4:
 
 -   Replace `Label::from` with `Label::new`
 -   Replace `layout(horizontal)` with `layout(row)`, `layout(vertical)` with `layout(column)`
--   For several methods like `set_text`, replace `w.set_text(mgr, text)` with `*mgr += w.set_text(text)`
+-   For several methods like `set_text`, replace `w.set_text(mgr, text)` with `*mgr |= w.set_text(text)`
 
 ### Widget traits and API
 The `Widget` trait model has seen significant revision (#75, #74, #85):

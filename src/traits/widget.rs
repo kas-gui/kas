@@ -81,7 +81,7 @@ pub trait WidgetCore: Any + fmt::Debug {
     #[inline]
     fn set_disabled(&mut self, disabled: bool) -> TkAction {
         self.core_data_mut().disabled = disabled;
-        TkAction::Redraw
+        TkAction::REDRAW
     }
 
     /// Set disabled state (chaining)
@@ -146,7 +146,7 @@ pub trait WidgetCore: Any + fmt::Debug {
 /// cannot currently handle fields like `Vec<SomeWidget>`.
 ///
 /// Whenever the number of child widgets changes or child widgets are replaced,
-/// one must send [`TkAction::Reconfigure`].
+/// one must send [`TkAction::RECONFIGURE`].
 /// (TODO: this is slow. Find an option for partial reconfigures. This requires
 /// better widget identifiers; see #91.)
 ///
@@ -312,7 +312,7 @@ pub trait WidgetConfig: Layout {
     /// Configure widget
     ///
     /// Widgets are *configured* on window creation and when
-    /// [`TkAction::Reconfigure`] is sent.
+    /// [`TkAction::RECONFIGURE`] is sent.
     ///
     /// Configure is called before resizing (but after calculation of the
     /// initial window size). This method is called after

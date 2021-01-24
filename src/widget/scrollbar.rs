@@ -88,7 +88,7 @@ impl<D: Directional> ScrollBar<D> {
     /// The choice of units is not important (e.g. can be pixels or lines),
     /// so long as both parameters use the same units.
     ///
-    /// Returns [`TkAction::Redraw`] if a redraw is required.
+    /// Returns [`TkAction::REDRAW`] if a redraw is required.
     pub fn set_limits(&mut self, max_value: u32, handle_value: u32) -> TkAction {
         // We should gracefully handle zero, though appearance may be wrong.
         self.handle_value = handle_value.max(1);
@@ -124,7 +124,7 @@ impl<D: Directional> ScrollBar<D> {
     pub fn set_value(&mut self, value: u32) -> TkAction {
         let value = value.min(self.max_value);
         if value == self.value {
-            TkAction::None
+            TkAction::empty()
         } else {
             self.value = value;
             self.handle.set_offset(self.offset()).1
@@ -415,8 +415,8 @@ impl<W: ScrollWidget> ScrollWidget for ScrollBars<W> {
     }
     fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord {
         let offset = self.inner.set_scroll_offset(mgr, offset);
-        *mgr +=
-            self.horiz_bar.set_value(offset.0 as u32) + self.vert_bar.set_value(offset.1 as u32);
+        *mgr |=
+            self.horiz_bar.set_value(offset.0 as u32) | self.vert_bar.set_value(offset.1 as u32);
         offset
     }
 }
@@ -534,8 +534,8 @@ impl<W: ScrollWidget> event::SendEvent for ScrollBars<W> {
                     // We assume that the scrollable inner already updated its
                     // offset; we just update the bar positions
                     let offset = self.inner.scroll_offset();
-                    *mgr += self.horiz_bar.set_value(offset.0 as u32)
-                        + self.vert_bar.set_value(offset.1 as u32);
+                    *mgr |= self.horiz_bar.set_value(offset.0 as u32)
+                        | self.vert_bar.set_value(offset.1 as u32);
                     Response::Focus(rect)
                 }
                 r => r,

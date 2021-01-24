@@ -174,30 +174,35 @@ where
     {
         let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
         let action = self.mgr.update(&mut tkw, &mut *self.widget);
+        drop(tkw);
 
-        match action {
-            TkAction::None => (),
-            TkAction::Redraw => self.window.request_redraw(),
-            TkAction::RegionMoved => {
-                self.mgr.region_moved(&mut tkw, &mut *self.widget);
-                self.window.request_redraw();
-            }
-            TkAction::Popup => {
-                let mut size_handle = unsafe { self.theme_window.size_handle() };
-                self.widget.resize_popups(&mut size_handle);
-                drop(size_handle);
+        if action.contains(TkAction::CLOSE | TkAction::EXIT) {
+            return (action, None);
+        }
+        if action.contains(TkAction::RECONFIGURE) {
+            self.reconfigure(shared);
+        }
+        if action.contains(TkAction::RESIZE) {
+            self.solve_cache.invalidate_rule_cache();
+            self.apply_size();
+        } else if action.contains(TkAction::SET_SIZE) {
+            self.apply_size();
+        }
+        /*if action.contains(TkAction::Popup) {
+            let mut size_handle = unsafe { self.theme_window.size_handle() };
+            self.widget.resize_popups(&mut size_handle);
+            drop(size_handle);
 
-                let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
-                self.mgr.region_moved(&mut tkw, &mut *self.widget);
-                self.window.request_redraw();
-            }
-            TkAction::SetSize => self.apply_size(),
-            TkAction::Resize => {
-                self.solve_cache.invalidate_rule_cache();
-                self.apply_size();
-            }
-            TkAction::Reconfigure => self.reconfigure(shared),
-            TkAction::Close | TkAction::CloseAll => (),
+            let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+            self.mgr.region_moved(&mut tkw, &mut *self.widget);
+            self.window.request_redraw();
+        } else*/
+        if action.contains(TkAction::REGION_MOVED) {
+            let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+            self.mgr.region_moved(&mut tkw, &mut *self.widget);
+            self.window.request_redraw();
+        } else if action.contains(TkAction::REDRAW) {
+            self.window.request_redraw();
         }
 
         (action, self.mgr.next_resume())
@@ -271,7 +276,7 @@ where
         T: Theme<DrawPipe<C>, Window = TW>,
     {
         if id == self.window_id {
-            self.mgr.send_action(TkAction::Close);
+            self.mgr.send_action(TkAction::CLOSE);
         } else {
             let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
             let widget = &mut *self.widget;

@@ -169,14 +169,14 @@ impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
         let index = self.popups.len();
         self.popups.push((id, popup));
         mgr.size_handle(|size_handle| self.resize_popup(size_handle, index));
-        mgr.send_action(TkAction::Redraw);
+        mgr.send_action(TkAction::REDRAW);
     }
 
     fn remove_popup(&mut self, mgr: &mut Manager, id: WindowId) {
         for i in 0..self.popups.len() {
             if id == self.popups[i].0 {
                 self.popups.remove(i);
-                mgr.send_action(TkAction::RegionMoved);
+                mgr.send_action(TkAction::REGION_MOVED);
                 return;
             }
         }

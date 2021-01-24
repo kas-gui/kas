@@ -544,11 +544,11 @@ impl MandlebrotWindow {
 
     fn iter(&mut self, mgr: &mut Manager, iter: i32) -> Response<VoidMsg> {
         self.mbrot.iter = iter;
-        *mgr += self.iters.set_string(format!("{}", iter));
+        *mgr |= self.iters.set_string(format!("{}", iter));
         Response::None
     }
     fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
-        *mgr += self.label.set_string(self.mbrot.loc());
+        *mgr |= self.label.set_string(self.mbrot.loc());
         Response::None
     }
 }

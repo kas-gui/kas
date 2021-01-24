@@ -49,7 +49,7 @@ impl DragHandle {
 
     /// Set a new handle size and offset
     ///
-    /// Returns [`TkAction::Redraw`] if a redraw is required.
+    /// Returns [`TkAction::REDRAW`] if a redraw is required.
     pub fn set_size_and_offset(&mut self, size: Size, offset: Coord) -> TkAction {
         self.core.rect.size = size;
         self.set_offset(offset).1
@@ -77,17 +77,17 @@ impl DragHandle {
 
     /// Set a new handle offset
     ///
-    /// Returns the new offset (after clamping input) and an action: `None` if
-    /// the handle hasn't moved; `Redraw` if it has (though this widget is
+    /// Returns the new offset (after clamping input) and an action: empty if
+    /// the handle hasn't moved; `REDRAW` if it has (though this widget is
     /// not directly responsible for drawing, so this may not be accurate).
     pub fn set_offset(&mut self, offset: Coord) -> (Coord, TkAction) {
         let offset = offset.clamp(Coord::ZERO, self.max_offset());
         let handle_pos = self.track.pos + offset;
         if handle_pos != self.core.rect.pos {
             self.core.rect.pos = handle_pos;
-            (offset, TkAction::Redraw)
+            (offset, TkAction::REDRAW)
         } else {
-            (offset, TkAction::None)
+            (offset, TkAction::empty())
         }
     }
 
@@ -112,7 +112,7 @@ impl DragHandle {
 
         // Since the press is not on the handle, we move the bar immediately.
         let (offset, action) = self.set_offset(coord - self.press_offset);
-        debug_assert!(action == TkAction::Redraw);
+        debug_assert!(action == TkAction::REDRAW);
         mgr.send_action(action);
         offset
     }
@@ -166,7 +166,7 @@ impl event::Handler for DragHandle {
             Event::PressMove { source, coord, .. } if Some(source) == self.press_source => {
                 let offset = coord - self.press_offset;
                 let (offset, action) = self.set_offset(offset);
-                if action == TkAction::None {
+                if action.is_empty() {
                     Response::None
                 } else {
                     mgr.send_action(action);
