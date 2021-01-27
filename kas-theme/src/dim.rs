@@ -188,7 +188,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         } as u16;
         let margins = (margin, margin);
         if axis.is_horizontal() {
-            let bound = required.0 as u32;
+            let bound = (required.0).ceil() as u32;
             let min = self.dims.min_line_length;
             let ideal = self.dims.ideal_line_length;
             // NOTE: using different variable-width stretch policies here can
@@ -201,13 +201,13 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             SizeRules::new(min, ideal, margins, policy)
         } else {
             let min = match class {
-                TextClass::Label => required.1 as u32,
+                TextClass::Label => (required.1).ceil() as u32,
                 TextClass::LabelSingle | TextClass::Button | TextClass::Edit => {
                     self.dims.line_height
                 }
                 TextClass::EditMulti => self.dims.line_height * 3,
             };
-            let ideal = (required.1 as u32).max(min);
+            let ideal = ((required.1).ceil() as u32).max(min);
             let stretch = match class {
                 TextClass::Button | TextClass::Edit | TextClass::LabelSingle => {
                     StretchPolicy::Fixed
