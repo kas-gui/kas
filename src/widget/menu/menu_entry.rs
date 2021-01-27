@@ -89,7 +89,10 @@ impl<M: Clone + Debug + 'static> HasStr for MenuEntry<M> {
 
 impl<M: Clone + Debug + 'static> SetAccel for MenuEntry<M> {
     fn set_accel_string(&mut self, string: AccelString) -> TkAction {
-        kas::text::util::set_text_and_prepare(&mut self.label, string)
+        // NOTE: we assume here that top-left and bottom-right frame size is the
+        // same; if not then resizes may not happen exactly when required
+        let size = Size::from(self.label_off);
+        kas::text::util::set_text_and_prepare(&mut self.label, string, size + size)
     }
 }
 

@@ -14,31 +14,52 @@ mod string;
 pub use string::AccelString;
 
 pub mod util {
-    use super::{format, EditableTextApi, Text, TextApi};
-    use kas::TkAction;
+    use super::{format, EditableTextApi, Text, TextApi, Vec2};
+    use kas::{geom::Size, TkAction};
 
     /// Set the text and prepare
     ///
-    /// This is a convenience function to (1) set the text, (2) call
-    /// [`Text::prepare`] internally and (3) return [`TkAction::RESIZE`] to
-    /// trigger a resize.
-    pub fn set_text_and_prepare<T: format::FormattableText>(text: &mut Text<T>, s: T) -> TkAction {
+    /// Update text and trigger a resize if necessary.
+    ///
+    /// The `avail` parameter is used to determine when a resize is required. If
+    /// this parameter is a little bit wrong then resizes may sometimes happen
+    /// unnecessarily or may not happen when text is slightly too big (e.g.
+    /// spills into the margin area); this behaviour is probably acceptable.
+    pub fn set_text_and_prepare<T: format::FormattableText>(
+        text: &mut Text<T>,
+        s: T,
+        avail: Size,
+    ) -> TkAction {
         text.set_text(s);
-        text.prepare();
-        TkAction::RESIZE
+        if let Some(req) = text.prepare() {
+            let avail = Vec2::from(avail);
+            if !(req.0 <= avail.0 && req.1 <= avail.1) {
+                return TkAction::RESIZE;
+            }
+        }
+        TkAction::empty()
     }
 
     /// Set the text from a string and prepare
     ///
-    /// This is a convenience function to (1) set the text, (2) call
-    /// [`Text::prepare`] internally and (3) return [`TkAction::RESIZE`] to
-    /// trigger a resize.
+    /// Update text and trigger a resize if necessary.
+    ///
+    /// The `avail` parameter is used to determine when a resize is required. If
+    /// this parameter is a little bit wrong then resizes may sometimes happen
+    /// unnecessarily or may not happen when text is slightly too big (e.g.
+    /// spills into the margin area); this behaviour is probably acceptable.
     pub fn set_string_and_prepare<T: format::EditableText>(
         text: &mut Text<T>,
         s: String,
+        avail: Size,
     ) -> TkAction {
         text.set_string(s);
-        text.prepare();
-        TkAction::RESIZE
+        if let Some(req) = text.prepare() {
+            let avail = Vec2::from(avail);
+            if !(req.0 <= avail.0 && req.1 <= avail.1) {
+                return TkAction::RESIZE;
+            }
+        }
+        TkAction::empty()
     }
 }

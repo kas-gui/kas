@@ -19,6 +19,7 @@ pub struct TextButton<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
     keys1: VirtualKeyCodes,
+    frame_size: Size,
     // label_rect: Rect,
     label: Text<AccelString>,
     msg: M,
@@ -38,8 +39,9 @@ impl<M: Clone + Debug + 'static> WidgetConfig for TextButton<M> {
 impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.button_surround();
+        self.frame_size = sides.0 + sides.1;
         let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
+        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), self.frame_size, margins);
 
         let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)
@@ -78,6 +80,7 @@ impl<M: Clone + Debug + 'static> TextButton<M> {
         TextButton {
             core: Default::default(),
             keys1: Default::default(),
+            frame_size: Default::default(),
             // label_rect: Default::default(),
             label: text,
             msg,
@@ -107,7 +110,8 @@ impl<M: Clone + Debug + 'static> HasStr for TextButton<M> {
 
 impl<M: Clone + Debug + 'static> SetAccel for TextButton<M> {
     fn set_accel_string(&mut self, string: AccelString) -> TkAction {
-        kas::text::util::set_text_and_prepare(&mut self.label, string)
+        let avail = self.core.rect.size.saturating_sub(self.frame_size);
+        kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
     }
 }
 

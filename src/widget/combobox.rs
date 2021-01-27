@@ -22,6 +22,7 @@ pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
     core: CoreData,
     label: Text<String>,
+    frame_size: Size,
     #[widget]
     popup: ComboPopup,
     messages: Vec<M>, // TODO: is this a useless lookup step?
@@ -33,8 +34,9 @@ pub struct ComboBox<M: Clone + Debug + 'static> {
 impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let sides = size_handle.button_surround();
+        self.frame_size = sides.0 + sides.1;
         let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), sides.0 + sides.1, margins);
+        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), self.frame_size, margins);
 
         let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)
@@ -91,6 +93,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         ComboBox {
             core: Default::default(),
             label,
+            frame_size: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
                 inner: MenuFrame::new(Column::new(column)),
@@ -119,7 +122,8 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         if self.active != index {
             self.active = index;
             let string = self.popup.inner[self.active].get_string();
-            kas::text::util::set_text_and_prepare(&mut self.label, string)
+            let avail = self.core.rect.size.saturating_sub(self.frame_size);
+            kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
         } else {
             TkAction::empty()
         }

@@ -111,7 +111,7 @@ impl<T: FormattableText + 'static> Label<T> {
     /// Note: this must not be called before fonts have been initialised
     /// (usually done by the theme when the main loop starts).
     pub fn set_text(&mut self, text: T) -> TkAction {
-        kas::text::util::set_text_and_prepare(&mut self.label, text)
+        kas::text::util::set_text_and_prepare(&mut self.label, text, self.core.rect.size)
     }
 }
 
@@ -123,7 +123,7 @@ impl<T: FormattableText + 'static> HasStr for Label<T> {
 
 impl<T: FormattableText + EditableText + 'static> HasString for Label<T> {
     fn set_string(&mut self, string: String) -> TkAction {
-        kas::text::util::set_string_and_prepare(&mut self.label, string)
+        kas::text::util::set_string_and_prepare(&mut self.label, string, self.core.rect.size)
     }
 }
 
@@ -155,6 +155,6 @@ impl AccelLabel {
 
 impl SetAccel for AccelLabel {
     fn set_accel_string(&mut self, string: AccelString) -> TkAction {
-        kas::text::util::set_text_and_prepare(&mut self.label, string)
+        kas::text::util::set_text_and_prepare(&mut self.label, string, self.core.rect.size)
     }
 }
