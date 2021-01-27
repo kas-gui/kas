@@ -114,6 +114,7 @@ where
         self.data_range.end = self.data_range.start;
         self.update_widgets(mgr);
         // Force SET_SIZE so that scroll-bar wrappers get updated
+        trace!("update_view triggers SET_SIZE");
         *mgr |= TkAction::SET_SIZE;
     }
 

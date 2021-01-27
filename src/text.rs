@@ -16,6 +16,7 @@ pub use string::AccelString;
 pub mod util {
     use super::{format, EditableTextApi, Text, TextApi, Vec2};
     use kas::{geom::Size, TkAction};
+    use log::trace;
 
     /// Set the text and prepare
     ///
@@ -34,6 +35,11 @@ pub mod util {
         if let Some(req) = text.prepare() {
             let avail = Vec2::from(avail);
             if !(req.0 <= avail.0 && req.1 <= avail.1) {
+                trace!(
+                    "set_text_and_prepare triggers RESIZE: req={:?}, avail={:?}",
+                    req,
+                    avail
+                );
                 return TkAction::RESIZE;
             }
         }
@@ -57,6 +63,10 @@ pub mod util {
         if let Some(req) = text.prepare() {
             let avail = Vec2::from(avail);
             if !(req.0 <= avail.0 && req.1 <= avail.1) {
+                println!(
+                    "set_string_and_prepare triggers RESIZE: req={:?}, avail={:?}",
+                    req, avail
+                );
                 return TkAction::RESIZE;
             }
         }
