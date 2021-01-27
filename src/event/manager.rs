@@ -235,7 +235,7 @@ impl<'a> Manager<'a> {
         if self.state.hover != w_id {
             trace!("Manager: hover = {:?}", w_id);
             self.state.hover = w_id;
-            self.send_action(TkAction::Redraw);
+            self.send_action(TkAction::REDRAW);
 
             if let Some(id) = w_id {
                 let icon = widget

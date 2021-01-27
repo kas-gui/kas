@@ -52,7 +52,7 @@ impl<T: FormattableText + 'static> MessageBox<T> {
 
     fn handle_button(&mut self, mgr: &mut Manager, msg: DialogButton) -> Response<VoidMsg> {
         match msg {
-            DialogButton::Close => mgr.send_action(TkAction::Close),
+            DialogButton::Close => mgr.send_action(TkAction::CLOSE),
         };
         Response::None
     }
@@ -79,5 +79,5 @@ impl<T: FormattableText + 'static> kas::Window for MessageBox<T> {
     }
 
     fn remove_popup(&mut self, _: &mut Manager, _: WindowId) {}
-    fn resize_popups(&mut self, _: &mut dyn SizeHandle) {}
+    fn resize_popups(&mut self, _: &mut Manager) {}
 }

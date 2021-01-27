@@ -91,7 +91,7 @@ impl<A: Accessor<()>, W: ViewWidget<A::Item>> Handler for SingleView<A, W> {
         match event {
             Event::HandleUpdate { .. } => {
                 let value = self.accessor.get(());
-                *mgr += self.child.set(value);
+                *mgr |= self.child.set(value);
                 Response::None
             }
             event => Response::Unhandled(event),

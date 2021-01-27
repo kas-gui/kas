@@ -154,7 +154,7 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
 
     /// Set the value
     ///
-    /// Returns [`TkAction::Redraw`] if a redraw is required.
+    /// Returns [`TkAction::REDRAW`] if a redraw is required.
     pub fn set_value(&mut self, mut value: T) -> TkAction {
         if value < self.range.0 {
             value = self.range.0;
@@ -162,7 +162,7 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
             value = self.range.1;
         }
         if value == self.value {
-            TkAction::None
+            TkAction::empty()
         } else {
             self.value = value;
             self.handle.set_offset(self.offset()).1
@@ -223,10 +223,10 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
         }
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.handle.set_rect(size_handle, rect, align);
-        let min_handle_size = (size_handle.slider().0).0;
+        self.handle.set_rect(mgr, rect, align);
+        let min_handle_size = mgr.size_handle(|sh| (sh.slider().0).0);
         let mut size = rect.size;
         if self.direction.is_horizontal() {
             size.0 = min_handle_size.min(rect.size.0);
@@ -290,7 +290,7 @@ impl<T: SliderType, D: Directional> event::SendEvent for Slider<T, D> {
                         key => return Response::Unhandled(Event::Control(key)),
                     };
                     let action = self.set_value(v);
-                    return if action == TkAction::None {
+                    return if action.is_empty() {
                         Response::None
                     } else {
                         mgr.send_action(action);
@@ -309,7 +309,7 @@ impl<T: SliderType, D: Directional> event::SendEvent for Slider<T, D> {
         } else {
             Response::None
         };
-        *mgr += self.handle.set_offset(self.offset()).1;
+        *mgr |= self.handle.set_offset(self.offset()).1;
         r
     }
 }

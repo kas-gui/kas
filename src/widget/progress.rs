@@ -58,14 +58,14 @@ impl<D: Directional> ProgressBar<D> {
 
     /// Set the value
     ///
-    /// Returns [`TkAction::Redraw`] if a redraw is required.
+    /// Returns [`TkAction::REDRAW`] if a redraw is required.
     pub fn set_value(&mut self, value: f32) -> TkAction {
         let value = value.max(0.0).min(1.0);
         if value == self.value {
-            TkAction::None
+            TkAction::empty()
         } else {
             self.value = value;
-            TkAction::Redraw
+            TkAction::REDRAW
         }
     }
 }

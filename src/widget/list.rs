@@ -131,14 +131,14 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
         solver.finish(&mut self.data)
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         let dim = (self.direction, self.widgets.len());
         let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(rect, dim, align, &mut self.data);
 
         for (n, child) in self.widgets.iter_mut().enumerate() {
             let align = AlignHints::default();
-            child.set_rect(size_handle, setter.child_rect(&mut self.data, n), align);
+            child.set_rect(mgr, setter.child_rect(&mut self.data, n), align);
         }
     }
 
@@ -247,8 +247,8 @@ impl<D: Directional, W: Widget> List<D, W> {
     /// removed.
     pub fn clear(&mut self) -> TkAction {
         let action = match self.widgets.is_empty() {
-            true => TkAction::None,
-            false => TkAction::Reconfigure,
+            true => TkAction::empty(),
+            false => TkAction::RECONFIGURE,
         };
         self.widgets.clear();
         action
@@ -259,7 +259,7 @@ impl<D: Directional, W: Widget> List<D, W> {
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn push(&mut self, widget: W) -> TkAction {
         self.widgets.push(widget);
-        TkAction::Reconfigure
+        TkAction::RECONFIGURE
     }
 
     /// Remove the last child widget
@@ -271,8 +271,8 @@ impl<D: Directional, W: Widget> List<D, W> {
     /// removed.
     pub fn pop(&mut self) -> (Option<W>, TkAction) {
         let action = match self.widgets.is_empty() {
-            true => TkAction::None,
-            false => TkAction::Reconfigure,
+            true => TkAction::empty(),
+            false => TkAction::RECONFIGURE,
         };
         (self.widgets.pop(), action)
     }
@@ -284,7 +284,7 @@ impl<D: Directional, W: Widget> List<D, W> {
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn insert(&mut self, index: usize, widget: W) -> TkAction {
         self.widgets.insert(index, widget);
-        TkAction::Reconfigure
+        TkAction::RECONFIGURE
     }
 
     /// Removes the child widget at position `index`
@@ -294,7 +294,7 @@ impl<D: Directional, W: Widget> List<D, W> {
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn remove(&mut self, index: usize) -> (W, TkAction) {
         let r = self.widgets.remove(index);
-        (r, TkAction::Reconfigure)
+        (r, TkAction::RECONFIGURE)
     }
 
     /// Replace the child at `index`
@@ -307,7 +307,7 @@ impl<D: Directional, W: Widget> List<D, W> {
     // we somehow test "has compatible size"?
     pub fn replace(&mut self, index: usize, mut widget: W) -> (W, TkAction) {
         std::mem::swap(&mut widget, &mut self.widgets[index]);
-        (widget, TkAction::Reconfigure)
+        (widget, TkAction::RECONFIGURE)
     }
 
     /// Append child widgets from an iterator
@@ -318,8 +318,8 @@ impl<D: Directional, W: Widget> List<D, W> {
         let len = self.widgets.len();
         self.widgets.extend(iter);
         match len == self.widgets.len() {
-            true => TkAction::None,
-            false => TkAction::Reconfigure,
+            true => TkAction::empty(),
+            false => TkAction::RECONFIGURE,
         }
     }
 
@@ -329,7 +329,7 @@ impl<D: Directional, W: Widget> List<D, W> {
     pub fn resize_with<F: Fn(usize) -> W>(&mut self, len: usize, f: F) -> TkAction {
         let l0 = self.widgets.len();
         if l0 == len {
-            return TkAction::None;
+            return TkAction::empty();
         } else if l0 > len {
             self.widgets.truncate(len);
         } else {
@@ -338,7 +338,7 @@ impl<D: Directional, W: Widget> List<D, W> {
                 self.widgets.push(f(i));
             }
         }
-        TkAction::Reconfigure
+        TkAction::RECONFIGURE
     }
 
     /// Retain only widgets satisfying predicate `f`
@@ -351,8 +351,8 @@ impl<D: Directional, W: Widget> List<D, W> {
         let len = self.widgets.len();
         self.widgets.retain(f);
         match len == self.widgets.len() {
-            true => TkAction::None,
-            false => TkAction::Reconfigure,
+            true => TkAction::empty(),
+            false => TkAction::RECONFIGURE,
         }
     }
 

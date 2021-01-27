@@ -9,7 +9,6 @@ use std::any::Any;
 use std::fmt;
 use std::ops::DerefMut;
 
-use crate::draw::SizeHandle;
 use crate::event::{self, Manager};
 use crate::{layout, Direction, WidgetId, WindowId};
 
@@ -97,7 +96,7 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
     ///
     /// This is called immediately after [`Layout::set_rect`] to resize
     /// existing pop-ups.
-    fn resize_popups(&mut self, size_handle: &mut dyn SizeHandle);
+    fn resize_popups(&mut self, mgr: &mut Manager);
 
     /// Trigger closure of a pop-up
     ///

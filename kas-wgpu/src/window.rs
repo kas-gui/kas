@@ -114,13 +114,13 @@ where
             draw,
             theme_window,
         };
-        r.apply_size();
+        r.apply_size(shared);
 
         trace!("Window::new completed in {}µs", time.elapsed().as_micros());
         Ok(r)
     }
 
-    pub fn theme_resize<C, T>(&mut self, shared: &SharedState<C, T>)
+    pub fn theme_resize<C, T>(&mut self, shared: &mut SharedState<C, T>)
     where
         C: CustomPipe<Window = CW>,
         T: Theme<DrawPipe<C>, Window = TW>,
@@ -131,7 +131,7 @@ where
             .theme
             .update_window(&mut self.theme_window, scale_factor);
         self.solve_cache.invalidate_rule_cache();
-        self.apply_size();
+        self.apply_size(shared);
     }
 
     /// Handle an event
@@ -174,30 +174,32 @@ where
     {
         let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
         let action = self.mgr.update(&mut tkw, &mut *self.widget);
+        drop(tkw);
 
-        match action {
-            TkAction::None => (),
-            TkAction::Redraw => self.window.request_redraw(),
-            TkAction::RegionMoved => {
-                self.mgr.region_moved(&mut tkw, &mut *self.widget);
-                self.window.request_redraw();
-            }
-            TkAction::Popup => {
-                let mut size_handle = unsafe { self.theme_window.size_handle() };
-                self.widget.resize_popups(&mut size_handle);
-                drop(size_handle);
-
-                let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
-                self.mgr.region_moved(&mut tkw, &mut *self.widget);
-                self.window.request_redraw();
-            }
-            TkAction::SetSize => self.apply_size(),
-            TkAction::Resize => {
-                self.solve_cache.invalidate_rule_cache();
-                self.apply_size();
-            }
-            TkAction::Reconfigure => self.reconfigure(shared),
-            TkAction::Close | TkAction::CloseAll => (),
+        if action.contains(TkAction::CLOSE | TkAction::EXIT) {
+            return (action, None);
+        }
+        if action.contains(TkAction::RECONFIGURE) {
+            self.reconfigure(shared);
+        }
+        if action.contains(TkAction::RESIZE) {
+            self.solve_cache.invalidate_rule_cache();
+            self.apply_size(shared);
+        } else if action.contains(TkAction::SET_SIZE) {
+            self.apply_size(shared);
+        }
+        /*if action.contains(TkAction::Popup) {
+            let widget = &mut self.widget;
+            self.mgr.with(&mut tkw, |mgr| widget.resize_popups(mgr));
+            self.mgr.region_moved(&mut tkw, &mut *self.widget);
+            self.window.request_redraw();
+        } else*/
+        if action.contains(TkAction::REGION_MOVED) {
+            let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+            self.mgr.region_moved(&mut tkw, &mut *self.widget);
+            self.window.request_redraw();
+        } else if action.contains(TkAction::REDRAW) {
+            self.window.request_redraw();
         }
 
         (action, self.mgr.next_resume())
@@ -271,7 +273,7 @@ where
         T: Theme<DrawPipe<C>, Window = TW>,
     {
         if id == self.window_id {
-            self.mgr.send_action(TkAction::Close);
+            self.mgr.send_action(TkAction::CLOSE);
         } else {
             let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
             let widget = &mut *self.widget;
@@ -300,20 +302,27 @@ where
         self.mgr.configure(&mut tkw, &mut *self.widget);
 
         self.solve_cache.invalidate_rule_cache();
-        self.apply_size();
+        self.apply_size(shared);
         trace!("reconfigure completed in {}µs", time.elapsed().as_micros());
     }
 
-    fn apply_size(&mut self) {
+    fn apply_size<C, T>(&mut self, shared: &mut SharedState<C, T>)
+    where
+        C: CustomPipe<Window = CW>,
+        T: Theme<DrawPipe<C>, Window = TW>,
+    {
         let time = Instant::now();
         let size = Size(self.sc_desc.width, self.sc_desc.height);
         let rect = Rect::new(Coord::ZERO, size);
         debug!("Resizing window to rect = {:?}", rect);
 
-        let mut size_handle = unsafe { self.theme_window.size_handle() };
-        self.solve_cache
-            .apply_rect(self.widget.as_widget_mut(), &mut size_handle, rect, true);
-        self.widget.resize_popups(&mut size_handle);
+        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+        let solve_cache = &mut self.solve_cache;
+        let widget = &mut self.widget;
+        self.mgr.with(&mut tkw, |mgr| {
+            solve_cache.apply_rect(widget.as_widget_mut(), mgr, rect, true);
+            widget.resize_popups(mgr);
+        });
 
         let restrict_dimensions = self.widget.restrict_dimensions();
         if restrict_dimensions.0 {
@@ -351,7 +360,7 @@ where
 
         // Note that on resize, width adjustments may affect height
         // requirements; we therefore refresh size restrictions.
-        self.apply_size();
+        self.apply_size(shared);
 
         trace!(
             "do_resize completed in {}µs (including apply_size time)",

@@ -143,7 +143,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         solver.finish(&mut self.data)
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         if self.widgets.len() == 0 {
             return;
@@ -162,11 +162,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         loop {
             assert!(n < self.widgets.len());
             let align = AlignHints::default();
-            self.widgets[n].set_rect(
-                size_handle,
-                setter.child_rect(&mut self.data, n << 1),
-                align,
-            );
+            self.widgets[n].set_rect(mgr, setter.child_rect(&mut self.data, n << 1), align);
 
             if n >= self.handles.len() {
                 break;
@@ -175,7 +171,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
             // TODO(opt): calculate all maximal sizes simultaneously
             let index = (n << 1) + 1;
             let track = setter.maximal_rect_of(&mut self.data, index);
-            self.handles[n].set_rect(size_handle, track, AlignHints::default());
+            self.handles[n].set_rect(mgr, track, AlignHints::default());
             let handle = setter.child_rect(&mut self.data, index);
             let _ = self.handles[n].set_size_and_offset(handle.size, handle.pos - track.pos);
 
@@ -242,7 +238,7 @@ impl<D: Directional, W: Widget> event::SendEvent for Splitter<D, W> {
                         .unwrap_or_else(|_| {
                             // Message is the new offset relative to the track;
                             // the handle has already adjusted its position
-                            mgr.size_handle(|sh| self.adjust_size(sh, n));
+                            self.adjust_size(mgr, n);
                             Response::None
                         });
                 }
@@ -281,7 +277,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         }
     }
 
-    fn adjust_size(&mut self, size_handle: &mut dyn SizeHandle, n: usize) {
+    fn adjust_size(&mut self, mgr: &mut Manager, n: usize) {
         assert!(n < self.handles.len());
         assert_eq!(self.widgets.len(), self.handles.len() + 1);
         let index = 2 * n + 1;
@@ -304,11 +300,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         loop {
             assert!(n < self.widgets.len());
             let align = AlignHints::default();
-            self.widgets[n].set_rect(
-                size_handle,
-                setter.child_rect(&mut self.data, n << 1),
-                align,
-            );
+            self.widgets[n].set_rect(mgr, setter.child_rect(&mut self.data, n << 1), align);
 
             if n >= self.handles.len() {
                 break;
@@ -316,7 +308,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
 
             let index = (n << 1) + 1;
             let track = self.handles[n].track();
-            self.handles[n].set_rect(size_handle, track, AlignHints::default());
+            self.handles[n].set_rect(mgr, track, AlignHints::default());
             let handle = setter.child_rect(&mut self.data, index);
             let _ = self.handles[n].set_size_and_offset(handle.size, handle.pos - track.pos);
 
@@ -352,8 +344,8 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// removed.
     pub fn clear(&mut self) -> TkAction {
         let action = match self.widgets.is_empty() {
-            true => TkAction::None,
-            false => TkAction::Reconfigure,
+            true => TkAction::empty(),
+            false => TkAction::RECONFIGURE,
         };
         self.widgets.clear();
         self.handles.clear();
@@ -368,7 +360,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             self.handles.push(DragHandle::new());
         }
         self.widgets.push(widget);
-        TkAction::Reconfigure
+        TkAction::RECONFIGURE
     }
 
     /// Remove the last child widget
@@ -380,8 +372,8 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     /// removed.
     pub fn pop(&mut self) -> (Option<W>, TkAction) {
         let action = match self.widgets.is_empty() {
-            true => TkAction::None,
-            false => TkAction::Reconfigure,
+            true => TkAction::empty(),
+            false => TkAction::RECONFIGURE,
         };
         let _ = self.handles.pop();
         (self.widgets.pop(), action)
@@ -397,7 +389,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
             self.handles.push(DragHandle::new());
         }
         self.widgets.insert(index, widget);
-        TkAction::Reconfigure
+        TkAction::RECONFIGURE
     }
 
     /// Removes the child widget at position `index`
@@ -408,7 +400,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     pub fn remove(&mut self, index: usize) -> (W, TkAction) {
         let _ = self.handles.pop();
         let r = self.widgets.remove(index);
-        (r, TkAction::Reconfigure)
+        (r, TkAction::RECONFIGURE)
     }
 
     /// Replace the child at `index`
@@ -421,7 +413,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     // we somehow test "has compatible size"?
     pub fn replace(&mut self, index: usize, mut widget: W) -> (W, TkAction) {
         std::mem::swap(&mut widget, &mut self.widgets[index]);
-        (widget, TkAction::Reconfigure)
+        (widget, TkAction::RECONFIGURE)
     }
 
     /// Append child widgets from an iterator
@@ -434,8 +426,8 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         self.handles
             .resize_with(self.widgets.len().saturating_sub(1), || DragHandle::new());
         match len == self.widgets.len() {
-            true => TkAction::None,
-            false => TkAction::Reconfigure,
+            true => TkAction::empty(),
+            false => TkAction::RECONFIGURE,
         }
     }
 
@@ -445,7 +437,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
     pub fn resize_with<F: Fn(usize) -> W>(&mut self, len: usize, f: F) -> TkAction {
         let l0 = self.widgets.len();
         if l0 == len {
-            return TkAction::None;
+            return TkAction::empty();
         } else if l0 > len {
             self.widgets.truncate(len);
         } else {
@@ -456,7 +448,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         }
         self.handles
             .resize_with(self.widgets.len().saturating_sub(1), || DragHandle::new());
-        TkAction::Reconfigure
+        TkAction::RECONFIGURE
     }
 
     /// Retain only widgets satisfying predicate `f`
@@ -471,8 +463,8 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         self.handles
             .resize_with(self.widgets.len().saturating_sub(1), || DragHandle::new());
         match len == self.widgets.len() {
-            true => TkAction::None,
-            false => TkAction::Reconfigure,
+            true => TkAction::empty(),
+            false => TkAction::RECONFIGURE,
         }
     }
 }

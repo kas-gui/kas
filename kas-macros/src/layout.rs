@@ -207,7 +207,7 @@ pub(crate) fn derive(
             set_rect.append_all(quote! { align2.vert = Some(#toks); });
         }
         set_rect.append_all(quote! {
-            self.#ident.set_rect(_sh, setter.child_rect(&mut #data, #child_info), align2);
+            self.#ident.set_rect(_mgr, setter.child_rect(&mut #data, #child_info), align2);
         });
 
         draw.append_all(quote! {
@@ -260,7 +260,7 @@ pub(crate) fn derive(
 
         fn set_rect(
             &mut self,
-            _sh: &mut dyn kas::draw::SizeHandle,
+            _mgr: &mut kas::event::Manager,
             rect: kas::geom::Rect,
             align: kas::AlignHints
         ) {

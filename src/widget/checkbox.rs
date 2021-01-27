@@ -40,7 +40,7 @@ impl<M: 'static> Layout for CheckBoxBare<M> {
         SizeRules::extract_fixed(axis.is_vertical(), size, margins)
     }
 
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
         let rect = align
             .complete(Align::Centre, Align::Centre, self.rect().size)
             .apply(rect);
@@ -113,7 +113,7 @@ impl<M: 'static> HasBool for CheckBoxBare<M> {
 
     fn set_bool(&mut self, state: bool) -> TkAction {
         self.state = state;
-        TkAction::Redraw
+        TkAction::REDRAW
     }
 }
 

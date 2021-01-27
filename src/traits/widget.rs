@@ -81,7 +81,7 @@ pub trait WidgetCore: Any + fmt::Debug {
     #[inline]
     fn set_disabled(&mut self, disabled: bool) -> TkAction {
         self.core_data_mut().disabled = disabled;
-        TkAction::Redraw
+        TkAction::REDRAW
     }
 
     /// Set disabled state (chaining)
@@ -146,7 +146,7 @@ pub trait WidgetCore: Any + fmt::Debug {
 /// cannot currently handle fields like `Vec<SomeWidget>`.
 ///
 /// Whenever the number of child widgets changes or child widgets are replaced,
-/// one must send [`TkAction::Reconfigure`].
+/// one must send [`TkAction::RECONFIGURE`].
 /// (TODO: this is slow. Find an option for partial reconfigures. This requires
 /// better widget identifiers; see #91.)
 ///
@@ -312,7 +312,7 @@ pub trait WidgetConfig: Layout {
     /// Configure widget
     ///
     /// Widgets are *configured* on window creation and when
-    /// [`TkAction::Reconfigure`] is sent.
+    /// [`TkAction::RECONFIGURE`] is sent.
     ///
     /// Configure is called before resizing (but after calculation of the
     /// initial window size). This method is called after
@@ -407,7 +407,8 @@ pub trait Layout: WidgetChildren {
     /// axis with current size information before this method, however
     /// `size_rules` might not be re-called before calling `set_rect` again.
     #[inline]
-    fn set_rect(&mut self, _size_handle: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
+        let _ = (mgr, align);
         self.core_data_mut().rect = rect;
     }
 

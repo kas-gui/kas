@@ -72,10 +72,10 @@ impl<W: Widget> Layout for Stack<W> {
         rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         for child in &mut self.widgets {
-            child.set_rect(size_handle, rect, align.clone());
+            child.set_rect(mgr, rect, align.clone());
         }
     }
 
@@ -101,7 +101,7 @@ impl<W: Widget> event::SendEvent for Stack<W> {
                 if id <= child.id() {
                     return match child.send(mgr, id, event) {
                         Response::Focus(rect) => {
-                            *mgr += self.set_active(index);
+                            *mgr |= self.set_active(index);
                             Response::Focus(rect)
                         }
                         r => r,
@@ -140,10 +140,10 @@ impl<W: Widget> Stack<W> {
     /// child widgets.
     pub fn set_active(&mut self, active: usize) -> TkAction {
         if self.active == active {
-            TkAction::None
+            TkAction::empty()
         } else {
             self.active = active;
-            TkAction::RegionMoved
+            TkAction::REGION_MOVED
         }
     }
 
@@ -192,8 +192,8 @@ impl<W: Widget> Stack<W> {
     /// removed.
     pub fn clear(&mut self) -> TkAction {
         let action = match self.widgets.is_empty() {
-            true => TkAction::None,
-            false => TkAction::Reconfigure,
+            true => TkAction::empty(),
+            false => TkAction::RECONFIGURE,
         };
         self.widgets.clear();
         action
@@ -204,7 +204,7 @@ impl<W: Widget> Stack<W> {
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn push(&mut self, widget: W) -> TkAction {
         self.widgets.push(widget);
-        TkAction::Reconfigure
+        TkAction::RECONFIGURE
     }
 
     /// Remove the last child widget
@@ -216,8 +216,8 @@ impl<W: Widget> Stack<W> {
     /// removed.
     pub fn pop(&mut self) -> (Option<W>, TkAction) {
         let action = match self.widgets.is_empty() {
-            true => TkAction::None,
-            false => TkAction::Reconfigure,
+            true => TkAction::empty(),
+            false => TkAction::RECONFIGURE,
         };
         (self.widgets.pop(), action)
     }
@@ -229,7 +229,7 @@ impl<W: Widget> Stack<W> {
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn insert(&mut self, index: usize, widget: W) -> TkAction {
         self.widgets.insert(index, widget);
-        TkAction::Reconfigure
+        TkAction::RECONFIGURE
     }
 
     /// Removes the child widget at position `index`
@@ -239,7 +239,7 @@ impl<W: Widget> Stack<W> {
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn remove(&mut self, index: usize) -> (W, TkAction) {
         let r = self.widgets.remove(index);
-        (r, TkAction::Reconfigure)
+        (r, TkAction::RECONFIGURE)
     }
 
     /// Replace the child at `index`
@@ -252,7 +252,7 @@ impl<W: Widget> Stack<W> {
     // we somehow test "has compatible size"?
     pub fn replace(&mut self, index: usize, mut widget: W) -> (W, TkAction) {
         std::mem::swap(&mut widget, &mut self.widgets[index]);
-        (widget, TkAction::Reconfigure)
+        (widget, TkAction::RECONFIGURE)
     }
 
     /// Append child widgets from an iterator
@@ -263,8 +263,8 @@ impl<W: Widget> Stack<W> {
         let len = self.widgets.len();
         self.widgets.extend(iter);
         match len == self.widgets.len() {
-            true => TkAction::None,
-            false => TkAction::Reconfigure,
+            true => TkAction::empty(),
+            false => TkAction::RECONFIGURE,
         }
     }
 
@@ -274,7 +274,7 @@ impl<W: Widget> Stack<W> {
     pub fn resize_with<F: Fn(usize) -> W>(&mut self, len: usize, f: F) -> TkAction {
         let l0 = self.widgets.len();
         if l0 == len {
-            return TkAction::None;
+            return TkAction::empty();
         } else if l0 > len {
             self.widgets.truncate(len);
         } else {
@@ -283,7 +283,7 @@ impl<W: Widget> Stack<W> {
                 self.widgets.push(f(i));
             }
         }
-        TkAction::Reconfigure
+        TkAction::RECONFIGURE
     }
 
     /// Retain only widgets satisfying predicate `f`
@@ -296,8 +296,8 @@ impl<W: Widget> Stack<W> {
         let len = self.widgets.len();
         self.widgets.retain(f);
         match len == self.widgets.len() {
-            true => TkAction::None,
-            false => TkAction::Reconfigure,
+            true => TkAction::empty(),
+            false => TkAction::RECONFIGURE,
         }
     }
 }

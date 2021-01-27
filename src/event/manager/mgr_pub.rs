@@ -16,9 +16,9 @@ use crate::geom::Coord;
 use crate::WidgetConfig; // for doc-links
 use crate::{ThemeAction, ThemeApi, TkAction, WidgetId, WindowId};
 
-impl<'a> std::ops::AddAssign<TkAction> for Manager<'a> {
+impl<'a> std::ops::BitOrAssign<TkAction> for Manager<'a> {
     #[inline]
-    fn add_assign(&mut self, action: TkAction) {
+    fn bitor_assign(&mut self, action: TkAction) {
         self.send_action(action);
     }
 }
@@ -158,19 +158,21 @@ impl<'a> Manager<'a> {
     pub fn redraw(&mut self, _id: WidgetId) {
         // Theoretically, notifying by WidgetId allows selective redrawing
         // (damage events). This is not yet implemented.
-        self.send_action(TkAction::Redraw);
+        self.send_action(TkAction::REDRAW);
     }
 
     /// Notify that a [`TkAction`] action should happen
     ///
     /// This causes the given action to happen after event handling.
     ///
+    /// Calling `mgr.send_action(action)` is equivalent to `*mgr |= action`.
+    ///
     /// Whenever a widget is added, removed or replaced, a reconfigure action is
     /// required. Should a widget's size requirements change, these will only
     /// affect the UI after a reconfigure action.
     #[inline]
     pub fn send_action(&mut self, action: TkAction) {
-        self.action = self.action.max(action);
+        self.action |= action;
     }
 
     /// Get the current [`TkAction`], replacing with `None`
@@ -180,7 +182,7 @@ impl<'a> Manager<'a> {
     /// and downgrading the action, adding the result back to the [`Manager`].
     pub fn pop_action(&mut self) -> TkAction {
         let action = self.action;
-        self.action = TkAction::None;
+        self.action = TkAction::empty();
         action
     }
 
@@ -244,7 +246,7 @@ impl<'a> Manager<'a> {
 
         // For popups, we need to update mouse/keyboard focus.
         // (For windows, focus gained/lost events do this job.)
-        self.state.send_action(TkAction::RegionMoved);
+        self.state.send_action(TkAction::REGION_MOVED);
 
         self.shell.close_window(id);
     }
@@ -515,7 +517,7 @@ impl<'a> Manager<'a> {
                 }
             }
         }
-        self.state.send_action(TkAction::Redraw);
+        self.state.send_action(TkAction::REDRAW);
     }
 
     /// Get the current keyboard navigation focus, if any
@@ -690,7 +692,7 @@ impl<'a> Manager<'a> {
 
         // We redraw in all cases. Since this is not part of widget event
         // processing, we can push directly to self.state.action.
-        self.state.send_action(TkAction::Redraw);
+        self.state.send_action(TkAction::REDRAW);
         let nav_stack = &mut self.state.nav_stack;
 
         if !reverse {

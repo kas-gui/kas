@@ -88,7 +88,7 @@ impl<D: Directional> ScrollBar<D> {
     /// The choice of units is not important (e.g. can be pixels or lines),
     /// so long as both parameters use the same units.
     ///
-    /// Returns [`TkAction::Redraw`] if a redraw is required.
+    /// Returns [`TkAction::REDRAW`] if a redraw is required.
     pub fn set_limits(&mut self, max_value: u32, handle_value: u32) -> TkAction {
         // We should gracefully handle zero, though appearance may be wrong.
         self.handle_value = handle_value.max(1);
@@ -124,7 +124,7 @@ impl<D: Directional> ScrollBar<D> {
     pub fn set_value(&mut self, value: u32) -> TkAction {
         let value = value.min(self.max_value);
         if value == self.value {
-            TkAction::None
+            TkAction::empty()
         } else {
             self.value = value;
             self.handle.set_offset(self.offset()).1
@@ -211,9 +211,9 @@ impl<D: Directional> Layout for ScrollBar<D> {
         }
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        self.handle.set_rect(size_handle, rect, align);
+        self.handle.set_rect(mgr, rect, align);
         let _ = self.update_handle();
     }
 
@@ -263,6 +263,11 @@ impl<D: Directional> event::SendEvent for ScrollBar<D> {
 /// Additional functionality on scrollable widgets
 ///
 /// This may be used to add controls via the [`ScrollBars`] wrapper.
+///
+/// The implementing widget may use event handlers to scroll itself (e.g. in
+/// reaction to a mouse wheel or touch-drag), but when doing so should emit
+/// [`Response::Focus`] to notify any wrapper of the new position (usually with
+/// `Response::Focus(self.rect())`).
 pub trait ScrollWidget: Widget {
     /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
     fn scroll_axes(&self, size: Size) -> (bool, bool);
@@ -283,8 +288,13 @@ pub trait ScrollWidget: Widget {
 
     /// Set the scroll offset
     ///
-    /// The offset is clamped to the available scroll range.
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord);
+    /// This may be used for programmatic scrolling, e.g. by a wrapping widget
+    /// with scroll controls. Note that calling this method directly on the
+    /// scrolling widget will not update any controls in a wrapping widget.
+    ///
+    /// The offset is clamped to the available scroll range and applied. The
+    /// resulting offset is returned.
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord;
 }
 
 /// A scrollable region with bars
@@ -393,6 +403,24 @@ impl<W: ScrollWidget> ScrollBars<W> {
     }
 }
 
+impl<W: ScrollWidget> ScrollWidget for ScrollBars<W> {
+    fn scroll_axes(&self, size: Size) -> (bool, bool) {
+        self.inner.scroll_axes(size)
+    }
+    fn max_scroll_offset(&self) -> Coord {
+        self.inner.max_scroll_offset()
+    }
+    fn scroll_offset(&self) -> Coord {
+        self.inner.scroll_offset()
+    }
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord {
+        let offset = self.inner.set_scroll_offset(mgr, offset);
+        *mgr |=
+            self.horiz_bar.set_value(offset.0 as u32) | self.vert_bar.set_value(offset.1 as u32);
+        offset
+    }
+}
+
 impl<W: ScrollWidget> WidgetConfig for ScrollBars<W> {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.register_nav_fallback(self.id());
@@ -410,12 +438,12 @@ impl<W: ScrollWidget> Layout for ScrollBars<W> {
         rules
     }
 
-    fn set_rect(&mut self, size_handle: &mut dyn SizeHandle, rect: Rect, align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         let pos = rect.pos;
         let mut child_size = rect.size;
 
-        let bar_width = (size_handle.scrollbar().0).1;
+        let bar_width = mgr.size_handle(|sh| (sh.scrollbar().0).1);
         if self.auto_bars {
             child_size -= Size(bar_width, bar_width);
             self.show_bars = self.inner.scroll_axes(child_size);
@@ -429,14 +457,14 @@ impl<W: ScrollWidget> Layout for ScrollBars<W> {
         }
 
         let child_rect = Rect::new(pos, child_size);
-        self.inner.set_rect(size_handle, child_rect, align);
+        self.inner.set_rect(mgr, child_rect, align);
         let max_scroll_offset = self.inner.max_scroll_offset();
 
         if self.show_bars.0 {
             let pos = Coord(pos.0, pos.1 + child_size.1 as i32);
             let size = Size(child_size.0, bar_width);
             self.horiz_bar
-                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
+                .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
             let _ = self
                 .horiz_bar
                 .set_limits(max_scroll_offset.0 as u32, rect.size.0);
@@ -445,7 +473,7 @@ impl<W: ScrollWidget> Layout for ScrollBars<W> {
             let pos = Coord(pos.0 + child_size.0 as i32, pos.1);
             let size = Size(bar_width, self.core.rect.size.1);
             self.vert_bar
-                .set_rect(size_handle, Rect { pos, size }, AlignHints::NONE);
+                .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
             let _ = self
                 .vert_bar
                 .set_limits(max_scroll_offset.1 as u32, rect.size.1);
@@ -506,8 +534,8 @@ impl<W: ScrollWidget> event::SendEvent for ScrollBars<W> {
                     // We assume that the scrollable inner already updated its
                     // offset; we just update the bar positions
                     let offset = self.inner.scroll_offset();
-                    *mgr += self.horiz_bar.set_value(offset.0 as u32)
-                        + self.vert_bar.set_value(offset.1 as u32);
+                    *mgr |= self.horiz_bar.set_value(offset.0 as u32)
+                        | self.vert_bar.set_value(offset.1 as u32);
                     Response::Focus(rect)
                 }
                 r => r,

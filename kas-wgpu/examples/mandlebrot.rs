@@ -416,7 +416,7 @@ impl Layout for Mandlebrot {
     }
 
     #[inline]
-    fn set_rect(&mut self, _: &mut dyn SizeHandle, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, _: &mut Manager, rect: Rect, _: AlignHints) {
         self.core.rect = rect;
         let size = DVec2::from(rect.size);
         let rel_width = DVec2(size.0 / size.1, 1.0);
@@ -544,11 +544,11 @@ impl MandlebrotWindow {
 
     fn iter(&mut self, mgr: &mut Manager, iter: i32) -> Response<VoidMsg> {
         self.mbrot.iter = iter;
-        *mgr += self.iters.set_string(format!("{}", iter));
+        *mgr |= self.iters.set_string(format!("{}", iter));
         Response::None
     }
     fn mbrot(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {
-        *mgr += self.label.set_string(self.mbrot.loc());
+        *mgr |= self.label.set_string(self.mbrot.loc());
         Response::None
     }
 }

@@ -116,7 +116,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     Control::Incr => self.n.saturating_add(1),
                     Control::Set => self.n,
                 };
-                *mgr += self.edit.set_string(n.to_string());
+                *mgr |= self.edit.set_string(n.to_string());
                 self.n = n;
                 n.into()
             }
@@ -149,7 +149,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 fn set_len(&mut self, mgr: &mut Manager, len: usize) -> Response<VoidMsg> {
                     let active = self.active;
                     let old_len = self.list.len();
-                    *mgr += self.list.inner_mut().resize_with(len, |n| ListEntry::new(n, n == active));
+                    *mgr |= self.list.inner_mut().resize_with(len, |n| ListEntry::new(n, n == active));
                     if active >= old_len && active < len {
                         let _ = self.set_radio(mgr, EntryMsg::Select(active));
                     }
@@ -160,11 +160,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         EntryMsg::Select(n) => {
                             self.active = n;
                             let text = self.list[n].entry.get_string();
-                            *mgr += self.display.set_string(text);
+                            *mgr |= self.display.set_string(text);
                         }
                         EntryMsg::Update(n, text) => {
                             if n == self.active {
-                                *mgr += self.display.set_string(text);
+                                *mgr |= self.display.set_string(text);
                             }
                         }
                     }

@@ -46,11 +46,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 {
                     match msg {
                         Message::Decr => {
-                            *mgr += self.panes.pop().1;
+                            *mgr |= self.panes.pop().1;
                         }
                         Message::Incr => {
                             let n = self.panes.len() + 1;
-                            *mgr += self.panes.push(StringLabel::new(format!("Pane {}", n)));
+                            *mgr |= self.panes.push(StringLabel::new(format!("Pane {}", n)));
                         }
                     };
                     VoidResponse::None

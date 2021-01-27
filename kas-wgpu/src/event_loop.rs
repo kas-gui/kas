@@ -76,13 +76,13 @@ where
                 ProxyAction::Close(id) => {
                     if let Some(id) = self.id_map.get(&id) {
                         if let Some(window) = self.windows.get_mut(&id) {
-                            window.send_action(TkAction::Close);
+                            window.send_action(TkAction::CLOSE);
                         }
                     }
                 }
                 ProxyAction::CloseAll => {
                     for window in self.windows.values_mut() {
-                        window.send_action(TkAction::Close);
+                        window.send_action(TkAction::CLOSE);
                     }
                 }
                 ProxyAction::Update(handle, payload) => {
@@ -138,16 +138,10 @@ where
                 let mut to_close = SmallVec::<[ww::WindowId; 4]>::new();
                 for (window_id, window) in self.windows.iter_mut() {
                     let (action, resume) = window.update(&mut self.shared);
-                    match action {
-                        TkAction::None
-                        | TkAction::Redraw
-                        | TkAction::RegionMoved
-                        | TkAction::Popup
-                        | TkAction::SetSize
-                        | TkAction::Resize
-                        | TkAction::Reconfigure => (),
-                        TkAction::Close => to_close.push(*window_id),
-                        TkAction::CloseAll => close_all = true,
+                    if action.contains(TkAction::EXIT) {
+                        close_all = true;
+                    } else if action.contains(TkAction::CLOSE) {
+                        to_close.push(*window_id);
                     }
                     if let Some(instant) = resume {
                         if let Some((i, _)) = self
@@ -166,7 +160,10 @@ where
                 for window_id in &to_close {
                     if let Some(window) = self.windows.remove(window_id) {
                         self.id_map.remove(&window.window_id);
-                        if window.handle_closure(&mut self.shared) == TkAction::CloseAll {
+                        if window
+                            .handle_closure(&mut self.shared)
+                            .contains(TkAction::EXIT)
+                        {
                             close_all = true;
                         }
                         // Wake immediately in order to close remaining windows:
@@ -237,7 +234,7 @@ where
                 }
                 PendingAction::ThemeResize => {
                     for (_, window) in self.windows.iter_mut() {
-                        window.theme_resize(&self.shared);
+                        window.theme_resize(&mut self.shared);
                     }
                 }
                 PendingAction::RedrawAll => {
