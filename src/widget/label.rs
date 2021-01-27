@@ -155,6 +155,10 @@ impl AccelLabel {
 
 impl SetAccel for AccelLabel {
     fn set_accel_string(&mut self, string: AccelString) -> TkAction {
-        kas::text::util::set_text_and_prepare(&mut self.label, string, self.core.rect.size)
+        let mut action = TkAction::empty();
+        if self.label.text().keys() != string.keys() {
+            action |= TkAction::RECONFIGURE;
+        }
+        action | kas::text::util::set_text_and_prepare(&mut self.label, string, self.core.rect.size)
     }
 }

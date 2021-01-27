@@ -278,9 +278,13 @@ impl<D: Directional, W: Menu> HasStr for SubMenu<D, W> {
 
 impl<D: Directional, W: Menu> SetAccel for SubMenu<D, W> {
     fn set_accel_string(&mut self, string: AccelString) -> TkAction {
+        let mut action = TkAction::empty();
+        if self.label.text().keys() != string.keys() {
+            action |= TkAction::RECONFIGURE;
+        }
         // NOTE: we assume here that top-left and bottom-right frame size is the
         // same; if not then resizes may not happen exactly when required
         let size = Size::from(self.label_off);
-        kas::text::util::set_text_and_prepare(&mut self.label, string, size + size)
+        action | kas::text::util::set_text_and_prepare(&mut self.label, string, size + size)
     }
 }

@@ -110,8 +110,12 @@ impl<M: Clone + Debug + 'static> HasStr for TextButton<M> {
 
 impl<M: Clone + Debug + 'static> SetAccel for TextButton<M> {
     fn set_accel_string(&mut self, string: AccelString) -> TkAction {
+        let mut action = TkAction::empty();
+        if self.label.text().keys() != string.keys() {
+            action |= TkAction::RECONFIGURE;
+        }
         let avail = self.core.rect.size.saturating_sub(self.frame_size);
-        kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
+        action | kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
     }
 }
 
