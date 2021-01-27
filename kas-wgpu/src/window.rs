@@ -5,7 +5,7 @@
 
 //! `Window` and `WindowList` types
 
-use log::{debug, info, trace};
+use log::{debug, error, info, trace};
 use std::time::Instant;
 
 use kas::draw::SizeHandle;
@@ -390,7 +390,13 @@ where
         }
 
         let time2 = Instant::now();
-        let frame = self.swap_chain.get_current_frame().unwrap();
+        let frame = match self.swap_chain.get_current_frame() {
+            Ok(frame) => frame,
+            Err(error) => {
+                error!("Frame swap failed: {}", error);
+                return;
+            }
+        };
 
         let time3 = Instant::now();
         // TODO: check frame.optimal ?
