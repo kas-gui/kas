@@ -26,6 +26,7 @@ use kas::prelude::*;
 /// 4.  Optionally, this widget can handle clicks on the track area via
 ///     [`DragHandle::handle_press_on_track`].
 #[handler(handle=noauto)]
+#[widget(config(cursor_icon = event::CursorIcon::Grab))]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct DragHandle {
     #[widget_core]

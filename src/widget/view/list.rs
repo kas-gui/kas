@@ -11,7 +11,7 @@ use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::text::Range;
 use kas::widget::{ScrollComponent, ScrollWidget};
-use log::trace;
+use log::{debug, trace};
 use std::convert::TryFrom;
 use std::time::Instant;
 
@@ -114,6 +114,7 @@ where
         self.data_range.end = self.data_range.start;
         self.update_widgets(mgr);
         // Force SET_SIZE so that scroll-bar wrappers get updated
+        trace!("update_view triggers SET_SIZE");
         *mgr |= TkAction::SET_SIZE;
     }
 
@@ -245,6 +246,7 @@ where
         if let Some(handle) = self.data.update_handle() {
             mgr.update_on_handle(handle, self.id());
         }
+        mgr.register_nav_fallback(self.id());
     }
 }
 
@@ -312,19 +314,24 @@ where
 
         self.align_hints = align;
 
+        let old_num = self.widgets.len();
         let num = (num as usize).min(data_len);
-        if num != self.widgets.len() {
+        if num > old_num {
+            debug!("allocating widgets (old len = {}, new = {})", old_num, num);
             *mgr |= TkAction::RECONFIGURE;
+            self.widgets.reserve(num);
+            mgr.size_handle(|size_handle| {
+                for i in old_num..num {
+                    let mut w = W::new(self.data.get(i));
+                    // We must solve size rules on new widgets:
+                    solve_size_rules(&mut w, size_handle, Some(child_size.0), Some(child_size.1));
+                    self.widgets.push(w);
+                }
+            });
+        } else if num + 64 <= old_num {
+            // Free memory (rarely useful?)
+            self.widgets.truncate(num);
         }
-        self.widgets.reserve(num);
-        mgr.size_handle(|size_handle| {
-            for i in self.widgets.len()..num {
-                let mut w = W::new(self.data.get(i));
-                // We must solve size rules on new widgets:
-                solve_size_rules(&mut w, size_handle, Some(child_size.0), Some(child_size.1));
-                self.widgets.push(w);
-            }
-        });
         *mgr |= self.scroll.set_sizes(rect.size, content_size);
         self.update_widgets(mgr);
     }

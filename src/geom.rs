@@ -190,6 +190,14 @@ impl Size {
     pub fn transpose(self) -> Self {
         Size(self.1, self.0)
     }
+
+    /// Saturating sub
+    #[inline]
+    pub fn saturating_sub(self, other: Self) -> Self {
+        let w = self.0.saturating_sub(other.0);
+        let h = self.1.saturating_sub(other.1);
+        Size(w, h)
+    }
 }
 
 impl From<(u32, u32)> for Size {
