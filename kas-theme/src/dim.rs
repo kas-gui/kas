@@ -47,8 +47,8 @@ pub struct Dimensions {
     pub line_height: u32,
     pub min_line_length: u32,
     pub ideal_line_length: u32,
-    pub outer_margin: u32,
-    pub inner_margin: u32,
+    pub outer_margin: u16,
+    pub inner_margin: u16,
     pub frame: u32,
     pub button_frame: u32,
     pub checkbox: u32,
@@ -64,8 +64,8 @@ impl Dimensions {
         let dpem = dpp * pt_size;
         let line_height = kas::text::fonts::fonts().get(font_id).height(dpem).ceil() as u32;
 
-        let outer_margin = (params.outer_margin * scale_factor).round() as u32;
-        let inner_margin = (params.inner_margin * scale_factor).round() as u32;
+        let outer_margin = (params.outer_margin * scale_factor).round() as u16;
+        let inner_margin = (params.inner_margin * scale_factor).round() as u16;
         let frame = (params.frame_size * scale_factor).round() as u32;
         Dimensions {
             scale_factor,
@@ -79,7 +79,7 @@ impl Dimensions {
             inner_margin,
             frame,
             button_frame: (params.button_frame * scale_factor).round() as u32,
-            checkbox: (9.0 * dpp).round() as u32 + 2 * (inner_margin + frame),
+            checkbox: (9.0 * dpp).round() as u32 + 2 * (u32::from(inner_margin) + frame),
             scrollbar: Size::from(params.scrollbar_size * scale_factor),
             slider: Size::from(params.slider_size * scale_factor),
             progress_bar: Size::from(params.progress_bar * scale_factor),
@@ -138,20 +138,20 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     }
 
     fn frame(&self) -> Size {
-        let f = self.dims.frame as u32;
+        let f = self.dims.frame;
         Size::uniform(f)
     }
     fn menu_frame(&self) -> Size {
-        let f = self.dims.frame as u32;
+        let f = self.dims.frame;
         Size(f, f / 2)
     }
 
     fn inner_margin(&self) -> Size {
-        Size::uniform(self.dims.inner_margin as u32)
+        Size::uniform(self.dims.inner_margin.into())
     }
 
     fn outer_margins(&self) -> Margins {
-        Margins::uniform(self.dims.outer_margin as u16)
+        Margins::uniform(self.dims.outer_margin)
     }
 
     fn line_height(&self, _: TextClass) -> u32 {
@@ -185,7 +185,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         let margin = match class {
             TextClass::Label | TextClass::LabelSingle => self.dims.outer_margin,
             TextClass::Button | TextClass::Edit | TextClass::EditMulti => self.dims.inner_margin,
-        } as u16;
+        };
         let margins = (margin, margin);
         if axis.is_horizontal() {
             let bound = (required.0).ceil() as u32;
@@ -229,7 +229,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     }
 
     fn edit_surround(&self) -> (Size, Size) {
-        let s = Size::uniform(self.dims.frame as u32 + self.dims.inner_margin as u32);
+        let s = Size::uniform(self.dims.frame + u32::from(self.dims.inner_margin));
         (s, s)
     }
 

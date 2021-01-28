@@ -206,17 +206,17 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
             offsets[len - 1] = pos as u32;
             for i in (0..(len - 1)).rev() {
                 let i1 = i + 1;
-                let m1 = storage.rules()[i1].margins().1;
-                let m0 = storage.rules()[i].margins().0;
-                offsets[i] = offsets[i1] + storage.widths()[i1] + m1.max(m0) as u32;
+                let m1 = storage.rules()[i1].margins_u32().1;
+                let m0 = storage.rules()[i].margins_u32().0;
+                offsets[i] = offsets[i1] + storage.widths()[i1] + m1.max(m0);
             }
         } else {
             offsets[0] = pos as u32;
             for i in 1..len {
                 let i1 = i - 1;
-                let m1 = storage.rules()[i1].margins().1;
-                let m0 = storage.rules()[i].margins().0;
-                offsets[i] = offsets[i1] + storage.widths()[i1] + m1.max(m0) as u32;
+                let m1 = storage.rules()[i1].margins_u32().1;
+                let m0 = storage.rules()[i].margins_u32().0;
+                offsets[i] = offsets[i1] + storage.widths()[i1] + m1.max(m0);
             }
         }
     }
@@ -251,8 +251,9 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, 
         let len = storage.widths().len();
         let post_rules = SizeRules::min_sum(&storage.rules()[(index + 1)..len]);
 
-        let size1 = pre_rules.min_size() as i32 + pre_rules.margins().1.max(m.0) as i32;
-        let size2 = size1 as u32 + post_rules.min_size() + post_rules.margins().0.max(m.1) as u32;
+        let size1 = pre_rules.min_size() as i32 + i32::from(pre_rules.margins().1.max(m.0));
+        let size2 =
+            size1 as u32 + post_rules.min_size() + u32::from(post_rules.margins().0.max(m.1));
 
         let mut rect = self.rect;
         if self.direction.is_horizontal() {

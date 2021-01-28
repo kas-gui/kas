@@ -91,8 +91,8 @@ impl TryFrom<u32> for WidgetId {
 impl TryFrom<u64> for WidgetId {
     type Error = ();
     fn try_from(x: u64) -> Result<WidgetId, ()> {
-        if x <= u32::MAX as u64 {
-            if let Some(nz) = NonZeroU32::new(x as u32) {
+        if let Ok(x) = u32::try_from(x) {
+            if let Some(nz) = NonZeroU32::new(x) {
                 return Ok(WidgetId(nz));
             }
         }
@@ -110,7 +110,7 @@ impl From<WidgetId> for u32 {
 impl From<WidgetId> for u64 {
     #[inline]
     fn from(id: WidgetId) -> u64 {
-        id.0.get() as u64
+        id.0.get().into()
     }
 }
 

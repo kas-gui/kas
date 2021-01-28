@@ -218,12 +218,12 @@ impl<G: 'static> Layout for EditBox<G> {
         let rules = content_rules.surrounded_by(frame_rules, true);
         if axis.is_horizontal() {
             self.core.rect.size.0 = rules.ideal_size();
-            self.frame_offset.0 = frame_offset.0 as i32 + m.0 as i32;
-            self.frame_size.0 = frame_size.0 + (m.0 + m.1) as u32;
+            self.frame_offset.0 = frame_offset.0 as i32 + i32::from(m.0);
+            self.frame_size.0 = frame_size.0 + u32::from(m.0) + u32::from(m.1);
         } else {
             self.core.rect.size.1 = rules.ideal_size();
-            self.frame_offset.1 = frame_offset.1 as i32 + m.0 as i32;
-            self.frame_size.1 = frame_size.1 + (m.0 + m.1) as u32;
+            self.frame_offset.1 = frame_offset.1 as i32 + i32::from(m.0);
+            self.frame_size.1 = frame_size.1 + u32::from(m.0) + u32::from(m.1);
         }
         rules
     }

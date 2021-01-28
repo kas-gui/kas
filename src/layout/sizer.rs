@@ -189,7 +189,7 @@ impl SolveCache {
     ) {
         let mut width = rect.size.0;
         if inner_margin {
-            width -= (self.margins.horiz.0 + self.margins.horiz.1) as u32;
+            width -= u32::from(self.margins.horiz.0) + u32::from(self.margins.horiz.1);
         }
 
         // We call size_rules not because we want the result, but because our
@@ -212,9 +212,12 @@ impl SolveCache {
         }
 
         if inner_margin {
-            rect.pos += Coord(self.margins.horiz.0 as i32, self.margins.vert.0 as i32);
+            rect.pos += Coord(
+                i32::from(self.margins.horiz.0),
+                i32::from(self.margins.vert.0),
+            );
             rect.size.0 = width;
-            rect.size.1 -= (self.margins.vert.0 + self.margins.vert.1) as u32;
+            rect.size.1 -= u32::from(self.margins.vert.0) + u32::from(self.margins.vert.1);
         }
         widget.set_rect(mgr, rect, AlignHints::NONE);
 

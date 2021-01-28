@@ -231,21 +231,22 @@ impl<W: Widget> Window<W> {
 
         let is_reversed = popup.direction.is_reversed();
         let place_in = |rp, rs: u32, cp: i32, cs, ideal, m: (u16, u16)| -> (i32, u32) {
-            let before: i32 = cp - (rp + m.1 as i32);
+            let before: i32 = cp - (rp + i32::from(m.1));
             let before = before.max(0) as u32;
-            let after = rs.saturating_sub(cs + before + m.0 as u32);
+            let after = rs.saturating_sub(cs + before + u32::from(m.0));
+            let m: (i32, i32) = (m.0.into(), m.1.into());
             if after >= ideal {
                 if is_reversed && before >= ideal {
-                    (cp - ideal as i32 - m.1 as i32, ideal)
+                    (cp - ideal as i32 - m.1, ideal)
                 } else {
-                    (cp + cs as i32 + m.0 as i32, ideal)
+                    (cp + cs as i32 + m.0, ideal)
                 }
             } else if before >= ideal {
-                (cp - ideal as i32 - m.1 as i32, ideal)
+                (cp - ideal as i32 - m.1, ideal)
             } else if before > after {
                 (rp, before)
             } else {
-                (cp + cs as i32 + m.0 as i32, after)
+                (cp + cs as i32 + m.0, after)
             }
         };
         let place_out = |rp, rs, cp: i32, cs, ideal: u32| -> (i32, u32) {

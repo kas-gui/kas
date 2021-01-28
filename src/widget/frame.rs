@@ -42,14 +42,14 @@ impl<W: Widget> Layout for Frame<W> {
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, margins);
 
         let child_rules = self.inner.size_rules(size_handle, axis);
-        let m = child_rules.margins();
+        let m = child_rules.margins_u32();
 
         if axis.is_horizontal() {
-            self.m0.0 = size.0 + m.0 as u32;
-            self.m1.0 = size.0 + m.1 as u32;
+            self.m0.0 = size.0 + m.0;
+            self.m1.0 = size.0 + m.1;
         } else {
-            self.m0.1 = size.1 + m.0 as u32;
-            self.m1.1 = size.1 + m.1 as u32;
+            self.m0.1 = size.1 + m.0;
+            self.m1.1 = size.1 + m.1;
         }
 
         child_rules.surrounded_by(frame_rules, true)

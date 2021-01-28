@@ -284,7 +284,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
 
         let is_horiz = self.direction.is_horizontal();
         let extract_p = |p: Coord| if is_horiz { p.0 } else { p.1 } as u32;
-        let extract_s = |s: Size| if is_horiz { s.0 } else { s.1 } as u32;
+        let extract_s = |s: Size| if is_horiz { s.0 } else { s.1 };
         let hrect = self.handles[n].rect();
         let width1 = extract_p(hrect.pos - self.core.rect.pos) as u32;
         let width2 = extract_s(self.core.rect.size - hrect.size) - width1;

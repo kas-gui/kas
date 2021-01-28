@@ -54,8 +54,8 @@ impl Margins {
 
     /// Pad a size with margins
     pub fn pad(self, size: Size) -> Size {
-        let w = size.0 + (self.horiz.0 + self.horiz.1) as u32;
-        let h = size.1 + (self.vert.0 + self.vert.1) as u32;
+        let w = size.0 + u32::from(self.horiz.0) + u32::from(self.horiz.1);
+        let h = size.1 + u32::from(self.vert.0) + u32::from(self.vert.1);
         Size(w, h)
     }
 }
@@ -249,6 +249,12 @@ impl SizeRules {
         self.m
     }
 
+    /// Get the `(pre, post)` margin sizes, cast to `u32`
+    #[inline]
+    pub fn margins_u32(self) -> (u32, u32) {
+        (self.m.0.into(), self.m.1.into())
+    }
+
     /// Get the stretch policy
     #[inline]
     pub fn stretch(self) -> StretchPolicy {
@@ -292,7 +298,7 @@ impl SizeRules {
     ///
     /// Panics if either factor is 0.
     pub fn multiply_with_margin(&mut self, min_factor: u32, ideal_factor: u32) {
-        let margin = self.m.0 as u32 + self.m.1 as u32;
+        let margin = u32::from(self.m.0) + u32::from(self.m.1);
         assert!(min_factor > 0);
         assert!(ideal_factor > 0);
         self.a = min_factor * self.a + (min_factor - 1) * margin;
@@ -307,7 +313,7 @@ impl SizeRules {
     /// Note also that appending [`SizeRules::EMPTY`] does include interior
     /// margins (those between `EMPTY` and the other rules) within the result.
     pub fn append(&mut self, rhs: SizeRules) {
-        let c = self.m.1.max(rhs.m.0) as u32;
+        let c: u32 = self.m.1.max(rhs.m.0).into();
         self.a += rhs.a + c;
         self.b += rhs.b + c;
         self.m.1 = rhs.m.1;
@@ -324,7 +330,7 @@ impl SizeRules {
     /// margins (those between `EMPTY` and the other rules) within the result.
     #[inline]
     pub fn appended(self, rhs: SizeRules) -> Self {
-        let c = self.m.1.max(rhs.m.0) as u32;
+        let c: u32 = self.m.1.max(rhs.m.0).into();
         SizeRules {
             a: self.a + rhs.a + c,
             b: self.b + rhs.b + c,
@@ -340,7 +346,7 @@ impl SizeRules {
     /// the frame's margins.
     pub fn surrounded_by(self, frame: SizeRules, internal_margins: bool) -> Self {
         let (c, m) = if internal_margins {
-            ((self.m.0 + self.m.1) as u32, frame.m)
+            ((self.m.0 + self.m.1).into(), frame.m)
         } else {
             (0, (self.m.0.max(frame.m.0), self.m.1.max(frame.m.1)))
         };
@@ -367,7 +373,7 @@ impl SizeRules {
 
         let mut rules = range[0];
         for r in &range[1..] {
-            rules.a += rules.m.1.max(r.m.0) as u32 + r.a;
+            rules.a += u32::from(rules.m.1.max(r.m.0)) + r.a;
         }
         rules.b = rules.a;
         rules.m.1 = range[range.len() - 1].m.1;
@@ -458,7 +464,7 @@ impl SizeRules {
             let mut dist_over_b = out[0].saturating_sub(rules[0].b);
             for i in 1..N {
                 out[i] = out[i].max(rules[i].a);
-                margin_sum += (rules[i - 1].m.1).max(rules[i].m.0) as u32;
+                margin_sum += u32::from((rules[i - 1].m.1).max(rules[i].m.0));
                 sum += out[i];
                 dist_under_b += rules[i].b.saturating_sub(out[i]);
                 dist_over_b += out[i].saturating_sub(rules[i].b);

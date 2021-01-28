@@ -266,7 +266,7 @@ where
         if axis.is_vertical() == self.direction.is_vertical() {
             self.child_size_min = rules.min_size();
             self.child_size_ideal = rules.ideal_size();
-            self.child_inter_margin = rules.margins().0 as u32 + rules.margins().1 as u32;
+            self.child_inter_margin = rules.margins_u32().0 + rules.margins_u32().1;
             rules.multiply_with_margin(2, self.ideal_visible);
             rules.set_stretch(rules.stretch().max(StretchPolicy::HighUtility));
         }

@@ -141,8 +141,8 @@ impl<D: Directional> ScrollBar<D> {
 
     fn update_handle(&mut self) -> TkAction {
         let len = self.len();
-        let total = self.max_value as u64 + self.handle_value as u64;
-        let handle_len = self.handle_value as u64 * len as u64 / total;
+        let total = u64::from(self.max_value) + u64::from(self.handle_value);
+        let handle_len = u64::from(self.handle_value) * len as u64 / total;
         self.handle_len = (handle_len as u32).max(self.min_handle_len).min(len);
         let mut size = self.core.rect.size;
         if self.direction.is_horizontal() {
@@ -156,8 +156,8 @@ impl<D: Directional> ScrollBar<D> {
     // translate value to offset in local coordinates
     fn offset(&self) -> Coord {
         let len = self.len() - self.handle_len;
-        let lhs = self.value as u64 * len as u64;
-        let rhs = self.max_value as u64;
+        let lhs = u64::from(self.value) * len as u64;
+        let rhs = u64::from(self.max_value);
         let mut pos = if rhs == 0 {
             0
         } else {
@@ -183,7 +183,7 @@ impl<D: Directional> ScrollBar<D> {
             offset = len - offset;
         }
 
-        let lhs = offset as u64 * self.max_value as u64;
+        let lhs = u64::from(offset) * u64::from(self.max_value);
         let rhs = len as u64;
         if rhs == 0 {
             debug_assert_eq!(self.value, 0);
