@@ -16,6 +16,8 @@
 #[doc(no_inline)]
 pub use kas::class::*;
 #[doc(no_inline)]
+pub use kas::conv::Conv;
+#[doc(no_inline)]
 pub use kas::draw::{DrawHandle, DrawHandleExt, SizeHandle};
 #[doc(no_inline)]
 pub use kas::event::{Event, Handler, Manager, ManagerState, Response, SendEvent, VoidMsg};

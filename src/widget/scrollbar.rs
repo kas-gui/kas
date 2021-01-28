@@ -142,8 +142,8 @@ impl<D: Directional> ScrollBar<D> {
     fn update_handle(&mut self) -> TkAction {
         let len = self.len();
         let total = u64::from(self.max_value) + u64::from(self.handle_value);
-        let handle_len = u64::from(self.handle_value) * len as u64 / total;
-        self.handle_len = (handle_len as u32).max(self.min_handle_len).min(len);
+        let handle_len = u64::from(self.handle_value) * u64::conv(len) / total;
+        self.handle_len = u32::conv(handle_len).max(self.min_handle_len).min(len);
         let mut size = self.core.rect.size;
         if self.direction.is_horizontal() {
             size.0 = self.handle_len;
@@ -156,12 +156,12 @@ impl<D: Directional> ScrollBar<D> {
     // translate value to offset in local coordinates
     fn offset(&self) -> Coord {
         let len = self.len() - self.handle_len;
-        let lhs = u64::from(self.value) * len as u64;
+        let lhs = u64::from(self.value) * u64::conv(len);
         let rhs = u64::from(self.max_value);
         let mut pos = if rhs == 0 {
             0
         } else {
-            (((lhs + (rhs / 2)) / rhs) as u32).min(len)
+            u32::conv((lhs + (rhs / 2)) / rhs).min(len)
         };
         if self.direction.is_reversed() {
             pos = len - pos;
@@ -184,12 +184,12 @@ impl<D: Directional> ScrollBar<D> {
         }
 
         let lhs = u64::from(offset) * u64::from(self.max_value);
-        let rhs = len as u64;
+        let rhs = u64::conv(len);
         if rhs == 0 {
             debug_assert_eq!(self.value, 0);
             return false;
         }
-        let value = ((lhs + (rhs / 2)) / rhs) as u32;
+        let value = u32::conv((lhs + (rhs / 2)) / rhs);
         let value = value.min(self.max_value);
         if value != self.value {
             self.value = value;

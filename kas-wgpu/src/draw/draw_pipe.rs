@@ -14,6 +14,7 @@ use super::{
     flat_round, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow, DrawPipe,
     DrawWindow, ShaderManager, TEX_FORMAT,
 };
+use kas::conv::Conv;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Pass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 
@@ -262,9 +263,9 @@ impl<CW: CustomWindow + 'static> Draw for DrawWindow<CW> {
     }
 
     fn add_clip_region(&mut self, rect: Rect, depth: f32) -> Pass {
-        let pass = self.clip_regions.len();
+        let pass = u32::conv(self.clip_regions.len());
         self.clip_regions.push(rect);
-        Pass::new_pass_with_depth(pass as u32, depth)
+        Pass::new_pass_with_depth(pass, depth)
     }
 
     #[inline]

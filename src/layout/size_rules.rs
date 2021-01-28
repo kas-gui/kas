@@ -9,6 +9,7 @@ use smallvec::SmallVec;
 use std::fmt;
 use std::iter::Sum;
 
+use crate::conv::Conv;
 use crate::geom::Size;
 
 // for doc use
@@ -484,11 +485,11 @@ impl SizeRules {
                     let mut any_removed = true;
                     while any_removed {
                         any_removed = false;
-                        let count = targets.len() as u32;
+                        let count = u32::conv(targets.len());
                         let ceil = (avail + count - 1) / count; // round up
                         let mut t = 0;
                         while t < targets.len() {
-                            let i = targets[t] as usize;
+                            let i = usize::conv(targets[t]);
                             if out[i] >= base(i) + ceil {
                                 avail -= out[i] - base(i);
                                 targets.remove(t);
@@ -505,16 +506,16 @@ impl SizeRules {
                     // Since no more are removed by a ceiling, all remaining
                     // targets will be (approx) equal. Arbitrarily distribute
                     // rounding errors to the first ones.
-                    let count = targets.len() as u32;
+                    let count = u32::conv(targets.len());
                     let per_elt = avail / count;
-                    let extra = (avail - per_elt * count) as usize;
+                    let extra = usize::conv(avail - per_elt * count);
                     assert!(extra < targets.len());
                     for t in 0..extra {
-                        let i = targets[t] as usize;
+                        let i = usize::conv(targets[t]);
                         out[i] = base(i) + per_elt + 1;
                     }
                     for t in extra..targets.len() {
-                        let i = targets[t] as usize;
+                        let i = usize::conv(targets[t]);
                         out[i] = base(i) + per_elt;
                     }
                 }
@@ -532,7 +533,7 @@ impl SizeRules {
                         sum += out[i];
                         if rules[i].stretch == highest_stretch {
                             over += out[i] - rules[i].b;
-                            targets.push(i as u32);
+                            targets.push(u32::conv(i));
                         }
                     }
 
@@ -547,7 +548,7 @@ impl SizeRules {
                     for i in 0..N {
                         if out[i] < rules[i].b {
                             over += out[i] - rules[i].a;
-                            targets.push(i as u32);
+                            targets.push(u32::conv(i));
                         }
                     }
 
@@ -567,10 +568,10 @@ impl SizeRules {
                     let mut any_removed = true;
                     while any_removed {
                         any_removed = false;
-                        let floor = avail / targets.len() as u32;
+                        let floor = avail / u32::conv(targets.len());
                         let mut t = 0;
                         while t < targets.len() {
-                            let i = targets[t] as usize;
+                            let i = usize::conv(targets[t]);
                             if out[i] <= base(i) + floor {
                                 avail -= out[i] - base(i);
                                 targets.remove(t);
@@ -582,15 +583,15 @@ impl SizeRules {
                     }
 
                     // All targets remaining must be reduced to floor, bar rounding errors
-                    let floor = avail / targets.len() as u32;
-                    let extra = avail as usize - floor as usize * targets.len();
+                    let floor = avail / u32::conv(targets.len());
+                    let extra = usize::conv(avail) - usize::conv(floor) * targets.len();
                     assert!(extra < targets.len());
                     for t in 0..extra {
-                        let i = targets[t] as usize;
+                        let i = usize::conv(targets[t]);
                         out[i] = base(i) + floor + 1;
                     }
                     for t in extra..targets.len() {
-                        let i = targets[t] as usize;
+                        let i = usize::conv(targets[t]);
                         out[i] = base(i) + floor;
                     }
                 }
@@ -624,7 +625,7 @@ impl SizeRules {
                                 out[i] = rules[i].b;
                             } else if stretch == highest_affected {
                                 avail += out[i] - rules[i].b;
-                                targets.push(i as u32);
+                                targets.push(u32::conv(i));
                             }
                         }
                     }
@@ -642,7 +643,7 @@ impl SizeRules {
                         out[i] = out[i].min(rules[i].b);
                         sum += out[i];
                         if out[i] > rules[i].a {
-                            targets.push(i as u32);
+                            targets.push(u32::conv(i));
                         }
                     }
                     if sum > target {
@@ -747,9 +748,11 @@ impl SizeRules {
         }
 
         let highest_stretch = sum.stretch;
-        let count = (0..len)
-            .filter(|i| rules[*i].stretch == highest_stretch)
-            .count() as u32;
+        let count = u32::conv(
+            (0..len)
+                .filter(|i| rules[*i].stretch == highest_stretch)
+                .count(),
+        );
         let a_per_elt = excess_a / count;
         let b_per_elt = excess_b / count;
         let mut extra_a = excess_a - count * a_per_elt;

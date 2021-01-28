@@ -11,6 +11,7 @@ use std::f32;
 use std::ops::Range;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
+use kas::conv::Conv;
 use kas::draw::{
     self, ClipRegion, Colour, Draw, DrawRounded, DrawShared, DrawText, InputState, Pass,
     SizeHandle, TextClass,
@@ -342,12 +343,12 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
                 aux: col,
             },
             Effect {
-                start: range.start as u32,
+                start: u32::conv(range.start),
                 flags: Default::default(),
                 aux: self.cols.text_sel,
             },
             Effect {
-                start: range.end as u32,
+                start: u32::conv(range.end),
                 flags: Default::default(),
                 aux: col,
             },

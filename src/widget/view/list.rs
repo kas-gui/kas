@@ -138,8 +138,8 @@ where
         // TODO: we may wish to notify self.data of the range it should cache
         let w_len = self.widgets.len();
         let (old_start, old_end) = (self.data_range.start(), self.data_range.end());
-        let offset = self.direction.extract_coord(self.scroll_offset()) as usize;
-        let mut first_data = offset / self.child_skip as usize;
+        let offset = u64::conv(self.direction.extract_coord(self.scroll_offset()));
+        let mut first_data = usize::conv(offset / u64::from(self.child_skip));
         first_data = (first_data + w_len)
             .min(self.data.len())
             .saturating_sub(w_len);
@@ -156,7 +156,7 @@ where
         };
         let mut pos_start = self.core.rect.pos;
         if self.direction.is_reversed() {
-            pos_start += skip * (w_len - 1) as i32;
+            pos_start += skip * i32::conv(w_len - 1);
             skip = skip * -1;
         }
         let mut rect = Rect::new(pos_start, child_size);
@@ -168,7 +168,7 @@ where
             if i == 0 || (data_num < old_start || data_num >= old_end) {
                 let w = &mut self.widgets[i];
                 action |= w.set(self.data.get(data_num));
-                rect.pos = pos_start + skip * data_num as i32;
+                rect.pos = pos_start + skip * i32::conv(data_num);
                 w.set_rect(mgr, rect, self.align_hints);
             }
         }
@@ -186,8 +186,9 @@ where
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         // TODO: maybe we should support a scrollbar on the other axis?
         // We would need to report a fake min-child-size to enable scrolling.
-        let min_size = ((self.child_size_min + self.child_inter_margin) * self.data.len() as u32)
-            .saturating_sub(self.child_inter_margin);
+        let min_size = ((self.child_size_min + self.child_inter_margin)
+            * u32::conv(self.data.len()))
+        .saturating_sub(self.child_inter_margin);
         (
             self.direction.is_horizontal() && min_size > size.0,
             self.direction.is_vertical() && min_size > size.1,
@@ -315,7 +316,7 @@ where
         self.align_hints = align;
 
         let old_num = self.widgets.len();
-        let num = (num as usize).min(data_len);
+        let num = (usize::conv(num)).min(data_len);
         if num > old_num {
             debug!("allocating widgets (old len = {}, new = {})", old_num, num);
             *mgr |= TkAction::RECONFIGURE;

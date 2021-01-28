@@ -37,6 +37,7 @@ mod traits;
 
 // public implementations:
 pub mod class;
+pub mod conv;
 pub mod draw;
 pub mod event;
 pub mod geom;

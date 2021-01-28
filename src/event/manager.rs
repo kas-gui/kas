@@ -16,6 +16,7 @@ use std::time::Instant;
 use std::u16;
 
 use super::*;
+use crate::conv::Conv;
 use crate::geom::Coord;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
@@ -149,11 +150,11 @@ impl ManagerState {
                     grab.coords[usize::from(index)] = (coord, coord);
                 }
                 grab.n = index + 1;
-                return (gi as u16, index);
+                return (u16::conv(gi), index);
             }
         }
 
-        let gj = self.pan_grab.len() as u16;
+        let gj = u16::conv(self.pan_grab.len());
         let n = 1;
         let mut coords: [(Coord, Coord); MAX_PAN_GRABS] = Default::default();
         coords[0] = (coord, coord);

@@ -241,7 +241,7 @@ impl CustomPipe for Pipe {
             usage: wgpu::BufferUsage::COPY_SRC,
         });
 
-        let byte_len = size_of::<Scale>() as u64;
+        let byte_len = u64::conv(size_of::<Scale>());
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &window.scale_buf, 0, byte_len);
     }
 
@@ -258,7 +258,7 @@ impl CustomPipe for Pipe {
             usage: wgpu::BufferUsage::COPY_SRC,
         });
 
-        let byte_len = size_of::<UnifRect>() as u64;
+        let byte_len = u64::conv(size_of::<UnifRect>());
         encoder.copy_buffer_to_buffer(&rect_buf, 0, &window.rect_buf, 0, byte_len);
 
         let iter = [window.iterations];
@@ -268,7 +268,7 @@ impl CustomPipe for Pipe {
             usage: wgpu::BufferUsage::COPY_SRC,
         });
 
-        let byte_len = size_of::<i32>() as u64;
+        let byte_len = u64::conv(size_of::<i32>());
         encoder.copy_buffer_to_buffer(&iter_buf, 0, &window.iter_buf, 0, byte_len);
 
         // NOTE: we prepare vertex buffers here. Due to lifetime restrictions on
@@ -282,7 +282,7 @@ impl CustomPipe for Pipe {
                     usage: wgpu::BufferUsage::VERTEX,
                 });
                 pass.1 = Some(buffer);
-                pass.2 = pass.0.len() as u32;
+                pass.2 = u32::conv(pass.0.len());
                 pass.0.clear();
             } else {
                 pass.1 = None;
