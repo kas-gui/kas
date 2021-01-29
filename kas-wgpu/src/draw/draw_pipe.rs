@@ -81,10 +81,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let f = a.0 / a.1;
         let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
 
-        let rect = Rect {
-            pos: Coord::ZERO,
-            size,
-        };
+        let rect = Rect::new(Coord::ZERO, size);
 
         let shaded_square = self.shaded_square.new_window(device, size, norm);
         let shaded_round = self.shaded_round.new_window(device, size, norm);

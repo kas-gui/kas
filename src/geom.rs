@@ -305,7 +305,10 @@ impl std::ops::SubAssign for Size {
     }
 }
 
-/// A rectangular region.
+/// An axis-aligned rectangular region
+///
+/// The region is defined by a point `pos` and an extent `size`, allowing easy
+/// translations. It is empty unless `size` is positive on both axes.
 #[derive(Clone, Copy, Default, Debug, PartialEq)]
 pub struct Rect {
     pub pos: Coord,
@@ -319,9 +322,9 @@ impl Rect {
         Rect { pos, size }
     }
 
-    /// Get pos + size
+    /// Get second point (pos + size)
     #[inline]
-    pub fn pos_end(&self) -> Coord {
+    pub fn pos2(&self) -> Coord {
         self.pos + self.size
     }
 

@@ -340,8 +340,8 @@ impl<D: Directional> RowPositionSolver<D> {
             let do_break = match self.direction.as_direction() {
                 Direction::Right => child.rect().pos.0 >= end.0,
                 Direction::Down => child.rect().pos.1 >= end.1,
-                Direction::Left => child.rect().pos_end().0 < end.0,
-                Direction::Up => child.rect().pos_end().1 < end.1,
+                Direction::Left => child.rect().pos2().0 < end.0,
+                Direction::Up => child.rect().pos2().1 < end.1,
             };
             if do_break {
                 break;
