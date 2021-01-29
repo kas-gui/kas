@@ -29,8 +29,8 @@ fn make_depth_texture(device: &wgpu::Device, size: Size) -> Option<TextureView> 
     let tex = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("window depth"),
         size: wgpu::Extent3d {
-            width: size.0,
-            height: size.1,
+            width: u32::conv(size.0),
+            height: u32::conv(size.1),
             depth: 1,
         },
         mip_level_count: 1,
@@ -187,10 +187,10 @@ impl<C: CustomPipe> DrawPipe<C> {
                     depth_stencil_attachment: Some(depth_stencil_attachment.clone()),
                 });
                 rpass.set_scissor_rect(
-                    rect.pos.0 as u32,
-                    rect.pos.1 as u32,
-                    rect.size.0,
-                    rect.size.1,
+                    u32::conv(rect.pos.0),
+                    u32::conv(rect.pos.1),
+                    u32::conv(rect.size.0),
+                    u32::conv(rect.size.1),
                 );
 
                 ss.as_ref().map(|buf| buf.render(&mut rpass));
@@ -231,8 +231,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                 &mut encoder,
                 frame_view,
                 depth_stencil_attachment,
-                size.0,
-                size.1,
+                u32::conv(size.0),
+                u32::conv(size.1),
             )
             .expect("glyph_brush.draw_queued");
 

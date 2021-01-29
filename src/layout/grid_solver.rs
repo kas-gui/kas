@@ -272,8 +272,8 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
             SizeRules::solve_seq_total(widths, rules, rect.size.0);
             for i in 1..w_offsets.as_mut().len() {
                 let i1 = i - 1;
-                let m1 = storage.width_rules()[i1].margins_u32().1;
-                let m0 = storage.width_rules()[i].margins_u32().0;
+                let m1 = storage.width_rules()[i1].margins_i32().1;
+                let m0 = storage.width_rules()[i].margins_i32().0;
                 w_offsets.as_mut()[i] = w_offsets.as_mut()[i1] + storage.widths()[i1] + m1.max(m0);
             }
         }
@@ -296,8 +296,8 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> GridSetter<RT, CT, S> {
             SizeRules::solve_seq_total(heights, rules, rect.size.1);
             for i in 1..h_offsets.as_mut().len() {
                 let i1 = i - 1;
-                let m1 = storage.height_rules()[i1].margins_u32().1;
-                let m0 = storage.height_rules()[i].margins_u32().0;
+                let m1 = storage.height_rules()[i1].margins_i32().1;
+                let m0 = storage.height_rules()[i].margins_i32().0;
                 h_offsets.as_mut()[i] = h_offsets.as_mut()[i1] + storage.heights()[i1] + m1.max(m0);
             }
         }
@@ -316,8 +316,8 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> RulesSetter for GridSetter<RT, CT
     type ChildInfo = GridChildInfo;
 
     fn child_rect(&mut self, storage: &mut Self::Storage, info: Self::ChildInfo) -> Rect {
-        let x = self.w_offsets.as_mut()[usize::conv(info.col)] as i32;
-        let y = self.h_offsets.as_mut()[usize::conv(info.row)] as i32;
+        let x = self.w_offsets.as_mut()[usize::conv(info.col)];
+        let y = self.h_offsets.as_mut()[usize::conv(info.row)];
         let pos = self.pos + Coord(x, y);
 
         let i1 = usize::conv(info.col_end) - 1;

@@ -55,8 +55,8 @@ impl Margins {
 
     /// Pad a size with margins
     pub fn pad(self, size: Size) -> Size {
-        let w = size.0 + u32::from(self.horiz.0) + u32::from(self.horiz.1);
-        let h = size.1 + u32::from(self.vert.0) + u32::from(self.vert.1);
+        let w = size.0 + i32::from(self.horiz.0) + i32::from(self.horiz.1);
+        let h = size.1 + i32::from(self.vert.0) + i32::from(self.vert.1);
         Size(w, h)
     }
 }
@@ -145,9 +145,9 @@ impl Default for StretchPolicy {
 #[derive(Copy, Clone, Default, PartialEq, Eq)]
 pub struct SizeRules {
     // minimum good size
-    a: u32,
+    a: i32,
     // ideal size; b >= a
-    b: u32,
+    b: i32,
     // (pre, post) margins
     m: (u16, u16),
     stretch: StretchPolicy,
@@ -187,7 +187,8 @@ impl SizeRules {
 
     /// A fixed size with given `(pre, post)` margins
     #[inline]
-    pub fn fixed(size: u32, margins: (u16, u16)) -> Self {
+    pub fn fixed(size: i32, margins: (u16, u16)) -> Self {
+        debug_assert!(size >= 0);
         SizeRules {
             a: size,
             b: size,
@@ -221,9 +222,10 @@ impl SizeRules {
     /// Region size should meet the given `min`-imum size and has a given
     /// `ideal` size, plus a given `stretch` policy.
     ///
-    /// Required: `ideal >= min` (if not, ideal is clamped to min).
+    /// Expected: `ideal >= min` (if not, ideal is clamped to min).
     #[inline]
-    pub fn new(min: u32, ideal: u32, margins: (u16, u16), stretch: StretchPolicy) -> Self {
+    pub fn new(min: i32, ideal: i32, margins: (u16, u16), stretch: StretchPolicy) -> Self {
+        debug_assert!(0 <= min && 0 <= ideal);
         SizeRules {
             a: min,
             b: ideal.max(min),
@@ -234,13 +236,13 @@ impl SizeRules {
 
     /// Get the minimum size
     #[inline]
-    pub fn min_size(self) -> u32 {
+    pub fn min_size(self) -> i32 {
         self.a
     }
 
     /// Get the ideal size
     #[inline]
-    pub fn ideal_size(self) -> u32 {
+    pub fn ideal_size(self) -> i32 {
         self.b
     }
 
@@ -250,9 +252,9 @@ impl SizeRules {
         self.m
     }
 
-    /// Get the `(pre, post)` margin sizes, cast to `u32`
+    /// Get the `(pre, post)` margin sizes, cast to `i32`
     #[inline]
-    pub fn margins_u32(self) -> (u32, u32) {
+    pub fn margins_i32(self) -> (i32, i32) {
         (self.m.0.into(), self.m.1.into())
     }
 
@@ -298,8 +300,8 @@ impl SizeRules {
     /// `ideal * 5 + 4 * margin`.
     ///
     /// Panics if either factor is 0.
-    pub fn multiply_with_margin(&mut self, min_factor: u32, ideal_factor: u32) {
-        let margin = u32::from(self.m.0) + u32::from(self.m.1);
+    pub fn multiply_with_margin(&mut self, min_factor: i32, ideal_factor: i32) {
+        let margin = i32::from(self.m.0) + i32::from(self.m.1);
         assert!(min_factor > 0);
         assert!(ideal_factor > 0);
         self.a = min_factor * self.a + (min_factor - 1) * margin;
@@ -314,7 +316,7 @@ impl SizeRules {
     /// Note also that appending [`SizeRules::EMPTY`] does include interior
     /// margins (those between `EMPTY` and the other rules) within the result.
     pub fn append(&mut self, rhs: SizeRules) {
-        let c: u32 = self.m.1.max(rhs.m.0).into();
+        let c: i32 = self.m.1.max(rhs.m.0).into();
         self.a += rhs.a + c;
         self.b += rhs.b + c;
         self.m.1 = rhs.m.1;
@@ -331,7 +333,7 @@ impl SizeRules {
     /// margins (those between `EMPTY` and the other rules) within the result.
     #[inline]
     pub fn appended(self, rhs: SizeRules) -> Self {
-        let c: u32 = self.m.1.max(rhs.m.0).into();
+        let c: i32 = self.m.1.max(rhs.m.0).into();
         SizeRules {
             a: self.a + rhs.a + c,
             b: self.b + rhs.b + c,
@@ -374,7 +376,7 @@ impl SizeRules {
 
         let mut rules = range[0];
         for r in &range[1..] {
-            rules.a += u32::from(rules.m.1.max(r.m.0)) + r.a;
+            rules.a += i32::from(rules.m.1.max(r.m.0)) + r.a;
         }
         rules.b = rules.a;
         rules.m.1 = range[range.len() - 1].m.1;
@@ -396,7 +398,7 @@ impl SizeRules {
     ///
     /// If `min` is greater than the current minimum size, this has no effect.
     #[inline]
-    pub fn reduce_min_to(&mut self, min: u32) {
+    pub fn reduce_min_to(&mut self, min: i32) {
         self.a = self.a.min(min);
     }
 
@@ -406,7 +408,7 @@ impl SizeRules {
     /// the rules' sum is included as the last element of rules.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[inline]
-    pub fn solve_seq_total(out: &mut [u32], rules: &[Self], target: u32) {
+    pub fn solve_seq_total(out: &mut [i32], rules: &[Self], target: i32) {
         let len = rules.len() - 1;
         let total = rules[len];
         let rules = &rules[0..len];
@@ -442,19 +444,21 @@ impl SizeRules {
     /// is assumed that the last entry of `rules` is a summation over all
     /// previous entries which does respect margins.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    pub fn solve_seq(out: &mut [u32], rules: &[Self], target: u32) {
+    pub fn solve_seq(out: &mut [i32], rules: &[Self], target: i32) {
         let total = SizeRules::sum(rules);
         Self::solve_seq_(out, rules, total, target);
     }
 
-    fn solve_seq_(out: &mut [u32], rules: &[Self], total: Self, target: u32) {
-        type Targets = SmallVec<[u32; 16]>;
+    // TODO: ensure conversion u32 → i32 didn't break logic
+    fn solve_seq_(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
+        type Targets = SmallVec<[i32; 16]>;
         #[allow(non_snake_case)]
         let N = out.len();
         assert_eq!(rules.len(), N);
         if N == 0 {
             return;
         }
+        debug_assert!(out.iter().all(|w| *w >= 0));
 
         if target > total.a {
             // All minimum sizes can be met.
@@ -465,7 +469,7 @@ impl SizeRules {
             let mut dist_over_b = out[0].saturating_sub(rules[0].b);
             for i in 1..N {
                 out[i] = out[i].max(rules[i].a);
-                margin_sum += u32::from((rules[i - 1].m.1).max(rules[i].m.0));
+                margin_sum += i32::from((rules[i - 1].m.1).max(rules[i].m.0));
                 sum += out[i];
                 dist_under_b += rules[i].b.saturating_sub(out[i]);
                 dist_over_b += out[i].saturating_sub(rules[i].b);
@@ -475,17 +479,17 @@ impl SizeRules {
             if sum == target {
                 return;
             } else if sum < target {
-                fn increase_targets<F: Fn(usize) -> u32>(
-                    out: &mut [u32],
+                fn increase_targets<F: Fn(usize) -> i32>(
+                    out: &mut [i32],
                     targets: &mut Targets,
                     base: F,
-                    mut avail: u32,
+                    mut avail: i32,
                 ) {
                     // Calculate ceiling above which sizes will not be increased
                     let mut any_removed = true;
                     while any_removed {
                         any_removed = false;
-                        let count = u32::conv(targets.len());
+                        let count = i32::conv(targets.len());
                         let ceil = (avail + count - 1) / count; // round up
                         let mut t = 0;
                         while t < targets.len() {
@@ -506,7 +510,7 @@ impl SizeRules {
                     // Since no more are removed by a ceiling, all remaining
                     // targets will be (approx) equal. Arbitrarily distribute
                     // rounding errors to the first ones.
-                    let count = u32::conv(targets.len());
+                    let count = i32::conv(targets.len());
                     let per_elt = avail / count;
                     let extra = usize::conv(avail - per_elt * count);
                     assert!(extra < targets.len());
@@ -533,7 +537,7 @@ impl SizeRules {
                         sum += out[i];
                         if rules[i].stretch == highest_stretch {
                             over += out[i] - rules[i].b;
-                            targets.push(u32::conv(i));
+                            targets.push(i32::conv(i));
                         }
                     }
 
@@ -548,7 +552,7 @@ impl SizeRules {
                     for i in 0..N {
                         if out[i] < rules[i].b {
                             over += out[i] - rules[i].a;
-                            targets.push(u32::conv(i));
+                            targets.push(i32::conv(i));
                         }
                     }
 
@@ -558,17 +562,17 @@ impl SizeRules {
                 }
             } else {
                 // sum > target: we need to decrease some sizes
-                fn reduce_targets<F: Fn(usize) -> u32>(
-                    out: &mut [u32],
+                fn reduce_targets<F: Fn(usize) -> i32>(
+                    out: &mut [i32],
                     targets: &mut Targets,
                     base: F,
-                    mut avail: u32,
+                    mut avail: i32,
                 ) {
                     // We can ignore everything below the floor
                     let mut any_removed = true;
                     while any_removed {
                         any_removed = false;
-                        let floor = avail / u32::conv(targets.len());
+                        let floor = avail / i32::conv(targets.len());
                         let mut t = 0;
                         while t < targets.len() {
                             let i = usize::conv(targets[t]);
@@ -583,7 +587,7 @@ impl SizeRules {
                     }
 
                     // All targets remaining must be reduced to floor, bar rounding errors
-                    let floor = avail / u32::conv(targets.len());
+                    let floor = avail / i32::conv(targets.len());
                     let extra = usize::conv(avail) - usize::conv(floor) * targets.len();
                     assert!(extra < targets.len());
                     for t in 0..extra {
@@ -625,7 +629,7 @@ impl SizeRules {
                                 out[i] = rules[i].b;
                             } else if stretch == highest_affected {
                                 avail += out[i] - rules[i].b;
-                                targets.push(u32::conv(i));
+                                targets.push(i32::conv(i));
                             }
                         }
                     }
@@ -643,7 +647,7 @@ impl SizeRules {
                         out[i] = out[i].min(rules[i].b);
                         sum += out[i];
                         if out[i] > rules[i].a {
-                            targets.push(u32::conv(i));
+                            targets.push(i32::conv(i));
                         }
                     }
                     if sum > target {
@@ -748,7 +752,7 @@ impl SizeRules {
         }
 
         let highest_stretch = sum.stretch;
-        let count = u32::conv(
+        let count = i32::conv(
             (0..len)
                 .filter(|i| rules[*i].stretch == highest_stretch)
                 .count(),

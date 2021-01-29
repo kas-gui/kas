@@ -14,18 +14,18 @@ use kas::{event, prelude::*};
 ///
 /// Scroll bars allow user-input of a value between 0 and a defined maximum,
 /// and allow the size of the handle to be specified.
-#[handler(send=noauto, msg = u32)]
+#[handler(send=noauto, msg = i32)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollBar<D: Directional> {
     #[widget_core]
     core: CoreData,
     direction: D,
     // Terminology assumes vertical orientation:
-    min_handle_len: u32,
-    handle_len: u32,
-    handle_value: u32, // contract: > 0
-    max_value: u32,
-    value: u32,
+    min_handle_len: i32,
+    handle_len: i32,
+    handle_value: i32, // contract: > 0
+    max_value: i32,
+    value: i32,
     #[widget]
     handle: DragHandle,
 }
@@ -61,14 +61,14 @@ impl<D: Directional> ScrollBar<D> {
     ///
     /// See [`ScrollBar::set_limits`].
     #[inline]
-    pub fn with_limits(mut self, max_value: u32, handle_value: u32) -> Self {
+    pub fn with_limits(mut self, max_value: i32, handle_value: i32) -> Self {
         let _ = self.set_limits(max_value, handle_value);
         self
     }
 
     /// Set the initial value
     #[inline]
-    pub fn with_value(mut self, value: u32) -> Self {
+    pub fn with_value(mut self, value: i32) -> Self {
         self.value = value;
         self
     }
@@ -89,7 +89,7 @@ impl<D: Directional> ScrollBar<D> {
     /// so long as both parameters use the same units.
     ///
     /// Returns [`TkAction::REDRAW`] if a redraw is required.
-    pub fn set_limits(&mut self, max_value: u32, handle_value: u32) -> TkAction {
+    pub fn set_limits(&mut self, max_value: i32, handle_value: i32) -> TkAction {
         // We should gracefully handle zero, though appearance may be wrong.
         self.handle_value = handle_value.max(1);
 
@@ -102,7 +102,7 @@ impl<D: Directional> ScrollBar<D> {
     ///
     /// See also the [`ScrollBar::set_limits`] documentation.
     #[inline]
-    pub fn max_value(&self) -> u32 {
+    pub fn max_value(&self) -> i32 {
         self.max_value
     }
 
@@ -110,18 +110,18 @@ impl<D: Directional> ScrollBar<D> {
     ///
     /// See also the [`ScrollBar::set_limits`] documentation.
     #[inline]
-    pub fn handle_value(&self) -> u32 {
+    pub fn handle_value(&self) -> i32 {
         self.handle_value
     }
 
     /// Get the current value
     #[inline]
-    pub fn value(&self) -> u32 {
+    pub fn value(&self) -> i32 {
         self.value
     }
 
     /// Set the value
-    pub fn set_value(&mut self, value: u32) -> TkAction {
+    pub fn set_value(&mut self, value: i32) -> TkAction {
         let value = value.min(self.max_value);
         if value == self.value {
             TkAction::empty()
@@ -132,7 +132,7 @@ impl<D: Directional> ScrollBar<D> {
     }
 
     #[inline]
-    fn len(&self) -> u32 {
+    fn bar_len(&self) -> i32 {
         match self.direction.is_vertical() {
             false => self.core.rect.size.0,
             true => self.core.rect.size.1,
@@ -140,10 +140,10 @@ impl<D: Directional> ScrollBar<D> {
     }
 
     fn update_handle(&mut self) -> TkAction {
-        let len = self.len();
-        let total = u64::from(self.max_value) + u64::from(self.handle_value);
-        let handle_len = u64::from(self.handle_value) * u64::conv(len) / total;
-        self.handle_len = u32::conv(handle_len).max(self.min_handle_len).min(len);
+        let len = self.bar_len();
+        let total = i64::from(self.max_value) + i64::from(self.handle_value);
+        let handle_len = i64::from(self.handle_value) * i64::conv(len) / total;
+        self.handle_len = i32::conv(handle_len).max(self.min_handle_len).min(len);
         let mut size = self.core.rect.size;
         if self.direction.is_horizontal() {
             size.0 = self.handle_len;
@@ -155,41 +155,41 @@ impl<D: Directional> ScrollBar<D> {
 
     // translate value to offset in local coordinates
     fn offset(&self) -> Coord {
-        let len = self.len() - self.handle_len;
-        let lhs = u64::from(self.value) * u64::conv(len);
-        let rhs = u64::from(self.max_value);
+        let len = self.bar_len() - self.handle_len;
+        let lhs = i64::from(self.value) * i64::conv(len);
+        let rhs = i64::from(self.max_value);
         let mut pos = if rhs == 0 {
             0
         } else {
-            u32::conv((lhs + (rhs / 2)) / rhs).min(len)
+            i32::conv((lhs + (rhs / 2)) / rhs).min(len)
         };
         if self.direction.is_reversed() {
             pos = len - pos;
         }
         match self.direction.is_vertical() {
-            false => Coord(pos as i32, 0),
-            true => Coord(0, pos as i32),
+            false => Coord(pos, 0),
+            true => Coord(0, pos),
         }
     }
 
     // true if not equal to old value
     fn set_offset(&mut self, offset: Coord) -> bool {
-        let len = self.len() - self.handle_len;
+        let len = self.bar_len() - self.handle_len;
         let mut offset = match self.direction.is_vertical() {
             false => offset.0,
             true => offset.1,
-        } as u32;
+        };
         if self.direction.is_reversed() {
             offset = len - offset;
         }
 
-        let lhs = u64::from(offset) * u64::from(self.max_value);
-        let rhs = u64::conv(len);
+        let lhs = i64::from(offset) * i64::from(self.max_value);
+        let rhs = i64::conv(len);
         if rhs == 0 {
             debug_assert_eq!(self.value, 0);
             return false;
         }
-        let value = u32::conv((lhs + (rhs / 2)) / rhs);
+        let value = i32::conv((lhs + (rhs / 2)) / rhs);
         let value = value.min(self.max_value);
         if value != self.value {
             self.value = value;
@@ -415,8 +415,7 @@ impl<W: ScrollWidget> ScrollWidget for ScrollBars<W> {
     }
     fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord {
         let offset = self.inner.set_scroll_offset(mgr, offset);
-        *mgr |=
-            self.horiz_bar.set_value(offset.0 as u32) | self.vert_bar.set_value(offset.1 as u32);
+        *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
         offset
     }
 }
@@ -461,22 +460,18 @@ impl<W: ScrollWidget> Layout for ScrollBars<W> {
         let max_scroll_offset = self.inner.max_scroll_offset();
 
         if self.show_bars.0 {
-            let pos = Coord(pos.0, pos.1 + child_size.1 as i32);
+            let pos = Coord(pos.0, pos.1 + child_size.1);
             let size = Size(child_size.0, bar_width);
             self.horiz_bar
                 .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
-            let _ = self
-                .horiz_bar
-                .set_limits(max_scroll_offset.0 as u32, rect.size.0);
+            let _ = self.horiz_bar.set_limits(max_scroll_offset.0, rect.size.0);
         }
         if self.show_bars.1 {
-            let pos = Coord(pos.0 + child_size.0 as i32, pos.1);
+            let pos = Coord(pos.0 + child_size.0, pos.1);
             let size = Size(bar_width, self.core.rect.size.1);
             self.vert_bar
                 .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
-            let _ = self
-                .vert_bar
-                .set_limits(max_scroll_offset.1 as u32, rect.size.1);
+            let _ = self.vert_bar.set_limits(max_scroll_offset.1, rect.size.1);
         }
     }
 
@@ -515,7 +510,7 @@ impl<W: ScrollWidget> event::SendEvent for ScrollBars<W> {
                 .send(mgr, id, event)
                 .try_into()
                 .unwrap_or_else(|msg| {
-                    let offset = Coord(msg as i32, self.inner.scroll_offset().1);
+                    let offset = Coord(msg, self.inner.scroll_offset().1);
                     self.inner.set_scroll_offset(mgr, offset);
                     Response::None
                 })
@@ -524,7 +519,7 @@ impl<W: ScrollWidget> event::SendEvent for ScrollBars<W> {
                 .send(mgr, id, event)
                 .try_into()
                 .unwrap_or_else(|msg| {
-                    let offset = Coord(self.inner.scroll_offset().0, msg as i32);
+                    let offset = Coord(self.inner.scroll_offset().0, msg);
                     self.inner.set_scroll_offset(mgr, offset);
                     Response::None
                 })
@@ -534,8 +529,7 @@ impl<W: ScrollWidget> event::SendEvent for ScrollBars<W> {
                     // We assume that the scrollable inner already updated its
                     // offset; we just update the bar positions
                     let offset = self.inner.scroll_offset();
-                    *mgr |= self.horiz_bar.set_value(offset.0 as u32)
-                        | self.vert_bar.set_value(offset.1 as u32);
+                    *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
                     Response::Focus(rect)
                 }
                 r => r,

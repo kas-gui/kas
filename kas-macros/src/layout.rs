@@ -57,14 +57,14 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
     }
 
     let col_temp = if cols > 16 {
-        quote! { Vec<u32> }
+        quote! { Vec<i32> }
     } else {
-        quote! { [u32; #cols] }
+        quote! { [i32; #cols] }
     };
     let row_temp = if rows > 16 {
-        quote! { Vec<u32> }
+        quote! { Vec<i32> }
     } else {
-        quote! { [u32; #rows] }
+        quote! { [i32; #rows] }
     };
 
     Ok(match layout.layout {
@@ -76,7 +76,7 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
         l @ LayoutType::Right | l @ LayoutType::Left => quote! {
             type Data = kas::layout::FixedRowStorage::<
                 [kas::layout::SizeRules; #cols + 1],
-                [u32; #cols],
+                [i32; #cols],
             >;
             type Solver = kas::layout::RowSolver::<
                 Self::Data,
@@ -90,7 +90,7 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
         l @ LayoutType::Down | l @ LayoutType::Up => quote! {
             type Data = kas::layout::FixedRowStorage::<
                 [kas::layout::SizeRules; #rows + 1],
-                [u32; #rows],
+                [i32; #rows],
             >;
             type Solver = kas::layout::RowSolver::<
                 Self::Data,

@@ -36,12 +36,12 @@ pub struct ListView<
     direction: D,
     data_range: Range,
     align_hints: AlignHints,
-    ideal_visible: u32,
-    child_size_min: u32,
-    child_size_ideal: u32,
-    child_inter_margin: u32,
-    child_skip: u32,
-    child_size: u32,
+    ideal_visible: i32,
+    child_size_min: i32,
+    child_size_ideal: i32,
+    child_inter_margin: i32,
+    child_skip: i32,
+    child_size: i32,
     scroll: ScrollComponent,
 }
 
@@ -127,7 +127,7 @@ where
     ///
     /// This affects the (ideal) size request and whether children are sized
     /// according to their ideal or minimum size but not the minimum size.
-    pub fn with_num_visible(mut self, number: u32) -> Self {
+    pub fn with_num_visible(mut self, number: i32) -> Self {
         self.ideal_visible = number;
         self
     }
@@ -139,7 +139,7 @@ where
         let w_len = self.widgets.len();
         let (old_start, old_end) = (self.data_range.start(), self.data_range.end());
         let offset = u64::conv(self.direction.extract_coord(self.scroll_offset()));
-        let mut first_data = usize::conv(offset / u64::from(self.child_skip));
+        let mut first_data = usize::conv(offset / u64::conv(self.child_skip));
         first_data = (first_data + w_len)
             .min(self.data.len())
             .saturating_sub(w_len);
@@ -147,11 +147,11 @@ where
         let (child_size, mut skip) = match self.direction.is_vertical() {
             false => (
                 Size(self.child_size, self.rect().size.1),
-                Coord(self.child_skip as i32, 0),
+                Coord(self.child_skip, 0),
             ),
             true => (
                 Size(self.rect().size.0, self.child_size),
-                Coord(0, self.child_skip as i32),
+                Coord(0, self.child_skip),
             ),
         };
         let mut pos_start = self.core.rect.pos;
@@ -187,7 +187,7 @@ where
         // TODO: maybe we should support a scrollbar on the other axis?
         // We would need to report a fake min-child-size to enable scrolling.
         let min_size = ((self.child_size_min + self.child_inter_margin)
-            * u32::conv(self.data.len()))
+            * i32::conv(self.data.len()))
         .saturating_sub(self.child_inter_margin);
         (
             self.direction.is_horizontal() && min_size > size.0,
@@ -267,7 +267,7 @@ where
         if axis.is_vertical() == self.direction.is_vertical() {
             self.child_size_min = rules.min_size();
             self.child_size_ideal = rules.ideal_size();
-            self.child_inter_margin = rules.margins_u32().0 + rules.margins_u32().1;
+            self.child_inter_margin = rules.margins_i32().0 + rules.margins_i32().1;
             rules.multiply_with_margin(2, self.ideal_visible);
             rules.set_stretch(rules.stretch().max(StretchPolicy::HighUtility));
         }
@@ -278,7 +278,7 @@ where
         self.core.rect = rect;
 
         let data_len = self.data.len();
-        let data_len32 = u32::try_from(data_len).unwrap();
+        let data_len32 = i32::try_from(data_len).unwrap();
         let mut child_size = rect.size;
         let content_size;
         let skip;

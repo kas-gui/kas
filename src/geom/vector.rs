@@ -346,7 +346,7 @@ macro_rules! impl_vec2 {
         impl From<$T> for Size {
             #[inline]
             fn from(arg: $T) -> Self {
-                Size(arg.0.round() as u32, arg.1.round() as u32)
+                Size(arg.0.round() as i32, arg.1.round() as i32)
             }
         }
 

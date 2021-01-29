@@ -146,7 +146,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
                     Align::Default | Align::TL | Align::Stretch => 0,
                     Align::Centre => extra / 2,
                     Align::BR => extra,
-                } as i32;
+                };
                 if is_horiz {
                     rect.pos.0 += offset;
                 } else {
@@ -203,25 +203,25 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
         };
 
         if self.direction.is_reversed() {
-            offsets[len - 1] = pos as u32;
+            offsets[len - 1] = pos;
             for i in (0..(len - 1)).rev() {
                 let i1 = i + 1;
-                let m1 = storage.rules()[i1].margins_u32().1;
-                let m0 = storage.rules()[i].margins_u32().0;
+                let m1 = storage.rules()[i1].margins_i32().1;
+                let m0 = storage.rules()[i].margins_i32().0;
                 offsets[i] = offsets[i1] + storage.widths()[i1] + m1.max(m0);
             }
         } else {
-            offsets[0] = pos as u32;
+            offsets[0] = pos;
             for i in 1..len {
                 let i1 = i - 1;
-                let m1 = storage.rules()[i1].margins_u32().1;
-                let m0 = storage.rules()[i].margins_u32().0;
+                let m1 = storage.rules()[i1].margins_i32().1;
+                let m0 = storage.rules()[i].margins_i32().0;
                 offsets[i] = offsets[i1] + storage.widths()[i1] + m1.max(m0);
             }
         }
     }
 
-    pub fn solve_range(&mut self, storage: &mut S, range: Range<usize>, width: u32) {
+    pub fn solve_range(&mut self, storage: &mut S, range: Range<usize>, width: i32) {
         assert!(range.end <= self.offsets.as_mut().len());
 
         let (rules, widths) = storage.rules_and_widths();
@@ -236,10 +236,10 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, 
     fn child_rect(&mut self, storage: &mut Self::Storage, index: Self::ChildInfo) -> Rect {
         let mut rect = self.rect;
         if self.direction.is_horizontal() {
-            rect.pos.0 = self.offsets.as_mut()[index] as i32;
+            rect.pos.0 = self.offsets.as_mut()[index];
             rect.size.0 = storage.widths()[index];
         } else {
-            rect.pos.1 = self.offsets.as_mut()[index] as i32;
+            rect.pos.1 = self.offsets.as_mut()[index];
             rect.size.1 = storage.widths()[index];
         }
         rect
@@ -251,9 +251,8 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, 
         let len = storage.widths().len();
         let post_rules = SizeRules::min_sum(&storage.rules()[(index + 1)..len]);
 
-        let size1 = pre_rules.min_size() as i32 + i32::from(pre_rules.margins().1.max(m.0));
-        let size2 =
-            size1 as u32 + post_rules.min_size() + u32::from(post_rules.margins().0.max(m.1));
+        let size1 = pre_rules.min_size() + i32::from(pre_rules.margins().1.max(m.0));
+        let size2 = size1 + post_rules.min_size() + i32::from(post_rules.margins().0.max(m.1));
 
         let mut rect = self.rect;
         if self.direction.is_horizontal() {

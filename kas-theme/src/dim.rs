@@ -44,14 +44,14 @@ pub struct Dimensions {
     pub dpp: f32,
     pub pt_size: f32,
     pub font_marker_width: f32,
-    pub line_height: u32,
-    pub min_line_length: u32,
-    pub ideal_line_length: u32,
+    pub line_height: i32,
+    pub min_line_length: i32,
+    pub ideal_line_length: i32,
     pub outer_margin: u16,
     pub inner_margin: u16,
-    pub frame: u32,
-    pub button_frame: u32,
-    pub checkbox: u32,
+    pub frame: i32,
+    pub button_frame: i32,
+    pub checkbox: i32,
     pub scrollbar: Size,
     pub slider: Size,
     pub progress_bar: Size,
@@ -62,24 +62,24 @@ impl Dimensions {
         let font_id = Default::default();
         let dpp = scale_factor * (96.0 / 72.0);
         let dpem = dpp * pt_size;
-        let line_height = kas::text::fonts::fonts().get(font_id).height(dpem).ceil() as u32;
+        let line_height = kas::text::fonts::fonts().get(font_id).height(dpem).ceil() as i32;
 
         let outer_margin = (params.outer_margin * scale_factor).round() as u16;
         let inner_margin = (params.inner_margin * scale_factor).round() as u16;
-        let frame = (params.frame_size * scale_factor).round() as u32;
+        let frame = (params.frame_size * scale_factor).round() as i32;
         Dimensions {
             scale_factor,
             dpp,
             pt_size,
             font_marker_width: (1.6 * scale_factor).round().max(1.0),
             line_height,
-            min_line_length: (8.0 * dpem).round() as u32,
-            ideal_line_length: (24.0 * dpem).round() as u32,
+            min_line_length: (8.0 * dpem).round() as i32,
+            ideal_line_length: (24.0 * dpem).round() as i32,
             outer_margin,
             inner_margin,
             frame,
-            button_frame: (params.button_frame * scale_factor).round() as u32,
-            checkbox: (9.0 * dpp).round() as u32 + 2 * (u32::from(inner_margin) + frame),
+            button_frame: (params.button_frame * scale_factor).round() as i32,
+            checkbox: (9.0 * dpp).round() as i32 + 2 * (i32::from(inner_margin) + frame),
             scrollbar: Size::from(params.scrollbar_size * scale_factor),
             slider: Size::from(params.slider_size * scale_factor),
             progress_bar: Size::from(params.progress_bar * scale_factor),
@@ -154,7 +154,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         Margins::uniform(self.dims.outer_margin)
     }
 
-    fn line_height(&self, _: TextClass) -> u32 {
+    fn line_height(&self, _: TextClass) -> i32 {
         self.dims.line_height
     }
 
@@ -188,7 +188,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         };
         let margins = (margin, margin);
         if axis.is_horizontal() {
-            let bound = (required.0).ceil() as u32;
+            let bound = (required.0).ceil() as i32;
             let min = self.dims.min_line_length;
             let ideal = self.dims.ideal_line_length;
             // NOTE: using different variable-width stretch policies here can
@@ -201,13 +201,13 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             SizeRules::new(min, ideal, margins, policy)
         } else {
             let min = match class {
-                TextClass::Label => (required.1).ceil() as u32,
+                TextClass::Label => (required.1).ceil() as i32,
                 TextClass::LabelSingle | TextClass::Button | TextClass::Edit => {
                     self.dims.line_height
                 }
                 TextClass::EditMulti => self.dims.line_height * 3,
             };
-            let ideal = ((required.1).ceil() as u32).max(min);
+            let ideal = ((required.1).ceil() as i32).max(min);
             let stretch = match class {
                 TextClass::Button | TextClass::Edit | TextClass::LabelSingle => {
                     StretchPolicy::Fixed
@@ -229,7 +229,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     }
 
     fn edit_surround(&self) -> (Size, Size) {
-        let s = Size::uniform(self.dims.frame + u32::from(self.dims.inner_margin));
+        let s = Size::uniform(self.dims.frame + i32::from(self.dims.inner_margin));
         (s, s)
     }
 
@@ -242,12 +242,12 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         self.checkbox()
     }
 
-    fn scrollbar(&self) -> (Size, u32) {
+    fn scrollbar(&self) -> (Size, i32) {
         let size = self.dims.scrollbar;
         (size, 2 * size.0)
     }
 
-    fn slider(&self) -> (Size, u32) {
+    fn slider(&self) -> (Size, i32) {
         let size = self.dims.slider;
         (size, 2 * size.0)
     }

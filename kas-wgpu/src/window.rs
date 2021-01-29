@@ -8,6 +8,7 @@
 use log::{debug, error, info, trace};
 use std::time::Instant;
 
+use kas::conv::Conv;
 use kas::draw::SizeHandle;
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
@@ -92,8 +93,8 @@ where
         let sc_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
             format: TEX_FORMAT,
-            width: size.0,
-            height: size.1,
+            width: u32::conv(size.0),
+            height: u32::conv(size.1),
             present_mode: wgpu::PresentMode::Fifo,
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
@@ -290,6 +291,14 @@ where
     CW: CustomWindow + 'static,
     TW: kas_theme::Window + 'static,
 {
+    /// Swap-chain size
+    fn sc_size(&self) -> Size {
+        Size(
+            i32::conv(self.sc_desc.width),
+            i32::conv(self.sc_desc.height),
+        )
+    }
+
     fn reconfigure<C, T>(&mut self, shared: &mut SharedState<C, T>)
     where
         C: CustomPipe<Window = CW>,
@@ -312,8 +321,7 @@ where
         T: Theme<DrawPipe<C>, Window = TW>,
     {
         let time = Instant::now();
-        let size = Size(self.sc_desc.width, self.sc_desc.height);
-        let rect = Rect::new(Coord::ZERO, size);
+        let rect = Rect::new(Coord::ZERO, self.sc_size());
         debug!("Resizing window to rect = {:?}", rect);
 
         let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
@@ -345,15 +353,15 @@ where
     {
         let time = Instant::now();
         let size = size.into();
-        if size == Size(self.sc_desc.width, self.sc_desc.height) {
+        if size == self.sc_size() {
             return;
         }
 
         let buf = shared.draw.resize(&mut self.draw, &shared.device, size);
         shared.queue.submit(std::iter::once(buf));
 
-        self.sc_desc.width = size.0;
-        self.sc_desc.height = size.1;
+        self.sc_desc.width = u32::conv(size.0);
+        self.sc_desc.height = u32::conv(size.1);
         self.swap_chain = shared
             .device
             .create_swap_chain(&self.surface, &self.sc_desc);
@@ -374,11 +382,7 @@ where
         T: Theme<DrawPipe<C>, Window = TW>,
     {
         let time = Instant::now();
-        let size = Size(self.sc_desc.width, self.sc_desc.height);
-        let rect = Rect {
-            pos: Coord::ZERO,
-            size,
-        };
+        let rect = Rect::new(Coord::ZERO, self.sc_size());
 
         unsafe {
             // Safety: we must drop draw_handle after draw call (wrong lifetime)

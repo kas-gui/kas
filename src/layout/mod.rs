@@ -59,7 +59,7 @@ pub use storage::{
 pub struct AxisInfo {
     vertical: bool,
     has_fixed: bool,
-    other_axis: u32,
+    other_axis: i32,
 }
 
 impl AxisInfo {
@@ -67,7 +67,7 @@ impl AxisInfo {
     ///
     /// This method is *usually* not required by user code.
     #[inline]
-    pub fn new(vertical: bool, fixed: Option<u32>) -> Self {
+    pub fn new(vertical: bool, fixed: Option<i32>) -> Self {
         AxisInfo {
             vertical,
             has_fixed: fixed.is_some(),
@@ -89,7 +89,7 @@ impl AxisInfo {
 
     /// Size of other axis, if fixed
     #[inline]
-    pub fn other(&self) -> Option<u32> {
+    pub fn other(&self) -> Option<i32> {
         if self.has_fixed {
             Some(self.other_axis)
         } else {
@@ -99,7 +99,7 @@ impl AxisInfo {
 
     /// Size of other axis, if fixed and `vertical` matches this axis.
     #[inline]
-    pub fn size_other_if_fixed(&self, vertical: bool) -> Option<u32> {
+    pub fn size_other_if_fixed(&self, vertical: bool) -> Option<i32> {
         if vertical == self.vertical && self.has_fixed {
             Some(self.other_axis)
         } else {
@@ -109,7 +109,7 @@ impl AxisInfo {
 
     /// Extract horizontal or vertical component of a [`Size`]
     #[inline]
-    pub fn extract_size(&self, size: Size) -> u32 {
+    pub fn extract_size(&self, size: Size) -> i32 {
         if !self.vertical {
             size.0
         } else {

@@ -120,7 +120,7 @@ impl<M: Clone + Debug> Menu for MenuEntry<M> {}
 pub struct MenuToggle<M: 'static> {
     #[widget_core]
     core: CoreData,
-    layout_data: layout::FixedRowStorage<[SizeRules; 3], [u32; 2]>,
+    layout_data: layout::FixedRowStorage<[SizeRules; 3], [i32; 2]>,
     #[widget]
     checkbox: CheckBoxBare<M>,
     #[widget]
@@ -222,7 +222,7 @@ impl<M: 'static> Layout for MenuToggle<M> {
 
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        let mut setter = layout::RowSetter::<_, [u32; 2], _>::new(
+        let mut setter = layout::RowSetter::<_, [i32; 2], _>::new(
             rect,
             (kas::Right, 2usize),
             align,

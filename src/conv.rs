@@ -141,10 +141,10 @@ macro_rules! impl_via_as_max_check {
     };
 }
 
-impl_via_as_max_check!(u16: i8, u8);
-impl_via_as_max_check!(u32: i8, i16, u8, u16);
-impl_via_as_max_check!(u64: i8, i16, i32, u8, u16, u32, usize);
-impl_via_as_max_check!(u128: i8, i16, i32, i64, u8, u16, u32, u64, usize);
+impl_via_as_max_check!(u16: i8, i16, u8);
+impl_via_as_max_check!(u32: i8, i16, i32, u8, u16);
+impl_via_as_max_check!(u64: i8, i16, i32, i64, u8, u16, u32, usize);
+impl_via_as_max_check!(u128: i8, i16, i32, i64, i128, u8, u16, u32, u64, usize);
 impl_via_as_max_check!(usize: i8, i16, i32, isize, u8, u16, u32);
 
 // Assumption: $y::MAX and $y::MIN are representable as $x

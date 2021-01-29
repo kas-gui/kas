@@ -210,7 +210,7 @@ impl CompleteAlignment {
                 Align::Centre => (size.0 - ideal.0) / 2,
                 Align::BR => size.0 - ideal.0,
                 Align::Default | Align::TL | Align::Stretch => 0,
-            } as i32;
+            };
             size.0 = ideal.0;
         }
         if self.valign != Align::Stretch && ideal.1 < size.1 {
@@ -218,7 +218,7 @@ impl CompleteAlignment {
                 Align::Centre => (size.1 - ideal.1) / 2,
                 Align::BR => size.1 - ideal.1,
                 Align::Default | Align::TL | Align::Stretch => 0,
-            } as i32;
+            };
             size.1 = ideal.1;
         }
         Rect { pos, size }
@@ -276,7 +276,7 @@ pub trait Directional: Copy + Sized + std::fmt::Debug + 'static {
 
     /// Extract a size
     #[inline]
-    fn extract_size(self, size: Size) -> u32 {
+    fn extract_size(self, size: Size) -> i32 {
         if self.is_horizontal() {
             size.0
         } else {

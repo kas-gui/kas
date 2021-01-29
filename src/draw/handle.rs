@@ -115,7 +115,7 @@ pub trait SizeHandle {
     /// recommended to calculate sizes as follows:
     /// ```
     /// # let scale_factor = 1.5f32;
-    /// let size = (100.0 * scale_factor).round() as u32;
+    /// let size = (100.0 * scale_factor).round() as i32;
     /// ```
     ///
     /// This value may change during a program's execution (e.g. when a window
@@ -149,7 +149,7 @@ pub trait SizeHandle {
     fn outer_margins(&self) -> Margins;
 
     /// The height of a line of text
-    fn line_height(&self, class: TextClass) -> u32;
+    fn line_height(&self, class: TextClass) -> i32;
 
     /// Update a [`Text`] and get a size bound
     ///
@@ -200,7 +200,7 @@ pub trait SizeHandle {
     /// -   `min_len`: minimum length for the whole bar
     ///
     /// Required bound: `min_len >= size.0`.
-    fn scrollbar(&self) -> (Size, u32);
+    fn scrollbar(&self) -> (Size, i32);
 
     /// Dimensions for a slider
     ///
@@ -211,7 +211,7 @@ pub trait SizeHandle {
     /// -   `min_len`: minimum length for the whole bar
     ///
     /// Required bound: `min_len >= size.0`.
-    fn slider(&self) -> (Size, u32);
+    fn slider(&self) -> (Size, i32);
 
     /// Dimensions for a progress bar
     ///
@@ -468,7 +468,7 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
         self.deref().outer_margins()
     }
 
-    fn line_height(&self, class: TextClass) -> u32 {
+    fn line_height(&self, class: TextClass) -> i32 {
         self.deref().line_height(class)
     }
     fn text_bound(
@@ -496,10 +496,10 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn radiobox(&self) -> Size {
         self.deref().radiobox()
     }
-    fn scrollbar(&self) -> (Size, u32) {
+    fn scrollbar(&self) -> (Size, i32) {
         self.deref().scrollbar()
     }
-    fn slider(&self) -> (Size, u32) {
+    fn slider(&self) -> (Size, i32) {
         self.deref().slider()
     }
     fn progress_bar(&self) -> Size {
@@ -529,7 +529,7 @@ where
         self.deref().outer_margins()
     }
 
-    fn line_height(&self, class: TextClass) -> u32 {
+    fn line_height(&self, class: TextClass) -> i32 {
         self.deref().line_height(class)
     }
     fn text_bound(
@@ -557,10 +557,10 @@ where
     fn radiobox(&self) -> Size {
         self.deref().radiobox()
     }
-    fn scrollbar(&self) -> (Size, u32) {
+    fn scrollbar(&self) -> (Size, i32) {
         self.deref().scrollbar()
     }
-    fn slider(&self) -> (Size, u32) {
+    fn slider(&self) -> (Size, i32) {
         self.deref().slider()
     }
     fn progress_bar(&self) -> Size {

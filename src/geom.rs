@@ -70,7 +70,7 @@ impl From<(i32, i32)> for Coord {
 impl From<Size> for Coord {
     #[inline]
     fn from(size: Size) -> Coord {
-        Coord(size.0 as i32, size.1 as i32)
+        Coord(size.0, size.1)
     }
 }
 
@@ -97,7 +97,7 @@ impl std::ops::Add<Size> for Coord {
 
     #[inline]
     fn add(self, other: Size) -> Self {
-        Coord(self.0 + other.0 as i32, self.1 + other.1 as i32)
+        Coord(self.0 + other.0, self.1 + other.1)
     }
 }
 
@@ -106,7 +106,7 @@ impl std::ops::Sub<Size> for Coord {
 
     #[inline]
     fn sub(self, other: Size) -> Self {
-        Coord(self.0 - other.0 as i32, self.1 - other.1 as i32)
+        Coord(self.0 - other.0, self.1 - other.1)
     }
 }
 
@@ -154,14 +154,14 @@ impl std::ops::AddAssign<Coord> for Coord {
 impl std::ops::AddAssign<Size> for Coord {
     #[inline]
     fn add_assign(&mut self, rhs: Size) {
-        self.0 += rhs.0 as i32;
-        self.1 += rhs.1 as i32;
+        self.0 += rhs.0;
+        self.1 += rhs.1;
     }
 }
 
 /// A `(w, h)` size.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
-pub struct Size(pub u32, pub u32);
+pub struct Size(pub i32, pub i32);
 
 impl Size {
     /// A size of `(0, 0)`
@@ -169,7 +169,7 @@ impl Size {
 
     /// Uniform size in each dimension
     #[inline]
-    pub const fn uniform(v: u32) -> Self {
+    pub fn uniform(v: i32) -> Self {
         Size(v, v)
     }
 
@@ -200,15 +200,15 @@ impl Size {
     }
 }
 
-impl From<(u32, u32)> for Size {
-    fn from(size: (u32, u32)) -> Size {
+impl From<(i32, i32)> for Size {
+    fn from(size: (i32, i32)) -> Size {
         Size(size.0, size.1)
     }
 }
 
 impl From<Coord> for Size {
     fn from(coord: Coord) -> Size {
-        Size(coord.0 as u32, coord.1 as u32)
+        Size(coord.0, coord.1)
     }
 }
 
@@ -216,7 +216,7 @@ impl From<Coord> for Size {
 impl<X: Pixel> From<PhysicalSize<X>> for Size {
     #[inline]
     fn from(size: PhysicalSize<X>) -> Size {
-        let size: (u32, u32) = size.cast::<u32>().into();
+        let size: (i32, i32) = size.cast::<i32>().into();
         Size(size.0, size.1)
     }
 }
@@ -225,7 +225,7 @@ impl<X: Pixel> From<PhysicalSize<X>> for Size {
 impl<X: Pixel> From<Size> for PhysicalSize<X> {
     #[inline]
     fn from(size: Size) -> PhysicalSize<X> {
-        let pos: PhysicalSize<u32> = (size.0, size.1).into();
+        let pos: PhysicalSize<i32> = (size.0, size.1).into();
         pos.cast()
     }
 }
@@ -262,11 +262,11 @@ impl std::ops::Sub for Size {
     }
 }
 
-impl std::ops::Mul<u32> for Size {
+impl std::ops::Mul<i32> for Size {
     type Output = Self;
 
     #[inline]
-    fn mul(self, x: u32) -> Self {
+    fn mul(self, x: i32) -> Self {
         Size(self.0 * x, self.1 * x)
     }
 }
@@ -276,15 +276,15 @@ impl std::ops::Mul<f32> for Size {
 
     #[inline]
     fn mul(self, x: f32) -> Self {
-        Size((self.0 as f32 * x) as u32, (self.1 as f32 * x) as u32)
+        Size((self.0 as f32 * x) as i32, (self.1 as f32 * x) as i32)
     }
 }
 
-impl std::ops::Div<u32> for Size {
+impl std::ops::Div<i32> for Size {
     type Output = Self;
 
     #[inline]
-    fn div(self, x: u32) -> Self {
+    fn div(self, x: i32) -> Self {
         Size(self.0 / x, self.1 / x)
     }
 }
@@ -329,15 +329,15 @@ impl Rect {
     #[inline]
     pub fn contains(&self, c: Coord) -> bool {
         c.0 >= self.pos.0
-            && c.0 < self.pos.0 + (self.size.0 as i32)
+            && c.0 < self.pos.0 + (self.size.0)
             && c.1 >= self.pos.1
-            && c.1 < self.pos.1 + (self.size.1 as i32)
+            && c.1 < self.pos.1 + (self.size.1)
     }
 
     /// Shrink self in all directions by the given `n`
     #[inline]
-    pub fn shrink(&self, n: u32) -> Rect {
-        let pos = self.pos + Coord::uniform(n as i32);
+    pub fn shrink(&self, n: i32) -> Rect {
+        let pos = self.pos + Coord::uniform(n);
         let w = self.size.0.saturating_sub(n + n);
         let h = self.size.1.saturating_sub(n + n);
         let size = Size(w, h);

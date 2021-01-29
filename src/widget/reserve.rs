@@ -51,7 +51,7 @@ impl<W: Widget, R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static> 
     /// use kas::prelude::*;
     ///
     /// let label = Reserve::new(Filler::new(), |size_handle, axis| {
-    ///     let size = (size_handle.scale_factor() * 100.0).round() as u32;
+    ///     let size = (size_handle.scale_factor() * 100.0).round() as i32;
     ///     SizeRules::fixed(size, (0, 0))
     /// });
     ///```
