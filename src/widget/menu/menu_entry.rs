@@ -22,7 +22,7 @@ pub struct MenuEntry<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
     label: Text<AccelString>,
-    label_off: Coord,
+    label_off: Size,
     msg: M,
 }
 
@@ -39,7 +39,7 @@ impl<M: Clone + Debug + 'static> WidgetConfig for MenuEntry<M> {
 impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.menu_frame();
-        self.label_off = size.into();
+        self.label_off = size;
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, Margins::ZERO);
         let text_rules = size_handle.text_bound(&mut self.label, TextClass::LabelSingle, axis);
         text_rules.surrounded_by(frame_rules, true)
@@ -70,7 +70,7 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
         MenuEntry {
             core: Default::default(),
             label: Text::new_single(label.into()),
-            label_off: Coord::ZERO,
+            label_off: Size::ZERO,
             msg,
         }
     }
@@ -95,7 +95,7 @@ impl<M: Clone + Debug + 'static> SetAccel for MenuEntry<M> {
         }
         // NOTE: we assume here that top-left and bottom-right frame size is the
         // same; if not then resizes may not happen exactly when required
-        let size = Size::from(self.label_off);
+        let size = self.label_off;
         action | kas::text::util::set_text_and_prepare(&mut self.label, string, size + size)
     }
 }

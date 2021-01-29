@@ -318,7 +318,7 @@ impl<RT: RowTemp, CT: RowTemp, S: GridStorage> RulesSetter for GridSetter<RT, CT
     fn child_rect(&mut self, storage: &mut Self::Storage, info: Self::ChildInfo) -> Rect {
         let x = self.w_offsets.as_mut()[usize::conv(info.col)];
         let y = self.h_offsets.as_mut()[usize::conv(info.row)];
-        let pos = self.pos + Coord(x, y);
+        let pos = self.pos + Size(x, y);
 
         let i1 = usize::conv(info.col_end) - 1;
         let w = storage.widths()[i1] + self.w_offsets.as_mut()[i1]

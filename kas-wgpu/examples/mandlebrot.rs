@@ -429,7 +429,7 @@ impl Layout for Mandlebrot {
         let (pass, offset, draw) = draw_handle.draw_device();
         // TODO: our view transform assumes that offset = 0.
         // Here it is but in general we should be able to handle an offset here!
-        assert_eq!(offset, Coord::ZERO, "view transform assumption violated");
+        assert_eq!(offset, Size::ZERO, "view transform assumption violated");
 
         let draw = draw
             .as_any_mut()

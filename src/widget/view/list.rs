@@ -138,7 +138,7 @@ where
         // TODO: we may wish to notify self.data of the range it should cache
         let w_len = self.widgets.len();
         let (old_start, old_end) = (self.data_range.start(), self.data_range.end());
-        let offset = u64::conv(self.direction.extract_coord(self.scroll_offset()));
+        let offset = u64::conv(self.direction.extract_size(self.scroll_offset()));
         let mut first_data = usize::conv(offset / u64::conv(self.child_skip));
         first_data = (first_data + w_len)
             .min(self.data.len())
@@ -147,11 +147,11 @@ where
         let (child_size, mut skip) = match self.direction.is_vertical() {
             false => (
                 Size(self.child_size, self.rect().size.1),
-                Coord(self.child_skip, 0),
+                Size(self.child_skip, 0),
             ),
             true => (
                 Size(self.rect().size.0, self.child_size),
-                Coord(0, self.child_skip),
+                Size(0, self.child_skip),
             ),
         };
         let mut pos_start = self.core.rect.pos;
@@ -196,17 +196,17 @@ where
     }
 
     #[inline]
-    fn max_scroll_offset(&self) -> Coord {
+    fn max_scroll_offset(&self) -> Size {
         self.scroll.max_offset()
     }
 
     #[inline]
-    fn scroll_offset(&self) -> Coord {
+    fn scroll_offset(&self) -> Size {
         self.scroll.offset()
     }
 
     #[inline]
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord {
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Size) -> Size {
         *mgr |= self.scroll.set_offset(offset);
         self.update_widgets(mgr);
         self.scroll.offset()

@@ -21,7 +21,7 @@ pub struct SubMenu<D: Directional, W: Menu> {
     core: CoreData,
     direction: D,
     label: Text<AccelString>,
-    label_off: Coord,
+    label_off: Size,
     #[widget]
     pub list: MenuFrame<Column<W>>,
     popup_id: Option<WindowId>,
@@ -62,7 +62,7 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
             core: Default::default(),
             direction,
             label: Text::new_single(label.into()),
-            label_off: Coord::ZERO,
+            label_off: Size::ZERO,
             list: MenuFrame::new(Column::new(list)),
             popup_id: None,
         }
@@ -104,7 +104,7 @@ impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
 impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.menu_frame();
-        self.label_off = size.into();
+        self.label_off = size;
         let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, Margins::ZERO);
         let text_rules = size_handle.text_bound(&mut self.label, TextClass::LabelSingle, axis);
         text_rules.surrounded_by(frame_rules, true)
@@ -284,7 +284,7 @@ impl<D: Directional, W: Menu> SetAccel for SubMenu<D, W> {
         }
         // NOTE: we assume here that top-left and bottom-right frame size is the
         // same; if not then resizes may not happen exactly when required
-        let size = Size::from(self.label_off);
+        let size = self.label_off;
         action | kas::text::util::set_text_and_prepare(&mut self.label, string, size + size)
     }
 }

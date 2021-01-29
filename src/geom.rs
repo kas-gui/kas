@@ -11,7 +11,9 @@ use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize, Pixel};
 mod vector;
 pub use vector::{DVec2, Quad, Vec2, Vec3};
 
-/// An `(x, y)` coordinate.
+/// An `(x, y)` coordinate, also known as a **point**
+///
+/// This is not a vector type: one cannot add a point to a point.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Coord(pub i32, pub i32);
 
@@ -37,14 +39,6 @@ impl Coord {
         Coord(self.0.max(other.0), self.1.max(other.1))
     }
 
-    /// Return the value clamped to the given `min` and `max`
-    ///
-    /// In the case that `min > max`, the `min` value is returned.
-    #[inline]
-    pub fn clamp(self, min: Self, max: Self) -> Self {
-        self.min(max).max(min)
-    }
-
     /// Return the transpose (swap width and height)
     #[inline]
     pub fn transpose(self) -> Self {
@@ -67,28 +61,12 @@ impl From<(i32, i32)> for Coord {
     }
 }
 
-impl From<Size> for Coord {
-    #[inline]
-    fn from(size: Size) -> Coord {
-        Coord(size.0, size.1)
-    }
-}
-
-impl std::ops::Add for Coord {
-    type Output = Self;
-
-    #[inline]
-    fn add(self, other: Self) -> Self {
-        Coord(self.0 + other.0, self.1 + other.1)
-    }
-}
-
 impl std::ops::Sub for Coord {
-    type Output = Self;
+    type Output = Size;
 
     #[inline]
-    fn sub(self, other: Self) -> Self {
-        Coord(self.0 - other.0, self.1 - other.1)
+    fn sub(self, other: Self) -> Size {
+        Size(self.0 - other.0, self.1 - other.1)
     }
 }
 
@@ -159,7 +137,10 @@ impl std::ops::AddAssign<Size> for Coord {
     }
 }
 
-/// A `(w, h)` size.
+/// A `(w, h)` size, also known as an **extent**
+///
+/// This is a vector type: the difference between one point and another is a
+/// vector, represented using this type, `Size`. Components may be negative.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Size(pub i32, pub i32);
 
@@ -185,6 +166,14 @@ impl Size {
         Size(self.0.max(other.0), self.1.max(other.1))
     }
 
+    /// Return the value clamped to the given `min` and `max`
+    ///
+    /// In the case that `min > max`, the `min` value is returned.
+    #[inline]
+    pub fn clamp(self, min: Self, max: Self) -> Self {
+        self.min(max).max(min)
+    }
+
     /// Return the transpose (swap width and height)
     #[inline]
     pub fn transpose(self) -> Self {
@@ -203,12 +192,6 @@ impl Size {
 impl From<(i32, i32)> for Size {
     fn from(size: (i32, i32)) -> Size {
         Size(size.0, size.1)
-    }
-}
-
-impl From<Coord> for Size {
-    fn from(coord: Coord) -> Size {
-        Size(coord.0, coord.1)
     }
 }
 
@@ -241,6 +224,15 @@ impl From<Size> for winit::dpi::Size {
 impl From<Size> for kas_text::Vec2 {
     fn from(size: Size) -> kas_text::Vec2 {
         kas_text::Vec2(size.0 as f32, size.1 as f32)
+    }
+}
+
+impl std::ops::Add<Coord> for Size {
+    type Output = Coord;
+
+    #[inline]
+    fn add(self, other: Coord) -> Coord {
+        Coord(self.0 + other.0, self.1 + other.1)
     }
 }
 
@@ -340,7 +332,7 @@ impl Rect {
     /// Shrink self in all directions by the given `n`
     #[inline]
     pub fn shrink(&self, n: i32) -> Rect {
-        let pos = self.pos + Coord::splat(n);
+        let pos = self.pos + Size::splat(n);
         let w = self.size.0.saturating_sub(n + n);
         let h = self.size.1.saturating_sub(n + n);
         let size = Size(w, h);
@@ -348,11 +340,11 @@ impl Rect {
     }
 }
 
-impl std::ops::Add<Coord> for Rect {
+impl std::ops::Add<Size> for Rect {
     type Output = Self;
 
     #[inline]
-    fn add(self, offset: Coord) -> Self {
+    fn add(self, offset: Size) -> Self {
         let pos = self.pos + offset;
         Rect {
             pos,
@@ -361,11 +353,11 @@ impl std::ops::Add<Coord> for Rect {
     }
 }
 
-impl std::ops::Sub<Coord> for Rect {
+impl std::ops::Sub<Size> for Rect {
     type Output = Self;
 
     #[inline]
-    fn sub(self, offset: Coord) -> Self {
+    fn sub(self, offset: Size) -> Self {
         let pos = self.pos - offset;
         Rect {
             pos,

@@ -170,7 +170,7 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
     }
 
     // translate value to offset in local coordinates
-    fn offset(&self) -> Coord {
+    fn offset(&self) -> Size {
         let a = self.value - self.range.0;
         let b = self.range.1 - self.range.0;
         let max_offset = self.handle.max_offset();
@@ -180,13 +180,13 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
             frac = 1.0 - frac;
         }
         match self.direction.is_vertical() {
-            false => Coord((max_offset.0 as f64 * frac) as i32, 0),
-            true => Coord(0, (max_offset.1 as f64 * frac) as i32),
+            false => Size((max_offset.0 as f64 * frac) as i32, 0),
+            true => Size(0, (max_offset.1 as f64 * frac) as i32),
         }
     }
 
     // true if not equal to old value
-    fn set_offset(&mut self, offset: Coord) -> bool {
+    fn set_offset(&mut self, offset: Size) -> bool {
         let b = self.range.1 - self.range.0;
         let max_offset = self.handle.max_offset();
         let mut a = match self.direction.is_vertical() {
