@@ -19,9 +19,9 @@ impl Coord {
     /// A coord of `(0, 0)`
     pub const ZERO: Coord = Coord(0, 0);
 
-    /// A `Coord` with uniform value `n` on both axes
+    /// A `Coord` with value `n` on both axes
     #[inline]
-    pub fn uniform(n: i32) -> Self {
+    pub fn splat(n: i32) -> Self {
         Coord(n, n)
     }
 
@@ -167,9 +167,9 @@ impl Size {
     /// A size of `(0, 0)`
     pub const ZERO: Size = Size(0, 0);
 
-    /// Uniform size in each dimension
+    /// Uniform size on each axis (square)
     #[inline]
-    pub fn uniform(v: i32) -> Self {
+    pub fn splat(v: i32) -> Self {
         Size(v, v)
     }
 
@@ -337,7 +337,7 @@ impl Rect {
     /// Shrink self in all directions by the given `n`
     #[inline]
     pub fn shrink(&self, n: i32) -> Rect {
-        let pos = self.pos + Coord::uniform(n);
+        let pos = self.pos + Coord::splat(n);
         let w = self.size.0.saturating_sub(n + n);
         let h = self.size.1.saturating_sub(n + n);
         let size = Size(w, h);

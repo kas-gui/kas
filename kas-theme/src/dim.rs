@@ -139,7 +139,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
 
     fn frame(&self) -> Size {
         let f = self.dims.frame;
-        Size::uniform(f)
+        Size::splat(f)
     }
     fn menu_frame(&self) -> Size {
         let f = self.dims.frame;
@@ -147,11 +147,11 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     }
 
     fn inner_margin(&self) -> Size {
-        Size::uniform(self.dims.inner_margin.into())
+        Size::splat(self.dims.inner_margin.into())
     }
 
     fn outer_margins(&self) -> Margins {
-        Margins::uniform(self.dims.outer_margin)
+        Margins::splat(self.dims.outer_margin)
     }
 
     fn line_height(&self, _: TextClass) -> i32 {
@@ -224,17 +224,17 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     }
 
     fn button_surround(&self) -> (Size, Size) {
-        let s = Size::uniform(self.dims.button_frame);
+        let s = Size::splat(self.dims.button_frame);
         (s, s)
     }
 
     fn edit_surround(&self) -> (Size, Size) {
-        let s = Size::uniform(self.dims.frame + i32::from(self.dims.inner_margin));
+        let s = Size::splat(self.dims.frame + i32::from(self.dims.inner_margin));
         (s, s)
     }
 
     fn checkbox(&self) -> Size {
-        Size::uniform(self.dims.checkbox)
+        Size::splat(self.dims.checkbox)
     }
 
     #[inline]

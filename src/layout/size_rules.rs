@@ -30,12 +30,12 @@ pub struct Margins {
 
 impl Margins {
     /// Zero-sized margins
-    pub const ZERO: Margins = Margins::uniform(0);
+    pub const ZERO: Margins = Margins::splat(0);
 
     /// Margins with equal size on each edge.
     #[inline]
-    pub const fn uniform(size: u16) -> Self {
-        Margins::hv_uniform(size, size)
+    pub const fn splat(size: u16) -> Self {
+        Margins::hv_splat(size, size)
     }
 
     /// Margins via horizontal and vertical sizes
@@ -46,7 +46,7 @@ impl Margins {
 
     /// Margins via horizontal and vertical sizes
     #[inline]
-    pub const fn hv_uniform(h: u16, v: u16) -> Self {
+    pub const fn hv_splat(h: u16, v: u16) -> Self {
         Margins {
             horiz: (h, h),
             vert: (v, v),

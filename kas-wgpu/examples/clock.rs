@@ -42,7 +42,7 @@ impl Layout for Clock {
     fn set_rect(&mut self, _: &mut Manager, rect: Rect, _align: AlignHints) {
         // Force to square
         let size = rect.size.0.min(rect.size.1);
-        let size = Size::uniform(size);
+        let size = Size::splat(size);
         let excess = rect.size - size;
         let pos = rect.pos + (excess * 0.5);
         self.core.rect = Rect { pos, size };
