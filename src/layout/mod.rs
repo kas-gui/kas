@@ -40,7 +40,7 @@ mod size_rules;
 mod sizer;
 mod storage;
 
-use crate::geom::Size;
+use kas::{Direction, Directional};
 
 pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
@@ -106,14 +106,16 @@ impl AxisInfo {
             None
         }
     }
+}
 
-    /// Extract horizontal or vertical component of a [`Size`]
+impl Directional for AxisInfo {
+    type Flipped = Self;
+
     #[inline]
-    pub fn extract_size(&self, size: Size) -> i32 {
-        if !self.vertical {
-            size.0
-        } else {
-            size.1
+    fn as_direction(self) -> Direction {
+        match self.vertical {
+            false => Direction::Right,
+            true => Direction::Down,
         }
     }
 }

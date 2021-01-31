@@ -6,6 +6,7 @@
 //! Geometry data types
 
 use kas::conv::Conv;
+use kas::{Direction, Directional};
 #[cfg(feature = "winit")]
 use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize, Pixel};
 
@@ -40,6 +41,21 @@ macro_rules! impl_common {
             #[inline]
             pub fn transpose(self) -> Self {
                 Self(self.1, self.0)
+            }
+
+            /// Extract one component, based on a direction
+            ///
+            /// Panics if direction is reversed. We should decide whether to
+            /// negate in this case (maybe for coord and offset but not for size).
+            #[inline]
+            pub fn extract<D: Directional>(self, dir: D) -> i32 {
+                match dir.as_direction() {
+                    Direction::Right => self.0,
+                    Direction::Down => self.1,
+                    Direction::Left | Direction::Up => {
+                        panic!("extract not defined for left/up directions!")
+                    }
+                }
             }
         }
 

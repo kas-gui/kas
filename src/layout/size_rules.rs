@@ -11,6 +11,7 @@ use std::iter::Sum;
 
 use crate::conv::Conv;
 use crate::geom::Size;
+use crate::Directional;
 
 // for doc use
 #[allow(unused)]
@@ -199,22 +200,14 @@ impl SizeRules {
 
     /// Construct fixed-size rules from given data
     #[inline]
-    pub fn extract_fixed(vertical: bool, size: Size, margin: Margins) -> Self {
-        if !vertical {
-            SizeRules {
-                a: size.0,
-                b: size.0,
-                m: margin.horiz,
-                stretch: StretchPolicy::Fixed,
-            }
+    pub fn extract_fixed<D: Directional>(dir: D, size: Size, margin: Margins) -> Self {
+        let size = size.extract(dir);
+        let m = if dir.is_horizontal() {
+            margin.horiz
         } else {
-            SizeRules {
-                a: size.1,
-                b: size.1,
-                m: margin.vert,
-                stretch: StretchPolicy::Fixed,
-            }
-        }
+            margin.vert
+        };
+        SizeRules::fixed(size, m)
     }
 
     /// Construct with custom rules

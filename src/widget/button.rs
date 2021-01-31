@@ -41,7 +41,7 @@ impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
         let sides = size_handle.button_surround();
         self.frame_size = sides.0 + sides.1;
         let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), self.frame_size, margins);
+        let frame_rules = SizeRules::extract_fixed(axis, self.frame_size, margins);
 
         let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)

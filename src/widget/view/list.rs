@@ -138,7 +138,7 @@ where
         // TODO: we may wish to notify self.data of the range it should cache
         let w_len = self.widgets.len();
         let (old_start, old_end) = (self.data_range.start(), self.data_range.end());
-        let offset = u64::conv(self.direction.extract_size(self.scroll_offset()));
+        let offset = u64::conv(self.scroll_offset().extract(self.direction));
         let mut first_data = usize::conv(offset / u64::conv(self.child_skip));
         first_data = (first_data + w_len)
             .min(self.data.len())

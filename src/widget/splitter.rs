@@ -119,7 +119,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         }
         assert!(self.handles.len() + 1 == self.widgets.len());
 
-        let handle_size = axis.extract_size(size_handle.frame());
+        let handle_size = size_handle.frame().extract(axis);
 
         let dim = (self.direction, WidgetChildren::len(self));
         let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
@@ -282,11 +282,9 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         assert_eq!(self.widgets.len(), self.handles.len() + 1);
         let index = 2 * n + 1;
 
-        let is_horiz = self.direction.is_horizontal();
-        let extract = |s: Size| if is_horiz { s.0 } else { s.1 };
         let hrect = self.handles[n].rect();
-        let width1 = extract(hrect.pos - self.core.rect.pos);
-        let width2 = extract(self.core.rect.size - hrect.size) - width1;
+        let width1 = (hrect.pos - self.core.rect.pos).extract(self.direction);
+        let width2 = (self.core.rect.size - hrect.size).extract(self.direction) - width1;
 
         let dim = (self.direction, WidgetChildren::len(self));
         let mut setter =

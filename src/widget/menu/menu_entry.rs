@@ -40,7 +40,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let size = size_handle.menu_frame();
         self.label_off = size;
-        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), size + size, Margins::ZERO);
+        let frame_rules = SizeRules::extract_fixed(axis, size + size, Margins::ZERO);
         let text_rules = size_handle.text_bound(&mut self.label, TextClass::LabelSingle, axis);
         text_rules.surrounded_by(frame_rules, true)
     }
