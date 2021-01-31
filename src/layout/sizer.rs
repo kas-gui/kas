@@ -11,7 +11,7 @@ use std::fmt;
 use super::{AxisInfo, Margins, SizeRules};
 use crate::draw::SizeHandle;
 use crate::event::Manager;
-use crate::geom::{Coord, Rect, Size};
+use crate::geom::{Rect, Size};
 use crate::{AlignHints, Widget, WidgetConfig};
 
 /// A [`SizeRules`] solver for layouts
@@ -212,10 +212,7 @@ impl SolveCache {
         }
 
         if inner_margin {
-            rect.pos += Coord(
-                i32::from(self.margins.horiz.0),
-                i32::from(self.margins.vert.0),
-            );
+            rect.pos += Size::from((self.margins.horiz.0, self.margins.vert.0));
             rect.size.0 = width;
             rect.size.1 -= i32::from(self.margins.vert.0) + i32::from(self.margins.vert.1);
         }

@@ -109,7 +109,7 @@ impl DragHandle {
             return self.offset();
         }
 
-        self.press_coord = Size::from(self.core.rect.size / 2) + self.track.pos;
+        self.press_coord = self.core.rect.size / 2 + self.track.pos;
 
         // Since the press is not on the handle, we move the bar immediately.
         let (offset, action) = self.set_offset(coord - self.press_coord);

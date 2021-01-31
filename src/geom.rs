@@ -5,11 +5,52 @@
 
 //! Geometry data types
 
+use kas::conv::Conv;
 #[cfg(feature = "winit")]
 use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize, Pixel};
 
 mod vector;
 pub use vector::{DVec2, Quad, Vec2, Vec3};
+
+macro_rules! impl_common {
+    ($T:ty) => {
+        impl $T {
+            /// The constant `(0, 0)`
+            pub const ZERO: Self = Self(0, 0);
+
+            /// Set the same value on all axes
+            #[inline]
+            pub const fn splat(n: i32) -> Self {
+                Self(n, n)
+            }
+
+            /// Return the minimum, componentwise
+            #[inline]
+            pub fn min(self, other: Self) -> Self {
+                Self(self.0.min(other.0), self.1.min(other.1))
+            }
+
+            /// Return the maximum, componentwise
+            #[inline]
+            pub fn max(self, other: Self) -> Self {
+                Self(self.0.max(other.0), self.1.max(other.1))
+            }
+
+            /// Return the transpose (swap x and y values)
+            #[inline]
+            pub fn transpose(self) -> Self {
+                Self(self.1, self.0)
+            }
+        }
+
+        impl From<(i32, i32)> for $T {
+            #[inline]
+            fn from(v: (i32, i32)) -> Self {
+                Self(v.0, v.1)
+            }
+        }
+    };
+}
 
 /// An `(x, y)` coordinate, also known as a **point**
 ///
@@ -17,47 +58,15 @@ pub use vector::{DVec2, Quad, Vec2, Vec3};
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Coord(pub i32, pub i32);
 
+impl_common!(Coord);
+
 impl Coord {
-    /// A coord of `(0, 0)`
-    pub const ZERO: Coord = Coord(0, 0);
-
-    /// A `Coord` with value `n` on both axes
-    #[inline]
-    pub fn splat(n: i32) -> Self {
-        Coord(n, n)
-    }
-
-    /// Return the minimum, componentwise
-    #[inline]
-    pub fn min(self, other: Self) -> Self {
-        Coord(self.0.min(other.0), self.1.min(other.1))
-    }
-
-    /// Return the maximum, componentwise
-    #[inline]
-    pub fn max(self, other: Self) -> Self {
-        Coord(self.0.max(other.0), self.1.max(other.1))
-    }
-
-    /// Return the transpose (swap width and height)
-    #[inline]
-    pub fn transpose(self) -> Self {
-        Coord(self.1, self.0)
-    }
-
     /// Convert from a logical position
     #[cfg(feature = "winit")]
     pub fn from_logical<X: Pixel>(logical: LogicalPosition<X>, dpi_factor: f64) -> Self {
         let pos = PhysicalPosition::<i32>::from_logical(logical, dpi_factor);
         let pos: (i32, i32) = pos.into();
         Coord(pos.0, pos.1)
-    }
-}
-
-impl From<(i32, i32)> for Coord {
-    #[inline]
-    fn from(coord: (i32, i32)) -> Coord {
-        Coord(coord.0, coord.1)
     }
 }
 
@@ -78,6 +87,13 @@ impl std::ops::Add<Size> for Coord {
         Coord(self.0 + other.0, self.1 + other.1)
     }
 }
+impl std::ops::AddAssign<Size> for Coord {
+    #[inline]
+    fn add_assign(&mut self, rhs: Size) {
+        self.0 += rhs.0;
+        self.1 += rhs.1;
+    }
+}
 
 impl std::ops::Sub<Size> for Coord {
     type Output = Self;
@@ -87,13 +103,11 @@ impl std::ops::Sub<Size> for Coord {
         Coord(self.0 - other.0, self.1 - other.1)
     }
 }
-
-impl std::ops::Mul<i32> for Coord {
-    type Output = Self;
-
+impl std::ops::SubAssign<Size> for Coord {
     #[inline]
-    fn mul(self, rhs: i32) -> Self {
-        Coord(self.0 * rhs, self.1 * rhs)
+    fn sub_assign(&mut self, rhs: Size) {
+        self.0 -= rhs.0;
+        self.1 -= rhs.1;
     }
 }
 
@@ -121,22 +135,6 @@ impl<X: Pixel> From<Coord> for PhysicalPosition<X> {
     }
 }
 
-impl std::ops::AddAssign<Coord> for Coord {
-    #[inline]
-    fn add_assign(&mut self, rhs: Coord) {
-        self.0 += rhs.0;
-        self.1 += rhs.1;
-    }
-}
-
-impl std::ops::AddAssign<Size> for Coord {
-    #[inline]
-    fn add_assign(&mut self, rhs: Size) {
-        self.0 += rhs.0;
-        self.1 += rhs.1;
-    }
-}
-
 /// A `(w, h)` size, also known as an **extent**
 ///
 /// This is a vector type: the difference between one point and another is a
@@ -144,28 +142,9 @@ impl std::ops::AddAssign<Size> for Coord {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Size(pub i32, pub i32);
 
+impl_common!(Size);
+
 impl Size {
-    /// A size of `(0, 0)`
-    pub const ZERO: Size = Size(0, 0);
-
-    /// Uniform size on each axis (square)
-    #[inline]
-    pub fn splat(v: i32) -> Self {
-        Size(v, v)
-    }
-
-    /// Return the minimum, componentwise
-    #[inline]
-    pub fn min(self, other: Self) -> Self {
-        Size(self.0.min(other.0), self.1.min(other.1))
-    }
-
-    /// Return the maximum, componentwise
-    #[inline]
-    pub fn max(self, other: Self) -> Self {
-        Size(self.0.max(other.0), self.1.max(other.1))
-    }
-
     /// Return the value clamped to the given `min` and `max`
     ///
     /// In the case that `min > max`, the `min` value is returned.
@@ -174,24 +153,12 @@ impl Size {
         self.min(max).max(min)
     }
 
-    /// Return the transpose (swap width and height)
-    #[inline]
-    pub fn transpose(self) -> Self {
-        Size(self.1, self.0)
-    }
-
     /// Saturating sub
     #[inline]
     pub fn saturating_sub(self, other: Self) -> Self {
         let w = self.0.saturating_sub(other.0);
         let h = self.1.saturating_sub(other.1);
         Size(w, h)
-    }
-}
-
-impl From<(i32, i32)> for Size {
-    fn from(size: (i32, i32)) -> Size {
-        Size(size.0, size.1)
     }
 }
 
@@ -244,6 +211,13 @@ impl std::ops::Add for Size {
         Size(self.0 + other.0, self.1 + other.1)
     }
 }
+impl std::ops::AddAssign for Size {
+    #[inline]
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0;
+        self.1 += rhs.1;
+    }
+}
 
 impl std::ops::Sub for Size {
     type Output = Self;
@@ -251,6 +225,13 @@ impl std::ops::Sub for Size {
     #[inline]
     fn sub(self, other: Self) -> Self {
         Size(self.0 - other.0, self.1 - other.1)
+    }
+}
+impl std::ops::SubAssign for Size {
+    #[inline]
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0;
+        self.1 -= rhs.1;
     }
 }
 
@@ -262,16 +243,6 @@ impl std::ops::Mul<i32> for Size {
         Size(self.0 * x, self.1 * x)
     }
 }
-
-impl std::ops::Mul<f32> for Size {
-    type Output = Self;
-
-    #[inline]
-    fn mul(self, x: f32) -> Self {
-        Size((self.0 as f32 * x) as i32, (self.1 as f32 * x) as i32)
-    }
-}
-
 impl std::ops::Div<i32> for Size {
     type Output = Self;
 
@@ -281,19 +252,27 @@ impl std::ops::Div<i32> for Size {
     }
 }
 
-impl std::ops::AddAssign for Size {
+impl std::ops::Mul<f32> for Size {
+    type Output = Self;
+
     #[inline]
-    fn add_assign(&mut self, rhs: Self) {
-        self.0 += rhs.0;
-        self.1 += rhs.1;
+    fn mul(self, x: f32) -> Self {
+        Size((self.0 as f32 * x) as i32, (self.1 as f32 * x) as i32)
+    }
+}
+impl std::ops::Div<f32> for Size {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, x: f32) -> Self {
+        Size((self.0 as f32 / x) as i32, (self.1 as f32 / x) as i32)
     }
 }
 
-impl std::ops::SubAssign for Size {
-    #[inline]
-    fn sub_assign(&mut self, rhs: Self) {
-        self.0 -= rhs.0;
-        self.1 -= rhs.1;
+// used for marigns
+impl From<(u16, u16)> for Size {
+    fn from(v: (u16, u16)) -> Self {
+        Self(i32::conv(v.0), i32::conv(v.1))
     }
 }
 
@@ -345,11 +324,13 @@ impl std::ops::Add<Size> for Rect {
 
     #[inline]
     fn add(self, offset: Size) -> Self {
-        let pos = self.pos + offset;
-        Rect {
-            pos,
-            size: self.size,
-        }
+        Rect::new(self.pos + offset, self.size)
+    }
+}
+impl std::ops::AddAssign<Size> for Rect {
+    #[inline]
+    fn add_assign(&mut self, offset: Size) {
+        self.pos += offset;
     }
 }
 
@@ -358,10 +339,12 @@ impl std::ops::Sub<Size> for Rect {
 
     #[inline]
     fn sub(self, offset: Size) -> Self {
-        let pos = self.pos - offset;
-        Rect {
-            pos,
-            size: self.size,
-        }
+        Rect::new(self.pos - offset, self.size)
+    }
+}
+impl std::ops::SubAssign<Size> for Rect {
+    #[inline]
+    fn sub_assign(&mut self, offset: Size) {
+        self.pos -= offset;
     }
 }

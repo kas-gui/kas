@@ -319,8 +319,8 @@ impl<D: Directional> RowPositionSolver<D> {
     /// Call `f` on each child intersecting the given `rect`
     pub fn for_children<W: Widget, F: FnMut(&W)>(self, widgets: &[W], rect: Rect, mut f: F) {
         let (pos, end) = match self.direction.is_reversed() {
-            false => (rect.pos, rect.pos + rect.size),
-            true => (rect.pos + rect.size, rect.pos),
+            false => (rect.pos, rect.pos2()),
+            true => (rect.pos2(), rect.pos),
         };
         let start = match self.binary_search(widgets, pos) {
             Ok(i) => i,
