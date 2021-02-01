@@ -114,6 +114,7 @@ pub trait SizeHandle {
     /// may have a factor of 2 or higher; this may be fractional. It is
     /// recommended to calculate sizes as follows:
     /// ```
+    /// use kas::conv::*;
     /// # let scale_factor = 1.5f32;
     /// let size = i32::conv_ceil(100.0 * scale_factor);
     /// ```
