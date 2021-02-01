@@ -67,7 +67,7 @@ pub struct DrawHandle<'a, D: Draw> {
     window: &'a mut DimensionsWindow,
     cols: &'a ThemeColours,
     rect: Rect,
-    offset: Size,
+    offset: Offset,
     pass: Pass,
 }
 
@@ -112,7 +112,7 @@ where
             window: transmute::<&'a mut Self::Window, &'static mut Self::Window>(window),
             cols: transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
             rect,
-            offset: Size::ZERO,
+            offset: Offset::ZERO,
             pass: super::START_PASS,
         }
     }
@@ -130,7 +130,7 @@ where
             window,
             cols: &self.cols,
             rect,
-            offset: Size::ZERO,
+            offset: Offset::ZERO,
             pass: super::START_PASS,
         }
     }
@@ -224,14 +224,14 @@ where
         }
     }
 
-    fn draw_device(&mut self) -> (kas::draw::Pass, Size, &mut dyn kas::draw::Draw) {
+    fn draw_device(&mut self) -> (kas::draw::Pass, Offset, &mut dyn kas::draw::Draw) {
         (self.pass, self.offset, self.draw)
     }
 
     fn clip_region(
         &mut self,
         rect: Rect,
-        offset: Size,
+        offset: Offset,
         class: ClipRegion,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
@@ -291,14 +291,14 @@ where
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Size,
+        offset: Offset,
         text: &TextDisplay,
         class: TextClass,
     ) {
         self.as_flat().text_offset(pos, bounds, offset, text, class);
     }
 
-    fn text_effects(&mut self, pos: Coord, offset: Size, text: &dyn TextApi, class: TextClass) {
+    fn text_effects(&mut self, pos: Coord, offset: Offset, text: &dyn TextApi, class: TextClass) {
         self.as_flat().text_effects(pos, offset, text, class);
     }
 
@@ -310,7 +310,7 @@ where
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Size,
+        offset: Offset,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
@@ -323,7 +323,7 @@ where
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Size,
+        offset: Offset,
         text: &TextDisplay,
         class: TextClass,
         byte: usize,

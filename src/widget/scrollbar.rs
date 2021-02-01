@@ -154,7 +154,7 @@ impl<D: Directional> ScrollBar<D> {
     }
 
     // translate value to offset in local coordinates
-    fn offset(&self) -> Size {
+    fn offset(&self) -> Offset {
         let len = self.bar_len() - self.handle_len;
         let lhs = i64::from(self.value) * i64::conv(len);
         let rhs = i64::from(self.max_value);
@@ -167,13 +167,13 @@ impl<D: Directional> ScrollBar<D> {
             pos = len - pos;
         }
         match self.direction.is_vertical() {
-            false => Size(pos, 0),
-            true => Size(0, pos),
+            false => Offset(pos, 0),
+            true => Offset(0, pos),
         }
     }
 
     // true if not equal to old value
-    fn set_offset(&mut self, offset: Size) -> bool {
+    fn set_offset(&mut self, offset: Offset) -> bool {
         let len = self.bar_len() - self.handle_len;
         let mut offset = match self.direction.is_vertical() {
             false => offset.0,
@@ -275,16 +275,16 @@ pub trait ScrollWidget: Widget {
     /// Get the maximum scroll offset
     ///
     /// Note: the minimum scroll offset is always zero.
-    fn max_scroll_offset(&self) -> Size;
+    fn max_scroll_offset(&self) -> Offset;
 
     /// Get the current scroll offset
     ///
     /// Contents of the scroll region are translated by this offset (to convert
     /// coordinates from the outer region to the scroll region, add this offset).
     ///
-    /// The offset is restricted between [`Size::ZERO`] and
+    /// The offset is restricted between [`Offset::ZERO`] and
     /// [`ScrollRegion::max_scroll_offset`].
-    fn scroll_offset(&self) -> Size;
+    fn scroll_offset(&self) -> Offset;
 
     /// Set the scroll offset
     ///
@@ -294,7 +294,7 @@ pub trait ScrollWidget: Widget {
     ///
     /// The offset is clamped to the available scroll range and applied. The
     /// resulting offset is returned.
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Size) -> Size;
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset;
 }
 
 /// A scrollable region with bars
@@ -407,13 +407,13 @@ impl<W: ScrollWidget> ScrollWidget for ScrollBars<W> {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         self.inner.scroll_axes(size)
     }
-    fn max_scroll_offset(&self) -> Size {
+    fn max_scroll_offset(&self) -> Offset {
         self.inner.max_scroll_offset()
     }
-    fn scroll_offset(&self) -> Size {
+    fn scroll_offset(&self) -> Offset {
         self.inner.scroll_offset()
     }
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Size) -> Size {
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
         let offset = self.inner.set_scroll_offset(mgr, offset);
         *mgr |= self.horiz_bar.set_value(offset.0) | self.vert_bar.set_value(offset.1);
         offset
@@ -444,7 +444,7 @@ impl<W: ScrollWidget> Layout for ScrollBars<W> {
 
         let bar_width = mgr.size_handle(|sh| (sh.scrollbar().0).1);
         if self.auto_bars {
-            child_size -= Size(bar_width, bar_width);
+            child_size -= Size::splat(bar_width);
             self.show_bars = self.inner.scroll_axes(child_size);
         } else {
             if self.show_bars.0 {
@@ -461,14 +461,14 @@ impl<W: ScrollWidget> Layout for ScrollBars<W> {
 
         if self.show_bars.0 {
             let pos = Coord(pos.0, pos.1 + child_size.1);
-            let size = Size(child_size.0, bar_width);
+            let size = Size::new(child_size.0, bar_width);
             self.horiz_bar
                 .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
             let _ = self.horiz_bar.set_limits(max_scroll_offset.0, rect.size.0);
         }
         if self.show_bars.1 {
             let pos = Coord(pos.0 + child_size.0, pos.1);
-            let size = Size(bar_width, self.core.rect.size.1);
+            let size = Size::new(bar_width, self.core.rect.size.1);
             self.vert_bar
                 .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
             let _ = self.vert_bar.set_limits(max_scroll_offset.1, rect.size.1);
@@ -510,7 +510,7 @@ impl<W: ScrollWidget> event::SendEvent for ScrollBars<W> {
                 .send(mgr, id, event)
                 .try_into()
                 .unwrap_or_else(|msg| {
-                    let offset = Size(msg, self.inner.scroll_offset().1);
+                    let offset = Offset(msg, self.inner.scroll_offset().1);
                     self.inner.set_scroll_offset(mgr, offset);
                     Response::None
                 })
@@ -519,7 +519,7 @@ impl<W: ScrollWidget> event::SendEvent for ScrollBars<W> {
                 .send(mgr, id, event)
                 .try_into()
                 .unwrap_or_else(|msg| {
-                    let offset = Size(self.inner.scroll_offset().0, msg);
+                    let offset = Offset(self.inner.scroll_offset().0, msg);
                     self.inner.set_scroll_offset(mgr, offset);
                     Response::None
                 })

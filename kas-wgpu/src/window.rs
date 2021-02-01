@@ -293,7 +293,7 @@ where
 {
     /// Swap-chain size
     fn sc_size(&self) -> Size {
-        Size(
+        Size::new(
             i32::conv(self.sc_desc.width),
             i32::conv(self.sc_desc.height),
         )

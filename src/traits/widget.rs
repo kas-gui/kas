@@ -10,7 +10,7 @@ use std::fmt;
 
 use crate::draw::{DrawHandle, InputState, SizeHandle};
 use crate::event::{self, ConfigureManager, Manager, ManagerState};
-use crate::geom::{Coord, Rect, Size};
+use crate::geom::{Coord, Offset, Rect};
 use crate::layout::{AxisInfo, SizeRules};
 use crate::{AlignHints, CoreData, TkAction, WidgetId};
 
@@ -420,10 +420,10 @@ pub trait Layout: WidgetChildren {
     /// subtracted to translate out.
     ///
     /// In most cases, the translation will be zero. Widgets should return
-    /// [`Size::ZERO`] for non-existant children.
+    /// [`Offset::ZERO`] for non-existant children.
     #[inline]
-    fn translation(&self, _child_index: usize) -> Size {
-        Size::ZERO
+    fn translation(&self, _child_index: usize) -> Offset {
+        Offset::ZERO
     }
 
     /// Iterate through children in spatial order

@@ -9,7 +9,7 @@
 use super::{GrabMode, Manager, Response}; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
 
-use crate::geom::{Coord, DVec2, Size};
+use crate::geom::{Coord, DVec2, Offset};
 use crate::{WidgetId, WindowId};
 
 /// Events addressed to a widget
@@ -118,7 +118,7 @@ pub enum Event {
         source: PressSource,
         cur_id: Option<WidgetId>,
         coord: Coord,
-        delta: Size,
+        delta: Offset,
     },
     /// End of a click/touch press
     ///
@@ -341,5 +341,5 @@ pub enum ScrollDelta {
     /// Scroll a given number of lines
     LineDelta(f32, f32),
     /// Scroll a given number of pixels
-    PixelDelta(Size),
+    PixelDelta(Offset),
 }

@@ -168,10 +168,10 @@ impl Default for TouchPhase {
 pub struct EditBox<G: 'static = ()> {
     #[widget_core]
     core: CoreData,
-    frame_offset: Size,
+    frame_offset: Offset,
     frame_size: Size,
     text_pos: Coord,
-    view_offset: Size,
+    view_offset: Offset,
     editable: bool,
     multi_line: bool,
     text: Text<String>,
@@ -792,11 +792,11 @@ impl<G> EditBox<G> {
         mgr.redraw(self.id());
     }
 
-    fn pan_delta(&mut self, mgr: &mut Manager, delta: Size) -> bool {
+    fn pan_delta(&mut self, mgr: &mut Manager, delta: Offset) -> bool {
         let bounds = Vec2::from(self.text.env().bounds);
         let max_offset = (self.required - bounds).ceil();
-        let max_offset = Size::from(max_offset).max(Size::ZERO);
-        let new_offset = (self.view_offset - delta).min(max_offset).max(Size::ZERO);
+        let max_offset = Offset::from(max_offset).max(Offset::ZERO);
+        let new_offset = (self.view_offset - delta).min(max_offset).max(Offset::ZERO);
         if new_offset != self.view_offset {
             self.view_offset = new_offset;
             mgr.redraw(self.id());
@@ -817,11 +817,11 @@ impl<G> EditBox<G> {
             let min_y = (marker.pos.1 - marker.descent - bounds.1).ceil();
             let max_x = (marker.pos.0).floor();
             let max_y = (marker.pos.1 - marker.ascent).floor();
-            let min = Size(min_x as i32, min_y as i32);
-            let max = Size(max_x as i32, max_y as i32);
+            let min = Offset(min_x as i32, min_y as i32);
+            let max = Offset(max_x as i32, max_y as i32);
 
             let max_offset = (self.required - bounds).ceil();
-            let max_offset = Size::from(max_offset).max(Size::ZERO);
+            let max_offset = Offset::from(max_offset).max(Offset::ZERO);
             let max = max.min(max_offset);
 
             self.view_offset = self.view_offset.max(min).min(max);
@@ -958,7 +958,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                         let dist = 3.0 * self.text.env().height(Default::default());
                         let x = (x * dist).round() as i32;
                         let y = (y * dist).round() as i32;
-                        Size(x, y)
+                        Offset(x, y)
                     }
                     ScrollDelta::PixelDelta(coord) => coord,
                 };

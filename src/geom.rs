@@ -6,7 +6,7 @@
 //! Geometry data types
 
 use kas::conv::Conv;
-use kas::{Direction, Directional};
+use kas::Directional;
 #[cfg(feature = "winit")]
 use winit::dpi::{LogicalPosition, PhysicalPosition, PhysicalSize, Pixel};
 
@@ -18,12 +18,6 @@ macro_rules! impl_common {
         impl $T {
             /// The constant `(0, 0)`
             pub const ZERO: Self = Self(0, 0);
-
-            /// Set the same value on all axes
-            #[inline]
-            pub const fn splat(n: i32) -> Self {
-                Self(n, n)
-            }
 
             /// Return the minimum, componentwise
             #[inline]
@@ -37,6 +31,14 @@ macro_rules! impl_common {
                 Self(self.0.max(other.0), self.1.max(other.1))
             }
 
+            /// Return the value clamped to the given `min` and `max`
+            ///
+            /// In the case that `min > max`, the `min` value is returned.
+            #[inline]
+            pub fn clamp(self, min: Self, max: Self) -> Self {
+                self.min(max).max(min)
+            }
+
             /// Return the transpose (swap x and y values)
             #[inline]
             pub fn transpose(self) -> Self {
@@ -45,16 +47,13 @@ macro_rules! impl_common {
 
             /// Extract one component, based on a direction
             ///
-            /// Panics if direction is reversed. We should decide whether to
-            /// negate in this case (maybe for coord and offset but not for size).
+            /// This merely extracts the horizontal component. It never negates
+            /// it, even if the direction is reversed.
             #[inline]
             pub fn extract<D: Directional>(self, dir: D) -> i32 {
-                match dir.as_direction() {
-                    Direction::Right => self.0,
-                    Direction::Down => self.1,
-                    Direction::Left | Direction::Up => {
-                        panic!("extract not defined for left/up directions!")
-                    }
+                match dir.is_vertical() {
+                    false => self.0,
+                    true => self.1,
                 }
             }
         }
@@ -68,15 +67,28 @@ macro_rules! impl_common {
     };
 }
 
-/// An `(x, y)` coordinate, also known as a **point**
+/// A 2D coordinate, also known as a point
 ///
-/// This is not a vector type: one cannot add a point to a point.
+/// A coordinate (or point) is an absolute position. One cannot add a point to
+/// a point. The difference between two points is an [`Offset`].
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Coord(pub i32, pub i32);
 
 impl_common!(Coord);
 
 impl Coord {
+    /// Construct
+    #[inline]
+    pub fn new(x: i32, y: i32) -> Self {
+        Self(x, y)
+    }
+
+    /// Construct, using the same value on all axes
+    #[inline]
+    pub const fn splat(n: i32) -> Self {
+        Self(n, n)
+    }
+
     /// Convert from a logical position
     #[cfg(feature = "winit")]
     pub fn from_logical<X: Pixel>(logical: LogicalPosition<X>, dpi_factor: f64) -> Self {
@@ -87,11 +99,42 @@ impl Coord {
 }
 
 impl std::ops::Sub for Coord {
-    type Output = Size;
+    type Output = Offset;
 
     #[inline]
-    fn sub(self, other: Self) -> Size {
-        Size(self.0 - other.0, self.1 - other.1)
+    fn sub(self, other: Self) -> Offset {
+        Offset(self.0 - other.0, self.1 - other.1)
+    }
+}
+
+impl std::ops::Add<Offset> for Coord {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, other: Offset) -> Self {
+        Coord(self.0 + other.0, self.1 + other.1)
+    }
+}
+impl std::ops::AddAssign<Offset> for Coord {
+    #[inline]
+    fn add_assign(&mut self, rhs: Offset) {
+        self.0 += rhs.0;
+        self.1 += rhs.1;
+    }
+}
+impl std::ops::Sub<Offset> for Coord {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, other: Offset) -> Self {
+        Coord(self.0 - other.0, self.1 - other.1)
+    }
+}
+impl std::ops::SubAssign<Offset> for Coord {
+    #[inline]
+    fn sub_assign(&mut self, rhs: Offset) {
+        self.0 -= rhs.0;
+        self.1 -= rhs.1;
     }
 }
 
@@ -110,7 +153,6 @@ impl std::ops::AddAssign<Size> for Coord {
         self.1 += rhs.1;
     }
 }
-
 impl std::ops::Sub<Size> for Coord {
     type Output = Self;
 
@@ -151,71 +193,43 @@ impl<X: Pixel> From<Coord> for PhysicalPosition<X> {
     }
 }
 
-/// A `(w, h)` size, also known as an **extent**
+/// A 2D size, also known as an extent
 ///
-/// This is a vector type: the difference between one point and another is a
-/// vector, represented using this type, `Size`. Components may be negative.
+/// This is both a size and a relative position. One can add or subtract a size
+/// from a [`Coord`]. One can multiply a size by a scalar.
+///
+/// A `Size` is expected to be non-negative; some methods such as [`Size::new`]
+/// and implementations of subtraction will check this, but only in debug mode
+/// (similar to overflow checks on integers).
+///
+/// This may be converted to [`Offset`] with `from` / `into`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
 pub struct Size(pub i32, pub i32);
 
 impl_common!(Size);
 
 impl Size {
-    /// Return the value clamped to the given `min` and `max`
+    /// Construct
     ///
-    /// In the case that `min > max`, the `min` value is returned.
+    /// In debug mode, this asserts that components are non-negative.
     #[inline]
-    pub fn clamp(self, min: Self, max: Self) -> Self {
-        self.min(max).max(min)
+    pub fn new(w: i32, h: i32) -> Self {
+        debug_assert!(w >= 0 && h >= 0, "Size::new({}, {}): negative value", w, h);
+        Self(w, h)
     }
 
-    /// Saturating sub
+    /// Construct, using the same value on all axes
     #[inline]
-    pub fn saturating_sub(self, other: Self) -> Self {
-        let w = self.0.saturating_sub(other.0);
-        let h = self.1.saturating_sub(other.1);
-        Size(w, h)
+    pub fn splat(n: i32) -> Self {
+        debug_assert!(n >= 0, "Size::splat({}): negative value", n);
+        Self(n, n)
     }
-}
 
-#[cfg(feature = "winit")]
-impl<X: Pixel> From<PhysicalSize<X>> for Size {
+    /// Saturating subtraction
     #[inline]
-    fn from(size: PhysicalSize<X>) -> Size {
-        let size: (i32, i32) = size.cast::<i32>().into();
-        Size(size.0, size.1)
-    }
-}
-
-#[cfg(feature = "winit")]
-impl<X: Pixel> From<Size> for PhysicalSize<X> {
-    #[inline]
-    fn from(size: Size) -> PhysicalSize<X> {
-        let pos: PhysicalSize<i32> = (size.0, size.1).into();
-        pos.cast()
-    }
-}
-
-#[cfg(feature = "winit")]
-impl From<Size> for winit::dpi::Size {
-    #[inline]
-    fn from(size: Size) -> winit::dpi::Size {
-        winit::dpi::Size::Physical((size.0, size.1).into())
-    }
-}
-
-impl From<Size> for kas_text::Vec2 {
-    fn from(size: Size) -> kas_text::Vec2 {
-        kas_text::Vec2(size.0 as f32, size.1 as f32)
-    }
-}
-
-impl std::ops::Add<Coord> for Size {
-    type Output = Coord;
-
-    #[inline]
-    fn add(self, other: Coord) -> Coord {
-        Coord(self.0 + other.0, self.1 + other.1)
+    pub fn saturating_sub(self, rhs: Self) -> Self {
+        // This impl should aid vectorisation. We avoid Sub impl because of its check.
+        Size(self.0 - rhs.0, self.1 - rhs.1).max(Size::ZERO)
     }
 }
 
@@ -239,13 +253,21 @@ impl std::ops::Sub for Size {
     type Output = Self;
 
     #[inline]
-    fn sub(self, other: Self) -> Self {
-        Size(self.0 - other.0, self.1 - other.1)
+    fn sub(self, rhs: Self) -> Self {
+        debug_assert!(
+            self.0 >= rhs.0 && self.1 >= rhs.1,
+            "Size::sub: expected lhs >= rhs"
+        );
+        Self(self.0 - rhs.0, self.1 - rhs.1)
     }
 }
 impl std::ops::SubAssign for Size {
     #[inline]
     fn sub_assign(&mut self, rhs: Self) {
+        debug_assert!(
+            self.0 >= rhs.0 && self.1 >= rhs.1,
+            "Size::sub: expected lhs >= rhs"
+        );
         self.0 -= rhs.0;
         self.1 -= rhs.1;
     }
@@ -256,6 +278,7 @@ impl std::ops::Mul<i32> for Size {
 
     #[inline]
     fn mul(self, x: i32) -> Self {
+        debug_assert!(x >= 0);
         Size(self.0 * x, self.1 * x)
     }
 }
@@ -264,6 +287,7 @@ impl std::ops::Div<i32> for Size {
 
     #[inline]
     fn div(self, x: i32) -> Self {
+        debug_assert!(x >= 0);
         Size(self.0 / x, self.1 / x)
     }
 }
@@ -273,6 +297,7 @@ impl std::ops::Mul<f32> for Size {
 
     #[inline]
     fn mul(self, x: f32) -> Self {
+        debug_assert!(x >= 0.0);
         Size((self.0 as f32 * x) as i32, (self.1 as f32 * x) as i32)
     }
 }
@@ -281,7 +306,15 @@ impl std::ops::Div<f32> for Size {
 
     #[inline]
     fn div(self, x: f32) -> Self {
+        debug_assert!(x >= 0.0);
         Size((self.0 as f32 / x) as i32, (self.1 as f32 / x) as i32)
+    }
+}
+
+impl From<Offset> for Size {
+    fn from(v: Offset) -> Self {
+        debug_assert!(v.0 >= 0 && v.1 >= 0, "Size::from({:?}): negative value", v);
+        Self(v.0, v.1)
     }
 }
 
@@ -289,6 +322,146 @@ impl std::ops::Div<f32> for Size {
 impl From<(u16, u16)> for Size {
     fn from(v: (u16, u16)) -> Self {
         Self(i32::conv(v.0), i32::conv(v.1))
+    }
+}
+
+impl From<Size> for kas_text::Vec2 {
+    fn from(size: Size) -> kas_text::Vec2 {
+        debug_assert!(size.0 >= 0 && size.1 >= 0);
+        kas_text::Vec2(size.0 as f32, size.1 as f32)
+    }
+}
+
+#[cfg(feature = "winit")]
+impl<X: Pixel> From<PhysicalSize<X>> for Size {
+    #[inline]
+    fn from(size: PhysicalSize<X>) -> Size {
+        let size: (i32, i32) = size.cast::<i32>().into();
+        debug_assert!(size.0 >= 0 && size.1 >= 0);
+        Size(size.0, size.1)
+    }
+}
+
+#[cfg(feature = "winit")]
+impl<X: Pixel> From<Size> for PhysicalSize<X> {
+    #[inline]
+    fn from(size: Size) -> PhysicalSize<X> {
+        debug_assert!(size.0 >= 0 && size.1 >= 0);
+        let pos: PhysicalSize<i32> = (size.0, size.1).into();
+        pos.cast()
+    }
+}
+
+#[cfg(feature = "winit")]
+impl From<Size> for winit::dpi::Size {
+    #[inline]
+    fn from(size: Size) -> winit::dpi::Size {
+        debug_assert!(size.0 >= 0 && size.1 >= 0);
+        winit::dpi::Size::Physical((size.0, size.1).into())
+    }
+}
+
+/// A `(x, y)` offset, also known as a **vector**
+///
+/// This is a relative position. It can be added to or subtracted from a
+/// [`Coord`], and it can be added to or subtracted from itself. It can be
+/// negative. It can be multiplied by a scalar.
+///
+/// This may be converted to [`Size`] with `from` / `into`.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default)]
+pub struct Offset(pub i32, pub i32);
+
+impl_common!(Offset);
+
+impl Offset {
+    /// Construct
+    #[inline]
+    pub fn new(x: i32, y: i32) -> Self {
+        Self(x, y)
+    }
+
+    /// Construct, using the same value on all axes
+    #[inline]
+    pub const fn splat(n: i32) -> Self {
+        Self(n, n)
+    }
+}
+
+impl std::ops::Add for Offset {
+    type Output = Self;
+
+    #[inline]
+    fn add(self, other: Self) -> Self {
+        Offset(self.0 + other.0, self.1 + other.1)
+    }
+}
+impl std::ops::AddAssign for Offset {
+    #[inline]
+    fn add_assign(&mut self, rhs: Self) {
+        self.0 += rhs.0;
+        self.1 += rhs.1;
+    }
+}
+
+impl std::ops::Sub for Offset {
+    type Output = Self;
+
+    #[inline]
+    fn sub(self, other: Self) -> Self {
+        Offset(self.0 - other.0, self.1 - other.1)
+    }
+}
+impl std::ops::SubAssign for Offset {
+    #[inline]
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0;
+        self.1 -= rhs.1;
+    }
+}
+
+impl std::ops::Mul<i32> for Offset {
+    type Output = Self;
+
+    #[inline]
+    fn mul(self, x: i32) -> Self {
+        Offset(self.0 * x, self.1 * x)
+    }
+}
+impl std::ops::Div<i32> for Offset {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, x: i32) -> Self {
+        Offset(self.0 / x, self.1 / x)
+    }
+}
+
+impl std::ops::Mul<f32> for Offset {
+    type Output = Self;
+
+    #[inline]
+    fn mul(self, x: f32) -> Self {
+        Offset((self.0 as f32 * x) as i32, (self.1 as f32 * x) as i32)
+    }
+}
+impl std::ops::Div<f32> for Offset {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, x: f32) -> Self {
+        Offset((self.0 as f32 / x) as i32, (self.1 as f32 / x) as i32)
+    }
+}
+
+impl From<Size> for Offset {
+    fn from(v: Size) -> Self {
+        Self(v.0, v.1)
+    }
+}
+
+impl From<Offset> for kas_text::Vec2 {
+    fn from(size: Offset) -> kas_text::Vec2 {
+        kas_text::Vec2(size.0 as f32, size.1 as f32)
     }
 }
 
@@ -309,7 +482,7 @@ impl Rect {
         Rect { pos, size }
     }
 
-    /// Get second point (pos + size)
+    /// Get the second point (pos + size)
     #[inline]
     pub fn pos2(&self) -> Coord {
         self.pos + self.size
@@ -327,40 +500,38 @@ impl Rect {
     /// Shrink self in all directions by the given `n`
     #[inline]
     pub fn shrink(&self, n: i32) -> Rect {
-        let pos = self.pos + Size::splat(n);
-        let w = self.size.0.saturating_sub(n + n);
-        let h = self.size.1.saturating_sub(n + n);
-        let size = Size(w, h);
+        let pos = self.pos + Offset::splat(n);
+        let size = self.size.saturating_sub(Size::splat(n + n));
         Rect { pos, size }
     }
 }
 
-impl std::ops::Add<Size> for Rect {
+impl std::ops::Add<Offset> for Rect {
     type Output = Self;
 
     #[inline]
-    fn add(self, offset: Size) -> Self {
+    fn add(self, offset: Offset) -> Self {
         Rect::new(self.pos + offset, self.size)
     }
 }
-impl std::ops::AddAssign<Size> for Rect {
+impl std::ops::AddAssign<Offset> for Rect {
     #[inline]
-    fn add_assign(&mut self, offset: Size) {
+    fn add_assign(&mut self, offset: Offset) {
         self.pos += offset;
     }
 }
 
-impl std::ops::Sub<Size> for Rect {
+impl std::ops::Sub<Offset> for Rect {
     type Output = Self;
 
     #[inline]
-    fn sub(self, offset: Size) -> Self {
+    fn sub(self, offset: Offset) -> Self {
         Rect::new(self.pos - offset, self.size)
     }
 }
-impl std::ops::SubAssign<Size> for Rect {
+impl std::ops::SubAssign<Offset> for Rect {
     #[inline]
-    fn sub_assign(&mut self, offset: Size) {
+    fn sub_assign(&mut self, offset: Offset) {
         self.pos -= offset;
     }
 }

@@ -95,8 +95,8 @@ impl<M: Clone + Debug + 'static> SetAccel for MenuEntry<M> {
         }
         // NOTE: we assume here that top-left and bottom-right frame size is the
         // same; if not then resizes may not happen exactly when required
-        let size = self.label_off;
-        action | kas::text::util::set_text_and_prepare(&mut self.label, string, size + size)
+        let size = self.label_off + self.label_off;
+        action | kas::text::util::set_text_and_prepare(&mut self.label, string, size)
     }
 }
 

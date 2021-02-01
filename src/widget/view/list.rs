@@ -146,12 +146,12 @@ where
         let data_range = first_data..(first_data + w_len).min(self.data.len());
         let (child_size, mut skip) = match self.direction.is_vertical() {
             false => (
-                Size(self.child_size, self.rect().size.1),
-                Size(self.child_skip, 0),
+                Size::new(self.child_size, self.rect().size.1),
+                Offset(self.child_skip, 0),
             ),
             true => (
-                Size(self.rect().size.0, self.child_size),
-                Size(0, self.child_skip),
+                Size::new(self.rect().size.0, self.child_size),
+                Offset(0, self.child_skip),
             ),
         };
         let mut pos_start = self.core.rect.pos;
@@ -196,17 +196,17 @@ where
     }
 
     #[inline]
-    fn max_scroll_offset(&self) -> Size {
+    fn max_scroll_offset(&self) -> Offset {
         self.scroll.max_offset()
     }
 
     #[inline]
-    fn scroll_offset(&self) -> Size {
+    fn scroll_offset(&self) -> Offset {
         self.scroll.offset()
     }
 
     #[inline]
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Size) -> Size {
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
         *mgr |= self.scroll.set_offset(offset);
         self.update_widgets(mgr);
         self.scroll.offset()
@@ -290,13 +290,13 @@ where
                 child_size.0 = self.child_size_min;
             }
             self.child_size = child_size.0;
-            skip = Size(child_size.0 + self.child_inter_margin, 0);
+            skip = Offset(child_size.0 + self.child_inter_margin, 0);
             self.child_skip = skip.0;
             align.horiz = None;
             num = (rect.size.0 + skip.0 - 1) / skip.0 + 1;
 
             let full_width = (skip.0 * data_len32).saturating_sub(self.child_inter_margin);
-            content_size = Size(full_width, child_size.1);
+            content_size = Size::new(full_width, child_size.1);
         } else {
             if child_size.1 >= self.ideal_visible * self.child_size_ideal {
                 child_size.1 = self.child_size_ideal;
@@ -304,13 +304,13 @@ where
                 child_size.1 = self.child_size_min;
             }
             self.child_size = child_size.1;
-            skip = Size(0, child_size.1 + self.child_inter_margin);
+            skip = Offset(0, child_size.1 + self.child_inter_margin);
             self.child_skip = skip.1;
             align.vert = None;
             num = (rect.size.1 + skip.1 - 1) / skip.1 + 1;
 
             let full_height = (skip.1 * data_len32).saturating_sub(self.child_inter_margin);
-            content_size = Size(child_size.0, full_height);
+            content_size = Size::new(child_size.0, full_height);
         }
 
         self.align_hints = align;

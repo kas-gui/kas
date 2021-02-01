@@ -58,7 +58,7 @@ impl Margins {
     pub fn pad(self, size: Size) -> Size {
         let w = size.0 + i32::from(self.horiz.0) + i32::from(self.horiz.1);
         let h = size.1 + i32::from(self.vert.0) + i32::from(self.vert.1);
-        Size(w, h)
+        Size::new(w, h)
     }
 }
 

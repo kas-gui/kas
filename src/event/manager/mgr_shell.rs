@@ -12,7 +12,7 @@ use std::mem::swap;
 use std::time::{Duration, Instant};
 
 use super::*;
-use crate::geom::{Coord, DVec2, Size};
+use crate::geom::{Coord, DVec2, Offset};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{ShellWindow, TkAction, Widget, WidgetId};
@@ -524,9 +524,9 @@ impl<'a> Manager<'a> {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
                     MouseScrollDelta::PixelDelta(pos) => {
                         // The delta is given as a PhysicalPosition, so we need
-                        // to convert to our vector type (Size) here.
+                        // to convert to our vector type (Offset) here.
                         let coord = Coord::from(pos);
-                        ScrollDelta::PixelDelta(Size(coord.0, coord.1))
+                        ScrollDelta::PixelDelta(Offset(coord.0, coord.1))
                     }
                 });
                 if let Some(id) = self.state.hover {

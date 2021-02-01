@@ -22,7 +22,7 @@ pub use kas::draw::{DrawHandle, DrawHandleExt, SizeHandle};
 #[doc(no_inline)]
 pub use kas::event::{Event, Handler, Manager, ManagerState, Response, SendEvent, VoidMsg};
 #[doc(no_inline)]
-pub use kas::geom::{Coord, Rect, Size};
+pub use kas::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
 pub use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
 #[doc(no_inline)]

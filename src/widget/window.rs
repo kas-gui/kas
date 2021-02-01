@@ -139,7 +139,7 @@ impl<W: Widget> Layout for Window<W> {
         self.w.draw(draw_handle, mgr, disabled);
         for popup in &self.popups {
             let class = ClipRegion::Popup;
-            draw_handle.clip_region(self.core.rect, Size::ZERO, class, &mut |draw_handle| {
+            draw_handle.clip_region(self.core.rect, Offset::ZERO, class, &mut |draw_handle| {
                 self.find(popup.1.id)
                     .map(|w| w.draw(draw_handle, mgr, disabled));
             });
@@ -257,11 +257,11 @@ impl<W: Widget> Window<W> {
         let rect = if popup.direction.is_horizontal() {
             let (x, w) = place_in(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, m.horiz);
             let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1);
-            Rect::new(Coord(x, y), Size(w, h))
+            Rect::new(Coord(x, y), Size::new(w, h))
         } else {
             let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0);
             let (y, h) = place_in(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, m.vert);
-            Rect::new(Coord(x, y), Size(w, h))
+            Rect::new(Coord(x, y), Size::new(w, h))
         };
 
         cache.apply_rect(widget, mgr, rect, false);

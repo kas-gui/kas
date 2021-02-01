@@ -51,7 +51,7 @@ impl DragHandle {
     /// Set a new handle size and offset
     ///
     /// Returns [`TkAction::REDRAW`] if a redraw is required.
-    pub fn set_size_and_offset(&mut self, size: Size, offset: Size) -> TkAction {
+    pub fn set_size_and_offset(&mut self, size: Size, offset: Offset) -> TkAction {
         self.core.rect.size = size;
         self.set_offset(offset).1
     }
@@ -64,7 +64,7 @@ impl DragHandle {
 
     /// Get the current handle offset
     #[inline]
-    pub fn offset(&self) -> Size {
+    pub fn offset(&self) -> Offset {
         self.core.rect.pos - self.track.pos
     }
 
@@ -72,8 +72,8 @@ impl DragHandle {
     ///
     /// This depends on size of the handle and the track.
     #[inline]
-    pub fn max_offset(&self) -> Size {
-        self.track.size - self.core.rect.size
+    pub fn max_offset(&self) -> Offset {
+        Offset::from(self.track.size) - Offset::from(self.core.rect.size)
     }
 
     /// Set a new handle offset
@@ -81,8 +81,8 @@ impl DragHandle {
     /// Returns the new offset (after clamping input) and an action: empty if
     /// the handle hasn't moved; `REDRAW` if it has (though this widget is
     /// not directly responsible for drawing, so this may not be accurate).
-    pub fn set_offset(&mut self, offset: Size) -> (Size, TkAction) {
-        let offset = offset.clamp(Size::ZERO, self.max_offset());
+    pub fn set_offset(&mut self, offset: Offset) -> (Offset, TkAction) {
+        let offset = offset.clamp(Offset::ZERO, self.max_offset());
         let handle_pos = self.track.pos + offset;
         if handle_pos != self.core.rect.pos {
             self.core.rect.pos = handle_pos;
@@ -104,12 +104,12 @@ impl DragHandle {
         mgr: &mut Manager,
         source: PressSource,
         coord: Coord,
-    ) -> Size {
+    ) -> Offset {
         if !self.grab_press(mgr, source, coord) {
             return self.offset();
         }
 
-        self.press_coord = self.core.rect.size / 2 + self.track.pos;
+        self.press_coord = self.track.pos + self.core.rect.size / 2;
 
         // Since the press is not on the handle, we move the bar immediately.
         let (offset, action) = self.set_offset(coord - self.press_coord);
@@ -151,7 +151,7 @@ impl Layout for DragHandle {
 }
 
 impl event::Handler for DragHandle {
-    type Msg = Size;
+    type Msg = Offset;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {

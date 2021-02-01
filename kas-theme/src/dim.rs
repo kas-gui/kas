@@ -143,7 +143,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     }
     fn menu_frame(&self) -> Size {
         let f = self.dims.frame;
-        Size(f, f / 2)
+        Size::new(f, f / 2)
     }
 
     fn inner_margin(&self) -> Size {
