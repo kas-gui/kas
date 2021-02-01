@@ -813,12 +813,12 @@ impl<G> EditBox<G> {
         let edit_pos = self.selection.edit_pos();
         if let Some(marker) = self.text.text_glyph_pos(edit_pos).next_back() {
             let bounds = Vec2::from(self.text.env().bounds);
-            let min_x = (marker.pos.0 - bounds.0).ceil();
-            let min_y = (marker.pos.1 - marker.descent - bounds.1).ceil();
-            let max_x = (marker.pos.0).floor();
-            let max_y = (marker.pos.1 - marker.ascent).floor();
-            let min = Offset(min_x as i32, min_y as i32);
-            let max = Offset(max_x as i32, max_y as i32);
+            let min_x = marker.pos.0 - bounds.0;
+            let min_y = marker.pos.1 - marker.descent - bounds.1;
+            let max_x = marker.pos.0;
+            let max_y = marker.pos.1 - marker.ascent;
+            let min = Offset(i32::conv_ceil(min_x), i32::conv_ceil(min_y));
+            let max = Offset(i32::conv_floor(max_x), i32::conv_floor(max_y));
 
             let max_offset = (self.required - bounds).ceil();
             let max_offset = Offset::from(max_offset).max(Offset::ZERO);
@@ -956,8 +956,8 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                     ScrollDelta::LineDelta(x, y) => {
                         // We arbitrarily scroll 3 lines:
                         let dist = 3.0 * self.text.env().height(Default::default());
-                        let x = (x * dist).round() as i32;
-                        let y = (y * dist).round() as i32;
+                        let x = i32::conv_nearest(x * dist);
+                        let y = i32::conv_nearest(y * dist);
                         Offset(x, y)
                     }
                     ScrollDelta::PixelDelta(coord) => coord,

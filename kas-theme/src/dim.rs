@@ -10,6 +10,7 @@
 use std::any::Any;
 use std::f32;
 
+use kas::conv::{Conv, ConvFloat};
 use kas::draw::{self, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
@@ -62,24 +63,24 @@ impl Dimensions {
         let font_id = Default::default();
         let dpp = scale_factor * (96.0 / 72.0);
         let dpem = dpp * pt_size;
-        let line_height = kas::text::fonts::fonts().get(font_id).height(dpem).ceil() as i32;
+        let line_height = i32::conv_ceil(kas::text::fonts::fonts().get(font_id).height(dpem));
 
-        let outer_margin = (params.outer_margin * scale_factor).round() as u16;
-        let inner_margin = (params.inner_margin * scale_factor).round() as u16;
-        let frame = (params.frame_size * scale_factor).round() as i32;
+        let outer_margin = u16::conv_nearest(params.outer_margin * scale_factor);
+        let inner_margin = u16::conv_nearest(params.inner_margin * scale_factor);
+        let frame = i32::conv_nearest(params.frame_size * scale_factor);
         Dimensions {
             scale_factor,
             dpp,
             pt_size,
             font_marker_width: (1.6 * scale_factor).round().max(1.0),
             line_height,
-            min_line_length: (8.0 * dpem).round() as i32,
-            ideal_line_length: (24.0 * dpem).round() as i32,
+            min_line_length: i32::conv_nearest(8.0 * dpem),
+            ideal_line_length: i32::conv_nearest(24.0 * dpem),
             outer_margin,
             inner_margin,
             frame,
-            button_frame: (params.button_frame * scale_factor).round() as i32,
-            checkbox: (9.0 * dpp).round() as i32 + 2 * (i32::from(inner_margin) + frame),
+            button_frame: i32::conv_nearest(params.button_frame * scale_factor),
+            checkbox: i32::conv_nearest(9.0 * dpp) + 2 * (i32::from(inner_margin) + frame),
             scrollbar: Size::from(params.scrollbar_size * scale_factor),
             slider: Size::from(params.slider_size * scale_factor),
             progress_bar: Size::from(params.progress_bar * scale_factor),
@@ -170,9 +171,9 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
 
             let mut bounds = kas::text::Vec2::INFINITY;
             if let Some(size) = axis.size_other_if_fixed(false) {
-                bounds.1 = size as f32;
+                bounds.1 = f32::conv(size);
             } else if let Some(size) = axis.size_other_if_fixed(true) {
-                bounds.0 = size as f32;
+                bounds.0 = f32::conv(size);
             }
             env.set_bounds(bounds);
 
@@ -188,7 +189,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         };
         let margins = (margin, margin);
         if axis.is_horizontal() {
-            let bound = (required.0).ceil() as i32;
+            let bound = i32::conv_ceil(required.0);
             let min = self.dims.min_line_length;
             let ideal = self.dims.ideal_line_length;
             // NOTE: using different variable-width stretch policies here can
@@ -201,13 +202,13 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             SizeRules::new(min, ideal, margins, policy)
         } else {
             let min = match class {
-                TextClass::Label => (required.1).ceil() as i32,
+                TextClass::Label => i32::conv_ceil(required.1),
                 TextClass::LabelSingle | TextClass::Button | TextClass::Edit => {
                     self.dims.line_height
                 }
                 TextClass::EditMulti => self.dims.line_height * 3,
             };
-            let ideal = ((required.1).ceil() as i32).max(min);
+            let ideal = i32::conv_ceil(required.1).max(min);
             let stretch = match class {
                 TextClass::Button | TextClass::Edit | TextClass::LabelSingle => {
                     StretchPolicy::Fixed

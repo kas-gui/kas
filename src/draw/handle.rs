@@ -115,7 +115,7 @@ pub trait SizeHandle {
     /// recommended to calculate sizes as follows:
     /// ```
     /// # let scale_factor = 1.5f32;
-    /// let size = (100.0 * scale_factor).round() as i32;
+    /// let size = i32::conv_ceil(100.0 * scale_factor);
     /// ```
     ///
     /// This value may change during a program's execution (e.g. when a window

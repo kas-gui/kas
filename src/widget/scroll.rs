@@ -181,15 +181,15 @@ impl ScrollComponent {
                     ControlKey::Right => LineDelta(1.0, 0.0),
                     ControlKey::Up => LineDelta(0.0, 1.0),
                     ControlKey::Down => LineDelta(0.0, -1.0),
-                    ControlKey::PageUp => PixelDelta(Offset(0, window_size.1 as i32 / 2)),
-                    ControlKey::PageDown => PixelDelta(Offset(0, -(window_size.1 as i32 / 2))),
+                    ControlKey::PageUp => PixelDelta(Offset(0, window_size.1 / 2)),
+                    ControlKey::PageDown => PixelDelta(Offset(0, -(window_size.1 / 2))),
                     key => return (action, Response::Unhandled(Event::Control(key))),
                 };
 
                 let d = match delta {
                     LineDelta(x, y) => Offset(
-                        (-self.scroll_rate * x) as i32,
-                        (self.scroll_rate * y) as i32,
+                        i32::conv_nearest(-self.scroll_rate * x),
+                        i32::conv_nearest(self.scroll_rate * y),
                     ),
                     PixelDelta(d) => d,
                 };
@@ -198,8 +198,8 @@ impl ScrollComponent {
             Event::Scroll(delta) => {
                 let d = match delta {
                     LineDelta(x, y) => Offset(
-                        (-self.scroll_rate * x) as i32,
-                        (self.scroll_rate * y) as i32,
+                        i32::conv_nearest(-self.scroll_rate * x),
+                        i32::conv_nearest(self.scroll_rate * y),
                     ),
                     PixelDelta(d) => d,
                 };
@@ -305,7 +305,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
             self.min_child_size.1 = rules.min_size();
         }
         let line_height = size_handle.line_height(TextClass::Label);
-        self.scroll.set_scroll_rate(3.0 * line_height as f32);
+        self.scroll.set_scroll_rate(3.0 * f32::conv(line_height));
         rules.reduce_min_to(line_height);
         rules
     }

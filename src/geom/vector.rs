@@ -7,6 +7,7 @@
 //!
 //! For drawing operations, all dimensions use the `f32` type.
 
+use kas::conv::{Conv, ConvFloat};
 use kas::geom::{Coord, Offset, Rect, Size};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
@@ -325,28 +326,28 @@ macro_rules! impl_vec2 {
         impl From<Coord> for $T {
             #[inline]
             fn from(arg: Coord) -> Self {
-                $T(arg.0 as $f, arg.1 as $f)
+                $T(<$f>::conv(arg.0), <$f>::conv(arg.1))
             }
         }
 
         impl From<Size> for $T {
             #[inline]
             fn from(arg: Size) -> Self {
-                $T(arg.0 as $f, arg.1 as $f)
+                $T(<$f>::conv(arg.0), <$f>::conv(arg.1))
             }
         }
 
         impl From<Offset> for $T {
             #[inline]
             fn from(arg: Offset) -> Self {
-                $T(arg.0 as $f, arg.1 as $f)
+                $T(<$f>::conv(arg.0), <$f>::conv(arg.1))
             }
         }
 
         impl From<$T> for Coord {
             #[inline]
             fn from(arg: $T) -> Self {
-                Coord(arg.0.round() as i32, arg.1.round() as i32)
+                Coord(i32::conv_nearest(arg.0), i32::conv_nearest(arg.1))
             }
         }
 
@@ -360,7 +361,7 @@ macro_rules! impl_vec2 {
         impl From<$T> for Offset {
             #[inline]
             fn from(arg: $T) -> Self {
-                Offset(arg.0.round() as i32, arg.1.round() as i32)
+                Offset(i32::conv_nearest(arg.0), i32::conv_nearest(arg.1))
             }
         }
 

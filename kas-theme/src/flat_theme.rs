@@ -435,7 +435,6 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             let radius = inner.size().sum() * (1.0 / 16.0);
             let inner = inner.shrink(self.window.dims.inner_margin as f32 + radius);
-            let radius = radius as f32;
             self.draw
                 .rounded_line(self.pass, inner.a, inner.b, radius, col);
             self.draw

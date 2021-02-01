@@ -26,7 +26,10 @@ pub trait SliderType:
     /// Return the result of multiplying self by an `f64` scalar
     ///
     /// Note: the `scalar` is expected to be between 0 and 1, hence this
-    /// operation should not produce a value outside the range of `Self`.
+    /// operation should not produce a value larger than self.
+    ///
+    /// Also note that this method is not required to preserve precision
+    /// (e.g. `u128::mul_64` may drop some low-order bits with large numbers).
     fn mul_f64(self, scalar: f64) -> Self;
 }
 
@@ -180,8 +183,8 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
             frac = 1.0 - frac;
         }
         match self.direction.is_vertical() {
-            false => Offset((max_offset.0 as f64 * frac) as i32, 0),
-            true => Offset(0, (max_offset.1 as f64 * frac) as i32),
+            false => Offset(i32::conv_floor(max_offset.0 as f64 * frac), 0),
+            true => Offset(0, i32::conv_floor(max_offset.1 as f64 * frac)),
         }
     }
 

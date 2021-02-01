@@ -171,7 +171,7 @@ impl std::ops::SubAssign<Size> for Coord {
 
 impl From<Coord> for kas_text::Vec2 {
     fn from(pos: Coord) -> kas_text::Vec2 {
-        kas_text::Vec2(pos.0 as f32, pos.1 as f32)
+        Vec2::from(pos).into()
     }
 }
 
@@ -298,7 +298,8 @@ impl std::ops::Mul<f32> for Size {
     #[inline]
     fn mul(self, x: f32) -> Self {
         debug_assert!(x >= 0.0);
-        Size((self.0 as f32 * x) as i32, (self.1 as f32 * x) as i32)
+        let v = Vec2::from(self) * x;
+        v.into()
     }
 }
 impl std::ops::Div<f32> for Size {
@@ -307,7 +308,8 @@ impl std::ops::Div<f32> for Size {
     #[inline]
     fn div(self, x: f32) -> Self {
         debug_assert!(x >= 0.0);
-        Size((self.0 as f32 / x) as i32, (self.1 as f32 / x) as i32)
+        let v = Vec2::from(self) / x;
+        v.into()
     }
 }
 
@@ -328,7 +330,7 @@ impl From<(u16, u16)> for Size {
 impl From<Size> for kas_text::Vec2 {
     fn from(size: Size) -> kas_text::Vec2 {
         debug_assert!(size.0 >= 0 && size.1 >= 0);
-        kas_text::Vec2(size.0 as f32, size.1 as f32)
+        Vec2::from(size).into()
     }
 }
 
@@ -441,7 +443,8 @@ impl std::ops::Mul<f32> for Offset {
 
     #[inline]
     fn mul(self, x: f32) -> Self {
-        Offset((self.0 as f32 * x) as i32, (self.1 as f32 * x) as i32)
+        let v = Vec2::from(self) * x;
+        v.into()
     }
 }
 impl std::ops::Div<f32> for Offset {
@@ -449,7 +452,8 @@ impl std::ops::Div<f32> for Offset {
 
     #[inline]
     fn div(self, x: f32) -> Self {
-        Offset((self.0 as f32 / x) as i32, (self.1 as f32 / x) as i32)
+        let v = Vec2::from(self) / x;
+        v.into()
     }
 }
 
@@ -461,7 +465,7 @@ impl From<Size> for Offset {
 
 impl From<Offset> for kas_text::Vec2 {
     fn from(size: Offset) -> kas_text::Vec2 {
-        kas_text::Vec2(size.0 as f32, size.1 as f32)
+        Vec2::from(size).into()
     }
 }
 

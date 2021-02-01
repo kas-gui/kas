@@ -16,7 +16,7 @@
 #[doc(no_inline)]
 pub use kas::class::*;
 #[doc(no_inline)]
-pub use kas::conv::Conv;
+pub use kas::conv::{Conv, ConvFloat};
 #[doc(no_inline)]
 pub use kas::draw::{DrawHandle, DrawHandleExt, SizeHandle};
 #[doc(no_inline)]
