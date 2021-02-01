@@ -376,13 +376,13 @@ impl SizeRules {
         rules
     }
 
-    /// Set self to `self - x + y`, in this order
+    /// Set self to `self - x + y`, clamped to 0 or greater
     ///
     /// This is a specialised operation to join two spans, subtracing the
     /// common overlap (`x`), thus margins are `self.m.0` and `y.m.1`.
     pub fn sub_add(&mut self, x: Self, y: Self) {
-        self.a = (self.a + y.a).saturating_sub(x.a);
-        self.b = (self.b + y.b).saturating_sub(x.b);
+        self.a = (self.a - x.a + y.a).max(0);
+        self.b = (self.b - x.b + y.b).max(0);
         self.m.1 = y.m.1;
         self.stretch = self.stretch.max(y.stretch);
     }
@@ -442,7 +442,6 @@ impl SizeRules {
         Self::solve_seq_(out, rules, total, target);
     }
 
-    // TODO: ensure conversion u32 → i32 didn't break logic
     fn solve_seq_(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
         type Targets = SmallVec<[i32; 16]>;
         #[allow(non_snake_case)]
@@ -458,14 +457,14 @@ impl SizeRules {
             out[0] = out[0].max(rules[0].a);
             let mut margin_sum = 0;
             let mut sum = out[0];
-            let mut dist_under_b = rules[0].b.saturating_sub(out[0]);
-            let mut dist_over_b = out[0].saturating_sub(rules[0].b);
+            let mut dist_under_b = (rules[0].b - out[0]).max(0);
+            let mut dist_over_b = (out[0] - rules[0].b).max(0);
             for i in 1..N {
                 out[i] = out[i].max(rules[i].a);
                 margin_sum += i32::from((rules[i - 1].m.1).max(rules[i].m.0));
                 sum += out[i];
-                dist_under_b += rules[i].b.saturating_sub(out[i]);
-                dist_over_b += out[i].saturating_sub(rules[i].b);
+                dist_under_b += (rules[i].b - out[i]).max(0);
+                dist_over_b += (out[i] - rules[i].b).max(0);
             }
             let target = target - margin_sum;
 
@@ -599,7 +598,7 @@ impl SizeRules {
                     const MAX_POLICY: usize = StretchPolicy::Maximize as usize + 1;
                     let mut dists = [0; MAX_POLICY];
                     for i in 0..N {
-                        dists[rules[i].stretch as usize] += out[i].saturating_sub(rules[i].b);
+                        dists[rules[i].stretch as usize] += (out[i] - rules[i].b).max(0);
                     }
                     let mut accum = 0;
                     let mut highest_affected = 0;
@@ -738,8 +737,8 @@ impl SizeRules {
         rules[0].m.0 = rules[0].m.0.max(self.m.0);
         rules[len1].m.1 = rules[len1].m.1.max(self.m.1);
 
-        let excess_a = self.a.saturating_sub(sum.a);
-        let excess_b = self.b.saturating_sub(sum.b);
+        let excess_a = (self.a - sum.a).max(0);
+        let excess_b = (self.b - sum.b).max(0);
         if excess_a == 0 && excess_b == 0 {
             return;
         }

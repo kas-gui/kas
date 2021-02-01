@@ -230,11 +230,11 @@ impl<W: Widget> Window<W> {
         let m = cache.margins();
 
         let is_reversed = popup.direction.is_reversed();
-        let place_in = |rp, rs: i32, cp: i32, cs, ideal, m: (u16, u16)| -> (i32, i32) {
+        let place_in = |rp, rs: i32, cp: i32, cs: i32, ideal, m: (u16, u16)| -> (i32, i32) {
             let m: (i32, i32) = (m.0.into(), m.1.into());
             let before: i32 = cp - (rp + m.1);
             let before = before.max(0);
-            let after = rs.saturating_sub(cs + before + m.0);
+            let after = (rs - (cs + before + m.0)).max(0);
             if after >= ideal {
                 if is_reversed && before >= ideal {
                     (cp - ideal - m.1, ideal)

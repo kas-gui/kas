@@ -122,7 +122,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         if self.active != index {
             self.active = index;
             let string = self.popup.inner[self.active].get_string();
-            let avail = self.core.rect.size.saturating_sub(self.frame_size);
+            let avail = self.core.rect.size.clamped_sub(self.frame_size);
             kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
         } else {
             TkAction::empty()

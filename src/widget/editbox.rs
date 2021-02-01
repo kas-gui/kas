@@ -837,7 +837,7 @@ impl<G: EditGuard> HasStr for EditBox<G> {
 
 impl<G: EditGuard> HasString for EditBox<G> {
     fn set_string(&mut self, string: String) -> TkAction {
-        let avail = self.core.rect.size.saturating_sub(self.frame_size);
+        let avail = self.core.rect.size.clamped_sub(self.frame_size);
         let action = kas::text::util::set_string_and_prepare(&mut self.text, string, avail);
         let _ = G::update(self);
         action

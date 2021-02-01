@@ -186,9 +186,9 @@ where
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         // TODO: maybe we should support a scrollbar on the other axis?
         // We would need to report a fake min-child-size to enable scrolling.
-        let min_size = ((self.child_size_min + self.child_inter_margin)
-            * i32::conv(self.data.len()))
-        .saturating_sub(self.child_inter_margin);
+        let item_min = self.child_size_min + self.child_inter_margin;
+        let num = i32::conv(self.data.len());
+        let min_size = (item_min * num - self.child_inter_margin).max(0);
         (
             self.direction.is_horizontal() && min_size > size.0,
             self.direction.is_vertical() && min_size > size.1,
@@ -295,7 +295,7 @@ where
             align.horiz = None;
             num = (rect.size.0 + skip.0 - 1) / skip.0 + 1;
 
-            let full_width = (skip.0 * data_len32).saturating_sub(self.child_inter_margin);
+            let full_width = (skip.0 * data_len32 - self.child_inter_margin).max(0);
             content_size = Size::new(full_width, child_size.1);
         } else {
             if child_size.1 >= self.ideal_visible * self.child_size_ideal {
@@ -309,7 +309,7 @@ where
             align.vert = None;
             num = (rect.size.1 + skip.1 - 1) / skip.1 + 1;
 
-            let full_height = (skip.1 * data_len32).saturating_sub(self.child_inter_margin);
+            let full_height = (skip.1 * data_len32 - self.child_inter_margin).max(0);
             content_size = Size::new(child_size.0, full_height);
         }
 

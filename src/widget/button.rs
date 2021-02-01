@@ -114,7 +114,7 @@ impl<M: Clone + Debug + 'static> SetAccel for TextButton<M> {
         if self.label.text().keys() != string.keys() {
             action |= TkAction::RECONFIGURE;
         }
-        let avail = self.core.rect.size.saturating_sub(self.frame_size);
+        let avail = self.core.rect.size.clamped_sub(self.frame_size);
         action | kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
     }
 }

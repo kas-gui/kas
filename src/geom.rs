@@ -225,9 +225,9 @@ impl Size {
         Self(n, n)
     }
 
-    /// Saturating subtraction
+    /// Subtraction, clamping the result to 0 or greater
     #[inline]
-    pub fn saturating_sub(self, rhs: Self) -> Self {
+    pub fn clamped_sub(self, rhs: Self) -> Self {
         // This impl should aid vectorisation. We avoid Sub impl because of its check.
         Size(self.0 - rhs.0, self.1 - rhs.1).max(Size::ZERO)
     }
@@ -501,7 +501,7 @@ impl Rect {
     #[inline]
     pub fn shrink(&self, n: i32) -> Rect {
         let pos = self.pos + Offset::splat(n);
-        let size = self.size.saturating_sub(Size::splat(n + n));
+        let size = self.size.clamped_sub(Size::splat(n + n));
         Rect { pos, size }
     }
 }

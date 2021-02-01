@@ -257,10 +257,10 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RulesSetter for RowSetter<D, T, 
         let mut rect = self.rect;
         if self.direction.is_horizontal() {
             rect.pos.0 = self.rect.pos.0 + size1;
-            rect.size.0 = self.rect.size.0.saturating_sub(size2);
+            rect.size.0 = (self.rect.size.0 - size2).max(0);
         } else {
             rect.pos.1 = self.rect.pos.1 + size1;
-            rect.size.1 = self.rect.size.1.saturating_sub(size2);
+            rect.size.1 = (self.rect.size.1 - size2).max(0);
         }
         rect
     }
