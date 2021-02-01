@@ -43,7 +43,7 @@ pub mod util {
                 return TkAction::RESIZE;
             }
         }
-        TkAction::empty()
+        TkAction::REDRAW
     }
 
     /// Set the text from a string and prepare
@@ -70,6 +70,6 @@ pub mod util {
                 return TkAction::RESIZE;
             }
         }
-        TkAction::empty()
+        TkAction::REDRAW
     }
 }

@@ -131,7 +131,8 @@ impl Handler for Clock {
                 let date = self.now.format("%Y-%m-%d").to_string();
                 let time = self.now.format("%H:%M:%S").to_string();
                 let avail = Size(self.core.rect.size.0, self.core.rect.size.1 / 2);
-                *mgr |= set_text_and_prepare(&mut self.date, date, avail)
+                *mgr |= TkAction::REDRAW
+                    | set_text_and_prepare(&mut self.date, date, avail)
                     | set_text_and_prepare(&mut self.time, time, avail);
                 let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                 info!("Requesting update in {}ns", ns);
