@@ -98,6 +98,7 @@ enum Pending {
 pub struct ManagerState {
     end_id: WidgetId,
     modifiers: ModifiersState,
+    shortcuts: shortcuts::Shortcuts,
     /// char focus is on same widget as sel_focus; otherwise its value is ignored
     char_focus: bool,
     sel_focus: Option<WidgetId>,
@@ -253,34 +254,12 @@ impl<'a> Manager<'a> {
         }
     }
 
-    /// Match global shortcuts.
-    ///
-    /// TODO: this should be configurable and extensible with the option for
-    /// global shortcuts to target specific widgets. Possibly we should just use
-    /// an integer with a large block for user-defined codes, and require that
-    /// apps register their short-cut codes with a name and optional WidgetId.
-    fn match_shortcuts(&self, vkey: VirtualKeyCode) -> Option<ControlKey> {
-        use VirtualKeyCode as VK;
-        let ctrl = self.state.modifiers.ctrl();
-        let shift = self.state.modifiers.shift();
-        Some(match (ctrl, shift, vkey) {
-            (true, false, VK::A) => ControlKey::SelectAll,
-            (true, true, VK::A) => ControlKey::Deselect,
-            (true, _, VK::C) => ControlKey::Copy,
-            (true, _, VK::V) => ControlKey::Paste,
-            (true, _, VK::X) => ControlKey::Cut,
-            (true, false, VK::Z) => ControlKey::Undo,
-            (true, true, VK::Z) => ControlKey::Redo,
-            (_, _, vkey) => return ControlKey::new(vkey),
-        })
-    }
-
     fn start_key_event<W>(&mut self, widget: &mut W, vkey: VirtualKeyCode, scancode: u32)
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         use VirtualKeyCode as VK;
-        let opt_control = self.match_shortcuts(vkey);
+        let opt_control = self.state.shortcuts.get(self.state.modifiers, vkey);
 
         if self.state.char_focus {
             if let Some(id) = self.state.sel_focus {

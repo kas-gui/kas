@@ -73,6 +73,7 @@ mod events;
 mod handler;
 mod manager;
 mod response;
+mod shortcuts;
 mod update;
 
 use smallvec::SmallVec;

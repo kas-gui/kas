@@ -28,9 +28,13 @@ impl ManagerState {
     /// Construct an event manager per-window data struct
     #[inline]
     pub fn new() -> Self {
+        let mut shortcuts = shortcuts::Shortcuts::default();
+        shortcuts.load_defaults();
+
         ManagerState {
             end_id: Default::default(),
             modifiers: ModifiersState::empty(),
+            shortcuts,
             char_focus: false,
             sel_focus: None,
             nav_focus: None,
