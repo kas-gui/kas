@@ -10,7 +10,7 @@ use std::iter::FromIterator;
 
 use super::{Column, MenuEntry, MenuFrame};
 use kas::draw::TextClass;
-use kas::event::{self, ControlKey, GrabMode};
+use kas::event::{self, Command, GrabMode};
 use kas::prelude::*;
 use kas::WindowId;
 
@@ -202,8 +202,8 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     fn map_response(&mut self, mgr: &mut Manager, r: Response<u64>) -> Response<M> {
         match r {
             Response::None => Response::None,
-            Response::Unhandled(ev) => match ev {
-                Event::Control(key) => {
+            Response::Unhandled(event) => match event {
+                Event::Command(cmd, _) => {
                     let next = |mgr: &mut Manager, s, clr, rev| {
                         if clr {
                             mgr.clear_nav_focus();
@@ -211,15 +211,15 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
                         mgr.next_nav_focus(s, rev);
                         Response::None
                     };
-                    match key {
-                        ControlKey::Up => next(mgr, self, false, true),
-                        ControlKey::Down => next(mgr, self, false, false),
-                        ControlKey::Home => next(mgr, self, true, false),
-                        ControlKey::End => next(mgr, self, true, true),
-                        key => Response::Unhandled(Event::Control(key)),
+                    match cmd {
+                        Command::Up => next(mgr, self, false, true),
+                        Command::Down => next(mgr, self, false, false),
+                        Command::Home => next(mgr, self, true, false),
+                        Command::End => next(mgr, self, true, true),
+                        _ => Response::Unhandled(event),
                     }
                 }
-                ev => Response::Unhandled(ev),
+                event => Response::Unhandled(event),
             },
             Response::Focus(x) => Response::Focus(x),
             Response::Msg(msg) => {

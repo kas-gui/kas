@@ -52,7 +52,7 @@ impl ManagerState {
         (false, false)
     }
 
-    /// Get whether this widget has keyboard focus
+    /// Get whether this widget has keyboard navigation focus
     #[inline]
     pub fn nav_focus(&self, w_id: WidgetId) -> bool {
         self.nav_focus == Some(w_id)
@@ -295,11 +295,11 @@ impl<'a> Manager<'a> {
 
 /// Public API (around event manager state)
 impl<'a> Manager<'a> {
-    /// Attempts to set a fallback to receive [`Event::Control`]
+    /// Attempts to set a fallback to receive [`Event::Command`]
     ///
-    /// In case a navigation key is pressed (see [`ControlKey`]) but no widget has
+    /// In case a navigation key is pressed (see [`Command`]) but no widget has
     /// navigation focus, then, if a fallback has been set, that widget will
-    /// receive the key via [`Event::Control`]. (This does not include
+    /// receive the key via [`Event::Command`]. (This does not include
     /// [`Event::Activate`].)
     ///
     /// Only one widget can be a fallback, and the *first* to set itself wins.
@@ -387,10 +387,12 @@ impl<'a> Manager<'a> {
 
     /// Request character-input focus
     ///
-    /// If successful, [`Event::ReceivedCharacter`] events are sent to this
-    /// widget when character data is received.
+    /// Character data is sent to the widget with char focus via
+    /// [`Event::ReceivedCharacter`] and [`Event::Command`].
     ///
-    /// Currently, this method always succeeds.
+    /// Currently, this method always succeeds. Focus persists until either
+    /// another widget requests focus or the widget's event handler returns
+    /// `Response::Unhandled(Event::Control(ControlKey::Escape))`.
     pub fn request_char_focus(&mut self, id: WidgetId) {
         if !self.read_only {
             self.set_char_focus(Some(id));

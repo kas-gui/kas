@@ -10,7 +10,7 @@ use std::ops::{Add, Sub};
 use std::time::Duration;
 
 use super::DragHandle;
-use kas::event::{self, ControlKey};
+use kas::event::{self, Command};
 use kas::prelude::*;
 
 /// Requirements on type used by [`Slider`]
@@ -266,31 +266,31 @@ impl<T: SliderType, D: Directional> event::SendEvent for Slider<T, D> {
             }
         } else {
             match event {
-                Event::Control(key) => {
+                Event::Command(cmd, _) => {
                     let rev = self.direction.is_reversed();
-                    let v = match key {
-                        ControlKey::Left | ControlKey::Up => match rev {
+                    let v = match cmd {
+                        Command::Left | Command::Up => match rev {
                             false => self.value - self.step,
                             true => self.value + self.step,
                         },
-                        ControlKey::Right | ControlKey::Down => match rev {
+                        Command::Right | Command::Down => match rev {
                             false => self.value + self.step,
                             true => self.value - self.step,
                         },
-                        ControlKey::PageUp | ControlKey::PageDown => {
+                        Command::PageUp | Command::PageDown => {
                             // Generics makes this easier than constructing a literal and multiplying!
                             let mut x = self.step + self.step;
                             x = x + x;
                             x = x + x;
                             x = x + x;
-                            match rev == (key == ControlKey::PageDown) {
+                            match rev == (cmd == Command::PageDown) {
                                 false => self.value + x,
                                 true => self.value - x,
                             }
                         }
-                        ControlKey::Home => self.range.0,
-                        ControlKey::End => self.range.1,
-                        key => return Response::Unhandled(Event::Control(key)),
+                        Command::Home => self.range.0,
+                        Command::End => self.range.1,
+                        _ => return Response::Unhandled(event),
                     };
                     let action = self.set_value(v);
                     return if action.is_empty() {

@@ -26,20 +26,16 @@ pub enum Event {
     /// This event is triggered by keyboard navigation and accelerator key
     /// bindings, and may be used by a parent widget to activate a child.
     Activate,
-    /// Control / Navigation key input
+    /// (Keyboard) command input
     ///
-    /// This represents a "control" actions, usually triggered by a key, and are
-    /// received with char focus ([`Manager::request_char_focus`]), nav focus
-    /// ([`Manager::nav_focus`]) or as a nav
+    /// This represents a control or navigation action, usually from the
+    /// keyboard. It is sent to the widget with char focus (if any; see
+    /// [`Manager::request_char_focus`]), otherwise to the widget with nav focus
+    /// ([`Manager::nav_focus`]), otherwise to a widget registered as a nav
     /// fallback ([`Manager::register_nav_fallback`]).
     ///
-    /// Behaviour differs slightly between char and nav focus. When a widget
-    /// has char focus, the Space key sends a space character via
-    /// [`Event::ReceivedCharacter`] while the Return key sends
-    /// [`ControlKey::Return`]. Without char focus, both Space and Return keys
-    /// send [`Event::Activate`] to the widget with nav focus (if any, otherwise
-    /// to the nav fallback, if any).
-    Control(ControlKey),
+    /// The state of the shift key is included (true = pressed).
+    Command(Command, bool),
     /// Widget lost keyboard input focus
     LostCharFocus,
     /// Widget lost selection focus
@@ -162,23 +158,22 @@ pub enum Event {
     NavFocus,
 }
 
-/// Control / Navigation key ([`Event::Control`])
+/// Command input ([`Event::Command`])
 ///
-/// These codes are generated from keyboard events when a widget has char or
-/// nav focus. The codes generated differ slightly depending on which focus
-/// dominates; see notes on [`ControlKey::Return`] and [`ControlKey::Tab`].
+/// Behaviour differs slightly between char and nav focus. When a widget
+/// has char focus, the Space key sends a space character via
+/// [`Event::ReceivedCharacter`] while the Return key sends
+/// [`Command::Return`]. Without char focus, both Space and Return keys
+/// send [`Event::Activate`] to the widget with nav focus (or the fallback).
+/// Also, [`Command::Escape`] and [`Command::Tab`] are only sent to widgets
+/// with char focus.
 ///
-/// In some cases, a widget's response will depend on the state of modifier
-/// keys. This state can be read via the [`Manager::modifiers`] method.
+/// Handling may depend on the state of the Shift key.
 ///
-/// The purpose of this enum (instead of sending the active widget a
-/// [`VirtualKeyCode`]) is consistent behaviour: these "navigation keys" will
-/// always be sent to the widget highlighted for keyboard navigation, if active,
-/// while alpha-numeric keys will always be available for accelerator keys
-/// (when a character input grab is not present). Additionally, this allows
-/// uniform behaviour with regards to num-pad keys.
+/// The exact mapping between the keyboard and these commands is OS-specific.
+/// In the future it should be customisable (see `shortcuts` module).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum ControlKey {
+pub enum Command {
     /// Escape key
     ///
     /// Each press of this key should somehow relax control. It is expected that
@@ -249,35 +244,34 @@ pub enum ControlKey {
     Forward,
 }
 
-impl ControlKey {
+impl Command {
     /// Try constructing from a [`VirtualKeyCode`]
     pub fn new(vkey: VirtualKeyCode) -> Option<Self> {
-        use ControlKey as CK;
         use VirtualKeyCode::*;
         Some(match vkey {
-            Escape => CK::Escape,
-            Snapshot => CK::Snapshot,
-            Scroll => CK::ScrollLock,
-            Pause => CK::Pause,
-            Insert => CK::Insert,
-            Home => CK::Home,
-            Delete => CK::Delete,
-            End => CK::End,
-            PageDown => CK::PageDown,
-            PageUp => CK::PageUp,
-            Left => CK::Left,
-            Up => CK::Up,
-            Right => CK::Right,
-            Down => CK::Down,
-            Back => CK::Backspace,
-            Return => CK::Return,
-            NavigateForward => CK::Forward,
-            NavigateBackward => CK::Backward,
-            NumpadEnter => CK::Return,
-            Tab => CK::Tab,
-            Cut => CK::Cut,
-            Copy => CK::Copy,
-            Paste => CK::Paste,
+            Escape => Command::Escape,
+            Snapshot => Command::Snapshot,
+            Scroll => Command::ScrollLock,
+            Pause => Command::Pause,
+            Insert => Command::Insert,
+            Home => Command::Home,
+            Delete => Command::Delete,
+            End => Command::End,
+            PageDown => Command::PageDown,
+            PageUp => Command::PageUp,
+            Left => Command::Left,
+            Up => Command::Up,
+            Right => Command::Right,
+            Down => Command::Down,
+            Back => Command::Backspace,
+            Return => Command::Return,
+            NavigateForward => Command::Forward,
+            NavigateBackward => Command::Backward,
+            NumpadEnter => Command::Return,
+            Tab => Command::Tab,
+            Cut => Command::Cut,
+            Copy => Command::Copy,
+            Paste => Command::Paste,
             _ => return None,
         })
     }

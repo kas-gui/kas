@@ -12,7 +12,7 @@ use wgpu::util::DeviceExt;
 use wgpu::{include_spirv, Buffer, ShaderModule};
 
 use kas::draw::Pass;
-use kas::event::{self, ControlKey};
+use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widget::{Label, ReserveP, Slider, Window};
@@ -445,19 +445,19 @@ impl event::Handler for Mandlebrot {
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
-            Event::Control(key) => {
-                match key {
-                    ControlKey::Home | ControlKey::End => self.reset_view(),
-                    ControlKey::PageUp => self.alpha = self.alpha / 2f64.sqrt(),
-                    ControlKey::PageDown => self.alpha = self.alpha * 2f64.sqrt(),
-                    key => {
+            Event::Command(cmd, _) => {
+                match cmd {
+                    Command::Home | Command::End => self.reset_view(),
+                    Command::PageUp => self.alpha = self.alpha / 2f64.sqrt(),
+                    Command::PageDown => self.alpha = self.alpha * 2f64.sqrt(),
+                    cmd => {
                         let d = 0.2;
-                        let delta = match key {
-                            ControlKey::Up => DVec2(0.0, -d),
-                            ControlKey::Down => DVec2(0.0, d),
-                            ControlKey::Left => DVec2(-d, 0.0),
-                            ControlKey::Right => DVec2(d, 0.0),
-                            _ => return Response::Unhandled(Event::Control(key)),
+                        let delta = match cmd {
+                            Command::Up => DVec2(0.0, -d),
+                            Command::Down => DVec2(0.0, d),
+                            Command::Left => DVec2(-d, 0.0),
+                            Command::Right => DVec2(d, 0.0),
+                            _ => return Response::Unhandled(event),
                         };
                         self.delta = self.delta + self.alpha.complex_mul(delta);
                     }

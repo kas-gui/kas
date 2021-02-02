@@ -5,13 +5,13 @@
 
 //! Shortcut matching
 
-use super::{ControlKey, ModifiersState, VirtualKeyCode};
+use super::{Command, ModifiersState, VirtualKeyCode};
 use linear_map::LinearMap;
 use std::collections::HashMap;
 
 #[derive(Default, Debug)]
 pub struct Shortcuts {
-    map: LinearMap<ModifiersState, HashMap<VirtualKeyCode, ControlKey>>,
+    map: LinearMap<ModifiersState, HashMap<VirtualKeyCode, Command>>,
 }
 
 impl Shortcuts {
@@ -25,26 +25,26 @@ impl Shortcuts {
 
         let map = self.map.entry(CMD).or_insert_with(Default::default);
         let shortcuts = [
-            (VK::A, ControlKey::SelectAll),
-            (VK::C, ControlKey::Copy),
-            (VK::V, ControlKey::Paste),
-            (VK::X, ControlKey::Cut),
-            (VK::Z, ControlKey::Undo),
+            (VK::A, Command::SelectAll),
+            (VK::C, Command::Copy),
+            (VK::V, Command::Paste),
+            (VK::X, Command::Cut),
+            (VK::Z, Command::Undo),
         ];
         map.extend(shortcuts.iter().cloned());
 
         let modifiers = CMD | ModifiersState::SHIFT;
         let map = self.map.entry(modifiers).or_insert_with(Default::default);
-        let shortcuts = [(VK::A, ControlKey::Deselect), (VK::Z, ControlKey::Redo)];
+        let shortcuts = [(VK::A, Command::Deselect), (VK::Z, Command::Redo)];
         map.extend(shortcuts.iter().cloned());
     }
 
     /// Match shortcuts
-    pub fn get(&self, modifiers: ModifiersState, vkey: VirtualKeyCode) -> Option<ControlKey> {
+    pub fn get(&self, modifiers: ModifiersState, vkey: VirtualKeyCode) -> Option<Command> {
         self.map
             .get(&modifiers)
             .and_then(|m| m.get(&vkey))
             .cloned()
-            .or_else(|| ControlKey::new(vkey))
+            .or_else(|| Command::new(vkey))
     }
 }
