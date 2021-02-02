@@ -62,11 +62,11 @@ mod data {
             let dur = self.end - self.start;
             let secs = dur.num_seconds();
             let step_secs = self.step.num_seconds();
-            1 + ((secs - 1) / step_secs) as usize
+            1 + usize::conv((secs - 1) / step_secs)
         }
 
         fn get(&self, index: usize) -> Self::Item {
-            let date = self.start + self.step * index as i32;
+            let date = self.start + self.step * i32::conv(index);
             date.format("%A %e %B %Y, %T").to_string()
         }
     }

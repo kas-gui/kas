@@ -9,7 +9,7 @@ use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
 use kas::draw::{Draw, Pass};
-use kas::geom::{Coord, Rect, Size, Vec2};
+use kas::geom::{Coord, Offset, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::text::{format::FormattableText, AccelString, Text, TextApi, TextDisplay};
 use kas::Direction;
@@ -114,8 +114,9 @@ pub trait SizeHandle {
     /// may have a factor of 2 or higher; this may be fractional. It is
     /// recommended to calculate sizes as follows:
     /// ```
+    /// use kas::conv::*;
     /// # let scale_factor = 1.5f32;
-    /// let size = (100.0 * scale_factor).round() as u32;
+    /// let size = i32::conv_ceil(100.0 * scale_factor);
     /// ```
     ///
     /// This value may change during a program's execution (e.g. when a window
@@ -149,7 +150,7 @@ pub trait SizeHandle {
     fn outer_margins(&self) -> Margins;
 
     /// The height of a line of text
-    fn line_height(&self, class: TextClass) -> u32;
+    fn line_height(&self, class: TextClass) -> i32;
 
     /// Update a [`Text`] and get a size bound
     ///
@@ -200,7 +201,7 @@ pub trait SizeHandle {
     /// -   `min_len`: minimum length for the whole bar
     ///
     /// Required bound: `min_len >= size.0`.
-    fn scrollbar(&self) -> (Size, u32);
+    fn scrollbar(&self) -> (Size, i32);
 
     /// Dimensions for a slider
     ///
@@ -211,7 +212,7 @@ pub trait SizeHandle {
     /// -   `min_len`: minimum length for the whole bar
     ///
     /// Required bound: `min_len >= size.0`.
-    fn slider(&self) -> (Size, u32);
+    fn slider(&self) -> (Size, i32);
 
     /// Dimensions for a progress bar
     ///
@@ -251,11 +252,11 @@ pub trait DrawHandle {
     /// [`kas::widget::ScrollRegion`] to adjust its contents.
     /// ```
     /// # use kas::geom::*;
-    /// # let offset = Coord::ZERO;
-    /// # let rect = Rect::new(offset, Size::ZERO);
+    /// # let offset = Offset::ZERO;
+    /// # let rect = Rect::new(Coord::ZERO, Size::ZERO);
     /// let rect = rect + offset;
     /// ```
-    fn draw_device(&mut self) -> (Pass, Coord, &mut dyn Draw);
+    fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw);
 
     /// Construct a new draw-handle on a given region and pass to a callback.
     ///
@@ -267,7 +268,7 @@ pub trait DrawHandle {
     fn clip_region(
         &mut self,
         rect: Rect,
-        offset: Coord,
+        offset: Offset,
         class: ClipRegion,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     );
@@ -302,7 +303,7 @@ pub trait DrawHandle {
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: &TextDisplay,
         class: TextClass,
     );
@@ -312,7 +313,7 @@ pub trait DrawHandle {
     /// [`DrawHandle::text_offset`] already supports *font* effects: bold,
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
-    fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass);
+    fn text_effects(&mut self, pos: Coord, offset: Offset, text: &dyn TextApi, class: TextClass);
 
     /// Draw an `AccelString` text
     ///
@@ -327,7 +328,7 @@ pub trait DrawHandle {
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
@@ -338,7 +339,7 @@ pub trait DrawHandle {
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: &TextDisplay,
         class: TextClass,
         byte: usize,
@@ -416,7 +417,7 @@ pub trait DrawHandleExt: DrawHandle {
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
     fn text<T: FormattableText>(&mut self, pos: Coord, text: &Text<T>, class: TextClass) {
         let bounds = text.env().bounds.into();
-        self.text_offset(pos, bounds, Coord::ZERO, text.as_ref(), class);
+        self.text_offset(pos, bounds, Offset::ZERO, text.as_ref(), class);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -428,7 +429,7 @@ pub trait DrawHandleExt: DrawHandle {
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: T,
         range: R,
         class: TextClass,
@@ -468,7 +469,7 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
         self.deref().outer_margins()
     }
 
-    fn line_height(&self, class: TextClass) -> u32 {
+    fn line_height(&self, class: TextClass) -> i32 {
         self.deref().line_height(class)
     }
     fn text_bound(
@@ -496,10 +497,10 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn radiobox(&self) -> Size {
         self.deref().radiobox()
     }
-    fn scrollbar(&self) -> (Size, u32) {
+    fn scrollbar(&self) -> (Size, i32) {
         self.deref().scrollbar()
     }
-    fn slider(&self) -> (Size, u32) {
+    fn slider(&self) -> (Size, i32) {
         self.deref().slider()
     }
     fn progress_bar(&self) -> Size {
@@ -529,7 +530,7 @@ where
         self.deref().outer_margins()
     }
 
-    fn line_height(&self, class: TextClass) -> u32 {
+    fn line_height(&self, class: TextClass) -> i32 {
         self.deref().line_height(class)
     }
     fn text_bound(
@@ -557,10 +558,10 @@ where
     fn radiobox(&self) -> Size {
         self.deref().radiobox()
     }
-    fn scrollbar(&self) -> (Size, u32) {
+    fn scrollbar(&self) -> (Size, i32) {
         self.deref().scrollbar()
     }
-    fn slider(&self) -> (Size, u32) {
+    fn slider(&self) -> (Size, i32) {
         self.deref().slider()
     }
     fn progress_bar(&self) -> Size {
@@ -572,13 +573,13 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         self.deref_mut().size_handle_dyn(f)
     }
-    fn draw_device(&mut self) -> (Pass, Coord, &mut dyn Draw) {
+    fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
     fn clip_region(
         &mut self,
         rect: Rect,
-        offset: Coord,
+        offset: Offset,
         class: ClipRegion,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
@@ -600,14 +601,14 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: &TextDisplay,
         class: TextClass,
     ) {
         self.deref_mut()
             .text_offset(pos, bounds, offset, text, class)
     }
-    fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass) {
+    fn text_effects(&mut self, pos: Coord, offset: Offset, text: &dyn TextApi, class: TextClass) {
         self.deref_mut().text_effects(pos, offset, text, class);
     }
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
@@ -617,7 +618,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
@@ -629,7 +630,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: &TextDisplay,
         class: TextClass,
         byte: usize,
@@ -671,13 +672,13 @@ where
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         self.deref_mut().size_handle_dyn(f)
     }
-    fn draw_device(&mut self) -> (Pass, Coord, &mut dyn Draw) {
+    fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
     fn clip_region(
         &mut self,
         rect: Rect,
-        offset: Coord,
+        offset: Offset,
         class: ClipRegion,
         f: &mut dyn FnMut(&mut dyn DrawHandle),
     ) {
@@ -699,14 +700,14 @@ where
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: &TextDisplay,
         class: TextClass,
     ) {
         self.deref_mut()
             .text_offset(pos, bounds, offset, text, class)
     }
-    fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass) {
+    fn text_effects(&mut self, pos: Coord, offset: Offset, text: &dyn TextApi, class: TextClass) {
         self.deref_mut().text_effects(pos, offset, text, class);
     }
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
@@ -716,7 +717,7 @@ where
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
@@ -728,7 +729,7 @@ where
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: &TextDisplay,
         class: TextClass,
         byte: usize,
@@ -772,9 +773,9 @@ mod test {
 
         let _size = draw_handle.size_handle(|h| h.frame());
 
-        let zero = Coord::ZERO;
         let bounds = Vec2(100.0, 30.0);
         let text = kas::text::Text::new_single("sample");
-        draw_handle.text_selected(zero, bounds, zero, &text, .., TextClass::Label)
+        let class = TextClass::Label;
+        draw_handle.text_selected(Coord::ZERO, bounds, Offset::ZERO, &text, .., class)
     }
 }

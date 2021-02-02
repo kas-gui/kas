@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use std::u16;
 
 use super::*;
+use crate::conv::Conv;
 use crate::draw::SizeHandle;
 use crate::geom::Coord;
 #[allow(unused)]
@@ -576,7 +577,7 @@ impl<'a> Manager<'a> {
                     for index in 0..widget.len() {
                         let w = widget.get(index).unwrap();
                         if w.is_ancestor_of(id) {
-                            self.state.nav_stack.push(index as u32);
+                            self.state.nav_stack.push(u32::conv(index));
                             widget_stack.push(widget);
                             widget = w;
                             continue 'l;
@@ -599,7 +600,7 @@ impl<'a> Manager<'a> {
         } else {
             // Reconstruct widget_stack:
             for index in self.state.nav_stack.iter().cloned() {
-                let new = widget.get(index as usize).unwrap();
+                let new = widget.get(usize::conv(index)).unwrap();
                 widget_stack.push(widget);
                 widget = new;
             }
@@ -623,7 +624,7 @@ impl<'a> Manager<'a> {
                         None => break $lt,
                         Some(w) => w,
                     };
-                    $nav_stack.push(index as u32);
+                    $nav_stack.push(u32::conv(index));
                     $widget_stack.push($widget);
                     $widget = new;
                     true
@@ -639,7 +640,7 @@ impl<'a> Manager<'a> {
                 let mut index;
                 match ($nav_stack.pop(), $widget_stack.pop()) {
                     (Some(i), Some(w)) => {
-                        index = i as usize;
+                        index = usize::conv(i);
                         $widget = w;
                     }
                     _ => break $lt,
@@ -672,7 +673,7 @@ impl<'a> Manager<'a> {
                         None => break $lt,
                         Some(w) => w,
                     };
-                    $nav_stack.push(index as u32);
+                    $nav_stack.push(u32::conv(index));
                     $widget_stack.push($widget);
                     $widget = new;
                 }

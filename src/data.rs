@@ -13,7 +13,7 @@ use std::rc::Rc;
 use std::u32;
 
 use super::Align;
-use crate::geom::{Coord, Rect, Size};
+use crate::geom::{Rect, Size};
 
 // for doc use
 #[allow(unused)]
@@ -91,8 +91,8 @@ impl TryFrom<u32> for WidgetId {
 impl TryFrom<u64> for WidgetId {
     type Error = ();
     fn try_from(x: u64) -> Result<WidgetId, ()> {
-        if x <= u32::MAX as u64 {
-            if let Some(nz) = NonZeroU32::new(x as u32) {
+        if let Ok(x) = u32::try_from(x) {
+            if let Some(nz) = NonZeroU32::new(x) {
                 return Ok(WidgetId(nz));
             }
         }
@@ -110,7 +110,7 @@ impl From<WidgetId> for u32 {
 impl From<WidgetId> for u64 {
     #[inline]
     fn from(id: WidgetId) -> u64 {
-        id.0.get() as u64
+        id.0.get().into()
     }
 }
 
@@ -210,7 +210,7 @@ impl CompleteAlignment {
                 Align::Centre => (size.0 - ideal.0) / 2,
                 Align::BR => size.0 - ideal.0,
                 Align::Default | Align::TL | Align::Stretch => 0,
-            } as i32;
+            };
             size.0 = ideal.0;
         }
         if self.valign != Align::Stretch && ideal.1 < size.1 {
@@ -218,7 +218,7 @@ impl CompleteAlignment {
                 Align::Centre => (size.1 - ideal.1) / 2,
                 Align::BR => size.1 - ideal.1,
                 Align::Default | Align::TL | Align::Stretch => 0,
-            } as i32;
+            };
             size.1 = ideal.1;
         }
         Rect { pos, size }
@@ -262,26 +262,6 @@ pub trait Directional: Copy + Sized + std::fmt::Debug + 'static {
     #[inline]
     fn is_reversed(self) -> bool {
         ((self.as_direction() as u32) & 2) == 2
-    }
-
-    /// Extract a coordinate
-    #[inline]
-    fn extract_coord(self, coord: Coord) -> i32 {
-        if self.is_horizontal() {
-            coord.0
-        } else {
-            coord.1
-        }
-    }
-
-    /// Extract a size
-    #[inline]
-    fn extract_size(self, size: Size) -> u32 {
-        if self.is_horizontal() {
-            size.0
-        } else {
-            size.1
-        }
     }
 }
 

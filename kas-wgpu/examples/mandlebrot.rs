@@ -241,7 +241,7 @@ impl CustomPipe for Pipe {
             usage: wgpu::BufferUsage::COPY_SRC,
         });
 
-        let byte_len = size_of::<Scale>() as u64;
+        let byte_len = u64::conv(size_of::<Scale>());
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &window.scale_buf, 0, byte_len);
     }
 
@@ -258,7 +258,7 @@ impl CustomPipe for Pipe {
             usage: wgpu::BufferUsage::COPY_SRC,
         });
 
-        let byte_len = size_of::<UnifRect>() as u64;
+        let byte_len = u64::conv(size_of::<UnifRect>());
         encoder.copy_buffer_to_buffer(&rect_buf, 0, &window.rect_buf, 0, byte_len);
 
         let iter = [window.iterations];
@@ -268,7 +268,7 @@ impl CustomPipe for Pipe {
             usage: wgpu::BufferUsage::COPY_SRC,
         });
 
-        let byte_len = size_of::<i32>() as u64;
+        let byte_len = u64::conv(size_of::<i32>());
         encoder.copy_buffer_to_buffer(&iter_buf, 0, &window.iter_buf, 0, byte_len);
 
         // NOTE: we prepare vertex buffers here. Due to lifetime restrictions on
@@ -282,7 +282,7 @@ impl CustomPipe for Pipe {
                     usage: wgpu::BufferUsage::VERTEX,
                 });
                 pass.1 = Some(buffer);
-                pass.2 = pass.0.len() as u32;
+                pass.2 = u32::conv(pass.0.len());
                 pass.0.clear();
             } else {
                 pass.1 = None;
@@ -410,7 +410,7 @@ impl WidgetConfig for Mandlebrot {
 impl Layout for Mandlebrot {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
         let virt_size = if a.is_horizontal() { 300.0 } else { 200.0 };
-        let min_size = (virt_size * size_handle.scale_factor()).round() as u32;
+        let min_size = i32::conv_floor(virt_size * size_handle.scale_factor());
         let ideal_size = min_size * 10; // prefer big but not larger than screen size
         SizeRules::new(min_size, ideal_size, (0, 0), StretchPolicy::Maximize)
     }
@@ -429,7 +429,7 @@ impl Layout for Mandlebrot {
         let (pass, offset, draw) = draw_handle.draw_device();
         // TODO: our view transform assumes that offset = 0.
         // Here it is but in general we should be able to handle an offset here!
-        assert_eq!(offset, Coord::ZERO, "view transform assumption violated");
+        assert_eq!(offset, Offset::ZERO, "view transform assumption violated");
 
         let draw = draw
             .as_any_mut()

@@ -11,6 +11,7 @@
 
 use smallvec::{smallvec, SmallVec};
 
+use kas::conv::Conv;
 use kas::event::{VirtualKeyCode as VK, VirtualKeyCodes};
 use kas::text::format::{FontToken, FormattableText};
 #[cfg(not(feature = "gat"))]
@@ -55,7 +56,7 @@ impl AccelString {
                     break;
                 }
                 Some((j, c)) => {
-                    let pos = buf.len() as u32;
+                    let pos = u32::conv(buf.len());
                     buf.push(c);
                     if effects.last().map(|e| e.start == pos).unwrap_or(false) {
                         effects.last_mut().unwrap().flags = EffectFlags::UNDERLINE;
@@ -75,7 +76,7 @@ impl AccelString {
 
                     if let Some((k, _)) = chars.next() {
                         effects.push(Effect {
-                            start: pos + (k - j) as u32,
+                            start: pos + u32::conv(k - j),
                             flags: EffectFlags::empty(),
                             aux: (),
                         });

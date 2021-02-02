@@ -50,7 +50,7 @@ impl<M: Debug> Separator<M> {
 
 impl<M: Debug> Layout for Separator<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        SizeRules::extract_fixed(axis.is_vertical(), size_handle.frame(), Default::default())
+        SizeRules::extract_fixed(axis, size_handle.frame(), Default::default())
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {

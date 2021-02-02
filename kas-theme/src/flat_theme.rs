@@ -11,6 +11,7 @@ use std::f32;
 use std::ops::Range;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
+use kas::conv::Conv;
 use kas::draw::{
     self, ClipRegion, Colour, Draw, DrawRounded, DrawShared, DrawText, InputState, Pass,
     SizeHandle, TextClass,
@@ -70,7 +71,7 @@ pub struct DrawHandle<'a, D: Draw> {
     pub(crate) window: &'a mut DimensionsWindow,
     pub(crate) cols: &'a ThemeColours,
     pub(crate) rect: Rect,
-    pub(crate) offset: Coord,
+    pub(crate) offset: Offset,
     pub(crate) pass: Pass,
 }
 
@@ -115,7 +116,7 @@ where
             window: transmute::<&'a mut Self::Window, &'static mut Self::Window>(window),
             cols: transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
             rect,
-            offset: Coord::ZERO,
+            offset: Offset::ZERO,
             pass: super::START_PASS,
         }
     }
@@ -133,7 +134,7 @@ where
             window,
             cols: &self.cols,
             rect,
-            offset: Coord::ZERO,
+            offset: Offset::ZERO,
             pass: super::START_PASS,
         }
     }
@@ -209,14 +210,14 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         }
     }
 
-    fn draw_device(&mut self) -> (kas::draw::Pass, Coord, &mut dyn kas::draw::Draw) {
+    fn draw_device(&mut self) -> (kas::draw::Pass, Offset, &mut dyn kas::draw::Draw) {
         (self.pass, self.offset, self.draw)
     }
 
     fn clip_region(
         &mut self,
         rect: Rect,
-        offset: Coord,
+        offset: Offset,
         class: ClipRegion,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
@@ -271,7 +272,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: &TextDisplay,
         class: TextClass,
     ) {
@@ -281,7 +282,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .text(self.pass, pos.into(), bounds, offset.into(), text, col);
     }
 
-    fn text_effects(&mut self, pos: Coord, offset: Coord, text: &dyn TextApi, class: TextClass) {
+    fn text_effects(&mut self, pos: Coord, offset: Offset, text: &dyn TextApi, class: TextClass) {
         self.draw.text_col_effects(
             self.pass,
             (pos + self.offset).into(),
@@ -312,7 +313,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         &mut self,
         pos: Coord,
         bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
@@ -342,12 +343,12 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
                 aux: col,
             },
             Effect {
-                start: range.start as u32,
+                start: u32::conv(range.start),
                 flags: Default::default(),
                 aux: self.cols.text_sel,
             },
             Effect {
-                start: range.end as u32,
+                start: u32::conv(range.end),
                 flags: Default::default(),
                 aux: col,
             },
@@ -360,7 +361,7 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         &mut self,
         pos: Coord,
         mut bounds: Vec2,
-        offset: Coord,
+        offset: Offset,
         text: &TextDisplay,
         class: TextClass,
         byte: usize,
@@ -434,7 +435,6 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             let radius = inner.size().sum() * (1.0 / 16.0);
             let inner = inner.shrink(self.window.dims.inner_margin as f32 + radius);
-            let radius = radius as f32;
             self.draw
                 .rounded_line(self.pass, inner.a, inner.b, radius, col);
             self.draw

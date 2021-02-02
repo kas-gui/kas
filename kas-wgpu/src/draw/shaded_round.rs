@@ -10,6 +10,7 @@ use std::mem::size_of;
 use wgpu::util::DeviceExt;
 
 use crate::draw::{Rgb, ShaderManager};
+use kas::conv::Conv;
 use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Size, Vec2, Vec3};
 
@@ -56,7 +57,7 @@ pub struct RenderBuffer<'a> {
 impl<'a> RenderBuffer<'a> {
     /// Do the render
     pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>) {
-        let count = self.vertices.len() as u32;
+        let count = u32::conv(self.vertices.len());
         rpass.set_pipeline(self.pipe);
         rpass.set_bind_group(0, self.bind_group, &[]);
         rpass.set_vertex_buffer(0, self.buffer.slice(..));
@@ -241,7 +242,7 @@ impl Window {
             contents: bytemuck::cast_slice(&scale_factor),
             usage: wgpu::BufferUsage::COPY_SRC,
         });
-        let byte_len = size_of::<Scale>() as u64;
+        let byte_len = u64::conv(size_of::<Scale>());
 
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);
     }

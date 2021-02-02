@@ -36,12 +36,12 @@ pub struct ListView<
     direction: D,
     data_range: Range,
     align_hints: AlignHints,
-    ideal_visible: u32,
-    child_size_min: u32,
-    child_size_ideal: u32,
-    child_inter_margin: u32,
-    child_skip: u32,
-    child_size: u32,
+    ideal_visible: i32,
+    child_size_min: i32,
+    child_size_ideal: i32,
+    child_inter_margin: i32,
+    child_skip: i32,
+    child_size: i32,
     scroll: ScrollComponent,
 }
 
@@ -127,7 +127,7 @@ where
     ///
     /// This affects the (ideal) size request and whether children are sized
     /// according to their ideal or minimum size but not the minimum size.
-    pub fn with_num_visible(mut self, number: u32) -> Self {
+    pub fn with_num_visible(mut self, number: i32) -> Self {
         self.ideal_visible = number;
         self
     }
@@ -138,25 +138,25 @@ where
         // TODO: we may wish to notify self.data of the range it should cache
         let w_len = self.widgets.len();
         let (old_start, old_end) = (self.data_range.start(), self.data_range.end());
-        let offset = self.direction.extract_coord(self.scroll_offset()) as usize;
-        let mut first_data = offset / self.child_skip as usize;
+        let offset = u64::conv(self.scroll_offset().extract(self.direction));
+        let mut first_data = usize::conv(offset / u64::conv(self.child_skip));
         first_data = (first_data + w_len)
             .min(self.data.len())
             .saturating_sub(w_len);
         let data_range = first_data..(first_data + w_len).min(self.data.len());
         let (child_size, mut skip) = match self.direction.is_vertical() {
             false => (
-                Size(self.child_size, self.rect().size.1),
-                Coord(self.child_skip as i32, 0),
+                Size::new(self.child_size, self.rect().size.1),
+                Offset(self.child_skip, 0),
             ),
             true => (
-                Size(self.rect().size.0, self.child_size),
-                Coord(0, self.child_skip as i32),
+                Size::new(self.rect().size.0, self.child_size),
+                Offset(0, self.child_skip),
             ),
         };
         let mut pos_start = self.core.rect.pos;
         if self.direction.is_reversed() {
-            pos_start += skip * (w_len - 1) as i32;
+            pos_start += skip * i32::conv(w_len - 1);
             skip = skip * -1;
         }
         let mut rect = Rect::new(pos_start, child_size);
@@ -168,7 +168,7 @@ where
             if i == 0 || (data_num < old_start || data_num >= old_end) {
                 let w = &mut self.widgets[i];
                 action |= w.set(self.data.get(data_num));
-                rect.pos = pos_start + skip * data_num as i32;
+                rect.pos = pos_start + skip * i32::conv(data_num);
                 w.set_rect(mgr, rect, self.align_hints);
             }
         }
@@ -186,8 +186,9 @@ where
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         // TODO: maybe we should support a scrollbar on the other axis?
         // We would need to report a fake min-child-size to enable scrolling.
-        let min_size = ((self.child_size_min + self.child_inter_margin) * self.data.len() as u32)
-            .saturating_sub(self.child_inter_margin);
+        let item_min = self.child_size_min + self.child_inter_margin;
+        let num = i32::conv(self.data.len());
+        let min_size = (item_min * num - self.child_inter_margin).max(0);
         (
             self.direction.is_horizontal() && min_size > size.0,
             self.direction.is_vertical() && min_size > size.1,
@@ -195,17 +196,17 @@ where
     }
 
     #[inline]
-    fn max_scroll_offset(&self) -> Coord {
+    fn max_scroll_offset(&self) -> Offset {
         self.scroll.max_offset()
     }
 
     #[inline]
-    fn scroll_offset(&self) -> Coord {
+    fn scroll_offset(&self) -> Offset {
         self.scroll.offset()
     }
 
     #[inline]
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord {
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
         *mgr |= self.scroll.set_offset(offset);
         self.update_widgets(mgr);
         self.scroll.offset()
@@ -266,7 +267,7 @@ where
         if axis.is_vertical() == self.direction.is_vertical() {
             self.child_size_min = rules.min_size();
             self.child_size_ideal = rules.ideal_size();
-            self.child_inter_margin = rules.margins().0 as u32 + rules.margins().1 as u32;
+            self.child_inter_margin = rules.margins_i32().0 + rules.margins_i32().1;
             rules.multiply_with_margin(2, self.ideal_visible);
             rules.set_stretch(rules.stretch().max(StretchPolicy::HighUtility));
         }
@@ -277,7 +278,7 @@ where
         self.core.rect = rect;
 
         let data_len = self.data.len();
-        let data_len32 = u32::try_from(data_len).unwrap();
+        let data_len32 = i32::try_from(data_len).unwrap();
         let mut child_size = rect.size;
         let content_size;
         let skip;
@@ -289,13 +290,13 @@ where
                 child_size.0 = self.child_size_min;
             }
             self.child_size = child_size.0;
-            skip = Size(child_size.0 + self.child_inter_margin, 0);
+            skip = Offset(child_size.0 + self.child_inter_margin, 0);
             self.child_skip = skip.0;
             align.horiz = None;
             num = (rect.size.0 + skip.0 - 1) / skip.0 + 1;
 
-            let full_width = (skip.0 * data_len32).saturating_sub(self.child_inter_margin);
-            content_size = Size(full_width, child_size.1);
+            let full_width = (skip.0 * data_len32 - self.child_inter_margin).max(0);
+            content_size = Size::new(full_width, child_size.1);
         } else {
             if child_size.1 >= self.ideal_visible * self.child_size_ideal {
                 child_size.1 = self.child_size_ideal;
@@ -303,19 +304,19 @@ where
                 child_size.1 = self.child_size_min;
             }
             self.child_size = child_size.1;
-            skip = Size(0, child_size.1 + self.child_inter_margin);
+            skip = Offset(0, child_size.1 + self.child_inter_margin);
             self.child_skip = skip.1;
             align.vert = None;
             num = (rect.size.1 + skip.1 - 1) / skip.1 + 1;
 
-            let full_height = (skip.1 * data_len32).saturating_sub(self.child_inter_margin);
-            content_size = Size(child_size.0, full_height);
+            let full_height = (skip.1 * data_len32 - self.child_inter_margin).max(0);
+            content_size = Size::new(child_size.0, full_height);
         }
 
         self.align_hints = align;
 
         let old_num = self.widgets.len();
-        let num = (num as usize).min(data_len);
+        let num = (usize::conv(num)).min(data_len);
         if num > old_num {
             debug!("allocating widgets (old len = {}, new = {})", old_num, num);
             *mgr |= TkAction::RECONFIGURE;

@@ -139,7 +139,7 @@ impl<W: Widget> Layout for Window<W> {
         self.w.draw(draw_handle, mgr, disabled);
         for popup in &self.popups {
             let class = ClipRegion::Popup;
-            draw_handle.clip_region(self.core.rect, Coord::ZERO, class, &mut |draw_handle| {
+            draw_handle.clip_region(self.core.rect, Offset::ZERO, class, &mut |draw_handle| {
                 self.find(popup.1.id)
                     .map(|w| w.draw(draw_handle, mgr, disabled));
             });
@@ -230,37 +230,38 @@ impl<W: Widget> Window<W> {
         let m = cache.margins();
 
         let is_reversed = popup.direction.is_reversed();
-        let place_in = |rp, rs: u32, cp: i32, cs, ideal, m: (u16, u16)| -> (i32, u32) {
-            let before: i32 = cp - (rp + m.1 as i32);
-            let before = before.max(0) as u32;
-            let after = rs.saturating_sub(cs + before + m.0 as u32);
+        let place_in = |rp, rs: i32, cp: i32, cs: i32, ideal, m: (u16, u16)| -> (i32, i32) {
+            let m: (i32, i32) = (m.0.into(), m.1.into());
+            let before: i32 = cp - (rp + m.1);
+            let before = before.max(0);
+            let after = (rs - (cs + before + m.0)).max(0);
             if after >= ideal {
                 if is_reversed && before >= ideal {
-                    (cp - ideal as i32 - m.1 as i32, ideal)
+                    (cp - ideal - m.1, ideal)
                 } else {
-                    (cp + cs as i32 + m.0 as i32, ideal)
+                    (cp + cs + m.0, ideal)
                 }
             } else if before >= ideal {
-                (cp - ideal as i32 - m.1 as i32, ideal)
+                (cp - ideal - m.1, ideal)
             } else if before > after {
                 (rp, before)
             } else {
-                (cp + cs as i32 + m.0 as i32, after)
+                (cp + cs + m.0, after)
             }
         };
-        let place_out = |rp, rs, cp: i32, cs, ideal: u32| -> (i32, u32) {
-            let pos = cp.min(rp + rs as i32 - ideal as i32).max(rp);
+        let place_out = |rp, rs, cp: i32, cs, ideal: i32| -> (i32, i32) {
+            let pos = cp.min(rp + rs - ideal).max(rp);
             let size = ideal.max(cs).min(rs);
             (pos, size)
         };
         let rect = if popup.direction.is_horizontal() {
             let (x, w) = place_in(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0, m.horiz);
             let (y, h) = place_out(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1);
-            Rect::new(Coord(x, y), Size(w, h))
+            Rect::new(Coord(x, y), Size::new(w, h))
         } else {
             let (x, w) = place_out(r.pos.0, r.size.0, c.pos.0, c.size.0, ideal.0);
             let (y, h) = place_in(r.pos.1, r.size.1, c.pos.1, c.size.1, ideal.1, m.vert);
-            Rect::new(Coord(x, y), Size(w, h))
+            Rect::new(Coord(x, y), Size::new(w, h))
         };
 
         cache.apply_rect(widget, mgr, rect, false);

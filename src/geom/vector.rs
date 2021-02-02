@@ -7,7 +7,8 @@
 //!
 //! For drawing operations, all dimensions use the `f32` type.
 
-use kas::geom::{Coord, Rect, Size};
+use kas::conv::{Conv, ConvFloat};
+use kas::geom::{Coord, Offset, Rect, Size};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
 /// Axis-aligned 2D cuboid, specified via two corners `a` and `b`
@@ -325,44 +326,58 @@ macro_rules! impl_vec2 {
         impl From<Coord> for $T {
             #[inline]
             fn from(arg: Coord) -> Self {
-                $T(arg.0 as $f, arg.1 as $f)
+                $T(<$f>::conv(arg.0), <$f>::conv(arg.1))
             }
         }
 
         impl From<Size> for $T {
             #[inline]
             fn from(arg: Size) -> Self {
-                $T(arg.0 as $f, arg.1 as $f)
+                $T(<$f>::conv(arg.0), <$f>::conv(arg.1))
+            }
+        }
+
+        impl From<Offset> for $T {
+            #[inline]
+            fn from(arg: Offset) -> Self {
+                $T(<$f>::conv(arg.0), <$f>::conv(arg.1))
             }
         }
 
         impl From<$T> for Coord {
             #[inline]
             fn from(arg: $T) -> Self {
-                Coord(arg.0.round() as i32, arg.1.round() as i32)
+                Coord(i32::conv_nearest(arg.0), i32::conv_nearest(arg.1))
             }
         }
 
         impl From<$T> for Size {
             #[inline]
             fn from(arg: $T) -> Self {
-                Size(arg.0.round() as u32, arg.1.round() as u32)
+                Offset::from(arg).into()
+            }
+        }
+
+        impl From<$T> for Offset {
+            #[inline]
+            fn from(arg: $T) -> Self {
+                Offset(i32::conv_nearest(arg.0), i32::conv_nearest(arg.1))
             }
         }
 
         impl From<kas_text::Vec2> for $T {
             #[inline]
             fn from(size: kas_text::Vec2) -> Self {
-                $T(size.0 as $f, size.1 as $f)
-            }
-        }
-
-        impl From<$T> for kas_text::Vec2 {
-            fn from(size: $T) -> kas_text::Vec2 {
-                kas_text::Vec2(size.0 as f32, size.1 as f32)
+                $T(size.0.into(), size.1.into())
             }
         }
     };
+}
+
+impl From<Vec2> for kas_text::Vec2 {
+    fn from(size: Vec2) -> kas_text::Vec2 {
+        kas_text::Vec2(size.0, size.1)
+    }
 }
 
 impl_vec2!(Vec2, f32);

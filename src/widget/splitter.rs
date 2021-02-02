@@ -119,7 +119,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         }
         assert!(self.handles.len() + 1 == self.widgets.len());
 
-        let handle_size = axis.extract_size(size_handle.frame());
+        let handle_size = size_handle.frame().extract(axis);
 
         let dim = (self.direction, WidgetChildren::len(self));
         let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
@@ -156,7 +156,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         if aa.unwrap_or(Align::Stretch) != Align::Stretch {
             warn!("Splitter: found alignment != Stretch");
         }
-        let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(rect, dim, align, &mut self.data);
+        let mut setter = layout::RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, &mut self.data);
 
         let mut n = 0;
         loop {
@@ -282,16 +282,13 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         assert_eq!(self.widgets.len(), self.handles.len() + 1);
         let index = 2 * n + 1;
 
-        let is_horiz = self.direction.is_horizontal();
-        let extract_p = |p: Coord| if is_horiz { p.0 } else { p.1 } as u32;
-        let extract_s = |s: Size| if is_horiz { s.0 } else { s.1 } as u32;
         let hrect = self.handles[n].rect();
-        let width1 = extract_p(hrect.pos - self.core.rect.pos) as u32;
-        let width2 = extract_s(self.core.rect.size - hrect.size) - width1;
+        let width1 = (hrect.pos - self.core.rect.pos).extract(self.direction);
+        let width2 = (self.core.rect.size - hrect.size).extract(self.direction) - width1;
 
         let dim = (self.direction, WidgetChildren::len(self));
         let mut setter =
-            layout::RowSetter::<D, Vec<u32>, _>::new_unsolved(self.core.rect, dim, &mut self.data);
+            layout::RowSetter::<D, Vec<i32>, _>::new_unsolved(self.core.rect, dim, &mut self.data);
         setter.solve_range(&mut self.data, 0..index, width1);
         setter.solve_range(&mut self.data, (index + 1)..dim.1, width2);
         setter.update_offsets(&mut self.data);

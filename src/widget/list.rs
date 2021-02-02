@@ -134,7 +134,7 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         let dim = (self.direction, self.widgets.len());
-        let mut setter = layout::RowSetter::<D, Vec<u32>, _>::new(rect, dim, align, &mut self.data);
+        let mut setter = layout::RowSetter::<D, Vec<i32>, _>::new(rect, dim, align, &mut self.data);
 
         for (n, child) in self.widgets.iter_mut().enumerate() {
             let align = AlignHints::default();

@@ -21,7 +21,7 @@ enum Item {
     Radio(WidgetId),
     Edit(String),
     Slider(i32),
-    Scroll(u32),
+    Scroll(i32),
 }
 
 struct Guard;
@@ -198,7 +198,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             fn handle_slider(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {
                 Response::Msg(Item::Slider(msg))
             }
-            fn handle_scroll(&mut self, mgr: &mut Manager, msg: u32) -> Response<Item> {
+            fn handle_scroll(&mut self, mgr: &mut Manager, msg: i32) -> Response<Item> {
                 let ratio = msg as f32 / self.sc.max_value() as f32;
                 *mgr |= self.pg.set_value(ratio);
                 Response::Msg(Item::Scroll(msg))

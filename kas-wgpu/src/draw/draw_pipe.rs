@@ -14,6 +14,7 @@ use super::{
     flat_round, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow, DrawPipe,
     DrawWindow, ShaderManager, TEX_FORMAT,
 };
+use kas::conv::Conv;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Pass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 
@@ -28,8 +29,8 @@ fn make_depth_texture(device: &wgpu::Device, size: Size) -> Option<TextureView> 
     let tex = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("window depth"),
         size: wgpu::Extent3d {
-            width: size.0,
-            height: size.1,
+            width: u32::conv(size.0),
+            height: u32::conv(size.1),
             depth: 1,
         },
         mip_level_count: 1,
@@ -80,10 +81,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let f = a.0 / a.1;
         let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
 
-        let rect = Rect {
-            pos: Coord::ZERO,
-            size,
-        };
+        let rect = Rect::new(Coord::ZERO, size);
 
         let shaded_square = self.shaded_square.new_window(device, size, norm);
         let shaded_round = self.shaded_round.new_window(device, size, norm);
@@ -186,10 +184,10 @@ impl<C: CustomPipe> DrawPipe<C> {
                     depth_stencil_attachment: Some(depth_stencil_attachment.clone()),
                 });
                 rpass.set_scissor_rect(
-                    rect.pos.0 as u32,
-                    rect.pos.1 as u32,
-                    rect.size.0,
-                    rect.size.1,
+                    u32::conv(rect.pos.0),
+                    u32::conv(rect.pos.1),
+                    u32::conv(rect.size.0),
+                    u32::conv(rect.size.1),
                 );
 
                 ss.as_ref().map(|buf| buf.render(&mut rpass));
@@ -230,8 +228,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                 &mut encoder,
                 frame_view,
                 depth_stencil_attachment,
-                size.0,
-                size.1,
+                u32::conv(size.0),
+                u32::conv(size.1),
             )
             .expect("glyph_brush.draw_queued");
 
@@ -262,9 +260,9 @@ impl<CW: CustomWindow + 'static> Draw for DrawWindow<CW> {
     }
 
     fn add_clip_region(&mut self, rect: Rect, depth: f32) -> Pass {
-        let pass = self.clip_regions.len();
+        let pass = u32::conv(self.clip_regions.len());
         self.clip_regions.push(rect);
-        Pass::new_pass_with_depth(pass as u32, depth)
+        Pass::new_pass_with_depth(pass, depth)
     }
 
     #[inline]

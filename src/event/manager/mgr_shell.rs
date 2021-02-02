@@ -12,7 +12,7 @@ use std::mem::swap;
 use std::time::{Duration, Instant};
 
 use super::*;
-use crate::geom::{Coord, DVec2};
+use crate::geom::{Coord, DVec2, Offset};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{ShellWindow, TkAction, Widget, WidgetId};
@@ -486,9 +486,10 @@ impl<'a> Manager<'a> {
                             delta,
                         };
                         self.send_event(widget, grab.start_id, event);
-                    } else if let Some(pan) = self.state.pan_grab.get_mut(grab.pan_grab.0 as usize)
+                    } else if let Some(pan) =
+                        self.state.pan_grab.get_mut(usize::conv(grab.pan_grab.0))
                     {
-                        pan.coords[grab.pan_grab.1 as usize].1 = coord;
+                        pan.coords[usize::conv(grab.pan_grab.1)].1 = coord;
                     }
                 } else if let Some(id) = self.state.popups.last().map(|(_, p)| p.parent) {
                     let source = PressSource::Mouse(FAKE_MOUSE_BUTTON, 0);
@@ -521,7 +522,12 @@ impl<'a> Manager<'a> {
 
                 let event = Event::Scroll(match delta {
                     MouseScrollDelta::LineDelta(x, y) => ScrollDelta::LineDelta(x, y),
-                    MouseScrollDelta::PixelDelta(pos) => ScrollDelta::PixelDelta(pos.into()),
+                    MouseScrollDelta::PixelDelta(pos) => {
+                        // The delta is given as a PhysicalPosition, so we need
+                        // to convert to our vector type (Offset) here.
+                        let coord = Coord::from(pos);
+                        ScrollDelta::PixelDelta(Offset(coord.0, coord.1))
+                    }
                 });
                 if let Some(id) = self.state.hover {
                     self.send_event(widget, id, event);
@@ -624,10 +630,11 @@ impl<'a> Manager<'a> {
                             }
                             self.send_event(widget, id, event);
                         } else if let Some(pan_grab) = pan_grab {
-                            if (pan_grab.1 as usize) < MAX_PAN_GRABS {
-                                if let Some(pan) = self.state.pan_grab.get_mut(pan_grab.0 as usize)
+                            if usize::conv(pan_grab.1) < MAX_PAN_GRABS {
+                                if let Some(pan) =
+                                    self.state.pan_grab.get_mut(usize::conv(pan_grab.0))
                                 {
-                                    pan.coords[pan_grab.1 as usize].1 = coord;
+                                    pan.coords[usize::conv(pan_grab.1)].1 = coord;
                                 }
                             }
                         }

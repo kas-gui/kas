@@ -11,7 +11,7 @@ use std::fmt;
 use super::{AxisInfo, Margins, SizeRules};
 use crate::draw::SizeHandle;
 use crate::event::Manager;
-use crate::geom::{Coord, Rect, Size};
+use crate::geom::{Rect, Size};
 use crate::{AlignHints, Widget, WidgetConfig};
 
 /// A [`SizeRules`] solver for layouts
@@ -78,8 +78,8 @@ pub trait RulesSetter {
 pub fn solve_size_rules<W: Widget>(
     widget: &mut W,
     size_handle: &mut dyn SizeHandle,
-    x_size: Option<u32>,
-    y_size: Option<u32>,
+    x_size: Option<i32>,
+    y_size: Option<i32>,
 ) {
     widget.size_rules(size_handle, AxisInfo::new(false, y_size));
     widget.size_rules(size_handle, AxisInfo::new(true, x_size));
@@ -102,7 +102,7 @@ pub struct SolveCache {
     ideal: Size,
     margins: Margins,
     refresh_rules: bool,
-    last_width: u32,
+    last_width: i32,
 }
 
 impl SolveCache {
@@ -189,7 +189,7 @@ impl SolveCache {
     ) {
         let mut width = rect.size.0;
         if inner_margin {
-            width -= (self.margins.horiz.0 + self.margins.horiz.1) as u32;
+            width -= i32::from(self.margins.horiz.0) + i32::from(self.margins.horiz.1);
         }
 
         // We call size_rules not because we want the result, but because our
@@ -212,9 +212,9 @@ impl SolveCache {
         }
 
         if inner_margin {
-            rect.pos += Coord(self.margins.horiz.0 as i32, self.margins.vert.0 as i32);
+            rect.pos += Size::from((self.margins.horiz.0, self.margins.vert.0));
             rect.size.0 = width;
-            rect.size.1 -= (self.margins.vert.0 + self.margins.vert.1) as u32;
+            rect.size.1 -= i32::from(self.margins.vert.0) + i32::from(self.margins.vert.1);
         }
         widget.set_rect(mgr, rect, AlignHints::NONE);
 

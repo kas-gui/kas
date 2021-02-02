@@ -42,7 +42,7 @@ impl Layout for Clock {
     fn set_rect(&mut self, _: &mut Manager, rect: Rect, _align: AlignHints) {
         // Force to square
         let size = rect.size.0.min(rect.size.1);
-        let size = Size::uniform(size);
+        let size = Size::splat(size);
         let excess = rect.size - size;
         let pos = rect.pos + (excess * 0.5);
         self.core.rect = Rect { pos, size };
@@ -97,9 +97,9 @@ impl Layout for Clock {
         }
 
         let secs = self.now.time().num_seconds_from_midnight();
-        let a_sec = (secs % 60) as f32 * (PI / 30.0);
-        let a_min = (secs % 3600) as f32 * (PI / 1800.0);
-        let a_hour = (secs % (12 * 3600)) as f32 * (PI / (12.0 * 1800.0));
+        let a_sec = f32::conv(secs % 60) * (PI / 30.0);
+        let a_min = f32::conv(secs % 3600) * (PI / 1800.0);
+        let a_hour = f32::conv(secs % 43200) * (PI / (21600.0));
 
         line_seg(a_hour, 0.0, half * 0.55, half * 0.03, col_hands);
         line_seg(a_min, 0.0, half * 0.8, half * 0.015, col_hands);
@@ -131,7 +131,8 @@ impl Handler for Clock {
                 let date = self.now.format("%Y-%m-%d").to_string();
                 let time = self.now.format("%H:%M:%S").to_string();
                 let avail = Size(self.core.rect.size.0, self.core.rect.size.1 / 2);
-                *mgr |= set_text_and_prepare(&mut self.date, date, avail)
+                *mgr |= TkAction::REDRAW
+                    | set_text_and_prepare(&mut self.date, date, avail)
                     | set_text_and_prepare(&mut self.time, time, avail);
                 let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                 info!("Requesting update in {}ns", ns);

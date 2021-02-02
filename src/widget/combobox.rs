@@ -36,7 +36,7 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
         let sides = size_handle.button_surround();
         self.frame_size = sides.0 + sides.1;
         let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), self.frame_size, margins);
+        let frame_rules = SizeRules::extract_fixed(axis, self.frame_size, margins);
 
         let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
         content_rules.surrounded_by(frame_rules, true)
@@ -122,7 +122,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
         if self.active != index {
             self.active = index;
             let string = self.popup.inner[self.active].get_string();
-            let avail = self.core.rect.size.saturating_sub(self.frame_size);
+            let avail = self.core.rect.size.clamped_sub(self.frame_size);
             kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
         } else {
             TkAction::empty()
@@ -149,7 +149,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     pub fn push<T: Into<AccelString>>(&mut self, label: T, msg: M) -> TkAction {
         self.messages.push(msg);
         let column = &mut self.popup.inner.inner;
-        let len = column.len() as u64;
+        let len = u64::conv(column.len());
         column.push(MenuEntry::new(label, len))
         // TODO: localised reconfigure
     }
@@ -164,7 +164,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     pub fn insert<T: Into<AccelString>>(&mut self, index: usize, label: T, msg: M) -> TkAction {
         self.messages.insert(index, msg);
         let column = &mut self.popup.inner.inner;
-        let len = column.len() as u64;
+        let len = u64::conv(column.len());
         column.insert(index, MenuEntry::new(label, len))
         // TODO: localised reconfigure
     }
@@ -223,7 +223,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             },
             Response::Focus(x) => Response::Focus(x),
             Response::Msg(msg) => {
-                let index = msg as usize;
+                let index = usize::conv(msg);
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
@@ -244,7 +244,7 @@ impl<T: Into<AccelString>, M: Clone + Debug> FromIterator<(T, M)> for ComboBox<M
         let mut choices = Vec::with_capacity(len);
         let mut messages = Vec::with_capacity(len);
         for (i, (label, msg)) in iter.enumerate() {
-            choices.push(MenuEntry::new(label, i as u64));
+            choices.push(MenuEntry::new(label, u64::conv(i)));
             messages.push(msg);
         }
         ComboBox::new_(choices, messages)
@@ -258,7 +258,7 @@ impl<'a, M: Clone + Debug + 'static> FromIterator<&'a (&'static str, M)> for Com
         let mut choices = Vec::with_capacity(len);
         let mut messages = Vec::with_capacity(len);
         for (i, (label, msg)) in iter.enumerate() {
-            choices.push(MenuEntry::new(*label, i as u64));
+            choices.push(MenuEntry::new(*label, u64::conv(i)));
             messages.push(msg.clone());
         }
         ComboBox::new_(choices, messages)

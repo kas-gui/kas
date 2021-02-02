@@ -38,7 +38,7 @@ impl<T: FormattableText + 'static> Layout for Label<T> {
     default fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
         draw_handle.text_effects(
             self.core.rect.pos,
-            Coord::ZERO,
+            Offset::ZERO,
             &self.label,
             TextClass::Label,
         );
@@ -47,7 +47,7 @@ impl<T: FormattableText + 'static> Layout for Label<T> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
         draw_handle.text_effects(
             self.core.rect.pos,
-            Coord::ZERO,
+            Offset::ZERO,
             &self.label,
             TextClass::Label,
         );

@@ -44,7 +44,7 @@ pub trait Theme<D: DrawShared>: ThemeApi {
     /// `9/8 = 1.125` works well with many 1440p screens. It is recommended to
     /// round dimensions to the nearest integer, and cache the result:
     /// ```notest
-    /// self.margin = (MARGIN * factor).round() as u32;
+    /// self.margin = i32::conv_nearest(MARGIN * factor);
     /// ```
     ///
     /// A reference to the draw backend is provided allowing configuration.

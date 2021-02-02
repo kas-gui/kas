@@ -16,6 +16,7 @@ use std::time::Instant;
 use std::u16;
 
 use super::*;
+use crate::conv::Conv;
 use crate::geom::Coord;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
@@ -145,15 +146,15 @@ impl ManagerState {
                 }
 
                 let index = grab.n;
-                if (index as usize) < MAX_PAN_GRABS {
-                    grab.coords[index as usize] = (coord, coord);
+                if usize::from(index) < MAX_PAN_GRABS {
+                    grab.coords[usize::from(index)] = (coord, coord);
                 }
                 grab.n = index + 1;
-                return (gi as u16, index);
+                return (u16::conv(gi), index);
             }
         }
 
-        let gj = self.pan_grab.len() as u16;
+        let gj = u16::conv(self.pan_grab.len());
         let n = 1;
         let mut coords: [(Coord, Coord); MAX_PAN_GRABS] = Default::default();
         coords[0] = (coord, coord);
@@ -173,26 +174,26 @@ impl ManagerState {
         self.pan_grab.remove(index);
         if let Some(grab) = &mut self.mouse_grab {
             let p0 = grab.pan_grab.0;
-            if p0 >= index as u16 && p0 != u16::MAX {
+            if usize::from(p0) >= index && p0 != u16::MAX {
                 grab.pan_grab.0 = p0 - 1;
             }
         }
         for grab in self.touch_grab.iter_mut() {
             let p0 = grab.1.pan_grab.0;
-            if p0 >= index as u16 && p0 != u16::MAX {
+            if usize::from(p0) >= index && p0 != u16::MAX {
                 grab.1.pan_grab.0 = p0 - 1;
             }
         }
     }
 
     fn remove_pan_grab(&mut self, g: (u16, u16)) {
-        if let Some(grab) = self.pan_grab.get_mut(g.0 as usize) {
+        if let Some(grab) = self.pan_grab.get_mut(usize::from(g.0)) {
             grab.n -= 1;
             if grab.n == 0 {
-                return self.remove_pan(g.0 as usize);
+                return self.remove_pan(g.0.into());
             }
             assert!(grab.source_is_touch);
-            for i in (g.1 as usize)..(grab.n as usize - 1) {
+            for i in (usize::from(g.1))..(usize::from(grab.n) - 1) {
                 grab.coords[i] = grab.coords[i + 1];
             }
         } else {
@@ -204,9 +205,9 @@ impl ManagerState {
             let grab = grab.1;
             if grab.pan_grab.0 == g.0 && grab.pan_grab.1 > g.1 {
                 grab.pan_grab.1 -= 1;
-                if (grab.pan_grab.1 as usize) == MAX_PAN_GRABS - 1 {
+                if usize::from(grab.pan_grab.1) == MAX_PAN_GRABS - 1 {
                     let v = grab.coord.into();
-                    self.pan_grab[g.0 as usize].coords[grab.pan_grab.1 as usize] = (v, v);
+                    self.pan_grab[usize::from(g.0)].coords[usize::from(grab.pan_grab.1)] = (v, v);
                 }
             }
         }

@@ -17,9 +17,8 @@ use std::fmt::Debug;
 /// This struct handles some scroll logic. It does not provide scrollbars.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScrollComponent {
-    // TODO: offsets should be a vector, not a coord. This affects a number of conversions.
-    max_offset: Coord,
-    offset: Coord,
+    max_offset: Offset,
+    offset: Offset,
     scroll_rate: f32,
 }
 
@@ -27,8 +26,8 @@ impl Default for ScrollComponent {
     #[inline]
     fn default() -> Self {
         ScrollComponent {
-            max_offset: Coord::ZERO,
-            offset: Coord::ZERO,
+            max_offset: Offset::ZERO,
+            offset: Offset::ZERO,
             scroll_rate: 30.0,
         }
     }
@@ -39,7 +38,7 @@ impl ScrollComponent {
     ///
     /// Note: the minimum offset is always zero.
     #[inline]
-    pub fn max_offset(&self) -> Coord {
+    pub fn max_offset(&self) -> Offset {
         self.max_offset
     }
 
@@ -48,7 +47,7 @@ impl ScrollComponent {
     /// To translate a coordinate from the outer region to a coordinate of the
     /// scrolled region, add this offset.
     #[inline]
-    pub fn offset(&self) -> Coord {
+    pub fn offset(&self) -> Offset {
         self.offset
     }
 
@@ -61,7 +60,7 @@ impl ScrollComponent {
     /// change in offset. In practice the caller will likely be performing all
     /// required updates regardless and the return value can be safely ignored.
     pub fn set_sizes(&mut self, window_size: Size, content_size: Size) -> TkAction {
-        self.max_offset = Coord::from(content_size) - Coord::from(window_size);
+        self.max_offset = Offset::from(content_size) - Offset::from(window_size);
         self.set_offset(self.offset)
     }
 
@@ -71,8 +70,8 @@ impl ScrollComponent {
     /// Returns [`TkAction::empty()`] if the offset is identical to the old offset,
     /// or [`TkAction::REGION_MOVED`] if the offset changes.
     #[inline]
-    pub fn set_offset(&mut self, offset: Coord) -> TkAction {
-        let offset = offset.clamp(Coord::ZERO, self.max_offset);
+    pub fn set_offset(&mut self, offset: Offset) -> TkAction {
+        let offset = offset.clamp(Offset::ZERO, self.max_offset);
         if offset == self.offset {
             TkAction::empty()
         } else {
@@ -119,14 +118,9 @@ impl ScrollComponent {
     /// -   returned `TkAction`: action to pass to the event manager
     #[inline]
     pub fn focus_rect(&mut self, rect: Rect, window_rect: Rect) -> (Rect, TkAction) {
-        // TODO: we want vectors here, not coords (points) and sizes!
-        let rel_pos = Coord(
-            rect.pos.0 - window_rect.pos.0,
-            rect.pos.1 - window_rect.pos.1,
-        );
-        let mut offset = self.offset;
-        offset = offset.max(rel_pos + rect.size - window_rect.size);
-        offset = offset.min(rel_pos);
+        let v = rect.pos - window_rect.pos;
+        let off = Offset::from(rect.size) - Offset::from(window_rect.size);
+        let offset = self.offset.max(v + off).min(v);
         let action = self.set_offset(offset);
         (rect - self.offset, action)
     }
@@ -176,7 +170,7 @@ impl ScrollComponent {
 
         match event {
             Event::Control(ControlKey::Home) => {
-                action = self.set_offset(Coord::ZERO);
+                action = self.set_offset(Offset::ZERO);
             }
             Event::Control(ControlKey::End) => {
                 action = self.set_offset(self.max_offset);
@@ -187,15 +181,15 @@ impl ScrollComponent {
                     ControlKey::Right => LineDelta(1.0, 0.0),
                     ControlKey::Up => LineDelta(0.0, 1.0),
                     ControlKey::Down => LineDelta(0.0, -1.0),
-                    ControlKey::PageUp => PixelDelta(Coord(0, window_size.1 as i32 / 2)),
-                    ControlKey::PageDown => PixelDelta(Coord(0, -(window_size.1 as i32 / 2))),
+                    ControlKey::PageUp => PixelDelta(Offset(0, window_size.1 / 2)),
+                    ControlKey::PageDown => PixelDelta(Offset(0, -(window_size.1 / 2))),
                     key => return (action, Response::Unhandled(Event::Control(key))),
                 };
 
                 let d = match delta {
-                    LineDelta(x, y) => Coord(
-                        (-self.scroll_rate * x) as i32,
-                        (self.scroll_rate * y) as i32,
+                    LineDelta(x, y) => Offset(
+                        i32::conv_nearest(-self.scroll_rate * x),
+                        i32::conv_nearest(self.scroll_rate * y),
                     ),
                     PixelDelta(d) => d,
                 };
@@ -203,9 +197,9 @@ impl ScrollComponent {
             }
             Event::Scroll(delta) => {
                 let d = match delta {
-                    LineDelta(x, y) => Coord(
-                        (-self.scroll_rate * x) as i32,
-                        (self.scroll_rate * y) as i32,
+                    LineDelta(x, y) => Offset(
+                        i32::conv_nearest(-self.scroll_rate * x),
+                        i32::conv_nearest(self.scroll_rate * y),
                     ),
                     PixelDelta(d) => d,
                 };
@@ -280,17 +274,17 @@ impl<W: Widget> ScrollWidget for ScrollRegion<W> {
     }
 
     #[inline]
-    fn max_scroll_offset(&self) -> Coord {
+    fn max_scroll_offset(&self) -> Offset {
         self.scroll.max_offset()
     }
 
     #[inline]
-    fn scroll_offset(&self) -> Coord {
+    fn scroll_offset(&self) -> Offset {
         self.scroll.offset()
     }
 
     #[inline]
-    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Coord) -> Coord {
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
         *mgr |= self.scroll.set_offset(offset);
         self.scroll.offset()
     }
@@ -311,7 +305,7 @@ impl<W: Widget> Layout for ScrollRegion<W> {
             self.min_child_size.1 = rules.min_size();
         }
         let line_height = size_handle.line_height(TextClass::Label);
-        self.scroll.set_scroll_rate(3.0 * line_height as f32);
+        self.scroll.set_scroll_rate(3.0 * f32::conv(line_height));
         rules.reduce_min_to(line_height);
         rules
     }
@@ -325,10 +319,10 @@ impl<W: Widget> Layout for ScrollRegion<W> {
     }
 
     #[inline]
-    fn translation(&self, child_index: usize) -> Coord {
+    fn translation(&self, child_index: usize) -> Offset {
         match child_index {
             2 => self.scroll_offset(),
-            _ => Coord::ZERO,
+            _ => Offset::ZERO,
         }
     }
 

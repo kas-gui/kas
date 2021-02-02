@@ -168,10 +168,10 @@ impl Default for TouchPhase {
 pub struct EditBox<G: 'static = ()> {
     #[widget_core]
     core: CoreData,
-    frame_offset: Coord,
+    frame_offset: Offset,
     frame_size: Size,
     text_pos: Coord,
-    view_offset: Coord,
+    view_offset: Offset,
     editable: bool,
     multi_line: bool,
     text: Text<String>,
@@ -205,7 +205,7 @@ impl<G: 'static> Layout for EditBox<G> {
         let frame_size = frame_offset + frame_sides.1;
 
         let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis.is_vertical(), frame_size, margins);
+        let frame_rules = SizeRules::extract_fixed(axis, frame_size, margins);
 
         let class = if self.multi_line {
             TextClass::EditMulti
@@ -213,17 +213,17 @@ impl<G: 'static> Layout for EditBox<G> {
             TextClass::Edit
         };
         let content_rules = size_handle.text_bound(&mut self.text, class, axis);
-        let m = content_rules.margins();
+        let m = content_rules.margins_i32();
 
         let rules = content_rules.surrounded_by(frame_rules, true);
         if axis.is_horizontal() {
             self.core.rect.size.0 = rules.ideal_size();
-            self.frame_offset.0 = frame_offset.0 as i32 + m.0 as i32;
-            self.frame_size.0 = frame_size.0 + (m.0 + m.1) as u32;
+            self.frame_offset.0 = frame_offset.0 + m.0;
+            self.frame_size.0 = frame_size.0 + m.0 + m.1;
         } else {
             self.core.rect.size.1 = rules.ideal_size();
-            self.frame_offset.1 = frame_offset.1 as i32 + m.0 as i32;
-            self.frame_size.1 = frame_size.1 + (m.0 + m.1) as u32;
+            self.frame_offset.1 = frame_offset.1 + m.0;
+            self.frame_size.1 = frame_size.1 + m.0 + m.1;
         }
         rules
     }
@@ -792,11 +792,11 @@ impl<G> EditBox<G> {
         mgr.redraw(self.id());
     }
 
-    fn pan_delta(&mut self, mgr: &mut Manager, delta: Coord) -> bool {
+    fn pan_delta(&mut self, mgr: &mut Manager, delta: Offset) -> bool {
         let bounds = Vec2::from(self.text.env().bounds);
         let max_offset = (self.required - bounds).ceil();
-        let max_offset = Coord::from(max_offset).max(Coord::ZERO);
-        let new_offset = (self.view_offset - delta).min(max_offset).max(Coord::ZERO);
+        let max_offset = Offset::from(max_offset).max(Offset::ZERO);
+        let new_offset = (self.view_offset - delta).min(max_offset).max(Offset::ZERO);
         if new_offset != self.view_offset {
             self.view_offset = new_offset;
             mgr.redraw(self.id());
@@ -813,15 +813,15 @@ impl<G> EditBox<G> {
         let edit_pos = self.selection.edit_pos();
         if let Some(marker) = self.text.text_glyph_pos(edit_pos).next_back() {
             let bounds = Vec2::from(self.text.env().bounds);
-            let min_x = (marker.pos.0 - bounds.0).ceil();
-            let min_y = (marker.pos.1 - marker.descent - bounds.1).ceil();
-            let max_x = (marker.pos.0).floor();
-            let max_y = (marker.pos.1 - marker.ascent).floor();
-            let min = Coord(min_x as i32, min_y as i32);
-            let max = Coord(max_x as i32, max_y as i32);
+            let min_x = marker.pos.0 - bounds.0;
+            let min_y = marker.pos.1 - marker.descent - bounds.1;
+            let max_x = marker.pos.0;
+            let max_y = marker.pos.1 - marker.ascent;
+            let min = Offset(i32::conv_ceil(min_x), i32::conv_ceil(min_y));
+            let max = Offset(i32::conv_floor(max_x), i32::conv_floor(max_y));
 
             let max_offset = (self.required - bounds).ceil();
-            let max_offset = Coord::from(max_offset).max(Coord::ZERO);
+            let max_offset = Offset::from(max_offset).max(Offset::ZERO);
             let max = max.min(max_offset);
 
             self.view_offset = self.view_offset.max(min).min(max);
@@ -837,7 +837,7 @@ impl<G: EditGuard> HasStr for EditBox<G> {
 
 impl<G: EditGuard> HasString for EditBox<G> {
     fn set_string(&mut self, string: String) -> TkAction {
-        let avail = self.core.rect.size.saturating_sub(self.frame_size);
+        let avail = self.core.rect.size.clamped_sub(self.frame_size);
         let action = kas::text::util::set_string_and_prepare(&mut self.text, string, avail);
         let _ = G::update(self);
         action
@@ -956,9 +956,9 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                     ScrollDelta::LineDelta(x, y) => {
                         // We arbitrarily scroll 3 lines:
                         let dist = 3.0 * self.text.env().height(Default::default());
-                        let x = (x * dist).round() as i32;
-                        let y = (y * dist).round() as i32;
-                        Coord(x, y)
+                        let x = i32::conv_nearest(x * dist);
+                        let y = i32::conv_nearest(y * dist);
+                        Offset(x, y)
                     }
                     ScrollDelta::PixelDelta(coord) => coord,
                 };
