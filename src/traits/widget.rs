@@ -11,8 +11,8 @@ use std::fmt;
 use crate::draw::{DrawHandle, InputState, SizeHandle};
 use crate::event::{self, ConfigureManager, Manager, ManagerState};
 use crate::geom::{Coord, Offset, Rect};
-use crate::layout::{AxisInfo, SizeRules};
-use crate::{AlignHints, CoreData, TkAction, WidgetId};
+use crate::layout::{AlignHints, AxisInfo, SizeRules};
+use crate::{CoreData, TkAction, WidgetId};
 
 impl dyn WidgetCore {
     /// Forwards to the method defined on the type `Any`.

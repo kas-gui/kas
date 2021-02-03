@@ -8,11 +8,11 @@
 use log::trace;
 use std::fmt;
 
-use super::{AxisInfo, Margins, SizeRules};
+use super::{AlignHints, AxisInfo, Margins, SizeRules};
 use crate::draw::SizeHandle;
 use crate::event::Manager;
 use crate::geom::{Rect, Size};
-use crate::{AlignHints, Widget, WidgetConfig};
+use crate::{Widget, WidgetConfig};
 
 /// A [`SizeRules`] solver for layouts
 ///

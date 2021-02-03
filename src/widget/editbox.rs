@@ -11,7 +11,7 @@ use std::time::Duration;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 use kas::draw::TextClass;
-use kas::event::{self, ControlKey, GrabMode, PressSource, ScrollDelta};
+use kas::event::{self, Command, GrabMode, PressSource, ScrollDelta};
 use kas::geom::Vec2;
 use kas::prelude::*;
 use kas::text::SelectionHelper;
@@ -472,7 +472,7 @@ impl<G> EditBox<G> {
         EditAction::Edit
     }
 
-    fn control_key(&mut self, mgr: &mut Manager, key: ControlKey) -> EditAction {
+    fn control_key(&mut self, mgr: &mut Manager, key: Command, mut shift: bool) -> EditAction {
         if !self.editable {
             return EditAction::Unhandled;
         }
@@ -481,8 +481,6 @@ impl<G> EditBox<G> {
         let pos = self.selection.edit_pos();
         let selection = self.selection.range();
         let have_sel = selection.end > selection.start;
-        let ctrl = mgr.modifiers().ctrl();
-        let mut shift = mgr.modifiers().shift();
         let string;
 
         enum Action<'a> {
@@ -496,7 +494,7 @@ impl<G> EditBox<G> {
         }
 
         let action = match key {
-            ControlKey::Escape => {
+            Command::Escape => {
                 if !self.selection.is_empty() {
                     self.selection.set_empty();
                     mgr.redraw(self.id());
@@ -505,26 +503,28 @@ impl<G> EditBox<G> {
                     Action::Unhandled
                 }
             }
-            ControlKey::Return if shift || !self.multi_line => Action::Activate,
-            ControlKey::Return if self.multi_line => {
+            Command::Return if shift || !self.multi_line => Action::Activate,
+            Command::Return if self.multi_line => {
                 Action::Insert('\n'.encode_utf8(&mut buf), LastEdit::Insert)
             }
-            ControlKey::Tab => Action::Insert('\t'.encode_utf8(&mut buf), LastEdit::Insert),
-            ControlKey::Home if ctrl => Action::Move(0, None),
-            ControlKey::Home => {
-                let pos = self.text.find_line(pos).map(|r| r.1.start).unwrap_or(0);
-                Action::Move(pos, None)
+            Command::Tab => Action::Insert('\t'.encode_utf8(&mut buf), LastEdit::Insert),
+            Command::Left => {
+                let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
+                cursor
+                    .prev_boundary(self.text.text(), 0)
+                    .unwrap()
+                    .map(|pos| Action::Move(pos, None))
+                    .unwrap_or(Action::None)
             }
-            ControlKey::End if ctrl => Action::Move(self.text.str_len(), None),
-            ControlKey::End => {
-                let pos = self
-                    .text
-                    .find_line(pos)
-                    .map(|r| r.1.end)
-                    .unwrap_or(self.text.str_len());
-                Action::Move(pos, None)
+            Command::Right => {
+                let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
+                cursor
+                    .next_boundary(self.text.text(), 0)
+                    .unwrap()
+                    .map(|pos| Action::Move(pos, None))
+                    .unwrap_or(Action::None)
             }
-            ControlKey::Left if ctrl => {
+            Command::WordLeft => {
                 let mut iter = self.text.text()[0..pos].split_word_bound_indices();
                 let mut p = iter.next_back().map(|(index, _)| index).unwrap_or(0);
                 while self.text.text()[p..]
@@ -541,15 +541,7 @@ impl<G> EditBox<G> {
                 }
                 Action::Move(p, None)
             }
-            ControlKey::Left => {
-                let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
-                cursor
-                    .prev_boundary(self.text.text(), 0)
-                    .unwrap()
-                    .map(|pos| Action::Move(pos, None))
-                    .unwrap_or(Action::None)
-            }
-            ControlKey::Right if ctrl => {
+            Command::WordRight => {
                 let mut iter = self.text.text()[pos..].split_word_bound_indices().skip(1);
                 let mut p = iter
                     .next()
@@ -569,15 +561,7 @@ impl<G> EditBox<G> {
                 }
                 Action::Move(p, None)
             }
-            ControlKey::Right => {
-                let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
-                cursor
-                    .next_boundary(self.text.text(), 0)
-                    .unwrap()
-                    .map(|pos| Action::Move(pos, None))
-                    .unwrap_or(Action::None)
-            }
-            ControlKey::Up | ControlKey::Down => {
+            Command::Up | Command::Down => {
                 let x = match self.edit_x_coord {
                     Some(x) => x,
                     None => self
@@ -590,8 +574,8 @@ impl<G> EditBox<G> {
                 let mut line = self.text.find_line(pos).map(|r| r.0).unwrap_or(0);
                 // We can tolerate invalid line numbers here!
                 line = match key {
-                    ControlKey::Up => line.wrapping_sub(1),
-                    ControlKey::Down => line.wrapping_add(1),
+                    Command::Up => line.wrapping_sub(1),
+                    Command::Down => line.wrapping_add(1),
                     _ => unreachable!(),
                 };
                 const HALF: usize = usize::MAX / 2;
@@ -604,7 +588,21 @@ impl<G> EditBox<G> {
                     .map(|pos| Action::Move(pos, Some(x)))
                     .unwrap_or(Action::Move(nearest_end(), None))
             }
-            ControlKey::PageUp | ControlKey::PageDown => {
+            Command::Home => {
+                let pos = self.text.find_line(pos).map(|r| r.1.start).unwrap_or(0);
+                Action::Move(pos, None)
+            }
+            Command::End => {
+                let pos = self
+                    .text
+                    .find_line(pos)
+                    .map(|r| r.1.end)
+                    .unwrap_or(self.text.str_len());
+                Action::Move(pos, None)
+            }
+            Command::DocHome => Action::Move(0, None),
+            Command::DocEnd => Action::Move(self.text.str_len(), None),
+            Command::PageUp | Command::PageDown => {
                 let mut v = self
                     .text
                     .text_glyph_pos(pos)
@@ -616,72 +614,67 @@ impl<G> EditBox<G> {
                 }
                 const FACTOR: f32 = 2.0 / 3.0;
                 let mut h_dist = self.text.env().bounds.1 * FACTOR;
-                if key == ControlKey::PageUp {
+                if key == Command::PageUp {
                     h_dist *= -1.0;
                 }
                 v.1 += h_dist;
                 Action::Move(self.text.text_index_nearest(v.into()), Some(v.0))
             }
-            ControlKey::Delete => {
-                if have_sel {
-                    Action::Delete(selection.clone())
-                } else if ctrl {
-                    let next = self.text.text()[pos..]
-                        .split_word_bound_indices()
-                        .skip(1)
-                        .next()
-                        .map(|(index, _)| pos + index)
-                        .unwrap_or(self.text.str_len());
-                    Action::Delete(pos..next)
-                } else {
-                    let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
-                    cursor
-                        .next_boundary(self.text.text(), 0)
-                        .unwrap()
-                        .map(|next| Action::Delete(pos..next))
-                        .unwrap_or(Action::None)
-                }
+            Command::Delete | Command::DelBack if have_sel => Action::Delete(selection.clone()),
+            Command::Delete => {
+                let mut cursor = GraphemeCursor::new(pos, self.text.str_len(), true);
+                cursor
+                    .next_boundary(self.text.text(), 0)
+                    .unwrap()
+                    .map(|next| Action::Delete(pos..next))
+                    .unwrap_or(Action::None)
             }
-            ControlKey::Backspace => {
-                if have_sel {
-                    Action::Delete(selection.clone())
-                } else if ctrl {
-                    let prev = self.text.text()[0..pos]
-                        .split_word_bound_indices()
-                        .next_back()
-                        .map(|(index, _)| index)
-                        .unwrap_or(0);
-                    Action::Delete(prev..pos)
-                } else {
-                    // We always delete one code-point, not one grapheme cluster:
-                    let prev = self.text.text()[0..pos]
-                        .char_indices()
-                        .rev()
-                        .next()
-                        .map(|(i, _)| i)
-                        .unwrap_or(0);
-                    Action::Delete(prev..pos)
-                }
+            Command::DelBack => {
+                // We always delete one code-point, not one grapheme cluster:
+                let prev = self.text.text()[0..pos]
+                    .char_indices()
+                    .rev()
+                    .next()
+                    .map(|(i, _)| i)
+                    .unwrap_or(0);
+                Action::Delete(prev..pos)
             }
-            ControlKey::Deselect => {
+            Command::DelWord => {
+                let next = self.text.text()[pos..]
+                    .split_word_bound_indices()
+                    .skip(1)
+                    .next()
+                    .map(|(index, _)| pos + index)
+                    .unwrap_or(self.text.str_len());
+                Action::Delete(pos..next)
+            }
+            Command::DelWordBack => {
+                let prev = self.text.text()[0..pos]
+                    .split_word_bound_indices()
+                    .next_back()
+                    .map(|(index, _)| index)
+                    .unwrap_or(0);
+                Action::Delete(prev..pos)
+            }
+            Command::Deselect => {
                 self.selection.set_sel_pos(pos);
                 mgr.redraw(self.id());
                 Action::None
             }
-            ControlKey::SelectAll => {
+            Command::SelectAll => {
                 self.selection.set_sel_pos(0);
                 shift = true; // hack
                 Action::Move(self.text.str_len(), None)
             }
-            ControlKey::Cut if have_sel => {
+            Command::Cut if have_sel => {
                 mgr.set_clipboard((self.text.text()[selection.clone()]).into());
                 Action::Delete(selection.clone())
             }
-            ControlKey::Copy if have_sel => {
+            Command::Copy if have_sel => {
                 mgr.set_clipboard((self.text.text()[selection.clone()]).into());
                 Action::None
             }
-            ControlKey::Paste => {
+            Command::Paste => {
                 if let Some(content) = mgr.get_clipboard() {
                     let mut end = content.len();
                     if !self.multi_line {
@@ -702,7 +695,7 @@ impl<G> EditBox<G> {
                     Action::None
                 }
             }
-            ControlKey::Undo | ControlKey::Redo => {
+            Command::Undo | Command::Redo => {
                 // TODO: maintain full edit history (externally?)
                 // NOTE: undo *and* redo shortcuts map to this control char
                 if let Some((state, pos2, sel_pos)) = self.old_state.as_mut() {
@@ -817,8 +810,8 @@ impl<G> EditBox<G> {
             let min_y = marker.pos.1 - marker.descent - bounds.1;
             let max_x = marker.pos.0;
             let max_y = marker.pos.1 - marker.ascent;
-            let min = Offset(i32::conv_ceil(min_x), i32::conv_ceil(min_y));
-            let max = Offset(i32::conv_floor(max_x), i32::conv_floor(max_y));
+            let min = Offset(min_x.cast_ceil(), min_y.cast_ceil());
+            let max = Offset(max_x.cast_floor(), max_y.cast_floor());
 
             let max_offset = (self.required - bounds).ceil();
             let max_offset = Offset::from(max_offset).max(Offset::ZERO);
@@ -861,9 +854,9 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                 mgr.redraw(self.id());
                 Response::None
             }
-            Event::Control(key) => match self.control_key(mgr, key) {
+            Event::Command(cmd, shift) => match self.control_key(mgr, cmd, shift) {
                 EditAction::None => Response::None,
-                EditAction::Unhandled => Response::Unhandled(Event::Control(key)),
+                EditAction::Unhandled => Response::Unhandled(event),
                 EditAction::Activate => G::activate(self, mgr).into(),
                 EditAction::Edit => G::edit(self, mgr).into(),
             },
@@ -956,9 +949,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                     ScrollDelta::LineDelta(x, y) => {
                         // We arbitrarily scroll 3 lines:
                         let dist = 3.0 * self.text.env().height(Default::default());
-                        let x = i32::conv_nearest(x * dist);
-                        let y = i32::conv_nearest(y * dist);
-                        Offset(x, y)
+                        Offset((x * dist).cast_nearest(), (y * dist).cast_nearest())
                     }
                     ScrollDelta::PixelDelta(coord) => coord,
                 };

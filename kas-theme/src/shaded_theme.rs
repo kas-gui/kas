@@ -9,13 +9,14 @@ use std::f32;
 use std::ops::Range;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
+use kas::dir::{Direction, Directional};
 use kas::draw::{
     self, ClipRegion, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, InputState,
     Pass, SizeHandle, TextClass,
 };
 use kas::geom::*;
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
-use kas::{Direction, Directional, ThemeAction, ThemeApi};
+use kas::{ThemeAction, ThemeApi};
 
 /// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]

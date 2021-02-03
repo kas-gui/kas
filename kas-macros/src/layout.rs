@@ -228,10 +228,10 @@ pub(crate) fn derive(
 
     let dim = match layout.layout {
         LayoutType::Single => quote! { () },
-        LayoutType::Right => quote! { (kas::Right, #cols) },
-        LayoutType::Left => quote! { (kas::Left, #cols) },
-        LayoutType::Down => quote! { (kas::Down, #rows) },
-        LayoutType::Up => quote! { (kas::Up, #rows) },
+        LayoutType::Right => quote! { (kas::dir::Right, #cols) },
+        LayoutType::Left => quote! { (kas::dir::Left, #cols) },
+        LayoutType::Down => quote! { (kas::dir::Down, #rows) },
+        LayoutType::Up => quote! { (kas::dir::Up, #rows) },
         LayoutType::Grid => quote! { (#cols, #rows) },
     };
 
@@ -262,7 +262,7 @@ pub(crate) fn derive(
             &mut self,
             _mgr: &mut kas::event::Manager,
             rect: kas::geom::Rect,
-            align: kas::AlignHints
+            align: kas::layout::AlignHints
         ) {
             use kas::{WidgetCore, Widget};
             use kas::layout::{Margins, RulesSetter};

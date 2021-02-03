@@ -10,7 +10,7 @@
 use std::any::Any;
 use std::f32;
 
-use kas::conv::{Conv, ConvFloat};
+use kas::conv::{Cast, CastFloat, ConvFloat};
 use kas::draw::{self, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
@@ -65,21 +65,21 @@ impl Dimensions {
         let dpem = dpp * pt_size;
         let line_height = i32::conv_ceil(kas::text::fonts::fonts().get(font_id).height(dpem));
 
-        let outer_margin = u16::conv_nearest(params.outer_margin * scale_factor);
-        let inner_margin = u16::conv_nearest(params.inner_margin * scale_factor);
-        let frame = i32::conv_nearest(params.frame_size * scale_factor);
+        let outer_margin = (params.outer_margin * scale_factor).cast_nearest();
+        let inner_margin = (params.inner_margin * scale_factor).cast_nearest();
+        let frame = (params.frame_size * scale_factor).cast_nearest();
         Dimensions {
             scale_factor,
             dpp,
             pt_size,
             font_marker_width: (1.6 * scale_factor).round().max(1.0),
             line_height,
-            min_line_length: i32::conv_nearest(8.0 * dpem),
-            ideal_line_length: i32::conv_nearest(24.0 * dpem),
+            min_line_length: (8.0 * dpem).cast_nearest(),
+            ideal_line_length: (24.0 * dpem).cast_nearest(),
             outer_margin,
             inner_margin,
             frame,
-            button_frame: i32::conv_nearest(params.button_frame * scale_factor),
+            button_frame: (params.button_frame * scale_factor).cast_nearest(),
             checkbox: i32::conv_nearest(9.0 * dpp) + 2 * (i32::from(inner_margin) + frame),
             scrollbar: Size::from(params.scrollbar_size * scale_factor),
             slider: Size::from(params.slider_size * scale_factor),
@@ -171,9 +171,9 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
 
             let mut bounds = kas::text::Vec2::INFINITY;
             if let Some(size) = axis.size_other_if_fixed(false) {
-                bounds.1 = f32::conv(size);
+                bounds.1 = size.cast();
             } else if let Some(size) = axis.size_other_if_fixed(true) {
-                bounds.0 = f32::conv(size);
+                bounds.0 = size.cast();
             }
             env.set_bounds(bounds);
 

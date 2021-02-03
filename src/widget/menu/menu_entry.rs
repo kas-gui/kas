@@ -8,6 +8,7 @@
 use std::fmt::{self, Debug};
 
 use super::Menu;
+use kas::dir::Right;
 use kas::draw::TextClass;
 use kas::event;
 use kas::layout::{self, RulesSetter, RulesSolver};
@@ -208,7 +209,7 @@ impl<M: 'static> Layout for MenuToggle<M> {
         size_handle: &mut dyn SizeHandle,
         axis: AxisInfo,
     ) -> kas::layout::SizeRules {
-        let mut solver = layout::RowSolver::new(axis, (kas::Right, 2usize), &mut self.layout_data);
+        let mut solver = layout::RowSolver::new(axis, (Right, 2usize), &mut self.layout_data);
         let child = &mut self.checkbox;
         solver.for_child(&mut self.layout_data, 0usize, |axis| {
             child.size_rules(size_handle, axis)
@@ -224,11 +225,11 @@ impl<M: 'static> Layout for MenuToggle<M> {
         self.core.rect = rect;
         let mut setter = layout::RowSetter::<_, [i32; 2], _>::new(
             rect,
-            (kas::Right, 2usize),
+            (Right, 2usize),
             align,
             &mut self.layout_data,
         );
-        let align = kas::AlignHints::NONE;
+        let align = AlignHints::NONE;
         let cb_rect = setter.child_rect(&mut self.layout_data, 0usize);
         self.checkbox.set_rect(mgr, cb_rect, align.clone());
         self.label

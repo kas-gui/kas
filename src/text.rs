@@ -3,7 +3,13 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Abstractions over `kas-text`
+//! Text functionality
+//!
+//! Most of this module is simply a re-export of the [KAS Text] API, hence the
+//! lower level of integration than other parts of the library. The [`util`]
+//! module is an extension providing some integration.
+//!
+//! [KAS Text]: https://github.com/kas-gui/kas-text/
 
 pub use kas_text::*;
 
@@ -13,6 +19,7 @@ pub use selection::SelectionHelper;
 mod string;
 pub use string::AccelString;
 
+/// Utilities integrating `kas-text` functionality
 pub mod util {
     use super::{format, EditableTextApi, Text, TextApi, Vec2};
     use kas::{geom::Size, TkAction};

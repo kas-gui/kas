@@ -12,7 +12,7 @@ use wgpu::util::DeviceExt;
 use wgpu::{include_spirv, Buffer, ShaderModule};
 
 use kas::draw::Pass;
-use kas::event::{self, ControlKey};
+use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
 use kas::widget::{Label, ReserveP, Slider, Window};
@@ -241,7 +241,7 @@ impl CustomPipe for Pipe {
             usage: wgpu::BufferUsage::COPY_SRC,
         });
 
-        let byte_len = u64::conv(size_of::<Scale>());
+        let byte_len = size_of::<Scale>().cast();
         encoder.copy_buffer_to_buffer(&scale_buf, 0, &window.scale_buf, 0, byte_len);
     }
 
@@ -258,7 +258,7 @@ impl CustomPipe for Pipe {
             usage: wgpu::BufferUsage::COPY_SRC,
         });
 
-        let byte_len = u64::conv(size_of::<UnifRect>());
+        let byte_len = size_of::<UnifRect>().cast();
         encoder.copy_buffer_to_buffer(&rect_buf, 0, &window.rect_buf, 0, byte_len);
 
         let iter = [window.iterations];
@@ -268,7 +268,7 @@ impl CustomPipe for Pipe {
             usage: wgpu::BufferUsage::COPY_SRC,
         });
 
-        let byte_len = u64::conv(size_of::<i32>());
+        let byte_len = size_of::<i32>().cast();
         encoder.copy_buffer_to_buffer(&iter_buf, 0, &window.iter_buf, 0, byte_len);
 
         // NOTE: we prepare vertex buffers here. Due to lifetime restrictions on
@@ -282,7 +282,7 @@ impl CustomPipe for Pipe {
                     usage: wgpu::BufferUsage::VERTEX,
                 });
                 pass.1 = Some(buffer);
-                pass.2 = u32::conv(pass.0.len());
+                pass.2 = pass.0.len().cast();
                 pass.0.clear();
             } else {
                 pass.1 = None;
@@ -410,7 +410,7 @@ impl WidgetConfig for Mandlebrot {
 impl Layout for Mandlebrot {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
         let virt_size = if a.is_horizontal() { 300.0 } else { 200.0 };
-        let min_size = i32::conv_floor(virt_size * size_handle.scale_factor());
+        let min_size = (virt_size * size_handle.scale_factor()).cast_floor();
         let ideal_size = min_size * 10; // prefer big but not larger than screen size
         SizeRules::new(min_size, ideal_size, (0, 0), StretchPolicy::Maximize)
     }
@@ -445,19 +445,19 @@ impl event::Handler for Mandlebrot {
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
-            Event::Control(key) => {
-                match key {
-                    ControlKey::Home | ControlKey::End => self.reset_view(),
-                    ControlKey::PageUp => self.alpha = self.alpha / 2f64.sqrt(),
-                    ControlKey::PageDown => self.alpha = self.alpha * 2f64.sqrt(),
-                    key => {
+            Event::Command(cmd, _) => {
+                match cmd {
+                    Command::Home | Command::End => self.reset_view(),
+                    Command::PageUp => self.alpha = self.alpha / 2f64.sqrt(),
+                    Command::PageDown => self.alpha = self.alpha * 2f64.sqrt(),
+                    cmd => {
                         let d = 0.2;
-                        let delta = match key {
-                            ControlKey::Up => DVec2(0.0, -d),
-                            ControlKey::Down => DVec2(0.0, d),
-                            ControlKey::Left => DVec2(-d, 0.0),
-                            ControlKey::Right => DVec2(d, 0.0),
-                            _ => return Response::Unhandled(Event::Control(key)),
+                        let delta = match cmd {
+                            Command::Up => DVec2(0.0, -d),
+                            Command::Down => DVec2(0.0, d),
+                            Command::Left => DVec2(-d, 0.0),
+                            Command::Right => DVec2(d, 0.0),
+                            _ => return Response::Unhandled(event),
                         };
                         self.delta = self.delta + self.alpha.complex_mul(delta);
                     }
@@ -520,7 +520,7 @@ struct MandlebrotWindow {
     #[widget(row=1, halign=centre)]
     iters: ReserveP<Label<String>>,
     #[widget(row=2, handler = iter)]
-    slider: Slider<i32, kas::Up>,
+    slider: Slider<i32, kas::dir::Up>,
     // extra col span allows use of Label's margin
     #[widget(col=1, cspan=2, row=1, rspan=2, handler = mbrot)]
     mbrot: Mandlebrot,

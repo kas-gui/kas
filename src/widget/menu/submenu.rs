@@ -7,7 +7,7 @@
 
 use super::{Menu, MenuFrame};
 use kas::draw::TextClass;
-use kas::event::{self, ConfigureManager, ControlKey};
+use kas::event::{self, Command, ConfigureManager};
 use kas::prelude::*;
 use kas::widget::Column;
 use kas::WindowId;
@@ -35,7 +35,7 @@ impl<D: Directional + Default, W: Menu> SubMenu<D, W> {
     }
 }
 
-impl<W: Menu> SubMenu<kas::Right, W> {
+impl<W: Menu> SubMenu<kas::dir::Right, W> {
     /// Construct a sub-menu, opening to the right
     // NOTE: this is used since we can't infer direction of a boxed SubMenu.
     // Consider only accepting an enum of special menu widgets?
@@ -46,7 +46,7 @@ impl<W: Menu> SubMenu<kas::Right, W> {
     }
 }
 
-impl<W: Menu> SubMenu<kas::Down, W> {
+impl<W: Menu> SubMenu<kas::dir::Down, W> {
     /// Construct a sub-menu, opening downwards
     #[inline]
     pub fn down<S: Into<AccelString>>(label: S, list: Vec<W>) -> Self {
@@ -151,12 +151,12 @@ impl<D: Directional, M, W: Menu<Msg = M>> event::Handler for SubMenu<D, W> {
                 debug_assert_eq!(Some(id), self.popup_id);
                 self.popup_id = None;
             }
-            Event::Control(key) => match (self.direction.as_direction(), key) {
-                (Direction::Left, ControlKey::Left) => self.open_menu(mgr),
-                (Direction::Right, ControlKey::Right) => self.open_menu(mgr),
-                (Direction::Up, ControlKey::Up) => self.open_menu(mgr),
-                (Direction::Down, ControlKey::Down) => self.open_menu(mgr),
-                (_, key) => return Response::Unhandled(Event::Control(key)),
+            Event::Command(cmd, _) => match (self.direction.as_direction(), cmd) {
+                (Direction::Left, Command::Left) => self.open_menu(mgr),
+                (Direction::Right, Command::Right) => self.open_menu(mgr),
+                (Direction::Up, Command::Up) => self.open_menu(mgr),
+                (Direction::Down, Command::Down) => self.open_menu(mgr),
+                _ => return Response::Unhandled(event),
             },
             event => return Response::Unhandled(event),
         }
@@ -185,8 +185,8 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
             }
 
             match r {
-                Response::Unhandled(ev) => match ev {
-                    Event::Control(key) if self.popup_id.is_some() => {
+                Response::Unhandled(event) => match event {
+                    Event::Command(key, _) if self.popup_id.is_some() => {
                         if self.popup_id.is_some() {
                             let dir = self.direction.as_direction();
                             let inner_vert = self.list.direction().is_vertical();
@@ -199,22 +199,22 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                             let rev = self.list.direction().is_reversed();
                             use Direction::*;
                             match key {
-                                ControlKey::Left if !inner_vert => next(mgr, self, false, !rev),
-                                ControlKey::Right if !inner_vert => next(mgr, self, false, rev),
-                                ControlKey::Up if inner_vert => next(mgr, self, false, !rev),
-                                ControlKey::Down if inner_vert => next(mgr, self, false, rev),
-                                ControlKey::Home => next(mgr, self, true, false),
-                                ControlKey::End => next(mgr, self, true, true),
-                                ControlKey::Left if dir == Right => self.close_menu(mgr),
-                                ControlKey::Right if dir == Left => self.close_menu(mgr),
-                                ControlKey::Up if dir == Down => self.close_menu(mgr),
-                                ControlKey::Down if dir == Up => self.close_menu(mgr),
-                                key => return Response::Unhandled(Event::Control(key)),
+                                Command::Left if !inner_vert => next(mgr, self, false, !rev),
+                                Command::Right if !inner_vert => next(mgr, self, false, rev),
+                                Command::Up if inner_vert => next(mgr, self, false, !rev),
+                                Command::Down if inner_vert => next(mgr, self, false, rev),
+                                Command::Home => next(mgr, self, true, false),
+                                Command::End => next(mgr, self, true, true),
+                                Command::Left if dir == Right => self.close_menu(mgr),
+                                Command::Right if dir == Left => self.close_menu(mgr),
+                                Command::Up if dir == Down => self.close_menu(mgr),
+                                Command::Down if dir == Up => self.close_menu(mgr),
+                                _ => return Response::Unhandled(event),
                             }
                         }
                         Response::None
                     }
-                    ev => Response::Unhandled(ev),
+                    event => Response::Unhandled(event),
                 },
                 Response::Msg(msg) => {
                     self.close_menu(mgr);

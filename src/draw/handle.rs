@@ -8,11 +8,11 @@
 use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
+use kas::dir::Direction;
 use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Offset, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::text::{format::FormattableText, AccelString, Text, TextApi, TextDisplay};
-use kas::Direction;
 
 // for doc use
 #[allow(unused)]
@@ -116,7 +116,7 @@ pub trait SizeHandle {
     /// ```
     /// use kas::conv::*;
     /// # let scale_factor = 1.5f32;
-    /// let size = i32::conv_ceil(100.0 * scale_factor);
+    /// let size: i32 = (100.0 * scale_factor).cast_ceil();
     /// ```
     ///
     /// This value may change during a program's execution (e.g. when a window

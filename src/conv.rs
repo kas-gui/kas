@@ -50,6 +50,12 @@ pub trait Conv<T> {
     fn conv(v: T) -> Self;
 }
 
+impl<T> Conv<T> for T {
+    fn conv(v: T) -> Self {
+        v
+    }
+}
+
 macro_rules! impl_via_from {
     ($x:ty: $y:ty) => {
         impl Conv<$x> for $y {
@@ -73,7 +79,7 @@ impl_via_from!(i64: i128);
 impl_via_from!(u8: f32, f64, i16, i32, i64, i128, isize);
 impl_via_from!(u8: u16, u32, u64, u128, usize);
 impl_via_from!(u16: f32, f64, i32, i64, i128, u32, u64, u128, usize);
-impl_via_from!(u32: f64, i64, i128, u32, u64, u128);
+impl_via_from!(u32: f64, i64, i128, u64, u128);
 impl_via_from!(u64: i128, u128);
 
 // These rely on the const assertions above
@@ -275,5 +281,35 @@ impl ConvFloat<f32> for u128 {
         let x = x.ceil();
         assert!(x >= 0.0 && x.is_finite());
         x as u128
+    }
+}
+
+/// Like `Into`, but for `Conv`
+pub trait Cast<T> {
+    fn cast(self) -> T;
+}
+
+impl<S, T: Conv<S>> Cast<T> for S {
+    fn cast(self) -> T {
+        T::conv(self)
+    }
+}
+
+/// Like `Into`, but for `ConvFloat`
+pub trait CastFloat<T> {
+    fn cast_nearest(self) -> T;
+    fn cast_floor(self) -> T;
+    fn cast_ceil(self) -> T;
+}
+
+impl<S, T: ConvFloat<S>> CastFloat<T> for S {
+    fn cast_nearest(self) -> T {
+        T::conv_nearest(self)
+    }
+    fn cast_floor(self) -> T {
+        T::conv_floor(self)
+    }
+    fn cast_ceil(self) -> T {
+        T::conv_ceil(self)
     }
 }

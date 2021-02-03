@@ -11,7 +11,7 @@
 use kas::event::{UpdateHandle, VoidResponse};
 use kas::prelude::*;
 use kas::widget::*;
-use kas::{Future, Right};
+use kas::{dir::Right, Future};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Item {

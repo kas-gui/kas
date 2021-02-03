@@ -10,7 +10,7 @@ use std::fmt;
 use std::ops::DerefMut;
 
 use crate::event::{self, Manager};
-use crate::{layout, Direction, WidgetId, WindowId};
+use crate::{dir::Direction, layout, WidgetId, WindowId};
 
 mod impls;
 mod widget;

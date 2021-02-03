@@ -16,7 +16,9 @@
 #[doc(no_inline)]
 pub use kas::class::*;
 #[doc(no_inline)]
-pub use kas::conv::{Conv, ConvFloat};
+pub use kas::conv::{Cast, CastFloat, Conv, ConvFloat};
+#[doc(no_inline)]
+pub use kas::dir::{Direction, Directional};
 #[doc(no_inline)]
 pub use kas::draw::{DrawHandle, DrawHandleExt, SizeHandle};
 #[doc(no_inline)]
@@ -24,7 +26,7 @@ pub use kas::event::{Event, Handler, Manager, ManagerState, Response, SendEvent,
 #[doc(no_inline)]
 pub use kas::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
-pub use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
+pub use kas::layout::{Align, AlignHints, AxisInfo, Margins, SizeRules, StretchPolicy};
 #[doc(no_inline)]
 pub use kas::macros::*;
 #[doc(no_inline)]
@@ -32,7 +34,7 @@ pub use kas::text::AccelString;
 #[doc(no_inline)]
 pub use kas::text::{EditableTextApi, Text, TextApi, TextApiExt};
 #[doc(no_inline)]
-pub use kas::{Align, AlignHints, Direction, Directional, WidgetId};
+pub use kas::WidgetId;
 #[doc(no_inline)]
 pub use kas::{Boxed, TkAction};
 #[doc(no_inline)]

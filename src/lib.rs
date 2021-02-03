@@ -38,6 +38,7 @@ mod traits;
 // public implementations:
 pub mod class;
 pub mod conv;
+pub mod dir;
 pub mod draw;
 pub mod event;
 pub mod geom;
@@ -53,4 +54,3 @@ pub mod macros;
 pub use crate::data::*;
 pub use crate::toolkit::*;
 pub use crate::traits::*;
-pub use kas_text::Align;

@@ -16,7 +16,7 @@ use std::time::Instant;
 use std::u16;
 
 use super::*;
-use crate::conv::Conv;
+use crate::conv::Cast;
 use crate::geom::Coord;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
@@ -98,6 +98,7 @@ enum Pending {
 pub struct ManagerState {
     end_id: WidgetId,
     modifiers: ModifiersState,
+    shortcuts: shortcuts::Shortcuts,
     /// char focus is on same widget as sel_focus; otherwise its value is ignored
     char_focus: bool,
     sel_focus: Option<WidgetId>,
@@ -150,11 +151,11 @@ impl ManagerState {
                     grab.coords[usize::from(index)] = (coord, coord);
                 }
                 grab.n = index + 1;
-                return (u16::conv(gi), index);
+                return (gi.cast(), index);
             }
         }
 
-        let gj = u16::conv(self.pan_grab.len());
+        let gj = self.pan_grab.len().cast();
         let n = 1;
         let mut coords: [(Coord, Coord); MAX_PAN_GRABS] = Default::default();
         coords[0] = (coord, coord);
@@ -253,43 +254,22 @@ impl<'a> Manager<'a> {
         }
     }
 
-    /// Match global shortcuts.
-    ///
-    /// TODO: this should be configurable and extensible with the option for
-    /// global shortcuts to target specific widgets. Possibly we should just use
-    /// an integer with a large block for user-defined codes, and require that
-    /// apps register their short-cut codes with a name and optional WidgetId.
-    fn match_shortcuts(&self, vkey: VirtualKeyCode) -> Option<ControlKey> {
-        use VirtualKeyCode as VK;
-        let ctrl = self.state.modifiers.ctrl();
-        let shift = self.state.modifiers.shift();
-        Some(match (ctrl, shift, vkey) {
-            (true, false, VK::A) => ControlKey::SelectAll,
-            (true, true, VK::A) => ControlKey::Deselect,
-            (true, _, VK::C) => ControlKey::Copy,
-            (true, _, VK::V) => ControlKey::Paste,
-            (true, _, VK::X) => ControlKey::Cut,
-            (true, false, VK::Z) => ControlKey::Undo,
-            (true, true, VK::Z) => ControlKey::Redo,
-            (_, _, vkey) => return ControlKey::new(vkey),
-        })
-    }
-
     fn start_key_event<W>(&mut self, widget: &mut W, vkey: VirtualKeyCode, scancode: u32)
     where
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         use VirtualKeyCode as VK;
-        let opt_control = self.match_shortcuts(vkey);
+        let opt_command = self.state.shortcuts.get(self.state.modifiers, vkey);
+        let shift = self.state.modifiers.shift();
 
         if self.state.char_focus {
             if let Some(id) = self.state.sel_focus {
-                if let Some(key) = opt_control {
-                    let event = Event::Control(key);
+                if let Some(cmd) = opt_command {
+                    let event = Event::Command(cmd, shift);
                     trace!("Send to {}: {:?}", id, event);
                     match widget.send(self, id, event) {
-                        Response::Unhandled(Event::Control(key)) => match key {
-                            ControlKey::Escape => self.set_char_focus(None),
+                        Response::Unhandled(Event::Command(cmd, _)) => match cmd {
+                            Command::Escape => self.set_char_focus(None),
                             _ => (),
                         },
                         _ => (),
@@ -300,7 +280,7 @@ impl<'a> Manager<'a> {
         }
 
         if vkey == VK::Tab {
-            if !self.next_nav_focus(widget.as_widget(), self.state.modifiers.shift()) {
+            if !self.next_nav_focus(widget.as_widget(), shift) {
                 self.clear_nav_focus();
             }
             if let Some(id) = self.state.nav_focus {
@@ -321,21 +301,19 @@ impl<'a> Manager<'a> {
                 if let Some(nav_id) = self.state.nav_focus {
                     if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
                         id_action = Some((nav_id, Event::Activate));
-                    } else if let Some(nav_key) = opt_control {
-                        id_action = Some((nav_id, Event::Control(nav_key)));
+                    } else if let Some(cmd) = opt_command {
+                        id_action = Some((nav_id, Event::Command(cmd, shift)));
                     }
                 }
 
                 if id_action.is_none() {
                     // Next priority goes to pop-up widget
-                    if let Some(popup) = self.state.popups.last() {
-                        if let Some(key) = opt_control {
-                            let ev = Event::Control(key);
+                    if let Some(cmd) = opt_command {
+                        let ev = Event::Command(cmd, shift);
+                        if let Some(popup) = self.state.popups.last() {
                             id_action = Some((popup.1.parent, ev));
-                        }
-                    } else if let Some(id) = self.state.nav_fallback {
-                        if let Some(key) = opt_control {
-                            id_action = Some((id, Event::Control(key)));
+                        } else if let Some(id) = self.state.nav_fallback {
+                            id_action = Some((id, ev));
                         }
                     }
                 }

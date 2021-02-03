@@ -8,7 +8,7 @@
 use super::ScrollWidget;
 use kas::draw::{ClipRegion, TextClass};
 use kas::event::ScrollDelta::{LineDelta, PixelDelta};
-use kas::event::{self, ControlKey, PressSource};
+use kas::event::{self, Command, PressSource};
 use kas::prelude::*;
 use std::fmt::Debug;
 
@@ -169,27 +169,27 @@ impl ScrollComponent {
         let mut response = Response::None;
 
         match event {
-            Event::Control(ControlKey::Home) => {
+            Event::Command(Command::Home, _) => {
                 action = self.set_offset(Offset::ZERO);
             }
-            Event::Control(ControlKey::End) => {
+            Event::Command(Command::End, _) => {
                 action = self.set_offset(self.max_offset);
             }
-            Event::Control(key) => {
-                let delta = match key {
-                    ControlKey::Left => LineDelta(-1.0, 0.0),
-                    ControlKey::Right => LineDelta(1.0, 0.0),
-                    ControlKey::Up => LineDelta(0.0, 1.0),
-                    ControlKey::Down => LineDelta(0.0, -1.0),
-                    ControlKey::PageUp => PixelDelta(Offset(0, window_size.1 / 2)),
-                    ControlKey::PageDown => PixelDelta(Offset(0, -(window_size.1 / 2))),
-                    key => return (action, Response::Unhandled(Event::Control(key))),
+            Event::Command(cmd, _) => {
+                let delta = match cmd {
+                    Command::Left => LineDelta(-1.0, 0.0),
+                    Command::Right => LineDelta(1.0, 0.0),
+                    Command::Up => LineDelta(0.0, 1.0),
+                    Command::Down => LineDelta(0.0, -1.0),
+                    Command::PageUp => PixelDelta(Offset(0, window_size.1 / 2)),
+                    Command::PageDown => PixelDelta(Offset(0, -(window_size.1 / 2))),
+                    _ => return (action, Response::Unhandled(event)),
                 };
 
                 let d = match delta {
                     LineDelta(x, y) => Offset(
-                        i32::conv_nearest(-self.scroll_rate * x),
-                        i32::conv_nearest(self.scroll_rate * y),
+                        (-self.scroll_rate * x).cast_nearest(),
+                        (self.scroll_rate * y).cast_nearest(),
                     ),
                     PixelDelta(d) => d,
                 };
@@ -198,8 +198,8 @@ impl ScrollComponent {
             Event::Scroll(delta) => {
                 let d = match delta {
                     LineDelta(x, y) => Offset(
-                        i32::conv_nearest(-self.scroll_rate * x),
-                        i32::conv_nearest(self.scroll_rate * y),
+                        (-self.scroll_rate * x).cast_nearest(),
+                        (self.scroll_rate * y).cast_nearest(),
                     ),
                     PixelDelta(d) => d,
                 };

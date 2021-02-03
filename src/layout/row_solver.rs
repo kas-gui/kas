@@ -8,9 +8,11 @@
 use std::marker::PhantomData;
 use std::ops::Range;
 
-use super::{AxisInfo, RowStorage, RowTemp, RulesSetter, RulesSolver, SizeRules};
+use super::{Align, AlignHints, AxisInfo, SizeRules};
+use super::{RowStorage, RowTemp, RulesSetter, RulesSolver};
+use crate::dir::{Direction, Directional};
 use crate::geom::{Coord, Rect};
-use crate::{Align, AlignHints, Direction, Directional, Widget};
+use crate::Widget;
 
 /// A [`RulesSolver`] for rows (and, without loss of generality, for columns).
 ///

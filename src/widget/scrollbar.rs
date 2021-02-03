@@ -316,9 +316,9 @@ pub struct ScrollBars<W: ScrollWidget> {
     auto_bars: bool,
     show_bars: (bool, bool),
     #[widget]
-    horiz_bar: ScrollBar<kas::Right>,
+    horiz_bar: ScrollBar<kas::dir::Right>,
     #[widget]
-    vert_bar: ScrollBar<kas::Down>,
+    vert_bar: ScrollBar<kas::dir::Down>,
     #[widget]
     inner: W,
 }
