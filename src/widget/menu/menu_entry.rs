@@ -229,7 +229,7 @@ impl<M: 'static> Layout for MenuToggle<M> {
             align,
             &mut self.layout_data,
         );
-        let align = kas::AlignHints::NONE;
+        let align = AlignHints::NONE;
         let cb_rect = setter.child_rect(&mut self.layout_data, 0usize);
         self.checkbox.set_rect(mgr, cb_rect, align.clone());
         self.label

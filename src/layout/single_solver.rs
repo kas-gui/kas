@@ -5,9 +5,8 @@
 
 //! Miscellaneous solvers
 
-use super::{AxisInfo, RulesSetter, RulesSolver, SizeRules};
+use super::{AlignHints, AxisInfo, RulesSetter, RulesSolver, SizeRules};
 use crate::geom::Rect;
-use kas::AlignHints;
 
 /// [`RulesSolver`] implementation for a fixed single-child layout
 pub struct SingleSolver {

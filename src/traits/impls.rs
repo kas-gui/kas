@@ -9,8 +9,8 @@ use super::*;
 use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Event, Manager, Response};
 use crate::geom::{Coord, Rect};
-use crate::layout::{AxisInfo, SizeRules};
-use crate::{AlignHints, CoreData, WidgetId};
+use crate::layout::{AlignHints, AxisInfo, SizeRules};
+use crate::{CoreData, WidgetId};
 
 impl<M: 'static> WidgetCore for Box<dyn Widget<Msg = M>> {
     fn as_any(&self) -> &dyn Any {

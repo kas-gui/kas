@@ -262,7 +262,7 @@ pub(crate) fn derive(
             &mut self,
             _mgr: &mut kas::event::Manager,
             rect: kas::geom::Rect,
-            align: kas::AlignHints
+            align: kas::layout::AlignHints
         ) {
             use kas::{WidgetCore, Widget};
             use kas::layout::{Margins, RulesSetter};

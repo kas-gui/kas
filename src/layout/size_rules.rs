@@ -140,7 +140,7 @@ impl Default for StretchPolicy {
 /// For widgets with a stretch policy of [`StretchPolicy::Fixed`], it is still
 /// possible for layout code to assign a size larger than the preference. It is
 /// up to the widget to align itself within this space: see
-/// [`kas::Layout::set_rect`] and [`kas::AlignHints`].
+/// [`kas::Layout::set_rect`] and [`kas::layout::AlignHints`].
 ///
 /// [`Rect`]: kas::geom::Rect
 #[derive(Copy, Clone, Default, PartialEq, Eq)]

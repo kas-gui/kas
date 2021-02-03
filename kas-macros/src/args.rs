@@ -240,13 +240,15 @@ impl WidgetAttrArgs {
 
     fn match_align(ident: &Ident, horiz: bool) -> Result<TokenStream> {
         Ok(match ident {
-            ident if ident == "default" => quote! { kas::Align::Default },
-            ident if horiz && ident == "left" => quote! { kas::Align::TL },
-            ident if !horiz && ident == "top" => quote! { kas::Align::TL },
-            ident if ident == "centre" || ident == "center" => quote! { kas::Align::Centre },
-            ident if horiz && ident == "right" => quote! { kas::Align::BR },
-            ident if !horiz && ident == "bottom" => quote! { kas::Align::BR },
-            ident if ident == "stretch" => quote! { kas::Align::Stretch },
+            ident if ident == "default" => quote! { kas::layout::Align::Default },
+            ident if horiz && ident == "left" => quote! { kas::layout::Align::TL },
+            ident if !horiz && ident == "top" => quote! { kas::layout::Align::TL },
+            ident if ident == "centre" || ident == "center" => {
+                quote! { kas::layout::Align::Centre }
+            }
+            ident if horiz && ident == "right" => quote! { kas::layout::Align::BR },
+            ident if !horiz && ident == "bottom" => quote! { kas::layout::Align::BR },
+            ident if ident == "stretch" => quote! { kas::layout::Align::Stretch },
             ident => {
                 return Err(Error::new(
                     ident.span(),

@@ -413,8 +413,8 @@
 #[allow(unused)]
 use crate::{
     event::{Handler, SendEvent},
-    AlignHints, CoreData, Layout, LayoutData, Widget, WidgetChildren, WidgetConfig, WidgetCore,
-    WidgetId,
+    layout::AlignHints,
+    CoreData, Layout, LayoutData, Widget, WidgetChildren, WidgetConfig, WidgetCore, WidgetId,
 };
 
 pub use kas_macros::{make_widget, VoidMsg, Widget};

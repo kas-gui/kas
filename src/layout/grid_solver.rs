@@ -7,10 +7,10 @@
 
 use std::marker::PhantomData;
 
-use super::{AxisInfo, GridStorage, RowTemp, RulesSetter, RulesSolver, SizeRules};
+use super::{Align, AlignHints, AxisInfo, SizeRules};
+use super::{GridStorage, RowTemp, RulesSetter, RulesSolver};
 use crate::conv::Conv;
 use crate::geom::{Coord, Offset, Rect, Size};
-use kas::{Align, AlignHints};
 
 /// Per-child information
 pub struct GridChildInfo {

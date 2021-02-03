@@ -33,6 +33,7 @@
 //! [`RowPositionSolver`] may be used with widgets set out by [`RowSetter`]
 //! to quickly locate children from a `coord` or `rect`.
 
+mod align;
 mod grid_solver;
 mod row_solver;
 mod single_solver;
@@ -42,6 +43,7 @@ mod storage;
 
 use kas::dir::{Direction, Directional};
 
+pub use align::{Align, AlignHints, CompleteAlignment};
 pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
 pub use single_solver::{SingleSetter, SingleSolver};
