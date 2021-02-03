@@ -40,7 +40,7 @@ mod size_rules;
 mod sizer;
 mod storage;
 
-use kas::{Direction, Directional};
+use kas::dir::{Direction, Directional};
 
 pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};

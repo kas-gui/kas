@@ -10,8 +10,8 @@ use std::fmt;
 use std::iter::Sum;
 
 use crate::conv::Conv;
+use crate::dir::Directional;
 use crate::geom::Size;
-use crate::Directional;
 
 // for doc use
 #[allow(unused)]

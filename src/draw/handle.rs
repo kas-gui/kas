@@ -8,11 +8,11 @@
 use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 
+use kas::dir::Direction;
 use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Offset, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, Margins, SizeRules};
 use kas::text::{format::FormattableText, AccelString, Text, TextApi, TextDisplay};
-use kas::Direction;
 
 // for doc use
 #[allow(unused)]

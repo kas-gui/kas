@@ -9,6 +9,7 @@ use log::warn;
 use std::ops::{Index, IndexMut};
 
 use super::DragHandle;
+use kas::dir::{Down, Right};
 use kas::event;
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
@@ -16,26 +17,26 @@ use kas::prelude::*;
 /// A generic row widget
 ///
 /// See documentation of [`Splitter`] type.
-pub type RowSplitter<W> = Splitter<kas::Right, W>;
+pub type RowSplitter<W> = Splitter<Right, W>;
 
 /// A generic column widget
 ///
 /// See documentation of [`Splitter`] type.
-pub type ColumnSplitter<W> = Splitter<kas::Down, W>;
+pub type ColumnSplitter<W> = Splitter<Down, W>;
 
 /// A row of boxed widgets
 ///
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxRowSplitter<M> = BoxSplitter<kas::Right, M>;
+pub type BoxRowSplitter<M> = BoxSplitter<Right, M>;
 
 /// A column of boxed widgets
 ///
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`Splitter`] type.
-pub type BoxColumnSplitter<M> = BoxSplitter<kas::Down, M>;
+pub type BoxColumnSplitter<M> = BoxSplitter<Down, M>;
 
 /// A row/column of boxed widgets
 ///
@@ -49,14 +50,14 @@ pub type BoxSplitter<D, M> = Splitter<D, Box<dyn Widget<Msg = M>>>;
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`Splitter`] type.
-pub type RefRowSplitter<'a, M> = RefSplitter<'a, kas::Right, M>;
+pub type RefRowSplitter<'a, M> = RefSplitter<'a, Right, M>;
 
 /// A column of widget references
 ///
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`Splitter`] type.
-pub type RefColumnSplitter<'a, M> = RefSplitter<'a, kas::Down, M>;
+pub type RefColumnSplitter<'a, M> = RefSplitter<'a, Down, M>;
 
 /// A row/column of widget references
 ///

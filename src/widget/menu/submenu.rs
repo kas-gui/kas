@@ -35,7 +35,7 @@ impl<D: Directional + Default, W: Menu> SubMenu<D, W> {
     }
 }
 
-impl<W: Menu> SubMenu<kas::Right, W> {
+impl<W: Menu> SubMenu<kas::dir::Right, W> {
     /// Construct a sub-menu, opening to the right
     // NOTE: this is used since we can't infer direction of a boxed SubMenu.
     // Consider only accepting an enum of special menu widgets?
@@ -46,7 +46,7 @@ impl<W: Menu> SubMenu<kas::Right, W> {
     }
 }
 
-impl<W: Menu> SubMenu<kas::Down, W> {
+impl<W: Menu> SubMenu<kas::dir::Down, W> {
     /// Construct a sub-menu, opening downwards
     #[inline]
     pub fn down<S: Into<AccelString>>(label: S, list: Vec<W>) -> Self {

@@ -7,32 +7,33 @@
 
 use std::ops::{Index, IndexMut};
 
+use kas::dir::{Down, Right};
 use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::{event, prelude::*};
 
 /// A generic row widget
 ///
 /// See documentation of [`List`] type.
-pub type Row<W> = List<kas::Right, W>;
+pub type Row<W> = List<Right, W>;
 
 /// A generic column widget
 ///
 /// See documentation of [`List`] type.
-pub type Column<W> = List<kas::Down, W>;
+pub type Column<W> = List<Down, W>;
 
 /// A row of boxed widgets
 ///
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`List`] type.
-pub type BoxRow<M> = BoxList<kas::Right, M>;
+pub type BoxRow<M> = BoxList<Right, M>;
 
 /// A column of boxed widgets
 ///
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`List`] type.
-pub type BoxColumn<M> = BoxList<kas::Down, M>;
+pub type BoxColumn<M> = BoxList<Down, M>;
 
 /// A row/column of boxed widgets
 ///
@@ -46,14 +47,14 @@ pub type BoxList<D, M> = List<D, Box<dyn Widget<Msg = M>>>;
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`List`] type.
-pub type RefRow<'a, M> = RefList<'a, kas::Right, M>;
+pub type RefRow<'a, M> = RefList<'a, Right, M>;
 
 /// A column of widget references
 ///
 /// This is parameterised over handler message type.
 ///
 /// See documentation of [`List`] type.
-pub type RefColumn<'a, M> = RefList<'a, kas::Down, M>;
+pub type RefColumn<'a, M> = RefList<'a, Down, M>;
 
 /// A row/column of widget references
 ///

@@ -538,10 +538,10 @@ impl ToTokens for LayoutType {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         tokens.append_all(match self {
             LayoutType::Single | LayoutType::Grid => unreachable!(),
-            LayoutType::Right => quote! { kas::Right },
-            LayoutType::Left => quote! { kas::Left },
-            LayoutType::Down => quote! { kas::Down },
-            LayoutType::Up => quote! { kas::Up },
+            LayoutType::Right => quote! { kas::dir::Right },
+            LayoutType::Left => quote! { kas::dir::Left },
+            LayoutType::Down => quote! { kas::dir::Down },
+            LayoutType::Up => quote! { kas::dir::Up },
         })
     }
 }

@@ -5,6 +5,7 @@
 
 //! Filter list example
 
+use kas::dir::Down;
 use kas::prelude::*;
 use kas::widget::view::{Accessor, ListView};
 use kas::widget::{EditBox, ScrollBars, Window};
@@ -102,7 +103,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     mgr.trigger_update(update, 0);
                     None
                 }),
-                #[widget] list = ScrollBars::new(ListView::<kas::Down, data::Shared>::new(data)),
+                #[widget] list = ScrollBars::new(ListView::<Down, data::Shared>::new(data)),
             }
         },
     );
