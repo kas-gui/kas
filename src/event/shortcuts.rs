@@ -28,10 +28,10 @@ impl Shortcuts {
         const CMD: ModifiersState = ModifiersState::CTRL;
 
         // No modifiers
-        let modifiers = ModifiersState::empty();
-        let map = self.map.entry(modifiers).or_insert_with(Default::default);
         #[cfg(not(target_os = "macos"))]
         {
+            let modifiers = ModifiersState::empty();
+            let map = self.map.entry(modifiers).or_insert_with(Default::default);
             let shortcuts = [
                 (VK::F1, Command::Help),
                 (VK::F2, Command::Rename),
@@ -45,10 +45,10 @@ impl Shortcuts {
         }
 
         // Shift
-        let modifiers = ModifiersState::SHIFT;
-        let map = self.map.entry(modifiers).or_insert_with(Default::default);
         #[cfg(not(target_os = "macos"))]
         {
+            let modifiers = ModifiersState::SHIFT;
+            let map = self.map.entry(modifiers).or_insert_with(Default::default);
             map.insert(VK::F3, Command::FindPrev);
         }
 
@@ -70,11 +70,11 @@ impl Shortcuts {
         {
             // Missing functionality: move to start/end of paragraph on (Shift)+Alt+Up/Down
             let shortcuts = [
-                (VK::Left, Command::MovePrevWord),
-                (VK::Right, Command::MoveNextWord),
+                (VK::Left, Command::WordLeft),
+                (VK::Right, Command::WordRight),
             ];
 
-            map.insert(VK::Delete, Command::DelPrevWord);
+            map.insert(VK::Delete, Command::DelWordBack);
             map.extend(shortcuts.iter().cloned());
 
             // Shift + Option
@@ -109,10 +109,10 @@ impl Shortcuts {
         {
             let shortcuts = [
                 (VK::G, Command::FindNext),
-                (VK::Up, Command::DocStart),
+                (VK::Up, Command::DocHome),
                 (VK::Down, Command::DocEnd),
-                (VK::Left, Command::LineStart),
-                (VK::Right, Command::LineEnd),
+                (VK::Left, Command::Home),
+                (VK::Right, Command::End),
             ];
             map.extend(shortcuts.iter().cloned());
         }
@@ -155,12 +155,12 @@ impl Shortcuts {
         #[cfg(target_os = "macos")]
         {
             let shortcuts = [
-                (VK::G, Command::FindPrevious),
+                (VK::G, Command::FindPrev),
                 (VK::Colon, Command::Spelling),
-                (VK::Up, Command::DocStart),
+                (VK::Up, Command::DocHome),
                 (VK::Down, Command::DocEnd),
-                (VK::Left, Command::LineStart),
-                (VK::Right, Command::LineEnd),
+                (VK::Left, Command::Home),
+                (VK::Right, Command::End),
             ];
             map.extend(shortcuts.iter().cloned());
         }
