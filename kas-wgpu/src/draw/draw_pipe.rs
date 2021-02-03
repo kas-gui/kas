@@ -14,7 +14,7 @@ use super::{
     flat_round, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow, DrawPipe,
     DrawWindow, ShaderManager, TEX_FORMAT,
 };
-use kas::conv::Conv;
+use kas::conv::Cast;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Pass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 
@@ -29,8 +29,8 @@ fn make_depth_texture(device: &wgpu::Device, size: Size) -> Option<TextureView> 
     let tex = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("window depth"),
         size: wgpu::Extent3d {
-            width: u32::conv(size.0),
-            height: u32::conv(size.1),
+            width: size.0.cast(),
+            height: size.1.cast(),
             depth: 1,
         },
         mip_level_count: 1,
@@ -184,10 +184,10 @@ impl<C: CustomPipe> DrawPipe<C> {
                     depth_stencil_attachment: Some(depth_stencil_attachment.clone()),
                 });
                 rpass.set_scissor_rect(
-                    u32::conv(rect.pos.0),
-                    u32::conv(rect.pos.1),
-                    u32::conv(rect.size.0),
-                    u32::conv(rect.size.1),
+                    rect.pos.0.cast(),
+                    rect.pos.1.cast(),
+                    rect.size.0.cast(),
+                    rect.size.1.cast(),
                 );
 
                 ss.as_ref().map(|buf| buf.render(&mut rpass));
@@ -228,8 +228,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                 &mut encoder,
                 frame_view,
                 depth_stencil_attachment,
-                u32::conv(size.0),
-                u32::conv(size.1),
+                size.0.cast(),
+                size.1.cast(),
             )
             .expect("glyph_brush.draw_queued");
 
@@ -260,7 +260,7 @@ impl<CW: CustomWindow + 'static> Draw for DrawWindow<CW> {
     }
 
     fn add_clip_region(&mut self, rect: Rect, depth: f32) -> Pass {
-        let pass = u32::conv(self.clip_regions.len());
+        let pass = self.clip_regions.len().cast();
         self.clip_regions.push(rect);
         Pass::new_pass_with_depth(pass, depth)
     }

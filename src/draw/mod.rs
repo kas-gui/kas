@@ -42,7 +42,7 @@ mod handle;
 
 use std::any::Any;
 
-use crate::conv::Conv;
+use crate::conv::Cast;
 use crate::geom::{Quad, Rect, Vec2};
 use crate::text::{Effect, TextDisplay};
 
@@ -70,7 +70,7 @@ impl Pass {
     /// This value is returned as `usize` but is always safe to store `as u32`.
     #[inline]
     pub fn pass(self) -> usize {
-        usize::conv(self.0)
+        self.0.cast()
     }
 
     /// The depth value

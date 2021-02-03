@@ -16,7 +16,7 @@
 #[doc(no_inline)]
 pub use kas::class::*;
 #[doc(no_inline)]
-pub use kas::conv::{Conv, ConvFloat};
+pub use kas::conv::{Cast, CastFloat, Conv, ConvFloat};
 #[doc(no_inline)]
 pub use kas::dir::{Direction, Directional};
 #[doc(no_inline)]

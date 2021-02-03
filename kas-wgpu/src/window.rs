@@ -8,7 +8,7 @@
 use log::{debug, error, info, trace};
 use std::time::Instant;
 
-use kas::conv::Conv;
+use kas::conv::Cast;
 use kas::draw::SizeHandle;
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
@@ -93,8 +93,8 @@ where
         let sc_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
             format: TEX_FORMAT,
-            width: u32::conv(size.0),
-            height: u32::conv(size.1),
+            width: size.0.cast(),
+            height: size.1.cast(),
             present_mode: wgpu::PresentMode::Fifo,
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
@@ -293,10 +293,7 @@ where
 {
     /// Swap-chain size
     fn sc_size(&self) -> Size {
-        Size::new(
-            i32::conv(self.sc_desc.width),
-            i32::conv(self.sc_desc.height),
-        )
+        Size::new(self.sc_desc.width.cast(), self.sc_desc.height.cast())
     }
 
     fn reconfigure<C, T>(&mut self, shared: &mut SharedState<C, T>)
@@ -360,8 +357,8 @@ where
         let buf = shared.draw.resize(&mut self.draw, &shared.device, size);
         shared.queue.submit(std::iter::once(buf));
 
-        self.sc_desc.width = u32::conv(size.0);
-        self.sc_desc.height = u32::conv(size.1);
+        self.sc_desc.width = size.0.cast();
+        self.sc_desc.height = size.1.cast();
         self.swap_chain = shared
             .device
             .create_swap_chain(&self.surface, &self.sc_desc);

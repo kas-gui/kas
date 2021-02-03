@@ -277,3 +277,33 @@ impl ConvFloat<f32> for u128 {
         x as u128
     }
 }
+
+/// Like `Into`, but for `Conv`
+pub trait Cast<T> {
+    fn cast(self) -> T;
+}
+
+impl<S, T: Conv<S>> Cast<T> for S {
+    fn cast(self) -> T {
+        T::conv(self)
+    }
+}
+
+/// Like `Into`, but for `ConvFloat`
+pub trait CastFloat<T> {
+    fn cast_nearest(self) -> T;
+    fn cast_floor(self) -> T;
+    fn cast_ceil(self) -> T;
+}
+
+impl<S, T: ConvFloat<S>> CastFloat<T> for S {
+    fn cast_nearest(self) -> T {
+        T::conv_nearest(self)
+    }
+    fn cast_floor(self) -> T {
+        T::conv_floor(self)
+    }
+    fn cast_ceil(self) -> T {
+        T::conv_ceil(self)
+    }
+}

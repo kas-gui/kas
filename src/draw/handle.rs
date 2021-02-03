@@ -116,7 +116,7 @@ pub trait SizeHandle {
     /// ```
     /// use kas::conv::*;
     /// # let scale_factor = 1.5f32;
-    /// let size = i32::conv_ceil(100.0 * scale_factor);
+    /// let size: i32 = (100.0 * scale_factor).cast_ceil();
     /// ```
     ///
     /// This value may change during a program's execution (e.g. when a window

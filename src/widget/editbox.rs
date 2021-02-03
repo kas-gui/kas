@@ -810,8 +810,8 @@ impl<G> EditBox<G> {
             let min_y = marker.pos.1 - marker.descent - bounds.1;
             let max_x = marker.pos.0;
             let max_y = marker.pos.1 - marker.ascent;
-            let min = Offset(i32::conv_ceil(min_x), i32::conv_ceil(min_y));
-            let max = Offset(i32::conv_floor(max_x), i32::conv_floor(max_y));
+            let min = Offset(min_x.cast_ceil(), min_y.cast_ceil());
+            let max = Offset(max_x.cast_floor(), max_y.cast_floor());
 
             let max_offset = (self.required - bounds).ceil();
             let max_offset = Offset::from(max_offset).max(Offset::ZERO);
@@ -949,9 +949,7 @@ impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
                     ScrollDelta::LineDelta(x, y) => {
                         // We arbitrarily scroll 3 lines:
                         let dist = 3.0 * self.text.env().height(Default::default());
-                        let x = i32::conv_nearest(x * dist);
-                        let y = i32::conv_nearest(y * dist);
-                        Offset(x, y)
+                        Offset((x * dist).cast_nearest(), (y * dist).cast_nearest())
                     }
                     ScrollDelta::PixelDelta(coord) => coord,
                 };

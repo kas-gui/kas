@@ -183,8 +183,8 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
             frac = 1.0 - frac;
         }
         match self.direction.is_vertical() {
-            false => Offset(i32::conv_floor(max_offset.0 as f64 * frac), 0),
-            true => Offset(0, i32::conv_floor(max_offset.1 as f64 * frac)),
+            false => Offset((max_offset.0 as f64 * frac).cast_floor(), 0),
+            true => Offset(0, (max_offset.1 as f64 * frac).cast_floor()),
         }
     }
 

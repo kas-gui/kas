@@ -7,7 +7,7 @@
 //!
 //! For drawing operations, all dimensions use the `f32` type.
 
-use kas::conv::{Conv, ConvFloat};
+use kas::conv::{CastFloat, Conv};
 use kas::geom::{Coord, Offset, Rect, Size};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
@@ -347,7 +347,7 @@ macro_rules! impl_vec2 {
         impl From<$T> for Coord {
             #[inline]
             fn from(arg: $T) -> Self {
-                Coord(i32::conv_nearest(arg.0), i32::conv_nearest(arg.1))
+                Coord(arg.0.cast_nearest(), arg.1.cast_nearest())
             }
         }
 
@@ -361,7 +361,7 @@ macro_rules! impl_vec2 {
         impl From<$T> for Offset {
             #[inline]
             fn from(arg: $T) -> Self {
-                Offset(i32::conv_nearest(arg.0), i32::conv_nearest(arg.1))
+                Offset(arg.0.cast_nearest(), arg.1.cast_nearest())
             }
         }
 

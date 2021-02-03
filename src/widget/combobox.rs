@@ -244,7 +244,7 @@ impl<T: Into<AccelString>, M: Clone + Debug> FromIterator<(T, M)> for ComboBox<M
         let mut choices = Vec::with_capacity(len);
         let mut messages = Vec::with_capacity(len);
         for (i, (label, msg)) in iter.enumerate() {
-            choices.push(MenuEntry::new(label, u64::conv(i)));
+            choices.push(MenuEntry::new(label, i.cast()));
             messages.push(msg);
         }
         ComboBox::new_(choices, messages)
@@ -258,7 +258,7 @@ impl<'a, M: Clone + Debug + 'static> FromIterator<&'a (&'static str, M)> for Com
         let mut choices = Vec::with_capacity(len);
         let mut messages = Vec::with_capacity(len);
         for (i, (label, msg)) in iter.enumerate() {
-            choices.push(MenuEntry::new(*label, u64::conv(i)));
+            choices.push(MenuEntry::new(*label, i.cast()));
             messages.push(msg.clone());
         }
         ComboBox::new_(choices, messages)

@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use std::fmt;
 use std::iter::Sum;
 
-use crate::conv::Conv;
+use crate::conv::{Cast, Conv};
 use crate::dir::Directional;
 use crate::geom::Size;
 
@@ -529,7 +529,7 @@ impl SizeRules {
                         sum += out[i];
                         if rules[i].stretch == highest_stretch {
                             over += out[i] - rules[i].b;
-                            targets.push(i32::conv(i));
+                            targets.push(i.cast());
                         }
                     }
 
@@ -544,7 +544,7 @@ impl SizeRules {
                     for i in 0..N {
                         if out[i] < rules[i].b {
                             over += out[i] - rules[i].a;
-                            targets.push(i32::conv(i));
+                            targets.push(i.cast());
                         }
                     }
 
@@ -621,7 +621,7 @@ impl SizeRules {
                                 out[i] = rules[i].b;
                             } else if stretch == highest_affected {
                                 avail += out[i] - rules[i].b;
-                                targets.push(i32::conv(i));
+                                targets.push(i.cast());
                             }
                         }
                     }
@@ -639,7 +639,7 @@ impl SizeRules {
                         out[i] = out[i].min(rules[i].b);
                         sum += out[i];
                         if out[i] > rules[i].a {
-                            targets.push(i32::conv(i));
+                            targets.push(i.cast());
                         }
                     }
                     if sum > target {
