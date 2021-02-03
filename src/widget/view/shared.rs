@@ -5,6 +5,7 @@
 
 //! Shared data for view widgets
 
+use kas::conv::{Cast, Conv};
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
@@ -199,58 +200,27 @@ impl<T: Clone + Debug + 'static> AccessorShared<()> for SharedRc<T> {
     }
 }
 
-/// Types "probably" representable by `usize`
-///
-/// We use range checks in debug mode
-pub trait ToFromUsize: Debug + Sized + 'static {
-    fn from_usize(i: usize) -> Self;
-    fn to_usize(i: Self) -> usize;
-    fn from_u32(i: u32) -> Self {
-        Self::from_usize(kas::text::conv::to_usize(i))
-    }
-    fn to_u32(i: Self) -> u32 {
-        kas::text::conv::to_u32(Self::to_usize(i))
-    }
-}
-
-impl ToFromUsize for usize {
-    fn from_usize(i: usize) -> Self {
-        i
-    }
-    fn to_usize(i: Self) -> usize {
-        i
-    }
-}
-impl ToFromUsize for u32 {
-    fn from_usize(i: usize) -> Self {
-        kas::text::conv::to_u32(i)
-    }
-    fn to_usize(i: Self) -> usize {
-        kas::text::conv::to_usize(i)
-    }
-    fn from_u32(i: u32) -> Self {
-        i
-    }
-    fn to_u32(i: Self) -> u32 {
-        i
-    }
-}
-
 /// Filter accessor over another accessor
 #[derive(Clone, Debug)]
-pub struct FilterAccessor<I: ToFromUsize, T: Accessor<I>> {
+pub struct FilterAccessor<I, T: Accessor<I>>
+where
+    I: Cast<u32> + Cast<usize> + Conv<u32> + Conv<usize> + Debug + 'static,
+{
     data: T,
     view: Vec<u32>,
     update: UpdateHandle,
     _i: std::marker::PhantomData<I>,
 }
 
-impl<I: ToFromUsize, T: Accessor<I>> FilterAccessor<I, T> {
+impl<I, T: Accessor<I>> FilterAccessor<I, T>
+where
+    I: Cast<u32> + Cast<usize> + Conv<u32> + Conv<usize> + Debug + 'static,
+{
     /// Construct, with all data hidden (filtered out)
     ///
     /// This is the fastest constructor.
     pub fn new_hidden(data: T) -> Self {
-        let view = Vec::with_capacity(I::to_usize(data.len()));
+        let view = Vec::with_capacity(data.len().cast());
         FilterAccessor {
             data,
             view,
@@ -262,7 +232,7 @@ impl<I: ToFromUsize, T: Accessor<I>> FilterAccessor<I, T> {
     /// Construct, with all data visible
     pub fn new_visible(data: T) -> Self {
         let mut x = Self::new_hidden(data);
-        x.view.extend(0..I::to_u32(x.data.len()));
+        x.view.extend(0..x.data.len().cast());
         x
     }
 
@@ -272,8 +242,8 @@ impl<I: ToFromUsize, T: Accessor<I>> FilterAccessor<I, T> {
     pub fn update_filter<F: Fn(T::Item) -> bool>(&mut self, filter: F) -> UpdateHandle {
         self.view.clear();
         // TODO: is this slow?
-        for i in 0..I::to_u32(self.data.len()) {
-            if filter(self.data.get(I::from_u32(i))) {
+        for i in 0..self.data.len().cast() {
+            if filter(self.data.get(i.cast())) {
                 self.view.push(i);
             }
         }
@@ -281,13 +251,16 @@ impl<I: ToFromUsize, T: Accessor<I>> FilterAccessor<I, T> {
     }
 }
 
-impl<I: ToFromUsize, T: Accessor<I>> Accessor<I> for FilterAccessor<I, T> {
+impl<I, T: Accessor<I>> Accessor<I> for FilterAccessor<I, T>
+where
+    I: Cast<u32> + Cast<usize> + Conv<u32> + Conv<usize> + Debug + 'static,
+{
     type Item = T::Item;
     fn len(&self) -> I {
-        I::from_usize(self.view.len())
+        self.view.len().cast()
     }
     fn get(&self, index: I) -> Self::Item {
-        self.data.get(I::from_u32(self.view[I::to_usize(index)]))
+        self.data.get(self.view[Cast::<usize>::cast(index)].cast())
     }
     fn update_handle(&self) -> Option<UpdateHandle> {
         Some(self.update)
