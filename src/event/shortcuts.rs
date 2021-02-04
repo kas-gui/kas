@@ -9,18 +9,22 @@ use super::{Command, ModifiersState, VirtualKeyCode};
 use linear_map::LinearMap;
 use std::collections::HashMap;
 
-#[derive(Default, Debug)]
+/// Shortcut manager
+#[derive(Debug)]
 pub struct Shortcuts {
     map: LinearMap<ModifiersState, HashMap<VirtualKeyCode, Command>>,
 }
 
 impl Shortcuts {
-    /// Load default shortcuts
-    ///
-    /// Note: text-editor move keys are repeated with shift so that e.g.
-    /// Shift+Home is matched. Such actions do not have unique names; the
-    /// consumer must check the status of the shift modifier directly.
-    pub fn load_defaults(&mut self) {
+    /// Construct, with no bindings
+    pub fn new() -> Self {
+        Shortcuts {
+            map: Default::default(),
+        }
+    }
+
+    /// Load default shortcuts for the current platform
+    pub fn load_platform_defaults(&mut self) {
         use VirtualKeyCode as VK;
         #[cfg(target_os = "macos")]
         const CMD: ModifiersState = ModifiersState::LOGO;
@@ -175,6 +179,10 @@ impl Shortcuts {
     }
 
     /// Match shortcuts
+    ///
+    /// Note: text-editor navigation keys (e.g. arrows, home/end) result in the
+    /// same output with and without Shift pressed. Editors should check the
+    /// status of the Shift modifier directly where this has an affect.
     pub fn get(&self, mut modifiers: ModifiersState, vkey: VirtualKeyCode) -> Option<Command> {
         if let Some(result) = self.map.get(&modifiers).and_then(|m| m.get(&vkey)) {
             return Some(*result);

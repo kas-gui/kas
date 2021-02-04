@@ -23,6 +23,8 @@ pub mod options;
 mod shared;
 mod window;
 
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::{error, fmt};
 
 use kas::event::UpdateHandle;
@@ -100,7 +102,7 @@ where
     /// Construct a new instance with default options.
     ///
     /// Environment variables may affect option selection; see documentation
-    /// of [`Options::from_env`].
+    /// of [`Options::from_env`]. KAS config is provided by [`Options::config`].
     #[inline]
     pub fn new(theme: T) -> Result<Self, Error> {
         Self::new_custom((), theme, Options::from_env())
@@ -116,8 +118,9 @@ where
     /// The `custom` parameter accepts a custom draw pipe (see [`CustomPipeBuilder`]).
     /// Pass `()` if you don't have one.
     ///
-    /// The [`Options`] parameter allows direct specification of shell
-    /// options; usually, these are provided by [`Options::from_env`].
+    /// The [`Options`] parameter allows direct specification of shell options;
+    /// usually, these are provided by [`Options::from_env`].
+    /// KAS config is provided by [`Options::config`].
     #[inline]
     pub fn new_custom<CB: CustomPipeBuilder<Pipe = C>>(
         custom: CB,
@@ -125,11 +128,32 @@ where
         options: Options,
     ) -> Result<Self, Error> {
         let el = EventLoop::with_user_event();
+        let config = Rc::new(RefCell::new(options.config()));
         let scale_factor = find_scale_factor(&el);
         Ok(Toolkit {
             el,
             windows: vec![],
-            shared: SharedState::new(custom, theme, options, scale_factor)?,
+            shared: SharedState::new(custom, theme, options, config, scale_factor)?,
+        })
+    }
+
+    /// Construct an instance with custom options and config
+    ///
+    /// This is like [`Toolkit::new_custom`], but allows KAS config to be
+    /// specified directly, instead of loading via [`Options::config`].
+    #[inline]
+    pub fn new_custom_config<CB: CustomPipeBuilder<Pipe = C>>(
+        custom: CB,
+        theme: T,
+        options: Options,
+        config: Rc<RefCell<kas::event::Config>>,
+    ) -> Result<Self, Error> {
+        let el = EventLoop::with_user_event();
+        let scale_factor = find_scale_factor(&el);
+        Ok(Toolkit {
+            el,
+            windows: vec![],
+            shared: SharedState::new(custom, theme, options, config, scale_factor)?,
         })
     }
 

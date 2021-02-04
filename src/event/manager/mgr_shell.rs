@@ -28,14 +28,11 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 impl ManagerState {
     /// Construct an event manager per-window data struct
     #[inline]
-    pub fn new() -> Self {
-        let mut shortcuts = shortcuts::Shortcuts::default();
-        shortcuts.load_defaults();
-
+    pub fn new(config: Rc<RefCell<Config>>) -> Self {
         ManagerState {
+            config,
             end_id: Default::default(),
             modifiers: ModifiersState::empty(),
-            shortcuts,
             char_focus: false,
             sel_focus: None,
             nav_focus: None,

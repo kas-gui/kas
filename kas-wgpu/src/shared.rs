@@ -6,11 +6,12 @@
 //! Shared state
 
 use log::{info, warn};
+use std::cell::RefCell;
 use std::num::NonZeroU32;
+use std::rc::Rc;
 
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow, ShaderManager};
 use crate::{Error, Options, WindowId};
-use kas::event::UpdateHandle;
 use kas_theme::Theme;
 
 #[cfg(feature = "clipboard")]
@@ -26,6 +27,7 @@ pub struct SharedState<C: CustomPipe, T> {
     pub shaders: ShaderManager,
     pub draw: DrawPipe<C>,
     pub theme: T,
+    pub config: Rc<RefCell<kas::event::Config>>,
     pub pending: Vec<PendingAction>,
     /// Newly created windows need to know the scale_factor *before* they are
     /// created. This is used to estimate ideal window size.
@@ -42,6 +44,7 @@ where
         custom: CB,
         mut theme: T,
         options: Options,
+        config: Rc<RefCell<kas::event::Config>>,
         scale_factor: f64,
     ) -> Result<Self, Error> {
         #[cfg(feature = "clipboard")]
@@ -84,6 +87,7 @@ where
             shaders,
             draw,
             theme,
+            config,
             pending: vec![],
             scale_factor,
             window_id: 0,
@@ -148,5 +152,5 @@ pub enum PendingAction {
     CloseWindow(WindowId),
     ThemeResize,
     RedrawAll,
-    Update(UpdateHandle, u64),
+    Update(kas::event::UpdateHandle, u64),
 }

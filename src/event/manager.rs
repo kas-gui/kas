@@ -11,7 +11,9 @@
 use linear_map::{set::LinearSet, LinearMap};
 use log::trace;
 use smallvec::SmallVec;
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::time::Instant;
 use std::u16;
 
@@ -96,9 +98,9 @@ enum Pending {
 // `SmallVec` is used to keep contents in local memory.
 #[derive(Debug)]
 pub struct ManagerState {
+    config: Rc<RefCell<Config>>,
     end_id: WidgetId,
     modifiers: ModifiersState,
-    shortcuts: shortcuts::Shortcuts,
     /// char focus is on same widget as sel_focus; otherwise its value is ignored
     char_focus: bool,
     sel_focus: Option<WidgetId>,
@@ -259,7 +261,9 @@ impl<'a> Manager<'a> {
         W: Widget<Msg = VoidMsg> + ?Sized,
     {
         use VirtualKeyCode as VK;
-        let opt_command = self.state.shortcuts.get(self.state.modifiers, vkey);
+        let config = self.state.config.borrow();
+        let opt_command = config.shortcuts.get(self.state.modifiers, vkey);
+        drop(config);
         let shift = self.state.modifiers.shift();
 
         if self.state.char_focus {

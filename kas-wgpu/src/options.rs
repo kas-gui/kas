@@ -100,4 +100,9 @@ impl Options {
     pub(crate) fn backend(&self) -> BackendBit {
         self.backends
     }
+
+    /// Load KAS config
+    pub fn config(&self) -> kas::event::Config {
+        Default::default()
+    }
 }

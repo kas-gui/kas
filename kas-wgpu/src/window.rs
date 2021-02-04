@@ -99,7 +99,7 @@ where
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
-        let mut mgr = ManagerState::new();
+        let mut mgr = ManagerState::new(shared.config.clone());
         let mut tkw = TkWindow::new(shared, &window, &mut theme_window);
         mgr.configure(&mut tkw, &mut *widget);
 
