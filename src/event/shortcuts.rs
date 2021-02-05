@@ -8,8 +8,12 @@
 use super::{Command, ModifiersState, VirtualKeyCode};
 use linear_map::LinearMap;
 #[cfg(feature = "serde")]
+use serde::de::{self, Deserialize, Deserializer, MapAccess, Unexpected, Visitor};
+#[cfg(feature = "serde")]
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::collections::HashMap;
+#[cfg(feature = "serde")]
+use std::fmt;
 
 /// Shortcut manager
 #[derive(Debug)]
@@ -251,5 +255,105 @@ impl Serialize for Shortcuts {
             map.serialize_entry(state_to_string(*k), v)?;
         }
         map.end()
+    }
+}
+
+// #[derive(Error, Debug)]
+// pub enum DeError {
+//     #[error("invalid modifier state: {0}")]
+//     State(String),
+// }
+
+#[cfg(feature = "serde")]
+struct ModifierStateVisitor(ModifiersState);
+#[cfg(feature = "serde")]
+impl<'de> Visitor<'de> for ModifierStateVisitor {
+    type Value = ModifierStateVisitor;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("none or ctrl or alt-shift-super etc.")
+    }
+
+    fn visit_str<E: de::Error>(self, u: &str) -> Result<Self::Value, E> {
+        let mut v = u;
+        let mut state = ModifiersState::empty();
+
+        if v.starts_with("ctrl") {
+            state |= ModifiersState::CTRL;
+            v = &v[v.len().min(4)..];
+        }
+        if v.starts_with("-") {
+            v = &v[1..];
+        }
+        if v.starts_with("alt") {
+            state |= ModifiersState::ALT;
+            v = &v[v.len().min(3)..];
+        }
+        if v.starts_with("-") {
+            v = &v[1..];
+        }
+        if v.starts_with("shift") {
+            state |= ModifiersState::SHIFT;
+            v = &v[v.len().min(5)..];
+        }
+        if v.starts_with("-") {
+            v = &v[1..];
+        }
+        if v.starts_with("super") {
+            state |= ModifiersState::LOGO;
+            v = &v[v.len().min(5)..];
+        }
+
+        if v.is_empty() || u == "none" {
+            Ok(ModifierStateVisitor(state))
+        } else {
+            Err(E::invalid_value(
+                Unexpected::Str(u),
+                &"none or ctrl or alt-shift-super etc.",
+            ))
+        }
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for ModifierStateVisitor {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        d.deserialize_str(ModifierStateVisitor(Default::default()))
+    }
+}
+
+#[cfg(feature = "serde")]
+struct ShortcutsVisitor;
+#[cfg(feature = "serde")]
+impl<'de> Visitor<'de> for ShortcutsVisitor {
+    type Value = Shortcuts;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("{ <modifiers> : { <key> : <command> } }")
+    }
+
+    fn visit_map<A>(self, mut reader: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        let mut map = LinearMap::<ModifiersState, HashMap<VirtualKeyCode, Command>>::new();
+        while let Some(key) = reader.next_key::<ModifierStateVisitor>()? {
+            let value = reader.next_value()?;
+            map.insert(key.0, value);
+        }
+        Ok(Shortcuts { map })
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for Shortcuts {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        d.deserialize_map(ShortcutsVisitor)
     }
 }

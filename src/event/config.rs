@@ -6,6 +6,8 @@
 //! Event handling configuration
 
 use super::shortcuts::Shortcuts;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use thiserror::Error;
 
@@ -52,7 +54,7 @@ impl Default for ConfigFormat {
 
 /// Event handling configuration
 #[derive(Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
     pub shortcuts: Shortcuts,
 }
@@ -90,6 +92,16 @@ impl Config {
         }
 
         match format {
+            #[cfg(feature = "json")]
+            ConfigFormat::Json => {
+                let r = std::io::BufReader::new(std::fs::File::open(path)?);
+                Ok(serde_json::from_reader(r)?)
+            }
+            #[cfg(feature = "yaml")]
+            ConfigFormat::Yaml => {
+                let r = std::io::BufReader::new(std::fs::File::open(path)?);
+                Ok(serde_yaml::from_reader(r)?)
+            }
             _ => Err(ConfigError::UnsupportedFormat(format)),
         }
     }
