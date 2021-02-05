@@ -100,15 +100,9 @@ macro_rules! impl_via_as {
 
 impl_via_as!(i32: isize);
 impl_via_as!(isize: i64, i128);
+impl_via_as!(u16: isize);
 impl_via_as!(u32: usize);
-impl_via_as!(usize: u64, u128);
-
-impl Conv<u16> for isize {
-    #[inline]
-    fn conv(v: u16) -> isize {
-        isize::conv(i32::from(v))
-    }
-}
+impl_via_as!(usize: i128, u64, u128);
 
 macro_rules! impl_via_as_neg_check {
     ($x:ty: $y:ty) => {
@@ -131,7 +125,7 @@ impl_via_as_neg_check!(i16: u16, u32, u64, u128, usize);
 impl_via_as_neg_check!(i32: u32, u64, u128, usize);
 impl_via_as_neg_check!(i64: u64, u128);
 impl_via_as_neg_check!(i128: u128);
-impl_via_as_neg_check!(isize: u32, u64, u128, usize);
+impl_via_as_neg_check!(isize: u64, u128, usize);
 
 // Assumption: $y::MAX is representable as $x
 macro_rules! impl_via_as_max_check {
@@ -150,10 +144,12 @@ macro_rules! impl_via_as_max_check {
     };
 }
 
+impl_via_as_max_check!(u8: i8);
 impl_via_as_max_check!(u16: i8, i16, u8);
 impl_via_as_max_check!(u32: i8, i16, i32, u8, u16);
-impl_via_as_max_check!(u64: i8, i16, i32, i64, u8, u16, u32, usize);
-impl_via_as_max_check!(u128: i8, i16, i32, i64, i128, u8, u16, u32, u64, usize);
+impl_via_as_max_check!(u64: i8, i16, i32, i64, isize, u8, u16, u32, usize);
+impl_via_as_max_check!(u128: i8, i16, i32, i64, i128, isize);
+impl_via_as_max_check!(u128: u8, u16, u32, u64, usize);
 impl_via_as_max_check!(usize: i8, i16, i32, isize, u8, u16, u32);
 
 // Assumption: $y::MAX and $y::MIN are representable as $x
@@ -176,8 +172,8 @@ macro_rules! impl_via_as_range_check {
 impl_via_as_range_check!(i16: i8, u8);
 impl_via_as_range_check!(i32: i8, i16, u8, u16);
 impl_via_as_range_check!(i64: i8, i16, i32, isize, u8, u16, u32);
-impl_via_as_range_check!(i128: i8, i16, i32, i64, isize, u8, u16, u32, u64);
-impl_via_as_range_check!(isize: i8, i16, i32);
+impl_via_as_range_check!(i128: i8, i16, i32, i64, isize, u8, u16, u32, u64, usize);
+impl_via_as_range_check!(isize: i8, i16, i32, u8, u16);
 
 macro_rules! impl_via_as_revert_check {
     ($x:ty: $y:ty) => {
@@ -197,13 +193,13 @@ macro_rules! impl_via_as_revert_check {
 }
 
 impl_via_as_revert_check!(i32: f32);
-impl_via_as_revert_check!(u32: f32);
-impl_via_as_revert_check!(i64: f32, f64);
+impl_via_as_revert_check!(u32: isize, f32);
+impl_via_as_revert_check!(i64: usize, f32, f64);
 impl_via_as_revert_check!(u64: f32, f64);
 impl_via_as_revert_check!(i128: f32, f64);
 impl_via_as_revert_check!(u128: f32, f64);
-impl_via_as_revert_check!(isize: f32, f64);
-impl_via_as_revert_check!(usize: f32, f64);
+impl_via_as_revert_check!(isize: u32, f32, f64);
+impl_via_as_revert_check!(usize: i64, f32, f64);
 impl_via_as_revert_check!(f64: f32);
 
 /// Value conversion — from float

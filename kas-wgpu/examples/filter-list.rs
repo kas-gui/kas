@@ -44,6 +44,7 @@ mod data {
 #[cfg(feature = "generator")]
 mod data {
     use chrono::{DateTime, Duration, Local};
+    use kas::conv::Conv;
     use kas::widget::view::{Accessor, FilterAccessor};
     use std::{cell::RefCell, rc::Rc};
 
