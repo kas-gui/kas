@@ -12,6 +12,9 @@ categories = ["gui"]
 repository = "https://github.com/kas-gui/kas"
 exclude = ["/screenshots"]
 
+[package.metadata.docs.rs]
+features = ["nightly", "stack_dst", "winit"]
+
 [features]
 # Enables usage of unstable Rust features
 nightly = ["min_spec"]
@@ -43,6 +46,7 @@ stack_dst = { version = "0.6", optional = true }
 bitflags = "1" # only used without winit
 unicode-segmentation = "1.7"
 linear-map = "1.2.0"
+thiserror = "1.0.23"
 
 [dependencies.kas-macros]
 version = "0.6.0"
@@ -60,6 +64,3 @@ optional = true
 
 [workspace]
 members = ["kas-macros", "kas-theme", "kas-wgpu"]
-
-[package.metadata.docs.rs]
-features = ["nightly", "stack_dst", "winit"]

@@ -25,7 +25,7 @@ mod window;
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::{error, fmt};
+use thiserror::Error;
 
 use kas::event::UpdateHandle;
 use kas::WindowId;
@@ -49,38 +49,26 @@ pub use wgpu_glyph as glyph;
 /// Some variants are undocumented. Users should not match these variants since
 /// they are not considered part of the public API.
 #[non_exhaustive]
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum Error {
     /// No suitable graphics adapter found
     ///
     /// This can be a driver/configuration issue or hardware limitation. Note
     /// that for now, `wgpu` only supports DX11, DX12, Vulkan and Metal.
+    #[error("no graphics adapter found")]
     NoAdapter,
+    /// Config load/save error
+    #[error("config load/save error")]
+    Config(#[from] kas::event::ConfigError),
     #[doc(hidden)]
     /// OS error during window creation
-    Window(OsError),
+    #[error("operating system error")]
+    Window(#[from] OsError),
 }
 
 impl From<wgpu::RequestDeviceError> for Error {
     fn from(_: wgpu::RequestDeviceError) -> Self {
         Error::NoAdapter
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match self {
-            Error::NoAdapter => write!(f, "no suitable graphics adapter found"),
-            Error::Window(e) => write!(f, "window creation error: {}", e),
-        }
-    }
-}
-
-impl error::Error for Error {}
-
-impl From<OsError> for Error {
-    fn from(ose: OsError) -> Self {
-        Error::Window(ose)
     }
 }
 
@@ -128,7 +116,7 @@ where
         options: Options,
     ) -> Result<Self, Error> {
         let el = EventLoop::with_user_event();
-        let config = Rc::new(RefCell::new(options.config()));
+        let config = Rc::new(RefCell::new(options.config()?));
         let scale_factor = find_scale_factor(&el);
         Ok(Toolkit {
             el,
