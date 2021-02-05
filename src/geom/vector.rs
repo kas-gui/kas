@@ -16,6 +16,7 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 /// Typically it is expected that `a.le(b)`, although this is not required.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Quad {
     pub a: Vec2,
     pub b: Vec2,
@@ -111,6 +112,7 @@ impl From<Rect> for Quad {
 /// vectors (consider for `lhs = (0, 1), rhs = (1, 0)`).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Vec2(pub f32, pub f32);
 
 /// 2D vector (double precision)
@@ -124,6 +126,7 @@ pub struct Vec2(pub f32, pub f32);
 /// vectors (consider for `lhs = (0, 1), rhs = (1, 0)`).
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DVec2(pub f64, pub f64);
 
 macro_rules! impl_vec2 {
@@ -388,6 +391,7 @@ impl_vec2!(DVec2, f64);
 /// Usually used for a 2D coordinate with a depth value.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Vec3(pub f32, pub f32, pub f32);
 
 impl Vec3 {

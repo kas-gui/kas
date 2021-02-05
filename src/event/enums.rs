@@ -9,6 +9,9 @@
 
 #![allow(unused)]
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 /// Describes the appearance of the mouse cursor.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]

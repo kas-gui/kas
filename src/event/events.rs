@@ -5,6 +5,9 @@
 
 //! Event handling: events
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 #[allow(unused)]
 use super::{GrabMode, Manager, Response}; // for doc-links
 use super::{MouseButton, UpdateHandle, VirtualKeyCode};
@@ -173,6 +176,7 @@ pub enum Event {
 /// The exact mapping between the keyboard and these commands is OS-specific.
 /// In the future it should be customisable (see `shortcuts` module).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum Command {
     /// Escape key
     ///

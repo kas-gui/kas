@@ -45,6 +45,7 @@ macro_rules! fixed {
     [($d:ident, $df:ident)] => {
         /// Fixed instantiation of [`Directional`]
         #[derive(Copy, Clone, Default, Debug)]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
         pub struct $d;
         impl Directional for $d {
             type Flipped = $df;
@@ -66,6 +67,7 @@ fixed![(Right, Down), (Left, Up),];
 ///
 /// This is a variable instantiation of [`Directional`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Direction {
     Right = 0,
     Down = 1,

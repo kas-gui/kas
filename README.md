@@ -132,6 +132,7 @@ The `kas` crate has the following feature flags:
     usage but not for end users. (This only affects generated documentation.)
 -   `winit`: adds compatibility code for winit's event and geometry types.
     This is currently the only functional windowing/event library.
+-   `serde`: adds (de)serialisation support to various types
 -   `stack_dst`: some compatibility impls (see `kas-theme`'s documentation)
 
 

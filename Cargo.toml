@@ -39,6 +39,11 @@ shaping = ["kas-text/shaping"]
 # Enable Markdown parsing
 markdown = ["kas-text/markdown"]
 
+#TODO: once namespaced-features (cargo#5565) and weak-dep-features (cargo#8832)
+# are stable, enable this and remove the serde feature requirement under dependencies.winit
+# For now, this does work with nightly Cargo and -Z namespaced-features -Z weak-dep-features
+# serde = ["dep:serde", "winit?/serde"]
+
 [dependencies]
 log = "0.4"
 smallvec = "1.4"
@@ -47,6 +52,7 @@ bitflags = "1" # only used without winit
 unicode-segmentation = "1.7"
 linear-map = "1.2.0"
 thiserror = "1.0.23"
+serde = { version = "1.0.123", features = ["derive"], optional = true }
 
 [dependencies.kas-macros]
 version = "0.6.0"
@@ -61,6 +67,7 @@ rev = "7c628156f9035abef2ffaba090c61de016b239cb"
 # Provides translations for several winit types
 version = "0.23"
 optional = true
+features = ["serde"]
 
 [workspace]
 members = ["kas-macros", "kas-theme", "kas-wgpu"]
