@@ -11,6 +11,12 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ConfigError {
+    #[cfg(feature = "yaml")]
+    #[error("config (de)serialisation to YAML failed")]
+    Yaml(#[from] serde_yaml::Error),
+    #[cfg(feature = "json")]
+    #[error("config (de)serialisation to JSON failed")]
+    Json(#[from] serde_json::Error),
     #[error("error reading / writing config file")]
     IoError(#[from] std::io::Error),
     #[error("format not supported: {0}")]
@@ -24,9 +30,15 @@ pub enum ConfigFormat {
     /// Not specified: guess from the path
     #[error("no format")]
     None,
+    /// JSON
+    #[error("JSON")]
+    Json,
     /// TOML
     #[error("TOML")]
     Toml,
+    /// YAML
+    #[error("YAML")]
+    Yaml,
     /// Error: unable to guess format
     #[error("(unknown format)")]
     Unknown,
@@ -40,6 +52,7 @@ impl Default for ConfigFormat {
 
 /// Event handling configuration
 #[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Config {
     pub shortcuts: Shortcuts,
 }
@@ -56,8 +69,12 @@ impl Config {
     fn guess_format(path: &Path) -> ConfigFormat {
         // use == since there is no OsStr literal
         if let Some(ext) = path.extension() {
-            if ext == "toml" {
+            if ext == "json" {
+                ConfigFormat::Json
+            } else if ext == "toml" {
                 ConfigFormat::Toml
+            } else if ext == "yaml" {
+                ConfigFormat::Yaml
             } else {
                 ConfigFormat::Unknown
             }
@@ -84,6 +101,19 @@ impl Config {
         }
 
         match format {
+            #[cfg(feature = "json")]
+            ConfigFormat::Json => {
+                let w = std::io::BufWriter::new(std::fs::File::create(path)?);
+                serde_json::to_writer_pretty(w, self)?;
+                Ok(())
+            }
+            #[cfg(feature = "yaml")]
+            ConfigFormat::Yaml => {
+                let w = std::io::BufWriter::new(std::fs::File::create(path)?);
+                serde_yaml::to_writer(w, self)?;
+                Ok(())
+            }
+            // NOTE: Toml is not supported since the `toml` crate does not support enums as map keys
             _ => Err(ConfigError::UnsupportedFormat(format)),
         }
     }

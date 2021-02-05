@@ -7,6 +7,8 @@
 
 use super::{Command, ModifiersState, VirtualKeyCode};
 use linear_map::LinearMap;
+#[cfg(feature = "serde")]
+use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::collections::HashMap;
 
 /// Shortcut manager
@@ -193,5 +195,61 @@ impl Shortcuts {
             return Command::new(vkey);
         }
         None
+    }
+}
+
+#[cfg(feature = "serde")]
+fn state_to_string(state: ModifiersState) -> &'static str {
+    const SHIFT: ModifiersState = ModifiersState::SHIFT;
+    const CTRL: ModifiersState = ModifiersState::CTRL;
+    const ALT: ModifiersState = ModifiersState::ALT;
+    const SUPER: ModifiersState = ModifiersState::LOGO;
+    // we can't use match since OR patterns are unstable (rust#54883)
+    if state == ModifiersState::empty() {
+        "none"
+    } else if state == SUPER {
+        "super"
+    } else if state == ALT {
+        "alt"
+    } else if state == ALT | SUPER {
+        "alt-super"
+    } else if state == CTRL {
+        "ctrl"
+    } else if state == CTRL | SUPER {
+        "ctrl-super"
+    } else if state == CTRL | ALT {
+        "ctrl-alt"
+    } else if state == CTRL | ALT | SUPER {
+        "ctrl-alt-super"
+    } else if state == SHIFT {
+        "shift"
+    } else if state == SHIFT | SUPER {
+        "shift-super"
+    } else if state == SHIFT | ALT {
+        "alt-shift"
+    } else if state == SHIFT | ALT | SUPER {
+        "alt-shift-super"
+    } else if state == SHIFT | CTRL {
+        "ctrl-shift"
+    } else if state == SHIFT | CTRL | SUPER {
+        "ctrl-shift-super"
+    } else if state == SHIFT | CTRL | ALT {
+        "ctrl-alt-shift"
+    } else {
+        "ctrl-alt-shift-super"
+    }
+}
+
+#[cfg(feature = "serde")]
+impl Serialize for Shortcuts {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut map = s.serialize_map(Some(self.map.len()))?;
+        for (k, v) in &self.map {
+            map.serialize_entry(state_to_string(*k), v)?;
+        }
+        map.end()
     }
 }

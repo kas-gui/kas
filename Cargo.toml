@@ -44,6 +44,12 @@ markdown = ["kas-text/markdown"]
 # For now, this does work with nightly Cargo and -Z namespaced-features -Z weak-dep-features
 # serde = ["dep:serde", "winit?/serde"]
 
+# Enable support for YAML (de)serialisation
+yaml = ["serde", "serde_yaml"]
+
+# Enable support for JSON (de)serialisation
+json = ["serde", "serde_json"]
+
 [dependencies]
 log = "0.4"
 smallvec = "1.4"
@@ -53,6 +59,8 @@ unicode-segmentation = "1.7"
 linear-map = "1.2.0"
 thiserror = "1.0.23"
 serde = { version = "1.0.123", features = ["derive"], optional = true }
+serde_json = { version = "1.0.61", optional = true }
+serde_yaml = { version = "0.8.16", optional = true }
 
 [dependencies.kas-macros]
 version = "0.6.0"
