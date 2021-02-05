@@ -53,13 +53,15 @@ jobs:
       - name: test (kas-macros)
         run: cargo test --manifest-path kas-macros/Cargo.toml --all-features
       - name: test (kas)
-        run: cargo test --all-features
+        run: |
+          cargo test
+          # Note: we must test serde without winit and with winit
+          cargo test --features serde
+          cargo test --all-features
       - name: test (kas-theme)
         run: |
-          # note: stack_dst + gat is broken
-          cargo test --manifest-path kas-theme/Cargo.toml --features stack_dst,unsize
-          cargo test --manifest-path kas-theme/Cargo.toml --no-default-features --features gat
+          cargo test --manifest-path kas-theme/Cargo.toml --all-features
       - name: test (kas-wgpu)
         run: |
-          # note: gat is broken
-          cargo test --manifest-path kas-wgpu/Cargo.toml --features nightly,shaping
+          cargo test
+          cargo test --manifest-path kas-wgpu/Cargo.toml --all-features

@@ -10,6 +10,7 @@
 /// NOTE: spelling standardisation is omitted for this type on the basis that
 /// is expected to be replaced in the near future.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Colour {
     pub r: f32,
     pub g: f32,

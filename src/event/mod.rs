@@ -67,6 +67,7 @@
 //!
 //! [`WidgetId`]: crate::WidgetId
 
+mod config;
 #[cfg(not(feature = "winit"))]
 mod enums;
 mod events;
@@ -88,6 +89,7 @@ pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
 #[cfg(feature = "winit")]
 pub use winit::window::CursorIcon;
 
+pub use config::{Config, ConfigError};
 #[cfg(not(feature = "winit"))]
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;
@@ -125,6 +127,7 @@ fn size_of_virtual_key_codes() {
 /// custom message types are required to implement this via the
 /// [`derive(VoidMsg)`](../macros/index.html#the-derivevoidmsg-macro) macro.
 #[derive(Clone, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum VoidMsg {}
 
 /// Alias for `Response<VoidMsg>`

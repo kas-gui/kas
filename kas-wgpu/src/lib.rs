@@ -23,7 +23,9 @@ pub mod options;
 mod shared;
 mod window;
 
-use std::{error, fmt};
+use std::cell::RefCell;
+use std::rc::Rc;
+use thiserror::Error;
 
 use kas::event::UpdateHandle;
 use kas::WindowId;
@@ -47,38 +49,26 @@ pub use wgpu_glyph as glyph;
 /// Some variants are undocumented. Users should not match these variants since
 /// they are not considered part of the public API.
 #[non_exhaustive]
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum Error {
     /// No suitable graphics adapter found
     ///
     /// This can be a driver/configuration issue or hardware limitation. Note
     /// that for now, `wgpu` only supports DX11, DX12, Vulkan and Metal.
+    #[error("no graphics adapter found")]
     NoAdapter,
+    /// Config load/save error
+    #[error("config load/save error")]
+    Config(#[from] kas::event::ConfigError),
     #[doc(hidden)]
     /// OS error during window creation
-    Window(OsError),
+    #[error("operating system error")]
+    Window(#[from] OsError),
 }
 
 impl From<wgpu::RequestDeviceError> for Error {
     fn from(_: wgpu::RequestDeviceError) -> Self {
         Error::NoAdapter
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match self {
-            Error::NoAdapter => write!(f, "no suitable graphics adapter found"),
-            Error::Window(e) => write!(f, "window creation error: {}", e),
-        }
-    }
-}
-
-impl error::Error for Error {}
-
-impl From<OsError> for Error {
-    fn from(ose: OsError) -> Self {
-        Error::Window(ose)
     }
 }
 
@@ -100,7 +90,7 @@ where
     /// Construct a new instance with default options.
     ///
     /// Environment variables may affect option selection; see documentation
-    /// of [`Options::from_env`].
+    /// of [`Options::from_env`]. KAS config is provided by [`Options::config`].
     #[inline]
     pub fn new(theme: T) -> Result<Self, Error> {
         Self::new_custom((), theme, Options::from_env())
@@ -116,8 +106,9 @@ where
     /// The `custom` parameter accepts a custom draw pipe (see [`CustomPipeBuilder`]).
     /// Pass `()` if you don't have one.
     ///
-    /// The [`Options`] parameter allows direct specification of shell
-    /// options; usually, these are provided by [`Options::from_env`].
+    /// The [`Options`] parameter allows direct specification of shell options;
+    /// usually, these are provided by [`Options::from_env`].
+    /// KAS config is provided by [`Options::config`].
     #[inline]
     pub fn new_custom<CB: CustomPipeBuilder<Pipe = C>>(
         custom: CB,
@@ -125,11 +116,32 @@ where
         options: Options,
     ) -> Result<Self, Error> {
         let el = EventLoop::with_user_event();
+        let config = Rc::new(RefCell::new(options.config()?));
         let scale_factor = find_scale_factor(&el);
         Ok(Toolkit {
             el,
             windows: vec![],
-            shared: SharedState::new(custom, theme, options, scale_factor)?,
+            shared: SharedState::new(custom, theme, options, config, scale_factor)?,
+        })
+    }
+
+    /// Construct an instance with custom options and config
+    ///
+    /// This is like [`Toolkit::new_custom`], but allows KAS config to be
+    /// specified directly, instead of loading via [`Options::config`].
+    #[inline]
+    pub fn new_custom_config<CB: CustomPipeBuilder<Pipe = C>>(
+        custom: CB,
+        theme: T,
+        options: Options,
+        config: Rc<RefCell<kas::event::Config>>,
+    ) -> Result<Self, Error> {
+        let el = EventLoop::with_user_event();
+        let scale_factor = find_scale_factor(&el);
+        Ok(Toolkit {
+            el,
+            windows: vec![],
+            shared: SharedState::new(custom, theme, options, config, scale_factor)?,
         })
     }
 

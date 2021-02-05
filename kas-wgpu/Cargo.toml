@@ -11,6 +11,12 @@ repository = "https://github.com/kas-gui/kas"
 readme = "README.md"
 documentation = "https://docs.rs/kas-wgpu/"
 
+[package.metadata.docs.rs]
+# NOTE: clipboard feature is causing build failures
+# https://github.com/kas-gui/kas/issues/83
+no-default-features = true
+features = ["stack_dst"]
+
 [features]
 default = ["clipboard", "stack_dst"]
 nightly = ["unsize", "kas/nightly", "kas-theme/nightly"]
@@ -40,6 +46,7 @@ smallvec = "1.1"
 wgpu = "0.6.0"
 wgpu_glyph = "0.10.0"
 winit = "0.23.0"
+thiserror = "1.0.23"
 
 [dependencies.clipboard]
 # Provides clipboard support
@@ -49,13 +56,7 @@ optional = true
 [dev-dependencies]
 chrono = "0.4"
 env_logger = "0.7"
-kas = { path = "..", features = ["markdown", "winit"] }
+kas = { path = "..", features = ["markdown", "winit", "json", "yaml"] }
 
 [build-dependencies]
 glob = "0.3"
-
-[package.metadata.docs.rs]
-# NOTE: clipboard feature is causing build failures
-# https://github.com/kas-gui/kas/issues/83
-no-default-features = true
-features = ["stack_dst"]
