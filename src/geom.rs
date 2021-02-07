@@ -19,6 +19,30 @@ macro_rules! impl_common {
             /// The constant `(0, 0)`
             pub const ZERO: Self = Self(0, 0);
 
+            /// True when for all components, `lhs < rhs`
+            #[inline]
+            pub fn lt(self, rhs: Self) -> bool {
+                self.0 < rhs.0 && self.1 < rhs.1
+            }
+
+            /// True when for all components, `lhs ≤ rhs`
+            #[inline]
+            pub fn le(self, rhs: Self) -> bool {
+                self.0 <= rhs.0 && self.1 <= rhs.1
+            }
+
+            /// True when for all components, `lhs ≥ rhs`
+            #[inline]
+            pub fn ge(self, rhs: Self) -> bool {
+                self.0 >= rhs.0 && self.1 >= rhs.1
+            }
+
+            /// True when for all components, `lhs > rhs`
+            #[inline]
+            pub fn gt(self, rhs: Self) -> bool {
+                self.0 > rhs.0 && self.1 > rhs.1
+            }
+
             /// Return the minimum, componentwise
             #[inline]
             pub fn min(self, other: Self) -> Self {
@@ -503,6 +527,20 @@ impl Rect {
             && c.0 < self.pos.0 + (self.size.0)
             && c.1 >= self.pos.1
             && c.1 < self.pos.1 + (self.size.1)
+    }
+
+    /// Calculate the intersection of two rects
+    #[inline]
+    pub fn intersection(&self, rhs: &Rect) -> Option<Rect> {
+        let (l1, l2) = (self.pos, self.pos2());
+        let (r1, r2) = (rhs.pos, rhs.pos2());
+        let pos = l1.max(r1);
+        let pos2 = l2.min(r2);
+        if pos.le(pos2) {
+            Some(Rect::new(pos, (pos2 - pos).into()))
+        } else {
+            None
+        }
     }
 
     /// Shrink self in all directions by the given `n`
