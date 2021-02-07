@@ -91,7 +91,7 @@ where
 
         let surface = unsafe { shared.instance.create_surface(&window) };
         let sc_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
             format: TEX_FORMAT,
             width: size.0.cast(),
             height: size.1.cast(),

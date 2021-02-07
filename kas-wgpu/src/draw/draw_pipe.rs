@@ -37,7 +37,7 @@ fn make_depth_texture(device: &wgpu::Device, size: Size) -> Option<TextureView> 
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: super::DEPTH_FORMAT,
-        usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+        usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
     });
     Some(tex.create_view(&Default::default()))
 }
@@ -180,6 +180,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
             {
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("kas-wgpu render pass"),
                     color_attachments: &color_attachments,
                     depth_stencil_attachment: Some(depth_stencil_attachment.clone()),
                 });
@@ -260,6 +261,11 @@ impl<CW: CustomWindow + 'static> Draw for DrawWindow<CW> {
     }
 
     fn add_clip_region(&mut self, rect: Rect, depth: f32) -> Pass {
+        let window_rect = self.clip_regions[0];
+        let rect = rect.intersection(&window_rect).unwrap_or_else(|| {
+            log::warn!("add_clip_region: intersection of rect and window rect is empty");
+            Rect::new(Coord::ZERO, Size::ZERO)
+        });
         let pass = self.clip_regions.len().cast();
         self.clip_regions.push(rect);
         Pass::new_pass_with_depth(pass, depth)

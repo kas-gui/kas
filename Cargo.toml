@@ -73,7 +73,7 @@ rev = "7c628156f9035abef2ffaba090c61de016b239cb"
 
 [dependencies.winit]
 # Provides translations for several winit types
-version = "0.23"
+version = "0.24"
 optional = true
 features = ["serde"]
 

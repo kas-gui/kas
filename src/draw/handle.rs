@@ -265,6 +265,10 @@ pub trait DrawHandle {
     ///
     /// All content drawn by the new region is clipped to the given `rect`
     /// (in the current coordinate space, i.e. not translated by `offset`).
+    ///
+    /// The new `rect` may extend beyond the current draw region. If it extends
+    /// beyond the bounds of the window, it will be silently reduced to that of
+    /// the window.
     fn clip_region(
         &mut self,
         rect: Rect,

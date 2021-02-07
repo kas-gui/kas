@@ -43,9 +43,9 @@ bytemuck = "1.2"
 futures = "0.3"
 log = "0.4"
 smallvec = "1.1"
-wgpu = "0.6.0"
-wgpu_glyph = "0.10.0"
-winit = "0.23.0"
+wgpu = "0.7.0"
+wgpu_glyph = "0.11.0"
+winit = "0.24"
 thiserror = "1.0.23"
 
 [dependencies.clipboard]
@@ -55,7 +55,7 @@ optional = true
 
 [dev-dependencies]
 chrono = "0.4"
-env_logger = "0.7"
+env_logger = "0.8"
 kas = { path = "..", features = ["markdown", "winit", "json", "yaml"] }
 
 [build-dependencies]
