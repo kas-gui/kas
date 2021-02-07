@@ -80,8 +80,9 @@ impl Pipeline {
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
                         min_binding_size: None, // TODO
                     },
                     count: None,
@@ -89,8 +90,9 @@ impl Pipeline {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
                         min_binding_size: None, // TODO
                     },
                     count: None,
@@ -106,42 +108,11 @@ impl Pipeline {
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("SR render_pipeline"),
             layout: Some(&pipeline_layout),
-            vertex_stage: wgpu::ProgrammableStageDescriptor {
+            vertex: wgpu::VertexState {
                 module: &shaders.vert_3222,
                 entry_point: "main",
-            },
-            fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
-                module: &shaders.frag_shaded_round,
-                entry_point: "main",
-            }),
-            rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: wgpu::CullMode::None,
-                clamp_depth: false,
-                depth_bias: 0,
-                depth_bias_slope_scale: 0.0,
-                depth_bias_clamp: 0.0,
-            }),
-            primitive_topology: wgpu::PrimitiveTopology::TriangleList,
-            color_states: &[wgpu::ColorStateDescriptor {
-                format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                color_blend: wgpu::BlendDescriptor {
-                    src_factor: wgpu::BlendFactor::SrcAlpha,
-                    dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                alpha_blend: wgpu::BlendDescriptor {
-                    src_factor: wgpu::BlendFactor::Zero,
-                    dst_factor: wgpu::BlendFactor::One,
-                    operation: wgpu::BlendOperation::Add,
-                },
-                write_mask: wgpu::ColorWrite::ALL,
-            }],
-            depth_stencil_state: Some(super::DEPTH_DESC),
-            vertex_state: wgpu::VertexStateDescriptor {
-                index_format: wgpu::IndexFormat::Uint16,
-                vertex_buffers: &[wgpu::VertexBufferDescriptor {
-                    stride: size_of::<Vertex>() as wgpu::BufferAddress,
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![
                         0 => Float3,
@@ -152,9 +123,33 @@ impl Pipeline {
                     ],
                 }],
             },
-            sample_count: 1,
-            sample_mask: !0,
-            alpha_to_coverage_enabled: false,
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: wgpu::CullMode::None,
+                polygon_mode: wgpu::PolygonMode::Fill,
+            },
+            depth_stencil: Some(super::DEPTH_DESC),
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &shaders.frag_shaded_round,
+                entry_point: "main",
+                targets: &[wgpu::ColorTargetState {
+                    format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                    alpha_blend: wgpu::BlendState {
+                        src_factor: wgpu::BlendFactor::Zero,
+                        dst_factor: wgpu::BlendFactor::One,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    color_blend: wgpu::BlendState {
+                        src_factor: wgpu::BlendFactor::SrcAlpha,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
+                    write_mask: wgpu::ColorWrite::ALL,
+                }],
+            }),
         });
 
         Pipeline {
@@ -185,11 +180,19 @@ impl Pipeline {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer(scale_buf.slice(..)),
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &scale_buf,
+                        offset: 0,
+                        size: None,
+                    },
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Buffer(light_norm_buf.slice(..)),
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &light_norm_buf,
+                        offset: 0,
+                        size: None,
+                    },
                 },
             ],
         });

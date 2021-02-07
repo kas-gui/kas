@@ -24,7 +24,7 @@ pub struct ShaderManager {
 
 macro_rules! compile {
     ($device:ident, $path:expr) => {{
-        $device.create_shader_module(include_spirv!($path))
+        $device.create_shader_module(&include_spirv!($path))
     }};
 }
 

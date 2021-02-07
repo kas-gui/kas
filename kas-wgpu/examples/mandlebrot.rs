@@ -26,8 +26,8 @@ struct Shaders {
 
 impl Shaders {
     fn new(device: &wgpu::Device) -> Self {
-        let vertex = device.create_shader_module(include_spirv!("mandlebrot/shader.vert.spv"));
-        let fragment = device.create_shader_module(include_spirv!("mandlebrot/shader.frag.spv"));
+        let vertex = device.create_shader_module(&include_spirv!("mandlebrot/shader.vert.spv"));
+        let fragment = device.create_shader_module(&include_spirv!("mandlebrot/shader.frag.spv"));
 
         Shaders { vertex, fragment }
     }
@@ -58,8 +58,9 @@ impl CustomPipeBuilder for PipeBuilder {
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
                         min_binding_size: None, // TODO
                     },
                     count: None,
@@ -67,8 +68,9 @@ impl CustomPipeBuilder for PipeBuilder {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
                         min_binding_size: None, // TODO
                     },
                     count: None,
@@ -76,8 +78,9 @@ impl CustomPipeBuilder for PipeBuilder {
                 wgpu::BindGroupLayoutEntry {
                     binding: 2,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
                         min_binding_size: None, // TODO
                     },
                     count: None,
@@ -95,51 +98,50 @@ impl CustomPipeBuilder for PipeBuilder {
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: None,
             layout: Some(&pipeline_layout),
-            vertex_stage: wgpu::ProgrammableStageDescriptor {
+            vertex: wgpu::VertexState {
                 module: &shaders.vertex,
                 entry_point: "main",
-            },
-            fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
-                module: &shaders.fragment,
-                entry_point: "main",
-            }),
-            rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-                front_face: wgpu::FrontFace::Ccw,
-                cull_mode: wgpu::CullMode::None,
-                clamp_depth: false,
-                depth_bias: 0,
-                depth_bias_slope_scale: 0.0,
-                depth_bias_clamp: 0.0,
-            }),
-            primitive_topology: wgpu::PrimitiveTopology::TriangleList,
-            color_states: &[wgpu::ColorStateDescriptor {
-                format: tex_format,
-                color_blend: wgpu::BlendDescriptor::REPLACE,
-                alpha_blend: wgpu::BlendDescriptor::REPLACE,
-                write_mask: wgpu::ColorWrite::ALL,
-            }],
-            depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
-                format: depth_format,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Always,
-                stencil: wgpu::StencilStateDescriptor {
-                    front: wgpu::StencilStateFaceDescriptor::IGNORE,
-                    back: wgpu::StencilStateFaceDescriptor::IGNORE,
-                    read_mask: 0,
-                    write_mask: 0,
-                },
-            }),
-            vertex_state: wgpu::VertexStateDescriptor {
-                index_format: wgpu::IndexFormat::Uint16,
-                vertex_buffers: &[wgpu::VertexBufferDescriptor {
-                    stride: size_of::<Vertex>() as wgpu::BufferAddress,
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Float2],
                 }],
             },
-            sample_count: 1,
-            sample_mask: !0,
-            alpha_to_coverage_enabled: false,
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: wgpu::CullMode::None,
+                polygon_mode: wgpu::PolygonMode::Fill,
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: depth_format,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Always,
+                stencil: wgpu::StencilState {
+                    front: wgpu::StencilFaceState::IGNORE,
+                    back: wgpu::StencilFaceState::IGNORE,
+                    read_mask: 0,
+                    write_mask: 0,
+                },
+                bias: wgpu::DepthBiasState {
+                    constant: 0,
+                    slope_scale: 0.0,
+                    clamp: 0.0,
+                },
+                clamp_depth: false,
+            }),
+            multisample: Default::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &shaders.fragment,
+                entry_point: "main",
+                targets: &[wgpu::ColorTargetState {
+                    format: tex_format,
+                    alpha_blend: wgpu::BlendState::REPLACE,
+                    color_blend: wgpu::BlendState::REPLACE,
+                    write_mask: wgpu::ColorWrite::ALL,
+                }],
+            }),
         });
 
         Pipe {
@@ -201,15 +203,27 @@ impl CustomPipe for Pipe {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer(scale_buf.slice(..)),
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &scale_buf,
+                        offset: 0,
+                        size: None,
+                    },
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Buffer(rect_buf.slice(..)),
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &rect_buf,
+                        offset: 0,
+                        size: None,
+                    },
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
-                    resource: wgpu::BindingResource::Buffer(iter_buf.slice(..)),
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &iter_buf,
+                        offset: 0,
+                        size: None,
+                    },
                 },
             ],
             label: None,

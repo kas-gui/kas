@@ -112,8 +112,7 @@ impl Options {
         if let Ok(mut v) = var("KAS_POWER_PREFERENCE") {
             v.make_ascii_uppercase();
             options.power_preference = match v.as_str() {
-                "DEFAULT" => PowerPreference::Default,
-                "LOWPOWER" => PowerPreference::LowPower,
+                "DEFAULT" | "LOWPOWER" => PowerPreference::LowPower,
                 "HIGHPERFORMANCE" => PowerPreference::HighPerformance,
                 other => {
                     warn!(
