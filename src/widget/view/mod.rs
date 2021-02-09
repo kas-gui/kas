@@ -15,7 +15,7 @@ mod list;
 mod shared;
 mod single;
 
-pub use filter::FilterAccessor;
+pub use filter::{Filter, FilterAccessor, SimpleCaseInsensitiveFilter};
 pub use list::ListView;
 pub use shared::{Accessor, AccessorShared, SharedConst, SharedRc};
 pub use single::SingleView;
