@@ -243,7 +243,7 @@ impl<'a> Manager<'a> {
 
             if let Some(id) = w_id {
                 let icon = widget
-                    .find(id)
+                    .find_child(id)
                     .map(|w| w.cursor_icon())
                     .unwrap_or(CursorIcon::Default);
                 if icon != self.state.hover_icon {

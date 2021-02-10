@@ -563,7 +563,7 @@ impl<'a> Manager<'a> {
         let mut widget_stack = WidgetStack::new();
 
         if let Some(id) = self.state.popups.last().map(|(_, p)| p.id) {
-            if let Some(w) = widget.find(id) {
+            if let Some(w) = widget.find_child(id) {
                 widget = w;
             } else {
                 // This is a corner-case. Do nothing.
@@ -575,8 +575,8 @@ impl<'a> Manager<'a> {
             if let Some(id) = self.state.nav_focus {
                 // This is caused by set_nav_focus; we need to rebuild nav_stack
                 'l: while id != widget.id() {
-                    for index in 0..widget.len() {
-                        let w = widget.get(index).unwrap();
+                    for index in 0..widget.num_children() {
+                        let w = widget.get_child(index).unwrap();
                         if w.is_ancestor_of(id) {
                             self.state.nav_stack.push(index.cast());
                             widget_stack.push(widget);
@@ -601,7 +601,7 @@ impl<'a> Manager<'a> {
         } else {
             // Reconstruct widget_stack:
             for index in self.state.nav_stack.iter().cloned() {
-                let new = widget.get(index.cast()).unwrap();
+                let new = widget.get_child(index.cast()).unwrap();
                 widget_stack.push(widget);
                 widget = new;
             }
@@ -621,7 +621,7 @@ impl<'a> Manager<'a> {
                         false => range.0,
                         true => range.1,
                     };
-                    let new = match $widget.get(index) {
+                    let new = match $widget.get_child(index) {
                         None => break $lt,
                         Some(w) => w,
                     };
@@ -670,7 +670,7 @@ impl<'a> Manager<'a> {
                 };
 
                 if have_sibling {
-                    let new = match $widget.get(index) {
+                    let new = match $widget.get_child(index) {
                         None => break $lt,
                         Some(w) => w,
                     };

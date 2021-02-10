@@ -226,15 +226,15 @@ where
         self.first_id = id;
     }
     #[inline]
-    fn len(&self) -> usize {
+    fn num_children(&self) -> usize {
         self.widgets.len()
     }
     #[inline]
-    fn get(&self, index: usize) -> Option<&dyn WidgetConfig> {
+    fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
         self.widgets.get(index).map(|w| w.as_widget())
     }
     #[inline]
-    fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
         self.widgets.get_mut(index).map(|w| w.as_widget_mut())
     }
 }
@@ -338,7 +338,7 @@ where
     }
 
     fn spatial_range(&self) -> (usize, usize) {
-        let last = WidgetChildren::len(self).wrapping_sub(1);
+        let last = self.num_children().wrapping_sub(1);
         match self.direction.is_reversed() {
             false => (0, last),
             true => (last, 0),

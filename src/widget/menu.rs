@@ -72,28 +72,28 @@ impl<M: 'static> WidgetChildren for Box<dyn Menu<Msg = M>> {
     fn record_first_id(&mut self, id: WidgetId) {
         self.as_mut().record_first_id(id)
     }
-    fn len(&self) -> usize {
-        self.as_ref().len()
+    fn num_children(&self) -> usize {
+        self.as_ref().num_children()
     }
-    fn get(&self, index: usize) -> Option<&dyn WidgetConfig> {
-        self.as_ref().get(index)
+    fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
+        self.as_ref().get_child(index)
     }
-    fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
-        self.as_mut().get_mut(index)
-    }
-
-    fn find(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
-        self.as_ref().find(id)
-    }
-    fn find_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
-        self.as_mut().find_mut(id)
+    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+        self.as_mut().get_child_mut(index)
     }
 
-    fn walk_dyn(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
-        self.as_ref().walk_dyn(f);
+    fn find_child(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+        self.as_ref().find_child(id)
     }
-    fn walk_mut_dyn(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
-        self.as_mut().walk_mut_dyn(f);
+    fn find_child_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
+        self.as_mut().find_child_mut(id)
+    }
+
+    fn walk_children_dyn(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
+        self.as_ref().walk_children_dyn(f);
+    }
+    fn walk_children_mut_dyn(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
+        self.as_mut().walk_children_mut_dyn(f);
     }
 }
 
