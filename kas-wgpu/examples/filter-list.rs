@@ -7,16 +7,16 @@
 
 use kas::dir::Down;
 use kas::prelude::*;
-use kas::widget::view::{Accessor, ListView};
+use kas::widget::view::{Accessor, ListView, SimpleCaseInsensitiveFilter};
 use kas::widget::{EditBox, ScrollBars, Window};
 
 #[cfg(not(feature = "generator"))]
 mod data {
-    use kas::widget::view::{FilterAccessor, SharedConst};
+    use kas::widget::view::{FilterAccessor, SharedConst, SimpleCaseInsensitiveFilter};
     use std::{cell::RefCell, rc::Rc};
 
     type SC = &'static SharedConst<[&'static str]>;
-    pub type Shared = Rc<RefCell<FilterAccessor<usize, SC>>>;
+    pub type Shared = Rc<RefCell<FilterAccessor<usize, SC, SimpleCaseInsensitiveFilter>>>;
 
     const MONTHS: &[&str] = &[
         "January",
@@ -34,7 +34,8 @@ mod data {
     ];
 
     pub fn get() -> Shared {
-        Rc::new(RefCell::new(FilterAccessor::new_visible(MONTHS.into())))
+        let filter = SimpleCaseInsensitiveFilter::new("");
+        Rc::new(RefCell::new(FilterAccessor::new(MONTHS.into(), filter)))
     }
 }
 
@@ -45,11 +46,12 @@ mod data {
 mod data {
     use chrono::{DateTime, Duration, Local};
     use kas::conv::Conv;
-    use kas::widget::view::{Accessor, FilterAccessor};
+    use kas::widget::view::{Accessor, FilterAccessor, SimpleCaseInsensitiveFilter};
     use std::{cell::RefCell, rc::Rc};
 
     // pub type Shared = Rc<RefCell<DateGenerator>>;
-    pub type Shared = Rc<RefCell<FilterAccessor<usize, DateGenerator>>>;
+    pub type Shared =
+        Rc<RefCell<FilterAccessor<usize, DateGenerator, SimpleCaseInsensitiveFilter>>>;
 
     #[derive(Debug)]
     pub struct DateGenerator {
@@ -74,11 +76,13 @@ mod data {
     }
 
     pub fn get() -> Shared {
-        Rc::new(RefCell::new(FilterAccessor::new_visible(DateGenerator {
+        let gen = DateGenerator {
             start: Local::now(),
             end: Local::now() + Duration::days(365),
             step: Duration::seconds(999),
-        })))
+        };
+        let filter = SimpleCaseInsensitiveFilter::new("");
+        Rc::new(RefCell::new(FilterAccessor::new(gen, filter)))
     }
 }
 
@@ -95,12 +99,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget] filter = EditBox::new("").on_edit(move |text, mgr| {
-                    // Note: this method of caseless matching is not unicode compliant!
-                    // https://stackoverflow.com/questions/47298336/case-insensitive-string-matching-in-rust
-                    let text = text.to_uppercase();
                     let update = data2
                         .borrow_mut()
-                        .update_filter(|s| s.to_uppercase().contains(&text));
+                        .set_filter(SimpleCaseInsensitiveFilter::new(text));
                     mgr.trigger_update(update, 0);
                     None
                 }),

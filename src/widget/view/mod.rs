@@ -10,12 +10,14 @@
 use super::Label;
 use kas::prelude::*;
 
+mod filter;
 mod list;
 mod shared;
 mod single;
 
+pub use filter::{Filter, FilterAccessor, SimpleCaseInsensitiveFilter};
 pub use list::ListView;
-pub use shared::{Accessor, AccessorShared, FilterAccessor, SharedConst, SharedRc};
+pub use shared::{Accessor, AccessorShared, SharedConst, SharedRc};
 pub use single::SingleView;
 
 /// View widgets

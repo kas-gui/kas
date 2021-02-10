@@ -241,8 +241,8 @@ impl<'a> fmt::Display for WidgetHeirarchy<'a> {
             self.0.rect().size,
         )?;
 
-        for i in 0..self.0.len() {
-            WidgetHeirarchy(self.0.get(i).unwrap(), self.1 + 1).fmt(f)?;
+        for i in 0..self.0.num_children() {
+            WidgetHeirarchy(self.0.get_child(i).unwrap(), self.1 + 1).fmt(f)?;
         }
         Ok(())
     }

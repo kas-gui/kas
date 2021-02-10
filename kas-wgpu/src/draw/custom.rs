@@ -85,7 +85,7 @@ pub trait CustomPipe {
     ///
     /// Note that the pass in use has a depth stencil attachment, therefore the
     /// render pipeline must be constructed with a compatible
-    /// [`wgpu::RenderPipelineDescriptor::depth_stencil_state`]. Since a
+    /// [`wgpu::RenderPipelineDescriptor::depth_stencil`]. Since a
     /// scissor rect is already applied to the draw pass, it is safe to use
     /// `depth_compare: wgpu::CompareFunction::Always` here.
     ///

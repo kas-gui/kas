@@ -172,7 +172,7 @@ pub trait WidgetChildren: WidgetCore {
     fn record_first_id(&mut self, _id: WidgetId) {}
 
     /// Get the number of child widgets
-    fn len(&self) -> usize;
+    fn num_children(&self) -> usize;
 
     /// Get a reference to a child widget by index, or `None` if the index is
     /// out of bounds.
@@ -180,7 +180,7 @@ pub trait WidgetChildren: WidgetCore {
     /// For convenience, `Index<usize>` is implemented via this method.
     ///
     /// Required: `index < self.len()`.
-    fn get(&self, index: usize) -> Option<&dyn WidgetConfig>;
+    fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig>;
 
     /// Mutable variant of get
     ///
@@ -188,7 +188,7 @@ pub trait WidgetChildren: WidgetCore {
     /// redraw may break the UI. If a widget is replaced, a reconfigure **must**
     /// be requested. This can be done via [`Manager::send_action`].
     /// This method may be removed in the future.
-    fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
+    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig>;
 
     /// Check whether `id` is a descendant
     ///
@@ -204,7 +204,7 @@ pub trait WidgetChildren: WidgetCore {
     /// [`event::ManagerState::configure`].
     ///
     /// If the widget is disabled, this returns `None` without recursing children.
-    fn find(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+    fn find_child(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
         if id < self.first_id() || id >= self.id() {
             if id == self.id() {
                 return Some(self.as_widget());
@@ -213,23 +213,23 @@ pub trait WidgetChildren: WidgetCore {
             }
         }
 
-        let (mut start, mut end) = (0, self.len());
+        let (mut start, mut end) = (0, self.num_children());
         while start + 1 < end {
             let mid = start + (end - start) / 2;
-            if id <= self.get(mid - 1).unwrap().id() {
+            if id <= self.get_child(mid - 1).unwrap().id() {
                 end = mid;
             } else {
                 start = mid;
             }
         }
-        self.get(start).unwrap().find(id)
+        self.get_child(start).unwrap().find_child(id)
     }
 
     /// Find a child widget by identifier
     ///
     /// This requires that the widget tree has already been configured by
     /// [`ManagerState::configure`].
-    fn find_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
+    fn find_child_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
         if id < self.first_id() || id >= self.id() {
             if id == self.id() {
                 return Some(self.as_widget_mut());
@@ -238,34 +238,34 @@ pub trait WidgetChildren: WidgetCore {
             }
         }
 
-        let (mut start, mut end) = (0, self.len());
+        let (mut start, mut end) = (0, self.num_children());
         while start + 1 < end {
             let mid = start + (end - start) / 2;
-            if id <= self.get(mid - 1).unwrap().id() {
+            if id <= self.get_child(mid - 1).unwrap().id() {
                 end = mid;
             } else {
                 start = mid;
             }
         }
-        self.get_mut(start).unwrap().find_mut(id)
+        self.get_child_mut(start).unwrap().find_child_mut(id)
     }
 
     /// Walk through all widgets, calling `f` once on each.
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk<F: FnMut(&dyn WidgetConfig)>(&self, mut f: F)
+    fn walk_children<F: FnMut(&dyn WidgetConfig)>(&self, mut f: F)
     where
         Self: Sized,
     {
-        self.walk_dyn(&mut f)
+        self.walk_children_dyn(&mut f)
     }
 
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    fn walk_dyn(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
-        for i in 0..self.len() {
-            if let Some(w) = self.get(i) {
-                w.walk_dyn(f);
+    fn walk_children_dyn(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
+        for i in 0..self.num_children() {
+            if let Some(w) = self.get_child(i) {
+                w.walk_children_dyn(f);
             }
         }
         f(self.as_widget());
@@ -275,18 +275,18 @@ pub trait WidgetChildren: WidgetCore {
     ///
     /// This walk is iterative (nonconcurrent), depth-first, and always calls
     /// `f` on self *after* walking through all children.
-    fn walk_mut<F: FnMut(&mut dyn WidgetConfig)>(&mut self, mut f: F)
+    fn walk_children_mut<F: FnMut(&mut dyn WidgetConfig)>(&mut self, mut f: F)
     where
         Self: Sized,
     {
-        self.walk_mut_dyn(&mut f)
+        self.walk_children_mut_dyn(&mut f)
     }
 
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    fn walk_mut_dyn(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
-        for i in 0..self.len() {
-            if let Some(w) = self.get_mut(i) {
-                w.walk_mut_dyn(f);
+    fn walk_children_mut_dyn(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
+        for i in 0..self.num_children() {
+            if let Some(w) = self.get_child_mut(i) {
+                w.walk_children_mut_dyn(f);
             }
         }
         f(self.as_widget_mut());
@@ -334,8 +334,8 @@ pub trait WidgetConfig: Layout {
     /// widgets with pop-ups.
     fn configure_recurse<'a, 'b>(&mut self, mut cmgr: ConfigureManager<'a, 'b>) {
         self.record_first_id(cmgr.peek_next());
-        for i in 0..self.len() {
-            if let Some(w) = self.get_mut(i) {
+        for i in 0..self.num_children() {
+            if let Some(w) = self.get_child_mut(i) {
                 w.configure_recurse(cmgr.child());
             }
         }
@@ -440,7 +440,7 @@ pub trait Layout: WidgetChildren {
     /// The default implementation should suffice for most widgets (excluding
     /// pop-up parents and those with reversed child order).
     fn spatial_range(&self) -> (usize, usize) {
-        (0, WidgetChildren::len(self).wrapping_sub(1))
+        (0, self.num_children().wrapping_sub(1))
     }
 
     /// Find a widget by coordinate

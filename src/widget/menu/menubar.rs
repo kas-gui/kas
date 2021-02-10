@@ -97,7 +97,8 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                         && mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None)
                     {
                         mgr.set_grab_depress(source, Some(start_id));
-                        self.find(start_id).map(|w| mgr.next_nav_focus(w, false));
+                        self.find_child(start_id)
+                            .map(|w| mgr.next_nav_focus(w, false));
                         self.opening = false;
                         if self.rect().contains(coord) {
                             // We could just send Event::OpenPopup, but we also
@@ -125,7 +126,7 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                 }
             }
             Event::PressMove { source, cur_id, .. } => {
-                if let Some(w) = cur_id.and_then(|id| self.find(id)) {
+                if let Some(w) = cur_id.and_then(|id| self.find_child(id)) {
                     if w.key_nav() {
                         let id = cur_id.unwrap();
                         mgr.set_grab_depress(source, Some(id));

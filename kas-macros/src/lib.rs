@@ -144,16 +144,16 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 fn first_id(&self) -> kas::WidgetId {
                     #first_id
                 }
-                fn len(&self) -> usize {
+                fn num_children(&self) -> usize {
                     #count
                 }
-                fn get(&self, _index: usize) -> Option<&dyn kas::WidgetConfig> {
+                fn get_child(&self, _index: usize) -> Option<&dyn kas::WidgetConfig> {
                     match _index {
                         #get_rules
                         _ => None
                     }
                 }
-                fn get_mut(&mut self, _index: usize) -> Option<&mut dyn kas::WidgetConfig> {
+                fn get_child_mut(&mut self, _index: usize) -> Option<&mut dyn kas::WidgetConfig> {
                     match _index {
                         #get_mut_rules
                         _ => None

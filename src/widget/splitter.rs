@@ -92,11 +92,11 @@ impl<D: Directional, W: Widget> WidgetChildren for Splitter<D, W> {
         self.first_id = id;
     }
     #[inline]
-    fn len(&self) -> usize {
+    fn num_children(&self) -> usize {
         self.widgets.len() + self.handles.len()
     }
     #[inline]
-    fn get(&self, index: usize) -> Option<&dyn WidgetConfig> {
+    fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
         if (index & 1) != 0 {
             self.handles.get(index >> 1).map(|w| w.as_widget())
         } else {
@@ -104,7 +104,7 @@ impl<D: Directional, W: Widget> WidgetChildren for Splitter<D, W> {
         }
     }
     #[inline]
-    fn get_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
+    fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
         if (index & 1) != 0 {
             self.handles.get_mut(index >> 1).map(|w| w.as_widget_mut())
         } else {
@@ -122,7 +122,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
 
         let handle_size = size_handle.frame().extract(axis);
 
-        let dim = (self.direction, WidgetChildren::len(self));
+        let dim = (self.direction, self.num_children());
         let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);
 
         let mut n = 0;
@@ -151,7 +151,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         }
         assert!(self.handles.len() + 1 == self.widgets.len());
 
-        let dim = (self.direction, WidgetChildren::len(self));
+        let dim = (self.direction, self.num_children());
         let is_horiz = dim.0.is_horizontal();
         let aa = if is_horiz { align.horiz } else { align.vert };
         if aa.unwrap_or(Align::Stretch) != Align::Stretch {
@@ -287,7 +287,7 @@ impl<D: Directional, W: Widget> Splitter<D, W> {
         let width1 = (hrect.pos - self.core.rect.pos).extract(self.direction);
         let width2 = (self.core.rect.size - hrect.size).extract(self.direction) - width1;
 
-        let dim = (self.direction, WidgetChildren::len(self));
+        let dim = (self.direction, self.num_children());
         let mut setter =
             layout::RowSetter::<D, Vec<i32>, _>::new_unsolved(self.core.rect, dim, &mut self.data);
         setter.solve_range(&mut self.data, 0..index, width1);
