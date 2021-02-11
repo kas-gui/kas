@@ -19,6 +19,12 @@ macro_rules! impl_common {
             /// The constant `(0, 0)`
             pub const ZERO: Self = Self(0, 0);
 
+            /// The minimum value
+            pub const MIN: Self = Self(i32::MIN, i32::MIN);
+
+            /// The maximum value
+            pub const MAX: Self = Self(i32::MAX, i32::MAX);
+
             /// True when for all components, `lhs < rhs`
             #[inline]
             pub fn lt(self, rhs: Self) -> bool {

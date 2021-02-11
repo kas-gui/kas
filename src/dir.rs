@@ -18,6 +18,9 @@ pub trait Directional: Copy + Sized + std::fmt::Debug + 'static {
     /// This allows compile-time selection of the flipped direction.
     type Flipped: Directional;
 
+    /// Flip over diagonal (i.e. Down ↔ Right)
+    fn flipped(self) -> Self::Flipped;
+
     /// Convert to the [`Direction`] enum
     fn as_direction(self) -> Direction;
 
@@ -50,6 +53,10 @@ macro_rules! fixed {
         impl Directional for $d {
             type Flipped = $df;
             #[inline]
+            fn flipped(self) -> Self::Flipped {
+                $df
+            }
+            #[inline]
             fn as_direction(self) -> Direction {
                 Direction::$d
             }
@@ -77,6 +84,16 @@ pub enum Direction {
 
 impl Directional for Direction {
     type Flipped = Self;
+
+    fn flipped(self) -> Self::Flipped {
+        use Direction::*;
+        match self {
+            Right => Down,
+            Down => Right,
+            Left => Up,
+            Up => Left,
+        }
+    }
 
     #[inline]
     fn as_direction(self) -> Direction {
