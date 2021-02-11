@@ -75,7 +75,7 @@ impl<W: Widget> Layout for Stack<W> {
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
         for child in &mut self.widgets {
-            child.set_rect(mgr, rect, align.clone());
+            child.set_rect(mgr, rect, align);
         }
     }
 

@@ -249,6 +249,18 @@ impl SizeRules {
         self.b
     }
 
+    /// Get the max size
+    ///
+    /// With most stretch policies, this returns `i32::MAX`, but with
+    /// [`StretchPolicy::Fixed`], this is [`SizeRules::ideal_size`].
+    #[inline]
+    pub fn max_size(self) -> i32 {
+        match self.stretch {
+            StretchPolicy::Fixed => self.b,
+            _ => i32::MAX,
+        }
+    }
+
     /// Get the `(pre, post)` margin sizes
     #[inline]
     pub fn margins(self) -> (u16, u16) {

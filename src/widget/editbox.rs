@@ -174,6 +174,7 @@ pub struct EditBox<G: 'static = ()> {
     view_offset: Offset,
     editable: bool,
     multi_line: bool,
+    ideal_height: i32,
     text: Text<String>,
     required: Vec2,
     selection: SelectionHelper,
@@ -217,26 +218,27 @@ impl<G: 'static> Layout for EditBox<G> {
 
         let rules = content_rules.surrounded_by(frame_rules, true);
         if axis.is_horizontal() {
-            self.core.rect.size.0 = rules.ideal_size();
             self.frame_offset.0 = frame_offset.0 + m.0;
             self.frame_size.0 = frame_size.0 + m.0 + m.1;
         } else {
-            self.core.rect.size.1 = rules.ideal_size();
+            self.ideal_height = rules.ideal_size();
             self.frame_offset.1 = frame_offset.1 + m.0;
             self.frame_size.1 = frame_size.1 + m.0 + m.1;
         }
         rules
     }
 
-    fn set_rect(&mut self, _: &mut Manager, rect: Rect, mut align: AlignHints) {
-        let valign = if self.multi_line {
-            Some(Align::Stretch)
-        } else {
-            align.vert.take()
-        };
-        let rect = AlignHints::new(None, valign)
-            .complete(Align::Stretch, Align::Centre, self.rect().size)
-            .apply(rect);
+    fn set_rect(&mut self, _: &mut Manager, mut rect: Rect, align: AlignHints) {
+        if !self.multi_line {
+            let excess = (rect.size.1 - self.ideal_height).max(0);
+            let offset = match align.vert {
+                Some(Align::TL) => 0,
+                Some(Align::BR) => excess,
+                _ => excess / 2,
+            };
+            rect.pos.1 += offset;
+            rect.size.1 -= excess;
+        }
 
         self.core.rect = rect;
         self.text_pos = rect.pos + self.frame_offset;
@@ -310,6 +312,7 @@ impl EditBox<()> {
             view_offset: Default::default(),
             editable: true,
             multi_line: false,
+            ideal_height: 0,
             text: Text::new(Default::default(), text.into()),
             required: Vec2::ZERO,
             selection: SelectionHelper::new(len, len),
@@ -338,6 +341,7 @@ impl EditBox<()> {
             view_offset: self.view_offset,
             editable: self.editable,
             multi_line: self.multi_line,
+            ideal_height: self.ideal_height,
             text: self.text,
             required: self.required,
             selection: self.selection,
