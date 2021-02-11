@@ -13,6 +13,7 @@ use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 use kas::draw::TextClass;
 use kas::event::{self, Command, GrabMode, PressSource, ScrollDelta};
 use kas::geom::Vec2;
+use kas::macros::*;
 use kas::prelude::*;
 use kas::text::SelectionHelper;
 
@@ -37,21 +38,21 @@ enum EditAction {
     Edit,
 }
 
-/// A *guard* around an [`EditBox`]
+/// A *guard* around an [`EditField`]
 ///
-/// When an [`EditBox`] receives input, it updates its contents as expected,
+/// When an [`EditField`] receives input, it updates its contents as expected,
 /// then invokes a method of `EditGuard`. This method may update the
-/// [`EditBox`] and may return a message to be returned by the [`EditBox`]'s
+/// [`EditField`] and may return a message to be returned by the [`EditField`]'s
 /// event handler.
 ///
-/// All methods on this trait are passed a reference to the [`EditBox`] as
+/// All methods on this trait are passed a reference to the [`EditField`] as
 /// parameter. The `EditGuard`'s state may be accessed via the
-/// [`EditBox::guard`] public field.
+/// [`EditField::guard`] public field.
 ///
 /// All methods have a default implementation which does nothing.
 ///
 /// This trait is implemented for `()` (does nothing; Msg = VoidMsg).
-pub trait EditGuard: Sized {
+pub trait EditGuard: Sized + 'static {
     /// The [`event::Handler::Msg`] type
     type Msg;
 
@@ -61,7 +62,7 @@ pub trait EditGuard: Sized {
     /// the Enter/Return key for single-line edit boxes.
     ///
     /// Note that activation events cannot edit the contents.
-    fn activate(edit: &mut EditBox<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
+    fn activate(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
         let _ = (edit, mgr);
         None
     }
@@ -69,7 +70,7 @@ pub trait EditGuard: Sized {
     /// Focus-lost guard
     ///
     /// This function is called when the widget loses keyboard input focus.
-    fn focus_lost(edit: &mut EditBox<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
+    fn focus_lost(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
         let _ = (edit, mgr);
         None
     }
@@ -80,7 +81,7 @@ pub trait EditGuard: Sized {
     /// on programmatic updates — see also [`EditGuard::update`]).
     ///
     /// The default implementation calls [`EditGuard::update`].
-    fn edit(edit: &mut EditBox<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
+    fn edit(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
         Self::update(edit);
         let _ = mgr;
         None
@@ -90,7 +91,7 @@ pub trait EditGuard: Sized {
     ///
     /// This function is called on any programmatic update to the contents
     /// (and potentially also by [`EditGuard::edit`]).
-    fn update(edit: &mut EditBox<Self>) {
+    fn update(edit: &mut EditField<Self>) {
         let _ = edit;
     }
 }
@@ -101,39 +102,48 @@ impl EditGuard for () {
 
 /// An [`EditGuard`] impl which calls a closure when activated
 pub struct EditActivate<F: FnMut(&str, &mut Manager) -> Option<M>, M>(pub F);
-impl<F: FnMut(&str, &mut Manager) -> Option<M>, M> EditGuard for EditActivate<F, M> {
+impl<F, M: 'static> EditGuard for EditActivate<F, M>
+where
+    F: FnMut(&str, &mut Manager) -> Option<M> + 'static,
+{
     type Msg = M;
-    fn activate(edit: &mut EditBox<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
+    fn activate(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
         (edit.guard.0)(edit.text.text(), mgr)
     }
 }
 
 /// An [`EditGuard`] impl which calls a closure when activated or focus is lost
 pub struct EditAFL<F: FnMut(&str, &mut Manager) -> Option<M>, M>(pub F);
-impl<F: FnMut(&str, &mut Manager) -> Option<M>, M> EditGuard for EditAFL<F, M> {
+impl<F, M: 'static> EditGuard for EditAFL<F, M>
+where
+    F: FnMut(&str, &mut Manager) -> Option<M> + 'static,
+{
     type Msg = M;
-    fn activate(edit: &mut EditBox<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
+    fn activate(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
         (edit.guard.0)(edit.text.text(), mgr)
     }
-    fn focus_lost(edit: &mut EditBox<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
+    fn focus_lost(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
         (edit.guard.0)(edit.text.text(), mgr)
     }
 }
 
 /// An [`EditGuard`] impl which calls a closure when edited
 pub struct EditEdit<F: FnMut(&str, &mut Manager) -> Option<M>, M>(pub F);
-impl<F: FnMut(&str, &mut Manager) -> Option<M>, M> EditGuard for EditEdit<F, M> {
+impl<F, M: 'static> EditGuard for EditEdit<F, M>
+where
+    F: FnMut(&str, &mut Manager) -> Option<M> + 'static,
+{
     type Msg = M;
-    fn edit(edit: &mut EditBox<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
+    fn edit(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
         (edit.guard.0)(edit.text.text(), mgr)
     }
 }
 
 /// An [`EditGuard`] impl which calls a closure when updated
-pub struct EditUpdate<F: FnMut(&str)>(pub F);
-impl<F: FnMut(&str)> EditGuard for EditUpdate<F> {
+pub struct EditUpdate<F: FnMut(&str) + 'static>(pub F);
+impl<F: FnMut(&str) + 'static> EditGuard for EditUpdate<F> {
     type Msg = VoidMsg;
-    fn update(edit: &mut EditBox<Self>) {
+    fn update(edit: &mut EditField<Self>) {
         (edit.guard.0)(edit.text.text());
     }
 }
@@ -154,23 +164,238 @@ impl Default for TouchPhase {
     }
 }
 
-/// An editable, single-line text box.
+/// A text-edit box
+///
+/// This is just a wrapper around [`EditField`] adding a frame.
+#[derive(Clone, Widget)]
+#[handler(msg = G::Msg)]
+pub struct EditBox<G: EditGuard = ()> {
+    #[widget_core]
+    core: CoreData,
+    #[widget]
+    inner: EditField<G>,
+    offset: Offset,
+    frame_size: Size,
+}
+
+impl<G: EditGuard> Debug for EditBox<G> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "EditBox {{ core: {:?}, inner: {:?}, offset: {:?}, frame_size: {:?} }}",
+            self.core, self.inner, self.offset, self.frame_size,
+        )
+    }
+}
+
+impl EditBox<()> {
+    /// Construct an `EditBox` with the given inital `text`
+    #[inline]
+    pub fn new<S: ToString>(text: S) -> Self {
+        EditBox {
+            core: Default::default(),
+            inner: EditField::new(text),
+            offset: Offset::ZERO,
+            frame_size: Size::ZERO,
+        }
+    }
+
+    /// Set an [`EditGuard`]
+    ///
+    /// Technically, this consumes `self` and reconstructs another `EditBox`
+    /// with a different parameterisation.
+    ///
+    /// This method calls [`EditGuard::update`] after applying `guard` to `self`
+    /// and discards any message emitted.
+    #[inline]
+    pub fn with_guard<G: EditGuard>(self, guard: G) -> EditBox<G> {
+        EditBox {
+            core: self.core,
+            inner: self.inner.with_guard(guard),
+            offset: self.offset,
+            frame_size: self.frame_size,
+        }
+    }
+
+    /// Set a guard function, called on activation
+    ///
+    /// The closure `f` is called when the `EditBox` is activated (when the
+    /// "enter" key is pressed).
+    /// Its result, if not `None`, is the event handler's response.
+    ///
+    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
+    /// previously assigned to the `EditBox` will be replaced.
+    pub fn on_activate<F, M: 'static>(self, f: F) -> EditBox<EditActivate<F, M>>
+    where
+        F: FnMut(&str, &mut Manager) -> Option<M> + 'static,
+    {
+        self.with_guard(EditActivate(f))
+    }
+
+    /// Set a guard function, called on activation and input-focus lost
+    ///
+    /// The closure `f` is called when the `EditBox` is activated (when the
+    /// "enter" key is pressed) and when keyboard focus is lost.
+    /// Its result, if not `None`, is the event handler's response.
+    ///
+    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
+    /// previously assigned to the `EditBox` will be replaced.
+    pub fn on_afl<F, M: 'static>(self, f: F) -> EditBox<EditAFL<F, M>>
+    where
+        F: FnMut(&str, &mut Manager) -> Option<M> + 'static,
+    {
+        self.with_guard(EditAFL(f))
+    }
+
+    /// Set a guard function, called on edit
+    ///
+    /// The closure `f` is called when the `EditBox` is edited by the user.
+    /// Its result, if not `None`, is the event handler's response.
+    ///
+    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
+    /// previously assigned to the `EditBox` will be replaced.
+    pub fn on_edit<F, M: 'static>(self, f: F) -> EditBox<EditEdit<F, M>>
+    where
+        F: FnMut(&str, &mut Manager) -> Option<M> + 'static,
+    {
+        self.with_guard(EditEdit(f))
+    }
+
+    /// Set a guard function, called on update
+    ///
+    /// The closure `f` is called when the `EditBox` is updated (by the user or
+    /// programmatically). It is also called immediately by this method.
+    ///
+    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
+    /// previously assigned to the `EditBox` will be replaced.
+    pub fn on_update<F: FnMut(&str)>(self, f: F) -> EditBox<EditUpdate<F>> {
+        self.with_guard(EditUpdate(f))
+    }
+}
+
+impl<G: EditGuard> EditBox<G> {
+    /// Set whether this `EditBox` is editable (inline)
+    #[inline]
+    pub fn editable(mut self, editable: bool) -> Self {
+        self.inner = self.inner.editable(editable);
+        self
+    }
+
+    /// Get whether this `EditBox` is editable
+    #[inline]
+    pub fn is_editable(&self) -> bool {
+        self.inner.is_editable()
+    }
+
+    /// Set whether this `EditBox` is editable
+    #[inline]
+    pub fn set_editable(&mut self, editable: bool) {
+        self.inner.set_editable(editable);
+    }
+
+    /// Set whether this `EditBox` shows multiple text lines
+    #[inline]
+    pub fn multi_line(mut self, multi_line: bool) -> Self {
+        self.inner = self.inner.multi_line(multi_line);
+        self
+    }
+
+    /// Get whether the input state is erroneous
+    #[inline]
+    pub fn has_error(&self) -> bool {
+        self.inner.has_error()
+    }
+
+    /// Set the error state
+    ///
+    /// When true, the input field's background is drawn red.
+    // TODO: possibly change type to Option<String> and display the error
+    #[inline]
+    pub fn set_error_state(&mut self, error_state: bool) {
+        self.inner.set_error_state(error_state);
+    }
+}
+
+impl<G: EditGuard> Layout for EditBox<G> {
+    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        let frame_sides = size_handle.edit_surround();
+        let frame_offset = frame_sides.0;
+        let frame_size = frame_offset + frame_sides.1;
+
+        let margins = size_handle.outer_margins();
+        let frame_rules = SizeRules::extract_fixed(axis, frame_size, margins);
+
+        let child_rules = self.inner.size_rules(size_handle, axis);
+        let m = child_rules.margins_i32();
+
+        if axis.is_horizontal() {
+            self.offset.0 = frame_offset.0 + m.0;
+            self.frame_size.0 = frame_size.0 + m.0 + m.1;
+        } else {
+            self.offset.1 = frame_offset.1 + m.0;
+            self.frame_size.1 = frame_size.1 + m.0 + m.1;
+        }
+
+        child_rules.surrounded_by(frame_rules, true)
+    }
+
+    fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
+        self.core.rect = rect;
+        rect.pos += self.offset;
+        rect.size -= self.frame_size;
+        self.inner.set_rect(mgr, rect, align);
+    }
+
+    #[inline]
+    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
+        if !self.rect().contains(coord) {
+            return None;
+        }
+        self.inner.find_id(coord).or(Some(self.id()))
+    }
+
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+        let mut input_state = self.input_state(mgr, disabled);
+        input_state.error = self.inner.has_error();
+        draw_handle.edit_box(self.core.rect, input_state);
+        let disabled = disabled || self.is_disabled();
+        self.inner.draw(draw_handle, mgr, disabled);
+    }
+}
+
+impl<G: EditGuard> HasStr for EditBox<G> {
+    #[inline]
+    fn get_str(&self) -> &str {
+        self.inner.get_str()
+    }
+}
+
+impl<G: EditGuard> HasString for EditBox<G> {
+    #[inline]
+    fn set_string(&mut self, text: String) -> TkAction {
+        self.inner.set_string(text)
+    }
+}
+
+/// A text-edit field (single- or multi-line)
+///
+/// Usually one uses a derived type like [`EditBox`] instead. This field does
+/// not draw any background or borders, thus (1) there is no visual indication
+/// that this is an edit field, and (2) there is no indication for disabled or
+/// error states. The parent widget is responsible for this.
 ///
 /// This widget is intended for use with short input strings. Internally it
 /// uses a [`String`], for which edits have `O(n)` cost.
 ///
-/// Optionally, [`EditBox::multi_line`] mode can be activated (enabling
+/// Optionally, [`EditField::multi_line`] mode can be activated (enabling
 /// line-wrapping and a larger vertical height). This mode is only recommended
 /// for short texts for performance reasons.
 #[widget(config(key_nav = true, cursor_icon = event::CursorIcon::Text))]
 #[handler(handle=noauto, generics = <> where G: EditGuard)]
 #[derive(Clone, Default, Widget)]
-pub struct EditBox<G: 'static = ()> {
+pub struct EditField<G: 'static = ()> {
     #[widget_core]
     core: CoreData,
-    frame_offset: Offset,
-    frame_size: Size,
-    text_pos: Coord,
     view_offset: Offset,
     editable: bool,
     multi_line: bool,
@@ -187,11 +412,11 @@ pub struct EditBox<G: 'static = ()> {
     pub guard: G,
 }
 
-impl<G> Debug for EditBox<G> {
+impl<G> Debug for EditField<G> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "EditBox {{ core: {:?}, editable: {:?}, text: {:?}, ... }}",
+            "EditField {{ core: {:?}, editable: {:?}, text: {:?}, ... }}",
             self.core,
             self.editable,
             self.text.text()
@@ -199,31 +424,16 @@ impl<G> Debug for EditBox<G> {
     }
 }
 
-impl<G: 'static> Layout for EditBox<G> {
+impl<G: 'static> Layout for EditField<G> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let frame_sides = size_handle.edit_surround();
-        let frame_offset = frame_sides.0;
-        let frame_size = frame_offset + frame_sides.1;
-
-        let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis, frame_size, margins);
-
         let class = if self.multi_line {
             TextClass::EditMulti
         } else {
             TextClass::Edit
         };
-        let content_rules = size_handle.text_bound(&mut self.text, class, axis);
-        let m = content_rules.margins_i32();
-
-        let rules = content_rules.surrounded_by(frame_rules, true);
-        if axis.is_horizontal() {
-            self.frame_offset.0 = frame_offset.0 + m.0;
-            self.frame_size.0 = frame_size.0 + m.0 + m.1;
-        } else {
+        let rules = size_handle.text_bound(&mut self.text, class, axis);
+        if axis.is_vertical() {
             self.ideal_height = rules.ideal_size();
-            self.frame_offset.1 = frame_offset.1 + m.0;
-            self.frame_size.1 = frame_size.1 + m.0 + m.1;
         }
         rules
     }
@@ -241,8 +451,7 @@ impl<G: 'static> Layout for EditBox<G> {
         }
 
         self.core.rect = rect;
-        self.text_pos = rect.pos + self.frame_offset;
-        let size = rect.size - self.frame_size;
+        let size = rect.size;
         let multi_line = self.multi_line;
         self.required = self
             .text
@@ -261,13 +470,10 @@ impl<G: 'static> Layout for EditBox<G> {
         } else {
             TextClass::Edit
         };
-        let mut input_state = self.input_state(mgr, disabled);
-        input_state.error = self.error_state;
-        draw_handle.edit_box(self.core.rect, input_state);
         let bounds = self.text.env().bounds.into();
         if self.selection.is_empty() {
             draw_handle.text_offset(
-                self.text_pos,
+                self.rect().pos,
                 bounds,
                 self.view_offset,
                 self.text.as_ref(),
@@ -278,7 +484,7 @@ impl<G: 'static> Layout for EditBox<G> {
             // drawing more efficient (self.text.highlight_lines(range) output).
             // The same applies to the edit marker below.
             draw_handle.text_selected(
-                self.text_pos,
+                self.rect().pos,
                 bounds,
                 self.view_offset,
                 &self.text,
@@ -286,9 +492,9 @@ impl<G: 'static> Layout for EditBox<G> {
                 class,
             );
         }
-        if input_state.char_focus {
+        if self.input_state(mgr, disabled).char_focus {
             draw_handle.edit_marker(
-                self.text_pos,
+                self.rect().pos,
                 bounds,
                 self.view_offset,
                 self.text.as_ref(),
@@ -299,16 +505,14 @@ impl<G: 'static> Layout for EditBox<G> {
     }
 }
 
-impl EditBox<()> {
-    /// Construct an `EditBox` with the given inital `text`.
+impl EditField<()> {
+    /// Construct an `EditField` with the given inital `text`
+    #[inline]
     pub fn new<S: ToString>(text: S) -> Self {
         let text = text.to_string();
         let len = text.len();
-        EditBox {
+        EditField {
             core: Default::default(),
-            frame_offset: Default::default(),
-            frame_size: Default::default(),
-            text_pos: Default::default(),
             view_offset: Default::default(),
             editable: true,
             multi_line: false,
@@ -327,17 +531,15 @@ impl EditBox<()> {
 
     /// Set an [`EditGuard`]
     ///
-    /// Technically, this consumes `self` and reconstructs another `EditBox`
+    /// Technically, this consumes `self` and reconstructs another `EditField`
     /// with a different parameterisation.
     ///
     /// This method calls [`EditGuard::update`] after applying `guard` to `self`
     /// and discards any message emitted.
-    pub fn with_guard<G: EditGuard>(self, guard: G) -> EditBox<G> {
-        let mut edit = EditBox {
+    #[inline]
+    pub fn with_guard<G: EditGuard>(self, guard: G) -> EditField<G> {
+        let mut edit = EditField {
             core: self.core,
-            frame_offset: self.frame_offset,
-            frame_size: self.frame_size,
-            text_pos: self.text_pos,
             view_offset: self.view_offset,
             editable: self.editable,
             multi_line: self.multi_line,
@@ -358,78 +560,80 @@ impl EditBox<()> {
 
     /// Set a guard function, called on activation
     ///
-    /// The closure `f` is called when the `EditBox` is activated (when the
+    /// The closure `f` is called when the `EditField` is activated (when the
     /// "enter" key is pressed).
     /// Its result, if not `None`, is the event handler's response.
     ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
+    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
+    /// previously assigned to the `EditField` will be replaced.
     pub fn on_activate<F: FnMut(&str, &mut Manager) -> Option<M>, M>(
         self,
         f: F,
-    ) -> EditBox<EditActivate<F, M>> {
+    ) -> EditField<EditActivate<F, M>> {
         self.with_guard(EditActivate(f))
     }
 
     /// Set a guard function, called on activation and input-focus lost
     ///
-    /// The closure `f` is called when the `EditBox` is activated (when the
+    /// The closure `f` is called when the `EditField` is activated (when the
     /// "enter" key is pressed) and when keyboard focus is lost.
     /// Its result, if not `None`, is the event handler's response.
     ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
+    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
+    /// previously assigned to the `EditField` will be replaced.
     pub fn on_afl<F: FnMut(&str, &mut Manager) -> Option<M>, M>(
         self,
         f: F,
-    ) -> EditBox<EditAFL<F, M>> {
+    ) -> EditField<EditAFL<F, M>> {
         self.with_guard(EditAFL(f))
     }
 
     /// Set a guard function, called on edit
     ///
-    /// The closure `f` is called when the `EditBox` is edited by the user.
+    /// The closure `f` is called when the `EditField` is edited by the user.
     /// Its result, if not `None`, is the event handler's response.
     ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
+    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
+    /// previously assigned to the `EditField` will be replaced.
     pub fn on_edit<F: FnMut(&str, &mut Manager) -> Option<M>, M>(
         self,
         f: F,
-    ) -> EditBox<EditEdit<F, M>> {
+    ) -> EditField<EditEdit<F, M>> {
         self.with_guard(EditEdit(f))
     }
 
     /// Set a guard function, called on update
     ///
-    /// The closure `f` is called when the `EditBox` is updated (by the user or
+    /// The closure `f` is called when the `EditField` is updated (by the user or
     /// programmatically). It is also called immediately by this method.
     ///
-    /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
-    /// previously assigned to the `EditBox` will be replaced.
-    pub fn on_update<F: FnMut(&str)>(self, f: F) -> EditBox<EditUpdate<F>> {
+    /// This method is a parametisation of [`EditField::with_guard`]. Any guard
+    /// previously assigned to the `EditField` will be replaced.
+    pub fn on_update<F: FnMut(&str)>(self, f: F) -> EditField<EditUpdate<F>> {
         self.with_guard(EditUpdate(f))
     }
 }
 
-impl<G> EditBox<G> {
-    /// Set whether this `EditBox` is editable (inline)
+impl<G> EditField<G> {
+    /// Set whether this `EditField` is editable (inline)
+    #[inline]
     pub fn editable(mut self, editable: bool) -> Self {
         self.editable = editable;
         self
     }
 
-    /// Get whether this `EditBox` is editable
+    /// Get whether this `EditField` is editable
     pub fn is_editable(&self) -> bool {
         self.editable
     }
 
-    /// Set whether this `EditBox` is editable
+    /// Set whether this `EditField` is editable
     pub fn set_editable(&mut self, editable: bool) {
         self.editable = editable;
     }
 
-    /// Set whether this `EditBox` shows multiple text lines
+    /// Set whether this `EditField` shows multiple text lines
+    #[inline]
     pub fn multi_line(mut self, multi_line: bool) -> Self {
         self.multi_line = multi_line;
         self
@@ -701,7 +905,6 @@ impl<G> EditBox<G> {
             }
             Command::Undo | Command::Redo => {
                 // TODO: maintain full edit history (externally?)
-                // NOTE: undo *and* redo shortcuts map to this control char
                 if let Some((state, pos2, sel_pos)) = self.old_state.as_mut() {
                     self.text.swap_string(state);
                     self.selection.set_edit_pos(*pos2);
@@ -781,7 +984,7 @@ impl<G> EditBox<G> {
     }
 
     fn set_edit_pos_from_coord(&mut self, mgr: &mut Manager, coord: Coord) {
-        let rel_pos = (coord - self.text_pos + self.view_offset).into();
+        let rel_pos = (coord - self.rect().pos + self.view_offset).into();
         self.selection
             .set_edit_pos(self.text.text_index_nearest(rel_pos));
         self.set_view_offset_from_edit_pos();
@@ -826,22 +1029,22 @@ impl<G> EditBox<G> {
     }
 }
 
-impl<G: EditGuard> HasStr for EditBox<G> {
+impl<G: EditGuard> HasStr for EditField<G> {
     fn get_str(&self) -> &str {
         self.text.text()
     }
 }
 
-impl<G: EditGuard> HasString for EditBox<G> {
+impl<G: EditGuard> HasString for EditField<G> {
     fn set_string(&mut self, string: String) -> TkAction {
-        let avail = self.core.rect.size.clamped_sub(self.frame_size);
+        let avail = self.core.rect.size;
         let action = kas::text::util::set_string_and_prepare(&mut self.text, string, avail);
         let _ = G::update(self);
         action
     }
 }
 
-impl<G: EditGuard + 'static> event::Handler for EditBox<G> {
+impl<G: EditGuard + 'static> event::Handler for EditField<G> {
     type Msg = G::Msg;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
