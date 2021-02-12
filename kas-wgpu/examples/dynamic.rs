@@ -45,7 +45,7 @@ struct ListEntryGuard(usize);
 impl EditGuard for ListEntryGuard {
     type Msg = EntryMsg;
 
-    fn edit(entry: &mut EditBox<Self>, _: &mut Manager) -> Option<Self::Msg> {
+    fn edit(entry: &mut EditField<Self>, _: &mut Manager) -> Option<Self::Msg> {
         Some(EntryMsg::Update(entry.guard.0, entry.get_string()))
     }
 }

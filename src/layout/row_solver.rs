@@ -138,12 +138,12 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
             let is_horiz = direction.is_horizontal();
             let mut width = if is_horiz { rect.size.0 } else { rect.size.1 };
             let (rules, widths) = storage.rules_and_widths();
-            let ideal = rules[len].ideal_size();
+            let max_size = rules[len].max_size();
             let align = if is_horiz { align.horiz } else { align.vert };
-            let align = align.unwrap_or(Align::Stretch);
-            if align != Align::Stretch && width > ideal {
-                let extra = width - ideal;
-                width = ideal;
+            let align = align.unwrap_or(Align::Default);
+            if rect.size.0 > max_size {
+                let extra = width - max_size;
+                width = max_size;
                 let offset = match align {
                     Align::Default | Align::TL | Align::Stretch => 0,
                     Align::Centre => extra / 2,

@@ -113,6 +113,12 @@ impl AxisInfo {
 impl Directional for AxisInfo {
     type Flipped = Self;
 
+    fn flipped(mut self) -> Self::Flipped {
+        self.vertical = !self.vertical;
+        self.has_fixed = false;
+        self
+    }
+
     #[inline]
     fn as_direction(self) -> Direction {
         match self.vertical {

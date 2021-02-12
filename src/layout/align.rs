@@ -5,6 +5,8 @@
 
 //! Alignment types
 
+#[allow(unused)]
+use super::StretchPolicy; // for doc-links
 use crate::geom::{Rect, Size};
 
 pub use crate::text::Align;
@@ -23,8 +25,8 @@ pub use crate::text::Align;
 /// # let rect = Rect::new(Coord::ZERO, Size::ZERO);
 /// let pref_size = Size(30, 20); // usually size comes from SizeHandle
 /// let rect = align
-///     .complete(Align::Stretch, Align::Centre, pref_size)
-///     .apply(rect);
+///     .complete(Align::Stretch, Align::Centre)
+///     .aligned_rect(pref_size, rect);
 /// // self.core.rect = rect;
 /// ```
 #[derive(Copy, Clone, Debug, Default)]
@@ -47,12 +49,11 @@ impl AlignHints {
         (self.horiz.unwrap_or(horiz), self.vert.unwrap_or(vert))
     }
 
-    /// Complete via defaults and ideal size information
-    pub fn complete(&self, horiz: Align, vert: Align, ideal: Size) -> CompleteAlignment {
+    /// Complete via default alignments
+    pub fn complete(&self, horiz: Align, vert: Align) -> CompleteAlignment {
         CompleteAlignment {
             halign: self.horiz.unwrap_or(horiz),
             valign: self.vert.unwrap_or(vert),
-            ideal,
         }
     }
 }
@@ -64,16 +65,17 @@ impl AlignHints {
 pub struct CompleteAlignment {
     halign: Align,
     valign: Align,
-    ideal: Size,
 }
 
 impl CompleteAlignment {
-    /// Adjust the given `rect` according to alignment, returning the result
-    pub fn apply(&self, rect: Rect) -> Rect {
-        let ideal = self.ideal;
+    /// Construct a rect of size `ideal` within `rect` using the given alignment
+    ///
+    /// Note: this does not stretch, even with [`Align::Stretch`], since widget
+    /// stretching should be determined by the [`StretchPolicy`] instead.
+    pub fn aligned_rect(&self, ideal: Size, rect: Rect) -> Rect {
         let mut pos = rect.pos;
         let mut size = rect.size;
-        if self.halign != Align::Stretch && ideal.0 < size.0 {
+        if ideal.0 < size.0 {
             pos.0 += match self.halign {
                 Align::Centre => (size.0 - ideal.0) / 2,
                 Align::BR => size.0 - ideal.0,
@@ -81,7 +83,7 @@ impl CompleteAlignment {
             };
             size.0 = ideal.0;
         }
-        if self.valign != Align::Stretch && ideal.1 < size.1 {
+        if ideal.1 < size.1 {
             pos.1 += match self.valign {
                 Align::Centre => (size.1 - ideal.1) / 2,
                 Align::BR => size.1 - ideal.1,
@@ -90,10 +92,5 @@ impl CompleteAlignment {
             size.1 = ideal.1;
         }
         Rect { pos, size }
-    }
-
-    /// Get `Align` members
-    pub fn align(&self) -> (Align, Align) {
-        (self.halign, self.valign)
     }
 }

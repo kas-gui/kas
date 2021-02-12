@@ -184,7 +184,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         });
 
         let margin = match class {
-            TextClass::Label | TextClass::LabelSingle => self.dims.outer_margin,
+            TextClass::Label | TextClass::LabelFixed => self.dims.outer_margin,
             TextClass::Button | TextClass::Edit | TextClass::EditMulti => self.dims.inner_margin,
         };
         let margins = (margin, margin);
@@ -192,27 +192,30 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             let bound = i32::conv_ceil(required.0);
             let min = self.dims.min_line_length;
             let ideal = self.dims.ideal_line_length;
+            let (min, ideal) = match class {
+                TextClass::Edit | TextClass::EditMulti => (min, ideal),
+                _ => (bound.min(min), bound.min(ideal)),
+            };
             // NOTE: using different variable-width stretch policies here can
             // cause problems (e.g. edit boxes greedily consuming too much
             // space). This is a hard layout problem; for now don't do this.
-            let (min, ideal, policy) = match class {
-                TextClass::Edit | TextClass::EditMulti => (min, ideal, StretchPolicy::LowUtility),
-                _ => (bound.min(min), bound.min(ideal), StretchPolicy::LowUtility),
+            let stretch = match class {
+                TextClass::LabelFixed => StretchPolicy::Fixed,
+                TextClass::Button => StretchPolicy::Filler,
+                _ => StretchPolicy::LowUtility,
             };
-            SizeRules::new(min, ideal, margins, policy)
+            SizeRules::new(min, ideal, margins, stretch)
         } else {
             let min = match class {
                 TextClass::Label => i32::conv_ceil(required.1),
-                TextClass::LabelSingle | TextClass::Button | TextClass::Edit => {
+                TextClass::LabelFixed | TextClass::Button | TextClass::Edit => {
                     self.dims.line_height
                 }
                 TextClass::EditMulti => self.dims.line_height * 3,
             };
             let ideal = i32::conv_ceil(required.1).max(min);
             let stretch = match class {
-                TextClass::Button | TextClass::Edit | TextClass::LabelSingle => {
-                    StretchPolicy::Fixed
-                }
+                TextClass::Button | TextClass::Edit | TextClass::LabelFixed => StretchPolicy::Fixed,
                 TextClass::EditMulti => StretchPolicy::HighUtility,
                 _ => StretchPolicy::Filler,
             };

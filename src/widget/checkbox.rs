@@ -42,8 +42,8 @@ impl<M: 'static> Layout for CheckBoxBare<M> {
 
     fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
         let rect = align
-            .complete(Align::Centre, Align::Centre, self.rect().size)
-            .apply(rect);
+            .complete(Align::Centre, Align::Centre)
+            .aligned_rect(self.rect().size, rect);
         self.core.rect = rect;
     }
 

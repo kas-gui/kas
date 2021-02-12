@@ -54,11 +54,21 @@ impl Margins {
         }
     }
 
+    /// Sum of horizontal margins
+    #[inline]
+    pub fn sum_horiz(&self) -> i32 {
+        i32::from(self.horiz.0) + i32::from(self.horiz.1)
+    }
+
+    /// Sum of vertical margins
+    #[inline]
+    pub fn sum_vert(&self) -> i32 {
+        i32::from(self.vert.0) + i32::from(self.vert.1)
+    }
+
     /// Pad a size with margins
     pub fn pad(self, size: Size) -> Size {
-        let w = size.0 + i32::from(self.horiz.0) + i32::from(self.horiz.1);
-        let h = size.1 + i32::from(self.vert.0) + i32::from(self.vert.1);
-        Size::new(w, h)
+        Size::new(size.0 + self.sum_horiz(), size.1 + self.sum_vert())
     }
 }
 
@@ -237,6 +247,18 @@ impl SizeRules {
     #[inline]
     pub fn ideal_size(self) -> i32 {
         self.b
+    }
+
+    /// Get the max size
+    ///
+    /// With most stretch policies, this returns `i32::MAX`, but with
+    /// [`StretchPolicy::Fixed`], this is [`SizeRules::ideal_size`].
+    #[inline]
+    pub fn max_size(self) -> i32 {
+        match self.stretch {
+            StretchPolicy::Fixed => self.b,
+            _ => i32::MAX,
+        }
     }
 
     /// Get the `(pre, post)` margin sizes
