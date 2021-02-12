@@ -77,8 +77,8 @@ impl std::ops::BitOr for InputState {
 pub enum TextClass {
     /// Label text is drawn over the background colour
     Label,
-    /// Single-line label which does not want to stretch vertically
-    LabelSingle,
+    /// Single-line label with fixed size (does not stretch to fill space)
+    LabelFixed,
     /// Button text is drawn over a button
     Button,
     /// Class of text drawn in a single-line edit box
