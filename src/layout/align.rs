@@ -5,6 +5,8 @@
 
 //! Alignment types
 
+#[allow(unused)]
+use super::StretchPolicy; // for doc-links
 use crate::geom::{Rect, Size};
 
 pub use crate::text::Align;
@@ -23,8 +25,8 @@ pub use crate::text::Align;
 /// # let rect = Rect::new(Coord::ZERO, Size::ZERO);
 /// let pref_size = Size(30, 20); // usually size comes from SizeHandle
 /// let rect = align
-///     .complete(Align::Stretch, Align::Centre, pref_size)
-///     .apply(rect);
+///     .complete(Align::Stretch, Align::Centre)
+///     .aligned_rect(pref_size, rect);
 /// // self.core.rect = rect;
 /// ```
 #[derive(Copy, Clone, Debug, Default)]
