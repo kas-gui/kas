@@ -31,29 +31,26 @@ For details, see the [Examples README](kas-wgpu/examples/README.md).
 -   Themes (sizing and rendering control) and colour schemes with run-time switching
 -   Accessibility/input: full keyboard control as well as touchscreen and mouse
 -   Bidirectional and rich text support via [KAS-text] with complex glyph shaping via [HarfBuzz]
--   Embedded graphics via custom [WebGPU] graphics pipes
+-   Accelerated graphics via [WebGPU]
+-   Embedded accelerated graphics via custom pipelines
 
 ### Missing features
 
 These aren't here yet!
 
 -   Raster graphics
--   Flow-box layouts
--   CPU and OpenGL rendering (currently only supports drawing via [WebGPU],
-    which should support most modern systems but not all)
--   User-configuration and desktop integration
+-   Flow-box layouts (but rows, columns and grids are enough for most stuff)
+-   CPU-based fallback renderer
+-   Desktop UI integration
 -   And much more, see the [ROADMAP].
 
-## Widgets
+## Learn
 
-Below are some highlights. Find the full list in the [docs](docs.rs/kas/*/kas/widget).
-
--   Single- and multi-line text editing via `EditBox`
--   `ScrollRegion` with `ScrollBar`s
--   Resizable `List` and `Splitter` with drag handles
--   `MenuBar` featuring all expected input methods
--   `RadioBox` with broadcast communication via a group identifier
--   A simple `MessageBox` dialog
+-   API docs: <https://docs.rs/kas>, <https://docs.rs/kas-theme>, <https://docs.rs/kas-wgpu>
+-   [KAS Tutorials](https://kas-gui.github.io/tutorials/)
+-   [Examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
+-   [Discuss](https://github.com/kas-gui/kas/discussions)
+-   [KAS Blog](https://kas-gui.github.io/blog/)
 
 
 Installation and dependencies
@@ -85,7 +82,6 @@ following libraries are used: `libharfbuzz.so.0`, `libglib-2.0.so.0`,
 ### Quick-start
 
 Install dependencies:
-
 ```sh
 # For Ubuntu:
 sudo apt-get install build-essential git libxcb-shape0-dev libxcb-xfixes0-dev libharfbuzz-dev
@@ -96,8 +92,7 @@ sudo dnf install libxcb-devel harfbuzz-devel glslc
 ```
 
 Next, clone the repository and run the examples as follows:
-
-```
+```sh
 git clone https://github.com/kas-gui/kas.git
 cd kas
 cargo test
@@ -108,6 +103,11 @@ cargo run --example layout
 cargo run --example mandlebrot
 ```
 
+To build docs locally:
+```
+RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features markdown --no-deps --all --open
+```
+
 ### Crates
 
 -   `kas`: the *core* of the GUI library, providing most interfaces and logic
@@ -116,7 +116,6 @@ cargo run --example mandlebrot
 -   [KAS-text]: font loading, text layout, text navigation
 -   `kas-theme`: theming support for KAS (API plus two themes; organisation may change)
 -   `kas-wgpu`: provides windowing via [`winit`] and rendering via [WebGPU]
--   `kas-widgets`: (unrealised) - providing extra widgets
 
 A user depends on `kas` to write their complete UI specification, selects a
 theme from `kas-theme`, instances a `kas_wgpu::Toolkit`, adds the window(s),
@@ -128,15 +127,29 @@ The `kas` crate has the following feature flags:
 
 -   `shaping`: enables complex glyph forming for languages such as Arabic.
     This requires that the HarfBuzz library is installed.
--   `internal_doc`: turns on some extra documentation intended for internal
-    usage but not for end users. (This only affects generated documentation.)
--   `winit`: adds compatibility code for winit's event and geometry types.
-    This is currently the only functional windowing/event library.
+-   `markdown`: enables Markdown parsing for rich-text
 -   `serde`: adds (de)serialisation support to various types
 -   `json`: adds config (de)serialisation using JSON (implies `serde`)
 -   `yaml`: adds config (de)serialisation using YAML (implies `serde`)
+-   `winit`: adds compatibility code for winit's event and geometry types.
+    This is currently the only functional windowing/event library.
 -   `stack_dst`: some compatibility impls (see `kas-theme`'s documentation)
+-   `internal_doc`: turns on some extra documentation intended for internal
+    usage but not for end users. (This only affects generated documentation.)
 
+### Configuration
+
+Formats are not yet stabilised, hence reading/writing configuration is disabled
+by default. Ensure that the `yaml` and/or `json` feature flag is enabled, then
+configure with environment variables:
+```sh
+# Set the config path:
+export KAS_CONFIG=kas-config.yaml
+# Use write-mode to write out default config:
+KAS_CONFIG_MODE=writedefault cargo run --example gallery
+# Now just edit the config and run like normal:
+cargo run --example gallery
+```
 
 [KAS-text]: https://github.com/kas-gui/kas-text/
 [`winit`]: https://github.com/rust-windowing/winit/
