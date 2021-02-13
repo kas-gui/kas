@@ -24,6 +24,7 @@ enum Item {
     Scroll(i32),
 }
 
+#[derive(Debug)]
 struct Guard;
 impl EditGuard for Guard {
     type Msg = Item;

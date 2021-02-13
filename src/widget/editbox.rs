@@ -52,7 +52,7 @@ enum EditAction {
 /// All methods have a default implementation which does nothing.
 ///
 /// This trait is implemented for `()` (does nothing; Msg = VoidMsg).
-pub trait EditGuard: Sized + 'static {
+pub trait EditGuard: Debug + Sized + 'static {
     /// The [`event::Handler::Msg`] type
     type Msg;
 
@@ -101,6 +101,7 @@ impl EditGuard for () {
 }
 
 /// An [`EditGuard`] impl which calls a closure when activated
+#[derive(Clone)]
 pub struct EditActivate<F: FnMut(&str, &mut Manager) -> Option<M>, M>(pub F);
 impl<F, M: 'static> EditGuard for EditActivate<F, M>
 where
@@ -111,8 +112,14 @@ where
         (edit.guard.0)(edit.text.text(), mgr)
     }
 }
+impl<F: FnMut(&str, &mut Manager) -> Option<M>, M> Debug for EditActivate<F, M> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "EditActivate(..)")
+    }
+}
 
 /// An [`EditGuard`] impl which calls a closure when activated or focus is lost
+#[derive(Clone)]
 pub struct EditAFL<F: FnMut(&str, &mut Manager) -> Option<M>, M>(pub F);
 impl<F, M: 'static> EditGuard for EditAFL<F, M>
 where
@@ -126,8 +133,14 @@ where
         (edit.guard.0)(edit.text.text(), mgr)
     }
 }
+impl<F: FnMut(&str, &mut Manager) -> Option<M>, M> Debug for EditAFL<F, M> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "EditAFL(..)")
+    }
+}
 
 /// An [`EditGuard`] impl which calls a closure when edited
+#[derive(Clone)]
 pub struct EditEdit<F: FnMut(&str, &mut Manager) -> Option<M>, M>(pub F);
 impl<F, M: 'static> EditGuard for EditEdit<F, M>
 where
@@ -138,13 +151,24 @@ where
         (edit.guard.0)(edit.text.text(), mgr)
     }
 }
+impl<F: FnMut(&str, &mut Manager) -> Option<M>, M> Debug for EditEdit<F, M> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "EditEdit(..)")
+    }
+}
 
 /// An [`EditGuard`] impl which calls a closure when updated
-pub struct EditUpdate<F: FnMut(&str) + 'static>(pub F);
+#[derive(Clone)]
+pub struct EditUpdate<F: FnMut(&str)>(pub F);
 impl<F: FnMut(&str) + 'static> EditGuard for EditUpdate<F> {
     type Msg = VoidMsg;
     fn update(edit: &mut EditField<Self>) {
         (edit.guard.0)(edit.text.text());
+    }
+}
+impl<F: FnMut(&str)> Debug for EditUpdate<F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "EditUpdate(..)")
     }
 }
 
@@ -167,7 +191,7 @@ impl Default for TouchPhase {
 /// A text-edit box
 ///
 /// This is just a wrapper around [`EditField`] adding a frame.
-#[derive(Clone, Widget)]
+#[derive(Clone, Debug, Widget)]
 #[handler(msg = G::Msg)]
 pub struct EditBox<G: EditGuard = ()> {
     #[widget_core]
@@ -176,16 +200,6 @@ pub struct EditBox<G: EditGuard = ()> {
     inner: EditField<G>,
     offset: Offset,
     frame_size: Size,
-}
-
-impl<G: EditGuard> Debug for EditBox<G> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "EditBox {{ core: {:?}, inner: {:?}, offset: {:?}, frame_size: {:?} }}",
-            self.core, self.inner, self.offset, self.frame_size,
-        )
-    }
 }
 
 impl EditBox<()> {
@@ -268,7 +282,7 @@ impl EditBox<()> {
     ///
     /// This method is a parametisation of [`EditBox::with_guard`]. Any guard
     /// previously assigned to the `EditBox` will be replaced.
-    pub fn on_update<F: FnMut(&str)>(self, f: F) -> EditBox<EditUpdate<F>> {
+    pub fn on_update<F: FnMut(&str) + 'static>(self, f: F) -> EditBox<EditUpdate<F>> {
         self.with_guard(EditUpdate(f))
     }
 }
@@ -392,8 +406,8 @@ impl<G: EditGuard> HasString for EditBox<G> {
 /// for short texts for performance reasons.
 #[widget(config(key_nav = true, cursor_icon = event::CursorIcon::Text))]
 #[handler(handle=noauto, generics = <> where G: EditGuard)]
-#[derive(Clone, Default, Widget)]
-pub struct EditField<G: 'static = ()> {
+#[derive(Clone, Default, Debug, Widget)]
+pub struct EditField<G: EditGuard = ()> {
     #[widget_core]
     core: CoreData,
     view_offset: Offset,
@@ -412,19 +426,7 @@ pub struct EditField<G: 'static = ()> {
     pub guard: G,
 }
 
-impl<G> Debug for EditField<G> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "EditField {{ core: {:?}, editable: {:?}, text: {:?}, ... }}",
-            self.core,
-            self.editable,
-            self.text.text()
-        )
-    }
-}
-
-impl<G: 'static> Layout for EditField<G> {
+impl<G: EditGuard> Layout for EditField<G> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let class = if self.multi_line {
             TextClass::EditMulti
@@ -566,7 +568,7 @@ impl EditField<()> {
     ///
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
-    pub fn on_activate<F: FnMut(&str, &mut Manager) -> Option<M>, M>(
+    pub fn on_activate<F: FnMut(&str, &mut Manager) -> Option<M> + 'static, M: 'static>(
         self,
         f: F,
     ) -> EditField<EditActivate<F, M>> {
@@ -581,7 +583,7 @@ impl EditField<()> {
     ///
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
-    pub fn on_afl<F: FnMut(&str, &mut Manager) -> Option<M>, M>(
+    pub fn on_afl<F: FnMut(&str, &mut Manager) -> Option<M> + 'static, M: 'static>(
         self,
         f: F,
     ) -> EditField<EditAFL<F, M>> {
@@ -595,7 +597,7 @@ impl EditField<()> {
     ///
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
-    pub fn on_edit<F: FnMut(&str, &mut Manager) -> Option<M>, M>(
+    pub fn on_edit<F: FnMut(&str, &mut Manager) -> Option<M> + 'static, M: 'static>(
         self,
         f: F,
     ) -> EditField<EditEdit<F, M>> {
@@ -609,12 +611,12 @@ impl EditField<()> {
     ///
     /// This method is a parametisation of [`EditField::with_guard`]. Any guard
     /// previously assigned to the `EditField` will be replaced.
-    pub fn on_update<F: FnMut(&str)>(self, f: F) -> EditField<EditUpdate<F>> {
+    pub fn on_update<F: FnMut(&str) + 'static>(self, f: F) -> EditField<EditUpdate<F>> {
         self.with_guard(EditUpdate(f))
     }
 }
 
-impl<G> EditField<G> {
+impl<G: EditGuard> EditField<G> {
     /// Set whether this `EditField` is editable (inline)
     #[inline]
     pub fn editable(mut self, editable: bool) -> Self {
