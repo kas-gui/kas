@@ -82,9 +82,9 @@ impl ListEntry {
             core: Default::default(),
             layout_data: Default::default(),
             label: Label::new(format!("Entry number {}", n + 1)),
-            radio: RadioBox::new(RADIO.with(|h| *h), "display this entry")
-                .state(active)
-                .on_activate(move |_| EntryMsg::Select(n)),
+            radio: RadioBox::new("display this entry", RADIO.with(|h| *h))
+                .with_state(active)
+                .on_select(move |_| Some(EntryMsg::Select(n))),
             entry: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
         }
     }

@@ -18,7 +18,7 @@ enum Item {
     Button,
     Check(bool),
     Combo(i32),
-    Radio(WidgetId),
+    Radio(u32),
     Edit(String),
     Slider(i32),
     Scroll(i32),
@@ -176,11 +176,12 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 .with_state(true)
                 .on_toggle(|_, check| Some(Item::Check(check))),
             #[widget(row=4, col=0)] _ = Label::new("RadioBox"),
-            #[widget(row=4, col=1)] _ = RadioBox::new(radio, "radio box &1").state(false)
-                .on_activate(|id| Item::Radio(id)),
+            #[widget(row=4, col=1)] _ = RadioBox::new("radio box &1", radio)
+                .on_select(|_| Some(Item::Radio(1))),
             #[widget(row=5, col=0)] _ = Label::new("RadioBox"),
-            #[widget(row=5, col=1)] _ = RadioBox::new(radio, "radio box &2").state(true)
-                .on_activate(|id| Item::Radio(id)),
+            #[widget(row=5, col=1)] _ = RadioBox::new("radio box &2", radio)
+                .with_state(true)
+                .on_select(|_| Some(Item::Radio(2))),
             #[widget(row=6, col=0)] _ = Label::new("ComboBox"),
             #[widget(row=6, col=1, handler = handle_combo)] cb: ComboBox<i32> =
                 [("One", 1), ("Two", 2), ("Three", 3)].iter().cloned().collect(),
