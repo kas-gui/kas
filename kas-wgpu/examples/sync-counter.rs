@@ -24,8 +24,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[handler(msg = Message)]
         #[derive(Clone)]
         struct {
-            #[widget] _ = TextButton::new("−", Message::Decr),
-            #[widget] _ = TextButton::new("+", Message::Incr),
+            #[widget] _ = TextButton::new_msg("−", Message::Decr),
+            #[widget] _ = TextButton::new_msg("+", Message::Incr),
         }
     };
 

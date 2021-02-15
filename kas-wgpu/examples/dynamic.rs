@@ -82,9 +82,9 @@ impl ListEntry {
             core: Default::default(),
             layout_data: Default::default(),
             label: Label::new(format!("Entry number {}", n + 1)),
-            radio: RadioBox::new(RADIO.with(|h| *h), "display this entry")
-                .state(active)
-                .on_activate(move |_| EntryMsg::Select(n)),
+            radio: RadioBox::new("display this entry", RADIO.with(|h| *h))
+                .with_state(active)
+                .on_select(move |_| Some(EntryMsg::Select(n))),
             entry: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
         }
     }
@@ -100,9 +100,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget] _ = Label::new("Number of rows:"),
             #[widget(handler = activate)] edit: impl HasString = EditBox::new("3")
                 .on_afl(|text, _| text.parse::<usize>().ok()),
-            #[widget(handler = button)] _ = TextButton::new("Set", Control::Set),
-            #[widget(handler = button)] _ = TextButton::new("−", Control::Decr),
-            #[widget(handler = button)] _ = TextButton::new("+", Control::Incr),
+            #[widget(handler = button)] _ = TextButton::new_msg("Set", Control::Set),
+            #[widget(handler = button)] _ = TextButton::new_msg("−", Control::Decr),
+            #[widget(handler = button)] _ = TextButton::new_msg("+", Control::Incr),
             n: usize = 3,
         }
         impl {

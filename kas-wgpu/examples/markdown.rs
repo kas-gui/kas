@@ -47,7 +47,7 @@ It also supports lists:
                     EditBox::new(doc).multi_line(true),
                 #[widget(row=0, col=1)] label: ScrollBarRegion<Label<Markdown>> =
                     ScrollBarRegion::new2(Label::new(Markdown::new(doc)?)),
-                #[widget(row=1, col=1, handler=update)] _ = TextButton::new("&Update", ()),
+                #[widget(row=1, col=1, handler=update)] _ = TextButton::new_msg("&Update", ()),
             }
             impl {
                 fn update(&mut self, mgr: &mut Manager, _: ()) -> Response<VoidMsg> {

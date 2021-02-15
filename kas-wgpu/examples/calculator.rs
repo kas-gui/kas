@@ -36,39 +36,39 @@ fn main() -> Result<(), kas_wgpu::Error> {
             // Buttons get keyboard bindings through the "&" item (e.g. "&1"
             // binds both main and numpad 1 key) and via `with_keys`.
             #[widget(col = 0, row = 0)]
-            _ = TextButton::new("&clear", Key::Clear).with_keys(&[VK::Delete]),
+            _ = TextButton::new_msg("&clear", Key::Clear).with_keys(&[VK::Delete]),
             #[widget(col = 1, row = 0)]
-            _ = TextButton::new("&÷", Key::Divide).with_keys(&[VK::Slash]),
+            _ = TextButton::new_msg("&÷", Key::Divide).with_keys(&[VK::Slash]),
             #[widget(col = 2, row = 0)]
-            _ = TextButton::new("&×", Key::Multiply).with_keys(&[VK::Asterisk]),
+            _ = TextButton::new_msg("&×", Key::Multiply).with_keys(&[VK::Asterisk]),
             #[widget(col = 3, row = 0)]
-            _ = TextButton::new("&−", Key::Subtract),
+            _ = TextButton::new_msg("&−", Key::Subtract),
             #[widget(col = 0, row = 1)]
-            _ = TextButton::new("&7", Key::Char('7')),
+            _ = TextButton::new_msg("&7", Key::Char('7')),
             #[widget(col = 1, row = 1)]
-            _ = TextButton::new("&8", Key::Char('8')),
+            _ = TextButton::new_msg("&8", Key::Char('8')),
             #[widget(col = 2, row = 1)]
-            _ = TextButton::new("&9", Key::Char('9')),
+            _ = TextButton::new_msg("&9", Key::Char('9')),
             #[widget(col = 3, row = 1, rspan = 2)]
-            _ = TextButton::new("&+", Key::Add),
+            _ = TextButton::new_msg("&+", Key::Add),
             #[widget(col = 0, row = 2)]
-            _ = TextButton::new("&4", Key::Char('4')),
+            _ = TextButton::new_msg("&4", Key::Char('4')),
             #[widget(col = 1, row = 2)]
-            _ = TextButton::new("&5", Key::Char('5')),
+            _ = TextButton::new_msg("&5", Key::Char('5')),
             #[widget(col = 2, row = 2)]
-            _ = TextButton::new("&6", Key::Char('6')),
+            _ = TextButton::new_msg("&6", Key::Char('6')),
             #[widget(col = 0, row = 3)]
-            _ = TextButton::new("&1", Key::Char('1')),
+            _ = TextButton::new_msg("&1", Key::Char('1')),
             #[widget(col = 1, row = 3)]
-            _ = TextButton::new("&2", Key::Char('2')),
+            _ = TextButton::new_msg("&2", Key::Char('2')),
             #[widget(col = 2, row = 3)]
-            _ = TextButton::new("&3", Key::Char('3')),
+            _ = TextButton::new_msg("&3", Key::Char('3')),
             #[widget(col = 3, row = 3, rspan = 2)]
-            _ = TextButton::new("&=", Key::Equals).with_keys(&[VK::Return, VK::NumpadEnter]),
+            _ = TextButton::new_msg("&=", Key::Equals).with_keys(&[VK::Return, VK::NumpadEnter]),
             #[widget(col = 0, row = 4, cspan = 2)]
-            _ = TextButton::new("&0", Key::Char('0')),
+            _ = TextButton::new_msg("&0", Key::Char('0')),
             #[widget(col = 2, row = 4)]
-            _ = TextButton::new("&.", Key::Char('.')),
+            _ = TextButton::new_msg("&.", Key::Char('.')),
         }
         impl kas::WidgetConfig {
             fn configure(&mut self, mgr: &mut Manager) {
