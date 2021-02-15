@@ -65,8 +65,8 @@ impl TextEditPopup {
             layout_data: Default::default(),
             edit: EditBox::new(text).multi_line(true),
             fill: Filler::maximize(),
-            cancel: TextButton::new("Cancel", false),
-            save: TextButton::new("Save", true),
+            cancel: TextButton::new_msg("Cancel", false),
+            save: TextButton::new_msg("Save", true),
             commit: false,
         }
     }
@@ -117,7 +117,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         #[handler(handle = noauto)]
         struct {
             #[widget] label: StringLabel = Label::from("Use button to edit →"),
-            #[widget(handler = edit)] edit = TextButton::new("&Edit", ()),
+            #[widget(handler = edit)] edit = TextButton::new_msg("&Edit", ()),
             future: Option<Future<Option<String>>> = None,
         }
         impl {
@@ -168,7 +168,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=1, col=0)] _ = Label::new("EditBox"),
             #[widget(row=1, col=1)] _ = EditBox::new("edit me").with_guard(Guard),
             #[widget(row=2, col=0)] _ = Label::new("TextButton"),
-            #[widget(row=2, col=1)] _ = TextButton::new("&Press me", Item::Button),
+            #[widget(row=2, col=1)] _ = TextButton::new_msg("&Press me", Item::Button),
             #[widget(row=3, col=0)] _ = Label::new("CheckBox"),
             #[widget(row=3, col=1)] _ = CheckBox::new("&Check me").state(true)
                 .on_toggle(|check| Item::Check(check)),

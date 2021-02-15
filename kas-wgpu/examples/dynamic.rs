@@ -100,9 +100,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget] _ = Label::new("Number of rows:"),
             #[widget(handler = activate)] edit: impl HasString = EditBox::new("3")
                 .on_afl(|text, _| text.parse::<usize>().ok()),
-            #[widget(handler = button)] _ = TextButton::new("Set", Control::Set),
-            #[widget(handler = button)] _ = TextButton::new("−", Control::Decr),
-            #[widget(handler = button)] _ = TextButton::new("+", Control::Incr),
+            #[widget(handler = button)] _ = TextButton::new_msg("Set", Control::Set),
+            #[widget(handler = button)] _ = TextButton::new_msg("−", Control::Decr),
+            #[widget(handler = button)] _ = TextButton::new_msg("+", Control::Incr),
             n: usize = 3,
         }
         impl {

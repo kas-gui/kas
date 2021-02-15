@@ -42,7 +42,7 @@ impl<T: FormattableText + 'static> MessageBox<T> {
             layout_data: Default::default(),
             title: title.to_string(),
             label: Label::new(message),
-            button: TextButton::new("Ok", DialogButton::Close).with_keys(&[
+            button: TextButton::new_msg("Ok", DialogButton::Close).with_keys(&[
                 VirtualKeyCode::Return,
                 VirtualKeyCode::Space,
                 VirtualKeyCode::NumpadEnter,

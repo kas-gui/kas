@@ -70,11 +70,10 @@ impl<M: Clone + Debug + 'static> Layout for TextButton<M> {
 impl<M: Clone + Debug + 'static> TextButton<M> {
     /// Construct a button with a given `label` and `msg`
     ///
-    /// The message `msg` is returned to the parent widget on activation. Any
-    /// type supporting `Clone` is valid, though it is recommended to use a
-    /// simple `Copy` type (e.g. an enum). Click actions must be implemented on
-    /// the parent (or other ancestor).
-    pub fn new<S: Into<AccelString>>(label: S, msg: M) -> Self {
+    /// On activation (through user input events or [`Event::Activate`]) a clone
+    /// of `msg` is returned to the parent widget. Click actions must be
+    /// implemented through a handler on the parent widget (or other ancestor).
+    pub fn new_msg<S: Into<AccelString>>(label: S, msg: M) -> Self {
         let label = label.into();
         let text = Text::new_single(label);
         TextButton {
