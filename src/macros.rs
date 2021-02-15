@@ -322,8 +322,8 @@
 //!     #[handler(msg = OkCancel)]
 //!     #[derive(Clone)] // optional
 //!     struct {
-//!         #[widget] _ = TextButton::new("Ok", OkCancel::Ok),
-//!         #[widget] _ = TextButton::new("Cancel", OkCancel::Cancel),
+//!         #[widget] _ = TextButton::new_msg("Ok", OkCancel::Ok),
+//!         #[widget] _ = TextButton::new_msg("Cancel", OkCancel::Cancel),
 //!     }
 //! };
 //!
