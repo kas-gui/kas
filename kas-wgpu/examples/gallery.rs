@@ -107,7 +107,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
             vec![
                 SubMenu::right("&Colours", colours).boxed(),
                 Separator::infer().boxed(),
-                MenuToggle::new_on(|state| Menu::Disabled(state), "&Disabled").boxed(),
+                MenuToggle::new("&Disabled")
+                    .on_toggle(|_, state| Some(Menu::Disabled(state)))
+                    .boxed(),
             ],
         ),
     ]);
@@ -170,8 +172,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=2, col=0)] _ = Label::new("TextButton"),
             #[widget(row=2, col=1)] _ = TextButton::new_msg("&Press me", Item::Button),
             #[widget(row=3, col=0)] _ = Label::new("CheckBox"),
-            #[widget(row=3, col=1)] _ = CheckBox::new("&Check me").state(true)
-                .on_toggle(|check| Item::Check(check)),
+            #[widget(row=3, col=1)] _ = CheckBox::new("&Check me")
+                .with_state(true)
+                .on_toggle(|_, check| Some(Item::Check(check))),
             #[widget(row=4, col=0)] _ = Label::new("RadioBox"),
             #[widget(row=4, col=1)] _ = RadioBox::new(radio, "radio box &1").state(false)
                 .on_activate(|id| Item::Radio(id)),
