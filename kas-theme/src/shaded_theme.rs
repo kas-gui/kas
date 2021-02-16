@@ -56,6 +56,7 @@ impl ShadedTheme {
 const DIMS: DimensionsParams = DimensionsParams {
     outer_margin: 6.0,
     inner_margin: 1.0,
+    text_margin: 2.0,
     frame_size: 5.0,
     button_frame: 5.0,
     scrollbar_size: Vec2::splat(8.0),

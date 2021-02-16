@@ -26,6 +26,8 @@ pub struct DimensionsParams {
     pub outer_margin: f32,
     /// Margin inside a frame before contents
     pub inner_margin: f32,
+    /// Margin between text elements
+    pub text_margin: f32,
     /// Frame size
     pub frame_size: f32,
     /// Button frame size (non-flat outer region)
@@ -50,6 +52,7 @@ pub struct Dimensions {
     pub ideal_line_length: i32,
     pub outer_margin: u16,
     pub inner_margin: u16,
+    pub text_margin: u16,
     pub frame: i32,
     pub button_frame: i32,
     pub checkbox: i32,
@@ -67,6 +70,7 @@ impl Dimensions {
 
         let outer_margin = (params.outer_margin * scale_factor).cast_nearest();
         let inner_margin = (params.inner_margin * scale_factor).cast_nearest();
+        let text_margin = (params.text_margin * scale_factor).cast_nearest();
         let frame = (params.frame_size * scale_factor).cast_nearest();
         Dimensions {
             scale_factor,
@@ -78,6 +82,7 @@ impl Dimensions {
             ideal_line_length: (24.0 * dpem).cast_nearest(),
             outer_margin,
             inner_margin,
+            text_margin,
             frame,
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
             checkbox: i32::conv_nearest(9.0 * dpp) + 2 * (i32::from(inner_margin) + frame),
@@ -188,10 +193,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             });
         });
 
-        let margin = match class {
-            TextClass::Label | TextClass::LabelFixed => self.dims.outer_margin,
-            TextClass::Button | TextClass::Edit | TextClass::EditMulti => self.dims.inner_margin,
-        };
+        let margin = self.dims.text_margin;
         let margins = (margin, margin);
         if axis.is_horizontal() {
             let bound = i32::conv_ceil(required.0);
@@ -240,7 +242,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
 
     fn edit_surround(&self, _vert: bool) -> FrameRules {
         let inner = self.dims.inner_margin.into();
-        let outer = self.dims.outer_margin;
+        let outer = 0;
         FrameRules::new_sym(self.dims.frame, inner, (outer, outer))
     }
 
