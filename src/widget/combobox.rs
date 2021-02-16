@@ -33,13 +33,16 @@ pub struct ComboBox<M: Clone + Debug + 'static> {
 
 impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let sides = size_handle.button_surround();
-        self.frame_size = sides.0 + sides.1;
-        let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis, self.frame_size, margins);
-
+        let frame_rules = size_handle.button_surround(axis.is_vertical());
         let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
-        content_rules.surrounded_by(frame_rules, true)
+
+        let (rules, _offset, size) = frame_rules.surround(content_rules);
+        if axis.is_horizontal() {
+            self.frame_size.0 = size;
+        } else {
+            self.frame_size.1 = size;
+        }
+        rules
     }
 
     fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {

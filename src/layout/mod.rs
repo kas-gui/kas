@@ -49,7 +49,7 @@ pub use grid_solver::{GridChildInfo, GridSetter, GridSolver};
 pub use row_solver::{RowPositionSolver, RowSetter, RowSolver};
 pub use single_solver::{SingleSetter, SingleSolver};
 pub use size_rules::SizeRules;
-pub use size_types::{Margins, StretchPolicy};
+pub use size_types::{FrameRules, Margins, StretchPolicy};
 pub use sizer::{solve_size_rules, RulesSetter, RulesSolver, SolveCache};
 pub use storage::{
     DynGridStorage, DynRowStorage, FixedGridStorage, FixedRowStorage, GridStorage, RowStorage,

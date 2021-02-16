@@ -347,7 +347,7 @@ where
         self.draw.rect(self.pass, inner, col);
 
         if let Some(col) = self.cols.nav_region(state) {
-            let outer = outer.shrink(self.window.dims.button_frame as f32 / 3.0);
+            let outer = outer.shrink(self.window.dims.inner_margin as f32);
             self.draw.rounded_frame(self.pass, outer, inner, 0.5, col);
         }
     }

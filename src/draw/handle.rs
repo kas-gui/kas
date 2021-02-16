@@ -11,7 +11,7 @@ use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use kas::dir::Direction;
 use kas::draw::{Draw, Pass};
 use kas::geom::{Coord, Offset, Rect, Size, Vec2};
-use kas::layout::{AxisInfo, Margins, SizeRules};
+use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use kas::text::{format::FormattableText, AccelString, Text, TextApi, TextDisplay};
 
 // for doc use
@@ -125,18 +125,14 @@ pub trait SizeHandle {
     fn scale_factor(&self) -> f32;
 
     /// Size of a frame around child widget(s)
-    ///
-    /// Returns dimensions of the frame on each side.
-    fn frame(&self) -> Size;
+    fn frame(&self, vert: bool) -> FrameRules;
 
     /// Menu frame
     ///
     /// Menu items have a larger-than-usual margin / invisible frame around
     /// them. This should be drawn with [`DrawHandle::menu_frame`],
     /// though likely the theme will only draw when highlighted.
-    ///
-    /// Like [`SizeHandle::frame`] this method returns the frame on each side.
-    fn menu_frame(&self) -> Size;
+    fn menu_frame(&self, vert: bool) -> FrameRules;
 
     /// Size of a separator frame between items
     fn separator(&self) -> Size;
@@ -175,19 +171,13 @@ pub trait SizeHandle {
     fn edit_marker_width(&self) -> f32;
 
     /// Size of the sides of a button.
-    ///
-    /// Returns `(top_left, bottom_right)` dimensions as two `Size`s.
-    /// Excludes size of content area.
-    fn button_surround(&self) -> (Size, Size);
+    fn button_surround(&self, vert: bool) -> FrameRules;
 
     /// Size of the frame around an edit box, including margin
     ///
-    /// Returns two [`Size`] values, `(tl, br)`. `tl` is the size of left and
-    /// top sides, and `br` is the size of right and bottom sides.
-    ///
     /// Note: though text should not be drawn in the margin, the edit cursor
     /// may be. The margin included here should be large enough!
-    fn edit_surround(&self) -> (Size, Size);
+    fn edit_surround(&self, vert: bool) -> FrameRules;
 
     /// Size of the element drawn by [`DrawHandle::checkbox`].
     fn checkbox(&self) -> Size;
@@ -463,11 +453,11 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
         self.deref().scale_factor()
     }
 
-    fn frame(&self) -> Size {
-        self.deref().frame()
+    fn frame(&self, vert: bool) -> FrameRules {
+        self.deref().frame(vert)
     }
-    fn menu_frame(&self) -> Size {
-        self.deref().menu_frame()
+    fn menu_frame(&self, vert: bool) -> FrameRules {
+        self.deref().menu_frame(vert)
     }
     fn separator(&self) -> Size {
         self.deref().separator()
@@ -494,11 +484,11 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
         self.deref().edit_marker_width()
     }
 
-    fn button_surround(&self) -> (Size, Size) {
-        self.deref().button_surround()
+    fn button_surround(&self, vert: bool) -> FrameRules {
+        self.deref().button_surround(vert)
     }
-    fn edit_surround(&self) -> (Size, Size) {
-        self.deref().edit_surround()
+    fn edit_surround(&self, vert: bool) -> FrameRules {
+        self.deref().edit_surround(vert)
     }
 
     fn checkbox(&self) -> Size {
@@ -527,11 +517,11 @@ where
         self.deref().scale_factor()
     }
 
-    fn frame(&self) -> Size {
-        self.deref().frame()
+    fn frame(&self, vert: bool) -> FrameRules {
+        self.deref().frame(vert)
     }
-    fn menu_frame(&self) -> Size {
-        self.deref().menu_frame()
+    fn menu_frame(&self, vert: bool) -> FrameRules {
+        self.deref().menu_frame(vert)
     }
     fn separator(&self) -> Size {
         self.deref().separator()
@@ -558,11 +548,11 @@ where
         self.deref().edit_marker_width()
     }
 
-    fn button_surround(&self) -> (Size, Size) {
-        self.deref().button_surround()
+    fn button_surround(&self, vert: bool) -> FrameRules {
+        self.deref().button_surround(vert)
     }
-    fn edit_surround(&self) -> (Size, Size) {
-        self.deref().edit_surround()
+    fn edit_surround(&self, vert: bool) -> FrameRules {
+        self.deref().edit_surround(vert)
     }
 
     fn checkbox(&self) -> Size {

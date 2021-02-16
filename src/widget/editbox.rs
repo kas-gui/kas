@@ -332,25 +332,18 @@ impl<G: EditGuard> EditBox<G> {
 
 impl<G: EditGuard> Layout for EditBox<G> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let frame_sides = size_handle.edit_surround();
-        let frame_offset = frame_sides.0;
-        let frame_size = frame_offset + frame_sides.1;
-
-        let margins = size_handle.outer_margins();
-        let frame_rules = SizeRules::extract_fixed(axis, frame_size, margins);
-
+        let frame_rules = size_handle.edit_surround(axis.is_vertical());
         let child_rules = self.inner.size_rules(size_handle, axis);
-        let m = child_rules.margins_i32();
 
+        let (rules, offset, size) = frame_rules.surround(child_rules);
         if axis.is_horizontal() {
-            self.offset.0 = frame_offset.0 + m.0;
-            self.frame_size.0 = frame_size.0 + m.0 + m.1;
+            self.offset.0 = offset;
+            self.frame_size.0 = size;
         } else {
-            self.offset.1 = frame_offset.1 + m.0;
-            self.frame_size.1 = frame_size.1 + m.0 + m.1;
+            self.offset.1 = offset;
+            self.frame_size.1 = size;
         }
-
-        child_rules.surrounded_by(frame_rules, true)
+        rules
     }
 
     fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {

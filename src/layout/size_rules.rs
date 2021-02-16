@@ -282,25 +282,6 @@ impl SizeRules {
         }
     }
 
-    /// Return the rules for self surrounded by `frame`
-    ///
-    /// If `internal_margins` are true, then space is allocated for `self`'s
-    /// margins inside the frame; if not, then `self`'s margins are merged with
-    /// the frame's margins.
-    pub fn surrounded_by(self, frame: SizeRules, internal_margins: bool) -> Self {
-        let (c, m) = if internal_margins {
-            ((self.m.0 + self.m.1).into(), frame.m)
-        } else {
-            (0, (self.m.0.max(frame.m.0), self.m.1.max(frame.m.1)))
-        };
-        SizeRules {
-            a: self.a + frame.a + c,
-            b: self.b + frame.b + c,
-            m,
-            stretch: self.stretch.max(frame.stretch),
-        }
-    }
-
     /// Return the result of appending all given ranges
     pub fn sum(range: &[SizeRules]) -> SizeRules {
         range.iter().sum()

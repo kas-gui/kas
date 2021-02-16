@@ -5,6 +5,7 @@
 
 //! Types used by size rules
 
+use super::SizeRules;
 use crate::geom::Size;
 
 // for doc use
@@ -84,5 +85,70 @@ pub enum StretchPolicy {
 impl Default for StretchPolicy {
     fn default() -> Self {
         StretchPolicy::Fixed
+    }
+}
+
+/// Frame size rules
+///
+/// This is a special variant of [`SizeRules`] for frames. It is assumed that
+/// frames are not stretchy (i.e. that min-size equals ideal-size); additionally
+/// frame rules have a content offset and a minimum internal margin size.
+#[derive(Clone, Copy, Debug)]
+pub struct FrameRules {
+    offset: i32,
+    size: i32,
+    inner_margin: i32,
+    // (pre, post) margins
+    m: (u16, u16),
+}
+
+impl FrameRules {
+    /// Construct
+    ///
+    /// -   `first`: size of left or top edge
+    /// -   `second`: size of right or bottom edge
+    /// -   `inner_margin`: minimum size of inner margins
+    /// -   `outer_margins`: size of (left, right) or (top, bottom) outer margins
+    #[inline]
+    pub fn new(first: i32, second: i32, inner_margin: i32, outer_margins: (u16, u16)) -> Self {
+        FrameRules {
+            offset: first,
+            size: first + second,
+            inner_margin,
+            m: outer_margins,
+        }
+    }
+
+    /// Construct (symmetric on axis)
+    #[inline]
+    pub fn new_sym(size: i32, inner_margin: i32, outer_margins: (u16, u16)) -> Self {
+        Self::new(size, size, inner_margin, outer_margins)
+    }
+
+    /// Generate rules for content surrounded by this frame
+    ///
+    /// It is assumed that the content's margins apply inside this frame, and
+    /// that the margin is at least as large as self's `inner_margin`.
+    ///
+    /// Returns the tuple `(rules, offset, size)`:
+    ///
+    /// -   the generated `rules`
+    /// -   the content `offset` within the allocated rect
+    /// -   the size consumed by the frame and inner margins (thus the content's
+    ///     size will be that allocated for this object minus this `size` value)
+    pub fn surround(self, content: SizeRules) -> (SizeRules, i32, i32) {
+        let (m0, m1) = content.margins_i32();
+        let m0 = m0.max(self.inner_margin);
+        let m1 = m1.max(self.inner_margin);
+        let offset = self.offset + m0;
+        let size = self.size + m0 + m1;
+
+        let rules = SizeRules::new(
+            content.min_size() + size,
+            content.ideal_size() + size,
+            self.m,
+            content.stretch(),
+        );
+        (rules, offset, size)
     }
 }

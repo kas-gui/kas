@@ -13,7 +13,7 @@ use std::f32;
 use kas::conv::{Cast, CastFloat, ConvFloat};
 use kas::draw::{self, TextClass};
 use kas::geom::{Size, Vec2};
-use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
+use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, StretchPolicy};
 use kas::text::{TextApi, TextApiExt};
 
 /// Parameterisation of [`Dimensions`]
@@ -138,13 +138,15 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         self.dims.scale_factor
     }
 
-    fn frame(&self) -> Size {
-        let f = self.dims.frame;
-        Size::splat(f)
+    fn frame(&self, _vert: bool) -> FrameRules {
+        FrameRules::new_sym(self.dims.frame, 0, (0, 0))
     }
-    fn menu_frame(&self) -> Size {
-        let f = self.dims.frame;
-        Size::new(f, f / 2)
+    fn menu_frame(&self, vert: bool) -> FrameRules {
+        let mut size = self.dims.frame;
+        if vert {
+            size /= 2;
+        }
+        FrameRules::new_sym(size, 0, (0, 0))
     }
     fn separator(&self) -> Size {
         Size::splat(self.dims.frame)
@@ -230,14 +232,16 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         self.dims.font_marker_width
     }
 
-    fn button_surround(&self) -> (Size, Size) {
-        let s = Size::splat(self.dims.button_frame);
-        (s, s)
+    fn button_surround(&self, _vert: bool) -> FrameRules {
+        let inner = self.dims.inner_margin.into();
+        let outer = self.dims.outer_margin;
+        FrameRules::new_sym(self.dims.frame, inner, (outer, outer))
     }
 
-    fn edit_surround(&self) -> (Size, Size) {
-        let s = Size::splat(self.dims.frame);
-        (s, s)
+    fn edit_surround(&self, _vert: bool) -> FrameRules {
+        let inner = self.dims.inner_margin.into();
+        let outer = self.dims.outer_margin;
+        FrameRules::new_sym(self.dims.frame, inner, (outer, outer))
     }
 
     fn checkbox(&self) -> Size {
