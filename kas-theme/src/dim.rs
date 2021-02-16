@@ -233,7 +233,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     }
 
     fn edit_surround(&self) -> (Size, Size) {
-        let s = Size::splat(self.dims.frame + i32::from(self.dims.inner_margin));
+        let s = Size::splat(self.dims.frame);
         (s, s)
     }
 
