@@ -120,7 +120,7 @@ impl<D: Directional, W: Widget> Layout for Splitter<D, W> {
         }
         assert!(self.handles.len() + 1 == self.widgets.len());
 
-        let handle_size = size_handle.frame().extract(axis);
+        let handle_size = size_handle.separator().extract(axis);
 
         let dim = (self.direction, self.num_children());
         let mut solver = layout::RowSolver::new(axis, dim, &mut self.data);

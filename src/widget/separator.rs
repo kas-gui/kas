@@ -13,8 +13,7 @@ use kas::{event, prelude::*};
 
 /// A separator
 ///
-/// This widget draws a bar when in a list. It may expand larger than expected
-/// if no other widget will fill spare space.
+/// This widget draws a bar when in a list.
 #[handler(msg=M)]
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Separator<M: Debug + 'static> {
@@ -50,7 +49,7 @@ impl<M: Debug> Separator<M> {
 
 impl<M: Debug> Layout for Separator<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        SizeRules::extract_fixed(axis, size_handle.frame(), Default::default())
+        SizeRules::extract_fixed(axis, size_handle.separator(), Default::default())
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {

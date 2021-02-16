@@ -146,6 +146,9 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         let f = self.dims.frame;
         Size::new(f, f / 2)
     }
+    fn separator(&self) -> Size {
+        Size::splat(self.dims.frame)
+    }
 
     fn inner_margin(&self) -> Size {
         Size::splat(self.dims.inner_margin.into())

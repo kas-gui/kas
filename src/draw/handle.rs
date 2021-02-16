@@ -138,6 +138,9 @@ pub trait SizeHandle {
     /// Like [`SizeHandle::frame`] this method returns the frame on each side.
     fn menu_frame(&self) -> Size;
 
+    /// Size of a separator frame between items
+    fn separator(&self) -> Size;
+
     /// The margin around content within a widget
     ///
     /// Though inner margins are *usually* empty, they are sometimes drawn to,
@@ -466,6 +469,9 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn menu_frame(&self) -> Size {
         self.deref().menu_frame()
     }
+    fn separator(&self) -> Size {
+        self.deref().separator()
+    }
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
     }
@@ -526,6 +532,9 @@ where
     }
     fn menu_frame(&self) -> Size {
         self.deref().menu_frame()
+    }
+    fn separator(&self) -> Size {
+        self.deref().separator()
     }
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
