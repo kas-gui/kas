@@ -270,6 +270,14 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
             .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
     }
 
+    fn selection_box(&mut self, rect: Rect) {
+        let inner = Quad::from(rect + self.offset);
+        let outer = inner.grow(self.window.dims.inner_margin.into());
+        // TODO: this should use its own colour and a stippled pattern
+        let col = self.cols.text_sel_bg;
+        self.draw.frame(self.pass, outer, inner, col);
+    }
+
     fn text_offset(
         &mut self,
         pos: Coord,

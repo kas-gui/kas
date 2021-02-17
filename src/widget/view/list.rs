@@ -31,6 +31,7 @@ pub struct ListView<
     first_id: WidgetId,
     #[widget_core]
     core: CoreData,
+    offset: Offset,
     data: A,
     widgets: Vec<W>,
     direction: D,
@@ -58,6 +59,7 @@ where
         ListView {
             first_id: Default::default(),
             core: Default::default(),
+            offset: Default::default(),
             data,
             widgets: Default::default(),
             direction: Default::default(),
@@ -82,6 +84,7 @@ where
         ListView {
             first_id: Default::default(),
             core: Default::default(),
+            offset: Default::default(),
             data,
             widgets: Default::default(),
             direction,
@@ -154,7 +157,7 @@ where
                 Offset(0, self.child_skip),
             ),
         };
-        let mut pos_start = self.core.rect.pos;
+        let mut pos_start = self.core.rect.pos + self.offset;
         if self.direction.is_reversed() {
             pos_start += skip * i32::conv(w_len - 1);
             skip = skip * -1;
@@ -256,6 +259,10 @@ where
     A::Item: Default,
 {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        // We use an invisible frame for highlighting selections, drawing into the margin
+        let inner_margin = size_handle.inner_margin().extract(axis);
+        let frame = FrameRules::new_sym(0, inner_margin, (0, 0));
+
         if self.widgets.is_empty() {
             if self.data.len() > 0 {
                 self.widgets.push(W::new(self.data.get(0)));
@@ -267,10 +274,13 @@ where
         if axis.is_vertical() == self.direction.is_vertical() {
             self.child_size_min = rules.min_size();
             self.child_size_ideal = rules.ideal_size();
-            self.child_inter_margin = rules.margins_i32().0 + rules.margins_i32().1;
+            let m = rules.margins_i32();
+            self.child_inter_margin = (m.0 + m.1).max(inner_margin);
             rules.multiply_with_margin(2, self.ideal_visible);
             rules.set_stretch(rules.stretch().max(StretchPolicy::HighUtility));
         }
+        let (rules, offset, _size) = frame.surround(rules);
+        self.offset.set_component(axis, offset);
         rules
     }
 
@@ -362,9 +372,19 @@ where
         let disabled = disabled || self.is_disabled();
         let offset = self.scroll_offset();
         use kas::draw::ClipRegion::Scroll;
+        let w_len = self.widgets.len();
+        let start = (self.data_range.start() / w_len) * w_len;
         draw_handle.clip_region(self.core.rect, offset, Scroll, &mut |draw_handle| {
-            for child in &self.widgets[..self.data_range.len()] {
-                child.draw(draw_handle, mgr, disabled)
+            for (i, child) in self.widgets[..self.data_range.len()].iter().enumerate() {
+                child.draw(draw_handle, mgr, disabled);
+                let mut d = start + i;
+                if d < self.data_range.start() {
+                    d += w_len;
+                }
+                let selected = d % 5 == 0; // TODO
+                if selected {
+                    draw_handle.selection_box(child.rect());
+                }
             }
         });
     }

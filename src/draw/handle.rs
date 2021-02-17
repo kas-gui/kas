@@ -290,6 +290,13 @@ pub trait DrawHandle {
     /// Draw a separator in the given `rect`
     fn separator(&mut self, rect: Rect);
 
+    /// Draw a selection box
+    ///
+    /// This appears as a dashed box or similar around this `rect`. Note that
+    /// the selection indicator is drawn *outside* of this rect, within a margin
+    /// of size `inner_margin` that is expected to be present around this box.
+    fn selection_box(&mut self, rect: Rect);
+
     /// Draw some text using the standard font
     ///
     /// The `text` is drawn within the rect from `pos` to `text.env().bounds`,
@@ -600,6 +607,9 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
+    fn selection_box(&mut self, rect: Rect) {
+        self.deref_mut().selection_box(rect);
+    }
     fn text_offset(
         &mut self,
         pos: Coord,
@@ -698,6 +708,9 @@ where
     }
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
+    }
+    fn selection_box(&mut self, rect: Rect) {
+        self.deref_mut().selection_box(rect);
     }
     fn text_offset(
         &mut self,
