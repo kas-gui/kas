@@ -774,7 +774,7 @@ mod test {
         // We can't call this method without constructing an actual DrawHandle.
         // But we don't need to: we just want to test that methods are callable.
 
-        let _size = draw_handle.size_handle(|h| h.frame());
+        let _scale = draw_handle.size_handle(|h| h.scale_factor());
 
         let bounds = Vec2(100.0, 30.0);
         let text = kas::text::Text::new_single("sample");
