@@ -299,14 +299,20 @@ pub trait ScrollWidget: Widget {
 
 /// A scrollable region with bars
 ///
-/// This is merely a typedef
+/// This is merely a typedef for `ScrollBars<ScrollRegion<W>>`:
+/// [`ScrollRegion`] handles the actual scrolling and wheel/touch events,
+/// while [`ScrollBars`] adds scrollbar controls.
 pub type ScrollBarRegion<W> = ScrollBars<ScrollRegion<W>>;
 
 /// Scrollbar controls
 ///
 /// This is a wrapper adding scrollbar controls around a child. Note that this
-/// widget does not enable scrolling; see [`ScrollRegion`] for that.
-/// This region supports scrolling via mouse wheel and click/touch drag.
+/// widget does not enable scrolling; see [`ScrollBarRegion`] for that.
+///
+/// Scrollbar positioning does not respect the inner widgets margins, since
+/// the result looks poor when content is scrolled. Instead the content should
+/// force internal margins by wrapping contents with a (zero-sized) frame.
+/// [`ScrollRegion`] already does this.
 #[widget(config=noauto)]
 #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
@@ -376,10 +382,12 @@ impl<W: ScrollWidget> ScrollBars<W> {
     /// Set which scroll bars are visible
     ///
     /// Calling this method also disables automatic scroll bars.
+    /// A resize is required to update the child and scrollbar widgets.
     #[inline]
-    pub fn set_bars(&mut self, horiz: bool, vert: bool) {
+    pub fn set_bars(&mut self, horiz: bool, vert: bool) -> TkAction {
         self.auto_bars = false;
         self.show_bars = (horiz, vert);
+        TkAction::RESIZE
     }
 
     /// Query which scroll bars are visible
@@ -444,15 +452,13 @@ impl<W: ScrollWidget> Layout for ScrollBars<W> {
 
         let bar_width = mgr.size_handle(|sh| (sh.scrollbar().0).1);
         if self.auto_bars {
-            child_size -= Size::splat(bar_width);
             self.show_bars = self.inner.scroll_axes(child_size);
-        } else {
-            if self.show_bars.0 {
-                child_size.1 -= bar_width;
-            }
-            if self.show_bars.1 {
-                child_size.0 -= bar_width;
-            }
+        }
+        if self.show_bars.0 {
+            child_size.1 -= bar_width;
+        }
+        if self.show_bars.1 {
+            child_size.0 -= bar_width;
         }
 
         let child_rect = Rect::new(pos, child_size);
@@ -460,14 +466,14 @@ impl<W: ScrollWidget> Layout for ScrollBars<W> {
         let max_scroll_offset = self.inner.max_scroll_offset();
 
         if self.show_bars.0 {
-            let pos = Coord(pos.0, pos.1 + child_size.1);
+            let pos = Coord(pos.0, rect.pos2().1 - bar_width);
             let size = Size::new(child_size.0, bar_width);
             self.horiz_bar
                 .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
             let _ = self.horiz_bar.set_limits(max_scroll_offset.0, rect.size.0);
         }
         if self.show_bars.1 {
-            let pos = Coord(pos.0 + child_size.0, pos.1);
+            let pos = Coord(rect.pos2().0 - bar_width, pos.1);
             let size = Size::new(bar_width, self.core.rect.size.1);
             self.vert_bar
                 .set_rect(mgr, Rect { pos, size }, AlignHints::NONE);
