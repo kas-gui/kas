@@ -32,6 +32,7 @@ pub struct ListView<
     #[widget_core]
     core: CoreData,
     offset: Offset,
+    frame_size: Size,
     data: A,
     widgets: Vec<W>,
     direction: D,
@@ -42,7 +43,7 @@ pub struct ListView<
     child_size_ideal: i32,
     child_inter_margin: i32,
     child_skip: i32,
-    child_size: i32,
+    child_size: Size,
     scroll: ScrollComponent,
 }
 
@@ -60,6 +61,7 @@ where
             first_id: Default::default(),
             core: Default::default(),
             offset: Default::default(),
+            frame_size: Default::default(),
             data,
             widgets: Default::default(),
             direction: Default::default(),
@@ -70,7 +72,7 @@ where
             child_size_ideal: 0,
             child_inter_margin: 0,
             child_skip: 0,
-            child_size: 0,
+            child_size: Size::ZERO,
             scroll: Default::default(),
         }
     }
@@ -85,6 +87,7 @@ where
             first_id: Default::default(),
             core: Default::default(),
             offset: Default::default(),
+            frame_size: Default::default(),
             data,
             widgets: Default::default(),
             direction,
@@ -95,7 +98,7 @@ where
             child_size_ideal: 0,
             child_inter_margin: 0,
             child_skip: 0,
-            child_size: 0,
+            child_size: Size::ZERO,
             scroll: Default::default(),
         }
     }
@@ -115,7 +118,7 @@ where
     /// Manually trigger an update to handle changed data
     pub fn update_view(&mut self, mgr: &mut Manager) {
         self.data_range.end = self.data_range.start;
-        self.update_widgets(mgr);
+        self.update_widgets(mgr, true);
         // Force SET_SIZE so that scroll-bar wrappers get updated
         trace!("update_view triggers SET_SIZE");
         *mgr |= TkAction::SET_SIZE;
@@ -135,7 +138,8 @@ where
         self
     }
 
-    fn update_widgets(&mut self, mgr: &mut Manager) {
+    // all: whether to update all widgets; if not, assume only scrolling occurred
+    fn update_widgets(&mut self, mgr: &mut Manager, all: bool) {
         let time = Instant::now();
         // set_rect allocates enough widgets to view a page; we update widget-data allocations
         // TODO: we may wish to notify self.data of the range it should cache
@@ -147,29 +151,20 @@ where
             .min(self.data.len())
             .saturating_sub(w_len);
         let data_range = first_data..(first_data + w_len).min(self.data.len());
-        let (child_size, mut skip) = match self.direction.is_vertical() {
-            false => (
-                Size::new(self.child_size, self.rect().size.1),
-                Offset(self.child_skip, 0),
-            ),
-            true => (
-                Size::new(self.rect().size.0, self.child_size),
-                Offset(0, self.child_skip),
-            ),
+        let mut skip = match self.direction.is_vertical() {
+            false => Offset(self.child_skip, 0),
+            true => Offset(0, self.child_skip),
         };
         let mut pos_start = self.core.rect.pos + self.offset;
         if self.direction.is_reversed() {
             pos_start += skip * i32::conv(w_len - 1);
             skip = skip * -1;
         }
-        let mut rect = Rect::new(pos_start, child_size);
+        let mut rect = Rect::new(pos_start, self.child_size);
         let mut action = TkAction::empty();
         for data_num in data_range.clone() {
-            // HACK: self.widgets[0] is used in size_rules, which affects alignment, therefore we
-            // always need to call set_rect on this widget. Fix by adjusting how text_bound works?
-            let i = data_num % w_len;
-            if i == 0 || (data_num < old_start || data_num >= old_end) {
-                let w = &mut self.widgets[i];
+            if all || (data_num < old_start || data_num >= old_end) {
+                let w = &mut self.widgets[data_num % w_len];
                 action |= w.set(self.data.get(data_num));
                 rect.pos = pos_start + skip * i32::conv(data_num);
                 w.set_rect(mgr, rect, self.align_hints);
@@ -211,7 +206,7 @@ where
     #[inline]
     fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
         *mgr |= self.scroll.set_offset(offset);
-        self.update_widgets(mgr);
+        self.update_widgets(mgr, false);
         self.scroll.offset()
     }
 }
@@ -279,8 +274,9 @@ where
             rules.multiply_with_margin(2, self.ideal_visible);
             rules.set_stretch(rules.stretch().max(StretchPolicy::HighUtility));
         }
-        let (rules, offset, _size) = frame.surround(rules);
+        let (rules, offset, size) = frame.surround(rules);
         self.offset.set_component(axis, offset);
+        self.frame_size.set_component(axis, size);
         rules
     }
 
@@ -289,8 +285,8 @@ where
 
         let data_len = self.data.len();
         let data_len32 = i32::try_from(data_len).unwrap();
-        let mut child_size = rect.size;
-        let content_size;
+        let mut child_size = rect.size - self.frame_size;
+        let mut content_size = rect.size;
         let skip;
         let num;
         if self.direction.is_horizontal() {
@@ -299,30 +295,27 @@ where
             } else {
                 child_size.0 = self.child_size_min;
             }
-            self.child_size = child_size.0;
             skip = Offset(child_size.0 + self.child_inter_margin, 0);
             self.child_skip = skip.0;
             align.horiz = None;
             num = (rect.size.0 + skip.0 - 1) / skip.0 + 1;
 
-            let full_width = (skip.0 * data_len32 - self.child_inter_margin).max(0);
-            content_size = Size::new(full_width, child_size.1);
+            content_size.0 = (skip.0 * data_len32 - self.child_inter_margin).max(0);
         } else {
             if child_size.1 >= self.ideal_visible * self.child_size_ideal {
                 child_size.1 = self.child_size_ideal;
             } else {
                 child_size.1 = self.child_size_min;
             }
-            self.child_size = child_size.1;
             skip = Offset(0, child_size.1 + self.child_inter_margin);
             self.child_skip = skip.1;
             align.vert = None;
             num = (rect.size.1 + skip.1 - 1) / skip.1 + 1;
 
-            let full_height = (skip.1 * data_len32 - self.child_inter_margin).max(0);
-            content_size = Size::new(child_size.0, full_height);
+            content_size.1 = (skip.1 * data_len32 - self.child_inter_margin).max(0);
         }
 
+        self.child_size = child_size;
         self.align_hints = align;
 
         let old_num = self.widgets.len();
@@ -344,7 +337,7 @@ where
             self.widgets.truncate(num);
         }
         *mgr |= self.scroll.set_sizes(rect.size, content_size);
-        self.update_widgets(mgr);
+        self.update_widgets(mgr, true);
     }
 
     fn spatial_range(&self) -> (usize, usize) {
@@ -381,7 +374,7 @@ where
                 if d < self.data_range.start() {
                     d += w_len;
                 }
-                let selected = d % 5 == 0; // TODO
+                let selected = d < 4; // TODO
                 if selected {
                     draw_handle.selection_box(child.rect());
                 }
@@ -414,7 +407,7 @@ where
                 Response::Focus(rect) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                     *mgr |= action;
-                    self.update_widgets(mgr);
+                    self.update_widgets(mgr, false);
                     return Response::Focus(rect);
                 }
                 r => return r,
@@ -440,7 +433,7 @@ where
                 });
         if !action.is_empty() {
             *mgr |= action;
-            self.update_widgets(mgr);
+            self.update_widgets(mgr, false);
             Response::Focus(self.rect())
         } else {
             response.void_into()
