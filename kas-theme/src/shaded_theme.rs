@@ -56,6 +56,7 @@ impl ShadedTheme {
 const DIMS: DimensionsParams = DimensionsParams {
     outer_margin: 6.0,
     inner_margin: 1.0,
+    text_margin: 2.0,
     frame_size: 5.0,
     button_frame: 5.0,
     scrollbar_size: Vec2::splat(8.0),
@@ -347,7 +348,7 @@ where
         self.draw.rect(self.pass, inner, col);
 
         if let Some(col) = self.cols.nav_region(state) {
-            let outer = outer.shrink(self.window.dims.button_frame as f32 / 3.0);
+            let outer = outer.shrink(self.window.dims.inner_margin as f32);
             self.draw.rounded_frame(self.pass, outer, inner, 0.5, col);
         }
     }

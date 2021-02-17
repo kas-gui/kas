@@ -15,8 +15,8 @@ pub struct MenuFrame<W: Widget> {
     core: CoreData,
     #[widget]
     pub inner: W,
-    m0: Size,
-    m1: Size,
+    offset: Offset,
+    size: Size,
 }
 
 impl<W: Widget> MenuFrame<W> {
@@ -26,36 +26,33 @@ impl<W: Widget> MenuFrame<W> {
         MenuFrame {
             core: Default::default(),
             inner,
-            m0: Size::ZERO,
-            m1: Size::ZERO,
+            offset: Offset::ZERO,
+            size: Size::ZERO,
         }
     }
 }
 
 impl<W: Widget> Layout for MenuFrame<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let size = size_handle.frame();
-        let margins = Margins::ZERO;
-        let frame_rules = SizeRules::extract_fixed(axis, size + size, margins);
-
+        let frame_rules = size_handle.frame(axis.is_vertical());
         let child_rules = self.inner.size_rules(size_handle, axis);
-        let m = child_rules.margins_i32();
+        let (rules, offset, size) = frame_rules.surround(child_rules);
 
         if axis.is_horizontal() {
-            self.m0.0 = size.0 + m.0;
-            self.m1.0 = size.0 + m.1;
+            self.offset.0 = offset;
+            self.size.0 = size;
         } else {
-            self.m0.1 = size.1 + m.0;
-            self.m1.1 = size.1 + m.1;
+            self.offset.1 = offset;
+            self.size.1 = size;
         }
 
-        child_rules.surrounded_by(frame_rules, true)
+        rules
     }
 
     fn set_rect(&mut self, mgr: &mut Manager, mut rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        rect.pos += self.m0;
-        rect.size -= self.m0 + self.m1;
+        rect.pos += self.offset;
+        rect.size -= self.size;
         self.inner.set_rect(mgr, rect, align);
     }
 

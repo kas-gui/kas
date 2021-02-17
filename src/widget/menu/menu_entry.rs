@@ -23,7 +23,8 @@ pub struct MenuEntry<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
     label: Text<AccelString>,
-    label_off: Size,
+    label_off: Offset,
+    frame_size: Size,
     msg: M,
 }
 
@@ -39,17 +40,24 @@ impl<M: Clone + Debug + 'static> WidgetConfig for MenuEntry<M> {
 
 impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        let size = size_handle.menu_frame();
-        self.label_off = size;
-        let frame_rules = SizeRules::extract_fixed(axis, size + size, Margins::ZERO);
+        let frame_rules = size_handle.menu_frame(axis.is_vertical());
         let text_rules = size_handle.text_bound(&mut self.label, TextClass::LabelFixed, axis);
-        text_rules.surrounded_by(frame_rules, true)
+        let (rules, offset, size) = frame_rules.surround(text_rules);
+        if axis.is_horizontal() {
+            self.label_off.0 = offset;
+            self.frame_size.0 = size;
+        } else {
+            self.label_off.1 = offset;
+            self.frame_size.1 = size;
+        }
+        rules
     }
 
     fn set_rect(&mut self, _: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
+        let size = rect.size - self.frame_size;
         self.label.update_env(|env| {
-            env.set_bounds(rect.size.into());
+            env.set_bounds(size.into());
             env.set_align(align.unwrap_or(Align::Default, Align::Centre));
         });
     }
@@ -71,7 +79,8 @@ impl<M: Clone + Debug + 'static> MenuEntry<M> {
         MenuEntry {
             core: Default::default(),
             label: Text::new_single(label.into()),
-            label_off: Size::ZERO,
+            label_off: Offset::ZERO,
+            frame_size: Size::ZERO,
             msg,
         }
     }
@@ -94,10 +103,8 @@ impl<M: Clone + Debug + 'static> SetAccel for MenuEntry<M> {
         if self.label.text().keys() != string.keys() {
             action |= TkAction::RECONFIGURE;
         }
-        // NOTE: we assume here that top-left and bottom-right frame size is the
-        // same; if not then resizes may not happen exactly when required
-        let size = self.label_off + self.label_off;
-        action | kas::text::util::set_text_and_prepare(&mut self.label, string, size)
+        let avail = self.core.rect.size.clamped_sub(self.frame_size);
+        action | kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
     }
 }
 

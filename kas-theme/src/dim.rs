@@ -13,7 +13,7 @@ use std::f32;
 use kas::conv::{Cast, CastFloat, ConvFloat};
 use kas::draw::{self, TextClass};
 use kas::geom::{Size, Vec2};
-use kas::layout::{AxisInfo, Margins, SizeRules, StretchPolicy};
+use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, StretchPolicy};
 use kas::text::{TextApi, TextApiExt};
 
 /// Parameterisation of [`Dimensions`]
@@ -26,6 +26,8 @@ pub struct DimensionsParams {
     pub outer_margin: f32,
     /// Margin inside a frame before contents
     pub inner_margin: f32,
+    /// Margin between text elements
+    pub text_margin: f32,
     /// Frame size
     pub frame_size: f32,
     /// Button frame size (non-flat outer region)
@@ -50,6 +52,7 @@ pub struct Dimensions {
     pub ideal_line_length: i32,
     pub outer_margin: u16,
     pub inner_margin: u16,
+    pub text_margin: u16,
     pub frame: i32,
     pub button_frame: i32,
     pub checkbox: i32,
@@ -67,6 +70,7 @@ impl Dimensions {
 
         let outer_margin = (params.outer_margin * scale_factor).cast_nearest();
         let inner_margin = (params.inner_margin * scale_factor).cast_nearest();
+        let text_margin = (params.text_margin * scale_factor).cast_nearest();
         let frame = (params.frame_size * scale_factor).cast_nearest();
         Dimensions {
             scale_factor,
@@ -78,6 +82,7 @@ impl Dimensions {
             ideal_line_length: (24.0 * dpem).cast_nearest(),
             outer_margin,
             inner_margin,
+            text_margin,
             frame,
             button_frame: (params.button_frame * scale_factor).cast_nearest(),
             checkbox: i32::conv_nearest(9.0 * dpp) + 2 * (i32::from(inner_margin) + frame),
@@ -138,13 +143,18 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         self.dims.scale_factor
     }
 
-    fn frame(&self) -> Size {
-        let f = self.dims.frame;
-        Size::splat(f)
+    fn frame(&self, _vert: bool) -> FrameRules {
+        FrameRules::new_sym(self.dims.frame, 0, (0, 0))
     }
-    fn menu_frame(&self) -> Size {
-        let f = self.dims.frame;
-        Size::new(f, f / 2)
+    fn menu_frame(&self, vert: bool) -> FrameRules {
+        let mut size = self.dims.frame;
+        if vert {
+            size /= 2;
+        }
+        FrameRules::new_sym(size, 0, (0, 0))
+    }
+    fn separator(&self) -> Size {
+        Size::splat(self.dims.frame)
     }
 
     fn inner_margin(&self) -> Size {
@@ -183,10 +193,7 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             });
         });
 
-        let margin = match class {
-            TextClass::Label | TextClass::LabelFixed => self.dims.outer_margin,
-            TextClass::Button | TextClass::Edit | TextClass::EditMulti => self.dims.inner_margin,
-        };
+        let margin = self.dims.text_margin;
         let margins = (margin, margin);
         if axis.is_horizontal() {
             let bound = i32::conv_ceil(required.0);
@@ -227,14 +234,16 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         self.dims.font_marker_width
     }
 
-    fn button_surround(&self) -> (Size, Size) {
-        let s = Size::splat(self.dims.button_frame);
-        (s, s)
+    fn button_surround(&self, _vert: bool) -> FrameRules {
+        let inner = self.dims.inner_margin.into();
+        let outer = self.dims.outer_margin;
+        FrameRules::new_sym(self.dims.frame, inner, (outer, outer))
     }
 
-    fn edit_surround(&self) -> (Size, Size) {
-        let s = Size::splat(self.dims.frame + i32::from(self.dims.inner_margin));
-        (s, s)
+    fn edit_surround(&self, _vert: bool) -> FrameRules {
+        let inner = self.dims.inner_margin.into();
+        let outer = 0;
+        FrameRules::new_sym(self.dims.frame, inner, (outer, outer))
     }
 
     fn checkbox(&self) -> Size {
