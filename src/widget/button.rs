@@ -53,11 +53,7 @@ impl<M: 'static> Layout for TextButton<M> {
         let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
 
         let (rules, _offset, size) = frame_rules.surround(content_rules);
-        if axis.is_horizontal() {
-            self.frame_size.0 = size;
-        } else {
-            self.frame_size.1 = size;
-        }
+        self.frame_size.set_component(axis, size);
         rules
     }
 

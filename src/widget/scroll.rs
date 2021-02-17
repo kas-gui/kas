@@ -299,11 +299,7 @@ impl<W: Widget> WidgetConfig for ScrollRegion<W> {
 impl<W: Widget> Layout for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut rules = self.inner.size_rules(size_handle, axis);
-        if axis.is_horizontal() {
-            self.min_child_size.0 = rules.min_size();
-        } else {
-            self.min_child_size.1 = rules.min_size();
-        }
+        self.min_child_size.set_component(axis, rules.min_size());
         let line_height = size_handle.line_height(TextClass::Label);
         self.scroll.set_scroll_rate(3.0 * f32::conv(line_height));
         rules.reduce_min_to(line_height);

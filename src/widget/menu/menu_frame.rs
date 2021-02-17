@@ -37,15 +37,8 @@ impl<W: Widget> Layout for MenuFrame<W> {
         let frame_rules = size_handle.frame(axis.is_vertical());
         let child_rules = self.inner.size_rules(size_handle, axis);
         let (rules, offset, size) = frame_rules.surround(child_rules);
-
-        if axis.is_horizontal() {
-            self.offset.0 = offset;
-            self.size.0 = size;
-        } else {
-            self.offset.1 = offset;
-            self.size.1 = size;
-        }
-
+        self.offset.set_component(axis, offset);
+        self.size.set_component(axis, size);
         rules
     }
 
