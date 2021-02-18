@@ -86,6 +86,17 @@ macro_rules! impl_common {
                     true => self.1,
                 }
             }
+
+            /// Set one component of self, based on a direction
+            ///
+            /// This does not negate components when the direction is reversed.
+            #[inline]
+            pub fn set_component<D: Directional>(&mut self, dir: D, value: i32) {
+                match dir.is_vertical() {
+                    false => self.0 = value,
+                    true => self.1 = value,
+                }
+            }
         }
 
         impl From<(i32, i32)> for $T {

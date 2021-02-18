@@ -228,6 +228,10 @@ impl ScrollComponent {
 /// A scrollable region
 ///
 /// This region supports scrolling via mouse wheel and click/touch drag.
+///
+/// Scrollbars are not included; use [`ScrollBarRegion`] if you want those.
+///
+/// [`ScrollBarRegion`]: kas::widget::ScrollBarRegion
 #[widget(config=noauto)]
 #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
@@ -235,6 +239,8 @@ pub struct ScrollRegion<W: Widget> {
     #[widget_core]
     core: CoreData,
     min_child_size: Size,
+    offset: Offset,
+    frame_size: Size,
     scroll: ScrollComponent,
     #[widget]
     inner: W,
@@ -247,6 +253,8 @@ impl<W: Widget> ScrollRegion<W> {
         ScrollRegion {
             core: Default::default(),
             min_child_size: Size::ZERO,
+            offset: Default::default(),
+            frame_size: Default::default(),
             scroll: Default::default(),
             inner,
         }
@@ -299,23 +307,27 @@ impl<W: Widget> WidgetConfig for ScrollRegion<W> {
 impl<W: Widget> Layout for ScrollRegion<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut rules = self.inner.size_rules(size_handle, axis);
-        if axis.is_horizontal() {
-            self.min_child_size.0 = rules.min_size();
-        } else {
-            self.min_child_size.1 = rules.min_size();
-        }
+        self.min_child_size.set_component(axis, rules.min_size());
         let line_height = size_handle.line_height(TextClass::Label);
         self.scroll.set_scroll_rate(3.0 * f32::conv(line_height));
         rules.reduce_min_to(line_height);
+
+        // We use a zero-sized frame to push any margins inside the scroll-region.
+        let frame = FrameRules::new(0, 0, 0, (0, 0));
+        let (rules, offset, size) = frame.surround(rules);
+        self.offset.set_component(axis, offset);
+        self.frame_size.set_component(axis, size);
         rules
     }
 
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
-        let child_size = rect.size.max(self.min_child_size);
-        let child_rect = Rect::new(rect.pos, child_size);
+        let child_size = (rect.size - self.frame_size).max(self.min_child_size);
+        let child_rect = Rect::new(rect.pos + self.offset, child_size);
         self.inner.set_rect(mgr, child_rect, align);
-        let _ = self.scroll.set_sizes(rect.size, child_size);
+        let _ = self
+            .scroll
+            .set_sizes(rect.size, child_size + self.frame_size);
     }
 
     #[inline]

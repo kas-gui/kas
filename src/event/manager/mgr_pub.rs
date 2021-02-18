@@ -495,6 +495,19 @@ impl<'a> Manager<'a> {
         true
     }
 
+    /// Update the mouse cursor used during a grab
+    ///
+    /// This only succeeds if widget `id` has an active mouse-grab (see
+    /// [`Manager::request_grab`]). The cursor will be reset when the mouse-grab
+    /// ends.
+    pub fn update_grab_cursor(&mut self, id: WidgetId, icon: CursorIcon) {
+        if let Some(ref grab) = self.state.mouse_grab {
+            if grab.start_id == id {
+                self.shell.set_cursor_icon(icon);
+            }
+        }
+    }
+
     /// Set a grab's depress target
     ///
     /// When a grab on mouse or touch input is in effect

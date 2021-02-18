@@ -26,7 +26,7 @@ pub use kas::event::{Event, Handler, Manager, ManagerState, Response, SendEvent,
 #[doc(no_inline)]
 pub use kas::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
-pub use kas::layout::{Align, AlignHints, AxisInfo, Margins, SizeRules, StretchPolicy};
+pub use kas::layout::{Align, AlignHints, AxisInfo, FrameRules, Margins, SizeRules, StretchPolicy};
 #[doc(no_inline)]
 pub use kas::macros::*;
 #[doc(no_inline)]

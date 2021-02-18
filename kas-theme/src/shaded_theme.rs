@@ -289,6 +289,10 @@ where
             .shaded_round_frame(self.pass, outer, inner, norm, col);
     }
 
+    fn selection_box(&mut self, rect: Rect) {
+        self.as_flat().selection_box(rect);
+    }
+
     fn text_offset(
         &mut self,
         pos: Coord,
