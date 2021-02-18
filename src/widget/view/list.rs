@@ -6,11 +6,12 @@
 //! List view widget
 
 use super::{Accessor, DefaultView, ViewWidget};
-use kas::event::{CursorIcon, GrabMode};
+use kas::event::{CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::text::Range;
 use kas::widget::{ScrollComponent, ScrollWidget};
+use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::convert::TryFrom;
 use std::time::Instant;
@@ -45,6 +46,10 @@ pub struct ListView<
     child_skip: i32,
     child_size: Size,
     scroll: ScrollComponent,
+    // TODO(opt): replace selection list with RangeOrSet type?
+    selection: LinearSet<u32>,
+    press_event: Option<PressSource>,
+    press_target: u32,
 }
 
 impl<D: Directional + Default, A: Accessor<usize>, W: ViewWidget<A::Item>> ListView<D, A, W>
@@ -74,6 +79,9 @@ where
             child_skip: 0,
             child_size: Size::ZERO,
             scroll: Default::default(),
+            selection: Default::default(),
+            press_event: None,
+            press_target: 0,
         }
     }
 }
@@ -100,6 +108,9 @@ where
             child_skip: 0,
             child_size: Size::ZERO,
             scroll: Default::default(),
+            selection: Default::default(),
+            press_event: None,
+            press_target: 0,
         }
     }
 
@@ -113,6 +124,16 @@ where
     /// It may be necessary to use [`ListView::update_view`] to update the view of this data.
     pub fn data_mut(&mut self) -> &mut A {
         &mut self.data
+    }
+
+    /// Read the list of selected entries
+    pub fn selected_iter<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
+        self.selection.iter().map(|v| (*v).cast())
+    }
+
+    /// Check whether an entry is selected
+    pub fn is_selected(&self, index: usize) -> bool {
+        self.selection.contains(&index.cast())
     }
 
     /// Manually trigger an update to handle changed data
@@ -166,6 +187,7 @@ where
             if all || (data_num < old_start || data_num >= old_end) {
                 let w = &mut self.widgets[data_num % w_len];
                 action |= w.set(self.data.get(data_num));
+                action |= TkAction::REGION_MOVED; // widget moved
                 rect.pos = pos_start + skip * i32::conv(data_num);
                 w.set_rect(mgr, rect, self.align_hints);
             }
@@ -353,6 +375,7 @@ where
             return None;
         }
 
+        let coord = coord + self.scroll.offset();
         for child in &self.widgets[..self.data_range.len()] {
             if let Some(id) = child.find_id(coord) {
                 return Some(id);
@@ -374,8 +397,7 @@ where
                 if d < self.data_range.start() {
                     d += w_len;
                 }
-                let selected = d < 4; // TODO
-                if selected {
+                if self.is_selected(d) {
                     draw_handle.selection_box(child.rect());
                 }
             }
@@ -394,28 +416,61 @@ where
 
         let event = if id < self.id() {
             let response = 'outer: loop {
-                for child in &mut self.widgets[..self.data_range.len()] {
+                for (i, child) in self.widgets[..self.data_range.len()].iter_mut().enumerate() {
                     if id <= child.id() {
                         let event = self.scroll.offset_event(event);
-                        break 'outer child.send(mgr, id, event);
+                        break 'outer (i, child.send(mgr, id, event));
                     }
                 }
+                debug_assert!(false, "SendEvent::send: bad WidgetId");
                 return Response::Unhandled(event);
             };
             match response {
-                Response::Unhandled(event) => event,
-                Response::Focus(rect) => {
+                (i, Response::Unhandled(event)) => {
+                    if let Event::PressStart { source, coord, .. } = event {
+                        if source.is_primary() {
+                            // We request a grab with our ID, hence the
+                            // PressMove/PressEnd events are matched below.
+                            if mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None) {
+                                self.press_event = Some(source);
+                                let w_len = self.widgets.len();
+                                let start = (self.data_range.start() / w_len) * w_len;
+                                let mut d = start + i;
+                                if d < self.data_range.start() {
+                                    d += w_len;
+                                }
+                                self.press_target = d.cast();
+                            }
+                            return Response::None;
+                        }
+                    }
+                    event
+                }
+                (_, Response::Focus(rect)) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                     *mgr |= action;
                     self.update_widgets(mgr, false);
                     return Response::Focus(rect);
                 }
-                r => return r,
+                (_, r) => return r,
             }
         } else {
+            debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
             match event {
                 Event::HandleUpdate { .. } => {
                     self.update_view(mgr);
+                    return Response::None;
+                }
+                Event::PressMove { source, .. } if self.press_event == Some(source) => {
+                    self.press_event = None;
+                    mgr.update_grab_cursor(self.id(), CursorIcon::Grabbing);
+                    event // fall through to scroll handler
+                }
+                Event::PressEnd { source, .. } if self.press_event == Some(source) => {
+                    self.press_event = None;
+                    if !self.selection.remove(&self.press_target) {
+                        self.selection.insert(self.press_target);
+                    }
                     return Response::None;
                 }
                 event => event,
