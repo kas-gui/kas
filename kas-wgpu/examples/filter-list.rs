@@ -6,9 +6,10 @@
 //! Filter list example
 
 use kas::dir::Down;
+use kas::event::UpdateHandle;
 use kas::prelude::*;
-use kas::widget::view::{Accessor, ListView, SimpleCaseInsensitiveFilter};
-use kas::widget::{EditBox, ScrollBars, Window};
+use kas::widget::view::{Accessor, ListView, SelectionMode, SimpleCaseInsensitiveFilter};
+use kas::widget::{EditBox, Label, RadioBox, ScrollBars, Window};
 
 #[cfg(not(feature = "generator"))]
 mod data {
@@ -89,6 +90,18 @@ mod data {
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
+    let r = UpdateHandle::new();
+    let selection_mode = make_widget! {
+        #[layout(right)]
+        #[handler(msg = SelectionMode)]
+        struct {
+            #[widget] _ = Label::new("Selection:"),
+            #[widget] _ = RadioBox::new_msg("none", r, SelectionMode::None).with_state(true),
+            #[widget] _ = RadioBox::new_msg("single", r, SelectionMode::Single),
+            #[widget] _ = RadioBox::new_msg("multiple", r, SelectionMode::Multiple),
+        }
+    };
+
     let data = data::get();
     println!("filter-list: {} entries", data.borrow().len());
     let data2 = data.clone();
@@ -98,6 +111,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[layout(down)]
             #[handler(msg = VoidMsg)]
             struct {
+                #[widget(handler = set_selection_mode)] _ = selection_mode,
                 #[widget] filter = EditBox::new("").on_edit(move |text, mgr| {
                     let update = data2
                         .borrow_mut()
@@ -105,7 +119,18 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     mgr.trigger_update(update, 0);
                     None
                 }),
-                #[widget] list = ScrollBars::new(ListView::<Down, data::Shared>::new(data)),
+                #[widget] list: ScrollBars<ListView<Down, data::Shared>> =
+                    ScrollBars::new(ListView::new(data)),
+            }
+            impl {
+                fn set_selection_mode(
+                    &mut self,
+                    mgr: &mut Manager,
+                    mode: SelectionMode
+                ) -> Response<VoidMsg> {
+                    *mgr |= self.list.set_selection_mode(mode);
+                    Response::None
+                }
             }
         },
     );

@@ -16,6 +16,19 @@ use log::{debug, trace};
 use std::convert::TryFrom;
 use std::time::Instant;
 
+/// Selection mode used by [`ListView`]
+#[derive(Clone, Copy, Debug, VoidMsg)]
+pub enum SelectionMode {
+    None,
+    Single,
+    Multiple,
+}
+impl Default for SelectionMode {
+    fn default() -> Self {
+        SelectionMode::None
+    }
+}
+
 // TODO: do we need to keep the A::Item: Default bound used by allocate?
 
 /// List view widget
@@ -46,6 +59,7 @@ pub struct ListView<
     child_skip: i32,
     child_size: Size,
     scroll: ScrollComponent,
+    sel_mode: SelectionMode,
     // TODO(opt): replace selection list with RangeOrSet type?
     selection: LinearSet<u32>,
     press_event: Option<PressSource>,
@@ -79,6 +93,7 @@ where
             child_skip: 0,
             child_size: Size::ZERO,
             scroll: Default::default(),
+            sel_mode: SelectionMode::None,
             selection: Default::default(),
             press_event: None,
             press_target: 0,
@@ -108,6 +123,7 @@ where
             child_skip: 0,
             child_size: Size::ZERO,
             scroll: Default::default(),
+            sel_mode: SelectionMode::None,
             selection: Default::default(),
             press_event: None,
             press_target: 0,
@@ -126,7 +142,37 @@ where
         &mut self.data
     }
 
+    /// Get the current selection mode
+    pub fn selection_mode(&self) -> SelectionMode {
+        self.sel_mode
+    }
+    /// Set the current selection mode
+    pub fn set_selection_mode(&mut self, mode: SelectionMode) -> TkAction {
+        self.sel_mode = mode;
+        match mode {
+            SelectionMode::None if !self.selection.is_empty() => {
+                self.selection.clear();
+                TkAction::REDRAW
+            }
+            SelectionMode::Single if self.selection.len() > 1 => {
+                if let Some(first) = self.selection.iter().next().cloned() {
+                    self.selection.retain(|item| *item == first);
+                }
+                TkAction::REDRAW
+            }
+            _ => TkAction::empty(),
+        }
+    }
+    /// Set the selection mode (inline)
+    pub fn with_selection_mode(mut self, mode: SelectionMode) -> Self {
+        let _ = self.set_selection_mode(mode);
+        self
+    }
+
     /// Read the list of selected entries
+    ///
+    /// With mode [`SelectionMode::Single`] this may contain zero or one entry;
+    /// use `selected_iter().next()` to extract only the first (optional) entry.
     pub fn selected_iter<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
         self.selection.iter().map(|v| (*v).cast())
     }
@@ -468,8 +514,17 @@ where
                 }
                 Event::PressEnd { source, .. } if self.press_event == Some(source) => {
                     self.press_event = None;
-                    if !self.selection.remove(&self.press_target) {
-                        self.selection.insert(self.press_target);
+                    match self.sel_mode {
+                        SelectionMode::None => (),
+                        SelectionMode::Single => {
+                            self.selection.clear();
+                            self.selection.insert(self.press_target);
+                        }
+                        SelectionMode::Multiple => {
+                            if !self.selection.remove(&self.press_target) {
+                                self.selection.insert(self.press_target);
+                            }
+                        }
                     }
                     return Response::None;
                 }
