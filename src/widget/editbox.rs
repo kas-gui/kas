@@ -380,6 +380,19 @@ impl<G: EditGuard> HasString for EditBox<G> {
     }
 }
 
+impl<G: EditGuard> std::ops::Deref for EditBox<G> {
+    type Target = EditField<G>;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<G: EditGuard> std::ops::DerefMut for EditBox<G> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
 /// A text-edit field (single- or multi-line)
 ///
 /// Usually one uses a derived type like [`EditBox`] instead. This field does
