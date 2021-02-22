@@ -18,7 +18,7 @@ mod single;
 pub use filter::{Filter, FilterAccessor, SimpleCaseInsensitiveFilter};
 pub use list::{ListView, SelectionMode};
 pub use shared::{Accessor, AccessorShared, SharedConst, SharedRc};
-pub use single::SingleView;
+pub use single::{SingleData, SingleDataMut, SingleView};
 
 /// View widgets
 ///

@@ -5,6 +5,7 @@
 
 //! Shared data for view widgets
 
+use super::{SingleData, SingleDataMut};
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
@@ -191,9 +192,26 @@ impl<T: Clone + Debug + 'static> Accessor<()> for SharedRc<T> {
         Some(self.handle)
     }
 }
-
 impl<T: Clone + Debug + 'static> AccessorShared<()> for SharedRc<T> {
     fn set(&self, _: (), value: T) -> UpdateHandle {
+        *self.data.borrow_mut() = value;
+        self.handle
+    }
+}
+
+impl<T: Clone + Debug + 'static> SingleData for SharedRc<T> {
+    type Item = T;
+
+    fn get_cloned(&self) -> Self::Item {
+        self.data.borrow().to_owned()
+    }
+
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        Some(self.handle)
+    }
+}
+impl<T: Clone + Debug + 'static> SingleDataMut for SharedRc<T> {
+    fn set(&self, value: Self::Item) -> UpdateHandle {
         *self.data.borrow_mut() = value;
         self.handle
     }
