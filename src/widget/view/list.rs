@@ -29,6 +29,12 @@ impl Default for SelectionMode {
     }
 }
 
+#[derive(Clone, Debug, Default)]
+struct WidgetData<W> {
+    index: usize,
+    widget: W,
+}
+
 // TODO: do we need to keep the A::Item: Default bound used by allocate?
 
 /// List view widget
@@ -48,7 +54,7 @@ pub struct ListView<
     offset: Offset,
     frame_size: Size,
     data: A,
-    widgets: Vec<W>,
+    widgets: Vec<WidgetData<W>>,
     direction: D,
     data_range: Range,
     align_hints: AlignHints,
@@ -232,10 +238,11 @@ where
         for data_num in data_range.clone() {
             if all || (data_num < old_start || data_num >= old_end) {
                 let w = &mut self.widgets[data_num % w_len];
-                action |= w.set(self.data.get(data_num));
+                w.index = data_num;
+                action |= w.widget.set(self.data.get(data_num));
                 action |= TkAction::REGION_MOVED; // widget moved
                 rect.pos = pos_start + skip * i32::conv(data_num);
-                w.set_rect(mgr, rect, self.align_hints);
+                w.widget.set_rect(mgr, rect, self.align_hints);
             }
         }
         *mgr |= action;
@@ -297,11 +304,13 @@ where
     }
     #[inline]
     fn get_child(&self, index: usize) -> Option<&dyn WidgetConfig> {
-        self.widgets.get(index).map(|w| w.as_widget())
+        self.widgets.get(index).map(|w| w.widget.as_widget())
     }
     #[inline]
     fn get_child_mut(&mut self, index: usize) -> Option<&mut dyn WidgetConfig> {
-        self.widgets.get_mut(index).map(|w| w.as_widget_mut())
+        self.widgets
+            .get_mut(index)
+            .map(|w| w.widget.as_widget_mut())
     }
 }
 
@@ -327,13 +336,13 @@ where
         let frame = FrameRules::new_sym(0, inner_margin, (0, 0));
 
         if self.widgets.is_empty() {
-            if self.data.len() > 0 {
-                self.widgets.push(W::new(self.data.get(0)));
-            } else {
-                self.widgets.push(W::default());
-            }
+            let index = 0;
+            let widget = (self.data.len() > 0)
+                .then(|| W::new(self.data.get(index)))
+                .unwrap_or_else(|| W::default());
+            self.widgets.push(WidgetData { index, widget });
         }
-        let mut rules = self.widgets[0].size_rules(size_handle, axis);
+        let mut rules = self.widgets[0].widget.size_rules(size_handle, axis);
         if axis.is_vertical() == self.direction.is_vertical() {
             self.child_size_min = rules.min_size();
             self.child_size_ideal = rules.ideal_size();
@@ -393,11 +402,16 @@ where
             *mgr |= TkAction::RECONFIGURE;
             self.widgets.reserve(num);
             mgr.size_handle(|size_handle| {
-                for i in old_num..num {
-                    let mut w = W::new(self.data.get(i));
+                for index in old_num..num {
+                    let mut widget = W::new(self.data.get(index));
                     // We must solve size rules on new widgets:
-                    solve_size_rules(&mut w, size_handle, Some(child_size.0), Some(child_size.1));
-                    self.widgets.push(w);
+                    solve_size_rules(
+                        &mut widget,
+                        size_handle,
+                        Some(child_size.0),
+                        Some(child_size.1),
+                    );
+                    self.widgets.push(WidgetData { index, widget });
                 }
             });
         } else if num + 64 <= old_num {
@@ -423,7 +437,7 @@ where
 
         let coord = coord + self.scroll.offset();
         for child in &self.widgets[..self.data_range.len()] {
-            if let Some(id) = child.find_id(coord) {
+            if let Some(id) = child.widget.find_id(coord) {
                 return Some(id);
             }
         }
@@ -434,17 +448,11 @@ where
         let disabled = disabled || self.is_disabled();
         let offset = self.scroll_offset();
         use kas::draw::ClipRegion::Scroll;
-        let w_len = self.widgets.len();
-        let start = (self.data_range.start() / w_len) * w_len;
         draw_handle.clip_region(self.core.rect, offset, Scroll, &mut |draw_handle| {
-            for (i, child) in self.widgets[..self.data_range.len()].iter().enumerate() {
-                child.draw(draw_handle, mgr, disabled);
-                let mut d = start + i;
-                if d < self.data_range.start() {
-                    d += w_len;
-                }
-                if self.is_selected(d) {
-                    draw_handle.selection_box(child.rect());
+            for child in &self.widgets[..self.data_range.len()] {
+                child.widget.draw(draw_handle, mgr, disabled);
+                if self.is_selected(child.index) {
+                    draw_handle.selection_box(child.widget.rect());
                 }
             }
         });
@@ -462,30 +470,24 @@ where
 
         let event = if id < self.id() {
             let response = 'outer: loop {
-                for (i, child) in self.widgets[..self.data_range.len()].iter_mut().enumerate() {
-                    if id <= child.id() {
+                for child in &mut self.widgets[..self.data_range.len()] {
+                    if id <= child.widget.id() {
                         let event = self.scroll.offset_event(event);
-                        break 'outer (i, child.send(mgr, id, event));
+                        break 'outer (child.index, child.widget.send(mgr, id, event));
                     }
                 }
                 debug_assert!(false, "SendEvent::send: bad WidgetId");
                 return Response::Unhandled(event);
             };
             match response {
-                (i, Response::Unhandled(event)) => {
+                (index, Response::Unhandled(event)) => {
                     if let Event::PressStart { source, coord, .. } = event {
                         if source.is_primary() {
                             // We request a grab with our ID, hence the
                             // PressMove/PressEnd events are matched below.
                             if mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None) {
                                 self.press_event = Some(source);
-                                let w_len = self.widgets.len();
-                                let start = (self.data_range.start() / w_len) * w_len;
-                                let mut d = start + i;
-                                if d < self.data_range.start() {
-                                    d += w_len;
-                                }
-                                self.press_target = d.cast();
+                                self.press_target = index.cast();
                             }
                             return Response::None;
                         }
