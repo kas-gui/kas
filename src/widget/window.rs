@@ -15,8 +15,8 @@ use kas::prelude::*;
 use kas::{Future, WindowId};
 
 /// The main instantiation of the [`Window`] trait.
-#[handler(send=noauto, generics = <> where W: Widget<Msg = VoidMsg>)]
 #[derive(Widget)]
+#[handler(send=noauto, generics = <> where W: Widget<Msg = VoidMsg>)]
 pub struct Window<W: Widget + 'static> {
     #[widget_core]
     core: CoreData,

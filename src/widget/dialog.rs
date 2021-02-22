@@ -20,9 +20,9 @@ enum DialogButton {
 }
 
 /// A simple message box.
+#[derive(Clone, Debug, Widget)]
 #[layout(column)]
 #[widget(config=noauto)]
-#[derive(Clone, Debug, Widget)]
 pub struct MessageBox<T: FormattableText + 'static> {
     #[widget_core]
     core: CoreData,

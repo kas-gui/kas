@@ -14,8 +14,8 @@ use kas::{event, prelude::*};
 /// A separator
 ///
 /// This widget draws a bar when in a list.
-#[handler(msg=M)]
 #[derive(Clone, Debug, Default, Widget)]
+#[handler(msg=M)]
 pub struct Separator<M: Debug + 'static> {
     #[widget_core]
     core: CoreData,

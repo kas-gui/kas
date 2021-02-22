@@ -60,9 +60,9 @@ impl EditGuard for ListEntryGuard {
 // activating any RadioBox sends a message to all others using the same
 // UpdateHandle, which is quite slow with thousands of entries!
 // (This issue does not occur when RadioBoxes are independent.)
+#[derive(Clone, Debug, Widget)]
 #[layout(column)]
 #[handler(msg=EntryMsg)]
-#[derive(Clone, Debug, Widget)]
 struct ListEntry {
     #[widget_core]
     core: CoreData,

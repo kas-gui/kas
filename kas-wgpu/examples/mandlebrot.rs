@@ -371,9 +371,9 @@ impl PipeWindow {
     }
 }
 
+#[derive(Clone, Debug, kas :: macros :: Widget)]
 #[widget(config=noauto)]
 #[handler(handle=noauto)]
-#[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Mandlebrot {
     #[widget_core]
     core: kas::CoreData,
@@ -521,9 +521,9 @@ impl event::Handler for Mandlebrot {
     }
 }
 
+#[derive(Debug, Widget)]
 #[layout(grid)]
 #[handler(msg = event::VoidMsg)]
-#[derive(Debug, Widget)]
 struct MandlebrotWindow {
     #[widget_core]
     core: CoreData,

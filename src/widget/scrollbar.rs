@@ -14,8 +14,8 @@ use kas::{event, prelude::*};
 ///
 /// Scroll bars allow user-input of a value between 0 and a defined maximum,
 /// and allow the size of the handle to be specified.
-#[handler(send=noauto, msg = i32)]
 #[derive(Clone, Debug, Default, Widget)]
+#[handler(send=noauto, msg = i32)]
 pub struct ScrollBar<D: Directional> {
     #[widget_core]
     core: CoreData,
@@ -313,9 +313,9 @@ pub type ScrollBarRegion<W> = ScrollBars<ScrollRegion<W>>;
 /// the result looks poor when content is scrolled. Instead the content should
 /// force internal margins by wrapping contents with a (zero-sized) frame.
 /// [`ScrollRegion`] already does this.
+#[derive(Clone, Debug, Default, Widget)]
 #[widget(config=noauto)]
 #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
-#[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollBars<W: ScrollWidget> {
     #[widget_core]
     core: CoreData,

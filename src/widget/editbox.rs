@@ -393,9 +393,9 @@ impl<G: EditGuard> HasString for EditBox<G> {
 /// Optionally, [`EditField::multi_line`] mode can be activated (enabling
 /// line-wrapping and a larger vertical height). This mode is only recommended
 /// for short texts for performance reasons.
+#[derive(Clone, Default, Debug, Widget)]
 #[widget(config(key_nav = true, cursor_icon = event::CursorIcon::Text))]
 #[handler(handle=noauto, generics = <> where G: EditGuard)]
-#[derive(Clone, Default, Debug, Widget)]
 pub struct EditField<G: EditGuard = ()> {
     #[widget_core]
     core: CoreData,

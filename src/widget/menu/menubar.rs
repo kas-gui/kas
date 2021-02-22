@@ -18,8 +18,8 @@ const DELAY: Duration = Duration::from_millis(200);
 ///
 /// This widget houses a sequence of menu buttons, allowing input actions across
 /// menus.
-#[handler(noauto)]
 #[derive(Clone, Debug, Widget)]
+#[handler(noauto)]
 pub struct MenuBar<D: Directional, W: Menu> {
     #[widget_core]
     core: CoreData,

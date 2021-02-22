@@ -11,8 +11,8 @@ use kas::{event, prelude::*};
 ///
 /// This widget provides a simple abstraction: drawing a frame around its
 /// contents.
-#[handler(msg = <W as Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
+#[handler(msg = <W as Handler>::Msg)]
 pub struct Frame<W: Widget> {
     #[widget_core]
     core: CoreData,

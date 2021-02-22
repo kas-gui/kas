@@ -40,9 +40,9 @@ impl EditGuard for Guard {
     }
 }
 
+#[derive(Debug, Widget)]
 #[layout(grid)]
 #[handler(msg = VoidMsg)]
-#[derive(Debug, Widget)]
 struct TextEditPopup {
     #[widget_core]
     core: CoreData,

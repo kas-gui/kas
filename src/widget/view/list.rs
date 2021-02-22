@@ -32,9 +32,9 @@ impl Default for SelectionMode {
 // TODO: do we need to keep the A::Item: Default bound used by allocate?
 
 /// List view widget
+#[derive(Clone, Debug, Widget)]
 #[handler(send=noauto, msg=<W as Handler>::Msg)]
 #[widget(children=noauto, config=noauto)]
-#[derive(Clone, Debug, Widget)]
 pub struct ListView<
     D: Directional,
     A: Accessor<usize>,

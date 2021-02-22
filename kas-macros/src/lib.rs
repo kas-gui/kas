@@ -574,9 +574,9 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // TODO: we should probably not rely on recursive macro expansion here!
     // (I.e. use direct code generation for Widget derivation, instead of derive.)
     let toks = (quote! { {
+        #[derive(Debug, kas::macros::Widget)]
         #handler
         #extra_attrs
-        #[derive(Debug, kas::macros::Widget)]
         struct AnonWidget #impl_generics #where_clause {
             #field_toks
         }

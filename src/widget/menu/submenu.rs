@@ -13,9 +13,9 @@ use kas::widget::Column;
 use kas::WindowId;
 
 /// A sub-menu
+#[derive(Clone, Debug, Widget)]
 #[widget(config=noauto)]
 #[handler(noauto)]
-#[derive(Clone, Debug, Widget)]
 pub struct SubMenu<D: Directional, W: Menu> {
     #[widget_core]
     core: CoreData,

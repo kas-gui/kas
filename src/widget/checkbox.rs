@@ -12,9 +12,9 @@ use super::AccelLabel;
 use kas::{event, prelude::*};
 
 /// A bare checkbox (no label)
+#[derive(Clone, Default, Widget)]
 #[widget(config(key_nav = true))]
 #[handler(handle=noauto)]
-#[derive(Clone, Default, Widget)]
 pub struct CheckBoxBare<M: 'static> {
     #[widget_core]
     core: CoreData,
@@ -141,10 +141,10 @@ impl<M: 'static> event::Handler for CheckBoxBare<M> {
 
 /// A checkable box with optional label
 // TODO: use a generic wrapper for CheckBox and RadioBox?
+#[derive(Clone, Default, Widget)]
 #[layout(row, area=checkbox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[widget(config=noauto)]
-#[derive(Clone, Default, Widget)]
 pub struct CheckBox<M: 'static> {
     #[widget_core]
     core: CoreData,

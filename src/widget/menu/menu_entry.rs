@@ -16,9 +16,9 @@ use kas::prelude::*;
 use kas::widget::{AccelLabel, CheckBoxBare};
 
 /// A standard menu entry
+#[derive(Clone, Debug, Default, Widget)]
 #[widget(config=noauto)]
 #[handler(handle=noauto)]
-#[derive(Clone, Debug, Default, Widget)]
 pub struct MenuEntry<M: Clone + Debug + 'static> {
     #[widget_core]
     core: kas::CoreData,
@@ -117,9 +117,9 @@ impl<M: Clone + Debug + 'static> event::Handler for MenuEntry<M> {
 impl<M: Clone + Debug> Menu for MenuEntry<M> {}
 
 /// A menu entry which can be toggled
+#[derive(Clone, Default, Widget)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[widget(config=noauto)]
-#[derive(Clone, Default, Widget)]
 pub struct MenuToggle<M: 'static> {
     #[widget_core]
     core: CoreData,

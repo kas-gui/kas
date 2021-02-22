@@ -15,9 +15,9 @@ use kas::event::{self, UpdateHandle};
 use kas::prelude::*;
 
 /// A bare radiobox (no label)
+#[derive(Clone, Widget)]
 #[handler(handle=noauto)]
 #[widget(config=noauto)]
-#[derive(Clone, Widget)]
 pub struct RadioBoxBare<M: 'static> {
     #[widget_core]
     core: CoreData,
@@ -176,10 +176,10 @@ impl<M: 'static> HasBool for RadioBoxBare<M> {
 }
 
 /// A radiobox with optional label
+#[derive(Clone, Widget)]
 #[layout(row, area=radiobox)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[widget(config=noauto)]
-#[derive(Clone, Widget)]
 pub struct RadioBox<M: 'static> {
     #[widget_core]
     core: CoreData,

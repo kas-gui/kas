@@ -15,9 +15,9 @@ use kas::prelude::*;
 use kas::WindowId;
 
 /// A pop-up multiple choice menu
+#[derive(Clone, Debug, Widget)]
 #[widget(config(key_nav = true))]
 #[handler(noauto)]
-#[derive(Clone, Debug, Widget)]
 pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
     core: CoreData,
@@ -372,9 +372,9 @@ impl<M: Clone + Debug + 'static> event::SendEvent for ComboBox<M> {
     }
 }
 
+#[derive(Clone, Debug, Widget)]
 #[layout(single)]
 #[handler(msg=u64)]
-#[derive(Clone, Debug, Widget)]
 struct ComboPopup {
     #[widget_core]
     core: CoreData,
