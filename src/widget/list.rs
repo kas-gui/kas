@@ -86,9 +86,9 @@ pub type RefList<'a, D, M> = List<D, &'a mut dyn Widget<Msg = M>>;
 /// children.
 ///
 /// [`make_widget`]: ../macros/index.html#the-make_widget-macro
-#[handler(send=noauto, msg=<W as event::Handler>::Msg)]
-#[widget(children=noauto)]
 #[derive(Clone, Default, Debug, Widget)]
+#[handler(send=noauto, msg=(usize, <W as event::Handler>::Msg))]
+#[widget(children=noauto)]
 pub struct List<D: Directional, W: Widget> {
     first_id: WidgetId,
     #[widget_core]
@@ -176,9 +176,13 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
 impl<D: Directional, W: Widget> event::SendEvent for List<D, W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if !self.is_disabled() {
-            for child in &mut self.widgets {
+            for (i, child) in self.widgets.iter_mut().enumerate() {
                 if id <= child.id() {
-                    return child.send(mgr, id, event);
+                    let r = child.send(mgr, id, event);
+                    return match Response::try_from(r) {
+                        Ok(r) => r,
+                        Err(msg) => Response::Msg((i, msg)),
+                    };
                 }
             }
         }

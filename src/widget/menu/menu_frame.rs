@@ -8,8 +8,8 @@
 use kas::{event, prelude::*};
 
 /// A frame around content, plus background
-#[handler(msg = <W as Handler>::Msg)]
 #[derive(Clone, Debug, Default, Widget)]
+#[handler(msg = <W as Handler>::Msg)]
 pub struct MenuFrame<W: Widget> {
     #[widget_core]
     core: CoreData,

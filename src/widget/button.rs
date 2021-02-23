@@ -13,9 +13,9 @@ use kas::event::{self, VirtualKeyCode, VirtualKeyCodes};
 use kas::prelude::*;
 
 /// A push-button with a text label
+#[derive(Clone, Widget)]
 #[handler(handle=noauto)]
 #[widget(config=noauto)]
-#[derive(Clone, Widget)]
 pub struct TextButton<M: 'static> {
     #[widget_core]
     core: kas::CoreData,

@@ -380,6 +380,19 @@ impl<G: EditGuard> HasString for EditBox<G> {
     }
 }
 
+impl<G: EditGuard> std::ops::Deref for EditBox<G> {
+    type Target = EditField<G>;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<G: EditGuard> std::ops::DerefMut for EditBox<G> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
 /// A text-edit field (single- or multi-line)
 ///
 /// Usually one uses a derived type like [`EditBox`] instead. This field does
@@ -393,9 +406,9 @@ impl<G: EditGuard> HasString for EditBox<G> {
 /// Optionally, [`EditField::multi_line`] mode can be activated (enabling
 /// line-wrapping and a larger vertical height). This mode is only recommended
 /// for short texts for performance reasons.
+#[derive(Clone, Default, Debug, Widget)]
 #[widget(config(key_nav = true, cursor_icon = event::CursorIcon::Text))]
 #[handler(handle=noauto, generics = <> where G: EditGuard)]
-#[derive(Clone, Default, Debug, Widget)]
 pub struct EditField<G: EditGuard = ()> {
     #[widget_core]
     core: CoreData,

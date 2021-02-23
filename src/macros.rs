@@ -56,9 +56,9 @@
 //! ```
 //! use kas::{event, prelude::*};
 //!
+//! #[derive(Clone, Debug, Widget)]
 //! #[layout(single)]
 //! #[handler(generics = <> where W: Widget<Msg = event::VoidMsg>)]
-//! #[derive(Clone, Debug, Widget)]
 //! struct WrapperWidget<W: Widget> {
 //!     #[widget_core] core: CoreData,
 //!     #[widget] child: W,
@@ -201,9 +201,9 @@
 //! ```
 //! # use kas::macros::Widget;
 //! # use kas::{CoreData, Layout, Widget, event::Handler};
+//! #[derive(Clone, Debug, Default, Widget)]
 //! #[layout(single)]
 //! #[handler(msg = <W as Handler>::Msg, generics = <> where W: Layout)]
-//! #[derive(Clone, Debug, Default, Widget)]
 //! pub struct Frame<W: Widget> {
 //!     #[widget_core]
 //!     core: CoreData,
@@ -253,9 +253,9 @@
 //! #[derive(Debug)]
 //! enum ChildMessage { A }
 //!
+//! #[derive(Debug, Widget)]
 //! #[layout(column)]
 //! #[handler(generics = <> where W: Widget<Msg = ChildMessage>)]
-//! #[derive(Debug, Widget)]
 //! struct MyWidget<W: Widget> {
 //!     #[widget_core] core: CoreData,
 //!     #[layout_data] layout_data: <Self as LayoutData>::Data,

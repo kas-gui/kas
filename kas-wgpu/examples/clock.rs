@@ -19,9 +19,9 @@ use kas::widget::Window;
 use kas::{event, prelude::*};
 use kas_wgpu::draw::DrawWindow;
 
+#[derive(Clone, Debug, kas :: macros :: Widget)]
 #[handler(handle=noauto)]
 #[widget(config = noauto)]
-#[derive(Clone, Debug, kas :: macros :: Widget)]
 struct Clock {
     #[widget_core]
     core: kas::CoreData,

@@ -232,9 +232,9 @@ impl ScrollComponent {
 /// Scrollbars are not included; use [`ScrollBarRegion`] if you want those.
 ///
 /// [`ScrollBarRegion`]: kas::widget::ScrollBarRegion
+#[derive(Clone, Debug, Default, Widget)]
 #[widget(config=noauto)]
 #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
-#[derive(Clone, Debug, Default, Widget)]
 pub struct ScrollRegion<W: Widget> {
     #[widget_core]
     core: CoreData,

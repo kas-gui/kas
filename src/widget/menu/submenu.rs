@@ -13,9 +13,9 @@ use kas::widget::Column;
 use kas::WindowId;
 
 /// A sub-menu
+#[derive(Clone, Debug, Widget)]
 #[widget(config=noauto)]
 #[handler(noauto)]
-#[derive(Clone, Debug, Widget)]
 pub struct SubMenu<D: Directional, W: Menu> {
     #[widget_core]
     core: CoreData,
@@ -189,6 +189,8 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
             }
 
             match r {
+                Response::None => Response::None,
+                Response::Focus(rect) => Response::Focus(rect),
                 Response::Unhandled(event) => match event {
                     Event::Command(key, _) if self.popup_id.is_some() => {
                         if self.popup_id.is_some() {
@@ -220,11 +222,10 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                     }
                     event => Response::Unhandled(event),
                 },
-                Response::Msg(msg) => {
+                Response::Msg((_, msg)) => {
                     self.close_menu(mgr);
                     Response::Msg(msg)
                 }
-                r => r,
             }
         } else {
             Manager::handle_generic(self, mgr, event)

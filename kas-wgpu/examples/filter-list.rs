@@ -8,16 +8,16 @@
 use kas::dir::Down;
 use kas::event::UpdateHandle;
 use kas::prelude::*;
-use kas::widget::view::{Accessor, ListView, SelectionMode, SimpleCaseInsensitiveFilter};
+use kas::widget::view::{ListData, ListMsg, ListView, SelectionMode, SimpleCaseInsensitiveFilter};
 use kas::widget::{EditBox, Label, RadioBox, ScrollBars, Window};
 
 #[cfg(not(feature = "generator"))]
 mod data {
-    use kas::widget::view::{FilterAccessor, SharedConst, SimpleCaseInsensitiveFilter};
+    use kas::widget::view::{FilteredList, SharedConst, SimpleCaseInsensitiveFilter};
     use std::{cell::RefCell, rc::Rc};
 
     type SC = &'static SharedConst<[&'static str]>;
-    pub type Shared = Rc<RefCell<FilterAccessor<usize, SC, SimpleCaseInsensitiveFilter>>>;
+    pub type Shared = Rc<RefCell<FilteredList<SC, SimpleCaseInsensitiveFilter>>>;
 
     const MONTHS: &[&str] = &[
         "January",
@@ -36,7 +36,7 @@ mod data {
 
     pub fn get() -> Shared {
         let filter = SimpleCaseInsensitiveFilter::new("");
-        Rc::new(RefCell::new(FilterAccessor::new(MONTHS.into(), filter)))
+        Rc::new(RefCell::new(FilteredList::new(MONTHS.into(), filter)))
     }
 }
 
@@ -47,12 +47,12 @@ mod data {
 mod data {
     use chrono::{DateTime, Duration, Local};
     use kas::conv::Conv;
-    use kas::widget::view::{Accessor, FilterAccessor, SimpleCaseInsensitiveFilter};
+    use kas::widget::view::{FilteredList, ListData, SimpleCaseInsensitiveFilter};
     use std::{cell::RefCell, rc::Rc};
 
-    // pub type Shared = Rc<RefCell<DateGenerator>>;
-    pub type Shared =
-        Rc<RefCell<FilterAccessor<usize, DateGenerator, SimpleCaseInsensitiveFilter>>>;
+    // Alternative: unfiltered version (must (de)comment a few bits of code)
+    // pub type Shared = DateGenerator;
+    pub type Shared = Rc<RefCell<FilteredList<DateGenerator, SimpleCaseInsensitiveFilter>>>;
 
     #[derive(Debug)]
     pub struct DateGenerator {
@@ -61,7 +61,14 @@ mod data {
         step: Duration,
     }
 
-    impl Accessor<usize> for DateGenerator {
+    impl DateGenerator {
+        fn gen(&self, index: usize) -> String {
+            let date = self.start + self.step * i32::conv(index);
+            date.format("%A %e %B %Y, %T").to_string()
+        }
+    }
+    impl ListData for DateGenerator {
+        type Key = usize;
         type Item = String;
         fn len(&self) -> usize {
             let dur = self.end - self.start;
@@ -70,9 +77,13 @@ mod data {
             1 + usize::conv((secs - 1) / step_secs)
         }
 
-        fn get(&self, index: usize) -> Self::Item {
-            let date = self.start + self.step * i32::conv(index);
-            date.format("%A %e %B %Y, %T").to_string()
+        fn get_cloned(&self, index: &usize) -> Option<Self::Item> {
+            Some(self.gen(*index))
+        }
+
+        fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+            let end = self.len().min(start + limit);
+            (start..end).map(|i| (i, self.gen(i))).collect()
         }
     }
 
@@ -82,8 +93,9 @@ mod data {
             end: Local::now() + Duration::days(365),
             step: Duration::seconds(999),
         };
+        // gen
         let filter = SimpleCaseInsensitiveFilter::new("");
-        Rc::new(RefCell::new(FilterAccessor::new(gen, filter)))
+        Rc::new(RefCell::new(FilteredList::new(gen, filter)))
     }
 }
 
@@ -103,7 +115,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     };
 
     let data = data::get();
-    println!("filter-list: {} entries", data.borrow().len());
+    println!("filter-list: {} entries", data.len());
     let data2 = data.clone();
     let window = Window::new(
         "Filter-list",
@@ -119,7 +131,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     mgr.trigger_update(update, 0);
                     None
                 }),
-                #[widget] list: ScrollBars<ListView<Down, data::Shared>> =
+                #[widget(handler = select)] list: ScrollBars<ListView<Down, data::Shared>> =
                     ScrollBars::new(ListView::new(data)),
             }
             impl {
@@ -129,6 +141,14 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     mode: SelectionMode
                 ) -> Response<VoidMsg> {
                     *mgr |= self.list.set_selection_mode(mode);
+                    Response::None
+                }
+                fn select(
+                    &mut self,
+                    _: &mut Manager,
+                    msg: ListMsg<usize, VoidMsg>,
+                ) -> Response<VoidMsg> {
+                    println!("Selection message: {:?}", msg);
                     Response::None
                 }
             }

@@ -15,9 +15,9 @@ use kas::prelude::*;
 use kas::WindowId;
 
 /// A pop-up multiple choice menu
+#[derive(Clone, Debug, Widget)]
 #[widget(config(key_nav = true))]
 #[handler(noauto)]
-#[derive(Clone, Debug, Widget)]
 pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
     core: CoreData,
@@ -86,7 +86,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     }
 
     #[inline]
-    fn new_(column: Vec<MenuEntry<u64>>, messages: Vec<M>) -> Self {
+    fn new_(column: Vec<MenuEntry<()>>, messages: Vec<M>) -> Self {
         assert!(column.len() > 0, "ComboBox: expected at least one choice");
         let label = Text::new_single(column[0].get_string().into());
         ComboBox {
@@ -148,8 +148,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     pub fn push<T: Into<AccelString>>(&mut self, label: T, msg: M) -> TkAction {
         self.messages.push(msg);
         let column = &mut self.popup.inner.inner;
-        let len = u64::conv(column.len());
-        column.push(MenuEntry::new(label, len))
+        column.push(MenuEntry::new(label, ()))
         // TODO: localised reconfigure
     }
 
@@ -163,8 +162,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     pub fn insert<T: Into<AccelString>>(&mut self, index: usize, label: T, msg: M) -> TkAction {
         self.messages.insert(index, msg);
         let column = &mut self.popup.inner.inner;
-        let len = u64::conv(column.len());
-        column.insert(index, MenuEntry::new(label, len))
+        column.insert(index, MenuEntry::new(label, ()))
         // TODO: localised reconfigure
     }
 
@@ -198,7 +196,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
 }
 
 impl<M: Clone + Debug + 'static> ComboBox<M> {
-    fn map_response(&mut self, mgr: &mut Manager, r: Response<u64>) -> Response<M> {
+    fn map_response(&mut self, mgr: &mut Manager, r: Response<(usize, ())>) -> Response<M> {
         match r {
             Response::None => Response::None,
             Response::Unhandled(event) => match event {
@@ -221,8 +219,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
                 event => Response::Unhandled(event),
             },
             Response::Focus(x) => Response::Focus(x),
-            Response::Msg(msg) => {
-                let index = usize::conv(msg);
+            Response::Msg((index, ())) => {
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
@@ -242,8 +239,8 @@ impl<T: Into<AccelString>, M: Clone + Debug> FromIterator<(T, M)> for ComboBox<M
         let len = iter.size_hint().1.unwrap_or(0);
         let mut choices = Vec::with_capacity(len);
         let mut messages = Vec::with_capacity(len);
-        for (i, (label, msg)) in iter.enumerate() {
-            choices.push(MenuEntry::new(label, i.cast()));
+        for (label, msg) in iter {
+            choices.push(MenuEntry::new(label, ()));
             messages.push(msg);
         }
         ComboBox::new_(choices, messages)
@@ -256,8 +253,8 @@ impl<'a, M: Clone + Debug + 'static> FromIterator<&'a (&'static str, M)> for Com
         let len = iter.size_hint().1.unwrap_or(0);
         let mut choices = Vec::with_capacity(len);
         let mut messages = Vec::with_capacity(len);
-        for (i, (label, msg)) in iter.enumerate() {
-            choices.push(MenuEntry::new(*label, i.cast()));
+        for (label, msg) in iter {
+            choices.push(MenuEntry::new(*label, ()));
             messages.push(msg.clone());
         }
         ComboBox::new_(choices, messages)
@@ -372,12 +369,12 @@ impl<M: Clone + Debug + 'static> event::SendEvent for ComboBox<M> {
     }
 }
 
-#[layout(single)]
-#[handler(msg=u64)]
 #[derive(Clone, Debug, Widget)]
+#[layout(single)]
+#[handler(msg=(usize, ()))]
 struct ComboPopup {
     #[widget_core]
     core: CoreData,
     #[widget]
-    inner: MenuFrame<Column<MenuEntry<u64>>>,
+    inner: MenuFrame<Column<MenuEntry<()>>>,
 }
