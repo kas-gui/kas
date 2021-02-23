@@ -34,19 +34,19 @@ enum Control {
 
 #[derive(Clone, Debug, VoidMsg)]
 enum EntryMsg {
-    Select(usize),
-    Update(usize, String),
+    Select,
+    Update(String),
 }
 
 // TODO: it would be nicer to use EditBox::new(..).on_edit(..), but that produces
 // an object with unnamable type, which is a problem.
 #[derive(Clone, Debug)]
-struct ListEntryGuard(usize);
+struct ListEntryGuard;
 impl EditGuard for ListEntryGuard {
     type Msg = EntryMsg;
 
     fn edit(entry: &mut EditField<Self>, _: &mut Manager) -> Option<Self::Msg> {
-        Some(EntryMsg::Update(entry.guard.0, entry.get_string()))
+        Some(EntryMsg::Update(entry.get_string()))
     }
 }
 
@@ -84,8 +84,8 @@ impl ListEntry {
             label: Label::new(format!("Entry number {}", n + 1)),
             radio: RadioBox::new("display this entry", RADIO.with(|h| *h))
                 .with_state(active)
-                .on_select(move |_| Some(EntryMsg::Select(n))),
-            entry: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard(n)),
+                .on_select(move |_| Some(EntryMsg::Select)),
+            entry: EditBox::new(format!("Entry #{}", n + 1)).with_guard(ListEntryGuard),
         }
     }
 }
@@ -151,18 +151,19 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     let old_len = self.list.len();
                     *mgr |= self.list.inner_mut().resize_with(len, |n| ListEntry::new(n, n == active));
                     if active >= old_len && active < len {
-                        let _ = self.set_radio(mgr, EntryMsg::Select(active));
+                        let _ = self.set_radio(mgr, (active, EntryMsg::Select));
                     }
                     Response::None
                 }
-                fn set_radio(&mut self, mgr: &mut Manager, msg: EntryMsg) -> Response<VoidMsg> {
-                    match msg {
-                        EntryMsg::Select(n) => {
+                fn set_radio(&mut self, mgr: &mut Manager, msg: (usize, EntryMsg)) -> Response<VoidMsg> {
+                    let n = msg.0;
+                    match msg.1 {
+                        EntryMsg::Select => {
                             self.active = n;
                             let text = self.list[n].entry.get_string();
                             *mgr |= self.display.set_string(text);
                         }
-                        EntryMsg::Update(n, text) => {
+                        EntryMsg::Update(text) => {
                             if n == self.active {
                                 *mgr |= self.display.set_string(text);
                             }
