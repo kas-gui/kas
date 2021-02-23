@@ -5,11 +5,10 @@
 
 //! List view widget
 
-use super::{Accessor, DefaultView, ViewWidget};
+use super::{DefaultView, ListData, ViewWidget};
 use kas::event::{CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
-use kas::text::Range;
 use kas::widget::{ScrollComponent, ScrollWidget};
 use linear_map::set::LinearSet;
 use log::{debug, trace};
@@ -30,12 +29,12 @@ impl Default for SelectionMode {
 }
 
 #[derive(Clone, Debug, Default)]
-struct WidgetData<W> {
-    index: usize,
+struct WidgetData<K, W> {
+    key: Option<K>,
     widget: W,
 }
 
-// TODO: do we need to keep the A::Item: Default bound used by allocate?
+// TODO: do we need to keep the T::Item: Default bound used to initialise entries without data?
 
 /// List view widget
 #[derive(Clone, Debug, Widget)]
@@ -43,20 +42,20 @@ struct WidgetData<W> {
 #[widget(children=noauto, config=noauto)]
 pub struct ListView<
     D: Directional,
-    A: Accessor<usize>,
-    W: ViewWidget<A::Item> = <<A as Accessor<usize>>::Item as DefaultView>::Widget,
+    T: ListData + 'static,
+    W: ViewWidget<T::Item> = <<T as ListData>::Item as DefaultView>::Widget,
 > where
-    A::Item: Default,
+    T::Item: Default,
 {
     first_id: WidgetId,
     #[widget_core]
     core: CoreData,
     offset: Offset,
     frame_size: Size,
-    data: A,
-    widgets: Vec<WidgetData<W>>,
+    data: T,
+    widgets: Vec<WidgetData<T::Key, W>>,
+    cur_len: u32,
     direction: D,
-    data_range: Range,
     align_hints: AlignHints,
     ideal_visible: i32,
     child_size_min: i32,
@@ -67,21 +66,21 @@ pub struct ListView<
     scroll: ScrollComponent,
     sel_mode: SelectionMode,
     // TODO(opt): replace selection list with RangeOrSet type?
-    selection: LinearSet<u32>,
+    selection: LinearSet<T::Key>,
     press_event: Option<PressSource>,
-    press_target: u32,
+    press_target: Option<T::Key>,
 }
 
-impl<D: Directional + Default, A: Accessor<usize>, W: ViewWidget<A::Item>> ListView<D, A, W>
+impl<D: Directional + Default, T: ListData, W: ViewWidget<T::Item>> ListView<D, T, W>
 where
-    A::Item: Default,
+    T::Item: Default,
 {
     /// Construct a new instance
     ///
     /// This constructor is available where the direction is determined by the
     /// type: for `D: Directional + Default`. In other cases, use
     /// [`ListView::new_with_direction`].
-    pub fn new(data: A) -> Self {
+    pub fn new(data: T) -> Self {
         ListView {
             first_id: Default::default(),
             core: Default::default(),
@@ -89,8 +88,8 @@ where
             frame_size: Default::default(),
             data,
             widgets: Default::default(),
+            cur_len: 0,
             direction: Default::default(),
-            data_range: Range::from(0usize..0),
             align_hints: Default::default(),
             ideal_visible: 5,
             child_size_min: 0,
@@ -102,16 +101,16 @@ where
             sel_mode: SelectionMode::None,
             selection: Default::default(),
             press_event: None,
-            press_target: 0,
+            press_target: None,
         }
     }
 }
-impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> ListView<D, A, W>
+impl<D: Directional, T: ListData, W: ViewWidget<T::Item>> ListView<D, T, W>
 where
-    A::Item: Default,
+    T::Item: Default,
 {
     /// Construct a new instance with explicit direction
-    pub fn new_with_direction(direction: D, data: A) -> Self {
+    pub fn new_with_direction(direction: D, data: T) -> Self {
         ListView {
             first_id: Default::default(),
             core: Default::default(),
@@ -119,8 +118,8 @@ where
             frame_size: Default::default(),
             data,
             widgets: Default::default(),
+            cur_len: 0,
             direction,
-            data_range: Range::from(0usize..0),
             align_hints: Default::default(),
             ideal_visible: 5,
             child_size_min: 0,
@@ -132,19 +131,19 @@ where
             sel_mode: SelectionMode::None,
             selection: Default::default(),
             press_event: None,
-            press_target: 0,
+            press_target: None,
         }
     }
 
     /// Access the stored data
-    pub fn data(&self) -> &A {
+    pub fn data(&self) -> &T {
         &self.data
     }
 
     /// Mutably access the stored data
     ///
     /// It may be necessary to use [`ListView::update_view`] to update the view of this data.
-    pub fn data_mut(&mut self) -> &mut A {
+    pub fn data_mut(&mut self) -> &mut T {
         &mut self.data
     }
 
@@ -179,19 +178,21 @@ where
     ///
     /// With mode [`SelectionMode::Single`] this may contain zero or one entry;
     /// use `selected_iter().next()` to extract only the first (optional) entry.
-    pub fn selected_iter<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
-        self.selection.iter().map(|v| (*v).cast())
+    pub fn selected_iter<'a>(&'a self) -> impl Iterator<Item = &'a T::Key> + 'a {
+        self.selection.iter()
     }
 
     /// Check whether an entry is selected
-    pub fn is_selected(&self, index: usize) -> bool {
-        self.selection.contains(&index.cast())
+    pub fn is_selected(&self, key: &T::Key) -> bool {
+        self.selection.contains(key)
     }
 
     /// Manually trigger an update to handle changed data
     pub fn update_view(&mut self, mgr: &mut Manager) {
-        self.data_range.end = self.data_range.start;
-        self.update_widgets(mgr, true);
+        for w in &mut self.widgets {
+            w.key = None;
+        }
+        self.update_widgets(mgr);
         // Force SET_SIZE so that scroll-bar wrappers get updated
         trace!("update_view triggers SET_SIZE");
         *mgr |= TkAction::SET_SIZE;
@@ -211,50 +212,51 @@ where
         self
     }
 
-    // all: whether to update all widgets; if not, assume only scrolling occurred
-    fn update_widgets(&mut self, mgr: &mut Manager, all: bool) {
+    fn update_widgets(&mut self, mgr: &mut Manager) {
         let time = Instant::now();
         // set_rect allocates enough widgets to view a page; we update widget-data allocations
-        // TODO: we may wish to notify self.data of the range it should cache
-        let w_len = self.widgets.len();
-        let (old_start, old_end) = (self.data_range.start(), self.data_range.end());
+        let len = self.widgets.len().min(self.data.len());
+        self.cur_len = len.cast();
         let offset = u64::conv(self.scroll_offset().extract(self.direction));
-        let mut first_data = usize::conv(offset / u64::conv(self.child_skip));
-        first_data = (first_data + w_len)
-            .min(self.data.len())
-            .saturating_sub(w_len);
-        let data_range = first_data..(first_data + w_len).min(self.data.len());
+        let first_data = usize::conv(offset / u64::conv(self.child_skip));
         let mut skip = match self.direction.is_vertical() {
             false => Offset(self.child_skip, 0),
             true => Offset(0, self.child_skip),
         };
         let mut pos_start = self.core.rect.pos + self.offset;
         if self.direction.is_reversed() {
-            pos_start += skip * i32::conv(w_len - 1);
+            pos_start += skip * i32::conv(len - 1);
             skip = skip * -1;
         }
         let mut rect = Rect::new(pos_start, self.child_size);
         let mut action = TkAction::empty();
-        for data_num in data_range.clone() {
-            if all || (data_num < old_start || data_num >= old_end) {
-                let w = &mut self.widgets[data_num % w_len];
-                w.index = data_num;
-                action |= w.widget.set(self.data.get(data_num));
-                action |= TkAction::REGION_MOVED; // widget moved
-                rect.pos = pos_start + skip * i32::conv(data_num);
-                w.widget.set_rect(mgr, rect, self.align_hints);
+        for (i, item) in self
+            .data
+            .iter_vec_from(first_data, len)
+            .into_iter()
+            .enumerate()
+        {
+            let i = first_data + i;
+            let key = Some(item.0);
+            let w = &mut self.widgets[i % len];
+            if key != w.key {
+                w.key = key;
+                action |= w.widget.set(item.1);
             }
+            // TODO(opt): don't need to set_rect on all widgets when scrolling
+            rect.pos = pos_start + skip * i32::conv(i);
+            w.widget.set_rect(mgr, rect, self.align_hints);
         }
         *mgr |= action;
-        self.data_range = data_range.into();
         let dur = (Instant::now() - time).as_micros();
         trace!("ListView::update_widgets completed in {}μs", dur);
     }
 }
 
-impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> ScrollWidget for ListView<D, A, W>
+impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> ScrollWidget
+    for ListView<D, T, W>
 where
-    A::Item: Default,
+    T::Item: Default,
 {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         // TODO: maybe we should support a scrollbar on the other axis?
@@ -281,15 +283,15 @@ where
     #[inline]
     fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
         *mgr |= self.scroll.set_offset(offset);
-        self.update_widgets(mgr, false);
+        self.update_widgets(mgr);
         self.scroll.offset()
     }
 }
 
-impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> WidgetChildren
-    for ListView<D, A, W>
+impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> WidgetChildren
+    for ListView<D, T, W>
 where
-    A::Item: Default,
+    T::Item: Default,
 {
     #[inline]
     fn first_id(&self) -> WidgetId {
@@ -314,9 +316,10 @@ where
     }
 }
 
-impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> WidgetConfig for ListView<D, A, W>
+impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> WidgetConfig
+    for ListView<D, T, W>
 where
-    A::Item: Default,
+    T::Item: Default,
 {
     fn configure(&mut self, mgr: &mut Manager) {
         if let Some(handle) = self.data.update_handle() {
@@ -326,21 +329,24 @@ where
     }
 }
 
-impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> Layout for ListView<D, A, W>
+impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> Layout for ListView<D, T, W>
 where
-    A::Item: Default,
+    T::Item: Default,
 {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
         let frame = FrameRules::new_sym(0, inner_margin, (0, 0));
 
+        // We initialise the first widget if possible, otherwise use W::default()
         if self.widgets.is_empty() {
-            let index = 0;
-            let widget = (self.data.len() > 0)
-                .then(|| W::new(self.data.get(index)))
-                .unwrap_or_else(|| W::default());
-            self.widgets.push(WidgetData { index, widget });
+            let (key, widget) = if let Some((key, data)) = self.data.iter_vec(1).into_iter().next()
+            {
+                (Some(key), W::new(data))
+            } else {
+                (None, W::default())
+            };
+            self.widgets.push(WidgetData { key, widget });
         }
         let mut rules = self.widgets[0].widget.size_rules(size_handle, axis);
         if axis.is_vertical() == self.direction.is_vertical() {
@@ -396,14 +402,15 @@ where
         self.align_hints = align;
 
         let old_num = self.widgets.len();
-        let num = (usize::conv(num)).min(data_len);
-        if num > old_num {
+        let num = usize::conv(num);
+        if old_num < num {
             debug!("allocating widgets (old len = {}, new = {})", old_num, num);
             *mgr |= TkAction::RECONFIGURE;
-            self.widgets.reserve(num);
+            self.widgets.reserve(num - old_num);
             mgr.size_handle(|size_handle| {
-                for index in old_num..num {
-                    let mut widget = W::new(self.data.get(index));
+                for (key, item) in self.data.iter_vec_from(old_num, num - old_num) {
+                    let key = Some(key);
+                    let mut widget = W::new(item);
                     // We must solve size rules on new widgets:
                     solve_size_rules(
                         &mut widget,
@@ -411,15 +418,25 @@ where
                         Some(child_size.0),
                         Some(child_size.1),
                     );
-                    self.widgets.push(WidgetData { index, widget });
+                    self.widgets.push(WidgetData { key, widget });
+                }
+                for _ in self.widgets.len()..num {
+                    let mut widget = W::default();
+                    solve_size_rules(
+                        &mut widget,
+                        size_handle,
+                        Some(child_size.0),
+                        Some(child_size.1),
+                    );
+                    self.widgets.push(WidgetData { key: None, widget });
                 }
             });
-        } else if num + 64 <= old_num {
+        } else if num + 64 <= self.widgets.len() {
             // Free memory (rarely useful?)
             self.widgets.truncate(num);
         }
         *mgr |= self.scroll.set_sizes(rect.size, content_size);
-        self.update_widgets(mgr, true);
+        self.update_widgets(mgr);
     }
 
     fn spatial_range(&self) -> (usize, usize) {
@@ -436,7 +453,7 @@ where
         }
 
         let coord = coord + self.scroll.offset();
-        for child in &self.widgets[..self.data_range.len()] {
+        for child in &self.widgets[..self.cur_len.cast()] {
             if let Some(id) = child.widget.find_id(coord) {
                 return Some(id);
             }
@@ -449,19 +466,21 @@ where
         let offset = self.scroll_offset();
         use kas::draw::ClipRegion::Scroll;
         draw_handle.clip_region(self.core.rect, offset, Scroll, &mut |draw_handle| {
-            for child in &self.widgets[..self.data_range.len()] {
+            for child in &self.widgets[..self.cur_len.cast()] {
                 child.widget.draw(draw_handle, mgr, disabled);
-                if self.is_selected(child.index) {
-                    draw_handle.selection_box(child.widget.rect());
+                if let Some(ref key) = child.key {
+                    if self.is_selected(key) {
+                        draw_handle.selection_box(child.widget.rect());
+                    }
                 }
             }
         });
     }
 }
 
-impl<D: Directional, A: Accessor<usize>, W: ViewWidget<A::Item>> SendEvent for ListView<D, A, W>
+impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> SendEvent for ListView<D, T, W>
 where
-    A::Item: Default,
+    T::Item: Default,
 {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
@@ -470,24 +489,24 @@ where
 
         let event = if id < self.id() {
             let response = 'outer: loop {
-                for child in &mut self.widgets[..self.data_range.len()] {
+                for child in &mut self.widgets[..self.cur_len.cast()] {
                     if id <= child.widget.id() {
                         let event = self.scroll.offset_event(event);
-                        break 'outer (child.index, child.widget.send(mgr, id, event));
+                        break 'outer (child.key.clone(), child.widget.send(mgr, id, event));
                     }
                 }
                 debug_assert!(false, "SendEvent::send: bad WidgetId");
                 return Response::Unhandled(event);
             };
             match response {
-                (index, Response::Unhandled(event)) => {
+                (key, Response::Unhandled(event)) => {
                     if let Event::PressStart { source, coord, .. } = event {
                         if source.is_primary() {
                             // We request a grab with our ID, hence the
                             // PressMove/PressEnd events are matched below.
                             if mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None) {
                                 self.press_event = Some(source);
-                                self.press_target = index.cast();
+                                self.press_target = key;
                             }
                             return Response::None;
                         }
@@ -497,7 +516,7 @@ where
                 (_, Response::Focus(rect)) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                     *mgr |= action;
-                    self.update_widgets(mgr, false);
+                    self.update_widgets(mgr);
                     return Response::Focus(rect);
                 }
                 (_, r) => return r,
@@ -520,11 +539,15 @@ where
                         SelectionMode::None => (),
                         SelectionMode::Single => {
                             self.selection.clear();
-                            self.selection.insert(self.press_target);
+                            if let Some(ref key) = self.press_target {
+                                self.selection.insert(key.clone());
+                            }
                         }
                         SelectionMode::Multiple => {
-                            if !self.selection.remove(&self.press_target) {
-                                self.selection.insert(self.press_target);
+                            if let Some(ref key) = self.press_target {
+                                if !self.selection.remove(key) {
+                                    self.selection.insert(key.clone());
+                                }
                             }
                         }
                     }
@@ -545,7 +568,7 @@ where
                 });
         if !action.is_empty() {
             *mgr |= action;
-            self.update_widgets(mgr, false);
+            self.update_widgets(mgr);
             Response::Focus(self.rect())
         } else {
             response.void_into()

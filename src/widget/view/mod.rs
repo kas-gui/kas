@@ -10,20 +10,21 @@
 use super::Label;
 use kas::prelude::*;
 
+mod data_traits;
 mod filter;
 mod list;
 mod shared;
 mod single;
 
-pub use filter::{Filter, FilterAccessor, SimpleCaseInsensitiveFilter};
+pub use data_traits::{ListData, SingleData, SingleDataMut};
+pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
 pub use list::{ListView, SelectionMode};
-pub use shared::{Accessor, AccessorShared, SharedConst, SharedRc};
-pub use single::{SingleData, SingleDataMut, SingleView};
+pub use shared::{SharedConst, SharedRc};
+pub use single::SingleView;
 
 /// View widgets
 ///
 /// Implementors are able to view data of type `T`.
-/// Note: we pass `&T` to better match up with [`Accessor::get`].
 pub trait ViewWidget<T>: Widget {
     /// Construct a default instance (with no data)
     fn default() -> Self

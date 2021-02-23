@@ -5,8 +5,8 @@
 
 //! Filter accessor
 
-use super::Accessor;
-use kas::conv::{Cast, Conv};
+use super::ListData;
+use kas::conv::Cast;
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
@@ -69,35 +69,43 @@ impl Filter<String> for SimpleCaseInsensitiveFilter {
 }
 
 /// Filter accessor over another accessor
+///
+/// Warning: the underlying data may have a separate update handle, and handles
+/// are not currently transitive. That is, `FilterList`'s update handle is not
+/// triggered by changes to the underlying data list.
+///
+/// Warning: this implementation is `O(n)` where `n = data.len()` and not well
+/// optimised, thus is expected to be slow on large data lists.
+///
+/// Note: the key and item types are the same as those in the underlying list,
+/// thus one can retrieve values from the underlying list directly (without
+/// filtering).
 #[derive(Clone, Debug)]
-pub struct FilterAccessor<I, T: Accessor<I>, F: Filter<T::Item>>
-where
-    I: Cast<u32> + Cast<usize> + Conv<u32> + Conv<usize> + Debug + 'static,
-{
+pub struct FilteredList<T: ListData, F: Filter<T::Item>> {
     /// Direct access to unfiltered data
     ///
-    /// If adjusting this, one should call [`FilterAccessor::refresh`] after.
+    /// If adjusting this, one should call [`FilteredList::refresh`] after.
     pub data: T,
     filter: F,
-    view: Vec<u32>,
+    view: Vec<T::Key>,
     update: UpdateHandle,
-    _i: std::marker::PhantomData<I>,
 }
 
-impl<I, T: Accessor<I>, F: Filter<T::Item>> FilterAccessor<I, T, F>
-where
-    I: Cast<u32> + Cast<usize> + Conv<u32> + Conv<usize> + Debug + 'static,
-{
+impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     /// Construct and apply filter
     #[inline]
     pub fn new(data: T, filter: F) -> Self {
-        let view = Vec::with_capacity(data.len().cast());
-        let mut s = FilterAccessor {
+        let len = data.len().cast();
+        let view = Vec::with_capacity(len);
+        // TODO: using a separate update handle allows notification of the
+        // filter view update without notifying users of the underlying list,
+        // *but* update of the list should also imply update of the view.
+        // Can we make one update handle imply another?
+        let mut s = FilteredList {
             data,
             filter,
             view,
             update: UpdateHandle::new(),
-            _i: Default::default(),
         };
         let _ = s.refresh();
         s
@@ -111,9 +119,9 @@ where
     /// An update should be triggered using the returned handle.
     pub fn refresh(&mut self) -> UpdateHandle {
         self.view.clear();
-        for i in 0..self.data.len().cast() {
-            if self.filter.matches(self.data.get(i.cast())) {
-                self.view.push(i);
+        for (key, item) in self.data.iter_vec(usize::MAX) {
+            if self.filter.matches(item) {
+                self.view.push(key);
             }
         }
         self.update
@@ -122,24 +130,41 @@ where
     /// Update and apply the filter
     ///
     /// An update should be triggered using the returned handle.
-    /// See [`FilterAccessor::refresh`].
+    /// See [`FilteredList::refresh`].
     pub fn set_filter(&mut self, filter: F) -> UpdateHandle {
         self.filter = filter;
         self.refresh()
     }
 }
 
-impl<I, T: Accessor<I>, F: Filter<T::Item>> Accessor<I> for FilterAccessor<I, T, F>
-where
-    I: Cast<u32> + Cast<usize> + Conv<u32> + Conv<usize> + Debug + 'static,
-{
+impl<T: ListData, F: Filter<T::Item>> ListData for FilteredList<T, F> {
+    type Key = T::Key;
     type Item = T::Item;
-    fn len(&self) -> I {
-        self.view.len().cast()
+
+    fn len(&self) -> usize {
+        self.view.len()
     }
-    fn get(&self, index: I) -> Self::Item {
-        self.data.get(self.view[Cast::<usize>::cast(index)].cast())
+
+    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+        // We check the filter against the data (O(1)) instead of checking the
+        // key against our view (O(len(view))).
+        self.data
+            .get_cloned(key)
+            .filter(|item| self.filter.matches(item.clone()))
     }
+
+    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+        let end = self.len().min(start + limit);
+        if start >= end {
+            return Vec::new();
+        }
+        let mut v = Vec::with_capacity(end - start);
+        for k in &self.view[start..end] {
+            v.push((k.clone(), self.data.get_cloned(k).unwrap()));
+        }
+        v
+    }
+
     fn update_handle(&self) -> Option<UpdateHandle> {
         Some(self.update)
     }

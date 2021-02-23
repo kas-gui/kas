@@ -5,33 +5,9 @@
 
 //! Single view widget
 
-use super::{DefaultView, ViewWidget};
-use kas::event::UpdateHandle;
+use super::{DefaultView, SingleData, SingleDataMut, ViewWidget};
 use kas::prelude::*;
-use std::fmt::{self, Debug};
-
-/// Trait for viewable single data items
-pub trait SingleData: Debug {
-    type Item: Clone;
-
-    // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
-
-    /// Get data (clone)
-    fn get_cloned(&self) -> Self::Item;
-
-    /// Get an update handle, if any is used
-    ///
-    /// Widgets may use this `handle` to call `mgr.update_on_handle(handle, self.id())`.
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        None
-    }
-}
-
-/// Trait for writable single data items
-pub trait SingleDataMut: SingleData {
-    /// Set data
-    fn set(&self, value: Self::Item) -> UpdateHandle;
-}
+use std::fmt::{self};
 
 /// Single view widget
 #[derive(Clone, Widget)]
