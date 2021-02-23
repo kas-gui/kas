@@ -557,6 +557,7 @@ impl<'a> Manager<'a> {
     /// [`WidgetConfig::key_nav`] *should* return true for the given widget,
     /// otherwise navigation behaviour may not be correct.
     pub fn set_nav_focus(&mut self, id: WidgetId) {
+        self.redraw(id);
         self.state.nav_focus = Some(id);
         self.state.nav_stack.clear();
     }

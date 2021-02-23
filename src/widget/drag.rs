@@ -27,7 +27,7 @@ use kas::prelude::*;
 ///     [`DragHandle::handle_press_on_track`].
 #[derive(Clone, Debug, Default, Widget)]
 #[handler(handle=noauto)]
-#[widget(config(cursor_icon = event::CursorIcon::Grab))]
+#[widget(config(hover_highlight = true, cursor_icon = event::CursorIcon::Grab))]
 pub struct DragHandle {
     #[widget_core]
     core: CoreData,

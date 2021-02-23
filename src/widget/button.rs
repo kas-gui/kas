@@ -45,6 +45,9 @@ impl<M: 'static> WidgetConfig for TextButton<M> {
     fn key_nav(&self) -> bool {
         true
     }
+    fn hover_highlight(&self) -> bool {
+        true
+    }
 }
 
 impl<M: 'static> Layout for TextButton<M> {

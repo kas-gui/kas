@@ -122,6 +122,11 @@ pub trait WidgetCore: Any + fmt::Debug {
     ///
     /// The error state defaults to `false` since most widgets don't support
     /// this.
+    ///
+    /// Note: most state changes should automatically cause a redraw, but change
+    /// in `hover` status will not (since this happens frequently and many
+    /// widgets are unaffected), unless [`WidgetConfig::hover_highlight`]
+    /// returns true.
     fn input_state(&self, mgr: &ManagerState, disabled: bool) -> InputState {
         let id = self.core_data().id;
         let (char_focus, sel_focus) = mgr.char_focus(id);
@@ -347,6 +352,14 @@ pub trait WidgetConfig: Layout {
     ///
     /// Defaults to `false`.
     fn key_nav(&self) -> bool {
+        false
+    }
+
+    /// Does this widget have hover-state highlighting?
+    ///
+    /// If true, a redraw will be requested whenever this widget gains or loses
+    /// mouse-hover status.
+    fn hover_highlight(&self) -> bool {
         false
     }
 

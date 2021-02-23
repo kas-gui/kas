@@ -238,8 +238,25 @@ impl<'a> Manager<'a> {
     fn set_hover<W: Widget + ?Sized>(&mut self, widget: &mut W, w_id: Option<WidgetId>) {
         if self.state.hover != w_id {
             trace!("Manager: hover = {:?}", w_id);
+            if let Some(id) = self.state.hover {
+                if widget
+                    .find_child(id)
+                    .map(|w| w.hover_highlight())
+                    .unwrap_or(false)
+                {
+                    self.redraw(id);
+                }
+            }
+            if let Some(id) = w_id {
+                if widget
+                    .find_child(id)
+                    .map(|w| w.hover_highlight())
+                    .unwrap_or(false)
+                {
+                    self.redraw(id);
+                }
+            }
             self.state.hover = w_id;
-            self.send_action(TkAction::REDRAW);
 
             if let Some(id) = w_id {
                 let icon = widget

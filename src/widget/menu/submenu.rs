@@ -101,6 +101,9 @@ impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
     fn key_nav(&self) -> bool {
         true
     }
+    fn hover_highlight(&self) -> bool {
+        true
+    }
 }
 
 impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {

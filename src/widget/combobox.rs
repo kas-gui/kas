@@ -16,7 +16,7 @@ use kas::WindowId;
 
 /// A pop-up multiple choice menu
 #[derive(Clone, Debug, Widget)]
-#[widget(config(key_nav = true))]
+#[widget(config(key_nav = true, hover_highlight = true))]
 #[handler(noauto)]
 pub struct ComboBox<M: Clone + Debug + 'static> {
     #[widget_core]
