@@ -328,7 +328,14 @@ impl<D: Directional> RowPositionSolver<D> {
             Ok(i) => i,
             Err(i) if i > 0 => {
                 let j = i - 1;
-                if widgets[j].rect().contains(pos) {
+                let rect = widgets[j].rect();
+                let cond = match self.direction.as_direction() {
+                    Direction::Right => pos.0 < rect.pos2().0,
+                    Direction::Down => pos.1 < rect.pos2().1,
+                    Direction::Left => rect.pos.0 <= pos.0,
+                    Direction::Up => rect.pos.1 <= pos.1,
+                };
+                if cond {
                     j
                 } else {
                     i
