@@ -18,7 +18,7 @@ mod single;
 
 pub use data_traits::{ListData, SingleData, SingleDataMut};
 pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
-pub use list::{ListView, SelectionMode};
+pub use list::{ListMsg, ListView, SelectionMode};
 pub use shared::{SharedConst, SharedRc};
 pub use single::SingleView;
 

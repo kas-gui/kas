@@ -36,9 +36,29 @@ struct WidgetData<K, W> {
 
 // TODO: do we need to keep the T::Item: Default bound used to initialise entries without data?
 
+/// Message type of [`ListView`]
+#[derive(Clone, Debug, VoidMsg)]
+pub enum ListMsg<K, M> {
+    Select(K),
+    Deselect(K),
+    Child(K, M),
+}
+
+impl<K, M> From<Response<ListMsg<K, M>>> for Response<M> {
+    fn from(r: Response<ListMsg<K, M>>) -> Self {
+        match Response::try_from(r) {
+            Ok(r) => r,
+            Err(msg) => match msg {
+                ListMsg::Child(_, msg) => Response::Msg(msg),
+                _ => Response::None,
+            },
+        }
+    }
+}
+
 /// List view widget
 #[derive(Clone, Debug, Widget)]
-#[handler(send=noauto, msg=<W as Handler>::Msg)]
+#[handler(send=noauto, msg=ListMsg<T::Key, <W as Handler>::Msg>)]
 #[widget(children=noauto, config=noauto)]
 pub struct ListView<
     D: Directional,
@@ -519,7 +539,19 @@ where
                     self.update_widgets(mgr);
                     return Response::Focus(rect);
                 }
-                (_, r) => return r,
+                (key, r) => {
+                    return match Response::try_from(r) {
+                        Ok(r) => r,
+                        Err(msg) => {
+                            if let Some(key) = key {
+                                Response::Msg(ListMsg::Child(key, msg))
+                            } else {
+                                log::warn!("ListView: response from widget with no key");
+                                Response::None
+                            }
+                        }
+                    }
+                }
             }
         } else {
             debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
@@ -535,23 +567,30 @@ where
                 }
                 Event::PressEnd { source, .. } if self.press_event == Some(source) => {
                     self.press_event = None;
-                    match self.sel_mode {
-                        SelectionMode::None => (),
+                    return match self.sel_mode {
+                        SelectionMode::None => Response::None,
                         SelectionMode::Single => {
                             self.selection.clear();
                             if let Some(ref key) = self.press_target {
                                 self.selection.insert(key.clone());
+                                ListMsg::Select(key.clone()).into()
+                            } else {
+                                Response::None
                             }
                         }
                         SelectionMode::Multiple => {
                             if let Some(ref key) = self.press_target {
-                                if !self.selection.remove(key) {
+                                if self.selection.remove(key) {
+                                    ListMsg::Deselect(key.clone()).into()
+                                } else {
                                     self.selection.insert(key.clone());
+                                    ListMsg::Select(key.clone()).into()
                                 }
+                            } else {
+                                Response::None
                             }
                         }
-                    }
-                    return Response::None;
+                    };
                 }
                 event => event,
             }

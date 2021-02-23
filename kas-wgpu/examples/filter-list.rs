@@ -8,7 +8,7 @@
 use kas::dir::Down;
 use kas::event::UpdateHandle;
 use kas::prelude::*;
-use kas::widget::view::{ListData, ListView, SelectionMode, SimpleCaseInsensitiveFilter};
+use kas::widget::view::{ListData, ListMsg, ListView, SelectionMode, SimpleCaseInsensitiveFilter};
 use kas::widget::{EditBox, Label, RadioBox, ScrollBars, Window};
 
 #[cfg(not(feature = "generator"))]
@@ -131,7 +131,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     mgr.trigger_update(update, 0);
                     None
                 }),
-                #[widget] list: ScrollBars<ListView<Down, data::Shared>> =
+                #[widget(handler = select)] list: ScrollBars<ListView<Down, data::Shared>> =
                     ScrollBars::new(ListView::new(data)),
             }
             impl {
@@ -141,6 +141,14 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     mode: SelectionMode
                 ) -> Response<VoidMsg> {
                     *mgr |= self.list.set_selection_mode(mode);
+                    Response::None
+                }
+                fn select(
+                    &mut self,
+                    _: &mut Manager,
+                    msg: ListMsg<usize, VoidMsg>,
+                ) -> Response<VoidMsg> {
+                    println!("Selection message: {:?}", msg);
                     Response::None
                 }
             }
