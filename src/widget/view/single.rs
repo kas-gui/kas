@@ -11,9 +11,7 @@ use kas::prelude::*;
 use std::fmt::{self, Debug};
 
 /// Trait for viewable single data items
-// Note: we require Debug + 'static to allow widgets using this to implement
-// WidgetCore, which requires Debug + Any.
-pub trait SingleData: Debug + 'static {
+pub trait SingleData: Debug {
     type Item: Clone;
 
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
@@ -40,7 +38,7 @@ pub trait SingleDataMut: SingleData {
 #[widget(config=noauto)]
 #[layout(single)]
 #[handler(handle=noauto)]
-pub struct SingleView<D: SingleData, W = <<D as SingleData>::Item as DefaultView>::Widget>
+pub struct SingleView<D: SingleData + 'static, W = <<D as SingleData>::Item as DefaultView>::Widget>
 where
     W: ViewWidget<D::Item>,
 {
@@ -51,7 +49,7 @@ where
     child: W,
 }
 
-impl<D: SingleData + Default, W: ViewWidget<D::Item>> Default for SingleView<D, W> {
+impl<D: SingleData + 'static + Default, W: ViewWidget<D::Item>> Default for SingleView<D, W> {
     fn default() -> Self {
         let data = D::default();
         let child = W::new(data.get_cloned());
@@ -63,7 +61,7 @@ impl<D: SingleData + Default, W: ViewWidget<D::Item>> Default for SingleView<D, 
     }
 }
 
-impl<D: SingleData, W: ViewWidget<D::Item>> SingleView<D, W> {
+impl<D: SingleData + 'static, W: ViewWidget<D::Item>> SingleView<D, W> {
     /// Construct a new instance
     pub fn new(data: D) -> Self {
         let child = W::new(data.get_cloned());
@@ -90,7 +88,7 @@ impl<D: SingleData, W: ViewWidget<D::Item>> SingleView<D, W> {
     }
 }
 
-impl<D: SingleDataMut, W: ViewWidget<D::Item>> SingleView<D, W> {
+impl<D: SingleDataMut + 'static, W: ViewWidget<D::Item>> SingleView<D, W> {
     /// Set shared data
     ///
     /// Other widgets sharing this data are notified of the update.
@@ -108,7 +106,7 @@ impl<D: SingleDataMut, W: ViewWidget<D::Item>> SingleView<D, W> {
     }
 }
 
-impl<D: SingleData, W: ViewWidget<D::Item>> WidgetConfig for SingleView<D, W> {
+impl<D: SingleData + 'static, W: ViewWidget<D::Item>> WidgetConfig for SingleView<D, W> {
     fn configure(&mut self, mgr: &mut Manager) {
         if let Some(handle) = self.data.update_handle() {
             mgr.update_on_handle(handle, self.id());
@@ -116,7 +114,7 @@ impl<D: SingleData, W: ViewWidget<D::Item>> WidgetConfig for SingleView<D, W> {
     }
 }
 
-impl<D: SingleData, W: ViewWidget<D::Item>> Handler for SingleView<D, W> {
+impl<D: SingleData + 'static, W: ViewWidget<D::Item>> Handler for SingleView<D, W> {
     type Msg = <W as Handler>::Msg;
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
@@ -130,7 +128,7 @@ impl<D: SingleData, W: ViewWidget<D::Item>> Handler for SingleView<D, W> {
     }
 }
 
-impl<D: SingleData, W: ViewWidget<D::Item>> fmt::Debug for SingleView<D, W> {
+impl<D: SingleData + 'static, W: ViewWidget<D::Item>> fmt::Debug for SingleView<D, W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
