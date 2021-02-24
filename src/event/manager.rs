@@ -436,6 +436,11 @@ impl<'a> Manager<'a> {
             self.state.char_focus,
             wid
         );
+
+        if let Some(id) = wid {
+            self.set_nav_focus(id);
+        }
+
         if self.state.sel_focus == wid {
             // We cannot lose char focus here
             // Corner case: char_focus == true but sel_focus == None: ignore char_focus

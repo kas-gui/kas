@@ -560,6 +560,7 @@ impl<'a> Manager<'a> {
         self.redraw(id);
         self.state.nav_focus = Some(id);
         self.state.nav_stack.clear();
+        trace!("Manager: nav_focus = Some({})", id);
     }
 
     /// Advance the keyboard navigation focus

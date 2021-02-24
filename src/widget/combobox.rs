@@ -272,7 +272,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 direction: Direction::Down,
             });
             s.popup_id = Some(id);
-            if let Some(id) = s.popup.inner.get_child(s.active).map(|w| w.id()) {
+            if let Some(id) = s.popup.inner.inner.get_child(s.active).map(|w| w.id()) {
                 mgr.set_nav_focus(id);
             }
         };
