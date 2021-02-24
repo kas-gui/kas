@@ -79,6 +79,16 @@ impl<W: Widget> Window<W> {
 
     /// Set a closure to be called on destruction, and return a future
     ///
+    /// This is a convenience wrapper around [`Window::on_drop_boxed`].
+    pub fn on_drop<T, F>(&mut self, consume: F) -> (Future<T>, UpdateHandle)
+    where
+        F: FnMut(&mut W) -> T + 'static,
+    {
+        self.on_drop_boxed(Box::new(consume))
+    }
+
+    /// Set a closure to be called on destruction, and return a future
+    ///
     /// The closure `consume` is called when the window is destroyed, and yields
     /// a user-defined value. This value is returned through the returned
     /// [`Future`] object. In order to be notified when the future
@@ -93,7 +103,7 @@ impl<W: Widget> Window<W> {
     /// Panics if called more than once. In case the window is cloned, this
     /// closure is *not* inherited by the clone: in that case, `on_drop` may be
     /// called on the clone.
-    pub fn on_drop<T>(
+    pub fn on_drop_boxed<T>(
         &mut self,
         consume: Box<dyn FnMut(&mut W) -> T>,
     ) -> (Future<T>, UpdateHandle) {

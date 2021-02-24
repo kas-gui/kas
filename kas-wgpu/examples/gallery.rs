@@ -143,11 +143,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 if self.future.is_none() {
                     let text = self.label.get_string();
                     let mut window = Window::new("Edit text", TextEditPopup::new(text));
-                    let (future, update) = window.on_drop(Box::new(|w: &mut TextEditPopup| if w.commit {
+                    let (future, update) = window.on_drop(|w: &mut TextEditPopup| if w.commit {
                         Some(w.edit.get_string())
                     } else {
                         None
-                    }));
+                    });
                     self.future = Some(future);
                     mgr.update_on_handle(update, self.id());
                     mgr.add_window(Box::new(window));
