@@ -8,7 +8,7 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
-use kas::event::{UpdateHandle, VoidResponse};
+use kas::event::{Command, UpdateHandle, VoidResponse};
 use kas::prelude::*;
 use kas::widget::*;
 use kas::{dir::Right, Future};
@@ -41,8 +41,9 @@ impl EditGuard for Guard {
 }
 
 #[derive(Debug, Widget)]
+#[widget(config=noauto)]
 #[layout(grid)]
-#[handler(msg = VoidMsg)]
+#[handler(handle=noauto)]
 struct TextEditPopup {
     #[widget_core]
     core: CoreData,
@@ -65,8 +66,8 @@ impl TextEditPopup {
             layout_data: Default::default(),
             edit: EditBox::new(text).multi_line(true),
             fill: Filler::maximize(),
-            cancel: TextButton::new_msg("Cancel", false),
-            save: TextButton::new_msg("Save", true),
+            cancel: TextButton::new_msg("&Cancel", false),
+            save: TextButton::new_msg("&Save", true),
             commit: false,
         }
     }
@@ -75,6 +76,21 @@ impl TextEditPopup {
         self.commit = commit;
         mgr.send_action(TkAction::CLOSE);
         Response::None
+    }
+}
+impl WidgetConfig for TextEditPopup {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.register_nav_fallback(self.id());
+    }
+}
+impl Handler for TextEditPopup {
+    type Msg = VoidMsg;
+    fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        match event {
+            Event::Command(Command::Escape, _) => self.close(mgr, false),
+            Event::Command(Command::Return, _) => self.close(mgr, true),
+            event => Response::Unhandled(event),
+        }
     }
 }
 
@@ -127,11 +143,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 if self.future.is_none() {
                     let text = self.label.get_string();
                     let mut window = Window::new("Edit text", TextEditPopup::new(text));
-                    let (future, update) = window.on_drop(Box::new(|w: &mut TextEditPopup| if w.commit {
+                    let (future, update) = window.on_drop(|w: &mut TextEditPopup| if w.commit {
                         Some(w.edit.get_string())
                     } else {
                         None
-                    }));
+                    });
                     self.future = Some(future);
                     mgr.update_on_handle(update, self.id());
                     mgr.add_window(Box::new(window));

@@ -44,6 +44,9 @@ impl<M: 'static> WidgetConfig for RadioBoxBare<M> {
     fn key_nav(&self) -> bool {
         true
     }
+    fn hover_highlight(&self) -> bool {
+        true
+    }
 }
 
 impl<M: 'static> event::Handler for RadioBoxBare<M> {

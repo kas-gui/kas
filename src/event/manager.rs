@@ -238,8 +238,25 @@ impl<'a> Manager<'a> {
     fn set_hover<W: Widget + ?Sized>(&mut self, widget: &mut W, w_id: Option<WidgetId>) {
         if self.state.hover != w_id {
             trace!("Manager: hover = {:?}", w_id);
+            if let Some(id) = self.state.hover {
+                if widget
+                    .find_child(id)
+                    .map(|w| w.hover_highlight())
+                    .unwrap_or(false)
+                {
+                    self.redraw(id);
+                }
+            }
+            if let Some(id) = w_id {
+                if widget
+                    .find_child(id)
+                    .map(|w| w.hover_highlight())
+                    .unwrap_or(false)
+                {
+                    self.redraw(id);
+                }
+            }
             self.state.hover = w_id;
-            self.send_action(TkAction::REDRAW);
 
             if let Some(id) = w_id {
                 let icon = widget
@@ -290,84 +307,89 @@ impl<'a> Manager<'a> {
             if let Some(id) = self.state.nav_focus {
                 self.send_event(widget, id, Event::NavFocus);
             }
-        } else if vkey == VK::Escape {
-            if let Some(id) = self.state.popups.last().map(|(id, _)| *id) {
-                self.close_window(id);
-            } else {
-                self.clear_nav_focus();
-            }
-        } else {
-            let mut id_action = None;
+            return;
+        }
 
-            if !self.state.modifiers.alt() {
-                // First priority goes to the widget with nav focus,
-                // but only when Alt is not pressed.
-                if let Some(nav_id) = self.state.nav_focus {
-                    if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
-                        id_action = Some((nav_id, Event::Activate));
-                    } else if let Some(cmd) = opt_command {
-                        id_action = Some((nav_id, Event::Command(cmd, shift)));
-                    }
-                }
-
-                if id_action.is_none() {
-                    // Next priority goes to pop-up widget
-                    if let Some(cmd) = opt_command {
-                        let ev = Event::Command(cmd, shift);
-                        if let Some(popup) = self.state.popups.last() {
-                            id_action = Some((popup.1.parent, ev));
-                        } else if let Some(id) = self.state.nav_fallback {
-                            id_action = Some((id, ev));
-                        }
-                    }
+        let mut id_action = None;
+        if !self.state.modifiers.alt() {
+            // First priority goes to the widget with nav focus,
+            // but only when Alt is not pressed.
+            if let Some(nav_id) = self.state.nav_focus {
+                if vkey == VK::Space || vkey == VK::Return || vkey == VK::NumpadEnter {
+                    id_action = Some((nav_id, Event::Activate));
+                } else if let Some(cmd) = opt_command {
+                    id_action = Some((nav_id, Event::Command(cmd, shift)));
                 }
             }
 
             if id_action.is_none() {
-                // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
-                let mut n = 0;
-                for (i, id) in (self.state.popups.iter().rev())
-                    .map(|(_, popup)| popup.parent)
-                    .chain(std::iter::once(widget.id()))
-                    .enumerate()
-                {
-                    if let Some(layer) = self.state.accel_layers.get(&id) {
-                        // but only when Alt is held or alt-bypass is enabled:
-                        if self.state.modifiers.alt() || layer.0 {
-                            if let Some(id) = layer.1.get(&vkey).cloned() {
-                                id_action = Some((id, Event::Activate));
-                                n = i;
-                                break;
-                            }
-                        }
+                // Next priority goes to pop-up widget
+                if let Some(cmd) = opt_command {
+                    let ev = Event::Command(cmd, shift);
+                    if let Some(popup) = self.state.popups.last() {
+                        id_action = Some((popup.1.parent, ev));
+                    } else if let Some(id) = self.state.nav_fallback {
+                        id_action = Some((id, ev));
                     }
                 }
+            }
+        }
 
-                // If we had to look below the top pop-up, we should close it
-                if n > 0 {
-                    let last = self.state.popups.len() - 1;
-                    for i in 0..n {
-                        let id = self.state.popups[last - i].0;
-                        self.close_window(id);
+        if id_action.is_none() {
+            // Next priority goes to accelerator keys when Alt is held or alt_bypass is true
+            let mut n = 0;
+            for (i, id) in (self.state.popups.iter().rev())
+                .map(|(_, popup)| popup.parent)
+                .chain(std::iter::once(widget.id()))
+                .enumerate()
+            {
+                if let Some(layer) = self.state.accel_layers.get(&id) {
+                    // but only when Alt is held or alt-bypass is enabled:
+                    if self.state.modifiers.alt() || layer.0 {
+                        if let Some(id) = layer.1.get(&vkey).cloned() {
+                            id_action = Some((id, Event::Activate));
+                            n = i;
+                            break;
+                        }
                     }
                 }
             }
 
-            if let Some((id, event)) = id_action {
-                let is_activate = event == Event::Activate;
-                self.send_event(widget, id, event);
-
-                // Event::Activate causes buttons to be visually depressed
-                if is_activate {
-                    for press_id in self.state.key_depress.values().cloned() {
-                        if press_id == id {
-                            return;
-                        }
-                    }
-
-                    self.state.key_depress.insert(scancode, id);
-                    self.redraw(id);
+            // If we had to look below the top pop-up, we should close it
+            if n > 0 {
+                let last = self.state.popups.len() - 1;
+                for i in 0..n {
+                    let id = self.state.popups[last - i].0;
+                    self.close_window(id);
                 }
+            }
+        }
+
+        if let Some((id, event)) = id_action {
+            let is_activate = event == Event::Activate;
+            trace!("Send to {}: {:?}", id, event);
+            match widget.send(self, id, event) {
+                Response::Unhandled(_) if vkey == VK::Escape => {
+                    // When unhandled, the Escape key causes other actions
+                    if let Some(id) = self.state.popups.last().map(|(id, _)| *id) {
+                        self.close_window(id);
+                    } else if self.nav_focus().is_some() {
+                        self.clear_nav_focus();
+                    }
+                }
+                _ => (),
+            }
+
+            // Event::Activate causes buttons to be visually depressed
+            if is_activate {
+                for press_id in self.state.key_depress.values().cloned() {
+                    if press_id == id {
+                        return;
+                    }
+                }
+
+                self.state.key_depress.insert(scancode, id);
+                self.redraw(id);
             }
         }
     }
@@ -419,6 +441,11 @@ impl<'a> Manager<'a> {
             self.state.char_focus,
             wid
         );
+
+        if let Some(id) = wid {
+            self.set_nav_focus(id);
+        }
+
         if self.state.sel_focus == wid {
             // We cannot lose char focus here
             // Corner case: char_focus == true but sel_focus == None: ignore char_focus

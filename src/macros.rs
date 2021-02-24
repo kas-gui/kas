@@ -161,6 +161,8 @@
 //!
 //! -   `key_nav = false`: a boolean, describing whether the widget supports
 //!     keyboard navigation (see [`WidgetConfig::key_nav`])
+//!  -  `hover_highlight = false`: a boolean, describing whether to request a
+//!     redraw when mouse-hover status changes (see [`WidgetConfig::hover_highlight`])
 //!  -   `cursor_icon = kas::event::CursorIcon::Default`: the cursor icon to use
 //!     when the mouse hovers over this widget (see [`WidgetConfig::cursor_icon`])
 //!

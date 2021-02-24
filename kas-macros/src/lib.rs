@@ -165,6 +165,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     if let Some(config) = args.widget.config {
         let key_nav = config.key_nav;
+        let hover_highlight = config.hover_highlight;
         let cursor_icon = config.cursor_icon;
 
         toks.append_all(quote! {
@@ -173,6 +174,9 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             {
                 fn key_nav(&self) -> bool {
                     #key_nav
+                }
+                fn hover_highlight(&self) -> bool {
+                    #hover_highlight
                 }
                 fn cursor_icon(&self) -> kas::event::CursorIcon {
                     #cursor_icon

@@ -197,6 +197,7 @@ mod kw {
     custom_keyword!(halign);
     custom_keyword!(valign);
     custom_keyword!(key_nav);
+    custom_keyword!(hover_highlight);
     custom_keyword!(cursor_icon);
     custom_keyword!(handle);
     custom_keyword!(send);
@@ -430,6 +431,7 @@ impl Default for WidgetArgs {
 
 pub struct WidgetConfig {
     pub key_nav: bool,
+    pub hover_highlight: bool,
     pub cursor_icon: Expr,
 }
 
@@ -437,6 +439,7 @@ impl Default for WidgetConfig {
     fn default() -> Self {
         WidgetConfig {
             key_nav: false,
+            hover_highlight: false,
             cursor_icon: parse_quote! { kas::event::CursorIcon::Default },
         }
     }
@@ -479,6 +482,7 @@ impl Parse for WidgetArgs {
 
                         let mut conf = WidgetConfig::default();
                         let mut have_key_nav = false;
+                        let mut have_hover_highlight = false;
                         let mut have_cursor_icon = false;
 
                         while !content2.is_empty() {
@@ -492,6 +496,12 @@ impl Parse for WidgetArgs {
                                 let value: syn::LitBool = content2.parse()?;
                                 conf.key_nav = value.value;
                                 have_key_nav = true;
+                            } else if lookahead.peek(kw::hover_highlight) && !have_hover_highlight {
+                                let _: kw::hover_highlight = content2.parse()?;
+                                let _: Eq = content2.parse()?;
+                                let value: syn::LitBool = content2.parse()?;
+                                conf.hover_highlight = value.value;
+                                have_hover_highlight = true;
                             } else if lookahead.peek(kw::cursor_icon) && !have_cursor_icon {
                                 let _: kw::cursor_icon = content2.parse()?;
                                 let _: Eq = content2.parse()?;

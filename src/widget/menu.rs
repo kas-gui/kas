@@ -105,6 +105,9 @@ impl<M: 'static> WidgetConfig for Box<dyn Menu<Msg = M>> {
     fn key_nav(&self) -> bool {
         self.as_ref().key_nav()
     }
+    fn hover_highlight(&self) -> bool {
+        self.as_ref().hover_highlight()
+    }
     fn cursor_icon(&self) -> event::CursorIcon {
         self.as_ref().cursor_icon()
     }

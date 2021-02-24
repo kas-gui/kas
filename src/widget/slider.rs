@@ -86,7 +86,7 @@ impl SliderType for Duration {
 /// Sliders allow user input of a value from a fixed range.
 #[derive(Clone, Debug, Default, Widget)]
 #[handler(send=noauto, msg = T)]
-#[widget(config(key_nav = true))]
+#[widget(config(key_nav = true, hover_highlight = true))]
 pub struct Slider<T: SliderType, D: Directional> {
     #[widget_core]
     core: CoreData,

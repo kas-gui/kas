@@ -36,6 +36,9 @@ impl<M: Clone + Debug + 'static> WidgetConfig for MenuEntry<M> {
     fn key_nav(&self) -> bool {
         true
     }
+    fn hover_highlight(&self) -> bool {
+        true
+    }
 }
 
 impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {

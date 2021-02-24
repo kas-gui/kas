@@ -207,6 +207,31 @@ where
         self.selection.contains(key)
     }
 
+    /// Clear all selected items
+    ///
+    /// Does not send [`ListMsg`] responses.
+    pub fn clear_selected(&mut self) {
+        self.selection.clear();
+    }
+
+    /// Directly select an item
+    ///
+    /// Returns `true` if selected, `false` if already selected.
+    ///
+    /// Does not send [`ListMsg`] responses.
+    pub fn select(&mut self, key: T::Key) -> bool {
+        self.selection.insert(key)
+    }
+
+    /// Directly deselect an item
+    ///
+    /// Returns `true` if deselected, `false` if not previously selected.
+    ///
+    /// Does not send [`ListMsg`] responses.
+    pub fn deselect(&mut self, key: &T::Key) -> bool {
+        self.selection.remove(key)
+    }
+
     /// Manually trigger an update to handle changed data
     pub fn update_view(&mut self, mgr: &mut Manager) {
         for w in &mut self.widgets {

@@ -13,7 +13,7 @@ use kas::{event, prelude::*};
 
 /// A bare checkbox (no label)
 #[derive(Clone, Default, Widget)]
-#[widget(config(key_nav = true))]
+#[widget(config(key_nav = true, hover_highlight = true))]
 #[handler(handle=noauto)]
 pub struct CheckBoxBare<M: 'static> {
     #[widget_core]
