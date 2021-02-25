@@ -19,4 +19,4 @@ pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
 pub use list_view::{ListMsg, ListView, SelectionMode};
 pub use shared_data::{SharedConst, SharedRc};
 pub use single_view::SingleView;
-pub use view_widget::{DefaultView, ViewWidget};
+pub use view_widget::{CustomView, DefaultView, View};

@@ -5,7 +5,7 @@
 
 //! Single view widget
 
-use super::{DefaultView, SingleData, SingleDataMut, ViewWidget};
+use super::{DefaultView, SingleData, SingleDataMut, View};
 use kas::prelude::*;
 use std::fmt::{self};
 
@@ -14,35 +14,41 @@ use std::fmt::{self};
 #[widget(config=noauto)]
 #[layout(single)]
 #[handler(handle=noauto)]
-pub struct SingleView<D: SingleData + 'static, W = <<D as SingleData>::Item as DefaultView>::Widget>
-where
-    W: ViewWidget<D::Item>,
-{
+pub struct SingleView<D: SingleData + 'static, V: View<D::Item> = DefaultView> {
     #[widget_core]
     core: CoreData,
+    view: V,
     data: D,
     #[widget]
-    child: W,
+    child: V::Widget,
 }
 
-impl<D: SingleData + 'static + Default, W: ViewWidget<D::Item>> Default for SingleView<D, W> {
+impl<D: SingleData + 'static + Default, V: View<D::Item> + Default> Default for SingleView<D, V> {
     fn default() -> Self {
+        let view = <V as Default>::default();
         let data = D::default();
-        let child = W::new(data.get_cloned());
+        let child = view.new(data.get_cloned());
         SingleView {
             core: Default::default(),
+            view,
             data,
             child,
         }
     }
 }
-
-impl<D: SingleData + 'static, W: ViewWidget<D::Item>> SingleView<D, W> {
+impl<D: SingleData + 'static, V: View<D::Item> + Default> SingleView<D, V> {
     /// Construct a new instance
     pub fn new(data: D) -> Self {
-        let child = W::new(data.get_cloned());
+        Self::new_with_view(<V as Default>::default(), data)
+    }
+}
+impl<D: SingleData + 'static, V: View<D::Item>> SingleView<D, V> {
+    /// Construct a new instance with explicit view
+    pub fn new_with_view(view: V, data: D) -> Self {
+        let child = view.new(data.get_cloned());
         SingleView {
             core: Default::default(),
+            view,
             data,
             child,
         }
@@ -64,7 +70,7 @@ impl<D: SingleData + 'static, W: ViewWidget<D::Item>> SingleView<D, W> {
     }
 }
 
-impl<D: SingleDataMut + 'static, W: ViewWidget<D::Item>> SingleView<D, W> {
+impl<D: SingleDataMut + 'static, V: View<D::Item>> SingleView<D, V> {
     /// Set shared data
     ///
     /// Other widgets sharing this data are notified of the update.
@@ -82,7 +88,7 @@ impl<D: SingleDataMut + 'static, W: ViewWidget<D::Item>> SingleView<D, W> {
     }
 }
 
-impl<D: SingleData + 'static, W: ViewWidget<D::Item>> WidgetConfig for SingleView<D, W> {
+impl<D: SingleData + 'static, V: View<D::Item>> WidgetConfig for SingleView<D, V> {
     fn configure(&mut self, mgr: &mut Manager) {
         if let Some(handle) = self.data.update_handle() {
             mgr.update_on_handle(handle, self.id());
@@ -90,13 +96,13 @@ impl<D: SingleData + 'static, W: ViewWidget<D::Item>> WidgetConfig for SingleVie
     }
 }
 
-impl<D: SingleData + 'static, W: ViewWidget<D::Item>> Handler for SingleView<D, W> {
-    type Msg = <W as Handler>::Msg;
+impl<D: SingleData + 'static, V: View<D::Item>> Handler for SingleView<D, V> {
+    type Msg = <V::Widget as Handler>::Msg;
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
             Event::HandleUpdate { .. } => {
                 let value = self.data.get_cloned();
-                *mgr |= self.child.set(value);
+                *mgr |= self.view.set(&mut self.child, value);
                 Response::None
             }
             event => Response::Unhandled(event),
@@ -104,7 +110,7 @@ impl<D: SingleData + 'static, W: ViewWidget<D::Item>> Handler for SingleView<D, 
     }
 }
 
-impl<D: SingleData + 'static, W: ViewWidget<D::Item>> fmt::Debug for SingleView<D, W> {
+impl<D: SingleData + 'static, V: View<D::Item>> fmt::Debug for SingleView<D, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

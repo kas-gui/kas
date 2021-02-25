@@ -5,7 +5,7 @@
 
 //! List view widget
 
-use super::{DefaultView, ListData, ViewWidget};
+use super::{DefaultView, ListData, View};
 use kas::event::{CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
@@ -58,13 +58,10 @@ impl<K, M> From<Response<ListMsg<K, M>>> for Response<M> {
 
 /// List view widget
 #[derive(Clone, Debug, Widget)]
-#[handler(send=noauto, msg=ListMsg<T::Key, <W as Handler>::Msg>)]
+#[handler(send=noauto, msg=ListMsg<T::Key, <V::Widget as Handler>::Msg>)]
 #[widget(children=noauto, config=noauto)]
-pub struct ListView<
-    D: Directional,
-    T: ListData + 'static,
-    W: ViewWidget<T::Item> = <<T as ListData>::Item as DefaultView>::Widget,
-> where
+pub struct ListView<D: Directional, T: ListData + 'static, V: View<T::Item> = DefaultView>
+where
     T::Item: Default,
 {
     first_id: WidgetId,
@@ -72,8 +69,9 @@ pub struct ListView<
     core: CoreData,
     offset: Offset,
     frame_size: Size,
+    view: V,
     data: T,
-    widgets: Vec<WidgetData<T::Key, W>>,
+    widgets: Vec<WidgetData<T::Key, V::Widget>>,
     cur_len: u32,
     direction: D,
     align_hints: AlignHints,
@@ -91,7 +89,7 @@ pub struct ListView<
     press_target: Option<T::Key>,
 }
 
-impl<D: Directional + Default, T: ListData, W: ViewWidget<T::Item>> ListView<D, T, W>
+impl<D: Directional + Default, T: ListData, V: View<T::Item> + Default> ListView<D, T, V>
 where
     T::Item: Default,
 {
@@ -101,41 +99,39 @@ where
     /// type: for `D: Directional + Default`. In other cases, use
     /// [`ListView::new_with_direction`].
     pub fn new(data: T) -> Self {
-        ListView {
-            first_id: Default::default(),
-            core: Default::default(),
-            offset: Default::default(),
-            frame_size: Default::default(),
-            data,
-            widgets: Default::default(),
-            cur_len: 0,
-            direction: Default::default(),
-            align_hints: Default::default(),
-            ideal_visible: 5,
-            child_size_min: 0,
-            child_size_ideal: 0,
-            child_inter_margin: 0,
-            child_skip: 0,
-            child_size: Size::ZERO,
-            scroll: Default::default(),
-            sel_mode: SelectionMode::None,
-            selection: Default::default(),
-            press_event: None,
-            press_target: None,
-        }
+        Self::new_with_dir_view(D::default(), <V as Default>::default(), data)
     }
 }
-impl<D: Directional, T: ListData, W: ViewWidget<T::Item>> ListView<D, T, W>
+impl<D: Directional, T: ListData, V: View<T::Item> + Default> ListView<D, T, V>
 where
     T::Item: Default,
 {
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, data: T) -> Self {
+        Self::new_with_dir_view(direction, <V as Default>::default(), data)
+    }
+}
+impl<D: Directional + Default, T: ListData, V: View<T::Item> + Default> ListView<D, T, V>
+where
+    T::Item: Default,
+{
+    /// Construct a new instance with explicit view
+    pub fn new_with_view(view: V, data: T) -> Self {
+        Self::new_with_dir_view(D::default(), view, data)
+    }
+}
+impl<D: Directional, T: ListData, V: View<T::Item>> ListView<D, T, V>
+where
+    T::Item: Default,
+{
+    /// Construct a new instance with explicit direction and view
+    pub fn new_with_dir_view(direction: D, view: V, data: T) -> Self {
         ListView {
             first_id: Default::default(),
             core: Default::default(),
             offset: Default::default(),
             frame_size: Default::default(),
+            view,
             data,
             widgets: Default::default(),
             cur_len: 0,
@@ -286,7 +282,7 @@ where
             let w = &mut self.widgets[i % len];
             if key != w.key {
                 w.key = key;
-                action |= w.widget.set(item.1);
+                action |= self.view.set(&mut w.widget, item.1);
             }
             // TODO(opt): don't need to set_rect on all widgets when scrolling
             rect.pos = pos_start + skip * i32::conv(i);
@@ -298,8 +294,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> ScrollWidget
-    for ListView<D, T, W>
+impl<D: Directional, T: ListData, V: View<T::Item>> ScrollWidget for ListView<D, T, V>
 where
     T::Item: Default,
 {
@@ -333,8 +328,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> WidgetChildren
-    for ListView<D, T, W>
+impl<D: Directional, T: ListData, V: View<T::Item>> WidgetChildren for ListView<D, T, V>
 where
     T::Item: Default,
 {
@@ -361,8 +355,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> WidgetConfig
-    for ListView<D, T, W>
+impl<D: Directional, T: ListData, V: View<T::Item>> WidgetConfig for ListView<D, T, V>
 where
     T::Item: Default,
 {
@@ -374,7 +367,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> Layout for ListView<D, T, W>
+impl<D: Directional, T: ListData, V: View<T::Item>> Layout for ListView<D, T, V>
 where
     T::Item: Default,
 {
@@ -383,13 +376,13 @@ where
         let inner_margin = size_handle.inner_margin().extract(axis);
         let frame = FrameRules::new_sym(0, inner_margin, (0, 0));
 
-        // We initialise the first widget if possible, otherwise use W::default()
+        // We initialise the first widget if possible, otherwise use V::Widget::default()
         if self.widgets.is_empty() {
             let (key, widget) = if let Some((key, data)) = self.data.iter_vec(1).into_iter().next()
             {
-                (Some(key), W::new(data))
+                (Some(key), self.view.new(data))
             } else {
-                (None, W::default())
+                (None, self.view.default())
             };
             self.widgets.push(WidgetData { key, widget });
         }
@@ -455,7 +448,7 @@ where
             mgr.size_handle(|size_handle| {
                 for (key, item) in self.data.iter_vec_from(old_num, num - old_num) {
                     let key = Some(key);
-                    let mut widget = W::new(item);
+                    let mut widget = self.view.new(item);
                     // We must solve size rules on new widgets:
                     solve_size_rules(
                         &mut widget,
@@ -466,7 +459,7 @@ where
                     self.widgets.push(WidgetData { key, widget });
                 }
                 for _ in self.widgets.len()..num {
-                    let mut widget = W::default();
+                    let mut widget = self.view.default();
                     solve_size_rules(
                         &mut widget,
                         size_handle,
@@ -523,7 +516,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> SendEvent for ListView<D, T, W>
+impl<D: Directional, T: ListData, V: View<T::Item>> SendEvent for ListView<D, T, V>
 where
     T::Item: Default,
 {

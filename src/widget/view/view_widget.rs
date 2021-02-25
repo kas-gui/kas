@@ -9,115 +9,147 @@
 
 use kas::prelude::*;
 use kas::widget::*;
+use std::fmt::Debug;
+use std::marker::PhantomData;
 
-/// View widgets
+/// View widget constructor
 ///
-/// Implementors are able to view data of type `T`.
-pub trait ViewWidget<T>: Widget {
+/// Types implementing this trait are able to construct a view widget for data
+/// of type `T`. Several existing implementations are available...
+pub trait View<T>: Debug + 'static {
+    type Widget: Widget;
+
     /// Construct a default instance (with no data)
-    fn default() -> Self
+    fn default(&self) -> Self::Widget
     where
         T: Default;
     /// Construct an instance from a data value
-    fn new(data: T) -> Self;
+    fn new(&self, data: T) -> Self::Widget;
     /// Set the viewed data
-    fn set(&mut self, data: T) -> TkAction;
+    fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction;
 }
 
-//TODO(spec): enable this as a specialisation of the T: ToString impl
-// In the mean-time we only lose the Markdown impl by disabling this
-/*
-impl<T: Clone + Default + FormattableText + 'static> ViewWidget<T> for Label<T> {
-    fn default() -> Self {
-        Label::new(T::default())
+/// Default view widget constructor
+///
+/// This struct implements [`View`], using a default widget for the data type.
+#[derive(Clone, Debug, Default)]
+pub struct DefaultView;
+
+macro_rules! impl_via_to_string {
+    ($t:ty) => {
+        impl View<$t> for DefaultView {
+            type Widget = Label<String>;
+            fn default(&self) -> Self::Widget where $t: Default {
+                Label::new("".to_string())
+            }
+            fn new(&self, data: $t) -> Self::Widget {
+                Label::new(data.to_string())
+            }
+            fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
+                widget.set_string(data.to_string())
+            }
+        }
+    };
+    ($t:ty, $($tt:ty),+) => {
+        impl_via_to_string!($t);
+        impl_via_to_string!($($tt),+);
+    };
+}
+impl_via_to_string!(String, &'static str);
+impl_via_to_string!(i8, i16, i32, i64, i128, isize);
+impl_via_to_string!(u8, u16, u32, u64, u128, usize);
+impl_via_to_string!(f32, f64);
+
+impl View<bool> for DefaultView {
+    type Widget = CheckBoxBare<VoidMsg>;
+    fn default(&self) -> Self::Widget {
+        CheckBoxBare::new()
     }
-    fn new(data: T) -> Self {
-        Label::new(data.clone())
+    fn new(&self, data: bool) -> Self::Widget {
+        CheckBoxBare::new().with_state(data)
     }
-    fn set(&mut self, data: &T) -> TkAction {
-        self.set_text(data.clone())
+    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
+        widget.set_bool(data)
     }
 }
-*/
 
-impl<T: Default + ToString> ViewWidget<T> for Label<String> {
+/// Custom view widget constructor
+///
+/// This struct implements [`View`], using a the parametrised widget type.
+/// This struct is only usable where no extra data (such as a label) is required.
+#[derive(Debug)]
+pub struct CustomView<W: Widget> {
+    _pd: PhantomData<W>,
+}
+impl<W: Widget> Clone for CustomView<W> {
+    fn clone(&self) -> Self {
+        Default::default()
+    }
+}
+impl<W: Widget> Default for CustomView<W> {
     fn default() -> Self {
-        Label::new(T::default().to_string())
-    }
-    fn new(data: T) -> Self {
-        Label::new(data.to_string())
-    }
-    fn set(&mut self, data: T) -> TkAction {
-        self.set_text(data.to_string())
+        CustomView {
+            _pd: Default::default(),
+        }
     }
 }
 
-impl<G: EditGuard + Default> ViewWidget<String> for EditField<G> {
-    fn default() -> Self {
-        <Self as ViewWidget<String>>::new("".to_string())
+impl<T> View<T> for CustomView<<DefaultView as View<T>>::Widget>
+where
+    DefaultView: View<T>,
+{
+    type Widget = <DefaultView as View<T>>::Widget;
+    fn default(&self) -> Self::Widget
+    where
+        T: Default,
+    {
+        DefaultView.default()
     }
-    fn new(data: String) -> Self {
+    fn new(&self, data: T) -> Self::Widget {
+        DefaultView.new(data)
+    }
+    fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
+        DefaultView.set(widget, data)
+    }
+}
+
+impl<G: EditGuard + Default> View<String> for CustomView<EditField<G>> {
+    type Widget = EditField<G>;
+    fn default(&self) -> Self::Widget {
+        self.new("".to_string())
+    }
+    fn new(&self, data: String) -> Self::Widget {
         let guard = G::default();
         EditField::new(data).with_guard(guard)
     }
-    fn set(&mut self, data: String) -> TkAction {
-        self.set_string(data)
+    fn set(&self, widget: &mut Self::Widget, data: String) -> TkAction {
+        widget.set_string(data)
     }
 }
-impl<G: EditGuard + Default> ViewWidget<String> for EditBox<G> {
-    fn default() -> Self {
-        <Self as ViewWidget<String>>::new("".to_string())
+impl<G: EditGuard + Default> View<String> for CustomView<EditBox<G>> {
+    type Widget = EditBox<G>;
+    fn default(&self) -> Self::Widget {
+        self.new("".to_string())
     }
-    fn new(data: String) -> Self {
+    fn new(&self, data: String) -> Self::Widget {
         let guard = G::default();
         EditBox::new(data).with_guard(guard)
     }
-    fn set(&mut self, data: String) -> TkAction {
-        self.set_string(data)
+    fn set(&self, widget: &mut Self::Widget, data: String) -> TkAction {
+        widget.set_string(data)
     }
 }
 
-impl ViewWidget<bool> for CheckBoxBare<VoidMsg> {
-    fn default() -> Self {
-        Self::new()
+impl<D: Directional + Default> View<f32> for CustomView<ProgressBar<D>> {
+    type Widget = ProgressBar<D>;
+    fn default(&self) -> Self::Widget {
+        ProgressBar::new()
     }
-    fn new(data: bool) -> Self {
-        Self::new().with_state(data)
+    fn new(&self, data: f32) -> Self::Widget {
+        ProgressBar::new().with_value(data)
     }
-    fn set(&mut self, data: bool) -> TkAction {
-        self.set_bool(data)
-    }
-}
-
-impl<D: Directional + Default> ViewWidget<f32> for ProgressBar<D> {
-    fn default() -> Self {
-        Self::new()
-    }
-    fn new(data: f32) -> Self {
-        Self::new().with_value(data)
-    }
-    fn set(&mut self, data: f32) -> TkAction {
-        self.set_value(data)
+    fn set(&self, widget: &mut Self::Widget, data: f32) -> TkAction {
+        widget.set_value(data)
     }
 }
 
-/// Default view assignments
-///
-/// This trait may be implemented to assign a default view widget to a specific
-/// data type.
-pub trait DefaultView: Sized {
-    type Widget: ViewWidget<Self>;
-}
-
-// TODO(spec): enable this over more specific implementations
-/*
-impl<T: Clone + Default + FormattableText + 'static> DefaultView for T {
-    type Widget = Label<T>;
-}
-*/
-impl DefaultView for String {
-    type Widget = Label<String>;
-}
-impl<'a> DefaultView for &'a str {
-    type Widget = Label<String>;
-}
