@@ -8,7 +8,7 @@
 //! View widgets exist as a view over some shared data.
 
 use kas::prelude::*;
-use kas::widget::Label;
+use kas::widget::*;
 
 /// View widgets
 ///
@@ -49,6 +49,55 @@ impl<T: Default + ToString> ViewWidget<T> for Label<String> {
     }
     fn set(&mut self, data: T) -> TkAction {
         self.set_text(data.to_string())
+    }
+}
+
+impl<G: EditGuard + Default> ViewWidget<String> for EditField<G> {
+    fn default() -> Self {
+        <Self as ViewWidget<String>>::new("".to_string())
+    }
+    fn new(data: String) -> Self {
+        let guard = G::default();
+        EditField::new(data).with_guard(guard)
+    }
+    fn set(&mut self, data: String) -> TkAction {
+        self.set_string(data)
+    }
+}
+impl<G: EditGuard + Default> ViewWidget<String> for EditBox<G> {
+    fn default() -> Self {
+        <Self as ViewWidget<String>>::new("".to_string())
+    }
+    fn new(data: String) -> Self {
+        let guard = G::default();
+        EditBox::new(data).with_guard(guard)
+    }
+    fn set(&mut self, data: String) -> TkAction {
+        self.set_string(data)
+    }
+}
+
+impl ViewWidget<bool> for CheckBoxBare<VoidMsg> {
+    fn default() -> Self {
+        Self::new()
+    }
+    fn new(data: bool) -> Self {
+        Self::new().with_state(data)
+    }
+    fn set(&mut self, data: bool) -> TkAction {
+        self.set_bool(data)
+    }
+}
+
+impl<D: Directional + Default> ViewWidget<f32> for ProgressBar<D> {
+    fn default() -> Self {
+        Self::new()
+    }
+    fn new(data: f32) -> Self {
+        Self::new().with_value(data)
+    }
+    fn set(&mut self, data: f32) -> TkAction {
+        self.set_value(data)
     }
 }
 
