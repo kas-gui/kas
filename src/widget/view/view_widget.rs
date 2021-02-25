@@ -7,6 +7,7 @@
 //!
 //! View widgets exist as a view over some shared data.
 
+use kas::event::UpdateHandle;
 use kas::prelude::*;
 use kas::widget::*;
 use std::fmt::Debug;
@@ -153,3 +154,123 @@ impl<D: Directional + Default> View<f32> for CustomView<ProgressBar<D>> {
     }
 }
 
+/// [`CheckBox`] view widget constructor
+#[derive(Clone, Debug, Default)]
+pub struct CheckBoxView {
+    label: AccelString,
+}
+impl CheckBoxView {
+    /// Construct, with given `label`
+    pub fn new<T: Into<AccelString>>(label: T) -> Self {
+        let label = label.into();
+        CheckBoxView { label }
+    }
+}
+impl View<bool> for CheckBoxView {
+    type Widget = CheckBox<VoidMsg>;
+    fn default(&self) -> Self::Widget {
+        CheckBox::new(self.label.clone())
+    }
+    fn new(&self, data: bool) -> Self::Widget {
+        self.default().with_state(data)
+    }
+    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
+        widget.set_bool(data)
+    }
+}
+
+/// [`RadioBoxBare`] view widget constructor
+#[derive(Clone, Debug, Default)]
+pub struct RadioBoxBareView {
+    handle: UpdateHandle,
+}
+impl RadioBoxBareView {
+    /// Construct, with given `handle`
+    pub fn new(handle: UpdateHandle) -> Self {
+        RadioBoxBareView { handle }
+    }
+}
+impl View<bool> for RadioBoxBareView {
+    type Widget = RadioBoxBare<VoidMsg>;
+    fn default(&self) -> Self::Widget {
+        RadioBoxBare::new(self.handle)
+    }
+    fn new(&self, data: bool) -> Self::Widget {
+        self.default().with_state(data)
+    }
+    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
+        widget.set_bool(data)
+    }
+}
+
+/// [`RadioBox`] view widget constructor
+#[derive(Clone, Debug, Default)]
+pub struct RadioBoxView {
+    label: AccelString,
+    handle: UpdateHandle,
+}
+impl RadioBoxView {
+    /// Construct, with given `label` and `handle`
+    pub fn new<T: Into<AccelString>>(label: T, handle: UpdateHandle) -> Self {
+        let label = label.into();
+        RadioBoxView { label, handle }
+    }
+}
+impl View<bool> for RadioBoxView {
+    type Widget = RadioBox<VoidMsg>;
+    fn default(&self) -> Self::Widget {
+        RadioBox::new(self.label.clone(), self.handle)
+    }
+    fn new(&self, data: bool) -> Self::Widget {
+        self.default().with_state(data)
+    }
+    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
+        widget.set_bool(data)
+    }
+}
+
+/// [`Slider`] view widget constructor
+#[derive(Clone, Debug, Default)]
+pub struct SliderView<T: SliderType, D: Directional> {
+    min: T,
+    max: T,
+    step: T,
+    direction: D,
+}
+impl<T: SliderType, D: Directional + Default> SliderView<T, D> {
+    /// Construct, with given `min`, `max` and `step` (see [`Slider::new`])
+    pub fn new(min: T, max: T, step: T) -> Self {
+        SliderView {
+            min,
+            max,
+            step,
+            direction: D::default(),
+        }
+    }
+}
+impl<T: SliderType, D: Directional> SliderView<T, D> {
+    /// Construct, with given `min`, `max`, `step` and `direction` (see [`Slider::new_with_direction`])
+    pub fn new_with_direction(min: T, max: T, step: T, direction: D) -> Self {
+        SliderView {
+            min,
+            max,
+            step,
+            direction,
+        }
+    }
+}
+impl<T: SliderType, D: Directional> View<T> for SliderView<T, D> {
+    type Widget = Slider<T, D>;
+    fn default(&self) -> Self::Widget
+    where
+        T: Default,
+    {
+        Slider::new_with_direction(self.min, self.max, self.step, self.direction)
+    }
+    fn new(&self, data: T) -> Self::Widget {
+        Slider::new_with_direction(self.min, self.max, self.step, self.direction).with_value(data)
+    }
+    fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
+        widget.set_value(data)
+    }
+}

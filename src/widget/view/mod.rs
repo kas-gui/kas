@@ -19,4 +19,5 @@ pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
 pub use list_view::{ListMsg, ListView, SelectionMode};
 pub use shared_data::{SharedConst, SharedRc};
 pub use single_view::SingleView;
+pub use view_widget::{CheckBoxView, RadioBoxBareView, RadioBoxView, SliderView};
 pub use view_widget::{CustomView, DefaultView, View};
