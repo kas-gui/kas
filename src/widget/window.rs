@@ -16,7 +16,7 @@ use kas::{Future, WindowId};
 
 /// The main instantiation of the [`Window`] trait.
 #[derive(Widget)]
-#[handler(send=noauto, generics = <> where W: Widget<Msg = VoidMsg>)]
+#[handler(send=noauto, generics = <M: Into<VoidMsg>> where W: Widget<Msg = M>)]
 pub struct Window<W: Widget + 'static> {
     #[widget_core]
     core: CoreData,
@@ -157,16 +157,16 @@ impl<W: Widget> Layout for Window<W> {
     }
 }
 
-impl<W: Widget<Msg = VoidMsg> + 'static> event::SendEvent for Window<W> {
+impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> event::SendEvent for Window<W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if !self.is_disabled() && id <= self.w.id() {
-            return self.w.send(mgr, id, event);
+            return self.w.send(mgr, id, event).into();
         }
         Response::Unhandled(event)
     }
 }
 
-impl<W: Widget<Msg = VoidMsg> + 'static> kas::Window for Window<W> {
+impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> kas::Window for Window<W> {
     fn title(&self) -> &str {
         &self.title
     }
