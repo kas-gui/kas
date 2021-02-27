@@ -136,7 +136,7 @@ impl<W: Widget> Layout for Window<W> {
             return None;
         }
         for popup in self.popups.iter().rev() {
-            if let Some(id) = self.w.find_child(popup.1.id).and_then(|w| w.find_id(coord)) {
+            if let Some(id) = self.w.find_leaf(popup.1.id).and_then(|w| w.find_id(coord)) {
                 return Some(id);
             }
         }
@@ -150,7 +150,7 @@ impl<W: Widget> Layout for Window<W> {
         for popup in &self.popups {
             let class = ClipRegion::Popup;
             draw_handle.clip_region(self.core.rect, Offset::ZERO, class, &mut |draw_handle| {
-                self.find_child(popup.1.id)
+                self.find_leaf(popup.1.id)
                     .map(|w| w.draw(draw_handle, mgr, disabled));
             });
         }
@@ -234,7 +234,7 @@ impl<W: Widget> Window<W> {
         let popup = &mut self.popups[index].1;
 
         let c = find_rect(self.w.as_widget(), popup.parent).unwrap();
-        let widget = self.w.find_child_mut(popup.id).unwrap();
+        let widget = self.w.find_leaf_mut(popup.id).unwrap();
         let mut cache = mgr.size_handle(|sh| layout::SolveCache::find_constraints(widget, sh));
         let ideal = cache.ideal(false);
         let m = cache.margins();

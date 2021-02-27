@@ -203,56 +203,60 @@ pub trait WidgetChildren: WidgetCore {
         id <= self.id() && self.first_id() <= id
     }
 
-    /// Find a child widget by identifier
+    /// Find the child which is an ancestor of this `id`, if any
+    ///
+    /// This child may then be accessed via [`Self::get_child`] or
+    /// [`Self::get_child_mut`].
     ///
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
-    ///
-    /// If the widget is disabled, this returns `None` without recursing children.
-    fn find_child(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+    fn find_child(&self, id: WidgetId) -> Option<usize> {
         if id < self.first_id() || id >= self.id() {
+            return None;
+        }
+
+        let (mut start, mut end) = (0, self.num_children());
+        while start + 1 < end {
+            let mid = start + (end - start) / 2;
+            if id <= self.get_child(mid - 1).unwrap().id() {
+                end = mid;
+            } else {
+                start = mid;
+            }
+        }
+        Some(start)
+    }
+
+    /// Find the leaf (lowest descendant) with this `id`, if any
+    ///
+    /// This requires that the widget tree has already been configured by
+    /// [`event::ManagerState::configure`].
+    fn find_leaf(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+        if let Some(child) = self.find_child(id) {
+            self.get_child(child).unwrap().find_leaf(id)
+        } else {
             if id == self.id() {
                 return Some(self.as_widget());
             } else {
                 return None;
             }
         }
-
-        let (mut start, mut end) = (0, self.num_children());
-        while start + 1 < end {
-            let mid = start + (end - start) / 2;
-            if id <= self.get_child(mid - 1).unwrap().id() {
-                end = mid;
-            } else {
-                start = mid;
-            }
-        }
-        self.get_child(start).unwrap().find_child(id)
     }
 
-    /// Find a child widget by identifier
+    /// Find the leaf (lowest descendant) with this `id`, if any
     ///
     /// This requires that the widget tree has already been configured by
     /// [`ManagerState::configure`].
-    fn find_child_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
-        if id < self.first_id() || id >= self.id() {
+    fn find_leaf_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
+        if let Some(child) = self.find_child(id) {
+            self.get_child_mut(child).unwrap().find_leaf_mut(id)
+        } else {
             if id == self.id() {
                 return Some(self.as_widget_mut());
             } else {
                 return None;
             }
         }
-
-        let (mut start, mut end) = (0, self.num_children());
-        while start + 1 < end {
-            let mid = start + (end - start) / 2;
-            if id <= self.get_child(mid - 1).unwrap().id() {
-                end = mid;
-            } else {
-                start = mid;
-            }
-        }
-        self.get_child_mut(start).unwrap().find_child_mut(id)
     }
 
     /// Walk through all widgets, calling `f` once on each.

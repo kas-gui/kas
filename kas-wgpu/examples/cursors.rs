@@ -11,6 +11,7 @@ use kas::widget::{Column, Label, StrLabel, Window};
 
 #[derive(Clone, Debug, Widget)]
 #[widget(config = noauto)]
+#[layout(single)]
 struct CursorWidget {
     #[widget_core]
     core: CoreData,
@@ -21,22 +22,6 @@ struct CursorWidget {
 impl WidgetConfig for CursorWidget {
     fn cursor_icon(&self) -> CursorIcon {
         self.cursor
-    }
-}
-// We implement Layout manually, mainly because we want Layout::find_id to point
-// at *self*, not self.label.
-impl Layout for CursorWidget {
-    fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.label.size_rules(size_handle, axis)
-    }
-
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-        self.core_data_mut().rect = rect;
-        self.label.set_rect(mgr, rect, align);
-    }
-
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
-        self.label.draw(draw_handle, mgr, disabled);
     }
 }
 
