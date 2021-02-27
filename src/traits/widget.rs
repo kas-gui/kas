@@ -458,20 +458,21 @@ pub trait Layout: WidgetChildren {
 
     /// Find a widget by coordinate
     ///
-    /// Returns the identifier of the widget containing this `coord`, if any.
-    /// Should only return `None` when `coord` is outside the widget's rect,
-    /// but this is not guaranteed.
+    /// Used to find the widget responsible for handling events at this `coord`
+    /// — usually the leaf-most widget containing the coordinate.
     ///
-    /// Implementations should:
+    /// The default implementation suffices for widgets without children;
+    /// otherwise this is usually implemented as follows:
     ///
     /// 1.  return `None` if `!self.rect().contains(coord)`
-    /// 2.  if, for any child (containing `coord`), `child.find_id(coord)`
-    ///     returns `Some(id)`, return that
+    /// 2.  for each `child`, check whether `child.find_id(coord)` returns
+    ///     `Some(id)`, and if so return this result (parents with many children
+    ///     might use a faster search strategy here)
     /// 3.  otherwise, return `Some(self.id())`
     ///
     /// Exceptionally, a widget may deviate from this behaviour, but only when
-    /// the coord is within the widget's rect (example: `CheckBox` contains an
-    /// embedded `CheckBoxBare` and always forwards this child's id).
+    /// the coord is within the widget's own rect (example: `CheckBox` contains
+    /// an embedded `CheckBoxBare` and always forwards this child's id).
     ///
     /// This must not be called before [`Layout::set_rect`].
     #[inline]
