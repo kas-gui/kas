@@ -92,6 +92,11 @@ An example demonstrating a custom draw pipe.
 
 Demonstrates how to send data from another thread.
 
+### Cursors
+
+Gallery of available mouse cursors.
+
+
 Copyright and Licence
 -------
 
