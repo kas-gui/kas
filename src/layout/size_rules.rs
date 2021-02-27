@@ -10,7 +10,7 @@ use std::fmt;
 use std::iter::Sum;
 
 use super::{Margins, StretchPolicy};
-use crate::conv::{Cast, Conv};
+use crate::conv::{Cast, CastFloat, Conv, ConvFloat};
 use crate::dir::Directional;
 use crate::geom::Size;
 
@@ -135,6 +135,19 @@ impl SizeRules {
         }
     }
 
+    /// A fixed size, scaled from virtual pixels
+    ///
+    /// This is a shortcut to [`SizeRules::fixed`] using virtual-pixel sizes
+    /// and a scale factor.
+    #[inline]
+    pub fn fixed_scaled(size: f32, margins: (f32, f32), scale_factor: f32) -> Self {
+        debug_assert!(size >= 0.0 && margins.0 >= 0.0 && margins.1 >= 0.0);
+        let size = (scale_factor * size).cast_nearest();
+        let m0 = (scale_factor * margins.0).cast_nearest();
+        let m1 = (scale_factor * margins.1).cast_nearest();
+        SizeRules::fixed(size, (m0, m1))
+    }
+
     /// Construct fixed-size rules from given data
     #[inline]
     pub fn extract_fixed<D: Directional>(dir: D, size: Size, margin: Margins) -> Self {
@@ -162,6 +175,28 @@ impl SizeRules {
             m: margins,
             stretch,
         }
+    }
+
+    /// Construct with custom rules, scaled from virtual pixels
+    ///
+    /// Region size should meet the given `min`-imum size and has a given
+    /// `ideal` size, plus a given `stretch` policy.
+    ///
+    /// Expected: `ideal >= min` (if not, ideal is clamped to min).
+    #[inline]
+    pub fn new_scaled(
+        min: f32,
+        ideal: f32,
+        margins: (f32, f32),
+        stretch: StretchPolicy,
+        scale_factor: f32,
+    ) -> Self {
+        debug_assert!(0.0 <= min && 0.0 <= ideal && margins.0 >= 0.0 && margins.1 >= 0.0);
+        let min = (min * scale_factor).cast_nearest();
+        let ideal = i32::conv_nearest(ideal * scale_factor).max(min);
+        let m0 = (scale_factor * margins.0).cast_nearest();
+        let m1 = (scale_factor * margins.1).cast_nearest();
+        SizeRules::new(min, ideal, (m0, m1), stretch)
     }
 
     /// Get the minimum size

@@ -423,10 +423,10 @@ impl WidgetConfig for Mandlebrot {
 
 impl Layout for Mandlebrot {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, a: AxisInfo) -> SizeRules {
-        let virt_size = if a.is_horizontal() { 300.0 } else { 200.0 };
-        let min_size = (virt_size * size_handle.scale_factor()).cast_floor();
-        let ideal_size = min_size * 10; // prefer big but not larger than screen size
-        SizeRules::new(min_size, ideal_size, (0, 0), StretchPolicy::Maximize)
+        let min = if a.is_horizontal() { 300.0 } else { 200.0 };
+        let ideal = min * 10.0; // prefer big but not larger than screen size
+        let sf = size_handle.scale_factor();
+        SizeRules::new_scaled(min, ideal, (0.0, 0.0), StretchPolicy::Maximize, sf)
     }
 
     #[inline]
