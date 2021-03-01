@@ -13,69 +13,6 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
 
-/// Wrapper for shared constant data
-///
-/// This may be useful with static data, e.g. `[&'static str]`.
-#[derive(Clone, Debug, Default)]
-pub struct SharedConst<T: Debug + 'static + ?Sized>(T);
-
-impl<T: Debug + 'static> SharedConst<T> {
-    /// Construct with given data
-    pub fn new(data: T) -> Self {
-        SharedConst(data)
-    }
-}
-
-impl<T: Debug + 'static> From<T> for SharedConst<T> {
-    fn from(data: T) -> Self {
-        SharedConst(data)
-    }
-}
-
-impl<T: Debug + 'static + ?Sized> From<&T> for &SharedConst<T> {
-    fn from(data: &T) -> Self {
-        // SAFETY: SharedConst<T> is a thin wrapper around T
-        unsafe { &*(data as *const T as *const SharedConst<T>) }
-    }
-}
-
-impl<T: Clone + Debug + 'static + ?Sized> SingleData for SharedConst<T> {
-    type Item = T;
-
-    fn update(&self, _: Self::Item) -> Option<UpdateHandle> {
-        None
-    }
-
-    fn get_cloned(&self) -> Self::Item {
-        self.0.clone()
-    }
-}
-
-impl<T: ListData + 'static + ?Sized> ListData for SharedConst<T> {
-    type Key = T::Key;
-    type Item = T::Item;
-
-    fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        self.0.get_cloned(key)
-    }
-
-    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
-        None
-    }
-
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.0.iter_vec(limit)
-    }
-
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.0.iter_vec_from(start, limit)
-    }
-}
-
 /// Wrapper for single-thread shared data
 #[derive(Clone, Debug)]
 pub struct SharedRc<T: Debug> {

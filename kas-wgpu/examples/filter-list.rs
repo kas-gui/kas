@@ -13,10 +13,10 @@ use kas::widget::{EditBox, Label, RadioBox, ScrollBars, Window};
 
 #[cfg(not(feature = "generator"))]
 mod data {
-    use kas::widget::view::{FilteredList, SharedConst, SimpleCaseInsensitiveFilter};
+    use kas::widget::view::{FilteredList, SimpleCaseInsensitiveFilter};
     use std::rc::Rc;
 
-    type SC = &'static SharedConst<[&'static str]>;
+    type SC = &'static [&'static str];
     pub type Shared = Rc<FilteredList<SC, SimpleCaseInsensitiveFilter>>;
 
     const MONTHS: &[&str] = &[
