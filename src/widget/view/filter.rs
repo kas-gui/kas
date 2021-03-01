@@ -10,6 +10,7 @@ use kas::conv::Cast;
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
+use std::cell::RefCell;
 use std::fmt::Debug;
 
 /// Types usable as a filter
@@ -86,8 +87,7 @@ pub struct FilteredList<T: ListData, F: Filter<T::Item>> {
     ///
     /// If adjusting this, one should call [`FilteredList::refresh`] after.
     pub data: T,
-    filter: F,
-    view: Vec<T::Key>,
+    cell: RefCell<(F, Vec<T::Key>)>,
     update: UpdateHandle,
 }
 
@@ -97,16 +97,13 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     pub fn new(data: T, filter: F) -> Self {
         let len = data.len().cast();
         let view = Vec::with_capacity(len);
+        let cell = RefCell::new((filter, view));
         // TODO: using a separate update handle allows notification of the
         // filter view update without notifying users of the underlying list,
         // *but* update of the list should also imply update of the view.
         // Can we make one update handle imply another?
-        let mut s = FilteredList {
-            data,
-            filter,
-            view,
-            update: UpdateHandle::new(),
-        };
+        let update = UpdateHandle::new();
+        let s = FilteredList { data, cell, update };
         let _ = s.refresh();
         s
     }
@@ -117,13 +114,9 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     /// Calling this directly may be useful in case the data is modified.
     ///
     /// An update should be triggered using the returned handle.
-    pub fn refresh(&mut self) -> UpdateHandle {
-        self.view.clear();
-        for (key, item) in self.data.iter_vec(usize::MAX) {
-            if self.filter.matches(item) {
-                self.view.push(key);
-            }
-        }
+    pub fn refresh(&self) -> UpdateHandle {
+        let mut cell = self.cell.borrow_mut();
+        Self::rebuild_view(&self.data, &mut cell);
         self.update
     }
 
@@ -131,9 +124,20 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     ///
     /// An update should be triggered using the returned handle.
     /// See [`FilteredList::refresh`].
-    pub fn set_filter(&mut self, filter: F) -> UpdateHandle {
-        self.filter = filter;
-        self.refresh()
+    pub fn set_filter(&self, filter: F) -> UpdateHandle {
+        let mut cell = self.cell.borrow_mut();
+        cell.0 = filter;
+        Self::rebuild_view(&self.data, &mut cell);
+        self.update
+    }
+
+    fn rebuild_view(data: &T, cell: &mut (F, Vec<T::Key>)) {
+        cell.1.clear();
+        for (key, item) in data.iter_vec(usize::MAX) {
+            if cell.0.matches(item) {
+                cell.1.push(key);
+            }
+        }
     }
 }
 
@@ -142,24 +146,26 @@ impl<T: ListData, F: Filter<T::Item>> ListData for FilteredList<T, F> {
     type Item = T::Item;
 
     fn len(&self) -> usize {
-        self.view.len()
+        self.cell.borrow().1.len()
     }
 
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
         // We check the filter against the data (O(1)) instead of checking the
         // key against our view (O(len(view))).
+        let cell = self.cell.borrow();
         self.data
             .get_cloned(key)
-            .filter(|item| self.filter.matches(item.clone()))
+            .filter(|item| cell.0.matches(item.clone()))
     }
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+        let cell = self.cell.borrow();
         let end = self.len().min(start + limit);
         if start >= end {
             return Vec::new();
         }
         let mut v = Vec::with_capacity(end - start);
-        for k in &self.view[start..end] {
+        for k in &cell.1[start..end] {
             v.push((k.clone(), self.data.get_cloned(k).unwrap()));
         }
         v

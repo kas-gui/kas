@@ -10,7 +10,6 @@
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
-use std::cell::RefCell;
 use std::fmt::Debug;
 use std::ops::Deref;
 
@@ -169,46 +168,3 @@ macro_rules! impl_via_deref {
 }
 impl_via_deref!(T: &T, &mut T);
 impl_via_deref!(T: std::rc::Rc<T>, std::sync::Arc<T>, Box<T>);
-
-impl<T: SingleData> SingleData for RefCell<T> {
-    type Item = T::Item;
-    fn get_cloned(&self) -> Self::Item {
-        self.borrow().get_cloned()
-    }
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        self.borrow().update_handle()
-    }
-}
-impl<T: SingleDataMut> SingleDataMut for RefCell<T> {
-    fn set(&self, value: Self::Item) -> UpdateHandle {
-        self.borrow_mut().set(value)
-    }
-}
-
-impl<T: ListData> ListData for RefCell<T> {
-    type Key = T::Key;
-    type Item = T::Item;
-
-    fn len(&self) -> usize {
-        self.borrow().len()
-    }
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        self.borrow().get_cloned(key)
-    }
-
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.borrow().iter_vec(limit)
-    }
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.borrow().iter_vec_from(start, limit)
-    }
-
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        self.borrow().update_handle()
-    }
-}
-impl<T: ListDataMut> ListDataMut for RefCell<T> {
-    fn set(&self, key: Self::Key, item: Self::Item) -> UpdateHandle {
-        self.borrow().set(key, item)
-    }
-}

@@ -14,10 +14,10 @@ use kas::widget::{EditBox, Label, RadioBox, ScrollBars, Window};
 #[cfg(not(feature = "generator"))]
 mod data {
     use kas::widget::view::{FilteredList, SharedConst, SimpleCaseInsensitiveFilter};
-    use std::{cell::RefCell, rc::Rc};
+    use std::rc::Rc;
 
     type SC = &'static SharedConst<[&'static str]>;
-    pub type Shared = Rc<RefCell<FilteredList<SC, SimpleCaseInsensitiveFilter>>>;
+    pub type Shared = Rc<FilteredList<SC, SimpleCaseInsensitiveFilter>>;
 
     const MONTHS: &[&str] = &[
         "January",
@@ -36,7 +36,7 @@ mod data {
 
     pub fn get() -> Shared {
         let filter = SimpleCaseInsensitiveFilter::new("");
-        Rc::new(RefCell::new(FilteredList::new(MONTHS.into(), filter)))
+        Rc::new(FilteredList::new(MONTHS.into(), filter))
     }
 }
 
@@ -48,11 +48,11 @@ mod data {
     use chrono::{DateTime, Duration, Local};
     use kas::conv::Conv;
     use kas::widget::view::{FilteredList, ListData, SimpleCaseInsensitiveFilter};
-    use std::{cell::RefCell, rc::Rc};
+    use std::rc::Rc;
 
     // Alternative: unfiltered version (must (de)comment a few bits of code)
     // pub type Shared = DateGenerator;
-    pub type Shared = Rc<RefCell<FilteredList<DateGenerator, SimpleCaseInsensitiveFilter>>>;
+    pub type Shared = Rc<FilteredList<DateGenerator, SimpleCaseInsensitiveFilter>>;
 
     #[derive(Debug)]
     pub struct DateGenerator {
@@ -95,7 +95,7 @@ mod data {
         };
         // gen
         let filter = SimpleCaseInsensitiveFilter::new("");
-        Rc::new(RefCell::new(FilteredList::new(gen, filter)))
+        Rc::new(FilteredList::new(gen, filter))
     }
 }
 
@@ -126,7 +126,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget(handler = set_selection_mode)] _ = selection_mode,
                 #[widget] filter = EditBox::new("").on_edit(move |text, mgr| {
                     let update = data2
-                        .borrow_mut()
                         .set_filter(SimpleCaseInsensitiveFilter::new(text));
                     mgr.trigger_update(update, 0);
                     None
