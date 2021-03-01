@@ -132,8 +132,6 @@ impl Calculator {
         }
     }
 
-    // alternative, single line display
-    #[allow(unused)]
     fn display(&self) -> String {
         // Single-line display:
         /*if self.line_buf.is_empty() {

@@ -578,7 +578,7 @@ impl<'a> Manager<'a> {
         let mut widget_stack = WidgetStack::new();
 
         if let Some(id) = self.state.popups.last().map(|(_, p)| p.id) {
-            if let Some(w) = widget.find_child(id) {
+            if let Some(w) = widget.find_leaf(id) {
                 widget = w;
             } else {
                 // This is a corner-case. Do nothing.

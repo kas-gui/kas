@@ -203,56 +203,60 @@ pub trait WidgetChildren: WidgetCore {
         id <= self.id() && self.first_id() <= id
     }
 
-    /// Find a child widget by identifier
+    /// Find the child which is an ancestor of this `id`, if any
+    ///
+    /// This child may then be accessed via [`Self::get_child`] or
+    /// [`Self::get_child_mut`].
     ///
     /// This requires that the widget tree has already been configured by
     /// [`event::ManagerState::configure`].
-    ///
-    /// If the widget is disabled, this returns `None` without recursing children.
-    fn find_child(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+    fn find_child(&self, id: WidgetId) -> Option<usize> {
         if id < self.first_id() || id >= self.id() {
+            return None;
+        }
+
+        let (mut start, mut end) = (0, self.num_children());
+        while start + 1 < end {
+            let mid = start + (end - start) / 2;
+            if id <= self.get_child(mid - 1).unwrap().id() {
+                end = mid;
+            } else {
+                start = mid;
+            }
+        }
+        Some(start)
+    }
+
+    /// Find the leaf (lowest descendant) with this `id`, if any
+    ///
+    /// This requires that the widget tree has already been configured by
+    /// [`event::ManagerState::configure`].
+    fn find_leaf(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+        if let Some(child) = self.find_child(id) {
+            self.get_child(child).unwrap().find_leaf(id)
+        } else {
             if id == self.id() {
                 return Some(self.as_widget());
             } else {
                 return None;
             }
         }
-
-        let (mut start, mut end) = (0, self.num_children());
-        while start + 1 < end {
-            let mid = start + (end - start) / 2;
-            if id <= self.get_child(mid - 1).unwrap().id() {
-                end = mid;
-            } else {
-                start = mid;
-            }
-        }
-        self.get_child(start).unwrap().find_child(id)
     }
 
-    /// Find a child widget by identifier
+    /// Find the leaf (lowest descendant) with this `id`, if any
     ///
     /// This requires that the widget tree has already been configured by
     /// [`ManagerState::configure`].
-    fn find_child_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
-        if id < self.first_id() || id >= self.id() {
+    fn find_leaf_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
+        if let Some(child) = self.find_child(id) {
+            self.get_child_mut(child).unwrap().find_leaf_mut(id)
+        } else {
             if id == self.id() {
                 return Some(self.as_widget_mut());
             } else {
                 return None;
             }
         }
-
-        let (mut start, mut end) = (0, self.num_children());
-        while start + 1 < end {
-            let mid = start + (end - start) / 2;
-            if id <= self.get_child(mid - 1).unwrap().id() {
-                end = mid;
-            } else {
-                start = mid;
-            }
-        }
-        self.get_child_mut(start).unwrap().find_child_mut(id)
     }
 
     /// Walk through all widgets, calling `f` once on each.
@@ -458,20 +462,21 @@ pub trait Layout: WidgetChildren {
 
     /// Find a widget by coordinate
     ///
-    /// Returns the identifier of the widget containing this `coord`, if any.
-    /// Should only return `None` when `coord` is outside the widget's rect,
-    /// but this is not guaranteed.
+    /// Used to find the widget responsible for handling events at this `coord`
+    /// — usually the leaf-most widget containing the coordinate.
     ///
-    /// Implementations should:
+    /// The default implementation suffices for widgets without children;
+    /// otherwise this is usually implemented as follows:
     ///
     /// 1.  return `None` if `!self.rect().contains(coord)`
-    /// 2.  if, for any child (containing `coord`), `child.find_id(coord)`
-    ///     returns `Some(id)`, return that
+    /// 2.  for each `child`, check whether `child.find_id(coord)` returns
+    ///     `Some(id)`, and if so return this result (parents with many children
+    ///     might use a faster search strategy here)
     /// 3.  otherwise, return `Some(self.id())`
     ///
     /// Exceptionally, a widget may deviate from this behaviour, but only when
-    /// the coord is within the widget's rect (example: `CheckBox` contains an
-    /// embedded `CheckBoxBare` and always forwards this child's id).
+    /// the coord is within the widget's own rect (example: `CheckBox` contains
+    /// an embedded `CheckBoxBare` and always forwards this child's id).
     ///
     /// This must not be called before [`Layout::set_rect`].
     #[inline]

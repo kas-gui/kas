@@ -82,11 +82,14 @@ impl<M: 'static> WidgetChildren for Box<dyn Menu<Msg = M>> {
         self.as_mut().get_child_mut(index)
     }
 
-    fn find_child(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+    fn find_child(&self, id: WidgetId) -> Option<usize> {
         self.as_ref().find_child(id)
     }
-    fn find_child_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
-        self.as_mut().find_child_mut(id)
+    fn find_leaf(&self, id: WidgetId) -> Option<&dyn WidgetConfig> {
+        self.as_ref().find_leaf(id)
+    }
+    fn find_leaf_mut(&mut self, id: WidgetId) -> Option<&mut dyn WidgetConfig> {
+        self.as_mut().find_leaf_mut(id)
     }
 
     fn walk_children_dyn(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {

@@ -65,10 +65,9 @@ impl<M> Response<M> {
     #[inline]
     pub fn from<N>(r: Response<N>) -> Self
     where
-        M: From<N>,
+        N: Into<M>,
     {
-        r.try_into()
-            .unwrap_or_else(|msg| Response::Msg(M::from(msg)))
+        r.try_into().unwrap_or_else(|msg| Response::Msg(msg.into()))
     }
 
     /// Map one `Response` type into another
@@ -77,7 +76,7 @@ impl<M> Response<M> {
     #[inline]
     pub fn into<N>(self) -> Response<N>
     where
-        N: From<M>,
+        M: Into<N>,
     {
         Response::from(self)
     }

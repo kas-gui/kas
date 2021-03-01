@@ -11,11 +11,11 @@ use syn::Member;
 
 pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<TokenStream> {
     if layout.layout == LayoutType::Single {
-        if !children.len() == 1 {
+        if children.len() != 1 {
             return Err(Error::new(
                 layout.span,
                 format_args!(
-                    "expected 1 child when using layout 'single'; found {}",
+                    "expected 1 child marked #[widget] when using layout 'single'; found {}",
                     children.len()
                 ),
             ));
