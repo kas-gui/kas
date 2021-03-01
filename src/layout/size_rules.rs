@@ -138,14 +138,13 @@ impl SizeRules {
     /// A fixed size, scaled from virtual pixels
     ///
     /// This is a shortcut to [`SizeRules::fixed`] using virtual-pixel sizes
-    /// and a scale factor.
+    /// and a scale factor. It also assumes both margins are equal.
     #[inline]
-    pub fn fixed_scaled(size: f32, margins: (f32, f32), scale_factor: f32) -> Self {
-        debug_assert!(size >= 0.0 && margins.0 >= 0.0 && margins.1 >= 0.0);
+    pub fn fixed_scaled(size: f32, margins: f32, scale_factor: f32) -> Self {
+        debug_assert!(size >= 0.0 && margins >= 0.0);
         let size = (scale_factor * size).cast_nearest();
-        let m0 = (scale_factor * margins.0).cast_nearest();
-        let m1 = (scale_factor * margins.1).cast_nearest();
-        SizeRules::fixed(size, (m0, m1))
+        let m = (scale_factor * margins).cast_nearest();
+        SizeRules::fixed(size, (m, m))
     }
 
     /// Construct fixed-size rules from given data
@@ -179,6 +178,9 @@ impl SizeRules {
 
     /// Construct with custom rules, scaled from virtual pixels
     ///
+    /// This is a shortcut aaround [`SizeRules::new`].
+    /// It assumes that both margins are equal.
+    ///
     /// Region size should meet the given `min`-imum size and has a given
     /// `ideal` size, plus a given `stretch` policy.
     ///
@@ -187,16 +189,15 @@ impl SizeRules {
     pub fn new_scaled(
         min: f32,
         ideal: f32,
-        margins: (f32, f32),
+        margins: f32,
         stretch: StretchPolicy,
         scale_factor: f32,
     ) -> Self {
-        debug_assert!(0.0 <= min && 0.0 <= ideal && margins.0 >= 0.0 && margins.1 >= 0.0);
+        debug_assert!(0.0 <= min && 0.0 <= ideal && margins >= 0.0);
         let min = (min * scale_factor).cast_nearest();
         let ideal = i32::conv_nearest(ideal * scale_factor).max(min);
-        let m0 = (scale_factor * margins.0).cast_nearest();
-        let m1 = (scale_factor * margins.1).cast_nearest();
-        SizeRules::new(min, ideal, (m0, m1), stretch)
+        let m = (scale_factor * margins).cast_nearest();
+        SizeRules::new(min, ideal, (m, m), stretch)
     }
 
     /// Get the minimum size

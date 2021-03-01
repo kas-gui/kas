@@ -63,7 +63,7 @@ impl WidgetConfig for ColourSquare {
 impl Layout for ColourSquare {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
         let factor = size_handle.scale_factor();
-        SizeRules::fixed_scaled(100.0, (10.0, 10.0), factor)
+        SizeRules::fixed_scaled(100.0, 10.0, factor)
     }
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
         let (pass, offset, draw) = draw_handle.draw_device();
