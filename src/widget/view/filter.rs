@@ -71,6 +71,9 @@ impl Filter<String> for SimpleCaseInsensitiveFilter {
 
 /// Filter accessor over another accessor
 ///
+/// This is an abstraction over a [`ListData`], applying a filter to items when
+/// iterating. Accessing items directly by key does not filter.
+///
 /// Warning: the underlying data may have a separate update handle, and handles
 /// are not currently transitive. That is, `FilterList`'s update handle is not
 /// triggered by changes to the underlying data list.
@@ -150,12 +153,29 @@ impl<T: ListData, F: Filter<T::Item>> ListData for FilteredList<T, F> {
     }
 
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        // We check the filter against the data (O(1)) instead of checking the
-        // key against our view (O(len(view))).
-        let cell = self.cell.borrow();
-        self.data
+        // Do not filter (see type doc)
+        self.data.get_cloned(key)
+    }
+
+    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+        // Filtering does not affect result, but does affect the view
+        let mut cell = self.cell.borrow_mut();
+        let old_visible = self
+            .data
             .get_cloned(key)
-            .filter(|item| cell.0.matches(item.clone()))
+            .map(|item| cell.0.matches(item))
+            .unwrap_or(false);
+        let new_visible = cell.0.matches(value.clone());
+        let result = self.data.update(key, value);
+        if result.is_some() && old_visible != new_visible {
+            if old_visible {
+                cell.1.retain(|item| item != key);
+            } else {
+                // We do not know the order thus must rebuild whole view!
+                Self::rebuild_view(&self.data, &mut cell);
+            }
+        }
+        result
     }
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {

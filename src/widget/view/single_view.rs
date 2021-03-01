@@ -75,8 +75,9 @@ impl<D: SingleDataMut + 'static, V: View<D::Item>> SingleView<D, V> {
     ///
     /// Other widgets sharing this data are notified of the update.
     pub fn set_value(&self, mgr: &mut Manager, data: D::Item) {
-        let handle = self.data.set(data);
-        mgr.trigger_update(handle, 0);
+        if let Some(handle) = self.data.update(data) {
+            mgr.trigger_update(handle, 0);
+        }
     }
 
     /// Update shared data

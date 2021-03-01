@@ -47,6 +47,7 @@ mod data {
 mod data {
     use chrono::{DateTime, Duration, Local};
     use kas::conv::Conv;
+    use kas::event::UpdateHandle;
     use kas::widget::view::{FilteredList, ListData, SimpleCaseInsensitiveFilter};
     use std::rc::Rc;
 
@@ -79,6 +80,9 @@ mod data {
 
         fn get_cloned(&self, index: &usize) -> Option<Self::Item> {
             Some(self.gen(*index))
+        }
+        fn update(&self, _key: &Self::Key, _value: Self::Item) -> Option<UpdateHandle> {
+            None
         }
 
         fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
