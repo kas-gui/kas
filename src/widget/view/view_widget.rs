@@ -21,9 +21,10 @@ pub trait View<T>: Debug + 'static {
     type Widget: Widget;
 
     /// Construct a default instance (with no data)
-    fn default(&self) -> Self::Widget
-    where
-        T: Default;
+    ///
+    /// Such instances are used for sizing and cached widgets, but not shown.
+    /// The controller may later call [`View::set`] on the widget then show it.
+    fn default(&self) -> Self::Widget;
     /// Construct an instance from a data value
     fn new(&self, data: T) -> Self::Widget;
     /// Set the viewed data
@@ -100,10 +101,7 @@ where
     DefaultView: View<T>,
 {
     type Widget = <DefaultView as View<T>>::Widget;
-    fn default(&self) -> Self::Widget
-    where
-        T: Default,
-    {
+    fn default(&self) -> Self::Widget {
         DefaultView.default()
     }
     fn new(&self, data: T) -> Self::Widget {
@@ -261,10 +259,7 @@ impl<T: SliderType, D: Directional> SliderView<T, D> {
 }
 impl<T: SliderType, D: Directional> View<T> for SliderView<T, D> {
     type Widget = Slider<T, D>;
-    fn default(&self) -> Self::Widget
-    where
-        T: Default,
-    {
+    fn default(&self) -> Self::Widget {
         Slider::new_with_direction(self.min, self.max, self.step, self.direction)
     }
     fn new(&self, data: T) -> Self::Widget {

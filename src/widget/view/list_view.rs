@@ -36,8 +36,6 @@ struct WidgetData<K, W> {
     widget: W,
 }
 
-// TODO: do we need to keep the T::Item: Default bound used to initialise entries without data?
-
 /// Message type of [`ListView`]
 #[derive(Clone, Debug, VoidMsg)]
 pub enum ListMsg<K, M> {
@@ -65,10 +63,7 @@ impl<K, M> From<Response<ListMsg<K, M>>> for Response<M> {
 #[derive(Clone, Debug, Widget)]
 #[handler(send=noauto, msg=ListMsg<T::Key, <V::Widget as Handler>::Msg>)]
 #[widget(children=noauto, config=noauto)]
-pub struct ListView<D: Directional, T: ListData + 'static, V: View<T::Item> = DefaultView>
-where
-    T::Item: Default,
-{
+pub struct ListView<D: Directional, T: ListData + 'static, V: View<T::Item> = DefaultView> {
     first_id: WidgetId,
     #[widget_core]
     core: CoreData,
@@ -94,10 +89,7 @@ where
     press_target: Option<T::Key>,
 }
 
-impl<D: Directional + Default, T: ListData, V: View<T::Item> + Default> ListView<D, T, V>
-where
-    T::Item: Default,
-{
+impl<D: Directional + Default, T: ListData, V: View<T::Item> + Default> ListView<D, T, V> {
     /// Construct a new instance
     ///
     /// This constructor is available where the direction is determined by the
@@ -107,28 +99,19 @@ where
         Self::new_with_dir_view(D::default(), <V as Default>::default(), data)
     }
 }
-impl<D: Directional, T: ListData, V: View<T::Item> + Default> ListView<D, T, V>
-where
-    T::Item: Default,
-{
+impl<D: Directional, T: ListData, V: View<T::Item> + Default> ListView<D, T, V> {
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, data: T) -> Self {
         Self::new_with_dir_view(direction, <V as Default>::default(), data)
     }
 }
-impl<D: Directional + Default, T: ListData, V: View<T::Item> + Default> ListView<D, T, V>
-where
-    T::Item: Default,
-{
+impl<D: Directional + Default, T: ListData, V: View<T::Item> + Default> ListView<D, T, V> {
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: T) -> Self {
         Self::new_with_dir_view(D::default(), view, data)
     }
 }
-impl<D: Directional, T: ListData, V: View<T::Item>> ListView<D, T, V>
-where
-    T::Item: Default,
-{
+impl<D: Directional, T: ListData, V: View<T::Item>> ListView<D, T, V> {
     /// Construct a new instance with explicit direction and view
     pub fn new_with_dir_view(direction: D, view: V, data: T) -> Self {
         ListView {
@@ -299,10 +282,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData, V: View<T::Item>> Scrollable for ListView<D, T, V>
-where
-    T::Item: Default,
-{
+impl<D: Directional, T: ListData, V: View<T::Item>> Scrollable for ListView<D, T, V> {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         // TODO: maybe we should support a scrollbar on the other axis?
         // We would need to report a fake min-child-size to enable scrolling.
@@ -333,10 +313,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData, V: View<T::Item>> WidgetChildren for ListView<D, T, V>
-where
-    T::Item: Default,
-{
+impl<D: Directional, T: ListData, V: View<T::Item>> WidgetChildren for ListView<D, T, V> {
     #[inline]
     fn first_id(&self) -> WidgetId {
         self.first_id
@@ -360,10 +337,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData, V: View<T::Item>> WidgetConfig for ListView<D, T, V>
-where
-    T::Item: Default,
-{
+impl<D: Directional, T: ListData, V: View<T::Item>> WidgetConfig for ListView<D, T, V> {
     fn configure(&mut self, mgr: &mut Manager) {
         if let Some(handle) = self.data.update_handle() {
             mgr.update_on_handle(handle, self.id());
@@ -372,10 +346,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData, V: View<T::Item>> Layout for ListView<D, T, V>
-where
-    T::Item: Default,
-{
+impl<D: Directional, T: ListData, V: View<T::Item>> Layout for ListView<D, T, V> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
@@ -521,10 +492,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData, V: View<T::Item>> SendEvent for ListView<D, T, V>
-where
-    T::Item: Default,
-{
+impl<D: Directional, T: ListData, V: View<T::Item>> SendEvent for ListView<D, T, V> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);
