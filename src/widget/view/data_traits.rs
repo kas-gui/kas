@@ -7,9 +7,9 @@
 //!
 //! This module holds these traits and basic impls for derived types.
 
-#[allow(unused)]
-use kas::event::Manager;
 use kas::event::UpdateHandle;
+#[allow(unused)] // doc links
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
@@ -30,8 +30,8 @@ pub trait SingleData: Debug {
     /// updates are unsupported.
     ///
     /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
-    /// is required to obtain `&mut` and lower to [`Self::set`]. The provider
-    /// of this lowering should also provide an [`UpdateHandle`].
+    /// is required to obtain `&mut` and lower to [`SingleDataMut::set`]. The
+    /// provider of this lowering should also provide an [`UpdateHandle`].
     fn update(&self, value: Self::Item) -> Option<UpdateHandle>;
 
     /// Get an update handle, if any is used

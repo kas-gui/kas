@@ -9,7 +9,9 @@ use super::{DefaultView, ListData, View};
 use kas::event::{CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
-use kas::widget::{ScrollComponent, ScrollWidget};
+#[allow(unused)] // doc links
+use kas::widget::ScrollBars;
+use kas::widget::{ScrollComponent, Scrollable};
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::convert::TryFrom;
@@ -57,6 +59,9 @@ impl<K, M> From<Response<ListMsg<K, M>>> for Response<M> {
 }
 
 /// List view widget
+///
+/// This widget is [`Scrollable`], supporting keyboard, wheel and drag
+/// scrolling. You may wish to wrap this widget with [`ScrollBars`].
 #[derive(Clone, Debug, Widget)]
 #[handler(send=noauto, msg=ListMsg<T::Key, <V::Widget as Handler>::Msg>)]
 #[widget(children=noauto, config=noauto)]
@@ -294,7 +299,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData, V: View<T::Item>> ScrollWidget for ListView<D, T, V>
+impl<D: Directional, T: ListData, V: View<T::Item>> Scrollable for ListView<D, T, V>
 where
     T::Item: Default,
 {

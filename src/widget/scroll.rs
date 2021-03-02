@@ -5,7 +5,7 @@
 
 //! Scroll region
 
-use super::ScrollWidget;
+use super::Scrollable;
 use kas::draw::{ClipRegion, TextClass};
 use kas::event::ScrollDelta::{LineDelta, PixelDelta};
 use kas::event::{self, Command, PressSource};
@@ -126,6 +126,10 @@ impl ScrollComponent {
     }
 
     /// Use an event to scroll, if possible
+    ///
+    /// Handles keyboard (Home/End, Page Up/Down and arrow keys), mouse wheel
+    /// and touchpad scroll events. Also handles mouse/touch drag events *if*
+    /// the `on_press_start` closure activates a mouse/touch grab.
     ///
     /// Behaviour on [`Event::PressStart`] is configurable: the closure is called on
     /// this event and should call [`Manager::request_grab`] if the press should
@@ -273,7 +277,7 @@ impl<W: Widget> ScrollRegion<W> {
     }
 }
 
-impl<W: Widget> ScrollWidget for ScrollRegion<W> {
+impl<W: Widget> Scrollable for ScrollRegion<W> {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         (
             self.min_child_size.0 > size.0,
