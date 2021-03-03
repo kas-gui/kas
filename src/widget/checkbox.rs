@@ -131,7 +131,7 @@ impl<M: 'static> event::Handler for CheckBoxBare<M> {
                 mgr.redraw(self.id());
                 Response::update_or_msg(self.on_toggle.as_ref().and_then(|f| f(mgr, self.state)))
             }
-            event => Response::Unhandled(event),
+            _ => Response::Unhandled,
         }
     }
 }

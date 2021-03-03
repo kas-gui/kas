@@ -187,7 +187,7 @@ impl<D: Directional, W: Widget> event::SendEvent for List<D, W> {
             }
         }
 
-        Response::Unhandled(event)
+        Response::Unhandled
     }
 }
 

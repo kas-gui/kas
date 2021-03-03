@@ -162,7 +162,7 @@ impl<W: Widget<Msg = VoidMsg> + 'static> event::SendEvent for Window<W> {
         if !self.is_disabled() && id <= self.w.id() {
             return self.w.send(mgr, id, event);
         }
-        Response::Unhandled(event)
+        Response::Unhandled
     }
 }
 

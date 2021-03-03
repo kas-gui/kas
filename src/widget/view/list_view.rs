@@ -520,27 +520,28 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> Layout for ListView<
 }
 
 impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListView<D, T, V> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, mut event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
-        let event = if id < self.id() {
+        if id < self.id() {
+            event = self.scroll.offset_event(event);
             let response = 'outer: loop {
                 // We forward events to all children, even if not visible
                 // (e.g. these may be subscribed to an UpdateHandle).
                 for (i, child) in self.widgets.iter_mut().enumerate() {
                     if id <= child.widget.id() {
-                        let event = self.scroll.offset_event(event);
-                        break 'outer (i, child.key.clone(), child.widget.send(mgr, id, event));
+                        let r = child.widget.send(mgr, id, event.clone());
+                        break 'outer (i, child.key.clone(), r);
                     }
                 }
                 debug_assert!(false, "SendEvent::send: bad WidgetId");
-                return Response::Unhandled(event);
+                return Response::Unhandled;
             };
             match response {
                 (_, _, Response::None) => return Response::None,
-                (_, key, Response::Unhandled(event)) => {
+                (_, key, Response::Unhandled) => {
                     if let Event::PressStart { source, coord, .. } = event {
                         if source.is_primary() {
                             // We request a grab with our ID, hence the
@@ -552,7 +553,6 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListVi
                             return Response::None;
                         }
                     }
-                    event
                 }
                 (_, _, Response::Focus(rect)) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
@@ -584,7 +584,7 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListVi
                 Event::PressMove { source, .. } if self.press_event == Some(source) => {
                     self.press_event = None;
                     mgr.update_grab_cursor(self.id(), CursorIcon::Grabbing);
-                    event // fall through to scroll handler
+                    // fall through to scroll handler
                 }
                 Event::PressEnd { source, .. } if self.press_event == Some(source) => {
                     self.press_event = None;
@@ -613,7 +613,7 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListVi
                         }
                     };
                 }
-                event => event,
+                _ => (), // fall through to scroll handler
             }
         };
 

@@ -289,7 +289,7 @@ impl<'a> Manager<'a> {
                     let event = Event::Command(cmd, shift);
                     trace!("Send to {}: {:?}", id, event);
                     match widget.send(self, id, event) {
-                        Response::Unhandled(Event::Command(cmd, _)) => match cmd {
+                        Response::Unhandled => match cmd {
                             Command::Escape => self.set_char_focus(None),
                             _ => (),
                         },
@@ -369,7 +369,7 @@ impl<'a> Manager<'a> {
             let is_activate = event == Event::Activate;
             trace!("Send to {}: {:?}", id, event);
             match widget.send(self, id, event) {
-                Response::Unhandled(_) if vkey == VK::Escape => {
+                Response::Unhandled if vkey == VK::Escape => {
                     // When unhandled, the Escape key causes other actions
                     if let Some(id) = self.state.popups.last().map(|(id, _)| *id) {
                         self.close_window(id);
@@ -486,7 +486,7 @@ impl<'a> Manager<'a> {
         while let Some((wid, parent)) = self.state.popups.last().map(|(wid, p)| (*wid, p.parent)) {
             trace!("Send to popup parent: {}: {:?}", parent, event);
             match widget.send(self, parent, event.clone()) {
-                Response::Unhandled(_) => (),
+                Response::Unhandled => (),
                 _ => return,
             }
             self.close_window(wid);

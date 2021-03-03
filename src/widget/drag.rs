@@ -178,7 +178,7 @@ impl event::Handler for DragHandle {
                 self.press_source = None;
                 Response::None
             }
-            event => Response::Unhandled(event),
+            _ => Response::Unhandled,
         }
     }
 }

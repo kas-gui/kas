@@ -89,7 +89,7 @@ impl Handler for TextEditPopup {
         match event {
             Event::Command(Command::Escape, _) => self.close(mgr, false),
             Event::Command(Command::Return, _) => self.close(mgr, true),
-            event => Response::Unhandled(event),
+            _ => Response::Unhandled,
         }
     }
 }
@@ -170,7 +170,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         }
                         Response::None
                     }
-                    _ => Response::Unhandled(event),
+                    _ => Response::Unhandled,
                 }
             }
         }

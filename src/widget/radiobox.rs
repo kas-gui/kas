@@ -81,7 +81,7 @@ impl<M: 'static> event::Handler for RadioBoxBare<M> {
                     Response::None
                 }
             }
-            event => Response::Unhandled(event),
+            _ => Response::Unhandled,
         }
     }
 }

@@ -1071,12 +1071,12 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
             }
             Event::Command(cmd, shift) => match self.control_key(mgr, cmd, shift) {
                 EditAction::None => Response::None,
-                EditAction::Unhandled => Response::Unhandled(event),
+                EditAction::Unhandled => Response::Unhandled,
                 EditAction::Activate => Response::none_or_msg(G::activate(self, mgr)),
                 EditAction::Edit => Response::update_or_msg(G::edit(self, mgr)),
             },
             Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
-                false => Response::Unhandled(Event::ReceivedCharacter(c)),
+                false => Response::Unhandled,
                 true => Response::update_or_msg(G::edit(self, mgr)),
             },
             Event::PressStart { source, coord, .. } if source.is_primary() => {
@@ -1169,7 +1169,7 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                 if self.pan_delta(mgr, delta2) {
                     Response::None
                 } else {
-                    Response::Unhandled(Event::Scroll(delta))
+                    Response::Unhandled
                 }
             }
             Event::TimerUpdate => {
@@ -1187,7 +1187,7 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                 }
                 Response::None
             }
-            event => Response::Unhandled(event),
+            _ => Response::Unhandled,
         }
     }
 }

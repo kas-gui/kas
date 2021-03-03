@@ -122,7 +122,7 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                     }
                 } else {
                     self.delayed_open = None;
-                    return Response::Unhandled(Event::None);
+                    return Response::Unhandled;
                 }
             }
             Event::PressMove { source, cur_id, .. } => {
@@ -173,7 +173,7 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                         Command::Right if !is_vert => false,
                         Command::Up if is_vert => true,
                         Command::Down if is_vert => false,
-                        _ => return Response::Unhandled(event),
+                        _ => return Response::Unhandled,
                     };
 
                 for i in 0..self.bar.len() {
@@ -189,7 +189,7 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
                     }
                 }
             }
-            e => return Response::Unhandled(e),
+            _ => return Response::Unhandled,
         }
         Response::None
     }
@@ -198,12 +198,12 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
 impl<D: Directional, W: Menu> event::SendEvent for MenuBar<D, W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
         if id <= self.bar.id() {
-            return match self.bar.send(mgr, id, event) {
-                Response::Unhandled(event) => self.handle(mgr, event),
+            return match self.bar.send(mgr, id, event.clone()) {
+                Response::Unhandled => self.handle(mgr, event),
                 r => r.try_into().unwrap_or_else(|(_, msg)| Response::Msg(msg)),
             };
         }

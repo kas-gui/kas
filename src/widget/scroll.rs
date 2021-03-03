@@ -187,7 +187,7 @@ impl ScrollComponent {
                     Command::Down => LineDelta(0.0, -1.0),
                     Command::PageUp => PixelDelta(Offset(0, window_size.1 / 2)),
                     Command::PageDown => PixelDelta(Offset(0, -(window_size.1 / 2))),
-                    _ => return (action, Response::Unhandled(event)),
+                    _ => return (action, Response::Unhandled),
                 };
 
                 let d = match delta {
@@ -209,7 +209,7 @@ impl ScrollComponent {
                 };
                 action = self.set_offset(self.offset - d);
                 if action.is_empty() {
-                    response = Response::Unhandled(Event::Scroll(delta));
+                    response = Response::Unhandled;
                 }
             }
             Event::PressStart {
@@ -221,9 +221,7 @@ impl ScrollComponent {
                 action = self.set_offset(self.offset - delta);
             }
             Event::PressEnd { .. } => (), // consume due to request
-            e @ _ => {
-                response = Response::Unhandled(e);
-            }
+            _ => response = Response::Unhandled,
         }
         (action, response)
     }
@@ -364,15 +362,15 @@ impl<W: Widget> Layout for ScrollRegion<W> {
 }
 
 impl<W: Widget> event::SendEvent for ScrollRegion<W> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, mut event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
-        let event = if id <= self.inner.id() {
-            let event = self.scroll.offset_event(event);
-            match self.inner.send(mgr, id, event) {
-                Response::Unhandled(event) => event,
+        if id <= self.inner.id() {
+            event = self.scroll.offset_event(event);
+            match self.inner.send(mgr, id, event.clone()) {
+                Response::Unhandled => (),
                 Response::Focus(rect) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                     *mgr |= action;
@@ -382,7 +380,6 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
             }
         } else {
             debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-            event
         };
 
         let id = self.id();

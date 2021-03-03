@@ -112,7 +112,7 @@ impl<M: Clone + Debug + 'static> event::Handler for MenuEntry<M> {
     fn handle(&mut self, _: &mut Manager, event: Event) -> Response<M> {
         match event {
             Event::Activate => self.msg.clone().into(),
-            event => Response::Unhandled(event),
+            _ => Response::Unhandled,
         }
     }
 }

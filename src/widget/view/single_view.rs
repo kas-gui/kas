@@ -108,7 +108,7 @@ impl<D: SingleData + 'static, V: View<(), D::Item>> Handler for SingleView<D, V>
                 *mgr |= self.view.set(&mut self.child, (), value);
                 Response::Update
             }
-            event => Response::Unhandled(event),
+            _ => Response::Unhandled,
         }
     }
 }
@@ -116,7 +116,7 @@ impl<D: SingleData + 'static, V: View<(), D::Item>> Handler for SingleView<D, V>
 impl<D: SingleData + 'static, V: View<(), D::Item>> SendEvent for SingleView<D, V> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
         if id < self.id() {

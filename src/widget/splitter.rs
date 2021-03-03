@@ -247,7 +247,7 @@ impl<D: Directional, W: Widget> event::SendEvent for Splitter<D, W> {
             }
         }
 
-        Response::Unhandled(event)
+        Response::Unhandled
     }
 }
 

@@ -5,7 +5,7 @@
 
 //! Event handling: Response type
 
-use super::{Event, VoidResponse};
+use super::VoidResponse;
 use kas::geom::Rect;
 
 /// Response type from [`Handler::handle`].
@@ -20,11 +20,15 @@ use kas::geom::Rect;
 pub enum Response<M> {
     /// Nothing of external interest
     ///
+    /// This implies that the event was consumed, but does not affect parents.
     /// Note that we consider "view changes" (i.e. scrolling) to not be of
     /// external interest.
     None,
-    /// Unhandled input events get returned back up the widget tree
-    Unhandled(Event),
+    /// Unhandled event
+    ///
+    /// Indicates that the event was not consumed. An ancestor or the event
+    /// manager is thus able to make use of this event.
+    Unhandled,
     /// (Keyboard) focus has changed. This region should be made visible.
     Focus(Rect),
     /// Notify of update to widget's data
@@ -74,7 +78,7 @@ impl<M> Response<M> {
     #[inline]
     pub fn is_unhandled(&self) -> bool {
         match self {
-            &Response::Unhandled(_) => true,
+            &Response::Unhandled => true,
             _ => false,
         }
     }
@@ -119,7 +123,7 @@ impl<M> Response<M> {
         use Response::*;
         match r {
             None => Ok(None),
-            Unhandled(e) => Ok(Unhandled(e)),
+            Unhandled => Ok(Unhandled),
             Focus(rect) => Ok(Focus(rect)),
             Update => Ok(Update),
             Msg(m) => Err(m),

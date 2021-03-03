@@ -163,9 +163,9 @@ impl<D: Directional, M, W: Menu<Msg = M>> event::Handler for SubMenu<D, W> {
                 (Direction::Right, Command::Right) => self.open_menu(mgr),
                 (Direction::Up, Command::Up) => self.open_menu(mgr),
                 (Direction::Down, Command::Down) => self.open_menu(mgr),
-                _ => return Response::Unhandled(event),
+                _ => return Response::Unhandled,
             },
-            event => return Response::Unhandled(event),
+            _ => return Response::Unhandled,
         }
         Response::None
     }
@@ -174,11 +174,11 @@ impl<D: Directional, M, W: Menu<Msg = M>> event::Handler for SubMenu<D, W> {
 impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
         if id <= self.list.id() {
-            let r = self.list.send(mgr, id, event);
+            let r = self.list.send(mgr, id, event.clone());
 
             // The pop-up API expects us to check actions here
             // But NOTE: we don't actually use this. Should we remove from API?
@@ -194,7 +194,7 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
             match r {
                 Response::None | Response::Update => Response::None,
                 Response::Focus(rect) => Response::Focus(rect),
-                Response::Unhandled(event) => match event {
+                Response::Unhandled => match event {
                     Event::Command(key, _) if self.popup_id.is_some() => {
                         if self.popup_id.is_some() {
                             let dir = self.direction.as_direction();
@@ -218,12 +218,12 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                                 Command::Right if dir == Left => self.close_menu(mgr),
                                 Command::Up if dir == Down => self.close_menu(mgr),
                                 Command::Down if dir == Up => self.close_menu(mgr),
-                                _ => return Response::Unhandled(event),
+                                _ => return Response::Unhandled,
                             }
                         }
                         Response::None
                     }
-                    event => Response::Unhandled(event),
+                    _ => Response::Unhandled,
                 },
                 Response::Msg((_, msg)) => {
                     self.close_menu(mgr);

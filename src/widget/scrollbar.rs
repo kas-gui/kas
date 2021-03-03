@@ -234,7 +234,7 @@ impl<D: Directional> Layout for ScrollBar<D> {
 impl<D: Directional> event::SendEvent for ScrollBar<D> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
         let offset = if id <= self.handle.id() {
@@ -247,7 +247,7 @@ impl<D: Directional> event::SendEvent for ScrollBar<D> {
                 Event::PressStart { source, coord, .. } => {
                     self.handle.handle_press_on_track(mgr, source, coord)
                 }
-                ev @ _ => return Response::Unhandled(ev),
+                _ => return Response::Unhandled,
             }
         };
 
@@ -509,7 +509,7 @@ impl<W: Scrollable> Layout for ScrollBars<W> {
 impl<W: Scrollable> event::SendEvent for ScrollBars<W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
         if id <= self.horiz_bar.id() {
