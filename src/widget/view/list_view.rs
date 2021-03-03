@@ -63,7 +63,7 @@ impl<K, M> From<Response<ListMsg<K, M>>> for Response<M> {
 #[derive(Clone, Debug, Widget)]
 #[handler(send=noauto, msg=ListMsg<T::Key, <V::Widget as Handler>::Msg>)]
 #[widget(children=noauto, config=noauto)]
-pub struct ListView<D: Directional, T: ListData + 'static, V: View<T::Item> = DefaultView> {
+pub struct ListView<D: Directional, T: ListData + 'static, V: View<T::Key, T::Item> = DefaultView> {
     first_id: WidgetId,
     #[widget_core]
     core: CoreData,
@@ -89,7 +89,7 @@ pub struct ListView<D: Directional, T: ListData + 'static, V: View<T::Item> = De
     press_target: Option<T::Key>,
 }
 
-impl<D: Directional + Default, T: ListData, V: View<T::Item> + Default> ListView<D, T, V> {
+impl<D: Directional + Default, T: ListData, V: View<T::Key, T::Item> + Default> ListView<D, T, V> {
     /// Construct a new instance
     ///
     /// This constructor is available where the direction is determined by the
@@ -99,19 +99,19 @@ impl<D: Directional + Default, T: ListData, V: View<T::Item> + Default> ListView
         Self::new_with_dir_view(D::default(), <V as Default>::default(), data)
     }
 }
-impl<D: Directional, T: ListData, V: View<T::Item> + Default> ListView<D, T, V> {
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item> + Default> ListView<D, T, V> {
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, data: T) -> Self {
         Self::new_with_dir_view(direction, <V as Default>::default(), data)
     }
 }
-impl<D: Directional + Default, T: ListData, V: View<T::Item> + Default> ListView<D, T, V> {
+impl<D: Directional + Default, T: ListData, V: View<T::Key, T::Item> + Default> ListView<D, T, V> {
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: T) -> Self {
         Self::new_with_dir_view(D::default(), view, data)
     }
 }
-impl<D: Directional, T: ListData, V: View<T::Item>> ListView<D, T, V> {
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> ListView<D, T, V> {
     /// Construct a new instance with explicit direction and view
     pub fn new_with_dir_view(direction: D, view: V, data: T) -> Self {
         ListView {
@@ -266,11 +266,11 @@ impl<D: Directional, T: ListData, V: View<T::Item>> ListView<D, T, V> {
             .enumerate()
         {
             let i = first_data + i;
-            let key = Some(item.0);
+            let key = Some(item.0.clone());
             let w = &mut self.widgets[i % len];
             if key != w.key {
                 w.key = key;
-                action |= self.view.set(&mut w.widget, item.1);
+                action |= self.view.set(&mut w.widget, item.0, item.1);
             }
             // TODO(opt): don't need to set_rect on all widgets when scrolling
             rect.pos = pos_start + skip * i32::conv(i);
@@ -282,7 +282,7 @@ impl<D: Directional, T: ListData, V: View<T::Item>> ListView<D, T, V> {
     }
 }
 
-impl<D: Directional, T: ListData, V: View<T::Item>> Scrollable for ListView<D, T, V> {
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> Scrollable for ListView<D, T, V> {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         // TODO: maybe we should support a scrollbar on the other axis?
         // We would need to report a fake min-child-size to enable scrolling.
@@ -313,7 +313,7 @@ impl<D: Directional, T: ListData, V: View<T::Item>> Scrollable for ListView<D, T
     }
 }
 
-impl<D: Directional, T: ListData, V: View<T::Item>> WidgetChildren for ListView<D, T, V> {
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> WidgetChildren for ListView<D, T, V> {
     #[inline]
     fn first_id(&self) -> WidgetId {
         self.first_id
@@ -337,7 +337,7 @@ impl<D: Directional, T: ListData, V: View<T::Item>> WidgetChildren for ListView<
     }
 }
 
-impl<D: Directional, T: ListData, V: View<T::Item>> WidgetConfig for ListView<D, T, V> {
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> WidgetConfig for ListView<D, T, V> {
     fn configure(&mut self, mgr: &mut Manager) {
         if let Some(handle) = self.data.update_handle() {
             mgr.update_on_handle(handle, self.id());
@@ -346,7 +346,7 @@ impl<D: Directional, T: ListData, V: View<T::Item>> WidgetConfig for ListView<D,
     }
 }
 
-impl<D: Directional, T: ListData, V: View<T::Item>> Layout for ListView<D, T, V> {
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> Layout for ListView<D, T, V> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
@@ -356,7 +356,7 @@ impl<D: Directional, T: ListData, V: View<T::Item>> Layout for ListView<D, T, V>
         if self.widgets.is_empty() {
             let (key, widget) = if let Some((key, data)) = self.data.iter_vec(1).into_iter().next()
             {
-                (Some(key), self.view.new(data))
+                (Some(key.clone()), self.view.new(key, data))
             } else {
                 (None, self.view.default())
             };
@@ -423,8 +423,8 @@ impl<D: Directional, T: ListData, V: View<T::Item>> Layout for ListView<D, T, V>
             self.widgets.reserve(num - old_num);
             mgr.size_handle(|size_handle| {
                 for (key, item) in self.data.iter_vec_from(old_num, num - old_num) {
+                    let mut widget = self.view.new(key.clone(), item);
                     let key = Some(key);
-                    let mut widget = self.view.new(item);
                     // We must solve size rules on new widgets:
                     solve_size_rules(
                         &mut widget,
@@ -492,7 +492,7 @@ impl<D: Directional, T: ListData, V: View<T::Item>> Layout for ListView<D, T, V>
     }
 }
 
-impl<D: Directional, T: ListData, V: View<T::Item>> SendEvent for ListView<D, T, V> {
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListView<D, T, V> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled(event);

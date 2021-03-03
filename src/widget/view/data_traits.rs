@@ -154,7 +154,10 @@ impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> ListData for std::collection
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.iter().take(limit).map(|(k, v)| (k.clone(), v.clone())).collect()
+        self.iter()
+            .take(limit)
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     }
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
