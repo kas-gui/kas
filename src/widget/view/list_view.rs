@@ -151,6 +151,33 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> ListView<D, T, V> {
         &mut self.data
     }
 
+    /// Get a copy of the shared value at `key`
+    pub fn get_value(&self, key: &T::Key) -> Option<T::Item> {
+        self.data.get_cloned(key)
+    }
+
+    /// Set shared data
+    ///
+    /// This method updates the shared data, if supported (see
+    /// [`ListData::update`]). Other widgets sharing this data are notified
+    /// of the update, if data is changed.
+    pub fn set_value(&self, mgr: &mut Manager, key: &T::Key, data: T::Item) {
+        if let Some(handle) = self.data.update(key, data) {
+            mgr.trigger_update(handle, 0);
+        }
+    }
+
+    /// Update shared data
+    ///
+    /// This is purely a convenience method over [`ListView::set_value`].
+    /// It does nothing if no value is found at `key`.
+    /// It notifies other widgets of updates to the shared data.
+    pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut Manager, key: &T::Key, f: F) {
+        if let Some(item) = self.get_value(key) {
+            self.set_value(mgr, key, f(item));
+        }
+    }
+
     /// Get the current selection mode
     pub fn selection_mode(&self) -> SelectionMode {
         self.sel_mode
@@ -502,17 +529,18 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListVi
             let response = 'outer: loop {
                 // We forward events to all children, even if not visible
                 // (e.g. these may be subscribed to an UpdateHandle).
-                for child in &mut self.widgets {
+                for (i, child) in self.widgets.iter_mut().enumerate() {
                     if id <= child.widget.id() {
                         let event = self.scroll.offset_event(event);
-                        break 'outer (child.key.clone(), child.widget.send(mgr, id, event));
+                        break 'outer (i, child.key.clone(), child.widget.send(mgr, id, event));
                     }
                 }
                 debug_assert!(false, "SendEvent::send: bad WidgetId");
                 return Response::Unhandled(event);
             };
             match response {
-                (key, Response::Unhandled(event)) => {
+                (_, _, Response::None) => return Response::None,
+                (_, key, Response::Unhandled(event)) => {
                     if let Event::PressStart { source, coord, .. } = event {
                         if source.is_primary() {
                             // We request a grab with our ID, hence the
@@ -526,23 +554,21 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListVi
                     }
                     event
                 }
-                (_, Response::Focus(rect)) => {
+                (_, _, Response::Focus(rect)) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                     *mgr |= action;
                     self.update_widgets(mgr);
                     return Response::Focus(rect);
                 }
-                (key, r) => {
-                    return match Response::try_from(r) {
-                        Ok(r) => r,
-                        Err(msg) => {
-                            if let Some(key) = key {
-                                Response::Msg(ListMsg::Child(key, msg))
-                            } else {
-                                log::warn!("ListView: response from widget with no key");
-                                Response::None
-                            }
+                (i, key, Response::Msg(msg)) => {
+                    if let Some(key) = key {
+                        if let Some(item) = self.view.get(&self.widgets[i].widget, &key) {
+                            self.set_value(mgr, &key, item);
                         }
+                        return Response::Msg(ListMsg::Child(key, msg));
+                    } else {
+                        log::warn!("ListView: response from widget with no key");
+                        return Response::None;
                     }
                 }
             }

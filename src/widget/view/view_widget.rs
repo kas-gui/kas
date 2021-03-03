@@ -29,6 +29,15 @@ pub trait View<K, T>: Debug + 'static {
     fn new(&self, key: K, data: T) -> Self::Widget;
     /// Set the viewed data
     fn set(&self, widget: &mut Self::Widget, key: K, data: T) -> TkAction;
+    /// Get data from the view
+    ///
+    /// "View" widgets which allow the user to manipulate their data (e.g. a
+    /// slider or edit box) should return a copy of that data here; other
+    /// widgets should just return `None`.
+    ///
+    /// When a view widget emits [`Response::Msg`], this method is called to
+    /// update the shared data set with the returned value (if any).
+    fn get(&self, widget: &Self::Widget, key: &K) -> Option<T>;
 }
 
 /// Default view widget constructor
@@ -50,6 +59,7 @@ macro_rules! impl_via_to_string {
             fn set(&self, widget: &mut Self::Widget, _: K, data: $t) -> TkAction {
                 widget.set_string(data.to_string())
             }
+            fn get(&self, _: &Self::Widget, _: &K) -> Option<$t> { None }
         }
     };
     ($t:ty, $($tt:ty),+) => {
@@ -72,6 +82,9 @@ impl<K> View<K, bool> for DefaultView {
     }
     fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
         widget.set_bool(data)
+    }
+    fn get(&self, widget: &Self::Widget, _: &K) -> Option<bool> {
+        Some(widget.get_bool())
     }
 }
 
@@ -112,6 +125,9 @@ impl<W: Widget> Default for WidgetView<W> {
 //     fn set(&self, widget: &mut Self::Widget, key: K, data: T) -> TkAction {
 //         DefaultView.set(widget, key, data)
 //     }
+//     fn get(&self, widget: &Self::Widget, key: K) -> Option<T> {
+//         Some(DefaultView.set(widget, key, data))
+//     }
 // }
 
 impl<K, G: EditGuard + Default> View<K, String> for WidgetView<EditField<G>> {
@@ -127,6 +143,9 @@ impl<K, G: EditGuard + Default> View<K, String> for WidgetView<EditField<G>> {
     fn set(&self, widget: &mut Self::Widget, _: K, data: String) -> TkAction {
         widget.set_string(data)
     }
+    fn get(&self, widget: &Self::Widget, _: &K) -> Option<String> {
+        Some(widget.get_string())
+    }
 }
 impl<K, G: EditGuard + Default> View<K, String> for WidgetView<EditBox<G>> {
     type Widget = EditBox<G>;
@@ -141,6 +160,9 @@ impl<K, G: EditGuard + Default> View<K, String> for WidgetView<EditBox<G>> {
     fn set(&self, widget: &mut Self::Widget, _: K, data: String) -> TkAction {
         widget.set_string(data)
     }
+    fn get(&self, widget: &Self::Widget, _: &K) -> Option<String> {
+        Some(widget.get_string())
+    }
 }
 
 impl<K, D: Directional + Default> View<K, f32> for WidgetView<ProgressBar<D>> {
@@ -153,6 +175,9 @@ impl<K, D: Directional + Default> View<K, f32> for WidgetView<ProgressBar<D>> {
     }
     fn set(&self, widget: &mut Self::Widget, _: K, data: f32) -> TkAction {
         widget.set_value(data)
+    }
+    fn get(&self, _: &Self::Widget, _: &K) -> Option<f32> {
+        None
     }
 }
 
@@ -179,6 +204,9 @@ impl<K> View<K, bool> for CheckBoxView {
     fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
         widget.set_bool(data)
     }
+    fn get(&self, widget: &Self::Widget, _: &K) -> Option<bool> {
+        Some(widget.get_bool())
+    }
 }
 
 /// [`RadioBoxBare`] view widget constructor
@@ -202,6 +230,9 @@ impl<K> View<K, bool> for RadioBoxBareView {
     }
     fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
         widget.set_bool(data)
+    }
+    fn get(&self, widget: &Self::Widget, _: &K) -> Option<bool> {
+        Some(widget.get_bool())
     }
 }
 
@@ -228,6 +259,9 @@ impl<K> View<K, bool> for RadioBoxView {
     }
     fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
         widget.set_bool(data)
+    }
+    fn get(&self, widget: &Self::Widget, _: &K) -> Option<bool> {
+        Some(widget.get_bool())
     }
 }
 
@@ -271,5 +305,8 @@ impl<K, T: SliderType, D: Directional> View<K, T> for SliderView<T, D> {
     }
     fn set(&self, widget: &mut Self::Widget, _: K, data: T) -> TkAction {
         widget.set_value(data)
+    }
+    fn get(&self, widget: &Self::Widget, _: &K) -> Option<T> {
+        Some(widget.value())
     }
 }

@@ -5,7 +5,7 @@
 
 //! Single view widget
 
-use super::{DefaultView, SingleData, SingleDataMut, View};
+use super::{DefaultView, SingleData, View};
 use kas::prelude::*;
 use std::fmt::{self};
 
@@ -13,7 +13,7 @@ use std::fmt::{self};
 #[derive(Clone, Widget)]
 #[widget(config=noauto)]
 #[layout(single)]
-#[handler(handle=noauto)]
+#[handler(handle=noauto, send=noauto)]
 pub struct SingleView<D: SingleData + 'static, V: View<(), D::Item> = DefaultView> {
     #[widget_core]
     core: CoreData,
@@ -70,12 +70,12 @@ impl<D: SingleData + 'static, V: View<(), D::Item>> SingleView<D, V> {
     pub fn get_value(&self) -> D::Item {
         self.data.get_cloned()
     }
-}
 
-impl<D: SingleDataMut + 'static, V: View<(), D::Item>> SingleView<D, V> {
     /// Set shared data
     ///
-    /// Other widgets sharing this data are notified of the update.
+    /// This method updates the shared data, if supported (see
+    /// [`SingleData::update`]). Other widgets sharing this data are notified
+    /// of the update, if data is changed.
     pub fn set_value(&self, mgr: &mut Manager, data: D::Item) {
         if let Some(handle) = self.data.update(data) {
             mgr.trigger_update(handle, 0);
@@ -84,8 +84,8 @@ impl<D: SingleDataMut + 'static, V: View<(), D::Item>> SingleView<D, V> {
 
     /// Update shared data
     ///
-    /// This is purely a convenience method over [`SingleView::get_value`] and
-    /// [`SingleView::set_value`]. It always notifies other widgets sharing the data.
+    /// This is purely a convenience method over [`SingleView::set_value`].
+    /// It notifies other widgets of updates to the shared data.
     pub fn update_value<F: Fn(D::Item) -> D::Item>(&self, mgr: &mut Manager, f: F) {
         self.set_value(mgr, f(self.get_value()));
     }
@@ -109,6 +109,27 @@ impl<D: SingleData + 'static, V: View<(), D::Item>> Handler for SingleView<D, V>
                 Response::None
             }
             event => Response::Unhandled(event),
+        }
+    }
+}
+
+impl<D: SingleData + 'static, V: View<(), D::Item>> SendEvent for SingleView<D, V> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+        if self.is_disabled() {
+            return Response::Unhandled(event);
+        }
+
+        if id < self.id() {
+            let r = self.child.send(mgr, id, event);
+            if let Response::Msg(_) = r {
+                if let Some(item) = self.view.get(&self.child, &()) {
+                    self.set_value(mgr, item);
+                }
+            }
+            r
+        } else {
+            debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
+            self.handle(mgr, event)
         }
     }
 }

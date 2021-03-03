@@ -44,25 +44,49 @@ enum EntryMsg {
 #[derive(Debug)]
 struct MyData {
     len: usize,
+    active: usize,
     map: RefCell<HashMap<usize, (bool, String)>>,
     handle: UpdateHandle,
 }
 impl MyData {
     fn new(len: usize) -> Self {
-        let map = Default::default();
-        let handle = UpdateHandle::new();
-        MyData { len, map, handle }
+        MyData {
+            len,
+            active: 0,
+            map: Default::default(),
+            handle: UpdateHandle::new(),
+        }
     }
-    fn set_len(&mut self, len: usize) -> UpdateHandle {
+    fn set_len(&mut self, len: usize) -> (Option<String>, UpdateHandle) {
         self.len = len;
-        self.handle
+        let mut new_text = None;
+        if self.active >= len && len > 0 {
+            if let Some(value) = self.map.get_mut().get_mut(&self.active) {
+                value.0 = false;
+            }
+            self.active = len - 1;
+            if let Some(value) = self.map.get_mut().get_mut(&self.active) {
+                value.0 = true;
+            }
+            new_text = Some(self.get(self.active).1);
+        }
+        (new_text, self.handle)
+    }
+    fn get_active(&self) -> usize {
+        self.active
+    }
+    // Note: in general this method should update the data source and return
+    // self.handle, but for our uses this is sufficient.
+    fn set_active(&mut self, active: usize) -> String {
+        self.active = active;
+        self.get(active).1
     }
     fn get(&self, n: usize) -> (bool, String) {
         self.map
             .borrow()
             .get(&n)
             .cloned()
-            .unwrap_or_else(|| (false, format!("Entry #{}", n + 1)))
+            .unwrap_or_else(|| (n == self.active, format!("Entry #{}", n + 1)))
     }
 }
 impl ListData for MyData {
@@ -200,6 +224,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
         fn set(&self, widget: &mut Self::Widget, _: usize, data: (bool, String)) -> TkAction {
             widget.radio.set_bool(data.0) | widget.entry.set_string(data.1)
         }
+        fn get(&self, widget: &Self::Widget, _: &usize) -> Option<(bool, String)> {
+            let b = widget.radio.get_bool();
+            let s = widget.entry.get_string();
+            Some((b, s))
+        }
     }
     type MyList = ListView<kas::dir::Down, MyData, MyView>;
 
@@ -216,11 +245,13 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget] _ = Separator::new(),
                 #[widget(handler = set_radio)] list: ScrollBars<MyList> =
                     ScrollBars::new(ListView::new(data)).with_bars(false, true),
-                active: usize = 0,
             }
             impl {
                 fn set_len(&mut self, mgr: &mut Manager, len: usize) -> Response<VoidMsg> {
-                    let handle = self.list.data_mut().set_len(len);
+                    let (opt_text, handle) = self.list.data_mut().set_len(len);
+                    if let Some(text) = opt_text {
+                        *mgr |= self.display.set_string(text);
+                    }
                     mgr.trigger_update(handle, 0);
                     Response::None
                 }
@@ -228,12 +259,11 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     match msg {
                         ListMsg::Select(_) | ListMsg::Deselect(_) => (),
                         ListMsg::Child(n, EntryMsg::Select) => {
-                            self.active = n;
-                            let text = self.list.data().get(n).1;
+                            let text = self.list.data_mut().set_active(n);
                             *mgr |= self.display.set_string(text);
                         }
                         ListMsg::Child(n, EntryMsg::Update(text)) => {
-                            if n == self.active {
+                            if n == self.list.data().get_active() {
                                 *mgr |= self.display.set_string(text);
                             }
                         }
