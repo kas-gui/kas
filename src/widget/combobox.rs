@@ -198,7 +198,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
 impl<M: Clone + Debug + 'static> ComboBox<M> {
     fn map_response(&mut self, mgr: &mut Manager, r: Response<(usize, ())>) -> Response<M> {
         match r {
-            Response::None => Response::None,
+            Response::None | Response::Update => Response::None,
             Response::Unhandled(event) => match event {
                 Event::Command(cmd, _) => {
                     let next = |mgr: &mut Manager, s, clr, rev| {

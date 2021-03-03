@@ -192,7 +192,7 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
             }
 
             match r {
-                Response::None => Response::None,
+                Response::None | Response::Update => Response::None,
                 Response::Focus(rect) => Response::Focus(rect),
                 Response::Unhandled(event) => match event {
                     Event::Command(key, _) if self.popup_id.is_some() => {

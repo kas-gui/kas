@@ -203,10 +203,8 @@ impl<D: Directional, W: Menu> event::SendEvent for MenuBar<D, W> {
 
         if id <= self.bar.id() {
             return match self.bar.send(mgr, id, event) {
-                Response::None => Response::None,
-                Response::Focus(rect) => Response::Focus(rect),
                 Response::Unhandled(event) => self.handle(mgr, event),
-                Response::Msg((_, msg)) => Response::Msg(msg),
+                r => r.try_into().unwrap_or_else(|(_, msg)| Response::Msg(msg)),
             };
         }
 

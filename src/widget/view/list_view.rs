@@ -560,12 +560,14 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListVi
                     self.update_widgets(mgr);
                     return Response::Focus(rect);
                 }
-                (i, key, Response::Msg(msg)) => {
+                (i, key, r @ Response::Msg(_)) | (i, key, r @ Response::Update) => {
                     if let Some(key) = key {
                         if let Some(item) = self.view.get(&self.widgets[i].widget, &key) {
                             self.set_value(mgr, &key, item);
                         }
-                        return Response::Msg(ListMsg::Child(key, msg));
+                        return r
+                            .try_into()
+                            .unwrap_or_else(|msg| Response::Msg(ListMsg::Child(key, msg)));
                     } else {
                         log::warn!("ListView: response from widget with no key");
                         return Response::None;
@@ -577,7 +579,7 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListVi
             match event {
                 Event::HandleUpdate { .. } => {
                     self.update_view(mgr);
-                    return Response::None;
+                    return Response::Update;
                 }
                 Event::PressMove { source, .. } if self.press_event == Some(source) => {
                     self.press_event = None;

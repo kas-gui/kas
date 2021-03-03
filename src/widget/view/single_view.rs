@@ -106,7 +106,7 @@ impl<D: SingleData + 'static, V: View<(), D::Item>> Handler for SingleView<D, V>
             Event::HandleUpdate { .. } => {
                 let value = self.data.get_cloned();
                 *mgr |= self.view.set(&mut self.child, (), value);
-                Response::None
+                Response::Update
             }
             event => Response::Unhandled(event),
         }
@@ -121,10 +121,13 @@ impl<D: SingleData + 'static, V: View<(), D::Item>> SendEvent for SingleView<D, 
 
         if id < self.id() {
             let r = self.child.send(mgr, id, event);
-            if let Response::Msg(_) = r {
-                if let Some(item) = self.view.get(&self.child, &()) {
-                    self.set_value(mgr, item);
+            match r {
+                Response::Update | Response::Msg(_) => {
+                    if let Some(item) = self.view.get(&self.child, &()) {
+                        self.set_value(mgr, item);
+                    }
                 }
+                _ => (),
             }
             r
         } else {
