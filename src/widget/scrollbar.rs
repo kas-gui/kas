@@ -69,7 +69,7 @@ impl<D: Directional> ScrollBar<D> {
     /// Set the initial value
     #[inline]
     pub fn with_value(mut self, value: i32) -> Self {
-        self.value = value;
+        self.value = value.clamp(0, self.max_value);
         self
     }
 
@@ -93,8 +93,8 @@ impl<D: Directional> ScrollBar<D> {
         // We should gracefully handle zero, though appearance may be wrong.
         self.handle_value = handle_value.max(1);
 
-        self.max_value = max_value;
-        self.value = self.value.min(self.max_value);
+        self.max_value = max_value.max(0);
+        self.value = self.value.clamp(0, self.max_value);
         self.update_handle()
     }
 
@@ -122,7 +122,7 @@ impl<D: Directional> ScrollBar<D> {
 
     /// Set the value
     pub fn set_value(&mut self, value: i32) -> TkAction {
-        let value = value.min(self.max_value);
+        let value = value.clamp(0, self.max_value);
         if value == self.value {
             TkAction::empty()
         } else {
@@ -190,7 +190,7 @@ impl<D: Directional> ScrollBar<D> {
             return false;
         }
         let value = i32::conv((lhs + (rhs / 2)) / rhs);
-        let value = value.min(self.max_value);
+        let value = value.clamp(0, self.max_value);
         if value != self.value {
             self.value = value;
             return true;
