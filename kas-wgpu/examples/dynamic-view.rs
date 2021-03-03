@@ -89,7 +89,7 @@ impl ListData for MyData {
     }
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        (start..limit.min(self.len.saturating_sub(start)))
+        (start..self.len.min(start + limit))
             .map(|n| (n, self.get(n)))
             .collect()
     }
@@ -216,7 +216,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget] _ = Separator::new(),
                 #[widget(handler = set_radio)] list: ScrollBars<MyList> =
                     ScrollBars::new(ListView::new(data)).with_bars(false, true),
-                #[widget] _ = Filler::maximize(),
                 active: usize = 0,
             }
             impl {

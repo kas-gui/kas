@@ -500,7 +500,9 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListVi
 
         let event = if id < self.id() {
             let response = 'outer: loop {
-                for child in &mut self.widgets[..self.cur_len.cast()] {
+                // We forward events to all children, even if not visible
+                // (e.g. these may be subscribed to an UpdateHandle).
+                for child in &mut self.widgets {
                     if id <= child.widget.id() {
                         let event = self.scroll.offset_event(event);
                         break 'outer (child.key.clone(), child.widget.send(mgr, id, event));
