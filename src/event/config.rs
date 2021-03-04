@@ -56,13 +56,13 @@ impl Default for ConfigFormat {
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
+    #[cfg_attr(feature = "serde", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        let mut shortcuts = Shortcuts::new();
-        shortcuts.load_platform_defaults();
+        let shortcuts = Shortcuts::platform_defaults();
         Config { shortcuts }
     }
 }

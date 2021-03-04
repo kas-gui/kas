@@ -23,10 +23,19 @@ pub struct Shortcuts {
 
 impl Shortcuts {
     /// Construct, with no bindings
+    #[inline]
     pub fn new() -> Self {
         Shortcuts {
             map: Default::default(),
         }
+    }
+
+    /// Construct, with default bindings
+    #[inline]
+    pub fn platform_defaults() -> Self {
+        let mut s = Self::new();
+        s.load_platform_defaults();
+        s
     }
 
     /// Load default shortcuts for the current platform
