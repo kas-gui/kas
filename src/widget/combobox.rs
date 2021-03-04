@@ -101,11 +101,8 @@ impl ComboBox<VoidMsg> {
     /// with the `active` choice selected (0-based index).
     #[inline]
     pub fn new_entries(entries: Vec<MenuEntry<()>>, active: usize) -> Self {
-        assert!(
-            active < entries.len(),
-            "ComboBox: expected active < entries.len()"
-        );
-        let label = Text::new_single(entries[active].get_string().into());
+        let label = entries.get(active).map(|entry| entry.get_string());
+        let label = Text::new_single(label.unwrap_or("".to_string()));
         ComboBox {
             core: Default::default(),
             label,
@@ -146,35 +143,42 @@ impl ComboBox<VoidMsg> {
 
 impl<M: 'static> ComboBox<M> {
     /// Get the index of the active choice
+    ///
+    /// This index is normally less than the number of choices (`self.len()`),
+    /// but may not be if set programmatically or there are no choices.
     #[inline]
     pub fn active(&self) -> usize {
         self.active
     }
 
     /// Set the active choice
-    ///
-    /// Panics if `index >= self.len()`.
     #[inline]
     pub fn set_active(&mut self, index: usize) -> TkAction {
-        if index >= self.len() {
-            panic!("ComboBox::set_active(index): index out of bounds");
-        }
         if self.active != index {
             self.active = index;
-            let string = self.popup.inner[self.active].get_string();
+            let string = if index < self.len() {
+                self.popup.inner[index].get_string()
+            } else {
+                "".to_string()
+            };
             let avail = self.core.rect.size.clamped_sub(self.frame_size);
             kas::text::util::set_text_and_prepare(&mut self.label, string, avail)
         } else {
             TkAction::empty()
         }
     }
-}
 
-impl<M: 'static> ComboBox<M> {
     /// Get the number of entries
     #[inline]
     pub fn len(&self) -> usize {
         self.popup.inner.len()
+    }
+
+    /// Remove all choices
+    ///
+    /// Triggers a [reconfigure action](Manager::send_action).
+    pub fn clear(&mut self) -> TkAction {
+        self.popup.inner.clear()
     }
 
     /// Add a choice to the combobox, in last position
@@ -186,7 +190,13 @@ impl<M: 'static> ComboBox<M> {
         // TODO: localised reconfigure
     }
 
-    // TODO: fn pop() -> Option<..> — but API is invalid if we can't remove last item
+    /// Pops the last choice from the combobox
+    ///
+    /// Triggers a [reconfigure action](Manager::send_action).
+    pub fn pop(&mut self) -> (Option<()>, TkAction) {
+        let r = self.popup.inner.inner.pop();
+        (r.0.map(|_| ()), r.1)
+    }
 
     /// Add a choice at position `index`
     ///
@@ -201,14 +211,10 @@ impl<M: 'static> ComboBox<M> {
 
     /// Removes the choice at position `index`
     ///
-    /// Panics if `index` is out of bounds or if the removal would leave the
-    /// `ComboBox` empty (which is not allowed).
+    /// Panics if `index` is out of bounds.
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn remove(&mut self, index: usize) -> TkAction {
-        if self.len() < 2 {
-            panic!("ComboBox::remove: unable to remove last choice");
-        }
         self.popup.inner.remove(index).1
     }
 
