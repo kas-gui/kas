@@ -115,19 +115,17 @@ fn main() -> Result<(), kas_wgpu::Error> {
         MenuEntry::new("&Light", Menu::Colour("light")),
         MenuEntry::new("Dar&k", Menu::Colour("dark")),
     ];
-    let menubar = MenuBar::<Right, _>::new(vec![
+    let styles = vec![
+        SubMenu::right("&Colours", colours).boxed(),
+        Separator::infer().boxed(),
+        MenuToggle::new("&Disabled")
+            .on_toggle(|_, state| Some(Menu::Disabled(state)))
+            .boxed(),
+    ];
+    let menubar = MenuBar::<_>::new(vec![
         SubMenu::new("&App", vec![MenuEntry::new("&Quit", Menu::Quit).boxed()]),
         SubMenu::new("&Theme", themes),
-        SubMenu::new(
-            "&Style",
-            vec![
-                SubMenu::right("&Colours", colours).boxed(),
-                Separator::infer().boxed(),
-                MenuToggle::new("&Disabled")
-                    .on_toggle(|_, state| Some(Menu::Disabled(state)))
-                    .boxed(),
-            ],
-        ),
+        SubMenu::new("&Style", styles),
     ]);
 
     let popup_edit_box = make_widget! {

@@ -20,7 +20,7 @@ const DELAY: Duration = Duration::from_millis(200);
 /// menus.
 #[derive(Clone, Debug, Widget)]
 #[handler(noauto)]
-pub struct MenuBar<D: Directional, W: Menu> {
+pub struct MenuBar<W: Menu, D: Directional = kas::dir::Right> {
     #[widget_core]
     core: CoreData,
     #[widget]
@@ -30,15 +30,19 @@ pub struct MenuBar<D: Directional, W: Menu> {
     delayed_open: Option<WidgetId>,
 }
 
-impl<D: Directional + Default, W: Menu> MenuBar<D, W> {
-    /// Construct
+impl<W: Menu, D: Directional + Default> MenuBar<W, D> {
+    /// Construct a menubar
+    ///
+    /// Note: it appears that `MenuBar::new(..)` causes a type inference error,
+    /// however `MenuBar::<_>::new(..)` does not. Alternatively one may specify
+    /// the direction explicitly: `MenuBar::<_, kas::dir::Right>::new(..)`.
     pub fn new(menus: Vec<SubMenu<D::Flipped, W>>) -> Self {
         MenuBar::new_with_direction(D::default(), menus)
     }
 }
 
-impl<D: Directional, W: Menu> MenuBar<D, W> {
-    /// Construct
+impl<W: Menu, D: Directional> MenuBar<W, D> {
+    /// Construct a menubar with explicit direction
     pub fn new_with_direction(direction: D, menus: Vec<SubMenu<D::Flipped, W>>) -> Self {
         MenuBar {
             core: Default::default(),
@@ -50,7 +54,7 @@ impl<D: Directional, W: Menu> MenuBar<D, W> {
 }
 
 // NOTE: we could use layout(single) except for alignment
-impl<D: Directional, W: Menu> Layout for MenuBar<D, W> {
+impl<W: Menu, D: Directional> Layout for MenuBar<W, D> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         self.bar.size_rules(size_handle, axis)
     }
@@ -76,7 +80,7 @@ impl<D: Directional, W: Menu> Layout for MenuBar<D, W> {
         self.bar.draw(draw_handle, mgr, disabled);
     }
 }
-impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
+impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
@@ -195,7 +199,7 @@ impl<D: Directional, W: Menu<Msg = M>, M> event::Handler for MenuBar<D, W> {
     }
 }
 
-impl<D: Directional, W: Menu> event::SendEvent for MenuBar<D, W> {
+impl<W: Menu, D: Directional> event::SendEvent for MenuBar<W, D> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled;
@@ -212,7 +216,7 @@ impl<D: Directional, W: Menu> event::SendEvent for MenuBar<D, W> {
     }
 }
 
-impl<D: Directional, W: Menu> Menu for MenuBar<D, W> {
+impl<W: Menu, D: Directional> Menu for MenuBar<W, D> {
     fn menu_path(&mut self, mgr: &mut Manager, target: Option<WidgetId>) {
         if let Some(id) = target {
             // We should close other sub-menus before opening
