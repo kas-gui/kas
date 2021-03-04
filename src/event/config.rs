@@ -6,9 +6,11 @@
 //! Event handling configuration
 
 use super::shortcuts::Shortcuts;
+use crate::conv::Cast;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::time::Duration;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -56,18 +58,27 @@ impl Default for ConfigFormat {
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
+    #[cfg_attr(feature = "serde", serde(default = "defaults::menu_delay_ns"))]
+    pub menu_delay_ns: u32,
     #[cfg_attr(feature = "serde", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        let shortcuts = Shortcuts::platform_defaults();
-        Config { shortcuts }
+        Config {
+            menu_delay_ns: defaults::menu_delay_ns(),
+            shortcuts: Shortcuts::platform_defaults(),
+        }
     }
 }
 
 impl Config {
+    /// Get menu delay as a `Duration`
+    pub fn menu_delay(&self) -> Duration {
+        Duration::from_nanos(self.menu_delay_ns.cast())
+    }
+
     fn guess_format(path: &Path) -> ConfigFormat {
         // use == since there is no OsStr literal
         if let Some(ext) = path.extension() {
@@ -128,5 +139,11 @@ impl Config {
             // NOTE: Toml is not supported since the `toml` crate does not support enums as map keys
             _ => Err(ConfigError::UnsupportedFormat(format)),
         }
+    }
+}
+
+mod defaults {
+    pub fn menu_delay_ns() -> u32 {
+        250_000_000
     }
 }

@@ -5,14 +5,10 @@
 
 //! Menubar
 
-use std::time::Duration;
-
 use super::{Menu, SubMenu};
 use kas::event::{self, Command, GrabMode};
 use kas::prelude::*;
 use kas::widget::List;
-
-const DELAY: Duration = Duration::from_millis(200);
 
 /// A menu-bar
 ///
@@ -104,6 +100,7 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
                         self.find_leaf(start_id)
                             .map(|w| mgr.next_nav_focus(w, false));
                         self.opening = false;
+                        let delay = mgr.config().menu_delay();
                         if self.rect().contains(coord) {
                             // We could just send Event::OpenPopup, but we also
                             // need to set self.opening
@@ -114,14 +111,14 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
                                     if !w.menu_is_open() {
                                         self.opening = true;
                                         self.delayed_open = Some(id);
-                                        mgr.update_on_timer(DELAY, self.id());
+                                        mgr.update_on_timer(delay, self.id());
                                     }
                                     break;
                                 }
                             }
                         } else {
                             self.delayed_open = Some(start_id);
-                            mgr.update_on_timer(DELAY, self.id());
+                            mgr.update_on_timer(delay, self.id());
                         }
                     }
                 } else {
@@ -136,7 +133,8 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
                         mgr.set_grab_depress(source, Some(id));
                         mgr.set_nav_focus(id);
                         self.delayed_open = Some(id);
-                        mgr.update_on_timer(DELAY, self.id());
+                        let delay = mgr.config().menu_delay();
+                        mgr.update_on_timer(delay, self.id());
                     }
                 } else {
                     mgr.set_grab_depress(source, None);

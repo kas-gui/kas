@@ -91,6 +91,12 @@ impl<'a> Manager<'a> {
         self.state.modifiers
     }
 
+    /// Access event-handling configuration
+    #[inline]
+    pub fn config<'b>(&'b self) -> impl std::ops::Deref<Target = Config> + 'b {
+        self.state.config.borrow()
+    }
+
     /// Schedule an update
     ///
     /// Widgets requiring animation should schedule an update; as a result,
