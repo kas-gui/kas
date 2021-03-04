@@ -235,12 +235,12 @@ pub struct Manager<'a> {
 
 /// Internal methods
 impl<'a> Manager<'a> {
-    fn set_hover<W: Widget + ?Sized>(&mut self, widget: &mut W, w_id: Option<WidgetId>) {
+    fn set_hover<W: Widget + ?Sized>(&mut self, widget: &W, w_id: Option<WidgetId>) {
         if self.state.hover != w_id {
             trace!("Manager: hover = {:?}", w_id);
             if let Some(id) = self.state.hover {
                 if widget
-                    .find_child(id)
+                    .find_leaf(id)
                     .map(|w| w.hover_highlight())
                     .unwrap_or(false)
                 {
@@ -249,7 +249,7 @@ impl<'a> Manager<'a> {
             }
             if let Some(id) = w_id {
                 if widget
-                    .find_child(id)
+                    .find_leaf(id)
                     .map(|w| w.hover_highlight())
                     .unwrap_or(false)
                 {
@@ -259,10 +259,15 @@ impl<'a> Manager<'a> {
             self.state.hover = w_id;
 
             if let Some(id) = w_id {
-                let icon = widget
-                    .find_child(id)
-                    .map(|w| w.cursor_icon())
-                    .unwrap_or(CursorIcon::Default);
+                let mut icon = widget.cursor_icon();
+                let mut widget = widget.as_widget();
+                while let Some(child) = widget.find_child(id) {
+                    widget = widget.get_child(child).unwrap();
+                    let child_icon = widget.cursor_icon();
+                    if child_icon != CursorIcon::Default {
+                        icon = child_icon;
+                    }
+                }
                 if icon != self.state.hover_icon {
                     self.state.hover_icon = icon;
                     if self.state.mouse_grab.is_none() {

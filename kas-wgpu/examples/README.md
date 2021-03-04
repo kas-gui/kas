@@ -88,6 +88,15 @@ An example demonstrating a custom draw pipe.
 
 ![Mandlebrot](../../screenshots/mandlebrot.png)
 
+### Async event
+
+Demonstrates how to send data from another thread.
+
+### Cursors
+
+Gallery of available mouse cursors.
+
+
 Copyright and Licence
 -------
 

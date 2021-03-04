@@ -24,6 +24,7 @@ pub struct Child {
     pub args: WidgetAttrArgs,
 }
 
+#[derive(Debug)]
 pub struct Args {
     pub core_data: Member,
     pub layout_data: Option<Member>,
@@ -415,6 +416,7 @@ impl ToTokens for GridPos {
     }
 }
 
+#[derive(Debug)]
 pub struct WidgetArgs {
     pub config: Option<WidgetConfig>,
     pub children: bool,
@@ -429,6 +431,7 @@ impl Default for WidgetArgs {
     }
 }
 
+#[derive(Debug)]
 pub struct WidgetConfig {
     pub key_nav: bool,
     pub hover_highlight: bool,
@@ -558,6 +561,7 @@ impl ToTokens for LayoutType {
     }
 }
 
+#[derive(Debug)]
 pub struct LayoutArgs {
     pub span: Span,
     pub layout: LayoutType,
@@ -798,6 +802,7 @@ impl ToTokens for HandlerArgs {
     }
 }
 
+#[derive(Debug)]
 pub enum ChildType {
     Fixed(Type), // fixed type
     // A given type using generics internally
@@ -807,6 +812,7 @@ pub enum ChildType {
     Generic(Option<Type>, Option<TypeTraitObject>),
 }
 
+#[derive(Debug)]
 pub struct WidgetField {
     pub widget_attr: Option<WidgetAttr>,
     pub ident: Option<Ident>,
@@ -814,6 +820,7 @@ pub struct WidgetField {
     pub value: Expr,
 }
 
+#[derive(Debug)]
 pub struct MakeWidget {
     // handler attribute
     pub handler: Option<HandlerArgs>,
