@@ -147,9 +147,15 @@ impl From<String> for AccelString {
     }
 }
 
-impl From<&'static str> for AccelString {
-    fn from(input: &'static str) -> Self {
+impl From<&str> for AccelString {
+    fn from(input: &str) -> Self {
         Self::parse(input)
+    }
+}
+
+impl<T: Into<AccelString> + Copy> From<&T> for AccelString {
+    fn from(input: &T) -> Self {
+        (*input).into()
     }
 }
 

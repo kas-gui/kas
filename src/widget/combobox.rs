@@ -5,8 +5,8 @@
 
 //! Combobox
 
-use std::fmt::Debug;
-use std::iter::FromIterator;
+use std::fmt::{self, Debug};
+use std::rc::Rc;
 
 use super::{Column, MenuEntry, MenuFrame};
 use kas::draw::TextClass;
@@ -15,23 +15,36 @@ use kas::prelude::*;
 use kas::WindowId;
 
 /// A pop-up multiple choice menu
-#[derive(Clone, Debug, Widget)]
+///
+/// A combobox presents a menu with a fixed set of choices when clicked.
+#[derive(Clone, Widget)]
 #[widget(config(key_nav = true, hover_highlight = true))]
 #[handler(noauto)]
-pub struct ComboBox<M: Clone + Debug + 'static> {
+pub struct ComboBox<M: 'static> {
     #[widget_core]
     core: CoreData,
     label: Text<String>,
     frame_size: Size,
     #[widget]
     popup: ComboPopup,
-    messages: Vec<M>, // TODO: is this a useless lookup step?
     active: usize,
     opening: bool,
     popup_id: Option<WindowId>,
+    on_select: Option<Rc<dyn Fn(&mut Manager, usize) -> Option<M>>>,
 }
 
-impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
+impl<M: 'static> Debug for ComboBox<M> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "ComboBox {{ core: {:?}, label: {:?}, frame_size: {:?}, popup: {:?}, active: {}, opening: {}, popup_id: {:?}, on_select: {} }}",
+            self.core, self.label, self.frame_size, self.popup, self.active, self.opening, self.popup_id,
+            if self.on_select.is_none() { "None" } else { "Some(<fn>)" }
+        )
+    }
+}
+
+impl<M: 'static> kas::Layout for ComboBox<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let frame_rules = size_handle.button_surround(axis.is_vertical());
         let content_rules = size_handle.text_bound(&mut self.label, TextClass::Button, axis);
@@ -64,46 +77,74 @@ impl<M: Clone + Debug + 'static> kas::Layout for ComboBox<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> ComboBox<M> {
+impl ComboBox<VoidMsg> {
     /// Construct a combobox
     ///
-    /// A combobox presents a menu with a fixed set of choices when clicked.
-    /// Each choice has some corresponding message of type `M` which is emitted
-    /// by the event handler when this choice is selected.
-    ///
-    /// This constructor may be used with an iterator compatible with any
-    /// [`FromIterator`] for `ComboBox`, for example:
+    /// Constructs a combobox with labels derived from an iterator over string
+    /// types, and the chosen `active` entry. For example:
     /// ```
     /// # use kas::widget::ComboBox;
-    /// let combobox = ComboBox::<i32>::new([("one", 1), ("two", 2), ("three", 3)].iter());
+    /// let combobox = ComboBox::new(&["zero", "one", "two"], 0);
     /// ```
     #[inline]
-    pub fn new<T, I: IntoIterator<Item = T>>(iter: I) -> Self
-    where
-        ComboBox<M>: FromIterator<T>,
-    {
-        ComboBox::from_iter(iter)
+    pub fn new<T: Into<AccelString>, I: IntoIterator<Item = T>>(iter: I, active: usize) -> Self {
+        let entries = iter
+            .into_iter()
+            .map(|label| MenuEntry::new(label, ()))
+            .collect();
+        Self::new_entries(entries, active)
     }
 
+    /// Construct a combobox with the given menu entries
+    ///
+    /// A combobox presents a menu with a fixed set of choices when clicked,
+    /// with the `active` choice selected (0-based index).
     #[inline]
-    fn new_(column: Vec<MenuEntry<()>>, messages: Vec<M>) -> Self {
-        assert!(column.len() > 0, "ComboBox: expected at least one choice");
-        let label = Text::new_single(column[0].get_string().into());
+    pub fn new_entries(entries: Vec<MenuEntry<()>>, active: usize) -> Self {
+        assert!(
+            active < entries.len(),
+            "ComboBox: expected active < entries.len()"
+        );
+        let label = Text::new_single(entries[active].get_string().into());
         ComboBox {
             core: Default::default(),
             label,
             frame_size: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
-                inner: MenuFrame::new(Column::new(column)),
+                inner: MenuFrame::new(Column::new(entries)),
             },
-            messages,
-            active: 0,
+            active,
             opening: false,
             popup_id: None,
+            on_select: None,
         }
     }
 
+    /// Set the selection handler `f`
+    ///
+    /// On selection of a new choice the closure `f` is called with the choice's
+    /// index. The result of `f` is converted to [`Response::Msg`] or
+    /// [`Response::Update`] and returned to the parent.
+    #[inline]
+    pub fn on_select<M, F>(self, f: F) -> ComboBox<M>
+    where
+        F: Fn(&mut Manager, usize) -> Option<M> + 'static,
+    {
+        ComboBox {
+            core: self.core,
+            label: self.label,
+            frame_size: self.frame_size,
+            popup: self.popup,
+            active: self.active,
+            opening: self.opening,
+            popup_id: self.popup_id,
+            on_select: Some(Rc::new(f)),
+        }
+    }
+}
+
+impl<M: 'static> ComboBox<M> {
     /// Get the index of the active choice
     #[inline]
     pub fn active(&self) -> usize {
@@ -115,7 +156,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Panics if `index >= self.len()`.
     #[inline]
     pub fn set_active(&mut self, index: usize) -> TkAction {
-        if index >= self.messages.len() {
+        if index >= self.len() {
             panic!("ComboBox::set_active(index): index out of bounds");
         }
         if self.active != index {
@@ -127,26 +168,19 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
             TkAction::empty()
         }
     }
-
-    /// Get the message associated with the active choice
-    #[inline]
-    pub fn msg(&self) -> M {
-        self.messages[self.active].clone()
-    }
 }
 
-impl<M: Clone + Debug + 'static> ComboBox<M> {
+impl<M: 'static> ComboBox<M> {
     /// Get the number of entries
     #[inline]
     pub fn len(&self) -> usize {
-        self.messages.len()
+        self.popup.inner.len()
     }
 
     /// Add a choice to the combobox, in last position
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
-    pub fn push<T: Into<AccelString>>(&mut self, label: T, msg: M) -> TkAction {
-        self.messages.push(msg);
+    pub fn push<T: Into<AccelString>>(&mut self, label: T) -> TkAction {
         let column = &mut self.popup.inner.inner;
         column.push(MenuEntry::new(label, ()))
         // TODO: localised reconfigure
@@ -159,43 +193,34 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     /// Panics if `index > len`.
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
-    pub fn insert<T: Into<AccelString>>(&mut self, index: usize, label: T, msg: M) -> TkAction {
-        self.messages.insert(index, msg);
+    pub fn insert<T: Into<AccelString>>(&mut self, index: usize, label: T) -> TkAction {
         let column = &mut self.popup.inner.inner;
         column.insert(index, MenuEntry::new(label, ()))
         // TODO: localised reconfigure
     }
 
-    /// Removes the choice at position `index` and returns its message
+    /// Removes the choice at position `index`
     ///
     /// Panics if `index` is out of bounds or if the removal would leave the
     /// `ComboBox` empty (which is not allowed).
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
-    pub fn remove(&mut self, index: usize) -> (M, TkAction) {
-        if self.messages.len() < 2 {
+    pub fn remove(&mut self, index: usize) -> TkAction {
+        if self.len() < 2 {
             panic!("ComboBox::remove: unable to remove last choice");
         }
-        let m = self.messages.remove(index);
-        (m, self.popup.inner.remove(index).1)
+        self.popup.inner.remove(index).1
     }
 
     /// Replace the choice at `index`
     ///
     /// Panics if `index` is out of bounds.
-    pub fn replace<T: Into<AccelString>>(
-        &mut self,
-        index: usize,
-        label: T,
-        msg: M,
-    ) -> (M, TkAction) {
-        let mut m = msg;
-        std::mem::swap(&mut m, &mut self.messages[index]);
-        (m, self.popup.inner[index].set_accel(label))
+    pub fn replace<T: Into<AccelString>>(&mut self, index: usize, label: T) -> TkAction {
+        self.popup.inner[index].set_accel(label)
     }
 }
 
-impl<M: Clone + Debug + 'static> ComboBox<M> {
+impl<M: 'static> ComboBox<M> {
     fn map_response(
         &mut self,
         mgr: &mut Manager,
@@ -229,7 +254,11 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
                 if let Some(id) = self.popup_id {
                     mgr.close_window(id);
                 }
-                Response::Msg(self.messages[index].clone())
+                if let Some(ref f) = self.on_select {
+                    Response::update_or_msg((f)(mgr, index))
+                } else {
+                    Response::Update
+                }
             }
         }
         // NOTE: as part of the Popup API we are expected to trap
@@ -238,35 +267,7 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
     }
 }
 
-impl<T: Into<AccelString>, M: Clone + Debug> FromIterator<(T, M)> for ComboBox<M> {
-    fn from_iter<I: IntoIterator<Item = (T, M)>>(iter: I) -> Self {
-        let iter = iter.into_iter();
-        let len = iter.size_hint().1.unwrap_or(0);
-        let mut choices = Vec::with_capacity(len);
-        let mut messages = Vec::with_capacity(len);
-        for (label, msg) in iter {
-            choices.push(MenuEntry::new(label, ()));
-            messages.push(msg);
-        }
-        ComboBox::new_(choices, messages)
-    }
-}
-
-impl<'a, M: Clone + Debug + 'static> FromIterator<&'a (&'static str, M)> for ComboBox<M> {
-    fn from_iter<I: IntoIterator<Item = &'a (&'static str, M)>>(iter: I) -> Self {
-        let iter = iter.into_iter();
-        let len = iter.size_hint().1.unwrap_or(0);
-        let mut choices = Vec::with_capacity(len);
-        let mut messages = Vec::with_capacity(len);
-        for (label, msg) in iter {
-            choices.push(MenuEntry::new(*label, ()));
-            messages.push(msg.clone());
-        }
-        ComboBox::new_(choices, messages)
-    }
-}
-
-impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
+impl<M: 'static> event::Handler for ComboBox<M> {
     type Msg = M;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
@@ -359,7 +360,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> event::SendEvent for ComboBox<M> {
+impl<M: 'static> event::SendEvent for ComboBox<M> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled;
