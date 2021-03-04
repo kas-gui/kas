@@ -59,7 +59,8 @@ pub trait EditGuard: Debug + Sized + 'static {
     /// Activation guard
     ///
     /// This function is called when the widget is "activated", for example by
-    /// the Enter/Return key for single-line edit boxes.
+    /// the Enter/Return key for single-line edit boxes. Its return value is
+    /// converted to [`Response::None`] or [`Response::Msg`].
     ///
     /// Note that activation events cannot edit the contents.
     fn activate(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
@@ -69,7 +70,8 @@ pub trait EditGuard: Debug + Sized + 'static {
 
     /// Focus-lost guard
     ///
-    /// This function is called when the widget loses keyboard input focus.
+    /// This function is called when the widget loses keyboard input focus. Its
+    /// return value is converted to [`Response::None`] or [`Response::Msg`].
     fn focus_lost(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
         let _ = (edit, mgr);
         None
@@ -78,7 +80,8 @@ pub trait EditGuard: Debug + Sized + 'static {
     /// Edit guard
     ///
     /// This function is called when contents are updated by the user (but not
-    /// on programmatic updates — see also [`EditGuard::update`]).
+    /// on programmatic updates — see also [`EditGuard::update`]). Its return
+    /// value is converted to [`Response::Update`] or [`Response::Msg`].
     ///
     /// The default implementation calls [`EditGuard::update`].
     fn edit(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
@@ -656,9 +659,10 @@ impl<G: EditGuard> EditField<G> {
         self.error_state = error_state;
     }
 
-    fn received_char(&mut self, mgr: &mut Manager, c: char) -> EditAction {
+    // returns true on success, false on unhandled event
+    fn received_char(&mut self, mgr: &mut Manager, c: char) -> bool {
         if !self.editable {
-            return EditAction::Unhandled;
+            return false;
         }
 
         let pos = self.selection.edit_pos();
@@ -681,7 +685,7 @@ impl<G: EditGuard> EditField<G> {
         self.text.prepare();
         self.set_view_offset_from_edit_pos();
         mgr.redraw(self.id());
-        EditAction::Edit
+        true
     }
 
     fn control_key(&mut self, mgr: &mut Manager, key: Command, mut shift: bool) -> EditAction {
@@ -1067,15 +1071,13 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
             }
             Event::Command(cmd, shift) => match self.control_key(mgr, cmd, shift) {
                 EditAction::None => Response::None,
-                EditAction::Unhandled => Response::Unhandled(event),
-                EditAction::Activate => G::activate(self, mgr).into(),
-                EditAction::Edit => G::edit(self, mgr).into(),
+                EditAction::Unhandled => Response::Unhandled,
+                EditAction::Activate => Response::none_or_msg(G::activate(self, mgr)),
+                EditAction::Edit => Response::update_or_msg(G::edit(self, mgr)),
             },
             Event::ReceivedCharacter(c) => match self.received_char(mgr, c) {
-                EditAction::None => Response::None,
-                EditAction::Unhandled => Response::Unhandled(Event::ReceivedCharacter(c)),
-                EditAction::Activate => G::activate(self, mgr).into(),
-                EditAction::Edit => G::edit(self, mgr).into(),
+                false => Response::Unhandled,
+                true => Response::update_or_msg(G::edit(self, mgr)),
             },
             Event::PressStart { source, coord, .. } if source.is_primary() => {
                 if let PressSource::Touch(touch_id) = source {
@@ -1167,7 +1169,7 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                 if self.pan_delta(mgr, delta2) {
                     Response::None
                 } else {
-                    Response::Unhandled(Event::Scroll(delta))
+                    Response::Unhandled
                 }
             }
             Event::TimerUpdate => {
@@ -1185,7 +1187,7 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                 }
                 Response::None
             }
-            event => Response::Unhandled(event),
+            _ => Response::Unhandled,
         }
     }
 }

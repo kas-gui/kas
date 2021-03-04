@@ -129,12 +129,9 @@ impl<M: 'static> event::Handler for CheckBoxBare<M> {
             Event::Activate => {
                 self.state = !self.state;
                 mgr.redraw(self.id());
-                self.on_toggle
-                    .as_ref()
-                    .and_then(|f| f(mgr, self.state))
-                    .into()
+                Response::update_or_msg(self.on_toggle.as_ref().and_then(|f| f(mgr, self.state)))
             }
-            event => Response::Unhandled(event),
+            _ => Response::Unhandled,
         }
     }
 }

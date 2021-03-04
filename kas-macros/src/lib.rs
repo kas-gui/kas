@@ -293,7 +293,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 {
                     use kas::{WidgetCore, event::Response};
                     if self.is_disabled() {
-                        return Response::Unhandled(event);
+                        return Response::Unhandled;
                     }
 
                     #ev_to_num {

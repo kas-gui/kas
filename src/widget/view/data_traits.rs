@@ -7,12 +7,11 @@
 //!
 //! This module holds these traits and basic impls for derived types.
 
-#[allow(unused)]
-use kas::event::Manager;
 use kas::event::UpdateHandle;
+#[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 /// Trait for viewable single data items
 // Note: we require Debug + 'static to allow widgets using this to implement
@@ -25,6 +24,16 @@ pub trait SingleData: Debug {
     /// Get data (clone)
     fn get_cloned(&self) -> Self::Item;
 
+    /// Update data, if supported
+    ///
+    /// Returns an [`UpdateHandle`] if an update occurred. Returns `None` if
+    /// updates are unsupported.
+    ///
+    /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
+    /// is required to obtain `&mut` and lower to [`SingleDataMut::set`]. The
+    /// provider of this lowering should also provide an [`UpdateHandle`].
+    fn update(&self, value: Self::Item) -> Option<UpdateHandle>;
+
     /// Get an update handle, if any is used
     ///
     /// Widgets may use this `handle` to call `mgr.update_on_handle(handle, self.id())`.
@@ -35,8 +44,11 @@ pub trait SingleData: Debug {
 
 /// Trait for writable single data items
 pub trait SingleDataMut: SingleData {
-    /// Set data
-    fn set(&self, value: Self::Item) -> UpdateHandle;
+    /// Set data, given a mutable (unique) reference
+    ///
+    /// It can be assumed that no synchronisation is required when a mutable
+    /// reference can be obtained.
+    fn set(&mut self, value: Self::Item);
 }
 
 /// Trait for viewable data lists
@@ -56,6 +68,8 @@ pub trait ListData: Debug {
 
     /// Get data by key (clone)
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item>;
+
+    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle>;
 
     // TODO(gat): replace with an iterator
     /// Iterate over (key, value) pairs as a vec
@@ -82,8 +96,8 @@ pub trait ListData: Debug {
 
 /// Trait for writable data lists
 pub trait ListDataMut: ListData {
-    /// Set data by key
-    fn set(&self, key: Self::Key, item: Self::Item) -> UpdateHandle;
+    /// Set data for an existing key
+    fn set(&mut self, key: &Self::Key, item: Self::Item);
 }
 
 impl<T: Clone + Debug> ListData for [T] {
@@ -98,6 +112,11 @@ impl<T: Clone + Debug> ListData for [T] {
         self.get(*key).cloned()
     }
 
+    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
+        // Note: plain [T] does not support update, but SharedRc<[T]> does.
+        None
+    }
+
     fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
         self.iter().cloned().enumerate().take(limit).collect()
     }
@@ -108,6 +127,44 @@ impl<T: Clone + Debug> ListData for [T] {
             .enumerate()
             .skip(start)
             .take(limit)
+            .collect()
+    }
+}
+impl<T: Clone + Debug> ListDataMut for [T] {
+    fn set(&mut self, key: &Self::Key, item: Self::Item) {
+        self[*key] = item;
+    }
+}
+
+impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> ListData for std::collections::BTreeMap<K, T> {
+    type Key = K;
+    type Item = T;
+
+    fn len(&self) -> usize {
+        (*self).len()
+    }
+
+    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+        (*self).get(key).cloned()
+    }
+
+    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
+        // Note: plain BTreeMap does not support update, but SharedRc<..> does.
+        None
+    }
+
+    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+        self.iter()
+            .take(limit)
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
+    }
+
+    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
+        self.iter()
+            .skip(start)
+            .take(limit)
+            .map(|(k, v)| (k.clone(), v.clone()))
             .collect()
     }
 }
@@ -124,13 +181,11 @@ macro_rules! impl_via_deref {
             fn get_cloned(&self) -> Self::Item {
                 self.deref().get_cloned()
             }
+            fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+                self.deref().update(value)
+            }
             fn update_handle(&self) -> Option<UpdateHandle> {
                 self.deref().update_handle()
-            }
-        }
-        impl<$t: SingleDataMut + ?Sized> SingleDataMut for $derived {
-            fn set(&self, value: Self::Item) -> UpdateHandle {
-                self.deref().set(value)
             }
         }
 
@@ -145,6 +200,10 @@ macro_rules! impl_via_deref {
                 self.deref().get_cloned(key)
             }
 
+            fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+                self.deref().update(key, value)
+            }
+
             fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
                 self.deref().iter_vec(limit)
             }
@@ -156,11 +215,6 @@ macro_rules! impl_via_deref {
                 self.deref().update_handle()
             }
         }
-        impl<$t: ListDataMut + ?Sized> ListDataMut for $derived {
-            fn set(&self, key: Self::Key, item: Self::Item) -> UpdateHandle {
-                self.deref().set(key, item)
-            }
-        }
     };
     ($t: ident: $derived:ty, $($dd:ty),+) => {
         impl_via_deref!($t: $derived);
@@ -170,45 +224,22 @@ macro_rules! impl_via_deref {
 impl_via_deref!(T: &T, &mut T);
 impl_via_deref!(T: std::rc::Rc<T>, std::sync::Arc<T>, Box<T>);
 
-impl<T: SingleData> SingleData for RefCell<T> {
-    type Item = T::Item;
-    fn get_cloned(&self) -> Self::Item {
-        self.borrow().get_cloned()
-    }
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        self.borrow().update_handle()
-    }
+macro_rules! impl_via_deref_mut {
+    ($t: ident: $derived:ty) => {
+        impl<$t: SingleDataMut + ?Sized> SingleDataMut for $derived {
+            fn set(&mut self, value: Self::Item) {
+                self.deref_mut().set(value)
+            }
+        }
+        impl<$t: ListDataMut + ?Sized> ListDataMut for $derived {
+            fn set(&mut self, key: &Self::Key, item: Self::Item) {
+                self.deref_mut().set(key, item)
+            }
+        }
+    };
+    ($t: ident: $derived:ty, $($dd:ty),+) => {
+        impl_via_deref_mut!($t: $derived);
+        impl_via_deref_mut!($t: $($dd),+);
+    };
 }
-impl<T: SingleDataMut> SingleDataMut for RefCell<T> {
-    fn set(&self, value: Self::Item) -> UpdateHandle {
-        self.borrow_mut().set(value)
-    }
-}
-
-impl<T: ListData> ListData for RefCell<T> {
-    type Key = T::Key;
-    type Item = T::Item;
-
-    fn len(&self) -> usize {
-        self.borrow().len()
-    }
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        self.borrow().get_cloned(key)
-    }
-
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.borrow().iter_vec(limit)
-    }
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.borrow().iter_vec_from(start, limit)
-    }
-
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        self.borrow().update_handle()
-    }
-}
-impl<T: ListDataMut> ListDataMut for RefCell<T> {
-    fn set(&self, key: Self::Key, item: Self::Item) -> UpdateHandle {
-        self.borrow().set(key, item)
-    }
-}
+impl_via_deref_mut!(T: &mut T, Box<T>);

@@ -256,7 +256,7 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
 impl<T: SliderType, D: Directional> event::SendEvent for Slider<T, D> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
         let offset = if id <= self.handle.id() {
@@ -290,7 +290,7 @@ impl<T: SliderType, D: Directional> event::SendEvent for Slider<T, D> {
                         }
                         Command::Home => self.range.0,
                         Command::End => self.range.1,
-                        _ => return Response::Unhandled(event),
+                        _ => return Response::Unhandled,
                     };
                     let action = self.set_value(v);
                     return if action.is_empty() {
@@ -303,7 +303,7 @@ impl<T: SliderType, D: Directional> event::SendEvent for Slider<T, D> {
                 Event::PressStart { source, coord, .. } => {
                     self.handle.handle_press_on_track(mgr, source, coord)
                 }
-                ev @ _ => return Response::Unhandled(ev),
+                _ => return Response::Unhandled,
             }
         };
 

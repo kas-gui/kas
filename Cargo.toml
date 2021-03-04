@@ -79,3 +79,8 @@ features = ["serde"]
 
 [workspace]
 members = ["kas-macros", "kas-theme", "kas-wgpu"]
+
+[patch.crates-io.harfbuzz_rs]
+# Fix build issue for recent rustc
+git = "https://github.com/dhardy/harfbuzz_rs.git"
+branch = "1.2-backports"

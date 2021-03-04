@@ -196,10 +196,15 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
 }
 
 impl<M: Clone + Debug + 'static> ComboBox<M> {
-    fn map_response(&mut self, mgr: &mut Manager, r: Response<(usize, ())>) -> Response<M> {
+    fn map_response(
+        &mut self,
+        mgr: &mut Manager,
+        event: Event,
+        r: Response<(usize, ())>,
+    ) -> Response<M> {
         match r {
-            Response::None => Response::None,
-            Response::Unhandled(event) => match event {
+            Response::None | Response::Update => Response::None,
+            Response::Unhandled => match event {
                 Event::Command(cmd, _) => {
                     let next = |mgr: &mut Manager, s, clr, rev| {
                         if clr {
@@ -213,10 +218,10 @@ impl<M: Clone + Debug + 'static> ComboBox<M> {
                         Command::Down => next(mgr, self, false, false),
                         Command::Home => next(mgr, self, true, false),
                         Command::End => next(mgr, self, true, true),
-                        _ => Response::Unhandled(event),
+                        _ => Response::Unhandled,
                     }
                 }
-                event => Response::Unhandled(event),
+                _ => Response::Unhandled,
             },
             Response::Focus(x) => Response::Focus(x),
             Response::Msg((index, ())) => {
@@ -299,7 +304,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                     if let Some(id) = self.popup_id {
                         mgr.close_window(id);
                     }
-                    return Response::Unhandled(Event::None);
+                    return Response::Unhandled;
                 }
             }
             Event::PressMove {
@@ -329,7 +334,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                         }
                     } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
                         let r = self.popup.send(mgr, id, Event::Activate);
-                        return self.map_response(mgr, r);
+                        return self.map_response(mgr, event, r);
                     }
                 }
                 if let Some(id) = self.popup_id {
@@ -348,7 +353,7 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
                 debug_assert_eq!(Some(id), self.popup_id);
                 self.popup_id = None;
             }
-            event => return Response::Unhandled(event),
+            _ => return Response::Unhandled,
         }
         Response::None
     }
@@ -357,12 +362,12 @@ impl<M: Clone + Debug + 'static> event::Handler for ComboBox<M> {
 impl<M: Clone + Debug + 'static> event::SendEvent for ComboBox<M> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
         if id <= self.popup.id() {
-            let r = self.popup.send(mgr, id, event);
-            self.map_response(mgr, r)
+            let r = self.popup.send(mgr, id, event.clone());
+            self.map_response(mgr, event, r)
         } else {
             Manager::handle_generic(self, mgr, event)
         }

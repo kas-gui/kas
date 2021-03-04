@@ -5,7 +5,7 @@
 
 //! Scroll region
 
-use super::ScrollWidget;
+use super::Scrollable;
 use kas::draw::{ClipRegion, TextClass};
 use kas::event::ScrollDelta::{LineDelta, PixelDelta};
 use kas::event::{self, Command, PressSource};
@@ -127,6 +127,10 @@ impl ScrollComponent {
 
     /// Use an event to scroll, if possible
     ///
+    /// Handles keyboard (Home/End, Page Up/Down and arrow keys), mouse wheel
+    /// and touchpad scroll events. Also handles mouse/touch drag events *if*
+    /// the `on_press_start` closure activates a mouse/touch grab.
+    ///
     /// Behaviour on [`Event::PressStart`] is configurable: the closure is called on
     /// this event and should call [`Manager::request_grab`] if the press should
     /// scroll by drag. This allows control of which mouse button(s) are used and
@@ -183,7 +187,7 @@ impl ScrollComponent {
                     Command::Down => LineDelta(0.0, -1.0),
                     Command::PageUp => PixelDelta(Offset(0, window_size.1 / 2)),
                     Command::PageDown => PixelDelta(Offset(0, -(window_size.1 / 2))),
-                    _ => return (action, Response::Unhandled(event)),
+                    _ => return (action, Response::Unhandled),
                 };
 
                 let d = match delta {
@@ -205,7 +209,7 @@ impl ScrollComponent {
                 };
                 action = self.set_offset(self.offset - d);
                 if action.is_empty() {
-                    response = Response::Unhandled(Event::Scroll(delta));
+                    response = Response::Unhandled;
                 }
             }
             Event::PressStart {
@@ -217,9 +221,7 @@ impl ScrollComponent {
                 action = self.set_offset(self.offset - delta);
             }
             Event::PressEnd { .. } => (), // consume due to request
-            e @ _ => {
-                response = Response::Unhandled(e);
-            }
+            _ => response = Response::Unhandled,
         }
         (action, response)
     }
@@ -273,7 +275,7 @@ impl<W: Widget> ScrollRegion<W> {
     }
 }
 
-impl<W: Widget> ScrollWidget for ScrollRegion<W> {
+impl<W: Widget> Scrollable for ScrollRegion<W> {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         (
             self.min_child_size.0 > size.0,
@@ -360,15 +362,15 @@ impl<W: Widget> Layout for ScrollRegion<W> {
 }
 
 impl<W: Widget> event::SendEvent for ScrollRegion<W> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, mut event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
-        let event = if id <= self.inner.id() {
-            let event = self.scroll.offset_event(event);
-            match self.inner.send(mgr, id, event) {
-                Response::Unhandled(event) => event,
+        if id <= self.inner.id() {
+            event = self.scroll.offset_event(event);
+            match self.inner.send(mgr, id, event.clone()) {
+                Response::Unhandled => (),
                 Response::Focus(rect) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                     *mgr |= action;
@@ -378,7 +380,6 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
             }
         } else {
             debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
-            event
         };
 
         let id = self.id();

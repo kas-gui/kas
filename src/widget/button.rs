@@ -180,8 +180,8 @@ impl<M: 'static> event::Handler for TextButton<M> {
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
         match event {
-            Event::Activate => self.on_push.as_ref().and_then(|f| f(mgr)).into(),
-            event => Response::Unhandled(event),
+            Event::Activate => Response::none_or_msg(self.on_push.as_ref().and_then(|f| f(mgr))),
+            _ => Response::Unhandled,
         }
     }
 }

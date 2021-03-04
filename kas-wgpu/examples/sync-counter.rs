@@ -8,7 +8,7 @@
 use kas::event::{Manager, Response, VoidMsg};
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::view::{SharedRc, SingleView};
-use kas::widget::{Label, TextButton, Window};
+use kas::widget::{TextButton, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {
@@ -37,8 +37,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 // SingleView embeds a shared value, here default-constructed to 0
-                #[widget(halign=centre)] counter:
-                    SingleView<SharedRc<i32>, Label<String>> = SingleView::default(),
+                #[widget(halign=centre)] counter: SingleView<SharedRc<i32>> = Default::default(),
                 #[widget(handler = handle_button)] buttons -> Message = buttons,
             }
             impl {

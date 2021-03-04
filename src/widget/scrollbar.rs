@@ -69,7 +69,7 @@ impl<D: Directional> ScrollBar<D> {
     /// Set the initial value
     #[inline]
     pub fn with_value(mut self, value: i32) -> Self {
-        self.value = value;
+        self.value = value.clamp(0, self.max_value);
         self
     }
 
@@ -93,8 +93,8 @@ impl<D: Directional> ScrollBar<D> {
         // We should gracefully handle zero, though appearance may be wrong.
         self.handle_value = handle_value.max(1);
 
-        self.max_value = max_value;
-        self.value = self.value.min(self.max_value);
+        self.max_value = max_value.max(0);
+        self.value = self.value.clamp(0, self.max_value);
         self.update_handle()
     }
 
@@ -122,7 +122,7 @@ impl<D: Directional> ScrollBar<D> {
 
     /// Set the value
     pub fn set_value(&mut self, value: i32) -> TkAction {
-        let value = value.min(self.max_value);
+        let value = value.clamp(0, self.max_value);
         if value == self.value {
             TkAction::empty()
         } else {
@@ -190,7 +190,7 @@ impl<D: Directional> ScrollBar<D> {
             return false;
         }
         let value = i32::conv((lhs + (rhs / 2)) / rhs);
-        let value = value.min(self.max_value);
+        let value = value.clamp(0, self.max_value);
         if value != self.value {
             self.value = value;
             return true;
@@ -234,7 +234,7 @@ impl<D: Directional> Layout for ScrollBar<D> {
 impl<D: Directional> event::SendEvent for ScrollBar<D> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
         let offset = if id <= self.handle.id() {
@@ -247,7 +247,7 @@ impl<D: Directional> event::SendEvent for ScrollBar<D> {
                 Event::PressStart { source, coord, .. } => {
                     self.handle.handle_press_on_track(mgr, source, coord)
                 }
-                ev @ _ => return Response::Unhandled(ev),
+                _ => return Response::Unhandled,
             }
         };
 
@@ -262,13 +262,14 @@ impl<D: Directional> event::SendEvent for ScrollBar<D> {
 
 /// Additional functionality on scrollable widgets
 ///
-/// This may be used to add controls via the [`ScrollBars`] wrapper.
+/// This trait should be implemented by widgets supporting scrolling, enabling
+/// a parent (such as the [`ScrollBars`] wrapper) to add controls.
 ///
 /// The implementing widget may use event handlers to scroll itself (e.g. in
 /// reaction to a mouse wheel or touch-drag), but when doing so should emit
 /// [`Response::Focus`] to notify any wrapper of the new position (usually with
 /// `Response::Focus(self.rect())`).
-pub trait ScrollWidget: Widget {
+pub trait Scrollable: Widget {
     /// Given size `size`, returns whether `(horiz, vert)` scrolling is required
     fn scroll_axes(&self, size: Size) -> (bool, bool);
 
@@ -316,7 +317,7 @@ pub type ScrollBarRegion<W> = ScrollBars<ScrollRegion<W>>;
 #[derive(Clone, Debug, Default, Widget)]
 #[widget(config=noauto)]
 #[handler(send=noauto, msg = <W as event::Handler>::Msg)]
-pub struct ScrollBars<W: ScrollWidget> {
+pub struct ScrollBars<W: Scrollable> {
     #[widget_core]
     core: CoreData,
     auto_bars: bool,
@@ -339,7 +340,7 @@ impl<W: Widget> ScrollBars<ScrollRegion<W>> {
     }
 }
 
-impl<W: ScrollWidget> ScrollBars<W> {
+impl<W: Scrollable> ScrollBars<W> {
     /// Construct
     ///
     /// By default scrollbars are automatically enabled based on requirements.
@@ -411,7 +412,7 @@ impl<W: ScrollWidget> ScrollBars<W> {
     }
 }
 
-impl<W: ScrollWidget> ScrollWidget for ScrollBars<W> {
+impl<W: Scrollable> Scrollable for ScrollBars<W> {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         self.inner.scroll_axes(size)
     }
@@ -428,13 +429,13 @@ impl<W: ScrollWidget> ScrollWidget for ScrollBars<W> {
     }
 }
 
-impl<W: ScrollWidget> WidgetConfig for ScrollBars<W> {
+impl<W: Scrollable> WidgetConfig for ScrollBars<W> {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.register_nav_fallback(self.id());
     }
 }
 
-impl<W: ScrollWidget> Layout for ScrollBars<W> {
+impl<W: Scrollable> Layout for ScrollBars<W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let mut rules = self.inner.size_rules(size_handle, axis);
         if axis.is_horizontal() && (self.auto_bars || self.show_bars.1) {
@@ -505,10 +506,10 @@ impl<W: ScrollWidget> Layout for ScrollBars<W> {
     }
 }
 
-impl<W: ScrollWidget> event::SendEvent for ScrollBars<W> {
+impl<W: Scrollable> event::SendEvent for ScrollBars<W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
         if id <= self.horiz_bar.id() {
@@ -547,14 +548,14 @@ impl<W: ScrollWidget> event::SendEvent for ScrollBars<W> {
     }
 }
 
-impl<W: ScrollWidget> std::ops::Deref for ScrollBars<W> {
+impl<W: Scrollable> std::ops::Deref for ScrollBars<W> {
     type Target = W;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<W: ScrollWidget> std::ops::DerefMut for ScrollBars<W> {
+impl<W: Scrollable> std::ops::DerefMut for ScrollBars<W> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }

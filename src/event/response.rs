@@ -5,7 +5,7 @@
 
 //! Event handling: Response type
 
-use super::{Event, VoidResponse};
+use super::VoidResponse;
 use kas::geom::Rect;
 
 /// Response type from [`Handler::handle`].
@@ -18,19 +18,53 @@ use kas::geom::Rect;
 #[derive(Clone, Debug)]
 #[must_use]
 pub enum Response<M> {
-    /// No action
+    /// Nothing of external interest
+    ///
+    /// This implies that the event was consumed, but does not affect parents.
+    /// Note that we consider "view changes" (i.e. scrolling) to not be of
+    /// external interest.
     None,
-    /// Unhandled input events get returned back up the widget tree
-    Unhandled(Event),
+    /// Unhandled event
+    ///
+    /// Indicates that the event was not consumed. An ancestor or the event
+    /// manager is thus able to make use of this event.
+    Unhandled,
     /// (Keyboard) focus has changed. This region should be made visible.
     Focus(Rect),
+    /// Notify of update to widget's data
+    ///
+    /// Widgets which hold editable data should return either this or
+    /// [`Response::Msg`] on handling events which update that data.
+    /// Note: scrolling/adjusting a view is not considered a data update.
+    Update,
     /// Custom message type
+    ///
+    /// This signals a (possible) update to the widget's data, while passing a
+    /// data payload to the parent widget.
     Msg(M),
 }
 
 // Unfortunately we cannot write generic `From` / `TryFrom` impls
 // due to trait coherence rules, so we impl `from` etc. directly.
 impl<M> Response<M> {
+    /// Construct `None` or `Msg(msg)`
+    #[inline]
+    pub fn none_or_msg(opt_msg: Option<M>) -> Self {
+        match opt_msg {
+            None => Response::None,
+            Some(msg) => Response::Msg(msg),
+        }
+    }
+
+    /// Construct `Update` or `Msg(msg)`
+    #[inline]
+    pub fn update_or_msg(opt_msg: Option<M>) -> Self {
+        match opt_msg {
+            None => Response::Update,
+            Some(msg) => Response::Msg(msg),
+        }
+    }
+
     /// True if variant is `None`
     #[inline]
     pub fn is_none(&self) -> bool {
@@ -44,7 +78,7 @@ impl<M> Response<M> {
     #[inline]
     pub fn is_unhandled(&self) -> bool {
         match self {
-            &Response::Unhandled(_) => true,
+            &Response::Unhandled => true,
             _ => false,
         }
     }
@@ -88,8 +122,9 @@ impl<M> Response<M> {
         use Response::*;
         match r {
             None => Ok(None),
-            Unhandled(e) => Ok(Unhandled(e)),
+            Unhandled => Ok(Unhandled),
             Focus(rect) => Ok(Focus(rect)),
+            Update => Ok(Update),
             Msg(m) => Err(m),
         }
     }
@@ -112,14 +147,5 @@ impl VoidResponse {
 impl<M> From<M> for Response<M> {
     fn from(msg: M) -> Self {
         Response::Msg(msg)
-    }
-}
-
-impl<M> From<Option<M>> for Response<M> {
-    fn from(msg: Option<M>) -> Self {
-        match msg {
-            Some(msg) => Response::Msg(msg),
-            None => Response::None,
-        }
     }
 }

@@ -36,3 +36,8 @@ impl UpdateHandle {
         }
     }
 }
+impl Default for UpdateHandle {
+    fn default() -> Self {
+        Self::new()
+    }
+}

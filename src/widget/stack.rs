@@ -110,7 +110,7 @@ impl<W: Widget> event::SendEvent for Stack<W> {
             }
         }
 
-        Response::Unhandled(event)
+        Response::Unhandled
     }
 }
 

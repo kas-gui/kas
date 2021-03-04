@@ -5,68 +5,13 @@
 
 //! Shared data for view widgets
 
-use super::{ListData, SingleData, SingleDataMut};
+use super::{ListData, ListDataMut, SingleData, SingleDataMut};
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
-
-/// Wrapper for shared constant data
-///
-/// This may be useful with static data, e.g. `[&'static str]`.
-#[derive(Clone, Debug, Default)]
-pub struct SharedConst<T: Debug + 'static + ?Sized>(T);
-
-impl<T: Debug + 'static> SharedConst<T> {
-    /// Construct with given data
-    pub fn new(data: T) -> Self {
-        SharedConst(data)
-    }
-}
-
-impl<T: Debug + 'static> From<T> for SharedConst<T> {
-    fn from(data: T) -> Self {
-        SharedConst(data)
-    }
-}
-
-impl<T: Debug + 'static + ?Sized> From<&T> for &SharedConst<T> {
-    fn from(data: &T) -> Self {
-        // SAFETY: SharedConst<T> is a thin wrapper around T
-        unsafe { &*(data as *const T as *const SharedConst<T>) }
-    }
-}
-
-impl<T: Clone + Debug + 'static + ?Sized> SingleData for SharedConst<T> {
-    type Item = T;
-
-    fn get_cloned(&self) -> Self::Item {
-        self.0.clone()
-    }
-}
-
-impl<T: ListData + 'static + ?Sized> ListData for SharedConst<T> {
-    type Key = T::Key;
-    type Item = T::Item;
-
-    fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        self.0.get_cloned(key)
-    }
-
-    fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.0.iter_vec(limit)
-    }
-
-    fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.0.iter_vec_from(start, limit)
-    }
-}
 
 /// Wrapper for single-thread shared data
 #[derive(Clone, Debug)]
@@ -101,18 +46,22 @@ impl<T: Clone + Debug> SingleData for SharedRc<T> {
         self.data.borrow().to_owned()
     }
 
+    fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
+        *self.data.borrow_mut() = value;
+        Some(self.handle)
+    }
+
     fn update_handle(&self) -> Option<UpdateHandle> {
         Some(self.handle)
     }
 }
 impl<T: Clone + Debug> SingleDataMut for SharedRc<T> {
-    fn set(&self, value: Self::Item) -> UpdateHandle {
+    fn set(&mut self, value: Self::Item) {
         *self.data.borrow_mut() = value;
-        self.handle
     }
 }
 
-impl<T: ListData> ListData for SharedRc<T> {
+impl<T: ListDataMut> ListData for SharedRc<T> {
     type Key = T::Key;
     type Item = T::Item;
 
@@ -122,6 +71,11 @@ impl<T: ListData> ListData for SharedRc<T> {
 
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
         self.data.borrow().get_cloned(key)
+    }
+
+    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+        self.data.borrow_mut().set(key, value);
+        Some(self.handle)
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
@@ -134,5 +88,10 @@ impl<T: ListData> ListData for SharedRc<T> {
 
     fn update_handle(&self) -> Option<UpdateHandle> {
         Some(self.handle)
+    }
+}
+impl<T: ListDataMut> ListDataMut for SharedRc<T> {
+    fn set(&mut self, key: &Self::Key, item: Self::Item) {
+        self.data.borrow_mut().set(key, item);
     }
 }

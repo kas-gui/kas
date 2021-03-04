@@ -3,84 +3,51 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! View widgets
+//! View widgets and shared data
 //!
-//! View widgets exist as a view over some shared data.
-
-use super::Label;
-use kas::prelude::*;
+//! So called "view widgets" are able to form a view over some shared data.
+//!
+//! # Shared data
+//!
+//! Shared data must implement one of a family of traits:
+//!
+//! -   [`SingleData`] supports viewing a single item ("datum")
+//! -   [`ListData`] supports viewing an ordered sequence of items (requires
+//!     that items are ordered and that items can be accessed by some key type)
+//!
+//! Each of these has a "Mut" variant, supporting direct modification of values
+//! when a mutable reference is available. In other cases, the `update` method
+//! *may* support modification.
+//!
+//! ## Filters
+//!
+//! -   [`FilteredList`] is a filtered view over [`ListData`]
+//!
+//! # Viewing data via widgets
+//!
+//! The [`View`] trait provides a mechanism for constructing and updating
+//! arbitrary widgets from a data source.
+//!
+//! # View widget drivers
+//!
+//! Building on all the above, the **view widgets** combine data and a driver:
+//!
+//! -   [`SingleView`] creates a view over a [`SingleData`] object
+//! -   [`ListView`] creates a scrollable list view over a [`ListData`] object.
+//!     Performance is potentially bounded by O(v) in all operations where `v`
+//!     is the number of visible items (depending on the [`ListData`] object).
 
 mod data_traits;
 mod filter;
-mod list;
-mod shared;
-mod single;
+mod list_view;
+mod shared_data;
+mod single_view;
+mod view_widget;
 
-pub use data_traits::{ListData, SingleData, SingleDataMut};
+pub use data_traits::{ListData, ListDataMut, SingleData, SingleDataMut};
 pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
-pub use list::{ListMsg, ListView, SelectionMode};
-pub use shared::{SharedConst, SharedRc};
-pub use single::SingleView;
-
-/// View widgets
-///
-/// Implementors are able to view data of type `T`.
-pub trait ViewWidget<T>: Widget {
-    /// Construct a default instance (with no data)
-    fn default() -> Self
-    where
-        T: Default;
-    /// Construct an instance from a data value
-    fn new(data: T) -> Self;
-    /// Set the viewed data
-    fn set(&mut self, data: T) -> TkAction;
-}
-
-//TODO(spec): enable this as a specialisation of the T: ToString impl
-// In the mean-time we only lose the Markdown impl by disabling this
-/*
-impl<T: Clone + Default + FormattableText + 'static> ViewWidget<T> for Label<T> {
-    fn default() -> Self {
-        Label::new(T::default())
-    }
-    fn new(data: T) -> Self {
-        Label::new(data.clone())
-    }
-    fn set(&mut self, data: &T) -> TkAction {
-        self.set_text(data.clone())
-    }
-}
-*/
-
-impl<T: Default + ToString> ViewWidget<T> for Label<String> {
-    fn default() -> Self {
-        Label::new(T::default().to_string())
-    }
-    fn new(data: T) -> Self {
-        Label::new(data.to_string())
-    }
-    fn set(&mut self, data: T) -> TkAction {
-        self.set_text(data.to_string())
-    }
-}
-
-/// Default view assignments
-///
-/// This trait may be implemented to assign a default view widget to a specific
-/// data type.
-pub trait DefaultView: Sized {
-    type Widget: ViewWidget<Self>;
-}
-
-// TODO(spec): enable this over more specific implementations
-/*
-impl<T: Clone + Default + FormattableText + 'static> DefaultView for T {
-    type Widget = Label<T>;
-}
-*/
-impl DefaultView for String {
-    type Widget = Label<String>;
-}
-impl<'a> DefaultView for &'a str {
-    type Widget = Label<String>;
-}
+pub use list_view::{ListMsg, ListView, SelectionMode};
+pub use shared_data::SharedRc;
+pub use single_view::SingleView;
+pub use view_widget::{CheckBoxView, RadioBoxBareView, RadioBoxView, SliderView};
+pub use view_widget::{DefaultView, View, WidgetView};

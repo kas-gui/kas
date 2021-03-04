@@ -81,7 +81,7 @@ impl Handler for ColourSquare {
                 mgr.redraw(self.id());
                 Response::None
             }
-            event => Response::Unhandled(event),
+            _ => Response::Unhandled,
         }
     }
 }

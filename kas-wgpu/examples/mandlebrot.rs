@@ -471,7 +471,7 @@ impl event::Handler for Mandlebrot {
                             Command::Down => DVec2(0.0, d),
                             Command::Left => DVec2(-d, 0.0),
                             Command::Right => DVec2(d, 0.0),
-                            _ => return Response::Unhandled(event),
+                            _ => return Response::Unhandled,
                         };
                         self.delta = self.delta + self.alpha.complex_mul(delta);
                     }

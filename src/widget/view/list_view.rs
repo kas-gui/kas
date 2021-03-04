@@ -5,11 +5,13 @@
 
 //! List view widget
 
-use super::{DefaultView, ListData, ViewWidget};
+use super::{DefaultView, ListData, View};
 use kas::event::{CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
-use kas::widget::{ScrollComponent, ScrollWidget};
+#[allow(unused)] // doc links
+use kas::widget::ScrollBars;
+use kas::widget::{ScrollComponent, Scrollable};
 use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::convert::TryFrom;
@@ -34,8 +36,6 @@ struct WidgetData<K, W> {
     widget: W,
 }
 
-// TODO: do we need to keep the T::Item: Default bound used to initialise entries without data?
-
 /// Message type of [`ListView`]
 #[derive(Clone, Debug, VoidMsg)]
 pub enum ListMsg<K, M> {
@@ -57,23 +57,21 @@ impl<K, M> From<Response<ListMsg<K, M>>> for Response<M> {
 }
 
 /// List view widget
+///
+/// This widget is [`Scrollable`], supporting keyboard, wheel and drag
+/// scrolling. You may wish to wrap this widget with [`ScrollBars`].
 #[derive(Clone, Debug, Widget)]
-#[handler(send=noauto, msg=ListMsg<T::Key, <W as Handler>::Msg>)]
+#[handler(send=noauto, msg=ListMsg<T::Key, <V::Widget as Handler>::Msg>)]
 #[widget(children=noauto, config=noauto)]
-pub struct ListView<
-    D: Directional,
-    T: ListData + 'static,
-    W: ViewWidget<T::Item> = <<T as ListData>::Item as DefaultView>::Widget,
-> where
-    T::Item: Default,
-{
+pub struct ListView<D: Directional, T: ListData + 'static, V: View<T::Key, T::Item> = DefaultView> {
     first_id: WidgetId,
     #[widget_core]
     core: CoreData,
     offset: Offset,
     frame_size: Size,
+    view: V,
     data: T,
-    widgets: Vec<WidgetData<T::Key, W>>,
+    widgets: Vec<WidgetData<T::Key, V::Widget>>,
     cur_len: u32,
     direction: D,
     align_hints: AlignHints,
@@ -91,51 +89,37 @@ pub struct ListView<
     press_target: Option<T::Key>,
 }
 
-impl<D: Directional + Default, T: ListData, W: ViewWidget<T::Item>> ListView<D, T, W>
-where
-    T::Item: Default,
-{
+impl<D: Directional + Default, T: ListData, V: View<T::Key, T::Item> + Default> ListView<D, T, V> {
     /// Construct a new instance
     ///
     /// This constructor is available where the direction is determined by the
     /// type: for `D: Directional + Default`. In other cases, use
     /// [`ListView::new_with_direction`].
     pub fn new(data: T) -> Self {
-        ListView {
-            first_id: Default::default(),
-            core: Default::default(),
-            offset: Default::default(),
-            frame_size: Default::default(),
-            data,
-            widgets: Default::default(),
-            cur_len: 0,
-            direction: Default::default(),
-            align_hints: Default::default(),
-            ideal_visible: 5,
-            child_size_min: 0,
-            child_size_ideal: 0,
-            child_inter_margin: 0,
-            child_skip: 0,
-            child_size: Size::ZERO,
-            scroll: Default::default(),
-            sel_mode: SelectionMode::None,
-            selection: Default::default(),
-            press_event: None,
-            press_target: None,
-        }
+        Self::new_with_dir_view(D::default(), <V as Default>::default(), data)
     }
 }
-impl<D: Directional, T: ListData, W: ViewWidget<T::Item>> ListView<D, T, W>
-where
-    T::Item: Default,
-{
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item> + Default> ListView<D, T, V> {
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, data: T) -> Self {
+        Self::new_with_dir_view(direction, <V as Default>::default(), data)
+    }
+}
+impl<D: Directional + Default, T: ListData, V: View<T::Key, T::Item> + Default> ListView<D, T, V> {
+    /// Construct a new instance with explicit view
+    pub fn new_with_view(view: V, data: T) -> Self {
+        Self::new_with_dir_view(D::default(), view, data)
+    }
+}
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> ListView<D, T, V> {
+    /// Construct a new instance with explicit direction and view
+    pub fn new_with_dir_view(direction: D, view: V, data: T) -> Self {
         ListView {
             first_id: Default::default(),
             core: Default::default(),
             offset: Default::default(),
             frame_size: Default::default(),
+            view,
             data,
             widgets: Default::default(),
             cur_len: 0,
@@ -165,6 +149,33 @@ where
     /// It may be necessary to use [`ListView::update_view`] to update the view of this data.
     pub fn data_mut(&mut self) -> &mut T {
         &mut self.data
+    }
+
+    /// Get a copy of the shared value at `key`
+    pub fn get_value(&self, key: &T::Key) -> Option<T::Item> {
+        self.data.get_cloned(key)
+    }
+
+    /// Set shared data
+    ///
+    /// This method updates the shared data, if supported (see
+    /// [`ListData::update`]). Other widgets sharing this data are notified
+    /// of the update, if data is changed.
+    pub fn set_value(&self, mgr: &mut Manager, key: &T::Key, data: T::Item) {
+        if let Some(handle) = self.data.update(key, data) {
+            mgr.trigger_update(handle, 0);
+        }
+    }
+
+    /// Update shared data
+    ///
+    /// This is purely a convenience method over [`ListView::set_value`].
+    /// It does nothing if no value is found at `key`.
+    /// It notifies other widgets of updates to the shared data.
+    pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut Manager, key: &T::Key, f: F) {
+        if let Some(item) = self.get_value(key) {
+            self.set_value(mgr, key, f(item));
+        }
     }
 
     /// Get the current selection mode
@@ -282,11 +293,11 @@ where
             .enumerate()
         {
             let i = first_data + i;
-            let key = Some(item.0);
+            let key = Some(item.0.clone());
             let w = &mut self.widgets[i % len];
             if key != w.key {
                 w.key = key;
-                action |= w.widget.set(item.1);
+                action |= self.view.set(&mut w.widget, item.0, item.1);
             }
             // TODO(opt): don't need to set_rect on all widgets when scrolling
             rect.pos = pos_start + skip * i32::conv(i);
@@ -298,11 +309,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> ScrollWidget
-    for ListView<D, T, W>
-where
-    T::Item: Default,
-{
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> Scrollable for ListView<D, T, V> {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         // TODO: maybe we should support a scrollbar on the other axis?
         // We would need to report a fake min-child-size to enable scrolling.
@@ -333,11 +340,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> WidgetChildren
-    for ListView<D, T, W>
-where
-    T::Item: Default,
-{
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> WidgetChildren for ListView<D, T, V> {
     #[inline]
     fn first_id(&self) -> WidgetId {
         self.first_id
@@ -361,11 +364,7 @@ where
     }
 }
 
-impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> WidgetConfig
-    for ListView<D, T, W>
-where
-    T::Item: Default,
-{
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> WidgetConfig for ListView<D, T, V> {
     fn configure(&mut self, mgr: &mut Manager) {
         if let Some(handle) = self.data.update_handle() {
             mgr.update_on_handle(handle, self.id());
@@ -374,22 +373,19 @@ where
     }
 }
 
-impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> Layout for ListView<D, T, W>
-where
-    T::Item: Default,
-{
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> Layout for ListView<D, T, V> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
         let frame = FrameRules::new_sym(0, inner_margin, (0, 0));
 
-        // We initialise the first widget if possible, otherwise use W::default()
+        // We initialise the first widget if possible, otherwise use V::Widget::default()
         if self.widgets.is_empty() {
             let (key, widget) = if let Some((key, data)) = self.data.iter_vec(1).into_iter().next()
             {
-                (Some(key), W::new(data))
+                (Some(key.clone()), self.view.new(key, data))
             } else {
-                (None, W::default())
+                (None, self.view.default())
             };
             self.widgets.push(WidgetData { key, widget });
         }
@@ -454,8 +450,8 @@ where
             self.widgets.reserve(num - old_num);
             mgr.size_handle(|size_handle| {
                 for (key, item) in self.data.iter_vec_from(old_num, num - old_num) {
+                    let mut widget = self.view.new(key.clone(), item);
                     let key = Some(key);
-                    let mut widget = W::new(item);
                     // We must solve size rules on new widgets:
                     solve_size_rules(
                         &mut widget,
@@ -466,7 +462,7 @@ where
                     self.widgets.push(WidgetData { key, widget });
                 }
                 for _ in self.widgets.len()..num {
-                    let mut widget = W::default();
+                    let mut widget = self.view.default();
                     solve_size_rules(
                         &mut widget,
                         size_handle,
@@ -523,28 +519,29 @@ where
     }
 }
 
-impl<D: Directional, T: ListData + 'static, W: ViewWidget<T::Item>> SendEvent for ListView<D, T, W>
-where
-    T::Item: Default,
-{
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
+impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListView<D, T, V> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, mut event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
-            return Response::Unhandled(event);
+            return Response::Unhandled;
         }
 
-        let event = if id < self.id() {
+        if id < self.id() {
+            event = self.scroll.offset_event(event);
             let response = 'outer: loop {
-                for child in &mut self.widgets[..self.cur_len.cast()] {
+                // We forward events to all children, even if not visible
+                // (e.g. these may be subscribed to an UpdateHandle).
+                for (i, child) in self.widgets.iter_mut().enumerate() {
                     if id <= child.widget.id() {
-                        let event = self.scroll.offset_event(event);
-                        break 'outer (child.key.clone(), child.widget.send(mgr, id, event));
+                        let r = child.widget.send(mgr, id, event.clone());
+                        break 'outer (i, child.key.clone(), r);
                     }
                 }
                 debug_assert!(false, "SendEvent::send: bad WidgetId");
-                return Response::Unhandled(event);
+                return Response::Unhandled;
             };
             match response {
-                (key, Response::Unhandled(event)) => {
+                (_, _, Response::None) => return Response::None,
+                (_, key, Response::Unhandled) => {
                     if let Event::PressStart { source, coord, .. } = event {
                         if source.is_primary() {
                             // We request a grab with our ID, hence the
@@ -556,25 +553,24 @@ where
                             return Response::None;
                         }
                     }
-                    event
                 }
-                (_, Response::Focus(rect)) => {
+                (_, _, Response::Focus(rect)) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                     *mgr |= action;
                     self.update_widgets(mgr);
                     return Response::Focus(rect);
                 }
-                (key, r) => {
-                    return match Response::try_from(r) {
-                        Ok(r) => r,
-                        Err(msg) => {
-                            if let Some(key) = key {
-                                Response::Msg(ListMsg::Child(key, msg))
-                            } else {
-                                log::warn!("ListView: response from widget with no key");
-                                Response::None
-                            }
+                (i, key, r @ Response::Msg(_)) | (i, key, r @ Response::Update) => {
+                    if let Some(key) = key {
+                        if let Some(item) = self.view.get(&self.widgets[i].widget, &key) {
+                            self.set_value(mgr, &key, item);
                         }
+                        return r
+                            .try_into()
+                            .unwrap_or_else(|msg| Response::Msg(ListMsg::Child(key, msg)));
+                    } else {
+                        log::warn!("ListView: response from widget with no key");
+                        return Response::None;
                     }
                 }
             }
@@ -583,12 +579,12 @@ where
             match event {
                 Event::HandleUpdate { .. } => {
                     self.update_view(mgr);
-                    return Response::None;
+                    return Response::Update;
                 }
                 Event::PressMove { source, .. } if self.press_event == Some(source) => {
                     self.press_event = None;
                     mgr.update_grab_cursor(self.id(), CursorIcon::Grabbing);
-                    event // fall through to scroll handler
+                    // fall through to scroll handler
                 }
                 Event::PressEnd { source, .. } if self.press_event == Some(source) => {
                     self.press_event = None;
@@ -617,7 +613,7 @@ where
                         }
                     };
                 }
-                event => event,
+                _ => (), // fall through to scroll handler
             }
         };
 

@@ -139,7 +139,7 @@ impl Handler for Clock {
                 mgr.update_on_timer(Duration::new(0, ns), self.id());
                 Response::None
             }
-            event => Response::Unhandled(event),
+            _ => Response::Unhandled,
         }
     }
 }
