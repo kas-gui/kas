@@ -75,6 +75,18 @@ macro_rules! impl_common {
                 Self(self.1, self.0)
             }
 
+            /// Return the L1 (rectilinear / taxicab) distance
+            #[inline]
+            pub fn distance_l1(self) -> i32 {
+                self.0.abs() + self.1.abs()
+            }
+
+            /// Return the L-inf (max) distance
+            #[inline]
+            pub fn distance_l_inf(self) -> i32 {
+                self.0.abs().max(self.1.abs())
+            }
+
             /// Extract one component, based on a direction
             ///
             /// This merely extracts the horizontal component. It never negates

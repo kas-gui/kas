@@ -69,6 +69,15 @@ pub struct Config {
     )]
     pub touch_text_sel_delay_ns: u32,
 
+    /// Drag distance threshold before panning (scrolling) starts
+    ///
+    /// When the distance moved is greater than this threshold, panning should
+    /// start; otherwise the system should wait for the text-selection timer.
+    /// We currently recommend the L-inf distance metric (max of abs of values).
+    // TODO: multiply by scale factor on access?
+    #[cfg_attr(feature = "serde", serde(default = "defaults::pan_dist_thresh"))]
+    pub pan_dist_thresh: i32,
+
     #[cfg_attr(feature = "serde", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
 }
@@ -78,6 +87,7 @@ impl Default for Config {
         Config {
             menu_delay_ns: defaults::menu_delay_ns(),
             touch_text_sel_delay_ns: defaults::touch_text_sel_delay_ns(),
+            pan_dist_thresh: defaults::pan_dist_thresh(),
             shortcuts: Shortcuts::platform_defaults(),
         }
     }
@@ -163,5 +173,8 @@ mod defaults {
     }
     pub fn touch_text_sel_delay_ns() -> u32 {
         1_000_000_000
+    }
+    pub fn pan_dist_thresh() -> i32 {
+        2
     }
 }

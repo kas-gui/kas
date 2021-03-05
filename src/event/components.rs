@@ -99,9 +99,14 @@ impl TextInput {
                             self.touch_phase = TouchPhase::Pan(touch_id);
                             Action::Pan(delta)
                         }
-                        TouchPhase::Start(id, ..) if id == touch_id => {
-                            self.touch_phase = TouchPhase::Pan(id);
-                            Action::Pan(delta)
+                        TouchPhase::Start(id, start_coord) if id == touch_id => {
+                            let delta = coord - start_coord;
+                            if delta.distance_l_inf() > mgr.config().pan_dist_thresh {
+                                self.touch_phase = TouchPhase::Pan(id);
+                                Action::Pan(delta)
+                            } else {
+                                Action::None
+                            }
                         }
                         TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta),
                         TouchPhase::Cursor(id) if ctrl && id == touch_id => Action::Pan(delta),
