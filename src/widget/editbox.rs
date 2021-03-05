@@ -7,7 +7,6 @@
 
 use std::fmt::{self, Debug};
 use std::ops::Range;
-use std::time::Duration;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 use kas::draw::TextClass;
@@ -174,8 +173,6 @@ impl<F: FnMut(&str)> Debug for EditUpdate<F> {
         write!(f, "EditUpdate(..)")
     }
 }
-
-const TOUCH_DUR: Duration = Duration::from_secs(1);
 
 #[derive(Clone, Debug, PartialEq)]
 enum TouchPhase {
@@ -1083,7 +1080,8 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                 if let PressSource::Touch(touch_id) = source {
                     if self.touch_phase == TouchPhase::None {
                         self.touch_phase = TouchPhase::Start(touch_id, coord);
-                        mgr.update_on_timer(TOUCH_DUR, self.id());
+                        let delay = mgr.config().touch_text_sel_delay();
+                        mgr.update_on_timer(delay, self.id());
                     }
                 } else if let PressSource::Mouse(_, repeats) = source {
                     if !mgr.modifiers().ctrl() {

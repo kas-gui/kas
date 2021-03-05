@@ -58,8 +58,17 @@ impl Default for ConfigFormat {
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
+    /// Delay before opening/closing menus on mouse hover
     #[cfg_attr(feature = "serde", serde(default = "defaults::menu_delay_ns"))]
     pub menu_delay_ns: u32,
+
+    /// Delay before switching from panning to text-selection mode
+    #[cfg_attr(
+        feature = "serde",
+        serde(default = "defaults::touch_text_sel_delay_ns")
+    )]
+    pub touch_text_sel_delay_ns: u32,
+
     #[cfg_attr(feature = "serde", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
 }
@@ -68,6 +77,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             menu_delay_ns: defaults::menu_delay_ns(),
+            touch_text_sel_delay_ns: defaults::touch_text_sel_delay_ns(),
             shortcuts: Shortcuts::platform_defaults(),
         }
     }
@@ -77,6 +87,11 @@ impl Config {
     /// Get menu delay as a `Duration`
     pub fn menu_delay(&self) -> Duration {
         Duration::from_nanos(self.menu_delay_ns.cast())
+    }
+
+    /// Get touch selection delay as a `Duration`
+    pub fn touch_text_sel_delay(&self) -> Duration {
+        Duration::from_nanos(self.touch_text_sel_delay_ns.cast())
     }
 
     fn guess_format(path: &Path) -> ConfigFormat {
@@ -145,5 +160,8 @@ impl Config {
 mod defaults {
     pub fn menu_delay_ns() -> u32 {
         250_000_000
+    }
+    pub fn touch_text_sel_delay_ns() -> u32 {
+        1_000_000_000
     }
 }
