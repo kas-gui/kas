@@ -7,7 +7,11 @@
 
 use super::{Event, GrabMode, Manager, PressSource};
 use crate::geom::{Coord, Offset};
+#[allow(unused)]
+use crate::text::SelectionHelper;
 use crate::WidgetId;
+
+const TIMER_ID: u64 = 1 << 60;
 
 #[derive(Clone, Debug, PartialEq)]
 enum TouchPhase {
@@ -56,7 +60,7 @@ impl TextInput {
     /// Handle input events
     ///
     /// Consumes the following events: `PressStart`, `PressMove`, `PressEnd`,
-    /// `TimerUpdate`. May request press grabs and timer updates.
+    /// `TimerUpdate(1 << 60)`. May request press grabs and timer updates.
     pub fn handle(&mut self, mgr: &mut Manager, w_id: WidgetId, event: Event) -> TextInputAction {
         use TextInputAction as Action;
         match event {
@@ -68,7 +72,7 @@ impl TextInput {
                         if self.touch_phase == TouchPhase::None {
                             self.touch_phase = TouchPhase::Start(touch_id, coord);
                             let delay = mgr.config().touch_text_sel_delay();
-                            mgr.update_on_timer(delay, w_id, touch_id);
+                            mgr.update_on_timer(delay, w_id, TIMER_ID);
                         }
                         Action::None
                     }
@@ -91,6 +95,10 @@ impl TextInput {
                 let ctrl = mgr.modifiers().ctrl();
                 match source {
                     PressSource::Touch(touch_id) => match self.touch_phase {
+                        TouchPhase::None => {
+                            self.touch_phase = TouchPhase::Pan(touch_id);
+                            Action::Pan(delta)
+                        }
                         TouchPhase::Start(id, ..) if id == touch_id => {
                             self.touch_phase = TouchPhase::Pan(id);
                             Action::Pan(delta)
@@ -114,9 +122,9 @@ impl TextInput {
                 }
                 Action::None
             }
-            Event::TimerUpdate(payload) => {
+            Event::TimerUpdate(TIMER_ID) => {
                 match self.touch_phase {
-                    TouchPhase::Start(touch_id, coord) if touch_id == payload => {
+                    TouchPhase::Start(touch_id, coord) => {
                         self.touch_phase = TouchPhase::Cursor(touch_id);
                         if mgr.modifiers().ctrl() {
                             Action::None
