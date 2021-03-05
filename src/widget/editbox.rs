@@ -1081,7 +1081,7 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                     if self.touch_phase == TouchPhase::None {
                         self.touch_phase = TouchPhase::Start(touch_id, coord);
                         let delay = mgr.config().touch_text_sel_delay();
-                        mgr.update_on_timer(delay, self.id());
+                        mgr.update_on_timer(delay, self.id(), touch_id);
                     }
                 } else if let PressSource::Mouse(_, repeats) = source {
                     if !mgr.modifiers().ctrl() {
@@ -1170,9 +1170,9 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                     Response::Unhandled
                 }
             }
-            Event::TimerUpdate => {
+            Event::TimerUpdate(payload) => {
                 match self.touch_phase {
-                    TouchPhase::Start(touch_id, coord) => {
+                    TouchPhase::Start(touch_id, coord) if touch_id == payload => {
                         if !mgr.modifiers().ctrl() {
                             self.set_edit_pos_from_coord(mgr, coord);
                             if !mgr.modifiers().shift() {

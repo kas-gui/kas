@@ -40,7 +40,7 @@ fn make_window() -> Box<dyn kas::Window> {
                     self.start = None;
                 } else {
                     self.start = Some(Instant::now());
-                    mgr.update_on_timer(Duration::new(0, 0), self.id());
+                    mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
                 }
                 Response::None
             }
@@ -54,12 +54,12 @@ fn make_window() -> Box<dyn kas::Window> {
             type Msg = VoidMsg;
             fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<VoidMsg> {
                 match event {
-                    Event::TimerUpdate => {
+                    Event::TimerUpdate(0) => {
                         if let Some(start) = self.start {
                             let dur = self.saved + (Instant::now() - start);
                             let text = format!("{}.{:03}", dur.as_secs(), dur.subsec_millis());
                             *mgr |= self.display.set_string(text);
-                            mgr.update_on_timer(Duration::new(0, 1), self.id());
+                            mgr.update_on_timer(Duration::new(0, 1), self.id(), 0);
                         }
                         Response::None
                     }

@@ -168,7 +168,7 @@ impl ManagerState {
         // We have to handle time_updates and handle_updates carefully since
         // these may be set during configure, *and* may carry old state forward
         // which must be renamed.
-        'old: for (time, old_id) in old_time_updates.drain(..) {
+        'old: for (time, old_id, payload) in old_time_updates.drain(..) {
             if let Some(new_id) = renames.get(&old_id).cloned() {
                 // Insert into our data structure. We sort everything below.
                 'insert: loop {
@@ -183,7 +183,7 @@ impl ManagerState {
                         }
                     }
 
-                    self.time_updates.push((time, new_id));
+                    self.time_updates.push((time, new_id, payload));
                     break;
                 }
             }
@@ -391,7 +391,7 @@ impl<'a> Manager<'a> {
             }
 
             let update = self.state.time_updates.pop().unwrap();
-            self.send_event(widget, update.1, Event::TimerUpdate);
+            self.send_event(widget, update.1, Event::TimerUpdate(update.2));
         }
 
         self.state.time_updates.sort_by(|a, b| b.cmp(a)); // reverse sort

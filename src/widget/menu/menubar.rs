@@ -81,7 +81,7 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
-            Event::TimerUpdate => {
+            Event::TimerUpdate(0) => {
                 if let Some(id) = self.delayed_open {
                     self.delayed_open = None;
                     self.menu_path(mgr, Some(id));
@@ -111,14 +111,14 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
                                     if !w.menu_is_open() {
                                         self.opening = true;
                                         self.delayed_open = Some(id);
-                                        mgr.update_on_timer(delay, self.id());
+                                        mgr.update_on_timer(delay, self.id(), 0);
                                     }
                                     break;
                                 }
                             }
                         } else {
                             self.delayed_open = Some(start_id);
-                            mgr.update_on_timer(delay, self.id());
+                            mgr.update_on_timer(delay, self.id(), 0);
                         }
                     }
                 } else {
@@ -134,7 +134,7 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
                         mgr.set_nav_focus(id);
                         self.delayed_open = Some(id);
                         let delay = mgr.config().menu_delay();
-                        mgr.update_on_timer(delay, self.id());
+                        mgr.update_on_timer(delay, self.id(), 0);
                     }
                 } else {
                     mgr.set_grab_depress(source, None);

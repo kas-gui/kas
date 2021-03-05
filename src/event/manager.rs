@@ -124,7 +124,7 @@ pub struct ManagerState {
     popup_removed: SmallVec<[(WidgetId, WindowId); 16]>,
 
     time_start: Instant,
-    time_updates: Vec<(Instant, WidgetId)>,
+    time_updates: Vec<(Instant, WidgetId, u64)>,
     // TODO(opt): consider other containers, e.g. C++ multimap
     // or sorted Vec with binary search yielding a range
     handle_updates: HashMap<UpdateHandle, LinearSet<WidgetId>>,

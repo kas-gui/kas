@@ -134,7 +134,10 @@ pub enum Event {
     ///
     /// This event is received after requesting timed wake-up(s)
     /// (see [`Manager::update_on_timer`]).
-    TimerUpdate,
+    ///
+    /// The `u64` payload may be used to identify the corresponding
+    /// [`Manager::update_on_timer`] call.
+    TimerUpdate(u64),
     /// Update triggerred via an [`UpdateHandle`]
     ///
     /// This event may be received after registering an [`UpdateHandle`] via
