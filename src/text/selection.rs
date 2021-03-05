@@ -79,9 +79,9 @@ impl SelectionHelper {
         range
     }
 
-    /// Set the anchor position from the selection position
+    /// Set the anchor position from the edit position
     pub fn set_anchor(&mut self) {
-        self.anchor_pos = self.sel_pos;
+        self.anchor_pos = self.edit_pos;
     }
 
     /// Expand the selection from the range between edit pos and anchor pos

@@ -10,7 +10,8 @@ use std::ops::Range;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 use kas::draw::TextClass;
-use kas::event::{self, Command, GrabMode, PressSource, ScrollDelta};
+use kas::event::components::{TextInput, TextInputAction};
+use kas::event::{self, Command, ScrollDelta};
 use kas::geom::Vec2;
 use kas::macros::*;
 use kas::prelude::*;
@@ -171,20 +172,6 @@ impl<F: FnMut(&str) + 'static> EditGuard for EditUpdate<F> {
 impl<F: FnMut(&str)> Debug for EditUpdate<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "EditUpdate(..)")
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-enum TouchPhase {
-    None,
-    Start(u64, Coord), // id, coord
-    Pan(u64),          // id
-    Cursor(u64),       // id
-}
-
-impl Default for TouchPhase {
-    fn default() -> Self {
-        TouchPhase::None
     }
 }
 
@@ -423,7 +410,7 @@ pub struct EditField<G: EditGuard = ()> {
     old_state: Option<(String, usize, usize)>,
     last_edit: LastEdit,
     error_state: bool,
-    touch_phase: TouchPhase,
+    input_handler: TextInput,
     /// The associated [`EditGuard`] implementation
     pub guard: G,
 }
@@ -528,7 +515,7 @@ impl EditField<()> {
             old_state: None,
             last_edit: LastEdit::None,
             error_state: false,
-            touch_phase: TouchPhase::None,
+            input_handler: Default::default(),
             guard: (),
         }
     }
@@ -555,7 +542,7 @@ impl EditField<()> {
             old_state: self.old_state,
             last_edit: self.last_edit,
             error_state: self.error_state,
-            touch_phase: self.touch_phase,
+            input_handler: self.input_handler,
             guard,
         };
         let _ = G::update(&mut edit);
@@ -1076,85 +1063,6 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                 false => Response::Unhandled,
                 true => Response::update_or_msg(G::edit(self, mgr)),
             },
-            Event::PressStart { source, coord, .. } if source.is_primary() => {
-                if let PressSource::Touch(touch_id) = source {
-                    if self.touch_phase == TouchPhase::None {
-                        self.touch_phase = TouchPhase::Start(touch_id, coord);
-                        let delay = mgr.config().touch_text_sel_delay();
-                        mgr.update_on_timer(delay, self.id(), touch_id);
-                    }
-                } else if let PressSource::Mouse(_, repeats) = source {
-                    if !mgr.modifiers().ctrl() {
-                        // With Ctrl held, we scroll instead of moving the cursor
-                        // (non-standard, but seems to work well)!
-                        self.set_edit_pos_from_coord(mgr, coord);
-                        if !mgr.modifiers().shift() {
-                            self.selection.set_empty();
-                        }
-                        self.selection.set_anchor();
-                        if repeats > 1 {
-                            self.selection.expand(&self.text, repeats);
-                        }
-                    }
-                }
-                mgr.request_grab(self.id(), source, coord, GrabMode::Grab, None);
-                mgr.request_char_focus(self.id());
-                Response::None
-            }
-            Event::PressMove {
-                source,
-                coord,
-                delta,
-                ..
-            } => {
-                let ctrl = mgr.modifiers().ctrl();
-                let mut sel_mode = 1;
-                let pan = match source {
-                    PressSource::Touch(touch_id) => match self.touch_phase {
-                        TouchPhase::Start(id, ..) if id == touch_id => {
-                            self.touch_phase = TouchPhase::Pan(id);
-                            true
-                        }
-                        TouchPhase::Pan(id) if id == touch_id => true,
-                        TouchPhase::Cursor(id) if id == touch_id => ctrl,
-                        _ => false,
-                    },
-                    PressSource::Mouse(..) if ctrl => true,
-                    PressSource::Mouse(_, repeats) => {
-                        sel_mode = repeats;
-                        false
-                    }
-                };
-                if pan {
-                    self.pan_delta(mgr, delta);
-                } else {
-                    self.set_edit_pos_from_coord(mgr, coord);
-                    if sel_mode > 1 {
-                        self.selection.expand(&self.text, sel_mode);
-                    }
-                }
-                Response::None
-            }
-            Event::PressEnd { source, .. } => {
-                match self.touch_phase {
-                    TouchPhase::Start(id, coord) if source == PressSource::Touch(id) => {
-                        if !mgr.modifiers().ctrl() {
-                            self.set_edit_pos_from_coord(mgr, coord);
-                            if !mgr.modifiers().shift() {
-                                self.selection.set_empty();
-                            }
-                        }
-                        self.touch_phase = TouchPhase::None;
-                    }
-                    TouchPhase::Pan(id) | TouchPhase::Cursor(id)
-                        if source == PressSource::Touch(id) =>
-                    {
-                        self.touch_phase = TouchPhase::None;
-                    }
-                    _ => (),
-                }
-                Response::None
-            }
             Event::Scroll(delta) => {
                 let delta2 = match delta {
                     ScrollDelta::LineDelta(x, y) => {
@@ -1170,22 +1078,27 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                     Response::Unhandled
                 }
             }
-            Event::TimerUpdate(payload) => {
-                match self.touch_phase {
-                    TouchPhase::Start(touch_id, coord) if touch_id == payload => {
-                        if !mgr.modifiers().ctrl() {
-                            self.set_edit_pos_from_coord(mgr, coord);
-                            if !mgr.modifiers().shift() {
-                                self.selection.set_empty();
-                            }
-                        }
-                        self.touch_phase = TouchPhase::Cursor(touch_id);
-                    }
-                    _ => (),
+            event => match self.input_handler.handle(mgr, self.id(), event) {
+                TextInputAction::None => Response::None,
+                TextInputAction::Unhandled => Response::Unhandled,
+                TextInputAction::Pan(delta) => {
+                    self.pan_delta(mgr, delta);
+                    Response::None
                 }
-                Response::None
-            }
-            _ => Response::Unhandled,
+                TextInputAction::Cursor(coord, anchor, clear, repeats) => {
+                    self.set_edit_pos_from_coord(mgr, coord);
+                    if anchor {
+                        self.selection.set_anchor();
+                    }
+                    if clear {
+                        self.selection.set_empty();
+                    }
+                    if repeats > 1 {
+                        self.selection.expand(&self.text, repeats);
+                    }
+                    Response::None
+                }
+            },
         }
     }
 }
