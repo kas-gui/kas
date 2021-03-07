@@ -68,6 +68,35 @@ short-cuts, double-click tracking and separate inner and outer margins.
 Additionally, a [CONTRIBUTING](CONTRIBUTING.md) guide and this `ROADMAP`
 have been added.
 
+### 0.6.0 — Nov 2020
+
+A continuation of the work on text, with intial support for rich text,
+exemplified via a Markdown parser. Bold, italic and underline highlighting is
+now supported within texts, along with font-size adjustments.
+
+To allow retrieval of data from temporary (dialog) windows, the
+`Window::on_drop` method was added.
+
+This release also simplifies distribution by bundling pre-compiled GLSL shaders.
+
+### 0.7.0 — unreleased (March 2021?)
+
+This release focusses on one of the remaining hard problems: data sharing. A new
+framework for "view widgets" is introduced, allowing (interactive) views over
+shared data.
+
+Also included are several improvements to sizing, widget construction and event
+handling, as well as a new type-conversion library.
+
+### 0.8.0 — unreleased
+
+This version will likely (finally) add support for images and textures, as well
+as some related work:
+
+-   generalised buttons: support at least image or text contents
+-   SVG support?
+-   Better drawing APIs?
+
 
 Future work
 -----------
