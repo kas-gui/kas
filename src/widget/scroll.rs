@@ -362,14 +362,14 @@ impl<W: Widget> Layout for ScrollRegion<W> {
 }
 
 impl<W: Widget> event::SendEvent for ScrollRegion<W> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, mut event: Event) -> Response<Self::Msg> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled;
         }
 
         if id <= self.inner.id() {
-            event = self.scroll.offset_event(event);
-            match self.inner.send(mgr, id, event.clone()) {
+            let child_event = self.scroll.offset_event(event.clone());
+            match self.inner.send(mgr, id, child_event) {
                 Response::Unhandled => (),
                 Response::Focus(rect) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
@@ -386,7 +386,7 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
         let (action, response) =
             self.scroll
                 .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
-                    if source.is_primary() {
+                    if source.is_primary() && mgr.config_enable_mouse_pan() {
                         let icon = Some(event::CursorIcon::Grabbing);
                         mgr.request_grab(id, source, coord, event::GrabMode::Grab, icon);
                     }

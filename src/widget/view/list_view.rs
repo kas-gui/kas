@@ -520,19 +520,19 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> Layout for ListView<
 }
 
 impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListView<D, T, V> {
-    fn send(&mut self, mgr: &mut Manager, id: WidgetId, mut event: Event) -> Response<Self::Msg> {
+    fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled;
         }
 
         if id < self.id() {
-            event = self.scroll.offset_event(event);
+            let child_event = self.scroll.offset_event(event.clone());
             let response = 'outer: loop {
                 // We forward events to all children, even if not visible
                 // (e.g. these may be subscribed to an UpdateHandle).
                 for (i, child) in self.widgets.iter_mut().enumerate() {
                     if id <= child.widget.id() {
-                        let r = child.widget.send(mgr, id, event.clone());
+                        let r = child.widget.send(mgr, id, child_event);
                         break 'outer (i, child.key.clone(), r);
                     }
                 }
@@ -621,7 +621,7 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> SendEvent for ListVi
         let (action, response) =
             self.scroll
                 .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
-                    if source.is_primary() {
+                    if source.is_primary() && mgr.config_enable_mouse_pan() {
                         let icon = Some(CursorIcon::Grabbing);
                         mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
                     }

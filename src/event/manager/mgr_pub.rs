@@ -91,29 +91,55 @@ impl<'a> Manager<'a> {
         self.state.modifiers
     }
 
+    /// Access event-handling configuration
+    #[inline]
+    pub fn config<'b>(&'b self) -> impl std::ops::Deref<Target = Config> + 'b {
+        self.state.config.borrow()
+    }
+
+    /// Is mouse panning enabled?
+    #[inline]
+    pub fn config_enable_mouse_pan(&self) -> bool {
+        self.config().mouse_pan.is_enabled_with(self.modifiers())
+    }
+
+    /// Is mouse text panning enabled?
+    #[inline]
+    pub fn config_enable_mouse_text_pan(&self) -> bool {
+        self.config()
+            .mouse_text_pan
+            .is_enabled_with(self.modifiers())
+    }
+
     /// Schedule an update
     ///
     /// Widgets requiring animation should schedule an update; as a result,
-    /// [`Event::TimerUpdate`] will be sent, roughly at time `now + duration`.
+    /// the widget will receive [`Event::TimerUpdate`] (with this `payload`)
+    /// at approximately `time = now + delay`.
     ///
     /// Timings may be a few ms out, but should be sufficient for e.g. updating
     /// a clock each second. Very short positive durations (e.g. 1ns) may be
     /// used to schedule an update on the next frame. Frames should in any case
     /// be limited by vsync, avoiding excessive frame rates.
     ///
+    /// If multiple updates with the same `w_id` and `payload` are requested,
+    /// these are merged (using the earliest time). Updates with differing
+    /// `w_id` or `payload` are not merged (since presumably they have different
+    /// purposes).
+    ///
     /// This may be called from [`WidgetConfig::configure`] or from an event
     /// handler. Note that previously-scheduled updates are cleared when
     /// widgets are reconfigured.
-    pub fn update_on_timer(&mut self, duration: Duration, w_id: WidgetId) {
+    pub fn update_on_timer(&mut self, delay: Duration, w_id: WidgetId, payload: u64) {
         trace!(
             "Manager::update_on_timer: queing update for {} at now+{}ms",
             w_id,
-            duration.as_millis()
+            delay.as_millis()
         );
-        let time = Instant::now() + duration;
+        let time = Instant::now() + delay;
         'outer: loop {
             for row in &mut self.state.time_updates {
-                if row.1 == w_id {
+                if row.1 == w_id && row.2 == payload {
                     if row.0 <= time {
                         return;
                     } else {
@@ -123,7 +149,7 @@ impl<'a> Manager<'a> {
                 }
             }
 
-            self.state.time_updates.push((time, w_id));
+            self.state.time_updates.push((time, w_id, payload));
             break;
         }
 

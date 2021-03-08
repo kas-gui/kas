@@ -16,41 +16,97 @@ KAS's design provides:
 -   widgets embed state and handlers (easy reuse of complex components)
 -   scalability to millions of widgets
 
-## Examples
-
-For details, see the [Examples README](kas-wgpu/examples/README.md).
-
-![Gallery](https://github.com/kas-gui/data-dump/blob/master/video/gallery.png)
-![Splitter](screenshots/splitter.gif)
-![Mandlebrot](screenshots/mandlebrot.png)
-
-## Features
-
--   Automatic window size and layout: just specify row/column/grid layout and
-    let KAS do the rest (with correct HiDPI scaling)
--   Themes (sizing and rendering control) and colour schemes with run-time switching
--   Accessibility/input: full keyboard control as well as touchscreen and mouse
--   Bidirectional and rich text support via [KAS-text] with complex glyph shaping via [HarfBuzz]
--   Accelerated graphics via [WebGPU]
--   Embedded accelerated graphics via custom pipelines
-
-### Missing features
-
-These aren't here yet!
-
--   Raster graphics
--   Flow-box layouts (but rows, columns and grids are enough for most stuff)
--   CPU-based fallback renderer
--   Desktop UI integration
--   And much more, see the [ROADMAP].
-
-## Learn
+## Documentation
 
 -   API docs: <https://docs.rs/kas>, <https://docs.rs/kas-theme>, <https://docs.rs/kas-wgpu>
 -   [KAS Tutorials](https://kas-gui.github.io/tutorials/)
 -   [Examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
 -   [Discuss](https://github.com/kas-gui/kas/discussions)
 -   [KAS Blog](https://kas-gui.github.io/blog/)
+
+## Examples
+
+For more, see the [Examples README](kas-wgpu/examples/README.md).
+
+![Gallery](https://github.com/kas-gui/data-dump/blob/master/video/gallery.png)
+
+## Status and Features
+
+The below should give a rough idea of what's done and what's not. See also the
+[ROADMAP].
+
+We aim to make new minor releases (0.x.0) every couple of months and patch
+releases (0.x.y) only for minor fixes where required.
+Before 1.0 (which will *not* be the release after 0.9), some breaking changes
+should be expected in each minor release.
+
+### Layout
+
+**Widget layout:** works well but not perfectly; automatic sizing according to
+content or specified size for custom widgets; automatic position and stretching
+within row/column or grid layouts. Some tweaking still needed.  
+**Text layout:** custom engine handles shaping, bidi and line-wrapping (some
+bugs). Several features missing: font fallbacks, emoticons, large-text support.
+See separate [KAS-text] repository.  
+**DPI scaling:** done.  
+**Performance/scalability:** pretty fast. Exception: text layout of larger
+documents (not done). Scalability is okay to at least thousands of widgets and
+even usable to a million since many operations are `O(log n)` or better.  
+
+### Graphics
+
+**Support:** uses [WebGPU] for DirectX/Vulkan/Metal and (maybe) OpenGL
+acceleration. Currently no CPU fallback.  
+**Themes:** theme engine supports sizing and drawing many common widget parts
+(not yet comprehensive), with two example themes (not especially good ones).  
+**API:** via theme or via a few primitives. Basic.  
+**Custom accelerated widgets:** yes (see [Mandlebrot example](kas-wgpu/examples/README.md#Mandlebrot)).  
+**Textures/images:** missing (probably for v0.8).
+
+### Event handling
+
+**Mouse interactions:** most left-click actions implemented for existing
+widgets, including double-click and delayed responses. Context-menus missing.  
+**Keyboard interactions:** tab-navigation, arrow-key navigation and accelerator
+keys all done. Menus navigable with arrows and Alt+Key combos. Widgets may
+respond to Home, PageUp, etc.  
+**Touch interactions:** most single-touch gestures done. Minimal support for
+multi-touch gestures (see Mandlebrot demo app).  
+**Text-editing:** most expected keyboard/mouse behaviours done. Basic touch
+interactions supported but less complete and no virtual keyboard.  
+**Shortcuts:** widget-local and some navigation shortcuts supported; global
+shortcuts are missing. Several platform-specific bindings.  
+**Configuration:** shortcuts and some event-handling behaviour configurable.
+Serialisation to/from JSON and YAML. [See below](#Configuration).
+
+### Platform integration
+
+**Font discovery:** basic.  
+**Platform-specific default config:** yes (but probably needs tuning).  
+**Windowing:** uses [winit] which supports basic windows but lacks a few things,
+including pop-up/modal windows and good text input support.
+In theory a back-end could directly target Windows/X11/... instead but this has
+not been done.  
+**Platform-native menus:** no; waiting on [winit] support (see above).  
+**Platform-native dialogs:** no; waiting on [winit] support (see above).  
+**Embedding (within a game):** not supported; only really requires graphics
+([WebGPU] or implementing basics over another backend) plus input binding
+(currently only [winit] events are supported).  
+
+### Data handling
+
+**Embedded state in widgets:** yes.  
+**Shared state:** yes (in progress). Used by the `sync-counter`, `filter-list`
+and `dynamic-view` examples; allows custom widgets within a data-sharing "view"
+over a single datum or list of data. Missing a few common widgets (tree-view,
+table, spreadsheet).  
+**Multi-thread communication:** yes (at least basic support). See the
+`async-event` example.  
+
+### Widget library
+
+This is ad-hoc: it contains only the things wanted so far. See:
+[available widgets (latest release)](https://docs.rs/kas/latest/kas/widget/).
 
 
 Installation and dependencies
@@ -115,7 +171,7 @@ RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features markdown --no-deps --
 -   `kas-macros`: a helper crate for proc macros (do not use directly)
 -   [KAS-text]: font loading, text layout, text navigation
 -   `kas-theme`: theming support for KAS (API plus two themes; organisation may change)
--   `kas-wgpu`: provides windowing via [`winit`] and rendering via [WebGPU]
+-   `kas-wgpu`: provides windowing via [winit] and rendering via [WebGPU]
 
 A user depends on `kas` to write their complete UI specification, selects a
 theme from `kas-theme`, instances a `kas_wgpu::Toolkit`, adds the window(s),
@@ -152,7 +208,7 @@ cargo run --example gallery
 ```
 
 [KAS-text]: https://github.com/kas-gui/kas-text/
-[`winit`]: https://github.com/rust-windowing/winit/
+[winit]: https://github.com/rust-windowing/winit/
 [HarfBuzz]: https://harfbuzz.github.io/
 [WebGPU]: https://github.com/gfx-rs/wgpu-rs
 [ROADMAP]: ROADMAP.md

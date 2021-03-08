@@ -115,19 +115,17 @@ fn main() -> Result<(), kas_wgpu::Error> {
         MenuEntry::new("&Light", Menu::Colour("light")),
         MenuEntry::new("Dar&k", Menu::Colour("dark")),
     ];
-    let menubar = MenuBar::<Right, _>::new(vec![
+    let styles = vec![
+        SubMenu::right("&Colours", colours).boxed(),
+        Separator::infer().boxed(),
+        MenuToggle::new("&Disabled")
+            .on_toggle(|_, state| Some(Menu::Disabled(state)))
+            .boxed(),
+    ];
+    let menubar = MenuBar::<_>::new(vec![
         SubMenu::new("&App", vec![MenuEntry::new("&Quit", Menu::Quit).boxed()]),
         SubMenu::new("&Theme", themes),
-        SubMenu::new(
-            "&Style",
-            vec![
-                SubMenu::right("&Colours", colours).boxed(),
-                Separator::infer().boxed(),
-                MenuToggle::new("&Disabled")
-                    .on_toggle(|_, state| Some(Menu::Disabled(state)))
-                    .boxed(),
-            ],
-        ),
+        SubMenu::new("&Style", styles),
     ]);
 
     let popup_edit_box = make_widget! {
@@ -199,8 +197,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 .with_state(true)
                 .on_select(|_| Some(Item::Radio(2))),
             #[widget(row=6, col=0)] _ = Label::new("ComboBox"),
-            #[widget(row=6, col=1, handler = handle_combo)] cb: ComboBox<i32> =
-                [("One", 1), ("Two", 2), ("Three", 3)].iter().cloned().collect(),
+            #[widget(row=6, col=1)] _ =
+                ComboBox::new(&["&One", "T&wo", "Th&ree"], 0)
+                .on_select(|_, index| Some(Item::Combo((index + 1).cast()))),
             #[widget(row=7, col=0)] _ = Label::new("Slider"),
             #[widget(row=7, col=1, handler = handle_slider)] s =
                 Slider::<i32, Right>::new(-2, 2, 1).with_value(0),
@@ -213,9 +212,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=10, col = 1)] _ = popup_edit_box,
         }
         impl {
-            fn handle_combo(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {
-                Response::Msg(Item::Combo(msg))
-            }
             fn handle_slider(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {
                 Response::Msg(Item::Slider(msg))
             }

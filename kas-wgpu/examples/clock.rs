@@ -116,7 +116,7 @@ impl Layout for Clock {
 
 impl WidgetConfig for Clock {
     fn configure(&mut self, mgr: &mut Manager) {
-        mgr.update_on_timer(Duration::new(0, 0), self.id());
+        mgr.update_on_timer(Duration::new(0, 0), self.id(), 0);
     }
 }
 
@@ -126,7 +126,7 @@ impl Handler for Clock {
     #[inline]
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
-            Event::TimerUpdate => {
+            Event::TimerUpdate(0) => {
                 self.now = Local::now();
                 let date = self.now.format("%Y-%m-%d").to_string();
                 let time = self.now.format("%H:%M:%S").to_string();
@@ -136,7 +136,7 @@ impl Handler for Clock {
                     | set_text_and_prepare(&mut self.time, time, avail);
                 let ns = 1_000_000_000 - (self.now.time().nanosecond() % 1_000_000_000);
                 info!("Requesting update in {}ns", ns);
-                mgr.update_on_timer(Duration::new(0, ns), self.id());
+                mgr.update_on_timer(Duration::new(0, ns), self.id(), 0);
                 Response::None
             }
             _ => Response::Unhandled,
