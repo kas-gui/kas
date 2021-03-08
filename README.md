@@ -35,7 +35,12 @@ For more, see the [Examples README](kas-wgpu/examples/README.md).
 The below should give a rough idea of what's done and what's not. See also the
 [ROADMAP].
 
-#### Layout
+We aim to make new minor releases (0.x.0) every couple of months and patch
+releases (0.x.y) only for minor fixes where required.
+Before 1.0 (which will *not* be the release after 0.9), some breaking changes
+should be expected in each minor release.
+
+### Layout
 
 **Widget layout:** works well but not perfectly; automatic sizing according to
 content or specified size for custom widgets; automatic position and stretching
@@ -48,31 +53,33 @@ See separate [KAS-text] repository.
 documents (not done). Scalability is okay to at least thousands of widgets and
 even usable to a million since many operations are `O(log n)` or better.  
 
-#### Graphics
+### Graphics
 
 **Support:** uses [WebGPU] for DirectX/Vulkan/Metal and (maybe) OpenGL
 acceleration. Currently no CPU fallback.  
 **Themes:** theme engine supports sizing and drawing many common widget parts
 (not yet comprehensive), with two example themes (not especially good ones).  
 **API:** via theme or via a few primitives. Basic.  
-**Custom accelerated widgets:** yes (see Mandlebrot example).
+**Custom accelerated widgets:** yes (see [Mandlebrot example](kas-wgpu/examples/README.md#Mandlebrot)).  
 **Textures/images:** missing (probably for v0.8).
 
-#### Event handling
+### Event handling
 
 **Mouse interactions:** most left-click actions implemented for existing
 widgets, including double-click and delayed responses. Context-menus missing.  
 **Keyboard interactions:** tab-navigation, arrow-key navigation and accelerator
-keys all done. Menus navigable with arrows and Alt+Key combos.  
+keys all done. Menus navigable with arrows and Alt+Key combos. Widgets may
+respond to Home, PageUp, etc.  
 **Touch interactions:** most single-touch gestures done. Minimal support for
 multi-touch gestures (see Mandlebrot demo app).  
 **Text-editing:** most expected keyboard/mouse behaviours done. Basic touch
 interactions supported but less complete and no virtual keyboard.  
 **Shortcuts:** widget-local and some navigation shortcuts supported; global
 shortcuts are missing. Several platform-specific bindings.  
-**Configuration:** basic support but lots still to do.  
+**Configuration:** shortcuts and some event-handling behaviour configurable.
+Serialisation to/from JSON and YAML. [See below](#Configuration).
 
-#### Platform integration
+### Platform integration
 
 **Font discovery:** basic.  
 **Platform-specific default config:** yes (but probably needs tuning).  
@@ -86,7 +93,7 @@ not been done.
 ([WebGPU] or implementing basics over another backend) plus input binding
 (currently only [winit] events are supported).  
 
-#### Data handling
+### Data handling
 
 **Embedded state in widgets:** yes.  
 **Shared state:** yes (in progress). Used by the `sync-counter`, `filter-list`
@@ -95,6 +102,11 @@ over a single datum or list of data. Missing a few common widgets (tree-view,
 table, spreadsheet).  
 **Multi-thread communication:** yes (at least basic support). See the
 `async-event` example.  
+
+### Widget library
+
+This is ad-hoc: it contains only the things wanted so far. See:
+[available widgets (latest release)](https://docs.rs/kas/latest/kas/widget/).
 
 
 Installation and dependencies

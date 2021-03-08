@@ -71,8 +71,9 @@ have been added.
 ### 0.6.0 — Nov 2020
 
 A continuation of the work on text, with intial support for rich text,
-exemplified via a Markdown parser. Bold, italic and underline highlighting is
-now supported within texts, along with font-size adjustments.
+exemplified via a Markdown parser. Underline and strike-through may be applied
+to texts at draw-time, and font adjustments (size, bold/italic and font family)
+may be applied as part of text layout.
 
 To allow retrieval of data from temporary (dialog) windows, the
 `Window::on_drop` method was added.
@@ -84,6 +85,10 @@ This release also simplifies distribution by bundling pre-compiled GLSL shaders.
 This release focusses on one of the remaining hard problems: data sharing. A new
 framework for "view widgets" is introduced, allowing (interactive) views over
 shared data.
+
+View widgets enable synchronised access to shared data from multiple locations.
+Additionally, by avoiding dedicated widgets for each data item in a set, views
+are scalable to large data sets.
 
 Also included are several improvements to sizing, widget construction and event
 handling, as well as a new type-conversion library.
@@ -107,7 +112,7 @@ Each should be a decently sized work item (roughly one release).
 ### Standard geometry types
 
 KAS has ad-hoc geometry types. *Possibly* it would be useful to use third-party
-types instead. See #95.
+types instead. See [#95](https://github.com/kas-gui/kas/issues/95).
 
 ### Images and icons
 
@@ -120,7 +125,8 @@ Support display of images in the GUI:
 -   vector images rastered to a target size
 -   buttons with embedded images
 
-Possibly as part of this topic, implement colour management #59.
+Possibly as part of this topic, implement colour management
+[#59](https://github.com/kas-gui/kas/issues/59).
 
 ### Configuration and resource management
 
@@ -142,14 +148,6 @@ like "save" or "undo" without having to provide the icon themselves.
 Colour schemes and short-cuts are similar in that potentially they can be
 inherited from the desktop, but otherwise KAS should provide them.
 
-### Multiple fonts and text markup
-
-Support font selection, italic and bold fonts, underline, and strike-through.
-This is [a kas-text issue](https://github.com/kas-gui/kas-text/issues/14).
-
-Support reading text markup (e.g. Markdown or HTML) and rendering this text
-within e.g. the `Label` widget.
-
 ### Context menu and undo
 
 KAS supports pop-up menus since 0.4. Context menus are a little different, in
@@ -164,21 +162,14 @@ This may also be a good time to review clipboard integration (see below).
 
 ### Widget identifiers
 
-Currently widgets are identified simply by enumerating all widgets. See #91
-
-### View widgets
-
-Viewing a table or spreadsheet should not require a dedicated widget for each
-cell, for scalability reasons (even though KAS can viably use a million
-widgets). This could be extended to viewing only a slice of a remote database.
-
-The [view branch](https://github.com/kas-gui/kas/tree/view) has some initial
-work and notes on this topic.
+Currently widgets are identified simply by enumerating all widgets. See
+[#91](https://github.com/kas-gui/kas/issues/91).
 
 ### Widget library
 
 Although the current widget set covers a good portion of the "full complement"
-mentioned by #2, its primary purpose is to prototype requirements for other APIs
+mentioned by [#2](https://github.com/kas-gui/kas/issues/2), its primary purpose
+is to prototype requirements for other APIs
 (including the widget trait family, event handling, draw model).
 
 Once other APIs are more stable, this focus should shift to providing the full
@@ -210,12 +201,16 @@ KAS currently *does* support stable `rustc`, but with feature limitations.
 Getting everything working well on stable Rust *requires* some new Rust
 features, though not all of these issues have a clear solution:
 
--   #25 lists existing (optional) usage of Rust nightly features; all of these
+-   [#25](https://github.com/kas-gui/kas/issues/25) lists existing (optional)
+    usage of Rust nightly features; all of these
     would be great to have in stable Rust but must are not essential
--   #15 documents a major limitation of `make_widget!`; Rust's RFC 2524 provides
-    a solution but has not been accepted or implemented
--   #11 documents one example of a bad error message; another case of bad error
-    messages is [the sole reason `msg` does not have a default type within `make_widget!`](https://github.com/kas-gui/kas/blob/master/src/macros.rs#L381);
+-   [#15](https://github.com/kas-gui/kas/issues/15) documents a major limitation
+    of `make_widget!`; Rust's
+    [RFC 2524](https://github.com/rust-lang/rfcs/pull/2524) provides
+    a solution but has neither been accepted nor implemented
+-   [#11](https://github.com/kas-gui/kas/issues/11) documents one example of a
+    bad error message; another case of bad error messages is
+    [the sole reason `msg` does not have a default type within `make_widget!`](https://github.com/kas-gui/kas/blob/master/src/macros.rs#L381);
     it is not clear (to me) how best to solve these issues
 
 ### WebGPU and CPU rasterisation
@@ -225,7 +220,8 @@ or CPU-rendered graphics, making KAS unusable on many older systems.
 
 It seems likely that `wgpu` will support OpenGL in the future.
 
-Additionally, KAS should provide a CPU-based renderer. See #33.
+Additionally, KAS should provide a CPU-based renderer. See
+[#33](https://github.com/kas-gui/kas/issues/33).
 
 ### Clipboard support
 
@@ -245,16 +241,19 @@ expect data to be sent to the clipboard provider in all formats up front).
 
 It has been requested that winit support popup windows for things like menus
 which are not restricted to the parent window; currently it doesn't.
-See https://github.com/rust-windowing/winit/issues/950 (and other issues).
+See [winit#950](https://github.com/rust-windowing/winit/issues/950) (and other
+issues).
 
 ### (winit) drag and drop
 
 Winit *does* have support for this, but only in a very limited fashion. With
 its current event model it is difficult or impossible to determine the widget
 receiving a drop or under a hovered drop.
-See #98 and https://github.com/rust-windowing/winit/issues/1550
+See [#98](https://github.com/kas-gui/kas/issues/98) and
+[winit#1550](https://github.com/rust-windowing/winit/issues/1550).
 
 ### (winit) full key-bindings
 
-Winit's `VirtualKeyCode` enum is rather limited. See #27 (and *several* winit
-issues) on this topic.
+Winit's `VirtualKeyCode` enum is rather limited. See
+[#27](https://github.com/kas-gui/kas/issues/27) (and *several* winit issues) on
+this topic.
