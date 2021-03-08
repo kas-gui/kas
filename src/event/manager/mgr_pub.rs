@@ -97,6 +97,20 @@ impl<'a> Manager<'a> {
         self.state.config.borrow()
     }
 
+    /// Is mouse panning enabled?
+    #[inline]
+    pub fn config_enable_mouse_pan(&self) -> bool {
+        self.config().mouse_pan.is_enabled_with(self.modifiers())
+    }
+
+    /// Is mouse text panning enabled?
+    #[inline]
+    pub fn config_enable_mouse_text_pan(&self) -> bool {
+        self.config()
+            .mouse_text_pan
+            .is_enabled_with(self.modifiers())
+    }
+
     /// Schedule an update
     ///
     /// Widgets requiring animation should schedule an update; as a result,

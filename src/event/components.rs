@@ -76,11 +76,7 @@ impl TextInput {
                         }
                         Action::None
                     }
-                    PressSource::Mouse(..) if mgr.modifiers().ctrl() => {
-                        // With Ctrl held, we scroll instead of moving the cursor
-                        // (non-standard, but seems to work well)!
-                        Action::None
-                    }
+                    PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => Action::None,
                     PressSource::Mouse(_, repeats) => {
                         Action::Cursor(coord, true, !mgr.modifiers().shift(), repeats)
                     }
@@ -91,31 +87,27 @@ impl TextInput {
                 coord,
                 delta,
                 ..
-            } => {
-                let ctrl = mgr.modifiers().ctrl();
-                match source {
-                    PressSource::Touch(touch_id) => match self.touch_phase {
-                        TouchPhase::None => {
-                            self.touch_phase = TouchPhase::Pan(touch_id);
+            } => match source {
+                PressSource::Touch(touch_id) => match self.touch_phase {
+                    TouchPhase::None => {
+                        self.touch_phase = TouchPhase::Pan(touch_id);
+                        Action::Pan(delta)
+                    }
+                    TouchPhase::Start(id, start_coord) if id == touch_id => {
+                        let delta = coord - start_coord;
+                        if delta.distance_l_inf() > mgr.config().pan_dist_thresh {
+                            self.touch_phase = TouchPhase::Pan(id);
                             Action::Pan(delta)
+                        } else {
+                            Action::None
                         }
-                        TouchPhase::Start(id, start_coord) if id == touch_id => {
-                            let delta = coord - start_coord;
-                            if delta.distance_l_inf() > mgr.config().pan_dist_thresh {
-                                self.touch_phase = TouchPhase::Pan(id);
-                                Action::Pan(delta)
-                            } else {
-                                Action::None
-                            }
-                        }
-                        TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta),
-                        TouchPhase::Cursor(id) if ctrl && id == touch_id => Action::Pan(delta),
-                        _ => Action::Cursor(coord, false, false, 1),
-                    },
-                    PressSource::Mouse(..) if ctrl => Action::Pan(delta),
-                    PressSource::Mouse(_, repeats) => Action::Cursor(coord, false, false, repeats),
-                }
-            }
+                    }
+                    TouchPhase::Pan(id) if id == touch_id => Action::Pan(delta),
+                    _ => Action::Cursor(coord, false, false, 1),
+                },
+                PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => Action::Pan(delta),
+                PressSource::Mouse(_, repeats) => Action::Cursor(coord, false, false, repeats),
+            },
             Event::PressEnd { source, .. } => {
                 match self.touch_phase {
                     TouchPhase::Start(id, ..) | TouchPhase::Pan(id) | TouchPhase::Cursor(id)
@@ -131,11 +123,7 @@ impl TextInput {
                 match self.touch_phase {
                     TouchPhase::Start(touch_id, coord) => {
                         self.touch_phase = TouchPhase::Cursor(touch_id);
-                        if mgr.modifiers().ctrl() {
-                            Action::None
-                        } else {
-                            Action::Cursor(coord, false, !mgr.modifiers().shift(), 1)
-                        }
+                        Action::Cursor(coord, false, !mgr.modifiers().shift(), 1)
                     }
                     // Note: if the TimerUpdate were from another requester it
                     // should technically be Unhandled, but it doesn't matter

@@ -5,7 +5,7 @@
 
 //! Event handling configuration
 
-use super::shortcuts::Shortcuts;
+use super::{shortcuts::Shortcuts, ModifiersState};
 use crate::conv::Cast;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
@@ -78,6 +78,13 @@ pub struct Config {
     #[cfg_attr(feature = "serde", serde(default = "defaults::pan_dist_thresh"))]
     pub pan_dist_thresh: i32,
 
+    /// When to pan general widgets (unhandled events) with the mouse
+    #[cfg_attr(feature = "serde", serde(default = "defaults::mouse_pan"))]
+    pub mouse_pan: MousePan,
+    /// When to pan text fields with the mouse
+    #[cfg_attr(feature = "serde", serde(default = "defaults::mouse_text_pan"))]
+    pub mouse_text_pan: MousePan,
+
     #[cfg_attr(feature = "serde", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
 }
@@ -88,6 +95,8 @@ impl Default for Config {
             menu_delay_ns: defaults::menu_delay_ns(),
             touch_text_sel_delay_ns: defaults::touch_text_sel_delay_ns(),
             pan_dist_thresh: defaults::pan_dist_thresh(),
+            mouse_pan: defaults::mouse_pan(),
+            mouse_text_pan: defaults::mouse_text_pan(),
             shortcuts: Shortcuts::platform_defaults(),
         }
     }
@@ -167,7 +176,42 @@ impl Config {
     }
 }
 
+/// When mouse-panning is enabled (click+drag to scroll)
+///
+/// For *text* objects, this may conflict with text selection, hence it is
+/// recommended to require a modifier or disable this feature.
+///
+/// For non-text cases, this does not conflict with other event handlers since
+/// panning is only possible when events are otherwise unused, thus `Always` is
+/// acceptable (equivalent to touch scrolling).
+#[derive(Clone, Copy, Debug)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub enum MousePan {
+    /// Disable
+    Never,
+    /// Only enable when the Alt key is held
+    WithAlt,
+    /// Only enable when the Ctrl key is held
+    WithCtrl,
+    /// Always enabled
+    Always,
+}
+
+impl MousePan {
+    /// Is this enabled with the current modifiers?
+    pub fn is_enabled_with(self, modifiers: ModifiersState) -> bool {
+        match self {
+            MousePan::Never => false,
+            MousePan::WithAlt => modifiers.alt(),
+            MousePan::WithCtrl => modifiers.ctrl(),
+            MousePan::Always => true,
+        }
+    }
+}
+
 mod defaults {
+    use super::MousePan;
+
     pub fn menu_delay_ns() -> u32 {
         250_000_000
     }
@@ -176,5 +220,18 @@ mod defaults {
     }
     pub fn pan_dist_thresh() -> i32 {
         2
+    }
+    pub fn mouse_pan() -> MousePan {
+        MousePan::Always
+    }
+    pub fn mouse_text_pan() -> MousePan {
+        #[cfg(target_os = "windows")]
+        {
+            MousePan::WithAlt
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            MousePan::WithCtrl
+        }
     }
 }
