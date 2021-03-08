@@ -126,15 +126,27 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
                     return Response::Unhandled;
                 }
             }
-            Event::PressMove { source, cur_id, .. } => {
+            Event::PressMove {
+                source,
+                cur_id,
+                coord,
+                ..
+            } => {
                 if let Some(w) = cur_id.and_then(|id| self.find_leaf(id)) {
                     if w.key_nav() {
                         let id = cur_id.unwrap();
                         mgr.set_grab_depress(source, Some(id));
                         mgr.set_nav_focus(id);
-                        self.delayed_open = Some(id);
-                        let delay = mgr.config().menu_delay();
-                        mgr.update_on_timer(delay, self.id(), 0);
+                        // We instantly open a sub-menu on motion over the bar,
+                        // but delay when over a sub-menu (most intuitive?)
+                        if self.rect().contains(coord) {
+                            self.delayed_open = None;
+                            self.menu_path(mgr, Some(id));
+                        } else {
+                            self.delayed_open = Some(id);
+                            let delay = mgr.config().menu_delay();
+                            mgr.update_on_timer(delay, self.id(), 0);
+                        }
                     }
                 } else {
                     mgr.set_grab_depress(source, None);
