@@ -15,27 +15,22 @@ use std::rc::Rc;
 
 /// Wrapper for single-thread shared data
 #[derive(Clone, Debug)]
-pub struct SharedRc<T: Debug> {
-    handle: UpdateHandle,
-    data: Rc<RefCell<T>>,
-}
+pub struct SharedRc<T: Debug>(Rc<(UpdateHandle, RefCell<T>)>);
 
 impl<T: Default + Debug> Default for SharedRc<T> {
     fn default() -> Self {
-        SharedRc {
-            handle: UpdateHandle::new(),
-            data: Default::default(),
-        }
+        let handle = UpdateHandle::new();
+        let data = Default::default();
+        SharedRc(Rc::new((handle, data)))
     }
 }
 
 impl<T: Debug> SharedRc<T> {
     /// Construct with given data
     pub fn new(data: T) -> Self {
-        SharedRc {
-            handle: UpdateHandle::new(),
-            data: Rc::new(RefCell::new(data)),
-        }
+        let handle = UpdateHandle::new();
+        let data = RefCell::new(data);
+        SharedRc(Rc::new((handle, data)))
     }
 }
 
@@ -43,21 +38,21 @@ impl<T: Clone + Debug> SingleData for SharedRc<T> {
     type Item = T;
 
     fn get_cloned(&self) -> Self::Item {
-        self.data.borrow().to_owned()
+        (self.0).1.borrow().to_owned()
     }
 
     fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
-        *self.data.borrow_mut() = value;
-        Some(self.handle)
+        *(self.0).1.borrow_mut() = value;
+        Some((self.0).0)
     }
 
     fn update_handle(&self) -> Option<UpdateHandle> {
-        Some(self.handle)
+        Some((self.0).0)
     }
 }
 impl<T: Clone + Debug> SingleDataMut for SharedRc<T> {
     fn set(&mut self, value: Self::Item) {
-        *self.data.borrow_mut() = value;
+        *(self.0).1.borrow_mut() = value;
     }
 }
 
@@ -66,32 +61,32 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
     type Item = T::Item;
 
     fn len(&self) -> usize {
-        self.data.borrow().len()
+        (self.0).1.borrow().len()
     }
 
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        self.data.borrow().get_cloned(key)
+        (self.0).1.borrow().get_cloned(key)
     }
 
     fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
-        self.data.borrow_mut().set(key, value);
-        Some(self.handle)
+        (self.0).1.borrow_mut().set(key, value);
+        Some((self.0).0)
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.data.borrow().iter_vec(limit)
+        (self.0).1.borrow().iter_vec(limit)
     }
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-        self.data.borrow().iter_vec_from(start, limit)
+        (self.0).1.borrow().iter_vec_from(start, limit)
     }
 
     fn update_handle(&self) -> Option<UpdateHandle> {
-        Some(self.handle)
+        Some((self.0).0)
     }
 }
 impl<T: ListDataMut> ListDataMut for SharedRc<T> {
     fn set(&mut self, key: &Self::Key, item: Self::Item) {
-        self.data.borrow_mut().set(key, item);
+        (self.0).1.borrow_mut().set(key, item);
     }
 }
