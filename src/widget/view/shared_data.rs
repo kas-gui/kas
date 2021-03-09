@@ -5,7 +5,7 @@
 
 //! Shared data for view widgets
 
-use super::{ListData, ListDataMut, SharedData, SingleData, SingleDataMut};
+use super::{ListData, ListDataMut, SharedData, SharedDataRec, SingleData, SingleDataMut};
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
@@ -38,6 +38,7 @@ impl<T: Debug> SharedData for SharedRc<T> {
         Some((self.0).0)
     }
 }
+impl<T: Debug> SharedDataRec for SharedRc<T> {}
 
 impl<T: Clone + Debug> SingleData for SharedRc<T> {
     type Item = T;

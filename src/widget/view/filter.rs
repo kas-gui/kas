@@ -5,7 +5,7 @@
 
 //! Filter accessor
 
-use super::{ListData, SharedData};
+use super::{ListData, SharedData, SharedDataRec};
 use kas::conv::Cast;
 #[allow(unused)]
 use kas::event::Manager;
@@ -147,6 +147,12 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
 impl<T: ListData, F: Filter<T::Item>> SharedData for FilteredList<T, F> {
     fn update_handle(&self) -> Option<UpdateHandle> {
         Some(self.update)
+    }
+}
+impl<T: ListData, F: Filter<T::Item>> SharedDataRec for FilteredList<T, F> {
+    fn enable_recursive_updates(&self, mgr: &mut Manager) {
+        self.data.enable_recursive_updates(mgr);
+        // TODO: we still need to refresh the filter when data is updated
     }
 }
 

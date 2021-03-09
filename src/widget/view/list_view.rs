@@ -366,6 +366,7 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> WidgetChildren for L
 
 impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> WidgetConfig for ListView<D, T, V> {
     fn configure(&mut self, mgr: &mut Manager) {
+        self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
             mgr.update_on_handle(handle, self.id());
         }

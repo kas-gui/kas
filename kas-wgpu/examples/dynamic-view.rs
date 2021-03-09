@@ -94,6 +94,7 @@ impl SharedData for MyData {
         Some(self.handle)
     }
 }
+impl SharedDataRec for MyData {}
 impl ListData for MyData {
     type Key = usize;
     type Item = (bool, String);

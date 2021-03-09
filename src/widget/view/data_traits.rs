@@ -7,7 +7,7 @@
 //!
 //! This module holds these traits and basic impls for derived types.
 
-use kas::event::UpdateHandle;
+use kas::event::{Manager, UpdateHandle};
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -17,17 +17,34 @@ use std::ops::{Deref, DerefMut};
 pub trait SharedData: Debug {
     /// Get an update handle, if any is used to notify of updates
     ///
-    /// This is optional; types which support updates through shared references
-    /// should have an associated update handle and return a copy through this
-    /// method, while types which are const or only support updates through
-    /// mutable references to self do not need an update handle.
+    /// If the data supports updates through shared references (e.g. via an
+    /// internal `RefCell`), then it should have an `UpdateHandle` for notifying
+    /// other users of the data of the update, and return that here.
+    /// Otherwise, this may simply return `None`.
+    ///
+    /// Users registering for updates on this handle should, if possible, also
+    /// call [`SharedDataRec::enable_recursive_updates`].
     fn update_handle(&self) -> Option<UpdateHandle>;
+}
+
+/// Extension over [`SharedData`] enabling recursive updating
+pub trait SharedDataRec: SharedData {
+    /// Enable recursive updates on this object
+    ///
+    /// Some data objects (e.g. filters) are themselves dependent on another
+    /// data object; this method allows such objects to register for updates on
+    /// the underlying object. It should be called by any view over the data.
+    ///
+    /// The default implementation does nothing.
+    fn enable_recursive_updates(&self, mgr: &mut Manager) {
+        let _ = mgr;
+    }
 }
 
 /// Trait for viewable single data items
 // Note: we require Debug + 'static to allow widgets using this to implement
 // WidgetCore, which requires Debug + Any.
-pub trait SingleData: SharedData {
+pub trait SingleData: SharedDataRec {
     type Item: Clone;
 
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
@@ -60,7 +77,7 @@ pub trait SingleDataMut: SingleData {
 }
 
 /// Trait for viewable data lists
-pub trait ListData: SharedData {
+pub trait ListData: SharedDataRec {
     /// Key type
     type Key: Clone + Debug + PartialEq + Eq;
 
@@ -118,6 +135,7 @@ impl<T: Debug> SharedData for [T] {
         None
     }
 }
+impl<T: Debug> SharedDataRec for [T] {}
 impl<T: Clone + Debug> ListData for [T] {
     type Key = usize;
     type Item = T;
@@ -160,6 +178,10 @@ impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> SharedData
     fn update_handle(&self) -> Option<UpdateHandle> {
         None
     }
+}
+impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> SharedDataRec
+    for std::collections::BTreeMap<K, T>
+{
 }
 impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> ListData for std::collections::BTreeMap<K, T> {
     type Key = K;
@@ -204,6 +226,11 @@ macro_rules! impl_via_deref {
         impl<$t: SharedData + ?Sized> SharedData for $derived {
             fn update_handle(&self) -> Option<UpdateHandle> {
                 self.deref().update_handle()
+            }
+       }
+        impl<$t: SharedDataRec + ?Sized> SharedDataRec for $derived {
+            fn enable_recursive_updates(&self, mgr: &mut Manager) {
+                self.deref().enable_recursive_updates(mgr);
             }
         }
 
