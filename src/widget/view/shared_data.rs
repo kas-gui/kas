@@ -5,7 +5,7 @@
 
 //! Shared data for view widgets
 
-use super::{ListData, ListDataMut, SingleData, SingleDataMut};
+use super::{ListData, ListDataMut, SharedData, SingleData, SingleDataMut};
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
@@ -33,6 +33,11 @@ impl<T: Debug> SharedRc<T> {
         SharedRc(Rc::new((handle, data)))
     }
 }
+impl<T: Debug> SharedData for SharedRc<T> {
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        Some((self.0).0)
+    }
+}
 
 impl<T: Clone + Debug> SingleData for SharedRc<T> {
     type Item = T;
@@ -43,10 +48,6 @@ impl<T: Clone + Debug> SingleData for SharedRc<T> {
 
     fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
         *(self.0).1.borrow_mut() = value;
-        Some((self.0).0)
-    }
-
-    fn update_handle(&self) -> Option<UpdateHandle> {
         Some((self.0).0)
     }
 }
@@ -79,10 +80,6 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
         (self.0).1.borrow().iter_vec_from(start, limit)
-    }
-
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some((self.0).0)
     }
 }
 impl<T: ListDataMut> ListDataMut for SharedRc<T> {

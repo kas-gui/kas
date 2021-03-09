@@ -13,10 +13,21 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
+/// Shared data which may notify of updates
+pub trait SharedData: Debug {
+    /// Get an update handle, if any is used to notify of updates
+    ///
+    /// This is optional; types which support updates through shared references
+    /// should have an associated update handle and return a copy through this
+    /// method, while types which are const or only support updates through
+    /// mutable references to self do not need an update handle.
+    fn update_handle(&self) -> Option<UpdateHandle>;
+}
+
 /// Trait for viewable single data items
 // Note: we require Debug + 'static to allow widgets using this to implement
 // WidgetCore, which requires Debug + Any.
-pub trait SingleData: Debug {
+pub trait SingleData: SharedData {
     type Item: Clone;
 
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
@@ -26,6 +37,10 @@ pub trait SingleData: Debug {
 
     /// Update data, if supported
     ///
+    /// This is optional and required only to support data updates through view
+    /// widgets. If implemented, then [`SharedData::update_handle`] should
+    /// return a copy of the same update handle.
+    ///
     /// Returns an [`UpdateHandle`] if an update occurred. Returns `None` if
     /// updates are unsupported.
     ///
@@ -33,13 +48,6 @@ pub trait SingleData: Debug {
     /// is required to obtain `&mut` and lower to [`SingleDataMut::set`]. The
     /// provider of this lowering should also provide an [`UpdateHandle`].
     fn update(&self, value: Self::Item) -> Option<UpdateHandle>;
-
-    /// Get an update handle, if any is used
-    ///
-    /// Widgets may use this `handle` to call `mgr.update_on_handle(handle, self.id())`.
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        None
-    }
 }
 
 /// Trait for writable single data items
@@ -52,7 +60,7 @@ pub trait SingleDataMut: SingleData {
 }
 
 /// Trait for viewable data lists
-pub trait ListData: Debug {
+pub trait ListData: SharedData {
     /// Key type
     type Key: Clone + Debug + PartialEq + Eq;
 
@@ -69,6 +77,18 @@ pub trait ListData: Debug {
     /// Get data by key (clone)
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item>;
 
+    /// Update data, if supported
+    ///
+    /// This is optional and required only to support data updates through view
+    /// widgets. If implemented, then [`SharedData::update_handle`] should
+    /// return a copy of the same update handle.
+    ///
+    /// Returns an [`UpdateHandle`] if an update occurred. Returns `None` if
+    /// updates are unsupported.
+    ///
+    /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
+    /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
+    /// provider of this lowering should also provide an [`UpdateHandle`].
     fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle>;
 
     // TODO(gat): replace with an iterator
@@ -85,13 +105,6 @@ pub trait ListData: Debug {
     ///
     /// The result is the same as `self.iter_vec(start + limit).skip(start)`.
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)>;
-
-    /// Get an update handle, if any is used
-    ///
-    /// Widgets may use this `handle` to call `mgr.update_on_handle(handle, self.id())`.
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        None
-    }
 }
 
 /// Trait for writable data lists
@@ -100,6 +113,11 @@ pub trait ListDataMut: ListData {
     fn set(&mut self, key: &Self::Key, item: Self::Item);
 }
 
+impl<T: Debug> SharedData for [T] {
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        None
+    }
+}
 impl<T: Clone + Debug> ListData for [T] {
     type Key = usize;
     type Item = T;
@@ -136,6 +154,13 @@ impl<T: Clone + Debug> ListDataMut for [T] {
     }
 }
 
+impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> SharedData
+    for std::collections::BTreeMap<K, T>
+{
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        None
+    }
+}
 impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> ListData for std::collections::BTreeMap<K, T> {
     type Key = K;
     type Item = T;
@@ -176,6 +201,12 @@ impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> ListData for std::collection
 //     <T as Deref>::Target: SingleData,
 macro_rules! impl_via_deref {
     ($t: ident: $derived:ty) => {
+        impl<$t: SharedData + ?Sized> SharedData for $derived {
+            fn update_handle(&self) -> Option<UpdateHandle> {
+                self.deref().update_handle()
+            }
+        }
+
         impl<$t: SingleData + ?Sized> SingleData for $derived {
             type Item = $t::Item;
             fn get_cloned(&self) -> Self::Item {
@@ -183,9 +214,6 @@ macro_rules! impl_via_deref {
             }
             fn update(&self, value: Self::Item) -> Option<UpdateHandle> {
                 self.deref().update(value)
-            }
-            fn update_handle(&self) -> Option<UpdateHandle> {
-                self.deref().update_handle()
             }
         }
 
@@ -209,10 +237,6 @@ macro_rules! impl_via_deref {
             }
             fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
                 self.deref().iter_vec_from(start, limit)
-            }
-
-            fn update_handle(&self) -> Option<UpdateHandle> {
-                self.deref().update_handle()
             }
         }
     };

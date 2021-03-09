@@ -5,7 +5,7 @@
 
 //! Filter accessor
 
-use super::ListData;
+use super::{ListData, SharedData};
 use kas::conv::Cast;
 #[allow(unused)]
 use kas::event::Manager;
@@ -144,6 +144,12 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     }
 }
 
+impl<T: ListData, F: Filter<T::Item>> SharedData for FilteredList<T, F> {
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        Some(self.update)
+    }
+}
+
 impl<T: ListData, F: Filter<T::Item>> ListData for FilteredList<T, F> {
     type Key = T::Key;
     type Item = T::Item;
@@ -189,9 +195,5 @@ impl<T: ListData, F: Filter<T::Item>> ListData for FilteredList<T, F> {
             v.push((k.clone(), self.data.get_cloned(k).unwrap()));
         }
         v
-    }
-
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some(self.update)
     }
 }

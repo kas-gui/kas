@@ -89,6 +89,11 @@ impl MyData {
             .unwrap_or_else(|| (n == self.active, format!("Entry #{}", n + 1)))
     }
 }
+impl SharedData for MyData {
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        Some(self.handle)
+    }
+}
 impl ListData for MyData {
     type Key = usize;
     type Item = (bool, String);
@@ -116,10 +121,6 @@ impl ListData for MyData {
         (start..self.len.min(start + limit))
             .map(|n| (n, self.get(n)))
             .collect()
-    }
-
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some(self.handle)
     }
 }
 

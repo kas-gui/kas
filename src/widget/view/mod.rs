@@ -44,7 +44,7 @@ mod shared_data;
 mod single_view;
 mod view_widget;
 
-pub use data_traits::{ListData, ListDataMut, SingleData, SingleDataMut};
+pub use data_traits::{ListData, ListDataMut, SharedData, SingleData, SingleDataMut};
 pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
 pub use list_view::{ListMsg, ListView, SelectionMode};
 pub use shared_data::SharedRc;
