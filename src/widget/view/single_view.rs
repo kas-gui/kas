@@ -5,7 +5,8 @@
 
 //! Single view widget
 
-use super::{DefaultView, SingleData, View};
+use super::{DefaultView, View};
+use kas::data::SingleData;
 use kas::prelude::*;
 use std::fmt::{self};
 

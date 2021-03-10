@@ -13,8 +13,8 @@ use std::rc::Rc;
 
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow, ShaderManager};
 use crate::{Error, Options, WindowId};
+use kas::data::SharedData;
 use kas::event::UpdateHandle;
-use kas::widget::view::SharedData;
 use kas_theme::Theme;
 
 #[cfg(feature = "clipboard")]

@@ -5,7 +5,8 @@
 
 //! List view widget
 
-use super::{DefaultView, ListData, View};
+use super::{DefaultView, View};
+use kas::data::ListData;
 use kas::event::{CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;

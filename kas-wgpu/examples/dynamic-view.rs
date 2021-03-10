@@ -17,9 +17,10 @@
 //!     very slow activation of a RadioBox in a chain hundreds-of-thousands
 //!     long), but in many ways still performs well in release mode
 
+use kas::data::*;
 use kas::event::UpdateHandle;
 use kas::prelude::*;
-use kas::widget::view::*;
+use kas::widget::view::{ListMsg, ListView, View};
 use kas::widget::*;
 use std::cell::RefCell;
 use std::collections::HashMap;

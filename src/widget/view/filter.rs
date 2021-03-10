@@ -5,8 +5,8 @@
 
 //! Filter accessor
 
-use super::{ListData, SharedData, SharedDataRec};
 use kas::conv::Cast;
+use kas::data::{ListData, SharedData, SharedDataRec};
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;

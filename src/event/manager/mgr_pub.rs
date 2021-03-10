@@ -10,12 +10,12 @@ use std::time::{Duration, Instant};
 use std::u16;
 
 use super::*;
+use crate::data::SharedData;
 use crate::draw::{SizeHandle, ThemeAction, ThemeApi};
 use crate::geom::Coord;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{TkAction, WidgetId, WindowId};
-use kas::widget::view::SharedData;
 
 impl<'a> std::ops::BitOrAssign<TkAction> for Manager<'a> {
     #[inline]

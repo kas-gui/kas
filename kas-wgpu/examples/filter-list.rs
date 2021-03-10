@@ -5,10 +5,11 @@
 
 //! Filter list example
 
+use kas::data::ListData;
 use kas::dir::Down;
 use kas::event::UpdateHandle;
 use kas::prelude::*;
-use kas::widget::view::{ListData, ListMsg, ListView, SelectionMode, SimpleCaseInsensitiveFilter};
+use kas::widget::view::{ListMsg, ListView, SelectionMode, SimpleCaseInsensitiveFilter};
 use kas::widget::{EditBox, Label, RadioBox, ScrollBars, Window};
 
 #[cfg(not(feature = "generator"))]

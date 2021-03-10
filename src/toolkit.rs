@@ -15,10 +15,10 @@
 use std::num::NonZeroU32;
 use std::rc::Rc;
 
+use crate::data::SharedData;
 use crate::draw::{SizeHandle, ThemeAction, ThemeApi};
 use crate::event;
 use crate::event::UpdateHandle;
-use kas::widget::view::SharedData;
 
 /// Identifier for a window or pop-up
 ///

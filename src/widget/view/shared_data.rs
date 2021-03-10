@@ -5,7 +5,7 @@
 
 //! Shared data for view widgets
 
-use super::{ListData, ListDataMut, SharedData, SharedDataRec, SingleData, SingleDataMut};
+use kas::data::{ListData, ListDataMut, SharedData, SharedDataRec, SingleData, SingleDataMut};
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
