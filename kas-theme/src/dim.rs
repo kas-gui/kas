@@ -13,7 +13,7 @@ use std::f32;
 use kas::conv::{Cast, CastFloat, ConvFloat};
 use kas::draw::{self, TextClass};
 use kas::geom::{Size, Vec2};
-use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, StretchPolicy};
+use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{TextApi, TextApiExt};
 
 /// Parameterisation of [`Dimensions`]
@@ -207,9 +207,9 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             // cause problems (e.g. edit boxes greedily consuming too much
             // space). This is a hard layout problem; for now don't do this.
             let stretch = match class {
-                TextClass::LabelFixed => StretchPolicy::Fixed,
-                TextClass::Button => StretchPolicy::Filler,
-                _ => StretchPolicy::LowUtility,
+                TextClass::LabelFixed => Stretch::None,
+                TextClass::Button => Stretch::Filler,
+                _ => Stretch::Low,
             };
             SizeRules::new(min, ideal, margins, stretch)
         } else {
@@ -222,9 +222,8 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
             };
             let ideal = i32::conv_ceil(required.1).max(min);
             let stretch = match class {
-                TextClass::Button | TextClass::Edit | TextClass::LabelFixed => StretchPolicy::Fixed,
-                TextClass::EditMulti => StretchPolicy::HighUtility,
-                _ => StretchPolicy::Filler,
+                TextClass::EditMulti => Stretch::Low,
+                _ => Stretch::None,
             };
             SizeRules::new(min, ideal, margins, stretch)
         }
@@ -257,12 +256,12 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
 
     fn scrollbar(&self) -> (Size, i32) {
         let size = self.dims.scrollbar;
-        (size, 2 * size.0)
+        (size, 3 * size.0)
     }
 
     fn slider(&self) -> (Size, i32) {
         let size = self.dims.slider;
-        (size, 2 * size.0)
+        (size, 5 * size.0)
     }
 
     fn progress_bar(&self) -> Size {

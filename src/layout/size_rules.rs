@@ -9,7 +9,7 @@ use smallvec::SmallVec;
 use std::fmt;
 use std::iter::Sum;
 
-use super::{Margins, StretchPolicy};
+use super::{Margins, Stretch};
 use crate::conv::{Cast, CastFloat, Conv, ConvFloat};
 use crate::dir::Directional;
 use crate::geom::Size;
@@ -37,15 +37,15 @@ use kas::draw::SizeHandle;
 ///
 /// - the minimum size required for correct operation
 /// - the preferred / ideal size
-/// - a [`StretchPolicy`]
+/// - a [`Stretch`] priority
 ///
 /// Available space is distributed between widgets depending on whether the
 /// space is below the minimum, between the minimum and preferred, or above
-/// the preferred size, with widgets with the highest [`StretchPolicy`] being
+/// the preferred size, with widgets with the highest [`Stretch`] priority being
 /// prioritised extra space. Usually rows/columns will be stretched to use all
-/// available space, the exception being when none have a policy higher than
-/// [`StretchPolicy::Fixed`]. When expanding a row/column, the highest stretch
-/// policy of all contents will be used.
+/// available space, the exception being when none have a priority higher than
+/// [`Stretch::None`]. When expanding a row/column, the highest stretch
+/// priority of all contents will be used.
 ///
 /// ### Margins
 ///
@@ -74,7 +74,7 @@ use kas::draw::SizeHandle;
 /// to either fill this rect or align itself within the given space.
 /// See [`kas::Layout::set_rect`] for more information.
 ///
-/// For widgets with a stretch policy of [`StretchPolicy::Fixed`], it is still
+/// For widgets with a stretch priority of [`Stretch::None`], it is still
 /// possible for layout code to assign a size larger than the preference. It is
 /// up to the widget to align itself within this space: see
 /// [`kas::Layout::set_rect`] and [`kas::layout::AlignHints`].
@@ -88,7 +88,7 @@ pub struct SizeRules {
     b: i32,
     // (pre, post) margins
     m: (u16, u16),
-    stretch: StretchPolicy,
+    stretch: Stretch,
 }
 
 impl fmt::Debug for SizeRules {
@@ -108,13 +108,13 @@ impl SizeRules {
     /// even though `EMPTY` itself has zero size. However, `EMPTY` itself has
     /// zero-size margins, so this only affects appending an `EMPTY` with a
     /// non-empty `SizeRules`.
-    pub const EMPTY: Self = SizeRules::empty(StretchPolicy::Fixed);
+    pub const EMPTY: Self = SizeRules::empty(Stretch::None);
 
-    /// Empty space with the given stretch policy
+    /// Empty space with the given stretch priority
     ///
     /// See warning on [`SizeRules::EMPTY`].
     #[inline]
-    pub const fn empty(stretch: StretchPolicy) -> Self {
+    pub const fn empty(stretch: Stretch) -> Self {
         SizeRules {
             a: 0,
             b: 0,
@@ -131,7 +131,7 @@ impl SizeRules {
             a: size,
             b: size,
             m: margins,
-            stretch: StretchPolicy::Fixed,
+            stretch: Stretch::None,
         }
     }
 
@@ -162,11 +162,11 @@ impl SizeRules {
     /// Construct with custom rules
     ///
     /// Region size should meet the given `min`-imum size and has a given
-    /// `ideal` size, plus a given `stretch` policy.
+    /// `ideal` size, plus a given `stretch` priority.
     ///
     /// Expected: `ideal >= min` (if not, ideal is clamped to min).
     #[inline]
-    pub fn new(min: i32, ideal: i32, margins: (u16, u16), stretch: StretchPolicy) -> Self {
+    pub fn new(min: i32, ideal: i32, margins: (u16, u16), stretch: Stretch) -> Self {
         debug_assert!(0 <= min && 0 <= ideal);
         SizeRules {
             a: min,
@@ -182,7 +182,7 @@ impl SizeRules {
     /// It assumes that both margins are equal.
     ///
     /// Region size should meet the given `min`-imum size and has a given
-    /// `ideal` size, plus a given `stretch` policy.
+    /// `ideal` size, plus a given `stretch` priority.
     ///
     /// Expected: `ideal >= min` (if not, ideal is clamped to min).
     #[inline]
@@ -190,7 +190,7 @@ impl SizeRules {
         min: f32,
         ideal: f32,
         margins: f32,
-        stretch: StretchPolicy,
+        stretch: Stretch,
         scale_factor: f32,
     ) -> Self {
         debug_assert!(0.0 <= min && 0.0 <= ideal && margins >= 0.0);
@@ -215,11 +215,11 @@ impl SizeRules {
     /// Get the max size
     ///
     /// With most stretch policies, this returns `i32::MAX`, but with
-    /// [`StretchPolicy::Fixed`], this is [`SizeRules::ideal_size`].
+    /// [`Stretch::None`], this is [`SizeRules::ideal_size`].
     #[inline]
     pub fn max_size(self) -> i32 {
         match self.stretch {
-            StretchPolicy::Fixed => self.b,
+            Stretch::None => self.b,
             _ => i32::MAX,
         }
     }
@@ -236,15 +236,15 @@ impl SizeRules {
         (self.m.0.into(), self.m.1.into())
     }
 
-    /// Get the stretch policy
+    /// Get the stretch priority
     #[inline]
-    pub fn stretch(self) -> StretchPolicy {
+    pub fn stretch(self) -> Stretch {
         self.stretch
     }
 
-    /// Set the stretch policy
+    /// Set the stretch priority
     #[inline]
-    pub fn set_stretch(&mut self, stretch: StretchPolicy) {
+    pub fn set_stretch(&mut self, stretch: Stretch) {
         self.stretch = stretch;
     }
 
@@ -389,7 +389,7 @@ impl SizeRules {
     /// -   All widths are at least their ideal size requirement, if this can be
     ///     met without decreasing any widths
     /// -   Excess space is divided evenly among members with the highest
-    ///     stretch policy
+    ///     stretch priority
     ///
     /// Input requirements: `rules.len() == out.len()`.
     ///
@@ -560,15 +560,15 @@ impl SizeRules {
 
                 if dist_over_b > sum - target {
                     // we do not go below ideal, and will keep at least one above
-                    // calculate distance over for each stretch policy
-                    const MAX_POLICY: usize = StretchPolicy::Maximize as usize + 1;
-                    let mut dists = [0; MAX_POLICY];
+                    // calculate distance over for each stretch priority
+                    const MAX_STRETCH: usize = Stretch::Maximize as usize + 1;
+                    let mut dists = [0; MAX_STRETCH];
                     for i in 0..N {
                         dists[rules[i].stretch as usize] += (out[i] - rules[i].b).max(0);
                     }
                     let mut accum = 0;
                     let mut highest_affected = 0;
-                    for i in 0..MAX_POLICY {
+                    for i in 0..MAX_STRETCH {
                         highest_affected = i;
                         dists[i] += accum;
                         accum = dists[i];
@@ -673,7 +673,7 @@ impl SizeRules {
         }
     }
 
-    /// Ensure at least one of `rules` has stretch policy at least as high as self
+    /// Ensure at least one of `rules` has stretch priority at least as high as self
     ///
     /// The stretch policies are increased according to the heighest `scores`.
     /// Required: `rules.len() == scores.len()`.

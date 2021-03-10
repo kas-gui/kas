@@ -10,38 +10,57 @@ use kas::{event, prelude::*};
 /// A space filler
 ///
 /// This widget has zero minimum size but can expand according to the given
-/// stretch policy.
+/// stretch priority.
 #[derive(Clone, Debug, Default, Widget)]
 pub struct Filler {
     #[widget_core]
     core: CoreData,
-    policy: StretchPolicy,
+    horiz: Stretch,
+    vert: Stretch,
 }
 
 impl Layout for Filler {
-    fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
-        SizeRules::empty(self.policy)
+    fn size_rules(&mut self, _: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
+        let stretch = if axis.is_horizontal() {
+            self.horiz
+        } else {
+            self.vert
+        };
+        SizeRules::empty(stretch)
     }
 
     fn draw(&self, _: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {}
 }
 
 impl Filler {
-    /// Construct a filler with policy [`StretchPolicy::Filler`]
+    /// Construct a filler with priority [`Stretch::Filler`]
     pub fn new() -> Self {
-        Filler::with_policy(StretchPolicy::Filler)
+        Filler::with(Stretch::Filler)
     }
 
-    /// Construct a filler with policy [`StretchPolicy::Maximize`]
+    /// Construct a filler with priority [`Stretch::Low`]
+    pub fn low() -> Self {
+        Filler::with(Stretch::Low)
+    }
+
+    /// Construct a filler with priority [`Stretch::High`]
+    pub fn high() -> Self {
+        Filler::with(Stretch::High)
+    }
+
+    /// Construct a filler with priority [`Stretch::Maximize`]
     pub fn maximize() -> Self {
-        Filler::with_policy(StretchPolicy::Maximize)
+        Filler::with(Stretch::Maximize)
     }
 
-    /// Construct with a custom stretch policy
-    pub fn with_policy(policy: StretchPolicy) -> Self {
-        Filler {
-            core: Default::default(),
-            policy,
-        }
+    /// Construct with a custom stretch priority
+    pub fn with(stretch: Stretch) -> Self {
+        Filler::with_hv(stretch, stretch)
+    }
+
+    /// Construct with custom horizontal and vertical priorities
+    pub fn with_hv(horiz: Stretch, vert: Stretch) -> Self {
+        let core = Default::default();
+        Filler { core, horiz, vert }
     }
 }

@@ -426,7 +426,7 @@ impl Layout for Mandlebrot {
         let min = if a.is_horizontal() { 300.0 } else { 200.0 };
         let ideal = min * 10.0; // prefer big but not larger than screen size
         let sf = size_handle.scale_factor();
-        SizeRules::new_scaled(min, ideal, 0.0, StretchPolicy::Maximize, sf)
+        SizeRules::new_scaled(min, ideal, 0.0, Stretch::High, sf)
     }
 
     #[inline]

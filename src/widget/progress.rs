@@ -78,7 +78,7 @@ impl<D: Directional> Layout for ProgressBar<D> {
         }
         let margins = (0, 0);
         if self.direction.is_vertical() == axis.is_vertical() {
-            SizeRules::new(size.0, size.0, margins, StretchPolicy::LowUtility)
+            SizeRules::new(size.0, size.0, margins, Stretch::High)
         } else {
             SizeRules::fixed(size.1, margins)
         }

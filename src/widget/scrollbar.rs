@@ -205,7 +205,7 @@ impl<D: Directional> Layout for ScrollBar<D> {
         self.min_handle_len = size.0;
         let margins = (0, 0);
         if self.direction.is_vertical() == axis.is_vertical() {
-            SizeRules::new(min_len, min_len, margins, StretchPolicy::HighUtility)
+            SizeRules::new(min_len, min_len, margins, Stretch::High)
         } else {
             SizeRules::fixed(size.1, margins)
         }

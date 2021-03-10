@@ -411,7 +411,7 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> Layout for ListView<
             let m = rules.margins_i32();
             self.child_inter_margin = (m.0 + m.1).max(inner_margin);
             rules.multiply_with_margin(2, self.ideal_visible);
-            rules.set_stretch(rules.stretch().max(StretchPolicy::HighUtility));
+            rules.set_stretch(rules.stretch().max(Stretch::High));
         }
         let (rules, offset, size) = frame.surround(rules);
         self.offset.set_component(axis, offset);

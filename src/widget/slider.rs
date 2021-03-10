@@ -220,7 +220,7 @@ impl<T: SliderType, D: Directional> Layout for Slider<T, D> {
         let (size, min_len) = size_handle.slider();
         let margins = (0, 0);
         if self.direction.is_vertical() == axis.is_vertical() {
-            SizeRules::new(min_len, min_len, margins, StretchPolicy::HighUtility)
+            SizeRules::new(min_len, min_len, margins, Stretch::High)
         } else {
             SizeRules::fixed(size.1, margins)
         }
