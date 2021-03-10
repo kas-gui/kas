@@ -7,11 +7,14 @@
 
 use log::{info, warn};
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::rc::Rc;
 
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow, ShaderManager};
 use crate::{Error, Options, WindowId};
+use kas::event::UpdateHandle;
+use kas::widget::view::SharedData;
 use kas_theme::Theme;
 
 #[cfg(feature = "clipboard")]
@@ -21,6 +24,7 @@ use clipboard::{ClipboardContext, ClipboardProvider};
 pub struct SharedState<C: CustomPipe, T> {
     #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
+    data_updates: HashMap<UpdateHandle, Vec<Rc<dyn SharedData>>>,
     pub instance: wgpu::Instance,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
@@ -81,6 +85,7 @@ where
         Ok(SharedState {
             #[cfg(feature = "clipboard")]
             clipboard,
+            data_updates: Default::default(),
             instance,
             device,
             queue,
@@ -143,6 +148,42 @@ where
             cb.set_contents(content.into())
                 .unwrap_or_else(|e| warn!("Failed to set clipboard contents: {:?}", e))
         });
+    }
+
+    pub fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn SharedData>) {
+        self.data_updates
+            .entry(handle)
+            .or_insert(Default::default())
+            .push(data);
+    }
+
+    pub fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
+        let mut handles = vec![handle];
+
+        let mut i = 0;
+        while i < handles.len() {
+            for data in self
+                .data_updates
+                .get(&handles[i])
+                .iter()
+                .flat_map(|v| v.iter())
+            {
+                if let Some(handle) = data.update_self() {
+                    if handles.contains(&handle) {
+                        warn!("Recursively dependant shared data discovered!");
+                    } else {
+                        handles.push(handle);
+                    }
+                }
+            }
+            i += 1;
+        }
+
+        self.pending.extend(
+            handles
+                .into_iter()
+                .map(|handle| PendingAction::Update(handle, payload)),
+        );
     }
 }
 

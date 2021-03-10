@@ -14,6 +14,7 @@ use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
 /// Shared data which may notify of updates
+// TODO: this is depended on by Manager, therefore should not be in the widget module!
 pub trait SharedData: Debug {
     /// Get an update handle, if any is used to notify of updates
     ///
@@ -25,6 +26,14 @@ pub trait SharedData: Debug {
     /// Users registering for updates on this handle should, if possible, also
     /// call [`SharedDataRec::enable_recursive_updates`].
     fn update_handle(&self) -> Option<UpdateHandle>;
+
+    /// Update self from an update handle
+    ///
+    /// Data views which are themselves dependent on other shared data should
+    /// register themselves for update via [`Manager::update_shared_data`].
+    fn update_self(&self) -> Option<UpdateHandle> {
+        None
+    }
 }
 
 /// Extension over [`SharedData`] enabling recursive updating

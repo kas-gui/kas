@@ -12,6 +12,7 @@ use kas::event::Manager;
 use kas::event::UpdateHandle;
 use std::cell::RefCell;
 use std::fmt::Debug;
+use std::rc::Rc;
 
 /// Types usable as a filter
 pub trait Filter<T>: Debug + 'static {
@@ -74,16 +75,14 @@ impl Filter<String> for SimpleCaseInsensitiveFilter {
 /// This is an abstraction over a [`ListData`], applying a filter to items when
 /// iterating. Accessing items directly by key does not filter.
 ///
-/// Warning: the underlying data may have a separate update handle, and handles
-/// are not currently transitive. That is, `FilterList`'s update handle is not
-/// triggered by changes to the underlying data list.
+/// Note: the key and item types are the same as those in the underlying list,
+/// thus one can also retrieve values from the underlying list directly.
+///
+/// Note: only `Rc<FilteredList<T, F>>` implements [`ListData`]; the [`Rc`]
+/// wrapper is required!
 ///
 /// Warning: this implementation is `O(n)` where `n = data.len()` and not well
 /// optimised, thus is expected to be slow on large data lists.
-///
-/// Note: the key and item types are the same as those in the underlying list,
-/// thus one can retrieve values from the underlying list directly (without
-/// filtering).
 #[derive(Clone, Debug)]
 pub struct FilteredList<T: ListData, F: Filter<T::Item>> {
     /// Direct access to unfiltered data
@@ -101,10 +100,6 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
         let len = data.len().cast();
         let view = Vec::with_capacity(len);
         let cell = RefCell::new((filter, view));
-        // TODO: using a separate update handle allows notification of the
-        // filter view update without notifying users of the underlying list,
-        // *but* update of the list should also imply update of the view.
-        // Can we make one update handle imply another?
         let update = UpdateHandle::new();
         let s = FilteredList { data, cell, update };
         let _ = s.refresh();
@@ -148,15 +143,22 @@ impl<T: ListData, F: Filter<T::Item>> SharedData for FilteredList<T, F> {
     fn update_handle(&self) -> Option<UpdateHandle> {
         Some(self.update)
     }
+
+    fn update_self(&self) -> Option<UpdateHandle> {
+        Self::rebuild_view(&self.data, &mut self.cell.borrow_mut());
+        Some(self.update)
+    }
 }
-impl<T: ListData, F: Filter<T::Item>> SharedDataRec for FilteredList<T, F> {
+impl<T: ListData + 'static, F: Filter<T::Item>> SharedDataRec for Rc<FilteredList<T, F>> {
     fn enable_recursive_updates(&self, mgr: &mut Manager) {
         self.data.enable_recursive_updates(mgr);
-        // TODO: we still need to refresh the filter when data is updated
+        if let Some(handle) = self.data.update_handle() {
+            mgr.update_shared_data(handle, self.clone());
+        }
     }
 }
 
-impl<T: ListData, F: Filter<T::Item>> ListData for FilteredList<T, F> {
+impl<T: ListData + 'static, F: Filter<T::Item>> ListData for Rc<FilteredList<T, F>> {
     type Key = T::Key;
     type Item = T::Item;
 
@@ -184,7 +186,7 @@ impl<T: ListData, F: Filter<T::Item>> ListData for FilteredList<T, F> {
                 cell.1.retain(|item| item != key);
             } else {
                 // We do not know the order thus must rebuild whole view!
-                Self::rebuild_view(&self.data, &mut cell);
+                FilteredList::<T, F>::rebuild_view(&self.data, &mut cell);
             }
         }
         result
