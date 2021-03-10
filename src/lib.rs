@@ -32,7 +32,7 @@ extern crate self as kas; // required for reliable self-reference in kas_macros
 
 // internal modules:
 mod core;
-mod data;
+mod future;
 mod toolkit;
 
 // public implementations:
@@ -52,5 +52,5 @@ pub mod macros;
 
 // export most important members directly for convenience and less redundancy:
 pub use crate::core::*;
-pub use crate::data::*;
+pub use crate::future::*;
 pub use crate::toolkit::*;
