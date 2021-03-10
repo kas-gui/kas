@@ -229,15 +229,26 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> ListView<D, T, V> {
     /// Directly select an item
     ///
     /// Returns `true` if selected, `false` if already selected.
+    /// Fails if selection mode does not permit selection or if the key is
+    /// invalid.
     ///
     /// Does not send [`ListMsg`] responses.
-    pub fn select(&mut self, key: T::Key) -> bool {
-        self.selection.insert(key)
+    pub fn select(&mut self, key: T::Key) -> Result<bool, ()> {
+        match self.sel_mode {
+            SelectionMode::None => return Err(()),
+            SelectionMode::Single => self.selection.clear(),
+            _ => (),
+        }
+        if !self.data.contains_key(&key) {
+            return Err(());
+        }
+        Ok(self.selection.insert(key))
     }
 
     /// Directly deselect an item
     ///
     /// Returns `true` if deselected, `false` if not previously selected.
+    /// Also returns `false` on invalid keys.
     ///
     /// Does not send [`ListMsg`] responses.
     pub fn deselect(&mut self, key: &T::Key) -> bool {
@@ -246,6 +257,8 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> ListView<D, T, V> {
 
     /// Manually trigger an update to handle changed data
     pub fn update_view(&mut self, mgr: &mut Manager) {
+        let data = &self.data;
+        self.selection.retain(|key| data.contains_key(key));
         for w in &mut self.widgets {
             w.key = None;
         }
@@ -398,7 +411,7 @@ impl<D: Directional, T: ListData, V: View<T::Key, T::Item>> Layout for ListView<
             let m = rules.margins_i32();
             self.child_inter_margin = (m.0 + m.1).max(inner_margin);
             rules.multiply_with_margin(2, self.ideal_visible);
-            rules.set_stretch(rules.stretch().max(StretchPolicy::HighUtility));
+            rules.set_stretch(rules.stretch().max(Stretch::High));
         }
         let (rules, offset, size) = frame.surround(rules);
         self.offset.set_component(axis, offset);

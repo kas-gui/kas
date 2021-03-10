@@ -67,24 +67,30 @@ impl Margins {
     }
 }
 
-/// Policy for stretching widgets beyond ideal size
+/// Priority for stretching widgets beyond ideal size
+///
+/// Space is allocated based on priority, with extra space (beyond the minimum)
+/// shared between widgets in the highest priority class.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
-pub enum StretchPolicy {
-    /// Do not exceed ideal size
-    Fixed,
-    /// Can be stretched to fill space but without utility
+pub enum Stretch {
+    /// No expectations beyond the minimum
+    ///
+    /// Note: this does not prevent stretching (specifically, it can happen with
+    /// other widgets in the same row/column wishing more size).
+    None,
+    /// Fill unwanted space
     Filler,
-    /// Extra space has low utility
-    LowUtility,
-    /// Extra space has high utility
-    HighUtility,
+    /// Extra space is considered of low utility (but higher than `Filler`)
+    Low,
+    /// Extra space is considered of high utility
+    High,
     /// Greedily consume as much space as possible
     Maximize,
 }
 
-impl Default for StretchPolicy {
+impl Default for Stretch {
     fn default() -> Self {
-        StretchPolicy::Fixed
+        Stretch::None
     }
 }
 

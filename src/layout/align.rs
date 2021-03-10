@@ -6,7 +6,7 @@
 //! Alignment types
 
 #[allow(unused)]
-use super::StretchPolicy; // for doc-links
+use super::Stretch; // for doc-links
 use crate::geom::{Rect, Size};
 
 pub use crate::text::Align;
@@ -71,7 +71,7 @@ impl CompleteAlignment {
     /// Construct a rect of size `ideal` within `rect` using the given alignment
     ///
     /// Note: this does not stretch, even with [`Align::Stretch`], since widget
-    /// stretching should be determined by the [`StretchPolicy`] instead.
+    /// stretching should be determined by the [`Stretch`] priority instead.
     pub fn aligned_rect(&self, ideal: Size, rect: Rect) -> Rect {
         let mut pos = rect.pos;
         let mut size = rect.size;

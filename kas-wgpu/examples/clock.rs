@@ -35,7 +35,7 @@ struct Clock {
 impl Layout for Clock {
     fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
         // We want a square shape and can resize freely. Numbers are arbitrary.
-        SizeRules::new(100, 200, (0, 0), StretchPolicy::HighUtility)
+        SizeRules::new(100, 200, (0, 0), Stretch::High)
     }
 
     #[inline]
