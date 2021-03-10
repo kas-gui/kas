@@ -5,7 +5,7 @@
 
 //! Shared state
 
-use log::{info, warn};
+use log::{info, trace, warn};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::num::NonZeroU32;
@@ -151,10 +151,14 @@ where
     }
 
     pub fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn SharedData>) {
-        self.data_updates
+        let list = self
+            .data_updates
             .entry(handle)
-            .or_insert(Default::default())
-            .push(data);
+            .or_insert(Default::default());
+        if list.iter().find(|d| Rc::ptr_eq(d, &data)).is_some() {
+            return;
+        }
+        list.push(data);
     }
 
     pub fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
@@ -168,7 +172,9 @@ where
                 .iter()
                 .flat_map(|v| v.iter())
             {
+                trace!("Triggering update on {:?}", data);
                 if let Some(handle) = data.update_self() {
+                    trace!("... which causes recursive update on {:?}", handle);
                     if handles.contains(&handle) {
                         warn!("Recursively dependant shared data discovered!");
                     } else {

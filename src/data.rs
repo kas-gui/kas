@@ -236,6 +236,9 @@ macro_rules! impl_via_deref {
             fn update_handle(&self) -> Option<UpdateHandle> {
                 self.deref().update_handle()
             }
+            fn update_self(&self) -> Option<UpdateHandle> {
+                self.deref().update_self()
+            }
        }
         impl<$t: SharedDataRec + ?Sized> SharedDataRec for $derived {
             fn enable_recursive_updates(&self, mgr: &mut Manager) {
