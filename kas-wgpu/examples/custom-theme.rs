@@ -13,7 +13,6 @@ use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::geom::Rect;
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::*;
-use kas::{ThemeAction, ThemeApi};
 use kas_theme::Theme;
 
 use kas_theme::FlatTheme;

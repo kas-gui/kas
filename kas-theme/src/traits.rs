@@ -8,9 +8,8 @@
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
-use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle};
+use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
 use kas::geom::Rect;
-use kas::ThemeApi;
 
 /// A *theme* provides widget sizing and drawing implementations.
 ///

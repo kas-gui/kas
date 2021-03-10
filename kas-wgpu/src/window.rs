@@ -6,14 +6,16 @@
 //! `Window` and `WindowList` types
 
 use log::{debug, error, info, trace};
+use std::rc::Rc;
 use std::time::Instant;
 
 use kas::conv::Cast;
-use kas::draw::SizeHandle;
+use kas::data::SharedData;
+use kas::draw::{SizeHandle, ThemeAction, ThemeApi};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
-use kas::{ThemeAction, ThemeApi, TkAction, WindowId};
+use kas::{TkAction, WindowId};
 use kas_theme::Theme;
 use winit::dpi::PhysicalSize;
 use winit::error::OsError;
@@ -486,10 +488,12 @@ where
         self.shared.pending.push(PendingAction::CloseWindow(id));
     }
 
+    fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn SharedData>) {
+        self.shared.update_shared_data(handle, data);
+    }
+
     fn trigger_update(&mut self, handle: UpdateHandle, payload: u64) {
-        self.shared
-            .pending
-            .push(PendingAction::Update(handle, payload));
+        self.shared.trigger_update(handle, payload);
     }
 
     #[inline]

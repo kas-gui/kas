@@ -17,9 +17,10 @@
 //!     very slow activation of a RadioBox in a chain hundreds-of-thousands
 //!     long), but in many ways still performs well in release mode
 
+use kas::data::*;
 use kas::event::UpdateHandle;
 use kas::prelude::*;
-use kas::widget::view::*;
+use kas::widget::view::{ListMsg, ListView, View};
 use kas::widget::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -89,6 +90,12 @@ impl MyData {
             .unwrap_or_else(|| (n == self.active, format!("Entry #{}", n + 1)))
     }
 }
+impl SharedData for MyData {
+    fn update_handle(&self) -> Option<UpdateHandle> {
+        Some(self.handle)
+    }
+}
+impl SharedDataRec for MyData {}
 impl ListData for MyData {
     type Key = usize;
     type Item = (bool, String);
@@ -116,10 +123,6 @@ impl ListData for MyData {
         (start..self.len.min(start + limit))
             .map(|n| (n, self.get(n)))
             .collect()
-    }
-
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        Some(self.handle)
     }
 }
 

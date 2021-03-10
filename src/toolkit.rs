@@ -13,9 +13,12 @@
 //! The shell also provides the entrypoint, a type named `Toolkit`.
 
 use std::num::NonZeroU32;
+use std::rc::Rc;
 
-use crate::draw::SizeHandle;
-use crate::{event, ThemeAction, ThemeApi};
+use crate::data::SharedData;
+use crate::draw::{SizeHandle, ThemeAction, ThemeApi};
+use crate::event;
+use crate::event::UpdateHandle;
 
 /// Identifier for a window or pop-up
 ///
@@ -110,11 +113,14 @@ pub trait ShellWindow {
     /// Close a window
     fn close_window(&mut self, id: WindowId);
 
+    /// Register `data` to be updated when an update with the given `handle` is triggered
+    fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn SharedData>);
+
     /// Updates all subscribed widgets
     ///
-    /// All widgets subscribed to the given [`event::UpdateHandle`], across all
+    /// All widgets subscribed to the given [`UpdateHandle`], across all
     /// windows, will receive an update.
-    fn trigger_update(&mut self, handle: event::UpdateHandle, payload: u64);
+    fn trigger_update(&mut self, handle: UpdateHandle, payload: u64);
 
     /// Attempt to get clipboard contents
     ///

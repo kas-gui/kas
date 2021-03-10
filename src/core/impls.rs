@@ -5,6 +5,8 @@
 
 //! Trait impls
 
+use std::any::Any;
+
 use super::*;
 use crate::draw::{DrawHandle, SizeHandle};
 use crate::event::{self, Event, Manager, Response};

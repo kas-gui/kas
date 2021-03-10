@@ -5,7 +5,8 @@
 
 //! Single view widget
 
-use super::{DefaultView, SingleData, View};
+use super::{DefaultView, View};
+use kas::data::SingleData;
 use kas::prelude::*;
 use std::fmt::{self};
 
@@ -93,6 +94,7 @@ impl<D: SingleData + 'static, V: View<(), D::Item>> SingleView<D, V> {
 
 impl<D: SingleData + 'static, V: View<(), D::Item>> WidgetConfig for SingleView<D, V> {
     fn configure(&mut self, mgr: &mut Manager) {
+        self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
             mgr.update_on_handle(handle, self.id());
         }

@@ -3,19 +3,102 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Widget traits
+//! Widget data types
 
-use std::any::Any;
+use std::convert::TryFrom;
 use std::fmt;
-use std::ops::DerefMut;
+use std::num::NonZeroU32;
 
+#[allow(unused)]
+use super::Layout;
+use super::Widget;
 use crate::event::{self, Manager};
-use crate::{dir::Direction, layout, WidgetId, WindowId};
+use crate::geom::Rect;
+use crate::{dir::Direction, layout, WindowId};
 
-mod impls;
-mod widget;
+/// Widget identifier
+///
+/// All widgets are assigned an identifier which is unique within the window.
+/// This type may be tested for equality and order.
+///
+/// This type is small and cheap to copy. Internally it is "NonZero", thus
+/// `Option<WidgetId>` is a free extension (requires no extra memory).
+///
+/// Identifiers are assigned when configured and when re-configured
+/// (via [`kas::TkAction::RECONFIGURE`]). Since user-code is not notified of a
+/// re-configure, user-code should not store a `WidgetId`.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct WidgetId(NonZeroU32);
 
-pub use widget::*;
+impl WidgetId {
+    pub(crate) const FIRST: WidgetId = WidgetId(unsafe { NonZeroU32::new_unchecked(1) });
+    const LAST: WidgetId = WidgetId(unsafe { NonZeroU32::new_unchecked(u32::MAX) });
+
+    pub(crate) fn next(self) -> Self {
+        WidgetId(NonZeroU32::new(self.0.get() + 1).unwrap())
+    }
+}
+
+impl TryFrom<u32> for WidgetId {
+    type Error = ();
+    fn try_from(x: u32) -> Result<WidgetId, ()> {
+        NonZeroU32::new(x).map(|n| WidgetId(n)).ok_or(())
+    }
+}
+
+impl TryFrom<u64> for WidgetId {
+    type Error = ();
+    fn try_from(x: u64) -> Result<WidgetId, ()> {
+        if let Ok(x) = u32::try_from(x) {
+            if let Some(nz) = NonZeroU32::new(x) {
+                return Ok(WidgetId(nz));
+            }
+        }
+        Err(())
+    }
+}
+
+impl From<WidgetId> for u32 {
+    #[inline]
+    fn from(id: WidgetId) -> u32 {
+        id.0.get()
+    }
+}
+
+impl From<WidgetId> for u64 {
+    #[inline]
+    fn from(id: WidgetId) -> u64 {
+        id.0.get().into()
+    }
+}
+
+impl Default for WidgetId {
+    fn default() -> Self {
+        WidgetId::LAST
+    }
+}
+
+impl fmt::Display for WidgetId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "#{}", self.0)
+    }
+}
+
+#[test]
+fn size_of_option_widget_id() {
+    use std::mem::size_of;
+    assert_eq!(size_of::<WidgetId>(), size_of::<Option<WidgetId>>());
+}
+
+/// Common widget data
+///
+/// All widgets should embed a `#[widget_core] core: CoreData` field.
+#[derive(Clone, Default, Debug)]
+pub struct CoreData {
+    pub rect: Rect,
+    pub id: WidgetId,
+    pub disabled: bool,
+}
 
 /// Trait to describe the type needed by the layout implementation.
 ///
@@ -107,61 +190,4 @@ pub trait Window: Widget<Msg = event::VoidMsg> {
     ///
     /// This allows for actions on destruction, but doesn't need to do anything.
     fn handle_closure(&mut self, _mgr: &mut Manager) {}
-}
-
-/// Return value of [`ThemeApi`] functions
-///
-/// This type is used to notify the toolkit of required updates.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
-pub enum ThemeAction {
-    /// No action needed
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    None,
-    /// All windows require redrawing
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    RedrawAll,
-    /// Theme sizes have changed
-    ///
-    /// This implies that per-window theme data must be updated
-    /// (via [`kas-theme::Theme::update_window`]) and all widgets resized.
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    ThemeResize,
-}
-
-/// Interface through which a theme can be adjusted at run-time
-///
-/// All methods return a [`ThemeAction`] to enable correct action when a theme
-/// is updated via [`Manager::adjust_theme`]. When adjusting a theme before
-/// the UI is started, this return value can be safely ignored.
-pub trait ThemeApi {
-    /// Set font size
-    ///
-    /// Units: Points per Em (standard unit of font size)
-    fn set_font_size(&mut self, pt_size: f32) -> ThemeAction;
-
-    /// Change the colour scheme
-    ///
-    /// If no scheme by this name is found the scheme is left unchanged.
-    // TODO: revise scheme identification and error handling?
-    fn set_colours(&mut self, _scheme: &str) -> ThemeAction;
-
-    /// Switch the theme
-    ///
-    /// Most themes do not react to this method; `kas_theme::MultiTheme` uses
-    /// it to switch themes.
-    fn set_theme(&mut self, _theme: &str) -> ThemeAction {
-        ThemeAction::None
-    }
-}
-
-impl<T: ThemeApi> ThemeApi for Box<T> {
-    fn set_font_size(&mut self, size: f32) -> ThemeAction {
-        self.deref_mut().set_font_size(size)
-    }
-    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
-        self.deref_mut().set_colours(scheme)
-    }
-    fn set_theme(&mut self, theme: &str) -> ThemeAction {
-        self.deref_mut().set_theme(theme)
-    }
 }
