@@ -33,9 +33,6 @@ stack_dst = ["kas-theme/stack_dst"]
 # Use kas-theme's unsize feature (nightly-only)
 unsize = ["kas-theme/unsize"]
 
-# See filter-list example
-generator = []
-
 [dependencies]
 kas = { path = "..", version = "0.6.0", features = ["winit"] }
 kas-theme = { path = "../kas-theme", version = "0.6.0" }

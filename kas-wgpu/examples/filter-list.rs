@@ -12,7 +12,6 @@ use kas::prelude::*;
 use kas::widget::view::{ListMsg, ListView, SelectionMode, SimpleCaseInsensitiveFilter};
 use kas::widget::{EditBox, Label, RadioBox, ScrollBars, Window};
 
-#[cfg(not(feature = "generator"))]
 mod data {
     use kas::widget::view::{FilteredList, SimpleCaseInsensitiveFilter};
     use std::rc::Rc;
@@ -38,69 +37,6 @@ mod data {
     pub fn get() -> Shared {
         let filter = SimpleCaseInsensitiveFilter::new("");
         Rc::new(FilteredList::new(MONTHS.into(), filter))
-    }
-}
-
-// Implementation which generates dates, allowing testing with large numbers of entries
-// Since entries are generated on demand there is no penalty to having very large
-// numbers, *except* that this filter is O(n) in both memory usage and update time.
-#[cfg(feature = "generator")]
-mod data {
-    use chrono::{DateTime, Duration, Local};
-    use kas::conv::Conv;
-    use kas::event::UpdateHandle;
-    use kas::widget::view::{FilteredList, ListData, SimpleCaseInsensitiveFilter};
-    use std::rc::Rc;
-
-    // Alternative: unfiltered version (must (de)comment a few bits of code)
-    // pub type Shared = DateGenerator;
-    pub type Shared = Rc<FilteredList<DateGenerator, SimpleCaseInsensitiveFilter>>;
-
-    #[derive(Debug)]
-    pub struct DateGenerator {
-        start: DateTime<Local>,
-        end: DateTime<Local>,
-        step: Duration,
-    }
-
-    impl DateGenerator {
-        fn gen(&self, index: usize) -> String {
-            let date = self.start + self.step * i32::conv(index);
-            date.format("%A %e %B %Y, %T").to_string()
-        }
-    }
-    impl ListData for DateGenerator {
-        type Key = usize;
-        type Item = String;
-        fn len(&self) -> usize {
-            let dur = self.end - self.start;
-            let secs = dur.num_seconds();
-            let step_secs = self.step.num_seconds();
-            1 + usize::conv((secs - 1) / step_secs)
-        }
-
-        fn get_cloned(&self, index: &usize) -> Option<Self::Item> {
-            Some(self.gen(*index))
-        }
-        fn update(&self, _key: &Self::Key, _value: Self::Item) -> Option<UpdateHandle> {
-            None
-        }
-
-        fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
-            let end = self.len().min(start + limit);
-            (start..end).map(|i| (i, self.gen(i))).collect()
-        }
-    }
-
-    pub fn get() -> Shared {
-        let gen = DateGenerator {
-            start: Local::now(),
-            end: Local::now() + Duration::days(365),
-            step: Duration::seconds(999),
-        };
-        // gen
-        let filter = SimpleCaseInsensitiveFilter::new("");
-        Rc::new(FilteredList::new(gen, filter))
     }
 }
 
