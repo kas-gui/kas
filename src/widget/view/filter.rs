@@ -73,7 +73,10 @@ impl Filter<String> for SimpleCaseInsensitiveFilter {
 /// Filter accessor over another accessor
 ///
 /// This is an abstraction over a [`ListData`], applying a filter to items when
-/// iterating. Accessing items directly by key does not filter.
+/// iterating and accessing.
+///
+/// When updating, the filter applies to the old value: if the old is included,
+/// it is replaced by the new, otherwise no replacement occurs.
 ///
 /// Note: the key and item types are the same as those in the underlying list,
 /// thus one can also retrieve values from the underlying list directly.
@@ -167,27 +170,32 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for Rc<FilteredList<T, 
     }
 
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        // Do not filter (see type doc)
-        self.data.get_cloned(key)
+        // Check the item against our filter (probably O(1)) instead of using
+        // our filtered list (O(n) where n=self.len()).
+        let cell = self.cell.borrow();
+        self.data
+            .get_cloned(key)
+            .filter(|item| cell.0.matches(item.clone()))
     }
 
     fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
         // Filtering does not affect result, but does affect the view
         let mut cell = self.cell.borrow_mut();
-        let old_visible = self
+        if self
             .data
             .get_cloned(key)
-            .map(|item| cell.0.matches(item))
-            .unwrap_or(false);
+            .map(|item| !cell.0.matches(item))
+            .unwrap_or(true)
+        {
+            // Not previously visible: no update occurs
+            return None;
+        }
+
         let new_visible = cell.0.matches(value.clone());
         let result = self.data.update(key, value);
-        if result.is_some() && old_visible != new_visible {
-            if old_visible {
-                cell.1.retain(|item| item != key);
-            } else {
-                // We do not know the order thus must rebuild whole view!
-                FilteredList::<T, F>::rebuild_view(&self.data, &mut cell);
-            }
+        if result.is_some() && !new_visible {
+            // remove the updated item from our filtered list
+            cell.1.retain(|item| item != key);
         }
         result
     }
