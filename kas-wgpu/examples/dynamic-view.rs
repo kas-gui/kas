@@ -104,6 +104,10 @@ impl ListData for MyData {
         self.len
     }
 
+    fn contains_key(&self, key: &Self::Key) -> bool {
+        *key < self.len
+    }
+
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
         Some(self.get(*key))
     }

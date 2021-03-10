@@ -169,6 +169,10 @@ impl<T: ListData + 'static, F: Filter<T::Item>> ListData for Rc<FilteredList<T, 
         self.cell.borrow().1.len()
     }
 
+    fn contains_key(&self, key: &Self::Key) -> bool {
+        self.get_cloned(key).is_some()
+    }
+
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
         // Check the item against our filter (probably O(1)) instead of using
         // our filtered list (O(n) where n=self.len()).

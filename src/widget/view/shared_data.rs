@@ -66,6 +66,10 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
         (self.0).1.borrow().len()
     }
 
+    fn contains_key(&self, key: &Self::Key) -> bool {
+        (self.0).1.borrow().contains_key(key)
+    }
+
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
         (self.0).1.borrow().get_cloned(key)
     }

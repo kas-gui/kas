@@ -100,6 +100,9 @@ pub trait ListData: SharedDataRec {
 
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
 
+    /// Check whether a key has data
+    fn contains_key(&self, key: &Self::Key) -> bool;
+
     /// Get data by key (clone)
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item>;
 
@@ -153,6 +156,10 @@ impl<T: Clone + Debug> ListData for [T] {
         (*self).len()
     }
 
+    fn contains_key(&self, key: &Self::Key) -> bool {
+        *key < self.len()
+    }
+
     fn get_cloned(&self, key: &usize) -> Option<Self::Item> {
         self.get(*key).cloned()
     }
@@ -198,6 +205,10 @@ impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> ListData for std::collection
 
     fn len(&self) -> usize {
         (*self).len()
+    }
+
+    fn contains_key(&self, key: &Self::Key) -> bool {
+        (*self).contains_key(key)
     }
 
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
@@ -262,6 +273,9 @@ macro_rules! impl_via_deref {
 
             fn len(&self) -> usize {
                 self.deref().len()
+            }
+            fn contains_key(&self, key: &Self::Key) -> bool {
+                self.deref().contains_key(key)
             }
             fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
                 self.deref().get_cloned(key)
