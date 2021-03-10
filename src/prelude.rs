@@ -20,7 +20,7 @@ pub use kas::conv::{Cast, CastFloat, Conv, ConvFloat};
 #[doc(no_inline)]
 pub use kas::dir::{Direction, Directional};
 #[doc(no_inline)]
-pub use kas::draw::{DrawHandle, DrawHandleExt, SizeHandle};
+pub use kas::draw::{DrawHandle, DrawHandleExt, SizeHandle, ThemeApi};
 #[doc(no_inline)]
 pub use kas::event::{Event, Handler, Manager, ManagerState, Response, SendEvent, VoidMsg};
 #[doc(no_inline)]
@@ -40,4 +40,4 @@ pub use kas::{Boxed, TkAction};
 #[doc(no_inline)]
 pub use kas::{CoreData, LayoutData};
 #[doc(no_inline)]
-pub use kas::{Layout, ThemeApi, Widget, WidgetChildren, WidgetConfig, WidgetCore};
+pub use kas::{Layout, Widget, WidgetChildren, WidgetConfig, WidgetCore};

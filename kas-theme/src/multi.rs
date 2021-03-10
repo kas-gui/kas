@@ -10,9 +10,8 @@ use std::collections::HashMap;
 use std::marker::Unsize;
 
 use crate::{StackDst, Theme, ThemeDst, WindowDst};
-use kas::draw::{Colour, DrawHandle, DrawShared};
+use kas::draw::{Colour, DrawHandle, DrawShared, ThemeAction, ThemeApi};
 use kas::geom::Rect;
-use kas::{ThemeAction, ThemeApi};
 
 #[cfg(feature = "unsize")]
 type DynTheme<Draw> = StackDst<dyn ThemeDst<Draw>>;

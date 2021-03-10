@@ -9,9 +9,8 @@ use std::any::Any;
 use std::ops::DerefMut;
 
 use super::{StackDst, Theme, Window};
-use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle};
+use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
 use kas::geom::Rect;
-use kas::ThemeApi;
 
 /// As [`Theme`], but without associated types
 ///

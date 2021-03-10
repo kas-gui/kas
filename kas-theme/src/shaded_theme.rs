@@ -12,11 +12,10 @@ use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours,
 use kas::dir::{Direction, Directional};
 use kas::draw::{
     self, ClipRegion, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, InputState,
-    Pass, SizeHandle, TextClass,
+    Pass, SizeHandle, TextClass, ThemeAction, ThemeApi,
 };
 use kas::geom::*;
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
-use kas::{ThemeAction, ThemeApi};
 
 /// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]

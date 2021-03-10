@@ -15,12 +15,11 @@ use kas::conv::Cast;
 use kas::dir::{Direction, Directional};
 use kas::draw::{
     self, ClipRegion, Colour, Draw, DrawRounded, DrawShared, DrawText, InputState, Pass,
-    SizeHandle, TextClass,
+    SizeHandle, TextClass, ThemeAction, ThemeApi,
 };
 use kas::geom::*;
 use kas::text::format::FormattableText;
 use kas::text::{AccelString, Effect, Text, TextApi, TextDisplay};
-use kas::{ThemeAction, ThemeApi};
 
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]

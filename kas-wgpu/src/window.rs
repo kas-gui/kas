@@ -10,12 +10,12 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use kas::conv::Cast;
-use kas::draw::SizeHandle;
+use kas::draw::{SizeHandle, ThemeAction, ThemeApi};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
 use kas::widget::view::SharedData;
-use kas::{ThemeAction, ThemeApi, TkAction, WindowId};
+use kas::{TkAction, WindowId};
 use kas_theme::Theme;
 use winit::dpi::PhysicalSize;
 use winit::error::OsError;

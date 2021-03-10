@@ -39,6 +39,7 @@
 
 mod colour;
 mod handle;
+mod theme;
 
 use std::any::Any;
 
@@ -48,6 +49,7 @@ use crate::text::{Effect, TextDisplay};
 
 pub use colour::Colour;
 pub use handle::*;
+pub use theme::*;
 
 /// Pass identifier
 ///

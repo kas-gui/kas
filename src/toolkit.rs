@@ -15,9 +15,9 @@
 use std::num::NonZeroU32;
 use std::rc::Rc;
 
-use crate::draw::SizeHandle;
+use crate::draw::{SizeHandle, ThemeAction, ThemeApi};
+use crate::event;
 use crate::event::UpdateHandle;
-use crate::{event, ThemeAction, ThemeApi};
 use kas::widget::view::SharedData;
 
 /// Identifier for a window or pop-up
