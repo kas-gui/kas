@@ -1045,9 +1045,12 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                 mgr.request_char_focus(self.id());
                 Response::None
             }
-            Event::LostCharFocus => G::focus_lost(self, mgr)
-                .map(|msg| msg.into())
-                .unwrap_or(Response::None),
+            Event::LostCharFocus => {
+                mgr.redraw(self.id());
+                G::focus_lost(self, mgr)
+                    .map(|msg| msg.into())
+                    .unwrap_or(Response::None)
+            }
             Event::LostSelFocus => {
                 self.selection.set_empty();
                 mgr.redraw(self.id());
