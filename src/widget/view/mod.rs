@@ -5,29 +5,62 @@
 
 //! View widgets and shared data
 //!
-//! So called "view widgets" are able to form a view over some shared data.
+//! So called "view widgets" allow separation of data and view. The system has
+//! some similarities with the Model-View-Controller (MVC) pattern, but with
+//! different separations of responsibility. Perhaps we should instead call the
+//! pattern Model-View-Driver?
 //!
-//! # Shared data
+//! # Shared data and *model*
 //!
-//! Shared data must implement one or more of the traits from [`kas::data`].
+//! A family of data model traits is available in [`kas::data`]. Shared data
+//! must implement one or more of these traits for use with view widgets.
 //!
-//! ## Filters
+//! In MVC terminology, the implementation of these traits over some data may
+//! be called the model.
 //!
-//! -   [`FilteredList`] is a filtered view over [`ListData`]
+//! ## Adapters
 //!
-//! # Viewing data via widgets
+//! -   [`FilteredList`] presents a filtered list over a [`ListData`]
 //!
-//! The [`View`] trait provides a mechanism for constructing and updating
-//! arbitrary widgets from a data source.
+//! # View widgets and drivers
 //!
-//! # View widget drivers
+//! Standard widgets may be used to view data items, but to construct these a
+//! *driver* is required. These implement the [`Driver`] trait which constructs
+//! widgets from data items and optionally also the reverse binding.
 //!
-//! Building on all the above, the **view widgets** combine data and a driver:
+//! The user may implement a [`Driver`] or may use a standard one:
 //!
-//! -   [`SingleView`] creates a view over a [`SingleData`] object
-//! -   [`ListView`] creates a scrollable list view over a [`ListData`] object.
-//!     Performance is potentially bounded by O(v) in all operations where `v`
-//!     is the number of visible items (depending on the [`ListData`] object).
+//! -   [`driver::Default`] constructs a default view widget over various data types
+//! -   [`driver::CheckBox`] and [`driver::RadioBox`] support the `bool` type
+//! -   [`driver::Slider`] constructs a slider with a fixed range
+//!
+//! In MVC terminology, the driver is perhaps most similar to the controller,
+//! while the widgets constructed by the driver are the view, and yet ...
+//!
+//! # Views
+//!
+//! Something else is required to construct one or more view widgets over the
+//! data model as well as to perform event handling (at a minimum, forwarding
+//! events to the appropriate view widgets), and that thing is here referred to
+//! as the **view** (MVC terminology, it is part view and part controller, while
+//! not being the whole of either).
+//!
+//! These *views* are widgets and provide additional services:
+//!
+//! -   updating view widgets when the model is changed
+//! -   notifying other users of the data when view widgets update the data
+//! -   ideally allowing `O(v)` performance where `v` is the number of visible
+//!     data items, thus allowing good scaling to large data sets (this depends
+//!     on the performance of the model)
+//! -   supporting scrolling (see [`super::Scrollable`])
+//! -   supporting item selection
+//! -   controlling scrolling and selection via otherwise unhandled events
+//!
+//! The following views are provided:
+//!
+//! -   [`SingleView`] creates a view over a [`SingleData`] object (no scrolling
+//!     or selection support)
+//! -   [`ListView`] creates a scrollable list view over a [`ListData`] object
 
 #[allow(unused)]
 use kas::data::{ListData, SingleData};
@@ -36,11 +69,11 @@ mod filter;
 mod list_view;
 mod shared_data;
 mod single_view;
-mod view_widget;
 
+pub mod driver;
+
+pub use driver::Driver;
 pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
 pub use list_view::{ListMsg, ListView, SelectionMode};
 pub use shared_data::SharedRc;
 pub use single_view::SingleView;
-pub use view_widget::{CheckBoxView, RadioBoxBareView, RadioBoxView, SliderView};
-pub use view_widget::{DefaultView, View, WidgetView};

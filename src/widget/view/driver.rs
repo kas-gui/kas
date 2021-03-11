@@ -3,27 +3,32 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! View widgets
+//! View drivers
 //!
-//! View widgets exist as a view over some shared data.
+//! Intended usage is to import the module name rather than its contents, thus
+//! allowing referal to e.g. `driver::Default`.
 
 use kas::event::UpdateHandle;
+use kas::widget::{self, *};
 use kas::prelude::*;
-use kas::widget::*;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-/// View widget constructor
+/// View widget controller
 ///
-/// Types implementing this trait are able to construct a view widget for data
-/// of type `T`. Several existing implementations are available...
-pub trait View<K, T>: Debug + 'static {
-    type Widget: Widget;
+/// The controller binds data items with view widgets.
+///
+/// Several existing implementations are available, most notably:
+///
+/// -   [`Default`](struct@Default) will choose a sensible widget to view the data
+pub trait Driver<K, T>: Debug + 'static {
+    /// Type of the widget used to view data
+    type Widget: kas::Widget;
 
     /// Construct a default instance (with no data)
     ///
     /// Such instances are used for sizing and cached widgets, but not shown.
-    /// The controller may later call [`View::set`] on the widget then show it.
+    /// The controller may later call [`Driver::set`] on the widget then show it.
     fn default(&self) -> Self::Widget;
     /// Construct an instance from a data value
     fn new(&self, key: K, data: T) -> Self::Widget;
@@ -42,15 +47,18 @@ pub trait View<K, T>: Debug + 'static {
 
 /// Default view widget constructor
 ///
-/// This struct implements [`View`], using a default widget for the data type.
+/// This struct implements [`Driver`], using a default widget for the data type:
+///
+/// -   [`widget::Label`] for `String`, `&str`, integer and float types
+/// -   [`widget::CheckBoxBare`] (disabled) for the bool type
 #[derive(Clone, Debug, Default)]
-pub struct DefaultView;
+pub struct Default;
 
 macro_rules! impl_via_to_string {
     ($t:ty) => {
-        impl<K> View<K, $t> for DefaultView {
+        impl<K> Driver<K, $t> for Default {
             type Widget = Label<String>;
-            fn default(&self) -> Self::Widget where $t: Default {
+            fn default(&self) -> Self::Widget where $t: std::default::Default {
                 Label::new("".to_string())
             }
             fn new(&self, _: K, data: $t) -> Self::Widget {
@@ -72,13 +80,13 @@ impl_via_to_string!(i8, i16, i32, i64, i128, isize);
 impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
 
-impl<K> View<K, bool> for DefaultView {
+impl<K> Driver<K, bool> for Default {
     type Widget = CheckBoxBare<VoidMsg>;
     fn default(&self) -> Self::Widget {
-        CheckBoxBare::new()
+        CheckBoxBare::new().with_disabled(true)
     }
     fn new(&self, _: K, data: bool) -> Self::Widget {
-        CheckBoxBare::new().with_state(data)
+        CheckBoxBare::new().with_state(data).with_disabled(true)
     }
     fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
         widget.set_bool(data)
@@ -90,47 +98,47 @@ impl<K> View<K, bool> for DefaultView {
 
 /// Custom view widget constructor
 ///
-/// This struct implements [`View`], using a the parametrised widget type.
+/// This struct implements [`Driver`], using a the parametrised widget type.
 /// This struct is only usable where no extra data (such as a label) is required.
 #[derive(Debug)]
-pub struct WidgetView<W: Widget> {
+pub struct Widget<W: kas::Widget> {
     _pd: PhantomData<W>,
 }
-impl<W: Widget> Clone for WidgetView<W> {
+impl<W: kas::Widget> Clone for Widget<W> {
     fn clone(&self) -> Self {
-        Default::default()
+        std::default::Default::default()
     }
 }
-impl<W: Widget> Default for WidgetView<W> {
+impl<W: kas::Widget> std::default::Default for Widget<W> {
     fn default() -> Self {
-        WidgetView {
-            _pd: Default::default(),
+        Widget {
+            _pd: PhantomData::default(),
         }
     }
 }
 
 // TODO: we would like to enable this impl, but can't (since adding K parameter)
 // due to conflicting impls (coherence issue — rust#19032).
-// impl<K, T> View<K, T> for WidgetView<<DefaultView as View<K, T>>::Widget>
+// impl<K, T> Driver<K, T> for Widget<<Default as Driver<K, T>>::Widget>
 // where
-//     DefaultView: View<K, T>,
+//     Default: Driver<K, T>,
 // {
-//     type Widget = <DefaultView as View<K, T>>::Widget;
+//     type Widget = <Default as Driver<K, T>>::Widget;
 //     fn default(&self) -> Self::Widget {
-//         DefaultView.default()
+//         Default.default()
 //     }
 //     fn new(&self, key: K, data: T) -> Self::Widget {
-//         DefaultView.new(key, data)
+//         Default.new(key, data)
 //     }
 //     fn set(&self, widget: &mut Self::Widget, key: K, data: T) -> TkAction {
-//         DefaultView.set(widget, key, data)
+//         Default.set(widget, key, data)
 //     }
 //     fn get(&self, widget: &Self::Widget, key: K) -> Option<T> {
-//         Some(DefaultView.set(widget, key, data))
+//         Some(Default.set(widget, key, data))
 //     }
 // }
 
-impl<K, G: EditGuard + Default> View<K, String> for WidgetView<EditField<G>> {
+impl<K, G: EditGuard + std::default::Default> Driver<K, String> for Widget<EditField<G>> {
     type Widget = EditField<G>;
     fn default(&self) -> Self::Widget {
         let guard = G::default();
@@ -147,7 +155,7 @@ impl<K, G: EditGuard + Default> View<K, String> for WidgetView<EditField<G>> {
         Some(widget.get_string())
     }
 }
-impl<K, G: EditGuard + Default> View<K, String> for WidgetView<EditBox<G>> {
+impl<K, G: EditGuard + std::default::Default> Driver<K, String> for Widget<EditBox<G>> {
     type Widget = EditBox<G>;
     fn default(&self) -> Self::Widget {
         let guard = G::default();
@@ -165,7 +173,7 @@ impl<K, G: EditGuard + Default> View<K, String> for WidgetView<EditBox<G>> {
     }
 }
 
-impl<K, D: Directional + Default> View<K, f32> for WidgetView<ProgressBar<D>> {
+impl<K, D: Directional + std::default::Default> Driver<K, f32> for Widget<ProgressBar<D>> {
     type Widget = ProgressBar<D>;
     fn default(&self) -> Self::Widget {
         ProgressBar::new()
@@ -181,25 +189,25 @@ impl<K, D: Directional + Default> View<K, f32> for WidgetView<ProgressBar<D>> {
     }
 }
 
-/// [`CheckBox`] view widget constructor
+/// [`widget::CheckBox`] view widget constructor
 #[derive(Clone, Debug, Default)]
-pub struct CheckBoxView {
+pub struct CheckBox {
     label: AccelString,
 }
-impl CheckBoxView {
+impl CheckBox {
     /// Construct, with given `label`
     pub fn new<T: Into<AccelString>>(label: T) -> Self {
         let label = label.into();
-        CheckBoxView { label }
+        CheckBox { label }
     }
 }
-impl<K> View<K, bool> for CheckBoxView {
-    type Widget = CheckBox<VoidMsg>;
+impl<K> Driver<K, bool> for CheckBox {
+    type Widget = widget::CheckBox<VoidMsg>;
     fn default(&self) -> Self::Widget {
-        CheckBox::new(self.label.clone())
+        widget::CheckBox::new(self.label.clone())
     }
     fn new(&self, _: K, data: bool) -> Self::Widget {
-        <Self as View<K, bool>>::default(self).with_state(data)
+        <Self as Driver<K, bool>>::default(self).with_state(data)
     }
     fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
         widget.set_bool(data)
@@ -209,24 +217,24 @@ impl<K> View<K, bool> for CheckBoxView {
     }
 }
 
-/// [`RadioBoxBare`] view widget constructor
+/// [`widget::RadioBoxBare`] view widget constructor
 #[derive(Clone, Debug, Default)]
-pub struct RadioBoxBareView {
+pub struct RadioBoxBare {
     handle: UpdateHandle,
 }
-impl RadioBoxBareView {
+impl RadioBoxBare {
     /// Construct, with given `handle`
     pub fn new(handle: UpdateHandle) -> Self {
-        RadioBoxBareView { handle }
+        RadioBoxBare { handle }
     }
 }
-impl<K> View<K, bool> for RadioBoxBareView {
-    type Widget = RadioBoxBare<VoidMsg>;
+impl<K> Driver<K, bool> for RadioBoxBare {
+    type Widget = widget::RadioBoxBare<VoidMsg>;
     fn default(&self) -> Self::Widget {
-        RadioBoxBare::new(self.handle)
+        widget::RadioBoxBare::new(self.handle)
     }
     fn new(&self, _: K, data: bool) -> Self::Widget {
-        <Self as View<K, bool>>::default(self).with_state(data)
+        <Self as Driver<K, bool>>::default(self).with_state(data)
     }
     fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
         widget.set_bool(data)
@@ -236,26 +244,26 @@ impl<K> View<K, bool> for RadioBoxBareView {
     }
 }
 
-/// [`RadioBox`] view widget constructor
+/// [`widget::RadioBox`] view widget constructor
 #[derive(Clone, Debug, Default)]
-pub struct RadioBoxView {
+pub struct RadioBox {
     label: AccelString,
     handle: UpdateHandle,
 }
-impl RadioBoxView {
+impl RadioBox {
     /// Construct, with given `label` and `handle`
     pub fn new<T: Into<AccelString>>(label: T, handle: UpdateHandle) -> Self {
         let label = label.into();
-        RadioBoxView { label, handle }
+        RadioBox { label, handle }
     }
 }
-impl<K> View<K, bool> for RadioBoxView {
-    type Widget = RadioBox<VoidMsg>;
+impl<K> Driver<K, bool> for RadioBox {
+    type Widget = widget::RadioBox<VoidMsg>;
     fn default(&self) -> Self::Widget {
-        RadioBox::new(self.label.clone(), self.handle)
+        widget::RadioBox::new(self.label.clone(), self.handle)
     }
     fn new(&self, _: K, data: bool) -> Self::Widget {
-        <Self as View<K, bool>>::default(self).with_state(data)
+        <Self as Driver<K, bool>>::default(self).with_state(data)
     }
     fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
         widget.set_bool(data)
@@ -265,18 +273,18 @@ impl<K> View<K, bool> for RadioBoxView {
     }
 }
 
-/// [`Slider`] view widget constructor
+/// [`widget::Slider`] view widget constructor
 #[derive(Clone, Debug, Default)]
-pub struct SliderView<T: SliderType, D: Directional> {
+pub struct Slider<T: SliderType, D: Directional> {
     min: T,
     max: T,
     step: T,
     direction: D,
 }
-impl<T: SliderType, D: Directional + Default> SliderView<T, D> {
+impl<T: SliderType, D: Directional + std::default::Default> Slider<T, D> {
     /// Construct, with given `min`, `max` and `step` (see [`Slider::new`])
     pub fn new(min: T, max: T, step: T) -> Self {
-        SliderView {
+        Slider {
             min,
             max,
             step,
@@ -284,10 +292,10 @@ impl<T: SliderType, D: Directional + Default> SliderView<T, D> {
         }
     }
 }
-impl<T: SliderType, D: Directional> SliderView<T, D> {
+impl<T: SliderType, D: Directional> Slider<T, D> {
     /// Construct, with given `min`, `max`, `step` and `direction` (see [`Slider::new_with_direction`])
     pub fn new_with_direction(min: T, max: T, step: T, direction: D) -> Self {
-        SliderView {
+        Slider {
             min,
             max,
             step,
@@ -295,13 +303,14 @@ impl<T: SliderType, D: Directional> SliderView<T, D> {
         }
     }
 }
-impl<K, T: SliderType, D: Directional> View<K, T> for SliderView<T, D> {
-    type Widget = Slider<T, D>;
+impl<K, T: SliderType, D: Directional> Driver<K, T> for Slider<T, D> {
+    type Widget = widget::Slider<T, D>;
     fn default(&self) -> Self::Widget {
-        Slider::new_with_direction(self.min, self.max, self.step, self.direction)
+        widget::Slider::new_with_direction(self.min, self.max, self.step, self.direction)
     }
     fn new(&self, _: K, data: T) -> Self::Widget {
-        Slider::new_with_direction(self.min, self.max, self.step, self.direction).with_value(data)
+        widget::Slider::new_with_direction(self.min, self.max, self.step, self.direction)
+            .with_value(data)
     }
     fn set(&self, widget: &mut Self::Widget, _: K, data: T) -> TkAction {
         widget.set_value(data)
