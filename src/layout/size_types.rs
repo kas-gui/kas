@@ -127,8 +127,8 @@ impl FrameRules {
 
     /// Construct (symmetric on axis)
     #[inline]
-    pub fn new_sym(size: i32, inner_margin: i32, outer_margins: (u16, u16)) -> Self {
-        Self::new(size, size, inner_margin, outer_margins)
+    pub fn new_sym(size: i32, inner_margin: i32, outer_margin: u16) -> Self {
+        Self::new(size, size, inner_margin, (outer_margin, outer_margin))
     }
 
     /// Generate rules for content surrounded by this frame

@@ -142,21 +142,21 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     }
 
     fn frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.dims.frame, 0, (0, 0))
+        FrameRules::new_sym(self.dims.frame, 0, 0)
     }
     fn menu_frame(&self, vert: bool) -> FrameRules {
         let mut size = self.dims.frame;
         if vert {
             size /= 2;
         }
-        FrameRules::new_sym(size, 0, (0, 0))
+        FrameRules::new_sym(size, 0, 0)
     }
     fn separator(&self) -> Size {
         Size::splat(self.dims.frame)
     }
 
     fn nav_frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.dims.inner_margin.into(), 0, (0, 0))
+        FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0)
     }
 
     fn inner_margin(&self) -> Size {
@@ -238,13 +238,13 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
     fn button_surround(&self, _vert: bool) -> FrameRules {
         let inner = self.dims.inner_margin.into();
         let outer = self.dims.outer_margin;
-        FrameRules::new_sym(self.dims.frame, inner, (outer, outer))
+        FrameRules::new_sym(self.dims.frame, inner, outer)
     }
 
     fn edit_surround(&self, _vert: bool) -> FrameRules {
         let inner = self.dims.inner_margin.into();
         let outer = 0;
-        FrameRules::new_sym(self.dims.frame, inner, (outer, outer))
+        FrameRules::new_sym(self.dims.frame, inner, outer)
     }
 
     fn checkbox(&self) -> Size {

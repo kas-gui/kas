@@ -367,7 +367,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Layout for ListVie
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
-        let frame = FrameRules::new_sym(0, inner_margin, (0, 0));
+        let frame = FrameRules::new_sym(0, inner_margin, 0);
 
         // We initialise the first widget if possible, otherwise use V::Widget::default()
         if self.widgets.is_empty() {
