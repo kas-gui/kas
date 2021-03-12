@@ -192,7 +192,7 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
             }
 
             match r {
-                Response::None | Response::Update => Response::None,
+                Response::None => Response::None,
                 Response::Focus(rect) => Response::Focus(rect),
                 Response::Unhandled => match event {
                     Event::Command(key, _) if self.popup_id.is_some() => {
@@ -225,6 +225,10 @@ impl<D: Directional, W: Menu> event::SendEvent for SubMenu<D, W> {
                     }
                     _ => Response::Unhandled,
                 },
+                Response::Update | Response::Select => {
+                    self.menu_path(mgr, Some(id));
+                    Response::None
+                }
                 Response::Msg((_, msg)) => {
                     self.close_menu(mgr);
                     Response::Msg(msg)

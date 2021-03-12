@@ -5,7 +5,7 @@
 
 //! Single view widget
 
-use super::{DefaultView, View};
+use super::driver::{self, Driver};
 use kas::data::SingleData;
 use kas::prelude::*;
 use std::fmt::{self};
@@ -15,7 +15,7 @@ use std::fmt::{self};
 #[widget(config=noauto)]
 #[layout(single)]
 #[handler(handle=noauto, send=noauto)]
-pub struct SingleView<D: SingleData + 'static, V: View<(), D::Item> = DefaultView> {
+pub struct SingleView<D: SingleData + 'static, V: Driver<(), D::Item> = driver::Default> {
     #[widget_core]
     core: CoreData,
     view: V,
@@ -24,7 +24,7 @@ pub struct SingleView<D: SingleData + 'static, V: View<(), D::Item> = DefaultVie
     child: V::Widget,
 }
 
-impl<D: SingleData + 'static + Default, V: View<(), D::Item> + Default> Default
+impl<D: SingleData + 'static + Default, V: Driver<(), D::Item> + Default> Default
     for SingleView<D, V>
 {
     fn default() -> Self {
@@ -39,13 +39,13 @@ impl<D: SingleData + 'static + Default, V: View<(), D::Item> + Default> Default
         }
     }
 }
-impl<D: SingleData + 'static, V: View<(), D::Item> + Default> SingleView<D, V> {
+impl<D: SingleData + 'static, V: Driver<(), D::Item> + Default> SingleView<D, V> {
     /// Construct a new instance
     pub fn new(data: D) -> Self {
         Self::new_with_view(<V as Default>::default(), data)
     }
 }
-impl<D: SingleData + 'static, V: View<(), D::Item>> SingleView<D, V> {
+impl<D: SingleData + 'static, V: Driver<(), D::Item>> SingleView<D, V> {
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: D) -> Self {
         let child = view.new((), data.get_cloned());
@@ -92,7 +92,7 @@ impl<D: SingleData + 'static, V: View<(), D::Item>> SingleView<D, V> {
     }
 }
 
-impl<D: SingleData + 'static, V: View<(), D::Item>> WidgetConfig for SingleView<D, V> {
+impl<D: SingleData + 'static, V: Driver<(), D::Item>> WidgetConfig for SingleView<D, V> {
     fn configure(&mut self, mgr: &mut Manager) {
         self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
@@ -101,7 +101,7 @@ impl<D: SingleData + 'static, V: View<(), D::Item>> WidgetConfig for SingleView<
     }
 }
 
-impl<D: SingleData + 'static, V: View<(), D::Item>> Handler for SingleView<D, V> {
+impl<D: SingleData + 'static, V: Driver<(), D::Item>> Handler for SingleView<D, V> {
     type Msg = <V::Widget as Handler>::Msg;
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
@@ -115,7 +115,7 @@ impl<D: SingleData + 'static, V: View<(), D::Item>> Handler for SingleView<D, V>
     }
 }
 
-impl<D: SingleData + 'static, V: View<(), D::Item>> SendEvent for SingleView<D, V> {
+impl<D: SingleData + 'static, V: Driver<(), D::Item>> SendEvent for SingleView<D, V> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled;
@@ -139,7 +139,7 @@ impl<D: SingleData + 'static, V: View<(), D::Item>> SendEvent for SingleView<D, 
     }
 }
 
-impl<D: SingleData + 'static, V: View<(), D::Item>> fmt::Debug for SingleView<D, V> {
+impl<D: SingleData + 'static, V: Driver<(), D::Item>> fmt::Debug for SingleView<D, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

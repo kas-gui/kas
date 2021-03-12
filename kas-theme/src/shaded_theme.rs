@@ -54,7 +54,7 @@ impl ShadedTheme {
 
 const DIMS: DimensionsParams = DimensionsParams {
     outer_margin: 6.0,
-    inner_margin: 1.0,
+    inner_margin: 1.2,
     text_margin: 2.0,
     frame_size: 5.0,
     button_frame: 5.0,
@@ -286,6 +286,10 @@ where
         let col = self.cols.background;
         self.draw
             .shaded_round_frame(self.pass, outer, inner, norm, col);
+    }
+
+    fn nav_frame(&mut self, rect: Rect, state: InputState) {
+        self.as_flat().nav_frame(rect, state);
     }
 
     fn selection_box(&mut self, rect: Rect) {

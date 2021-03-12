@@ -5,15 +5,15 @@
 
 //! Filter list example
 
-use kas::data::ListData;
+use kas::data::{ListData, SimpleCaseInsensitiveFilter};
 use kas::dir::Down;
 use kas::event::UpdateHandle;
 use kas::prelude::*;
-use kas::widget::view::{ListMsg, ListView, SelectionMode, SimpleCaseInsensitiveFilter};
+use kas::widget::view::{driver, ListMsg, ListView, SelectionMode};
 use kas::widget::{EditBox, Label, RadioBox, ScrollBars, Window};
 
 mod data {
-    use kas::widget::view::{FilteredList, SimpleCaseInsensitiveFilter};
+    use kas::data::{FilteredList, SimpleCaseInsensitiveFilter};
     use std::rc::Rc;
 
     type SC = &'static [&'static str];
@@ -71,7 +71,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     mgr.trigger_update(update, 0);
                     None
                 }),
-                #[widget(handler = select)] list: ScrollBars<ListView<Down, data::Shared>> =
+                #[widget(handler = select)] list:
+                    ScrollBars<ListView<Down, data::Shared, driver::DefaultNav>> =
                     ScrollBars::new(ListView::new(data)),
             }
             impl {

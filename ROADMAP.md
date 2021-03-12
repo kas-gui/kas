@@ -128,6 +128,18 @@ Support display of images in the GUI:
 Possibly as part of this topic, implement colour management
 [#59](https://github.com/kas-gui/kas/issues/59).
 
+### Text: glyph caching and rasterisation
+
+Currently we use `wgpu_glyph` for glyph rasterisation and caching (which uses
+`glyph_brush` which uses `ab_glyph`). We already do our own glyph layout, so
+could perhaps move up the dependency tree or rewrite part of it. A few steps are
+involved, from font loading (already part of `kas-text`) to rasterising (several
+existing crates do this) to cache and texture management.
+
+Alongside this we could enable some extra features: sub-pixel precision for more
+accurate layout at low DPI, rotated and flipped text, fade-out where text is
+partially obscured.
+
 ### Configuration and resource management
 
 Currently KAS has an ad-hoc font loader and fixed colour-schemes and shortcuts.

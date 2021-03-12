@@ -58,7 +58,7 @@ impl FlatTheme {
 
 const DIMS: DimensionsParams = DimensionsParams {
     outer_margin: 8.0,
-    inner_margin: 1.0,
+    inner_margin: 1.2,
     text_margin: 2.0,
     frame_size: 4.0,
     button_frame: 6.0,
@@ -267,6 +267,14 @@ impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         self.draw
             .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
+    }
+
+    fn nav_frame(&mut self, rect: Rect, state: InputState) {
+        if let Some(col) = self.cols.nav_region(state) {
+            let outer = Quad::from(rect + self.offset);
+            let inner = outer.shrink(self.window.dims.inner_margin as f32);
+            self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
+        }
     }
 
     fn selection_box(&mut self, rect: Rect) {

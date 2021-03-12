@@ -49,7 +49,6 @@ pub struct Dimensions {
     pub font_marker_width: f32,
     pub line_height: i32,
     pub min_line_length: i32,
-    pub ideal_line_length: i32,
     pub outer_margin: u16,
     pub inner_margin: u16,
     pub text_margin: u16,
@@ -79,7 +78,6 @@ impl Dimensions {
             font_marker_width: (1.6 * scale_factor).round().max(1.0),
             line_height,
             min_line_length: (8.0 * dpem).cast_nearest(),
-            ideal_line_length: (24.0 * dpem).cast_nearest(),
             outer_margin,
             inner_margin,
             text_margin,
@@ -157,6 +155,10 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         Size::splat(self.dims.frame)
     }
 
+    fn nav_frame(&self, _vert: bool) -> FrameRules {
+        FrameRules::new_sym(self.dims.inner_margin.into(), 0, (0, 0))
+    }
+
     fn inner_margin(&self) -> Size {
         Size::splat(self.dims.inner_margin.into())
     }
@@ -198,10 +200,10 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         if axis.is_horizontal() {
             let bound = i32::conv_ceil(required.0);
             let min = self.dims.min_line_length;
-            let ideal = self.dims.ideal_line_length;
             let (min, ideal) = match class {
-                TextClass::Edit | TextClass::EditMulti => (min, ideal),
-                _ => (bound.min(min), bound.min(ideal)),
+                TextClass::Edit => (min, 2 * min),
+                TextClass::EditMulti => (min, 3 * min),
+                _ => (bound.min(min), bound.min(3 * min)),
             };
             // NOTE: using different variable-width stretch policies here can
             // cause problems (e.g. edit boxes greedily consuming too much

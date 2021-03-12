@@ -137,6 +137,9 @@ pub trait SizeHandle {
     /// Size of a separator frame between items
     fn separator(&self) -> Size;
 
+    /// Size of a navigation highlight margin around a child widget
+    fn nav_frame(&self, vert: bool) -> FrameRules;
+
     /// The margin around content within a widget
     ///
     /// Though inner margins are *usually* empty, they are sometimes drawn to,
@@ -289,6 +292,12 @@ pub trait DrawHandle {
 
     /// Draw a separator in the given `rect`
     fn separator(&mut self, rect: Rect);
+
+    /// Draw a navigation highlight frame in the given `rect`
+    ///
+    /// This is a margin area which may have a some type of navigation highlight
+    /// drawn in it, or may be empty.
+    fn nav_frame(&mut self, rect: Rect, state: InputState);
 
     /// Draw a selection box
     ///
@@ -469,6 +478,9 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn separator(&self) -> Size {
         self.deref().separator()
     }
+    fn nav_frame(&self, vert: bool) -> FrameRules {
+        self.deref().nav_frame(vert)
+    }
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
     }
@@ -532,6 +544,9 @@ where
     }
     fn separator(&self) -> Size {
         self.deref().separator()
+    }
+    fn nav_frame(&self, vert: bool) -> FrameRules {
+        self.deref().nav_frame(vert)
     }
     fn inner_margin(&self) -> Size {
         self.deref().inner_margin()
@@ -606,6 +621,9 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     }
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
+    }
+    fn nav_frame(&mut self, rect: Rect, state: InputState) {
+        self.deref_mut().nav_frame(rect, state);
     }
     fn selection_box(&mut self, rect: Rect) {
         self.deref_mut().selection_box(rect);
@@ -708,6 +726,9 @@ where
     }
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
+    }
+    fn nav_frame(&mut self, rect: Rect, state: InputState) {
+        self.deref_mut().nav_frame(rect, state);
     }
     fn selection_box(&mut self, rect: Rect) {
         self.deref_mut().selection_box(rect);

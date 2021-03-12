@@ -20,7 +20,7 @@
 use kas::data::*;
 use kas::event::UpdateHandle;
 use kas::prelude::*;
-use kas::widget::view::{ListMsg, ListView, View};
+use kas::widget::view::{Driver, ListMsg, ListView};
 use kas::widget::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -217,8 +217,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
 
     let data = MyData::new(3);
     #[derive(Debug, Default)]
-    struct MyView;
-    impl View<usize, (bool, String)> for MyView {
+    struct MyDriver;
+    impl Driver<usize, (bool, String)> for MyDriver {
         type Widget = ListEntry;
 
         fn default(&self) -> Self::Widget {
@@ -237,7 +237,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             Some((b, s))
         }
     }
-    type MyList = ListView<kas::dir::Down, MyData, MyView>;
+    type MyList = ListView<kas::dir::Down, MyData, MyDriver>;
 
     let window = Window::new(
         "Dynamic widget demo",

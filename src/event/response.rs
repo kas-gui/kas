@@ -31,6 +31,8 @@ pub enum Response<M> {
     Unhandled,
     /// (Keyboard) focus has changed. This region should be made visible.
     Focus(Rect),
+    /// Widget wishes to be selected (or have selection status toggled)
+    Select,
     /// Notify of update to widget's data
     ///
     /// Widgets which hold editable data should return either this or
@@ -124,6 +126,7 @@ impl<M> Response<M> {
             None => Ok(None),
             Unhandled => Ok(Unhandled),
             Focus(rect) => Ok(Focus(rect)),
+            Select => Ok(Select),
             Update => Ok(Update),
             Msg(m) => Err(m),
         }
