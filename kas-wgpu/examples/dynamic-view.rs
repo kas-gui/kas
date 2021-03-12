@@ -18,9 +18,9 @@
 //!     long), but in many ways still performs well in release mode
 
 use kas::data::*;
-use kas::event::UpdateHandle;
+use kas::event::{ChildMsg, UpdateHandle};
 use kas::prelude::*;
-use kas::widget::view::{Driver, ListMsg, ListView};
+use kas::widget::view::{Driver, ListView};
 use kas::widget::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -262,14 +262,14 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     mgr.trigger_update(handle, 0);
                     Response::None
                 }
-                fn set_radio(&mut self, mgr: &mut Manager, msg: ListMsg<usize, EntryMsg>) -> Response<VoidMsg> {
+                fn set_radio(&mut self, mgr: &mut Manager, msg: ChildMsg<usize, EntryMsg>) -> Response<VoidMsg> {
                     match msg {
-                        ListMsg::Select(_) | ListMsg::Deselect(_) => (),
-                        ListMsg::Child(n, EntryMsg::Select) => {
+                        ChildMsg::Select(_) | ChildMsg::Deselect(_) => (),
+                        ChildMsg::Child(n, EntryMsg::Select) => {
                             let text = self.list.data_mut().set_active(n);
                             *mgr |= self.display.set_string(text);
                         }
-                        ListMsg::Child(n, EntryMsg::Update(text)) => {
+                        ChildMsg::Child(n, EntryMsg::Update(text)) => {
                             if n == self.list.data().get_active() {
                                 *mgr |= self.display.set_string(text);
                             }

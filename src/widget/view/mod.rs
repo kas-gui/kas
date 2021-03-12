@@ -73,7 +73,7 @@ mod single_view;
 pub mod driver;
 
 pub use driver::Driver;
-pub use list_view::{ListMsg, ListView};
+pub use list_view::ListView;
 pub use shared_data::SharedRc;
 pub use single_view::SingleView;
 

@@ -5,9 +5,9 @@
 
 //! List view widget
 
-use super::{SelectionMode, driver, Driver};
+use super::{driver, Driver, SelectionMode};
 use kas::data::ListData;
-use kas::event::{CursorIcon, GrabMode, PressSource};
+use kas::event::{ChildMsg, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 #[allow(unused)] // doc links
@@ -24,32 +24,12 @@ struct WidgetData<K, W> {
     widget: W,
 }
 
-/// Message type of [`ListView`]
-#[derive(Clone, Debug, VoidMsg)]
-pub enum ListMsg<K, M> {
-    Select(K),
-    Deselect(K),
-    Child(K, M),
-}
-
-impl<K, M> From<Response<ListMsg<K, M>>> for Response<M> {
-    fn from(r: Response<ListMsg<K, M>>) -> Self {
-        match Response::try_from(r) {
-            Ok(r) => r,
-            Err(msg) => match msg {
-                ListMsg::Child(_, msg) => Response::Msg(msg),
-                _ => Response::None,
-            },
-        }
-    }
-}
-
 /// List view widget
 ///
 /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
 /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
 #[derive(Clone, Debug, Widget)]
-#[handler(send=noauto, msg=ListMsg<T::Key, <V::Widget as Handler>::Msg>)]
+#[handler(send=noauto, msg=ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
 #[widget(children=noauto, config=noauto)]
 pub struct ListView<
     D: Directional,
@@ -216,7 +196,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> 
 
     /// Clear all selected items
     ///
-    /// Does not send [`ListMsg`] responses.
+    /// Does not send [`ChildMsg`] responses.
     pub fn clear_selected(&mut self) {
         self.selection.clear();
     }
@@ -227,7 +207,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> 
     /// Fails if selection mode does not permit selection or if the key is
     /// invalid.
     ///
-    /// Does not send [`ListMsg`] responses.
+    /// Does not send [`ChildMsg`] responses.
     pub fn select(&mut self, key: T::Key) -> Result<bool, ()> {
         match self.sel_mode {
             SelectionMode::None => return Err(()),
@@ -245,7 +225,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> 
     /// Returns `true` if deselected, `false` if not previously selected.
     /// Also returns `false` on invalid keys.
     ///
-    /// Does not send [`ListMsg`] responses.
+    /// Does not send [`ChildMsg`] responses.
     pub fn deselect(&mut self, key: &T::Key) -> bool {
         self.selection.remove(key)
     }
@@ -593,7 +573,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> SendEvent for List
                         }
                         return r
                             .try_into()
-                            .unwrap_or_else(|msg| Response::Msg(ListMsg::Child(key, msg)));
+                            .unwrap_or_else(|msg| Response::Msg(ChildMsg::Child(key, msg)));
                     } else {
                         log::warn!("ListView: response from widget with no key");
                         return Response::None;
@@ -620,7 +600,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> SendEvent for List
                             self.selection.clear();
                             if let Some(ref key) = self.press_target {
                                 self.selection.insert(key.clone());
-                                ListMsg::Select(key.clone()).into()
+                                ChildMsg::Select(key.clone()).into()
                             } else {
                                 Response::None
                             }
@@ -628,10 +608,10 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> SendEvent for List
                         SelectionMode::Multiple => {
                             if let Some(ref key) = self.press_target {
                                 if self.selection.remove(key) {
-                                    ListMsg::Deselect(key.clone()).into()
+                                    ChildMsg::Deselect(key.clone()).into()
                                 } else {
                                     self.selection.insert(key.clone());
-                                    ListMsg::Select(key.clone()).into()
+                                    ChildMsg::Select(key.clone()).into()
                                 }
                             } else {
                                 Response::None

@@ -156,3 +156,25 @@ impl_void_msg!(i8, i16, i32, i64, i128, isize);
 impl_void_msg!(f32, f64);
 impl_void_msg!(&'static str, String);
 impl_void_msg!(std::time::Duration, std::time::Instant);
+
+/// A keyed message from a child
+///
+/// This type is used by some containers to forward messages from children.
+#[derive(Clone, Debug, kas::macros::VoidMsg)]
+pub enum ChildMsg<K, M> {
+    Select(K),
+    Deselect(K),
+    Child(K, M),
+}
+
+impl<K, M> From<Response<ChildMsg<K, M>>> for Response<M> {
+    fn from(r: Response<ChildMsg<K, M>>) -> Self {
+        match Response::try_from(r) {
+            Ok(r) => r,
+            Err(msg) => match msg {
+                ChildMsg::Child(_, msg) => Response::Msg(msg),
+                _ => Response::None,
+            },
+        }
+    }
+}
