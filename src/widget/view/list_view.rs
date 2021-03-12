@@ -384,7 +384,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Layout for ListVie
             self.child_size_min = rules.min_size();
             self.child_size_ideal = rules.ideal_size();
             let m = rules.margins_i32();
-            self.child_inter_margin = (m.0 + m.1).max(inner_margin);
+            self.child_inter_margin = m.0.max(m.1).max(inner_margin);
             rules.multiply_with_margin(2, self.ideal_visible);
             rules.set_stretch(rules.stretch().max(Stretch::High));
         }

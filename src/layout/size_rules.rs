@@ -279,7 +279,7 @@ impl SizeRules {
     ///
     /// Panics if either factor is 0.
     pub fn multiply_with_margin(&mut self, min_factor: i32, ideal_factor: i32) {
-        let margin = i32::from(self.m.0) + i32::from(self.m.1);
+        let margin = i32::from(self.m.0).max(i32::from(self.m.1));
         assert!(min_factor > 0);
         assert!(ideal_factor > 0);
         self.a = min_factor * self.a + (min_factor - 1) * margin;
