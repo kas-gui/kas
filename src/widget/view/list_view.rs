@@ -583,6 +583,22 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> SendEvent for List
                     self.update_widgets(mgr);
                     return Response::Focus(rect);
                 }
+                (_, Some(key), Response::Select) => {
+                    match self.sel_mode {
+                        SelectionMode::None => (),
+                        SelectionMode::Single => {
+                            self.selection.clear();
+                            self.selection.insert(key);
+                        }
+                        SelectionMode::Multiple => {
+                            if !self.selection.remove(&key) {
+                                self.selection.insert(key);
+                            }
+                        }
+                    }
+                    return Response::None;
+                }
+                (_, None, Response::Select) => return Response::None,
                 (i, key, r @ Response::Msg(_)) | (i, key, r @ Response::Update) => {
                     if let Some(key) = key {
                         if let Some(item) = self.view.get(&self.widgets[i].widget, &key) {

@@ -230,11 +230,12 @@ impl<M: 'static> ComboBox<M> {
     fn map_response(
         &mut self,
         mgr: &mut Manager,
+        id: WidgetId,
         event: Event,
         r: Response<(usize, ())>,
     ) -> Response<M> {
         match r {
-            Response::None | Response::Update => Response::None,
+            Response::None => Response::None,
             Response::Unhandled => match event {
                 Event::Command(cmd, _) => {
                     let next = |mgr: &mut Manager, s, clr, rev| {
@@ -255,6 +256,22 @@ impl<M: 'static> ComboBox<M> {
                 _ => Response::Unhandled,
             },
             Response::Focus(x) => Response::Focus(x),
+            Response::Update | Response::Select => {
+                if let Some(id) = self.popup_id {
+                    mgr.close_window(id);
+                }
+                if let Some(index) = self.popup.inner.find_child_index(id) {
+                    if index != self.active {
+                        *mgr |= self.set_active(index);
+                        return if let Some(ref f) = self.on_select {
+                            Response::update_or_msg((f)(mgr, index))
+                        } else {
+                            Response::Update
+                        };
+                    }
+                }
+                Response::None
+            }
             Response::Msg((index, ())) => {
                 *mgr |= self.set_active(index);
                 if let Some(id) = self.popup_id {
@@ -341,7 +358,7 @@ impl<M: 'static> event::Handler for ComboBox<M> {
                         }
                     } else if self.popup_id.is_some() && self.popup.is_ancestor_of(id) {
                         let r = self.popup.send(mgr, id, Event::Activate);
-                        return self.map_response(mgr, event, r);
+                        return self.map_response(mgr, id, event, r);
                     }
                 }
                 if let Some(id) = self.popup_id {
@@ -374,7 +391,7 @@ impl<M: 'static> event::SendEvent for ComboBox<M> {
 
         if id <= self.popup.id() {
             let r = self.popup.send(mgr, id, event.clone());
-            self.map_response(mgr, event, r)
+            self.map_response(mgr, id, event, r)
         } else {
             Manager::handle_generic(self, mgr, event)
         }

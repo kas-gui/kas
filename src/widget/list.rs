@@ -368,6 +368,18 @@ impl<D: Directional, W: Widget> List<D, W> {
             index: 0,
         }
     }
+
+    /// Get the index of the child which is an ancestor of `id`, if any
+    pub fn find_child_index(&self, id: WidgetId) -> Option<usize> {
+        if id >= self.first_id {
+            for (i, child) in self.widgets.iter().enumerate() {
+                if id <= child.id() {
+                    return Some(i);
+                }
+            }
+        }
+        None
+    }
 }
 
 impl<D: Directional, W: Widget> Index<usize> for List<D, W> {

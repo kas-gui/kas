@@ -12,8 +12,8 @@ use kas::{event, prelude::*};
 /// This widget is a wrapper that can be used to make a static widget such as a
 /// `Label` navigable with the keyboard.
 #[derive(Clone, Debug, Default, Widget)]
+#[handler(handle=noauto)]
 #[widget(config(key_nav = true))]
-#[handler(msg = <W as Handler>::Msg)]
 pub struct NavFrame<W: Widget> {
     #[widget_core]
     core: CoreData,
@@ -65,6 +65,17 @@ impl<W: Widget> Layout for NavFrame<W> {
         let input_state = self.input_state(mgr, disabled);
         draw_handle.nav_frame(self.rect(), input_state);
         self.inner.draw(draw_handle, mgr, input_state.disabled);
+    }
+}
+
+impl<W: Widget> event::Handler for NavFrame<W> {
+    type Msg = <W as Handler>::Msg;
+
+    fn handle(&mut self, _mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
+        match event {
+            Event::Activate => Response::Select,
+            _ => Response::Unhandled,
+        }
     }
 }
 
