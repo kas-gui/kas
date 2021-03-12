@@ -155,6 +155,10 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         Size::splat(self.dims.frame)
     }
 
+    fn nav_frame(&self, _vert: bool) -> FrameRules {
+        FrameRules::new_sym(self.dims.inner_margin.into(), 0, (0, 0))
+    }
+
     fn inner_margin(&self) -> Size {
         Size::splat(self.dims.inner_margin.into())
     }

@@ -54,6 +54,17 @@ pub trait Driver<K, T>: Debug + 'static {
 #[derive(Clone, Debug, Default)]
 pub struct Default;
 
+/// Default view widget constructor supporting keyboard navigation
+///
+/// This struct implements [`Driver`], using a default widget for the data type
+/// which also supports keyboard navigation:
+///
+/// -   [`widget::NavFrame`] around a [`widget::Label`] for `String`, `&str`,
+///     integer and float types
+/// -   [`widget::CheckBoxBare`] (disabled) for the bool type
+#[derive(Clone, Debug, Default)]
+pub struct DefaultNav;
+
 macro_rules! impl_via_to_string {
     ($t:ty) => {
         impl<K> Driver<K, $t> for Default {
@@ -63,6 +74,19 @@ macro_rules! impl_via_to_string {
             }
             fn new(&self, _: K, data: $t) -> Self::Widget {
                 Label::new(data.to_string())
+            }
+            fn set(&self, widget: &mut Self::Widget, _: K, data: $t) -> TkAction {
+                widget.set_string(data.to_string())
+            }
+            fn get(&self, _: &Self::Widget, _: &K) -> Option<$t> { None }
+        }
+        impl<K> Driver<K, $t> for DefaultNav {
+            type Widget = NavFrame<Label<String>>;
+            fn default(&self) -> Self::Widget where $t: std::default::Default {
+                NavFrame::new(Label::new("".to_string()))
+            }
+            fn new(&self, _: K, data: $t) -> Self::Widget {
+                NavFrame::new(Label::new(data.to_string()))
             }
             fn set(&self, widget: &mut Self::Widget, _: K, data: $t) -> TkAction {
                 widget.set_string(data.to_string())
@@ -81,6 +105,22 @@ impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
 
 impl<K> Driver<K, bool> for Default {
+    type Widget = CheckBoxBare<VoidMsg>;
+    fn default(&self) -> Self::Widget {
+        CheckBoxBare::new().with_disabled(true)
+    }
+    fn new(&self, _: K, data: bool) -> Self::Widget {
+        CheckBoxBare::new().with_state(data).with_disabled(true)
+    }
+    fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
+        widget.set_bool(data)
+    }
+    fn get(&self, widget: &Self::Widget, _: &K) -> Option<bool> {
+        Some(widget.get_bool())
+    }
+}
+
+impl<K> Driver<K, bool> for DefaultNav {
     type Widget = CheckBoxBare<VoidMsg>;
     fn default(&self) -> Self::Widget {
         CheckBoxBare::new().with_disabled(true)
