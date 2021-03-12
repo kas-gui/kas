@@ -9,8 +9,8 @@
 //! allowing referal to e.g. `driver::Default`.
 
 use kas::event::UpdateHandle;
-use kas::widget::{self, *};
 use kas::prelude::*;
+use kas::widget::{self, *};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 

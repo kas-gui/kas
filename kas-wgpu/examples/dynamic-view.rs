@@ -20,7 +20,7 @@
 use kas::data::*;
 use kas::event::UpdateHandle;
 use kas::prelude::*;
-use kas::widget::view::{ListMsg, ListView, Driver};
+use kas::widget::view::{Driver, ListMsg, ListView};
 use kas::widget::*;
 use std::cell::RefCell;
 use std::collections::HashMap;

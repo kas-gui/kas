@@ -20,7 +20,7 @@
 //!
 //! ## Adapters
 //!
-//! -   [`FilteredList`] presents a filtered list over a [`ListData`]
+//! -   [`kas::data::FilteredList`] presents a filtered list over a [`ListData`]
 //!
 //! # View widgets and drivers
 //!
@@ -65,7 +65,6 @@
 #[allow(unused)]
 use kas::data::{ListData, SingleData};
 
-mod filter;
 mod list_view;
 mod shared_data;
 mod single_view;
@@ -73,7 +72,6 @@ mod single_view;
 pub mod driver;
 
 pub use driver::Driver;
-pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
 pub use list_view::{ListMsg, ListView, SelectionMode};
 pub use shared_data::SharedRc;
 pub use single_view::SingleView;

@@ -7,6 +7,13 @@
 //!
 //! These traits are used for "view widgets", enabling views (and editing) over
 //! shared data.
+//!
+//! One adapter is included alongside these "data model" traits:
+//!
+//! -   [`FilteredList`] presents a filtered list over a [`ListData`]
+
+mod filter;
+pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
 
 use kas::event::{Manager, UpdateHandle};
 #[allow(unused)] // doc links
