@@ -5,7 +5,7 @@
 
 //! List view widget
 
-use super::driver::{self, Driver};
+use super::{SelectionMode, driver, Driver};
 use kas::data::ListData;
 use kas::event::{CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
@@ -17,19 +17,6 @@ use linear_map::set::LinearSet;
 use log::{debug, trace};
 use std::convert::TryFrom;
 use std::time::Instant;
-
-/// Selection mode used by [`ListView`]
-#[derive(Clone, Copy, Debug, VoidMsg)]
-pub enum SelectionMode {
-    None,
-    Single,
-    Multiple,
-}
-impl Default for SelectionMode {
-    fn default() -> Self {
-        SelectionMode::None
-    }
-}
 
 #[derive(Clone, Debug, Default)]
 struct WidgetData<K, W> {

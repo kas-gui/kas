@@ -64,6 +64,7 @@
 
 #[allow(unused)]
 use kas::data::{ListData, SingleData};
+use kas::macros::VoidMsg;
 
 mod list_view;
 mod shared_data;
@@ -72,6 +73,19 @@ mod single_view;
 pub mod driver;
 
 pub use driver::Driver;
-pub use list_view::{ListMsg, ListView, SelectionMode};
+pub use list_view::{ListMsg, ListView};
 pub use shared_data::SharedRc;
 pub use single_view::SingleView;
+
+/// Selection mode used by [`ListView`]
+#[derive(Clone, Copy, Debug, VoidMsg)]
+pub enum SelectionMode {
+    None,
+    Single,
+    Multiple,
+}
+impl Default for SelectionMode {
+    fn default() -> Self {
+        SelectionMode::None
+    }
+}
