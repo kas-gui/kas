@@ -5,7 +5,7 @@
 
 //! Cursor gallery
 
-use kas::event::{CursorIcon, VoidMsg};
+use kas::event::CursorIcon;
 use kas::prelude::*;
 use kas::widget::{Column, Label, StrLabel, Window};
 
@@ -78,22 +78,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
         cursor!(RowResize),
     ]);
 
-    // Since Column has message type (usize, Child::Msg) we must convert
-    // (maybe after Rust's specialisation is ready this can be automatic).
-    let gallery = make_widget! {
-        #[layout(single)]
-        #[handler(msg = VoidMsg)]
-        struct {
-            #[widget(handler = handle)] _ = column,
-        }
-        impl {
-            fn handle(&mut self, _: &mut Manager, msg: (usize, VoidMsg)) -> Response<VoidMsg> {
-                // This variant is of course impossible...
-                Response::Msg(msg.1)
-            }
-        }
-    };
-
+    let gallery = column.map_msg(|_, (_, msg)| msg);
     let window = Window::new("Cursor gallery", gallery);
     let theme = kas_theme::FlatTheme::new();
     kas_wgpu::Toolkit::new(theme)?.with(window)?.run()

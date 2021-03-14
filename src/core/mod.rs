@@ -7,7 +7,11 @@
 
 mod data;
 mod impls;
+mod map;
 mod widget;
+mod widget_ext;
 
 pub use data::*;
+pub(crate) use map::MsgMapWidget;
 pub use widget::*;
+pub use widget_ext::*;

@@ -38,7 +38,7 @@ pub use kas::text::{EditableTextApi, Text, TextApi, TextApiExt};
 #[doc(no_inline)]
 pub use kas::WidgetId;
 #[doc(no_inline)]
-pub use kas::{Boxed, TkAction};
+pub use kas::{Boxed, TkAction, WidgetExt};
 #[doc(no_inline)]
 pub use kas::{CoreData, LayoutData};
 #[doc(no_inline)]
