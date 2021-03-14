@@ -77,9 +77,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item> + Default> ListView
         Self::new_with_dir_view(direction, <V as Default>::default(), data)
     }
 }
-impl<D: Directional + Default, T: ListData, V: Driver<T::Key, T::Item> + Default>
-    ListView<D, T, V>
-{
+impl<D: Directional + Default, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> {
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: T) -> Self {
         Self::new_with_dir_view(D::default(), view, data)
@@ -298,9 +296,10 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> 
                 w.key = key;
                 action |= self.view.set(&mut w.widget, item.0, item.1);
             }
-            // TODO(opt): don't need to set_rect on all widgets when scrolling
             rect.pos = pos_start + skip * i32::conv(i);
-            w.widget.set_rect(mgr, rect, self.align_hints);
+            if w.widget.rect().pos != rect.pos {
+                w.widget.set_rect(mgr, rect, self.align_hints);
+            }
         }
         *mgr |= action;
         let dur = (Instant::now() - time).as_micros();
@@ -469,6 +468,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Layout for ListVie
     }
 
     fn spatial_range(&self) -> (usize, usize) {
+        // FIXME: widget order is incorrect!
         let last = self.num_children().wrapping_sub(1);
         match self.direction.is_reversed() {
             false => (0, last),
