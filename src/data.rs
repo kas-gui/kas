@@ -157,6 +157,8 @@ pub trait MatrixData: SharedDataRec {
     type ColKey: Clone + Debug + PartialEq + Eq;
     /// Row key type
     type RowKey: Clone + Debug + PartialEq + Eq;
+    // TODO: perhaps we should add this? But it depends on an unstable feature.
+    // type Key: Clone + Debug + PartialEq + Eq = (Self::ColKey, Self::RowKey);
 
     /// Item type
     type Item: Clone;
@@ -171,7 +173,12 @@ pub trait MatrixData: SharedDataRec {
     /// Note: users may assume this is `O(1)`.
     fn row_len(&self) -> usize;
 
+    /// Check whether an item with these keys exists
+    fn contains(&self, col: &Self::ColKey, row: &Self::RowKey) -> bool;
+
     /// Get data by key (clone)
+    ///
+    /// It is expected that this method succeeds when both keys are valid.
     fn get_cloned(&self, col: &Self::ColKey, row: &Self::RowKey) -> Option<Self::Item>;
 
     /// Update data, if supported
@@ -388,6 +395,9 @@ macro_rules! impl_via_deref {
             }
             fn row_len(&self) -> usize {
                 self.deref().row_len()
+            }
+            fn contains(&self, col: &Self::ColKey, row: &Self::RowKey) -> bool {
+                self.deref().contains(col, row)
             }
             fn get_cloned(&self, col: &Self::ColKey, row: &Self::RowKey) -> Option<Self::Item> {
                 self.deref().get_cloned(col, row)

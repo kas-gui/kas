@@ -75,6 +75,18 @@ macro_rules! impl_common {
                 Self(self.1, self.0)
             }
 
+            /// Return the result of component-wise multiplication
+            #[inline]
+            pub fn cwise_mul(self, rhs: Self) -> Self {
+                Self(self.0 * rhs.0, self.1 * rhs.1)
+            }
+
+            /// Return the result of component-wise division
+            #[inline]
+            pub fn cwise_div(self, rhs: Self) -> Self {
+                Self(self.0 / rhs.0, self.1 / rhs.1)
+            }
+
             /// Return the L1 (rectilinear / taxicab) distance
             #[inline]
             pub fn distance_l1(self) -> i32 {

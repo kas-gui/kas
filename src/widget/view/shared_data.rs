@@ -104,6 +104,9 @@ impl<T: MatrixData> MatrixData for SharedRc<T> {
     fn row_len(&self) -> usize {
         (self.0).1.borrow().row_len()
     }
+    fn contains(&self, col: &Self::ColKey, row: &Self::RowKey) -> bool {
+        (self.0).1.borrow().contains(col, row)
+    }
     fn get_cloned(&self, col: &Self::ColKey, row: &Self::RowKey) -> Option<Self::Item> {
         (self.0).1.borrow().get_cloned(col, row)
     }
