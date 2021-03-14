@@ -18,7 +18,7 @@
 //!     long), but in many ways still performs well in release mode
 
 use kas::data::*;
-use kas::event::{ChildMsg, UpdateHandle};
+use kas::event::ChildMsg;
 use kas::prelude::*;
 use kas::widget::view::{Driver, ListView};
 use kas::widget::*;

@@ -11,7 +11,6 @@ use std::fmt::{self, Debug};
 use std::rc::Rc;
 
 use super::AccelLabel;
-use kas::event::{self, UpdateHandle};
 use kas::prelude::*;
 
 /// A bare radiobox (no label)
@@ -49,7 +48,7 @@ impl<M: 'static> WidgetConfig for RadioBoxBare<M> {
     }
 }
 
-impl<M: 'static> event::Handler for RadioBoxBare<M> {
+impl<M: 'static> Handler for RadioBoxBare<M> {
     type Msg = M;
 
     #[inline]
@@ -101,7 +100,7 @@ impl<M: 'static> Layout for RadioBoxBare<M> {
         self.core.rect = rect;
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         draw_handle.radiobox(self.core.rect, self.state, self.input_state(mgr, disabled));
     }
 }

@@ -12,7 +12,6 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use kas::draw::Colour;
-use kas::event::{Event, Manager, Response, UpdateHandle, VoidMsg};
 use kas::prelude::*;
 use kas::widget::Window;
 

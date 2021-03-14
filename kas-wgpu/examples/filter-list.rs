@@ -7,7 +7,7 @@
 
 use kas::data::{ListData, SimpleCaseInsensitiveFilter};
 use kas::dir::Down;
-use kas::event::{ChildMsg, UpdateHandle};
+use kas::event::ChildMsg;
 use kas::prelude::*;
 use kas::widget::view::{driver, ListView, SelectionMode};
 use kas::widget::{EditBox, Label, RadioBox, ScrollBars, Window};

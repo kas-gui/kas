@@ -9,7 +9,6 @@ use smallvec::SmallVec;
 use std::fmt::{self, Debug};
 
 use kas::draw::ClipRegion;
-use kas::event::{self, UpdateHandle};
 use kas::layout;
 use kas::prelude::*;
 use kas::{Future, WindowId};
@@ -144,7 +143,7 @@ impl<W: Widget> Layout for Window<W> {
     }
 
     #[inline]
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
         self.w.draw(draw_handle, mgr, disabled);
         for popup in &self.popups {
@@ -157,7 +156,7 @@ impl<W: Widget> Layout for Window<W> {
     }
 }
 
-impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> event::SendEvent for Window<W> {
+impl<M: Into<VoidMsg>, W: Widget<Msg = M> + 'static> SendEvent for Window<W> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if !self.is_disabled() && id <= self.w.id() {
             return self.w.send(mgr, id, event).into();

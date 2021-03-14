@@ -8,7 +8,6 @@
 //! Intended usage is to import the module name rather than its contents, thus
 //! allowing referal to e.g. `driver::Default`.
 
-use kas::event::UpdateHandle;
 use kas::prelude::*;
 use kas::widget::{self, *};
 use std::fmt::Debug;
