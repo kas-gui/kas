@@ -15,7 +15,6 @@ use kas::widget::ScrollBars;
 use kas::widget::{ScrollComponent, Scrollable};
 use linear_map::set::LinearSet;
 use log::{debug, trace};
-use std::convert::TryFrom;
 use std::time::Instant;
 
 #[derive(Clone, Debug, Default)]
@@ -51,7 +50,6 @@ pub struct ListView<
     child_size_min: i32,
     child_size_ideal: i32,
     child_inter_margin: i32,
-    child_skip: i32,
     child_size: Size,
     scroll: ScrollComponent,
     sel_mode: SelectionMode,
@@ -105,7 +103,6 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> 
             child_size_min: 0,
             child_size_ideal: 0,
             child_inter_margin: 0,
-            child_skip: 0,
             child_size: Size::ZERO,
             scroll: Default::default(),
             sel_mode: SelectionMode::None,
@@ -259,15 +256,28 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> 
 
     fn update_widgets(&mut self, mgr: &mut Manager) {
         let time = Instant::now();
+
+        let data_len = self.data.len();
+        let data_len32 = i32::conv(data_len);
+        let view_size = self.rect().size;
+        let mut content_size = view_size;
+        let mut skip;
+        if self.direction.is_horizontal() {
+            skip = Offset(self.child_size.0 + self.child_inter_margin, 0);
+            content_size.0 = (skip.0 * data_len32 - self.child_inter_margin).max(0);
+        } else {
+            skip = Offset(0, self.child_size.1 + self.child_inter_margin);
+            content_size.1 = (skip.1 * data_len32 - self.child_inter_margin).max(0);
+        }
+        *mgr |= self.scroll.set_sizes(view_size, content_size);
+
         // set_rect allocates enough widgets to view a page; we update widget-data allocations
-        let len = self.widgets.len().min(self.data.len());
+        let len = self.widgets.len().min(data_len);
         self.cur_len = len.cast();
+
         let offset = u64::conv(self.scroll_offset().extract(self.direction));
-        let first_data = usize::conv(offset / u64::conv(self.child_skip));
-        let mut skip = match self.direction.is_vertical() {
-            false => Offset(self.child_skip, 0),
-            true => Offset(0, self.child_skip),
-        };
+        let first_data = usize::conv(offset / u64::conv(skip.extract(self.direction)));
+
         let mut pos_start = self.core.rect.pos + self.offset;
         if self.direction.is_reversed() {
             pos_start += skip * i32::conv(len - 1);
@@ -397,37 +407,26 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Layout for ListVie
     fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, mut align: AlignHints) {
         self.core.rect = rect;
 
-        let data_len = self.data.len();
-        let data_len32 = i32::try_from(data_len).unwrap();
         let mut child_size = rect.size - self.frame_size;
-        let mut content_size = rect.size;
-        let skip;
-        let num;
-        if self.direction.is_horizontal() {
+        let num = if self.direction.is_horizontal() {
             if child_size.0 >= self.ideal_visible * self.child_size_ideal {
                 child_size.0 = self.child_size_ideal;
             } else {
                 child_size.0 = self.child_size_min;
             }
-            skip = Offset(child_size.0 + self.child_inter_margin, 0);
-            self.child_skip = skip.0;
+            let skip = child_size.0 + self.child_inter_margin;
             align.horiz = None;
-            num = (rect.size.0 + skip.0 - 1) / skip.0 + 1;
-
-            content_size.0 = (skip.0 * data_len32 - self.child_inter_margin).max(0);
+            (rect.size.0 + skip - 1) / skip + 1
         } else {
             if child_size.1 >= self.ideal_visible * self.child_size_ideal {
                 child_size.1 = self.child_size_ideal;
             } else {
                 child_size.1 = self.child_size_min;
             }
-            skip = Offset(0, child_size.1 + self.child_inter_margin);
-            self.child_skip = skip.1;
+            let skip = child_size.1 + self.child_inter_margin;
             align.vert = None;
-            num = (rect.size.1 + skip.1 - 1) / skip.1 + 1;
-
-            content_size.1 = (skip.1 * data_len32 - self.child_inter_margin).max(0);
-        }
+            (rect.size.1 + skip - 1) / skip + 1
+        };
 
         self.child_size = child_size;
         self.align_hints = align;
@@ -466,7 +465,6 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Layout for ListVie
             // Free memory (rarely useful?)
             self.widgets.truncate(num);
         }
-        *mgr |= self.scroll.set_sizes(rect.size, content_size);
         self.update_widgets(mgr);
     }
 
