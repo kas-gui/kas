@@ -141,6 +141,14 @@ impl<'a> draw::SizeHandle for SizeHandle<'a> {
         self.dims.scale_factor
     }
 
+    fn pixels_from_points(&self, pt: f32) -> f32 {
+        self.dims.dpp * pt
+    }
+
+    fn pixels_from_em(&self, em: f32) -> f32 {
+        self.dims.dpp * self.dims.pt_size * em
+    }
+
     fn frame(&self, _vert: bool) -> FrameRules {
         FrameRules::new_sym(self.dims.frame, 0, 0)
     }

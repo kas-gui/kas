@@ -33,9 +33,10 @@ struct Clock {
 }
 
 impl Layout for Clock {
-    fn size_rules(&mut self, _: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
+    fn size_rules(&mut self, sh: &mut dyn SizeHandle, _: AxisInfo) -> SizeRules {
         // We want a square shape and can resize freely. Numbers are arbitrary.
-        SizeRules::new(100, 200, (0, 0), Stretch::High)
+        let size: i32 = sh.pixels_from_virtual(100.0).cast_nearest();
+        SizeRules::new(size, 2 * size, (0, 0), Stretch::High)
     }
 
     #[inline]

@@ -124,6 +124,19 @@ pub trait SizeHandle {
     /// resized via [`kas::Layout::size_rules`].
     fn scale_factor(&self) -> f32;
 
+    /// Convert a size in virtual pixels to physical pixels
+    fn pixels_from_virtual(&self, px: f32) -> f32 {
+        px * self.scale_factor()
+    }
+
+    /// Convert a size in font Points to physical pixels
+    fn pixels_from_points(&self, pt: f32) -> f32;
+
+    /// Convert a size in font Em to physical pixels
+    ///
+    /// (This depends on the font size.)
+    fn pixels_from_em(&self, em: f32) -> f32;
+
     /// Size of a frame around child widget(s)
     fn frame(&self, vert: bool) -> FrameRules;
 
@@ -468,6 +481,12 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn scale_factor(&self) -> f32 {
         self.deref().scale_factor()
     }
+    fn pixels_from_points(&self, pt: f32) -> f32 {
+        self.deref().pixels_from_points(pt)
+    }
+    fn pixels_from_em(&self, em: f32) -> f32 {
+        self.deref().pixels_from_em(em)
+    }
 
     fn frame(&self, vert: bool) -> FrameRules {
         self.deref().frame(vert)
@@ -534,6 +553,12 @@ where
 {
     fn scale_factor(&self) -> f32 {
         self.deref().scale_factor()
+    }
+    fn pixels_from_points(&self, pt: f32) -> f32 {
+        self.deref().pixels_from_points(pt)
+    }
+    fn pixels_from_em(&self, em: f32) -> f32 {
+        self.deref().pixels_from_em(em)
     }
 
     fn frame(&self, vert: bool) -> FrameRules {
