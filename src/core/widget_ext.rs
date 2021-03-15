@@ -6,7 +6,10 @@
 //! Widget extension traits
 
 use super::{MsgMapWidget, Widget};
+use crate::draw::SizeHandle;
 use crate::event::{Manager, Response};
+use crate::layout::{AxisInfo, SizeRules};
+use kas::widget::Reserve;
 
 /// Provides some convenience methods on widgets
 pub trait WidgetExt: Widget {
@@ -45,6 +48,41 @@ pub trait WidgetExt: Widget {
         Self: Sized,
     {
         MsgMapWidget::new(self, f)
+    }
+
+    /// Construct a wrapper widget which reserves extra space
+    ///
+    /// The closure `reserve` should generate `SizeRules` on request, just like
+    /// [`Layout::size_rules`]. This can be done by instantiating a temporary
+    /// widget, for example:
+    ///```
+    /// use kas::widget::{Reserve, Label};
+    /// use kas::prelude::*;
+    ///
+    /// let label = Reserve::new(Label::new("0"), |size_handle, axis| {
+    ///     Label::new("00000").size_rules(size_handle, axis)
+    /// });
+    ///```
+    /// Alternatively one may use virtual pixels:
+    ///```
+    /// use kas::widget::{Reserve, Filler};
+    /// use kas::prelude::*;
+    ///
+    /// let label = Reserve::new(Filler::new(), |size_handle, axis| {
+    ///     let size = i32::conv_ceil(size_handle.scale_factor() * 100.0);
+    ///     SizeRules::fixed(size, (0, 0))
+    /// });
+    ///```
+    /// The resulting `SizeRules` will be the max of those for the inner widget
+    /// and the result of the `reserve` closure.
+    fn reserve<R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static>(
+        self,
+        r: R,
+    ) -> Reserve<Self, R>
+    where
+        Self: Sized,
+    {
+        Reserve::new(self, r)
     }
 }
 impl<W: Widget + ?Sized> WidgetExt for W {}
