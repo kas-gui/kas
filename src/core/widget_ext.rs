@@ -5,11 +5,11 @@
 
 //! Widget extension traits
 
-use super::{MsgMapWidget, Widget};
+use super::Widget;
+use crate::adapter::{MsgMapWidget, Reserve};
 use crate::draw::SizeHandle;
 use crate::event::{Manager, Response};
 use crate::layout::{AxisInfo, SizeRules};
-use kas::widget::Reserve;
 
 /// Provides some convenience methods on widgets
 pub trait WidgetExt: Widget {

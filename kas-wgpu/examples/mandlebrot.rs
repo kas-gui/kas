@@ -11,11 +11,12 @@ use std::mem::size_of;
 use wgpu::util::DeviceExt;
 use wgpu::{include_spirv, Buffer, ShaderModule};
 
+use kas::adapter::ReserveP;
 use kas::draw::Pass;
 use kas::event::{self, Command};
 use kas::geom::{DVec2, Vec2, Vec3};
 use kas::prelude::*;
-use kas::widget::{Label, ReserveP, Slider, Window};
+use kas::widget::{Label, Slider, Window};
 use kas_wgpu::draw::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom, DrawWindow};
 use kas_wgpu::Options;
 
