@@ -68,3 +68,46 @@ impl<W: Widget, M> SendEvent for MsgMapWidget<W, M> {
         }
     }
 }
+
+impl<W: Widget + HasBool, M> HasBool for MsgMapWidget<W, M> {
+    fn get_bool(&self) -> bool {
+        self.inner.get_bool()
+    }
+
+    fn set_bool(&mut self, state: bool) -> TkAction {
+        self.inner.set_bool(state)
+    }
+}
+
+impl<W: Widget + HasStr, M> HasStr for MsgMapWidget<W, M> {
+    fn get_str(&self) -> &str {
+        self.inner.get_str()
+    }
+}
+
+impl<W: Widget + HasString, M> HasString for MsgMapWidget<W, M> {
+    fn set_string(&mut self, text: String) -> TkAction {
+        self.inner.set_string(text)
+    }
+}
+
+// TODO: HasFormatted
+
+impl<W: Widget + SetAccel, M> SetAccel for MsgMapWidget<W, M> {
+    fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
+        self.inner.set_accel_string(accel)
+    }
+}
+
+impl<W: Widget, M> std::ops::Deref for MsgMapWidget<W, M> {
+    type Target = W;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<W: Widget, M> std::ops::DerefMut for MsgMapWidget<W, M> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
