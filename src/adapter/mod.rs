@@ -8,5 +8,5 @@
 mod map;
 mod reserve;
 
-pub use map::MsgMapWidget;
+pub use map::MapResponse;
 pub use reserve::{Reserve, ReserveP};

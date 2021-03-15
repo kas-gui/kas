@@ -6,35 +6,34 @@
 //! Widget extension traits
 
 use super::Widget;
-use crate::adapter::{MsgMapWidget, Reserve};
+use crate::adapter::{MapResponse, Reserve};
 use crate::draw::SizeHandle;
 use crate::event::{Manager, Response};
 use crate::layout::{AxisInfo, SizeRules};
+#[allow(unused)]
+use kas::Layout;
 
 /// Provides some convenience methods on widgets
 pub trait WidgetExt: Widget {
     /// Construct a wrapper widget which maps messages from this widget
     ///
     /// Responses from this widget with a message payload are mapped with `f`.
-    fn map_msg<F: Fn(&mut Manager, Self::Msg) -> M + 'static, M>(
-        self,
-        f: F,
-    ) -> MsgMapWidget<Self, M>
+    fn map_msg<F: Fn(&mut Manager, Self::Msg) -> M + 'static, M>(self, f: F) -> MapResponse<Self, M>
     where
         Self: Sized,
     {
-        MsgMapWidget::new(self, move |mgr, msg| Response::Msg(f(mgr, msg)))
+        MapResponse::new(self, move |mgr, msg| Response::Msg(f(mgr, msg)))
     }
 
     /// Construct a wrapper widget which discards messages from this widget
     ///
     /// Responses from this widget with a message payload are mapped to
     /// [`Response::None`].
-    fn map_msg_discard<M>(self) -> MsgMapWidget<Self, M>
+    fn map_msg_discard<M>(self) -> MapResponse<Self, M>
     where
         Self: Sized,
     {
-        MsgMapWidget::new(self, |_, _| Response::None)
+        MapResponse::new(self, |_, _| Response::None)
     }
 
     /// Construct a wrapper widget which maps message responses from this widget
@@ -43,11 +42,11 @@ pub trait WidgetExt: Widget {
     fn map_response<F: Fn(&mut Manager, Self::Msg) -> Response<M> + 'static, M>(
         self,
         f: F,
-    ) -> MsgMapWidget<Self, M>
+    ) -> MapResponse<Self, M>
     where
         Self: Sized,
     {
-        MsgMapWidget::new(self, f)
+        MapResponse::new(self, f)
     }
 
     /// Construct a wrapper widget which reserves extra space

@@ -13,7 +13,7 @@ use std::rc::Rc;
 #[derive(Clone, Widget)]
 #[layout(single)]
 #[handler(msg=M, send=noauto)]
-pub struct MsgMapWidget<W: Widget, M: 'static> {
+pub struct MapResponse<W: Widget, M: 'static> {
     #[widget_core]
     core: kas::CoreData,
     #[widget]
@@ -21,7 +21,7 @@ pub struct MsgMapWidget<W: Widget, M: 'static> {
     map: Rc<dyn Fn(&mut Manager, W::Msg) -> Response<M>>,
 }
 
-impl<W: Widget, M> MsgMapWidget<W, M> {
+impl<W: Widget, M> MapResponse<W, M> {
     /// Construct
     ///
     /// Any response from the child widget with a message payload is mapped
@@ -35,7 +35,7 @@ impl<W: Widget, M> MsgMapWidget<W, M> {
     /// Any response from the child widget with a message payload is mapped
     /// through the closure `f`.
     pub fn new_rc(child: W, f: Rc<dyn Fn(&mut Manager, W::Msg) -> Response<M>>) -> Self {
-        MsgMapWidget {
+        MapResponse {
             core: Default::default(),
             inner: child,
             map: f,
@@ -43,17 +43,17 @@ impl<W: Widget, M> MsgMapWidget<W, M> {
     }
 }
 
-impl<W: Widget, M> fmt::Debug for MsgMapWidget<W, M> {
+impl<W: Widget, M> fmt::Debug for MapResponse<W, M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "MsgMapWidget {{ core: {:?}, inner: {:?}, ... }}",
+            "MapResponse {{ core: {:?}, inner: {:?}, ... }}",
             self.core, self.inner,
         )
     }
 }
 
-impl<W: Widget, M> SendEvent for MsgMapWidget<W, M> {
+impl<W: Widget, M> SendEvent for MapResponse<W, M> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled;
@@ -69,7 +69,7 @@ impl<W: Widget, M> SendEvent for MsgMapWidget<W, M> {
     }
 }
 
-impl<W: Widget + HasBool, M> HasBool for MsgMapWidget<W, M> {
+impl<W: Widget + HasBool, M> HasBool for MapResponse<W, M> {
     fn get_bool(&self) -> bool {
         self.inner.get_bool()
     }
@@ -79,13 +79,13 @@ impl<W: Widget + HasBool, M> HasBool for MsgMapWidget<W, M> {
     }
 }
 
-impl<W: Widget + HasStr, M> HasStr for MsgMapWidget<W, M> {
+impl<W: Widget + HasStr, M> HasStr for MapResponse<W, M> {
     fn get_str(&self) -> &str {
         self.inner.get_str()
     }
 }
 
-impl<W: Widget + HasString, M> HasString for MsgMapWidget<W, M> {
+impl<W: Widget + HasString, M> HasString for MapResponse<W, M> {
     fn set_string(&mut self, text: String) -> TkAction {
         self.inner.set_string(text)
     }
@@ -93,20 +93,20 @@ impl<W: Widget + HasString, M> HasString for MsgMapWidget<W, M> {
 
 // TODO: HasFormatted
 
-impl<W: Widget + SetAccel, M> SetAccel for MsgMapWidget<W, M> {
+impl<W: Widget + SetAccel, M> SetAccel for MapResponse<W, M> {
     fn set_accel_string(&mut self, accel: AccelString) -> TkAction {
         self.inner.set_accel_string(accel)
     }
 }
 
-impl<W: Widget, M> std::ops::Deref for MsgMapWidget<W, M> {
+impl<W: Widget, M> std::ops::Deref for MapResponse<W, M> {
     type Target = W;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl<W: Widget, M> std::ops::DerefMut for MsgMapWidget<W, M> {
+impl<W: Widget, M> std::ops::DerefMut for MapResponse<W, M> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
