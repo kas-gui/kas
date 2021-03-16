@@ -7,9 +7,9 @@
 
 use kas::data::{ListData, SimpleCaseInsensitiveFilter};
 use kas::dir::Down;
-use kas::event::UpdateHandle;
+use kas::event::ChildMsg;
 use kas::prelude::*;
-use kas::widget::view::{driver, ListMsg, ListView, SelectionMode};
+use kas::widget::view::{driver, ListView, SelectionMode};
 use kas::widget::{EditBox, Label, RadioBox, ScrollBars, Window};
 
 mod data {
@@ -87,7 +87,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 fn select(
                     &mut self,
                     _: &mut Manager,
-                    msg: ListMsg<usize, VoidMsg>,
+                    msg: ChildMsg<usize, VoidMsg>,
                 ) -> Response<VoidMsg> {
                     println!("Selection message: {:?}", msg);
                     Response::None

@@ -143,7 +143,6 @@ pub type StringLabel = Label<String>;
 ///
 /// Accelerator keys are not useful on plain labels, but this widget may be
 /// embedded within a parent (e.g. `CheckBox` uses this).
-// TODO: we probably don't need `reserve` for AccelLabel
 pub type AccelLabel = Label<AccelString>;
 
 impl AccelLabel {

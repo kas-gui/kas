@@ -149,6 +149,91 @@ pub trait ListDataMut: ListData {
     fn set(&mut self, key: &Self::Key, item: Self::Item);
 }
 
+/// Trait for viewable data matrices
+///
+/// Data matrices are a kind of table where each cell has the same type.
+pub trait MatrixData: SharedDataRec {
+    /// Column key type
+    type ColKey: Clone + Debug + PartialEq + Eq;
+    /// Row key type
+    type RowKey: Clone + Debug + PartialEq + Eq;
+    // TODO: perhaps we should add this? But it depends on an unstable feature.
+    // type Key: Clone + Debug + PartialEq + Eq = (Self::ColKey, Self::RowKey);
+
+    /// Item type
+    type Item: Clone;
+
+    /// Number of columns available
+    ///
+    /// Note: users may assume this is `O(1)`.
+    fn col_len(&self) -> usize;
+
+    /// Number of rows available
+    ///
+    /// Note: users may assume this is `O(1)`.
+    fn row_len(&self) -> usize;
+
+    /// Check whether an item with these keys exists
+    fn contains(&self, col: &Self::ColKey, row: &Self::RowKey) -> bool;
+
+    /// Get data by key (clone)
+    ///
+    /// It is expected that this method succeeds when both keys are valid.
+    fn get_cloned(&self, col: &Self::ColKey, row: &Self::RowKey) -> Option<Self::Item>;
+
+    /// Update data, if supported
+    ///
+    /// This is optional and required only to support data updates through view
+    /// widgets. If implemented, then [`SharedData::update_handle`] should
+    /// return a copy of the same update handle.
+    ///
+    /// Returns an [`UpdateHandle`] if an update occurred. Returns `None` if
+    /// updates are unsupported.
+    ///
+    /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
+    /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
+    /// provider of this lowering should also provide an [`UpdateHandle`].
+    fn update(
+        &self,
+        col: &Self::ColKey,
+        row: &Self::RowKey,
+        value: Self::Item,
+    ) -> Option<UpdateHandle>;
+
+    // TODO(gat): replace with an iterator
+    /// Iterate over column keys as a vec
+    ///
+    /// The result will be in deterministic implementation-defined order, with
+    /// a length of `max(limit, data_len)` where `data_len` is the number of
+    /// items available.
+    fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {
+        self.col_iter_vec_from(0, limit)
+    }
+    /// Iterate over column keys as a vec
+    ///
+    /// The result is the same as `self.iter_vec(start + limit).skip(start)`.
+    fn col_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::ColKey>;
+
+    /// Iterate over row keys as a vec
+    ///
+    /// The result will be in deterministic implementation-defined order, with
+    /// a length of `max(limit, data_len)` where `data_len` is the number of
+    /// items available.
+    fn row_iter_vec(&self, limit: usize) -> Vec<Self::RowKey> {
+        self.row_iter_vec_from(0, limit)
+    }
+    /// Iterate over row keys as a vec
+    ///
+    /// The result is the same as `self.iter_vec(start + limit).skip(start)`.
+    fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey>;
+}
+
+/// Trait for writable data matrices
+pub trait MatrixDataMut: MatrixData {
+    /// Set data for an existing cell
+    fn set(&mut self, col: &Self::ColKey, row: &Self::RowKey, item: Self::Item);
+}
+
 impl<T: Debug> SharedData for [T] {
     fn update_handle(&self) -> Option<UpdateHandle> {
         None
@@ -299,6 +384,48 @@ macro_rules! impl_via_deref {
                 self.deref().iter_vec_from(start, limit)
             }
         }
+
+        impl<$t: MatrixData + ?Sized> MatrixData for $derived {
+            type ColKey = $t::ColKey;
+            type RowKey = $t::RowKey;
+            type Item = $t::Item;
+
+            fn col_len(&self) -> usize {
+                self.deref().col_len()
+            }
+            fn row_len(&self) -> usize {
+                self.deref().row_len()
+            }
+            fn contains(&self, col: &Self::ColKey, row: &Self::RowKey) -> bool {
+                self.deref().contains(col, row)
+            }
+            fn get_cloned(&self, col: &Self::ColKey, row: &Self::RowKey) -> Option<Self::Item> {
+                self.deref().get_cloned(col, row)
+            }
+
+            fn update(
+                &self,
+                col: &Self::ColKey,
+                row: &Self::RowKey,
+                value: Self::Item,
+            ) -> Option<UpdateHandle> {
+                self.deref().update(col, row, value)
+            }
+
+            fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {
+                self.deref().col_iter_vec(limit)
+            }
+            fn col_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::ColKey> {
+                self.deref().col_iter_vec_from(start, limit)
+            }
+
+            fn row_iter_vec(&self, limit: usize) -> Vec<Self::RowKey> {
+                self.deref().row_iter_vec(limit)
+            }
+            fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey> {
+                self.deref().row_iter_vec_from(start, limit)
+            }
+        }
     };
     ($t: ident: $derived:ty, $($dd:ty),+) => {
         impl_via_deref!($t: $derived);
@@ -318,6 +445,11 @@ macro_rules! impl_via_deref_mut {
         impl<$t: ListDataMut + ?Sized> ListDataMut for $derived {
             fn set(&mut self, key: &Self::Key, item: Self::Item) {
                 self.deref_mut().set(key, item)
+            }
+        }
+        impl<$t: MatrixDataMut + ?Sized> MatrixDataMut for $derived {
+            fn set(&mut self, col: &Self::ColKey, row: &Self::RowKey, item: Self::Item) {
+                self.deref_mut().set(col, row, item)
             }
         }
     };

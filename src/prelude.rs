@@ -22,7 +22,9 @@ pub use kas::dir::{Direction, Directional};
 #[doc(no_inline)]
 pub use kas::draw::{DrawHandle, DrawHandleExt, SizeHandle, ThemeApi};
 #[doc(no_inline)]
-pub use kas::event::{Event, Handler, Manager, ManagerState, Response, SendEvent, VoidMsg};
+pub use kas::event::{
+    Event, Handler, Manager, ManagerState, Response, SendEvent, UpdateHandle, VoidMsg,
+};
 #[doc(no_inline)]
 pub use kas::geom::{Coord, Offset, Rect, Size};
 #[doc(no_inline)]
@@ -36,7 +38,7 @@ pub use kas::text::{EditableTextApi, Text, TextApi, TextApiExt};
 #[doc(no_inline)]
 pub use kas::WidgetId;
 #[doc(no_inline)]
-pub use kas::{Boxed, TkAction};
+pub use kas::{Boxed, TkAction, WidgetExt};
 #[doc(no_inline)]
 pub use kas::{CoreData, LayoutData};
 #[doc(no_inline)]

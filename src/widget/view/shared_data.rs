@@ -5,7 +5,7 @@
 
 //! Shared data for view widgets
 
-use kas::data::{ListData, ListDataMut, SharedData, SharedDataRec, SingleData, SingleDataMut};
+use kas::data::*;
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
@@ -90,5 +90,52 @@ impl<T: ListDataMut> ListData for SharedRc<T> {
 impl<T: ListDataMut> ListDataMut for SharedRc<T> {
     fn set(&mut self, key: &Self::Key, item: Self::Item) {
         (self.0).1.borrow_mut().set(key, item);
+    }
+}
+
+impl<T: MatrixData> MatrixData for SharedRc<T> {
+    type ColKey = T::ColKey;
+    type RowKey = T::RowKey;
+    type Item = T::Item;
+
+    fn col_len(&self) -> usize {
+        (self.0).1.borrow().col_len()
+    }
+    fn row_len(&self) -> usize {
+        (self.0).1.borrow().row_len()
+    }
+    fn contains(&self, col: &Self::ColKey, row: &Self::RowKey) -> bool {
+        (self.0).1.borrow().contains(col, row)
+    }
+    fn get_cloned(&self, col: &Self::ColKey, row: &Self::RowKey) -> Option<Self::Item> {
+        (self.0).1.borrow().get_cloned(col, row)
+    }
+
+    fn update(
+        &self,
+        col: &Self::ColKey,
+        row: &Self::RowKey,
+        value: Self::Item,
+    ) -> Option<UpdateHandle> {
+        (self.0).1.borrow().update(col, row, value)
+    }
+
+    fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {
+        (self.0).1.borrow().col_iter_vec(limit)
+    }
+    fn col_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::ColKey> {
+        (self.0).1.borrow().col_iter_vec_from(start, limit)
+    }
+
+    fn row_iter_vec(&self, limit: usize) -> Vec<Self::RowKey> {
+        (self.0).1.borrow().row_iter_vec(limit)
+    }
+    fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey> {
+        (self.0).1.borrow().row_iter_vec_from(start, limit)
+    }
+}
+impl<T: MatrixDataMut> MatrixDataMut for SharedRc<T> {
+    fn set(&mut self, col: &Self::ColKey, row: &Self::RowKey, item: Self::Item) {
+        (self.0).1.borrow_mut().set(col, row, item);
     }
 }

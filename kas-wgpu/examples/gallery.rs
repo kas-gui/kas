@@ -8,7 +8,7 @@
 //! This is a test-bed to demonstrate most toolkit functionality
 //! (excepting custom graphics).
 
-use kas::event::{Command, UpdateHandle, VoidResponse};
+use kas::event::{Command, VoidResponse};
 use kas::prelude::*;
 use kas::widget::*;
 use kas::{dir::Right, Future};

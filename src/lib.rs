@@ -36,6 +36,7 @@ mod future;
 mod toolkit;
 
 // public implementations:
+pub mod adapter;
 pub mod class;
 pub mod conv;
 pub mod data;

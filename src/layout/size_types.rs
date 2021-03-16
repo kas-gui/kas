@@ -127,8 +127,8 @@ impl FrameRules {
 
     /// Construct (symmetric on axis)
     #[inline]
-    pub fn new_sym(size: i32, inner_margin: i32, outer_margins: (u16, u16)) -> Self {
-        Self::new(size, size, inner_margin, outer_margins)
+    pub fn new_sym(size: i32, inner_margin: i32, outer_margin: u16) -> Self {
+        Self::new(size, size, inner_margin, (outer_margin, outer_margin))
     }
 
     /// Generate rules for content surrounded by this frame
@@ -153,6 +153,25 @@ impl FrameRules {
             content.min_size() + size,
             content.ideal_size() + size,
             self.m,
+            content.stretch(),
+        );
+        (rules, offset, size)
+    }
+
+    /// Variant: frame surrounds inner content only
+    ///
+    /// The content's margin is pushed *outside* the frame. In other respects,
+    /// this is the same as [`FrameRules::surround`].
+    pub fn surround_inner(self, content: SizeRules) -> (SizeRules, i32, i32) {
+        let (m0, m1) = content.margins();
+        let offset = self.offset + self.inner_margin;
+        let size = self.size + 2 * self.inner_margin;
+        let margins = (self.m.0.max(m0), self.m.1.max(m1));
+
+        let rules = SizeRules::new(
+            content.min_size() + size,
+            content.ideal_size() + size,
+            margins,
             content.stretch(),
         );
         (rules, offset, size)

@@ -70,9 +70,10 @@ pub mod util {
         if let Some(req) = text.prepare() {
             let avail = Vec2::from(avail);
             if !(req.0 <= avail.0 && req.1 <= avail.1) {
-                println!(
+                trace!(
                     "set_string_and_prepare triggers RESIZE: req={:?}, avail={:?}",
-                    req, avail
+                    req,
+                    avail
                 );
                 return TkAction::RESIZE;
             }

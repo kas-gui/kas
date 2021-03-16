@@ -38,7 +38,8 @@ impl<W: Widget, R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static> 
     /// [`Layout::size_rules`]. This can be done by instantiating a temporary
     /// widget, for example:
     ///```
-    /// use kas::widget::{Reserve, Label};
+    /// use kas::adapter::Reserve;
+    /// use kas::widget::Label;
     /// use kas::prelude::*;
     ///
     /// let label = Reserve::new(Label::new("0"), |size_handle, axis| {
@@ -47,7 +48,8 @@ impl<W: Widget, R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static> 
     ///```
     /// Alternatively one may use virtual pixels:
     ///```
-    /// use kas::widget::{Reserve, Filler};
+    /// use kas::adapter::Reserve;
+    /// use kas::widget::Filler;
     /// use kas::prelude::*;
     ///
     /// let label = Reserve::new(Filler::new(), |size_handle, axis| {

@@ -3,13 +3,10 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Core widget types
+//! Adapter widgets (wrappers)
 
-mod data;
-mod impls;
-mod widget;
-mod widget_ext;
+mod map;
+mod reserve;
 
-pub use data::*;
-pub use widget::*;
-pub use widget_ext::*;
+pub use map::MapResponse;
+pub use reserve::{Reserve, ReserveP};
