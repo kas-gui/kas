@@ -297,7 +297,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> 
                 action |= self.view.set(&mut w.widget, item.0, item.1);
             }
             rect.pos = pos_start + skip * i32::conv(i);
-            if w.widget.rect().pos != rect.pos {
+            if w.widget.rect() != rect {
                 w.widget.set_rect(mgr, rect, self.align_hints);
             }
         }
@@ -378,17 +378,8 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Layout for ListVie
         let inner_margin = size_handle.inner_margin().extract(axis);
         let frame = FrameRules::new_sym(0, inner_margin, 0);
 
-        // We initialise the first widget if possible, otherwise use V::Widget::default()
-        if self.widgets.is_empty() {
-            let (key, widget) = if let Some((key, data)) = self.data.iter_vec(1).into_iter().next()
-            {
-                (Some(key.clone()), self.view.new(key, data))
-            } else {
-                (None, self.view.default())
-            };
-            self.widgets.push(WidgetData { key, widget });
-        }
-        let mut rules = self.widgets[0].widget.size_rules(size_handle, axis);
+        // We use a default-generated widget to generate size rules
+        let mut rules = self.view.default().size_rules(size_handle, axis);
         if axis.is_vertical() == self.direction.is_vertical() {
             self.child_size_min = rules.min_size();
             self.child_size_ideal = rules.ideal_size();

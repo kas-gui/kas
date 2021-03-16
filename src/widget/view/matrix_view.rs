@@ -277,7 +277,7 @@ impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> MatrixView<T, V>
                     }
                 }
                 rect.pos = pos_start + skip.cwise_mul(Size(ci.cast(), ri.cast()));
-                if w.widget.rect().pos != rect.pos {
+                if w.widget.rect() != rect {
                     w.widget.set_rect(mgr, rect, Default::default());
                 }
             }
@@ -356,13 +356,8 @@ impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> Layout for Matri
         let inner_margin = size_handle.inner_margin().extract(axis);
         let frame = FrameRules::new_sym(0, inner_margin, 0);
 
-        if self.widgets.is_empty() {
-            // Insert a default widget for sizing
-            let key = None;
-            let widget = self.view.default();
-            self.widgets.push(WidgetData { key, widget });
-        }
-        let mut rules = self.widgets[0].widget.size_rules(size_handle, axis);
+        // We use a default-generated widget to generate size rules
+        let mut rules = self.view.default().size_rules(size_handle, axis);
 
         self.child_size_min.set_component(axis, rules.min_size());
         self.child_size_ideal
