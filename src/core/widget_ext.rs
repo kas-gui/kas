@@ -55,21 +55,21 @@ pub trait WidgetExt: Widget {
     /// [`Layout::size_rules`]. This can be done by instantiating a temporary
     /// widget, for example:
     ///```
-    /// use kas::widget::{Reserve, Label};
+    /// use kas::widget::Label;
     /// use kas::prelude::*;
     ///
-    /// let label = Reserve::new(Label::new("0"), |size_handle, axis| {
+    /// let label = Label::new("0").reserve(|size_handle, axis| {
     ///     Label::new("00000").size_rules(size_handle, axis)
     /// });
     ///```
     /// Alternatively one may use virtual pixels:
     ///```
-    /// use kas::widget::{Reserve, Filler};
+    /// use kas::widget::Filler;
     /// use kas::prelude::*;
     ///
-    /// let label = Reserve::new(Filler::new(), |size_handle, axis| {
-    ///     let size = i32::conv_ceil(size_handle.scale_factor() * 100.0);
-    ///     SizeRules::fixed(size, (0, 0))
+    /// let label = Filler::new().reserve(|size_handle, axis| {
+    ///     let size = size_handle.scale_factor() * 100.0;
+    ///     SizeRules::fixed(size.cast_nearest(), (0, 0))
     /// });
     ///```
     /// The resulting `SizeRules` will be the max of those for the inner widget
