@@ -18,19 +18,19 @@ impl dyn WidgetCore {
     /// Forwards to the method defined on the type `Any`.
     #[inline]
     pub fn is<T: Any>(&self) -> bool {
-        Any::is::<T>(self.as_any())
+        <dyn Any>::is::<T>(self.as_any())
     }
 
     /// Forwards to the method defined on the type `Any`.
     #[inline]
     pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
-        Any::downcast_ref::<T>(self.as_any())
+        <dyn Any>::downcast_ref::<T>(self.as_any())
     }
 
     /// Forwards to the method defined on the type `Any`.
     #[inline]
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
-        Any::downcast_mut::<T>(self.as_any_mut())
+        <dyn Any>::downcast_mut::<T>(self.as_any_mut())
     }
 }
 
