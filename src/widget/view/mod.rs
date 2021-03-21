@@ -68,7 +68,6 @@ use kas::macros::VoidMsg;
 
 mod list_view;
 mod matrix_view;
-mod shared_data;
 mod single_view;
 
 pub mod driver;
@@ -76,7 +75,6 @@ pub mod driver;
 pub use driver::Driver;
 pub use list_view::ListView;
 pub use matrix_view::MatrixView;
-pub use shared_data::SharedRc;
 pub use single_view::SingleView;
 
 /// Selection mode used by [`ListView`]

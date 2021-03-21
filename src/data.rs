@@ -14,8 +14,10 @@
 
 mod data_impls;
 mod filter;
+mod shared_rc;
 
 pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
+pub use shared_rc::SharedRc;
 
 use kas::event::{Manager, UpdateHandle};
 #[allow(unused)] // doc links
