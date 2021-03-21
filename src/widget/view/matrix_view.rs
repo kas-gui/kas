@@ -6,7 +6,7 @@
 //! List view widget
 
 use super::{driver, Driver, SelectionMode};
-use kas::data::MatrixData;
+use kas::data::{MatrixData, RecursivelyUpdatable};
 use kas::event::{ChildMsg, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
@@ -31,7 +31,7 @@ struct WidgetData<K, W> {
 #[handler(send=noauto, msg=ChildMsg<(T::ColKey, T::RowKey), <V::Widget as Handler>::Msg>)]
 #[widget(children=noauto, config=noauto)]
 pub struct MatrixView<
-    T: MatrixData + 'static,
+    T: MatrixData + RecursivelyUpdatable + 'static,
     V: Driver<(T::ColKey, T::RowKey), T::Item> = driver::Default,
 > {
     first_id: WidgetId,
@@ -58,13 +58,19 @@ pub struct MatrixView<
     press_target: Option<(T::ColKey, T::RowKey)>,
 }
 
-impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item> + Default> MatrixView<T, V> {
+impl<
+        T: MatrixData + RecursivelyUpdatable,
+        V: Driver<(T::ColKey, T::RowKey), T::Item> + Default,
+    > MatrixView<T, V>
+{
     /// Construct a new instance
     pub fn new(data: T) -> Self {
         Self::new_with_view(<V as Default>::default(), data)
     }
 }
-impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> MatrixView<T, V> {
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::Item>>
+    MatrixView<T, V>
+{
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: T) -> Self {
         MatrixView {
@@ -288,7 +294,9 @@ impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> MatrixView<T, V>
     }
 }
 
-impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> Scrollable for MatrixView<T, V> {
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::Item>> Scrollable
+    for MatrixView<T, V>
+{
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         let item_min = self.child_size_min + self.child_inter_margin;
         let data_len = Size(self.data.col_len().cast(), self.data.row_len().cast());
@@ -314,8 +322,8 @@ impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> Scrollable for M
     }
 }
 
-impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> WidgetChildren
-    for MatrixView<T, V>
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::Item>>
+    WidgetChildren for MatrixView<T, V>
 {
     #[inline]
     fn first_id(&self) -> WidgetId {
@@ -340,7 +348,9 @@ impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> WidgetChildren
     }
 }
 
-impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> WidgetConfig for MatrixView<T, V> {
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::Item>> WidgetConfig
+    for MatrixView<T, V>
+{
     fn configure(&mut self, mgr: &mut Manager) {
         self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
@@ -350,7 +360,9 @@ impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> WidgetConfig for
     }
 }
 
-impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> Layout for MatrixView<T, V> {
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::Item>> Layout
+    for MatrixView<T, V>
+{
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
@@ -458,7 +470,9 @@ impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> Layout for Matri
     }
 }
 
-impl<T: MatrixData, V: Driver<(T::ColKey, T::RowKey), T::Item>> SendEvent for MatrixView<T, V> {
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::Item>> SendEvent
+    for MatrixView<T, V>
+{
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled;

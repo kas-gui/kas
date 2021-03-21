@@ -32,7 +32,7 @@ pub trait SharedData: Debug {
     /// Otherwise, this may simply return `None`.
     ///
     /// Users registering for updates on this handle should, if possible, also
-    /// call [`SharedDataRec::enable_recursive_updates`].
+    /// call [`RecursivelyUpdatable::enable_recursive_updates`].
     fn update_handle(&self) -> Option<UpdateHandle>;
 
     /// Update self from an update handle
@@ -44,8 +44,13 @@ pub trait SharedData: Debug {
     }
 }
 
-/// Extension over [`SharedData`] enabling recursive updating
-pub trait SharedDataRec: SharedData {
+/// Recursive update support
+///
+/// All shared data types should also implement this trait. Only those which
+/// require recursive updates need to provide a custom implementation of
+/// `enable_recursive_updates`, and when they do it may only be possible to
+/// implement this trait on `Rc<DataType>`.
+pub trait RecursivelyUpdatable: Debug {
     /// Enable recursive updates on this object
     ///
     /// Some data objects (e.g. filters) are themselves dependent on another
@@ -61,7 +66,7 @@ pub trait SharedDataRec: SharedData {
 /// Trait for viewable single data items
 // Note: we require Debug + 'static to allow widgets using this to implement
 // WidgetCore, which requires Debug + Any.
-pub trait SingleData: SharedDataRec {
+pub trait SingleData: SharedData {
     type Item: Clone;
 
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
@@ -94,7 +99,7 @@ pub trait SingleDataMut: SingleData {
 }
 
 /// Trait for viewable data lists
-pub trait ListData: SharedDataRec {
+pub trait ListData: SharedData {
     /// Key type
     type Key: Clone + Debug + PartialEq + Eq;
 
@@ -153,7 +158,7 @@ pub trait ListDataMut: ListData {
 /// Trait for viewable data matrices
 ///
 /// Data matrices are a kind of table where each cell has the same type.
-pub trait MatrixData: SharedDataRec {
+pub trait MatrixData: SharedData {
     /// Column key type
     type ColKey: Clone + Debug + PartialEq + Eq;
     /// Row key type

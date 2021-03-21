@@ -6,7 +6,7 @@
 //! List view widget
 
 use super::{driver, Driver, SelectionMode};
-use kas::data::ListData;
+use kas::data::{ListData, RecursivelyUpdatable};
 use kas::event::{ChildMsg, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
@@ -32,7 +32,7 @@ struct WidgetData<K, W> {
 #[widget(children=noauto, config=noauto)]
 pub struct ListView<
     D: Directional,
-    T: ListData + 'static,
+    T: ListData + RecursivelyUpdatable + 'static,
     V: Driver<T::Key, T::Item> = driver::Default,
 > {
     first_id: WidgetId,
@@ -59,8 +59,11 @@ pub struct ListView<
     press_target: Option<T::Key>,
 }
 
-impl<D: Directional + Default, T: ListData, V: Driver<T::Key, T::Item> + Default>
-    ListView<D, T, V>
+impl<
+        D: Directional + Default,
+        T: ListData + RecursivelyUpdatable,
+        V: Driver<T::Key, T::Item> + Default,
+    > ListView<D, T, V>
 {
     /// Construct a new instance
     ///
@@ -71,19 +74,25 @@ impl<D: Directional + Default, T: ListData, V: Driver<T::Key, T::Item> + Default
         Self::new_with_dir_view(D::default(), <V as Default>::default(), data)
     }
 }
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item> + Default> ListView<D, T, V> {
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item> + Default>
+    ListView<D, T, V>
+{
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, data: T) -> Self {
         Self::new_with_dir_view(direction, <V as Default>::default(), data)
     }
 }
-impl<D: Directional + Default, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> {
+impl<D: Directional + Default, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>>
+    ListView<D, T, V>
+{
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: T) -> Self {
         Self::new_with_dir_view(D::default(), view, data)
     }
 }
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> {
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>>
+    ListView<D, T, V>
+{
     /// Construct a new instance with explicit direction and view
     pub fn new_with_dir_view(direction: D, view: V, data: T) -> Self {
         ListView {
@@ -307,7 +316,9 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> 
     }
 }
 
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Scrollable for ListView<D, T, V> {
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Scrollable
+    for ListView<D, T, V>
+{
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         // TODO: maybe we should support a scrollbar on the other axis?
         // We would need to report a fake min-child-size to enable scrolling.
@@ -338,7 +349,9 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Scrollable for Lis
     }
 }
 
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> WidgetChildren for ListView<D, T, V> {
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> WidgetChildren
+    for ListView<D, T, V>
+{
     #[inline]
     fn first_id(&self) -> WidgetId {
         self.first_id
@@ -362,7 +375,9 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> WidgetChildren for
     }
 }
 
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> WidgetConfig for ListView<D, T, V> {
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> WidgetConfig
+    for ListView<D, T, V>
+{
     fn configure(&mut self, mgr: &mut Manager) {
         self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
@@ -372,7 +387,9 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> WidgetConfig for L
     }
 }
 
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Layout for ListView<D, T, V> {
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Layout
+    for ListView<D, T, V>
+{
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
@@ -498,7 +515,9 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Layout for ListVie
     }
 }
 
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> SendEvent for ListView<D, T, V> {
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> SendEvent
+    for ListView<D, T, V>
+{
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled;

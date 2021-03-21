@@ -13,7 +13,7 @@ impl<T: Debug> SharedData for [T] {
         None
     }
 }
-impl<T: Debug> SharedDataRec for [T] {}
+impl<T: Debug> RecursivelyUpdatable for [T] {}
 impl<T: Clone + Debug> ListData for [T] {
     type Key = usize;
     type Item = T;
@@ -61,7 +61,7 @@ impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> SharedData
         None
     }
 }
-impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> SharedDataRec
+impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> RecursivelyUpdatable
     for std::collections::BTreeMap<K, T>
 {
 }
@@ -117,7 +117,7 @@ macro_rules! impl_via_deref {
                 self.deref().update_self()
             }
        }
-        impl<$t: SharedDataRec + ?Sized> SharedDataRec for $derived {
+        impl<$t: RecursivelyUpdatable + ?Sized> RecursivelyUpdatable for $derived {
             fn enable_recursive_updates(&self, mgr: &mut Manager) {
                 self.deref().enable_recursive_updates(mgr);
             }

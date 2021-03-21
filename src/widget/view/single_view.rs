@@ -6,7 +6,7 @@
 //! Single view widget
 
 use super::driver::{self, Driver};
-use kas::data::SingleData;
+use kas::data::{RecursivelyUpdatable, SingleData};
 use kas::prelude::*;
 use std::fmt::{self};
 
@@ -15,21 +15,26 @@ use std::fmt::{self};
 #[widget(config=noauto)]
 #[layout(single)]
 #[handler(handle=noauto, send=noauto)]
-pub struct SingleView<D: SingleData + 'static, V: Driver<(), D::Item> = driver::Default> {
+pub struct SingleView<
+    T: SingleData + RecursivelyUpdatable + 'static,
+    V: Driver<(), T::Item> = driver::Default,
+> {
     #[widget_core]
     core: CoreData,
     view: V,
-    data: D,
+    data: T,
     #[widget]
     child: V::Widget,
 }
 
-impl<D: SingleData + 'static + Default, V: Driver<(), D::Item> + Default> Default
-    for SingleView<D, V>
+impl<
+        T: SingleData + RecursivelyUpdatable + 'static + Default,
+        V: Driver<(), T::Item> + Default,
+    > Default for SingleView<T, V>
 {
     fn default() -> Self {
         let view = <V as Default>::default();
-        let data = D::default();
+        let data = T::default();
         let child = view.new((), data.get_cloned());
         SingleView {
             core: Default::default(),
@@ -39,15 +44,17 @@ impl<D: SingleData + 'static + Default, V: Driver<(), D::Item> + Default> Defaul
         }
     }
 }
-impl<D: SingleData + 'static, V: Driver<(), D::Item> + Default> SingleView<D, V> {
+impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item> + Default>
+    SingleView<T, V>
+{
     /// Construct a new instance
-    pub fn new(data: D) -> Self {
+    pub fn new(data: T) -> Self {
         Self::new_with_view(<V as Default>::default(), data)
     }
 }
-impl<D: SingleData + 'static, V: Driver<(), D::Item>> SingleView<D, V> {
+impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> SingleView<T, V> {
     /// Construct a new instance with explicit view
-    pub fn new_with_view(view: V, data: D) -> Self {
+    pub fn new_with_view(view: V, data: T) -> Self {
         let child = view.new((), data.get_cloned());
         SingleView {
             core: Default::default(),
@@ -58,17 +65,17 @@ impl<D: SingleData + 'static, V: Driver<(), D::Item>> SingleView<D, V> {
     }
 
     /// Access the data object
-    pub fn data(&self) -> &D {
+    pub fn data(&self) -> &T {
         &self.data
     }
 
     /// Access the data object (mut)
-    pub fn data_mut(&mut self) -> &mut D {
+    pub fn data_mut(&mut self) -> &mut T {
         &mut self.data
     }
 
     /// Get a copy of the shared value
-    pub fn get_value(&self) -> D::Item {
+    pub fn get_value(&self) -> T::Item {
         self.data.get_cloned()
     }
 
@@ -77,7 +84,7 @@ impl<D: SingleData + 'static, V: Driver<(), D::Item>> SingleView<D, V> {
     /// This method updates the shared data, if supported (see
     /// [`SingleData::update`]). Other widgets sharing this data are notified
     /// of the update, if data is changed.
-    pub fn set_value(&self, mgr: &mut Manager, data: D::Item) {
+    pub fn set_value(&self, mgr: &mut Manager, data: T::Item) {
         if let Some(handle) = self.data.update(data) {
             mgr.trigger_update(handle, 0);
         }
@@ -87,12 +94,14 @@ impl<D: SingleData + 'static, V: Driver<(), D::Item>> SingleView<D, V> {
     ///
     /// This is purely a convenience method over [`SingleView::set_value`].
     /// It notifies other widgets of updates to the shared data.
-    pub fn update_value<F: Fn(D::Item) -> D::Item>(&self, mgr: &mut Manager, f: F) {
+    pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut Manager, f: F) {
         self.set_value(mgr, f(self.get_value()));
     }
 }
 
-impl<D: SingleData + 'static, V: Driver<(), D::Item>> WidgetConfig for SingleView<D, V> {
+impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> WidgetConfig
+    for SingleView<T, V>
+{
     fn configure(&mut self, mgr: &mut Manager) {
         self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
@@ -101,7 +110,9 @@ impl<D: SingleData + 'static, V: Driver<(), D::Item>> WidgetConfig for SingleVie
     }
 }
 
-impl<D: SingleData + 'static, V: Driver<(), D::Item>> Handler for SingleView<D, V> {
+impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> Handler
+    for SingleView<T, V>
+{
     type Msg = <V::Widget as Handler>::Msg;
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
         match event {
@@ -115,7 +126,9 @@ impl<D: SingleData + 'static, V: Driver<(), D::Item>> Handler for SingleView<D, 
     }
 }
 
-impl<D: SingleData + 'static, V: Driver<(), D::Item>> SendEvent for SingleView<D, V> {
+impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> SendEvent
+    for SingleView<T, V>
+{
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled;
@@ -139,7 +152,9 @@ impl<D: SingleData + 'static, V: Driver<(), D::Item>> SendEvent for SingleView<D
     }
 }
 
-impl<D: SingleData + 'static, V: Driver<(), D::Item>> fmt::Debug for SingleView<D, V> {
+impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> fmt::Debug
+    for SingleView<T, V>
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,

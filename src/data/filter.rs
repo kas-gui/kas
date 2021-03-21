@@ -6,7 +6,7 @@
 //! Filter accessor
 
 use kas::conv::Cast;
-use kas::data::{ListData, SharedData, SharedDataRec};
+use kas::data::{ListData, RecursivelyUpdatable, SharedData};
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
@@ -152,7 +152,9 @@ impl<T: ListData, F: Filter<T::Item>> SharedData for FilteredList<T, F> {
         Some(self.update)
     }
 }
-impl<T: ListData + 'static, F: Filter<T::Item>> SharedDataRec for Rc<FilteredList<T, F>> {
+impl<T: ListData + RecursivelyUpdatable + 'static, F: Filter<T::Item>> RecursivelyUpdatable
+    for Rc<FilteredList<T, F>>
+{
     fn enable_recursive_updates(&self, mgr: &mut Manager) {
         self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
@@ -161,7 +163,7 @@ impl<T: ListData + 'static, F: Filter<T::Item>> SharedDataRec for Rc<FilteredLis
     }
 }
 
-impl<T: ListData + 'static, F: Filter<T::Item>> ListData for Rc<FilteredList<T, F>> {
+impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> {
     type Key = T::Key;
     type Item = T::Item;
 
