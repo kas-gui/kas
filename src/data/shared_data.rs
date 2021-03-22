@@ -10,7 +10,7 @@ use kas::event::{Manager, UpdateHandle};
 use std::cell::RefCell;
 use std::fmt::Debug;
 
-/// Shared data which may notify of updates
+/// Shared (data) objects which may notify of updates
 pub trait Updatable: Debug {
     /// Get an update handle, if any is used to notify of updates
     ///
@@ -38,7 +38,10 @@ pub trait Updatable: Debug {
 /// require recursive updates need to provide a custom implementation of
 /// `enable_recursive_updates`, and when they do it may only be possible to
 /// implement this trait on `Rc<DataType>`.
-pub trait RecursivelyUpdatable: Debug {
+//
+// TODO(spec): implement this for all `Updatable` with a default impl? The cost
+// is some non-functional impls, e.g. FilteredList<T, F> (which needs Rc<..>).
+pub trait RecursivelyUpdatable: Updatable {
     /// Enable recursive updates on this object
     ///
     /// Some data objects (e.g. filters) are themselves dependent on another
