@@ -11,7 +11,7 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 
 /// Shared data which may notify of updates
-pub trait SharedData: Debug {
+pub trait Updatable: Debug {
     /// Get an update handle, if any is used to notify of updates
     ///
     /// If the data supports updates through shared references (e.g. via an

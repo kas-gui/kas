@@ -6,7 +6,7 @@
 //! Filter accessor
 
 use kas::conv::Cast;
-use kas::data::{ListData, RecursivelyUpdatable, SharedData};
+use kas::data::{ListData, RecursivelyUpdatable, Updatable};
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
@@ -142,7 +142,7 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     }
 }
 
-impl<T: ListData, F: Filter<T::Item>> SharedData for FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item>> Updatable for FilteredList<T, F> {
     fn update_handle(&self) -> Option<UpdateHandle> {
         Some(self.update)
     }

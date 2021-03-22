@@ -90,7 +90,7 @@ impl MyData {
             .unwrap_or_else(|| (n == self.active, format!("Entry #{}", n + 1)))
     }
 }
-impl SharedData for MyData {
+impl Updatable for MyData {
     fn update_handle(&self) -> Option<UpdateHandle> {
         Some(self.handle)
     }

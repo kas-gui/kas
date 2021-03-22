@@ -33,7 +33,7 @@ impl<T: Debug> SharedRc<T> {
         SharedRc(Rc::new((handle, data)))
     }
 }
-impl<T: Debug> SharedData for SharedRc<T> {
+impl<T: Debug> Updatable for SharedRc<T> {
     fn update_handle(&self) -> Option<UpdateHandle> {
         Some((self.0).0)
     }

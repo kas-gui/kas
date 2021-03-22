@@ -8,7 +8,7 @@
 use super::*;
 use std::ops::{Deref, DerefMut};
 
-impl<T: Debug> SharedData for [T] {
+impl<T: Debug> Updatable for [T] {
     fn update_handle(&self) -> Option<UpdateHandle> {
         None
     }
@@ -54,7 +54,7 @@ impl<T: Clone + Debug> ListDataMut for [T] {
     }
 }
 
-impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> SharedData
+impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> Updatable
     for std::collections::BTreeMap<K, T>
 {
     fn update_handle(&self) -> Option<UpdateHandle> {
@@ -109,7 +109,7 @@ impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> ListData for std::collection
 //     <T as Deref>::Target: SingleData,
 macro_rules! impl_via_deref {
     ($t: ident: $derived:ty) => {
-        impl<$t: SharedData + ?Sized> SharedData for $derived {
+        impl<$t: Updatable + ?Sized> Updatable for $derived {
             fn update_handle(&self) -> Option<UpdateHandle> {
                 self.deref().update_handle()
             }

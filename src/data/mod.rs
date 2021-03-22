@@ -18,7 +18,7 @@ mod shared_data;
 mod shared_rc;
 
 pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
-pub use shared_data::{RecursivelyUpdatable, SharedData};
+pub use shared_data::{RecursivelyUpdatable, Updatable};
 pub use shared_rc::SharedRc;
 
 use kas::event::{Manager, UpdateHandle};
@@ -29,7 +29,7 @@ use std::fmt::Debug;
 /// Trait for viewable single data items
 // Note: we require Debug + 'static to allow widgets using this to implement
 // WidgetCore, which requires Debug + Any.
-pub trait SingleData: SharedData {
+pub trait SingleData: Updatable {
     type Item: Clone;
 
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut
@@ -40,7 +40,7 @@ pub trait SingleData: SharedData {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`SharedData::update_handle`] should
+    /// widgets. If implemented, then [`Updatable::update_handle`] should
     /// return a copy of the same update handle.
     ///
     /// Returns an [`UpdateHandle`] if an update occurred. Returns `None` if
@@ -62,7 +62,7 @@ pub trait SingleDataMut: SingleData {
 }
 
 /// Trait for viewable data lists
-pub trait ListData: SharedData {
+pub trait ListData: Updatable {
     /// Key type
     type Key: Clone + Debug + PartialEq + Eq;
 
@@ -85,7 +85,7 @@ pub trait ListData: SharedData {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`SharedData::update_handle`] should
+    /// widgets. If implemented, then [`Updatable::update_handle`] should
     /// return a copy of the same update handle.
     ///
     /// Returns an [`UpdateHandle`] if an update occurred. Returns `None` if
@@ -121,7 +121,7 @@ pub trait ListDataMut: ListData {
 /// Trait for viewable data matrices
 ///
 /// Data matrices are a kind of table where each cell has the same type.
-pub trait MatrixData: SharedData {
+pub trait MatrixData: Updatable {
     /// Column key type
     type ColKey: Clone + Debug + PartialEq + Eq;
     /// Row key type
@@ -153,7 +153,7 @@ pub trait MatrixData: SharedData {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
-    /// widgets. If implemented, then [`SharedData::update_handle`] should
+    /// widgets. If implemented, then [`Updatable::update_handle`] should
     /// return a copy of the same update handle.
     ///
     /// Returns an [`UpdateHandle`] if an update occurred. Returns `None` if

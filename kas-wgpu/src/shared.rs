@@ -13,7 +13,7 @@ use std::rc::Rc;
 
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow, ShaderManager};
 use crate::{Error, Options, WindowId};
-use kas::data::SharedData;
+use kas::data::Updatable;
 use kas::event::UpdateHandle;
 use kas_theme::Theme;
 
@@ -24,7 +24,7 @@ use clipboard::{ClipboardContext, ClipboardProvider};
 pub struct SharedState<C: CustomPipe, T> {
     #[cfg(feature = "clipboard")]
     clipboard: Option<ClipboardContext>,
-    data_updates: HashMap<UpdateHandle, Vec<Rc<dyn SharedData>>>,
+    data_updates: HashMap<UpdateHandle, Vec<Rc<dyn Updatable>>>,
     pub instance: wgpu::Instance,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
@@ -150,7 +150,7 @@ where
         });
     }
 
-    pub fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn SharedData>) {
+    pub fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn Updatable>) {
         let list = self
             .data_updates
             .entry(handle)
