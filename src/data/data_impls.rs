@@ -54,9 +54,7 @@ impl<T: Clone + Debug> ListDataMut for [T] {
     }
 }
 
-impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> Updatable
-    for std::collections::BTreeMap<K, T>
-{
+impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> Updatable for std::collections::BTreeMap<K, T> {
     fn update_handle(&self) -> Option<UpdateHandle> {
         None
     }
@@ -162,6 +160,7 @@ macro_rules! impl_via_deref {
         impl<$t: MatrixData + ?Sized> MatrixData for $derived {
             type ColKey = $t::ColKey;
             type RowKey = $t::RowKey;
+            type Key = $t::Key;
             type Item = $t::Item;
 
             fn col_len(&self) -> usize {
@@ -170,20 +169,15 @@ macro_rules! impl_via_deref {
             fn row_len(&self) -> usize {
                 self.deref().row_len()
             }
-            fn contains(&self, col: &Self::ColKey, row: &Self::RowKey) -> bool {
-                self.deref().contains(col, row)
+            fn contains(&self, key: &Self::Key) -> bool {
+                self.deref().contains(key)
             }
-            fn get_cloned(&self, col: &Self::ColKey, row: &Self::RowKey) -> Option<Self::Item> {
-                self.deref().get_cloned(col, row)
+            fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+                self.deref().get_cloned(key)
             }
 
-            fn update(
-                &self,
-                col: &Self::ColKey,
-                row: &Self::RowKey,
-                value: Self::Item,
-            ) -> Option<UpdateHandle> {
-                self.deref().update(col, row, value)
+            fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+                self.deref().update(key, value)
             }
 
             fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {
@@ -198,6 +192,10 @@ macro_rules! impl_via_deref {
             }
             fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey> {
                 self.deref().row_iter_vec_from(start, limit)
+            }
+
+            fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {
+                <$t>::make_key(col, row)
             }
         }
     };
@@ -222,8 +220,8 @@ macro_rules! impl_via_deref_mut {
             }
         }
         impl<$t: MatrixDataMut + ?Sized> MatrixDataMut for $derived {
-            fn set(&mut self, col: &Self::ColKey, row: &Self::RowKey, item: Self::Item) {
-                self.deref_mut().set(col, row, item)
+            fn set(&mut self, key: &Self::Key, item: Self::Item) {
+                self.deref_mut().set(key, item)
             }
         }
     };

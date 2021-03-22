@@ -96,6 +96,7 @@ impl<T: ListDataMut> ListDataMut for SharedRc<T> {
 impl<T: MatrixData> MatrixData for SharedRc<T> {
     type ColKey = T::ColKey;
     type RowKey = T::RowKey;
+    type Key = T::Key;
     type Item = T::Item;
 
     fn col_len(&self) -> usize {
@@ -104,20 +105,15 @@ impl<T: MatrixData> MatrixData for SharedRc<T> {
     fn row_len(&self) -> usize {
         (self.0).1.borrow().row_len()
     }
-    fn contains(&self, col: &Self::ColKey, row: &Self::RowKey) -> bool {
-        (self.0).1.borrow().contains(col, row)
+    fn contains(&self, key: &Self::Key) -> bool {
+        (self.0).1.borrow().contains(key)
     }
-    fn get_cloned(&self, col: &Self::ColKey, row: &Self::RowKey) -> Option<Self::Item> {
-        (self.0).1.borrow().get_cloned(col, row)
+    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+        (self.0).1.borrow().get_cloned(key)
     }
 
-    fn update(
-        &self,
-        col: &Self::ColKey,
-        row: &Self::RowKey,
-        value: Self::Item,
-    ) -> Option<UpdateHandle> {
-        (self.0).1.borrow().update(col, row, value)
+    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+        (self.0).1.borrow().update(key, value)
     }
 
     fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {
@@ -133,9 +129,13 @@ impl<T: MatrixData> MatrixData for SharedRc<T> {
     fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey> {
         (self.0).1.borrow().row_iter_vec_from(start, limit)
     }
+
+    fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {
+        T::make_key(col, row)
+    }
 }
 impl<T: MatrixDataMut> MatrixDataMut for SharedRc<T> {
-    fn set(&mut self, col: &Self::ColKey, row: &Self::RowKey, item: Self::Item) {
-        (self.0).1.borrow_mut().set(col, row, item);
+    fn set(&mut self, key: &Self::Key, item: Self::Item) {
+        (self.0).1.borrow_mut().set(key, item);
     }
 }

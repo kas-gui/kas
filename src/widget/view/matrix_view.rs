@@ -28,11 +28,11 @@ struct WidgetData<K, W> {
 /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
 /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
 #[derive(Clone, Debug, Widget)]
-#[handler(send=noauto, msg=ChildMsg<(T::ColKey, T::RowKey), <V::Widget as Handler>::Msg>)]
+#[handler(send=noauto, msg=ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
 #[widget(children=noauto, config=noauto)]
 pub struct MatrixView<
     T: MatrixData + RecursivelyUpdatable + 'static,
-    V: Driver<(T::ColKey, T::RowKey), T::Item> = driver::Default,
+    V: Driver<T::Key, T::Item> = driver::Default,
 > {
     first_id: WidgetId,
     #[widget_core]
@@ -41,7 +41,7 @@ pub struct MatrixView<
     frame_size: Size,
     view: V,
     data: T,
-    widgets: Vec<WidgetData<(T::ColKey, T::RowKey), V::Widget>>,
+    widgets: Vec<WidgetData<T::Key, V::Widget>>,
     // TODO: the following three all have units of "the number of rows/cols"
     ideal_len: Size,
     alloc_len: Size,
@@ -53,24 +53,18 @@ pub struct MatrixView<
     scroll: ScrollComponent,
     sel_mode: SelectionMode,
     // TODO(opt): replace selection list with RangeOrSet type?
-    selection: LinearSet<(T::ColKey, T::RowKey)>,
+    selection: LinearSet<T::Key>,
     press_event: Option<PressSource>,
-    press_target: Option<(T::ColKey, T::RowKey)>,
+    press_target: Option<T::Key>,
 }
 
-impl<
-        T: MatrixData + RecursivelyUpdatable,
-        V: Driver<(T::ColKey, T::RowKey), T::Item> + Default,
-    > MatrixView<T, V>
-{
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item> + Default> MatrixView<T, V> {
     /// Construct a new instance
     pub fn new(data: T) -> Self {
         Self::new_with_view(<V as Default>::default(), data)
     }
 }
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::Item>>
-    MatrixView<T, V>
-{
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> MatrixView<T, V> {
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: T) -> Self {
         MatrixView {
@@ -109,8 +103,8 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
     }
 
     /// Get a copy of the shared value at `key`
-    pub fn get_value(&self, col: &T::ColKey, row: &T::RowKey) -> Option<T::Item> {
-        self.data.get_cloned(col, row)
+    pub fn get_value(&self, key: &T::Key) -> Option<T::Item> {
+        self.data.get_cloned(key)
     }
 
     /// Set shared data
@@ -118,8 +112,8 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
     /// This method updates the shared data, if supported (see
     /// [`MatrixData::update`]). Other widgets sharing this data are notified
     /// of the update, if data is changed.
-    pub fn set_value(&self, mgr: &mut Manager, col: &T::ColKey, row: &T::RowKey, data: T::Item) {
-        if let Some(handle) = self.data.update(col, row, data) {
+    pub fn set_value(&self, mgr: &mut Manager, key: &T::Key, data: T::Item) {
+        if let Some(handle) = self.data.update(key, data) {
             mgr.trigger_update(handle, 0);
         }
     }
@@ -129,15 +123,9 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
     /// This is purely a convenience method over [`MatrixView::set_value`].
     /// It does nothing if no value is found at `key`.
     /// It notifies other widgets of updates to the shared data.
-    pub fn update_value<F: Fn(T::Item) -> T::Item>(
-        &self,
-        mgr: &mut Manager,
-        col: &T::ColKey,
-        row: &T::RowKey,
-        f: F,
-    ) {
-        if let Some(item) = self.get_value(col, row) {
-            self.set_value(mgr, col, row, f(item));
+    pub fn update_value<F: Fn(T::Item) -> T::Item>(&self, mgr: &mut Manager, key: &T::Key, f: F) {
+        if let Some(item) = self.get_value(key) {
+            self.set_value(mgr, key, f(item));
         }
     }
 
@@ -172,12 +160,12 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
     ///
     /// With mode [`SelectionMode::Single`] this may contain zero or one entry;
     /// use `selected_iter().next()` to extract only the first (optional) entry.
-    pub fn selected_iter<'a>(&'a self) -> impl Iterator<Item = &'a (T::ColKey, T::RowKey)> + 'a {
+    pub fn selected_iter<'a>(&'a self) -> impl Iterator<Item = &'a T::Key> + 'a {
         self.selection.iter()
     }
 
     /// Check whether an entry is selected
-    pub fn is_selected(&self, key: &(T::ColKey, T::RowKey)) -> bool {
+    pub fn is_selected(&self, key: &T::Key) -> bool {
         self.selection.contains(key)
     }
 
@@ -195,16 +183,16 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
     /// invalid.
     ///
     /// Does not send [`ChildMsg`] responses.
-    pub fn select(&mut self, col: T::ColKey, row: T::RowKey) -> Result<bool, ()> {
+    pub fn select(&mut self, key: T::Key) -> Result<bool, ()> {
         match self.sel_mode {
             SelectionMode::None => return Err(()),
             SelectionMode::Single => self.selection.clear(),
             _ => (),
         }
-        if !self.data.contains(&col, &row) {
+        if !self.data.contains(&key) {
             return Err(());
         }
-        Ok(self.selection.insert((col, row)))
+        Ok(self.selection.insert(key))
     }
 
     /// Directly deselect an item
@@ -213,14 +201,14 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
     /// Also returns `false` on invalid keys.
     ///
     /// Does not send [`ChildMsg`] responses.
-    pub fn deselect(&mut self, key: &(T::ColKey, T::RowKey)) -> bool {
+    pub fn deselect(&mut self, key: &T::Key) -> bool {
         self.selection.remove(key)
     }
 
     /// Manually trigger an update to handle changed data
     pub fn update_view(&mut self, mgr: &mut Manager) {
         let data = &self.data;
-        self.selection.retain(|(col, row)| data.contains(col, row));
+        self.selection.retain(|key| data.contains(key));
         for w in &mut self.widgets {
             w.key = None;
         }
@@ -269,14 +257,10 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
                 let ri = first_row + rn;
                 let i = (ci % cols.len()) * rows.len() + (ri % rows.len());
                 let w = &mut self.widgets[i];
-                if w.key
-                    .as_ref()
-                    .map(|k| &k.0 != col || &k.1 != row)
-                    .unwrap_or(true)
-                {
-                    let key = (col.clone(), row.clone());
+                let key = T::make_key(&col, &row);
+                if w.key.as_ref() != Some(&key) {
                     w.key = Some(key.clone());
-                    if let Some(item) = self.data.get_cloned(&col, &row) {
+                    if let Some(item) = self.data.get_cloned(&key) {
                         action |= self.view.set(&mut w.widget, key, item);
                     } else {
                         // TODO: self.view.set_default(&mut w.widget)
@@ -294,7 +278,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::Item>> Scrollable
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Scrollable
     for MatrixView<T, V>
 {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
@@ -322,8 +306,8 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::Item>>
-    WidgetChildren for MatrixView<T, V>
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> WidgetChildren
+    for MatrixView<T, V>
 {
     #[inline]
     fn first_id(&self) -> WidgetId {
@@ -348,7 +332,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::Item>> WidgetConfig
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> WidgetConfig
     for MatrixView<T, V>
 {
     fn configure(&mut self, mgr: &mut Manager) {
@@ -360,9 +344,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::Item>> Layout
-    for MatrixView<T, V>
-{
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Layout for MatrixView<T, V> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
@@ -470,7 +452,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::Item>> SendEvent
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> SendEvent
     for MatrixView<T, V>
 {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
@@ -532,7 +514,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<(T::ColKey, T::RowKey), T::
                 (i, key, r @ Response::Msg(_)) | (i, key, r @ Response::Update) => {
                     if let Some(key) = key {
                         if let Some(item) = self.view.get(&self.widgets[i].widget, &key) {
-                            self.set_value(mgr, &key.0, &key.1, item);
+                            self.set_value(mgr, &key, item);
                         }
                         return r
                             .try_into()

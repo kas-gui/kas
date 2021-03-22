@@ -126,9 +126,8 @@ pub trait MatrixData: Updatable {
     type ColKey: Clone + Debug + PartialEq + Eq;
     /// Row key type
     type RowKey: Clone + Debug + PartialEq + Eq;
-    // TODO: perhaps we should add this? But it depends on an unstable feature.
-    // type Key: Clone + Debug + PartialEq + Eq = (Self::ColKey, Self::RowKey);
-
+    /// Full key type
+    type Key: Clone + Debug + PartialEq + Eq;
     /// Item type
     type Item: Clone;
 
@@ -143,12 +142,12 @@ pub trait MatrixData: Updatable {
     fn row_len(&self) -> usize;
 
     /// Check whether an item with these keys exists
-    fn contains(&self, col: &Self::ColKey, row: &Self::RowKey) -> bool;
+    fn contains(&self, key: &Self::Key) -> bool;
 
     /// Get data by key (clone)
     ///
     /// It is expected that this method succeeds when both keys are valid.
-    fn get_cloned(&self, col: &Self::ColKey, row: &Self::RowKey) -> Option<Self::Item>;
+    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item>;
 
     /// Update data, if supported
     ///
@@ -162,12 +161,7 @@ pub trait MatrixData: Updatable {
     /// This method takes only `&self`, thus some mechanism such as [`RefCell`]
     /// is required to obtain `&mut` and lower to [`ListDataMut::set`]. The
     /// provider of this lowering should also provide an [`UpdateHandle`].
-    fn update(
-        &self,
-        col: &Self::ColKey,
-        row: &Self::RowKey,
-        value: Self::Item,
-    ) -> Option<UpdateHandle>;
+    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle>;
 
     // TODO(gat): replace with an iterator
     /// Iterate over column keys as a vec
@@ -195,10 +189,13 @@ pub trait MatrixData: Updatable {
     ///
     /// The result is the same as `self.iter_vec(start + limit).skip(start)`.
     fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey>;
+
+    /// Make a key from parts
+    fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key;
 }
 
 /// Trait for writable data matrices
 pub trait MatrixDataMut: MatrixData {
     /// Set data for an existing cell
-    fn set(&mut self, col: &Self::ColKey, row: &Self::RowKey, item: Self::Item);
+    fn set(&mut self, key: &Self::Key, item: Self::Item);
 }
