@@ -259,11 +259,11 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> MatrixVie
                 let w = &mut self.widgets[i];
                 let key = T::make_key(&col, &row);
                 if w.key.as_ref() != Some(&key) {
-                    w.key = Some(key.clone());
                     if let Some(item) = self.data.get_cloned(&key) {
+                        w.key = Some(key.clone());
                         action |= self.view.set(&mut w.widget, key, item);
                     } else {
-                        // TODO: self.view.set_default(&mut w.widget)
+                        w.key = None; // disables drawing and clicking
                     }
                 }
                 rect.pos = pos_start + skip.cwise_mul(Size(ci.cast(), ri.cast()));
@@ -427,8 +427,10 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Layout fo
         let coord = coord + self.scroll.offset();
         let num = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
         for child in &self.widgets[..num] {
-            if let Some(id) = child.widget.find_id(coord) {
-                return Some(id);
+            if child.key.is_some() {
+                if let Some(id) = child.widget.find_id(coord) {
+                    return Some(id);
+                }
             }
         }
         Some(self.id())
@@ -441,8 +443,8 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Layout fo
         let num = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
         draw_handle.clip_region(self.core.rect, offset, Scroll, &mut |draw_handle| {
             for child in &self.widgets[..num] {
-                child.widget.draw(draw_handle, mgr, disabled);
                 if let Some(ref key) = child.key {
+                    child.widget.draw(draw_handle, mgr, disabled);
                     if self.is_selected(key) {
                         draw_handle.selection_box(child.widget.rect());
                     }
