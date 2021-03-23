@@ -396,7 +396,7 @@ impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::It
         let frame = FrameRules::new_sym(0, inner_margin, 0);
 
         // We use a default-generated widget to generate size rules
-        let mut rules = self.view.default().size_rules(size_handle, axis);
+        let mut rules = self.view.new().size_rules(size_handle, axis);
         if axis.is_vertical() == self.direction.is_vertical() {
             self.child_size_min = rules.min_size();
             self.child_size_ideal = rules.ideal_size();
@@ -445,20 +445,8 @@ impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::It
             *mgr |= TkAction::RECONFIGURE;
             self.widgets.reserve(num - old_num);
             mgr.size_handle(|size_handle| {
-                for (key, item) in self.data.iter_vec_from(old_num, num - old_num) {
-                    let mut widget = self.view.new(key.clone(), item);
-                    let key = Some(key);
-                    // We must solve size rules on new widgets:
-                    solve_size_rules(
-                        &mut widget,
-                        size_handle,
-                        Some(child_size.0),
-                        Some(child_size.1),
-                    );
-                    self.widgets.push(WidgetData { key, widget });
-                }
-                for _ in self.widgets.len()..num {
-                    let mut widget = self.view.default();
+                for _ in old_num..num {
+                    let mut widget = self.view.new();
                     solve_size_rules(
                         &mut widget,
                         size_handle,
@@ -468,7 +456,7 @@ impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::It
                     self.widgets.push(WidgetData { key: None, widget });
                 }
             });
-        } else if num + 64 <= self.widgets.len() {
+        } else if num + 64 <= old_num {
             // Free memory (rarely useful?)
             self.widgets.truncate(num);
         }

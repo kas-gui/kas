@@ -175,6 +175,25 @@ impl ListEntry {
     }
 }
 
+#[derive(Debug, Default)]
+struct MyDriver;
+impl Driver<usize, (bool, String)> for MyDriver {
+    type Widget = ListEntry;
+
+    fn new(&self) -> Self::Widget {
+        // Default instances are not shown, so the data is unimportant
+        ListEntry::new(0, false, "".to_string())
+    }
+    fn set(&self, widget: &mut Self::Widget, _: usize, data: (bool, String)) -> TkAction {
+        widget.radio.set_bool(data.0) | widget.entry.set_string(data.1)
+    }
+    fn get(&self, widget: &Self::Widget, _: &usize) -> Option<(bool, String)> {
+        let b = widget.radio.get_bool();
+        let s = widget.entry.get_string();
+        Some((b, s))
+    }
+}
+
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
@@ -209,27 +228,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
     };
 
     let data = MyData::new(3);
-    #[derive(Debug, Default)]
-    struct MyDriver;
-    impl Driver<usize, (bool, String)> for MyDriver {
-        type Widget = ListEntry;
-
-        fn default(&self) -> Self::Widget {
-            // Default instances are not shown, so the data is unimportant
-            ListEntry::new(0, false, "".to_string())
-        }
-        fn new(&self, key: usize, data: (bool, String)) -> Self::Widget {
-            ListEntry::new(key, data.0, data.1)
-        }
-        fn set(&self, widget: &mut Self::Widget, _: usize, data: (bool, String)) -> TkAction {
-            widget.radio.set_bool(data.0) | widget.entry.set_string(data.1)
-        }
-        fn get(&self, widget: &Self::Widget, _: &usize) -> Option<(bool, String)> {
-            let b = widget.radio.get_bool();
-            let s = widget.entry.get_string();
-            Some((b, s))
-        }
-    }
     type MyList = ListView<kas::dir::Down, MyData, MyDriver>;
 
     let window = Window::new(

@@ -33,15 +33,7 @@ impl<
     > Default for SingleView<T, V>
 {
     fn default() -> Self {
-        let view = <V as Default>::default();
-        let data = T::default();
-        let child = view.new((), data.get_cloned());
-        SingleView {
-            core: Default::default(),
-            view,
-            data,
-            child,
-        }
+        Self::new(T::default())
     }
 }
 impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item> + Default>
@@ -55,7 +47,8 @@ impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item> + De
 impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> SingleView<T, V> {
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: T) -> Self {
-        let child = view.new((), data.get_cloned());
+        let mut child = view.new();
+        let _ = view.set(&mut child, (), data.get_cloned());
         SingleView {
             core: Default::default(),
             view,

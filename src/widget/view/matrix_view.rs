@@ -351,7 +351,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Layout fo
         let frame = FrameRules::new_sym(0, inner_margin, 0);
 
         // We use a default-generated widget to generate size rules
-        let mut rules = self.view.default().size_rules(size_handle, axis);
+        let mut rules = self.view.new().size_rules(size_handle, axis);
 
         self.child_size_min.set_component(axis, rules.min_size());
         self.child_size_ideal
@@ -397,7 +397,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Layout fo
             self.widgets.reserve(num - old_num);
             mgr.size_handle(|size_handle| {
                 for _ in old_num..num {
-                    let mut widget = self.view.default();
+                    let mut widget = self.view.new();
                     solve_size_rules(
                         &mut widget,
                         size_handle,
