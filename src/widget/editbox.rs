@@ -178,7 +178,7 @@ impl<F: FnMut(&str)> Debug for EditUpdate<F> {
 /// A text-edit box
 ///
 /// This is just a wrapper around [`EditField`] adding a frame.
-#[derive(Clone, Debug, Widget)]
+#[derive(Clone, Default, Debug, Widget)]
 #[handler(msg = G::Msg)]
 pub struct EditBox<G: EditGuard = ()> {
     #[widget_core]

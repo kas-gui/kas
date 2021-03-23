@@ -18,10 +18,6 @@ use kas::widget::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-thread_local! {
-    pub static RADIO: UpdateHandle = UpdateHandle::new();
-}
-
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {
     Decr,
@@ -136,15 +132,6 @@ impl EditGuard for ListEntryGuard {
 }
 
 // The list entry
-//
-// Use of a compound listing here with five child widgets (RadioBox is a
-// compound widget) slows down list resizing significantly (more so in debug
-// builds).
-//
-// Use of an embedded RadioBox demonstrates another performance issue:
-// activating any RadioBox sends a message to all others using the same
-// UpdateHandle, which is quite slow with thousands of entries!
-// (This issue does not occur when RadioBoxes are independent.)
 #[derive(Clone, Debug, Widget)]
 #[layout(column)]
 #[handler(msg=EntryMsg)]
@@ -161,31 +148,28 @@ struct ListEntry {
     entry: EditBox<ListEntryGuard>,
 }
 
-impl ListEntry {
-    fn new(n: usize, active: bool, text: String) -> Self {
-        ListEntry {
-            core: Default::default(),
-            layout_data: Default::default(),
-            label: Label::new(format!("Entry number {}", n + 1)),
-            radio: RadioBox::new("display this entry", RADIO.with(|h| *h))
-                .with_state(active)
-                .on_select(move |_| Some(EntryMsg::Select)),
-            entry: EditBox::new(text).with_guard(ListEntryGuard),
-        }
-    }
+#[derive(Debug)]
+struct MyDriver {
+    radio_group: UpdateHandle,
 }
-
-#[derive(Debug, Default)]
-struct MyDriver;
 impl Driver<usize, (bool, String)> for MyDriver {
     type Widget = ListEntry;
 
     fn new(&self) -> Self::Widget {
         // Default instances are not shown, so the data is unimportant
-        ListEntry::new(0, false, "".to_string())
+        ListEntry {
+            core: Default::default(),
+            layout_data: Default::default(),
+            label: Label::new(String::default()),
+            radio: RadioBox::new("display this entry", self.radio_group)
+                .on_select(move |_| Some(EntryMsg::Select)),
+            entry: EditBox::new(String::default()).with_guard(ListEntryGuard),
+        }
     }
-    fn set(&self, widget: &mut Self::Widget, _: usize, data: (bool, String)) -> TkAction {
-        widget.radio.set_bool(data.0) | widget.entry.set_string(data.1)
+    fn set(&self, widget: &mut Self::Widget, n: usize, data: (bool, String)) -> TkAction {
+        widget.label.set_string(format!("Entry number {}", n + 1))
+            | widget.radio.set_bool(data.0)
+            | widget.entry.set_string(data.1)
     }
     fn get(&self, widget: &Self::Widget, _: &usize) -> Option<(bool, String)> {
         let b = widget.radio.get_bool();
@@ -227,6 +211,9 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
+    let driver = MyDriver {
+        radio_group: UpdateHandle::new(),
+    };
     let data = MyData::new(3);
     type MyList = ListView<kas::dir::Down, MyData, MyDriver>;
 
@@ -242,7 +229,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget] display: StringLabel = Label::from("Entry #0"),
                 #[widget] _ = Separator::new(),
                 #[widget(handler = set_radio)] list: ScrollBars<MyList> =
-                    ScrollBars::new(ListView::new(data)).with_bars(false, true),
+                    ScrollBars::new(ListView::new_with_view(driver, data)).with_bars(false, true),
             }
             impl {
                 fn set_len(&mut self, mgr: &mut Manager, len: usize) -> Response<VoidMsg> {
