@@ -3,19 +3,12 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Dynamic widget example
+//! Data list example (indirect representation)
 //!
-//! This example exists in part to demonstrate use of dynamically-allocated
-//! widgets (note also one can use `Column<Box<dyn Widget<Msg = ()>>>`).
-//!
-//! In part, this also serves as a stress-test of how many widgets it is viable
-//! to have in an app. In my testing:
-//!
-//! -   hundreds of widgets performs mostly flawlessly even in debug mode
-//! -   thousands of widgets performs flawlessly in release mode
-//! -   hundreds of thousands of widgets has some issues (slow creation,
-//!     very slow activation of a RadioBox in a chain hundreds-of-thousands
-//!     long), but in many ways still performs well in release mode
+//! This is a variant of `data-list` using the [`ListView`] widget to create a
+//! dynamic view over a lazy, indirect data structure. Maximum data length is
+//! thus only limited by the data types used (specifically the `i32` type used
+//! to calculate the maximum scroll offset).
 
 use kas::data::*;
 use kas::event::ChildMsg;

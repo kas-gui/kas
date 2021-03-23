@@ -50,13 +50,21 @@ Ready? Set! Go!
 
 ![Stopwatch](../../screenshots/stopwatch.png)
 
-### Dynamic
+### Data list
 
-An example with dynamic contents. Doubles as a performance tester for how many
-widgets are viable in a window (beyond around 10'000, init/resizing is slow but
-interaction is still fast).
+This example demonstrates an interface over a list data structure of
+user-defined length. It has two implementations, both with (approximately) the
+same UI, but different internals:
 
-![Dynamic](../../screenshots/dynamic.png)
+-   `data-list` directly allocates a widget for each data entry and stores data
+    within the widgets; it can scale to hundreds of entries or potentially tens
+    of thousands when using release optimisations and tolerating some delays
+-   `data-list-view` uses a dynamic view over a lazily-allocated data structure;
+    performance is thus independent of the number of entries, but the size type
+    used to calculate the maximum scroll offset overflows with a few tens of
+    millions of entries (depending on item widget and scale factor)
+
+![Data list](../../screenshots/data-list.png)
 
 ### Layout
 
