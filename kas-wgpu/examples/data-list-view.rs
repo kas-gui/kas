@@ -186,12 +186,6 @@ impl Driver<(usize, bool, String)> for MyDriver {
             | widget.radio.set_bool(data.1)
             | widget.entry.set_string(data.2)
     }
-    fn get(&self, widget: &Self::Widget) -> Option<(usize, bool, String)> {
-        let n = 0; // passed to MyData::update, but not used
-        let b = widget.radio.get_bool();
-        let s = widget.entry.get_string();
-        Some((n, b, s))
-    }
 }
 
 fn main() -> Result<(), kas_wgpu::Error> {
