@@ -6,7 +6,7 @@
 //! List view widget
 
 use super::{driver, Driver, SelectionMode};
-use kas::data::{MatrixData, RecursivelyUpdatable};
+use kas::data::{MatrixData, UpdatableAll};
 use kas::event::{ChildMsg, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
@@ -31,7 +31,7 @@ struct WidgetData<K, W> {
 #[handler(send=noauto, msg=ChildMsg<T::Key, <V::Widget as Handler>::Msg>)]
 #[widget(children=noauto, config=noauto)]
 pub struct MatrixView<
-    T: MatrixData + RecursivelyUpdatable + 'static,
+    T: MatrixData + UpdatableAll<T::Key, V::Msg> + 'static,
     V: Driver<T::Item> = driver::Default,
 > {
     first_id: WidgetId,
@@ -58,13 +58,13 @@ pub struct MatrixView<
     press_target: Option<T::Key>,
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item> + Default> MatrixView<T, V> {
+impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item> + Default> MatrixView<T, V> {
     /// Construct a new instance
     pub fn new(data: T) -> Self {
         Self::new_with_view(<V as Default>::default(), data)
     }
 }
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> MatrixView<T, V> {
+impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixView<T, V> {
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: T) -> Self {
         MatrixView {
@@ -278,7 +278,9 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> MatrixView<T, V> 
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> Scrollable for MatrixView<T, V> {
+impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Scrollable
+    for MatrixView<T, V>
+{
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         let item_min = self.child_size_min + self.child_inter_margin;
         let data_len = Size(self.data.col_len().cast(), self.data.row_len().cast());
@@ -304,7 +306,9 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> Scrollable for Ma
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> WidgetChildren for MatrixView<T, V> {
+impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetChildren
+    for MatrixView<T, V>
+{
     #[inline]
     fn first_id(&self) -> WidgetId {
         self.first_id
@@ -328,7 +332,9 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> WidgetChildren fo
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> WidgetConfig for MatrixView<T, V> {
+impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetConfig
+    for MatrixView<T, V>
+{
     fn configure(&mut self, mgr: &mut Manager) {
         self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
@@ -338,7 +344,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> WidgetConfig for 
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> Layout for MatrixView<T, V> {
+impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout for MatrixView<T, V> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
@@ -448,7 +454,9 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> Layout for Matrix
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> SendEvent for MatrixView<T, V> {
+impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
+    for MatrixView<T, V>
+{
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled;
@@ -459,18 +467,18 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> SendEvent for Mat
             let response = 'outer: loop {
                 // We forward events to all children, even if not visible
                 // (e.g. these may be subscribed to an UpdateHandle).
-                for (i, child) in self.widgets.iter_mut().enumerate() {
+                for child in self.widgets.iter_mut() {
                     if id <= child.widget.id() {
                         let r = child.widget.send(mgr, id, child_event);
-                        break 'outer (i, child.key.clone(), r);
+                        break 'outer (child.key.clone(), r);
                     }
                 }
                 debug_assert!(false, "SendEvent::send: bad WidgetId");
                 return Response::Unhandled;
             };
             match response {
-                (_, _, Response::None) => return Response::None,
-                (_, key, Response::Unhandled) => {
+                (_, Response::None) => return Response::None,
+                (key, Response::Unhandled) => {
                     if let Event::PressStart { source, coord, .. } = event {
                         if source.is_primary() {
                             // We request a grab with our ID, hence the
@@ -483,13 +491,13 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> SendEvent for Mat
                         }
                     }
                 }
-                (_, _, Response::Focus(rect)) => {
+                (_, Response::Focus(rect)) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                     *mgr |= action;
                     self.update_widgets(mgr);
                     return Response::Focus(rect);
                 }
-                (_, Some(key), Response::Select) => {
+                (Some(key), Response::Select) => {
                     match self.sel_mode {
                         SelectionMode::None => (),
                         SelectionMode::Single => {
@@ -504,15 +512,14 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> SendEvent for Mat
                     }
                     return Response::None;
                 }
-                (_, None, Response::Select) => return Response::None,
-                (i, key, r @ Response::Msg(_)) | (i, key, r @ Response::Update) => {
+                (None, Response::Select) => return Response::None,
+                (_, Response::Update) => return Response::None,
+                (key, Response::Msg(msg)) => {
                     if let Some(key) = key {
-                        if let Some(item) = self.view.get(&self.widgets[i].widget) {
-                            self.set_value(mgr, &key, item);
+                        if let Some(handle) = self.data.handle(&key, &msg) {
+                            mgr.trigger_update(handle, 0);
                         }
-                        return r
-                            .try_into()
-                            .unwrap_or_else(|msg| Response::Msg(ChildMsg::Child(key, msg)));
+                        return Response::Msg(ChildMsg::Child(key, msg));
                     } else {
                         log::warn!("MatrixView: response from widget with no key");
                         return Response::None;
