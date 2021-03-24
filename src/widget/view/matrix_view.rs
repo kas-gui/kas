@@ -5,11 +5,11 @@
 
 //! List view widget
 
-use super::{driver, Driver, SelectionMode};
-use kas::data::{MatrixData, UpdatableAll};
+use super::{driver, Driver, MatrixData, SelectionMode};
 use kas::event::{ChildMsg, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
+use kas::updatable::UpdatableAll;
 #[allow(unused)] // doc links
 use kas::widget::ScrollBars;
 use kas::widget::{ScrollComponent, Scrollable};

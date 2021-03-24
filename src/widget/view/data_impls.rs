@@ -6,19 +6,9 @@
 //! Impls for data traits
 
 use super::*;
+use kas::event::UpdateHandle;
+use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
-
-impl<T: Debug> Updatable for [T] {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        None
-    }
-}
-impl<T: Debug> RecursivelyUpdatable for [T] {}
-impl<T: Debug, K, M> UpdatableHandler<K, M> for [T] {
-    fn handle(&self, _: &K, _: &M) -> Option<UpdateHandle> {
-        None
-    }
-}
 
 impl<T: Clone + Debug> ListData for [T] {
     type Key = usize;
@@ -60,15 +50,6 @@ impl<T: Clone + Debug> ListDataMut for [T] {
     }
 }
 
-impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> Updatable for std::collections::BTreeMap<K, T> {
-    fn update_handle(&self) -> Option<UpdateHandle> {
-        None
-    }
-}
-impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> RecursivelyUpdatable
-    for std::collections::BTreeMap<K, T>
-{
-}
 impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> ListData for std::collections::BTreeMap<K, T> {
     type Key = K;
     type Item = T;
@@ -113,25 +94,6 @@ impl<K: Ord + Eq + Clone + Debug, T: Clone + Debug> ListData for std::collection
 //     <T as Deref>::Target: SingleData,
 macro_rules! impl_via_deref {
     ($t: ident: $derived:ty) => {
-        impl<$t: Updatable + ?Sized> Updatable for $derived {
-            fn update_handle(&self) -> Option<UpdateHandle> {
-                self.deref().update_handle()
-            }
-            fn update_self(&self) -> Option<UpdateHandle> {
-                self.deref().update_self()
-            }
-        }
-        impl<$t: RecursivelyUpdatable + ?Sized> RecursivelyUpdatable for $derived {
-            fn enable_recursive_updates(&self, mgr: &mut Manager) {
-                self.deref().enable_recursive_updates(mgr);
-            }
-        }
-        impl<K, M, $t: UpdatableHandler<K, M> + ?Sized> UpdatableHandler<K, M> for $derived {
-            fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle> {
-                self.deref().handle(key, msg)
-            }
-        }
-
         impl<$t: SingleData + ?Sized> SingleData for $derived {
             type Item = $t::Item;
             fn get_cloned(&self) -> Self::Item {

@@ -10,10 +10,11 @@
 //! If not, we can probably remove `ListDataMut` and other `*Mut` traits too.
 //! Probably this question requires seeing more examples/applications to answer.
 
-use kas::data::*;
+use super::*;
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
+use kas::updatable::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;

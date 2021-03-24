@@ -15,10 +15,10 @@
 use std::num::NonZeroU32;
 use std::rc::Rc;
 
-use crate::data::Updatable;
 use crate::draw::{SizeHandle, ThemeAction, ThemeApi};
 use crate::event;
 use crate::event::UpdateHandle;
+use crate::updatable::Updatable;
 
 /// Identifier for a window or pop-up
 ///

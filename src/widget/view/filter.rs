@@ -5,11 +5,12 @@
 
 //! Filter accessor
 
+use super::ListData;
 use kas::conv::Cast;
-use kas::data::{ListData, RecursivelyUpdatable, Updatable, UpdatableHandler};
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
+use kas::updatable::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;

@@ -4,24 +4,8 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Traits for shared data objects
-//!
-//! These traits are used for "view widgets", enabling views (and editing) over
-//! shared data.
-//!
-//! One adapter is included alongside these "data model" traits:
-//!
-//! -   [`FilteredList`] presents a filtered list over a [`ListData`]
 
-mod data_impls;
-mod filter;
-mod shared_data;
-mod shared_rc;
-
-pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
-pub use shared_data::{RecursivelyUpdatable, Updatable, UpdatableAll, UpdatableHandler};
-pub use shared_rc::SharedRc;
-
-use kas::event::{Manager, UpdateHandle};
+use kas::event::UpdateHandle;
 #[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -29,7 +13,7 @@ use std::fmt::Debug;
 /// Trait for viewable single data items
 // Note: we require Debug + 'static to allow widgets using this to implement
 // WidgetCore, which requires Debug + Any.
-pub trait SingleData {
+pub trait SingleData: Debug {
     /// Output type
     type Item: Clone;
 
@@ -63,7 +47,7 @@ pub trait SingleDataMut: SingleData {
 }
 
 /// Trait for viewable data lists
-pub trait ListData: Updatable {
+pub trait ListData: Debug {
     /// Key type
     type Key: Clone + Debug + PartialEq + Eq;
 
@@ -122,7 +106,7 @@ pub trait ListDataMut: ListData {
 /// Trait for viewable data matrices
 ///
 /// Data matrices are a kind of table where each cell has the same type.
-pub trait MatrixData: Updatable {
+pub trait MatrixData: Debug {
     /// Column key type
     type ColKey: Clone + Debug + PartialEq + Eq;
     /// Row key type

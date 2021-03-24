@@ -62,19 +62,26 @@
 //!     or selection support)
 //! -   [`ListView`] creates a scrollable list view over a [`ListData`] object
 
-#[allow(unused)]
-use kas::data::{ListData, SingleData};
 use kas::macros::VoidMsg;
 
+mod data_impls;
+mod data_traits;
+mod filter;
 mod list_view;
 mod matrix_view;
+mod shared_rc;
 mod single_view;
 
 pub mod driver;
 
+pub use data_traits::{
+    ListData, ListDataMut, MatrixData, MatrixDataMut, SingleData, SingleDataMut,
+};
 pub use driver::Driver;
+pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
 pub use list_view::ListView;
 pub use matrix_view::MatrixView;
+pub use shared_rc::SharedRc;
 pub use single_view::SingleView;
 
 /// Selection mode used by [`ListView`]
