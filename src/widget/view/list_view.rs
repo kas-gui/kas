@@ -33,7 +33,7 @@ struct WidgetData<K, W> {
 pub struct ListView<
     D: Directional,
     T: ListData + RecursivelyUpdatable + 'static,
-    V: Driver<T::Key, T::Item> = driver::Default,
+    V: Driver<T::Item> = driver::Default,
 > {
     first_id: WidgetId,
     #[widget_core]
@@ -62,7 +62,7 @@ pub struct ListView<
 impl<
         D: Directional + Default,
         T: ListData + RecursivelyUpdatable,
-        V: Driver<T::Key, T::Item> + Default,
+        V: Driver<T::Item> + Default,
     > ListView<D, T, V>
 {
     /// Construct a new instance
@@ -74,7 +74,7 @@ impl<
         Self::new_with_dir_view(D::default(), <V as Default>::default(), data)
     }
 }
-impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item> + Default>
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Item> + Default>
     ListView<D, T, V>
 {
     /// Construct a new instance with explicit direction
@@ -82,7 +82,7 @@ impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::It
         Self::new_with_dir_view(direction, <V as Default>::default(), data)
     }
 }
-impl<D: Directional + Default, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>>
+impl<D: Directional + Default, T: ListData + RecursivelyUpdatable, V: Driver<T::Item>>
     ListView<D, T, V>
 {
     /// Construct a new instance with explicit view
@@ -90,9 +90,7 @@ impl<D: Directional + Default, T: ListData + RecursivelyUpdatable, V: Driver<T::
         Self::new_with_dir_view(D::default(), view, data)
     }
 }
-impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>>
-    ListView<D, T, V>
-{
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Item>> ListView<D, T, V> {
     /// Construct a new instance with explicit direction and view
     pub fn new_with_dir_view(direction: D, view: V, data: T) -> Self {
         ListView {
@@ -303,7 +301,7 @@ impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::It
             let w = &mut self.widgets[i % len];
             if key != w.key {
                 w.key = key;
-                action |= self.view.set(&mut w.widget, item.0, item.1);
+                action |= self.view.set(&mut w.widget, item.1);
             }
             rect.pos = pos_start + skip * i32::conv(i);
             if w.widget.rect() != rect {
@@ -316,7 +314,7 @@ impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::It
     }
 }
 
-impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Scrollable
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Item>> Scrollable
     for ListView<D, T, V>
 {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
@@ -349,7 +347,7 @@ impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::It
     }
 }
 
-impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> WidgetChildren
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Item>> WidgetChildren
     for ListView<D, T, V>
 {
     #[inline]
@@ -375,7 +373,7 @@ impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::It
     }
 }
 
-impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> WidgetConfig
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Item>> WidgetConfig
     for ListView<D, T, V>
 {
     fn configure(&mut self, mgr: &mut Manager) {
@@ -387,7 +385,7 @@ impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::It
     }
 }
 
-impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Layout
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Item>> Layout
     for ListView<D, T, V>
 {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
@@ -503,7 +501,7 @@ impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::It
     }
 }
 
-impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> SendEvent
+impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Item>> SendEvent
     for ListView<D, T, V>
 {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
@@ -564,7 +562,7 @@ impl<D: Directional, T: ListData + RecursivelyUpdatable, V: Driver<T::Key, T::It
                 (_, None, Response::Select) => return Response::None,
                 (i, key, r @ Response::Msg(_)) | (i, key, r @ Response::Update) => {
                     if let Some(key) = key {
-                        if let Some(item) = self.view.get(&self.widgets[i].widget, &key) {
+                        if let Some(item) = self.view.get(&self.widgets[i].widget) {
                             self.set_value(mgr, &key, item);
                         }
                         return r

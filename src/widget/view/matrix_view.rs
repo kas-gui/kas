@@ -32,7 +32,7 @@ struct WidgetData<K, W> {
 #[widget(children=noauto, config=noauto)]
 pub struct MatrixView<
     T: MatrixData + RecursivelyUpdatable + 'static,
-    V: Driver<T::Key, T::Item> = driver::Default,
+    V: Driver<T::Item> = driver::Default,
 > {
     first_id: WidgetId,
     #[widget_core]
@@ -58,13 +58,13 @@ pub struct MatrixView<
     press_target: Option<T::Key>,
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item> + Default> MatrixView<T, V> {
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item> + Default> MatrixView<T, V> {
     /// Construct a new instance
     pub fn new(data: T) -> Self {
         Self::new_with_view(<V as Default>::default(), data)
     }
 }
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> MatrixView<T, V> {
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> MatrixView<T, V> {
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: T) -> Self {
         MatrixView {
@@ -261,7 +261,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> MatrixVie
                 if w.key.as_ref() != Some(&key) {
                     if let Some(item) = self.data.get_cloned(&key) {
                         w.key = Some(key.clone());
-                        action |= self.view.set(&mut w.widget, key, item);
+                        action |= self.view.set(&mut w.widget, item);
                     } else {
                         w.key = None; // disables drawing and clicking
                     }
@@ -278,9 +278,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> MatrixVie
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Scrollable
-    for MatrixView<T, V>
-{
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> Scrollable for MatrixView<T, V> {
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         let item_min = self.child_size_min + self.child_inter_margin;
         let data_len = Size(self.data.col_len().cast(), self.data.row_len().cast());
@@ -306,9 +304,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Scrollabl
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> WidgetChildren
-    for MatrixView<T, V>
-{
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> WidgetChildren for MatrixView<T, V> {
     #[inline]
     fn first_id(&self) -> WidgetId {
         self.first_id
@@ -332,9 +328,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> WidgetChi
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> WidgetConfig
-    for MatrixView<T, V>
-{
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> WidgetConfig for MatrixView<T, V> {
     fn configure(&mut self, mgr: &mut Manager) {
         self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
@@ -344,7 +338,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> WidgetCon
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Layout for MatrixView<T, V> {
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> Layout for MatrixView<T, V> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
@@ -454,9 +448,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> Layout fo
     }
 }
 
-impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> SendEvent
-    for MatrixView<T, V>
-{
+impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Item>> SendEvent for MatrixView<T, V> {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled;
@@ -515,7 +507,7 @@ impl<T: MatrixData + RecursivelyUpdatable, V: Driver<T::Key, T::Item>> SendEvent
                 (_, None, Response::Select) => return Response::None,
                 (i, key, r @ Response::Msg(_)) | (i, key, r @ Response::Update) => {
                     if let Some(key) = key {
-                        if let Some(item) = self.view.get(&self.widgets[i].widget, &key) {
+                        if let Some(item) = self.view.get(&self.widgets[i].widget) {
                             self.set_value(mgr, &key, item);
                         }
                         return r

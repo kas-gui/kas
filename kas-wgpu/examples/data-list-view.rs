@@ -83,7 +83,7 @@ impl Updatable for MyData {
 impl RecursivelyUpdatable for MyData {}
 impl ListData for MyData {
     type Key = usize;
-    type Item = (bool, String);
+    type Item = (usize, bool, String);
 
     fn len(&self) -> usize {
         self.len
@@ -94,10 +94,11 @@ impl ListData for MyData {
     }
 
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        Some(self.get(*key))
+        let (is_active, text) = self.get(*key);
+        Some((*key, is_active, text))
     }
 
-    fn update(&self, key: &Self::Key, (is_active, text): Self::Item) -> Option<UpdateHandle> {
+    fn update(&self, key: &Self::Key, (_, is_active, text): Self::Item) -> Option<UpdateHandle> {
         let mut data = self.data.borrow_mut();
         if is_active {
             data.0 = *key;
@@ -114,7 +115,10 @@ impl ListData for MyData {
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
         (start..self.len.min(start + limit))
-            .map(|n| (n, self.get(n)))
+            .map(|n| {
+                let (is_active, text) = self.get(n);
+                (n, (n, is_active, text))
+            })
             .collect()
     }
 }
@@ -152,7 +156,7 @@ struct ListEntry {
 struct MyDriver {
     radio_group: UpdateHandle,
 }
-impl Driver<usize, (bool, String)> for MyDriver {
+impl Driver<(usize, bool, String)> for MyDriver {
     type Msg = EntryMsg;
     type Widget = ListEntry;
 
@@ -167,15 +171,17 @@ impl Driver<usize, (bool, String)> for MyDriver {
             entry: EditBox::new(String::default()).with_guard(ListEntryGuard),
         }
     }
-    fn set(&self, widget: &mut Self::Widget, n: usize, data: (bool, String)) -> TkAction {
-        widget.label.set_string(format!("Entry number {}", n + 1))
-            | widget.radio.set_bool(data.0)
-            | widget.entry.set_string(data.1)
+    fn set(&self, widget: &mut Self::Widget, data: (usize, bool, String)) -> TkAction {
+        let label = format!("Entry number {}", data.0 + 1);
+        widget.label.set_string(label)
+            | widget.radio.set_bool(data.1)
+            | widget.entry.set_string(data.2)
     }
-    fn get(&self, widget: &Self::Widget, _: &usize) -> Option<(bool, String)> {
+    fn get(&self, widget: &Self::Widget) -> Option<(usize, bool, String)> {
+        let n = 0; // passed to MyData::update, but not used
         let b = widget.radio.get_bool();
         let s = widget.entry.get_string();
-        Some((b, s))
+        Some((n, b, s))
     }
 }
 

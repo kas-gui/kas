@@ -13,14 +13,20 @@ use kas::widget::{self, *};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-/// View widget controller
+/// View widget driver/binder
 ///
 /// The controller binds data items with view widgets.
+///
+/// Note that the key type is not made available since in most cases view
+/// widgets are not dependent on the element key. In rare cases where the key
+/// is needed, it must be added to the data's `Item` type (see `data-list-view`
+/// example).
 ///
 /// Several existing implementations are available, most notably:
 ///
 /// -   [`Default`](struct@Default) will choose a sensible widget to view the data
-pub trait Driver<K, T>: Debug + 'static {
+/// -   [`DefaultNav`] will choose a sensible widget to view the data
+pub trait Driver<T>: Debug + 'static {
     /// Type of message sent by the widget
     type Msg;
     /// Type of the widget used to view data
@@ -32,7 +38,7 @@ pub trait Driver<K, T>: Debug + 'static {
     /// The controller may later call [`Driver::set`] on the widget then show it.
     fn new(&self) -> Self::Widget;
     /// Set the viewed data
-    fn set(&self, widget: &mut Self::Widget, key: K, data: T) -> TkAction;
+    fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction;
     /// Get data from the view
     ///
     /// "View" widgets which allow the user to manipulate their data (e.g. a
@@ -41,7 +47,7 @@ pub trait Driver<K, T>: Debug + 'static {
     ///
     /// When a view widget emits [`Response::Msg`], this method is called to
     /// update the shared data set with the returned value (if any).
-    fn get(&self, widget: &Self::Widget, key: &K) -> Option<T>;
+    fn get(&self, widget: &Self::Widget) -> Option<T>;
 }
 
 /// Default view widget constructor
@@ -66,27 +72,27 @@ pub struct DefaultNav;
 
 macro_rules! impl_via_to_string {
     ($t:ty) => {
-        impl<K> Driver<K, $t> for Default {
+        impl Driver<$t> for Default {
             type Msg = VoidMsg;
             type Widget = Label<String>;
             fn new(&self) -> Self::Widget where $t: std::default::Default {
                 Label::new("".to_string())
             }
-            fn set(&self, widget: &mut Self::Widget, _: K, data: $t) -> TkAction {
+            fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
                 widget.set_string(data.to_string())
             }
-            fn get(&self, _: &Self::Widget, _: &K) -> Option<$t> { None }
+            fn get(&self, _: &Self::Widget) -> Option<$t> { None }
         }
-        impl<K> Driver<K, $t> for DefaultNav {
+        impl Driver<$t> for DefaultNav {
             type Msg = VoidMsg;
             type Widget = NavFrame<Label<String>>;
             fn new(&self) -> Self::Widget where $t: std::default::Default {
                 NavFrame::new(Label::new("".to_string()))
             }
-            fn set(&self, widget: &mut Self::Widget, _: K, data: $t) -> TkAction {
+            fn set(&self, widget: &mut Self::Widget, data: $t) -> TkAction {
                 widget.set_string(data.to_string())
             }
-            fn get(&self, _: &Self::Widget, _: &K) -> Option<$t> { None }
+            fn get(&self, _: &Self::Widget) -> Option<$t> { None }
         }
     };
     ($t:ty, $($tt:ty),+) => {
@@ -99,30 +105,30 @@ impl_via_to_string!(i8, i16, i32, i64, i128, isize);
 impl_via_to_string!(u8, u16, u32, u64, u128, usize);
 impl_via_to_string!(f32, f64);
 
-impl<K> Driver<K, bool> for Default {
+impl Driver<bool> for Default {
     type Msg = VoidMsg;
     type Widget = CheckBoxBare<VoidMsg>;
     fn new(&self) -> Self::Widget {
         CheckBoxBare::new().with_disabled(true)
     }
-    fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
+    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
     }
-    fn get(&self, widget: &Self::Widget, _: &K) -> Option<bool> {
+    fn get(&self, widget: &Self::Widget) -> Option<bool> {
         Some(widget.get_bool())
     }
 }
 
-impl<K> Driver<K, bool> for DefaultNav {
+impl Driver<bool> for DefaultNav {
     type Msg = VoidMsg;
     type Widget = CheckBoxBare<VoidMsg>;
     fn new(&self) -> Self::Widget {
         CheckBoxBare::new().with_disabled(true)
     }
-    fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
+    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
     }
-    fn get(&self, widget: &Self::Widget, _: &K) -> Option<bool> {
+    fn get(&self, widget: &Self::Widget) -> Option<bool> {
         Some(widget.get_bool())
     }
 }
@@ -148,63 +154,62 @@ impl<W: kas::Widget> std::default::Default for Widget<W> {
     }
 }
 
-// TODO: we would like to enable this impl, but can't (since adding K parameter)
-// due to conflicting impls (coherence issue — rust#19032).
-// impl<K, T> Driver<K, T> for Widget<<Default as Driver<K, T>>::Widget>
-// where
-//     Default: Driver<K, T>,
-// {
-//     type Widget = <Default as Driver<K, T>>::Widget;
-//     fn new(&self) -> Self::Widget {
-//         Default.default()
-//     }
-//     fn set(&self, widget: &mut Self::Widget, key: K, data: T) -> TkAction {
-//         Default.set(widget, key, data)
-//     }
-//     fn get(&self, widget: &Self::Widget, key: K) -> Option<T> {
-//         Some(Default.set(widget, key, data))
-//     }
-// }
+impl<T> Driver<T> for Widget<<Default as Driver<T>>::Widget>
+where
+    Default: Driver<T>,
+{
+    type Msg = <Default as Driver<T>>::Msg;
+    type Widget = <Default as Driver<T>>::Widget;
+    fn new(&self) -> Self::Widget {
+        Default.new()
+    }
+    fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
+        Default.set(widget, data)
+    }
+    fn get(&self, widget: &Self::Widget) -> Option<T> {
+        Default.get(widget)
+    }
+}
 
-impl<K, G: EditGuard + std::default::Default> Driver<K, String> for Widget<EditField<G>> {
+impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditField<G>> {
     type Msg = G::Msg;
     type Widget = EditField<G>;
     fn new(&self) -> Self::Widget {
         let guard = G::default();
         EditField::new("".to_string()).with_guard(guard)
     }
-    fn set(&self, widget: &mut Self::Widget, _: K, data: String) -> TkAction {
+    fn set(&self, widget: &mut Self::Widget, data: String) -> TkAction {
         widget.set_string(data)
     }
-    fn get(&self, widget: &Self::Widget, _: &K) -> Option<String> {
+    fn get(&self, widget: &Self::Widget) -> Option<String> {
         Some(widget.get_string())
     }
 }
-impl<K, G: EditGuard + std::default::Default> Driver<K, String> for Widget<EditBox<G>> {
+impl<G: EditGuard + std::default::Default> Driver<String> for Widget<EditBox<G>> {
     type Msg = G::Msg;
     type Widget = EditBox<G>;
     fn new(&self) -> Self::Widget {
         let guard = G::default();
         EditBox::new("".to_string()).with_guard(guard)
     }
-    fn set(&self, widget: &mut Self::Widget, _: K, data: String) -> TkAction {
+    fn set(&self, widget: &mut Self::Widget, data: String) -> TkAction {
         widget.set_string(data)
     }
-    fn get(&self, widget: &Self::Widget, _: &K) -> Option<String> {
+    fn get(&self, widget: &Self::Widget) -> Option<String> {
         Some(widget.get_string())
     }
 }
 
-impl<K, D: Directional + std::default::Default> Driver<K, f32> for Widget<ProgressBar<D>> {
+impl<D: Directional + std::default::Default> Driver<f32> for Widget<ProgressBar<D>> {
     type Msg = VoidMsg;
     type Widget = ProgressBar<D>;
     fn new(&self) -> Self::Widget {
         ProgressBar::new()
     }
-    fn set(&self, widget: &mut Self::Widget, _: K, data: f32) -> TkAction {
+    fn set(&self, widget: &mut Self::Widget, data: f32) -> TkAction {
         widget.set_value(data)
     }
-    fn get(&self, _: &Self::Widget, _: &K) -> Option<f32> {
+    fn get(&self, _: &Self::Widget) -> Option<f32> {
         None
     }
 }
@@ -221,16 +226,16 @@ impl CheckBox {
         CheckBox { label }
     }
 }
-impl<K> Driver<K, bool> for CheckBox {
+impl Driver<bool> for CheckBox {
     type Msg = bool;
     type Widget = widget::CheckBox<bool>;
     fn new(&self) -> Self::Widget {
         widget::CheckBox::new(self.label.clone()).on_toggle(|_, state| Some(state))
     }
-    fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
+    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
     }
-    fn get(&self, widget: &Self::Widget, _: &K) -> Option<bool> {
+    fn get(&self, widget: &Self::Widget) -> Option<bool> {
         Some(widget.get_bool())
     }
 }
@@ -246,16 +251,16 @@ impl RadioBoxBare {
         RadioBoxBare { handle }
     }
 }
-impl<K> Driver<K, bool> for RadioBoxBare {
+impl Driver<bool> for RadioBoxBare {
     type Msg = bool;
     type Widget = widget::RadioBoxBare<bool>;
     fn new(&self) -> Self::Widget {
         widget::RadioBoxBare::new(self.handle).on_select(|_| Some(true))
     }
-    fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
+    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
     }
-    fn get(&self, widget: &Self::Widget, _: &K) -> Option<bool> {
+    fn get(&self, widget: &Self::Widget) -> Option<bool> {
         Some(widget.get_bool())
     }
 }
@@ -273,16 +278,16 @@ impl RadioBox {
         RadioBox { label, handle }
     }
 }
-impl<K> Driver<K, bool> for RadioBox {
+impl Driver<bool> for RadioBox {
     type Msg = bool;
     type Widget = widget::RadioBox<bool>;
     fn new(&self) -> Self::Widget {
         widget::RadioBox::new(self.label.clone(), self.handle).on_select(|_| Some(true))
     }
-    fn set(&self, widget: &mut Self::Widget, _: K, data: bool) -> TkAction {
+    fn set(&self, widget: &mut Self::Widget, data: bool) -> TkAction {
         widget.set_bool(data)
     }
-    fn get(&self, widget: &Self::Widget, _: &K) -> Option<bool> {
+    fn get(&self, widget: &Self::Widget) -> Option<bool> {
         Some(widget.get_bool())
     }
 }
@@ -317,16 +322,16 @@ impl<T: SliderType, D: Directional> Slider<T, D> {
         }
     }
 }
-impl<K, T: SliderType, D: Directional> Driver<K, T> for Slider<T, D> {
+impl<T: SliderType, D: Directional> Driver<T> for Slider<T, D> {
     type Msg = T;
     type Widget = widget::Slider<T, D>;
     fn new(&self) -> Self::Widget {
         widget::Slider::new_with_direction(self.min, self.max, self.step, self.direction)
     }
-    fn set(&self, widget: &mut Self::Widget, _: K, data: T) -> TkAction {
+    fn set(&self, widget: &mut Self::Widget, data: T) -> TkAction {
         widget.set_value(data)
     }
-    fn get(&self, widget: &Self::Widget, _: &K) -> Option<T> {
+    fn get(&self, widget: &Self::Widget) -> Option<T> {
         Some(widget.value())
     }
 }
