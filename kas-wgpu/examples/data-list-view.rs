@@ -153,6 +153,7 @@ struct MyDriver {
     radio_group: UpdateHandle,
 }
 impl Driver<usize, (bool, String)> for MyDriver {
+    type Msg = EntryMsg;
     type Widget = ListEntry;
 
     fn new(&self) -> Self::Widget {
