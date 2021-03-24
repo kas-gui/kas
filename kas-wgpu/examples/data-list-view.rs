@@ -81,6 +81,20 @@ impl Updatable for MyData {
     }
 }
 impl RecursivelyUpdatable for MyData {}
+impl UpdatableHandler<usize, EntryMsg> for MyData {
+    fn handle(&self, key: &usize, msg: &EntryMsg) -> Option<UpdateHandle> {
+        match msg {
+            EntryMsg::Select => {
+                self.data.borrow_mut().0 = *key;
+                Some(self.handle)
+            }
+            EntryMsg::Update(text) => {
+                self.data.borrow_mut().1.insert(*key, text.clone());
+                Some(self.handle)
+            }
+        }
+    }
+}
 impl ListData for MyData {
     type Key = usize;
     type Item = (usize, bool, String);
@@ -98,13 +112,8 @@ impl ListData for MyData {
         Some((*key, is_active, text))
     }
 
-    fn update(&self, key: &Self::Key, (_, is_active, text): Self::Item) -> Option<UpdateHandle> {
-        let mut data = self.data.borrow_mut();
-        if is_active {
-            data.0 = *key;
-        }
-        data.1.insert(*key, text);
-        Some(self.handle)
+    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
+        unimplemented!()
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {

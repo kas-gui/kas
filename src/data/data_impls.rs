@@ -14,6 +14,12 @@ impl<T: Debug> Updatable for [T] {
     }
 }
 impl<T: Debug> RecursivelyUpdatable for [T] {}
+impl<T: Debug, K, M> UpdatableHandler<K, M> for [T] {
+    fn handle(&self, _: &K, _: &M) -> Option<UpdateHandle> {
+        None
+    }
+}
+
 impl<T: Clone + Debug> ListData for [T] {
     type Key = usize;
     type Item = T;

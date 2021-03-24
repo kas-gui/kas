@@ -6,7 +6,7 @@
 //! Filter accessor
 
 use kas::conv::Cast;
-use kas::data::{ListData, RecursivelyUpdatable, Updatable};
+use kas::data::{ListData, RecursivelyUpdatable, Updatable, UpdatableHandler};
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
@@ -160,6 +160,13 @@ impl<T: ListData + RecursivelyUpdatable + 'static, F: Filter<T::Item>> Recursive
         if let Some(handle) = self.data.update_handle() {
             mgr.update_shared_data(handle, self.clone());
         }
+    }
+}
+impl<K, M, T: ListData + UpdatableHandler<K, M> + 'static, F: Filter<T::Item>>
+    UpdatableHandler<K, M> for FilteredList<T, F>
+{
+    fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle> {
+        self.data.handle(key, msg)
     }
 }
 
