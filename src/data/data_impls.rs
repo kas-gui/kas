@@ -114,10 +114,15 @@ macro_rules! impl_via_deref {
             fn update_self(&self) -> Option<UpdateHandle> {
                 self.deref().update_self()
             }
-       }
+        }
         impl<$t: RecursivelyUpdatable + ?Sized> RecursivelyUpdatable for $derived {
             fn enable_recursive_updates(&self, mgr: &mut Manager) {
                 self.deref().enable_recursive_updates(mgr);
+            }
+        }
+        impl<K, M, $t: UpdatableHandler<K, M> + ?Sized> UpdatableHandler<K, M> for $derived {
+            fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle> {
+                self.deref().handle(key, msg)
             }
         }
 

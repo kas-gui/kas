@@ -53,3 +53,19 @@ pub trait RecursivelyUpdatable: Updatable {
         let _ = mgr;
     }
 }
+
+/// Trait for data objects which can handle messages
+pub trait UpdatableHandler<K, M>: RecursivelyUpdatable {
+    /// Update data, if supported
+    ///
+    /// This is optional and required only to support data updates through view
+    /// widgets. If implemented, then [`Updatable::update_handle`] should
+    /// return a copy of the same update handle.
+    ///
+    /// This method should return some [`UpdateHandle`] if the data was changed
+    /// by this method, or `None` if nothing happened.
+    ///
+    /// This method takes only `&self`, thus probably [`RefCell`] will be used
+    /// internally, alongside an [`UpdateHandle`].
+    fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle>;
+}

@@ -6,17 +6,28 @@
 //! Single view widget
 
 use super::driver::{self, Driver};
-use kas::data::{RecursivelyUpdatable, SingleData};
+use kas::data::{SingleData, UpdatableHandler};
 use kas::prelude::*;
 use std::fmt::{self};
 
 /// Single view widget
+///
+/// This widget supports a view over a shared data item.
+///
+/// The shared data type `T` must support [`SingleData`] and
+/// [`UpdatableHandler`], the latter with key type `()` and message type
+/// matching the widget's message. One may use [`kas::data::SharedRc`] or a
+/// custom shared data type.
+///
+/// The driver `V` must implement [`Driver`], with key type `()` and data type
+/// `<T as SingleData>::Item`. Several implementations are available in the
+/// [`driver`] module or a custom implementation may be used.
 #[derive(Clone, Widget)]
 #[widget(config=noauto)]
 #[layout(single)]
 #[handler(handle=noauto, send=noauto)]
 pub struct SingleView<
-    T: SingleData + RecursivelyUpdatable + 'static,
+    T: SingleData + UpdatableHandler<(), V::Msg> + 'static,
     V: Driver<(), T::Item> = driver::Default,
 > {
     #[widget_core]
@@ -28,7 +39,7 @@ pub struct SingleView<
 }
 
 impl<
-        T: SingleData + RecursivelyUpdatable + 'static + Default,
+        T: SingleData + UpdatableHandler<(), V::Msg> + 'static + Default,
         V: Driver<(), T::Item> + Default,
     > Default for SingleView<T, V>
 {
@@ -36,7 +47,7 @@ impl<
         Self::new(T::default())
     }
 }
-impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item> + Default>
+impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<(), T::Item> + Default>
     SingleView<T, V>
 {
     /// Construct a new instance
@@ -44,7 +55,9 @@ impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item> + De
         Self::new_with_view(<V as Default>::default(), data)
     }
 }
-impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> SingleView<T, V> {
+impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<(), T::Item>>
+    SingleView<T, V>
+{
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: T) -> Self {
         let mut child = view.new();
@@ -92,7 +105,7 @@ impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> Sin
     }
 }
 
-impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> WidgetConfig
+impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<(), T::Item>> WidgetConfig
     for SingleView<T, V>
 {
     fn configure(&mut self, mgr: &mut Manager) {
@@ -103,7 +116,7 @@ impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> Wid
     }
 }
 
-impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> Handler
+impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<(), T::Item>> Handler
     for SingleView<T, V>
 {
     type Msg = <V::Widget as Handler>::Msg;
@@ -119,7 +132,7 @@ impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> Han
     }
 }
 
-impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> SendEvent
+impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<(), T::Item>> SendEvent
     for SingleView<T, V>
 {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
@@ -130,9 +143,9 @@ impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> Sen
         if id < self.id() {
             let r = self.child.send(mgr, id, event);
             match r {
-                Response::Update | Response::Msg(_) => {
-                    if let Some(item) = self.view.get(&self.child, &()) {
-                        self.set_value(mgr, item);
+                Response::Msg(ref msg) => {
+                    if let Some(handle) = self.data.handle(&(), &msg) {
+                        mgr.trigger_update(handle, 0);
                     }
                 }
                 _ => (),
@@ -145,7 +158,7 @@ impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> Sen
     }
 }
 
-impl<T: SingleData + RecursivelyUpdatable + 'static, V: Driver<(), T::Item>> fmt::Debug
+impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<(), T::Item>> fmt::Debug
     for SingleView<T, V>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

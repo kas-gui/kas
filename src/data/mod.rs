@@ -18,7 +18,7 @@ mod shared_data;
 mod shared_rc;
 
 pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
-pub use shared_data::{RecursivelyUpdatable, Updatable};
+pub use shared_data::{RecursivelyUpdatable, Updatable, UpdatableHandler};
 pub use shared_rc::SharedRc;
 
 use kas::event::{Manager, UpdateHandle};
@@ -29,7 +29,8 @@ use std::fmt::Debug;
 /// Trait for viewable single data items
 // Note: we require Debug + 'static to allow widgets using this to implement
 // WidgetCore, which requires Debug + Any.
-pub trait SingleData: Updatable {
+pub trait SingleData {
+    /// Output type
     type Item: Clone;
 
     // TODO(gat): add get<'a>(&self) -> Self::ItemRef<'a> and get_mut

@@ -4,6 +4,11 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Shared data for view widgets
+//!
+//! TODO: `SharedRc` makes the `sync-counter` example simpler, but most real
+//! uses of shared data require custom impls anyway, so is this worth keeping?
+//! If not, we can probably remove `ListDataMut` and other `*Mut` traits too.
+//! Probably this question requires seeing more examples/applications to answer.
 
 use kas::data::*;
 #[allow(unused)]
@@ -14,6 +19,11 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 /// Wrapper for single-thread shared data
+///
+/// This wrapper adds an [`UpdateHandle`] and implements the [`Updatable`],
+/// [`RecursivelyUpdatable`] and [`UpdatableHandler`] traits (the latter two
+/// with dummy implementations — if you need custom handlers you will need your
+/// own shared data type).
 #[derive(Clone, Debug)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateHandle, RefCell<T>)>);
 
@@ -39,6 +49,12 @@ impl<T: Debug> Updatable for SharedRc<T> {
     }
 }
 impl<T: Debug> RecursivelyUpdatable for SharedRc<T> {}
+
+impl<T: Clone + Debug, K, M> UpdatableHandler<K, M> for SharedRc<T> {
+    fn handle(&self, _: &K, _: &M) -> Option<UpdateHandle> {
+        None
+    }
+}
 
 impl<T: Clone + Debug> SingleData for SharedRc<T> {
     type Item = T;
