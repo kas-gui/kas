@@ -6,7 +6,7 @@
 //! Single view widget
 
 use super::driver::{self, Driver};
-use kas::data::{SingleData, UpdatableHandler};
+use kas::data::{SingleData, UpdatableAll};
 use kas::prelude::*;
 use std::fmt::{self};
 
@@ -15,7 +15,7 @@ use std::fmt::{self};
 /// This widget supports a view over a shared data item.
 ///
 /// The shared data type `T` must support [`SingleData`] and
-/// [`UpdatableHandler`], the latter with key type `()` and message type
+/// [`UpdatableAll`], the latter with key type `()` and message type
 /// matching the widget's message. One may use [`kas::data::SharedRc`] or a
 /// custom shared data type.
 ///
@@ -27,7 +27,7 @@ use std::fmt::{self};
 #[layout(single)]
 #[handler(handle=noauto, send=noauto)]
 pub struct SingleView<
-    T: SingleData + UpdatableHandler<(), V::Msg> + 'static,
+    T: SingleData + UpdatableAll<(), V::Msg> + 'static,
     V: Driver<T::Item> = driver::Default,
 > {
     #[widget_core]
@@ -39,7 +39,7 @@ pub struct SingleView<
 }
 
 impl<
-        T: SingleData + UpdatableHandler<(), V::Msg> + 'static + Default,
+        T: SingleData + UpdatableAll<(), V::Msg> + 'static + Default,
         V: Driver<T::Item> + Default,
     > Default for SingleView<T, V>
 {
@@ -47,7 +47,7 @@ impl<
         Self::new(T::default())
     }
 }
-impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<T::Item> + Default>
+impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item> + Default>
     SingleView<T, V>
 {
     /// Construct a new instance
@@ -55,7 +55,7 @@ impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<T::Item> 
         Self::new_with_view(<V as Default>::default(), data)
     }
 }
-impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<T::Item>> SingleView<T, V> {
+impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item>> SingleView<T, V> {
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: T) -> Self {
         let mut child = view.new();
@@ -103,7 +103,7 @@ impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<T::Item>>
     }
 }
 
-impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<T::Item>> WidgetConfig
+impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item>> WidgetConfig
     for SingleView<T, V>
 {
     fn configure(&mut self, mgr: &mut Manager) {
@@ -114,7 +114,7 @@ impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<T::Item>>
     }
 }
 
-impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<T::Item>> Handler
+impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item>> Handler
     for SingleView<T, V>
 {
     type Msg = <V::Widget as Handler>::Msg;
@@ -130,7 +130,7 @@ impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<T::Item>>
     }
 }
 
-impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<T::Item>> SendEvent
+impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item>> SendEvent
     for SingleView<T, V>
 {
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
@@ -156,7 +156,7 @@ impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<T::Item>>
     }
 }
 
-impl<T: SingleData + UpdatableHandler<(), V::Msg> + 'static, V: Driver<T::Item>> fmt::Debug
+impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item>> fmt::Debug
     for SingleView<T, V>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

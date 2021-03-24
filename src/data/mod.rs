@@ -18,7 +18,7 @@ mod shared_data;
 mod shared_rc;
 
 pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
-pub use shared_data::{RecursivelyUpdatable, Updatable, UpdatableHandler};
+pub use shared_data::{RecursivelyUpdatable, Updatable, UpdatableAll, UpdatableHandler};
 pub use shared_rc::SharedRc;
 
 use kas::event::{Manager, UpdateHandle};

@@ -55,7 +55,7 @@ pub trait RecursivelyUpdatable: Updatable {
 }
 
 /// Trait for data objects which can handle messages
-pub trait UpdatableHandler<K, M>: RecursivelyUpdatable {
+pub trait UpdatableHandler<K, M>: Updatable {
     /// Update data, if supported
     ///
     /// This is optional and required only to support data updates through view
@@ -69,3 +69,11 @@ pub trait UpdatableHandler<K, M>: RecursivelyUpdatable {
     /// internally, alongside an [`UpdateHandle`].
     fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle>;
 }
+
+/// Bound over all other "updatable" traits
+///
+/// This is intended for usage as a bound where [`Updatable`],
+/// [`RecursivelyUpdatable`] and [`UpdatableHandler`] implementations are all
+/// required. It is automatically implemented when all these traits are.
+pub trait UpdatableAll<K, M>: RecursivelyUpdatable + UpdatableHandler<K, M> {}
+impl<K, M, T: RecursivelyUpdatable + UpdatableHandler<K, M>> UpdatableAll<K, M> for T {}
