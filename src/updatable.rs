@@ -91,6 +91,13 @@ pub trait UpdatableHandler<K, M>: Updatable {
 pub trait UpdatableAll<K, M>: RecursivelyUpdatable + UpdatableHandler<K, M> {}
 impl<K, M, T: RecursivelyUpdatable + UpdatableHandler<K, M>> UpdatableAll<K, M> for T {}
 
+// TODO(spec): can we add this?
+// impl<K, T> UpdatableHandler<K, VoidMsg> for T {
+//     fn handle(&self, _: &K, msg: &VoidMsg) -> Option<UpdateHandle> {
+//         match *msg {}
+//     }
+// }
+
 impl<T: Debug> Updatable for [T] {
     fn update_handle(&self) -> Option<UpdateHandle> {
         None
