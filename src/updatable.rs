@@ -7,6 +7,15 @@
 //!
 //! These traits are used for "view widgets", enabling views (and editing) over
 //! shared data.
+//!
+//! Shared data must implement these three traits:
+//!
+//! -   [`Updatable`]: used to expose the [`UpdateHandle`] on which widgets and
+//!     other data may request updates; may also implement self-updates
+//! -   [`RecursivelyUpdatable`]: allows registration of dependencies on other
+//!     data objects; for most shared data this does nothing
+//! -   [`UpdatableHandler`]: allows data updates from widget messages (or
+//!     potentially from other message sources)
 
 use kas::event::{Manager, UpdateHandle};
 #[allow(unused)] // doc links
@@ -21,7 +30,7 @@ pub trait Updatable: Debug {
     /// If the data supports updates through shared references (e.g. via an
     /// internal `RefCell`), then it should have an `UpdateHandle` for notifying
     /// other users of the data of the update, and return that here.
-    /// Otherwise, this may simply return `None`.
+    /// If the data is constant (not updatable) this may simply return `None`.
     ///
     /// Users registering for updates on this handle should, if possible, also
     /// call [`RecursivelyUpdatable::enable_recursive_updates`].

@@ -7,6 +7,8 @@
 
 use kas::event::UpdateHandle;
 #[allow(unused)] // doc links
+use kas::updatable::Updatable;
+#[allow(unused)] // doc links
 use std::cell::RefCell;
 use std::fmt::Debug;
 

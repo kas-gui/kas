@@ -29,8 +29,8 @@ struct WidgetData<K, W> {
 ///
 /// The shared data type `T` must support [`MatrixData`] and
 /// [`UpdatableAll`], the latter with key type `T::Key` and message type
-/// matching the widget's message. One may use [`kas::data::SharedRc`] or a
-/// custom shared data type.
+/// matching the widget's message. One may use [`kas::widget::view::SharedRc`]
+/// or a custom shared data type.
 ///
 /// The driver `V` must implement [`Driver`], with data type
 /// `<T as MatrixData>::Item`. Several implementations are available in the
