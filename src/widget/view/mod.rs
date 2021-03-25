@@ -12,15 +12,18 @@
 //!
 //! # Shared data and *model*
 //!
-//! A family of data model traits is available in [`kas::data`]. Shared data
-//! must implement one or more of these traits for use with view widgets.
+//! Shared data must implement several traits, namely those in
+//! [`kas::updatable`] and one of the "view" traits: [`SingleData`],
+//! [`ListData`] or [`MatrixData`]. These traits together form the "model".
 //!
-//! In MVC terminology, the implementation of these traits over some data may
-//! be called the model.
+//! For simpler cases it is not always necessary to implement your own shared
+//! data type, for example `SharedRc<i32>` implements [`SingleData`] and
+//! `&'static [&'static str]` implements [`ListData`]. The [`SharedRc`] type
+//! provides the [`UpdateHandle`] required to synchronise views.
 //!
 //! ## Adapters
 //!
-//! -   [`kas::data::FilteredList`] presents a filtered list over a [`ListData`]
+//! -   [`FilteredList`] presents a filtered list over a [`ListData`]
 //!
 //! # View widgets and drivers
 //!
@@ -31,11 +34,14 @@
 //! The user may implement a [`Driver`] or may use a standard one:
 //!
 //! -   [`driver::Default`] constructs a default view widget over various data types
+//! -   [`driver::DefaultNav`] is a variant of the above, ensuring items support
+//!     keyboard navigation (e.g. useful to allow selection of static items)
 //! -   [`driver::CheckBox`] and [`driver::RadioBox`] support the `bool` type
 //! -   [`driver::Slider`] constructs a slider with a fixed range
 //!
 //! In MVC terminology, the driver is perhaps most similar to the controller,
-//! while the widgets constructed by the driver are the view, and yet ...
+//! while the widgets constructed by the driver are the view, but this analogy
+//! is not quite accurate.
 //!
 //! # Views
 //!
@@ -63,20 +69,27 @@
 //! -   [`ListView`] creates a scrollable list view over a [`ListData`] object
 
 #[allow(unused)]
-use kas::data::{ListData, SingleData};
+use kas::event::UpdateHandle;
 use kas::macros::VoidMsg;
 
+mod data_impls;
+mod data_traits;
+mod filter;
 mod list_view;
 mod matrix_view;
-mod shared_data;
+mod shared_rc;
 mod single_view;
 
 pub mod driver;
 
+pub use data_traits::{
+    ListData, ListDataMut, MatrixData, MatrixDataMut, SingleData, SingleDataMut,
+};
 pub use driver::Driver;
+pub use filter::{Filter, FilteredList, SimpleCaseInsensitiveFilter};
 pub use list_view::ListView;
 pub use matrix_view::MatrixView;
-pub use shared_data::SharedRc;
+pub use shared_rc::SharedRc;
 pub use single_view::SingleView;
 
 /// Selection mode used by [`ListView`]

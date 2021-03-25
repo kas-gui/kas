@@ -39,7 +39,6 @@ mod toolkit;
 pub mod adapter;
 pub mod class;
 pub mod conv;
-pub mod data;
 pub mod dir;
 pub mod draw;
 pub mod event;
@@ -47,6 +46,7 @@ pub mod geom;
 pub mod layout;
 pub mod prelude;
 pub mod text;
+pub mod updatable;
 pub mod widget;
 
 // macro re-exports

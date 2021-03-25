@@ -10,9 +10,9 @@ use std::time::{Duration, Instant};
 use std::u16;
 
 use super::*;
-use crate::data::SharedData;
 use crate::draw::{SizeHandle, ThemeAction, ThemeApi};
 use crate::geom::Coord;
+use crate::updatable::Updatable;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
 use crate::{TkAction, WidgetId, WindowId};
@@ -179,10 +179,10 @@ impl<'a> Manager<'a> {
 
     /// Subscribe shaded data to an update handle
     ///
-    /// [`SharedData::update_self`] will be called when the update handle is
+    /// [`Updatable::update_self`] will be called when the update handle is
     /// triggered, and if this method returns another update handle, then all
     /// subscribers to that handle are updated in turn.
-    pub fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn SharedData>) {
+    pub fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn Updatable>) {
         trace!(
             "Manager::update_shared_data: update {:?} on handle {:?}",
             data,

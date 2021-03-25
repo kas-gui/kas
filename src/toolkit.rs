@@ -15,10 +15,10 @@
 use std::num::NonZeroU32;
 use std::rc::Rc;
 
-use crate::data::SharedData;
 use crate::draw::{SizeHandle, ThemeAction, ThemeApi};
 use crate::event;
 use crate::event::UpdateHandle;
+use crate::updatable::Updatable;
 
 /// Identifier for a window or pop-up
 ///
@@ -114,7 +114,7 @@ pub trait ShellWindow {
     fn close_window(&mut self, id: WindowId);
 
     /// Register `data` to be updated when an update with the given `handle` is triggered
-    fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn SharedData>);
+    fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn Updatable>);
 
     /// Updates all subscribed widgets
     ///

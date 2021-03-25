@@ -5,11 +5,12 @@
 
 //! Filter accessor
 
+use super::ListData;
 use kas::conv::Cast;
-use kas::data::{ListData, SharedData, SharedDataRec};
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
+use kas::updatable::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
@@ -142,7 +143,7 @@ impl<T: ListData, F: Filter<T::Item>> FilteredList<T, F> {
     }
 }
 
-impl<T: ListData, F: Filter<T::Item>> SharedData for FilteredList<T, F> {
+impl<T: ListData, F: Filter<T::Item>> Updatable for FilteredList<T, F> {
     fn update_handle(&self) -> Option<UpdateHandle> {
         Some(self.update)
     }
@@ -152,7 +153,9 @@ impl<T: ListData, F: Filter<T::Item>> SharedData for FilteredList<T, F> {
         Some(self.update)
     }
 }
-impl<T: ListData + 'static, F: Filter<T::Item>> SharedDataRec for Rc<FilteredList<T, F>> {
+impl<T: ListData + RecursivelyUpdatable + 'static, F: Filter<T::Item>> RecursivelyUpdatable
+    for Rc<FilteredList<T, F>>
+{
     fn enable_recursive_updates(&self, mgr: &mut Manager) {
         self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
@@ -160,8 +163,15 @@ impl<T: ListData + 'static, F: Filter<T::Item>> SharedDataRec for Rc<FilteredLis
         }
     }
 }
+impl<K, M, T: ListData + UpdatableHandler<K, M> + 'static, F: Filter<T::Item>>
+    UpdatableHandler<K, M> for FilteredList<T, F>
+{
+    fn handle(&self, key: &K, msg: &M) -> Option<UpdateHandle> {
+        self.data.handle(key, msg)
+    }
+}
 
-impl<T: ListData + 'static, F: Filter<T::Item>> ListData for Rc<FilteredList<T, F>> {
+impl<T: ListData + 'static, F: Filter<T::Item>> ListData for FilteredList<T, F> {
     type Key = T::Key;
     type Item = T::Item;
 

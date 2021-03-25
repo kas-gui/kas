@@ -10,11 +10,11 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use kas::conv::Cast;
-use kas::data::SharedData;
 use kas::draw::{SizeHandle, ThemeAction, ThemeApi};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
+use kas::updatable::Updatable;
 use kas::{TkAction, WindowId};
 use kas_theme::Theme;
 use winit::dpi::PhysicalSize;
@@ -488,7 +488,7 @@ where
         self.shared.pending.push(PendingAction::CloseWindow(id));
     }
 
-    fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn SharedData>) {
+    fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn Updatable>) {
         self.shared.update_shared_data(handle, data);
     }
 

@@ -4,16 +4,27 @@
 //     https://www.apache.org/licenses/LICENSE-2.0
 
 //! Shared data for view widgets
+//!
+//! TODO: `SharedRc` makes the `sync-counter` example simpler, but most real
+//! uses of shared data require custom impls anyway, so is this worth keeping?
+//! If not, we can probably remove `ListDataMut` and other `*Mut` traits too.
+//! Probably this question requires seeing more examples/applications to answer.
 
-use kas::data::*;
+use super::*;
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;
+use kas::updatable::*;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
 
 /// Wrapper for single-thread shared data
+///
+/// This wrapper adds an [`UpdateHandle`] and implements the [`Updatable`],
+/// [`RecursivelyUpdatable`] and [`UpdatableHandler`] traits (the latter two
+/// with dummy implementations — if you need custom handlers you will need your
+/// own shared data type).
 #[derive(Clone, Debug)]
 pub struct SharedRc<T: Debug>(Rc<(UpdateHandle, RefCell<T>)>);
 
@@ -33,12 +44,18 @@ impl<T: Debug> SharedRc<T> {
         SharedRc(Rc::new((handle, data)))
     }
 }
-impl<T: Debug> SharedData for SharedRc<T> {
+impl<T: Debug> Updatable for SharedRc<T> {
     fn update_handle(&self) -> Option<UpdateHandle> {
         Some((self.0).0)
     }
 }
-impl<T: Debug> SharedDataRec for SharedRc<T> {}
+impl<T: Debug> RecursivelyUpdatable for SharedRc<T> {}
+
+impl<T: Clone + Debug, K, M> UpdatableHandler<K, M> for SharedRc<T> {
+    fn handle(&self, _: &K, _: &M) -> Option<UpdateHandle> {
+        None
+    }
+}
 
 impl<T: Clone + Debug> SingleData for SharedRc<T> {
     type Item = T;
@@ -96,6 +113,7 @@ impl<T: ListDataMut> ListDataMut for SharedRc<T> {
 impl<T: MatrixData> MatrixData for SharedRc<T> {
     type ColKey = T::ColKey;
     type RowKey = T::RowKey;
+    type Key = T::Key;
     type Item = T::Item;
 
     fn col_len(&self) -> usize {
@@ -104,20 +122,15 @@ impl<T: MatrixData> MatrixData for SharedRc<T> {
     fn row_len(&self) -> usize {
         (self.0).1.borrow().row_len()
     }
-    fn contains(&self, col: &Self::ColKey, row: &Self::RowKey) -> bool {
-        (self.0).1.borrow().contains(col, row)
+    fn contains(&self, key: &Self::Key) -> bool {
+        (self.0).1.borrow().contains(key)
     }
-    fn get_cloned(&self, col: &Self::ColKey, row: &Self::RowKey) -> Option<Self::Item> {
-        (self.0).1.borrow().get_cloned(col, row)
+    fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
+        (self.0).1.borrow().get_cloned(key)
     }
 
-    fn update(
-        &self,
-        col: &Self::ColKey,
-        row: &Self::RowKey,
-        value: Self::Item,
-    ) -> Option<UpdateHandle> {
-        (self.0).1.borrow().update(col, row, value)
+    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
+        (self.0).1.borrow().update(key, value)
     }
 
     fn col_iter_vec(&self, limit: usize) -> Vec<Self::ColKey> {
@@ -133,9 +146,13 @@ impl<T: MatrixData> MatrixData for SharedRc<T> {
     fn row_iter_vec_from(&self, start: usize, limit: usize) -> Vec<Self::RowKey> {
         (self.0).1.borrow().row_iter_vec_from(start, limit)
     }
+
+    fn make_key(col: &Self::ColKey, row: &Self::RowKey) -> Self::Key {
+        T::make_key(col, row)
+    }
 }
 impl<T: MatrixDataMut> MatrixDataMut for SharedRc<T> {
-    fn set(&mut self, col: &Self::ColKey, row: &Self::RowKey, item: Self::Item) {
-        (self.0).1.borrow_mut().set(col, row, item);
+    fn set(&mut self, key: &Self::Key, item: Self::Item) {
+        (self.0).1.borrow_mut().set(key, item);
     }
 }

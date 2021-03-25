@@ -5,11 +5,11 @@
 
 //! List view widget
 
-use super::{driver, Driver, SelectionMode};
-use kas::data::ListData;
+use super::{driver, Driver, ListData, SelectionMode};
 use kas::event::{ChildMsg, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
+use kas::updatable::UpdatableAll;
 #[allow(unused)] // doc links
 use kas::widget::ScrollBars;
 use kas::widget::{ScrollComponent, Scrollable};
@@ -25,6 +25,17 @@ struct WidgetData<K, W> {
 
 /// List view widget
 ///
+/// This widget supports a view over a list of shared data items.
+///
+/// The shared data type `T` must support [`ListData`] and
+/// [`UpdatableAll`], the latter with key type `T::Key` and message type
+/// matching the widget's message. One may use [`kas::widget::view::SharedRc`]
+/// or a custom shared data type.
+///
+/// The driver `V` must implement [`Driver`], with data type
+/// `<T as ListData>::Item`. Several implementations are available in the
+/// [`driver`] module or a custom implementation may be used.
+///
 /// This widget is [`Scrollable`], supporting keyboard, wheel and drag
 /// scrolling. You may wish to wrap this widget with [`ScrollBars`].
 #[derive(Clone, Debug, Widget)]
@@ -32,8 +43,8 @@ struct WidgetData<K, W> {
 #[widget(children=noauto, config=noauto)]
 pub struct ListView<
     D: Directional,
-    T: ListData + 'static,
-    V: Driver<T::Key, T::Item> = driver::Default,
+    T: ListData + UpdatableAll<T::Key, V::Msg> + 'static,
+    V: Driver<T::Item> = driver::Default,
 > {
     first_id: WidgetId,
     #[widget_core]
@@ -59,8 +70,11 @@ pub struct ListView<
     press_target: Option<T::Key>,
 }
 
-impl<D: Directional + Default, T: ListData, V: Driver<T::Key, T::Item> + Default>
-    ListView<D, T, V>
+impl<
+        D: Directional + Default,
+        T: ListData + UpdatableAll<T::Key, V::Msg>,
+        V: Driver<T::Item> + Default,
+    > ListView<D, T, V>
 {
     /// Construct a new instance
     ///
@@ -71,19 +85,25 @@ impl<D: Directional + Default, T: ListData, V: Driver<T::Key, T::Item> + Default
         Self::new_with_dir_view(D::default(), <V as Default>::default(), data)
     }
 }
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item> + Default> ListView<D, T, V> {
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item> + Default>
+    ListView<D, T, V>
+{
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, data: T) -> Self {
         Self::new_with_dir_view(direction, <V as Default>::default(), data)
     }
 }
-impl<D: Directional + Default, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> {
+impl<D: Directional + Default, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>>
+    ListView<D, T, V>
+{
     /// Construct a new instance with explicit view
     pub fn new_with_view(view: V, data: T) -> Self {
         Self::new_with_dir_view(D::default(), view, data)
     }
 }
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> {
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>>
+    ListView<D, T, V>
+{
     /// Construct a new instance with explicit direction and view
     pub fn new_with_dir_view(direction: D, view: V, data: T) -> Self {
         ListView {
@@ -294,7 +314,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> 
             let w = &mut self.widgets[i % len];
             if key != w.key {
                 w.key = key;
-                action |= self.view.set(&mut w.widget, item.0, item.1);
+                action |= self.view.set(&mut w.widget, item.1);
             }
             rect.pos = pos_start + skip * i32::conv(i);
             if w.widget.rect() != rect {
@@ -307,7 +327,9 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> ListView<D, T, V> 
     }
 }
 
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Scrollable for ListView<D, T, V> {
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Scrollable
+    for ListView<D, T, V>
+{
     fn scroll_axes(&self, size: Size) -> (bool, bool) {
         // TODO: maybe we should support a scrollbar on the other axis?
         // We would need to report a fake min-child-size to enable scrolling.
@@ -338,7 +360,9 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Scrollable for Lis
     }
 }
 
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> WidgetChildren for ListView<D, T, V> {
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetChildren
+    for ListView<D, T, V>
+{
     #[inline]
     fn first_id(&self) -> WidgetId {
         self.first_id
@@ -362,7 +386,9 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> WidgetChildren for
     }
 }
 
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> WidgetConfig for ListView<D, T, V> {
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> WidgetConfig
+    for ListView<D, T, V>
+{
     fn configure(&mut self, mgr: &mut Manager) {
         self.data.enable_recursive_updates(mgr);
         if let Some(handle) = self.data.update_handle() {
@@ -372,14 +398,16 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> WidgetConfig for L
     }
 }
 
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Layout for ListView<D, T, V> {
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout
+    for ListView<D, T, V>
+{
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         // We use an invisible frame for highlighting selections, drawing into the margin
         let inner_margin = size_handle.inner_margin().extract(axis);
         let frame = FrameRules::new_sym(0, inner_margin, 0);
 
         // We use a default-generated widget to generate size rules
-        let mut rules = self.view.default().size_rules(size_handle, axis);
+        let mut rules = self.view.new().size_rules(size_handle, axis);
         if axis.is_vertical() == self.direction.is_vertical() {
             self.child_size_min = rules.min_size();
             self.child_size_ideal = rules.ideal_size();
@@ -428,20 +456,8 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Layout for ListVie
             *mgr |= TkAction::RECONFIGURE;
             self.widgets.reserve(num - old_num);
             mgr.size_handle(|size_handle| {
-                for (key, item) in self.data.iter_vec_from(old_num, num - old_num) {
-                    let mut widget = self.view.new(key.clone(), item);
-                    let key = Some(key);
-                    // We must solve size rules on new widgets:
-                    solve_size_rules(
-                        &mut widget,
-                        size_handle,
-                        Some(child_size.0),
-                        Some(child_size.1),
-                    );
-                    self.widgets.push(WidgetData { key, widget });
-                }
-                for _ in self.widgets.len()..num {
-                    let mut widget = self.view.default();
+                for _ in old_num..num {
+                    let mut widget = self.view.new();
                     solve_size_rules(
                         &mut widget,
                         size_handle,
@@ -451,7 +467,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Layout for ListVie
                     self.widgets.push(WidgetData { key: None, widget });
                 }
             });
-        } else if num + 64 <= self.widgets.len() {
+        } else if num + 64 <= old_num {
             // Free memory (rarely useful?)
             self.widgets.truncate(num);
         }
@@ -498,7 +514,9 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> Layout for ListVie
     }
 }
 
-impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> SendEvent for ListView<D, T, V> {
+impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
+    for ListView<D, T, V>
+{
     fn send(&mut self, mgr: &mut Manager, id: WidgetId, event: Event) -> Response<Self::Msg> {
         if self.is_disabled() {
             return Response::Unhandled;
@@ -509,18 +527,18 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> SendEvent for List
             let response = 'outer: loop {
                 // We forward events to all children, even if not visible
                 // (e.g. these may be subscribed to an UpdateHandle).
-                for (i, child) in self.widgets.iter_mut().enumerate() {
+                for child in self.widgets.iter_mut() {
                     if id <= child.widget.id() {
                         let r = child.widget.send(mgr, id, child_event);
-                        break 'outer (i, child.key.clone(), r);
+                        break 'outer (child.key.clone(), r);
                     }
                 }
                 debug_assert!(false, "SendEvent::send: bad WidgetId");
                 return Response::Unhandled;
             };
             match response {
-                (_, _, Response::None) => return Response::None,
-                (_, key, Response::Unhandled) => {
+                (_, Response::None) => return Response::None,
+                (key, Response::Unhandled) => {
                     if let Event::PressStart { source, coord, .. } = event {
                         if source.is_primary() {
                             // We request a grab with our ID, hence the
@@ -533,13 +551,13 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> SendEvent for List
                         }
                     }
                 }
-                (_, _, Response::Focus(rect)) => {
+                (_, Response::Focus(rect)) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                     *mgr |= action;
                     self.update_widgets(mgr);
                     return Response::Focus(rect);
                 }
-                (_, Some(key), Response::Select) => {
+                (Some(key), Response::Select) => {
                     match self.sel_mode {
                         SelectionMode::None => (),
                         SelectionMode::Single => {
@@ -554,15 +572,14 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> SendEvent for List
                     }
                     return Response::None;
                 }
-                (_, None, Response::Select) => return Response::None,
-                (i, key, r @ Response::Msg(_)) | (i, key, r @ Response::Update) => {
+                (None, Response::Select) => return Response::None,
+                (_, Response::Update) => return Response::None,
+                (key, Response::Msg(msg)) => {
                     if let Some(key) = key {
-                        if let Some(item) = self.view.get(&self.widgets[i].widget, &key) {
-                            self.set_value(mgr, &key, item);
+                        if let Some(handle) = self.data.handle(&key, &msg) {
+                            mgr.trigger_update(handle, 0);
                         }
-                        return r
-                            .try_into()
-                            .unwrap_or_else(|msg| Response::Msg(ChildMsg::Child(key, msg)));
+                        return Response::Msg(ChildMsg::Child(key, msg));
                     } else {
                         log::warn!("ListView: response from widget with no key");
                         return Response::None;
@@ -573,6 +590,7 @@ impl<D: Directional, T: ListData, V: Driver<T::Key, T::Item>> SendEvent for List
             debug_assert!(id == self.id(), "SendEvent::send: bad WidgetId");
             match event {
                 Event::HandleUpdate { .. } => {
+                    // TODO(opt): use the update payload to indicate which widgets need updating?
                     self.update_view(mgr);
                     return Response::Update;
                 }

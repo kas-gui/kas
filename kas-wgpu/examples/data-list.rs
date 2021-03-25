@@ -3,7 +3,7 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Dynamic widget example
+//! Data list example (direct representation)
 //!
 //! This example exists in part to demonstrate use of dynamically-allocated
 //! widgets (note also one can use `Column<Box<dyn Widget<Msg = ()>>>`).

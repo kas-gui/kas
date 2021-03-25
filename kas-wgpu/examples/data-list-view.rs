@@ -3,31 +3,20 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Dynamic widget example
+//! Data list example (indirect representation)
 //!
-//! This example exists in part to demonstrate use of dynamically-allocated
-//! widgets (note also one can use `Column<Box<dyn Widget<Msg = ()>>>`).
-//!
-//! In part, this also serves as a stress-test of how many widgets it is viable
-//! to have in an app. In my testing:
-//!
-//! -   hundreds of widgets performs mostly flawlessly even in debug mode
-//! -   thousands of widgets performs flawlessly in release mode
-//! -   hundreds of thousands of widgets has some issues (slow creation,
-//!     very slow activation of a RadioBox in a chain hundreds-of-thousands
-//!     long), but in many ways still performs well in release mode
+//! This is a variant of `data-list` using the [`ListView`] widget to create a
+//! dynamic view over a lazy, indirect data structure. Maximum data length is
+//! thus only limited by the data types used (specifically the `i32` type used
+//! to calculate the maximum scroll offset).
 
-use kas::data::*;
 use kas::event::ChildMsg;
 use kas::prelude::*;
-use kas::widget::view::{Driver, ListView};
+use kas::updatable::*;
+use kas::widget::view::{Driver, ListData, ListView};
 use kas::widget::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
-
-thread_local! {
-    pub static RADIO: UpdateHandle = UpdateHandle::new();
-}
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Control {
@@ -45,60 +34,70 @@ enum EntryMsg {
 #[derive(Debug)]
 struct MyData {
     len: usize,
-    active: usize,
-    map: RefCell<HashMap<usize, (bool, String)>>,
+    // (active index, map of strings)
+    data: RefCell<(usize, HashMap<usize, String>)>,
     handle: UpdateHandle,
 }
 impl MyData {
     fn new(len: usize) -> Self {
         MyData {
             len,
-            active: 0,
-            map: Default::default(),
+            data: Default::default(),
             handle: UpdateHandle::new(),
         }
     }
     fn set_len(&mut self, len: usize) -> (Option<String>, UpdateHandle) {
         self.len = len;
         let mut new_text = None;
-        if self.active >= len && len > 0 {
-            if let Some(value) = self.map.get_mut().get_mut(&self.active) {
-                value.0 = false;
-            }
-            self.active = len - 1;
-            if let Some(value) = self.map.get_mut().get_mut(&self.active) {
-                value.0 = true;
-            }
-            new_text = Some(self.get(self.active).1);
+        let mut data = self.data.borrow_mut();
+        if data.0 >= len && len > 0 {
+            let active = len - 1;
+            data.0 = active;
+            drop(data);
+            new_text = Some(self.get(active).1);
         }
         (new_text, self.handle)
     }
     fn get_active(&self) -> usize {
-        self.active
+        self.data.borrow().0
     }
     // Note: in general this method should update the data source and return
     // self.handle, but for our uses this is sufficient.
     fn set_active(&mut self, active: usize) -> String {
-        self.active = active;
+        self.data.borrow_mut().0 = active;
         self.get(active).1
     }
-    fn get(&self, n: usize) -> (bool, String) {
-        self.map
-            .borrow()
-            .get(&n)
-            .cloned()
-            .unwrap_or_else(|| (n == self.active, format!("Entry #{}", n + 1)))
+    fn get(&self, index: usize) -> (bool, String) {
+        let data = self.data.borrow();
+        let is_active = data.0 == index;
+        let text = data.1.get(&index).cloned();
+        let text = text.unwrap_or_else(|| format!("Entry #{}", index + 1));
+        (is_active, text)
     }
 }
-impl SharedData for MyData {
+impl Updatable for MyData {
     fn update_handle(&self) -> Option<UpdateHandle> {
         Some(self.handle)
     }
 }
-impl SharedDataRec for MyData {}
+impl RecursivelyUpdatable for MyData {}
+impl UpdatableHandler<usize, EntryMsg> for MyData {
+    fn handle(&self, key: &usize, msg: &EntryMsg) -> Option<UpdateHandle> {
+        match msg {
+            EntryMsg::Select => {
+                self.data.borrow_mut().0 = *key;
+                Some(self.handle)
+            }
+            EntryMsg::Update(text) => {
+                self.data.borrow_mut().1.insert(*key, text.clone());
+                Some(self.handle)
+            }
+        }
+    }
+}
 impl ListData for MyData {
     type Key = usize;
-    type Item = (bool, String);
+    type Item = (usize, bool, String);
 
     fn len(&self) -> usize {
         self.len
@@ -109,12 +108,12 @@ impl ListData for MyData {
     }
 
     fn get_cloned(&self, key: &Self::Key) -> Option<Self::Item> {
-        Some(self.get(*key))
+        let (is_active, text) = self.get(*key);
+        Some((*key, is_active, text))
     }
 
-    fn update(&self, key: &Self::Key, value: Self::Item) -> Option<UpdateHandle> {
-        self.map.borrow_mut().insert(key.clone(), value);
-        Some(self.handle)
+    fn update(&self, _: &Self::Key, _: Self::Item) -> Option<UpdateHandle> {
+        unimplemented!()
     }
 
     fn iter_vec(&self, limit: usize) -> Vec<(Self::Key, Self::Item)> {
@@ -125,7 +124,10 @@ impl ListData for MyData {
 
     fn iter_vec_from(&self, start: usize, limit: usize) -> Vec<(Self::Key, Self::Item)> {
         (start..self.len.min(start + limit))
-            .map(|n| (n, self.get(n)))
+            .map(|n| {
+                let (is_active, text) = self.get(n);
+                (n, (n, is_active, text))
+            })
             .collect()
     }
 }
@@ -143,15 +145,6 @@ impl EditGuard for ListEntryGuard {
 }
 
 // The list entry
-//
-// Use of a compound listing here with five child widgets (RadioBox is a
-// compound widget) slows down list resizing significantly (more so in debug
-// builds).
-//
-// Use of an embedded RadioBox demonstrates another performance issue:
-// activating any RadioBox sends a message to all others using the same
-// UpdateHandle, which is quite slow with thousands of entries!
-// (This issue does not occur when RadioBoxes are independent.)
 #[derive(Clone, Debug, Widget)]
 #[layout(column)]
 #[handler(msg=EntryMsg)]
@@ -168,17 +161,30 @@ struct ListEntry {
     entry: EditBox<ListEntryGuard>,
 }
 
-impl ListEntry {
-    fn new(n: usize, active: bool, text: String) -> Self {
+#[derive(Debug)]
+struct MyDriver {
+    radio_group: UpdateHandle,
+}
+impl Driver<(usize, bool, String)> for MyDriver {
+    type Msg = EntryMsg;
+    type Widget = ListEntry;
+
+    fn new(&self) -> Self::Widget {
+        // Default instances are not shown, so the data is unimportant
         ListEntry {
             core: Default::default(),
             layout_data: Default::default(),
-            label: Label::new(format!("Entry number {}", n + 1)),
-            radio: RadioBox::new("display this entry", RADIO.with(|h| *h))
-                .with_state(active)
+            label: Label::new(String::default()),
+            radio: RadioBox::new("display this entry", self.radio_group)
                 .on_select(move |_| Some(EntryMsg::Select)),
-            entry: EditBox::new(text).with_guard(ListEntryGuard),
+            entry: EditBox::new(String::default()).with_guard(ListEntryGuard),
         }
+    }
+    fn set(&self, widget: &mut Self::Widget, data: (usize, bool, String)) -> TkAction {
+        let label = format!("Entry number {}", data.0 + 1);
+        widget.label.set_string(label)
+            | widget.radio.set_bool(data.1)
+            | widget.entry.set_string(data.2)
     }
 }
 
@@ -215,28 +221,10 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
+    let driver = MyDriver {
+        radio_group: UpdateHandle::new(),
+    };
     let data = MyData::new(3);
-    #[derive(Debug, Default)]
-    struct MyDriver;
-    impl Driver<usize, (bool, String)> for MyDriver {
-        type Widget = ListEntry;
-
-        fn default(&self) -> Self::Widget {
-            // Default instances are not shown, so the data is unimportant
-            ListEntry::new(0, false, "".to_string())
-        }
-        fn new(&self, key: usize, data: (bool, String)) -> Self::Widget {
-            ListEntry::new(key, data.0, data.1)
-        }
-        fn set(&self, widget: &mut Self::Widget, _: usize, data: (bool, String)) -> TkAction {
-            widget.radio.set_bool(data.0) | widget.entry.set_string(data.1)
-        }
-        fn get(&self, widget: &Self::Widget, _: &usize) -> Option<(bool, String)> {
-            let b = widget.radio.get_bool();
-            let s = widget.entry.get_string();
-            Some((b, s))
-        }
-    }
     type MyList = ListView<kas::dir::Down, MyData, MyDriver>;
 
     let window = Window::new(
@@ -251,7 +239,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget] display: StringLabel = Label::from("Entry #0"),
                 #[widget] _ = Separator::new(),
                 #[widget(handler = set_radio)] list: ScrollBars<MyList> =
-                    ScrollBars::new(ListView::new(data)).with_bars(false, true),
+                    ScrollBars::new(ListView::new_with_view(driver, data)).with_bars(false, true),
             }
             impl {
                 fn set_len(&mut self, mgr: &mut Manager, len: usize) -> Response<VoidMsg> {

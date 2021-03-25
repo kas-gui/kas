@@ -21,7 +21,7 @@ pub use string::AccelString;
 
 /// Utilities integrating `kas-text` functionality
 pub mod util {
-    use super::{format, EditableTextApi, Text, TextApi, Vec2};
+    use super::{fonts, format, EditableTextApi, Text, TextApi, Vec2};
     use kas::{geom::Size, TkAction};
     use log::trace;
 
@@ -39,18 +39,7 @@ pub mod util {
         avail: Size,
     ) -> TkAction {
         text.set_text(s);
-        if let Some(req) = text.prepare() {
-            let avail = Vec2::from(avail);
-            if !(req.0 <= avail.0 && req.1 <= avail.1) {
-                trace!(
-                    "set_text_and_prepare triggers RESIZE: req={:?}, avail={:?}",
-                    req,
-                    avail
-                );
-                return TkAction::RESIZE;
-            }
-        }
-        TkAction::REDRAW
+        prepare_if_needed(text, avail)
     }
 
     /// Set the text from a string and prepare
@@ -67,11 +56,26 @@ pub mod util {
         avail: Size,
     ) -> TkAction {
         text.set_string(s);
+        prepare_if_needed(text, avail)
+    }
+
+    /// Do text preparation, if required/possible
+    ///
+    /// TODO(opt): this method may trigger a RESIZE even though in some cases
+    /// this does nothing useful (e.g. the widget cannot be made bigger anyway).
+    ///
+    /// Note: an alternative approach would be to delay text preparation by
+    /// adding TkAction::PREPARE and a new method, perhaps in Layout.
+    fn prepare_if_needed<T: format::FormattableText>(text: &mut Text<T>, avail: Size) -> TkAction {
+        if fonts::fonts().num_fonts() == 0 {
+            // Fonts not loaded yet: cannot prepare and can assume it will happen later anyway.
+            return TkAction::empty();
+        }
         if let Some(req) = text.prepare() {
             let avail = Vec2::from(avail);
             if !(req.0 <= avail.0 && req.1 <= avail.1) {
                 trace!(
-                    "set_string_and_prepare triggers RESIZE: req={:?}, avail={:?}",
+                    "set_text_and_prepare triggers RESIZE: req={:?}, avail={:?}",
                     req,
                     avail
                 );
