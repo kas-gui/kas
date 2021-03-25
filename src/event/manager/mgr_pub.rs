@@ -430,12 +430,16 @@ impl<'a> Manager<'a> {
     /// Character data is sent to the widget with char focus via
     /// [`Event::ReceivedCharacter`] and [`Event::Command`].
     ///
-    /// Currently, this method always succeeds. Focus persists until either
-    /// another widget requests focus or the widget's event handler returns
-    /// `Response::Unhandled(Event::Control(ControlKey::Escape))`.
-    pub fn request_char_focus(&mut self, id: WidgetId) {
+    /// This method returns true on success, false if focus is unavailable.
+    /// When granted, focus persists until either another widget requests focus
+    /// or the widget's event handler returns `Response::Unhandled` on event
+    /// `Event::Control(ControlKey::Escape)`.
+    pub fn request_char_focus(&mut self, id: WidgetId) -> bool {
         if !self.read_only {
             self.set_char_focus(Some(id));
+            true
+        } else {
+            false
         }
     }
 

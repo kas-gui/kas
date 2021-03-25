@@ -68,6 +68,15 @@ pub trait EditGuard: Debug + Sized + 'static {
         None
     }
 
+    /// Focus-gained guard
+    ///
+    /// This function is called when the widget gains keyboard input focus. Its
+    /// return value is converted to [`Response::None`] or [`Response::Msg`].
+    fn focus_gained(edit: &mut EditField<Self>, mgr: &mut Manager) -> Option<Self::Msg> {
+        let _ = (edit, mgr);
+        None
+    }
+
     /// Focus-lost guard
     ///
     /// This function is called when the widget loses keyboard input focus. Its
@@ -301,6 +310,12 @@ impl<G: EditGuard> EditBox<G> {
         self
     }
 
+    /// Get whether the widget currently has keyboard input focus
+    #[inline]
+    pub fn has_key_focus(&self) -> bool {
+        self.inner.has_key_focus()
+    }
+
     /// Get whether the input state is erroneous
     #[inline]
     pub fn has_error(&self) -> bool {
@@ -409,6 +424,7 @@ pub struct EditField<G: EditGuard = ()> {
     edit_x_coord: Option<f32>,
     old_state: Option<(String, usize, usize)>,
     last_edit: LastEdit,
+    has_key_focus: bool,
     error_state: bool,
     input_handler: TextInput,
     /// The associated [`EditGuard`] implementation
@@ -514,6 +530,7 @@ impl EditField<()> {
             edit_x_coord: None,
             old_state: None,
             last_edit: LastEdit::None,
+            has_key_focus: false,
             error_state: false,
             input_handler: Default::default(),
             guard: (),
@@ -541,6 +558,7 @@ impl EditField<()> {
             edit_x_coord: self.edit_x_coord,
             old_state: self.old_state,
             last_edit: self.last_edit,
+            has_key_focus: self.has_key_focus,
             error_state: self.error_state,
             input_handler: self.input_handler,
             guard,
@@ -630,7 +648,14 @@ impl<G: EditGuard> EditField<G> {
         self
     }
 
+    /// Get whether the widget currently has keyboard input focus
+    #[inline]
+    pub fn has_key_focus(&self) -> bool {
+        self.has_key_focus
+    }
+
     /// Get whether the input state is erroneous
+    #[inline]
     pub fn has_error(&self) -> bool {
         self.error_state
     }
@@ -1040,12 +1065,23 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
     type Msg = G::Msg;
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<Self::Msg> {
-        match event {
-            Event::Activate => {
-                mgr.request_char_focus(self.id());
+        fn request_focus<G: EditGuard + 'static>(
+            s: &mut EditField<G>,
+            mgr: &mut Manager,
+        ) -> Response<G::Msg> {
+            if !s.has_key_focus && mgr.request_char_focus(s.id()) {
+                s.has_key_focus = true;
+                G::focus_gained(s, mgr)
+                    .map(|msg| msg.into())
+                    .unwrap_or(Response::None)
+            } else {
                 Response::None
             }
+        }
+        match event {
+            Event::Activate => request_focus(self, mgr),
             Event::LostCharFocus => {
+                self.has_key_focus = false;
                 mgr.redraw(self.id());
                 G::focus_lost(self, mgr)
                     .map(|msg| msg.into())
@@ -1088,10 +1124,13 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                     self.pan_delta(mgr, delta);
                     Response::None
                 }
+                TextInputAction::Focus => request_focus(self, mgr),
                 TextInputAction::Cursor(coord, anchor, clear, repeats) => {
+                    let mut response = Response::None;
                     self.set_edit_pos_from_coord(mgr, coord);
                     if anchor {
                         self.selection.set_anchor();
+                        response = request_focus(self, mgr);
                     }
                     if clear {
                         self.selection.set_empty();
@@ -1099,7 +1138,7 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                     if repeats > 1 {
                         self.selection.expand(&self.text, repeats);
                     }
-                    Response::None
+                    response
                 }
             },
         }

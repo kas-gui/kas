@@ -41,6 +41,11 @@ pub enum TextInputAction {
     Unhandled,
     /// Pan text using the given `delta`
     Pan(Offset),
+    /// Keyboard focus should be requested (if not already active)
+    ///
+    /// This is also the case for variant `Cursor(_, true, _, _)` (i.e. if
+    /// `anchor == true`).
+    Focus,
     /// Update cursor and/or selection: `(coord, anchor, clear, repeats)`
     ///
     /// The cursor position should be moved to `coord`.
@@ -65,18 +70,17 @@ impl TextInput {
         use TextInputAction as Action;
         match event {
             Event::PressStart { source, coord, .. } if source.is_primary() => {
-                mgr.request_grab(w_id, source, coord, GrabMode::Grab, None);
-                mgr.request_char_focus(w_id);
+                let grab = mgr.request_grab(w_id, source, coord, GrabMode::Grab, None);
                 match source {
                     PressSource::Touch(touch_id) => {
-                        if self.touch_phase == TouchPhase::None {
+                        if grab && self.touch_phase == TouchPhase::None {
                             self.touch_phase = TouchPhase::Start(touch_id, coord);
                             let delay = mgr.config().touch_text_sel_delay();
                             mgr.update_on_timer(delay, w_id, TIMER_ID);
                         }
-                        Action::None
+                        Action::Focus
                     }
-                    PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => Action::None,
+                    PressSource::Mouse(..) if mgr.config_enable_mouse_text_pan() => Action::Focus,
                     PressSource::Mouse(_, repeats) => {
                         Action::Cursor(coord, true, !mgr.modifiers().shift(), repeats)
                     }
