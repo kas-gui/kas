@@ -425,9 +425,42 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
         self.update_widgets(mgr);
     }
 
-    fn spatial_range(&self) -> (usize, usize) {
-        // FIXME: widget order is incorrect!
-        (0, self.num_children().wrapping_sub(1))
+    fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+        let cur_len = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
+        if cur_len == 0 {
+            return None;
+        }
+
+        // TODO: if last row/col is completely hidden, this and cur_len should be less
+        let last = cur_len - 1;
+
+        if let Some(index) = from {
+            let p = self.widgets[index].widget.rect().pos;
+            let index = match reverse {
+                false if index < last => index + 1,
+                false => 0,
+                true if 0 < index => index - 1,
+                true => last,
+            };
+            let q = self.widgets[index].widget.rect().pos;
+            match reverse {
+                false if q.1 > p.1 || (q.1 == p.1 && q.0 > p.0) => Some(index),
+                true if q.1 < p.1 || (q.1 == p.1 && q.0 < p.0) => Some(index),
+                _ => None,
+            }
+        } else {
+            // Simplified version of logic in update_widgets
+            let skip = self.child_size + self.child_inter_margin;
+            let offset = self.scroll_offset();
+            let ci = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
+            let ri = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
+            let (cols, rows): (usize, usize) = (self.cur_len.0.cast(), self.cur_len.1.cast());
+            let mut data = (ci % cols) * rows + (ri % rows);
+            if reverse {
+                data += last;
+            }
+            Some(data % cur_len)
+        }
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {

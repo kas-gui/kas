@@ -474,12 +474,38 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
         self.update_widgets(mgr);
     }
 
-    fn spatial_range(&self) -> (usize, usize) {
-        // FIXME: widget order is incorrect!
-        let last = self.num_children().wrapping_sub(1);
-        match self.direction.is_reversed() {
-            false => (0, last),
-            true => (last, 0),
+    fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+        if self.cur_len == 0 {
+            return None;
+        }
+
+        // TODO: if last widget is completely hidden, this should be one less
+        let last = usize::conv(self.cur_len) - 1;
+        let iter_reverse = reverse ^ self.direction.is_reversed();
+
+        if let Some(index) = from {
+            let p = self.widgets[index].widget.rect().pos;
+            let index = match iter_reverse {
+                false if index < last => index + 1,
+                false => 0,
+                true if 0 < index => index - 1,
+                true => last,
+            };
+            let q = self.widgets[index].widget.rect().pos;
+            match reverse {
+                false if q.1 >= p.1 && q.0 >= p.0 => Some(index),
+                true if q.1 <= p.1 && q.0 <= p.0 => Some(index),
+                _ => None,
+            }
+        } else {
+            // Simplified version of logic in update_widgets
+            let skip = self.child_size.extract(self.direction) + self.child_inter_margin;
+            let offset = u64::conv(self.scroll_offset().extract(self.direction));
+            let mut data = usize::conv(offset / u64::conv(skip));
+            if iter_reverse {
+                data += last;
+            }
+            Some(data % usize::conv(self.cur_len))
         }
     }
 

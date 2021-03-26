@@ -443,27 +443,10 @@ pub trait Layout: WidgetChildren {
         Offset::ZERO
     }
 
-    /// Iterate through children in spatial order
-    ///
-    /// Returns a "range" of children, by index, in spatial order. Unlike
-    /// `std::ops::Range` this is inclusive and reversible, e.g. `(1, 3)` means
-    /// `1, 2, 3` and `(5, 2)` means `5, 4, 3, 2`. As a special case,
-    /// `(_, std::usize::MAX)` means the range is empty.
-    ///
-    /// Widgets should return a range over children in spatial order
-    /// (left-to-right then top-to-bottom). Widgets outside the parent's rect
-    /// (i.e. popups) should be excluded.
-    ///
-    /// The default implementation should suffice for most widgets (excluding
-    /// pop-up parents and those with reversed child order). In cases where
-    /// it is not sufficiently flexible, implement [`Self::spatial_nav`] instead.
-    fn spatial_range(&self) -> (usize, usize) {
-        (0, self.num_children().wrapping_sub(1))
-    }
-
     /// Navigation in spatial order
     ///
-    /// Returns the index of the "next" child in iteration order, if any.
+    /// Returns the index of the "next" child in iteration order within the
+    /// widget's rect, if any. (Pop-up widgets should be excluded.)
     ///
     /// If `reverse` is true, move in left/up direction, otherwise right/down.
     /// If `from.is_some()`, return its next sibling in iteration order,
@@ -471,25 +454,21 @@ pub trait Layout: WidgetChildren {
     ///
     /// Often it is sufficient to implement [`Self.:spatial_range`] instead.
     fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
-        let mut range = self.spatial_range();
-        if range.1 == usize::MAX {
+        let last = self.num_children().wrapping_sub(1);
+        if last == usize::MAX {
             return None;
         }
 
         if let Some(index) = from {
-            let reverse = (range.1 < range.0) ^ reverse;
-            if range.1 < range.0 {
-                std::mem::swap(&mut range.0, &mut range.1);
-            }
             match reverse {
-                false if index < range.1 => Some(index + 1),
-                true if range.0 < index => Some(index - 1),
+                false if index < last => Some(index + 1),
+                true if 0 < index => Some(index - 1),
                 _ => None,
             }
         } else {
             match reverse {
-                false => Some(range.0),
-                true => Some(range.1),
+                false => Some(0),
+                true => Some(last),
             }
         }
     }
