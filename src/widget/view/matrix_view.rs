@@ -266,7 +266,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
             let ci = first_col + cn;
             for (rn, row) in rows.iter().enumerate() {
                 let ri = first_row + rn;
-                let i = (ci % cols.len()) * rows.len() + (ri % rows.len());
+                let i = (ci % cols.len()) + (ri % rows.len()) * cols.len();
                 let w = &mut self.widgets[i];
                 let key = T::make_key(&col, &row);
                 if w.key.as_ref() != Some(&key) {
