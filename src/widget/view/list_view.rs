@@ -82,7 +82,7 @@ impl<
     /// type: for `D: Directional + Default`. In other cases, use
     /// [`ListView::new_with_direction`].
     pub fn new(data: T) -> Self {
-        Self::new_with_dir_view(D::default(), <V as Default>::default(), data)
+        Self::new_with_dir_driver(D::default(), <V as Default>::default(), data)
     }
 }
 impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item> + Default>
@@ -90,22 +90,22 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
 {
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, data: T) -> Self {
-        Self::new_with_dir_view(direction, <V as Default>::default(), data)
+        Self::new_with_dir_driver(direction, <V as Default>::default(), data)
     }
 }
 impl<D: Directional + Default, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>>
     ListView<D, T, V>
 {
     /// Construct a new instance with explicit view
-    pub fn new_with_view(view: V, data: T) -> Self {
-        Self::new_with_dir_view(D::default(), view, data)
+    pub fn new_with_driver(view: V, data: T) -> Self {
+        Self::new_with_dir_driver(D::default(), view, data)
     }
 }
 impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>>
     ListView<D, T, V>
 {
     /// Construct a new instance with explicit direction and view
-    pub fn new_with_dir_view(direction: D, view: V, data: T) -> Self {
+    pub fn new_with_dir_driver(direction: D, view: V, data: T) -> Self {
         ListView {
             first_id: Default::default(),
             core: Default::default(),

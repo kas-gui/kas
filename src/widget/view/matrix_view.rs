@@ -72,12 +72,12 @@ pub struct MatrixView<
 impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item> + Default> MatrixView<T, V> {
     /// Construct a new instance
     pub fn new(data: T) -> Self {
-        Self::new_with_view(<V as Default>::default(), data)
+        Self::new_with_driver(<V as Default>::default(), data)
     }
 }
 impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixView<T, V> {
     /// Construct a new instance with explicit view
-    pub fn new_with_view(view: V, data: T) -> Self {
+    pub fn new_with_driver(view: V, data: T) -> Self {
         MatrixView {
             first_id: Default::default(),
             core: Default::default(),
