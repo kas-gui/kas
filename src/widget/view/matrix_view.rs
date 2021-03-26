@@ -48,7 +48,7 @@ pub struct MatrixView<
     first_id: WidgetId,
     #[widget_core]
     core: CoreData,
-    offset: Offset,
+    frame_offset: Offset,
     frame_size: Size,
     view: V,
     data: T,
@@ -81,7 +81,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
         MatrixView {
             first_id: Default::default(),
             core: Default::default(),
-            offset: Default::default(),
+            frame_offset: Default::default(),
             frame_size: Default::default(),
             view,
             data,
@@ -258,7 +258,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
             .row_iter_vec_from(first_row, self.alloc_len.1.cast());
         self.cur_len = Size(cols.len().cast(), rows.len().cast());
 
-        let pos_start = self.core.rect.pos + self.offset;
+        let pos_start = self.core.rect.pos + self.frame_offset;
         let mut rect = Rect::new(pos_start, self.child_size);
 
         let mut action = TkAction::empty();
@@ -375,7 +375,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
         rules.set_stretch(rules.stretch().max(Stretch::High));
 
         let (rules, offset, size) = frame.surround(rules);
-        self.offset.set_component(axis, offset);
+        self.frame_offset.set_component(axis, offset);
         self.frame_size.set_component(axis, size);
         rules
     }
