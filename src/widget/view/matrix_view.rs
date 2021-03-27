@@ -6,7 +6,7 @@
 //! List view widget
 
 use super::{driver, Driver, MatrixData, SelectionMode};
-use kas::event::{ChildMsg, CursorIcon, GrabMode, PressSource};
+use kas::event::{ChildMsg, Command, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::updatable::UpdatableAll;
@@ -614,14 +614,75 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
         };
 
         let id = self.id();
-        let (action, response) =
+        let (action, response) = if let Event::Command(cmd, _) = event {
+            // Simplified version of logic in update_widgets
+            let (cols, rows): (usize, usize) = (self.cur_len.0.cast(), self.cur_len.1.cast());
+
+            let skip = self.child_size + self.child_inter_margin;
+            let offset = self.scroll_offset();
+            let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
+            let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
+            let col_start = (first_col / cols) * cols;
+            let row_start = (first_row / rows) * rows;
+
+            let cur = mgr
+                .nav_focus()
+                .and_then(|id| self.find_child(id))
+                .map(|index| {
+                    let mut col_index = col_start + index % cols;
+                    let mut row_index = row_start + index / cols;
+                    if col_index < first_col {
+                        col_index += cols;
+                    }
+                    if row_index < first_row {
+                        row_index += rows;
+                    }
+                    (col_index, row_index)
+                });
+            let last_col = self.data.col_len().wrapping_sub(1);
+            let last_row = self.data.row_len().wrapping_sub(1);
+
+            let data = match (cmd, cur) {
+                _ if last_col == usize::MAX || last_row == usize::MAX => None,
+                _ if !self.widgets[0].widget.key_nav() => None,
+                (Command::Home, _) => Some((0, 0)),
+                (Command::End, _) => Some((last_col, last_row)),
+                (Command::Left, Some((ci, ri))) if ci > 0 => Some((ci - 1, ri)),
+                (Command::Up, Some((ci, ri))) if ri > 0 => Some((ci, ri - 1)),
+                (Command::Right, Some((ci, ri))) if ci < last_col => Some((ci + 1, ri)),
+                (Command::Down, Some((ci, ri))) if ri < last_row => Some((ci, ri + 1)),
+                (Command::PageUp, Some((ci, ri))) if ri > 0 => {
+                    Some((ci, ri.saturating_sub(rows / 2)))
+                }
+                (Command::PageDown, Some((ci, ri))) if ri < last_row => {
+                    Some((ci, (ri + rows / 2).min(last_row)))
+                }
+                _ => None,
+            };
+            let action = if let Some((ci, ri)) = data {
+                // Set nav focus to index and update scroll position
+                // Note: we update nav focus before updating widgets; this is fine
+                let index = (ci % cols) + (ri % rows) * cols;
+                mgr.set_nav_focus(self.widgets[index].widget.id());
+
+                let pos = self.core.rect.pos
+                    + self.frame_offset
+                    + skip.cwise_mul(Size(ci.cast(), ri.cast()));
+                let item_rect = Rect::new(pos, self.child_size);
+                self.scroll.focus_rect(item_rect, self.core.rect).1
+            } else {
+                TkAction::empty()
+            };
+            (action, Response::None)
+        } else {
             self.scroll
                 .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
                     if source.is_primary() && mgr.config_enable_mouse_pan() {
                         let icon = Some(CursorIcon::Grabbing);
                         mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
                     }
-                });
+                })
+        };
         if !action.is_empty() {
             *mgr |= action;
             self.update_widgets(mgr);
