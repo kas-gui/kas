@@ -52,12 +52,12 @@ impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item> + De
 {
     /// Construct a new instance
     pub fn new(data: T) -> Self {
-        Self::new_with_view(<V as Default>::default(), data)
+        Self::new_with_driver(<V as Default>::default(), data)
     }
 }
 impl<T: SingleData + UpdatableAll<(), V::Msg> + 'static, V: Driver<T::Item>> SingleView<T, V> {
     /// Construct a new instance with explicit view
-    pub fn new_with_view(view: V, data: T) -> Self {
+    pub fn new_with_driver(view: V, data: T) -> Self {
         let mut child = view.new();
         let _ = view.set(&mut child, data.get_cloned());
         SingleView {

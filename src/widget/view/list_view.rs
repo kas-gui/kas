@@ -6,7 +6,7 @@
 //! List view widget
 
 use super::{driver, Driver, ListData, SelectionMode};
-use kas::event::{ChildMsg, CursorIcon, GrabMode, PressSource};
+use kas::event::{ChildMsg, Command, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::updatable::UpdatableAll;
@@ -49,7 +49,7 @@ pub struct ListView<
     first_id: WidgetId,
     #[widget_core]
     core: CoreData,
-    offset: Offset,
+    frame_offset: Offset,
     frame_size: Size,
     view: V,
     data: T,
@@ -82,7 +82,7 @@ impl<
     /// type: for `D: Directional + Default`. In other cases, use
     /// [`ListView::new_with_direction`].
     pub fn new(data: T) -> Self {
-        Self::new_with_dir_view(D::default(), <V as Default>::default(), data)
+        Self::new_with_dir_driver(D::default(), <V as Default>::default(), data)
     }
 }
 impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item> + Default>
@@ -90,26 +90,26 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
 {
     /// Construct a new instance with explicit direction
     pub fn new_with_direction(direction: D, data: T) -> Self {
-        Self::new_with_dir_view(direction, <V as Default>::default(), data)
+        Self::new_with_dir_driver(direction, <V as Default>::default(), data)
     }
 }
 impl<D: Directional + Default, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>>
     ListView<D, T, V>
 {
     /// Construct a new instance with explicit view
-    pub fn new_with_view(view: V, data: T) -> Self {
-        Self::new_with_dir_view(D::default(), view, data)
+    pub fn new_with_driver(view: V, data: T) -> Self {
+        Self::new_with_dir_driver(D::default(), view, data)
     }
 }
 impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>>
     ListView<D, T, V>
 {
     /// Construct a new instance with explicit direction and view
-    pub fn new_with_dir_view(direction: D, view: V, data: T) -> Self {
+    pub fn new_with_dir_driver(direction: D, view: V, data: T) -> Self {
         ListView {
             first_id: Default::default(),
             core: Default::default(),
-            offset: Default::default(),
+            frame_offset: Default::default(),
             frame_size: Default::default(),
             view,
             data,
@@ -296,7 +296,7 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
         let offset = u64::conv(self.scroll_offset().extract(self.direction));
         let first_data = usize::conv(offset / u64::conv(skip.extract(self.direction)));
 
-        let mut pos_start = self.core.rect.pos + self.offset;
+        let mut pos_start = self.core.rect.pos + self.frame_offset;
         if self.direction.is_reversed() {
             pos_start += skip * i32::conv(len - 1);
             skip = skip * -1;
@@ -417,7 +417,7 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
             rules.set_stretch(rules.stretch().max(Stretch::High));
         }
         let (rules, offset, size) = frame.surround(rules);
-        self.offset.set_component(axis, offset);
+        self.frame_offset.set_component(axis, offset);
         self.frame_size.set_component(axis, size);
         rules
     }
@@ -474,12 +474,38 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
         self.update_widgets(mgr);
     }
 
-    fn spatial_range(&self) -> (usize, usize) {
-        // FIXME: widget order is incorrect!
-        let last = self.num_children().wrapping_sub(1);
-        match self.direction.is_reversed() {
-            false => (0, last),
-            true => (last, 0),
+    fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+        if self.cur_len == 0 {
+            return None;
+        }
+
+        // TODO: if last widget is completely hidden, this should be one less
+        let last = usize::conv(self.cur_len) - 1;
+        let iter_reverse = reverse ^ self.direction.is_reversed();
+
+        if let Some(index) = from {
+            let p = self.widgets[index].widget.rect().pos;
+            let index = match iter_reverse {
+                false if index < last => index + 1,
+                false => 0,
+                true if 0 < index => index - 1,
+                true => last,
+            };
+            let q = self.widgets[index].widget.rect().pos;
+            match reverse {
+                false if q.1 >= p.1 && q.0 >= p.0 => Some(index),
+                true if q.1 <= p.1 && q.0 <= p.0 => Some(index),
+                _ => None,
+            }
+        } else {
+            // Simplified version of logic in update_widgets
+            let skip = self.child_size.extract(self.direction) + self.child_inter_margin;
+            let offset = u64::conv(self.scroll_offset().extract(self.direction));
+            let mut data = usize::conv(offset / u64::conv(skip));
+            if iter_reverse {
+                data += last;
+            }
+            Some(data % usize::conv(self.cur_len))
         }
     }
 
@@ -631,14 +657,63 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
         };
 
         let id = self.id();
-        let (action, response) =
+        let (action, response) = if let Event::Command(cmd, _) = event {
+            // Simplified version of logic in update_widgets
+            let len = usize::conv(self.cur_len);
+            let skip = self.child_size.extract(self.direction) + self.child_inter_margin;
+            let offset = u64::conv(self.scroll_offset().extract(self.direction));
+            let first_data = usize::conv(offset / u64::conv(skip));
+            let data_start = (first_data / len) * len;
+
+            let cur = mgr
+                .nav_focus()
+                .and_then(|id| self.find_child(id))
+                .map(|index| {
+                    let mut data = data_start + index;
+                    if data < first_data {
+                        data += len;
+                    }
+                    data
+                });
+            let last = self.data.len().wrapping_sub(1);
+            let is_vert = self.direction.is_vertical();
+
+            let data = match (cmd, cur) {
+                _ if last == usize::MAX => None,
+                _ if !self.widgets[0].widget.key_nav() => None,
+                (Command::Home, _) => Some(0),
+                (Command::End, _) => Some(last),
+                (Command::Left, Some(cur)) if !is_vert && cur > 0 => Some(cur - 1),
+                (Command::Up, Some(cur)) if is_vert && cur > 0 => Some(cur - 1),
+                (Command::Right, Some(cur)) if !is_vert && cur < last => Some(cur + 1),
+                (Command::Down, Some(cur)) if is_vert && cur < last => Some(cur + 1),
+                (Command::PageUp, Some(cur)) if cur > 0 => Some(cur.saturating_sub(len / 2)),
+                (Command::PageDown, Some(cur)) if cur < last => Some((cur + len / 2).min(last)),
+                _ => None,
+            };
+            let action = if let Some(index) = data {
+                // Set nav focus to index and update scroll position
+                // Note: we update nav focus before updating widgets; this is fine
+                mgr.set_nav_focus(self.widgets[index % len].widget.id());
+
+                let mut skip_off = Offset::ZERO;
+                skip_off.set_component(self.direction, skip);
+                let pos = self.core.rect.pos + self.frame_offset + skip_off * i32::conv(index);
+                let item_rect = Rect::new(pos, self.child_size);
+                self.scroll.focus_rect(item_rect, self.core.rect).1
+            } else {
+                TkAction::empty()
+            };
+            (action, Response::None)
+        } else {
             self.scroll
                 .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
                     if source.is_primary() && mgr.config_enable_mouse_pan() {
                         let icon = Some(CursorIcon::Grabbing);
                         mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
                     }
-                });
+                })
+        };
         if !action.is_empty() {
             *mgr |= action;
             self.update_widgets(mgr);

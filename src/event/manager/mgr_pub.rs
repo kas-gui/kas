@@ -430,12 +430,16 @@ impl<'a> Manager<'a> {
     /// Character data is sent to the widget with char focus via
     /// [`Event::ReceivedCharacter`] and [`Event::Command`].
     ///
-    /// Currently, this method always succeeds. Focus persists until either
-    /// another widget requests focus or the widget's event handler returns
-    /// `Response::Unhandled(Event::Control(ControlKey::Escape))`.
-    pub fn request_char_focus(&mut self, id: WidgetId) {
+    /// This method returns true on success, false if focus is unavailable.
+    /// When granted, focus persists until either another widget requests focus
+    /// or the widget's event handler returns `Response::Unhandled` on event
+    /// `Event::Control(ControlKey::Escape)`.
+    pub fn request_char_focus(&mut self, id: WidgetId) -> bool {
         if !self.read_only {
             self.set_char_focus(Some(id));
+            true
+        } else {
+            false
         }
     }
 
@@ -668,15 +672,9 @@ impl<'a> Manager<'a> {
         // Breaks to given lifetime on error.
         macro_rules! do_child {
             ($lt:lifetime, $nav_stack:ident, $widget:ident, $widget_stack:ident) => {{
-                let range = $widget.spatial_range();
-                if $widget.is_disabled() || range.1 == std::usize::MAX {
+                if $widget.is_disabled() {
                     false
-                } else {
-                    // We have a child; the first is range.0 unless reverse
-                    let index = match reverse {
-                        false => range.0,
-                        true => range.1,
-                    };
+                } else if let Some(index) = $widget.spatial_nav(reverse, None) {
                     let new = match $widget.get_child(index) {
                         None => break $lt,
                         Some(w) => w,
@@ -685,6 +683,8 @@ impl<'a> Manager<'a> {
                     $widget_stack.push($widget);
                     $widget = new;
                     true
+                } else {
+                    false
                 }
             }};
         }
@@ -694,7 +694,7 @@ impl<'a> Manager<'a> {
         // Breaks to given lifetime on error.
         macro_rules! do_sibling_or_pop {
             ($lt:lifetime, $nav_stack:ident, $widget:ident, $widget_stack:ident) => {{
-                let mut index;
+                let index;
                 match ($nav_stack.pop(), $widget_stack.pop()) {
                     (Some(i), Some(w)) => {
                         index = i.cast();
@@ -702,39 +702,19 @@ impl<'a> Manager<'a> {
                     }
                     _ => break $lt,
                 };
-                let mut range = $widget.spatial_range();
-                if $widget.is_disabled() || range.1 == std::usize::MAX {
-                    break $lt;
-                }
-
-                let reverse = (range.1 < range.0) ^ reverse;
-                if range.1 < range.0 {
-                    std::mem::swap(&mut range.0, &mut range.1);
-                }
-
-                // Look for next sibling
-                let have_sibling = match reverse {
-                    false if index < range.1 => {
-                        index += 1;
-                        true
-                    }
-                    true if range.0 < index => {
-                        index -= 1;
+                match $widget.spatial_nav(reverse, Some(index)) {
+                    Some(index) if !$widget.is_disabled() => {
+                        let new = match $widget.get_child(index) {
+                            None => break $lt,
+                            Some(w) => w,
+                        };
+                        $nav_stack.push(index.cast());
+                        $widget_stack.push($widget);
+                        $widget = new;
                         true
                     }
                     _ => false,
-                };
-
-                if have_sibling {
-                    let new = match $widget.get_child(index) {
-                        None => break $lt,
-                        Some(w) => w,
-                    };
-                    $nav_stack.push(index.cast());
-                    $widget_stack.push($widget);
-                    $widget = new;
                 }
-                have_sibling
             }};
         }
 

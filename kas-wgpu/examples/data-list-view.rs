@@ -239,7 +239,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget] display: StringLabel = Label::from("Entry #0"),
                 #[widget] _ = Separator::new(),
                 #[widget(handler = set_radio)] list: ScrollBars<MyList> =
-                    ScrollBars::new(ListView::new_with_view(driver, data)).with_bars(false, true),
+                    ScrollBars::new(ListView::new_with_driver(driver, data)).with_bars(false, true),
             }
             impl {
                 fn set_len(&mut self, mgr: &mut Manager, len: usize) -> Response<VoidMsg> {

@@ -62,9 +62,9 @@ impl<M: 'static> kas::Layout for ComboBox<M> {
         });
     }
 
-    fn spatial_range(&self) -> (usize, usize) {
-        // We have no child within our rect; return an empty range
-        (0, std::usize::MAX)
+    fn spatial_nav(&self, _: bool, _: Option<usize>) -> Option<usize> {
+        // We have no child within our rect
+        None
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {

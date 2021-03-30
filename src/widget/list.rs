@@ -143,11 +143,25 @@ impl<D: Directional, W: Widget> Layout for List<D, W> {
         }
     }
 
-    fn spatial_range(&self) -> (usize, usize) {
-        let last = self.num_children().wrapping_sub(1);
-        match self.direction.is_reversed() {
-            false => (0, last),
-            true => (last, 0),
+    fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+        if self.num_children() == 0 {
+            return None;
+        }
+
+        let last = self.num_children() - 1;
+        let reverse = reverse ^ self.direction.is_reversed();
+
+        if let Some(index) = from {
+            match reverse {
+                false if index < last => Some(index + 1),
+                true if 0 < index => Some(index - 1),
+                _ => None,
+            }
+        } else {
+            match reverse {
+                false => Some(0),
+                true => Some(last),
+            }
         }
     }
 

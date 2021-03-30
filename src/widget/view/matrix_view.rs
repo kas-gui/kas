@@ -6,7 +6,7 @@
 //! List view widget
 
 use super::{driver, Driver, MatrixData, SelectionMode};
-use kas::event::{ChildMsg, CursorIcon, GrabMode, PressSource};
+use kas::event::{ChildMsg, Command, CursorIcon, GrabMode, PressSource};
 use kas::layout::solve_size_rules;
 use kas::prelude::*;
 use kas::updatable::UpdatableAll;
@@ -48,7 +48,7 @@ pub struct MatrixView<
     first_id: WidgetId,
     #[widget_core]
     core: CoreData,
-    offset: Offset,
+    frame_offset: Offset,
     frame_size: Size,
     view: V,
     data: T,
@@ -72,16 +72,16 @@ pub struct MatrixView<
 impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item> + Default> MatrixView<T, V> {
     /// Construct a new instance
     pub fn new(data: T) -> Self {
-        Self::new_with_view(<V as Default>::default(), data)
+        Self::new_with_driver(<V as Default>::default(), data)
     }
 }
 impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixView<T, V> {
     /// Construct a new instance with explicit view
-    pub fn new_with_view(view: V, data: T) -> Self {
+    pub fn new_with_driver(view: V, data: T) -> Self {
         MatrixView {
             first_id: Default::default(),
             core: Default::default(),
-            offset: Default::default(),
+            frame_offset: Default::default(),
             frame_size: Default::default(),
             view,
             data,
@@ -258,7 +258,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
             .row_iter_vec_from(first_row, self.alloc_len.1.cast());
         self.cur_len = Size(cols.len().cast(), rows.len().cast());
 
-        let pos_start = self.core.rect.pos + self.offset;
+        let pos_start = self.core.rect.pos + self.frame_offset;
         let mut rect = Rect::new(pos_start, self.child_size);
 
         let mut action = TkAction::empty();
@@ -266,7 +266,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
             let ci = first_col + cn;
             for (rn, row) in rows.iter().enumerate() {
                 let ri = first_row + rn;
-                let i = (ci % cols.len()) * rows.len() + (ri % rows.len());
+                let i = (ci % cols.len()) + (ri % rows.len()) * cols.len();
                 let w = &mut self.widgets[i];
                 let key = T::make_key(&col, &row);
                 if w.key.as_ref() != Some(&key) {
@@ -375,7 +375,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
         rules.set_stretch(rules.stretch().max(Stretch::High));
 
         let (rules, offset, size) = frame.surround(rules);
-        self.offset.set_component(axis, offset);
+        self.frame_offset.set_component(axis, offset);
         self.frame_size.set_component(axis, size);
         rules
     }
@@ -425,9 +425,42 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
         self.update_widgets(mgr);
     }
 
-    fn spatial_range(&self) -> (usize, usize) {
-        // FIXME: widget order is incorrect!
-        (0, self.num_children().wrapping_sub(1))
+    fn spatial_nav(&self, reverse: bool, from: Option<usize>) -> Option<usize> {
+        let cur_len = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
+        if cur_len == 0 {
+            return None;
+        }
+
+        // TODO: if last row/col is completely hidden, this and cur_len should be less
+        let last = cur_len - 1;
+
+        if let Some(index) = from {
+            let p = self.widgets[index].widget.rect().pos;
+            let index = match reverse {
+                false if index < last => index + 1,
+                false => 0,
+                true if 0 < index => index - 1,
+                true => last,
+            };
+            let q = self.widgets[index].widget.rect().pos;
+            match reverse {
+                false if q.1 > p.1 || (q.1 == p.1 && q.0 > p.0) => Some(index),
+                true if q.1 < p.1 || (q.1 == p.1 && q.0 < p.0) => Some(index),
+                _ => None,
+            }
+        } else {
+            // Simplified version of logic in update_widgets
+            let skip = self.child_size + self.child_inter_margin;
+            let offset = self.scroll_offset();
+            let ci = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
+            let ri = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
+            let (cols, rows): (usize, usize) = (self.cur_len.0.cast(), self.cur_len.1.cast());
+            let mut data = (ci % cols) * rows + (ri % rows);
+            if reverse {
+                data += last;
+            }
+            Some(data % cur_len)
+        }
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
@@ -581,14 +614,75 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> SendEvent
         };
 
         let id = self.id();
-        let (action, response) =
+        let (action, response) = if let Event::Command(cmd, _) = event {
+            // Simplified version of logic in update_widgets
+            let (cols, rows): (usize, usize) = (self.cur_len.0.cast(), self.cur_len.1.cast());
+
+            let skip = self.child_size + self.child_inter_margin;
+            let offset = self.scroll_offset();
+            let first_col = usize::conv(u64::conv(offset.0) / u64::conv(skip.0));
+            let first_row = usize::conv(u64::conv(offset.1) / u64::conv(skip.1));
+            let col_start = (first_col / cols) * cols;
+            let row_start = (first_row / rows) * rows;
+
+            let cur = mgr
+                .nav_focus()
+                .and_then(|id| self.find_child(id))
+                .map(|index| {
+                    let mut col_index = col_start + index % cols;
+                    let mut row_index = row_start + index / cols;
+                    if col_index < first_col {
+                        col_index += cols;
+                    }
+                    if row_index < first_row {
+                        row_index += rows;
+                    }
+                    (col_index, row_index)
+                });
+            let last_col = self.data.col_len().wrapping_sub(1);
+            let last_row = self.data.row_len().wrapping_sub(1);
+
+            let data = match (cmd, cur) {
+                _ if last_col == usize::MAX || last_row == usize::MAX => None,
+                _ if !self.widgets[0].widget.key_nav() => None,
+                (Command::Home, _) => Some((0, 0)),
+                (Command::End, _) => Some((last_col, last_row)),
+                (Command::Left, Some((ci, ri))) if ci > 0 => Some((ci - 1, ri)),
+                (Command::Up, Some((ci, ri))) if ri > 0 => Some((ci, ri - 1)),
+                (Command::Right, Some((ci, ri))) if ci < last_col => Some((ci + 1, ri)),
+                (Command::Down, Some((ci, ri))) if ri < last_row => Some((ci, ri + 1)),
+                (Command::PageUp, Some((ci, ri))) if ri > 0 => {
+                    Some((ci, ri.saturating_sub(rows / 2)))
+                }
+                (Command::PageDown, Some((ci, ri))) if ri < last_row => {
+                    Some((ci, (ri + rows / 2).min(last_row)))
+                }
+                _ => None,
+            };
+            let action = if let Some((ci, ri)) = data {
+                // Set nav focus to index and update scroll position
+                // Note: we update nav focus before updating widgets; this is fine
+                let index = (ci % cols) + (ri % rows) * cols;
+                mgr.set_nav_focus(self.widgets[index].widget.id());
+
+                let pos = self.core.rect.pos
+                    + self.frame_offset
+                    + skip.cwise_mul(Size(ci.cast(), ri.cast()));
+                let item_rect = Rect::new(pos, self.child_size);
+                self.scroll.focus_rect(item_rect, self.core.rect).1
+            } else {
+                TkAction::empty()
+            };
+            (action, Response::None)
+        } else {
             self.scroll
                 .scroll_by_event(event, self.core.rect.size, |source, _, coord| {
                     if source.is_primary() && mgr.config_enable_mouse_pan() {
                         let icon = Some(CursorIcon::Grabbing);
                         mgr.request_grab(id, source, coord, GrabMode::Grab, icon);
                     }
-                });
+                })
+        };
         if !action.is_empty() {
             *mgr |= action;
             self.update_widgets(mgr);
