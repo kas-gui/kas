@@ -36,15 +36,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
-        # disabled because of shaderc dependencies: windows-latest
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        toolchain: [beta, nightly]
 
     steps:
       - uses: actions/checkout@v2
       - name: Install latest nightly
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: nightly
+            toolchain: ${{ matrix.toolchain }}
             override: true
       - name: Install xcb libraries
         if: matrix.os == 'ubuntu-latest'
