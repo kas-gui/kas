@@ -52,9 +52,9 @@ json = ["serde", "serde_json"]
 
 [dependencies]
 log = "0.4"
-smallvec = "1.4"
+smallvec = "1.6.1"
 stack_dst = { version = "0.6", optional = true }
-bitflags = "1" # only used without winit
+bitflags = "1.2.1" # only used without winit
 unicode-segmentation = "1.7"
 linear-map = "1.2.0"
 thiserror = "1.0.23"
