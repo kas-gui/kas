@@ -7,8 +7,8 @@ on:
     branches: [ master ]
 
 jobs:
-  check:
-    name: Format and Doc
+  nightly:
+    name: Nightly, format and Doc
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -30,22 +30,30 @@ jobs:
         run: cargo doc --manifest-path kas-theme/Cargo.toml --features stack_dst,unsize --no-deps
       - name: doc (kas-wgpu)
         run: cargo doc --manifest-path kas-wgpu/Cargo.toml --features stack_dst,unsize --no-deps
+      - name: test (kas)
+        run: cargo test --all-features
+      - name: test (kas-theme)
+        run: cargo test --manifest-path kas-theme/Cargo.toml --all-features
+      - name: test (kas-wgpu)
+        run: cargo test --manifest-path kas-wgpu/Cargo.toml --all-features
 
   test:
+    name: Test
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        toolchain: [beta, nightly]
+        toolchain: [beta]
 
     steps:
       - uses: actions/checkout@v2
-      - name: Install latest nightly
+      - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
-            toolchain: ${{ matrix.toolchain }}
-            override: true
+          profile: minimal
+          toolchain: ${{ matrix.toolchain }}
+          override: true
       - name: Install xcb libraries
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
@@ -57,11 +65,10 @@ jobs:
           cargo test
           # Note: we must test serde without winit and with winit
           cargo test --features serde
-          cargo test --all-features
+          cargo test --features internal_doc,shaping,markdown,yaml,json
       - name: test (kas-theme)
-        run: |
-          cargo test --manifest-path kas-theme/Cargo.toml --all-features
+        run: cargo test --manifest-path kas-theme/Cargo.toml
       - name: test (kas-wgpu)
         run: |
-          cargo test
-          cargo test --manifest-path kas-wgpu/Cargo.toml --all-features
+          cargo test --manifest-path kas-wgpu/Cargo.toml
+          cargo test --manifest-path kas-wgpu/Cargo.toml --features shaping
