@@ -2,6 +2,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] — ??
+
+Updated MSRV to 1.52.0 (currently beta).
+
 ## [0.6.0] — 2020-11-24
 
 This release covers significant revisions to the KAS-text API along with initial

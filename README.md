@@ -4,7 +4,7 @@ KAS GUI
 [![Test Status](https://github.com/kas-gui/kas/workflows/Tests/badge.svg?event=push)](https://github.com/kas-gui/kas/actions)
 [![kas-text](https://img.shields.io/badge/GitHub-kas--text-blueviolet)](https://github.com/kas-gui/kas-text/)
 [![Docs](https://docs.rs/kas/badge.svg)](https://docs.rs/kas)
-![Minimum rustc version](https://img.shields.io/badge/rustc-1.45+-lightgray.svg)
+![Minimum rustc version](https://img.shields.io/badge/rustc-1.52+-lightgray.svg)
 
 KAS, (historically the *toolKit Abstraction System*), is a general-purpose GUI toolkit.
 KAS's design provides:
@@ -114,9 +114,9 @@ Installation and dependencies
 
 #### Rust
 
-KAS requires [Rust] version 1.45 or greater. All examples are compatible with
-the **stable** channel, but using the **nightly** channel does have a couple of
-advantages:
+KAS requires [Rust] version 1.52 or greater (currently in **beta**: *usually*
+we maintain compatibility with the latest stable release).
+Using the **nightly** channel does have a couple of advantages:
 
 -   Proceedural macros emit better diagnostics. In some cases, diagnostics are
     missed without nightly rustc, hence **nightly is recommended for development**.

@@ -303,7 +303,7 @@
 //! elided types) and tends to produce terrible error messages. Accessing fields
 //! of the generated widgets from outside code is complicated. It would be much
 //! improved with [RFC 2524](https://github.com/rust-lang/rfcs/pull/2524)
-//! (essentially, anonymous types). And it requires Rust 1.45.0 (or nightly).
+//! (essentially, anonymous types).
 //!
 //! Lets start with some examples:
 //!
