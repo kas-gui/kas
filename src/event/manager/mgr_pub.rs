@@ -313,7 +313,7 @@ impl<'a> Manager<'a> {
 
     /// Attempt to set clipboard contents
     #[inline]
-    pub fn set_clipboard<'c>(&mut self, content: std::borrow::Cow<'c, str>) {
+    pub fn set_clipboard(&mut self, content: String) {
         self.shell.set_clipboard(content)
     }
 

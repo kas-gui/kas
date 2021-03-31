@@ -504,7 +504,7 @@ where
     }
 
     #[inline]
-    fn set_clipboard<'c>(&mut self, content: std::borrow::Cow<'c, str>) {
+    fn set_clipboard<'c>(&mut self, content: String) {
         self.shared.set_clipboard(content);
     }
 

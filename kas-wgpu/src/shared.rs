@@ -124,14 +124,9 @@ where
         );
     }
 
-    #[cfg(not(feature = "clipboard"))]
     #[inline]
     pub fn get_clipboard(&mut self) -> Option<String> {
-        None
-    }
-
-    #[cfg(feature = "clipboard")]
-    pub fn get_clipboard(&mut self) -> Option<String> {
+        #[cfg(feature = "clipboard")]
         self.clipboard.as_ref().and_then(|cb| match cb.read() {
             Ok(c) => Some(c),
             Err(e) => {
@@ -141,12 +136,9 @@ where
         })
     }
 
-    #[cfg(not(feature = "clipboard"))]
     #[inline]
-    pub fn set_clipboard<'c>(&mut self, _: std::borrow::Cow<'c, str>) {}
-
-    #[cfg(feature = "clipboard")]
-    pub fn set_clipboard<'c>(&mut self, content: std::borrow::Cow<'c, str>) {
+    pub fn set_clipboard(&mut self, content: String) {
+        #[cfg(feature = "clipboard")]
         self.clipboard
             .as_mut()
             .map(|cb| match cb.write(content.into()) {
