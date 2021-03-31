@@ -19,6 +19,9 @@ jobs:
           toolchain: nightly
           override: true
           components: rustfmt
+      - name: Install xcb libraries
+        run: sudo apt-get install -y libxcb-shape0-dev libxcb-xfixes0-dev
+
       - name: Rustfmt check
         uses: actions-rs/cargo@v1
         with:
