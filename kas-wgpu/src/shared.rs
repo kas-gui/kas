@@ -18,12 +18,12 @@ use kas::updatable::Updatable;
 use kas_theme::Theme;
 
 #[cfg(feature = "clipboard")]
-use clipboard::{ClipboardContext, ClipboardProvider};
+use window_clipboard::Clipboard;
 
 /// State shared between windows
 pub struct SharedState<C: CustomPipe, T> {
     #[cfg(feature = "clipboard")]
-    clipboard: Option<ClipboardContext>,
+    clipboard: Option<Clipboard>,
     data_updates: HashMap<UpdateHandle, Vec<Rc<dyn Updatable>>>,
     pub instance: wgpu::Instance,
     pub device: wgpu::Device,
@@ -51,15 +51,6 @@ where
         config: Rc<RefCell<kas::event::Config>>,
         scale_factor: f64,
     ) -> Result<Self, Error> {
-        #[cfg(feature = "clipboard")]
-        let clipboard = match ClipboardContext::new() {
-            Ok(cb) => Some(cb),
-            Err(e) => {
-                warn!("Unable to open clipboard: {:?}", e);
-                None
-            }
-        };
-
         let instance = wgpu::Instance::new(options.backend());
         let adapter_options = options.adapter_options();
         let req = instance.request_adapter(&adapter_options);
@@ -84,7 +75,7 @@ where
 
         Ok(SharedState {
             #[cfg(feature = "clipboard")]
-            clipboard,
+            clipboard: None,
             data_updates: Default::default(),
             instance,
             device,
@@ -97,6 +88,20 @@ where
             scale_factor,
             window_id: 0,
         })
+    }
+
+    /// Initialise the clipboard context
+    ///
+    /// This requires a window handle (on some platforms), thus is done when the
+    /// first window is constructed.
+    pub fn init_clipboard(&mut self, _window: &winit::window::Window) {
+        #[cfg(feature = "clipboard")]
+        if self.clipboard.is_none() {
+            match Clipboard::connect(_window) {
+                Ok(cb) => self.clipboard = Some(cb),
+                Err(e) => warn_about_error("Failed to connect clipboard", e.as_ref()),
+            }
+        }
     }
 
     pub fn next_window_id(&mut self) -> WindowId {
@@ -127,15 +132,13 @@ where
 
     #[cfg(feature = "clipboard")]
     pub fn get_clipboard(&mut self) -> Option<String> {
-        self.clipboard
-            .as_mut()
-            .and_then(|cb| match cb.get_contents() {
-                Ok(c) => Some(c),
-                Err(e) => {
-                    warn!("Failed to get clipboard contents: {:?}", e);
-                    None
-                }
-            })
+        self.clipboard.as_ref().and_then(|cb| match cb.read() {
+            Ok(c) => Some(c),
+            Err(e) => {
+                warn_about_error("Failed to get clipboard contents", e.as_ref());
+                None
+            }
+        })
     }
 
     #[cfg(not(feature = "clipboard"))]
@@ -144,10 +147,12 @@ where
 
     #[cfg(feature = "clipboard")]
     pub fn set_clipboard<'c>(&mut self, content: std::borrow::Cow<'c, str>) {
-        self.clipboard.as_mut().map(|cb| {
-            cb.set_contents(content.into())
-                .unwrap_or_else(|e| warn!("Failed to set clipboard contents: {:?}", e))
-        });
+        self.clipboard
+            .as_mut()
+            .map(|cb| match cb.write(content.into()) {
+                Ok(()) => (),
+                Err(e) => warn_about_error("Failed to set clipboard contents", e.as_ref()),
+            });
     }
 
     pub fn update_shared_data(&mut self, handle: UpdateHandle, data: Rc<dyn Updatable>) {
@@ -190,6 +195,15 @@ where
                 .into_iter()
                 .map(|handle| PendingAction::Update(handle, payload)),
         );
+    }
+}
+
+#[cfg(feature = "clipboard")]
+fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
+    warn!("{}: {}", msg, error);
+    while let Some(source) = error.source() {
+        warn!("Source: {}", source);
+        error = source;
     }
 }
 
