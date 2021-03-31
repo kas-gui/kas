@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Misc
 
 -   Updated MSRV to 1.52.0 (currently beta) (#179)
--   Update dependencies: `smallvec`, `bitflags`, `bytemuck` (#180)
+-   Update dependencies: `kas-text`, `smallvec`, `bitflags`, `bytemuck` (#180)
 
 ## [0.6.0] — 2020-11-24
 
