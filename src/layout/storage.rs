@@ -131,9 +131,6 @@ impl_row_temporary!(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16);
 /// Requirements of grid solver storage type
 ///
 /// Details are hidden (for internal use only).
-///
-/// NOTE: ideally this would use const-generics, but those aren't stable (or
-/// even usable) yet. This will likely be implemented in the future.
 pub trait GridStorage: sealed::Sealed + Clone {
     #[doc(hidden)]
     fn set_dims(&mut self, cols: usize, rows: usize);
@@ -164,28 +161,42 @@ pub trait GridStorage: sealed::Sealed + Clone {
 
 /// Fixed-length grid storage
 ///
+/// Uses const-generics arguments `C, R` (the number of columns and rows).
+///
 /// Argument types:
 ///
 /// - `WR` is expected to be `[SizeRules; cols + 1]`
 /// - `HR` is expected to be `[SizeRules; rows + 1]`
-/// - `W` is expected to be `[i32; cols]` or `Vec<i32>`
-/// - `H` is expected to be `[i32; rows]` or `Vec<i32>`
-#[derive(Clone, Debug, Default)]
-pub struct FixedGridStorage<WR: Clone, HR: Clone, W: Clone, H: Clone> {
+#[derive(Clone, Debug)]
+pub struct FixedGridStorage<WR: Clone, HR: Clone, const C: usize, const R: usize> {
     width_rules: WR,
     height_rules: HR,
-    widths: W,
-    heights: H,
+    widths: [i32; C],
+    heights: [i32; R],
 }
 
-impl<WR: Clone, HR: Clone, W: Clone, H: Clone> Storage for FixedGridStorage<WR, HR, W, H> {}
+impl<WR: Clone + Default, HR: Clone + Default, const C: usize, const R: usize> Default
+    for FixedGridStorage<WR, HR, C, R>
+{
+    fn default() -> Self {
+        FixedGridStorage {
+            width_rules: Default::default(),
+            height_rules: Default::default(),
+            widths: [0; C],
+            heights: [0; R],
+        }
+    }
+}
 
-impl<WR, HR, W, H> GridStorage for FixedGridStorage<WR, HR, W, H>
+impl<WR: Clone, HR: Clone, const C: usize, const R: usize> Storage
+    for FixedGridStorage<WR, HR, C, R>
+{
+}
+
+impl<WR, HR, const C: usize, const R: usize> GridStorage for FixedGridStorage<WR, HR, C, R>
 where
     WR: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
     HR: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
-    W: Clone + AsRef<[i32]> + AsMut<[i32]>,
-    H: Clone + AsRef<[i32]> + AsMut<[i32]>,
 {
     fn set_dims(&mut self, cols: usize, rows: usize) {
         assert_eq!(self.width_rules.as_ref().len(), cols + 1);
@@ -230,6 +241,9 @@ mod sealed {
     impl<R: Clone, const C: usize> Sealed for super::FixedRowStorage<R, C> {}
     impl Sealed for super::DynRowStorage {}
     impl Sealed for Vec<i32> {}
-    impl<WR: Clone, HR: Clone, W: Clone, H: Clone> Sealed for super::FixedGridStorage<WR, HR, W, H> {}
+    impl<WR: Clone, HR: Clone, const C: usize, const R: usize> Sealed
+        for super::FixedGridStorage<WR, HR, C, R>
+    {
+    }
     impl Sealed for super::DynGridStorage {}
 }
