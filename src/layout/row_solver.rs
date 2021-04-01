@@ -43,7 +43,7 @@ impl<S: RowStorage> RowSolver<S> {
 
         if axis.has_fixed && axis_is_vertical {
             let (widths, rules, total) = storage.widths_rules_total();
-            SizeRules::solve_seq_(widths, rules, total, axis.other_axis);
+            SizeRules::solve_seq_total(widths, rules, total, axis.other_axis);
         }
 
         RowSolver {
@@ -154,7 +154,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
                     rect.pos.1 += offset;
                 }
             }
-            SizeRules::solve_seq_(widths, rules, total, width);
+            SizeRules::solve_seq_total(widths, rules, total, width);
         }
 
         let _s = Default::default();

@@ -363,24 +363,6 @@ impl SizeRules {
 
     /// Solve a sequence of rules
     ///
-    /// This is the same as [`SizeRules::solve_seq`] except that it is assumed
-    /// the rules' sum is included as the last element of rules.
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[inline]
-    pub fn solve_seq_total(out: &mut [i32], rules: &[Self], target: i32) {
-        let len = rules.len() - 1;
-        let total = rules[len];
-        let rules = &rules[0..len];
-        debug_assert_eq!(
-            SizeRules::sum(rules),
-            total,
-            "solve_seq_total: invalid input (missing configure or invalid usage?)"
-        );
-        Self::solve_seq_(out, rules, total, target);
-    }
-
-    /// Solve a sequence of rules
-    ///
     /// Given a sequence of width (or height) `rules` from children and a
     /// `target` size, find an appropriate size for each child.
     /// The method attempts to ensure that:
@@ -405,10 +387,16 @@ impl SizeRules {
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     pub fn solve_seq(out: &mut [i32], rules: &[Self], target: i32) {
         let total = SizeRules::sum(rules);
-        Self::solve_seq_(out, rules, total, target);
+        Self::solve_seq_total(out, rules, total, target);
     }
 
-    pub(crate) fn solve_seq_(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
+    /// Solve a sequence of rules
+    ///
+    /// This is the same as [`SizeRules::solve_seq`] except that the rules' sum
+    /// is passed explicitly.
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[inline]
+    pub fn solve_seq_total(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
         type Targets = SmallVec<[i32; 16]>;
         #[allow(non_snake_case)]
         let N = out.len();
@@ -417,6 +405,7 @@ impl SizeRules {
             return;
         }
         debug_assert!(out.iter().all(|w| *w >= 0));
+        debug_assert_eq!(SizeRules::sum(rules), total);
 
         if target > total.a {
             // All minimum sizes can be met.

@@ -93,8 +93,6 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
         },
         LayoutType::Grid => quote! {
             type Data = kas::layout::FixedGridStorage::<
-                [kas::layout::SizeRules; #cols + 1],
-                [kas::layout::SizeRules; #rows + 1],
                 #cols,
                 #rows,
             >;
