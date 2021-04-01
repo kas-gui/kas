@@ -2,12 +2,125 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.0] — ??
+## [0.7.0] — 2021-04-??
+
+The major focus of this release is "view widgets": the ability to construct a
+synchronised view over shared data.
+
+The new view widgets allow completion of the "CRUD" (Create, Read, Update,
+Delete) [7GUIs challenge app](https://github.com/kas-gui/7guis/). The use of
+view widgets allows data-UI separation and scaling to larger data sets (mainly
+limited by the `O(n)` filter in this example). Work also started on the Cells
+challenge (mini-spreadsheet), though many details of the app and of the
+`MatrixView` widget still need addressing, especially drawing, multi-cell
+selection and keyboard handling.
+
+Additionally, this version saw development of a new mini-library, `kas::conv`,
+which spun off into its own lib [easy-cast](https://crates.io/crates/easy-cast).
+
+### Configuration
+
+-   Use platform-specific shortcuts, especially for MacOS (#154)
+-   Add support for reading and writing config files, controlled by env vars (#155)
+-   Additional configuration items (#171):
+
+    -   menu-open delay
+    -   text selection via touch delay
+    -   distance moved before touch events pan text
+    -   when mouse click-and-drag can pan text and other objects
+
+### Conv mini-lib
+
+-   Add `kas::conv::Conv` trait and use to replace various casts (#152)
+-   Add `Cast` and `CastFloat` traits (#154)
+
+### Examples
+
+-   Add `filter-list` (#146, #148, #149)
+-   Simplify `sync-counter` via use of a view widget (#146)
+-   Add `async-event` demonstrating "computation" in a background thread (#169)
+-   Add `cursors` showing a gallery of mouse cursors (#169)
+-   Rename `dynamic` to `data-list` (#176); add `data-list-view`, a scalable
+    (indirect data) variant (#170)
+
+### Widgets
+
+-   Add a progress bar widget (#143)
+-   Replace `EditBoxVoid = EditBox<EditVoid>` with `EditBox = EditBox<()>` (#146)
+-   Frame widgets now implement `Deref` and `DerefMut` (#147)
+-   Add `ScrollBars` wrapper and `Scrollable` trait (#149, #170)
+-   Rename `WidgetChildren` methods to be more distinctive (#157, #169)
+-   Separate `EditBox` into `EditField` with frame wrapper `EditBox` (#158)
+-   Move core widget traits into `kas::core` private module (#172)
+-   Add `NavFrame` wrapper widget (#174)
+
+#### View widgets
+
+-   Add `Accessor`, `SharedRc` as an abstraction over shared data (#146);
+    revise into `SingleData`, `ListData` (#164); add `update` method (#170);
+    more revision, adding `SharedData` and `SharedDataRec` (#172);
+    add `UpdatableHandler` (#176)
+-   Add ~~`FilterAccessor`~~ `FilteredList` (#148, #157, #164, #70))
+-   Add `ViewWidget` trait and `DefaultView` for view widgets (#146);
+    revise into `View` with associated `Widget `type (#170);
+    rename `View` to `Driver` and add `DefaultNav` (#174);
+    simplify and add `Driver::Msg` (#176)
+-   Add `ListView` widget (#146-148, #162-163)
+-   Add `SingleView` widget (#146)
+-   Support item selection in `ListView` (#162, #163, #167)
+-   Support updating a data set through a view widget (#170)
+-   Support recursive updates of datasets (allowing `FilteredList` to update
+    when the underlying dataset updates) (#172)
+-   Add `MatrixView` (#175, #176)
+
+### Event handling
+
+-   Add `EditGuard::update` and pass `&mut Manager` to guards (#148)
+-   Revise handlers: `TextButton`, `CheckBox`, `RadioBox` now all optional
+    closures to generate an optional message (#160)
+-   Reduce redraws by explicitly specifying which widgets highlight on hover (#167)
+-   Remove payload from `Response::Unhandled` (#170)
+-   Add `u64` payload to `Event::TimerUpdate` (#171)
+-   Revise `ComboBox` handler (#171)
+-   Add `Response::Select` (#174)
+-   Support arrow-key and tab navigation for `ListView` and `MatrixView` (#177)
+-   Replace `Layout::spatial_range` with `spatial_nav`, allowing correct child
+    navigation order for `ListView` and `MatrixView` (#177)
+
+### Layout
+
+-   Add ~~`size_handle`~~ `manager` parameter to `set_rect` (#147, #150)
+-   Generic support for space reservations (#147)
+-   Add `FrameRules` type for consistent/simpler frame sizing; use in
+    `SizeHandle` (#161)
+-   New `text_margin` property for themes (#161)
+-   Scroll regions have a drawable margin (#162)
+-   Rename `StretchPolicy` to `Stretch` and revise entries (#173)
+-   Add `SizeHandle::pixels_from_virtual`, `pixels_from_points`,
+    `pixels_from_em` convenience methods (#175)
+
+### Geometry types
+
+-   Impl `Sub<Size> for Coord` and `Mul<i32> for Coord` (#148)
+-   Use `i32` instead of `u32` for `Size`; add `Offset` (#152)
+-   Add `set_component` method to `Size`, `Coord` and `Offset` (#162)
 
 ### Misc
 
--   Updated MSRV to 1.52.0 (currently beta) (#179)
+-   Terminology: replace 'toolkit' with 'shell' (#144)
+-   Add `ScrollComponent` abstraction (#148)
+-   Make `TkAction` into a bitflags struct (from an enum) (#150)
+-   Make grab handles use the "grab" cursor icon (#151)
+-   Direction types `Left, Right, Down, Up` moved into new `kas::dir` module (#154)
+-   Push `derive(Widget)` before its attributes (#164)
+-   Move `ThemeAction` and `ThemeApi` into `kas::draw` (#172)
+-   Allow calling `set_text_and_prepare`, `set_string_and_prepare` before UI is
+    initialised (#176)
+-   Update README and ROADMAP (#171, #174)
+-   Update MSRV to 1.52.0 (currently beta) (#179)
+-   Update dependencies: `winit`, `wgpu`, `wgpu_glyph`, `env_logger` (#156)
 -   Update dependencies: `kas-text`, `smallvec`, `bitflags`, `bytemuck` (#180)
+-   Replace `clipboard` dependency with `window_clipboard` (#180)
 
 ## [0.6.0] — 2020-11-24
 
