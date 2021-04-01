@@ -33,6 +33,7 @@ which spun off into its own lib [easy-cast](https://crates.io/crates/easy-cast).
 
 -   Add `kas::conv::Conv` trait and use to replace various casts (#152)
 -   Add `Cast` and `CastFloat` traits (#154)
+-   Switch to `easy-cast` library and export as `kas::cast` (#182)
 
 ### Examples
 

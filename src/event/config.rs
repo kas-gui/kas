@@ -6,7 +6,7 @@
 //! Event handling configuration
 
 use super::{shortcuts::Shortcuts, ModifiersState};
-use crate::conv::Cast;
+use crate::cast::Cast;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::path::Path;

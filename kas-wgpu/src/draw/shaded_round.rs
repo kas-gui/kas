@@ -10,7 +10,7 @@ use std::mem::size_of;
 use wgpu::util::DeviceExt;
 
 use crate::draw::{Rgb, ShaderManager};
-use kas::conv::Cast;
+use kas::cast::Cast;
 use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Size, Vec2, Vec3};
 

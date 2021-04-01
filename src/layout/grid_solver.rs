@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 
 use super::{Align, AlignHints, AxisInfo, SizeRules};
 use super::{GridStorage, RowTemp, RulesSetter, RulesSolver};
-use crate::conv::Conv;
+use crate::cast::Conv;
 use crate::geom::{Coord, Offset, Rect, Size};
 
 /// Per-child information

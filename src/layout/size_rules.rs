@@ -10,7 +10,7 @@ use std::fmt;
 use std::iter::Sum;
 
 use super::{Margins, Stretch};
-use crate::conv::{Cast, CastFloat, Conv, ConvFloat};
+use crate::cast::{Cast, CastFloat, Conv, ConvFloat};
 use crate::dir::Directional;
 use crate::geom::Size;
 

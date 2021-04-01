@@ -27,6 +27,7 @@
 #[macro_use]
 extern crate bitflags;
 
+pub extern crate easy_cast as cast;
 extern crate kas_macros;
 extern crate self as kas; // required for reliable self-reference in kas_macros
 
@@ -38,7 +39,6 @@ mod toolkit;
 // public implementations:
 pub mod adapter;
 pub mod class;
-pub mod conv;
 pub mod dir;
 pub mod draw;
 pub mod event;

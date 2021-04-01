@@ -18,7 +18,7 @@ use std::time::Instant;
 use std::u16;
 
 use super::*;
-use crate::conv::Cast;
+use crate::cast::Cast;
 use crate::geom::Coord;
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links
