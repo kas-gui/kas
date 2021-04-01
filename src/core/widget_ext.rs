@@ -58,7 +58,7 @@ pub trait WidgetExt: Widget {
     /// use kas::widget::Label;
     /// use kas::prelude::*;
     ///
-    /// let label = Label::new("0").reserve(|size_handle, axis| {
+    /// let label = Label::new("0").with_reserve(|size_handle, axis| {
     ///     Label::new("00000").size_rules(size_handle, axis)
     /// });
     ///```
@@ -67,14 +67,14 @@ pub trait WidgetExt: Widget {
     /// use kas::widget::Filler;
     /// use kas::prelude::*;
     ///
-    /// let label = Filler::new().reserve(|size_handle, axis| {
+    /// let label = Filler::new().with_reserve(|size_handle, axis| {
     ///     let size = size_handle.scale_factor() * 100.0;
     ///     SizeRules::fixed(size.cast_nearest(), (0, 0))
     /// });
     ///```
     /// The resulting `SizeRules` will be the max of those for the inner widget
     /// and the result of the `reserve` closure.
-    fn reserve<R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static>(
+    fn with_reserve<R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static>(
         self,
         r: R,
     ) -> Reserve<Self, R>
