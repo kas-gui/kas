@@ -408,7 +408,7 @@ impl SizeRules {
         Self::solve_seq_(out, rules, total, target);
     }
 
-    fn solve_seq_(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
+    pub(crate) fn solve_seq_(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
         type Targets = SmallVec<[i32; 16]>;
         #[allow(non_snake_case)]
         let N = out.len();

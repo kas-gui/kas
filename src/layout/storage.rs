@@ -19,52 +19,55 @@ pub trait RowStorage: sealed::Sealed + Clone {
 
     #[doc(hidden)]
     fn rules(&mut self) -> &mut [SizeRules] {
-        self.rules_and_widths().0
+        self.widths_rules_total().1
     }
+
+    #[doc(hidden)]
+    fn set_total(&mut self, total: SizeRules);
 
     #[doc(hidden)]
     fn widths(&mut self) -> &mut [i32] {
-        self.rules_and_widths().1
+        self.widths_rules_total().0
     }
 
     #[doc(hidden)]
-    fn rules_and_widths(&mut self) -> (&mut [SizeRules], &mut [i32]);
+    fn widths_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules);
 }
 
 /// Fixed-length row storage
 ///
 /// Uses const-generics argument `C` (the number of columns).
-/// Argument types:
-///
-/// - `R` is expected to be `[SizeRules; cols + 1]`
 #[derive(Clone, Debug)]
-pub struct FixedRowStorage<R: Clone, const C: usize> {
-    rules: R,
+pub struct FixedRowStorage<const C: usize> {
+    rules: [SizeRules; C],
+    total: SizeRules,
     widths: [i32; C],
 }
 
-impl<R: Clone + Default, const C: usize> Default for FixedRowStorage<R, C> {
+impl<const C: usize> Default for FixedRowStorage<C> {
     fn default() -> Self {
         FixedRowStorage {
-            rules: Default::default(),
+            rules: [SizeRules::default(); C],
+            total: SizeRules::default(),
             widths: [0; C],
         }
     }
 }
 
-impl<R: Clone, const C: usize> Storage for FixedRowStorage<R, C> {}
+impl<const C: usize> Storage for FixedRowStorage<C> {}
 
-impl<R, const C: usize> RowStorage for FixedRowStorage<R, C>
-where
-    R: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
-{
+impl<const C: usize> RowStorage for FixedRowStorage<C> {
     fn set_dim(&mut self, cols: usize) {
-        assert_eq!(self.rules.as_ref().len(), cols + 1);
+        assert_eq!(self.rules.as_ref().len(), cols);
         assert_eq!(self.widths.as_ref().len(), cols);
     }
 
-    fn rules_and_widths(&mut self) -> (&mut [SizeRules], &mut [i32]) {
-        (self.rules.as_mut(), self.widths.as_mut())
+    fn set_total(&mut self, total: SizeRules) {
+        self.total = total;
+    }
+
+    fn widths_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules) {
+        (self.widths.as_mut(), self.rules.as_mut(), self.total)
     }
 }
 
@@ -72,6 +75,7 @@ where
 #[derive(Clone, Debug, Default)]
 pub struct DynRowStorage {
     rules: Vec<SizeRules>,
+    total: SizeRules,
     widths: Vec<i32>,
 }
 
@@ -79,12 +83,16 @@ impl Storage for DynRowStorage {}
 
 impl RowStorage for DynRowStorage {
     fn set_dim(&mut self, cols: usize) {
-        self.rules.resize(cols + 1, SizeRules::EMPTY);
+        self.rules.resize(cols, SizeRules::EMPTY);
         self.widths.resize(cols, 0);
     }
 
-    fn rules_and_widths(&mut self) -> (&mut [SizeRules], &mut [i32]) {
-        (&mut self.rules, &mut self.widths)
+    fn set_total(&mut self, total: SizeRules) {
+        self.total = total;
+    }
+
+    fn widths_rules_total(&mut self) -> (&mut [i32], &mut [SizeRules], SizeRules) {
+        (&mut self.widths, &mut self.rules, self.total)
     }
 }
 
@@ -238,7 +246,7 @@ impl GridStorage for DynGridStorage {
 
 mod sealed {
     pub trait Sealed {}
-    impl<R: Clone, const C: usize> Sealed for super::FixedRowStorage<R, C> {}
+    impl<const C: usize> Sealed for super::FixedRowStorage<C> {}
     impl Sealed for super::DynRowStorage {}
     impl Sealed for Vec<i32> {}
     impl<WR: Clone, HR: Clone, const C: usize, const R: usize> Sealed
