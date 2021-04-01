@@ -129,7 +129,7 @@ pub trait ShellWindow {
     fn get_clipboard(&mut self) -> Option<String>;
 
     /// Attempt to set clipboard contents
-    fn set_clipboard<'c>(&mut self, content: std::borrow::Cow<'c, str>);
+    fn set_clipboard<'c>(&mut self, content: String);
 
     /// Adjust the theme
     fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> ThemeAction);

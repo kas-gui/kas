@@ -584,19 +584,22 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
                     return Response::Focus(rect);
                 }
                 (Some(key), Response::Select) => {
-                    match self.sel_mode {
-                        SelectionMode::None => (),
+                    return match self.sel_mode {
+                        SelectionMode::None => Response::None,
                         SelectionMode::Single => {
                             self.selection.clear();
-                            self.selection.insert(key);
+                            self.selection.insert(key.clone());
+                            Response::Msg(ChildMsg::Select(key))
                         }
                         SelectionMode::Multiple => {
-                            if !self.selection.remove(&key) {
-                                self.selection.insert(key);
+                            if self.selection.remove(&key) {
+                                Response::Msg(ChildMsg::Deselect(key))
+                            } else {
+                                self.selection.insert(key.clone());
+                                Response::Msg(ChildMsg::Select(key))
                             }
                         }
-                    }
-                    return Response::None;
+                    };
                 }
                 (None, Response::Select) => return Response::None,
                 (_, Response::Update) => return Response::None,

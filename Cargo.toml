@@ -52,9 +52,9 @@ json = ["serde", "serde_json"]
 
 [dependencies]
 log = "0.4"
-smallvec = "1.4"
+smallvec = "1.6.1"
 stack_dst = { version = "0.6", optional = true }
-bitflags = "1" # only used without winit
+bitflags = "1.2.1" # only used without winit
 unicode-segmentation = "1.7"
 linear-map = "1.2.0"
 thiserror = "1.0.23"
@@ -67,9 +67,7 @@ version = "0.6.0"
 path = "kas-macros"
 
 [dependencies.kas-text]
-version = "0.3.0"
-git = "https://github.com/kas-gui/kas-text"
-rev = "7c628156f9035abef2ffaba090c61de016b239cb"
+version = "0.2.1"
 
 [dependencies.winit]
 # Provides translations for several winit types
@@ -79,8 +77,3 @@ features = ["serde"]
 
 [workspace]
 members = ["kas-macros", "kas-theme", "kas-wgpu"]
-
-[patch.crates-io.harfbuzz_rs]
-# Fix build issue for recent rustc
-git = "https://github.com/dhardy/harfbuzz_rs.git"
-branch = "1.2-backports"

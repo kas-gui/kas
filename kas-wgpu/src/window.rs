@@ -82,6 +82,8 @@ where
         }
         let window = builder.with_title(widget.title()).build(elwt)?;
 
+        shared.init_clipboard(&window);
+
         let scale_factor = window.scale_factor();
         shared.scale_factor = scale_factor;
         let size: Size = window.inner_size().into();
@@ -502,7 +504,7 @@ where
     }
 
     #[inline]
-    fn set_clipboard<'c>(&mut self, content: std::borrow::Cow<'c, str>) {
+    fn set_clipboard<'c>(&mut self, content: String) {
         self.shared.set_clipboard(content);
     }
 
