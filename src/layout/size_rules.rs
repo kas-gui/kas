@@ -178,7 +178,7 @@ impl SizeRules {
 
     /// Construct with custom rules, scaled from virtual pixels
     ///
-    /// This is a shortcut aaround [`SizeRules::new`].
+    /// This is a shortcut around [`SizeRules::new`].
     /// It assumes that both margins are equal.
     ///
     /// Region size should meet the given `min`-imum size and has a given
