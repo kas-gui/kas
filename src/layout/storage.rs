@@ -100,41 +100,25 @@ impl RowStorage for DynRowStorage {
 ///
 /// For dynamic-length rows and fixed-length rows with more than 16 items use
 /// `Vec<i32>`. For fixed-length rows up to 16 items, use `[i32; rows]`.
-pub trait RowTemp: Default + sealed::Sealed {
-    #[doc(hidden)]
-    fn as_mut(&mut self) -> &mut [i32];
+pub trait RowTemp: AsMut<[i32]> + Default + sealed::Sealed {
     #[doc(hidden)]
     fn set_len(&mut self, len: usize);
 }
 
 impl RowTemp for Vec<i32> {
-    fn as_mut(&mut self) -> &mut [i32] {
-        self
-    }
     fn set_len(&mut self, len: usize) {
         self.resize(len, 0);
     }
 }
 
-// TODO: use const generics
-macro_rules! impl_row_temporary {
-    ($n:literal) => {
-        impl RowTemp for [i32; $n] {
-            fn as_mut(&mut self) -> &mut [i32] {
-                self
-            }
-            fn set_len(&mut self, len: usize) {
-                assert_eq!(self.len(), len);
-            }
-        }
-        impl sealed::Sealed for [i32; $n] {}
-    };
-    ($n:literal $($more:literal)*) => {
-        impl_row_temporary!($n);
-        impl_row_temporary!($($more)*);
-    };
+impl<const L: usize> RowTemp for [i32; L]
+where
+    [i32; L]: Default,
+{
+    fn set_len(&mut self, len: usize) {
+        assert_eq!(self.len(), len);
+    }
 }
-impl_row_temporary!(0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16);
 
 /// Requirements of grid solver storage type
 ///
@@ -249,6 +233,7 @@ mod sealed {
     impl<const C: usize> Sealed for super::FixedRowStorage<C> {}
     impl Sealed for super::DynRowStorage {}
     impl Sealed for Vec<i32> {}
+    impl<const L: usize> Sealed for [i32; L] {}
     impl<WR: Clone, HR: Clone, const C: usize, const R: usize> Sealed
         for super::FixedGridStorage<WR, HR, C, R>
     {
