@@ -13,9 +13,6 @@ pub trait Storage {}
 /// Requirements of row solver storage type
 ///
 /// Details are hidden (for internal use only).
-///
-/// NOTE: ideally this would use const-generics, but those aren't stable (or
-/// even usable) yet. This will likely be implemented in the future.
 pub trait RowStorage: sealed::Sealed + Clone {
     #[doc(hidden)]
     fn set_dim(&mut self, cols: usize);
@@ -36,22 +33,30 @@ pub trait RowStorage: sealed::Sealed + Clone {
 
 /// Fixed-length row storage
 ///
+/// Uses const-generics argument `C` (the number of columns).
 /// Argument types:
 ///
 /// - `R` is expected to be `[SizeRules; cols + 1]`
-/// - `W` is expected to be `[i32; cols]`
-#[derive(Clone, Debug, Default)]
-pub struct FixedRowStorage<R: Clone, W: Clone> {
+#[derive(Clone, Debug)]
+pub struct FixedRowStorage<R: Clone, const C: usize> {
     rules: R,
-    widths: W,
+    widths: [i32; C],
 }
 
-impl<R: Clone, W: Clone> Storage for FixedRowStorage<R, W> {}
+impl<R: Clone + Default, const C: usize> Default for FixedRowStorage<R, C> {
+    fn default() -> Self {
+        FixedRowStorage {
+            rules: Default::default(),
+            widths: [0; C],
+        }
+    }
+}
 
-impl<R, W> RowStorage for FixedRowStorage<R, W>
+impl<R: Clone, const C: usize> Storage for FixedRowStorage<R, C> {}
+
+impl<R, const C: usize> RowStorage for FixedRowStorage<R, C>
 where
     R: Clone + AsRef<[SizeRules]> + AsMut<[SizeRules]>,
-    W: Clone + AsRef<[i32]> + AsMut<[i32]>,
 {
     fn set_dim(&mut self, cols: usize) {
         assert_eq!(self.rules.as_ref().len(), cols + 1);
@@ -222,7 +227,7 @@ impl GridStorage for DynGridStorage {
 
 mod sealed {
     pub trait Sealed {}
-    impl<R: Clone, W: Clone> Sealed for super::FixedRowStorage<R, W> {}
+    impl<R: Clone, const C: usize> Sealed for super::FixedRowStorage<R, C> {}
     impl Sealed for super::DynRowStorage {}
     impl Sealed for Vec<i32> {}
     impl<WR: Clone, HR: Clone, W: Clone, H: Clone> Sealed for super::FixedGridStorage<WR, HR, W, H> {}

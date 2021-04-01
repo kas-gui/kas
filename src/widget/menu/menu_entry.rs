@@ -126,7 +126,7 @@ impl<M: Clone + Debug> Menu for MenuEntry<M> {}
 pub struct MenuToggle<M: 'static> {
     #[widget_core]
     core: CoreData,
-    layout_data: layout::FixedRowStorage<[SizeRules; 3], [i32; 2]>,
+    layout_data: layout::FixedRowStorage<[SizeRules; 3], 2>,
     #[widget]
     checkbox: CheckBoxBare<M>,
     #[widget]

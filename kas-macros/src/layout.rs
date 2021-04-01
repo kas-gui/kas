@@ -76,7 +76,7 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
         l @ LayoutType::Right | l @ LayoutType::Left => quote! {
             type Data = kas::layout::FixedRowStorage::<
                 [kas::layout::SizeRules; #cols + 1],
-                [i32; #cols],
+                #cols,
             >;
             type Solver = kas::layout::RowSolver::<
                 Self::Data,
@@ -90,7 +90,7 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
         l @ LayoutType::Down | l @ LayoutType::Up => quote! {
             type Data = kas::layout::FixedRowStorage::<
                 [kas::layout::SizeRules; #rows + 1],
-                [i32; #rows],
+                #rows,
             >;
             type Solver = kas::layout::RowSolver::<
                 Self::Data,
