@@ -203,20 +203,18 @@ impl<M: 'static> WidgetConfig for MenuToggle<M> {
 }
 
 impl<M: 'static> Layout for MenuToggle<M> {
-    // NOTE: This code is mostly copied from the macro expansion.
-    // Only draw() is significantly different.
     fn size_rules(
         &mut self,
         size_handle: &mut dyn SizeHandle,
         axis: AxisInfo,
     ) -> kas::layout::SizeRules {
-        let mut solver = layout::RowSolver::new(axis, (Right, 2usize), &mut self.layout_data);
+        let mut solver = layout::RowSolver::new(axis, (Right, 2), &mut self.layout_data);
         let child = &mut self.checkbox;
-        solver.for_child(&mut self.layout_data, 0usize, |axis| {
+        solver.for_child(&mut self.layout_data, 0, |axis| {
             child.size_rules(size_handle, axis)
         });
         let child = &mut self.label;
-        solver.for_child(&mut self.layout_data, 1usize, |axis| {
+        solver.for_child(&mut self.layout_data, 1, |axis| {
             child.size_rules(size_handle, axis)
         });
         solver.finish(&mut self.layout_data)
@@ -226,15 +224,14 @@ impl<M: 'static> Layout for MenuToggle<M> {
         self.core.rect = rect;
         let mut setter = layout::RowSetter::<_, [i32; 2], _>::new(
             rect,
-            (Right, 2usize),
+            (Right, 2),
             align,
             &mut self.layout_data,
         );
-        let align = AlignHints::NONE;
-        let cb_rect = setter.child_rect(&mut self.layout_data, 0usize);
-        self.checkbox.set_rect(mgr, cb_rect, align.clone());
+        let cb_rect = setter.child_rect(&mut self.layout_data, 0);
+        self.checkbox.set_rect(mgr, cb_rect, align);
         self.label
-            .set_rect(mgr, setter.child_rect(&mut self.layout_data, 1usize), align);
+            .set_rect(mgr, setter.child_rect(&mut self.layout_data, 1), align);
     }
 
     fn find_id(&self, coord: Coord) -> Option<WidgetId> {
