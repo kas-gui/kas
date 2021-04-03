@@ -8,12 +8,10 @@
 use std::fmt::{self, Debug};
 
 use super::Menu;
-use kas::dir::Right;
 use kas::draw::TextClass;
-use kas::event;
-use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::widget::{AccelLabel, CheckBoxBare};
+use kas::{event, layout};
 
 /// A standard menu entry
 #[derive(Clone, Debug, Default, Widget)]
@@ -123,9 +121,11 @@ impl<M: Clone + Debug> Menu for MenuEntry<M> {}
 #[derive(Clone, Default, Widget)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[widget(config=noauto)]
+#[layout(row, area=checkbox, draw=draw)]
 pub struct MenuToggle<M: 'static> {
     #[widget_core]
     core: CoreData,
+    #[layout_data]
     layout_data: layout::FixedRowStorage<2>,
     #[widget]
     checkbox: CheckBoxBare<M>,
@@ -194,58 +194,18 @@ impl<M: 'static> MenuToggle<M> {
         self.checkbox = self.checkbox.with_state(state);
         self
     }
-}
-
-impl<M: 'static> WidgetConfig for MenuToggle<M> {
-    fn configure(&mut self, mgr: &mut Manager) {
-        mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
-    }
-}
-
-impl<M: 'static> Layout for MenuToggle<M> {
-    fn size_rules(
-        &mut self,
-        size_handle: &mut dyn SizeHandle,
-        axis: AxisInfo,
-    ) -> kas::layout::SizeRules {
-        let mut solver = layout::RowSolver::new(axis, (Right, 2), &mut self.layout_data);
-        let child = &mut self.checkbox;
-        solver.for_child(&mut self.layout_data, 0, |axis| {
-            child.size_rules(size_handle, axis)
-        });
-        let child = &mut self.label;
-        solver.for_child(&mut self.layout_data, 1, |axis| {
-            child.size_rules(size_handle, axis)
-        });
-        solver.finish(&mut self.layout_data)
-    }
-
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        let mut setter = layout::RowSetter::<_, [i32; 2], _>::new(
-            rect,
-            (Right, 2),
-            align,
-            &mut self.layout_data,
-        );
-        let cb_rect = setter.child_rect(&mut self.layout_data, 0);
-        self.checkbox.set_rect(mgr, cb_rect, align);
-        self.label
-            .set_rect(mgr, setter.child_rect(&mut self.layout_data, 1), align);
-    }
-
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if !self.rect().contains(coord) {
-            return None;
-        }
-        Some(self.checkbox.id())
-    }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         let state = self.checkbox.input_state(mgr, disabled);
         draw_handle.menu_entry(self.core.rect, state);
         self.checkbox.draw(draw_handle, mgr, state.disabled);
         self.label.draw(draw_handle, mgr, state.disabled);
+    }
+}
+
+impl<M: 'static> WidgetConfig for MenuToggle<M> {
+    fn configure(&mut self, mgr: &mut Manager) {
+        mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
     }
 }
 
