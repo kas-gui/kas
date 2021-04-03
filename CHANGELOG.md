@@ -54,6 +54,10 @@ which spun off into its own lib [easy-cast](https://crates.io/crates/easy-cast).
 -   Separate `EditBox` into `EditField` with frame wrapper `EditBox` (#158)
 -   Move core widget traits into `kas::core` private module (#172)
 -   Add `NavFrame` wrapper widget (#174)
+-   Add `WidgetExt` extension trait over any `Widget` (#175)
+-   Add `kas::adapter` module (#175)
+-   Add `kas::adapter::WithLabel` and `WidgetExt::with_label` (#182)
+-   Add `draw` optional parameter to `layout` attribute of `derive(Widget)` macro (#182)
 
 #### View widgets
 
@@ -84,6 +88,8 @@ which spun off into its own lib [easy-cast](https://crates.io/crates/easy-cast).
 -   Add `u64` payload to `Event::TimerUpdate` (#171)
 -   Revise `ComboBox` handler (#171)
 -   Add `Response::Select` (#174)
+-   Add `WidgetExt::map_msg`, `map_msg_discard` and `map_response` for
+    convenient adjustment of widget messages (#175)
 -   Support arrow-key and tab navigation for `ListView` and `MatrixView` (#177)
 -   Replace `Layout::spatial_range` with `spatial_nav`, allowing correct child
     navigation order for `ListView` and `MatrixView` (#177)
@@ -91,7 +97,7 @@ which spun off into its own lib [easy-cast](https://crates.io/crates/easy-cast).
 ### Layout
 
 -   Add ~~`size_handle`~~ `manager` parameter to `set_rect` (#147, #150)
--   Generic support for space reservations (#147)
+-   Generic support for space reservations (#147, #175)
 -   Add `FrameRules` type for consistent/simpler frame sizing; use in
     `SizeHandle` (#161)
 -   New `text_margin` property for themes (#161)
@@ -122,6 +128,7 @@ which spun off into its own lib [easy-cast](https://crates.io/crates/easy-cast).
 -   Update dependencies: `winit`, `wgpu`, `wgpu_glyph`, `env_logger` (#156)
 -   Update dependencies: `kas-text`, `smallvec`, `bitflags`, `bytemuck` (#180)
 -   Replace `clipboard` dependency with `window_clipboard` (#180)
+-   Use const generics to clean up layout solver storage types (#182)
 
 ## [0.6.0] — 2020-11-24
 
