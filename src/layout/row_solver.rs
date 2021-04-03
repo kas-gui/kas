@@ -42,8 +42,8 @@ impl<S: RowStorage> RowSolver<S> {
         let axis_is_vertical = axis.is_vertical() ^ dir.is_vertical();
 
         if axis.has_fixed && axis_is_vertical {
-            let (rules, widths) = storage.rules_and_widths();
-            SizeRules::solve_seq_total(widths, rules, axis.other_axis);
+            let (widths, rules, total) = storage.widths_rules_total();
+            SizeRules::solve_seq_total(widths, rules, total, axis.other_axis);
         }
 
         RowSolver {
@@ -91,10 +91,9 @@ impl<S: RowStorage> RulesSolver for RowSolver<S> {
     }
 
     fn finish(self, storage: &mut Self::Storage) -> SizeRules {
-        let cols = storage.rules().len() - 1;
         let rules = self.rules.unwrap_or(SizeRules::EMPTY);
         if !self.axis_is_vertical {
-            storage.rules()[cols] = rules;
+            storage.set_total(rules);
         }
 
         rules
@@ -137,8 +136,8 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
         if len > 0 {
             let is_horiz = direction.is_horizontal();
             let mut width = if is_horiz { rect.size.0 } else { rect.size.1 };
-            let (rules, widths) = storage.rules_and_widths();
-            let max_size = rules[len].max_size();
+            let (widths, rules, total) = storage.widths_rules_total();
+            let max_size = total.max_size();
             let align = if is_horiz { align.horiz } else { align.vert };
             let align = align.unwrap_or(Align::Default);
             if rect.size.0 > max_size {
@@ -155,7 +154,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
                     rect.pos.1 += offset;
                 }
             }
-            SizeRules::solve_seq_total(widths, rules, width);
+            SizeRules::solve_seq_total(widths, rules, total, width);
         }
 
         let _s = Default::default();
@@ -226,7 +225,7 @@ impl<D: Directional, T: RowTemp, S: RowStorage> RowSetter<D, T, S> {
     pub fn solve_range(&mut self, storage: &mut S, range: Range<usize>, width: i32) {
         assert!(range.end <= self.offsets.as_mut().len());
 
-        let (rules, widths) = storage.rules_and_widths();
+        let (widths, rules, _) = storage.widths_rules_total();
         SizeRules::solve_seq(&mut widths[range.clone()], &rules[range], width);
     }
 }

@@ -6,10 +6,12 @@
 //! Widget extension traits
 
 use super::Widget;
-use crate::adapter::{MapResponse, Reserve};
+use crate::adapter::{MapResponse, Reserve, WithLabel};
+use crate::dir::Directional;
 use crate::draw::SizeHandle;
 use crate::event::{Manager, Response};
 use crate::layout::{AxisInfo, SizeRules};
+use crate::text::AccelString;
 #[allow(unused)]
 use kas::Layout;
 
@@ -18,8 +20,9 @@ pub trait WidgetExt: Widget {
     /// Construct a wrapper widget which maps messages from this widget
     ///
     /// Responses from this widget with a message payload are mapped with `f`.
-    fn map_msg<F: Fn(&mut Manager, Self::Msg) -> M + 'static, M>(self, f: F) -> MapResponse<Self, M>
+    fn map_msg<F, M>(self, f: F) -> MapResponse<Self, M>
     where
+        F: Fn(&mut Manager, Self::Msg) -> M + 'static,
         Self: Sized,
     {
         MapResponse::new(self, move |mgr, msg| Response::Msg(f(mgr, msg)))
@@ -39,11 +42,9 @@ pub trait WidgetExt: Widget {
     /// Construct a wrapper widget which maps message responses from this widget
     ///
     /// Responses from this widget with a message payload are mapped with `f`.
-    fn map_response<F: Fn(&mut Manager, Self::Msg) -> Response<M> + 'static, M>(
-        self,
-        f: F,
-    ) -> MapResponse<Self, M>
+    fn map_response<F, M>(self, f: F) -> MapResponse<Self, M>
     where
+        F: Fn(&mut Manager, Self::Msg) -> Response<M> + 'static,
         Self: Sized,
     {
         MapResponse::new(self, f)
@@ -58,7 +59,7 @@ pub trait WidgetExt: Widget {
     /// use kas::widget::Label;
     /// use kas::prelude::*;
     ///
-    /// let label = Label::new("0").reserve(|size_handle, axis| {
+    /// let label = Label::new("0").with_reserve(|size_handle, axis| {
     ///     Label::new("00000").size_rules(size_handle, axis)
     /// });
     ///```
@@ -67,21 +68,29 @@ pub trait WidgetExt: Widget {
     /// use kas::widget::Filler;
     /// use kas::prelude::*;
     ///
-    /// let label = Filler::new().reserve(|size_handle, axis| {
-    ///     let size = size_handle.scale_factor() * 100.0;
+    /// let label = Filler::new().with_reserve(|size_handle, axis| {
+    ///     let size = size_handle.pixels_from_em(5.0);
     ///     SizeRules::fixed(size.cast_nearest(), (0, 0))
     /// });
     ///```
     /// The resulting `SizeRules` will be the max of those for the inner widget
     /// and the result of the `reserve` closure.
-    fn reserve<R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static>(
-        self,
-        r: R,
-    ) -> Reserve<Self, R>
+    fn with_reserve<R>(self, r: R) -> Reserve<Self, R>
     where
+        R: FnMut(&mut dyn SizeHandle, AxisInfo) -> SizeRules + 'static,
         Self: Sized,
     {
         Reserve::new(self, r)
+    }
+
+    /// Construct a wrapper widget adding a label
+    fn with_label<D, T>(self, direction: D, label: T) -> WithLabel<Self, D>
+    where
+        D: Directional,
+        T: Into<AccelString>,
+        Self: Sized,
+    {
+        WithLabel::new_with_direction(direction, self, label)
     }
 }
 impl<W: Widget + ?Sized> WidgetExt for W {}

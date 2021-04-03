@@ -14,9 +14,9 @@
 //! using widgets in a GUI.
 
 #[doc(no_inline)]
-pub use kas::class::*;
+pub use kas::cast::{Cast, CastFloat, Conv, ConvFloat};
 #[doc(no_inline)]
-pub use kas::conv::{Cast, CastFloat, Conv, ConvFloat};
+pub use kas::class::*;
 #[doc(no_inline)]
 pub use kas::dir::{Direction, Directional};
 #[doc(no_inline)]

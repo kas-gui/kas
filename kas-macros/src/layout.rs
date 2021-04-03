@@ -74,13 +74,8 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
             type Setter = kas::layout::SingleSetter;
         },
         l @ LayoutType::Right | l @ LayoutType::Left => quote! {
-            type Data = kas::layout::FixedRowStorage::<
-                [kas::layout::SizeRules; #cols + 1],
-                [i32; #cols],
-            >;
-            type Solver = kas::layout::RowSolver::<
-                Self::Data,
-            >;
+            type Data = kas::layout::FixedRowStorage::<#cols>;
+            type Solver = kas::layout::RowSolver::<Self::Data>;
             type Setter = kas::layout::RowSetter::<
                 #l,
                 #col_temp,
@@ -88,13 +83,8 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
             >;
         },
         l @ LayoutType::Down | l @ LayoutType::Up => quote! {
-            type Data = kas::layout::FixedRowStorage::<
-                [kas::layout::SizeRules; #rows + 1],
-                [i32; #rows],
-            >;
-            type Solver = kas::layout::RowSolver::<
-                Self::Data,
-            >;
+            type Data = kas::layout::FixedRowStorage::<#rows>;
+            type Solver = kas::layout::RowSolver::<Self::Data>;
             type Setter = kas::layout::RowSetter::<
                 #l,
                 #row_temp,
@@ -103,10 +93,8 @@ pub(crate) fn data_type(children: &Vec<Child>, layout: &LayoutArgs) -> Result<To
         },
         LayoutType::Grid => quote! {
             type Data = kas::layout::FixedGridStorage::<
-                [kas::layout::SizeRules; #cols + 1],
-                [kas::layout::SizeRules; #rows + 1],
-                #col_temp,
-                #row_temp,
+                #cols,
+                #rows,
             >;
             type Solver = kas::layout::GridSolver::<
                 [(kas::layout::SizeRules, u32, u32); #col_spans],
@@ -139,17 +127,17 @@ pub(crate) fn derive(
         quote! { () }
     };
 
-    let find_id_area = layout.area.as_ref().map(|area_widget| {
-        quote! {
-            Some(self.#area_widget.id())
-        }
-    });
-
     let mut cols: usize = 0;
     let mut rows: usize = 0;
     let mut size = TokenStream::new();
     let mut set_rect = TokenStream::new();
-    let mut draw = TokenStream::new();
+    let mut draw = quote! {
+        use kas::{geom::Coord, WidgetCore};
+        let rect = draw_handle.target_rect();
+        let pos1 = rect.pos;
+        let pos2 = rect.pos2();
+        let disabled = disabled || self.is_disabled();
+    };
     let mut find_id_child = TokenStream::new();
 
     for child in children.iter() {
@@ -235,12 +223,23 @@ pub(crate) fn derive(
         LayoutType::Grid => quote! { (#cols, #rows) },
     };
 
+    let find_id_area = layout.area.as_ref().map(|area_widget| {
+        quote! {
+            Some(self.#area_widget.id())
+        }
+    });
     let find_id_body = find_id_area.unwrap_or_else(|| {
         quote! {
             #find_id_child
             Some(self.id())
         }
     });
+
+    if let Some(ref method) = layout.draw {
+        draw = quote! {
+            self.#method(draw_handle, mgr, disabled);
+        }
+    };
 
     Ok(quote! {
         fn size_rules(&mut self, sh: &mut dyn kas::draw::SizeHandle, axis: kas::layout::AxisInfo)
@@ -292,12 +291,6 @@ pub(crate) fn derive(
             mgr: &kas::event::ManagerState,
             disabled: bool,
         ) {
-            use kas::{geom::Coord, WidgetCore};
-
-            let rect = draw_handle.target_rect();
-            let pos1 = rect.pos;
-            let pos2 = rect.pos2();
-            let disabled = disabled || self.is_disabled();
             #draw
         }
     })

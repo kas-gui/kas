@@ -9,7 +9,7 @@ use log::{debug, error, info, trace};
 use std::rc::Rc;
 use std::time::Instant;
 
-use kas::conv::Cast;
+use kas::cast::Cast;
 use kas::draw::{SizeHandle, ThemeAction, ThemeApi};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};

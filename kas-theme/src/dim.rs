@@ -10,7 +10,7 @@
 use std::any::Any;
 use std::f32;
 
-use kas::conv::{Cast, CastFloat, ConvFloat};
+use kas::cast::{Cast, CastFloat, ConvFloat};
 use kas::draw::{self, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};

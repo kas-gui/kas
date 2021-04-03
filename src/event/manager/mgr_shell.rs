@@ -12,7 +12,7 @@ use std::mem::swap;
 use std::time::{Duration, Instant};
 
 use super::*;
-use crate::conv::Conv;
+use crate::cast::Conv;
 use crate::geom::{Coord, DVec2, Offset};
 #[allow(unused)]
 use crate::WidgetConfig; // for doc-links

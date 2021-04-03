@@ -7,7 +7,7 @@
 //!
 //! For drawing operations, all dimensions use the `f32` type.
 
-use kas::conv::{CastFloat, Conv};
+use kas::cast::{CastFloat, Conv};
 use kas::geom::{Coord, Offset, Rect, Size};
 use std::ops::{Add, Div, Mul, Neg, Sub};
 

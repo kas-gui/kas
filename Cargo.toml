@@ -51,6 +51,7 @@ yaml = ["serde", "serde_yaml"]
 json = ["serde", "serde_json"]
 
 [dependencies]
+easy-cast = "0.4.2"
 log = "0.4"
 smallvec = "1.6.1"
 stack_dst = { version = "0.6", optional = true }

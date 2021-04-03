@@ -106,11 +106,15 @@
 //! -   `grid` — child widgets are arranged in a grid; position is specified
 //!     via parameters to the `#[widget]` attribute on child fields
 //!
-//! Optionally, a second parameter of form `area=FIELD` is allowed (e.g.
-//! `#[layout(row, area=checkbox)]`). `FIELD` must identify a child widget.
-//! This parameter causes the [`Layout::find_id`] function to map all
-//! coordinates within the widget directly to the child's [`WidgetId`], causing
-//! clicks on the parent area to send events directly to the child.
+//! Additional parameters are optional:
+//!
+//! -   `area=FIELD` where `FIELD` is the name of a child widget — in this case,
+//!     the [`Layout::find_id`] method maps any coordinate within the widget's
+//!     `rect` to this child (thus forwarding coordinate-driven events to this
+//!     child)
+//! -   `draw=METHOD` where `METHOD` is a method — in this case [`Layout::draw`]
+//!     calls the given method (with identical parameters to [`Layout::draw`])
+//!     instead of the usual implementation (drawing child widgets)
 //!
 //! **Child widget placement**
 //!

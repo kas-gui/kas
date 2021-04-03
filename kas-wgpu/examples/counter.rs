@@ -5,10 +5,9 @@
 
 //! Counter example (simple button)
 
-use kas::class::HasString;
-use kas::event::{Manager, VoidMsg, VoidResponse};
 use kas::macros::{make_widget, VoidMsg};
-use kas::widget::{Label, TextButton, Window};
+use kas::prelude::*;
+use kas::widget::{Label, Row, TextButton, Window};
 
 #[derive(Clone, Debug, VoidMsg)]
 enum Message {
@@ -19,14 +18,15 @@ enum Message {
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
-    let buttons = make_widget! {
-        #[layout(row)]
-        #[handler(msg = Message)]
-        struct {
-            #[widget] _ = TextButton::new_msg("−", Message::Decr),
-            #[widget] _ = TextButton::new_msg("+", Message::Incr),
-        }
-    };
+    // Most examples use make_widget! for layout, but here we use the Row widget
+    // (compare with sync-counter.rs). Note that Row produces (index, child_msg)
+    // messages, thus we use map_msg to remove the unwanted index.
+    let buttons = Row::new(vec![
+        TextButton::new_msg("−", Message::Decr),
+        TextButton::new_msg("+", Message::Incr),
+    ])
+    .map_msg(|_, msg| msg.1);
+
     let window = Window::new(
         "Counter",
         make_widget! {
@@ -39,7 +39,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             }
             impl {
                 fn handle_button(&mut self, mgr: &mut Manager, msg: Message)
-                    -> VoidResponse
+                    -> Response<VoidMsg>
                 {
                     match msg {
                         Message::Decr => {
@@ -51,7 +51,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                             *mgr |= self.display.set_string(self.counter.to_string());
                         }
                     };
-                    VoidResponse::None
+                    Response::None
                 }
             }
         },

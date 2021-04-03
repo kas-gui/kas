@@ -6,7 +6,7 @@
 //! Filter accessor
 
 use super::ListData;
-use kas::conv::Cast;
+use kas::cast::Cast;
 #[allow(unused)]
 use kas::event::Manager;
 use kas::event::UpdateHandle;

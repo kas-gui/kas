@@ -11,7 +11,7 @@
 
 use smallvec::{smallvec, SmallVec};
 
-use kas::conv::Conv;
+use kas::cast::Conv;
 use kas::event::{VirtualKeyCode as VK, VirtualKeyCodes};
 use kas::text::format::{FontToken, FormattableText};
 #[cfg(not(feature = "gat"))]

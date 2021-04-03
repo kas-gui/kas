@@ -11,7 +11,7 @@ use std::f32;
 use std::ops::Range;
 
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
-use kas::conv::Cast;
+use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
 use kas::draw::{
     self, ClipRegion, Colour, Draw, DrawRounded, DrawShared, DrawText, InputState, Pass,

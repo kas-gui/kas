@@ -8,10 +8,7 @@
 use std::fmt::{self, Debug};
 
 use super::Menu;
-use kas::dir::Right;
 use kas::draw::TextClass;
-use kas::event;
-use kas::layout::{self, RulesSetter, RulesSolver};
 use kas::prelude::*;
 use kas::widget::{AccelLabel, CheckBoxBare};
 
@@ -60,7 +57,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
         });
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
         let pos = self.core.rect.pos + self.label_off;
         draw_handle.text_accel(pos, &self.label, mgr.show_accel_labels(), TextClass::Label);
@@ -106,7 +103,7 @@ impl<M: Clone + Debug + 'static> SetAccel for MenuEntry<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> event::Handler for MenuEntry<M> {
+impl<M: Clone + Debug + 'static> Handler for MenuEntry<M> {
     type Msg = M;
 
     fn handle(&mut self, _: &mut Manager, event: Event) -> Response<M> {
@@ -123,10 +120,12 @@ impl<M: Clone + Debug> Menu for MenuEntry<M> {}
 #[derive(Clone, Default, Widget)]
 #[handler(msg = M, generics = <> where M: From<VoidMsg>)]
 #[widget(config=noauto)]
+#[layout(row, area=checkbox, draw=draw)]
 pub struct MenuToggle<M: 'static> {
     #[widget_core]
     core: CoreData,
-    layout_data: layout::FixedRowStorage<[SizeRules; 3], [i32; 2]>,
+    #[layout_data]
+    layout_data: <Self as kas::LayoutData>::Data,
     #[widget]
     checkbox: CheckBoxBare<M>,
     #[widget]
@@ -194,61 +193,18 @@ impl<M: 'static> MenuToggle<M> {
         self.checkbox = self.checkbox.with_state(state);
         self
     }
+
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
+        let state = self.checkbox.input_state(mgr, disabled);
+        draw_handle.menu_entry(self.core.rect, state);
+        self.checkbox.draw(draw_handle, mgr, state.disabled);
+        self.label.draw(draw_handle, mgr, state.disabled);
+    }
 }
 
 impl<M: 'static> WidgetConfig for MenuToggle<M> {
     fn configure(&mut self, mgr: &mut Manager) {
         mgr.add_accel_keys(self.checkbox.id(), self.label.keys());
-    }
-}
-
-impl<M: 'static> Layout for MenuToggle<M> {
-    // NOTE: This code is mostly copied from the macro expansion.
-    // Only draw() is significantly different.
-    fn size_rules(
-        &mut self,
-        size_handle: &mut dyn SizeHandle,
-        axis: AxisInfo,
-    ) -> kas::layout::SizeRules {
-        let mut solver = layout::RowSolver::new(axis, (Right, 2usize), &mut self.layout_data);
-        let child = &mut self.checkbox;
-        solver.for_child(&mut self.layout_data, 0usize, |axis| {
-            child.size_rules(size_handle, axis)
-        });
-        let child = &mut self.label;
-        solver.for_child(&mut self.layout_data, 1usize, |axis| {
-            child.size_rules(size_handle, axis)
-        });
-        solver.finish(&mut self.layout_data)
-    }
-
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
-        self.core.rect = rect;
-        let mut setter = layout::RowSetter::<_, [i32; 2], _>::new(
-            rect,
-            (Right, 2usize),
-            align,
-            &mut self.layout_data,
-        );
-        let align = AlignHints::NONE;
-        let cb_rect = setter.child_rect(&mut self.layout_data, 0usize);
-        self.checkbox.set_rect(mgr, cb_rect, align.clone());
-        self.label
-            .set_rect(mgr, setter.child_rect(&mut self.layout_data, 1usize), align);
-    }
-
-    fn find_id(&self, coord: Coord) -> Option<WidgetId> {
-        if !self.rect().contains(coord) {
-            return None;
-        }
-        Some(self.checkbox.id())
-    }
-
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
-        let state = self.checkbox.input_state(mgr, disabled);
-        draw_handle.menu_entry(self.core.rect, state);
-        self.checkbox.draw(draw_handle, mgr, state.disabled);
-        self.label.draw(draw_handle, mgr, state.disabled);
     }
 }
 

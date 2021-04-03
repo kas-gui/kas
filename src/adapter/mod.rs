@@ -5,8 +5,10 @@
 
 //! Adapter widgets (wrappers)
 
+mod label;
 mod map;
 mod reserve;
 
+pub use label::WithLabel;
 pub use map::MapResponse;
 pub use reserve::{Reserve, ReserveP};
