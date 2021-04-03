@@ -11,7 +11,6 @@ use super::Menu;
 use kas::draw::TextClass;
 use kas::prelude::*;
 use kas::widget::{AccelLabel, CheckBoxBare};
-use kas::{event, layout};
 
 /// A standard menu entry
 #[derive(Clone, Debug, Default, Widget)]
@@ -58,7 +57,7 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
         });
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
         let pos = self.core.rect.pos + self.label_off;
         draw_handle.text_accel(pos, &self.label, mgr.show_accel_labels(), TextClass::Label);
@@ -104,7 +103,7 @@ impl<M: Clone + Debug + 'static> SetAccel for MenuEntry<M> {
     }
 }
 
-impl<M: Clone + Debug + 'static> event::Handler for MenuEntry<M> {
+impl<M: Clone + Debug + 'static> Handler for MenuEntry<M> {
     type Msg = M;
 
     fn handle(&mut self, _: &mut Manager, event: Event) -> Response<M> {
@@ -126,7 +125,7 @@ pub struct MenuToggle<M: 'static> {
     #[widget_core]
     core: CoreData,
     #[layout_data]
-    layout_data: layout::FixedRowStorage<2>,
+    layout_data: <Self as kas::LayoutData>::Data,
     #[widget]
     checkbox: CheckBoxBare<M>,
     #[widget]
@@ -195,7 +194,7 @@ impl<M: 'static> MenuToggle<M> {
         self
     }
 
-    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
+    fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let state = self.checkbox.input_state(mgr, disabled);
         draw_handle.menu_entry(self.core.rect, state);
         self.checkbox.draw(draw_handle, mgr, state.disabled);
