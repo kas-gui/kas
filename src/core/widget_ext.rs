@@ -69,7 +69,7 @@ pub trait WidgetExt: Widget {
     /// use kas::prelude::*;
     ///
     /// let label = Filler::new().with_reserve(|size_handle, axis| {
-    ///     let size = size_handle.scale_factor() * 100.0;
+    ///     let size = size_handle.pixels_from_em(5.0);
     ///     SizeRules::fixed(size.cast_nearest(), (0, 0))
     /// });
     ///```

@@ -20,6 +20,7 @@ pub struct WithLabel<W: Widget, D: Directional> {
     dir: D,
     #[widget]
     inner: W,
+    label_pos: Coord,
     label: Text<AccelString>,
 }
 
@@ -40,6 +41,7 @@ impl<W: Widget, D: Directional> WithLabel<W, D> {
             layout_data: Default::default(),
             dir: direction,
             inner,
+            label_pos: Default::default(),
             label: Text::new_multi(label.into()),
         }
     }
@@ -83,6 +85,7 @@ impl<W: Widget, D: Directional> Layout for WithLabel<W, D> {
         let rect = setter.child_rect(&mut self.layout_data, 0);
         self.inner.set_rect(mgr, rect, align);
         let rect = setter.child_rect(&mut self.layout_data, 1);
+        self.label_pos = rect.pos;
         self.label.update_env(|env| {
             env.set_bounds(rect.size.into());
             env.set_align(align.unwrap_or(Align::Default, Align::Centre));
@@ -100,7 +103,7 @@ impl<W: Widget, D: Directional> Layout for WithLabel<W, D> {
         let disabled = disabled || self.is_disabled();
         self.inner.draw(draw_handle, mgr, disabled);
         let state = mgr.show_accel_labels();
-        draw_handle.text_accel(self.core.rect.pos, &self.label, state, TextClass::Label);
+        draw_handle.text_accel(self.label_pos, &self.label, state, TextClass::Label);
     }
 }
 

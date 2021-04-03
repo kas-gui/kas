@@ -404,8 +404,13 @@ impl SizeRules {
         if N == 0 {
             return;
         }
-        debug_assert!(out.iter().all(|w| *w >= 0));
-        debug_assert_eq!(SizeRules::sum(rules), total);
+        #[cfg(debug_assertions)]
+        {
+            assert!(out.iter().all(|w| *w >= 0));
+            let sum = SizeRules::sum(rules);
+            assert_eq!((sum.a, sum.b), (total.a, total.b));
+            // Note: we do not care about margins, which may be in different order!
+        }
 
         if target > total.a {
             // All minimum sizes can be met.
