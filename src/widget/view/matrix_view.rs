@@ -53,6 +53,7 @@ pub struct MatrixView<
     view: V,
     data: T,
     widgets: Vec<WidgetData<T::Key, V::Widget>>,
+    align_hints: AlignHints,
     // TODO: the following three all have units of "the number of rows/cols"
     ideal_len: Size,
     alloc_len: Size,
@@ -86,6 +87,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
             view,
             data,
             widgets: Default::default(),
+            align_hints: Default::default(),
             ideal_len: Size(5, 3),
             alloc_len: Size::ZERO,
             cur_len: Size::ZERO,
@@ -279,7 +281,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> MatrixVie
                 }
                 rect.pos = pos_start + skip.cwise_mul(Size(ci.cast(), ri.cast()));
                 if w.widget.rect() != rect {
-                    w.widget.set_rect(mgr, rect, Default::default());
+                    w.widget.set_rect(mgr, rect, self.align_hints);
                 }
             }
         }
@@ -380,7 +382,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
         rules
     }
 
-    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, _align: AlignHints) {
+    fn set_rect(&mut self, mgr: &mut Manager, rect: Rect, align: AlignHints) {
         self.core.rect = rect;
 
         let mut child_size = rect.size - self.frame_size;
@@ -395,6 +397,7 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
             child_size.1 = self.child_size_min.1;
         }
         self.child_size = child_size;
+        self.align_hints = align;
 
         let skip = child_size + self.child_inter_margin;
         let vis_len = (rect.size + skip - Size::splat(1)).cwise_div(skip) + Size::splat(1);
