@@ -26,7 +26,8 @@ KAS's design provides:
 
 ## Examples
 
-For more, see the [Examples README](kas-wgpu/examples/README.md).
+Examples can be found in [kas-wgpu/examples](kas-wgpu/examples).
+Further examples can be found in [kas-gui/7guis](https://github.com/kas-gui/7guis/).
 
 ![Gallery](https://github.com/kas-gui/data-dump/blob/master/video/gallery.png)
 
