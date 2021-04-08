@@ -12,12 +12,9 @@ layout(location = 0) noperspective in vec2 cf;
 
 layout(location = 0) out vec4 outColor;
 
-layout(set = 0, binding = 1) uniform Locals {
+layout(push_constant) uniform Locals {
     dvec2 alpha;
     dvec2 delta;
-};
-
-layout(set = 0, binding = 2) uniform Iters {
     int iter;
 };
 

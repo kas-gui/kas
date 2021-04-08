@@ -40,10 +40,38 @@ struct Vertex(Vec3, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
 
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+struct PushConstants {
+    p: DVec2,
+    q: DVec2,
+    iterations: i32,
+}
+impl PushConstants {
+    fn set(&mut self, p: DVec2, q: DVec2, iterations: i32) {
+        self.p = p;
+        self.q = q;
+        self.iterations = iterations;
+    }
+}
+unsafe impl bytemuck::Zeroable for PushConstants {}
+unsafe impl bytemuck::Pod for PushConstants {}
+
 struct PipeBuilder;
 
 impl CustomPipeBuilder for PipeBuilder {
     type Pipe = Pipe;
+
+    fn device_descriptor() -> wgpu::DeviceDescriptor<'static> {
+        wgpu::DeviceDescriptor {
+            label: None,
+            features: wgpu::Features::PUSH_CONSTANTS,
+            limits: wgpu::Limits {
+                max_push_constant_size: size_of::<PushConstants>().cast(),
+                ..Default::default()
+            },
+        }
+    }
 
     fn build(
         &mut self,
@@ -55,45 +83,26 @@ impl CustomPipeBuilder for PipeBuilder {
         let shaders = Shaders::new(device);
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None, // TODO
-                    },
-                    count: None,
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStage::VERTEX,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None, // TODO
                 },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None, // TODO
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None, // TODO
-                    },
-                    count: None,
-                },
-            ],
+                count: None,
+            }],
             label: None,
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            push_constant_ranges: &[wgpu::PushConstantRange {
+                stages: wgpu::ShaderStage::FRAGMENT,
+                range: 0..size_of::<PushConstants>().cast(),
+            }],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -158,18 +167,11 @@ struct Pipe {
 }
 
 type Scale = [f32; 2];
-type UnifRect = (DVec2, DVec2);
-fn unif_rect_as_arr(rect: UnifRect) -> [f64; 4] {
-    [(rect.0).0, (rect.0).1, (rect.1).0, (rect.1).1]
-}
 
 struct PipeWindow {
     bind_group: wgpu::BindGroup,
     scale_buf: wgpu::Buffer,
-    rect_buf: wgpu::Buffer,
-    iter_buf: wgpu::Buffer,
-    rect: UnifRect,
-    iterations: i32,
+    push_constants: PushConstants,
     passes: Vec<(Vec<Vertex>, Option<Buffer>, u32)>,
 }
 
@@ -184,59 +186,29 @@ impl CustomPipe for Pipe {
             usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
         });
 
-        let rect: UnifRect = (DVec2::splat(0.0), DVec2::splat(1.0));
-        let rect_arr = unif_rect_as_arr(rect);
-        let rect_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&rect_arr),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
-
-        let iter = [64];
-        let iter_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&iter),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
-
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &scale_buf,
-                        offset: 0,
-                        size: None,
-                    },
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::Buffer {
+                    buffer: &scale_buf,
+                    offset: 0,
+                    size: None,
                 },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &rect_buf,
-                        offset: 0,
-                        size: None,
-                    },
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &iter_buf,
-                        offset: 0,
-                        size: None,
-                    },
-                },
-            ],
+            }],
             label: None,
         });
+
+        let push_constants = PushConstants {
+            p: DVec2::splat(0.0),
+            q: DVec2::splat(1.0),
+            iterations: 64,
+        };
 
         PipeWindow {
             bind_group,
             scale_buf,
-            rect_buf,
-            iter_buf,
-            rect,
-            iterations: iter[0],
+            push_constants,
             passes: vec![],
         }
     }
@@ -246,12 +218,7 @@ impl CustomPipe for Pipe {
         queue.write_buffer(&window.scale_buf, 0, bytemuck::cast_slice(&scale_factor));
     }
 
-    fn update(&self, window: &mut Self::Window, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let rect_arr = unif_rect_as_arr(window.rect);
-        let iter = [window.iterations];
-        queue.write_buffer(&window.rect_buf, 0, bytemuck::cast_slice(&rect_arr));
-        queue.write_buffer(&window.iter_buf, 0, bytemuck::cast_slice(&iter));
-
+    fn update(&self, window: &mut Self::Window, device: &wgpu::Device, _: &wgpu::Queue) {
         // NOTE: we prepare vertex buffers here. Due to lifetime restrictions on
         // RenderPass we cannot currently create buffers in render().
         // See https://github.com/gfx-rs/wgpu-rs/issues/188
@@ -281,6 +248,11 @@ impl CustomPipe for Pipe {
         if let Some(tuple) = window.passes.get(pass) {
             if let Some(buffer) = tuple.1.as_ref() {
                 rpass.set_pipeline(&self.render_pipeline);
+                rpass.set_push_constants(
+                    wgpu::ShaderStage::FRAGMENT,
+                    0,
+                    bytemuck::bytes_of(&window.push_constants),
+                );
                 rpass.set_bind_group(0, &window.bind_group, &[]);
                 rpass.set_vertex_buffer(0, buffer.slice(..));
                 rpass.draw(0..tuple.2, 0..1);
@@ -293,9 +265,8 @@ impl CustomWindow for PipeWindow {
     type Param = (DVec2, DVec2, f32, i32);
 
     fn invoke(&mut self, pass: Pass, rect: Rect, p: Self::Param) {
-        self.rect = (p.0, p.1);
+        self.push_constants.set(p.0, p.1, p.3);
         let rel_width = p.2;
-        self.iterations = p.3;
 
         let aa = Vec2::from(rect.pos);
         let bb = aa + Vec2::from(rect.size);

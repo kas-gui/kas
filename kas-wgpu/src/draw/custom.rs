@@ -22,6 +22,13 @@ pub trait DrawCustom<CW: CustomWindow> {
 pub trait CustomPipeBuilder {
     type Pipe: CustomPipe;
 
+    /// Request a device supporting these features and limits
+    ///
+    /// See [`wgpu::Adapter::request_device`] and [`wgpu::DeviceDescriptor`] doc.
+    fn device_descriptor() -> wgpu::DeviceDescriptor<'static> {
+        Default::default()
+    }
+
     /// Build a pipe
     ///
     /// The given texture format and depth format should be used to construct a

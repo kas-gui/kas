@@ -60,11 +60,7 @@ where
         };
         info!("Using graphics adapter: {}", adapter.get_info().name);
 
-        let desc = wgpu::DeviceDescriptor {
-            label: None,
-            features: Default::default(),
-            limits: Default::default(),
-        };
+        let desc = CB::device_descriptor();
         let req = adapter.request_device(&desc, None);
         let (device, queue) = futures::executor::block_on(req)?;
 
