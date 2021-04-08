@@ -90,8 +90,9 @@ where
         info!("Constucted new window with size {:?}", size);
 
         // draw was initially created with Size::ZERO; we must resize
-        let buf = shared.draw.resize(&mut draw, &shared.device, size);
-        shared.queue.submit(std::iter::once(buf));
+        shared
+            .draw
+            .resize(&mut draw, &shared.device, &shared.queue, size);
 
         let surface = unsafe { shared.instance.create_surface(&window) };
         let sc_desc = wgpu::SwapChainDescriptor {
@@ -358,8 +359,9 @@ where
             return;
         }
 
-        let buf = shared.draw.resize(&mut self.draw, &shared.device, size);
-        shared.queue.submit(std::iter::once(buf));
+        shared
+            .draw
+            .resize(&mut self.draw, &shared.device, &shared.queue, size);
 
         self.sc_desc.width = size.0.cast();
         self.sc_desc.height = size.1.cast();

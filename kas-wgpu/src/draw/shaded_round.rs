@@ -232,22 +232,9 @@ impl Pipeline {
 }
 
 impl Window {
-    pub fn resize(
-        &mut self,
-        device: &wgpu::Device,
-        encoder: &mut wgpu::CommandEncoder,
-        size: Size,
-    ) {
-        type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SR scale_buf copy"),
-            contents: bytemuck::cast_slice(&scale_factor),
-            usage: wgpu::BufferUsage::COPY_SRC,
-        });
-        let byte_len = size_of::<Scale>().cast();
-
-        encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);
+    pub fn resize(&mut self, queue: &wgpu::Queue, size: Size) {
+        let scale_factor = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
+        queue.write_buffer(&self.scale_buf, 0, bytemuck::cast_slice(&scale_factor));
     }
 
     /// Bounds on input: `0 ≤ inner_radius ≤ 1`.

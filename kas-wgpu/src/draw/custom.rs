@@ -58,7 +58,7 @@ pub trait CustomPipe {
         &self,
         window: &mut Self::Window,
         device: &wgpu::Device,
-        encoder: &mut wgpu::CommandEncoder,
+        queue: &wgpu::Queue,
         size: Size,
     );
 
@@ -68,13 +68,7 @@ pub trait CustomPipe {
     /// example be used to update uniform buffers.
     ///
     /// This method is optional; by default it does nothing.
-    fn update(
-        &self,
-        _window: &mut Self::Window,
-        _device: &wgpu::Device,
-        _encoder: &mut wgpu::CommandEncoder,
-    ) {
-    }
+    fn update(&self, _window: &mut Self::Window, _device: &wgpu::Device, _queue: &wgpu::Queue) {}
 
     /// Render (pass)
     ///
@@ -161,14 +155,7 @@ impl CustomPipe for () {
     fn new_window(&self, _: &wgpu::Device, _: Size) -> Self::Window {
         ()
     }
-    fn resize(
-        &self,
-        _: &mut Self::Window,
-        _: &wgpu::Device,
-        _: &mut wgpu::CommandEncoder,
-        _: Size,
-    ) {
-    }
+    fn resize(&self, _: &mut Self::Window, _: &wgpu::Device, _: &wgpu::Queue, _: Size) {}
 }
 
 /// A dummy implementation (does nothing)

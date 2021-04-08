@@ -241,50 +241,16 @@ impl CustomPipe for Pipe {
         }
     }
 
-    fn resize(
-        &self,
-        window: &mut Self::Window,
-        device: &wgpu::Device,
-        encoder: &mut wgpu::CommandEncoder,
-        size: Size,
-    ) {
-        type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&scale_factor),
-            usage: wgpu::BufferUsage::COPY_SRC,
-        });
-
-        let byte_len = size_of::<Scale>().cast();
-        encoder.copy_buffer_to_buffer(&scale_buf, 0, &window.scale_buf, 0, byte_len);
+    fn resize(&self, window: &mut Self::Window, _: &wgpu::Device, queue: &wgpu::Queue, size: Size) {
+        let scale_factor = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
+        queue.write_buffer(&window.scale_buf, 0, bytemuck::cast_slice(&scale_factor));
     }
 
-    fn update(
-        &self,
-        window: &mut Self::Window,
-        device: &wgpu::Device,
-        encoder: &mut wgpu::CommandEncoder,
-    ) {
+    fn update(&self, window: &mut Self::Window, device: &wgpu::Device, queue: &wgpu::Queue) {
         let rect_arr = unif_rect_as_arr(window.rect);
-        let rect_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&rect_arr),
-            usage: wgpu::BufferUsage::COPY_SRC,
-        });
-
-        let byte_len = size_of::<UnifRect>().cast();
-        encoder.copy_buffer_to_buffer(&rect_buf, 0, &window.rect_buf, 0, byte_len);
-
         let iter = [window.iterations];
-        let iter_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&iter),
-            usage: wgpu::BufferUsage::COPY_SRC,
-        });
-
-        let byte_len = size_of::<i32>().cast();
-        encoder.copy_buffer_to_buffer(&iter_buf, 0, &window.iter_buf, 0, byte_len);
+        queue.write_buffer(&window.rect_buf, 0, bytemuck::cast_slice(&rect_arr));
+        queue.write_buffer(&window.iter_buf, 0, bytemuck::cast_slice(&iter));
 
         // NOTE: we prepare vertex buffers here. Due to lifetime restrictions on
         // RenderPass we cannot currently create buffers in render().

@@ -116,19 +116,16 @@ impl<C: CustomPipe> DrawPipe<C> {
         &self,
         window: &mut DrawWindow<C::Window>,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         size: Size,
-    ) -> wgpu::CommandBuffer {
+    ) {
         window.depth = make_depth_texture(device, size);
         window.clip_regions[0].size = size;
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("resize"),
-        });
-        window.shaded_square.resize(device, &mut encoder, size);
-        window.shaded_round.resize(device, &mut encoder, size);
-        self.custom
-            .resize(&mut window.custom, device, &mut encoder, size);
-        window.flat_round.resize(device, &mut encoder, size);
-        encoder.finish()
+        window.shaded_square.resize(queue, size);
+        window.shaded_round.resize(queue, size);
+        self.custom.resize(&mut window.custom, device, queue, size);
+        window.flat_round.resize(queue, size);
+        queue.submit(std::iter::empty());
     }
 
     /// Render batched draw instructions via `rpass`
@@ -140,11 +137,11 @@ impl<C: CustomPipe> DrawPipe<C> {
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) {
+        self.custom.update(&mut window.custom, device, queue);
+
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("render"),
         });
-
-        self.custom.update(&mut window.custom, device, &mut encoder);
 
         let mut color_attachments = [wgpu::RenderPassColorAttachmentDescriptor {
             attachment: frame_view,
