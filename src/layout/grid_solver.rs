@@ -143,7 +143,7 @@ where
             // To avoid losing Stretch, we distribute this first
             const BASE_WEIGHT: u32 = 100;
             const SPAN_WEIGHT: u32 = 10;
-            let mut scores: Vec<u32> = (&widths[0..(widths.len() - 1)])
+            let mut scores: Vec<u32> = widths
                 .iter()
                 .map(|w| w.stretch() as u32 * BASE_WEIGHT)
                 .collect();
