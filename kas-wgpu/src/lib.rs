@@ -79,7 +79,7 @@ impl From<wgpu::RequestDeviceError> for Error {
 /// little reason to do so (and some reason not to: KISS).
 pub struct Toolkit<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     el: EventLoop<ProxyAction>,
-    windows: Vec<Window<C::Window, T::Window>>,
+    windows: Vec<Window<C, T>>,
     shared: SharedState<C, T>,
 }
 
