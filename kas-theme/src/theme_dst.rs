@@ -9,7 +9,7 @@ use std::any::Any;
 use std::ops::DerefMut;
 
 use super::{StackDst, Theme, Window};
-use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
+use kas::draw::{Colour, Draw, DrawHandle, DrawShared, SizeHandle, ThemeApi};
 use kas::geom::Rect;
 
 /// As [`Theme`], but without associated types
@@ -177,14 +177,14 @@ pub trait WindowDst {
     /// This function is **unsafe** because the returned object requires a
     /// lifetime bound not exceeding that of all three pointers passed in.
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&mut self) -> StackDst<dyn SizeHandle>;
+    unsafe fn size_handle(&mut self, draw: &mut dyn Draw) -> StackDst<dyn SizeHandle>;
 
     /// Construct a [`SizeHandle`] object
     ///
     /// The `draw` reference is guaranteed to be identical to the one used to
     /// construct this object.
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self) -> StackDst<dyn SizeHandle + 'a>;
+    fn size_handle<'a>(&'a mut self, draw: &'a mut dyn Draw) -> StackDst<dyn SizeHandle + 'a>;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -194,8 +194,8 @@ impl<W: Window> WindowDst for W
 where
     <W as Window>::SizeHandle: 'static,
 {
-    unsafe fn size_handle<'a>(&'a mut self) -> StackDst<dyn SizeHandle> {
-        let h = <W as Window>::size_handle(self);
+    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut dyn Draw) -> StackDst<dyn SizeHandle> {
+        let h = <W as Window>::size_handle(self, draw);
         #[cfg(feature = "unsize")]
         {
             StackDst::new_or_boxed(h)
@@ -215,8 +215,8 @@ where
 
 #[cfg(feature = "gat")]
 impl<W: Window> WindowDst for W {
-    fn size_handle<'a>(&'a mut self) -> StackDst<dyn SizeHandle + 'a> {
-        let h = <W as Window>::size_handle(self);
+    fn size_handle<'a>(&'a mut self, draw: &'a mut dyn Draw) -> StackDst<dyn SizeHandle + 'a> {
+        let h = <W as Window>::size_handle(self, draw);
         StackDst::new_or_boxed(h)
     }
 
@@ -232,13 +232,13 @@ impl Window for StackDst<dyn WindowDst> {
     type SizeHandle<'a> = StackDst<dyn SizeHandle + 'a>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&mut self) -> Self::SizeHandle {
-        self.deref_mut().size_handle()
+    unsafe fn size_handle(&mut self, draw: &mut dyn Draw) -> Self::SizeHandle {
+        self.deref_mut().size_handle(draw)
     }
 
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self) -> Self::SizeHandle<'a> {
-        self.deref_mut().size_handle()
+    fn size_handle<'a>(&'a mut self, draw: &'a mut dyn Draw) -> Self::SizeHandle<'a> {
+        self.deref_mut().size_handle(draw)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {

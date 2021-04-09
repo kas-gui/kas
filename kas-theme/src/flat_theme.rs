@@ -206,7 +206,7 @@ impl<'a, D: Draw + DrawRounded> DrawHandle<'a, D> {
 impl<'a, D: Draw + DrawRounded + DrawText> draw::DrawHandle for DrawHandle<'a, D> {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
-            let mut size_handle = self.window.size_handle();
+            let mut size_handle = self.window.size_handle(self.draw);
             f(&mut size_handle);
         }
     }

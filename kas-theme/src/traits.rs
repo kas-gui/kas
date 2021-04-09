@@ -8,7 +8,7 @@
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
-use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
+use kas::draw::{Colour, Draw, DrawHandle, DrawShared, SizeHandle, ThemeApi};
 use kas::geom::Rect;
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -99,6 +99,7 @@ pub trait Window: 'static {
     #[cfg(not(feature = "gat"))]
     type SizeHandle: SizeHandle;
     #[cfg(feature = "gat")]
+    // TODO(gat): add D: Draw parameter instead of using dyn Draw?
     type SizeHandle<'a>: SizeHandle;
 
     /// Construct a [`SizeHandle`] object
@@ -106,9 +107,9 @@ pub trait Window: 'static {
     /// The `draw` reference is guaranteed to be identical to the one used to
     /// construct this object.
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&mut self) -> Self::SizeHandle;
+    unsafe fn size_handle(&mut self, draw: &mut dyn Draw) -> Self::SizeHandle;
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self) -> Self::SizeHandle<'a>;
+    fn size_handle<'a>(&'a mut self, draw: &'a mut dyn Draw) -> Self::SizeHandle<'a>;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -163,12 +164,12 @@ impl<W: Window> Window for Box<W> {
     type SizeHandle<'a> = <W as Window>::SizeHandle<'a>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&mut self) -> Self::SizeHandle {
-        self.deref_mut().size_handle()
+    unsafe fn size_handle(&mut self, draw: &mut dyn Draw) -> Self::SizeHandle {
+        self.deref_mut().size_handle(draw)
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self) -> Self::SizeHandle<'a> {
-        self.deref_mut().size_handle()
+    fn size_handle<'a>(&'a mut self, draw: &'a mut dyn Draw) -> Self::SizeHandle<'a> {
+        self.deref_mut().size_handle(draw)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {

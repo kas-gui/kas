@@ -11,7 +11,7 @@ use std::any::Any;
 use std::f32;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
-use kas::draw::{self, TextClass};
+use kas::draw::{self, Draw, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{TextApi, TextApiExt};
@@ -111,14 +111,14 @@ impl crate::Window for DimensionsWindow {
     type SizeHandle<'a> = SizeHandle<'a>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle<'a>(&'a mut self) -> Self::SizeHandle {
+    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut dyn Draw) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        let h: SizeHandle<'a> = SizeHandle::new(&self.dims);
+        let h: SizeHandle<'a> = SizeHandle::new(&self.dims, draw);
         std::mem::transmute(h)
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self) -> Self::SizeHandle<'a> {
-        SizeHandle::new(&self.dims)
+    fn size_handle<'a>(&'a mut self, draw: &'a mut dyn Draw) -> Self::SizeHandle<'a> {
+        SizeHandle::new(&self.dims, draw)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
@@ -128,11 +128,12 @@ impl crate::Window for DimensionsWindow {
 
 pub struct SizeHandle<'a> {
     dims: &'a Dimensions,
+    draw: &'a mut dyn Draw,
 }
 
 impl<'a> SizeHandle<'a> {
-    pub fn new(dims: &'a Dimensions) -> Self {
-        SizeHandle { dims }
+    pub fn new(dims: &'a Dimensions, draw: &'a mut dyn Draw) -> Self {
+        SizeHandle { dims, draw }
     }
 }
 
