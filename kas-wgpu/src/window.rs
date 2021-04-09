@@ -45,8 +45,8 @@ pub(crate) struct Window<CW: CustomWindow, TW> {
 // Public functions, for use by the toolkit
 impl<CW, TW> Window<CW, TW>
 where
-    CW: CustomWindow + 'static,
-    TW: kas_theme::Window + 'static,
+    CW: CustomWindow,
+    TW: kas_theme::Window,
 {
     /// Construct a window
     pub fn new<C, T>(
@@ -293,8 +293,8 @@ where
 // Internal functions
 impl<CW, TW> Window<CW, TW>
 where
-    CW: CustomWindow + 'static,
-    TW: kas_theme::Window + 'static,
+    CW: CustomWindow,
+    TW: kas_theme::Window,
 {
     /// Swap-chain size
     fn sc_size(&self) -> Size {

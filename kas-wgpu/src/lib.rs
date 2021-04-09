@@ -97,7 +97,7 @@ where
     }
 }
 
-impl<C: CustomPipe + 'static, T: Theme<DrawPipe<C>> + 'static> Toolkit<C, T>
+impl<C: CustomPipe, T: Theme<DrawPipe<C>> + 'static> Toolkit<C, T>
 where
     T::Window: kas_theme::Window,
 {

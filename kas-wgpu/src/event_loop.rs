@@ -22,7 +22,7 @@ use crate::shared::{PendingAction, SharedState};
 use crate::{ProxyAction, Window, WindowId};
 
 /// Event-loop data structure (i.e. all run-time state)
-pub(crate) struct Loop<C: CustomPipe + 'static, T: Theme<DrawPipe<C>>>
+pub(crate) struct Loop<C: CustomPipe, T: Theme<DrawPipe<C>>>
 where
     T::Window: kas_theme::Window,
 {
@@ -36,7 +36,7 @@ where
     resumes: Vec<(Instant, ww::WindowId)>,
 }
 
-impl<C: CustomPipe + 'static, T: Theme<DrawPipe<C>>> Loop<C, T>
+impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Loop<C, T>
 where
     T::Window: kas_theme::Window,
 {

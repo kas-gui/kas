@@ -21,7 +21,7 @@ fn ktv_to_point(kas::text::Vec2(x, y): kas::text::Vec2) -> ab_glyph::Point {
     ab_glyph::Point { x, y }
 }
 
-impl<CW: CustomWindow + 'static> DrawText for DrawWindow<CW> {
+impl<CW: CustomWindow> DrawText for DrawWindow<CW> {
     fn prepare_fonts(&mut self) {
         let fonts = fonts();
         let n1 = self.glyph_brush.fonts().len();

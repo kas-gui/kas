@@ -76,7 +76,7 @@ pub struct DrawHandle<'a, D: Draw> {
     pub(crate) pass: Pass,
 }
 
-impl<D: DrawShared + 'static> Theme<D> for FlatTheme
+impl<D: DrawShared> Theme<D> for FlatTheme
 where
     D::Draw: DrawRounded + DrawText,
 {

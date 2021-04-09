@@ -53,9 +53,9 @@ pub trait CustomPipeBuilder {
 /// Note that `kas-wgpu` accepts only a single custom pipe. To use more than
 /// one, you will have to implement your own multiplexer (presumably using an
 /// enum for the `Param` type).
-pub trait CustomPipe {
+pub trait CustomPipe: 'static {
     /// Associated per-window state for the custom pipe
-    type Window: CustomWindow + 'static;
+    type Window: CustomWindow;
 
     /// Construct a window associated with this pipeline
     fn new_window(&self, device: &wgpu::Device, size: Size) -> Self::Window;
@@ -130,7 +130,7 @@ pub trait CustomPipe {
 /// One instance is constructed per window. Since the [`CustomPipe`] is not
 /// accessible during a widget's [`kas::Layout::draw`] calls, this struct must
 /// batch per-frame draw data.
-pub trait CustomWindow {
+pub trait CustomWindow: 'static {
     /// User parameter type
     type Param;
 

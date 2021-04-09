@@ -251,7 +251,7 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
 }
 
-impl<CW: CustomWindow + 'static> Draw for DrawWindow<CW> {
+impl<CW: CustomWindow> Draw for DrawWindow<CW> {
     #[inline]
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
@@ -279,7 +279,7 @@ impl<CW: CustomWindow + 'static> Draw for DrawWindow<CW> {
     }
 }
 
-impl<CW: CustomWindow + 'static> DrawRounded for DrawWindow<CW> {
+impl<CW: CustomWindow> DrawRounded for DrawWindow<CW> {
     #[inline]
     fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
         self.flat_round.line(pass, p1, p2, radius, col);
@@ -304,7 +304,7 @@ impl<CW: CustomWindow + 'static> DrawRounded for DrawWindow<CW> {
     }
 }
 
-impl<CW: CustomWindow + 'static> DrawShaded for DrawWindow<CW> {
+impl<CW: CustomWindow> DrawShaded for DrawWindow<CW> {
     #[inline]
     fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Colour) {
         self.shaded_square

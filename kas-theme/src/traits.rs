@@ -19,7 +19,7 @@ use kas::geom::Rect;
 /// large resources (e.g. fonts and icons) consider using external storage.
 pub trait Theme<D: DrawShared>: ThemeApi {
     /// The associated [`Window`] implementation.
-    type Window: Window + 'static;
+    type Window: Window;
 
     /// The associated [`DrawHandle`] implementation.
     #[cfg(not(feature = "gat"))]
@@ -94,7 +94,7 @@ pub trait Theme<D: DrawShared>: ThemeApi {
 ///
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
-pub trait Window {
+pub trait Window: 'static {
     /// The associated [`SizeHandle`] implementation.
     #[cfg(not(feature = "gat"))]
     type SizeHandle: SizeHandle;

@@ -72,7 +72,7 @@ pub struct DrawHandle<'a, D: Draw> {
     pass: Pass,
 }
 
-impl<D: DrawShared + 'static> Theme<D> for ShadedTheme
+impl<D: DrawShared> Theme<D> for ShadedTheme
 where
     D::Draw: DrawRounded + DrawShaded + DrawText,
 {
@@ -216,7 +216,7 @@ impl<'a, D: Draw + DrawRounded + DrawShaded> DrawHandle<'a, D> {
 
 impl<'a, D> draw::DrawHandle for DrawHandle<'a, D>
 where
-    D: Draw + DrawRounded + DrawShaded + DrawText + 'static,
+    D: Draw + DrawRounded + DrawShaded + DrawText,
 {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
