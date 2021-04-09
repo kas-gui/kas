@@ -24,7 +24,7 @@ use crate::{ProxyAction, Window, WindowId};
 /// Event-loop data structure (i.e. all run-time state)
 pub(crate) struct Loop<C: CustomPipe, T: Theme<DrawPipe<C>>>
 where
-    T::Window: kas_theme::Window,
+    T::Window: kas_theme::Window<DrawPipe<C>>,
 {
     /// Window states
     windows: HashMap<ww::WindowId, Window<C, T>>,
@@ -38,7 +38,7 @@ where
 
 impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Loop<C, T>
 where
-    T::Window: kas_theme::Window,
+    T::Window: kas_theme::Window<DrawPipe<C>>,
 {
     pub(crate) fn new(mut windows: Vec<Window<C, T>>, shared: SharedState<C, T>) -> Self {
         let id_map = windows

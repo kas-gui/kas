@@ -8,7 +8,7 @@
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
-use kas::draw::{Colour, Draw, DrawHandle, DrawShared, SizeHandle, ThemeApi};
+use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
 use kas::geom::Rect;
 
 /// A *theme* provides widget sizing and drawing implementations.
@@ -19,7 +19,7 @@ use kas::geom::Rect;
 /// large resources (e.g. fonts and icons) consider using external storage.
 pub trait Theme<D: DrawShared>: ThemeApi {
     /// The associated [`Window`] implementation.
-    type Window: Window;
+    type Window: Window<D>;
 
     /// The associated [`DrawHandle`] implementation.
     #[cfg(not(feature = "gat"))]
@@ -72,6 +72,7 @@ pub trait Theme<D: DrawShared>: ThemeApi {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
+        shared: &mut D,
         draw: &mut D::Draw,
         window: &mut Self::Window,
         rect: Rect,
@@ -79,6 +80,7 @@ pub trait Theme<D: DrawShared>: ThemeApi {
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
+        shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
@@ -94,7 +96,7 @@ pub trait Theme<D: DrawShared>: ThemeApi {
 ///
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
-pub trait Window: 'static {
+pub trait Window<D: DrawShared>: 'static {
     /// The associated [`SizeHandle`] implementation.
     #[cfg(not(feature = "gat"))]
     type SizeHandle: SizeHandle;
@@ -107,9 +109,9 @@ pub trait Window: 'static {
     /// The `draw` reference is guaranteed to be identical to the one used to
     /// construct this object.
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&mut self, draw: &mut dyn Draw) -> Self::SizeHandle;
+    unsafe fn size_handle(&mut self, draw: &mut D) -> Self::SizeHandle;
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, draw: &'a mut dyn Draw) -> Self::SizeHandle<'a>;
+    fn size_handle<'a>(&'a mut self, draw: &'a mut D) -> Self::SizeHandle<'a>;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
@@ -136,20 +138,22 @@ impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
+        shared: &mut D,
         draw: &mut D::Draw,
         window: &mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle {
-        self.deref().draw_handle(draw, window, rect)
+        self.deref().draw_handle(shared, draw, window, rect)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
+        shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle<'a> {
-        self.deref().draw_handle(draw, window, rect)
+        self.deref().draw_handle(shared, draw, window, rect)
     }
 
     fn clear_color(&self) -> Colour {
@@ -157,18 +161,18 @@ impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
     }
 }
 
-impl<W: Window> Window for Box<W> {
+impl<D: DrawShared, W: Window<D>> Window<D> for Box<W> {
     #[cfg(not(feature = "gat"))]
-    type SizeHandle = <W as Window>::SizeHandle;
+    type SizeHandle = <W as Window<D>>::SizeHandle;
     #[cfg(feature = "gat")]
-    type SizeHandle<'a> = <W as Window>::SizeHandle<'a>;
+    type SizeHandle<'a> = <W as Window<D>>::SizeHandle<'a>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&mut self, draw: &mut dyn Draw) -> Self::SizeHandle {
+    unsafe fn size_handle(&mut self, draw: &mut D) -> Self::SizeHandle {
         self.deref_mut().size_handle(draw)
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, draw: &'a mut dyn Draw) -> Self::SizeHandle<'a> {
+    fn size_handle<'a>(&'a mut self, draw: &'a mut D) -> Self::SizeHandle<'a> {
         self.deref_mut().size_handle(draw)
     }
 

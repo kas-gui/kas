@@ -11,7 +11,7 @@ use std::any::Any;
 use std::f32;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
-use kas::draw::{self, Draw, TextClass};
+use kas::draw::{self, DrawShared, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{TextApi, TextApiExt};
@@ -104,20 +104,20 @@ impl DimensionsWindow {
     }
 }
 
-impl crate::Window for DimensionsWindow {
+impl<D: DrawShared> crate::Window<D> for DimensionsWindow {
     #[cfg(not(feature = "gat"))]
-    type SizeHandle = SizeHandle<'static>;
+    type SizeHandle = SizeHandle<'static, D>;
     #[cfg(feature = "gat")]
-    type SizeHandle<'a> = SizeHandle<'a>;
+    type SizeHandle<'a> = SizeHandle<'a, D>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut dyn Draw) -> Self::SizeHandle {
+    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut D) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        let h: SizeHandle<'a> = SizeHandle::new(&self.dims, draw);
+        let h: SizeHandle<'a, D> = SizeHandle::new(&self.dims, draw);
         std::mem::transmute(h)
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, draw: &'a mut dyn Draw) -> Self::SizeHandle<'a> {
+    fn size_handle<'a>(&'a mut self, draw: &'a mut D) -> Self::SizeHandle<'a> {
         SizeHandle::new(&self.dims, draw)
     }
 
@@ -126,18 +126,18 @@ impl crate::Window for DimensionsWindow {
     }
 }
 
-pub struct SizeHandle<'a> {
+pub struct SizeHandle<'a, D: DrawShared> {
     dims: &'a Dimensions,
-    draw: &'a mut dyn Draw,
+    draw: &'a mut D,
 }
 
-impl<'a> SizeHandle<'a> {
-    pub fn new(dims: &'a Dimensions, draw: &'a mut dyn Draw) -> Self {
+impl<'a, D: DrawShared> SizeHandle<'a, D> {
+    pub fn new(dims: &'a Dimensions, draw: &'a mut D) -> Self {
         SizeHandle { dims, draw }
     }
 }
 
-impl<'a> draw::SizeHandle for SizeHandle<'a> {
+impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
     fn scale_factor(&self) -> f32 {
         self.dims.scale_factor
     }

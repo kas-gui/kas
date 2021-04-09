@@ -41,7 +41,7 @@ pub struct SharedState<C: CustomPipe, T> {
 
 impl<C: CustomPipe, T: Theme<DrawPipe<C>>> SharedState<C, T>
 where
-    T::Window: kas_theme::Window,
+    T::Window: kas_theme::Window<DrawPipe<C>>,
 {
     /// Construct
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(

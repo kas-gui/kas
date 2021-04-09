@@ -63,8 +63,9 @@ const DIMS: DimensionsParams = DimensionsParams {
     progress_bar: Vec2::splat(12.0),
 };
 
-pub struct DrawHandle<'a, D: Draw> {
-    draw: &'a mut D,
+pub struct DrawHandle<'a, D: DrawShared> {
+    shared: &'a mut D,
+    draw: &'a mut D::Draw,
     window: &'a mut DimensionsWindow,
     cols: &'a ThemeColours,
     rect: Rect,
@@ -79,9 +80,9 @@ where
     type Window = DimensionsWindow;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = DrawHandle<'static, D::Draw>;
+    type DrawHandle = DrawHandle<'static, D>;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = DrawHandle<'a, D::Draw>;
+    type DrawHandle<'a> = DrawHandle<'a, D>;
 
     fn init(&mut self, _draw: &mut D) {
         if let Err(e) = kas::text::fonts::fonts().load_default() {
@@ -100,18 +101,23 @@ where
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle<'a>(
         &'a self,
+        shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle {
+        // We extend lifetimes (unsafe) due to the lack of associated type generics.
+        unsafe fn extend_lifetime<'b, T>(r: &'b mut T) -> &'static mut T {
+            std::mem::transmute::<&'b mut T, &'static mut T>(r)
+        }
+
         draw.prepare_fonts();
 
-        // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        use std::mem::transmute;
         DrawHandle {
-            draw: transmute::<&'a mut D::Draw, &'static mut D::Draw>(draw),
-            window: transmute::<&'a mut Self::Window, &'static mut Self::Window>(window),
-            cols: transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
+            shared: extend_lifetime(shared),
+            draw: extend_lifetime(draw),
+            window: extend_lifetime(window),
+            cols: std::mem::transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
             rect,
             offset: Offset::ZERO,
             pass: super::START_PASS,
@@ -120,6 +126,7 @@ where
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
+        shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
@@ -127,6 +134,7 @@ where
         draw.prepare_fonts();
 
         DrawHandle {
+            shared,
             draw,
             window,
             cols: &self.cols,
@@ -157,7 +165,10 @@ impl ThemeApi for ShadedTheme {
     }
 }
 
-impl<'a, D: Draw + DrawRounded + DrawShaded> DrawHandle<'a, D> {
+impl<'a, D: DrawShared> DrawHandle<'a, D>
+where
+    D::Draw: DrawRounded + DrawShaded,
+{
     // Type-cast to flat_theme's DrawHandle. Should be equivalent to transmute.
     fn as_flat<'b, 'c>(&'b mut self) -> super::flat_theme::DrawHandle<'c, D>
     where
@@ -165,6 +176,7 @@ impl<'a, D: Draw + DrawRounded + DrawShaded> DrawHandle<'a, D> {
         'b: 'c,
     {
         super::flat_theme::DrawHandle {
+            shared: *&mut self.shared,
             draw: *&mut self.draw,
             window: *&mut self.window,
             cols: *&self.cols,
@@ -214,13 +226,13 @@ impl<'a, D: Draw + DrawRounded + DrawShaded> DrawHandle<'a, D> {
     }
 }
 
-impl<'a, D> draw::DrawHandle for DrawHandle<'a, D>
+impl<'a, D: DrawShared> draw::DrawHandle for DrawHandle<'a, D>
 where
-    D: Draw + DrawRounded + DrawShaded + DrawText,
+    D::Draw: DrawRounded + DrawShaded + DrawText,
 {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
-            let mut size_handle = self.window.size_handle(self.draw);
+            let mut size_handle = self.window.size_handle(self.shared);
             f(&mut size_handle);
         }
     }
@@ -245,6 +257,7 @@ where
                 .rect(pass, (rect + self.offset).into(), self.cols.background);
         }
         let mut handle = DrawHandle {
+            shared: self.shared,
             draw: self.draw,
             window: self.window,
             cols: self.cols,
