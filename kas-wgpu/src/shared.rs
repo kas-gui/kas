@@ -123,21 +123,25 @@ where
     #[inline]
     pub fn get_clipboard(&mut self) -> Option<String> {
         #[cfg(feature = "clipboard")]
-        self.clipboard.as_ref().and_then(|cb| match cb.read() {
-            Ok(c) => Some(c),
-            Err(e) => {
-                warn_about_error("Failed to get clipboard contents", e.as_ref());
-                None
-            }
-        })
+        {
+            self.clipboard.as_ref().and_then(|cb| match cb.read() {
+                Ok(c) => Some(c),
+                Err(e) => {
+                    warn_about_error("Failed to get clipboard contents", e.as_ref());
+                    None
+                }
+            })
+        }
+        #[cfg(not(feature = "clipboard"))]
+        None
     }
 
     #[inline]
-    pub fn set_clipboard(&mut self, content: String) {
+    pub fn set_clipboard(&mut self, _content: String) {
         #[cfg(feature = "clipboard")]
         self.clipboard
             .as_mut()
-            .map(|cb| match cb.write(content.into()) {
+            .map(|cb| match cb.write(_content.into()) {
                 Ok(()) => (),
                 Err(e) => warn_about_error("Failed to set clipboard contents", e.as_ref()),
             });
