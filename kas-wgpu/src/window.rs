@@ -58,6 +58,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let mut draw = shared.draw.new_window(&mut shared.device, Size::ZERO);
         let mut theme_window = shared.theme.new_window(&mut draw, scale_factor);
 
+        let mut mgr = ManagerState::new(shared.config.clone());
+        let mut tkw = TkWindow::new(shared, None, &mut theme_window);
+        mgr.configure(&mut tkw, &mut *widget);
+
         let mut size_handle = unsafe { theme_window.size_handle(&mut shared.draw) };
         let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), &mut size_handle);
         // Opening a zero-size window causes a crash, so force at least 1x1:
@@ -95,10 +99,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             present_mode: wgpu::PresentMode::Mailbox,
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
-
-        let mut mgr = ManagerState::new(shared.config.clone());
-        let mut tkw = TkWindow::new(shared, Some(&window), &mut theme_window);
-        mgr.configure(&mut tkw, &mut *widget);
 
         let mut r = Window {
             widget,
