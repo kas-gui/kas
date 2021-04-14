@@ -295,12 +295,11 @@ impl<M: 'static> event::Handler for ComboBox<M> {
 
     fn handle(&mut self, mgr: &mut Manager, event: Event) -> Response<M> {
         let open_popup = |s: &mut Self, mgr: &mut Manager| {
-            let id = mgr.add_popup(kas::Popup {
+            s.popup_id = mgr.add_popup(kas::Popup {
                 id: s.popup.id(),
                 parent: s.id(),
                 direction: Direction::Down,
             });
-            s.popup_id = Some(id);
             if let Some(id) = s.popup.inner.inner.get_child(s.active).map(|w| w.id()) {
                 mgr.set_nav_focus(id);
             }

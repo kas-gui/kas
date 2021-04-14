@@ -99,7 +99,10 @@ pub trait ShellWindow {
     ///
     /// Pop-ups support position hints: they are placed *next to* the specified
     /// `rect`, preferably in the given `direction`.
-    fn add_popup(&mut self, popup: kas::Popup) -> WindowId;
+    ///
+    /// Returns `None` if window creation is not currently available (but note
+    /// that `Some` result does not guarantee the operation succeeded).
+    fn add_popup(&mut self, popup: kas::Popup) -> Option<WindowId>;
 
     /// Add a window
     ///

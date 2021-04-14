@@ -238,14 +238,19 @@ impl<'a> Manager<'a> {
     ///
     /// A pop-up may be closed by calling [`Manager::close_window`] with
     /// the [`WindowId`] returned by this method.
+    ///
+    /// Returns `None` if window creation is not currently available (but note
+    /// that `Some` result does not guarantee the operation succeeded).
     #[inline]
-    pub fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
-        let id = self.shell.add_popup(popup.clone());
-        self.state.new_popups.push(popup.id);
-        self.state.popups.push((id, popup));
-        self.state.nav_focus = None;
-        self.state.nav_stack.clear();
-        id
+    pub fn add_popup(&mut self, popup: kas::Popup) -> Option<WindowId> {
+        let opt_id = self.shell.add_popup(popup.clone());
+        if let Some(id) = opt_id {
+            self.state.new_popups.push(popup.id);
+            self.state.popups.push((id, popup));
+            self.state.nav_focus = None;
+            self.state.nav_stack.clear();
+        }
+        opt_id
     }
 
     /// Add a window
