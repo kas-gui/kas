@@ -48,6 +48,7 @@ wgpu_glyph = "0.11.0"
 winit = "0.24"
 thiserror = "1.0.23"
 window_clipboard = { version = "0.2.0", optional = true }
+image = "0.23.14"
 
 [dev-dependencies]
 chrono = "0.4"

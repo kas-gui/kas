@@ -7,12 +7,13 @@
 
 use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
+use std::path::Path;
 use wgpu::util::DeviceExt;
 use wgpu_glyph::{ab_glyph::FontRef, GlyphBrushBuilder};
 
 use super::{
-    flat_round, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow, DrawPipe,
-    DrawWindow, ShaderManager, TEX_FORMAT,
+    flat_round, images, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow,
+    DrawPipe, DrawWindow, ShaderManager, TEX_FORMAT,
 };
 use kas::cast::Cast;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Pass};
@@ -29,6 +30,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let staging_belt = wgpu::util::StagingBelt::new(1024);
         let local_pool = futures::executor::LocalPool::new();
 
+        let images = images::Pipeline::new(device, shaders);
         let shaded_square = shaded_square::Pipeline::new(device, shaders);
         let shaded_round = shaded_round::Pipeline::new(device, shaders);
         let flat_round = flat_round::Pipeline::new(device, shaders);
@@ -37,6 +39,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         DrawPipe {
             local_pool,
             staging_belt,
+            images,
             shaded_square,
             shaded_round,
             flat_round,
@@ -73,6 +76,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         let rect = Rect::new(Coord::ZERO, size);
 
+        let images = self.images.new_window(device, &scale_buf);
         let shaded_square = self
             .shaded_square
             .new_window(device, &scale_buf, &light_norm_buf);
@@ -94,6 +98,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         DrawWindow {
             scale_buf,
             clip_regions: vec![rect],
+            images,
             shaded_square,
             shaded_round,
             flat_round,
@@ -130,6 +135,10 @@ impl<C: CustomPipe> DrawPipe<C> {
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) {
+        // TODO: could potentially start preparing images asynchronously after
+        // configure, then join thread and do any final prep now.
+        self.images.prepare(device, queue);
+
         self.custom.update(&mut window.custom, device, queue);
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -147,6 +156,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         // We use a separate render pass for each clipped region.
         for (pass, rect) in window.clip_regions.iter().enumerate() {
+            let im = self.images.render_buf(&mut window.images, device, pass);
             let ss = self
                 .shaded_square
                 .render_buf(&mut window.shaded_square, device, pass);
@@ -170,6 +180,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                     rect.size.1.cast(),
                 );
 
+                im.as_ref().map(|buf| buf.render(&mut rpass));
                 ss.as_ref().map(|buf| buf.render(&mut rpass));
                 sr.as_ref().map(|buf| buf.render(&mut rpass));
                 fr.as_ref().map(|buf| buf.render(&mut rpass));
@@ -216,6 +227,21 @@ impl<C: CustomPipe> DrawPipe<C> {
 
 impl<C: CustomPipe> DrawShared for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
+
+    #[inline]
+    fn load_image(&mut self, path: &Path) {
+        self.images.load(path);
+    }
+
+    #[inline]
+    fn image_size(&self) -> Size {
+        self.images.image_size().into()
+    }
+
+    #[inline]
+    fn draw_image(&self, window: &mut Self::Draw, pass: Pass, rect: Quad) {
+        window.images.rect(&self.images, pass, rect);
+    }
 }
 
 impl<CW: CustomWindow> Draw for DrawWindow<CW> {

@@ -7,6 +7,7 @@
 
 use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
+use std::path::Path;
 
 use kas::dir::Direction;
 use kas::draw::{Draw, Pass};
@@ -223,6 +224,23 @@ pub trait SizeHandle {
     /// that the width is adjustable while the height is (preferably) not.
     /// For a vertical bar, the values are swapped.
     fn progress_bar(&self) -> Size;
+
+    /// Load an image (potentially async)
+    ///
+    /// The theme will attempt to load the given image. In case loading fails a
+    /// warning will be logged and a placeholder may be used.
+    ///
+    /// Image resources are deduplicated through the path lookup and have a
+    /// use count. This method increments the use-count.
+    fn load_image(&mut self, path: &Path);
+
+    /// Get image size
+    ///
+    /// If loading is in progress (see [`SizeHandle::load_image`]), this blocks
+    /// until done.
+    ///
+    /// Returns `None` if the resource is not found or failed to load.
+    fn image(&self) -> Option<Size>;
 }
 
 /// Handle passed to objects during draw operations
@@ -403,6 +421,9 @@ pub trait DrawHandle {
     /// -   `state`: highlighting information
     /// -   `value`: progress value, between 0.0 and 1.0
     fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32);
+
+    /// Draw an image
+    fn image(&mut self, rect: Rect);
 }
 
 /// Extension trait over [`DrawHandle`]
@@ -532,6 +553,12 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn progress_bar(&self) -> Size {
         self.deref().progress_bar()
     }
+    fn load_image(&mut self, path: &Path) {
+        self.deref_mut().load_image(path);
+    }
+    fn image(&self) -> Option<Size> {
+        self.deref().image()
+    }
 }
 
 #[cfg(feature = "stack_dst")]
@@ -604,6 +631,12 @@ where
     }
     fn progress_bar(&self) -> Size {
         self.deref().progress_bar()
+    }
+    fn load_image(&mut self, path: &Path) {
+        self.deref_mut().load_image(path);
+    }
+    fn image(&self) -> Option<Size> {
+        self.deref().image()
     }
 }
 
@@ -699,6 +732,9 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     }
     fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32) {
         self.deref_mut().progress_bar(rect, dir, state, value);
+    }
+    fn image(&mut self, rect: Rect) {
+        self.deref_mut().image(rect);
     }
 }
 
@@ -798,6 +834,9 @@ where
     }
     fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32) {
         self.deref_mut().progress_bar(rect, dir, state, value);
+    }
+    fn image(&mut self, rect: Rect) {
+        self.deref_mut().image(rect);
     }
 }
 

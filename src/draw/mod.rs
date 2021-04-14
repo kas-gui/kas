@@ -42,9 +42,10 @@ mod handle;
 mod theme;
 
 use std::any::Any;
+use std::path::Path;
 
 use crate::cast::Cast;
-use crate::geom::{Quad, Rect, Vec2};
+use crate::geom::{Quad, Rect, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
 
 pub use colour::Colour;
@@ -87,6 +88,15 @@ impl Pass {
 /// Bounds on type shared across [`Draw`] implementations
 pub trait DrawShared: 'static {
     type Draw: Draw;
+
+    /// Load an image from a path, autodetecting file type
+    fn load_image(&mut self, path: &Path);
+
+    /// Get size of last loaded image
+    fn image_size(&self) -> Size;
+
+    /// Draw the last loaded image in the given `rect`
+    fn draw_image(&self, window: &mut Self::Draw, pass: Pass, rect: Quad);
 }
 
 /// Base abstraction over drawing

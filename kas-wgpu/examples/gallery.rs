@@ -208,8 +208,10 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 ScrollBar::new().with_limits(100, 20),
             #[widget(row=9, col=1)] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget(row=9, col=0)] _ = Label::new("ProgressBar"),
-            #[widget(row=10, col=0)] _ = Label::new("Child window"),
-            #[widget(row=10, col = 1)] _ = popup_edit_box,
+            #[widget(row=10, col=0)] _ = Label::new("Image"),
+            #[widget(row=10, col=1)] _ = Image::new("res/rustacean-flat-happy.png"),
+            #[widget(row=11, col=0)] _ = Label::new("Child window"),
+            #[widget(row=11, col=1)] _ = popup_edit_box,
         }
         impl {
             fn handle_slider(&mut self, _: &mut Manager, msg: i32) -> Response<Item> {

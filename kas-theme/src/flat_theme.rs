@@ -519,4 +519,9 @@ where
         let col = self.cols.button;
         self.draw.rect(self.pass, inner, col);
     }
+
+    fn image(&mut self, rect: Rect) {
+        let rect = Quad::from(rect + self.offset);
+        self.shared.draw_image(&mut self.draw, self.pass, rect);
+    }
 }

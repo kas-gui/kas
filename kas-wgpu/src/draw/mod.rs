@@ -11,6 +11,7 @@ mod custom;
 mod draw_pipe;
 mod draw_text;
 mod flat_round;
+mod images;
 mod shaded_round;
 mod shaded_square;
 mod shaders;
@@ -48,6 +49,7 @@ impl From<kas::draw::Colour> for Rgb {
 pub struct DrawPipe<C> {
     local_pool: futures::executor::LocalPool,
     staging_belt: wgpu::util::StagingBelt,
+    images: images::Pipeline,
     shaded_square: shaded_square::Pipeline,
     shaded_round: shaded_round::Pipeline,
     flat_round: flat_round::Pipeline,
@@ -60,6 +62,7 @@ type GlyphBrush = wgpu_glyph::GlyphBrush<(), FontRef<'static>>;
 pub struct DrawWindow<CW: CustomWindow> {
     scale_buf: wgpu::Buffer,
     clip_regions: Vec<Rect>,
+    images: images::Window,
     shaded_square: shaded_square::Window,
     shaded_round: shaded_round::Window,
     flat_round: flat_round::Window,

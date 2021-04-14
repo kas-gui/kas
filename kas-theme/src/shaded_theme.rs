@@ -442,4 +442,8 @@ where
         self.draw
             .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
     }
+
+    fn image(&mut self, rect: Rect) {
+        self.as_flat().image(rect);
+    }
 }
