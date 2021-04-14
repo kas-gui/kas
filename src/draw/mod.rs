@@ -83,7 +83,7 @@ impl Pass {
 }
 
 /// Bounds on type shared across [`Draw`] implementations
-pub trait DrawShared {
+pub trait DrawShared: 'static {
     type Draw: Draw;
 }
 

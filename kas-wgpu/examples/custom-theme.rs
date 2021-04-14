@@ -47,7 +47,7 @@ thread_local! {
     static BACKGROUND: Cell<Colour> = Cell::new(Colour::grey(1.0));
 }
 
-impl<D: DrawShared + 'static> Theme<D> for CustomTheme
+impl<D: DrawShared> Theme<D> for CustomTheme
 where
     D::Draw: DrawRounded + DrawText,
 {
@@ -73,20 +73,22 @@ where
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
+        shared: &mut D,
         draw: &mut D::Draw,
         window: &mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle {
-        Theme::<D>::draw_handle(&self.inner, draw, window, rect)
+        Theme::<D>::draw_handle(&self.inner, shared, draw, window, rect)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
+        shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle<'a> {
-        Theme::<D>::draw_handle(&self.inner, draw, window, rect)
+        Theme::<D>::draw_handle(&self.inner, shared, draw, window, rect)
     }
 
     fn clear_color(&self) -> Colour {

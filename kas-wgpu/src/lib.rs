@@ -79,13 +79,13 @@ impl From<wgpu::RequestDeviceError> for Error {
 /// little reason to do so (and some reason not to: KISS).
 pub struct Toolkit<C: CustomPipe, T: Theme<DrawPipe<C>>> {
     el: EventLoop<ProxyAction>,
-    windows: Vec<Window<C::Window, T::Window>>,
+    windows: Vec<Window<C, T>>,
     shared: SharedState<C, T>,
 }
 
 impl<T: Theme<DrawPipe<()>> + 'static> Toolkit<(), T>
 where
-    T::Window: kas_theme::Window,
+    T::Window: kas_theme::Window<DrawPipe<()>>,
 {
     /// Construct a new instance with default options.
     ///
@@ -97,9 +97,9 @@ where
     }
 }
 
-impl<C: CustomPipe + 'static, T: Theme<DrawPipe<C>> + 'static> Toolkit<C, T>
+impl<C: CustomPipe, T: Theme<DrawPipe<C>> + 'static> Toolkit<C, T>
 where
-    T::Window: kas_theme::Window,
+    T::Window: kas_theme::Window<DrawPipe<C>>,
 {
     /// Construct an instance with custom options
     ///

@@ -22,6 +22,13 @@ pub trait DrawCustom<CW: CustomWindow> {
 pub trait CustomPipeBuilder {
     type Pipe: CustomPipe;
 
+    /// Request a device supporting these features and limits
+    ///
+    /// See [`wgpu::Adapter::request_device`] and [`wgpu::DeviceDescriptor`] doc.
+    fn device_descriptor() -> wgpu::DeviceDescriptor<'static> {
+        Default::default()
+    }
+
     /// Build a pipe
     ///
     /// The given texture format and depth format should be used to construct a
@@ -46,21 +53,32 @@ pub trait CustomPipeBuilder {
 /// Note that `kas-wgpu` accepts only a single custom pipe. To use more than
 /// one, you will have to implement your own multiplexer (presumably using an
 /// enum for the `Param` type).
-pub trait CustomPipe {
+pub trait CustomPipe: 'static {
     /// Associated per-window state for the custom pipe
-    type Window: CustomWindow + 'static;
+    type Window: CustomWindow;
 
     /// Construct a window associated with this pipeline
-    fn new_window(&self, device: &wgpu::Device, size: Size) -> Self::Window;
+    ///
+    /// The `scale_buf` is a shared buffer containing
+    /// `[2.0 / size.0 as f32, -2.0 / size.1 as f32]`. It is updated whenever
+    /// the window is resized.
+    fn new_window(
+        &self,
+        device: &wgpu::Device,
+        scale_buf: &wgpu::Buffer,
+        size: Size,
+    ) -> Self::Window;
 
     /// Called whenever the window is resized
     fn resize(
         &self,
         window: &mut Self::Window,
         device: &wgpu::Device,
-        encoder: &mut wgpu::CommandEncoder,
+        queue: &wgpu::Queue,
         size: Size,
-    );
+    ) {
+        let _ = (window, device, queue, size);
+    }
 
     /// Per-frame updates
     ///
@@ -68,13 +86,7 @@ pub trait CustomPipe {
     /// example be used to update uniform buffers.
     ///
     /// This method is optional; by default it does nothing.
-    fn update(
-        &self,
-        _window: &mut Self::Window,
-        _device: &wgpu::Device,
-        _encoder: &mut wgpu::CommandEncoder,
-    ) {
-    }
+    fn update(&self, _window: &mut Self::Window, _device: &wgpu::Device, _queue: &wgpu::Queue) {}
 
     /// Render (pass)
     ///
@@ -129,7 +141,7 @@ pub trait CustomPipe {
 /// One instance is constructed per window. Since the [`CustomPipe`] is not
 /// accessible during a widget's [`kas::Layout::draw`] calls, this struct must
 /// batch per-frame draw data.
-pub trait CustomWindow {
+pub trait CustomWindow: 'static {
     /// User parameter type
     type Param;
 
@@ -158,17 +170,10 @@ pub enum Void {}
 /// A dummy implementation (does nothing)
 impl CustomPipe for () {
     type Window = ();
-    fn new_window(&self, _: &wgpu::Device, _: Size) -> Self::Window {
+    fn new_window(&self, _: &wgpu::Device, _: &wgpu::Buffer, _: Size) -> Self::Window {
         ()
     }
-    fn resize(
-        &self,
-        _: &mut Self::Window,
-        _: &wgpu::Device,
-        _: &mut wgpu::CommandEncoder,
-        _: Size,
-    ) {
-    }
+    fn resize(&self, _: &mut Self::Window, _: &wgpu::Device, _: &wgpu::Queue, _: Size) {}
 }
 
 /// A dummy implementation (does nothing)

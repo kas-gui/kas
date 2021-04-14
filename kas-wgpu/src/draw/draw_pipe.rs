@@ -7,6 +7,7 @@
 
 use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
+use wgpu::util::DeviceExt;
 use wgpu::TextureView;
 use wgpu_glyph::{ab_glyph::FontRef, GlyphBrushBuilder};
 
@@ -70,6 +71,14 @@ impl<C: CustomPipe> DrawPipe<C> {
 
     /// Construct per-window state
     pub fn new_window(&self, device: &wgpu::Device, size: Size) -> DrawWindow<C::Window> {
+        type Scale = [f32; 2];
+        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
+        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("SR scale_buf"),
+            contents: bytemuck::cast_slice(&scale_factor),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
+
         // Light dir: `(a, b)` where `0 ≤ a < pi/2` is the angle to the screen
         // normal (i.e. `a = 0` is straight at the screen) and `b` is the bearing
         // (from UP, clockwise), both in radians.
@@ -79,14 +88,24 @@ impl<C: CustomPipe> DrawPipe<C> {
         let a = (dir.0.sin(), dir.0.cos());
         // We normalise intensity:
         let f = a.0 / a.1;
-        let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
+        let light_norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
+
+        let light_norm_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("SR light_norm_buf"),
+            contents: bytemuck::cast_slice(&light_norm),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
 
         let rect = Rect::new(Coord::ZERO, size);
 
-        let shaded_square = self.shaded_square.new_window(device, size, norm);
-        let shaded_round = self.shaded_round.new_window(device, size, norm);
-        let flat_round = self.flat_round.new_window(device, size);
-        let custom = self.custom.new_window(device, size);
+        let shaded_square = self
+            .shaded_square
+            .new_window(device, &scale_buf, &light_norm_buf);
+        let shaded_round = self
+            .shaded_round
+            .new_window(device, &scale_buf, &light_norm_buf);
+        let flat_round = self.flat_round.new_window(device, &scale_buf);
+        let custom = self.custom.new_window(device, &scale_buf, size);
 
         // TODO: use extra caching so we don't load font for each window
         let font_data = kas::text::fonts::fonts().font_data();
@@ -100,6 +119,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             .build(device, TEX_FORMAT);
 
         DrawWindow {
+            scale_buf,
             depth: make_depth_texture(device, size),
             clip_regions: vec![rect],
             shaded_square,
@@ -116,19 +136,18 @@ impl<C: CustomPipe> DrawPipe<C> {
         &self,
         window: &mut DrawWindow<C::Window>,
         device: &wgpu::Device,
+        queue: &wgpu::Queue,
         size: Size,
-    ) -> wgpu::CommandBuffer {
+    ) {
         window.depth = make_depth_texture(device, size);
         window.clip_regions[0].size = size;
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("resize"),
-        });
-        window.shaded_square.resize(device, &mut encoder, size);
-        window.shaded_round.resize(device, &mut encoder, size);
-        self.custom
-            .resize(&mut window.custom, device, &mut encoder, size);
-        window.flat_round.resize(device, &mut encoder, size);
-        encoder.finish()
+
+        let scale_factor = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
+        queue.write_buffer(&window.scale_buf, 0, bytemuck::cast_slice(&scale_factor));
+
+        self.custom.resize(&mut window.custom, device, queue, size);
+
+        queue.submit(std::iter::empty());
     }
 
     /// Render batched draw instructions via `rpass`
@@ -140,11 +159,11 @@ impl<C: CustomPipe> DrawPipe<C> {
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) {
+        self.custom.update(&mut window.custom, device, queue);
+
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("render"),
         });
-
-        self.custom.update(&mut window.custom, device, &mut encoder);
 
         let mut color_attachments = [wgpu::RenderPassColorAttachmentDescriptor {
             attachment: frame_view,
@@ -254,7 +273,7 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
 }
 
-impl<CW: CustomWindow + 'static> Draw for DrawWindow<CW> {
+impl<CW: CustomWindow> Draw for DrawWindow<CW> {
     #[inline]
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
@@ -282,7 +301,7 @@ impl<CW: CustomWindow + 'static> Draw for DrawWindow<CW> {
     }
 }
 
-impl<CW: CustomWindow + 'static> DrawRounded for DrawWindow<CW> {
+impl<CW: CustomWindow> DrawRounded for DrawWindow<CW> {
     #[inline]
     fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
         self.flat_round.line(pass, p1, p2, radius, col);
@@ -307,7 +326,7 @@ impl<CW: CustomWindow + 'static> DrawRounded for DrawWindow<CW> {
     }
 }
 
-impl<CW: CustomWindow + 'static> DrawShaded for DrawWindow<CW> {
+impl<CW: CustomWindow> DrawShaded for DrawWindow<CW> {
     #[inline]
     fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Colour) {
         self.shaded_square

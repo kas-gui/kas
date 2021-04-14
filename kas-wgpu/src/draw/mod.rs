@@ -81,6 +81,7 @@ type GlyphBrush = wgpu_glyph::GlyphBrush<DepthStencilState, FontRef<'static>>;
 
 /// Per-window pipeline data
 pub struct DrawWindow<CW: CustomWindow> {
+    scale_buf: wgpu::Buffer,
     depth: Option<wgpu::TextureView>,
     clip_regions: Vec<Rect>,
     shaded_square: shaded_square::Window,

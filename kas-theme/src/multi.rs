@@ -101,8 +101,8 @@ impl<Draw> MultiThemeBuilder<Draw> {
     }
 }
 
-impl<D: DrawShared + 'static> Theme<D> for MultiTheme<D> {
-    type Window = StackDst<dyn WindowDst>;
+impl<D: DrawShared> Theme<D> for MultiTheme<D> {
+    type Window = StackDst<dyn WindowDst<D>>;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = StackDst<dyn DrawHandle>;
@@ -126,21 +126,23 @@ impl<D: DrawShared + 'static> Theme<D> for MultiTheme<D> {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle<'a>(
         &'a self,
+        shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> StackDst<dyn DrawHandle> {
-        self.themes[self.active].draw_handle(draw, window, rect)
+        self.themes[self.active].draw_handle(shared, draw, window, rect)
     }
 
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
+        shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> StackDst<dyn DrawHandle + 'a> {
-        self.themes[self.active].draw_handle(draw, window, rect)
+        self.themes[self.active].draw_handle(shared, draw, window, rect)
     }
 
     fn clear_color(&self) -> Colour {

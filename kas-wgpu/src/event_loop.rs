@@ -22,12 +22,12 @@ use crate::shared::{PendingAction, SharedState};
 use crate::{ProxyAction, Window, WindowId};
 
 /// Event-loop data structure (i.e. all run-time state)
-pub(crate) struct Loop<C: CustomPipe + 'static, T: Theme<DrawPipe<C>>>
+pub(crate) struct Loop<C: CustomPipe, T: Theme<DrawPipe<C>>>
 where
-    T::Window: kas_theme::Window,
+    T::Window: kas_theme::Window<DrawPipe<C>>,
 {
     /// Window states
-    windows: HashMap<ww::WindowId, Window<C::Window, T::Window>>,
+    windows: HashMap<ww::WindowId, Window<C, T>>,
     /// Translates our WindowId to winit's
     id_map: HashMap<WindowId, ww::WindowId>,
     /// Shared data passed from Toolkit
@@ -36,14 +36,11 @@ where
     resumes: Vec<(Instant, ww::WindowId)>,
 }
 
-impl<C: CustomPipe + 'static, T: Theme<DrawPipe<C>>> Loop<C, T>
+impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Loop<C, T>
 where
-    T::Window: kas_theme::Window,
+    T::Window: kas_theme::Window<DrawPipe<C>>,
 {
-    pub(crate) fn new(
-        mut windows: Vec<Window<C::Window, T::Window>>,
-        shared: SharedState<C, T>,
-    ) -> Self {
+    pub(crate) fn new(mut windows: Vec<Window<C, T>>, shared: SharedState<C, T>) -> Self {
         let id_map = windows
             .iter()
             .map(|w| (w.window_id, w.window.id()))

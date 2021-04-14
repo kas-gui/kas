@@ -11,7 +11,7 @@ use wgpu::util::DeviceExt;
 use crate::draw::{Rgb, ShaderManager};
 use kas::cast::Cast;
 use kas::draw::{Colour, Pass};
-use kas::geom::{Quad, Size, Vec2, Vec3};
+use kas::geom::{Quad, Vec2, Vec3};
 
 /// Offset relative to the size of a pixel used by the fragment shader to
 /// implement multi-sampling.
@@ -39,7 +39,6 @@ pub struct Pipeline {
 /// Per-window state
 pub struct Window {
     bind_group: wgpu::BindGroup,
-    scale_buf: wgpu::Buffer,
     passes: Vec<Vec<Vertex>>,
 }
 
@@ -147,15 +146,7 @@ impl Pipeline {
     }
 
     /// Construct per-window state
-    pub fn new_window(&self, device: &wgpu::Device, size: Size) -> Window {
-        type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("FR scale_buf"),
-            contents: bytemuck::cast_slice(&scale_factor),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
-
+    pub fn new_window(&self, device: &wgpu::Device, scale_buf: &wgpu::Buffer) -> Window {
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("FR bind_group"),
             layout: &self.bind_group_layout,
@@ -171,7 +162,6 @@ impl Pipeline {
 
         Window {
             bind_group,
-            scale_buf,
             passes: vec![],
         }
     }
@@ -204,24 +194,6 @@ impl Pipeline {
 }
 
 impl Window {
-    pub fn resize(
-        &mut self,
-        device: &wgpu::Device,
-        encoder: &mut wgpu::CommandEncoder,
-        size: Size,
-    ) {
-        type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("FR scale_buf copy"),
-            contents: bytemuck::cast_slice(&scale_factor),
-            usage: wgpu::BufferUsage::COPY_SRC,
-        });
-        let byte_len = size_of::<Scale>().cast();
-
-        encoder.copy_buffer_to_buffer(&scale_buf, 0, &self.scale_buf, 0, byte_len);
-    }
-
     pub fn line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
         if p1 == p2 {
             let a = p1 - radius;

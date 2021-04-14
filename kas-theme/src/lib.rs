@@ -50,7 +50,7 @@ pub use traits::{Theme, Window};
 /// convenient API.
 ///
 /// **Feature gated**: this is only available with feature `stack_dst`.
-pub type StackDst<T> = stack_dst_::ValueA<T, [usize; 8]>;
+pub type StackDst<T> = stack_dst_::ValueA<T, [usize; 9]>;
 
 /// The initial [`Pass`] value for a window
 // NOTE: depth values between 0 and 1 are drawn.
