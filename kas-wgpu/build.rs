@@ -68,14 +68,14 @@ fn walk(pat: &str, shaderc: &Option<String>, runners: &mut Vec<Child>) {
             if let Some(bin) = shaderc.as_ref() {
                 let mut cmd = Command::new(bin);
                 cmd.arg(&path).arg("-o").arg(&path_spv);
-                println!("Launching: {:?}", cmd);
+                eprintln!("Launching: {:?}", cmd);
                 runners.push(cmd.spawn().expect("shader compiler failed to start"));
             } else {
-                println!(
+                eprintln!(
                     "cargo:warning=Shader compilation required: {}",
                     path.display()
                 );
-                println!("cargo:warning=No shader found. If you have a shader compiler such as glslc installed, try setting SHADERC=glslc");
+                eprintln!("cargo:warning=No shader found. If you have a shader compiler such as glslc installed, try setting SHADERC=glslc");
             }
         }
     }
