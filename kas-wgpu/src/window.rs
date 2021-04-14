@@ -92,7 +92,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             format: TEX_FORMAT,
             width: size.0.cast(),
             height: size.1.cast(),
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode: wgpu::PresentMode::Mailbox,
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
 
