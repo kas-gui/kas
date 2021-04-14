@@ -7,6 +7,7 @@
 
 use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
+use wgpu::util::DeviceExt;
 use wgpu::TextureView;
 use wgpu_glyph::{ab_glyph::FontRef, GlyphBrushBuilder};
 
@@ -70,6 +71,14 @@ impl<C: CustomPipe> DrawPipe<C> {
 
     /// Construct per-window state
     pub fn new_window(&self, device: &wgpu::Device, size: Size) -> DrawWindow<C::Window> {
+        type Scale = [f32; 2];
+        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
+        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("SR scale_buf"),
+            contents: bytemuck::cast_slice(&scale_factor),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
+
         // Light dir: `(a, b)` where `0 ≤ a < pi/2` is the angle to the screen
         // normal (i.e. `a = 0` is straight at the screen) and `b` is the bearing
         // (from UP, clockwise), both in radians.
@@ -79,13 +88,23 @@ impl<C: CustomPipe> DrawPipe<C> {
         let a = (dir.0.sin(), dir.0.cos());
         // We normalise intensity:
         let f = a.0 / a.1;
-        let norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
+        let light_norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
+
+        let light_norm_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("SR light_norm_buf"),
+            contents: bytemuck::cast_slice(&light_norm),
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+        });
 
         let rect = Rect::new(Coord::ZERO, size);
 
-        let shaded_square = self.shaded_square.new_window(device, size, norm);
-        let shaded_round = self.shaded_round.new_window(device, size, norm);
-        let flat_round = self.flat_round.new_window(device, size);
+        let shaded_square = self
+            .shaded_square
+            .new_window(device, &scale_buf, &light_norm_buf);
+        let shaded_round = self
+            .shaded_round
+            .new_window(device, &scale_buf, &light_norm_buf);
+        let flat_round = self.flat_round.new_window(device, &scale_buf);
         let custom = self.custom.new_window(device, size);
 
         // TODO: use extra caching so we don't load font for each window
@@ -100,6 +119,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             .build(device, TEX_FORMAT);
 
         DrawWindow {
+            scale_buf,
             depth: make_depth_texture(device, size),
             clip_regions: vec![rect],
             shaded_square,
@@ -121,10 +141,12 @@ impl<C: CustomPipe> DrawPipe<C> {
     ) {
         window.depth = make_depth_texture(device, size);
         window.clip_regions[0].size = size;
-        window.shaded_square.resize(queue, size);
-        window.shaded_round.resize(queue, size);
+
+        let scale_factor = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
+        queue.write_buffer(&window.scale_buf, 0, bytemuck::cast_slice(&scale_factor));
+
         self.custom.resize(&mut window.custom, device, queue, size);
-        window.flat_round.resize(queue, size);
+
         queue.submit(std::iter::empty());
     }
 

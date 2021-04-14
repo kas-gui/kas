@@ -12,7 +12,7 @@ use wgpu::util::DeviceExt;
 use crate::draw::{Rgb, ShaderManager};
 use kas::cast::Cast;
 use kas::draw::{Colour, Pass};
-use kas::geom::{Quad, Size, Vec2, Vec3};
+use kas::geom::{Quad, Vec2, Vec3};
 
 /// Offset relative to the size of a pixel used by the fragment shader to
 /// implement multi-sampling.
@@ -40,7 +40,6 @@ pub struct Pipeline {
 /// Per-window state
 pub struct Window {
     bind_group: wgpu::BindGroup,
-    scale_buf: wgpu::Buffer,
     passes: Vec<Vec<Vertex>>,
 }
 
@@ -159,21 +158,12 @@ impl Pipeline {
     }
 
     /// Construct per-window state
-    pub fn new_window(&self, device: &wgpu::Device, size: Size, light_norm: [f32; 3]) -> Window {
-        type Scale = [f32; 2];
-        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SR scale_buf"),
-            contents: bytemuck::cast_slice(&scale_factor),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
-
-        let light_norm_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SR light_norm_buf"),
-            contents: bytemuck::cast_slice(&light_norm),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
-
+    pub fn new_window(
+        &self,
+        device: &wgpu::Device,
+        scale_buf: &wgpu::Buffer,
+        light_norm_buf: &wgpu::Buffer,
+    ) -> Window {
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("SR bind_group"),
             layout: &self.bind_group_layout,
@@ -199,7 +189,6 @@ impl Pipeline {
 
         Window {
             bind_group,
-            scale_buf,
             passes: vec![],
         }
     }
@@ -232,11 +221,6 @@ impl Pipeline {
 }
 
 impl Window {
-    pub fn resize(&mut self, queue: &wgpu::Queue, size: Size) {
-        let scale_factor = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        queue.write_buffer(&self.scale_buf, 0, bytemuck::cast_slice(&scale_factor));
-    }
-
     /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
     pub fn circle(&mut self, pass: Pass, rect: Quad, mut norm: Vec2, col: Colour) {
         let aa = rect.a;
