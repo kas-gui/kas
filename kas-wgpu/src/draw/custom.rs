@@ -58,7 +58,16 @@ pub trait CustomPipe: 'static {
     type Window: CustomWindow;
 
     /// Construct a window associated with this pipeline
-    fn new_window(&self, device: &wgpu::Device, size: Size) -> Self::Window;
+    ///
+    /// The `scale_buf` is a shared buffer containing
+    /// `[2.0 / size.0 as f32, -2.0 / size.1 as f32]`. It is updated whenever
+    /// the window is resized.
+    fn new_window(
+        &self,
+        device: &wgpu::Device,
+        scale_buf: &wgpu::Buffer,
+        size: Size,
+    ) -> Self::Window;
 
     /// Called whenever the window is resized
     fn resize(
@@ -67,7 +76,9 @@ pub trait CustomPipe: 'static {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         size: Size,
-    );
+    ) {
+        let _ = (window, device, queue, size);
+    }
 
     /// Per-frame updates
     ///
@@ -159,7 +170,7 @@ pub enum Void {}
 /// A dummy implementation (does nothing)
 impl CustomPipe for () {
     type Window = ();
-    fn new_window(&self, _: &wgpu::Device, _: Size) -> Self::Window {
+    fn new_window(&self, _: &wgpu::Device, _: &wgpu::Buffer, _: Size) -> Self::Window {
         ()
     }
     fn resize(&self, _: &mut Self::Window, _: &wgpu::Device, _: &wgpu::Queue, _: Size) {}

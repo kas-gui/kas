@@ -166,11 +166,8 @@ struct Pipe {
     render_pipeline: wgpu::RenderPipeline,
 }
 
-type Scale = [f32; 2];
-
 struct PipeWindow {
     bind_group: wgpu::BindGroup,
-    scale_buf: wgpu::Buffer,
     push_constants: PushConstants,
     passes: Vec<(Vec<Vertex>, Option<Buffer>, u32)>,
 }
@@ -178,14 +175,7 @@ struct PipeWindow {
 impl CustomPipe for Pipe {
     type Window = PipeWindow;
 
-    fn new_window(&self, device: &wgpu::Device, size: Size) -> Self::Window {
-        let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&scale_factor),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
-
+    fn new_window(&self, device: &wgpu::Device, scale_buf: &wgpu::Buffer, _: Size) -> Self::Window {
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &self.bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
@@ -207,15 +197,9 @@ impl CustomPipe for Pipe {
 
         PipeWindow {
             bind_group,
-            scale_buf,
             push_constants,
             passes: vec![],
         }
-    }
-
-    fn resize(&self, window: &mut Self::Window, _: &wgpu::Device, queue: &wgpu::Queue, size: Size) {
-        let scale_factor = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        queue.write_buffer(&window.scale_buf, 0, bytemuck::cast_slice(&scale_factor));
     }
 
     fn update(&self, window: &mut Self::Window, device: &wgpu::Device, _: &wgpu::Queue) {

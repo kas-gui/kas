@@ -105,7 +105,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             .shaded_round
             .new_window(device, &scale_buf, &light_norm_buf);
         let flat_round = self.flat_round.new_window(device, &scale_buf);
-        let custom = self.custom.new_window(device, size);
+        let custom = self.custom.new_window(device, &scale_buf, size);
 
         // TODO: use extra caching so we don't load font for each window
         let font_data = kas::text::fonts::fonts().font_data();
