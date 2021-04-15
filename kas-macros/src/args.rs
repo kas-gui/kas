@@ -195,6 +195,7 @@ mod kw {
     custom_keyword!(down);
     custom_keyword!(up);
     custom_keyword!(grid);
+    custom_keyword!(align);
     custom_keyword!(halign);
     custom_keyword!(valign);
     custom_keyword!(key_nav);
@@ -316,6 +317,16 @@ impl Parse for WidgetAttrArgs {
                 let _: kw::rspan = content.parse()?;
                 let _: Eq = content.parse()?;
                 args.rspan = Some(content.parse()?);
+            } else if args.halign.is_none() && args.valign.is_none() && lookahead.peek(kw::align) {
+                let _: kw::align = content.parse()?;
+                let _: Eq = content.parse()?;
+                let ident: Ident = content.parse()?;
+                if ident == "centre" || ident == "center" {
+                    args.halign = Some(ident.clone());
+                    args.valign = Some(ident);
+                } else {
+                    return Err(Error::new(ident.span(), "expected `centre` or `center`"));
+                }
             } else if args.halign.is_none() && lookahead.peek(kw::halign) {
                 let _: kw::halign = content.parse()?;
                 let _: Eq = content.parse()?;

@@ -72,6 +72,14 @@ impl From<wgpu::RequestDeviceError> for Error {
     }
 }
 
+fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
+    log::warn!("{}: {}", msg, error);
+    while let Some(source) = error.source() {
+        log::warn!("Source: {}", source);
+        error = source;
+    }
+}
+
 /// A toolkit over winit and WebGPU
 ///
 /// All KAS shells are expected to provide a similar `Toolkit` type and API.

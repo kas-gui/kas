@@ -72,12 +72,11 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
 
     fn open_menu(&mut self, mgr: &mut Manager) {
         if self.popup_id.is_none() {
-            let id = mgr.add_popup(kas::Popup {
+            self.popup_id = mgr.add_popup(kas::Popup {
                 id: self.list.id(),
                 parent: self.id(),
                 direction: self.direction.as_direction(),
             });
-            self.popup_id = Some(id);
             mgr.next_nav_focus(self, false);
         }
     }

@@ -486,9 +486,8 @@ impl<T: MatrixData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::Item>> Layout fo
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
         let offset = self.scroll_offset();
-        use kas::draw::ClipRegion::Scroll;
         let num = usize::conv(self.cur_len.0) * usize::conv(self.cur_len.1);
-        draw_handle.clip_region(self.core.rect, offset, Scroll, &mut |draw_handle| {
+        draw_handle.clip_region(self.core.rect, offset, &mut |draw_handle| {
             for child in &self.widgets[..num] {
                 if let Some(ref key) = child.key {
                     child.widget.draw(draw_handle, mgr, disabled);

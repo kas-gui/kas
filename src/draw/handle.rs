@@ -7,6 +7,7 @@
 
 use std::convert::AsRef;
 use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
+use std::path::Path;
 
 use kas::dir::Direction;
 use kas::draw::{Draw, Pass};
@@ -17,12 +18,6 @@ use kas::text::{format::FormattableText, AccelString, Text, TextApi, TextDisplay
 // for doc use
 #[allow(unused)]
 use kas::text::TextApiExt;
-
-/// Classification of a clip region
-pub enum ClipRegion {
-    Popup,
-    Scroll,
-}
 
 /// Input and highlighting state of a widget
 ///
@@ -229,6 +224,23 @@ pub trait SizeHandle {
     /// that the width is adjustable while the height is (preferably) not.
     /// For a vertical bar, the values are swapped.
     fn progress_bar(&self) -> Size;
+
+    /// Load an image (potentially async)
+    ///
+    /// The theme will attempt to load the given image. In case loading fails a
+    /// warning will be logged and a placeholder may be used.
+    ///
+    /// Image resources are deduplicated through the path lookup and have a
+    /// use count. This method increments the use-count.
+    fn load_image(&mut self, path: &Path);
+
+    /// Get image size
+    ///
+    /// If loading is in progress (see [`SizeHandle::load_image`]), this blocks
+    /// until done.
+    ///
+    /// Returns `None` if the resource is not found or failed to load.
+    fn image(&self) -> Option<Size>;
 }
 
 /// Handle passed to objects during draw operations
@@ -278,13 +290,7 @@ pub trait DrawHandle {
     /// The new `rect` may extend beyond the current draw region. If it extends
     /// beyond the bounds of the window, it will be silently reduced to that of
     /// the window.
-    fn clip_region(
-        &mut self,
-        rect: Rect,
-        offset: Offset,
-        class: ClipRegion,
-        f: &mut dyn FnMut(&mut dyn DrawHandle),
-    );
+    fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle));
 
     /// Target area for drawing
     ///
@@ -415,6 +421,9 @@ pub trait DrawHandle {
     /// -   `state`: highlighting information
     /// -   `value`: progress value, between 0.0 and 1.0
     fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32);
+
+    /// Draw an image
+    fn image(&mut self, rect: Rect);
 }
 
 /// Extension trait over [`DrawHandle`]
@@ -544,6 +553,12 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn progress_bar(&self) -> Size {
         self.deref().progress_bar()
     }
+    fn load_image(&mut self, path: &Path) {
+        self.deref_mut().load_image(path);
+    }
+    fn image(&self) -> Option<Size> {
+        self.deref().image()
+    }
 }
 
 #[cfg(feature = "stack_dst")]
@@ -617,6 +632,12 @@ where
     fn progress_bar(&self) -> Size {
         self.deref().progress_bar()
     }
+    fn load_image(&mut self, path: &Path) {
+        self.deref_mut().load_image(path);
+    }
+    fn image(&self) -> Option<Size> {
+        self.deref().image()
+    }
 }
 
 impl<H: DrawHandle> DrawHandle for Box<H> {
@@ -626,14 +647,8 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
-    fn clip_region(
-        &mut self,
-        rect: Rect,
-        offset: Offset,
-        class: ClipRegion,
-        f: &mut dyn FnMut(&mut dyn DrawHandle),
-    ) {
-        self.deref_mut().clip_region(rect, offset, class, f)
+    fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
+        self.deref_mut().clip_region(rect, offset, f)
     }
     fn target_rect(&self) -> Rect {
         self.deref().target_rect()
@@ -717,6 +732,9 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     }
     fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32) {
         self.deref_mut().progress_bar(rect, dir, state, value);
+    }
+    fn image(&mut self, rect: Rect) {
+        self.deref_mut().image(rect);
     }
 }
 
@@ -731,14 +749,8 @@ where
     fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
-    fn clip_region(
-        &mut self,
-        rect: Rect,
-        offset: Offset,
-        class: ClipRegion,
-        f: &mut dyn FnMut(&mut dyn DrawHandle),
-    ) {
-        self.deref_mut().clip_region(rect, offset, class, f)
+    fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
+        self.deref_mut().clip_region(rect, offset, f)
     }
     fn target_rect(&self) -> Rect {
         self.deref().target_rect()
@@ -822,6 +834,9 @@ where
     }
     fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32) {
         self.deref_mut().progress_bar(rect, dir, state, value);
+    }
+    fn image(&mut self, rect: Rect) {
+        self.deref_mut().image(rect);
     }
 }
 

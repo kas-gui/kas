@@ -3,26 +3,36 @@
 // You may obtain a copy of the License in the LICENSE-APACHE file or at:
 //     https://www.apache.org/licenses/LICENSE-2.0
 
-//! Simple pipeline for "square" shading
+//! Images pipeline
 
+use image::RgbaImage;
+use log::warn;
 use std::mem::size_of;
+use std::path::Path;
 use wgpu::util::DeviceExt;
 
-use crate::draw::{Rgb, ShaderManager};
+use crate::draw::ShaderManager;
 use kas::cast::Cast;
-use kas::draw::{Colour, Pass};
-use kas::geom::{Quad, Vec2, Vec3};
+use kas::draw::Pass;
+use kas::geom::{Quad, Size, Vec2, Vec3};
+
+const TEXTURE_SIZE: (u32, u32) = (2048, 2048);
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec3, Rgb, Vec2);
+struct Vertex(Vec3, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
 
-/// A pipeline for rendering with flat and square-corner shading
+/// A pipeline for rendering images
 pub struct Pipeline {
     bind_group_layout: wgpu::BindGroupLayout,
     render_pipeline: wgpu::RenderPipeline,
+    tex: wgpu::Texture,
+    view: wgpu::TextureView,
+    sampler: wgpu::Sampler,
+    image: RgbaImage,
+    need_write: bool,
 }
 
 /// Per-window state
@@ -62,7 +72,7 @@ impl Pipeline {
     /// Construct
     pub fn new(device: &wgpu::Device, shaders: &ShaderManager) -> Self {
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("SS bind_group_layout"),
+            label: Some("images bind_group_layout"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
@@ -77,10 +87,19 @@ impl Pipeline {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None, // TODO
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler {
+                        filtering: false,
+                        comparison: false,
                     },
                     count: None,
                 },
@@ -88,21 +107,21 @@ impl Pipeline {
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("SS pipeline_layout"),
+            label: Some("images pipeline_layout"),
             bind_group_layouts: &[&bind_group_layout],
             push_constant_ranges: &[],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("SS render_pipeline"),
+            label: Some("images render_pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shaders.vert_32,
+                module: &shaders.vert_2,
                 entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float2],
+                    attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Float2],
                 }],
             },
             primitive: wgpu::PrimitiveState {
@@ -115,32 +134,58 @@ impl Pipeline {
             depth_stencil: None,
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
-                module: &shaders.frag_shaded_square,
+                module: &shaders.frag_image,
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
                     format: wgpu::TextureFormat::Bgra8UnormSrgb,
                     alpha_blend: wgpu::BlendState::REPLACE,
-                    color_blend: wgpu::BlendState::REPLACE,
+                    color_blend: wgpu::BlendState {
+                        src_factor: wgpu::BlendFactor::SrcAlpha,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    },
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
             }),
         });
 
+        let tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("loaded image"),
+            size: wgpu::Extent3d {
+                width: TEXTURE_SIZE.0,
+                height: TEXTURE_SIZE.1,
+                depth: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
+        });
+
+        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("image sampler"),
+            mag_filter: wgpu::FilterMode::Nearest,
+            min_filter: wgpu::FilterMode::Nearest,
+            ..Default::default()
+        });
+
         Pipeline {
             bind_group_layout,
             render_pipeline,
+            tex,
+            view,
+            sampler,
+            image: image::ImageBuffer::from_raw(0, 0, Default::default()).unwrap(),
+            need_write: false,
         }
     }
 
     /// Construct per-window state
-    pub fn new_window(
-        &self,
-        device: &wgpu::Device,
-        scale_buf: &wgpu::Buffer,
-        light_norm_buf: &wgpu::Buffer,
-    ) -> Window {
+    pub fn new_window(&self, device: &wgpu::Device, scale_buf: &wgpu::Buffer) -> Window {
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("SS bind group"),
+            label: Some("images bind_group"),
             layout: &self.bind_group_layout,
             entries: &[
                 wgpu::BindGroupEntry {
@@ -153,11 +198,11 @@ impl Pipeline {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &light_norm_buf,
-                        offset: 0,
-                        size: None,
-                    },
+                    resource: wgpu::BindingResource::TextureView(&self.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
                 },
             ],
         });
@@ -165,6 +210,59 @@ impl Pipeline {
         Window {
             bind_group,
             passes: vec![],
+        }
+    }
+
+    /// Load an image
+    pub fn load(&mut self, path: &Path) {
+        // TODO(opt): we convert to RGBA8 since this is the only format common
+        // to both the image crate and WGPU. It may not be optimal however.
+        // It also assumes that the image colour space is sRGB.
+        match image::io::Reader::open(path)
+            .map_err(|e| image::error::ImageError::IoError(e))
+            .and_then(|r| r.decode())
+        {
+            Ok(image) => {
+                self.image = image.into_rgba8();
+                self.need_write = true;
+            }
+            Err(error) => {
+                warn!("Loading image \"{}\" failed:", path.display());
+                crate::warn_about_error("Cause", &error);
+            }
+        }
+    }
+
+    /// Query image size
+    pub fn image_size(&self) -> (u32, u32) {
+        self.image.dimensions()
+    }
+
+    /// Prepare textures
+    pub fn prepare(&mut self, _: &wgpu::Device, queue: &wgpu::Queue) {
+        if self.need_write {
+            self.need_write = false;
+
+            let size = self.image.dimensions();
+            assert!(size.0 <= TEXTURE_SIZE.0 && size.1 <= TEXTURE_SIZE.1);
+            queue.write_texture(
+                wgpu::TextureCopyView {
+                    texture: &self.tex,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d::ZERO,
+                },
+                &self.image,
+                wgpu::TextureDataLayout {
+                    offset: 0,
+                    bytes_per_row: 4 * size.0,
+                    rows_per_image: size.1,
+                },
+                wgpu::Extent3d {
+                    width: size.0,
+                    height: size.1,
+                    depth: 1,
+                },
+            );
         }
     }
 
@@ -181,7 +279,7 @@ impl Pipeline {
 
         let vertices = &mut window.passes[pass];
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SS render_buf"),
+            label: Some("images render_buf"),
             contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsage::VERTEX,
         });
@@ -197,7 +295,7 @@ impl Pipeline {
 
 impl Window {
     /// Add a rectangle to the buffer
-    pub fn rect(&mut self, pass: Pass, rect: Quad, col: Colour) {
+    pub fn rect(&mut self, pipe: &Pipeline, pass: Pass, rect: Quad) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -212,123 +310,15 @@ impl Window {
         let aa = Vec3::from2(aa, depth);
         let bb = Vec3::from2(bb, depth);
 
-        let col = col.into();
-        let t = Vec2(0.0, 0.0);
+        let taa = Vec2::ZERO;
+        let tbb = Vec2::from(Size::from(pipe.image_size())) / Vec2::from(Size::from(TEXTURE_SIZE));
+        let tab = Vec2(taa.0, tbb.1);
+        let tba = Vec2(tbb.0, taa.1);
 
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[
-            Vertex(aa, col, t), Vertex(ba, col, t), Vertex(ab, col, t),
-            Vertex(ab, col, t), Vertex(ba, col, t), Vertex(bb, col, t),
-        ]);
-    }
-
-    /// Add a rect to the buffer, defined by two outer corners, `aa` and `bb`.
-    ///
-    /// Bounds on input: `aa < cc` and `-1 ≤ norm ≤ 1`.
-    pub fn shaded_rect(&mut self, pass: Pass, rect: Quad, mut norm: Vec2, col: Colour) {
-        let aa = rect.a;
-        let bb = rect.b;
-
-        if !aa.lt(bb) {
-            // zero / negative size: nothing to draw
-            return;
-        }
-        if !Vec2::splat(-1.0).le(norm) || !norm.le(Vec2::splat(1.0)) {
-            norm = Vec2::splat(0.0);
-        }
-
-        let depth = pass.depth();
-        let mid = Vec3::from2((aa + bb) * 0.5, depth);
-        let ab = Vec3(aa.0, bb.1, depth);
-        let ba = Vec3(bb.0, aa.1, depth);
-        let aa = Vec3::from2(aa, depth);
-        let bb = Vec3::from2(bb, depth);
-
-        let col = col.into();
-        let tt = (Vec2(0.0, -norm.1), Vec2(0.0, -norm.0));
-        let tl = (Vec2(-norm.1, 0.0), Vec2(-norm.0, 0.0));
-        let tb = (Vec2(0.0, norm.1), Vec2(0.0, norm.0));
-        let tr = (Vec2(norm.1, 0.0), Vec2(norm.0, 0.0));
-
-        #[rustfmt::skip]
-        self.add_vertices(pass.pass(), &[
-            Vertex(ba, col, tt.0), Vertex(mid, col, tt.1), Vertex(aa, col, tt.0),
-            Vertex(aa, col, tl.0), Vertex(mid, col, tl.1), Vertex(ab, col, tl.0),
-            Vertex(ab, col, tb.0), Vertex(mid, col, tb.1), Vertex(bb, col, tb.0),
-            Vertex(bb, col, tr.0), Vertex(mid, col, tr.1), Vertex(ba, col, tr.0),
-        ]);
-    }
-
-    #[inline]
-    pub fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Colour) {
-        let norm = Vec2::splat(0.0);
-        self.shaded_frame(pass, outer, inner, norm, col);
-    }
-
-    /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
-    /// and two inner corners, `cc` and `dd` with colour `col`.
-    ///
-    /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
-    pub fn shaded_frame(
-        &mut self,
-        pass: Pass,
-        outer: Quad,
-        inner: Quad,
-        mut norm: Vec2,
-        col: Colour,
-    ) {
-        let aa = outer.a;
-        let bb = outer.b;
-        let mut cc = inner.a;
-        let mut dd = inner.b;
-
-        if !aa.lt(bb) {
-            // zero / negative size: nothing to draw
-            return;
-        }
-        if !aa.le(cc) || !cc.le(bb) {
-            cc = aa;
-        }
-        if !aa.le(dd) || !dd.le(bb) {
-            dd = bb;
-        }
-        if !cc.le(dd) {
-            dd = cc;
-        }
-        if !Vec2::splat(-1.0).le(norm) || !norm.le(Vec2::splat(1.0)) {
-            norm = Vec2::splat(0.0);
-        }
-
-        let depth = pass.depth();
-        let ab = Vec3(aa.0, bb.1, depth);
-        let ba = Vec3(bb.0, aa.1, depth);
-        let cd = Vec3(cc.0, dd.1, depth);
-        let dc = Vec3(dd.0, cc.1, depth);
-        let aa = Vec3::from2(aa, depth);
-        let bb = Vec3::from2(bb, depth);
-        let cc = Vec3::from2(cc, depth);
-        let dd = Vec3::from2(dd, depth);
-
-        let col = col.into();
-        let tt = (Vec2(0.0, -norm.1), Vec2(0.0, -norm.0));
-        let tl = (Vec2(-norm.1, 0.0), Vec2(-norm.0, 0.0));
-        let tb = (Vec2(0.0, norm.1), Vec2(0.0, norm.0));
-        let tr = (Vec2(norm.1, 0.0), Vec2(norm.0, 0.0));
-
-        #[rustfmt::skip]
-        self.add_vertices(pass.pass(), &[
-            // top bar: ba - dc - cc - aa
-            Vertex(ba, col, tt.0), Vertex(dc, col, tt.1), Vertex(aa, col, tt.0),
-            Vertex(aa, col, tt.0), Vertex(dc, col, tt.1), Vertex(cc, col, tt.1),
-            // left bar: aa - cc - cd - ab
-            Vertex(aa, col, tl.0), Vertex(cc, col, tl.1), Vertex(ab, col, tl.0),
-            Vertex(ab, col, tl.0), Vertex(cc, col, tl.1), Vertex(cd, col, tl.1),
-            // bottom bar: ab - cd - dd - bb
-            Vertex(ab, col, tb.0), Vertex(cd, col, tb.1), Vertex(bb, col, tb.0),
-            Vertex(bb, col, tb.0), Vertex(cd, col, tb.1), Vertex(dd, col, tb.1),
-            // right bar: bb - dd - dc - ba
-            Vertex(bb, col, tr.0), Vertex(dd, col, tr.1), Vertex(ba, col, tr.0),
-            Vertex(ba, col, tr.0), Vertex(dd, col, tr.1), Vertex(dc, col, tr.1),
+            Vertex(aa, taa), Vertex(ba, tba), Vertex(ab, tab),
+            Vertex(ab, tab), Vertex(ba, tba), Vertex(bb, tbb),
         ]);
     }
 

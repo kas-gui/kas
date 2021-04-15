@@ -7,41 +7,17 @@
 
 use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
+use std::path::Path;
 use wgpu::util::DeviceExt;
-use wgpu::TextureView;
 use wgpu_glyph::{ab_glyph::FontRef, GlyphBrushBuilder};
 
 use super::{
-    flat_round, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow, DrawPipe,
-    DrawWindow, ShaderManager, TEX_FORMAT,
+    flat_round, images, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow,
+    DrawPipe, DrawWindow, ShaderManager, TEX_FORMAT,
 };
 use kas::cast::Cast;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Pass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
-
-fn make_depth_texture(device: &wgpu::Device, size: Size) -> Option<TextureView> {
-    // NOTE: initially the DrawWindow is created with Size::ZERO to calculate
-    // initial window size. Wgpu does not support creation of zero-sized
-    // textures, so as a special case we return None here:
-    if size.0 * size.1 == 0 {
-        return None;
-    }
-
-    let tex = device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("window depth"),
-        size: wgpu::Extent3d {
-            width: size.0.cast(),
-            height: size.1.cast(),
-            depth: 1,
-        },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: super::DEPTH_FORMAT,
-        usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
-    });
-    Some(tex.create_view(&Default::default()))
-}
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
@@ -54,14 +30,16 @@ impl<C: CustomPipe> DrawPipe<C> {
         let staging_belt = wgpu::util::StagingBelt::new(1024);
         let local_pool = futures::executor::LocalPool::new();
 
+        let images = images::Pipeline::new(device, shaders);
         let shaded_square = shaded_square::Pipeline::new(device, shaders);
         let shaded_round = shaded_round::Pipeline::new(device, shaders);
         let flat_round = flat_round::Pipeline::new(device, shaders);
-        let custom = custom.build(&device, TEX_FORMAT, super::DEPTH_FORMAT);
+        let custom = custom.build(&device, TEX_FORMAT);
 
         DrawPipe {
             local_pool,
             staging_belt,
+            images,
             shaded_square,
             shaded_round,
             flat_round,
@@ -98,6 +76,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         let rect = Rect::new(Coord::ZERO, size);
 
+        let images = self.images.new_window(device, &scale_buf);
         let shaded_square = self
             .shaded_square
             .new_window(device, &scale_buf, &light_norm_buf);
@@ -114,14 +93,12 @@ impl<C: CustomPipe> DrawPipe<C> {
             let (data, index) = font_data.get_data(i);
             fonts.push(FontRef::try_from_slice_and_index(data, index).unwrap());
         }
-        let glyph_brush = GlyphBrushBuilder::using_fonts(fonts)
-            .depth_stencil_state(super::GLPYH_DEPTH_DESC)
-            .build(device, TEX_FORMAT);
+        let glyph_brush = GlyphBrushBuilder::using_fonts(fonts).build(device, TEX_FORMAT);
 
         DrawWindow {
             scale_buf,
-            depth: make_depth_texture(device, size),
             clip_regions: vec![rect],
+            images,
             shaded_square,
             shaded_round,
             flat_round,
@@ -139,7 +116,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         queue: &wgpu::Queue,
         size: Size,
     ) {
-        window.depth = make_depth_texture(device, size);
         window.clip_regions[0].size = size;
 
         let scale_factor = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
@@ -159,6 +135,10 @@ impl<C: CustomPipe> DrawPipe<C> {
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) {
+        // TODO: could potentially start preparing images asynchronously after
+        // configure, then join thread and do any final prep now.
+        self.images.prepare(device, queue);
+
         self.custom.update(&mut window.custom, device, queue);
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -173,20 +153,10 @@ impl<C: CustomPipe> DrawPipe<C> {
                 store: true,
             },
         }];
-        let mut depth_stencil_attachment = wgpu::RenderPassDepthStencilAttachmentDescriptor {
-            attachment: window.depth.as_ref().unwrap(),
-            depth_ops: Some(wgpu::Operations {
-                load: wgpu::LoadOp::Clear(kas_theme::START_PASS.depth()),
-                store: true,
-            }),
-            stencil_ops: Some(wgpu::Operations {
-                load: wgpu::LoadOp::Clear(0),
-                store: true,
-            }),
-        };
 
         // We use a separate render pass for each clipped region.
         for (pass, rect) in window.clip_regions.iter().enumerate() {
+            let im = self.images.render_buf(&mut window.images, device, pass);
             let ss = self
                 .shaded_square
                 .render_buf(&mut window.shaded_square, device, pass);
@@ -201,7 +171,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("kas-wgpu render pass"),
                     color_attachments: &color_attachments,
-                    depth_stencil_attachment: Some(depth_stencil_attachment.clone()),
+                    depth_stencil_attachment: None,
                 });
                 rpass.set_scissor_rect(
                     rect.pos.0.cast(),
@@ -210,6 +180,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                     rect.size.1.cast(),
                 );
 
+                im.as_ref().map(|buf| buf.render(&mut rpass));
                 ss.as_ref().map(|buf| buf.render(&mut rpass));
                 sr.as_ref().map(|buf| buf.render(&mut rpass));
                 fr.as_ref().map(|buf| buf.render(&mut rpass));
@@ -218,27 +189,13 @@ impl<C: CustomPipe> DrawPipe<C> {
             }
 
             color_attachments[0].ops.load = wgpu::LoadOp::Load;
-            depth_stencil_attachment.depth_ops = Some(wgpu::Operations {
-                load: wgpu::LoadOp::Load,
-                store: true,
-            });
-            depth_stencil_attachment.stencil_ops = Some(wgpu::Operations {
-                load: wgpu::LoadOp::Load,
-                store: true,
-            });
         }
 
         // Fonts and custom pipes use their own render pass(es).
         let size = window.clip_regions[0].size;
 
-        self.custom.render_final(
-            &mut window.custom,
-            device,
-            &mut encoder,
-            frame_view,
-            depth_stencil_attachment.clone(),
-            size,
-        );
+        self.custom
+            .render_final(&mut window.custom, device, &mut encoder, frame_view, size);
 
         window
             .glyph_brush
@@ -247,7 +204,6 @@ impl<C: CustomPipe> DrawPipe<C> {
                 &mut self.staging_belt,
                 &mut encoder,
                 frame_view,
-                depth_stencil_attachment,
                 size.0.cast(),
                 size.1.cast(),
             )
@@ -271,6 +227,21 @@ impl<C: CustomPipe> DrawPipe<C> {
 
 impl<C: CustomPipe> DrawShared for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
+
+    #[inline]
+    fn load_image(&mut self, path: &Path) {
+        self.images.load(path);
+    }
+
+    #[inline]
+    fn image_size(&self) -> Size {
+        self.images.image_size().into()
+    }
+
+    #[inline]
+    fn draw_image(&self, window: &mut Self::Draw, pass: Pass, rect: Quad) {
+        window.images.rect(&self.images, pass, rect);
+    }
 }
 
 impl<CW: CustomWindow> Draw for DrawWindow<CW> {
@@ -279,7 +250,7 @@ impl<CW: CustomWindow> Draw for DrawWindow<CW> {
         self
     }
 
-    fn add_clip_region(&mut self, rect: Rect, depth: f32) -> Pass {
+    fn add_clip_region(&mut self, rect: Rect) -> Pass {
         let window_rect = self.clip_regions[0];
         let rect = rect.intersection(&window_rect).unwrap_or_else(|| {
             log::warn!("add_clip_region: intersection of rect and window rect is empty");
@@ -287,7 +258,7 @@ impl<CW: CustomWindow> Draw for DrawWindow<CW> {
         });
         let pass = self.clip_regions.len().cast();
         self.clip_regions.push(rect);
-        Pass::new_pass_with_depth(pass, depth)
+        Pass::new(pass)
     }
 
     #[inline]

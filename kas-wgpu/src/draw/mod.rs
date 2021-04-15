@@ -11,42 +11,20 @@ mod custom;
 mod draw_pipe;
 mod draw_text;
 mod flat_round;
+mod images;
 mod shaded_round;
 mod shaded_square;
 mod shaders;
 
 use kas::geom::Rect;
-use wgpu::{CompareFunction, DepthStencilState, TextureFormat};
+use wgpu::TextureFormat;
 use wgpu_glyph::ab_glyph::FontRef;
 
 pub(crate) use shaders::ShaderManager;
 
 pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};
 
-const DEPTH_FORMAT: TextureFormat = TextureFormat::Depth32Float;
 pub(crate) const TEX_FORMAT: TextureFormat = TextureFormat::Bgra8UnormSrgb;
-
-const fn new_depth_desc(depth_compare: CompareFunction) -> DepthStencilState {
-    DepthStencilState {
-        format: DEPTH_FORMAT,
-        depth_write_enabled: true,
-        depth_compare,
-        stencil: wgpu::StencilState {
-            front: wgpu::StencilFaceState::IGNORE,
-            back: wgpu::StencilFaceState::IGNORE,
-            read_mask: 0,
-            write_mask: 0,
-        },
-        bias: wgpu::DepthBiasState {
-            constant: 0,
-            slope_scale: 0.0,
-            clamp: 0.0,
-        },
-        clamp_depth: false,
-    }
-}
-const DEPTH_DESC: DepthStencilState = new_depth_desc(CompareFunction::Always);
-const GLPYH_DEPTH_DESC: DepthStencilState = new_depth_desc(CompareFunction::GreaterEqual);
 
 /// 3-part colour data
 #[repr(C)]
@@ -71,19 +49,20 @@ impl From<kas::draw::Colour> for Rgb {
 pub struct DrawPipe<C> {
     local_pool: futures::executor::LocalPool,
     staging_belt: wgpu::util::StagingBelt,
+    images: images::Pipeline,
     shaded_square: shaded_square::Pipeline,
     shaded_round: shaded_round::Pipeline,
     flat_round: flat_round::Pipeline,
     custom: C,
 }
 
-type GlyphBrush = wgpu_glyph::GlyphBrush<DepthStencilState, FontRef<'static>>;
+type GlyphBrush = wgpu_glyph::GlyphBrush<(), FontRef<'static>>;
 
 /// Per-window pipeline data
 pub struct DrawWindow<CW: CustomWindow> {
     scale_buf: wgpu::Buffer,
-    depth: Option<wgpu::TextureView>,
     clip_regions: Vec<Rect>,
+    images: images::Window,
     shaded_square: shaded_square::Window,
     shaded_round: shaded_round::Window,
     flat_round: flat_round::Window,

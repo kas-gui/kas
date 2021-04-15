@@ -8,11 +8,8 @@
 use wgpu::{include_spirv, ShaderModule};
 
 /// Shader manager
-///
-/// For now, we embed the shader source into the binary and compile on start.
-/// Not really optimal (we could embed SPIR-V directly or load shaders from
-/// external resources), but simple to set up and use.
 pub struct ShaderManager {
+    pub vert_2: ShaderModule,
     pub vert_3122: ShaderModule,
     pub vert_32: ShaderModule,
     pub vert_322: ShaderModule,
@@ -20,9 +17,10 @@ pub struct ShaderManager {
     pub frag_flat_round: ShaderModule,
     pub frag_shaded_square: ShaderModule,
     pub frag_shaded_round: ShaderModule,
+    pub frag_image: ShaderModule,
 }
 
-macro_rules! compile {
+macro_rules! create {
     ($device:ident, $path:expr) => {{
         $device.create_shader_module(&include_spirv!($path))
     }};
@@ -30,16 +28,19 @@ macro_rules! compile {
 
 impl ShaderManager {
     pub fn new(device: &wgpu::Device) -> Self {
-        let vert_3122 = compile!(device, "shaders/scaled3122.vert.spv");
-        let vert_32 = compile!(device, "shaders/scaled32.vert.spv");
-        let vert_322 = compile!(device, "shaders/scaled322.vert.spv");
-        let vert_3222 = compile!(device, "shaders/scaled3222.vert.spv");
+        let vert_2 = create!(device, "shaders/scaled2.vert.spv");
+        let vert_3122 = create!(device, "shaders/scaled3122.vert.spv");
+        let vert_32 = create!(device, "shaders/scaled32.vert.spv");
+        let vert_322 = create!(device, "shaders/scaled322.vert.spv");
+        let vert_3222 = create!(device, "shaders/scaled3222.vert.spv");
 
-        let frag_flat_round = compile!(device, "shaders/flat_round.frag.spv");
-        let frag_shaded_square = compile!(device, "shaders/shaded_square.frag.spv");
-        let frag_shaded_round = compile!(device, "shaders/shaded_round.frag.spv");
+        let frag_flat_round = create!(device, "shaders/flat_round.frag.spv");
+        let frag_shaded_square = create!(device, "shaders/shaded_square.frag.spv");
+        let frag_shaded_round = create!(device, "shaders/shaded_round.frag.spv");
+        let frag_image = create!(device, "shaders/image.frag.spv");
 
         ShaderManager {
+            vert_2,
             vert_3122,
             vert_32,
             vert_322,
@@ -47,6 +48,7 @@ impl ShaderManager {
             frag_flat_round,
             frag_shaded_square,
             frag_shaded_round,
+            frag_image,
         }
     }
 }

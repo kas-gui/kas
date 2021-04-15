@@ -134,6 +134,7 @@
 //! is greater than the child's ideal size. These parameters are used to
 //! construct an [`AlignHints`] which is passed into [`Layout::set_rect`].
 //!
+//! -   `align = centre` (or `center`)
 //! -   `halign = ...` — one of `default`, `left`, `centre`, `center`, `right`, `stretch`
 //! -   `valign = ...` — one of `default`, `top`, `centre`, `center`, `bottom`, `stretch`
 //!

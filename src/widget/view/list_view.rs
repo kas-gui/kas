@@ -526,8 +526,7 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
         let offset = self.scroll_offset();
-        use kas::draw::ClipRegion::Scroll;
-        draw_handle.clip_region(self.core.rect, offset, Scroll, &mut |draw_handle| {
+        draw_handle.clip_region(self.core.rect, offset, &mut |draw_handle| {
             for child in &self.widgets[..self.cur_len.cast()] {
                 child.widget.draw(draw_handle, mgr, disabled);
                 if let Some(ref key) = child.key {

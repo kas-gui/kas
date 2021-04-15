@@ -9,6 +9,7 @@
 
 use std::any::Any;
 use std::f32;
+use std::path::Path;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
 use kas::draw::{self, DrawShared, TextClass};
@@ -277,5 +278,13 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
 
     fn progress_bar(&self) -> Size {
         self.dims.progress_bar
+    }
+
+    fn load_image(&mut self, path: &Path) {
+        self.draw.load_image(path);
+    }
+
+    fn image(&self) -> Option<Size> {
+        Some(self.draw.image_size())
     }
 }

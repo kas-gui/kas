@@ -12,7 +12,7 @@ use std::num::NonZeroU32;
 use std::rc::Rc;
 
 use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow, ShaderManager};
-use crate::{Error, Options, WindowId};
+use crate::{warn_about_error, Error, Options, WindowId};
 use kas::event::UpdateHandle;
 use kas::updatable::Updatable;
 use kas_theme::Theme;
@@ -187,15 +187,6 @@ where
                 .into_iter()
                 .map(|handle| PendingAction::Update(handle, payload)),
         );
-    }
-}
-
-#[cfg(feature = "clipboard")]
-fn warn_about_error(msg: &str, mut error: &dyn std::error::Error) {
-    warn!("{}: {}", msg, error);
-    while let Some(source) = error.source() {
-        warn!("Source: {}", source);
-        error = source;
     }
 }
 

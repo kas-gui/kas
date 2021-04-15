@@ -58,6 +58,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let mut draw = shared.draw.new_window(&mut shared.device, Size::ZERO);
         let mut theme_window = shared.theme.new_window(&mut draw, scale_factor);
 
+        let mut mgr = ManagerState::new(shared.config.clone());
+        let mut tkw = TkWindow::new(shared, None, &mut theme_window);
+        mgr.configure(&mut tkw, &mut *widget);
+
         let mut size_handle = unsafe { theme_window.size_handle(&mut shared.draw) };
         let solve_cache = SolveCache::find_constraints(widget.as_widget_mut(), &mut size_handle);
         // Opening a zero-size window causes a crash, so force at least 1x1:
@@ -95,10 +99,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             present_mode: wgpu::PresentMode::Mailbox,
         };
         let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
-
-        let mut mgr = ManagerState::new(shared.config.clone());
-        let mut tkw = TkWindow::new(shared, &window, &mut theme_window);
-        mgr.configure(&mut tkw, &mut *widget);
 
         let mut r = Window {
             widget,
@@ -147,7 +147,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
                 self.do_resize(shared, *new_inner_size);
             }
             event @ _ => {
-                let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+                let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
                 let widget = &mut *self.widget;
                 self.mgr.with(&mut tkw, |mgr| {
                     mgr.handle_winit(widget, event);
@@ -158,7 +158,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
     /// Update, after receiving all events
     pub fn update(&mut self, shared: &mut SharedState<C, T>) -> (TkAction, Option<Instant>) {
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let action = self.mgr.update(&mut tkw, &mut *self.widget);
         drop(tkw);
 
@@ -181,7 +181,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             self.window.request_redraw();
         } else*/
         if action.contains(TkAction::REGION_MOVED) {
-            let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+            let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             self.mgr.region_moved(&mut tkw, &mut *self.widget);
             self.window.request_redraw();
         } else if action.contains(TkAction::REDRAW) {
@@ -192,7 +192,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     }
 
     pub fn handle_closure(mut self, shared: &mut SharedState<C, T>) -> TkAction {
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut *self.widget;
         self.mgr.with(&mut tkw, |mut mgr| {
             widget.handle_closure(&mut mgr);
@@ -201,7 +201,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     }
 
     pub fn update_timer(&mut self, shared: &mut SharedState<C, T>) -> Option<Instant> {
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut *self.widget;
         self.mgr.with(&mut tkw, |mgr| {
             mgr.update_timer(widget);
@@ -215,7 +215,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         handle: UpdateHandle,
         payload: u64,
     ) {
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let widget = &mut *self.widget;
         self.mgr.with(&mut tkw, |mgr| {
             mgr.update_handle(widget, handle, payload);
@@ -224,7 +224,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
     pub fn add_popup(&mut self, shared: &mut SharedState<C, T>, id: WindowId, popup: kas::Popup) {
         let window = &mut *self.widget;
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         self.mgr.with(&mut tkw, |mut mgr| {
             kas::Window::add_popup(window, &mut mgr, id, popup);
         });
@@ -238,7 +238,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         if id == self.window_id {
             self.mgr.send_action(TkAction::CLOSE);
         } else {
-            let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+            let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
             let widget = &mut *self.widget;
             self.mgr.with(&mut tkw, |mut mgr| {
                 widget.remove_popup(&mut mgr, id);
@@ -258,7 +258,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let time = Instant::now();
         debug!("Window::reconfigure");
 
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         self.mgr.configure(&mut tkw, &mut *self.widget);
 
         self.solve_cache.invalidate_rule_cache();
@@ -271,7 +271,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let rect = Rect::new(Coord::ZERO, self.sc_size());
         debug!("Resizing window to rect = {:?}", rect);
 
-        let mut tkw = TkWindow::new(shared, &self.window, &mut self.theme_window);
+        let mut tkw = TkWindow::new(shared, Some(&self.window), &mut self.theme_window);
         let solve_cache = &mut self.solve_cache;
         let widget = &mut self.widget;
         self.mgr.with(&mut tkw, |mgr| {
@@ -377,7 +377,7 @@ where
     T::Window: kas_theme::Window<DrawPipe<C>>,
 {
     shared: &'a mut SharedState<C, T>,
-    window: &'a winit::window::Window,
+    window: Option<&'a winit::window::Window>,
     theme_window: &'a mut T::Window,
 }
 
@@ -387,7 +387,7 @@ where
 {
     fn new(
         shared: &'a mut SharedState<C, T>,
-        window: &'a winit::window::Window,
+        window: Option<&'a winit::window::Window>,
         theme_window: &'a mut T::Window,
     ) -> Self {
         TkWindow {
@@ -404,13 +404,14 @@ where
     T: Theme<DrawPipe<C>>,
     T::Window: kas_theme::Window<DrawPipe<C>>,
 {
-    fn add_popup(&mut self, popup: kas::Popup) -> WindowId {
-        let id = self.shared.next_window_id();
-        let parent_id = self.window.id();
-        self.shared
-            .pending
-            .push(PendingAction::AddPopup(parent_id, id, popup));
-        id
+    fn add_popup(&mut self, popup: kas::Popup) -> Option<WindowId> {
+        self.window.map(|w| w.id()).map(|parent_id| {
+            let id = self.shared.next_window_id();
+            self.shared
+                .pending
+                .push(PendingAction::AddPopup(parent_id, id, popup));
+            id
+        })
     }
 
     fn add_window(&mut self, widget: Box<dyn kas::Window>) -> WindowId {
@@ -465,6 +466,8 @@ where
 
     #[inline]
     fn set_cursor_icon(&mut self, icon: CursorIcon) {
-        self.window.set_cursor_icon(icon);
+        if let Some(window) = self.window {
+            window.set_cursor_icon(icon);
+        }
     }
 }

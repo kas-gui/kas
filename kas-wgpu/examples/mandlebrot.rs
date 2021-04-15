@@ -65,7 +65,7 @@ impl CustomPipeBuilder for PipeBuilder {
     fn device_descriptor() -> wgpu::DeviceDescriptor<'static> {
         wgpu::DeviceDescriptor {
             label: None,
-            features: wgpu::Features::PUSH_CONSTANTS,
+            features: wgpu::Features::PUSH_CONSTANTS | wgpu::Features::SHADER_FLOAT64,
             limits: wgpu::Limits {
                 max_push_constant_size: size_of::<PushConstants>().cast(),
                 ..Default::default()
@@ -73,12 +73,7 @@ impl CustomPipeBuilder for PipeBuilder {
         }
     }
 
-    fn build(
-        &mut self,
-        device: &wgpu::Device,
-        tex_format: wgpu::TextureFormat,
-        depth_format: wgpu::TextureFormat,
-    ) -> Self::Pipe {
+    fn build(&mut self, device: &wgpu::Device, tex_format: wgpu::TextureFormat) -> Self::Pipe {
         // Note: real apps should compile shaders once and share between windows
         let shaders = Shaders::new(device);
 
@@ -124,23 +119,7 @@ impl CustomPipeBuilder for PipeBuilder {
                 cull_mode: wgpu::CullMode::Back,
                 polygon_mode: wgpu::PolygonMode::Fill,
             },
-            depth_stencil: Some(wgpu::DepthStencilState {
-                format: depth_format,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Always,
-                stencil: wgpu::StencilState {
-                    front: wgpu::StencilFaceState::IGNORE,
-                    back: wgpu::StencilFaceState::IGNORE,
-                    read_mask: 0,
-                    write_mask: 0,
-                },
-                bias: wgpu::DepthBiasState {
-                    constant: 0,
-                    slope_scale: 0.0,
-                    clamp: 0.0,
-                },
-                clamp_depth: false,
-            }),
+            depth_stencil: None,
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &shaders.fragment,
