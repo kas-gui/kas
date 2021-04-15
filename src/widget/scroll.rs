@@ -6,7 +6,7 @@
 //! Scroll region
 
 use super::Scrollable;
-use kas::draw::{ClipRegion, TextClass};
+use kas::draw::TextClass;
 use kas::event::ScrollDelta::{LineDelta, PixelDelta};
 use kas::event::{self, Command, PressSource};
 use kas::prelude::*;
@@ -352,12 +352,9 @@ impl<W: Widget> Layout for ScrollRegion<W> {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &event::ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
-        draw_handle.clip_region(
-            self.core.rect,
-            self.scroll_offset(),
-            ClipRegion::Scroll,
-            &mut |handle| self.inner.draw(handle, mgr, disabled),
-        );
+        draw_handle.clip_region(self.core.rect, self.scroll_offset(), &mut |handle| {
+            self.inner.draw(handle, mgr, disabled)
+        });
     }
 }
 

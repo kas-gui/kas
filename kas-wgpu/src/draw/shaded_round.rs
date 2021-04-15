@@ -129,7 +129,7 @@ impl Pipeline {
                 cull_mode: wgpu::CullMode::Back,
                 polygon_mode: wgpu::PolygonMode::Fill,
             },
-            depth_stencil: Some(super::DEPTH_DESC),
+            depth_stencil: None,
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &shaders.frag_shaded_round,

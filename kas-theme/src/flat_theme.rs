@@ -14,8 +14,8 @@ use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours,
 use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
 use kas::draw::{
-    self, ClipRegion, Colour, Draw, DrawRounded, DrawShared, DrawText, InputState, Pass,
-    SizeHandle, TextClass, ThemeAction, ThemeApi,
+    self, Colour, Draw, DrawRounded, DrawShared, DrawText, InputState, Pass, SizeHandle, TextClass,
+    ThemeAction, ThemeApi,
 };
 use kas::geom::*;
 use kas::text::format::FormattableText;
@@ -124,7 +124,7 @@ where
             cols: std::mem::transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
             rect,
             offset: Offset::ZERO,
-            pass: super::START_PASS,
+            pass: Pass::new(0),
         }
     }
     #[cfg(feature = "gat")]
@@ -144,7 +144,7 @@ where
             cols: &self.cols,
             rect,
             offset: Offset::ZERO,
-            pass: super::START_PASS,
+            pass: Pass::new(0),
         }
     }
 
@@ -233,17 +233,10 @@ where
         &mut self,
         rect: Rect,
         offset: Offset,
-        class: ClipRegion,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
         let rect = rect + self.offset;
-        let depth = self.pass.depth() + super::relative_region_depth(class);
-        let pass = self.draw.add_clip_region(rect, depth);
-        if depth < self.pass.depth() {
-            // draw to depth buffer to enable correct text rendering
-            self.draw
-                .rect(pass, (rect + self.offset).into(), self.cols.background);
-        }
+        let pass = self.draw.add_clip_region(rect);
         let mut handle = DrawHandle {
             shared: self.shared,
             draw: self.draw,

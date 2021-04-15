@@ -8,7 +8,6 @@
 use smallvec::SmallVec;
 use std::fmt::{self, Debug};
 
-use kas::draw::ClipRegion;
 use kas::layout;
 use kas::prelude::*;
 use kas::{Future, WindowId};
@@ -147,8 +146,7 @@ impl<W: Widget> Layout for Window<W> {
         let disabled = disabled || self.is_disabled();
         self.w.draw(draw_handle, mgr, disabled);
         for popup in &self.popups {
-            let class = ClipRegion::Popup;
-            draw_handle.clip_region(self.core.rect, Offset::ZERO, class, &mut |draw_handle| {
+            draw_handle.clip_region(self.core.rect, Offset::ZERO, &mut |draw_handle| {
                 self.find_leaf(popup.1.id)
                     .map(|w| w.draw(draw_handle, mgr, disabled));
             });

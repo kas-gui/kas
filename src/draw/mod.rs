@@ -55,16 +55,16 @@ pub use theme::*;
 ///
 /// Users normally need only pass this value.
 ///
-/// Custom render pipes should extract the pass number and depth value.
+/// Custom render pipes should extract the pass number.
 #[derive(Copy, Clone)]
-pub struct Pass(u32, f32);
+pub struct Pass(u32);
 
 impl Pass {
-    /// Construct a new pass from a `u32` identifier and depth value
+    /// Construct a new pass from a `u32` identifier
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[inline]
-    pub const fn new_pass_with_depth(n: u32, d: f32) -> Self {
-        Pass(n, d)
+    pub const fn new(n: u32) -> Self {
+        Pass(n)
     }
 
     /// The pass number
@@ -76,9 +76,11 @@ impl Pass {
     }
 
     /// The depth value
+    ///
+    /// This is a historical left-over and always returns 0.0.
     #[inline]
     pub fn depth(self) -> f32 {
-        self.1
+        0.0
     }
 }
 
@@ -101,9 +103,6 @@ pub trait DrawShared: 'static {
 /// Draw operations take place over multiple render passes, identified by a
 /// handle of type [`Pass`]. In general the user only needs to pass this value
 /// into methods as required. [`Draw::add_clip_region`] creates a new [`Pass`].
-///
-/// Each [`Pass`] has an associated depth value which may be used to determine
-/// the result of overlapping draw commands.
 pub trait Draw: Any {
     /// Cast self to [`std::any::Any`] reference.
     ///
@@ -114,9 +113,7 @@ pub trait Draw: Any {
     /// Add a clip region
     ///
     /// Clip regions are cleared each frame and so must be recreated on demand.
-    /// Each region has an associated depth value. The theme is responsible for
-    /// assigning depth values.
-    fn add_clip_region(&mut self, rect: Rect, depth: f32) -> Pass;
+    fn add_clip_region(&mut self, rect: Rect) -> Pass;
 
     /// Draw a rectangle of uniform colour
     fn rect(&mut self, pass: Pass, rect: Quad, col: Colour);

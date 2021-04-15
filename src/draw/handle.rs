@@ -18,12 +18,6 @@ use kas::text::{format::FormattableText, AccelString, Text, TextApi, TextDisplay
 #[allow(unused)]
 use kas::text::TextApiExt;
 
-/// Classification of a clip region
-pub enum ClipRegion {
-    Popup,
-    Scroll,
-}
-
 /// Input and highlighting state of a widget
 ///
 /// This struct is used to adjust the appearance of [`DrawHandle`]'s primitives.
@@ -278,13 +272,7 @@ pub trait DrawHandle {
     /// The new `rect` may extend beyond the current draw region. If it extends
     /// beyond the bounds of the window, it will be silently reduced to that of
     /// the window.
-    fn clip_region(
-        &mut self,
-        rect: Rect,
-        offset: Offset,
-        class: ClipRegion,
-        f: &mut dyn FnMut(&mut dyn DrawHandle),
-    );
+    fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle));
 
     /// Target area for drawing
     ///
@@ -626,14 +614,8 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
-    fn clip_region(
-        &mut self,
-        rect: Rect,
-        offset: Offset,
-        class: ClipRegion,
-        f: &mut dyn FnMut(&mut dyn DrawHandle),
-    ) {
-        self.deref_mut().clip_region(rect, offset, class, f)
+    fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
+        self.deref_mut().clip_region(rect, offset, f)
     }
     fn target_rect(&self) -> Rect {
         self.deref().target_rect()
@@ -731,14 +713,8 @@ where
     fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
-    fn clip_region(
-        &mut self,
-        rect: Rect,
-        offset: Offset,
-        class: ClipRegion,
-        f: &mut dyn FnMut(&mut dyn DrawHandle),
-    ) {
-        self.deref_mut().clip_region(rect, offset, class, f)
+    fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
+        self.deref_mut().clip_region(rect, offset, f)
     }
     fn target_rect(&self) -> Rect {
         self.deref().target_rect()
