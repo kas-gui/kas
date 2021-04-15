@@ -209,7 +209,8 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[widget(row=9, col=1)] pg: ProgressBar<Right> = ProgressBar::new(),
             #[widget(row=9, col=0)] _ = Label::new("ProgressBar"),
             #[widget(row=10, col=0)] _ = Label::new("Image"),
-            #[widget(row=10, col=1)] _ = Image::new("res/rustacean-flat-happy.png"),
+            #[widget(row=10, col=1, halign=centre, valign=centre)] _ =
+                Image::new("res/rustacean-flat-happy.png").with_stretch(Stretch::Low),
             #[widget(row=11, col=0)] _ = Label::new("Child window"),
             #[widget(row=11, col=1)] _ = popup_edit_box,
         }

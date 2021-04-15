@@ -85,7 +85,7 @@ pub use drag::DragHandle;
 pub use editbox::{EditBox, EditField, EditGuard};
 pub use filler::Filler;
 pub use frame::Frame;
-pub use image::Image;
+pub use image::{Image, ImageScaling};
 pub use label::{AccelLabel, Label, StrLabel, StringLabel};
 pub use list::*;
 pub use menu::*;

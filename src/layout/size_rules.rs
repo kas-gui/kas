@@ -147,16 +147,22 @@ impl SizeRules {
         SizeRules::fixed(size, (m, m))
     }
 
-    /// Construct fixed-size rules from given data
+    /// Construct rules from given data
     #[inline]
-    pub fn extract_fixed<D: Directional>(dir: D, size: Size, margin: Margins) -> Self {
+    pub fn extract<D: Directional>(dir: D, size: Size, margin: Margins, stretch: Stretch) -> Self {
         let size = size.extract(dir);
         let m = if dir.is_horizontal() {
             margin.horiz
         } else {
             margin.vert
         };
-        SizeRules::fixed(size, m)
+        SizeRules::new(size, size, m, stretch)
+    }
+
+    /// Construct fixed-size rules from given data
+    #[inline]
+    pub fn extract_fixed<D: Directional>(dir: D, size: Size, margin: Margins) -> Self {
+        SizeRules::extract(dir, size, margin, Stretch::None)
     }
 
     /// Construct with custom rules
