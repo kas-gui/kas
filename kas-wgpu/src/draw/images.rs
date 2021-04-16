@@ -5,6 +5,7 @@
 
 //! Images pipeline
 
+use guillotiere::AtlasAllocator;
 use image::RgbaImage;
 use log::warn;
 use std::mem::size_of;
@@ -18,21 +19,146 @@ use kas::geom::{Quad, Size, Vec2, Vec3};
 
 const TEXTURE_SIZE: (u32, u32) = (2048, 2048);
 
+fn to_vec2(p: guillotiere::Point) -> Vec2 {
+    Vec2(p.x.cast(), p.y.cast())
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct Vertex(Vec3, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
 
+pub struct Atlas {
+    alloc: AtlasAllocator,
+    tex: wgpu::Texture,
+    view: wgpu::TextureView,
+}
+
+impl Atlas {
+    pub fn new(device: &wgpu::Device) -> Self {
+        let size_i32: (i32, i32) = (TEXTURE_SIZE.0.cast(), TEXTURE_SIZE.1.cast());
+        let alloc = AtlasAllocator::new(size_i32.into());
+
+        let tex = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("loaded image"),
+            size: wgpu::Extent3d {
+                width: TEXTURE_SIZE.0,
+                height: TEXTURE_SIZE.1,
+                depth: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
+        });
+
+        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
+
+        Atlas { alloc, tex, view }
+    }
+}
+
+#[derive(Debug)]
+pub struct Image {
+    image: RgbaImage,
+    prepare: bool,
+    tex_quad: Option<Quad>,
+}
+
+impl Image {
+    pub fn new() -> Self {
+        Image {
+            image: image::ImageBuffer::from_raw(0, 0, Default::default()).unwrap(),
+            prepare: false,
+            tex_quad: None,
+        }
+    }
+
+    /// Load an image
+    pub fn load(&mut self, path: &Path) {
+        // TODO(opt): we convert to RGBA8 since this is the only format common
+        // to both the image crate and WGPU. It may not be optimal however.
+        // It also assumes that the image colour space is sRGB.
+        match image::io::Reader::open(path)
+            .map_err(|e| image::error::ImageError::IoError(e))
+            .and_then(|r| r.decode())
+        {
+            Ok(image) => {
+                self.image = image.into_rgba8();
+                self.prepare = true;
+                self.tex_quad = None;
+            }
+            Err(error) => {
+                warn!("Loading image \"{}\" failed:", path.display());
+                crate::warn_about_error("Cause", &error);
+            }
+        }
+    }
+
+    /// Query image size
+    pub fn size(&self) -> (u32, u32) {
+        self.image.dimensions()
+    }
+
+    /// Prepare textures
+    pub fn prepare(&mut self, atlas: &mut Atlas, queue: &wgpu::Queue) {
+        if !self.prepare {
+            return;
+        }
+        self.prepare = false;
+
+        let size = self.image.dimensions();
+        let size_i32: (i32, i32) = (size.0.cast(), size.1.cast());
+        if let Some(alloc) = atlas.alloc.allocate(size_i32.into()) {
+            debug_assert!(
+                size_i32.0 == alloc.rectangle.width() && size_i32.1 == alloc.rectangle.height()
+            );
+
+            let tex_size = Vec2::from(Size::from(TEXTURE_SIZE));
+            let a = to_vec2(alloc.rectangle.min) / tex_size;
+            let b = to_vec2(alloc.rectangle.max) / tex_size;
+            debug_assert!(Vec2::ZERO.le(a) && a.le(b) && b.le(Vec2::splat(1.0)));
+            self.tex_quad = Some(Quad { a, b });
+
+            queue.write_texture(
+                wgpu::TextureCopyView {
+                    texture: &atlas.tex,
+                    mip_level: 0,
+                    origin: wgpu::Origin3d {
+                        x: alloc.rectangle.min.x.cast(),
+                        y: alloc.rectangle.min.y.cast(),
+                        z: 0,
+                    },
+                },
+                &self.image,
+                wgpu::TextureDataLayout {
+                    offset: 0,
+                    bytes_per_row: 4 * size.0,
+                    rows_per_image: size.1,
+                },
+                wgpu::Extent3d {
+                    width: size.0,
+                    height: size.1,
+                    depth: 1,
+                },
+            );
+        }
+    }
+
+    pub fn tex_quad(&self) -> Option<Quad> {
+        self.tex_quad
+    }
+}
+
 /// A pipeline for rendering images
 pub struct Pipeline {
     bind_group_layout: wgpu::BindGroupLayout,
     render_pipeline: wgpu::RenderPipeline,
-    tex: wgpu::Texture,
-    view: wgpu::TextureView,
+    atlas: Atlas,
     sampler: wgpu::Sampler,
-    image: RgbaImage,
-    need_write: bool,
+    image: Image,
 }
 
 /// Per-window state
@@ -149,21 +275,8 @@ impl Pipeline {
             }),
         });
 
-        let tex = device.create_texture(&wgpu::TextureDescriptor {
-            label: Some("loaded image"),
-            size: wgpu::Extent3d {
-                width: TEXTURE_SIZE.0,
-                height: TEXTURE_SIZE.1,
-                depth: 1,
-            },
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
-        });
+        let atlas = Atlas::new(device);
 
-        let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("image sampler"),
             mag_filter: wgpu::FilterMode::Nearest,
@@ -171,14 +284,14 @@ impl Pipeline {
             ..Default::default()
         });
 
+        let image = Image::new();
+
         Pipeline {
             bind_group_layout,
             render_pipeline,
-            tex,
-            view,
+            atlas,
             sampler,
-            image: image::ImageBuffer::from_raw(0, 0, Default::default()).unwrap(),
-            need_write: false,
+            image,
         }
     }
 
@@ -198,7 +311,7 @@ impl Pipeline {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&self.view),
+                    resource: wgpu::BindingResource::TextureView(&self.atlas.view),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
@@ -215,55 +328,17 @@ impl Pipeline {
 
     /// Load an image
     pub fn load(&mut self, path: &Path) {
-        // TODO(opt): we convert to RGBA8 since this is the only format common
-        // to both the image crate and WGPU. It may not be optimal however.
-        // It also assumes that the image colour space is sRGB.
-        match image::io::Reader::open(path)
-            .map_err(|e| image::error::ImageError::IoError(e))
-            .and_then(|r| r.decode())
-        {
-            Ok(image) => {
-                self.image = image.into_rgba8();
-                self.need_write = true;
-            }
-            Err(error) => {
-                warn!("Loading image \"{}\" failed:", path.display());
-                crate::warn_about_error("Cause", &error);
-            }
-        }
+        self.image.load(path);
     }
 
     /// Query image size
     pub fn image_size(&self) -> (u32, u32) {
-        self.image.dimensions()
+        self.image.size()
     }
 
     /// Prepare textures
     pub fn prepare(&mut self, _: &wgpu::Device, queue: &wgpu::Queue) {
-        if self.need_write {
-            self.need_write = false;
-
-            let size = self.image.dimensions();
-            assert!(size.0 <= TEXTURE_SIZE.0 && size.1 <= TEXTURE_SIZE.1);
-            queue.write_texture(
-                wgpu::TextureCopyView {
-                    texture: &self.tex,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d::ZERO,
-                },
-                &self.image,
-                wgpu::TextureDataLayout {
-                    offset: 0,
-                    bytes_per_row: 4 * size.0,
-                    rows_per_image: size.1,
-                },
-                wgpu::Extent3d {
-                    width: size.0,
-                    height: size.1,
-                    depth: 1,
-                },
-            );
-        }
+        self.image.prepare(&mut self.atlas, queue);
     }
 
     /// Construct a render buffer
@@ -304,21 +379,24 @@ impl Window {
             return;
         }
 
+        let t = match pipe.image.tex_quad() {
+            Some(quad) => quad,
+            None => return,
+        };
+
         let depth = pass.depth();
         let ab = Vec3(aa.0, bb.1, depth);
         let ba = Vec3(bb.0, aa.1, depth);
         let aa = Vec3::from2(aa, depth);
         let bb = Vec3::from2(bb, depth);
 
-        let taa = Vec2::ZERO;
-        let tbb = Vec2::from(Size::from(pipe.image_size())) / Vec2::from(Size::from(TEXTURE_SIZE));
-        let tab = Vec2(taa.0, tbb.1);
-        let tba = Vec2(tbb.0, taa.1);
+        let tab = Vec2(t.a.0, t.b.1);
+        let tba = Vec2(t.b.0, t.a.1);
 
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[
-            Vertex(aa, taa), Vertex(ba, tba), Vertex(ab, tab),
-            Vertex(ab, tab), Vertex(ba, tba), Vertex(bb, tbb),
+            Vertex(aa, t.a), Vertex(ba, tba), Vertex(ab, tab),
+            Vertex(ab, tab), Vertex(ba, tba), Vertex(bb, t.b),
         ]);
     }
 
