@@ -230,7 +230,7 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
 
     #[inline]
     fn load_image(&mut self, path: &Path) {
-        self.images.load(path);
+        self.images.load_path(path);
     }
 
     #[inline]
