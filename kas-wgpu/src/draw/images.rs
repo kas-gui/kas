@@ -7,7 +7,7 @@
 
 use guillotiere::{Allocation, AtlasAllocator};
 use image::RgbaImage;
-use log::warn;
+use std::collections::HashMap;
 use std::mem::size_of;
 use std::path::Path;
 use thiserror::Error;
@@ -15,7 +15,7 @@ use wgpu::util::DeviceExt;
 
 use crate::draw::ShaderManager;
 use kas::cast::Cast;
-use kas::draw::Pass;
+use kas::draw::{ImageId, Pass};
 use kas::geom::{Quad, Size, Vec2, Vec3};
 
 const TEXTURE_SIZE: (u32, u32) = (2048, 2048);
@@ -37,8 +37,8 @@ pub enum ImageError {
     IOError(#[from] std::io::Error),
     #[error(transparent)]
     Image(#[from] image::ImageError),
-    #[error("no space in image atlas")]
-    AtlasAlloc,
+    #[error("allocation failed: insufficient space in image atlas")]
+    Allocation,
 }
 
 pub struct Atlas {
@@ -75,7 +75,7 @@ impl Atlas {
         let size: (i32, i32) = (size.0.cast(), size.1.cast());
         self.alloc
             .allocate(size.into())
-            .ok_or(ImageError::AtlasAlloc)
+            .ok_or(ImageError::Allocation)
     }
 }
 
@@ -87,32 +87,30 @@ pub struct Image {
 }
 
 impl Image {
-    pub fn new() -> Self {
-        Image {
-            image: image::ImageBuffer::from_raw(0, 0, Default::default()).unwrap(),
-            prepare: None,
-            tex_quad: Quad::default(),
-        }
-    }
-
     /// Load an image
-    pub fn load_path(&mut self, atlas: &mut Atlas, path: &Path) -> Result<(), ImageError> {
+    pub fn load_path(atlas: &mut Atlas, path: &Path) -> Result<(ImageId, Self), ImageError> {
         let image = image::io::Reader::open(path)?.decode()?;
         // TODO(opt): we convert to RGBA8 since this is the only format common
         // to both the image crate and WGPU. It may not be optimal however.
         // It also assumes that the image colour space is sRGB.
-        self.image = image.into_rgba8();
-        let size = self.image.dimensions();
+        let image = image.into_rgba8();
+        let size = image.dimensions();
         let alloc = atlas.allocate(size)?;
 
         let tex_size = Vec2::from(Size::from(TEXTURE_SIZE));
         let a = to_vec2(alloc.rectangle.min) / tex_size;
         let b = to_vec2(alloc.rectangle.max) / tex_size;
         debug_assert!(Vec2::ZERO.le(a) && a.le(b) && b.le(Vec2::splat(1.0)));
-        self.tex_quad = Quad { a, b };
+        let tex_quad = Quad { a, b };
 
-        self.prepare = Some((alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast()));
-        Ok(())
+        let prepare = Some((alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast()));
+        let id = ImageId::new(alloc.id.serialize());
+        let image = Image {
+            image,
+            prepare,
+            tex_quad,
+        };
+        Ok((id, image))
     }
 
     /// Query image size
@@ -161,7 +159,8 @@ pub struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
     atlas: Atlas,
     sampler: wgpu::Sampler,
-    image: Image,
+    images: HashMap<ImageId, Image>,
+    prepare: Vec<ImageId>,
 }
 
 /// Per-window state
@@ -287,14 +286,13 @@ impl Pipeline {
             ..Default::default()
         });
 
-        let image = Image::new();
-
         Pipeline {
             bind_group_layout,
             render_pipeline,
             atlas,
             sampler,
-            image,
+            images: Default::default(),
+            prepare: vec![],
         }
     }
 
@@ -330,21 +328,28 @@ impl Pipeline {
     }
 
     /// Load an image
-    pub fn load_path(&mut self, path: &Path) {
-        if let Err(error) = self.image.load_path(&mut self.atlas, path) {
-            warn!("Loading image \"{}\" failed:", path.display());
-            crate::warn_about_error("Cause", &error);
-        }
+    pub fn load_path(
+        &mut self,
+        path: &Path,
+    ) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
+        let (id, image) = Image::load_path(&mut self.atlas, path)?;
+        self.images.insert(id, image);
+        self.prepare.push(id);
+        Ok(id)
     }
 
     /// Query image size
-    pub fn image_size(&self) -> (u32, u32) {
-        self.image.size()
+    pub fn image_size(&self, id: ImageId) -> Option<Size> {
+        self.images.get(&id).map(|im| im.size().into())
     }
 
     /// Prepare textures
     pub fn prepare(&mut self, _: &wgpu::Device, queue: &wgpu::Queue) {
-        self.image.prepare(&mut self.atlas, queue);
+        for id in self.prepare.drain(..) {
+            if let Some(image) = self.images.get_mut(&id) {
+                image.prepare(&mut self.atlas, queue);
+            }
+        }
     }
 
     /// Construct a render buffer
@@ -376,7 +381,7 @@ impl Pipeline {
 
 impl Window {
     /// Add a rectangle to the buffer
-    pub fn rect(&mut self, pipe: &Pipeline, pass: Pass, rect: Quad) {
+    pub fn rect(&mut self, pipe: &Pipeline, pass: Pass, id: ImageId, rect: Quad) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -385,13 +390,17 @@ impl Window {
             return;
         }
 
+        let t = match pipe.images.get(&id) {
+            Some(im) => im.tex_quad(),
+            None => return,
+        };
+
         let depth = pass.depth();
         let ab = Vec3(aa.0, bb.1, depth);
         let ba = Vec3(bb.0, aa.1, depth);
         let aa = Vec3::from2(aa, depth);
         let bb = Vec3::from2(bb, depth);
 
-        let t = pipe.image.tex_quad();
         let tab = Vec2(t.a.0, t.b.1);
         let tba = Vec2(t.b.0, t.a.1);
 

@@ -14,8 +14,8 @@ use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours,
 use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShared, DrawText, InputState, Pass, SizeHandle, TextClass,
-    ThemeAction, ThemeApi,
+    self, Colour, Draw, DrawRounded, DrawShared, DrawText, ImageId, InputState, Pass, SizeHandle,
+    TextClass, ThemeAction, ThemeApi,
 };
 use kas::geom::*;
 use kas::text::format::FormattableText;
@@ -520,8 +520,8 @@ where
         self.draw.rect(self.pass, inner, col);
     }
 
-    fn image(&mut self, rect: Rect) {
+    fn image(&mut self, id: ImageId, rect: Rect) {
         let rect = Quad::from(rect + self.offset);
-        self.shared.draw_image(&mut self.draw, self.pass, rect);
+        self.shared.draw_image(&mut self.draw, self.pass, id, rect);
     }
 }

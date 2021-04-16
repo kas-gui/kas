@@ -10,7 +10,7 @@ use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use std::path::Path;
 
 use kas::dir::Direction;
-use kas::draw::{Draw, Pass};
+use kas::draw::{Draw, ImageId, Pass};
 use kas::geom::{Coord, Offset, Rect, Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use kas::text::{format::FormattableText, AccelString, Text, TextApi, TextDisplay};
@@ -232,7 +232,7 @@ pub trait SizeHandle {
     ///
     /// Image resources are deduplicated through the path lookup and have a
     /// use count. This method increments the use-count.
-    fn load_image(&mut self, path: &Path);
+    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>>;
 
     /// Get image size
     ///
@@ -240,7 +240,7 @@ pub trait SizeHandle {
     /// until done.
     ///
     /// Returns `None` if the resource is not found or failed to load.
-    fn image(&self) -> Option<Size>;
+    fn image(&self, id: ImageId) -> Option<Size>;
 }
 
 /// Handle passed to objects during draw operations
@@ -423,7 +423,7 @@ pub trait DrawHandle {
     fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32);
 
     /// Draw an image
-    fn image(&mut self, rect: Rect);
+    fn image(&mut self, id: ImageId, rect: Rect);
 }
 
 /// Extension trait over [`DrawHandle`]
@@ -553,11 +553,11 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn progress_bar(&self) -> Size {
         self.deref().progress_bar()
     }
-    fn load_image(&mut self, path: &Path) {
-        self.deref_mut().load_image(path);
+    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
+        self.deref_mut().load_image(path)
     }
-    fn image(&self) -> Option<Size> {
-        self.deref().image()
+    fn image(&self, id: ImageId) -> Option<Size> {
+        self.deref().image(id)
     }
 }
 
@@ -632,11 +632,11 @@ where
     fn progress_bar(&self) -> Size {
         self.deref().progress_bar()
     }
-    fn load_image(&mut self, path: &Path) {
-        self.deref_mut().load_image(path);
+    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
+        self.deref_mut().load_image(path)
     }
-    fn image(&self) -> Option<Size> {
-        self.deref().image()
+    fn image(&self, id: ImageId) -> Option<Size> {
+        self.deref().image(id)
     }
 }
 
@@ -733,8 +733,8 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32) {
         self.deref_mut().progress_bar(rect, dir, state, value);
     }
-    fn image(&mut self, rect: Rect) {
-        self.deref_mut().image(rect);
+    fn image(&mut self, id: ImageId, rect: Rect) {
+        self.deref_mut().image(id, rect);
     }
 }
 
@@ -835,8 +835,8 @@ where
     fn progress_bar(&mut self, rect: Rect, dir: Direction, state: InputState, value: f32) {
         self.deref_mut().progress_bar(rect, dir, state, value);
     }
-    fn image(&mut self, rect: Rect) {
-        self.deref_mut().image(rect);
+    fn image(&mut self, id: ImageId, rect: Rect) {
+        self.deref_mut().image(id, rect);
     }
 }
 
