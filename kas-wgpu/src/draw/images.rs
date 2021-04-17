@@ -82,13 +82,15 @@ impl Atlas {
 #[derive(Debug)]
 pub struct Image {
     image: RgbaImage,
-    prepare: Option<(u32, u32)>,
     tex_quad: Quad,
 }
 
 impl Image {
     /// Load an image
-    pub fn load_path(atlas: &mut Atlas, path: &Path) -> Result<(ImageId, Self), ImageError> {
+    pub fn load_path(
+        atlas: &mut Atlas,
+        path: &Path,
+    ) -> Result<(ImageId, Self, (u32, u32)), ImageError> {
         let image = image::io::Reader::open(path)?.decode()?;
         // TODO(opt): we convert to RGBA8 since this is the only format common
         // to both the image crate and WGPU. It may not be optimal however.
@@ -103,14 +105,10 @@ impl Image {
         debug_assert!(Vec2::ZERO.le(a) && a.le(b) && b.le(Vec2::splat(1.0)));
         let tex_quad = Quad { a, b };
 
-        let prepare = Some((alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast()));
+        let origin = (alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast());
         let id = ImageId::new(alloc.id.serialize());
-        let image = Image {
-            image,
-            prepare,
-            tex_quad,
-        };
-        Ok((id, image))
+        let image = Image { image, tex_quad };
+        Ok((id, image, origin))
     }
 
     /// Query image size
@@ -119,33 +117,30 @@ impl Image {
     }
 
     /// Prepare textures
-    pub fn prepare(&mut self, atlas: &Atlas, queue: &wgpu::Queue) {
-        if let Some(origin) = self.prepare {
-            let size = self.image.dimensions();
-            queue.write_texture(
-                wgpu::TextureCopyView {
-                    texture: &atlas.tex,
-                    mip_level: 0,
-                    origin: wgpu::Origin3d {
-                        x: origin.0,
-                        y: origin.1,
-                        z: 0,
-                    },
+    pub fn write_to_tex(&mut self, atlas: &Atlas, origin: (u32, u32), queue: &wgpu::Queue) {
+        let size = self.image.dimensions();
+        queue.write_texture(
+            wgpu::TextureCopyView {
+                texture: &atlas.tex,
+                mip_level: 0,
+                origin: wgpu::Origin3d {
+                    x: origin.0,
+                    y: origin.1,
+                    z: 0,
                 },
-                &self.image,
-                wgpu::TextureDataLayout {
-                    offset: 0,
-                    bytes_per_row: 4 * size.0,
-                    rows_per_image: size.1,
-                },
-                wgpu::Extent3d {
-                    width: size.0,
-                    height: size.1,
-                    depth: 1,
-                },
-            );
-            self.prepare = None;
-        }
+            },
+            &self.image,
+            wgpu::TextureDataLayout {
+                offset: 0,
+                bytes_per_row: 4 * size.0,
+                rows_per_image: size.1,
+            },
+            wgpu::Extent3d {
+                width: size.0,
+                height: size.1,
+                depth: 1,
+            },
+        );
     }
 
     pub fn tex_quad(&self) -> Quad {
@@ -160,7 +155,7 @@ pub struct Pipeline {
     atlas: Atlas,
     sampler: wgpu::Sampler,
     images: HashMap<ImageId, Image>,
-    prepare: Vec<ImageId>,
+    prepare: Vec<(ImageId, (u32, u32))>,
 }
 
 /// Per-window state
@@ -332,9 +327,9 @@ impl Pipeline {
         &mut self,
         path: &Path,
     ) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        let (id, image) = Image::load_path(&mut self.atlas, path)?;
+        let (id, image, origin) = Image::load_path(&mut self.atlas, path)?;
         self.images.insert(id, image);
-        self.prepare.push(id);
+        self.prepare.push((id, origin));
         Ok(id)
     }
 
@@ -345,9 +340,9 @@ impl Pipeline {
 
     /// Prepare textures
     pub fn prepare(&mut self, _: &wgpu::Device, queue: &wgpu::Queue) {
-        for id in self.prepare.drain(..) {
+        for (id, origin) in self.prepare.drain(..) {
             if let Some(image) = self.images.get_mut(&id) {
-                image.prepare(&mut self.atlas, queue);
+                image.write_to_tex(&mut self.atlas, origin, queue);
             }
         }
     }
