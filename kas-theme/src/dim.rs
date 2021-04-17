@@ -12,7 +12,7 @@ use std::f32;
 use std::path::Path;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
-use kas::draw::{self, DrawShared, TextClass};
+use kas::draw::{self, DrawShared, ImageId, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{TextApi, TextApiExt};
@@ -280,11 +280,11 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
         self.dims.progress_bar
     }
 
-    fn load_image(&mut self, path: &Path) {
-        self.draw.load_image(path);
+    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
+        self.draw.load_image(path)
     }
 
-    fn image(&self) -> Option<Size> {
-        Some(self.draw.image_size())
+    fn image(&self, id: ImageId) -> Option<Size> {
+        self.draw.image_size(id)
     }
 }

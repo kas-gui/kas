@@ -15,7 +15,7 @@ use std::ops::{Add, Div, Mul, Neg, Sub};
 ///
 /// Typically it is expected that `a.le(b)`, although this is not required.
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Quad {
     pub a: Vec2,

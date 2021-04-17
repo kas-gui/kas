@@ -226,6 +226,15 @@ fn main() -> Result<(), kas_wgpu::Error> {
         }
     };
 
+    let head = make_widget! {
+        #[layout(row)]
+        #[handler(msg = VoidMsg)]
+        struct {
+            #[widget] _ = Label::new("Widget Gallery"),
+            #[widget] _ = Image::new("res/gallery.png"),
+        }
+    };
+
     let window = Window::new(
         "Widget Gallery",
         make_widget! {
@@ -233,7 +242,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             #[handler(msg = VoidMsg)]
             struct {
                 #[widget(handler = menu)] _ = menubar,
-                #[widget(halign = centre)] _ = Frame::new(Label::new("Widget Gallery")),
+                #[widget(halign = centre)] _ = Frame::new(head),
                 #[widget(handler = activations)] gallery:
                     for<W: Widget<Msg = Item>> ScrollBarRegion<W> =
                         ScrollBarRegion::new2(widgets),

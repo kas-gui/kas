@@ -85,18 +85,32 @@ impl Pass {
     }
 }
 
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ImageId(u32);
+
+impl ImageId {
+    /// Construct a new identifier from `u32` value
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[inline]
+    pub const fn new(n: u32) -> Self {
+        ImageId(n)
+    }
+}
+
 /// Bounds on type shared across [`Draw`] implementations
 pub trait DrawShared: 'static {
     type Draw: Draw;
 
     /// Load an image from a path, autodetecting file type
-    fn load_image(&mut self, path: &Path);
+    ///
+    /// TODO: revise error handling?
+    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>>;
 
-    /// Get size of last loaded image
-    fn image_size(&self) -> Size;
+    /// Get size of image
+    fn image_size(&self, id: ImageId) -> Option<Size>;
 
-    /// Draw the last loaded image in the given `rect`
-    fn draw_image(&self, window: &mut Self::Draw, pass: Pass, rect: Quad);
+    /// Draw the image in the given `rect`
+    fn draw_image(&self, window: &mut Self::Draw, pass: Pass, id: ImageId, rect: Quad);
 }
 
 /// Base abstraction over drawing

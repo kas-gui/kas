@@ -36,6 +36,7 @@ pub struct Image {
     core: CoreData,
     path: PathBuf,
     do_load: bool,
+    id: Option<ImageId>,
     img_size: Size,
     scaling: ImageScaling,
     stretch: Stretch,
@@ -50,6 +51,7 @@ impl Image {
             core: Default::default(),
             path: path.into(),
             do_load: true,
+            id: None,
             img_size: Size::ZERO,
             scaling: Default::default(),
             stretch: Stretch::None,
@@ -72,15 +74,30 @@ impl Image {
 impl WidgetConfig for Image {
     fn configure(&mut self, mgr: &mut Manager) {
         if self.do_load {
-            mgr.size_handle(|sh| sh.load_image(&self.path));
             self.do_load = false;
+            match mgr.size_handle(|sh| sh.load_image(&self.path)) {
+                Ok(id) => self.id = Some(id),
+                Err(error) => {
+                    log::warn!("Failed to load image: {}", self.path.display());
+                    let mut error: &(dyn std::error::Error) = &*error;
+                    loop {
+                        log::warn!("Cause: {}", error);
+                        if let Some(source) = error.source() {
+                            error = source;
+                        } else {
+                            break;
+                        }
+                    }
+                    self.id = None;
+                }
+            }
         }
     }
 }
 
 impl Layout for Image {
     fn size_rules(&mut self, sh: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
-        self.img_size = sh.image().unwrap_or(Size::ZERO);
+        self.img_size = self.id.and_then(|id| sh.image(id)).unwrap_or(Size::ZERO);
         let margins = sh.outer_margins();
         SizeRules::extract(axis, self.img_size, margins, self.stretch)
     }
@@ -110,6 +127,8 @@ impl Layout for Image {
     }
 
     fn draw(&self, draw: &mut dyn DrawHandle, _: &event::ManagerState, _: bool) {
-        draw.image(self.rect());
+        if let Some(id) = self.id {
+            draw.image(id, self.rect());
+        }
     }
 }

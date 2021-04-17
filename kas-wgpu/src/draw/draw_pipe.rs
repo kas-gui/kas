@@ -16,7 +16,7 @@ use super::{
     DrawPipe, DrawWindow, ShaderManager, TEX_FORMAT,
 };
 use kas::cast::Cast;
-use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, Pass};
+use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, Pass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 
 impl<C: CustomPipe> DrawPipe<C> {
@@ -229,18 +229,18 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
 
     #[inline]
-    fn load_image(&mut self, path: &Path) {
-        self.images.load(path);
+    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
+        self.images.load_path(path)
     }
 
     #[inline]
-    fn image_size(&self) -> Size {
-        self.images.image_size().into()
+    fn image_size(&self, id: ImageId) -> Option<Size> {
+        self.images.image_size(id)
     }
 
     #[inline]
-    fn draw_image(&self, window: &mut Self::Draw, pass: Pass, rect: Quad) {
-        window.images.rect(&self.images, pass, rect);
+    fn draw_image(&self, window: &mut Self::Draw, pass: Pass, id: ImageId, rect: Quad) {
+        window.images.rect(&self.images, pass, id, rect);
     }
 }
 

@@ -11,7 +11,7 @@ use std::ops::Range;
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::dir::{Direction, Directional};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, InputState, Pass,
+    self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, ImageId, InputState, Pass,
     SizeHandle, TextClass, ThemeAction, ThemeApi,
 };
 use kas::geom::*;
@@ -443,7 +443,7 @@ where
             .shaded_round_frame(self.pass, outer, inner, (0.0, 0.6), col);
     }
 
-    fn image(&mut self, rect: Rect) {
-        self.as_flat().image(rect);
+    fn image(&mut self, id: ImageId, rect: Rect) {
+        self.as_flat().image(id, rect);
     }
 }
