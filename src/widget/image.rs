@@ -69,6 +69,60 @@ impl Image {
         self.stretch = stretch;
         self
     }
+
+    /// Set scaling mode
+    pub fn set_scaling(&mut self, scaling: ImageScaling) {
+        self.scaling = scaling;
+    }
+
+    /// Set stretch policy
+    pub fn set_stretch(&mut self, stretch: Stretch) {
+        self.stretch = stretch;
+    }
+
+    /// Set image path
+    pub fn set_path<P: Into<PathBuf>>(&mut self, mgr: &mut Manager, path: P) {
+        self.path = path.into();
+        self.do_load = false;
+        let mut img_size = Size::ZERO;
+        mgr.size_handle(|sh| {
+            if let Some(id) = self.id {
+                sh.remove_image(id);
+            }
+            match sh.load_image(&self.path) {
+                Ok(id) => {
+                    self.id = Some(id);
+                    img_size = sh.image(id).unwrap_or(Size::ZERO);
+                }
+                Err(error) => self.handle_load_fail(&*error),
+            };
+        });
+        mgr.redraw(self.id());
+        if img_size != self.img_size {
+            *mgr |= TkAction::RESIZE;
+        }
+    }
+
+    /// Remove image (set empty)
+    pub fn clear(&mut self, mgr: &mut Manager) {
+        if let Some(id) = self.id.take() {
+            self.do_load = false;
+            mgr.size_handle(|sh| sh.remove_image(id));
+        }
+    }
+
+    fn handle_load_fail(&mut self, mut error: &(dyn std::error::Error)) {
+        self.id = None;
+        log::warn!("Failed to load image: {}", self.path.display());
+        loop {
+            log::warn!("Cause: {}", error);
+            if let Some(source) = error.source() {
+                error = source;
+            } else {
+                break;
+            }
+        }
+    }
 }
 
 impl WidgetConfig for Image {
@@ -77,19 +131,7 @@ impl WidgetConfig for Image {
             self.do_load = false;
             match mgr.size_handle(|sh| sh.load_image(&self.path)) {
                 Ok(id) => self.id = Some(id),
-                Err(error) => {
-                    log::warn!("Failed to load image: {}", self.path.display());
-                    let mut error: &(dyn std::error::Error) = &*error;
-                    loop {
-                        log::warn!("Cause: {}", error);
-                        if let Some(source) = error.source() {
-                            error = source;
-                        } else {
-                            break;
-                        }
-                    }
-                    self.id = None;
-                }
+                Err(error) => self.handle_load_fail(&*error),
             }
         }
     }

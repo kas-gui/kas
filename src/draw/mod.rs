@@ -95,6 +95,13 @@ impl ImageId {
     pub const fn new(n: u32) -> Self {
         ImageId(n)
     }
+
+    /// Get `u32` value
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[inline]
+    pub fn get(self) -> u32 {
+        self.0
+    }
 }
 
 /// Bounds on type shared across [`Draw`] implementations
@@ -105,6 +112,9 @@ pub trait DrawShared: 'static {
     ///
     /// TODO: revise error handling?
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>>;
+
+    /// Free an image
+    fn remove_image(&mut self, id: ImageId);
 
     /// Get size of image
     fn image_size(&self, id: ImageId) -> Option<Size>;

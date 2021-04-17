@@ -234,6 +234,9 @@ pub trait SizeHandle {
     /// use count. This method increments the use-count.
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>>;
 
+    /// Remove an image
+    fn remove_image(&mut self, id: ImageId);
+
     /// Get image size
     ///
     /// If loading is in progress (see [`SizeHandle::load_image`]), this blocks
@@ -556,6 +559,9 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
         self.deref_mut().load_image(path)
     }
+    fn remove_image(&mut self, id: ImageId) {
+        self.deref_mut().remove_image(id);
+    }
     fn image(&self, id: ImageId) -> Option<Size> {
         self.deref().image(id)
     }
@@ -634,6 +640,9 @@ where
     }
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
         self.deref_mut().load_image(path)
+    }
+    fn remove_image(&mut self, id: ImageId) {
+        self.deref_mut().remove_image(id);
     }
     fn image(&self, id: ImageId) -> Option<Size> {
         self.deref().image(id)

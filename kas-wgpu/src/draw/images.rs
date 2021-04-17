@@ -5,7 +5,7 @@
 
 //! Images pipeline
 
-use guillotiere::{Allocation, AtlasAllocator};
+use guillotiere::{AllocId, Allocation, AtlasAllocator};
 use image::RgbaImage;
 use std::collections::HashMap;
 use std::mem::size_of;
@@ -331,6 +331,13 @@ impl Pipeline {
         self.images.insert(id, image);
         self.prepare.push((id, origin));
         Ok(id)
+    }
+
+    /// Free an image
+    pub fn remove(&mut self, id: ImageId) {
+        self.images.remove(&id);
+        let id = AllocId::deserialize(id.get());
+        self.atlas.alloc.deallocate(id);
     }
 
     /// Query image size

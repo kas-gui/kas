@@ -234,6 +234,11 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
     }
 
     #[inline]
+    fn remove_image(&mut self, id: ImageId) {
+        self.images.remove(id);
+    }
+
+    #[inline]
     fn image_size(&self, id: ImageId) -> Option<Size> {
         self.images.image_size(id)
     }
