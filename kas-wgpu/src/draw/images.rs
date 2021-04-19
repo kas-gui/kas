@@ -90,7 +90,7 @@ impl Image {
     pub fn load_path(
         atlas: &mut Atlas,
         path: &Path,
-    ) -> Result<(ImageId, Self, (u32, u32)), ImageError> {
+    ) -> Result<(AllocId, Self, (u32, u32)), ImageError> {
         let image = image::io::Reader::open(path)?.decode()?;
         // TODO(opt): we convert to RGBA8 since this is the only format common
         // to both the image crate and WGPU. It may not be optimal however.
@@ -106,9 +106,8 @@ impl Image {
         let tex_quad = Quad { a, b };
 
         let origin = (alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast());
-        let id = ImageId::new(alloc.id.serialize());
         let image = Image { image, tex_quad };
-        Ok((id, image, origin))
+        Ok((alloc.id, image, origin))
     }
 
     /// Query image size
@@ -154,6 +153,8 @@ pub struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
     atlas: Atlas,
     sampler: wgpu::Sampler,
+    last_image_n: u32,
+    id_map: HashMap<ImageId, AllocId>,
     images: HashMap<ImageId, Image>,
     prepare: Vec<(ImageId, (u32, u32))>,
 }
@@ -286,6 +287,8 @@ impl Pipeline {
             render_pipeline,
             atlas,
             sampler,
+            last_image_n: 0,
+            id_map: Default::default(),
             images: Default::default(),
             prepare: vec![],
         }
@@ -322,12 +325,20 @@ impl Pipeline {
         }
     }
 
+    fn next_image_id(&mut self) -> ImageId {
+        let n = self.last_image_n.wrapping_add(1);
+        self.last_image_n = n;
+        ImageId::try_new(n).expect("exhausted image IDs")
+    }
+
     /// Load an image
     pub fn load_path(
         &mut self,
         path: &Path,
     ) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        let (id, image, origin) = Image::load_path(&mut self.atlas, path)?;
+        let id = self.next_image_id();
+        let (alloc, image, origin) = Image::load_path(&mut self.atlas, path)?;
+        self.id_map.insert(id, alloc);
         self.images.insert(id, image);
         self.prepare.push((id, origin));
         Ok(id)
@@ -336,8 +347,9 @@ impl Pipeline {
     /// Free an image
     pub fn remove(&mut self, id: ImageId) {
         self.images.remove(&id);
-        let id = AllocId::deserialize(id.get());
-        self.atlas.alloc.deallocate(id);
+        if let Some(alloc) = self.id_map.get(&id) {
+            self.atlas.alloc.deallocate(*alloc);
+        }
     }
 
     /// Query image size
