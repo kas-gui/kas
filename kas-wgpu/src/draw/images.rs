@@ -149,7 +149,7 @@ impl Image {
 
 /// A pipeline for rendering images
 pub struct Pipeline {
-    bind_group_layout: wgpu::BindGroupLayout,
+    bg_tex_layout: wgpu::BindGroupLayout,
     render_pipeline: wgpu::RenderPipeline,
     atlas: Atlas,
     sampler: wgpu::Sampler,
@@ -161,7 +161,7 @@ pub struct Pipeline {
 
 /// Per-window state
 pub struct Window {
-    bind_group: wgpu::BindGroup,
+    bg_tex: wgpu::BindGroup,
     passes: Vec<Vec<Vertex>>,
 }
 
@@ -171,16 +171,17 @@ pub struct Window {
 pub struct RenderBuffer<'a> {
     pipe: &'a wgpu::RenderPipeline,
     vertices: &'a mut Vec<Vertex>,
-    bind_group: &'a wgpu::BindGroup,
+    bg_tex: &'a wgpu::BindGroup,
     buffer: wgpu::Buffer,
 }
 
 impl<'a> RenderBuffer<'a> {
     /// Do the render
-    pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>) {
+    pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>, bg_common: &'a wgpu::BindGroup) {
         let count = self.vertices.len().cast();
         rpass.set_pipeline(self.pipe);
-        rpass.set_bind_group(0, self.bind_group, &[]);
+        rpass.set_bind_group(0, bg_common, &[]);
+        rpass.set_bind_group(1, self.bg_tex, &[]);
         rpass.set_vertex_buffer(0, self.buffer.slice(..));
         rpass.draw(0..count, 0..1);
     }
@@ -194,22 +195,16 @@ impl<'a> Drop for RenderBuffer<'a> {
 
 impl Pipeline {
     /// Construct
-    pub fn new(device: &wgpu::Device, shaders: &ShaderManager) -> Self {
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("images bind_group_layout"),
+    pub fn new(
+        device: &wgpu::Device,
+        shaders: &ShaderManager,
+        bg_common: &wgpu::BindGroupLayout,
+    ) -> Self {
+        let bg_tex_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("images texture bind group layout"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
-                    visibility: wgpu::ShaderStage::VERTEX,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None, // TODO
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         sample_type: wgpu::TextureSampleType::Float { filterable: false },
@@ -219,7 +214,7 @@ impl Pipeline {
                     count: None,
                 },
                 wgpu::BindGroupLayoutEntry {
-                    binding: 2,
+                    binding: 1,
                     visibility: wgpu::ShaderStage::FRAGMENT,
                     ty: wgpu::BindingType::Sampler {
                         filtering: false,
@@ -231,13 +226,13 @@ impl Pipeline {
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("images pipeline_layout"),
-            bind_group_layouts: &[&bind_group_layout],
+            label: Some("images pipeline layout"),
+            bind_group_layouts: &[bg_common, &bg_tex_layout],
             push_constant_ranges: &[],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("images render_pipeline"),
+            label: Some("images render pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
                 module: &shaders.vert_2,
@@ -283,7 +278,7 @@ impl Pipeline {
         });
 
         Pipeline {
-            bind_group_layout,
+            bg_tex_layout,
             render_pipeline,
             atlas,
             sampler,
@@ -295,32 +290,24 @@ impl Pipeline {
     }
 
     /// Construct per-window state
-    pub fn new_window(&self, device: &wgpu::Device, scale_buf: &wgpu::Buffer) -> Window {
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("images bind_group"),
-            layout: &self.bind_group_layout,
+    pub fn new_window(&self, device: &wgpu::Device) -> Window {
+        let bg_tex = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("images bind group"),
+            layout: &self.bg_tex_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &scale_buf,
-                        offset: 0,
-                        size: None,
-                    },
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
                     resource: wgpu::BindingResource::TextureView(&self.atlas.view),
                 },
                 wgpu::BindGroupEntry {
-                    binding: 2,
+                    binding: 1,
                     resource: wgpu::BindingResource::Sampler(&self.sampler),
                 },
             ],
         });
 
         Window {
-            bind_group,
+            bg_tex,
             passes: vec![],
         }
     }
@@ -387,7 +374,7 @@ impl Pipeline {
         Some(RenderBuffer {
             pipe: &self.render_pipeline,
             vertices,
-            bind_group: &window.bind_group,
+            bg_tex: &window.bg_tex,
             buffer,
         })
     }

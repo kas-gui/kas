@@ -49,6 +49,7 @@ impl From<kas::draw::Colour> for Rgb {
 pub struct DrawPipe<C> {
     local_pool: futures::executor::LocalPool,
     staging_belt: wgpu::util::StagingBelt,
+    bgl_common: wgpu::BindGroupLayout,
     images: images::Pipeline,
     shaded_square: shaded_square::Pipeline,
     shaded_round: shaded_round::Pipeline,
@@ -62,6 +63,7 @@ type GlyphBrush = wgpu_glyph::GlyphBrush<(), FontRef<'static>>;
 pub struct DrawWindow<CW: CustomWindow> {
     scale_buf: wgpu::Buffer,
     clip_regions: Vec<Rect>,
+    bg_common: wgpu::BindGroup,
     images: images::Window,
     shaded_square: shaded_square::Window,
     shaded_round: shaded_round::Window,

@@ -32,13 +32,11 @@ impl Vertex {
 
 /// A pipeline for rendering rounded shapes
 pub struct Pipeline {
-    bind_group_layout: wgpu::BindGroupLayout,
     render_pipeline: wgpu::RenderPipeline,
 }
 
 /// Per-window state
 pub struct Window {
-    bind_group: wgpu::BindGroup,
     passes: Vec<Vec<Vertex>>,
 }
 
@@ -48,16 +46,15 @@ pub struct Window {
 pub struct RenderBuffer<'a> {
     pipe: &'a wgpu::RenderPipeline,
     vertices: &'a mut Vec<Vertex>,
-    bind_group: &'a wgpu::BindGroup,
     buffer: wgpu::Buffer,
 }
 
 impl<'a> RenderBuffer<'a> {
     /// Do the render
-    pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>) {
+    pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>, bg_common: &'a wgpu::BindGroup) {
         let count = self.vertices.len().cast();
         rpass.set_pipeline(self.pipe);
-        rpass.set_bind_group(0, self.bind_group, &[]);
+        rpass.set_bind_group(0, bg_common, &[]);
         rpass.set_vertex_buffer(0, self.buffer.slice(..));
         rpass.draw(0..count, 0..1);
     }
@@ -71,24 +68,14 @@ impl<'a> Drop for RenderBuffer<'a> {
 
 impl Pipeline {
     /// Construct
-    pub fn new(device: &wgpu::Device, shaders: &ShaderManager) -> Self {
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("FR bind_group_layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStage::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None, // TODO
-                },
-                count: None,
-            }],
-        });
-
+    pub fn new(
+        device: &wgpu::Device,
+        shaders: &ShaderManager,
+        bgl_common: &wgpu::BindGroupLayout,
+    ) -> Self {
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("FR pipeline_layout"),
-            bind_group_layouts: &[&bind_group_layout],
+            bind_group_layouts: &[bgl_common],
             push_constant_ranges: &[],
         });
 
@@ -139,31 +126,12 @@ impl Pipeline {
             }),
         });
 
-        Pipeline {
-            bind_group_layout,
-            render_pipeline,
-        }
+        Pipeline { render_pipeline }
     }
 
     /// Construct per-window state
-    pub fn new_window(&self, device: &wgpu::Device, scale_buf: &wgpu::Buffer) -> Window {
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("FR bind_group"),
-            layout: &self.bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer {
-                    buffer: &scale_buf,
-                    offset: 0,
-                    size: None,
-                },
-            }],
-        });
-
-        Window {
-            bind_group,
-            passes: vec![],
-        }
+    pub fn new_window(&self) -> Window {
+        Window { passes: vec![] }
     }
 
     /// Construct a render buffer
@@ -187,7 +155,6 @@ impl Pipeline {
         Some(RenderBuffer {
             pipe: &self.render_pipeline,
             vertices,
-            bind_group: &window.bind_group,
             buffer,
         })
     }

@@ -31,9 +31,18 @@ pub trait CustomPipeBuilder {
 
     /// Build a pipe
     ///
+    /// A "common" bind group with layout `bgl_common` is available, supplying
+    /// window sizing and theme lighting information (refer to existing pipes
+    /// and shaders for usage). Usage is optional.
+    ///
     /// The given texture format should be used to construct a
     /// compatible [`wgpu::RenderPipeline`].
-    fn build(&mut self, device: &wgpu::Device, tex_format: wgpu::TextureFormat) -> Self::Pipe;
+    fn build(
+        &mut self,
+        device: &wgpu::Device,
+        bgl_common: &wgpu::BindGroupLayout,
+        tex_format: wgpu::TextureFormat,
+    ) -> Self::Pipe;
 }
 
 /// A custom draw pipe
@@ -53,16 +62,7 @@ pub trait CustomPipe: 'static {
     type Window: CustomWindow;
 
     /// Construct a window associated with this pipeline
-    ///
-    /// The `scale_buf` is a shared buffer containing
-    /// `[2.0 / size.0 as f32, -2.0 / size.1 as f32]`. It is updated whenever
-    /// the window is resized.
-    fn new_window(
-        &self,
-        device: &wgpu::Device,
-        scale_buf: &wgpu::Buffer,
-        size: Size,
-    ) -> Self::Window;
+    fn new_window(&self, device: &wgpu::Device, size: Size) -> Self::Window;
 
     /// Called whenever the window is resized
     fn resize(
@@ -90,6 +90,9 @@ pub trait CustomPipe: 'static {
     /// (possibly also for other clip regions). Drawing uses an existing texture
     /// and occurs after most other draw operations, but before text.
     ///
+    /// The "common" bind group supplies window scaling and theme lighting
+    /// information may optionally be set (see [`CustomPipeBuilder::build`]).
+    ///
     /// This method is optional; by default it does nothing.
     #[allow(unused)]
     fn render_pass<'a>(
@@ -98,6 +101,7 @@ pub trait CustomPipe: 'static {
         device: &wgpu::Device,
         pass: usize,
         rpass: &mut wgpu::RenderPass<'a>,
+        bg_common: &'a wgpu::BindGroup,
     ) {
     }
 
@@ -139,7 +143,12 @@ pub trait CustomWindow: 'static {
 /// A dummy implementation (does nothing)
 impl CustomPipeBuilder for () {
     type Pipe = ();
-    fn build(&mut self, _: &wgpu::Device, _: wgpu::TextureFormat) -> Self::Pipe {
+    fn build(
+        &mut self,
+        _: &wgpu::Device,
+        _: &wgpu::BindGroupLayout,
+        _: wgpu::TextureFormat,
+    ) -> Self::Pipe {
         ()
     }
 }
@@ -149,7 +158,7 @@ pub enum Void {}
 /// A dummy implementation (does nothing)
 impl CustomPipe for () {
     type Window = ();
-    fn new_window(&self, _: &wgpu::Device, _: &wgpu::Buffer, _: Size) -> Self::Window {
+    fn new_window(&self, _: &wgpu::Device, _: Size) -> Self::Window {
         ()
     }
     fn resize(&self, _: &mut Self::Window, _: &wgpu::Device, _: &wgpu::Queue, _: Size) {}
