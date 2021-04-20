@@ -42,6 +42,7 @@ mod handle;
 mod theme;
 
 use std::any::Any;
+use std::num::NonZeroU32;
 use std::path::Path;
 
 use crate::cast::Cast;
@@ -86,14 +87,19 @@ impl Pass {
 }
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ImageId(u32);
+pub struct ImageId(NonZeroU32);
 
 impl ImageId {
-    /// Construct a new identifier from `u32` value
+    /// Construct a new identifier from `u32` value not equal to 0
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     #[inline]
-    pub const fn new(n: u32) -> Self {
-        ImageId(n)
+    pub const fn try_new(n: u32) -> Option<Self> {
+        // We can't use ? or .map in a const fn so do it the tedious way:
+        if let Some(nz) = NonZeroU32::new(n) {
+            Some(ImageId(nz))
+        } else {
+            None
+        }
     }
 }
 
@@ -105,6 +111,9 @@ pub trait DrawShared: 'static {
     ///
     /// TODO: revise error handling?
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>>;
+
+    /// Free an image
+    fn remove_image(&mut self, id: ImageId);
 
     /// Get size of image
     fn image_size(&self, id: ImageId) -> Option<Size>;

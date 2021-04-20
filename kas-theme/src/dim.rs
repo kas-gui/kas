@@ -283,6 +283,9 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
         self.draw.load_image(path)
     }
+    fn remove_image(&mut self, id: ImageId) {
+        self.draw.remove_image(id);
+    }
 
     fn image(&self, id: ImageId) -> Option<Size> {
         self.draw.image_size(id)

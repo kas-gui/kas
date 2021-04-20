@@ -73,27 +73,18 @@ impl CustomPipeBuilder for PipeBuilder {
         }
     }
 
-    fn build(&mut self, device: &wgpu::Device, tex_format: wgpu::TextureFormat) -> Self::Pipe {
+    fn build(
+        &mut self,
+        device: &wgpu::Device,
+        bgl_common: &wgpu::BindGroupLayout,
+        tex_format: wgpu::TextureFormat,
+    ) -> Self::Pipe {
         // Note: real apps should compile shaders once and share between windows
         let shaders = Shaders::new(device);
 
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStage::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None, // TODO
-                },
-                count: None,
-            }],
-            label: None,
-        });
-
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
-            bind_group_layouts: &[&bind_group_layout],
+            bind_group_layouts: &[bgl_common],
             push_constant_ranges: &[wgpu::PushConstantRange {
                 stages: wgpu::ShaderStage::FRAGMENT,
                 range: 0..size_of::<PushConstants>().cast(),
@@ -133,20 +124,15 @@ impl CustomPipeBuilder for PipeBuilder {
             }),
         });
 
-        Pipe {
-            bind_group_layout,
-            render_pipeline,
-        }
+        Pipe { render_pipeline }
     }
 }
 
 struct Pipe {
-    bind_group_layout: wgpu::BindGroupLayout,
     render_pipeline: wgpu::RenderPipeline,
 }
 
 struct PipeWindow {
-    bind_group: wgpu::BindGroup,
     push_constants: PushConstants,
     passes: Vec<(Vec<Vertex>, Option<Buffer>, u32)>,
 }
@@ -154,20 +140,7 @@ struct PipeWindow {
 impl CustomPipe for Pipe {
     type Window = PipeWindow;
 
-    fn new_window(&self, device: &wgpu::Device, scale_buf: &wgpu::Buffer, _: Size) -> Self::Window {
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: wgpu::BindingResource::Buffer {
-                    buffer: &scale_buf,
-                    offset: 0,
-                    size: None,
-                },
-            }],
-            label: None,
-        });
-
+    fn new_window(&self, _: &wgpu::Device, _: Size) -> Self::Window {
         let push_constants = PushConstants {
             p: DVec2::splat(0.0),
             q: DVec2::splat(1.0),
@@ -175,7 +148,6 @@ impl CustomPipe for Pipe {
         };
 
         PipeWindow {
-            bind_group,
             push_constants,
             passes: vec![],
         }
@@ -207,6 +179,7 @@ impl CustomPipe for Pipe {
         _: &wgpu::Device,
         pass: usize,
         rpass: &mut wgpu::RenderPass<'a>,
+        bg_common: &'a wgpu::BindGroup,
     ) {
         if let Some(tuple) = window.passes.get(pass) {
             if let Some(buffer) = tuple.1.as_ref() {
@@ -216,7 +189,7 @@ impl CustomPipe for Pipe {
                     0,
                     bytemuck::bytes_of(&window.push_constants),
                 );
-                rpass.set_bind_group(0, &window.bind_group, &[]);
+                rpass.set_bind_group(0, bg_common, &[]);
                 rpass.set_vertex_buffer(0, buffer.slice(..));
                 rpass.draw(0..tuple.2, 0..1);
             }

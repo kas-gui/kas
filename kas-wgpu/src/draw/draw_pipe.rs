@@ -30,15 +30,42 @@ impl<C: CustomPipe> DrawPipe<C> {
         let staging_belt = wgpu::util::StagingBelt::new(1024);
         let local_pool = futures::executor::LocalPool::new();
 
-        let images = images::Pipeline::new(device, shaders);
-        let shaded_square = shaded_square::Pipeline::new(device, shaders);
-        let shaded_round = shaded_round::Pipeline::new(device, shaders);
-        let flat_round = flat_round::Pipeline::new(device, shaders);
-        let custom = custom.build(&device, TEX_FORMAT);
+        let bgl_common = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("common bind group layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStage::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None, // TODO
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None, // TODO
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let images = images::Pipeline::new(device, shaders, &bgl_common);
+        let shaded_square = shaded_square::Pipeline::new(device, shaders, &bgl_common);
+        let shaded_round = shaded_round::Pipeline::new(device, shaders, &bgl_common);
+        let flat_round = flat_round::Pipeline::new(device, shaders, &bgl_common);
+        let custom = custom.build(&device, &bgl_common, TEX_FORMAT);
 
         DrawPipe {
             local_pool,
             staging_belt,
+            bgl_common,
             images,
             shaded_square,
             shaded_round,
@@ -74,17 +101,36 @@ impl<C: CustomPipe> DrawPipe<C> {
             usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
         });
 
+        let bg_common = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("common bind group"),
+            layout: &self.bgl_common,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &scale_buf,
+                        offset: 0,
+                        size: None,
+                    },
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Buffer {
+                        buffer: &light_norm_buf,
+                        offset: 0,
+                        size: None,
+                    },
+                },
+            ],
+        });
+
         let rect = Rect::new(Coord::ZERO, size);
 
-        let images = self.images.new_window(device, &scale_buf);
-        let shaded_square = self
-            .shaded_square
-            .new_window(device, &scale_buf, &light_norm_buf);
-        let shaded_round = self
-            .shaded_round
-            .new_window(device, &scale_buf, &light_norm_buf);
-        let flat_round = self.flat_round.new_window(device, &scale_buf);
-        let custom = self.custom.new_window(device, &scale_buf, size);
+        let images = self.images.new_window();
+        let shaded_square = self.shaded_square.new_window();
+        let shaded_round = self.shaded_round.new_window();
+        let flat_round = self.flat_round.new_window();
+        let custom = self.custom.new_window(device, size);
 
         // TODO: use extra caching so we don't load font for each window
         let font_data = kas::text::fonts::fonts().font_data();
@@ -98,6 +144,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         DrawWindow {
             scale_buf,
             clip_regions: vec![rect],
+            bg_common,
             images,
             shaded_square,
             shaded_round,
@@ -156,6 +203,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         // We use a separate render pass for each clipped region.
         for (pass, rect) in window.clip_regions.iter().enumerate() {
+            let bg_common = &window.bg_common;
             let im = self.images.render_buf(&mut window.images, device, pass);
             let ss = self
                 .shaded_square
@@ -180,12 +228,12 @@ impl<C: CustomPipe> DrawPipe<C> {
                     rect.size.1.cast(),
                 );
 
-                im.as_ref().map(|buf| buf.render(&mut rpass));
-                ss.as_ref().map(|buf| buf.render(&mut rpass));
-                sr.as_ref().map(|buf| buf.render(&mut rpass));
-                fr.as_ref().map(|buf| buf.render(&mut rpass));
+                im.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
+                ss.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
+                sr.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
+                fr.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
                 self.custom
-                    .render_pass(&mut window.custom, device, pass, &mut rpass);
+                    .render_pass(&mut window.custom, device, pass, &mut rpass, bg_common);
             }
 
             color_attachments[0].ops.load = wgpu::LoadOp::Load;
@@ -196,6 +244,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         self.custom
             .render_final(&mut window.custom, device, &mut encoder, frame_view, size);
+        window.images.clear_vertices();
 
         window
             .glyph_brush
@@ -231,6 +280,11 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
     #[inline]
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
         self.images.load_path(path)
+    }
+
+    #[inline]
+    fn remove_image(&mut self, id: ImageId) {
+        self.images.remove(id);
     }
 
     #[inline]
