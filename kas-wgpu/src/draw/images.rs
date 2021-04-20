@@ -9,7 +9,7 @@ use guillotiere::{AllocId, Allocation, AtlasAllocator};
 use image::RgbaImage;
 use std::collections::HashMap;
 use std::mem::size_of;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 use wgpu::util::DeviceExt;
 
@@ -190,6 +190,7 @@ pub struct Pipeline {
     new_aa: Vec<AtlasAllocator>,
     sampler: wgpu::Sampler,
     last_image_n: u32,
+    paths: HashMap<PathBuf, (ImageId, u32)>,
     images: HashMap<ImageId, Image>,
     prepare: Vec<(ImageId, (u32, u32))>,
 }
@@ -304,6 +305,7 @@ impl Pipeline {
             new_aa: vec![],
             sampler,
             last_image_n: 0,
+            paths: Default::default(),
             images: Default::default(),
             prepare: vec![],
         }
@@ -354,20 +356,41 @@ impl Pipeline {
         &mut self,
         path: &Path,
     ) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
+        if let Some((id, _)) = self.paths.get(path) {
+            return Ok(*id);
+        }
+
         let id = self.next_image_id();
         let (image, origin) = Image::load_path(self, path)?;
         self.images.insert(id, image);
         self.prepare.push((id, origin));
+        self.paths.insert(path.to_owned(), (id, 1));
+
         Ok(id)
     }
 
     /// Free an image
     pub fn remove(&mut self, id: ImageId) {
-        if let Some(im) = self.images.remove(&id) {
-            self.atlases[usize::conv(im.atlas)]
-                .alloc
-                .deallocate(im.alloc);
+        // We don't have a map from id to path, hence have to iterate. We can
+        // however do a fast check that id is used.
+        if !self.images.contains_key(&id) {
+            return;
         }
+
+        let atlases = &mut self.atlases;
+        let images = &mut self.images;
+        self.paths.retain(|_, obj| {
+            if obj.0 == id {
+                obj.1 -= 1;
+                if obj.1 == 0 {
+                    if let Some(im) = images.remove(&id) {
+                        atlases[usize::conv(im.atlas)].alloc.deallocate(im.alloc);
+                    }
+                    return false;
+                }
+            }
+            true
+        })
     }
 
     /// Query image size
