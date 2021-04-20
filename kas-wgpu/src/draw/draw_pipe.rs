@@ -126,7 +126,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         let rect = Rect::new(Coord::ZERO, size);
 
-        let images = self.images.new_window(device);
+        let images = self.images.new_window();
         let shaded_square = self.shaded_square.new_window();
         let shaded_round = self.shaded_round.new_window();
         let flat_round = self.flat_round.new_window();
@@ -244,6 +244,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         self.custom
             .render_final(&mut window.custom, device, &mut encoder, frame_view, size);
+        window.images.clear_vertices();
 
         window
             .glyph_brush
