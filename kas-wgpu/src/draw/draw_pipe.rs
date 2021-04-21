@@ -185,12 +185,15 @@ impl<C: CustomPipe> DrawPipe<C> {
         // configure, then join thread and do any final prep now.
         self.atlases.prepare(device);
         self.images.prepare(&self.atlases, queue);
-
         self.custom.update(&mut window.custom, device, queue);
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("render"),
         });
+
+        window
+            .flat_round
+            .write_buffers(device, &mut self.staging_belt, &mut encoder);
 
         let mut color_attachments = [wgpu::RenderPassColorAttachmentDescriptor {
             attachment: frame_view,
@@ -211,9 +214,6 @@ impl<C: CustomPipe> DrawPipe<C> {
             let sr = self
                 .shaded_round
                 .render_buf(&mut window.shaded_round, device, pass);
-            let fr = self
-                .flat_round
-                .render_buf(&mut window.flat_round, device, pass);
 
             {
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -231,7 +231,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                 at.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
                 ss.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
                 sr.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
-                fr.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
+                self.flat_round
+                    .render(&window.flat_round, pass, &mut rpass, bg_common);
                 self.custom
                     .render_pass(&mut window.custom, device, pass, &mut rpass, bg_common);
             }
@@ -264,7 +265,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         self.staging_belt.finish();
         queue.submit(std::iter::once(encoder.finish()));
 
-        // TODO: does this have to be after queue.submit?
         use futures::task::SpawnExt;
         self.local_pool
             .spawner()

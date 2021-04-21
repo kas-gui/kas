@@ -6,10 +6,11 @@
 //! Rounded flat pipeline
 
 use std::mem::size_of;
+use std::num::NonZeroU64;
 use wgpu::util::DeviceExt;
 
 use crate::draw::{Rgb, ShaderManager};
-use kas::cast::Cast;
+use kas::cast::{Cast, Conv};
 use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Vec2, Vec3};
 
@@ -37,33 +38,10 @@ pub struct Pipeline {
 
 /// Per-window state
 pub struct Window {
+    // per pass, a list of vertices to render
     passes: Vec<Vec<Vertex>>,
-}
-
-/// Buffer used during render pass
-///
-/// This buffer must not be dropped before the render pass.
-pub struct RenderBuffer<'a> {
-    pipe: &'a wgpu::RenderPipeline,
-    vertices: &'a mut Vec<Vertex>,
-    buffer: wgpu::Buffer,
-}
-
-impl<'a> RenderBuffer<'a> {
-    /// Do the render
-    pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>, bg_common: &'a wgpu::BindGroup) {
-        let count = self.vertices.len().cast();
-        rpass.set_pipeline(self.pipe);
-        rpass.set_bind_group(0, bg_common, &[]);
-        rpass.set_vertex_buffer(0, self.buffer.slice(..));
-        rpass.draw(0..count, 0..1);
-    }
-}
-
-impl<'a> Drop for RenderBuffer<'a> {
-    fn drop(&mut self) {
-        self.vertices.clear();
-    }
+    // per pass, a buffer, the buffer (max) length, the length in use
+    buffers: Vec<(wgpu::Buffer, u32, u32)>,
 }
 
 impl Pipeline {
@@ -131,36 +109,71 @@ impl Pipeline {
 
     /// Construct per-window state
     pub fn new_window(&self) -> Window {
-        Window { passes: vec![] }
+        Window {
+            passes: vec![],
+            buffers: vec![],
+        }
     }
 
-    /// Construct a render buffer
-    pub fn render_buf<'a>(
+    /// Enqueue render commands
+    pub fn render<'a>(
         &'a self,
-        window: &'a mut Window,
-        device: &wgpu::Device,
+        window: &'a Window,
         pass: usize,
-    ) -> Option<RenderBuffer<'a>> {
-        if pass >= window.passes.len() || window.passes[pass].len() == 0 {
-            return None;
+        rpass: &mut wgpu::RenderPass<'a>,
+        bg_common: &'a wgpu::BindGroup,
+    ) {
+        if let Some((buffer, _, count)) = window.buffers.get(pass) {
+            rpass.set_pipeline(&self.render_pipeline);
+            rpass.set_bind_group(0, bg_common, &[]);
+            rpass.set_vertex_buffer(0, buffer.slice(..));
+            rpass.draw(0..*count, 0..1);
         }
-
-        let vertices = &mut window.passes[pass];
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("FR render_buf"),
-            contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsage::VERTEX,
-        });
-
-        Some(RenderBuffer {
-            pipe: &self.render_pipeline,
-            vertices,
-            buffer,
-        })
     }
 }
 
 impl Window {
+    /// Prepare vertex buffers
+    pub fn write_buffers(
+        &mut self,
+        device: &wgpu::Device,
+        staging_belt: &mut wgpu::util::StagingBelt,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        self.buffers.reserve(self.passes.len() - self.buffers.len());
+        for pass in 0..self.passes.len() {
+            let vertices = &mut self.passes[pass];
+            let len: u32 = vertices.len().cast();
+
+            if pass < self.buffers.len() {
+                if len <= self.buffers[pass].1 {
+                    let byte_len = u64::from(len) * u64::conv(size_of::<Vertex>());
+                    if let Some(byte_len) = NonZeroU64::new(byte_len) {
+                        let buffer = &self.buffers[pass].0;
+                        staging_belt
+                            .write_buffer(encoder, buffer, 0, byte_len, device)
+                            .copy_from_slice(bytemuck::cast_slice(vertices));
+                    }
+                    self.buffers[pass].2 = len;
+                    vertices.clear();
+                    continue;
+                }
+            }
+
+            let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("flat_round vertex buffer"),
+                contents: bytemuck::cast_slice(vertices),
+                usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+            });
+            if pass < self.buffers.len() {
+                self.buffers[pass] = (buffer, len, len);
+            } else {
+                self.buffers.push((buffer, len, len));
+            }
+            vertices.clear();
+        }
+    }
+
     pub fn line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
         if p1 == p2 {
             let a = p1 - radius;
