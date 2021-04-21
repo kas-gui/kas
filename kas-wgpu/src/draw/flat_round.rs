@@ -7,10 +7,10 @@
 
 use std::mem::size_of;
 use std::num::NonZeroU64;
-use wgpu::util::DeviceExt;
+use std::ops::Range;
 
 use crate::draw::{Rgb, ShaderManager};
-use kas::cast::{Cast, Conv};
+use kas::cast::Conv;
 use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Vec2, Vec3};
 
@@ -36,12 +36,18 @@ pub struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
 }
 
+#[derive(Clone, Debug, Default)]
+struct PassData {
+    vertices: Vec<Vertex>,
+    count: u32,
+    data_range: Range<u64>,
+}
+
 /// Per-window state
 pub struct Window {
-    // per pass, a list of vertices to render
-    passes: Vec<Vec<Vertex>>,
-    // per pass, a buffer, the buffer (max) length, the length in use
-    buffers: Vec<(wgpu::Buffer, u32, u32)>,
+    passes: Vec<PassData>,
+    buffer: Option<wgpu::Buffer>,
+    buffer_size: u64,
 }
 
 impl Pipeline {
@@ -111,7 +117,8 @@ impl Pipeline {
     pub fn new_window(&self) -> Window {
         Window {
             passes: vec![],
-            buffers: vec![],
+            buffer: None,
+            buffer_size: 0,
         }
     }
 
@@ -123,11 +130,13 @@ impl Pipeline {
         rpass: &mut wgpu::RenderPass<'a>,
         bg_common: &'a wgpu::BindGroup,
     ) {
-        if let Some((buffer, _, count)) = window.buffers.get(pass) {
-            rpass.set_pipeline(&self.render_pipeline);
-            rpass.set_bind_group(0, bg_common, &[]);
-            rpass.set_vertex_buffer(0, buffer.slice(..));
-            rpass.draw(0..*count, 0..1);
+        if let Some(buffer) = window.buffer.as_ref() {
+            if let Some(pass) = window.passes.get(pass) {
+                rpass.set_pipeline(&self.render_pipeline);
+                rpass.set_bind_group(0, bg_common, &[]);
+                rpass.set_vertex_buffer(0, buffer.slice(pass.data_range.clone()));
+                rpass.draw(0..pass.count, 0..1);
+            }
         }
     }
 }
@@ -140,37 +149,55 @@ impl Window {
         staging_belt: &mut wgpu::util::StagingBelt,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        self.buffers.reserve(self.passes.len() - self.buffers.len());
-        for pass in 0..self.passes.len() {
-            let vertices = &mut self.passes[pass];
-            let len: u32 = vertices.len().cast();
+        let req_len = self
+            .passes
+            .iter()
+            .map(|pd| u64::conv(pd.vertices.len() * size_of::<Vertex>()))
+            .sum();
+        let byte_len = match NonZeroU64::new(req_len) {
+            Some(nz) => nz,
+            None => return,
+        };
 
-            if pass < self.buffers.len() {
-                if len <= self.buffers[pass].1 {
-                    let byte_len = u64::from(len) * u64::conv(size_of::<Vertex>());
-                    if let Some(byte_len) = NonZeroU64::new(byte_len) {
-                        let buffer = &self.buffers[pass].0;
-                        staging_belt
-                            .write_buffer(encoder, buffer, 0, byte_len, device)
-                            .copy_from_slice(bytemuck::cast_slice(vertices));
-                    }
-                    self.buffers[pass].2 = len;
-                    vertices.clear();
-                    continue;
-                }
-            }
-
-            let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        if req_len <= self.buffer_size {
+            let buffer = self.buffer.as_ref().unwrap();
+            let mut slice = staging_belt.write_buffer(encoder, buffer, 0, byte_len, device);
+            copy_to_slice(&mut self.passes, &mut slice);
+        } else {
+            // Size must be a multiple of alignment
+            let mask = wgpu::COPY_BUFFER_ALIGNMENT - 1;
+            let buffer_size = (byte_len.get() + mask) & !mask;
+            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("flat_round vertex buffer"),
-                contents: bytemuck::cast_slice(vertices),
+                size: buffer_size,
                 usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+                mapped_at_creation: true,
             });
-            if pass < self.buffers.len() {
-                self.buffers[pass] = (buffer, len, len);
-            } else {
-                self.buffers.push((buffer, len, len));
+
+            let mut slice = buffer.slice(..byte_len.get()).get_mapped_range_mut();
+            copy_to_slice(&mut self.passes, &mut slice);
+            drop(slice);
+
+            buffer.unmap();
+            self.buffer = Some(buffer);
+            self.buffer_size = buffer_size;
+        }
+
+        fn copy_to_slice(passes: &mut [PassData], slice: &mut [u8]) {
+            let mut byte_offset = 0;
+            for pass in passes.iter_mut() {
+                let len = u32::conv(pass.vertices.len());
+                let byte_len = u64::from(len) * u64::conv(size_of::<Vertex>());
+                let byte_end = byte_offset + byte_len;
+
+                slice[usize::conv(byte_offset)..usize::conv(byte_end)]
+                    .copy_from_slice(bytemuck::cast_slice(&pass.vertices));
+
+                pass.vertices.clear();
+                pass.count = len;
+                pass.data_range = byte_offset..byte_end;
+                byte_offset = byte_end;
             }
-            vertices.clear();
         }
     }
 
@@ -375,9 +402,9 @@ impl Window {
     fn add_vertices(&mut self, pass: usize, slice: &[Vertex]) {
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
-            self.passes.resize(pass + 8, vec![]);
+            self.passes.resize(pass + 8, Default::default());
         }
 
-        self.passes[pass].extend_from_slice(slice);
+        self.passes[pass].vertices.extend_from_slice(slice);
     }
 }
