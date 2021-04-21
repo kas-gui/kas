@@ -11,10 +11,7 @@ use std::path::Path;
 use wgpu::util::DeviceExt;
 use wgpu_glyph::{ab_glyph::FontRef, GlyphBrushBuilder};
 
-use super::{
-    flat_round, images, shaded_round, shaded_square, CustomPipe, CustomPipeBuilder, CustomWindow,
-    DrawPipe, DrawWindow, ShaderManager, TEX_FORMAT,
-};
+use super::*;
 use kas::cast::Cast;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, Pass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
@@ -56,7 +53,8 @@ impl<C: CustomPipe> DrawPipe<C> {
             ],
         });
 
-        let images = images::Pipeline::new(device, shaders, &bgl_common);
+        let atlases = atlases::Pipeline::new(device, shaders, &bgl_common);
+        let images = images::Images::new();
         let shaded_square = shaded_square::Pipeline::new(device, shaders, &bgl_common);
         let shaded_round = shaded_round::Pipeline::new(device, shaders, &bgl_common);
         let flat_round = flat_round::Pipeline::new(device, shaders, &bgl_common);
@@ -66,6 +64,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             local_pool,
             staging_belt,
             bgl_common,
+            atlases,
             images,
             shaded_square,
             shaded_round,
@@ -126,7 +125,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         let rect = Rect::new(Coord::ZERO, size);
 
-        let images = self.images.new_window();
+        let atlases = self.atlases.new_window();
         let shaded_square = self.shaded_square.new_window();
         let shaded_round = self.shaded_round.new_window();
         let flat_round = self.flat_round.new_window();
@@ -145,7 +144,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             scale_buf,
             clip_regions: vec![rect],
             bg_common,
-            images,
+            atlases,
             shaded_square,
             shaded_round,
             flat_round,
@@ -184,7 +183,8 @@ impl<C: CustomPipe> DrawPipe<C> {
     ) {
         // TODO: could potentially start preparing images asynchronously after
         // configure, then join thread and do any final prep now.
-        self.images.prepare(device, queue);
+        self.atlases.prepare(device);
+        self.images.prepare(&self.atlases, queue);
 
         self.custom.update(&mut window.custom, device, queue);
 
@@ -204,7 +204,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         // We use a separate render pass for each clipped region.
         for (pass, rect) in window.clip_regions.iter().enumerate() {
             let bg_common = &window.bg_common;
-            let im = self.images.render_buf(&mut window.images, device, pass);
+            let at = self.atlases.render_buf(&mut window.atlases, device, pass);
             let ss = self
                 .shaded_square
                 .render_buf(&mut window.shaded_square, device, pass);
@@ -228,7 +228,7 @@ impl<C: CustomPipe> DrawPipe<C> {
                     rect.size.1.cast(),
                 );
 
-                im.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
+                at.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
                 ss.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
                 sr.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
                 fr.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
@@ -244,7 +244,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         self.custom
             .render_final(&mut window.custom, device, &mut encoder, frame_view, size);
-        window.images.clear_vertices();
+        window.atlases.clear_vertices();
 
         window
             .glyph_brush
@@ -279,12 +279,12 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
 
     #[inline]
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        self.images.load_path(path)
+        self.images.load_path(&mut self.atlases, path)
     }
 
     #[inline]
     fn remove_image(&mut self, id: ImageId) {
-        self.images.remove(id);
+        self.images.remove(&mut self.atlases, id);
     }
 
     #[inline]
@@ -294,7 +294,9 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
 
     #[inline]
     fn draw_image(&self, window: &mut Self::Draw, pass: Pass, id: ImageId, rect: Quad) {
-        window.images.rect(&self.images, pass, id, rect);
+        if let Some((atlas, tex)) = self.images.get_im_atlas_coords(id) {
+            window.atlases.rect(pass, atlas, tex, rect);
+        };
     }
 }
 

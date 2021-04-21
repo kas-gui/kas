@@ -7,6 +7,7 @@
 //!
 //! Extensions to the API of [`kas::draw`], plus some utility types.
 
+mod atlases;
 mod custom;
 mod draw_pipe;
 mod draw_text;
@@ -20,6 +21,7 @@ use kas::geom::Rect;
 use wgpu::TextureFormat;
 use wgpu_glyph::ab_glyph::FontRef;
 
+pub(crate) use images::ImageError;
 pub(crate) use shaders::ShaderManager;
 
 pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};
@@ -50,7 +52,8 @@ pub struct DrawPipe<C> {
     local_pool: futures::executor::LocalPool,
     staging_belt: wgpu::util::StagingBelt,
     bgl_common: wgpu::BindGroupLayout,
-    images: images::Pipeline,
+    atlases: atlases::Pipeline,
+    images: images::Images,
     shaded_square: shaded_square::Pipeline,
     shaded_round: shaded_round::Pipeline,
     flat_round: flat_round::Pipeline,
@@ -64,7 +67,7 @@ pub struct DrawWindow<CW: CustomWindow> {
     scale_buf: wgpu::Buffer,
     clip_regions: Vec<Rect>,
     bg_common: wgpu::BindGroup,
-    images: images::Window,
+    atlases: atlases::Window,
     shaded_square: shaded_square::Window,
     shaded_round: shaded_round::Window,
     flat_round: flat_round::Window,
