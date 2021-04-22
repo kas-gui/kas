@@ -18,6 +18,11 @@ use kas::geom::{Quad, Vec2, Vec3};
 /// implement multi-sampling.
 const OFFSET: f32 = 0.125;
 
+// NOTE(opt): in theory we could reduce data transmission to the GPU by 1/3 by
+// sending quads (two triangles) as instances in triangle-strip mode. The
+// "frame" shape could support four-triangle strips. However, this would require
+// many rpass.draw() commands or shaders unpacking vertices from instance data.
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 struct Vertex(Vec3, Rgb, f32, Vec2, Vec2);
@@ -224,29 +229,29 @@ impl Window {
         let p2my = p2 - vy;
         let p2py = p2 + vy;
 
-        let ma1 = Vertex::new2(p1my, depth, col, 0.0, Vec2(0.0, na.1), p);
-        let mb1 = Vertex::new2(p1py, depth, col, 0.0, Vec2(0.0, nb.1), p);
-        let aa1 = Vertex::new2(p1my - vx, depth, col, 0.0, Vec2(na.0, na.1), p);
-        let ab1 = Vertex::new2(p1py - vx, depth, col, 0.0, Vec2(na.0, nb.1), p);
-        let ma2 = Vertex::new2(p2my, depth, col, 0.0, Vec2(0.0, na.1), p);
-        let mb2 = Vertex::new2(p2py, depth, col, 0.0, Vec2(0.0, nb.1), p);
-        let ba2 = Vertex::new2(p2my + vx, depth, col, 0.0, Vec2(nb.0, na.1), p);
-        let bb2 = Vertex::new2(p2py + vx, depth, col, 0.0, Vec2(nb.0, nb.1), p);
-        let p1 = Vertex::new2(p1, depth, col, 0.0, n0, p);
-        let p2 = Vertex::new2(p2, depth, col, 0.0, n0, p);
+        let ma = Vertex::new2(p1my, depth, col, 0.0, Vec2(0.0, na.1), p);
+        let mb = Vertex::new2(p1py, depth, col, 0.0, Vec2(0.0, nb.1), p);
+        let aa = Vertex::new2(p1my - vx, depth, col, 0.0, Vec2(na.0, na.1), p);
+        let ab = Vertex::new2(p1py - vx, depth, col, 0.0, Vec2(na.0, nb.1), p);
+        let ba = Vertex::new2(p2my + vx, depth, col, 0.0, Vec2(nb.0, na.1), p);
+        let bb = Vertex::new2(p2py + vx, depth, col, 0.0, Vec2(nb.0, nb.1), p);
+        let na = Vertex::new2(p2my, depth, col, 0.0, Vec2(0.0, na.1), p);
+        let nb = Vertex::new2(p2py, depth, col, 0.0, Vec2(0.0, nb.1), p);
+        let m = Vertex::new2(p1, depth, col, 0.0, n0, p);
+        let n = Vertex::new2(p2, depth, col, 0.0, n0, p);
 
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[
-            ab1, p1, mb1,
-            aa1, p1, ab1,
-            ma1, p1, aa1,
-            mb1, p1, mb2,
-            mb2, p1, p2,
-            mb2, p2, bb2,
-            bb2, p2, ba2,
-            ba2, p2, ma2,
-            ma2, p2, p1,
-            p1, ma1, ma2,
+            ab, m, mb,
+            mb, m, n,
+            mb, n, nb,
+            nb, n, bb,
+            bb, n, ba,
+            ba, n, na,
+            na, n, ma,
+            ma, n, m,
+            ma, m, aa,
+            aa, m, ab,
         ]);
     }
 
@@ -374,8 +379,8 @@ impl Window {
         self.add_vertices(pass.pass(), &[
             // top bar: ba - dc - cc - aa
             ba, dc, da,
-            da, dc, ca,
-            dc, cc, ca,
+            da, dc, cc,
+            da, cc, ca,
             ca, cc, aa,
             // left bar: aa - cc - cd - ab
             aa, cc, ac,
@@ -396,6 +401,8 @@ impl Window {
     }
 
     fn add_vertices(&mut self, pass: usize, slice: &[Vertex]) {
+        debug_assert_eq!(slice.len() % 3, 0);
+
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
             self.passes.resize(pass + 8, Default::default());
