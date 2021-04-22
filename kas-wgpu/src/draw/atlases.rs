@@ -14,7 +14,7 @@ use super::ImageError;
 use crate::draw::ShaderManager;
 use kas::cast::{Cast, Conv};
 use kas::draw::Pass;
-use kas::geom::{Quad, Size, Vec2, Vec3};
+use kas::geom::{Quad, Size, Vec2};
 
 const TEXTURE_SIZE: (u32, u32) = (2048, 2048);
 
@@ -22,11 +22,17 @@ fn to_vec2(p: guillotiere::Point) -> Vec2 {
     Vec2(p.x.cast(), p.y.cast())
 }
 
+/// Screen and texture coordinates
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec3, Vec2);
-unsafe impl bytemuck::Zeroable for Vertex {}
-unsafe impl bytemuck::Pod for Vertex {}
+struct Instance {
+    a: Vec2,
+    b: Vec2,
+    ta: Vec2,
+    tb: Vec2,
+}
+unsafe impl bytemuck::Zeroable for Instance {}
+unsafe impl bytemuck::Pod for Instance {}
 
 pub struct Atlas {
     alloc: AtlasAllocator,
@@ -139,16 +145,21 @@ impl Pipeline {
             label: Some("images render pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shaders.vert_2,
+                module: &shaders.vert_tex_quad,
                 entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
-                    step_mode: wgpu::InputStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Float2],
+                    array_stride: size_of::<Instance>() as wgpu::BufferAddress,
+                    step_mode: wgpu::InputStepMode::Instance,
+                    attributes: &wgpu::vertex_attr_array![
+                        0 => Float2,
+                        1 => Float2,
+                        2 => Float2,
+                        3 => Float2,
+                    ],
                 }],
             },
             primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
+                topology: wgpu::PrimitiveTopology::TriangleStrip,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
                 cull_mode: wgpu::CullMode::Back,
@@ -274,7 +285,7 @@ impl Pipeline {
                 rpass.set_vertex_buffer(0, buffer.slice(pass.data_range.clone()));
                 for (a, atlas) in pass.atlases.iter().enumerate() {
                     rpass.set_bind_group(1, &self.atlases[a].bg, &[]);
-                    rpass.draw(atlas.range.clone(), 0..1);
+                    rpass.draw(0..4, atlas.range.clone());
                 }
             }
         }
@@ -283,7 +294,7 @@ impl Pipeline {
 
 #[derive(Clone, Debug, Default)]
 struct AtlasPassData {
-    vertices: Vec<Vertex>,
+    instances: Vec<Instance>,
     range: Range<u32>,
 }
 
@@ -312,7 +323,7 @@ impl Window {
         let mut req_len = 0;
         for pass in self.passes.iter() {
             for atlas in pass.atlases.iter() {
-                req_len += u64::conv(atlas.vertices.len() * size_of::<Vertex>());
+                req_len += u64::conv(atlas.instances.len() * size_of::<Instance>());
             }
         }
         let byte_len = match NonZeroU64::new(req_len) {
@@ -357,15 +368,15 @@ impl Window {
                 let byte_start = byte_offset;
                 let mut index = 0;
                 for atlas in pass.atlases.iter_mut() {
-                    let len = u32::conv(atlas.vertices.len());
-                    let byte_len = u64::from(len) * u64::conv(size_of::<Vertex>());
+                    let len = u32::conv(atlas.instances.len());
+                    let byte_len = u64::from(len) * u64::conv(size_of::<Instance>());
                     let byte_end = byte_offset + byte_len;
 
                     slice[usize::conv(byte_offset)..usize::conv(byte_end)]
-                        .copy_from_slice(bytemuck::cast_slice(&atlas.vertices));
+                        .copy_from_slice(bytemuck::cast_slice(&atlas.instances));
 
                     byte_offset = byte_end;
-                    atlas.vertices.clear();
+                    atlas.instances.clear();
                     let end = index + len;
                     atlas.range = index..end;
                     index = end;
@@ -377,33 +388,19 @@ impl Window {
 
     /// Add a rectangle to the buffer
     pub fn rect(&mut self, pass: Pass, atlas: usize, tex: Quad, rect: Quad) {
-        let aa = rect.a;
-        let bb = rect.b;
-
-        if !aa.lt(bb) {
+        if !rect.a.lt(rect.b) {
             // zero / negative size: nothing to draw
             return;
         }
 
-        let depth = pass.depth();
-        let ab = Vec3(aa.0, bb.1, depth);
-        let ba = Vec3(bb.0, aa.1, depth);
-        let aa = Vec3::from2(aa, depth);
-        let bb = Vec3::from2(bb, depth);
+        let instance = Instance {
+            a: rect.a,
+            b: rect.b,
+            ta: tex.a,
+            tb: tex.b,
+        };
 
-        let tab = Vec2(tex.a.0, tex.b.1);
-        let tba = Vec2(tex.b.0, tex.a.1);
-
-        #[rustfmt::skip]
-        self.add_vertices(pass.pass(), atlas, &[
-            Vertex(aa, tex.a), Vertex(ba, tba), Vertex(ab, tab),
-            Vertex(ab, tab), Vertex(ba, tba), Vertex(bb, tex.b),
-        ]);
-    }
-
-    fn add_vertices(&mut self, pass: usize, atlas: usize, slice: &[Vertex]) {
-        debug_assert_eq!(slice.len() % 3, 0);
-
+        let pass = pass.pass();
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
             self.passes.resize(pass + 8, Default::default());
@@ -415,6 +412,6 @@ impl Window {
             pass.atlases.resize(atlas + 1, Default::default());
         }
 
-        pass.atlases[atlas].vertices.extend_from_slice(slice);
+        pass.atlases[atlas].instances.push(instance);
     }
 }
