@@ -59,7 +59,12 @@ impl<V: bytemuck::Pod> Window<V> {
             .sum();
         let byte_len = match NonZeroU64::new(req_len) {
             Some(nz) => nz,
-            None => return,
+            None => {
+                for pass in self.passes.iter_mut() {
+                    pass.count = 0;
+                }
+                return;
+            }
         };
 
         if req_len <= self.buffer_size {

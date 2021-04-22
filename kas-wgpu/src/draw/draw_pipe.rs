@@ -126,8 +126,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         let rect = Rect::new(Coord::ZERO, size);
 
         let atlases = self.atlases.new_window();
-        let shaded_square = self.shaded_square.new_window();
-        let shaded_round = self.shaded_round.new_window();
         let custom = self.custom.new_window(device, size);
 
         // TODO: use extra caching so we don't load font for each window
@@ -144,8 +142,8 @@ impl<C: CustomPipe> DrawPipe<C> {
             clip_regions: vec![rect],
             bg_common,
             atlases,
-            shaded_square,
-            shaded_round,
+            shaded_square: Default::default(),
+            shaded_round: Default::default(),
             flat_round: Default::default(),
             custom,
             glyph_brush,
@@ -191,6 +189,12 @@ impl<C: CustomPipe> DrawPipe<C> {
         });
 
         window
+            .shaded_square
+            .write_buffers(device, &mut self.staging_belt, &mut encoder);
+        window
+            .shaded_round
+            .write_buffers(device, &mut self.staging_belt, &mut encoder);
+        window
             .flat_round
             .write_buffers(device, &mut self.staging_belt, &mut encoder);
 
@@ -207,12 +211,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         for (pass, rect) in window.clip_regions.iter().enumerate() {
             let bg_common = &window.bg_common;
             let at = self.atlases.render_buf(&mut window.atlases, device, pass);
-            let ss = self
-                .shaded_square
-                .render_buf(&mut window.shaded_square, device, pass);
-            let sr = self
-                .shaded_round
-                .render_buf(&mut window.shaded_round, device, pass);
 
             {
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -228,8 +226,10 @@ impl<C: CustomPipe> DrawPipe<C> {
                 );
 
                 at.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
-                ss.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
-                sr.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
+                self.shaded_square
+                    .render(&window.shaded_square, pass, &mut rpass, bg_common);
+                self.shaded_round
+                    .render(&window.shaded_round, pass, &mut rpass, bg_common);
                 self.flat_round
                     .render(&window.flat_round, pass, &mut rpass, bg_common);
                 self.custom

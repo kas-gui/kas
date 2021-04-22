@@ -5,54 +5,23 @@
 
 //! Simple pipeline for "square" shading
 
-use std::mem::size_of;
-use wgpu::util::DeviceExt;
-
+use super::common;
 use crate::draw::{Rgb, ShaderManager};
-use kas::cast::Cast;
 use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Vec2, Vec3};
+use std::mem::size_of;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec3, Rgb, Vec2);
+pub struct Vertex(Vec3, Rgb, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
+
+pub type Window = common::Window<Vertex>;
 
 /// A pipeline for rendering with flat and square-corner shading
 pub struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
-}
-
-/// Per-window state
-pub struct Window {
-    passes: Vec<Vec<Vertex>>,
-}
-
-/// Buffer used during render pass
-///
-/// This buffer must not be dropped before the render pass.
-pub struct RenderBuffer<'a> {
-    pipe: &'a wgpu::RenderPipeline,
-    vertices: &'a mut Vec<Vertex>,
-    buffer: wgpu::Buffer,
-}
-
-impl<'a> RenderBuffer<'a> {
-    /// Do the render
-    pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>, bg_common: &'a wgpu::BindGroup) {
-        let count = self.vertices.len().cast();
-        rpass.set_pipeline(self.pipe);
-        rpass.set_bind_group(0, bg_common, &[]);
-        rpass.set_vertex_buffer(0, self.buffer.slice(..));
-        rpass.draw(0..count, 0..1);
-    }
-}
-
-impl<'a> Drop for RenderBuffer<'a> {
-    fn drop(&mut self) {
-        self.vertices.clear();
-    }
 }
 
 impl Pipeline {
@@ -104,34 +73,15 @@ impl Pipeline {
         Pipeline { render_pipeline }
     }
 
-    /// Construct per-window state
-    pub fn new_window(&self) -> Window {
-        Window { passes: vec![] }
-    }
-
-    /// Construct a render buffer
-    pub fn render_buf<'a>(
+    /// Enqueue render commands
+    pub fn render<'a>(
         &'a self,
-        window: &'a mut Window,
-        device: &wgpu::Device,
+        window: &'a Window,
         pass: usize,
-    ) -> Option<RenderBuffer<'a>> {
-        if pass >= window.passes.len() || window.passes[pass].len() == 0 {
-            return None;
-        }
-
-        let vertices = &mut window.passes[pass];
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SS render_buf"),
-            contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsage::VERTEX,
-        });
-
-        Some(RenderBuffer {
-            pipe: &self.render_pipeline,
-            vertices,
-            buffer,
-        })
+        rpass: &mut wgpu::RenderPass<'a>,
+        bg_common: &'a wgpu::BindGroup,
+    ) {
+        window.render(pass, rpass, &self.render_pipeline, bg_common);
     }
 }
 
@@ -270,14 +220,5 @@ impl Window {
             Vertex(bb, col, tr.0), Vertex(dd, col, tr.1), Vertex(ba, col, tr.0),
             Vertex(ba, col, tr.0), Vertex(dd, col, tr.1), Vertex(dc, col, tr.1),
         ]);
-    }
-
-    fn add_vertices(&mut self, pass: usize, slice: &[Vertex]) {
-        if self.passes.len() <= pass {
-            // We only need one more, but no harm in adding extra
-            self.passes.resize(pass + 8, vec![]);
-        }
-
-        self.passes[pass].extend_from_slice(slice);
     }
 }
