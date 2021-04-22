@@ -8,12 +8,12 @@
 use super::common;
 use crate::draw::{Rgb, ShaderManager};
 use kas::draw::{Colour, Pass};
-use kas::geom::{Quad, Vec2, Vec3};
+use kas::geom::{Quad, Vec2};
 use std::mem::size_of;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct Vertex(Vec3, Rgb, Vec2);
+pub struct Vertex(Vec2, Rgb, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
 
@@ -46,7 +46,7 @@ impl Pipeline {
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float2],
+                    attributes: &wgpu::vertex_attr_array![0 => Float2, 1 => Float3, 2 => Float2],
                 }],
             },
             primitive: wgpu::PrimitiveState {
@@ -96,11 +96,8 @@ impl Window {
             return;
         }
 
-        let depth = pass.depth();
-        let ab = Vec3(aa.0, bb.1, depth);
-        let ba = Vec3(bb.0, aa.1, depth);
-        let aa = Vec3::from2(aa, depth);
-        let bb = Vec3::from2(bb, depth);
+        let ab = Vec2(aa.0, bb.1);
+        let ba = Vec2(bb.0, aa.1);
 
         let col = col.into();
         let t = Vec2(0.0, 0.0);
@@ -127,12 +124,9 @@ impl Window {
             norm = Vec2::splat(0.0);
         }
 
-        let depth = pass.depth();
-        let mid = Vec3::from2((aa + bb) * 0.5, depth);
-        let ab = Vec3(aa.0, bb.1, depth);
-        let ba = Vec3(bb.0, aa.1, depth);
-        let aa = Vec3::from2(aa, depth);
-        let bb = Vec3::from2(bb, depth);
+        let mid = (aa + bb) * 0.5;
+        let ab = Vec2(aa.0, bb.1);
+        let ba = Vec2(bb.0, aa.1);
 
         let col = col.into();
         let tt = (Vec2(0.0, -norm.1), Vec2(0.0, -norm.0));
@@ -189,15 +183,10 @@ impl Window {
             norm = Vec2::splat(0.0);
         }
 
-        let depth = pass.depth();
-        let ab = Vec3(aa.0, bb.1, depth);
-        let ba = Vec3(bb.0, aa.1, depth);
-        let cd = Vec3(cc.0, dd.1, depth);
-        let dc = Vec3(dd.0, cc.1, depth);
-        let aa = Vec3::from2(aa, depth);
-        let bb = Vec3::from2(bb, depth);
-        let cc = Vec3::from2(cc, depth);
-        let dd = Vec3::from2(dd, depth);
+        let ab = Vec2(aa.0, bb.1);
+        let ba = Vec2(bb.0, aa.1);
+        let cd = Vec2(cc.0, dd.1);
+        let dc = Vec2(dd.0, cc.1);
 
         let col = col.into();
         let tt = (Vec2(0.0, -norm.1), Vec2(0.0, -norm.0));

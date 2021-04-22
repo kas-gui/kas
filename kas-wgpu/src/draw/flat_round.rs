@@ -8,7 +8,7 @@
 use super::common;
 use crate::draw::{Rgb, ShaderManager};
 use kas::draw::{Colour, Pass};
-use kas::geom::{Quad, Vec2, Vec3};
+use kas::geom::{Quad, Vec2};
 use std::mem::size_of;
 
 /// Offset relative to the size of a pixel used by the fragment shader to
@@ -22,13 +22,12 @@ const OFFSET: f32 = 0.125;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct Vertex(Vec3, Rgb, f32, Vec2, Vec2);
+pub struct Vertex(Vec2, Rgb, f32, Vec2, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
 
 impl Vertex {
-    fn new2(v: Vec2, d: f32, col: Rgb, inner: f32, n: Vec2, p: Vec2) -> Self {
-        let v = Vec3::from2(v, d);
+    fn new2(v: Vec2, col: Rgb, inner: f32, n: Vec2, p: Vec2) -> Self {
         Vertex(v, col, inner, n, p)
     }
 }
@@ -63,7 +62,7 @@ impl Pipeline {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![
-                        0 => Float3,
+                        0 => Float2,
                         1 => Float3,
                         2 => Float,
                         3 => Float2,
@@ -133,22 +132,21 @@ impl Window {
         // Since we take the mid-point, all offsets are uniform
         let p = Vec2::splat(OFFSET / radius);
 
-        let depth = pass.depth();
         let p1my = p1 - vy;
         let p1py = p1 + vy;
         let p2my = p2 - vy;
         let p2py = p2 + vy;
 
-        let ma = Vertex::new2(p1my, depth, col, 0.0, Vec2(0.0, na.1), p);
-        let mb = Vertex::new2(p1py, depth, col, 0.0, Vec2(0.0, nb.1), p);
-        let aa = Vertex::new2(p1my - vx, depth, col, 0.0, Vec2(na.0, na.1), p);
-        let ab = Vertex::new2(p1py - vx, depth, col, 0.0, Vec2(na.0, nb.1), p);
-        let ba = Vertex::new2(p2my + vx, depth, col, 0.0, Vec2(nb.0, na.1), p);
-        let bb = Vertex::new2(p2py + vx, depth, col, 0.0, Vec2(nb.0, nb.1), p);
-        let na = Vertex::new2(p2my, depth, col, 0.0, Vec2(0.0, na.1), p);
-        let nb = Vertex::new2(p2py, depth, col, 0.0, Vec2(0.0, nb.1), p);
-        let m = Vertex::new2(p1, depth, col, 0.0, n0, p);
-        let n = Vertex::new2(p2, depth, col, 0.0, n0, p);
+        let ma = Vertex::new2(p1my, col, 0.0, Vec2(0.0, na.1), p);
+        let mb = Vertex::new2(p1py, col, 0.0, Vec2(0.0, nb.1), p);
+        let aa = Vertex::new2(p1my - vx, col, 0.0, Vec2(na.0, na.1), p);
+        let ab = Vertex::new2(p1py - vx, col, 0.0, Vec2(na.0, nb.1), p);
+        let ba = Vertex::new2(p2my + vx, col, 0.0, Vec2(nb.0, na.1), p);
+        let bb = Vertex::new2(p2py + vx, col, 0.0, Vec2(nb.0, nb.1), p);
+        let na = Vertex::new2(p2my, col, 0.0, Vec2(0.0, na.1), p);
+        let nb = Vertex::new2(p2py, col, 0.0, Vec2(0.0, nb.1), p);
+        let m = Vertex::new2(p1, col, 0.0, n0, p);
+        let n = Vertex::new2(p2, col, 0.0, n0, p);
 
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[
@@ -191,13 +189,12 @@ impl Window {
 
         // Since we take the mid-point, all offsets are uniform
         let p = nb / (bb - mid) * OFFSET;
-        let depth = pass.depth();
 
-        let aa = Vertex::new2(aa, depth, col, inner, na, p);
-        let ab = Vertex::new2(ab, depth, col, inner, nab, p);
-        let ba = Vertex::new2(ba, depth, col, inner, nba, p);
-        let bb = Vertex::new2(bb, depth, col, inner, nb, p);
-        let mid = Vertex::new2(mid, depth, col, inner, n0, p);
+        let aa = Vertex::new2(aa, col, inner, na, p);
+        let ab = Vertex::new2(ab, col, inner, nab, p);
+        let ba = Vertex::new2(ba, col, inner, nba, p);
+        let bb = Vertex::new2(bb, col, inner, nb, p);
+        let mid = Vertex::new2(mid, col, inner, n0, p);
 
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[
@@ -259,29 +256,28 @@ impl Window {
         let pab = nab / (ab - cd) * OFFSET;
         let pba = nba / (ba - dc) * OFFSET;
         let pbb = nb / (bb - dd) * OFFSET;
-        let depth = pass.depth();
 
         // We must add corners separately to ensure correct interpolation of dir
         // values, hence need 16 points:
-        let ab = Vertex::new2(ab, depth, col, inner, nab, pab);
-        let ba = Vertex::new2(ba, depth, col, inner, nba, pba);
-        let cd = Vertex::new2(cd, depth, col, inner, n0, pab);
-        let dc = Vertex::new2(dc, depth, col, inner, n0, pba);
+        let ab = Vertex::new2(ab, col, inner, nab, pab);
+        let ba = Vertex::new2(ba, col, inner, nba, pba);
+        let cd = Vertex::new2(cd, col, inner, n0, pab);
+        let dc = Vertex::new2(dc, col, inner, n0, pba);
 
-        let ac = Vertex(Vec3(aa.0, cc.1, depth), col, inner, na0, paa);
-        let ad = Vertex(Vec3(aa.0, dd.1, depth), col, inner, na0, pab);
-        let bc = Vertex(Vec3(bb.0, cc.1, depth), col, inner, nb0, pba);
-        let bd = Vertex(Vec3(bb.0, dd.1, depth), col, inner, nb0, pbb);
+        let ac = Vertex(Vec2(aa.0, cc.1), col, inner, na0, paa);
+        let ad = Vertex(Vec2(aa.0, dd.1), col, inner, na0, pab);
+        let bc = Vertex(Vec2(bb.0, cc.1), col, inner, nb0, pba);
+        let bd = Vertex(Vec2(bb.0, dd.1), col, inner, nb0, pbb);
 
-        let ca = Vertex(Vec3(cc.0, aa.1, depth), col, inner, n0a, paa);
-        let cb = Vertex(Vec3(cc.0, bb.1, depth), col, inner, n0b, pab);
-        let da = Vertex(Vec3(dd.0, aa.1, depth), col, inner, n0a, pba);
-        let db = Vertex(Vec3(dd.0, bb.1, depth), col, inner, n0b, pbb);
+        let ca = Vertex(Vec2(cc.0, aa.1), col, inner, n0a, paa);
+        let cb = Vertex(Vec2(cc.0, bb.1), col, inner, n0b, pab);
+        let da = Vertex(Vec2(dd.0, aa.1), col, inner, n0a, pba);
+        let db = Vertex(Vec2(dd.0, bb.1), col, inner, n0b, pbb);
 
-        let aa = Vertex::new2(aa, depth, col, inner, na, paa);
-        let bb = Vertex::new2(bb, depth, col, inner, nb, pbb);
-        let cc = Vertex::new2(cc, depth, col, inner, n0, paa);
-        let dd = Vertex::new2(dd, depth, col, inner, n0, pbb);
+        let aa = Vertex::new2(aa, col, inner, na, paa);
+        let bb = Vertex::new2(bb, col, inner, nb, pbb);
+        let cc = Vertex::new2(cc, col, inner, n0, paa);
+        let dd = Vertex::new2(dd, col, inner, n0, pbb);
 
         // TODO: the four sides are simple rectangles, hence could use simpler rendering
 
