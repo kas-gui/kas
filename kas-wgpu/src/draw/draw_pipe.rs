@@ -128,7 +128,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         let atlases = self.atlases.new_window();
         let shaded_square = self.shaded_square.new_window();
         let shaded_round = self.shaded_round.new_window();
-        let flat_round = self.flat_round.new_window();
         let custom = self.custom.new_window(device, size);
 
         // TODO: use extra caching so we don't load font for each window
@@ -147,7 +146,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             atlases,
             shaded_square,
             shaded_round,
-            flat_round,
+            flat_round: Default::default(),
             custom,
             glyph_brush,
             dur_text: Default::default(),

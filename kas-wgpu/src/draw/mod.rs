@@ -8,6 +8,7 @@
 //! Extensions to the API of [`kas::draw`], plus some utility types.
 
 mod atlases;
+mod common;
 mod custom;
 mod draw_pipe;
 mod draw_text;
