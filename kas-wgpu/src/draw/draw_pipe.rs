@@ -125,7 +125,6 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         let rect = Rect::new(Coord::ZERO, size);
 
-        let atlases = self.atlases.new_window();
         let custom = self.custom.new_window(device, size);
 
         // TODO: use extra caching so we don't load font for each window
@@ -141,7 +140,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             scale_buf,
             clip_regions: vec![rect],
             bg_common,
-            atlases,
+            atlases: Default::default(),
             shaded_square: Default::default(),
             shaded_round: Default::default(),
             flat_round: Default::default(),
@@ -189,6 +188,9 @@ impl<C: CustomPipe> DrawPipe<C> {
         });
 
         window
+            .atlases
+            .write_buffers(device, &mut self.staging_belt, &mut encoder);
+        window
             .shaded_square
             .write_buffers(device, &mut self.staging_belt, &mut encoder);
         window
@@ -210,7 +212,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         // We use a separate render pass for each clipped region.
         for (pass, rect) in window.clip_regions.iter().enumerate() {
             let bg_common = &window.bg_common;
-            let at = self.atlases.render_buf(&mut window.atlases, device, pass);
 
             {
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -225,7 +226,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                     rect.size.1.cast(),
                 );
 
-                at.as_ref().map(|buf| buf.render(&mut rpass, bg_common));
+                self.atlases
+                    .render(&window.atlases, pass, &mut rpass, bg_common);
                 self.shaded_square
                     .render(&window.shaded_square, pass, &mut rpass, bg_common);
                 self.shaded_round
@@ -244,7 +246,6 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         self.custom
             .render_final(&mut window.custom, device, &mut encoder, frame_view, size);
-        window.atlases.clear_vertices();
 
         window
             .glyph_brush

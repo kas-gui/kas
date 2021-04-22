@@ -7,11 +7,12 @@
 
 use guillotiere::{AllocId, Allocation, AtlasAllocator};
 use std::mem::size_of;
-use wgpu::util::DeviceExt;
+use std::num::NonZeroU64;
+use std::ops::Range;
 
 use super::ImageError;
 use crate::draw::ShaderManager;
-use kas::cast::Cast;
+use kas::cast::{Cast, Conv};
 use kas::draw::Pass;
 use kas::geom::{Quad, Size, Vec2, Vec3};
 
@@ -94,27 +95,6 @@ pub struct Pipeline {
     atlases: Vec<Atlas>,
     new_aa: Vec<AtlasAllocator>,
     sampler: wgpu::Sampler,
-}
-
-/// Buffer used during render pass
-///
-/// This buffer must not be dropped before the render pass.
-pub struct RenderBuffer<'a> {
-    pipe: &'a Pipeline,
-    buffers: Vec<(u32, wgpu::Buffer)>,
-}
-
-impl<'a> RenderBuffer<'a> {
-    /// Do the render
-    pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>, bg_common: &'a wgpu::BindGroup) {
-        for (atlas, (count, buffer)) in self.buffers.iter().enumerate() {
-            rpass.set_pipeline(&self.pipe.render_pipeline);
-            rpass.set_bind_group(0, bg_common, &[]);
-            rpass.set_bind_group(1, &self.pipe.atlases[atlas].bg, &[]);
-            rpass.set_vertex_buffer(0, buffer.slice(..));
-            rpass.draw(0..*count, 0..1);
-        }
-    }
 }
 
 impl Pipeline {
@@ -208,11 +188,6 @@ impl Pipeline {
         }
     }
 
-    /// Construct per-window state
-    pub fn new_window(&self) -> Window {
-        Window { passes: vec![] }
-    }
-
     fn allocate_space(&mut self, size: (i32, i32)) -> (usize, Allocation) {
         let size = size.into();
         let mut atlas = 0;
@@ -284,49 +259,118 @@ impl Pipeline {
         &self.atlases[atlas].tex
     }
 
-    /// Construct a render buffer
-    pub fn render_buf<'a>(
+    /// Enqueue render commands
+    pub fn render<'a>(
         &'a self,
-        window: &'a mut Window,
-        device: &wgpu::Device,
+        window: &'a Window,
         pass: usize,
-    ) -> Option<RenderBuffer<'a>> {
-        if pass >= window.passes.len() || window.passes[pass].len() == 0 {
-            return None;
+        rpass: &mut wgpu::RenderPass<'a>,
+        bg_common: &'a wgpu::BindGroup,
+    ) {
+        if let Some(buffer) = window.buffer.as_ref() {
+            if let Some(pass) = window.passes.get(pass) {
+                rpass.set_pipeline(&self.render_pipeline);
+                rpass.set_bind_group(0, bg_common, &[]);
+                rpass.set_vertex_buffer(0, buffer.slice(pass.data_range.clone()));
+                for (a, atlas) in pass.atlases.iter().enumerate() {
+                    rpass.set_bind_group(1, &self.atlases[a].bg, &[]);
+                    rpass.draw(atlas.range.clone(), 0..1);
+                }
+            }
         }
-
-        let buffers = window.passes[pass]
-            .iter()
-            .map(|vertices| {
-                let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("image atlas render buffer"),
-                    contents: bytemuck::cast_slice(vertices),
-                    usage: wgpu::BufferUsage::VERTEX,
-                });
-                (vertices.len().cast(), buffer)
-            })
-            .collect();
-
-        Some(RenderBuffer {
-            pipe: &self,
-            buffers,
-        })
     }
 }
 
+#[derive(Clone, Debug, Default)]
+struct AtlasPassData {
+    vertices: Vec<Vertex>,
+    range: Range<u32>,
+}
+
+#[derive(Clone, Debug, Default)]
+struct PassData {
+    atlases: Vec<AtlasPassData>,
+    data_range: Range<u64>,
+}
+
 /// Per-window state
-#[derive(Clone, Debug)]
+#[derive(Debug, Default)]
 pub struct Window {
-    // per pass, per atlas, a list of queued vertices
-    passes: Vec<Vec<Vec<Vertex>>>,
+    passes: Vec<PassData>,
+    buffer: Option<wgpu::Buffer>,
+    buffer_size: u64,
 }
 
 impl Window {
-    /// Used after rendering to clear queued vertices
-    pub fn clear_vertices(&mut self) {
-        for pass_queue in self.passes.iter_mut() {
-            for atlas_queue in pass_queue.iter_mut() {
-                atlas_queue.clear();
+    /// Prepare vertex buffers
+    pub fn write_buffers(
+        &mut self,
+        device: &wgpu::Device,
+        staging_belt: &mut wgpu::util::StagingBelt,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        let mut req_len = 0;
+        for pass in self.passes.iter() {
+            for atlas in pass.atlases.iter() {
+                req_len += u64::conv(atlas.vertices.len() * size_of::<Vertex>());
+            }
+        }
+        let byte_len = match NonZeroU64::new(req_len) {
+            Some(nz) => nz,
+            None => {
+                for pass in self.passes.iter_mut() {
+                    for atlas in pass.atlases.iter_mut() {
+                        atlas.range = 0..0;
+                    }
+                }
+                return;
+            }
+        };
+
+        if req_len <= self.buffer_size {
+            let buffer = self.buffer.as_ref().unwrap();
+            let mut slice = staging_belt.write_buffer(encoder, buffer, 0, byte_len, device);
+            copy_to_slice(&mut self.passes, &mut slice);
+        } else {
+            // Size must be a multiple of alignment
+            let mask = wgpu::COPY_BUFFER_ALIGNMENT - 1;
+            let buffer_size = (byte_len.get() + mask) & !mask;
+            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("atlases vertex buffer"),
+                size: buffer_size,
+                usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+                mapped_at_creation: true,
+            });
+
+            let mut slice = buffer.slice(..byte_len.get()).get_mapped_range_mut();
+            copy_to_slice(&mut self.passes, &mut slice);
+            drop(slice);
+
+            buffer.unmap();
+            self.buffer = Some(buffer);
+            self.buffer_size = buffer_size;
+        }
+
+        fn copy_to_slice(passes: &mut [PassData], slice: &mut [u8]) {
+            let mut byte_offset = 0;
+            for pass in passes.iter_mut() {
+                let byte_start = byte_offset;
+                let mut index = 0;
+                for atlas in pass.atlases.iter_mut() {
+                    let len = u32::conv(atlas.vertices.len());
+                    let byte_len = u64::from(len) * u64::conv(size_of::<Vertex>());
+                    let byte_end = byte_offset + byte_len;
+
+                    slice[usize::conv(byte_offset)..usize::conv(byte_end)]
+                        .copy_from_slice(bytemuck::cast_slice(&atlas.vertices));
+
+                    byte_offset = byte_end;
+                    atlas.vertices.clear();
+                    let end = index + len;
+                    atlas.range = index..end;
+                    index = end;
+                }
+                pass.data_range = byte_start..byte_offset;
             }
         }
     }
@@ -358,17 +402,19 @@ impl Window {
     }
 
     fn add_vertices(&mut self, pass: usize, atlas: usize, slice: &[Vertex]) {
+        debug_assert_eq!(slice.len() % 3, 0);
+
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
-            self.passes.resize(pass + 8, vec![]);
+            self.passes.resize(pass + 8, Default::default());
         }
         let pass = &mut self.passes[pass];
 
-        if pass.len() <= atlas {
+        if pass.atlases.len() <= atlas {
             // Warning: length must not excced number of atlases
-            pass.resize(atlas + 1, vec![]);
+            pass.atlases.resize(atlas + 1, Default::default());
         }
 
-        pass[atlas].extend_from_slice(slice);
+        pass.atlases[atlas].vertices.extend_from_slice(slice);
     }
 }
