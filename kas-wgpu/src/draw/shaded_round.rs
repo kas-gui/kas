@@ -5,14 +5,12 @@
 
 //! Rounded shading pipeline
 
+use super::common;
+use crate::draw::{Rgb, ShaderManager};
+use kas::draw::{Colour, Pass};
+use kas::geom::{Quad, Vec2};
 use std::f32::consts::FRAC_PI_2;
 use std::mem::size_of;
-use wgpu::util::DeviceExt;
-
-use crate::draw::{Rgb, ShaderManager};
-use kas::cast::Cast;
-use kas::draw::{Colour, Pass};
-use kas::geom::{Quad, Vec2, Vec3};
 
 /// Offset relative to the size of a pixel used by the fragment shader to
 /// implement multi-sampling.
@@ -20,51 +18,21 @@ const OFFSET: f32 = 0.125;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec3, Rgb, Vec2, Vec2, Vec2);
+pub struct Vertex(Vec2, Rgb, Vec2, Vec2, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
 
 impl Vertex {
-    fn new2(v: Vec2, d: f32, col: Rgb, n: Vec2, adjust: Vec2, p: Vec2) -> Self {
-        let v = Vec3::from2(v, d);
+    fn new2(v: Vec2, col: Rgb, n: Vec2, adjust: Vec2, p: Vec2) -> Self {
         Vertex(v, col, n, adjust, p)
     }
 }
 
+pub type Window = common::Window<Vertex>;
+
 /// A pipeline for rendering rounded shapes
 pub struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
-}
-
-/// Per-window state
-pub struct Window {
-    passes: Vec<Vec<Vertex>>,
-}
-
-/// Buffer used during render pass
-///
-/// This buffer must not be dropped before the render pass.
-pub struct RenderBuffer<'a> {
-    pipe: &'a wgpu::RenderPipeline,
-    vertices: &'a mut Vec<Vertex>,
-    buffer: wgpu::Buffer,
-}
-
-impl<'a> RenderBuffer<'a> {
-    /// Do the render
-    pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>, bg_common: &'a wgpu::BindGroup) {
-        let count = self.vertices.len().cast();
-        rpass.set_pipeline(self.pipe);
-        rpass.set_bind_group(0, bg_common, &[]);
-        rpass.set_vertex_buffer(0, self.buffer.slice(..));
-        rpass.draw(0..count, 0..1);
-    }
-}
-
-impl<'a> Drop for RenderBuffer<'a> {
-    fn drop(&mut self) {
-        self.vertices.clear();
-    }
 }
 
 impl Pipeline {
@@ -90,7 +58,7 @@ impl Pipeline {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![
-                        0 => Float3,
+                        0 => Float2,
                         1 => Float3,
                         2 => Float2,
                         3 => Float2,
@@ -112,11 +80,7 @@ impl Pipeline {
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
                     format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                    alpha_blend: wgpu::BlendState {
-                        src_factor: wgpu::BlendFactor::Zero,
-                        dst_factor: wgpu::BlendFactor::One,
-                        operation: wgpu::BlendOperation::Add,
-                    },
+                    alpha_blend: wgpu::BlendState::REPLACE,
                     color_blend: wgpu::BlendState {
                         src_factor: wgpu::BlendFactor::SrcAlpha,
                         dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
@@ -130,34 +94,15 @@ impl Pipeline {
         Pipeline { render_pipeline }
     }
 
-    /// Construct per-window state
-    pub fn new_window(&self) -> Window {
-        Window { passes: vec![] }
-    }
-
-    /// Construct a render buffer
-    pub fn render_buf<'a>(
+    /// Enqueue render commands
+    pub fn render<'a>(
         &'a self,
-        window: &'a mut Window,
-        device: &wgpu::Device,
+        window: &'a Window,
         pass: usize,
-    ) -> Option<RenderBuffer<'a>> {
-        if pass >= window.passes.len() || window.passes[pass].len() == 0 {
-            return None;
-        }
-
-        let vertices = &mut window.passes[pass];
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SR render_buf"),
-            contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsage::VERTEX,
-        });
-
-        Some(RenderBuffer {
-            pipe: &self.render_pipeline,
-            vertices,
-            buffer,
-        })
+        rpass: &mut wgpu::RenderPass<'a>,
+        bg_common: &'a wgpu::BindGroup,
+    ) {
+        window.render(pass, rpass, &self.render_pipeline, bg_common);
     }
 }
 
@@ -190,13 +135,12 @@ impl Window {
 
         // Since we take the mid-point, all offsets are uniform
         let p = nbb / (bb - mid) * OFFSET;
-        let depth = pass.depth();
 
-        let aa = Vertex::new2(aa, depth, col, naa, adjust, p);
-        let ab = Vertex::new2(ab, depth, col, nab, adjust, p);
-        let ba = Vertex::new2(ba, depth, col, nba, adjust, p);
-        let bb = Vertex::new2(bb, depth, col, nbb, adjust, p);
-        let mid = Vertex::new2(mid, depth, col, n0, adjust, p);
+        let aa = Vertex::new2(aa, col, naa, adjust, p);
+        let ab = Vertex::new2(ab, col, nab, adjust, p);
+        let ba = Vertex::new2(ba, col, nba, adjust, p);
+        let bb = Vertex::new2(bb, col, nbb, adjust, p);
+        let mid = Vertex::new2(mid, col, n0, adjust, p);
 
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[
@@ -260,29 +204,28 @@ impl Window {
         let pab = nab / (ab - cd) * OFFSET;
         let pba = nba / (ba - dc) * OFFSET;
         let pbb = nbb / (bb - dd) * OFFSET;
-        let depth = pass.depth();
 
         // We must add corners separately to ensure correct interpolation of dir
         // values, hence need 16 points:
-        let ab = Vertex::new2(ab, depth, col, nab, adjust, pab);
-        let ba = Vertex::new2(ba, depth, col, nba, adjust, pba);
-        let cd = Vertex::new2(cd, depth, col, n0, adjust, pab);
-        let dc = Vertex::new2(dc, depth, col, n0, adjust, pba);
+        let ab = Vertex::new2(ab, col, nab, adjust, pab);
+        let ba = Vertex::new2(ba, col, nba, adjust, pba);
+        let cd = Vertex::new2(cd, col, n0, adjust, pab);
+        let dc = Vertex::new2(dc, col, n0, adjust, pba);
 
-        let ac = Vertex(Vec3(aa.0, cc.1, depth), col, na0, adjust, paa);
-        let ad = Vertex(Vec3(aa.0, dd.1, depth), col, na0, adjust, pab);
-        let bc = Vertex(Vec3(bb.0, cc.1, depth), col, nb0, adjust, pba);
-        let bd = Vertex(Vec3(bb.0, dd.1, depth), col, nb0, adjust, pbb);
+        let ac = Vertex(Vec2(aa.0, cc.1), col, na0, adjust, paa);
+        let ad = Vertex(Vec2(aa.0, dd.1), col, na0, adjust, pab);
+        let bc = Vertex(Vec2(bb.0, cc.1), col, nb0, adjust, pba);
+        let bd = Vertex(Vec2(bb.0, dd.1), col, nb0, adjust, pbb);
 
-        let ca = Vertex(Vec3(cc.0, aa.1, depth), col, n0a, adjust, paa);
-        let cb = Vertex(Vec3(cc.0, bb.1, depth), col, n0b, adjust, pab);
-        let da = Vertex(Vec3(dd.0, aa.1, depth), col, n0a, adjust, pba);
-        let db = Vertex(Vec3(dd.0, bb.1, depth), col, n0b, adjust, pbb);
+        let ca = Vertex(Vec2(cc.0, aa.1), col, n0a, adjust, paa);
+        let cb = Vertex(Vec2(cc.0, bb.1), col, n0b, adjust, pab);
+        let da = Vertex(Vec2(dd.0, aa.1), col, n0a, adjust, pba);
+        let db = Vertex(Vec2(dd.0, bb.1), col, n0b, adjust, pbb);
 
-        let aa = Vertex::new2(aa, depth, col, naa, adjust, paa);
-        let bb = Vertex::new2(bb, depth, col, nbb, adjust, pbb);
-        let cc = Vertex::new2(cc, depth, col, n0, adjust, paa);
-        let dd = Vertex::new2(dd, depth, col, n0, adjust, pbb);
+        let aa = Vertex::new2(aa, col, naa, adjust, paa);
+        let bb = Vertex::new2(bb, col, nbb, adjust, pbb);
+        let cc = Vertex::new2(cc, col, n0, adjust, paa);
+        let dd = Vertex::new2(dd, col, n0, adjust, pbb);
 
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[
@@ -307,14 +250,5 @@ impl Window {
             bd, dc, bc,
             bc, dc, ba,
         ]);
-    }
-
-    fn add_vertices(&mut self, pass: usize, slice: &[Vertex]) {
-        if self.passes.len() <= pass {
-            // We only need one more, but no harm in adding extra
-            self.passes.resize(pass + 8, vec![]);
-        }
-
-        self.passes[pass].extend_from_slice(slice);
     }
 }

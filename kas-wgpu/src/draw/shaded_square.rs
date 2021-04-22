@@ -5,54 +5,23 @@
 
 //! Simple pipeline for "square" shading
 
-use std::mem::size_of;
-use wgpu::util::DeviceExt;
-
+use super::common;
 use crate::draw::{Rgb, ShaderManager};
-use kas::cast::Cast;
 use kas::draw::{Colour, Pass};
-use kas::geom::{Quad, Vec2, Vec3};
+use kas::geom::{Quad, Vec2};
+use std::mem::size_of;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec3, Rgb, Vec2);
+pub struct Vertex(Vec2, Rgb, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
+
+pub type Window = common::Window<Vertex>;
 
 /// A pipeline for rendering with flat and square-corner shading
 pub struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
-}
-
-/// Per-window state
-pub struct Window {
-    passes: Vec<Vec<Vertex>>,
-}
-
-/// Buffer used during render pass
-///
-/// This buffer must not be dropped before the render pass.
-pub struct RenderBuffer<'a> {
-    pipe: &'a wgpu::RenderPipeline,
-    vertices: &'a mut Vec<Vertex>,
-    buffer: wgpu::Buffer,
-}
-
-impl<'a> RenderBuffer<'a> {
-    /// Do the render
-    pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>, bg_common: &'a wgpu::BindGroup) {
-        let count = self.vertices.len().cast();
-        rpass.set_pipeline(self.pipe);
-        rpass.set_bind_group(0, bg_common, &[]);
-        rpass.set_vertex_buffer(0, self.buffer.slice(..));
-        rpass.draw(0..count, 0..1);
-    }
-}
-
-impl<'a> Drop for RenderBuffer<'a> {
-    fn drop(&mut self) {
-        self.vertices.clear();
-    }
 }
 
 impl Pipeline {
@@ -77,7 +46,7 @@ impl Pipeline {
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Float3, 2 => Float2],
+                    attributes: &wgpu::vertex_attr_array![0 => Float2, 1 => Float3, 2 => Float2],
                 }],
             },
             primitive: wgpu::PrimitiveState {
@@ -104,34 +73,15 @@ impl Pipeline {
         Pipeline { render_pipeline }
     }
 
-    /// Construct per-window state
-    pub fn new_window(&self) -> Window {
-        Window { passes: vec![] }
-    }
-
-    /// Construct a render buffer
-    pub fn render_buf<'a>(
+    /// Enqueue render commands
+    pub fn render<'a>(
         &'a self,
-        window: &'a mut Window,
-        device: &wgpu::Device,
+        window: &'a Window,
         pass: usize,
-    ) -> Option<RenderBuffer<'a>> {
-        if pass >= window.passes.len() || window.passes[pass].len() == 0 {
-            return None;
-        }
-
-        let vertices = &mut window.passes[pass];
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SS render_buf"),
-            contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsage::VERTEX,
-        });
-
-        Some(RenderBuffer {
-            pipe: &self.render_pipeline,
-            vertices,
-            buffer,
-        })
+        rpass: &mut wgpu::RenderPass<'a>,
+        bg_common: &'a wgpu::BindGroup,
+    ) {
+        window.render(pass, rpass, &self.render_pipeline, bg_common);
     }
 }
 
@@ -146,11 +96,8 @@ impl Window {
             return;
         }
 
-        let depth = pass.depth();
-        let ab = Vec3(aa.0, bb.1, depth);
-        let ba = Vec3(bb.0, aa.1, depth);
-        let aa = Vec3::from2(aa, depth);
-        let bb = Vec3::from2(bb, depth);
+        let ab = Vec2(aa.0, bb.1);
+        let ba = Vec2(bb.0, aa.1);
 
         let col = col.into();
         let t = Vec2(0.0, 0.0);
@@ -177,12 +124,9 @@ impl Window {
             norm = Vec2::splat(0.0);
         }
 
-        let depth = pass.depth();
-        let mid = Vec3::from2((aa + bb) * 0.5, depth);
-        let ab = Vec3(aa.0, bb.1, depth);
-        let ba = Vec3(bb.0, aa.1, depth);
-        let aa = Vec3::from2(aa, depth);
-        let bb = Vec3::from2(bb, depth);
+        let mid = (aa + bb) * 0.5;
+        let ab = Vec2(aa.0, bb.1);
+        let ba = Vec2(bb.0, aa.1);
 
         let col = col.into();
         let tt = (Vec2(0.0, -norm.1), Vec2(0.0, -norm.0));
@@ -239,15 +183,10 @@ impl Window {
             norm = Vec2::splat(0.0);
         }
 
-        let depth = pass.depth();
-        let ab = Vec3(aa.0, bb.1, depth);
-        let ba = Vec3(bb.0, aa.1, depth);
-        let cd = Vec3(cc.0, dd.1, depth);
-        let dc = Vec3(dd.0, cc.1, depth);
-        let aa = Vec3::from2(aa, depth);
-        let bb = Vec3::from2(bb, depth);
-        let cc = Vec3::from2(cc, depth);
-        let dd = Vec3::from2(dd, depth);
+        let ab = Vec2(aa.0, bb.1);
+        let ba = Vec2(bb.0, aa.1);
+        let cd = Vec2(cc.0, dd.1);
+        let dc = Vec2(dd.0, cc.1);
 
         let col = col.into();
         let tt = (Vec2(0.0, -norm.1), Vec2(0.0, -norm.0));
@@ -270,14 +209,5 @@ impl Window {
             Vertex(bb, col, tr.0), Vertex(dd, col, tr.1), Vertex(ba, col, tr.0),
             Vertex(ba, col, tr.0), Vertex(dd, col, tr.1), Vertex(dc, col, tr.1),
         ]);
-    }
-
-    fn add_vertices(&mut self, pass: usize, slice: &[Vertex]) {
-        if self.passes.len() <= pass {
-            // We only need one more, but no harm in adding extra
-            self.passes.resize(pass + 8, vec![]);
-        }
-
-        self.passes[pass].extend_from_slice(slice);
     }
 }

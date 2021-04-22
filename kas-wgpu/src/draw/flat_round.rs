@@ -5,65 +5,38 @@
 
 //! Rounded flat pipeline
 
-use std::mem::size_of;
-use wgpu::util::DeviceExt;
-
+use super::common;
 use crate::draw::{Rgb, ShaderManager};
-use kas::cast::Cast;
 use kas::draw::{Colour, Pass};
-use kas::geom::{Quad, Vec2, Vec3};
+use kas::geom::{Quad, Vec2};
+use std::mem::size_of;
 
 /// Offset relative to the size of a pixel used by the fragment shader to
 /// implement multi-sampling.
 const OFFSET: f32 = 0.125;
 
+// NOTE(opt): in theory we could reduce data transmission to the GPU by 1/3 by
+// sending quads (two triangles) as instances in triangle-strip mode. The
+// "frame" shape could support four-triangle strips. However, this would require
+// many rpass.draw() commands or shaders unpacking vertices from instance data.
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-struct Vertex(Vec3, Rgb, f32, Vec2, Vec2);
+pub struct Vertex(Vec2, Rgb, f32, Vec2, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
 
 impl Vertex {
-    fn new2(v: Vec2, d: f32, col: Rgb, inner: f32, n: Vec2, p: Vec2) -> Self {
-        let v = Vec3::from2(v, d);
+    fn new2(v: Vec2, col: Rgb, inner: f32, n: Vec2, p: Vec2) -> Self {
         Vertex(v, col, inner, n, p)
     }
 }
 
+pub type Window = common::Window<Vertex>;
+
 /// A pipeline for rendering rounded shapes
 pub struct Pipeline {
     render_pipeline: wgpu::RenderPipeline,
-}
-
-/// Per-window state
-pub struct Window {
-    passes: Vec<Vec<Vertex>>,
-}
-
-/// Buffer used during render pass
-///
-/// This buffer must not be dropped before the render pass.
-pub struct RenderBuffer<'a> {
-    pipe: &'a wgpu::RenderPipeline,
-    vertices: &'a mut Vec<Vertex>,
-    buffer: wgpu::Buffer,
-}
-
-impl<'a> RenderBuffer<'a> {
-    /// Do the render
-    pub fn render(&'a self, rpass: &mut wgpu::RenderPass<'a>, bg_common: &'a wgpu::BindGroup) {
-        let count = self.vertices.len().cast();
-        rpass.set_pipeline(self.pipe);
-        rpass.set_bind_group(0, bg_common, &[]);
-        rpass.set_vertex_buffer(0, self.buffer.slice(..));
-        rpass.draw(0..count, 0..1);
-    }
-}
-
-impl<'a> Drop for RenderBuffer<'a> {
-    fn drop(&mut self) {
-        self.vertices.clear();
-    }
 }
 
 impl Pipeline {
@@ -89,7 +62,7 @@ impl Pipeline {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![
-                        0 => Float3,
+                        0 => Float2,
                         1 => Float3,
                         2 => Float,
                         3 => Float2,
@@ -111,11 +84,7 @@ impl Pipeline {
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
                     format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                    alpha_blend: wgpu::BlendState {
-                        src_factor: wgpu::BlendFactor::Zero,
-                        dst_factor: wgpu::BlendFactor::One,
-                        operation: wgpu::BlendOperation::Add,
-                    },
+                    alpha_blend: wgpu::BlendState::REPLACE,
                     color_blend: wgpu::BlendState {
                         src_factor: wgpu::BlendFactor::SrcAlpha,
                         dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
@@ -129,34 +98,15 @@ impl Pipeline {
         Pipeline { render_pipeline }
     }
 
-    /// Construct per-window state
-    pub fn new_window(&self) -> Window {
-        Window { passes: vec![] }
-    }
-
-    /// Construct a render buffer
-    pub fn render_buf<'a>(
+    /// Enqueue render commands
+    pub fn render<'a>(
         &'a self,
-        window: &'a mut Window,
-        device: &wgpu::Device,
+        window: &'a Window,
         pass: usize,
-    ) -> Option<RenderBuffer<'a>> {
-        if pass >= window.passes.len() || window.passes[pass].len() == 0 {
-            return None;
-        }
-
-        let vertices = &mut window.passes[pass];
-        let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("FR render_buf"),
-            contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsage::VERTEX,
-        });
-
-        Some(RenderBuffer {
-            pipe: &self.render_pipeline,
-            vertices,
-            buffer,
-        })
+        rpass: &mut wgpu::RenderPass<'a>,
+        bg_common: &'a wgpu::BindGroup,
+    ) {
+        window.render(pass, rpass, &self.render_pipeline, bg_common);
     }
 }
 
@@ -182,35 +132,34 @@ impl Window {
         // Since we take the mid-point, all offsets are uniform
         let p = Vec2::splat(OFFSET / radius);
 
-        let depth = pass.depth();
         let p1my = p1 - vy;
         let p1py = p1 + vy;
         let p2my = p2 - vy;
         let p2py = p2 + vy;
 
-        let ma1 = Vertex::new2(p1my, depth, col, 0.0, Vec2(0.0, na.1), p);
-        let mb1 = Vertex::new2(p1py, depth, col, 0.0, Vec2(0.0, nb.1), p);
-        let aa1 = Vertex::new2(p1my - vx, depth, col, 0.0, Vec2(na.0, na.1), p);
-        let ab1 = Vertex::new2(p1py - vx, depth, col, 0.0, Vec2(na.0, nb.1), p);
-        let ma2 = Vertex::new2(p2my, depth, col, 0.0, Vec2(0.0, na.1), p);
-        let mb2 = Vertex::new2(p2py, depth, col, 0.0, Vec2(0.0, nb.1), p);
-        let ba2 = Vertex::new2(p2my + vx, depth, col, 0.0, Vec2(nb.0, na.1), p);
-        let bb2 = Vertex::new2(p2py + vx, depth, col, 0.0, Vec2(nb.0, nb.1), p);
-        let p1 = Vertex::new2(p1, depth, col, 0.0, n0, p);
-        let p2 = Vertex::new2(p2, depth, col, 0.0, n0, p);
+        let ma = Vertex::new2(p1my, col, 0.0, Vec2(0.0, na.1), p);
+        let mb = Vertex::new2(p1py, col, 0.0, Vec2(0.0, nb.1), p);
+        let aa = Vertex::new2(p1my - vx, col, 0.0, Vec2(na.0, na.1), p);
+        let ab = Vertex::new2(p1py - vx, col, 0.0, Vec2(na.0, nb.1), p);
+        let ba = Vertex::new2(p2my + vx, col, 0.0, Vec2(nb.0, na.1), p);
+        let bb = Vertex::new2(p2py + vx, col, 0.0, Vec2(nb.0, nb.1), p);
+        let na = Vertex::new2(p2my, col, 0.0, Vec2(0.0, na.1), p);
+        let nb = Vertex::new2(p2py, col, 0.0, Vec2(0.0, nb.1), p);
+        let m = Vertex::new2(p1, col, 0.0, n0, p);
+        let n = Vertex::new2(p2, col, 0.0, n0, p);
 
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[
-            ab1, p1, mb1,
-            aa1, p1, ab1,
-            ma1, p1, aa1,
-            mb1, p1, mb2,
-            mb2, p1, p2,
-            mb2, p2, bb2,
-            bb2, p2, ba2,
-            ba2, p2, ma2,
-            ma2, p2, p1,
-            p1, ma1, ma2,
+            ab, m, mb,
+            mb, m, n,
+            mb, n, nb,
+            nb, n, bb,
+            bb, n, ba,
+            ba, n, na,
+            na, n, ma,
+            ma, n, m,
+            ma, m, aa,
+            aa, m, ab,
         ]);
     }
 
@@ -240,13 +189,12 @@ impl Window {
 
         // Since we take the mid-point, all offsets are uniform
         let p = nb / (bb - mid) * OFFSET;
-        let depth = pass.depth();
 
-        let aa = Vertex::new2(aa, depth, col, inner, na, p);
-        let ab = Vertex::new2(ab, depth, col, inner, nab, p);
-        let ba = Vertex::new2(ba, depth, col, inner, nba, p);
-        let bb = Vertex::new2(bb, depth, col, inner, nb, p);
-        let mid = Vertex::new2(mid, depth, col, inner, n0, p);
+        let aa = Vertex::new2(aa, col, inner, na, p);
+        let ab = Vertex::new2(ab, col, inner, nab, p);
+        let ba = Vertex::new2(ba, col, inner, nba, p);
+        let bb = Vertex::new2(bb, col, inner, nb, p);
+        let mid = Vertex::new2(mid, col, inner, n0, p);
 
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[
@@ -308,29 +256,28 @@ impl Window {
         let pab = nab / (ab - cd) * OFFSET;
         let pba = nba / (ba - dc) * OFFSET;
         let pbb = nb / (bb - dd) * OFFSET;
-        let depth = pass.depth();
 
         // We must add corners separately to ensure correct interpolation of dir
         // values, hence need 16 points:
-        let ab = Vertex::new2(ab, depth, col, inner, nab, pab);
-        let ba = Vertex::new2(ba, depth, col, inner, nba, pba);
-        let cd = Vertex::new2(cd, depth, col, inner, n0, pab);
-        let dc = Vertex::new2(dc, depth, col, inner, n0, pba);
+        let ab = Vertex::new2(ab, col, inner, nab, pab);
+        let ba = Vertex::new2(ba, col, inner, nba, pba);
+        let cd = Vertex::new2(cd, col, inner, n0, pab);
+        let dc = Vertex::new2(dc, col, inner, n0, pba);
 
-        let ac = Vertex(Vec3(aa.0, cc.1, depth), col, inner, na0, paa);
-        let ad = Vertex(Vec3(aa.0, dd.1, depth), col, inner, na0, pab);
-        let bc = Vertex(Vec3(bb.0, cc.1, depth), col, inner, nb0, pba);
-        let bd = Vertex(Vec3(bb.0, dd.1, depth), col, inner, nb0, pbb);
+        let ac = Vertex(Vec2(aa.0, cc.1), col, inner, na0, paa);
+        let ad = Vertex(Vec2(aa.0, dd.1), col, inner, na0, pab);
+        let bc = Vertex(Vec2(bb.0, cc.1), col, inner, nb0, pba);
+        let bd = Vertex(Vec2(bb.0, dd.1), col, inner, nb0, pbb);
 
-        let ca = Vertex(Vec3(cc.0, aa.1, depth), col, inner, n0a, paa);
-        let cb = Vertex(Vec3(cc.0, bb.1, depth), col, inner, n0b, pab);
-        let da = Vertex(Vec3(dd.0, aa.1, depth), col, inner, n0a, pba);
-        let db = Vertex(Vec3(dd.0, bb.1, depth), col, inner, n0b, pbb);
+        let ca = Vertex(Vec2(cc.0, aa.1), col, inner, n0a, paa);
+        let cb = Vertex(Vec2(cc.0, bb.1), col, inner, n0b, pab);
+        let da = Vertex(Vec2(dd.0, aa.1), col, inner, n0a, pba);
+        let db = Vertex(Vec2(dd.0, bb.1), col, inner, n0b, pbb);
 
-        let aa = Vertex::new2(aa, depth, col, inner, na, paa);
-        let bb = Vertex::new2(bb, depth, col, inner, nb, pbb);
-        let cc = Vertex::new2(cc, depth, col, inner, n0, paa);
-        let dd = Vertex::new2(dd, depth, col, inner, n0, pbb);
+        let aa = Vertex::new2(aa, col, inner, na, paa);
+        let bb = Vertex::new2(bb, col, inner, nb, pbb);
+        let cc = Vertex::new2(cc, col, inner, n0, paa);
+        let dd = Vertex::new2(dd, col, inner, n0, pbb);
 
         // TODO: the four sides are simple rectangles, hence could use simpler rendering
 
@@ -338,8 +285,8 @@ impl Window {
         self.add_vertices(pass.pass(), &[
             // top bar: ba - dc - cc - aa
             ba, dc, da,
-            da, dc, ca,
-            dc, cc, ca,
+            da, dc, cc,
+            da, cc, ca,
             ca, cc, aa,
             // left bar: aa - cc - cd - ab
             aa, cc, ac,
@@ -357,14 +304,5 @@ impl Window {
             bd, dc, bc,
             bc, dc, ba,
         ]);
-    }
-
-    fn add_vertices(&mut self, pass: usize, slice: &[Vertex]) {
-        if self.passes.len() <= pass {
-            // We only need one more, but no harm in adding extra
-            self.passes.resize(pass + 8, vec![]);
-        }
-
-        self.passes[pass].extend_from_slice(slice);
     }
 }
