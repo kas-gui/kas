@@ -188,13 +188,26 @@ impl Images {
     }
 
     /// Write to textures
-    pub fn prepare(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+    pub fn prepare(
+        &mut self,
+        window: &mut Window,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        staging_belt: &mut wgpu::util::StagingBelt,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        // TODO: could potentially start preparing images asynchronously after
+        // configure, then join thread and do any final prep now.
         self.atlas_pipe.prepare(device);
         for (id, origin) in self.prepare.drain(..) {
             if let Some(image) = self.images.get_mut(&id) {
+                // TODO: wgpu plans to add StagingBelt::write_texture; when it
+                // does we can remove the queue parameter
                 image.write_to_tex(&self.atlas_pipe, origin, queue);
             }
         }
+
+        window.write_buffers(device, staging_belt, encoder);
     }
 
     /// Get atlas and texture coordinates for an image

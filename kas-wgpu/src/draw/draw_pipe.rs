@@ -175,17 +175,17 @@ impl<C: CustomPipe> DrawPipe<C> {
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) {
-        // TODO: could potentially start preparing images asynchronously after
-        // configure, then join thread and do any final prep now.
-        self.images.prepare(device, queue);
-
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("render"),
         });
 
-        window
-            .images
-            .write_buffers(device, &mut self.staging_belt, &mut encoder);
+        self.images.prepare(
+            &mut window.images,
+            device,
+            queue,
+            &mut self.staging_belt,
+            &mut encoder,
+        );
         window
             .shaded_square
             .write_buffers(device, &mut self.staging_belt, &mut encoder);
