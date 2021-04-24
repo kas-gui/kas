@@ -8,13 +8,14 @@
 use guillotiere::AllocId;
 use image::RgbaImage;
 use std::collections::HashMap;
+use std::mem::size_of;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use super::{atlases, ShaderManager};
 use kas::cast::Cast;
 use kas::draw::{ImageId, Pass};
-use kas::geom::{Quad, Size};
+use kas::geom::{Quad, Size, Vec2};
 
 /// Image loading errors
 #[derive(Error, Debug)]
@@ -38,7 +39,7 @@ pub struct Image {
 impl Image {
     /// Load an image
     pub fn load_path(
-        atlas_pipe: &mut atlases::Pipeline,
+        atlas_pipe: &mut atlases::Pipeline<Instance>,
         path: &Path,
     ) -> Result<(Self, (u32, u32)), ImageError> {
         let image = image::io::Reader::open(path)?.decode()?;
@@ -73,7 +74,7 @@ impl Image {
     /// Prepare textures
     pub fn write_to_tex(
         &mut self,
-        atlas_pipe: &atlases::Pipeline,
+        atlas_pipe: &atlases::Pipeline<Instance>,
         origin: (u32, u32),
         queue: &wgpu::Queue,
     ) {
@@ -108,9 +109,21 @@ impl Image {
     }
 }
 
+/// Screen and texture coordinates
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct Instance {
+    a: Vec2,
+    b: Vec2,
+    ta: Vec2,
+    tb: Vec2,
+}
+unsafe impl bytemuck::Zeroable for Instance {}
+unsafe impl bytemuck::Pod for Instance {}
+
 /// Image loader and storage
 pub struct Images {
-    atlas_pipe: atlases::Pipeline,
+    atlas_pipe: atlases::Pipeline<Instance>,
     last_image_n: u32,
     paths: HashMap<PathBuf, (ImageId, u32)>,
     images: HashMap<ImageId, Image>,
@@ -124,7 +137,27 @@ impl Images {
         shaders: &ShaderManager,
         bgl_common: &wgpu::BindGroupLayout,
     ) -> Self {
-        let atlas_pipe = atlases::Pipeline::new(device, shaders, &bgl_common);
+        let atlas_pipe = atlases::Pipeline::new(
+            device,
+            &bgl_common,
+            2048,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            wgpu::VertexState {
+                module: &shaders.vert_tex_quad,
+                entry_point: "main",
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: size_of::<Instance>() as wgpu::BufferAddress,
+                    step_mode: wgpu::InputStepMode::Instance,
+                    attributes: &wgpu::vertex_attr_array![
+                        0 => Float2,
+                        1 => Float2,
+                        2 => Float2,
+                        3 => Float2,
+                    ],
+                }],
+            },
+            &shaders.frag_image,
+        );
         Images {
             atlas_pipe,
             last_image_n: 0,
@@ -232,7 +265,7 @@ impl Images {
 
 #[derive(Debug, Default)]
 pub struct Window {
-    atlas: atlases::Window,
+    atlas: atlases::Window<Instance>,
 }
 
 impl Window {
@@ -248,6 +281,17 @@ impl Window {
 
     /// Add a rectangle to the buffer
     pub fn rect(&mut self, pass: Pass, atlas: usize, tex: Quad, rect: Quad) {
-        self.atlas.rect(pass, atlas, tex, rect);
+        if !rect.a.lt(rect.b) {
+            // zero / negative size: nothing to draw
+            return;
+        }
+
+        let instance = Instance {
+            a: rect.a,
+            b: rect.b,
+            ta: tex.a,
+            tb: tex.b,
+        };
+        self.atlas.rect(pass, atlas, instance);
     }
 }
