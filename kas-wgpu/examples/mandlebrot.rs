@@ -153,7 +153,13 @@ impl CustomPipe for Pipe {
         }
     }
 
-    fn update(&self, window: &mut Self::Window, device: &wgpu::Device, _: &wgpu::Queue) {
+    fn prepare(
+        &self,
+        window: &mut Self::Window,
+        device: &wgpu::Device,
+        _: &mut wgpu::util::StagingBelt,
+        _: &mut wgpu::CommandEncoder,
+    ) {
         // NOTE: we prepare vertex buffers here. Due to lifetime restrictions on
         // RenderPass we cannot currently create buffers in render().
         // See https://github.com/gfx-rs/wgpu-rs/issues/188

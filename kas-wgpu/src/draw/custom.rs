@@ -78,10 +78,18 @@ pub trait CustomPipe: 'static {
     /// Per-frame updates
     ///
     /// This is called once per frame before rendering operations, and may for
-    /// example be used to update uniform buffers.
+    /// example be used to prepare uniform and buffers.
     ///
     /// This method is optional; by default it does nothing.
-    fn update(&self, _window: &mut Self::Window, _device: &wgpu::Device, _queue: &wgpu::Queue) {}
+    fn prepare(
+        &self,
+        window: &mut Self::Window,
+        device: &wgpu::Device,
+        staging_belt: &mut wgpu::util::StagingBelt,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        let _ = (window, device, staging_belt, encoder);
+    }
 
     /// Render (pass)
     ///
