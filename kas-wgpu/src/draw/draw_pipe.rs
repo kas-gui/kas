@@ -53,8 +53,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             ],
         });
 
-        let atlases = atlases::Pipeline::new(device, shaders, &bgl_common);
-        let images = images::Images::new();
+        let images = images::Images::new(device, shaders, &bgl_common);
         let shaded_square = shaded_square::Pipeline::new(device, shaders, &bgl_common);
         let shaded_round = shaded_round::Pipeline::new(device, shaders, &bgl_common);
         let flat_round = flat_round::Pipeline::new(device, shaders, &bgl_common);
@@ -64,7 +63,6 @@ impl<C: CustomPipe> DrawPipe<C> {
             local_pool,
             staging_belt,
             bgl_common,
-            atlases,
             images,
             shaded_square,
             shaded_round,
@@ -140,7 +138,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             scale_buf,
             clip_regions: vec![rect],
             bg_common,
-            atlases: Default::default(),
+            images: Default::default(),
             shaded_square: Default::default(),
             shaded_round: Default::default(),
             flat_round: Default::default(),
@@ -179,8 +177,7 @@ impl<C: CustomPipe> DrawPipe<C> {
     ) {
         // TODO: could potentially start preparing images asynchronously after
         // configure, then join thread and do any final prep now.
-        self.atlases.prepare(device);
-        self.images.prepare(&self.atlases, queue);
+        self.images.prepare(device, queue);
         self.custom.update(&mut window.custom, device, queue);
 
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -188,7 +185,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         });
 
         window
-            .atlases
+            .images
             .write_buffers(device, &mut self.staging_belt, &mut encoder);
         window
             .shaded_square
@@ -226,8 +223,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                     rect.size.1.cast(),
                 );
 
-                self.atlases
-                    .render(&window.atlases, pass, &mut rpass, bg_common);
+                self.images
+                    .render(&window.images, pass, &mut rpass, bg_common);
                 self.shaded_square
                     .render(&window.shaded_square, pass, &mut rpass, bg_common);
                 self.shaded_round
@@ -279,12 +276,12 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
 
     #[inline]
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        self.images.load_path(&mut self.atlases, path)
+        self.images.load_path(path)
     }
 
     #[inline]
     fn remove_image(&mut self, id: ImageId) {
-        self.images.remove(&mut self.atlases, id);
+        self.images.remove(id);
     }
 
     #[inline]
@@ -295,7 +292,7 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
     #[inline]
     fn draw_image(&self, window: &mut Self::Draw, pass: Pass, id: ImageId, rect: Quad) {
         if let Some((atlas, tex)) = self.images.get_im_atlas_coords(id) {
-            window.atlases.rect(pass, atlas, tex, rect);
+            window.images.rect(pass, atlas, tex, rect);
         };
     }
 }

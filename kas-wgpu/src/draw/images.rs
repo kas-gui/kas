@@ -11,9 +11,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-use super::atlases::Pipeline;
+use super::{atlases, ShaderManager};
 use kas::cast::Cast;
-use kas::draw::ImageId;
+use kas::draw::{ImageId, Pass};
 use kas::geom::{Quad, Size};
 
 /// Image loading errors
@@ -38,7 +38,7 @@ pub struct Image {
 impl Image {
     /// Load an image
     pub fn load_path(
-        atlas_pipe: &mut Pipeline,
+        atlas_pipe: &mut atlases::Pipeline,
         path: &Path,
     ) -> Result<(Self, (u32, u32)), ImageError> {
         let image = image::io::Reader::open(path)?.decode()?;
@@ -71,7 +71,13 @@ impl Image {
     }
 
     /// Prepare textures
-    pub fn write_to_tex(&mut self, atlas_pipe: &Pipeline, origin: (u32, u32), queue: &wgpu::Queue) {
+    pub fn write_to_tex(
+        &mut self,
+        atlas_pipe: &atlases::Pipeline,
+        origin: (u32, u32),
+        queue: &wgpu::Queue,
+    ) {
+        // TODO(opt): use an upload buffer and encoder.copy_buffer_to_texture?
         let size = self.image.dimensions();
         queue.write_texture(
             wgpu::TextureCopyView {
@@ -104,6 +110,7 @@ impl Image {
 
 /// Image loader and storage
 pub struct Images {
+    atlas_pipe: atlases::Pipeline,
     last_image_n: u32,
     paths: HashMap<PathBuf, (ImageId, u32)>,
     images: HashMap<ImageId, Image>,
@@ -112,8 +119,14 @@ pub struct Images {
 
 impl Images {
     /// Construct
-    pub fn new() -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        shaders: &ShaderManager,
+        bgl_common: &wgpu::BindGroupLayout,
+    ) -> Self {
+        let atlas_pipe = atlases::Pipeline::new(device, shaders, &bgl_common);
         Images {
+            atlas_pipe,
             last_image_n: 0,
             paths: Default::default(),
             images: Default::default(),
@@ -130,7 +143,6 @@ impl Images {
     /// Load an image
     pub fn load_path(
         &mut self,
-        atlas_pipe: &mut Pipeline,
         path: &Path,
     ) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
         if let Some((id, _)) = self.paths.get(path) {
@@ -138,7 +150,7 @@ impl Images {
         }
 
         let id = self.next_image_id();
-        let (image, origin) = Image::load_path(atlas_pipe, path)?;
+        let (image, origin) = Image::load_path(&mut self.atlas_pipe, path)?;
         self.images.insert(id, image);
         self.prepare.push((id, origin));
         self.paths.insert(path.to_owned(), (id, 1));
@@ -147,7 +159,7 @@ impl Images {
     }
 
     /// Free an image
-    pub fn remove(&mut self, atlas_pipe: &mut Pipeline, id: ImageId) {
+    pub fn remove(&mut self, id: ImageId) {
         // We don't have a map from id to path, hence have to iterate. We can
         // however do a fast check that id is used.
         if !self.images.contains_key(&id) {
@@ -155,6 +167,7 @@ impl Images {
         }
 
         let images = &mut self.images;
+        let atlas_pipe = &mut self.atlas_pipe;
         self.paths.retain(|_, obj| {
             if obj.0 == id {
                 obj.1 -= 1;
@@ -175,10 +188,11 @@ impl Images {
     }
 
     /// Write to textures
-    pub fn prepare(&mut self, atlas_pipe: &Pipeline, queue: &wgpu::Queue) {
+    pub fn prepare(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        self.atlas_pipe.prepare(device);
         for (id, origin) in self.prepare.drain(..) {
             if let Some(image) = self.images.get_mut(&id) {
-                image.write_to_tex(atlas_pipe, origin, queue);
+                image.write_to_tex(&self.atlas_pipe, origin, queue);
             }
         }
     }
@@ -188,5 +202,39 @@ impl Images {
         self.images
             .get(&id)
             .map(|im| (im.atlas.cast(), im.tex_quad()))
+    }
+
+    /// Enqueue render commands
+    pub fn render<'a>(
+        &'a self,
+        window: &'a Window,
+        pass: usize,
+        rpass: &mut wgpu::RenderPass<'a>,
+        bg_common: &'a wgpu::BindGroup,
+    ) {
+        self.atlas_pipe
+            .render(&window.atlas, pass, rpass, bg_common);
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Window {
+    atlas: atlases::Window,
+}
+
+impl Window {
+    /// Prepare vertex buffers
+    pub fn write_buffers(
+        &mut self,
+        device: &wgpu::Device,
+        staging_belt: &mut wgpu::util::StagingBelt,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        self.atlas.write_buffers(device, staging_belt, encoder);
+    }
+
+    /// Add a rectangle to the buffer
+    pub fn rect(&mut self, pass: Pass, atlas: usize, tex: Quad, rect: Quad) {
+        self.atlas.rect(pass, atlas, tex, rect);
     }
 }
