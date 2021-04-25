@@ -120,6 +120,18 @@ pub trait DrawShared: 'static {
 
     /// Draw the image in the given `rect`
     fn draw_image(&self, window: &mut Self::Draw, pass: Pass, id: ImageId, rect: Quad);
+
+    /// Draw text with a colour
+    fn draw_text(
+        &mut self,
+        window: &mut Self::Draw,
+        pass: Pass,
+        pos: Vec2,
+        bounds: Vec2,
+        offset: Vec2,
+        text: &TextDisplay,
+        col: Colour,
+    );
 }
 
 /// Base abstraction over drawing
@@ -249,20 +261,6 @@ pub trait DrawShaded: Draw {
 /// Note: the current API is designed to meet only current requirements since
 /// changes are expected to support external font shaping libraries.
 pub trait DrawText {
-    /// Load resources needed for the next frame
-    fn prepare_fonts(&mut self);
-
-    /// Draw text with a colour
-    fn text(
-        &mut self,
-        pass: Pass,
-        pos: Vec2,
-        bounds: Vec2,
-        offset: Vec2,
-        text: &TextDisplay,
-        col: Colour,
-    );
-
     /// Draw text with a colour and effects
     ///
     /// The effects list does not contain colour information, but may contain

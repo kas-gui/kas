@@ -78,3 +78,6 @@ features = ["serde"]
 
 [workspace]
 members = ["kas-macros", "kas-theme", "kas-wgpu"]
+
+[patch.crates-io]
+kas-text = { path = "../kas-text" }

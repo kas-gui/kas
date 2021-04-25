@@ -111,8 +111,6 @@ where
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
 
-        draw.prepare_fonts();
-
         DrawHandle {
             shared: extend_lifetime(shared),
             draw: extend_lifetime(draw),
@@ -131,8 +129,6 @@ where
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle<'a> {
-        draw.prepare_fonts();
-
         DrawHandle {
             shared,
             draw,

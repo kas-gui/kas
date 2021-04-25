@@ -13,7 +13,6 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use super::{atlases, ShaderManager};
-use kas::cast::Cast;
 use kas::draw::{ImageId, Pass};
 use kas::geom::{Quad, Size, Vec2};
 
@@ -53,7 +52,7 @@ impl Image {
 
         let image = Image {
             image,
-            atlas: atlas.cast(),
+            atlas: atlas,
             alloc,
             tex_quad,
         };
@@ -82,7 +81,7 @@ impl Image {
         let size = self.image.dimensions();
         queue.write_texture(
             wgpu::TextureCopyView {
-                texture: atlas_pipe.get_texture(self.atlas.cast()),
+                texture: atlas_pipe.get_texture(self.atlas),
                 mip_level: 0,
                 origin: wgpu::Origin3d {
                     x: origin.0,
@@ -206,7 +205,7 @@ impl Images {
                 obj.1 -= 1;
                 if obj.1 == 0 {
                     if let Some(im) = images.remove(&id) {
-                        atlas_pipe.deallocate(im.atlas.cast(), im.alloc);
+                        atlas_pipe.deallocate(im.atlas, im.alloc);
                     }
                     return false;
                 }
@@ -244,10 +243,8 @@ impl Images {
     }
 
     /// Get atlas and texture coordinates for an image
-    pub fn get_im_atlas_coords(&self, id: ImageId) -> Option<(usize, Quad)> {
-        self.images
-            .get(&id)
-            .map(|im| (im.atlas.cast(), im.tex_quad()))
+    pub fn get_im_atlas_coords(&self, id: ImageId) -> Option<(u32, Quad)> {
+        self.images.get(&id).map(|im| (im.atlas, im.tex_quad()))
     }
 
     /// Enqueue render commands
@@ -280,7 +277,7 @@ impl Window {
     }
 
     /// Add a rectangle to the buffer
-    pub fn rect(&mut self, pass: Pass, atlas: usize, tex: Quad, rect: Quad) {
+    pub fn rect(&mut self, pass: Pass, atlas: u32, tex: Quad, rect: Quad) {
         if !rect.a.lt(rect.b) {
             // zero / negative size: nothing to draw
             return;

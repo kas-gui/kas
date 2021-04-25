@@ -17,10 +17,10 @@ mod images;
 mod shaded_round;
 mod shaded_square;
 mod shaders;
+mod text_pipe;
 
 use kas::geom::Rect;
 use wgpu::TextureFormat;
-use wgpu_glyph::ab_glyph::FontRef;
 
 pub(crate) use images::ImageError;
 pub(crate) use shaders::ShaderManager;
@@ -58,9 +58,8 @@ pub struct DrawPipe<C> {
     shaded_round: shaded_round::Pipeline,
     flat_round: flat_round::Pipeline,
     custom: C,
+    pub(crate) text: text_pipe::Pipeline,
 }
-
-type GlyphBrush = wgpu_glyph::GlyphBrush<(), FontRef<'static>>;
 
 /// Per-window pipeline data
 pub struct DrawWindow<CW: CustomWindow> {
@@ -72,6 +71,5 @@ pub struct DrawWindow<CW: CustomWindow> {
     shaded_round: shaded_round::Window,
     flat_round: flat_round::Window,
     custom: CW,
-    glyph_brush: GlyphBrush, // TODO: should be in DrawPipe
-    pub(crate) dur_text: std::time::Duration,
+    pub(crate) text: text_pipe::Window,
 }

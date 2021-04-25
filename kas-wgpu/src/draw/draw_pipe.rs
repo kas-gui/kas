@@ -9,12 +9,12 @@ use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
 use std::path::Path;
 use wgpu::util::DeviceExt;
-use wgpu_glyph::{ab_glyph::FontRef, GlyphBrushBuilder};
 
 use super::*;
 use kas::cast::Cast;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, Pass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
+use kas::text::TextDisplay;
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
@@ -58,6 +58,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let shaded_round = shaded_round::Pipeline::new(device, shaders, &bgl_common);
         let flat_round = flat_round::Pipeline::new(device, shaders, &bgl_common);
         let custom = custom.build(&device, &bgl_common, TEX_FORMAT);
+        let text = text_pipe::Pipeline::new(device, shaders, &bgl_common);
 
         DrawPipe {
             local_pool,
@@ -68,6 +69,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             shaded_round,
             flat_round,
             custom,
+            text,
         }
     }
 
@@ -125,15 +127,6 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         let custom = self.custom.new_window(device, size);
 
-        // TODO: use extra caching so we don't load font for each window
-        let font_data = kas::text::fonts::fonts().font_data();
-        let mut fonts = Vec::with_capacity(font_data.len());
-        for i in 0..font_data.len() {
-            let (data, index) = font_data.get_data(i);
-            fonts.push(FontRef::try_from_slice_and_index(data, index).unwrap());
-        }
-        let glyph_brush = GlyphBrushBuilder::using_fonts(fonts).build(device, TEX_FORMAT);
-
         DrawWindow {
             scale_buf,
             clip_regions: vec![rect],
@@ -143,8 +136,7 @@ impl<C: CustomPipe> DrawPipe<C> {
             shaded_round: Default::default(),
             flat_round: Default::default(),
             custom,
-            glyph_brush,
-            dur_text: Default::default(),
+            text: Default::default(),
         }
     }
 
@@ -201,6 +193,10 @@ impl<C: CustomPipe> DrawPipe<C> {
             &mut self.staging_belt,
             &mut encoder,
         );
+        self.text.prepare(device, queue);
+        window
+            .text
+            .write_buffers(device, &mut self.staging_belt, &mut encoder);
 
         let mut color_attachments = [wgpu::RenderPassColorAttachmentDescriptor {
             attachment: frame_view,
@@ -238,6 +234,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                     .render(&window.flat_round, pass, &mut rpass, bg_common);
                 self.custom
                     .render_pass(&mut window.custom, device, pass, &mut rpass, bg_common);
+                self.text
+                    .render(&mut window.text, pass, &mut rpass, bg_common);
             }
 
             color_attachments[0].ops.load = wgpu::LoadOp::Load;
@@ -248,18 +246,6 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         self.custom
             .render_final(&mut window.custom, device, &mut encoder, frame_view, size);
-
-        window
-            .glyph_brush
-            .draw_queued(
-                device,
-                &mut self.staging_belt,
-                &mut encoder,
-                frame_view,
-                size.0.cast(),
-                size.1.cast(),
-            )
-            .expect("glyph_brush.draw_queued");
 
         // Keep only first clip region (which is the entire window)
         window.clip_regions.truncate(1);
@@ -299,6 +285,22 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
         if let Some((atlas, tex)) = self.images.get_im_atlas_coords(id) {
             window.images.rect(pass, atlas, tex, rect);
         };
+    }
+
+    #[inline]
+    fn draw_text(
+        &mut self,
+        window: &mut Self::Draw,
+        pass: Pass,
+        pos: Vec2,
+        bounds: Vec2,
+        offset: Vec2,
+        text: &TextDisplay,
+        col: Colour,
+    ) {
+        window
+            .text
+            .text(&mut self.text, pass, pos, bounds, offset, text, col);
     }
 }
 

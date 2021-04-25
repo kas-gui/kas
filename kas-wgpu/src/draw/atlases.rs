@@ -181,12 +181,12 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         }
     }
 
-    fn allocate_space(&mut self, size: (i32, i32)) -> (usize, Allocation) {
+    fn allocate_space(&mut self, size: (i32, i32)) -> (u32, Allocation) {
         let size = size.into();
         let mut atlas = 0;
         while atlas < self.atlases.len() {
             if let Some(alloc) = self.atlases[atlas].alloc.allocate(size) {
-                return (atlas, alloc);
+                return (atlas.cast(), alloc);
             }
             atlas += 1;
         }
@@ -194,14 +194,14 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         // New_aa are atlas allocators which haven't been assigned textures yet
         for new_aa in &mut self.new_aa {
             if let Some(alloc) = new_aa.allocate(size) {
-                return (atlas, alloc);
+                return (atlas.cast(), alloc);
             }
             atlas += 1;
         }
 
         self.new_aa.push(Atlas::new_alloc(self.tex_size));
         match self.new_aa.last_mut().unwrap().allocate(size) {
-            Some(alloc) => return (atlas, alloc),
+            Some(alloc) => return (atlas.cast(), alloc),
             None => unreachable!(),
         }
     }
@@ -219,7 +219,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
     pub fn allocate(
         &mut self,
         size: (u32, u32),
-    ) -> Result<(usize, AllocId, (u32, u32), Quad), ImageError> {
+    ) -> Result<(u32, AllocId, (u32, u32), Quad), ImageError> {
         let tex_size_u32: u32 = self.tex_size.cast();
         if size.0 > tex_size_u32 || size.1 > tex_size_u32 {
             return Err(ImageError::Allocation);
@@ -237,8 +237,8 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         Ok((atlas, alloc.id, origin, tex_quad))
     }
 
-    pub fn deallocate(&mut self, atlas: usize, alloc: AllocId) {
-        self.atlases[atlas].alloc.deallocate(alloc);
+    pub fn deallocate(&mut self, atlas: u32, alloc: AllocId) {
+        self.atlases[usize::conv(atlas)].alloc.deallocate(alloc);
     }
 
     /// Prepare textures
@@ -255,8 +255,8 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         }
     }
 
-    pub fn get_texture(&self, atlas: usize) -> &wgpu::Texture {
-        &self.atlases[atlas].tex
+    pub fn get_texture(&self, atlas: u32) -> &wgpu::Texture {
+        &self.atlases[usize::conv(atlas)].tex
     }
 
     /// Enqueue render commands
@@ -404,7 +404,7 @@ impl<I: bytemuck::Pod> Window<I> {
     }
 
     /// Add a rectangle to the buffer
-    pub fn rect(&mut self, pass: Pass, atlas: usize, instance: I) {
+    pub fn rect(&mut self, pass: Pass, atlas: u32, instance: I) {
         let pass = pass.pass();
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
@@ -412,6 +412,7 @@ impl<I: bytemuck::Pod> Window<I> {
         }
         let pass = &mut self.passes[pass];
 
+        let atlas = usize::conv(atlas);
         if pass.atlases.len() <= atlas {
             // Warning: length must not excced number of atlases
             pass.atlases.resize(atlas + 1, Default::default());

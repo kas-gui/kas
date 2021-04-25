@@ -115,8 +115,6 @@ where
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
 
-        draw.prepare_fonts();
-
         DrawHandle {
             shared: extend_lifetime(shared),
             draw: extend_lifetime(draw),
@@ -135,8 +133,6 @@ where
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle<'a> {
-        draw.prepare_fonts();
-
         DrawHandle {
             shared,
             draw,
@@ -303,8 +299,15 @@ where
     ) {
         let pos = pos + self.offset;
         let col = self.cols.text_class(class);
-        self.draw
-            .text(self.pass, pos.into(), bounds, offset.into(), text, col);
+        self.shared.draw_text(
+            &mut self.draw,
+            self.pass,
+            pos.into(),
+            bounds,
+            offset.into(),
+            text,
+            col,
+        );
     }
 
     fn text_effects(&mut self, pos: Coord, offset: Offset, text: &dyn TextApi, class: TextClass) {
@@ -329,8 +332,15 @@ where
             self.draw
                 .text_col_effects(self.pass, pos, bounds, offset, text.as_ref(), col, effects);
         } else {
-            self.draw
-                .text(self.pass, pos, bounds, offset, text.as_ref(), col);
+            self.shared.draw_text(
+                &mut self.draw,
+                self.pass,
+                pos,
+                bounds,
+                offset,
+                text.as_ref(),
+                col,
+            );
         }
     }
 
