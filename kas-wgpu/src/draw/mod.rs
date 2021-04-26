@@ -32,18 +32,20 @@ pub(crate) const TEX_FORMAT: TextureFormat = TextureFormat::Bgra8UnormSrgb;
 /// 3-part colour data
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub(crate) struct Rgb {
+pub(crate) struct Rgba {
     pub r: f32,
     pub g: f32,
     pub b: f32,
+    pub a: f32,
 }
 
-impl From<kas::draw::Colour> for Rgb {
+impl From<kas::draw::Colour> for Rgba {
     fn from(c: kas::draw::Colour) -> Self {
-        Rgb {
+        Rgba {
             r: c.r,
             g: c.g,
             b: c.b,
+            a: c.a,
         }
     }
 }

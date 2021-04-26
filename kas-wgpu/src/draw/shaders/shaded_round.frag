@@ -8,7 +8,7 @@
 
 precision mediump float;
 
-layout(location = 0) flat in vec3 fragColor;
+layout(location = 0) flat in vec4 fragColor;
 layout(location = 1) in vec2 dir;
 layout(location = 2) flat in vec2 adjust;
 layout(location = 3) in vec2 off;
@@ -54,6 +54,6 @@ void main() {
     // float z = sqrt(1.0 - adjust.y * ss);
     // vec3 norm = vec3(dir * sqrt(adjust.y), z);
 
-    vec3 c = fragColor * dot(norm, lightNorm);
-    outColor = vec4(c, alpha);
+    vec3 c = fragColor.rgb * dot(norm, lightNorm);
+    outColor = vec4(c, fragColor.a * alpha);
 }

@@ -8,7 +8,7 @@
 
 precision mediump float;
 
-layout(location = 0) flat in vec3 fragColor;
+layout(location = 0) flat in vec4 fragColor;
 layout(location = 1) flat in float inner;
 layout(location = 2) in vec2 pos;
 layout(location = 3) in vec2 off;
@@ -30,5 +30,5 @@ void main() {
         + sample_a(pos + off2)
         + sample_a(pos - off2);
 
-    outColor = vec4(fragColor, alpha);
+    outColor = vec4(fragColor.rgb, fragColor.a * alpha);
 }
