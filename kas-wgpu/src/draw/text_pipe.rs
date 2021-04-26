@@ -5,7 +5,7 @@
 
 //! Text drawing pipeline
 
-use super::{atlases, ShaderManager, Rgba};
+use super::{atlases, Rgba, ShaderManager};
 use ab_glyph::{Font, FontRef};
 use kas::cast::*;
 use kas::draw::{Colour, Pass};
@@ -14,6 +14,10 @@ use kas::text::fonts::{fonts, FontId};
 use kas::text::{Glyph, GlyphId, TextDisplay};
 use std::collections::hash_map::{Entry, HashMap};
 use std::mem::size_of;
+
+fn to_vec2(p: ab_glyph::Point) -> Vec2 {
+    Vec2(p.x, p.y)
+}
 
 /// Scale multiplier for fixed-precision
 ///
@@ -57,6 +61,9 @@ impl SpriteDescriptor {
 #[derive(Clone, Debug)]
 struct Sprite {
     atlas: u32,
+    // TODO(opt): u16 or maybe even u8 would be enough
+    size: Vec2,
+    offset: Vec2,
     tex_quad: Quad,
 }
 
@@ -74,28 +81,36 @@ impl atlases::Pipeline<Instance> {
         let outline = font.outline_glyph(glyph)?;
 
         let bounds = outline.px_bounds();
-        let size = bounds.max - bounds.min;
-        let size = (u32::conv_trunc(size.x), u32::conv_trunc(size.y));
-        println!("bounds: {:?}, size: {:?}", bounds, size);
+        let size = to_vec2(bounds.max - bounds.min);
+        let offset = to_vec2(bounds.min);
+        let size_u32 = (u32::conv_trunc(size.0), u32::conv_trunc(size.1));
 
-        let (atlas, _, origin, tex_quad) = match self.allocate(size) {
+        let (atlas, _, origin, tex_quad) = match self.allocate(size_u32) {
             Ok(result) => result,
             Err(_) => {
-                log::warn!("text_pipe: failed to allocate glyph with size {:?}", size);
+                log::warn!(
+                    "text_pipe: failed to allocate glyph with size {:?}",
+                    size_u32
+                );
                 return None;
             }
         };
 
         let mut data = Vec::new();
-        data.resize(usize::conv(size.0 * size.1), 0u8);
+        data.resize(usize::conv(size_u32.0 * size_u32.1), 0u8);
         outline.draw(|x, y, c| {
             // Convert to u8 with saturating conversion, rounding down:
-            data[usize::conv((y * size.0) + x)] = (c * 256.0) as u8;
+            data[usize::conv((y * size_u32.0) + x)] = (c * 256.0) as u8;
         });
 
-        let sprite = Sprite { atlas, tex_quad };
+        let sprite = Sprite {
+            atlas,
+            size,
+            offset,
+            tex_quad,
+        };
 
-        Some((sprite, origin, size, data))
+        Some((sprite, origin, size_u32, data))
     }
 }
 
@@ -172,7 +187,6 @@ impl Pipeline {
                 self.fonts.push(font);
             }
         }
-        println!("prepare_fonts: have {}", n2);
     }
 
     /// Write to textures
@@ -180,7 +194,6 @@ impl Pipeline {
         self.atlas_pipe.prepare(device);
 
         for (atlas, origin, size, data) in self.prepare.drain(..) {
-            println!("origin={:?}, size={:?}, len={}", origin, size, data.len());
             queue.write_texture(
                 wgpu::TextureCopyView {
                     texture: self.atlas_pipe.get_texture(atlas),
@@ -288,11 +301,8 @@ impl Window {
             let desc = SpriteDescriptor::new(font, glyph.id, height);
             if let Some(sprite) = pipe.get_glyph(desc) {
                 let pos = offset + Vec2::from(glyph.position);
-                // FIXME:
-                let offset = Vec2::ZERO;
-                let size = Vec2(8.0, 12.0);
-                let a = pos - offset;
-                let b = a + size;
+                let a = pos + sprite.offset;
+                let b = a + sprite.size;
                 let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
                 let instance = Instance { a, b, ta, tb, col };
                 // TODO(opt): avoid calling repeatedly?
