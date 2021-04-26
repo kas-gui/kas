@@ -14,8 +14,8 @@ use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours,
 use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShared, DrawText, ImageId, InputState, Pass, SizeHandle,
-    TextClass, ThemeAction, ThemeApi,
+    self, Colour, Draw, DrawRounded, DrawShared, ImageId, InputState, Pass, SizeHandle, TextClass,
+    ThemeAction, ThemeApi,
 };
 use kas::geom::*;
 use kas::text::format::FormattableText;
@@ -79,7 +79,7 @@ pub struct DrawHandle<'a, D: DrawShared> {
 
 impl<D: DrawShared> Theme<D> for FlatTheme
 where
-    D::Draw: DrawRounded + DrawText,
+    D::Draw: DrawRounded,
 {
     type Window = DimensionsWindow;
 
@@ -212,7 +212,7 @@ where
 
 impl<'a, D: DrawShared> draw::DrawHandle for DrawHandle<'a, D>
 where
-    D::Draw: DrawRounded + DrawText,
+    D::Draw: DrawRounded,
 {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
@@ -297,7 +297,8 @@ where
     }
 
     fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
-        self.draw.text_col_effects(
+        self.shared.draw_text_col_effects(
+            &mut self.draw,
             self.pass,
             (pos + self.offset).into(),
             text.display(),
@@ -311,8 +312,14 @@ where
         let col = self.cols.text_class(class);
         if state {
             let effects = text.text().effect_tokens();
-            self.draw
-                .text_col_effects(self.pass, pos, text.as_ref(), col, effects);
+            self.shared.draw_text_col_effects(
+                &mut self.draw,
+                self.pass,
+                pos,
+                text.as_ref(),
+                col,
+                effects,
+            );
         } else {
             self.shared
                 .draw_text(&mut self.draw, self.pass, pos, text.as_ref(), col);
@@ -354,7 +361,8 @@ where
                 aux: col,
             },
         ];
-        self.draw.text_effects(self.pass, pos, text, &effects);
+        self.shared
+            .draw_text_effects(&mut self.draw, self.pass, pos, text, &effects);
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {

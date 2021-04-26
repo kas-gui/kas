@@ -11,8 +11,8 @@ use std::ops::Range;
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::dir::{Direction, Directional};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, ImageId, InputState, Pass,
-    SizeHandle, TextClass, ThemeAction, ThemeApi,
+    self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, InputState, Pass, SizeHandle,
+    TextClass, ThemeAction, ThemeApi,
 };
 use kas::geom::*;
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
@@ -75,7 +75,7 @@ pub struct DrawHandle<'a, D: DrawShared> {
 
 impl<D: DrawShared> Theme<D> for ShadedTheme
 where
-    D::Draw: DrawRounded + DrawShaded + DrawText,
+    D::Draw: DrawRounded + DrawShaded,
 {
     type Window = DimensionsWindow;
 
@@ -224,7 +224,7 @@ where
 
 impl<'a, D: DrawShared> draw::DrawHandle for DrawHandle<'a, D>
 where
-    D::Draw: DrawRounded + DrawShaded + DrawText,
+    D::Draw: DrawRounded + DrawShaded,
 {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {

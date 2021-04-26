@@ -11,7 +11,6 @@ mod atlases;
 mod common;
 mod custom;
 mod draw_pipe;
-mod draw_text;
 mod flat_round;
 mod images;
 mod shaded_round;

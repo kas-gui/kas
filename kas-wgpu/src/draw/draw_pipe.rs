@@ -14,7 +14,7 @@ use super::*;
 use kas::cast::Cast;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, Pass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
-use kas::text::TextDisplay;
+use kas::text::{Effect, TextDisplay};
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
@@ -297,6 +297,39 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
         col: Colour,
     ) {
         window.text.text(&mut self.text, pass, pos, text, col);
+    }
+
+    fn draw_text_col_effects(
+        &mut self,
+        window: &mut Self::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Colour,
+        effects: &[Effect<()>],
+    ) {
+        let rects = window
+            .text
+            .text_col_effects(&mut self.text, pass, pos, text, col, effects);
+        for rect in rects {
+            window.shaded_square.rect(pass, rect, col);
+        }
+    }
+
+    fn draw_text_effects(
+        &mut self,
+        window: &mut Self::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        effects: &[Effect<Colour>],
+    ) {
+        let rects = window
+            .text
+            .text_effects(&mut self.text, pass, pos, text, effects);
+        for (rect, col) in rects {
+            window.shaded_square.rect(pass, rect, col);
+        }
     }
 }
 

@@ -11,7 +11,7 @@ use kas::cast::*;
 use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Vec2};
 use kas::text::fonts::{fonts, FontId};
-use kas::text::{Glyph, GlyphId, TextDisplay};
+use kas::text::{Effect, Glyph, GlyphId, TextDisplay};
 use std::collections::hash_map::{Entry, HashMap};
 use std::mem::size_of;
 
@@ -307,5 +307,121 @@ impl Window {
         text.glyphs(for_glyph);
 
         self.duration += time.elapsed();
+    }
+
+    pub fn text_col_effects(
+        &mut self,
+        pipe: &mut Pipeline,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Colour,
+        effects: &[Effect<()>],
+    ) -> Vec<Quad> {
+        // Optimisation: use cheaper TextDisplay::glyphs method
+        if effects.len() <= 1
+            && effects
+                .get(0)
+                .map(|e| e.flags == Default::default())
+                .unwrap_or(true)
+        {
+            self.text(pipe, pass, pos, text, col);
+            return vec![];
+        }
+
+        let time = std::time::Instant::now();
+        let col = col.into();
+        let mut rects = vec![];
+
+        let mut for_glyph = |font: FontId, _, height: f32, glyph: Glyph, _: usize, _: ()| {
+            let desc = SpriteDescriptor::new(font, glyph.id, height);
+            if let Some(sprite) = pipe.get_glyph(desc) {
+                let pos = pos + Vec2::from(glyph.position);
+                let a = pos + sprite.offset;
+                let b = a + sprite.size;
+                let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
+                let instance = Instance { a, b, ta, tb, col };
+                // TODO(opt): avoid calling repeatedly?
+                self.atlas.rect(pass, sprite.atlas, instance);
+            }
+        };
+
+        if effects.len() > 1
+            || effects
+                .get(0)
+                .map(|e| *e != Default::default())
+                .unwrap_or(false)
+        {
+            let for_rect = |x1, x2, mut y, h: f32, _, _| {
+                let y2 = y + h;
+                if h < 1.0 {
+                    // h too small can make the line invisible due to rounding
+                    // In this case we prefer to push the line up (nearer text).
+                    y = y2 - 1.0;
+                }
+                let quad = Quad::with_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
+                rects.push(quad);
+            };
+            text.glyphs_with_effects(effects, for_glyph, for_rect);
+        } else {
+            text.glyphs(|font, dpu, height, glyph| for_glyph(font, dpu, height, glyph, 0, ()));
+        }
+
+        self.duration += time.elapsed();
+        rects
+    }
+
+    pub fn text_effects(
+        &mut self,
+        pipe: &mut Pipeline,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        effects: &[Effect<Colour>],
+    ) -> Vec<(Quad, Colour)> {
+        // Optimisation: use cheaper TextDisplay::glyphs method
+        if effects.len() <= 1
+            && effects
+                .get(0)
+                .map(|e| e.flags == Default::default())
+                .unwrap_or(true)
+        {
+            let col = effects.get(0).map(|e| e.aux).unwrap_or(Colour::default());
+            self.text(pipe, pass, pos, text, col);
+            return vec![];
+        }
+
+        let time = std::time::Instant::now();
+        let mut rects = vec![];
+
+        let for_glyph = |font: FontId, _, height: f32, glyph: Glyph, _, col: Colour| {
+            let desc = SpriteDescriptor::new(font, glyph.id, height);
+            if let Some(sprite) = pipe.get_glyph(desc) {
+                let pos = pos + Vec2::from(glyph.position);
+                let a = pos + sprite.offset;
+                let b = a + sprite.size;
+                let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
+                let col = col.into();
+                let instance = Instance { a, b, ta, tb, col };
+                // TODO(opt): avoid calling repeatedly?
+                self.atlas.rect(pass, sprite.atlas, instance);
+            }
+        };
+
+        let for_rect = |x1, x2, mut y, h: f32, _, col: Colour| {
+            let y2 = y + h;
+            if h < 1.0 {
+                // h too small can make the line invisible due to rounding
+                // In this case we prefer to push the line up (nearer text).
+                y = y2 - 1.0;
+            }
+            let quad = Quad::with_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
+            rects.push((quad, col));
+        };
+
+        text.glyphs_with_effects(effects, for_glyph, for_rect);
+
+        self.duration += time.elapsed();
+        rects
     }
 }

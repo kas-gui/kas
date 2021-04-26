@@ -130,6 +130,34 @@ pub trait DrawShared: 'static {
         text: &TextDisplay,
         col: Colour,
     );
+
+    /// Draw text with a colour and effects
+    ///
+    /// The effects list does not contain colour information, but may contain
+    /// underlining/strikethrough information. It may be empty.
+    fn draw_text_col_effects(
+        &mut self,
+        window: &mut Self::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Colour,
+        effects: &[Effect<()>],
+    );
+
+    /// Draw text with effects
+    ///
+    /// The `effects` list provides both underlining and colour information.
+    /// If the `effects` list is empty or the first entry has `start > 0`, a
+    /// default entity will be assumed.
+    fn draw_text_effects(
+        &mut self,
+        window: &mut Self::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        effects: &[Effect<Colour>],
+    );
 }
 
 /// Base abstraction over drawing
@@ -251,37 +279,5 @@ pub trait DrawShaded: Draw {
         inner: Quad,
         norm: (f32, f32),
         col: Colour,
-    );
-}
-
-/// Abstraction over text rendering
-///
-/// Note: the current API is designed to meet only current requirements since
-/// changes are expected to support external font shaping libraries.
-pub trait DrawText {
-    /// Draw text with a colour and effects
-    ///
-    /// The effects list does not contain colour information, but may contain
-    /// underlining/strikethrough information. It may be empty.
-    fn text_col_effects(
-        &mut self,
-        pass: Pass,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Colour,
-        effects: &[Effect<()>],
-    );
-
-    /// Draw text with effects
-    ///
-    /// The `effects` list provides both underlining and colour information.
-    /// If the `effects` list is empty or the first entry has `start > 0`, a
-    /// default entity will be assumed.
-    fn text_effects(
-        &mut self,
-        pass: Pass,
-        pos: Vec2,
-        text: &TextDisplay,
-        effects: &[Effect<Colour>],
     );
 }
