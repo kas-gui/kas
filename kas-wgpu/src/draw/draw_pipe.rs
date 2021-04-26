@@ -293,14 +293,10 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
         window: &mut Self::Draw,
         pass: Pass,
         pos: Vec2,
-        bounds: Vec2,
-        offset: Vec2,
         text: &TextDisplay,
         col: Colour,
     ) {
-        window
-            .text
-            .text(&mut self.text, pass, pos, bounds, offset, text, col);
+        window.text.text(&mut self.text, pass, pos, text, col);
     }
 }
 

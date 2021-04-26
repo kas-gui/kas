@@ -298,19 +298,12 @@ where
         self.as_flat().selection_box(rect);
     }
 
-    fn text_offset(
-        &mut self,
-        pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
-        text: &TextDisplay,
-        class: TextClass,
-    ) {
-        self.as_flat().text_offset(pos, bounds, offset, text, class);
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
+        self.as_flat().text(pos, text, class);
     }
 
-    fn text_effects(&mut self, pos: Coord, offset: Offset, text: &dyn TextApi, class: TextClass) {
-        self.as_flat().text_effects(pos, offset, text, class);
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
+        self.as_flat().text_effects(pos, text, class);
     }
 
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
@@ -320,27 +313,15 @@ where
     fn text_selected_range(
         &mut self,
         pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     ) {
-        self.as_flat()
-            .text_selected_range(pos, bounds, offset, text, range, class);
+        self.as_flat().text_selected_range(pos, text, range, class);
     }
 
-    fn edit_marker(
-        &mut self,
-        pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    ) {
-        self.as_flat()
-            .edit_marker(pos, bounds, offset, text, class, byte);
+    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+        self.as_flat().edit_marker(pos, text, class, byte);
     }
 
     fn menu_entry(&mut self, rect: Rect, state: InputState) {

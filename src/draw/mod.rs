@@ -127,8 +127,6 @@ pub trait DrawShared: 'static {
         window: &mut Self::Draw,
         pass: Pass,
         pos: Vec2,
-        bounds: Vec2,
-        offset: Vec2,
         text: &TextDisplay,
         col: Colour,
     );
@@ -269,8 +267,6 @@ pub trait DrawText {
         &mut self,
         pass: Pass,
         pos: Vec2,
-        bounds: Vec2,
-        offset: Vec2,
         text: &TextDisplay,
         col: Colour,
         effects: &[Effect<()>],
@@ -285,8 +281,6 @@ pub trait DrawText {
         &mut self,
         pass: Pass,
         pos: Vec2,
-        bounds: Vec2,
-        offset: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Colour>],
     );

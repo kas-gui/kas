@@ -477,38 +477,29 @@ impl<G: EditGuard> Layout for EditField<G> {
         } else {
             TextClass::Edit
         };
-        let bounds = self.text.env().bounds.into();
-        if self.selection.is_empty() {
-            draw_handle.text_offset(
-                self.rect().pos,
-                bounds,
-                self.view_offset,
-                self.text.as_ref(),
-                class,
-            );
-        } else {
-            // TODO(opt): we could cache the selection rectangles here to make
-            // drawing more efficient (self.text.highlight_lines(range) output).
-            // The same applies to the edit marker below.
-            draw_handle.text_selected(
-                self.rect().pos,
-                bounds,
-                self.view_offset,
-                &self.text,
-                self.selection.range(),
-                class,
-            );
-        }
-        if self.input_state(mgr, disabled).char_focus {
-            draw_handle.edit_marker(
-                self.rect().pos,
-                bounds,
-                self.view_offset,
-                self.text.as_ref(),
-                class,
-                self.selection.edit_pos(),
-            );
-        }
+        draw_handle.clip_region(self.rect(), self.view_offset, &mut |draw_handle| {
+            if self.selection.is_empty() {
+                draw_handle.text(self.rect().pos, self.text.as_ref(), class);
+            } else {
+                // TODO(opt): we could cache the selection rectangles here to make
+                // drawing more efficient (self.text.highlight_lines(range) output).
+                // The same applies to the edit marker below.
+                draw_handle.text_selected(
+                    self.rect().pos,
+                    &self.text,
+                    self.selection.range(),
+                    class,
+                );
+            }
+            if self.input_state(mgr, disabled).char_focus {
+                draw_handle.edit_marker(
+                    self.rect().pos,
+                    self.text.as_ref(),
+                    class,
+                    self.selection.edit_pos(),
+                );
+            }
+        });
     }
 }
 

@@ -286,21 +286,16 @@ impl Window {
         pipe: &mut Pipeline,
         pass: Pass,
         pos: Vec2,
-        bounds: Vec2,
-        offset: Vec2,
         text: &TextDisplay,
         col: Colour,
     ) {
         let time = std::time::Instant::now();
-
-        let _ = bounds;
-        let offset = pos + offset; // TODO: if we don't use bounds, we can just pass the sum
         let col = col.into();
 
         let for_glyph = |font: FontId, _, height: f32, glyph: Glyph| {
             let desc = SpriteDescriptor::new(font, glyph.id, height);
             if let Some(sprite) = pipe.get_glyph(desc) {
-                let pos = offset + Vec2::from(glyph.position);
+                let pos = pos + Vec2::from(glyph.position);
                 let a = pos + sprite.offset;
                 let b = a + sprite.size;
                 let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);

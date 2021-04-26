@@ -289,33 +289,17 @@ where
         self.draw.frame(self.pass, outer, inner, col);
     }
 
-    fn text_offset(
-        &mut self,
-        pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
-        text: &TextDisplay,
-        class: TextClass,
-    ) {
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
         let pos = pos + self.offset;
         let col = self.cols.text_class(class);
-        self.shared.draw_text(
-            &mut self.draw,
-            self.pass,
-            pos.into(),
-            bounds,
-            offset.into(),
-            text,
-            col,
-        );
+        self.shared
+            .draw_text(&mut self.draw, self.pass, pos.into(), text, col);
     }
 
-    fn text_effects(&mut self, pos: Coord, offset: Offset, text: &dyn TextApi, class: TextClass) {
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
         self.draw.text_col_effects(
             self.pass,
             (pos + self.offset).into(),
-            text.env().bounds.into(),
-            offset.into(),
             text.display(),
             self.cols.text_class(class),
             text.effect_tokens(),
@@ -324,49 +308,31 @@ where
 
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         let pos = Vec2::from(pos + self.offset);
-        let offset = Vec2::ZERO;
-        let bounds = text.env().bounds.into();
         let col = self.cols.text_class(class);
         if state {
             let effects = text.text().effect_tokens();
             self.draw
-                .text_col_effects(self.pass, pos, bounds, offset, text.as_ref(), col, effects);
+                .text_col_effects(self.pass, pos, text.as_ref(), col, effects);
         } else {
-            self.shared.draw_text(
-                &mut self.draw,
-                self.pass,
-                pos,
-                bounds,
-                offset,
-                text.as_ref(),
-                col,
-            );
+            self.shared
+                .draw_text(&mut self.draw, self.pass, pos, text.as_ref(), col);
         }
     }
 
     fn text_selected_range(
         &mut self,
         pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     ) {
         let pos = Vec2::from(pos + self.offset);
-        let offset = Vec2::from(offset);
         let col = self.cols.text_class(class);
 
         // Draw background:
         for (p1, p2) in &text.highlight_lines(range.clone()) {
-            let mut p1 = Vec2::from(*p1) - offset;
-            let mut p2 = Vec2::from(*p2) - offset;
-            if !p2.gt(Vec2::ZERO) || !p1.lt(bounds) {
-                continue;
-            }
-            p1 = p1.max(Vec2::ZERO);
-            p2 = p2.min(bounds);
-
+            let p1 = Vec2::from(*p1);
+            let p2 = Vec2::from(*p2);
             let quad = Quad::with_coords(pos + p1, pos + p2);
             self.draw.rect(self.pass, quad, self.cols.text_sel_bg);
         }
@@ -388,24 +354,12 @@ where
                 aux: col,
             },
         ];
-        self.draw
-            .text_effects(self.pass, pos, bounds, offset, text, &effects);
+        self.draw.text_effects(self.pass, pos, text, &effects);
     }
 
-    fn edit_marker(
-        &mut self,
-        pos: Coord,
-        mut bounds: Vec2,
-        offset: Offset,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    ) {
+    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
         let width = self.window.dims.font_marker_width;
-        let p = Vec2::from(pos + self.offset);
-        bounds.0 += width;
-        let bounds = Quad::with_pos_and_size(p, bounds);
-        let pos = Vec2::from(pos - offset + self.offset);
+        let pos = Vec2::from(pos + self.offset);
 
         let mut col = self.cols.text_class(class);
         for cursor in text.text_glyph_pos(byte).rev() {
@@ -415,9 +369,8 @@ where
             p2.1 -= cursor.descent;
             p2.0 += width;
             let quad = Quad::with_coords(p1, p2);
-            if let Some(quad) = bounds.intersection(&quad) {
-                self.draw.rect(self.pass, quad, col);
-            }
+            self.draw.rect(self.pass, quad, col);
+
             if cursor.embedding_level() > 0 {
                 // Add a hat to indicate directionality.
                 let height = width;
@@ -426,9 +379,7 @@ where
                 } else {
                     Quad::with_coords(Vec2(p1.0 - width, p1.1), Vec2(p1.0, p1.1 + height))
                 };
-                if let Some(quad) = bounds.intersection(&quad) {
-                    self.draw.rect(self.pass, quad, col);
-                }
+                self.draw.rect(self.pass, quad, col);
             }
             // hack to make secondary marker grey:
             col = self.cols.button_disabled;

@@ -36,21 +36,11 @@ impl<T: FormattableText + 'static> Layout for Label<T> {
 
     #[cfg(feature = "min_spec")]
     default fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        draw_handle.text_effects(
-            self.core.rect.pos,
-            Offset::ZERO,
-            &self.label,
-            TextClass::Label,
-        );
+        draw_handle.text_effects(self.core.rect.pos, &self.label, TextClass::Label);
     }
     #[cfg(not(feature = "min_spec"))]
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        draw_handle.text_effects(
-            self.core.rect.pos,
-            Offset::ZERO,
-            &self.label,
-            TextClass::Label,
-        );
+        draw_handle.text_effects(self.core.rect.pos, &self.label, TextClass::Label);
     }
 }
 

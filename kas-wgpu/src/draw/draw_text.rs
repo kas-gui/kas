@@ -15,26 +15,22 @@ impl<CW: CustomWindow> DrawText for DrawWindow<CW> {
         &mut self,
         pass: Pass,
         pos: Vec2,
-        bounds: Vec2,
-        offset: Vec2,
         text: &TextDisplay,
         col: Colour,
         effects: &[Effect<()>],
     ) {
         // TODO
-        let _ = (pass, pos, bounds, offset, text, col, effects);
+        let _ = (pass, pos, text, col, effects);
     }
 
     fn text_effects(
         &mut self,
         pass: Pass,
         pos: Vec2,
-        bounds: Vec2,
-        offset: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Colour>],
     ) {
         // TODO
-        let _ = (pass, pos, bounds, offset, text, effects);
+        let _ = (pass, pos, text, effects);
     }
 }
