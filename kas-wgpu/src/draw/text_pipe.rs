@@ -5,7 +5,7 @@
 
 //! Text drawing pipeline
 
-use super::{atlases, ShaderManager};
+use super::{atlases, ShaderManager, Rgba};
 use ab_glyph::{Font, FontRef};
 use kas::cast::*;
 use kas::draw::{Colour, Pass};
@@ -107,6 +107,7 @@ pub struct Instance {
     b: Vec2,
     ta: Vec2,
     tb: Vec2,
+    col: Rgba,
 }
 unsafe impl bytemuck::Zeroable for Instance {}
 unsafe impl bytemuck::Pod for Instance {}
@@ -131,7 +132,7 @@ impl Pipeline {
             512,
             wgpu::TextureFormat::R8Unorm,
             wgpu::VertexState {
-                module: &shaders.vert_tex_quad,
+                module: &shaders.vert_glyph,
                 entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Instance>() as wgpu::BufferAddress,
@@ -141,10 +142,11 @@ impl Pipeline {
                         1 => Float2,
                         2 => Float2,
                         3 => Float2,
+                        4 => Float4,
                     ],
                 }],
             },
-            &shaders.frag_image,
+            &shaders.frag_glyph,
         );
         Pipeline {
             atlas_pipe,
@@ -278,8 +280,9 @@ impl Window {
     ) {
         let time = std::time::Instant::now();
 
-        let _ = (bounds, col); // TODO
+        let _ = bounds;
         let offset = pos + offset; // TODO: if we don't use bounds, we can just pass the sum
+        let col = col.into();
 
         let for_glyph = |font: FontId, _, height: f32, glyph: Glyph| {
             let desc = SpriteDescriptor::new(font, glyph.id, height);
@@ -291,7 +294,7 @@ impl Window {
                 let a = pos - offset;
                 let b = a + size;
                 let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
-                let instance = Instance { a, b, ta, tb };
+                let instance = Instance { a, b, ta, tb, col };
                 // TODO(opt): avoid calling repeatedly?
                 self.atlas.rect(pass, sprite.atlas, instance);
             }

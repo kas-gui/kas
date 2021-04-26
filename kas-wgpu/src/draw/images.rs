@@ -142,7 +142,7 @@ impl Images {
             2048,
             wgpu::TextureFormat::Rgba8UnormSrgb,
             wgpu::VertexState {
-                module: &shaders.vert_tex_quad,
+                module: &shaders.vert_image,
                 entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Instance>() as wgpu::BufferAddress,
