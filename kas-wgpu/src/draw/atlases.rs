@@ -11,28 +11,13 @@ use std::num::NonZeroU64;
 use std::ops::Range;
 
 use super::ImageError;
-use crate::draw::ShaderManager;
 use kas::cast::{Cast, Conv};
 use kas::draw::Pass;
 use kas::geom::{Quad, Size, Vec2};
 
-const TEXTURE_SIZE: (u32, u32) = (2048, 2048);
-
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
     Vec2(p.x.cast(), p.y.cast())
 }
-
-/// Screen and texture coordinates
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
-struct Instance {
-    a: Vec2,
-    b: Vec2,
-    ta: Vec2,
-    tb: Vec2,
-}
-unsafe impl bytemuck::Zeroable for Instance {}
-unsafe impl bytemuck::Pod for Instance {}
 
 pub struct Atlas {
     alloc: AtlasAllocator,
@@ -41,15 +26,9 @@ pub struct Atlas {
 }
 
 impl Atlas {
-    /// Are image dimensions too large to fit in an Atlas?
-    pub fn is_too_big(size: (u32, u32)) -> bool {
-        size.0 > TEXTURE_SIZE.0 || size.1 > TEXTURE_SIZE.1
-    }
-
     /// Construct a new allocator
-    pub fn new_alloc() -> AtlasAllocator {
-        let size_i32: (i32, i32) = (TEXTURE_SIZE.0.cast(), TEXTURE_SIZE.1.cast());
-        AtlasAllocator::new(size_i32.into())
+    pub fn new_alloc(size: i32) -> AtlasAllocator {
+        AtlasAllocator::new((size, size).into())
     }
 
     /// Construct from an allocator
@@ -58,25 +37,27 @@ impl Atlas {
         device: &wgpu::Device,
         bg_tex_layout: &wgpu::BindGroupLayout,
         sampler: &wgpu::Sampler,
+        format: wgpu::TextureFormat,
     ) -> Self {
+        let size = alloc.size();
         let tex = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("loaded image"),
             size: wgpu::Extent3d {
-                width: TEXTURE_SIZE.0,
-                height: TEXTURE_SIZE.1,
+                width: size.width.cast(),
+                height: size.height.cast(),
                 depth: 1,
             },
             mip_level_count: 1,
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            format,
             usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
         });
 
         let view = tex.create_view(&wgpu::TextureViewDescriptor::default());
 
         let bg = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("image atlas bind group"),
+            label: Some("atlas texture bind group"),
             layout: bg_tex_layout,
             entries: &[
                 wgpu::BindGroupEntry {
@@ -95,23 +76,34 @@ impl Atlas {
 }
 
 /// A pipeline for rendering from image atlases
-pub struct Pipeline {
+pub struct Pipeline<I: bytemuck::Pod> {
+    tex_size: i32,
+    tex_format: wgpu::TextureFormat,
     bg_tex_layout: wgpu::BindGroupLayout,
     render_pipeline: wgpu::RenderPipeline,
     atlases: Vec<Atlas>,
     new_aa: Vec<AtlasAllocator>,
     sampler: wgpu::Sampler,
+    _pd: std::marker::PhantomData<I>,
 }
 
-impl Pipeline {
+impl<I: bytemuck::Pod> Pipeline<I> {
     /// Construct
+    ///
+    /// Configuration:
+    ///
+    /// -   `tex_size`: side dimension of texture
+    /// -   `tex_format`: texture format
     pub fn new(
         device: &wgpu::Device,
-        shaders: &ShaderManager,
         bg_common: &wgpu::BindGroupLayout,
+        tex_size: i32,
+        tex_format: wgpu::TextureFormat,
+        vertex: wgpu::VertexState,
+        fragment_module: &wgpu::ShaderModule,
     ) -> Self {
         let bg_tex_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("images texture bind group layout"),
+            label: Some("atlas texture bind group layout"),
             entries: &[
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
@@ -136,28 +128,15 @@ impl Pipeline {
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("images pipeline layout"),
+            label: Some("atlas pipeline layout"),
             bind_group_layouts: &[bg_common, &bg_tex_layout],
             push_constant_ranges: &[],
         });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("images render pipeline"),
+            label: Some("atlas render pipeline"),
             layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shaders.vert_tex_quad,
-                entry_point: "main",
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: size_of::<Instance>() as wgpu::BufferAddress,
-                    step_mode: wgpu::InputStepMode::Instance,
-                    attributes: &wgpu::vertex_attr_array![
-                        0 => Float2,
-                        1 => Float2,
-                        2 => Float2,
-                        3 => Float2,
-                    ],
-                }],
-            },
+            vertex,
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,
                 strip_index_format: None,
@@ -168,7 +147,7 @@ impl Pipeline {
             depth_stencil: None,
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
-                module: &shaders.frag_image,
+                module: fragment_module,
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
                     format: wgpu::TextureFormat::Bgra8UnormSrgb,
@@ -191,20 +170,23 @@ impl Pipeline {
         });
 
         Pipeline {
+            tex_size,
+            tex_format,
             bg_tex_layout,
             render_pipeline,
             atlases: vec![],
             new_aa: vec![],
             sampler,
+            _pd: Default::default(),
         }
     }
 
-    fn allocate_space(&mut self, size: (i32, i32)) -> (usize, Allocation) {
+    fn allocate_space(&mut self, size: (i32, i32)) -> (u32, Allocation) {
         let size = size.into();
         let mut atlas = 0;
         while atlas < self.atlases.len() {
             if let Some(alloc) = self.atlases[atlas].alloc.allocate(size) {
-                return (atlas, alloc);
+                return (atlas.cast(), alloc);
             }
             atlas += 1;
         }
@@ -212,14 +194,14 @@ impl Pipeline {
         // New_aa are atlas allocators which haven't been assigned textures yet
         for new_aa in &mut self.new_aa {
             if let Some(alloc) = new_aa.allocate(size) {
-                return (atlas, alloc);
+                return (atlas.cast(), alloc);
             }
             atlas += 1;
         }
 
-        self.new_aa.push(Atlas::new_alloc());
+        self.new_aa.push(Atlas::new_alloc(self.tex_size));
         match self.new_aa.last_mut().unwrap().allocate(size) {
-            Some(alloc) => return (atlas, alloc),
+            Some(alloc) => return (atlas.cast(), alloc),
             None => unreachable!(),
         }
     }
@@ -237,15 +219,16 @@ impl Pipeline {
     pub fn allocate(
         &mut self,
         size: (u32, u32),
-    ) -> Result<(usize, AllocId, (u32, u32), Quad), ImageError> {
-        if Atlas::is_too_big(size) {
+    ) -> Result<(u32, AllocId, (u32, u32), Quad), ImageError> {
+        let tex_size_u32: u32 = self.tex_size.cast();
+        if size.0 > tex_size_u32 || size.1 > tex_size_u32 {
             return Err(ImageError::Allocation);
         }
         let (atlas, alloc) = self.allocate_space((size.0.cast(), size.1.cast()));
 
         let origin = (alloc.rectangle.min.x.cast(), alloc.rectangle.min.y.cast());
 
-        let tex_size = Vec2::from(Size::from(TEXTURE_SIZE));
+        let tex_size = Vec2::from(Size::splat(self.tex_size));
         let a = to_vec2(alloc.rectangle.min) / tex_size;
         let b = to_vec2(alloc.rectangle.max) / tex_size;
         debug_assert!(Vec2::ZERO.le(a) && a.le(b) && b.le(Vec2::splat(1.0)));
@@ -254,26 +237,32 @@ impl Pipeline {
         Ok((atlas, alloc.id, origin, tex_quad))
     }
 
-    pub fn deallocate(&mut self, atlas: usize, alloc: AllocId) {
-        self.atlases[atlas].alloc.deallocate(alloc);
+    pub fn deallocate(&mut self, atlas: u32, alloc: AllocId) {
+        self.atlases[usize::conv(atlas)].alloc.deallocate(alloc);
     }
 
     /// Prepare textures
     pub fn prepare(&mut self, device: &wgpu::Device) {
         for alloc in self.new_aa.drain(..) {
-            let atlas = Atlas::new(alloc, device, &self.bg_tex_layout, &self.sampler);
+            let atlas = Atlas::new(
+                alloc,
+                device,
+                &self.bg_tex_layout,
+                &self.sampler,
+                self.tex_format,
+            );
             self.atlases.push(atlas);
         }
     }
 
-    pub fn get_texture(&self, atlas: usize) -> &wgpu::Texture {
-        &self.atlases[atlas].tex
+    pub fn get_texture(&self, atlas: u32) -> &wgpu::Texture {
+        &self.atlases[usize::conv(atlas)].tex
     }
 
     /// Enqueue render commands
     pub fn render<'a>(
         &'a self,
-        window: &'a Window,
+        window: &'a Window<I>,
         pass: usize,
         rpass: &mut wgpu::RenderPass<'a>,
         bg_common: &'a wgpu::BindGroup,
@@ -292,27 +281,55 @@ impl Pipeline {
     }
 }
 
-#[derive(Clone, Debug, Default)]
-struct AtlasPassData {
-    instances: Vec<Instance>,
+#[derive(Clone, Debug)]
+struct AtlasPassData<I: bytemuck::Pod> {
+    instances: Vec<I>,
     range: Range<u32>,
 }
 
-#[derive(Clone, Debug, Default)]
-struct PassData {
-    atlases: Vec<AtlasPassData>,
+impl<I: bytemuck::Pod> Default for AtlasPassData<I> {
+    fn default() -> Self {
+        AtlasPassData {
+            instances: vec![],
+            range: 0..0,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct PassData<I: bytemuck::Pod> {
+    atlases: Vec<AtlasPassData<I>>,
     data_range: Range<u64>,
 }
 
+impl<I: bytemuck::Pod> Default for PassData<I> {
+    fn default() -> Self {
+        PassData {
+            atlases: vec![],
+            data_range: 0..0,
+        }
+    }
+}
+
 /// Per-window state
-#[derive(Debug, Default)]
-pub struct Window {
-    passes: Vec<PassData>,
+#[derive(Debug)]
+pub struct Window<I: bytemuck::Pod> {
+    passes: Vec<PassData<I>>,
     buffer: Option<wgpu::Buffer>,
     buffer_size: u64,
 }
 
-impl Window {
+impl<I: bytemuck::Pod> Default for Window<I> {
+    fn default() -> Self {
+        Window {
+            passes: vec![],
+            buffer: None,
+            buffer_size: 0,
+        }
+    }
+}
+
+impl<I: bytemuck::Pod> Window<I> {
     /// Prepare vertex buffers
     pub fn write_buffers(
         &mut self,
@@ -323,7 +340,7 @@ impl Window {
         let mut req_len = 0;
         for pass in self.passes.iter() {
             for atlas in pass.atlases.iter() {
-                req_len += u64::conv(atlas.instances.len() * size_of::<Instance>());
+                req_len += u64::conv(atlas.instances.len() * size_of::<I>());
             }
         }
         let byte_len = match NonZeroU64::new(req_len) {
@@ -362,14 +379,14 @@ impl Window {
             self.buffer_size = buffer_size;
         }
 
-        fn copy_to_slice(passes: &mut [PassData], slice: &mut [u8]) {
+        fn copy_to_slice<I: bytemuck::Pod>(passes: &mut [PassData<I>], slice: &mut [u8]) {
             let mut byte_offset = 0;
             for pass in passes.iter_mut() {
                 let byte_start = byte_offset;
                 let mut index = 0;
                 for atlas in pass.atlases.iter_mut() {
                     let len = u32::conv(atlas.instances.len());
-                    let byte_len = u64::from(len) * u64::conv(size_of::<Instance>());
+                    let byte_len = u64::from(len) * u64::conv(size_of::<I>());
                     let byte_end = byte_offset + byte_len;
 
                     slice[usize::conv(byte_offset)..usize::conv(byte_end)]
@@ -387,19 +404,7 @@ impl Window {
     }
 
     /// Add a rectangle to the buffer
-    pub fn rect(&mut self, pass: Pass, atlas: usize, tex: Quad, rect: Quad) {
-        if !rect.a.lt(rect.b) {
-            // zero / negative size: nothing to draw
-            return;
-        }
-
-        let instance = Instance {
-            a: rect.a,
-            b: rect.b,
-            ta: tex.a,
-            tb: tex.b,
-        };
-
+    pub fn rect(&mut self, pass: Pass, atlas: u32, instance: I) {
         let pass = pass.pass();
         if self.passes.len() <= pass {
             // We only need one more, but no harm in adding extra
@@ -407,6 +412,7 @@ impl Window {
         }
         let pass = &mut self.passes[pass];
 
+        let atlas = usize::conv(atlas);
         if pass.atlases.len() <= atlas {
             // Warning: length must not excced number of atlases
             pass.atlases.resize(atlas + 1, Default::default());

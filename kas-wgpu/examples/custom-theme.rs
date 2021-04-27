@@ -49,7 +49,7 @@ thread_local! {
 
 impl<D: DrawShared> Theme<D> for CustomTheme
 where
-    D::Draw: DrawRounded + DrawText,
+    D::Draw: DrawRounded,
 {
     type Window = <FlatTheme as Theme<D>>::Window;
 

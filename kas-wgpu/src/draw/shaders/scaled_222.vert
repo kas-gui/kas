@@ -9,13 +9,13 @@
 precision mediump float;
 
 layout(location = 0) in vec2 a_pos;
-layout(location = 1) in vec3 a_col;
-layout(location = 2) in float a1;
+layout(location = 1) in vec4 a_col;
+layout(location = 2) in vec2 a1;
 layout(location = 3) in vec2 a2;
 layout(location = 4) in vec2 a3;
 
-layout(location = 0) out vec3 b_col;
-layout(location = 1) out float b1;
+layout(location = 0) out vec4 b_col;
+layout(location = 1) out vec2 b1;
 layout(location = 2) out vec2 b2;
 layout(location = 3) out vec2 b3;
 

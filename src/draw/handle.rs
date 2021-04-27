@@ -11,9 +11,9 @@ use std::path::Path;
 
 use kas::dir::Direction;
 use kas::draw::{Draw, ImageId, Pass};
-use kas::geom::{Coord, Offset, Rect, Size, Vec2};
+use kas::geom::{Coord, Offset, Rect, Size};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules};
-use kas::text::{format::FormattableText, AccelString, Text, TextApi, TextDisplay};
+use kas::text::{AccelString, Text, TextApi, TextDisplay};
 
 // for doc use
 #[allow(unused)]
@@ -330,25 +330,15 @@ pub trait DrawHandle {
 
     /// Draw some text using the standard font
     ///
-    /// The `text` is drawn within the rect from `pos` to `text.env().bounds`,
-    /// but offset by subtracting `offset` (allowing scrolling).
-    ///
     /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text_offset(
-        &mut self,
-        pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
-        text: &TextDisplay,
-        class: TextClass,
-    );
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass);
 
     /// Draw text with effects
     ///
-    /// [`DrawHandle::text_offset`] already supports *font* effects: bold,
+    /// [`DrawHandle::text`] already supports *font* effects: bold,
     /// emphasis, text size. In addition, this method supports underline and
     /// strikethrough effects.
-    fn text_effects(&mut self, pos: Coord, offset: Offset, text: &dyn TextApi, class: TextClass);
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass);
 
     /// Draw an `AccelString` text
     ///
@@ -362,23 +352,13 @@ pub trait DrawHandle {
     fn text_selected_range(
         &mut self,
         pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     );
 
     /// Draw an edit marker at the given `byte` index on this `text`
-    fn edit_marker(
-        &mut self,
-        pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    );
+    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize);
 
     /// Draw the background of a menu entry
     fn menu_entry(&mut self, rect: Rect, state: InputState);
@@ -448,26 +428,14 @@ pub trait DrawHandleExt: DrawHandle {
         result.expect("DrawHandle::size_handle_dyn impl failed to call function argument")
     }
 
-    /// Draw some text using the standard font
-    ///
-    /// The `text` is drawn within the rect from `pos` to `text.env().bounds`.
-    ///
-    /// The dimensions required for this text may be queried with [`SizeHandle::text_bound`].
-    fn text<T: FormattableText>(&mut self, pos: Coord, text: &Text<T>, class: TextClass) {
-        let bounds = text.env().bounds.into();
-        self.text_offset(pos, bounds, Offset::ZERO, text.as_ref(), class);
-    }
-
     /// Draw some text using the standard font, with a subset selected
     ///
     /// Other than visually highlighting the selection, this method behaves
-    /// identically to [`DrawHandleExt::text`]. It is likely to be replaced in the
+    /// identically to [`DrawHandle::text`]. It is likely to be replaced in the
     /// future by a higher-level API.
     fn text_selected<T: AsRef<TextDisplay>, R: RangeBounds<usize>>(
         &mut self,
         pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
         text: T,
         range: R,
         class: TextClass,
@@ -483,7 +451,7 @@ pub trait DrawHandleExt: DrawHandle {
             Bound::Unbounded => usize::MAX,
         };
         let range = Range { start, end };
-        self.text_selected_range(pos, bounds, offset, text.as_ref(), range, class);
+        self.text_selected_range(pos, text.as_ref(), range, class);
     }
 }
 
@@ -677,19 +645,11 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn selection_box(&mut self, rect: Rect) {
         self.deref_mut().selection_box(rect);
     }
-    fn text_offset(
-        &mut self,
-        pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
-        text: &TextDisplay,
-        class: TextClass,
-    ) {
-        self.deref_mut()
-            .text_offset(pos, bounds, offset, text, class)
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
+        self.deref_mut().text(pos, text, class)
     }
-    fn text_effects(&mut self, pos: Coord, offset: Offset, text: &dyn TextApi, class: TextClass) {
-        self.deref_mut().text_effects(pos, offset, text, class);
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
+        self.deref_mut().text_effects(pos, text, class);
     }
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         self.deref_mut().text_accel(pos, text, state, class);
@@ -697,26 +657,15 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn text_selected_range(
         &mut self,
         pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     ) {
         self.deref_mut()
-            .text_selected_range(pos, bounds, offset, text, range, class);
+            .text_selected_range(pos, text, range, class);
     }
-    fn edit_marker(
-        &mut self,
-        pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    ) {
-        self.deref_mut()
-            .edit_marker(pos, bounds, offset, text, class, byte)
+    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+        self.deref_mut().edit_marker(pos, text, class, byte)
     }
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().menu_entry(rect, state)
@@ -779,19 +728,11 @@ where
     fn selection_box(&mut self, rect: Rect) {
         self.deref_mut().selection_box(rect);
     }
-    fn text_offset(
-        &mut self,
-        pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
-        text: &TextDisplay,
-        class: TextClass,
-    ) {
-        self.deref_mut()
-            .text_offset(pos, bounds, offset, text, class)
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
+        self.deref_mut().text(pos, text, class)
     }
-    fn text_effects(&mut self, pos: Coord, offset: Offset, text: &dyn TextApi, class: TextClass) {
-        self.deref_mut().text_effects(pos, offset, text, class);
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
+        self.deref_mut().text_effects(pos, text, class);
     }
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
         self.deref_mut().text_accel(pos, text, state, class);
@@ -799,26 +740,15 @@ where
     fn text_selected_range(
         &mut self,
         pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     ) {
         self.deref_mut()
-            .text_selected_range(pos, bounds, offset, text, range, class);
+            .text_selected_range(pos, text, range, class);
     }
-    fn edit_marker(
-        &mut self,
-        pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    ) {
-        self.deref_mut()
-            .edit_marker(pos, bounds, offset, text, class, byte)
+    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+        self.deref_mut().edit_marker(pos, text, class, byte)
     }
     fn menu_entry(&mut self, rect: Rect, state: InputState) {
         self.deref_mut().menu_entry(rect, state)
@@ -859,9 +789,8 @@ mod test {
 
         let _scale = draw_handle.size_handle(|h| h.scale_factor());
 
-        let bounds = Vec2(100.0, 30.0);
         let text = kas::text::Text::new_single("sample");
         let class = TextClass::Label;
-        draw_handle.text_selected(Coord::ZERO, bounds, Offset::ZERO, &text, .., class)
+        draw_handle.text_selected(Coord::ZERO, &text, .., class)
     }
 }

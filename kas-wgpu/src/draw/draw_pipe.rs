@@ -9,12 +9,12 @@ use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
 use std::path::Path;
 use wgpu::util::DeviceExt;
-use wgpu_glyph::{ab_glyph::FontRef, GlyphBrushBuilder};
 
 use super::*;
 use kas::cast::Cast;
 use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, Pass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
+use kas::text::{Effect, TextDisplay};
 
 impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
@@ -53,23 +53,23 @@ impl<C: CustomPipe> DrawPipe<C> {
             ],
         });
 
-        let atlases = atlases::Pipeline::new(device, shaders, &bgl_common);
-        let images = images::Images::new();
+        let images = images::Images::new(device, shaders, &bgl_common);
         let shaded_square = shaded_square::Pipeline::new(device, shaders, &bgl_common);
         let shaded_round = shaded_round::Pipeline::new(device, shaders, &bgl_common);
         let flat_round = flat_round::Pipeline::new(device, shaders, &bgl_common);
         let custom = custom.build(&device, &bgl_common, TEX_FORMAT);
+        let text = text_pipe::Pipeline::new(device, shaders, &bgl_common);
 
         DrawPipe {
             local_pool,
             staging_belt,
             bgl_common,
-            atlases,
             images,
             shaded_square,
             shaded_round,
             flat_round,
             custom,
+            text,
         }
     }
 
@@ -127,26 +127,16 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         let custom = self.custom.new_window(device, size);
 
-        // TODO: use extra caching so we don't load font for each window
-        let font_data = kas::text::fonts::fonts().font_data();
-        let mut fonts = Vec::with_capacity(font_data.len());
-        for i in 0..font_data.len() {
-            let (data, index) = font_data.get_data(i);
-            fonts.push(FontRef::try_from_slice_and_index(data, index).unwrap());
-        }
-        let glyph_brush = GlyphBrushBuilder::using_fonts(fonts).build(device, TEX_FORMAT);
-
         DrawWindow {
             scale_buf,
             clip_regions: vec![rect],
             bg_common,
-            atlases: Default::default(),
+            images: Default::default(),
             shaded_square: Default::default(),
             shaded_round: Default::default(),
             flat_round: Default::default(),
             custom,
-            glyph_brush,
-            dur_text: Default::default(),
+            text: Default::default(),
         }
     }
 
@@ -177,19 +167,17 @@ impl<C: CustomPipe> DrawPipe<C> {
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) {
-        // TODO: could potentially start preparing images asynchronously after
-        // configure, then join thread and do any final prep now.
-        self.atlases.prepare(device);
-        self.images.prepare(&self.atlases, queue);
-        self.custom.update(&mut window.custom, device, queue);
-
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("render"),
         });
 
-        window
-            .atlases
-            .write_buffers(device, &mut self.staging_belt, &mut encoder);
+        self.images.prepare(
+            &mut window.images,
+            device,
+            queue,
+            &mut self.staging_belt,
+            &mut encoder,
+        );
         window
             .shaded_square
             .write_buffers(device, &mut self.staging_belt, &mut encoder);
@@ -198,6 +186,16 @@ impl<C: CustomPipe> DrawPipe<C> {
             .write_buffers(device, &mut self.staging_belt, &mut encoder);
         window
             .flat_round
+            .write_buffers(device, &mut self.staging_belt, &mut encoder);
+        self.custom.prepare(
+            &mut window.custom,
+            device,
+            &mut self.staging_belt,
+            &mut encoder,
+        );
+        self.text.prepare(device, queue);
+        window
+            .text
             .write_buffers(device, &mut self.staging_belt, &mut encoder);
 
         let mut color_attachments = [wgpu::RenderPassColorAttachmentDescriptor {
@@ -226,8 +224,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                     rect.size.1.cast(),
                 );
 
-                self.atlases
-                    .render(&window.atlases, pass, &mut rpass, bg_common);
+                self.images
+                    .render(&window.images, pass, &mut rpass, bg_common);
                 self.shaded_square
                     .render(&window.shaded_square, pass, &mut rpass, bg_common);
                 self.shaded_round
@@ -236,6 +234,8 @@ impl<C: CustomPipe> DrawPipe<C> {
                     .render(&window.flat_round, pass, &mut rpass, bg_common);
                 self.custom
                     .render_pass(&mut window.custom, device, pass, &mut rpass, bg_common);
+                self.text
+                    .render(&mut window.text, pass, &mut rpass, bg_common);
             }
 
             color_attachments[0].ops.load = wgpu::LoadOp::Load;
@@ -246,18 +246,6 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         self.custom
             .render_final(&mut window.custom, device, &mut encoder, frame_view, size);
-
-        window
-            .glyph_brush
-            .draw_queued(
-                device,
-                &mut self.staging_belt,
-                &mut encoder,
-                frame_view,
-                size.0.cast(),
-                size.1.cast(),
-            )
-            .expect("glyph_brush.draw_queued");
 
         // Keep only first clip region (which is the entire window)
         window.clip_regions.truncate(1);
@@ -279,12 +267,12 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
 
     #[inline]
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        self.images.load_path(&mut self.atlases, path)
+        self.images.load_path(path)
     }
 
     #[inline]
     fn remove_image(&mut self, id: ImageId) {
-        self.images.remove(&mut self.atlases, id);
+        self.images.remove(id);
     }
 
     #[inline]
@@ -295,8 +283,53 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
     #[inline]
     fn draw_image(&self, window: &mut Self::Draw, pass: Pass, id: ImageId, rect: Quad) {
         if let Some((atlas, tex)) = self.images.get_im_atlas_coords(id) {
-            window.atlases.rect(pass, atlas, tex, rect);
+            window.images.rect(pass, atlas, tex, rect);
         };
+    }
+
+    #[inline]
+    fn draw_text(
+        &mut self,
+        window: &mut Self::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Colour,
+    ) {
+        window.text.text(&mut self.text, pass, pos, text, col);
+    }
+
+    fn draw_text_col_effects(
+        &mut self,
+        window: &mut Self::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Colour,
+        effects: &[Effect<()>],
+    ) {
+        let rects = window
+            .text
+            .text_col_effects(&mut self.text, pass, pos, text, col, effects);
+        for rect in rects {
+            window.shaded_square.rect(pass, rect, col);
+        }
+    }
+
+    fn draw_text_effects(
+        &mut self,
+        window: &mut Self::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        effects: &[Effect<Colour>],
+    ) {
+        let rects = window
+            .text
+            .text_effects(&mut self.text, pass, pos, text, effects);
+        for (rect, col) in rects {
+            window.shaded_square.rect(pass, rect, col);
+        }
     }
 }
 

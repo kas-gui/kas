@@ -8,19 +8,15 @@
 
 precision mediump float;
 
-layout(location = 0) flat in vec4 fragColor;
-layout(location = 1) in vec2 norm2;
+layout(location = 0) in vec2 tex_coord;
+layout(location = 1) in vec4 col;
 
 layout(location = 0) out vec4 outColor;
 
-layout(set = 0, binding = 1) uniform Locals {
-    vec3 lightNorm;
-};
-
+layout(set = 1, binding = 0) uniform texture2D tex;
+layout(set = 1, binding = 1) uniform sampler tex_sampler;
 
 void main() {
-    float n3 = 1.0 - sqrt(norm2.x * norm2.x + norm2.y * norm2.y);
-    vec3 norm = vec3(norm2, n3);
-    vec3 c = fragColor.rgb * dot(norm, lightNorm);
-    outColor = vec4(c, fragColor.a);
+    float alpha = texture(sampler2D(tex, tex_sampler), tex_coord).r;
+    outColor = vec4(col.rgb, col.a * alpha);
 }

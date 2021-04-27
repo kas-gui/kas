@@ -6,14 +6,14 @@
 //! Simple pipeline for "square" shading
 
 use super::common;
-use crate::draw::{Rgb, ShaderManager};
+use crate::draw::{Rgba, ShaderManager};
 use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Vec2};
 use std::mem::size_of;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct Vertex(Vec2, Rgb, Vec2);
+pub struct Vertex(Vec2, Rgba, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
 
@@ -41,12 +41,12 @@ impl Pipeline {
             label: Some("SS render_pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shaders.vert_32,
+                module: &shaders.vert_2,
                 entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float2, 1 => Float3, 2 => Float2],
+                    attributes: &wgpu::vertex_attr_array![0 => Float2, 1 => Float4, 2 => Float2],
                 }],
             },
             primitive: wgpu::PrimitiveState {

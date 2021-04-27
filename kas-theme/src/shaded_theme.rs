@@ -11,8 +11,8 @@ use std::ops::Range;
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::dir::{Direction, Directional};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, DrawText, ImageId, InputState, Pass,
-    SizeHandle, TextClass, ThemeAction, ThemeApi,
+    self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, InputState, Pass, SizeHandle,
+    TextClass, ThemeAction, ThemeApi,
 };
 use kas::geom::*;
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
@@ -75,7 +75,7 @@ pub struct DrawHandle<'a, D: DrawShared> {
 
 impl<D: DrawShared> Theme<D> for ShadedTheme
 where
-    D::Draw: DrawRounded + DrawShaded + DrawText,
+    D::Draw: DrawRounded + DrawShaded,
 {
     type Window = DimensionsWindow;
 
@@ -111,8 +111,6 @@ where
             std::mem::transmute::<&'b mut T, &'static mut T>(r)
         }
 
-        draw.prepare_fonts();
-
         DrawHandle {
             shared: extend_lifetime(shared),
             draw: extend_lifetime(draw),
@@ -131,8 +129,6 @@ where
         window: &'a mut Self::Window,
         rect: Rect,
     ) -> Self::DrawHandle<'a> {
-        draw.prepare_fonts();
-
         DrawHandle {
             shared,
             draw,
@@ -228,7 +224,7 @@ where
 
 impl<'a, D: DrawShared> draw::DrawHandle for DrawHandle<'a, D>
 where
-    D::Draw: DrawRounded + DrawShaded + DrawText,
+    D::Draw: DrawRounded + DrawShaded,
 {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
@@ -302,19 +298,12 @@ where
         self.as_flat().selection_box(rect);
     }
 
-    fn text_offset(
-        &mut self,
-        pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
-        text: &TextDisplay,
-        class: TextClass,
-    ) {
-        self.as_flat().text_offset(pos, bounds, offset, text, class);
+    fn text(&mut self, pos: Coord, text: &TextDisplay, class: TextClass) {
+        self.as_flat().text(pos, text, class);
     }
 
-    fn text_effects(&mut self, pos: Coord, offset: Offset, text: &dyn TextApi, class: TextClass) {
-        self.as_flat().text_effects(pos, offset, text, class);
+    fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
+        self.as_flat().text_effects(pos, text, class);
     }
 
     fn text_accel(&mut self, pos: Coord, text: &Text<AccelString>, state: bool, class: TextClass) {
@@ -324,27 +313,15 @@ where
     fn text_selected_range(
         &mut self,
         pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
         text: &TextDisplay,
         range: Range<usize>,
         class: TextClass,
     ) {
-        self.as_flat()
-            .text_selected_range(pos, bounds, offset, text, range, class);
+        self.as_flat().text_selected_range(pos, text, range, class);
     }
 
-    fn edit_marker(
-        &mut self,
-        pos: Coord,
-        bounds: Vec2,
-        offset: Offset,
-        text: &TextDisplay,
-        class: TextClass,
-        byte: usize,
-    ) {
-        self.as_flat()
-            .edit_marker(pos, bounds, offset, text, class, byte);
+    fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
+        self.as_flat().edit_marker(pos, text, class, byte);
     }
 
     fn menu_entry(&mut self, rect: Rect, state: InputState) {

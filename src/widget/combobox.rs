@@ -73,7 +73,7 @@ impl<M: 'static> kas::Layout for ComboBox<M> {
             state.depress = true;
         }
         draw_handle.button(self.core.rect, state);
-        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Button);
+        draw_handle.text(self.core.rect.pos, self.label.as_ref(), TextClass::Button);
     }
 }
 

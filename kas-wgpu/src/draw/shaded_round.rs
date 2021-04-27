@@ -6,7 +6,7 @@
 //! Rounded shading pipeline
 
 use super::common;
-use crate::draw::{Rgb, ShaderManager};
+use crate::draw::{Rgba, ShaderManager};
 use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Vec2};
 use std::f32::consts::FRAC_PI_2;
@@ -18,12 +18,12 @@ const OFFSET: f32 = 0.125;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct Vertex(Vec2, Rgb, Vec2, Vec2, Vec2);
+pub struct Vertex(Vec2, Rgba, Vec2, Vec2, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
 
 impl Vertex {
-    fn new2(v: Vec2, col: Rgb, n: Vec2, adjust: Vec2, p: Vec2) -> Self {
+    fn new2(v: Vec2, col: Rgba, n: Vec2, adjust: Vec2, p: Vec2) -> Self {
         Vertex(v, col, n, adjust, p)
     }
 }
@@ -52,14 +52,14 @@ impl Pipeline {
             label: Some("SR render_pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shaders.vert_3222,
+                module: &shaders.vert_222,
                 entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![
                         0 => Float2,
-                        1 => Float3,
+                        1 => Float4,
                         2 => Float2,
                         3 => Float2,
                         4 => Float2

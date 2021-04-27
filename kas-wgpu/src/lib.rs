@@ -42,7 +42,6 @@ pub use options::Options;
 pub use kas;
 pub use kas_theme as theme;
 pub use wgpu;
-pub use wgpu_glyph as glyph;
 
 /// Possible failures from constructing a [`Toolkit`]
 ///

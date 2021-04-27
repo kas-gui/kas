@@ -324,6 +324,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let time = Instant::now();
         let rect = Rect::new(Coord::ZERO, self.sc_size());
 
+        shared.draw.text.prepare_fonts();
+
         unsafe {
             // Safety: we must drop draw_handle after draw call (wrong lifetime)
             let mut draw_handle = shared.theme.draw_handle(
@@ -355,11 +357,10 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         trace!(
             "do_draw completed in {}µs ({}µs text, {}µs frame-swap, {}µs render)",
             (end - time).as_micros(),
-            self.draw.dur_text.as_micros(),
+            self.draw.text.dur_micros(),
             (time3 - time2).as_micros(),
             (end - time3).as_micros()
         );
-        self.draw.dur_text = Default::default();
     }
 }
 

@@ -8,13 +8,13 @@
 use guillotiere::AllocId;
 use image::RgbaImage;
 use std::collections::HashMap;
+use std::mem::size_of;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-use super::atlases::Pipeline;
-use kas::cast::Cast;
-use kas::draw::ImageId;
-use kas::geom::{Quad, Size};
+use super::{atlases, ShaderManager};
+use kas::draw::{ImageId, Pass};
+use kas::geom::{Quad, Size, Vec2};
 
 /// Image loading errors
 #[derive(Error, Debug)]
@@ -38,7 +38,7 @@ pub struct Image {
 impl Image {
     /// Load an image
     pub fn load_path(
-        atlas_pipe: &mut Pipeline,
+        atlas_pipe: &mut atlases::Pipeline<Instance>,
         path: &Path,
     ) -> Result<(Self, (u32, u32)), ImageError> {
         let image = image::io::Reader::open(path)?.decode()?;
@@ -52,7 +52,7 @@ impl Image {
 
         let image = Image {
             image,
-            atlas: atlas.cast(),
+            atlas: atlas,
             alloc,
             tex_quad,
         };
@@ -71,11 +71,17 @@ impl Image {
     }
 
     /// Prepare textures
-    pub fn write_to_tex(&mut self, atlas_pipe: &Pipeline, origin: (u32, u32), queue: &wgpu::Queue) {
+    pub fn write_to_tex(
+        &mut self,
+        atlas_pipe: &atlases::Pipeline<Instance>,
+        origin: (u32, u32),
+        queue: &wgpu::Queue,
+    ) {
+        // TODO(opt): use an upload buffer and encoder.copy_buffer_to_texture?
         let size = self.image.dimensions();
         queue.write_texture(
             wgpu::TextureCopyView {
-                texture: atlas_pipe.get_texture(self.atlas.cast()),
+                texture: atlas_pipe.get_texture(self.atlas),
                 mip_level: 0,
                 origin: wgpu::Origin3d {
                     x: origin.0,
@@ -102,8 +108,21 @@ impl Image {
     }
 }
 
+/// Screen and texture coordinates
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct Instance {
+    a: Vec2,
+    b: Vec2,
+    ta: Vec2,
+    tb: Vec2,
+}
+unsafe impl bytemuck::Zeroable for Instance {}
+unsafe impl bytemuck::Pod for Instance {}
+
 /// Image loader and storage
 pub struct Images {
+    atlas_pipe: atlases::Pipeline<Instance>,
     last_image_n: u32,
     paths: HashMap<PathBuf, (ImageId, u32)>,
     images: HashMap<ImageId, Image>,
@@ -112,8 +131,34 @@ pub struct Images {
 
 impl Images {
     /// Construct
-    pub fn new() -> Self {
+    pub fn new(
+        device: &wgpu::Device,
+        shaders: &ShaderManager,
+        bgl_common: &wgpu::BindGroupLayout,
+    ) -> Self {
+        let atlas_pipe = atlases::Pipeline::new(
+            device,
+            &bgl_common,
+            2048,
+            wgpu::TextureFormat::Rgba8UnormSrgb,
+            wgpu::VertexState {
+                module: &shaders.vert_image,
+                entry_point: "main",
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: size_of::<Instance>() as wgpu::BufferAddress,
+                    step_mode: wgpu::InputStepMode::Instance,
+                    attributes: &wgpu::vertex_attr_array![
+                        0 => Float2,
+                        1 => Float2,
+                        2 => Float2,
+                        3 => Float2,
+                    ],
+                }],
+            },
+            &shaders.frag_image,
+        );
         Images {
+            atlas_pipe,
             last_image_n: 0,
             paths: Default::default(),
             images: Default::default(),
@@ -130,7 +175,6 @@ impl Images {
     /// Load an image
     pub fn load_path(
         &mut self,
-        atlas_pipe: &mut Pipeline,
         path: &Path,
     ) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
         if let Some((id, _)) = self.paths.get(path) {
@@ -138,7 +182,7 @@ impl Images {
         }
 
         let id = self.next_image_id();
-        let (image, origin) = Image::load_path(atlas_pipe, path)?;
+        let (image, origin) = Image::load_path(&mut self.atlas_pipe, path)?;
         self.images.insert(id, image);
         self.prepare.push((id, origin));
         self.paths.insert(path.to_owned(), (id, 1));
@@ -147,7 +191,7 @@ impl Images {
     }
 
     /// Free an image
-    pub fn remove(&mut self, atlas_pipe: &mut Pipeline, id: ImageId) {
+    pub fn remove(&mut self, id: ImageId) {
         // We don't have a map from id to path, hence have to iterate. We can
         // however do a fast check that id is used.
         if !self.images.contains_key(&id) {
@@ -155,12 +199,13 @@ impl Images {
         }
 
         let images = &mut self.images;
+        let atlas_pipe = &mut self.atlas_pipe;
         self.paths.retain(|_, obj| {
             if obj.0 == id {
                 obj.1 -= 1;
                 if obj.1 == 0 {
                     if let Some(im) = images.remove(&id) {
-                        atlas_pipe.deallocate(im.atlas.cast(), im.alloc);
+                        atlas_pipe.deallocate(im.atlas, im.alloc);
                     }
                     return false;
                 }
@@ -175,18 +220,79 @@ impl Images {
     }
 
     /// Write to textures
-    pub fn prepare(&mut self, atlas_pipe: &Pipeline, queue: &wgpu::Queue) {
+    pub fn prepare(
+        &mut self,
+        window: &mut Window,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        staging_belt: &mut wgpu::util::StagingBelt,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        // TODO: could potentially start preparing images asynchronously after
+        // configure, then join thread and do any final prep now.
+        self.atlas_pipe.prepare(device);
+
+        if !self.prepare.is_empty() {
+            log::trace!("Images::prepare: uploading {} sprites", self.prepare.len());
+        }
         for (id, origin) in self.prepare.drain(..) {
             if let Some(image) = self.images.get_mut(&id) {
-                image.write_to_tex(atlas_pipe, origin, queue);
+                // TODO: wgpu plans to add StagingBelt::write_texture; when it
+                // does we can remove the queue parameter
+                image.write_to_tex(&self.atlas_pipe, origin, queue);
             }
         }
+
+        window.write_buffers(device, staging_belt, encoder);
     }
 
     /// Get atlas and texture coordinates for an image
-    pub fn get_im_atlas_coords(&self, id: ImageId) -> Option<(usize, Quad)> {
-        self.images
-            .get(&id)
-            .map(|im| (im.atlas.cast(), im.tex_quad()))
+    pub fn get_im_atlas_coords(&self, id: ImageId) -> Option<(u32, Quad)> {
+        self.images.get(&id).map(|im| (im.atlas, im.tex_quad()))
+    }
+
+    /// Enqueue render commands
+    pub fn render<'a>(
+        &'a self,
+        window: &'a Window,
+        pass: usize,
+        rpass: &mut wgpu::RenderPass<'a>,
+        bg_common: &'a wgpu::BindGroup,
+    ) {
+        self.atlas_pipe
+            .render(&window.atlas, pass, rpass, bg_common);
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Window {
+    atlas: atlases::Window<Instance>,
+}
+
+impl Window {
+    /// Prepare vertex buffers
+    pub fn write_buffers(
+        &mut self,
+        device: &wgpu::Device,
+        staging_belt: &mut wgpu::util::StagingBelt,
+        encoder: &mut wgpu::CommandEncoder,
+    ) {
+        self.atlas.write_buffers(device, staging_belt, encoder);
+    }
+
+    /// Add a rectangle to the buffer
+    pub fn rect(&mut self, pass: Pass, atlas: u32, tex: Quad, rect: Quad) {
+        if !rect.a.lt(rect.b) {
+            // zero / negative size: nothing to draw
+            return;
+        }
+
+        let instance = Instance {
+            a: rect.a,
+            b: rect.b,
+            ta: tex.a,
+            tb: tex.b,
+        };
+        self.atlas.rect(pass, atlas, instance);
     }
 }

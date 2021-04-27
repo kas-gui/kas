@@ -21,7 +21,7 @@
 //! an axis-aligned box or frame with several shading options.
 //!
 //! The [`Draw`] trait itself contains very little; extension traits
-//! [`DrawRounded`], [`DrawShaded`] and [`DrawText`] provide additional draw
+//! [`DrawRounded`] and [`DrawShaded`] provide additional draw
 //! routines. Shells are only required to implement the base [`Draw`] trait,
 //! and may also provide their own extension traits. Themes may specify their
 //! own requirements, e.g. `D: Draw + DrawRounded + DrawText`.
@@ -120,6 +120,44 @@ pub trait DrawShared: 'static {
 
     /// Draw the image in the given `rect`
     fn draw_image(&self, window: &mut Self::Draw, pass: Pass, id: ImageId, rect: Quad);
+
+    /// Draw text with a colour
+    fn draw_text(
+        &mut self,
+        window: &mut Self::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Colour,
+    );
+
+    /// Draw text with a colour and effects
+    ///
+    /// The effects list does not contain colour information, but may contain
+    /// underlining/strikethrough information. It may be empty.
+    fn draw_text_col_effects(
+        &mut self,
+        window: &mut Self::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Colour,
+        effects: &[Effect<()>],
+    );
+
+    /// Draw text with effects
+    ///
+    /// The `effects` list provides both underlining and colour information.
+    /// If the `effects` list is empty or the first entry has `start > 0`, a
+    /// default entity will be assumed.
+    fn draw_text_effects(
+        &mut self,
+        window: &mut Self::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        effects: &[Effect<Colour>],
+    );
 }
 
 /// Base abstraction over drawing
@@ -241,55 +279,5 @@ pub trait DrawShaded: Draw {
         inner: Quad,
         norm: (f32, f32),
         col: Colour,
-    );
-}
-
-/// Abstraction over text rendering
-///
-/// Note: the current API is designed to meet only current requirements since
-/// changes are expected to support external font shaping libraries.
-pub trait DrawText {
-    /// Load resources needed for the next frame
-    fn prepare_fonts(&mut self);
-
-    /// Draw text with a colour
-    fn text(
-        &mut self,
-        pass: Pass,
-        pos: Vec2,
-        bounds: Vec2,
-        offset: Vec2,
-        text: &TextDisplay,
-        col: Colour,
-    );
-
-    /// Draw text with a colour and effects
-    ///
-    /// The effects list does not contain colour information, but may contain
-    /// underlining/strikethrough information. It may be empty.
-    fn text_col_effects(
-        &mut self,
-        pass: Pass,
-        pos: Vec2,
-        bounds: Vec2,
-        offset: Vec2,
-        text: &TextDisplay,
-        col: Colour,
-        effects: &[Effect<()>],
-    );
-
-    /// Draw text with effects
-    ///
-    /// The `effects` list provides both underlining and colour information.
-    /// If the `effects` list is empty or the first entry has `start > 0`, a
-    /// default entity will be assumed.
-    fn text_effects(
-        &mut self,
-        pass: Pass,
-        pos: Vec2,
-        bounds: Vec2,
-        offset: Vec2,
-        text: &TextDisplay,
-        effects: &[Effect<Colour>],
     );
 }

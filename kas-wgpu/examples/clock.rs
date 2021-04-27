@@ -12,7 +12,7 @@ use log::info;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::draw::{Colour, DrawRounded, DrawText};
+use kas::draw::{Colour, DrawRounded, TextClass};
 use kas::geom::{Quad, Vec2};
 use kas::text::util::set_text_and_prepare;
 use kas::widget::Window;
@@ -68,7 +68,7 @@ impl Layout for Clock {
         let col_face = Colour::grey(0.4);
         let col_hands = Colour::new(0.2, 0.2, 0.4);
         let col_secs = Colour::new(0.6, 0.2, 0.2);
-        let col_text = Colour::grey(0.0);
+        let text_class = TextClass::Label;
 
         // We use the low-level draw device to draw our clock. This means it is
         // not themeable, but gives us much more flexible draw routines.
@@ -106,12 +106,8 @@ impl Layout for Clock {
         line_seg(a_min, 0.0, half * 0.8, half * 0.015, col_hands);
         line_seg(a_sec, 0.0, half * 0.9, half * 0.005, col_secs);
 
-        let pos = (self.date_pos + offset).into();
-        let bounds = self.date.env().bounds.into();
-        draw.text(pass, pos, bounds, Vec2::ZERO, self.date.as_ref(), col_text);
-        let pos = (self.time_pos + offset).into();
-        let bounds = self.time.env().bounds.into();
-        draw.text(pass, pos, bounds, Vec2::ZERO, self.time.as_ref(), col_text);
+        draw_handle.text(self.date_pos, self.date.as_ref(), text_class);
+        draw_handle.text(self.time_pos, self.time.as_ref(), text_class);
     }
 }
 

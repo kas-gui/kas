@@ -6,7 +6,7 @@
 //! Rounded flat pipeline
 
 use super::common;
-use crate::draw::{Rgb, ShaderManager};
+use crate::draw::{Rgba, ShaderManager};
 use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Vec2};
 use std::mem::size_of;
@@ -22,12 +22,12 @@ const OFFSET: f32 = 0.125;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
-pub struct Vertex(Vec2, Rgb, f32, Vec2, Vec2);
+pub struct Vertex(Vec2, Rgba, f32, Vec2, Vec2);
 unsafe impl bytemuck::Zeroable for Vertex {}
 unsafe impl bytemuck::Pod for Vertex {}
 
 impl Vertex {
-    fn new2(v: Vec2, col: Rgb, inner: f32, n: Vec2, p: Vec2) -> Self {
+    fn new2(v: Vec2, col: Rgba, inner: f32, n: Vec2, p: Vec2) -> Self {
         Vertex(v, col, inner, n, p)
     }
 }
@@ -56,14 +56,14 @@ impl Pipeline {
             label: Some("FR render_pipeline"),
             layout: Some(&pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shaders.vert_3122,
+                module: &shaders.vert_122,
                 entry_point: "main",
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![
                         0 => Float2,
-                        1 => Float3,
+                        1 => Float4,
                         2 => Float,
                         3 => Float2,
                         4 => Float2
@@ -119,6 +119,11 @@ impl Window {
             return;
         }
 
+        if col.a == 0.0 {
+            // transparent: nothing to draw
+            return;
+        }
+
         let col = col.into();
 
         let vx = p2 - p1;
@@ -168,8 +173,8 @@ impl Window {
         let aa = rect.a;
         let bb = rect.b;
 
-        if !aa.lt(bb) {
-            // zero / negative size: nothing to draw
+        if !aa.lt(bb) || col.a == 0.0 {
+            // zero / negative size or transparent: nothing to draw
             return;
         }
 
@@ -219,8 +224,8 @@ impl Window {
         let mut cc = inner.a;
         let mut dd = inner.b;
 
-        if !aa.lt(bb) {
-            // zero / negative size: nothing to draw
+        if !aa.lt(bb) || col.a == 0.0 {
+            // zero / negative size or transparent: nothing to draw
             return;
         }
         if !aa.le(cc) || !cc.le(bb) {
