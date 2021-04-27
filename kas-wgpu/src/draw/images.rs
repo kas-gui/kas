@@ -231,6 +231,7 @@ impl Images {
         // TODO: could potentially start preparing images asynchronously after
         // configure, then join thread and do any final prep now.
         self.atlas_pipe.prepare(device);
+        log::trace!("Images::prepare: {} sprites", self.prepare.len());
         for (id, origin) in self.prepare.drain(..) {
             if let Some(image) = self.images.get_mut(&id) {
                 // TODO: wgpu plans to add StagingBelt::write_texture; when it

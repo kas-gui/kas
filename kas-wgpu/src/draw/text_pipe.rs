@@ -11,7 +11,7 @@ use kas::cast::*;
 use kas::draw::{Colour, Pass};
 use kas::geom::{Quad, Vec2};
 use kas::text::fonts::{fonts, FontId};
-use kas::text::{Effect, Glyph, GlyphId, TextDisplay};
+use kas::text::{Effect, Glyph, TextDisplay};
 use std::collections::hash_map::{Entry, HashMap};
 use std::mem::size_of;
 
@@ -22,7 +22,11 @@ fn to_vec2(p: ab_glyph::Point) -> Vec2 {
 /// Scale multiplier for fixed-precision
 ///
 /// This should be `1 << n` for `n` bits of sub-pixel precision.
-const SCALE_MULT: f32 = 16.0;
+const SCALE_MULT: f32 = 4.0;
+/// Multiplier for horizontal sub-pixel precision
+const SUB_PIXEL_HORIZ_MULT: f32 = 1.0;
+/// Multiplier for vertical sub-pixel precision
+const SUB_PIXEL_VERT_MULT: f32 = 1.0;
 
 /// A Sprite descriptor
 ///
@@ -34,14 +38,18 @@ struct SpriteDescriptor {
     font: u16,
     glyph: u16,
     height: u32,
+    x_off: u8,
+    y_off: u8,
 }
 
 impl SpriteDescriptor {
-    fn new(font: FontId, glyph: GlyphId, height: f32) -> Self {
+    fn new(font: FontId, glyph: Glyph, height: f32) -> Self {
         SpriteDescriptor {
             font: font.get().cast(),
-            glyph: glyph.0,
+            glyph: glyph.id.0,
             height: (height * SCALE_MULT).cast_nearest(),
+            x_off: (glyph.position.0.fract() * SUB_PIXEL_HORIZ_MULT).cast_nearest(),
+            y_off: (glyph.position.1.fract() * SUB_PIXEL_VERT_MULT).cast_nearest(),
         }
     }
 
@@ -51,6 +59,12 @@ impl SpriteDescriptor {
 
     fn height(self) -> f32 {
         f32::conv(self.height) / SCALE_MULT
+    }
+
+    fn fractional_position(self) -> (f32, f32) {
+        let x = f32::conv(self.x_off) / SUB_PIXEL_HORIZ_MULT;
+        let y = f32::conv(self.y_off) / SUB_PIXEL_VERT_MULT;
+        (x, y)
     }
 }
 
@@ -73,16 +87,17 @@ impl atlases::Pipeline<Instance> {
         font: &FontRef<'static>,
         desc: SpriteDescriptor,
     ) -> Option<(Sprite, (u32, u32), (u32, u32), Vec<u8>)> {
+        let fract_pos = desc.fractional_position();
         let glyph = ab_glyph::Glyph {
             id: ab_glyph::GlyphId(desc.glyph),
             scale: desc.height().into(),
-            position: Default::default(),
+            position: fract_pos.into(),
         };
         let outline = font.outline_glyph(glyph)?;
 
         let bounds = outline.px_bounds();
         let size = to_vec2(bounds.max - bounds.min);
-        let offset = to_vec2(bounds.min);
+        let offset = to_vec2(bounds.min) - Vec2(fract_pos.0.round(), fract_pos.1.round());
         let size_u32 = (u32::conv_trunc(size.0), u32::conv_trunc(size.1));
 
         let (atlas, _, origin, tex_quad) = match self.allocate(size_u32) {
@@ -193,6 +208,7 @@ impl Pipeline {
     pub fn prepare(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
         self.atlas_pipe.prepare(device);
 
+        log::trace!("Pipeline::prepare: {} sprites", self.prepare.len());
         for (atlas, origin, size, data) in self.prepare.drain(..) {
             queue.write_texture(
                 wgpu::TextureCopyView {
@@ -293,7 +309,7 @@ impl Window {
         let col = col.into();
 
         let for_glyph = |font: FontId, _, height: f32, glyph: Glyph| {
-            let desc = SpriteDescriptor::new(font, glyph.id, height);
+            let desc = SpriteDescriptor::new(font, glyph, height);
             if let Some(sprite) = pipe.get_glyph(desc) {
                 let pos = pos + Vec2::from(glyph.position);
                 let a = pos + sprite.offset;
@@ -334,7 +350,7 @@ impl Window {
         let mut rects = vec![];
 
         let mut for_glyph = |font: FontId, _, height: f32, glyph: Glyph, _: usize, _: ()| {
-            let desc = SpriteDescriptor::new(font, glyph.id, height);
+            let desc = SpriteDescriptor::new(font, glyph, height);
             if let Some(sprite) = pipe.get_glyph(desc) {
                 let pos = pos + Vec2::from(glyph.position);
                 let a = pos + sprite.offset;
@@ -395,7 +411,7 @@ impl Window {
         let mut rects = vec![];
 
         let for_glyph = |font: FontId, _, height: f32, glyph: Glyph, _, col: Colour| {
-            let desc = SpriteDescriptor::new(font, glyph.id, height);
+            let desc = SpriteDescriptor::new(font, glyph, height);
             if let Some(sprite) = pipe.get_glyph(desc) {
                 let pos = pos + Vec2::from(glyph.position);
                 let a = pos + sprite.offset;
