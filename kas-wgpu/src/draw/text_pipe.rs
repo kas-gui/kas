@@ -21,49 +21,62 @@ fn to_vec2(p: ab_glyph::Point) -> Vec2 {
 
 /// Scale multiplier for fixed-precision
 ///
-/// This should be `1 << n` for `n` bits of sub-pixel precision.
+/// This should be an integer `n >= 1`, e.g. `n = 4` provides four sub-pixel
+/// steps of precision. It is also required that `n * h < (1 << 24)` where
+/// `h` is the text height in pixels.
 const SCALE_MULT: f32 = 4.0;
 /// Multiplier for horizontal sub-pixel precision
+///
+/// This should be an integer `1 <= n <= 15`, e.g. `n = 4` provides four
+/// sub-pixel steps of precision.
 const SUB_PIXEL_HORIZ_MULT: f32 = 1.0;
 /// Multiplier for vertical sub-pixel precision
+///
+/// This should be an integer `1 <= n <= 15`, e.g. `n = 4` provides four
+/// sub-pixel steps of precision.
 const SUB_PIXEL_VERT_MULT: f32 = 1.0;
 
 /// A Sprite descriptor
 ///
 /// A "sprite" is a glyph rendered to a texture with fixed properties. This
 /// struct contains those properties.
-// TODO(opt): faster Hash
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-struct SpriteDescriptor {
-    font: u16,
-    glyph: u16,
-    height: u32,
-    x_off: u8,
-    y_off: u8,
-}
+struct SpriteDescriptor(u64);
 
 impl SpriteDescriptor {
     fn new(font: FontId, glyph: Glyph, height: f32) -> Self {
-        SpriteDescriptor {
-            font: font.get().cast(),
-            glyph: glyph.id.0,
-            height: (height * SCALE_MULT).cast_nearest(),
-            x_off: (glyph.position.0.fract() * SUB_PIXEL_HORIZ_MULT).cast_nearest(),
-            y_off: (glyph.position.1.fract() * SUB_PIXEL_VERT_MULT).cast_nearest(),
-        }
+        let font: u16 = font.get().cast();
+        let glyph_id: u16 = glyph.id.0;
+        let height: u32 = (height * SCALE_MULT).cast_nearest();
+        let x_off: u8 = (glyph.position.0.fract() * SUB_PIXEL_HORIZ_MULT).cast_nearest();
+        let y_off: u8 = (glyph.position.1.fract() * SUB_PIXEL_VERT_MULT).cast_nearest();
+        assert!(height & 0xFF00_0000 == 0 && x_off & 0xF0 == 0 && y_off & 0xF0 == 0);
+        let packed = font as u64
+            | ((glyph_id as u64) << 16)
+            | ((height as u64) << 32)
+            | ((x_off as u64) << 56)
+            | ((y_off as u64) << 60);
+        SpriteDescriptor(packed)
     }
 
     fn font(self) -> usize {
-        self.font.cast()
+        (self.0 & 0x0000_0000_0000_FFFF) as usize
+    }
+
+    fn glyph(self) -> u16 {
+        ((self.0 & 0x0000_0000_FFFF_0000) >> 16) as u16
     }
 
     fn height(self) -> f32 {
-        f32::conv(self.height) / SCALE_MULT
+        let height = ((self.0 & 0x00FF_FFFF_0000_0000) >> 32) as u32;
+        f32::conv(height) / SCALE_MULT
     }
 
     fn fractional_position(self) -> (f32, f32) {
-        let x = f32::conv(self.x_off) / SUB_PIXEL_HORIZ_MULT;
-        let y = f32::conv(self.y_off) / SUB_PIXEL_VERT_MULT;
+        let x = ((self.0 & 0x0F00_0000_0000_0000) >> 56) as u8;
+        let y = ((self.0 & 0xF000_0000_0000_0000) >> 60) as u8;
+        let x = f32::conv(x) / SUB_PIXEL_HORIZ_MULT;
+        let y = f32::conv(y) / SUB_PIXEL_VERT_MULT;
         (x, y)
     }
 }
@@ -89,7 +102,7 @@ impl atlases::Pipeline<Instance> {
     ) -> Option<(Sprite, (u32, u32), (u32, u32), Vec<u8>)> {
         let fract_pos = desc.fractional_position();
         let glyph = ab_glyph::Glyph {
-            id: ab_glyph::GlyphId(desc.glyph),
+            id: ab_glyph::GlyphId(desc.glyph()),
             scale: desc.height().into(),
             position: fract_pos.into(),
         };
