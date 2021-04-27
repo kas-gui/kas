@@ -789,9 +789,8 @@ mod test {
 
         let _scale = draw_handle.size_handle(|h| h.scale_factor());
 
-        let bounds = Vec2(100.0, 30.0);
         let text = kas::text::Text::new_single("sample");
         let class = TextClass::Label;
-        draw_handle.text_selected(Coord::ZERO, bounds, Offset::ZERO, &text, .., class)
+        draw_handle.text_selected(Coord::ZERO, &text, .., class)
     }
 }
