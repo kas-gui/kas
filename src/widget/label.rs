@@ -56,13 +56,13 @@ impl Layout for AccelLabel {
 #[cfg(feature = "min_spec")]
 impl<'a> Layout for Label<&'a str> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
+        draw_handle.text(self.core.rect.pos, self.label.as_ref(), TextClass::Label);
     }
 }
 #[cfg(feature = "min_spec")]
 impl Layout for StringLabel {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        draw_handle.text(self.core.rect.pos, &self.label, TextClass::Label);
+        draw_handle.text(self.core.rect.pos, self.label.as_ref(), TextClass::Label);
     }
 }
 
