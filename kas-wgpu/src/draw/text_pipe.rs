@@ -25,16 +25,6 @@ fn to_vec2(p: ab_glyph::Point) -> Vec2 {
 /// steps of precision. It is also required that `n * h < (1 << 24)` where
 /// `h` is the text height in pixels.
 const SCALE_MULT: f32 = 4.0;
-/// Multiplier for horizontal sub-pixel precision
-///
-/// This should be an integer `1 <= n <= 15`, e.g. `n = 4` provides four
-/// sub-pixel steps of precision.
-const SUB_PIXEL_HORIZ_MULT: f32 = 1.0;
-/// Multiplier for vertical sub-pixel precision
-///
-/// This should be an integer `1 <= n <= 15`, e.g. `n = 4` provides four
-/// sub-pixel steps of precision.
-const SUB_PIXEL_VERT_MULT: f32 = 1.0;
 
 /// A Sprite descriptor
 ///
@@ -44,12 +34,21 @@ const SUB_PIXEL_VERT_MULT: f32 = 1.0;
 struct SpriteDescriptor(u64);
 
 impl SpriteDescriptor {
+    /// Choose a sub-pixel precision multiplier based on the height
+    ///
+    /// Must return an integer between 1 and 15.
+    fn sub_pixel_from_height(height: f32) -> f32 {
+        // Due to rounding sub-pixel precision is disabled for height > 20
+        (30.0 / height).round().clamp(1.0, 15.0)
+    }
+
     fn new(font: FontId, glyph: Glyph, height: f32) -> Self {
         let font: u16 = font.get().cast();
         let glyph_id: u16 = glyph.id.0;
+        let mult = Self::sub_pixel_from_height(height);
         let height: u32 = (height * SCALE_MULT).cast_nearest();
-        let x_off: u8 = (glyph.position.0.fract() * SUB_PIXEL_HORIZ_MULT).cast_nearest();
-        let y_off: u8 = (glyph.position.1.fract() * SUB_PIXEL_VERT_MULT).cast_nearest();
+        let x_off: u8 = (glyph.position.0.fract() * mult).cast_nearest();
+        let y_off: u8 = (glyph.position.1.fract() * mult).cast_nearest();
         assert!(height & 0xFF00_0000 == 0 && x_off & 0xF0 == 0 && y_off & 0xF0 == 0);
         let packed = font as u64
             | ((glyph_id as u64) << 16)
@@ -73,10 +72,11 @@ impl SpriteDescriptor {
     }
 
     fn fractional_position(self) -> (f32, f32) {
+        let mult = 1.0 / Self::sub_pixel_from_height(self.height());
         let x = ((self.0 & 0x0F00_0000_0000_0000) >> 56) as u8;
         let y = ((self.0 & 0xF000_0000_0000_0000) >> 60) as u8;
-        let x = f32::conv(x) / SUB_PIXEL_HORIZ_MULT;
-        let y = f32::conv(y) / SUB_PIXEL_VERT_MULT;
+        let x = f32::conv(x) * mult;
+        let y = f32::conv(y) * mult;
         (x, y)
     }
 }
