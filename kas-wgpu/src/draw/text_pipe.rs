@@ -221,7 +221,12 @@ impl Pipeline {
     pub fn prepare(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
         self.atlas_pipe.prepare(device);
 
-        log::trace!("Pipeline::prepare: {} sprites", self.prepare.len());
+        if !self.prepare.is_empty() {
+            log::trace!(
+                "Pipeline::prepare: uploading {} sprites",
+                self.prepare.len()
+            );
+        }
         for (atlas, origin, size, data) in self.prepare.drain(..) {
             queue.write_texture(
                 wgpu::TextureCopyView {

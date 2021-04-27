@@ -21,7 +21,7 @@
 //! an axis-aligned box or frame with several shading options.
 //!
 //! The [`Draw`] trait itself contains very little; extension traits
-//! [`DrawRounded`], [`DrawShaded`] and [`DrawText`] provide additional draw
+//! [`DrawRounded`] and [`DrawShaded`] provide additional draw
 //! routines. Shells are only required to implement the base [`Draw`] trait,
 //! and may also provide their own extension traits. Themes may specify their
 //! own requirements, e.g. `D: Draw + DrawRounded + DrawText`.
