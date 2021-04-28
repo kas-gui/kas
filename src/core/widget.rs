@@ -57,6 +57,7 @@ pub trait WidgetCore: Any + fmt::Debug {
     ///
     /// This should not normally be needed by user code.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn core_data_mut(&mut self) -> &mut CoreData;
 
     /// Get the widget's numeric identifier
@@ -270,7 +271,7 @@ pub trait WidgetChildren: WidgetCore {
         self.walk_children_dyn(&mut f)
     }
 
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[doc(hidden)]
     fn walk_children_dyn(&self, f: &mut dyn FnMut(&dyn WidgetConfig)) {
         for i in 0..self.num_children() {
             if let Some(w) = self.get_child(i) {
@@ -291,7 +292,7 @@ pub trait WidgetChildren: WidgetCore {
         self.walk_children_mut_dyn(&mut f)
     }
 
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[doc(hidden)]
     fn walk_children_mut_dyn(&mut self, f: &mut dyn FnMut(&mut dyn WidgetConfig)) {
         for i in 0..self.num_children() {
             if let Some(w) = self.get_child_mut(i) {

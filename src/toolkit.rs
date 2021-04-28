@@ -31,6 +31,7 @@ impl WindowId {
     ///
     /// Only for use by the shell!
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn new(n: NonZeroU32) -> WindowId {
         WindowId(n)
     }
@@ -91,6 +92,7 @@ bitflags! {
 ///
 /// This is implemented by a KAS shell, per window.
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 pub trait ShellWindow {
     /// Add a pop-up
     ///

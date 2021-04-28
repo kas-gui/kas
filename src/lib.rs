@@ -21,6 +21,7 @@
 //! [examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
 //! provide a starting point.
 
+#![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 
