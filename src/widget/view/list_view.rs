@@ -576,6 +576,12 @@ impl<D: Directional, T: ListData + UpdatableAll<T::Key, V::Msg>, V: Driver<T::It
                         }
                     }
                 }
+                (_, Response::Pan(delta)) => {
+                    return match self.scroll_by_delta(mgr, delta) {
+                        delta if delta == Offset::ZERO => Response::None,
+                        delta => Response::Pan(delta),
+                    };
+                }
                 (_, Response::Focus(rect)) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                     *mgr |= action;

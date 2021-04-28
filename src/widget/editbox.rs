@@ -1000,17 +1000,19 @@ impl<G: EditGuard> EditField<G> {
         mgr.redraw(self.id());
     }
 
-    fn pan_delta(&mut self, mgr: &mut Manager, delta: Offset) -> bool {
+    // Pan by given delta. Return remaining (unused) delta.
+    fn pan_delta(&mut self, mgr: &mut Manager, delta: Offset) -> Offset {
         let bounds = Vec2::from(self.text.env().bounds);
         let max_offset = (self.required - bounds).ceil();
         let max_offset = Offset::from(max_offset).max(Offset::ZERO);
         let new_offset = (self.view_offset - delta).min(max_offset).max(Offset::ZERO);
         if new_offset != self.view_offset {
+            let delta = delta - (self.view_offset - new_offset);
             self.view_offset = new_offset;
             mgr.redraw(self.id());
-            true
+            delta
         } else {
-            false
+            delta
         }
     }
 
@@ -1102,19 +1104,18 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                     }
                     ScrollDelta::PixelDelta(coord) => coord,
                 };
-                if self.pan_delta(mgr, delta2) {
-                    Response::None
-                } else {
-                    Response::Unhandled
+                match self.pan_delta(mgr, delta2) {
+                    delta if delta == Offset::ZERO => Response::None,
+                    delta => Response::Pan(delta),
                 }
             }
             event => match self.input_handler.handle(mgr, self.id(), event) {
                 TextInputAction::None => Response::None,
                 TextInputAction::Unhandled => Response::Unhandled,
-                TextInputAction::Pan(delta) => {
-                    self.pan_delta(mgr, delta);
-                    Response::None
-                }
+                TextInputAction::Pan(delta) => match self.pan_delta(mgr, delta) {
+                    delta if delta == Offset::ZERO => Response::None,
+                    delta => Response::Pan(delta),
+                },
                 TextInputAction::Focus => request_focus(self, mgr),
                 TextInputAction::Cursor(coord, anchor, clear, repeats) => {
                     let mut response = Response::None;

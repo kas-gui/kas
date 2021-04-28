@@ -296,6 +296,16 @@ pub trait Scrollable: Widget {
     /// The offset is clamped to the available scroll range and applied. The
     /// resulting offset is returned.
     fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset;
+
+    /// Scroll by a delta
+    ///
+    /// Returns the remaining (unused) delta.
+    #[inline]
+    fn scroll_by_delta(&mut self, mgr: &mut Manager, delta: Offset) -> Offset {
+        let old_offset = self.scroll_offset();
+        let new_offset = self.set_scroll_offset(mgr, old_offset - delta);
+        delta - old_offset + new_offset
+    }
 }
 
 /// A scrollable region with bars
