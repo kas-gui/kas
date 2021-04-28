@@ -7,7 +7,7 @@
 
 use kas::event::VoidMsg;
 use kas::macros::make_widget;
-use kas::widget::{CheckBoxBare, EditBox, Label, Window};
+use kas::widget::{CheckBoxBare, EditBox, Label, ScrollLabel, Window};
 
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
@@ -24,7 +24,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                 #[widget(row=0, col=1)] _ = Label::new("Layout demo"),
                 #[widget(row=1, col=0, cspan=3)] _ = Label::new(lipsum),
                 #[widget(row=2, col=0, halign=centre)] _ = Label::new("abc אבג def"),
-                #[widget(row=2, col=1, cspan=2, rspan=2, halign=stretch)] _ = Label::new(crasit),
+                #[widget(row=2, col=1, cspan=2, rspan=2, halign=stretch)] _ = ScrollLabel::new(crasit),
                 #[widget(row=3, col=0)] _ = EditBox::new("A small\nsample\nof text").multi_line(true),
                 #[widget(row=0, col=2)] _ = CheckBoxBare::new(),
             }

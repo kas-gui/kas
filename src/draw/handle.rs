@@ -74,6 +74,8 @@ pub enum TextClass {
     Label,
     /// Single-line label with fixed size (does not stretch to fill space)
     LabelFixed,
+    /// Scrollable label (same as label except that min height is limited)
+    LabelScroll,
     /// Button text is drawn over a button
     Button,
     /// Class of text drawn in a single-line edit box
