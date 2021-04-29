@@ -200,7 +200,7 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
             env.set_bounds(bounds);
 
             env.set_wrap(match class {
-                TextClass::Label | TextClass::EditMulti => true,
+                TextClass::Label | TextClass::EditMulti | TextClass::LabelScroll => true,
                 _ => false,
             });
         });
@@ -230,11 +230,11 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
                 TextClass::LabelFixed | TextClass::Button | TextClass::Edit => {
                     self.dims.line_height
                 }
-                TextClass::EditMulti => self.dims.line_height * 3,
+                TextClass::EditMulti | TextClass::LabelScroll => self.dims.line_height * 3,
             };
             let ideal = i32::conv_ceil(required.1).max(min);
             let stretch = match class {
-                TextClass::EditMulti => Stretch::Low,
+                TextClass::EditMulti | TextClass::LabelScroll => Stretch::Low,
                 _ => Stretch::None,
             };
             SizeRules::new(min, ideal, margins, stretch)

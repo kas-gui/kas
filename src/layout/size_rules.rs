@@ -391,6 +391,7 @@ impl SizeRules {
     /// is assumed that the last entry of `rules` is a summation over all
     /// previous entries which does respect margins.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     pub fn solve_seq(out: &mut [i32], rules: &[Self], target: i32) {
         let total = SizeRules::sum(rules);
         Self::solve_seq_total(out, rules, total, target);
@@ -401,6 +402,7 @@ impl SizeRules {
     /// This is the same as [`SizeRules::solve_seq`] except that the rules' sum
     /// is passed explicitly.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     #[inline]
     pub fn solve_seq_total(out: &mut [i32], rules: &[Self], total: Self, target: i32) {
         type Targets = SmallVec<[i32; 16]>;

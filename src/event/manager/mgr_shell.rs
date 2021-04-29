@@ -25,6 +25,7 @@ const FAKE_MOUSE_BUTTON: MouseButton = MouseButton::Other(0);
 
 /// Shell API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl ManagerState {
     /// Construct an event manager per-window data struct
     #[inline]
@@ -379,6 +380,7 @@ impl ManagerState {
 
 /// Shell API
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
 impl<'a> Manager<'a> {
     /// Update widgets due to timer
     pub fn update_timer<W: Widget + ?Sized>(&mut self, widget: &mut W) {
@@ -419,6 +421,7 @@ impl<'a> Manager<'a> {
     /// events the shell must take direct action anyway:
     /// `Resized(size)`, `RedrawRequested`, `HiDpiFactorChanged(factor)`.
     #[cfg(feature = "winit")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
     pub fn handle_winit<W>(&mut self, widget: &mut W, event: winit::event::WindowEvent)
     where
         W: Widget<Msg = VoidMsg> + ?Sized,

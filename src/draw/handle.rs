@@ -74,6 +74,8 @@ pub enum TextClass {
     Label,
     /// Single-line label with fixed size (does not stretch to fill space)
     LabelFixed,
+    /// Scrollable label (same as label except that min height is limited)
+    LabelScroll,
     /// Button text is drawn over a button
     Button,
     /// Class of text drawn in a single-line edit box
@@ -261,7 +263,6 @@ pub trait DrawHandle {
     /// called exactly once, or even that it gets called at all.
     ///
     /// Implementations *should* call the given function argument once.
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle));
 
     /// Access the low-level draw device
@@ -349,6 +350,7 @@ pub trait DrawHandle {
 
     /// Method used to implement [`DrawHandleExt::text_selected`]
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     fn text_selected_range(
         &mut self,
         pos: Coord,

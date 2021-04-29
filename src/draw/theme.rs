@@ -16,15 +16,18 @@ use std::ops::DerefMut;
 pub enum ThemeAction {
     /// No action needed
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     None,
     /// All windows require redrawing
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     RedrawAll,
     /// Theme sizes have changed
     ///
     /// This implies that per-window theme data must be updated
     /// (via [`kas-theme::Theme::update_window`]) and all widgets resized.
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     ThemeResize,
 }
 

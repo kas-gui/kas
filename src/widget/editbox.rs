@@ -9,6 +9,7 @@ use std::fmt::{self, Debug};
 use std::ops::Range;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
+use super::Scrollable;
 use kas::draw::TextClass;
 use kas::event::components::{TextInput, TextInputAction};
 use kas::event::{self, Command, ScrollDelta};
@@ -1000,17 +1001,16 @@ impl<G: EditGuard> EditField<G> {
         mgr.redraw(self.id());
     }
 
-    fn pan_delta(&mut self, mgr: &mut Manager, delta: Offset) -> bool {
-        let bounds = Vec2::from(self.text.env().bounds);
-        let max_offset = (self.required - bounds).ceil();
-        let max_offset = Offset::from(max_offset).max(Offset::ZERO);
-        let new_offset = (self.view_offset - delta).min(max_offset).max(Offset::ZERO);
+    // Pan by given delta. Return remaining (unused) delta.
+    fn pan_delta(&mut self, mgr: &mut Manager, delta: Offset) -> Offset {
+        let new_offset = (self.view_offset - delta).clamp(Offset::ZERO, self.max_scroll_offset());
         if new_offset != self.view_offset {
+            let delta = delta - (self.view_offset - new_offset);
             self.view_offset = new_offset;
             mgr.redraw(self.id());
-            true
+            delta
         } else {
-            false
+            delta
         }
     }
 
@@ -1028,9 +1028,7 @@ impl<G: EditGuard> EditField<G> {
             let min = Offset(min_x.cast_ceil(), min_y.cast_ceil());
             let max = Offset(max_x.cast_floor(), max_y.cast_floor());
 
-            let max_offset = (self.required - bounds).ceil();
-            let max_offset = Offset::from(max_offset).max(Offset::ZERO);
-            let max = max.min(max_offset);
+            let max = max.min(self.max_scroll_offset());
 
             self.view_offset = self.view_offset.max(min).min(max);
         }
@@ -1102,19 +1100,18 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                     }
                     ScrollDelta::PixelDelta(coord) => coord,
                 };
-                if self.pan_delta(mgr, delta2) {
-                    Response::None
-                } else {
-                    Response::Unhandled
+                match self.pan_delta(mgr, delta2) {
+                    delta if delta == Offset::ZERO => Response::None,
+                    delta => Response::Pan(delta),
                 }
             }
             event => match self.input_handler.handle(mgr, self.id(), event) {
                 TextInputAction::None => Response::None,
                 TextInputAction::Unhandled => Response::Unhandled,
-                TextInputAction::Pan(delta) => {
-                    self.pan_delta(mgr, delta);
-                    Response::None
-                }
+                TextInputAction::Pan(delta) => match self.pan_delta(mgr, delta) {
+                    delta if delta == Offset::ZERO => Response::None,
+                    delta => Response::Pan(delta),
+                },
                 TextInputAction::Focus => request_focus(self, mgr),
                 TextInputAction::Cursor(coord, anchor, clear, repeats) => {
                     let mut response = Response::None;
@@ -1133,5 +1130,32 @@ impl<G: EditGuard + 'static> event::Handler for EditField<G> {
                 }
             },
         }
+    }
+}
+
+impl<G: EditGuard> Scrollable for EditField<G> {
+    fn scroll_axes(&self, size: Size) -> (bool, bool) {
+        let max = self.max_scroll_offset();
+        (max.0 > size.0, max.1 > size.1)
+    }
+
+    fn max_scroll_offset(&self) -> Offset {
+        let bounds = Vec2::from(self.text.env().bounds);
+        let max_offset = (self.required - bounds).ceil();
+        Offset::from(max_offset).max(Offset::ZERO)
+    }
+
+    fn scroll_offset(&self) -> Offset {
+        self.view_offset
+    }
+
+    fn set_scroll_offset(&mut self, mgr: &mut Manager, offset: Offset) -> Offset {
+        let new_offset = offset.clamp(Offset::ZERO, self.max_scroll_offset());
+        if new_offset != self.view_offset {
+            self.view_offset = new_offset;
+            // No widget moves so do not need to report TkAction::REGION_MOVED
+            mgr.redraw(self.id());
+        }
+        new_offset
     }
 }

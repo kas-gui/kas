@@ -255,6 +255,7 @@ impl<M: 'static> ComboBox<M> {
                 }
                 _ => Response::Unhandled,
             },
+            Response::Pan(delta) => Response::Pan(delta),
             Response::Focus(x) => Response::Focus(x),
             Response::Update | Response::Select => {
                 if let Some(id) = self.popup_id {

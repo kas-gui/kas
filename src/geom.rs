@@ -157,6 +157,7 @@ impl Coord {
 
     /// Convert from a logical position
     #[cfg(feature = "winit")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
     pub fn from_logical<X: Pixel>(logical: LogicalPosition<X>, dpi_factor: f64) -> Self {
         let pos = PhysicalPosition::<i32>::from_logical(logical, dpi_factor);
         let pos: (i32, i32) = pos.into();
@@ -242,6 +243,7 @@ impl From<Coord> for kas_text::Vec2 {
 }
 
 #[cfg(feature = "winit")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
 impl<X: Pixel> From<PhysicalPosition<X>> for Coord {
     #[inline]
     fn from(pos: PhysicalPosition<X>) -> Coord {
@@ -251,6 +253,7 @@ impl<X: Pixel> From<PhysicalPosition<X>> for Coord {
 }
 
 #[cfg(feature = "winit")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
 impl<X: Pixel> From<Coord> for PhysicalPosition<X> {
     #[inline]
     fn from(coord: Coord) -> PhysicalPosition<X> {
@@ -408,6 +411,7 @@ impl From<Size> for kas_text::Vec2 {
 }
 
 #[cfg(feature = "winit")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
 impl<X: Pixel> From<PhysicalSize<X>> for Size {
     #[inline]
     fn from(size: PhysicalSize<X>) -> Size {
@@ -418,6 +422,7 @@ impl<X: Pixel> From<PhysicalSize<X>> for Size {
 }
 
 #[cfg(feature = "winit")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
 impl<X: Pixel> From<Size> for PhysicalSize<X> {
     #[inline]
     fn from(size: Size) -> PhysicalSize<X> {
@@ -428,6 +433,7 @@ impl<X: Pixel> From<Size> for PhysicalSize<X> {
 }
 
 #[cfg(feature = "winit")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "winit")))]
 impl From<Size> for winit::dpi::Size {
     #[inline]
     fn from(size: Size) -> winit::dpi::Size {

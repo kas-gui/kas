@@ -64,6 +64,7 @@ pub struct Pass(u32);
 impl Pass {
     /// Construct a new pass from a `u32` identifier
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     #[inline]
     pub const fn new(n: u32) -> Self {
         Pass(n)
@@ -92,6 +93,7 @@ pub struct ImageId(NonZeroU32);
 impl ImageId {
     /// Construct a new identifier from `u32` value not equal to 0
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
     #[inline]
     pub const fn try_new(n: u32) -> Option<Self> {
         // We can't use ? or .map in a const fn so do it the tedious way:

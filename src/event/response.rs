@@ -6,7 +6,7 @@
 //! Event handling: Response type
 
 use super::VoidResponse;
-use kas::geom::Rect;
+use kas::geom::{Offset, Rect};
 
 /// Response type from [`Handler::handle`].
 ///
@@ -29,6 +29,11 @@ pub enum Response<M> {
     /// Indicates that the event was not consumed. An ancestor or the event
     /// manager is thus able to make use of this event.
     Unhandled,
+    /// Pan scrollable regions by the given delta
+    ///
+    /// With the usual scroll offset conventions, this delta must be subtracted
+    /// from the scroll offset.
+    Pan(Offset),
     /// (Keyboard) focus has changed. This region should be made visible.
     Focus(Rect),
     /// Widget wishes to be selected (or have selection status toggled)
@@ -125,6 +130,7 @@ impl<M> Response<M> {
         match r {
             None => Ok(None),
             Unhandled => Ok(Unhandled),
+            Pan(delta) => Ok(Pan(delta)),
             Focus(rect) => Ok(Focus(rect)),
             Select => Ok(Select),
             Update => Ok(Update),

@@ -17,10 +17,13 @@
 //! -   [`kas-theme`](https://crates.io/crates/kas-theme) - [docs.rs](https://docs.rs/kas-theme) - theme API + themes
 //! -   [`kas-wgpu`](https://crates.io/crates/kas-wgpu) - [docs.rs](https://docs.rs/kas-wgpu) - WebGPU + winit integration
 //!
-//! This document is a reference manual. There is currently no tutorial, but the
-//! [examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
-//! provide a starting point.
+//! Also refer to:
+//!
+//! -   [KAS Tutorials](https://kas-gui.github.io/tutorials/)
+//! -   [Examples](https://github.com/kas-gui/kas/tree/master/kas-wgpu/examples)
+//! -   [Discuss](https://github.com/kas-gui/kas/discussions)
 
+#![cfg_attr(doc_cfg, feature(doc_cfg))]
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![cfg_attr(feature = "min_spec", feature(min_specialization))]
 

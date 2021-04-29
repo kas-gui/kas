@@ -207,9 +207,11 @@ impl ScrollComponent {
                     ),
                     PixelDelta(d) => d,
                 };
-                action = self.set_offset(self.offset - d);
-                if action.is_empty() {
-                    response = Response::Unhandled;
+                let old_offset = self.offset;
+                action = self.set_offset(old_offset - d);
+                let delta = d - (old_offset - self.offset);
+                if delta != Offset::ZERO {
+                    response = Response::Pan(delta);
                 }
             }
             Event::PressStart {
@@ -217,8 +219,13 @@ impl ScrollComponent {
                 start_id,
                 coord,
             } => on_press_start(source, start_id, coord),
-            Event::PressMove { delta, .. } => {
-                action = self.set_offset(self.offset - delta);
+            Event::PressMove { mut delta, .. } => {
+                let old_offset = self.offset;
+                action = self.set_offset(old_offset - delta);
+                delta -= old_offset - self.offset;
+                if delta != Offset::ZERO {
+                    response = Response::Pan(delta);
+                }
             }
             Event::PressEnd { .. } => (), // consume due to request
             _ => response = Response::Unhandled,
@@ -368,6 +375,12 @@ impl<W: Widget> event::SendEvent for ScrollRegion<W> {
             let child_event = self.scroll.offset_event(event.clone());
             match self.inner.send(mgr, id, child_event) {
                 Response::Unhandled => (),
+                Response::Pan(delta) => {
+                    return match self.scroll_by_delta(mgr, delta) {
+                        delta if delta == Offset::ZERO => Response::None,
+                        delta => Response::Pan(delta),
+                    };
+                }
                 Response::Focus(rect) => {
                     let (rect, action) = self.scroll.focus_rect(rect, self.core.rect);
                     *mgr |= action;
