@@ -14,8 +14,8 @@ use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours,
 use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShared, ImageId, InputState, Pass, SizeHandle, TextClass,
-    ThemeAction, ThemeApi,
+    self, Colour, Draw, DrawRounded, DrawShared, ImageId, InputState, Pass, RegionClass,
+    SizeHandle, TextClass, ThemeAction, ThemeApi,
 };
 use kas::geom::*;
 use kas::text::format::FormattableText;
@@ -220,14 +220,15 @@ where
         (self.pass, self.offset, self.draw)
     }
 
-    fn clip_region(
+    fn add_clip_region(
         &mut self,
         rect: Rect,
         offset: Offset,
+        class: RegionClass,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
         let rect = rect + self.offset;
-        let pass = self.draw.add_clip_region(rect);
+        let pass = self.draw.add_clip_region(self.pass, rect, class);
         let mut handle = DrawHandle {
             shared: self.shared,
             draw: self.draw,

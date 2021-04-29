@@ -98,6 +98,15 @@ impl Default for TextClass {
     }
 }
 
+/// Region class
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+#[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum RegionClass {
+    ScrollRegion,
+    Overlay,
+}
+
 /// Handle passed to objects during sizing operations
 ///
 /// Themes must implement both [`SizeHandle`] and [`DrawHandle`].
@@ -283,24 +292,22 @@ pub trait DrawHandle {
     /// ```
     fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw);
 
-    /// Construct a new draw-handle on a given region and pass to a callback.
-    ///
-    /// This new region uses coordinates relative to `offset` (i.e. coordinates
-    /// are subtracted by `offset`).
-    ///
-    /// All content drawn by the new region is clipped to the given `rect`
-    /// (in the current coordinate space, i.e. not translated by `offset`).
-    ///
-    /// The new `rect` may extend beyond the current draw region. If it extends
-    /// beyond the bounds of the window, it will be silently reduced to that of
-    /// the window.
-    fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle));
+    /// Add a clip region
+    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
+    fn add_clip_region(
+        &mut self,
+        rect: Rect,
+        offset: Offset,
+        class: RegionClass,
+        f: &mut dyn FnMut(&mut dyn DrawHandle),
+    );
 
     /// Target area for drawing
     ///
-    /// Drawing is restricted to this [`Rect`], which is either the window or a
-    /// [clip region](DrawHandle::clip_region). This may be used to cull hidden
-    /// items from lists inside a scrollable view.
+    /// Drawing is restricted to this [`Rect`], which may be the whole window, a
+    /// [clip region](DrawHandle::clip_region) or an [overlay](DrawHandle::overlay).
+    /// This may be used to cull hidden items from lists inside a scrollable view.
     fn target_rect(&self) -> Rect;
 
     /// Draw a frame inside the given `rect`
@@ -428,6 +435,31 @@ pub trait DrawHandleExt: DrawHandle {
             result = Some(f(size_handle));
         });
         result.expect("DrawHandle::size_handle_dyn impl failed to call function argument")
+    }
+
+    /// Draw to a sub-region with offset (e.g. for scrolling)
+    ///
+    /// This new region uses coordinates relative to `offset` (i.e. coordinates
+    /// are subtracted by `offset`).
+    ///
+    /// All content drawn by the new region is clipped to the intersection of
+    /// `rect` and the current target ([`DrawHandle::target_rect`]).
+    fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
+        self.add_clip_region(rect, offset, RegionClass::ScrollRegion, f);
+    }
+
+    /// Draw to an overlay (e.g. for pop-up menus)
+    ///
+    /// This new region uses coordinates relative to `rect` (i.e. `Coord::ZERO`
+    /// is the first pixel inside `rect`).
+    ///
+    /// All content drawn via this handle is clipped to the given `rect`.
+    ///
+    /// The new `rect` may extend beyond the current draw region. If it extends
+    /// beyond the bounds of the window, it will be silently reduced to that of
+    /// the window.
+    fn overlay(&mut self, rect: Rect, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
+        self.add_clip_region(rect, Offset::ZERO, RegionClass::Overlay, f);
     }
 
     /// Draw some text using the standard font, with a subset selected
@@ -626,8 +658,14 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
-    fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.deref_mut().clip_region(rect, offset, f)
+    fn add_clip_region(
+        &mut self,
+        rect: Rect,
+        offset: Offset,
+        class: RegionClass,
+        f: &mut dyn FnMut(&mut dyn DrawHandle),
+    ) {
+        self.deref_mut().add_clip_region(rect, offset, class, f);
     }
     fn target_rect(&self) -> Rect {
         self.deref().target_rect()
@@ -709,8 +747,14 @@ where
     fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw) {
         self.deref_mut().draw_device()
     }
-    fn clip_region(&mut self, rect: Rect, offset: Offset, f: &mut dyn FnMut(&mut dyn DrawHandle)) {
-        self.deref_mut().clip_region(rect, offset, f)
+    fn add_clip_region(
+        &mut self,
+        rect: Rect,
+        offset: Offset,
+        class: RegionClass,
+        f: &mut dyn FnMut(&mut dyn DrawHandle),
+    ) {
+        self.deref_mut().add_clip_region(rect, offset, class, f);
     }
     fn target_rect(&self) -> Rect {
         self.deref().target_rect()

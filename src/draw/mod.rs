@@ -186,7 +186,7 @@ pub trait Draw: Any {
     /// Add a clip region
     ///
     /// Clip regions are cleared each frame and so must be recreated on demand.
-    fn add_clip_region(&mut self, rect: Rect) -> Pass;
+    fn add_clip_region(&mut self, pass: Pass, rect: Rect, class: RegionClass) -> Pass;
 
     /// Get drawable rect for a clip region
     ///

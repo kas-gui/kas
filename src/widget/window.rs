@@ -146,7 +146,7 @@ impl<W: Widget> Layout for Window<W> {
         let disabled = disabled || self.is_disabled();
         self.w.draw(draw_handle, mgr, disabled);
         for popup in &self.popups {
-            draw_handle.clip_region(self.core.rect, Offset::ZERO, &mut |draw_handle| {
+            draw_handle.overlay(self.core.rect, &mut |draw_handle| {
                 self.find_leaf(popup.1.id)
                     .map(|w| w.draw(draw_handle, mgr, disabled));
             });

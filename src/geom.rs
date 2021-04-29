@@ -561,9 +561,12 @@ pub struct Rect {
 }
 
 impl Rect {
+    /// The empty rect (all fields zero)
+    pub const ZERO: Self = Self::new(Coord::ZERO, Size::ZERO);
+
     /// Construct from a [`Coord`] and [`Size`]
     #[inline]
-    pub fn new(pos: Coord, size: Size) -> Self {
+    pub const fn new(pos: Coord, size: Size) -> Self {
         Rect { pos, size }
     }
 
