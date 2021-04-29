@@ -188,6 +188,11 @@ pub trait Draw: Any {
     /// Clip regions are cleared each frame and so must be recreated on demand.
     fn add_clip_region(&mut self, rect: Rect) -> Pass;
 
+    /// Get drawable rect for a clip region
+    ///
+    /// (This may be smaller than the rect passed to [`Draw::add_clip_region`].)
+    fn get_clip_rect(&self, pass: Pass) -> Rect;
+
     /// Draw a rectangle of uniform colour
     fn rect(&mut self, pass: Pass, rect: Quad, col: Colour);
 

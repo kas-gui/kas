@@ -11,7 +11,6 @@ use std::marker::Unsize;
 
 use crate::{StackDst, Theme, ThemeDst, WindowDst};
 use kas::draw::{Colour, DrawHandle, DrawShared, ThemeAction, ThemeApi};
-use kas::geom::Rect;
 
 #[cfg(feature = "unsize")]
 type DynTheme<Draw> = StackDst<dyn ThemeDst<Draw>>;
@@ -129,9 +128,8 @@ impl<D: DrawShared> Theme<D> for MultiTheme<D> {
         shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
-        rect: Rect,
     ) -> StackDst<dyn DrawHandle> {
-        self.themes[self.active].draw_handle(shared, draw, window, rect)
+        self.themes[self.active].draw_handle(shared, draw, window)
     }
 
     #[cfg(feature = "gat")]
@@ -140,9 +138,8 @@ impl<D: DrawShared> Theme<D> for MultiTheme<D> {
         shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
-        rect: Rect,
     ) -> StackDst<dyn DrawHandle + 'a> {
-        self.themes[self.active].draw_handle(shared, draw, window, rect)
+        self.themes[self.active].draw_handle(shared, draw, window)
     }
 
     fn clear_color(&self) -> Colour {

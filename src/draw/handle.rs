@@ -298,9 +298,9 @@ pub trait DrawHandle {
 
     /// Target area for drawing
     ///
-    /// If this instance of [`DrawHandle`] was created via
-    /// [`DrawHandle::clip_region`], then this returns the `rect` passed to
-    /// that method; otherwise this returns the window's `rect`.
+    /// Drawing is restricted to this [`Rect`], which is either the window or a
+    /// [clip region](DrawHandle::clip_region). This may be used to cull hidden
+    /// items from lists inside a scrollable view.
     fn target_rect(&self) -> Rect;
 
     /// Draw a frame inside the given `rect`

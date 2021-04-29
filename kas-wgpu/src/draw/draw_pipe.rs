@@ -351,6 +351,11 @@ impl<CW: CustomWindow> Draw for DrawWindow<CW> {
     }
 
     #[inline]
+    fn get_clip_rect(&self, pass: Pass) -> Rect {
+        self.clip_regions[pass.pass()]
+    }
+
+    #[inline]
     fn rect(&mut self, pass: Pass, rect: Quad, col: Colour) {
         self.shaded_square.rect(pass, rect, col);
     }
