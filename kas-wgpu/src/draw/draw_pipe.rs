@@ -414,10 +414,11 @@ impl<CW: CustomWindow> DrawShaded for DrawWindow<CW> {
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
-        col: Colour,
+        outer_col: Colour,
+        inner_col: Colour,
     ) {
         self.shaded_square
-            .shaded_frame(pass, outer, inner, Vec2::from(norm), col);
+            .shaded_frame(pass, outer, inner, Vec2::from(norm), outer_col, inner_col);
     }
 
     #[inline]

@@ -186,8 +186,9 @@ where
         let mut outer = Quad::from(outer);
         let mut inner = outer.shrink(self.window.dims.frame as f32);
 
+        let col = self.cols.background;
         self.draw
-            .shaded_square_frame(self.pass, outer, inner, (-0.6, 0.0), self.cols.background);
+            .shaded_square_frame(self.pass, outer, inner, (-0.6, 0.0), col, col);
 
         if let Some(col) = nav_col {
             outer = inner;
@@ -268,10 +269,15 @@ where
     fn menu_frame(&mut self, rect: Rect) {
         let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(self.window.dims.frame as f32);
-        let norm = (0.7, 0.0);
-        let col = self.cols.background;
-        self.draw
-            .shaded_round_frame(self.pass, outer, inner, norm, col);
+        let norm = (0.0, 0.0);
+        self.draw.shaded_square_frame(
+            self.pass,
+            outer,
+            inner,
+            norm,
+            Colour::TRANSPARENT,
+            Colour::BLACK,
+        );
         self.draw.rect(self.pass, inner, self.cols.background);
     }
 

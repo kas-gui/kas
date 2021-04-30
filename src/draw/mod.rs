@@ -275,7 +275,8 @@ pub trait DrawShaded: Draw {
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
-        col: Colour,
+        outer_col: Colour,
+        inner_col: Colour,
     );
 
     /// Add a rounded shaded frame to the draw buffer.

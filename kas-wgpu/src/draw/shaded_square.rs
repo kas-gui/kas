@@ -65,7 +65,7 @@ impl Pipeline {
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
                     format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                    blend: None,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
             }),
@@ -147,11 +147,11 @@ impl Window {
     #[inline]
     pub fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Colour) {
         let norm = Vec2::splat(0.0);
-        self.shaded_frame(pass, outer, inner, norm, col);
+        self.shaded_frame(pass, outer, inner, norm, col, col);
     }
 
     /// Add a frame to the buffer, defined by two outer corners, `aa` and `bb`,
-    /// and two inner corners, `cc` and `dd` with colour `col`.
+    /// and two inner corners, `cc` and `dd` with colours `outer_col`, `inner_col`.
     ///
     /// Bounds on input: `aa < cc < dd < bb` and `-1 ≤ norm ≤ 1`.
     pub fn shaded_frame(
@@ -160,7 +160,8 @@ impl Window {
         outer: Quad,
         inner: Quad,
         mut norm: Vec2,
-        col: Colour,
+        outer_col: Colour,
+        inner_col: Colour,
     ) {
         let aa = outer.a;
         let bb = outer.b;
@@ -189,7 +190,8 @@ impl Window {
         let cd = Vec2(cc.0, dd.1);
         let dc = Vec2(dd.0, cc.1);
 
-        let col = col.into();
+        let outer_col = outer_col.into();
+        let inner_col = inner_col.into();
         let tt = (Vec2(0.0, -norm.1), Vec2(0.0, -norm.0));
         let tl = (Vec2(-norm.1, 0.0), Vec2(-norm.0, 0.0));
         let tb = (Vec2(0.0, norm.1), Vec2(0.0, norm.0));
@@ -198,17 +200,17 @@ impl Window {
         #[rustfmt::skip]
         self.add_vertices(pass.pass(), &[
             // top bar: ba - dc - cc - aa
-            Vertex(ba, col, tt.0), Vertex(dc, col, tt.1), Vertex(aa, col, tt.0),
-            Vertex(aa, col, tt.0), Vertex(dc, col, tt.1), Vertex(cc, col, tt.1),
+            Vertex(ba, outer_col, tt.0), Vertex(dc, inner_col, tt.1), Vertex(aa, outer_col, tt.0),
+            Vertex(aa, outer_col, tt.0), Vertex(dc, inner_col, tt.1), Vertex(cc, inner_col, tt.1),
             // left bar: aa - cc - cd - ab
-            Vertex(aa, col, tl.0), Vertex(cc, col, tl.1), Vertex(ab, col, tl.0),
-            Vertex(ab, col, tl.0), Vertex(cc, col, tl.1), Vertex(cd, col, tl.1),
+            Vertex(aa, outer_col, tl.0), Vertex(cc, inner_col, tl.1), Vertex(ab, outer_col, tl.0),
+            Vertex(ab, outer_col, tl.0), Vertex(cc, inner_col, tl.1), Vertex(cd, inner_col, tl.1),
             // bottom bar: ab - cd - dd - bb
-            Vertex(ab, col, tb.0), Vertex(cd, col, tb.1), Vertex(bb, col, tb.0),
-            Vertex(bb, col, tb.0), Vertex(cd, col, tb.1), Vertex(dd, col, tb.1),
+            Vertex(ab, outer_col, tb.0), Vertex(cd, inner_col, tb.1), Vertex(bb, outer_col, tb.0),
+            Vertex(bb, outer_col, tb.0), Vertex(cd, inner_col, tb.1), Vertex(dd, inner_col, tb.1),
             // right bar: bb - dd - dc - ba
-            Vertex(bb, col, tr.0), Vertex(dd, col, tr.1), Vertex(ba, col, tr.0),
-            Vertex(ba, col, tr.0), Vertex(dd, col, tr.1), Vertex(dc, col, tr.1),
+            Vertex(bb, outer_col, tr.0), Vertex(dd, inner_col, tr.1), Vertex(ba, outer_col, tr.0),
+            Vertex(ba, outer_col, tr.0), Vertex(dd, inner_col, tr.1), Vertex(dc, inner_col, tr.1),
         ]);
     }
 }
