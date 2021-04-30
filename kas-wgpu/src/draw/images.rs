@@ -9,6 +9,7 @@ use guillotiere::AllocId;
 use image::RgbaImage;
 use std::collections::HashMap;
 use std::mem::size_of;
+use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -80,7 +81,7 @@ impl Image {
         // TODO(opt): use an upload buffer and encoder.copy_buffer_to_texture?
         let size = self.image.dimensions();
         queue.write_texture(
-            wgpu::TextureCopyView {
+            wgpu::ImageCopyTexture {
                 texture: atlas_pipe.get_texture(self.atlas),
                 mip_level: 0,
                 origin: wgpu::Origin3d {
@@ -90,15 +91,15 @@ impl Image {
                 },
             },
             &self.image,
-            wgpu::TextureDataLayout {
+            wgpu::ImageDataLayout {
                 offset: 0,
-                bytes_per_row: 4 * size.0,
-                rows_per_image: size.1,
+                bytes_per_row: NonZeroU32::new(4 * size.0),
+                rows_per_image: NonZeroU32::new(size.1),
             },
             wgpu::Extent3d {
                 width: size.0,
                 height: size.1,
-                depth: 1,
+                depth_or_array_layers: 1,
             },
         );
     }
@@ -148,10 +149,10 @@ impl Images {
                     array_stride: size_of::<Instance>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Instance,
                     attributes: &wgpu::vertex_attr_array![
-                        0 => Float2,
-                        1 => Float2,
-                        2 => Float2,
-                        3 => Float2,
+                        0 => Float32x2,
+                        1 => Float32x2,
+                        2 => Float32x2,
+                        3 => Float32x2,
                     ],
                 }],
             },

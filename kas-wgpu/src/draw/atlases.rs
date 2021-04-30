@@ -45,7 +45,7 @@ impl Atlas {
             size: wgpu::Extent3d {
                 width: size.width.cast(),
                 height: size.height.cast(),
-                depth: 1,
+                depth_or_array_layers: 1,
             },
             mip_level_count: 1,
             sample_count: 1,
@@ -141,8 +141,10 @@ impl<I: bytemuck::Pod> Pipeline<I> {
                 topology: wgpu::PrimitiveTopology::TriangleStrip,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
-                cull_mode: wgpu::CullMode::Back,
+                cull_mode: Some(wgpu::Face::Back), // not required
+                clamp_depth: false,
                 polygon_mode: wgpu::PolygonMode::Fill,
+                conservative: false,
             },
             depth_stencil: None,
             multisample: Default::default(),
@@ -151,12 +153,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
                     format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                    alpha_blend: wgpu::BlendState::REPLACE,
-                    color_blend: wgpu::BlendState {
-                        src_factor: wgpu::BlendFactor::SrcAlpha,
-                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
-                        operation: wgpu::BlendOperation::Add,
-                    },
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
             }),
@@ -269,12 +266,17 @@ impl<I: bytemuck::Pod> Pipeline<I> {
     ) {
         if let Some(buffer) = window.buffer.as_ref() {
             if let Some(pass) = window.passes.get(pass) {
+                if pass.data_range.is_empty() {
+                    return;
+                }
                 rpass.set_pipeline(&self.render_pipeline);
                 rpass.set_bind_group(0, bg_common, &[]);
                 rpass.set_vertex_buffer(0, buffer.slice(pass.data_range.clone()));
                 for (a, atlas) in pass.atlases.iter().enumerate() {
-                    rpass.set_bind_group(1, &self.atlases[a].bg, &[]);
-                    rpass.draw(0..4, atlas.range.clone());
+                    if !atlas.range.is_empty() {
+                        rpass.set_bind_group(1, &self.atlases[a].bg, &[]);
+                        rpass.draw(0..4, atlas.range.clone());
+                    }
                 }
             }
         }

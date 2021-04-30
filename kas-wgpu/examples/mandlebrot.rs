@@ -100,15 +100,17 @@ impl CustomPipeBuilder for PipeBuilder {
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Float2],
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x2],
                 }],
             },
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
-                cull_mode: wgpu::CullMode::Back,
+                cull_mode: Some(wgpu::Face::Back), // not required
+                clamp_depth: false,
                 polygon_mode: wgpu::PolygonMode::Fill,
+                conservative: false,
             },
             depth_stencil: None,
             multisample: Default::default(),
@@ -117,8 +119,7 @@ impl CustomPipeBuilder for PipeBuilder {
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
                     format: tex_format,
-                    alpha_blend: wgpu::BlendState::REPLACE,
-                    color_blend: wgpu::BlendState::REPLACE,
+                    blend: None,
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
             }),
