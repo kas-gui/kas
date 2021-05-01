@@ -211,8 +211,7 @@ where
 
         if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(thickness / 4.0);
-            self.draw
-                .rounded_frame(self.pass, outer, inner, 2.0 / 3.0, col);
+            self.draw.rounded_frame(self.pass, outer, inner, 0.6, col);
         }
     }
 }
@@ -344,7 +343,7 @@ where
 
         if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(self.window.dims.inner_margin as f32);
-            self.draw.rounded_frame(self.pass, outer, inner, 0.5, col);
+            self.draw.rounded_frame(self.pass, outer, inner, 0.6, col);
         }
     }
 

@@ -21,6 +21,10 @@ use kas::geom::*;
 use kas::text::format::FormattableText;
 use kas::text::{AccelString, Effect, Text, TextApi, TextDisplay};
 
+// Used to ensure a rectangular background is inside a circular corner.
+// Also the maximum inner radius of circular borders to overlap with this rect.
+const BG_SHRINK_FACTOR: f32 = 1.0 - std::f32::consts::FRAC_1_SQRT_2;
+
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
 pub struct FlatTheme {
@@ -172,7 +176,7 @@ where
     /// - `nav_col`: colour of navigation highlight, if visible
     fn draw_edit_box(&mut self, outer: Rect, bg_col: Colour, nav_col: Option<Colour>) -> Quad {
         let outer = Quad::from(outer);
-        let inner1 = outer.shrink(self.window.dims.frame as f32 / 2.0);
+        let inner1 = outer.shrink(self.window.dims.frame as f32 * BG_SHRINK_FACTOR);
         let inner2 = outer.shrink(self.window.dims.frame as f32);
 
         self.draw.rect(self.pass, inner1, bg_col);
@@ -180,10 +184,10 @@ where
         // We draw over the inner rect, taking advantage of the fact that
         // rounded frames get drawn after flat rects.
         self.draw
-            .rounded_frame(self.pass, outer, inner2, 0.333, self.cols.frame);
+            .rounded_frame(self.pass, outer, inner2, BG_SHRINK_FACTOR, self.cols.frame);
 
         if let Some(col) = nav_col {
-            self.draw.rounded_frame(self.pass, inner1, inner2, 0.0, col);
+            self.draw.rounded_frame(self.pass, inner1, inner2, 0.6, col);
         }
 
         inner2
@@ -199,8 +203,7 @@ where
 
         if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(thickness / 4.0);
-            self.draw
-                .rounded_frame(self.pass, outer, inner, 2.0 / 3.0, col);
+            self.draw.rounded_frame(self.pass, outer, inner, 0.6, col);
         }
     }
 }
@@ -238,8 +241,8 @@ where
             let outer = Quad::from(outer_rect);
             let inner = Quad::from(inner_rect);
             self.draw
-                .rounded_frame(pass, outer, inner, 0.5, self.cols.frame);
-            let inner = outer.shrink(self.window.dims.frame as f32 / 3.0);
+                .rounded_frame(pass, outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
+            let inner = outer.shrink(self.window.dims.frame as f32 * BG_SHRINK_FACTOR);
             self.draw.rect(pass, inner, self.cols.background);
         }
 
@@ -263,14 +266,14 @@ where
         let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(self.window.dims.frame as f32);
         self.draw
-            .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
+            .rounded_frame(self.pass, outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
     }
 
     fn separator(&mut self, rect: Rect) {
         let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);
         self.draw
-            .rounded_frame(self.pass, outer, inner, 0.5, self.cols.frame);
+            .rounded_frame(self.pass, outer, inner, BG_SHRINK_FACTOR, self.cols.frame);
     }
 
     fn nav_frame(&mut self, rect: Rect, state: InputState) {
@@ -410,8 +413,8 @@ where
         self.draw.rect(self.pass, inner, col);
 
         if let Some(col) = self.cols.nav_region(state) {
-            let outer = outer.shrink(self.window.dims.button_frame as f32 / 3.0);
-            self.draw.rounded_frame(self.pass, outer, inner, 0.5, col);
+            let outer = outer.shrink(self.window.dims.inner_margin as f32);
+            self.draw.rounded_frame(self.pass, outer, inner, 0.6, col);
         }
     }
 
@@ -444,7 +447,7 @@ where
 
         if let Some(col) = self.cols.check_mark_state(state, checked) {
             let inner = inner.shrink(self.window.dims.inner_margin as f32);
-            self.draw.circle(self.pass, inner, 0.3, col);
+            self.draw.circle(self.pass, inner, 0.5, col);
         }
     }
 
@@ -478,7 +481,8 @@ where
         let outer = Quad::from(rect + self.offset);
         let mut inner = outer.shrink(self.window.dims.frame as f32);
         let col = self.cols.frame;
-        self.draw.rounded_frame(self.pass, outer, inner, 0.0, col);
+        self.draw
+            .rounded_frame(self.pass, outer, inner, BG_SHRINK_FACTOR, col);
 
         if dir.is_horizontal() {
             inner.b.0 = inner.a.0 + value * (inner.b.0 - inner.a.0);
