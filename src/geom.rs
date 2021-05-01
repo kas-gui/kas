@@ -606,6 +606,15 @@ impl Rect {
         let size = self.size.clamped_sub(Size::splat(n + n));
         Rect { pos, size }
     }
+
+    /// Expand self in all directions by the given `n`
+    #[inline]
+    pub fn expand(&self, n: i32) -> Rect {
+        debug_assert!(n >= 0);
+        let pos = self.pos - Offset::splat(n);
+        let size = self.size + Size::splat(n + n);
+        Rect { pos, size }
+    }
 }
 
 impl std::ops::Add<Offset> for Rect {

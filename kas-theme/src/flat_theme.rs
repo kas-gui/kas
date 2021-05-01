@@ -227,8 +227,22 @@ where
         class: RegionClass,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
-        let rect = rect + self.offset;
-        let pass = self.draw.add_clip_region(self.pass, rect, class);
+        let inner_rect = rect + self.offset;
+        let outer_rect = match class {
+            RegionClass::ScrollRegion => inner_rect,
+            RegionClass::Overlay => inner_rect.expand(self.window.dims.frame),
+        };
+        let pass = self.draw.add_clip_region(self.pass, outer_rect, class);
+
+        if class == RegionClass::Overlay {
+            let outer = Quad::from(outer_rect);
+            let inner = Quad::from(inner_rect);
+            self.draw
+                .rounded_frame(pass, outer, inner, 0.5, self.cols.frame);
+            let inner = outer.shrink(self.window.dims.frame as f32 / 3.0);
+            self.draw.rect(pass, inner, self.cols.background);
+        }
+
         let mut handle = DrawHandle {
             shared: self.shared,
             draw: self.draw,
