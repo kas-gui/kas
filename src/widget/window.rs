@@ -145,11 +145,12 @@ impl<W: Widget> Layout for Window<W> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         let disabled = disabled || self.is_disabled();
         self.w.draw(draw_handle, mgr, disabled);
-        for popup in &self.popups {
-            draw_handle.overlay(self.core.rect, &mut |draw_handle| {
-                self.find_leaf(popup.1.id)
-                    .map(|w| w.draw(draw_handle, mgr, disabled));
-            });
+        for (_, popup) in &self.popups {
+            if let Some(widget) = self.find_leaf(popup.id) {
+                draw_handle.overlay(widget.rect(), &mut |draw_handle| {
+                    widget.draw(draw_handle, mgr, disabled);
+                });
+            }
         }
     }
 }
