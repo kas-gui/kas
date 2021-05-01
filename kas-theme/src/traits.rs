@@ -9,7 +9,6 @@ use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
 use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
-use kas::geom::Rect;
 
 /// A *theme* provides widget sizing and drawing implementations.
 ///
@@ -75,7 +74,6 @@ pub trait Theme<D: DrawShared>: ThemeApi {
         shared: &mut D,
         draw: &mut D::Draw,
         window: &mut Self::Window,
-        rect: Rect,
     ) -> Self::DrawHandle;
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
@@ -83,7 +81,6 @@ pub trait Theme<D: DrawShared>: ThemeApi {
         shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
-        rect: Rect,
     ) -> Self::DrawHandle<'a>;
 
     /// Background colour
@@ -141,9 +138,8 @@ impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
         shared: &mut D,
         draw: &mut D::Draw,
         window: &mut Self::Window,
-        rect: Rect,
     ) -> Self::DrawHandle {
-        self.deref().draw_handle(shared, draw, window, rect)
+        self.deref().draw_handle(shared, draw, window)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
@@ -151,9 +147,8 @@ impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
         shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
-        rect: Rect,
     ) -> Self::DrawHandle<'a> {
-        self.deref().draw_handle(shared, draw, window, rect)
+        self.deref().draw_handle(shared, draw, window)
     }
 
     fn clear_color(&self) -> Colour {

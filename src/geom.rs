@@ -561,9 +561,12 @@ pub struct Rect {
 }
 
 impl Rect {
+    /// The empty rect (all fields zero)
+    pub const ZERO: Self = Self::new(Coord::ZERO, Size::ZERO);
+
     /// Construct from a [`Coord`] and [`Size`]
     #[inline]
-    pub fn new(pos: Coord, size: Size) -> Self {
+    pub const fn new(pos: Coord, size: Size) -> Self {
         Rect { pos, size }
     }
 
@@ -601,6 +604,15 @@ impl Rect {
     pub fn shrink(&self, n: i32) -> Rect {
         let pos = self.pos + Offset::splat(n);
         let size = self.size.clamped_sub(Size::splat(n + n));
+        Rect { pos, size }
+    }
+
+    /// Expand self in all directions by the given `n`
+    #[inline]
+    pub fn expand(&self, n: i32) -> Rect {
+        debug_assert!(n >= 0);
+        let pos = self.pos - Offset::splat(n);
+        let size = self.size + Size::splat(n + n);
         Rect { pos, size }
     }
 }

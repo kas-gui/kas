@@ -322,18 +322,15 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
     pub(crate) fn do_draw(&mut self, shared: &mut SharedState<C, T>) {
         let time = Instant::now();
-        let rect = Rect::new(Coord::ZERO, self.sc_size());
 
         shared.draw.text.prepare_fonts();
 
         unsafe {
             // Safety: we must drop draw_handle after draw call (wrong lifetime)
-            let mut draw_handle = shared.theme.draw_handle(
-                &mut shared.draw,
-                &mut self.draw,
-                &mut self.theme_window,
-                rect,
-            );
+            let mut draw_handle =
+                shared
+                    .theme
+                    .draw_handle(&mut shared.draw, &mut self.draw, &mut self.theme_window);
             self.widget.draw(&mut draw_handle, &self.mgr, false);
         }
 

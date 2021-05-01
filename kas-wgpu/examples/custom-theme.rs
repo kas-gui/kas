@@ -10,7 +10,6 @@ use std::cell::Cell;
 
 use kas::draw::*;
 use kas::event::{Manager, VoidMsg, VoidResponse};
-use kas::geom::Rect;
 use kas::macros::{make_widget, VoidMsg};
 use kas::widget::*;
 use kas_theme::Theme;
@@ -76,9 +75,8 @@ where
         shared: &mut D,
         draw: &mut D::Draw,
         window: &mut Self::Window,
-        rect: Rect,
     ) -> Self::DrawHandle {
-        Theme::<D>::draw_handle(&self.inner, shared, draw, window, rect)
+        Theme::<D>::draw_handle(&self.inner, shared, draw, window)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
@@ -86,9 +84,8 @@ where
         shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
-        rect: Rect,
     ) -> Self::DrawHandle<'a> {
-        Theme::<D>::draw_handle(&self.inner, shared, draw, window, rect)
+        Theme::<D>::draw_handle(&self.inner, shared, draw, window)
     }
 
     fn clear_color(&self) -> Colour {

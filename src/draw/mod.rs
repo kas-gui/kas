@@ -186,7 +186,12 @@ pub trait Draw: Any {
     /// Add a clip region
     ///
     /// Clip regions are cleared each frame and so must be recreated on demand.
-    fn add_clip_region(&mut self, rect: Rect) -> Pass;
+    fn add_clip_region(&mut self, pass: Pass, rect: Rect, class: RegionClass) -> Pass;
+
+    /// Get drawable rect for a clip region
+    ///
+    /// (This may be smaller than the rect passed to [`Draw::add_clip_region`].)
+    fn get_clip_rect(&self, pass: Pass) -> Rect;
 
     /// Draw a rectangle of uniform colour
     fn rect(&mut self, pass: Pass, rect: Quad, col: Colour);
@@ -270,7 +275,8 @@ pub trait DrawShaded: Draw {
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
-        col: Colour,
+        outer_col: Colour,
+        inner_col: Colour,
     );
 
     /// Add a rounded shaded frame to the draw buffer.

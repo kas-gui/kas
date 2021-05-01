@@ -10,7 +10,6 @@ use std::ops::DerefMut;
 
 use super::{StackDst, Theme, Window};
 use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
-use kas::geom::Rect;
 
 /// As [`Theme`], but without associated types
 ///
@@ -51,7 +50,6 @@ pub trait ThemeDst<D: DrawShared>: ThemeApi {
         shared: &mut D,
         draw: &mut D::Draw,
         window: &mut dyn WindowDst<D>,
-        rect: Rect,
     ) -> StackDst<dyn DrawHandle>;
 
     /// Construct a [`DrawHandle`] object
@@ -65,7 +63,6 @@ pub trait ThemeDst<D: DrawShared>: ThemeApi {
         shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut dyn WindowDst<D>,
-        rect: Rect,
     ) -> StackDst<dyn DrawHandle + 'a>;
 
     /// Background colour
@@ -111,10 +108,9 @@ where
         shared: &mut D,
         draw: &mut D::Draw,
         window: &mut dyn WindowDst<D>,
-        rect: Rect,
     ) -> StackDst<dyn DrawHandle> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<D>>::draw_handle(self, shared, draw, window, rect);
+        let h = <T as Theme<D>>::draw_handle(self, shared, draw, window);
         #[cfg(feature = "unsize")]
         {
             StackDst::new_or_boxed(h)
@@ -153,10 +149,9 @@ impl<'a, D: DrawShared, T: Theme<D>> ThemeDst<D> for T {
         shared: &'b mut D,
         draw: &'b mut D::Draw,
         window: &'b mut dyn WindowDst<D>,
-        rect: Rect,
     ) -> StackDst<dyn DrawHandle + 'b> {
         let window = window.as_any_mut().downcast_mut().unwrap();
-        let h = <T as Theme<D>>::draw_handle(self, shared, draw, window, rect);
+        let h = <T as Theme<D>>::draw_handle(self, shared, draw, window);
         StackDst::new_or_boxed(h)
     }
 

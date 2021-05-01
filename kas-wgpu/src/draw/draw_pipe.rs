@@ -12,7 +12,7 @@ use wgpu::util::DeviceExt;
 
 use super::*;
 use kas::cast::Cast;
-use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, Pass};
+use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, Pass, RegionClass};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
 
@@ -209,6 +209,9 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         // We use a separate render pass for each clipped region.
         for (pass, rect) in window.clip_regions.iter().enumerate() {
+            if rect.size.0 == 0 || rect.size.1 == 0 {
+                continue;
+            }
             let bg_common = &window.bg_common;
 
             {
@@ -339,15 +342,21 @@ impl<CW: CustomWindow> Draw for DrawWindow<CW> {
         self
     }
 
-    fn add_clip_region(&mut self, rect: Rect) -> Pass {
-        let window_rect = self.clip_regions[0];
-        let rect = rect.intersection(&window_rect).unwrap_or_else(|| {
-            log::warn!("add_clip_region: intersection of rect and window rect is empty");
-            Rect::new(Coord::ZERO, Size::ZERO)
-        });
+    fn add_clip_region(&mut self, pass: Pass, rect: Rect, class: RegionClass) -> Pass {
+        let parent = match class {
+            RegionClass::ScrollRegion => pass.pass(),
+            RegionClass::Overlay => 0,
+        };
+        let parent_rect = self.clip_regions[parent];
+        let rect = rect.intersection(&parent_rect).unwrap_or(Rect::ZERO);
         let pass = self.clip_regions.len().cast();
         self.clip_regions.push(rect);
         Pass::new(pass)
+    }
+
+    #[inline]
+    fn get_clip_rect(&self, pass: Pass) -> Rect {
+        self.clip_regions[pass.pass()]
     }
 
     #[inline]
@@ -405,10 +414,11 @@ impl<CW: CustomWindow> DrawShaded for DrawWindow<CW> {
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
-        col: Colour,
+        outer_col: Colour,
+        inner_col: Colour,
     ) {
         self.shaded_square
-            .shaded_frame(pass, outer, inner, Vec2::from(norm), col);
+            .shaded_frame(pass, outer, inner, Vec2::from(norm), outer_col, inner_col);
     }
 
     #[inline]

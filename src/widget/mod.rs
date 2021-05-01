@@ -28,7 +28,6 @@
 //! -   [`ComboBox`]: a simple pop-up selector
 //! -   [`MenuBar`], [`SubMenu`]: menu parent widgets
 //! -   [`MenuEntry`], [`MenuToggle`], [`Separator`]: menu entries
-//! -   [`MenuFrame`]: edges of a pop-up menu
 //!
 //! ## Controls
 //!

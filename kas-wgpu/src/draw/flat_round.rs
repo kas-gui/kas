@@ -235,7 +235,8 @@ impl Window {
             dd = cc;
         }
 
-        let inner = inner_radius.max(0.0).min(1.0);
+        let inner = inner_radius.clamp(0.0, 1.0);
+        let inner = inner * inner; // shader compares to square
 
         let col = col.into();
 

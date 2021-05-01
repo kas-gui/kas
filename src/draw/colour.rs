@@ -19,6 +19,18 @@ pub struct Colour {
 }
 
 impl Colour {
+    /// Transparent black
+    pub const TRANSPARENT: Colour = Colour {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        a: 0.0,
+    };
+    /// Opaque white
+    pub const WHITE: Colour = Colour::grey(1.0);
+    /// Opaque black
+    pub const BLACK: Colour = Colour::grey(0.0);
+
     /// Constructor
     pub const fn new(r: f32, g: f32, b: f32) -> Self {
         Colour { r, g, b, a: 1.0 }

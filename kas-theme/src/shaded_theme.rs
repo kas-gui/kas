@@ -11,8 +11,8 @@ use std::ops::Range;
 use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::dir::{Direction, Directional};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, InputState, Pass, SizeHandle,
-    TextClass, ThemeAction, ThemeApi,
+    self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, InputState, Pass,
+    RegionClass, SizeHandle, TextClass, ThemeAction, ThemeApi,
 };
 use kas::geom::*;
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
@@ -68,7 +68,6 @@ pub struct DrawHandle<'a, D: DrawShared> {
     draw: &'a mut D::Draw,
     window: &'a mut DimensionsWindow,
     cols: &'a ThemeColours,
-    rect: Rect,
     offset: Offset,
     pass: Pass,
 }
@@ -104,7 +103,6 @@ where
         shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
-        rect: Rect,
     ) -> Self::DrawHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
         unsafe fn extend_lifetime<'b, T>(r: &'b mut T) -> &'static mut T {
@@ -116,7 +114,6 @@ where
             draw: extend_lifetime(draw),
             window: extend_lifetime(window),
             cols: std::mem::transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
-            rect,
             offset: Offset::ZERO,
             pass: Pass::new(0),
         }
@@ -127,14 +124,12 @@ where
         shared: &'a mut D,
         draw: &'a mut D::Draw,
         window: &'a mut Self::Window,
-        rect: Rect,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {
             shared,
             draw,
             window,
             cols: &self.cols,
-            rect,
             offset: Offset::ZERO,
             pass: Pass::new(0),
         }
@@ -176,7 +171,6 @@ where
             draw: *&mut self.draw,
             window: *&mut self.window,
             cols: *&self.cols,
-            rect: self.rect,
             offset: self.offset,
             pass: self.pass,
         }
@@ -192,8 +186,9 @@ where
         let mut outer = Quad::from(outer);
         let mut inner = outer.shrink(self.window.dims.frame as f32);
 
+        let col = self.cols.background;
         self.draw
-            .shaded_square_frame(self.pass, outer, inner, (-0.6, 0.0), self.cols.background);
+            .shaded_square_frame(self.pass, outer, inner, (-0.6, 0.0), col, col);
 
         if let Some(col) = nav_col {
             outer = inner;
@@ -216,8 +211,7 @@ where
 
         if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(thickness / 4.0);
-            self.draw
-                .rounded_frame(self.pass, outer, inner, 2.0 / 3.0, col);
+            self.draw.rounded_frame(self.pass, outer, inner, 0.6, col);
         }
     }
 }
@@ -237,20 +231,40 @@ where
         (self.pass, self.offset, self.draw)
     }
 
-    fn clip_region(
+    fn add_clip_region(
         &mut self,
         rect: Rect,
         offset: Offset,
+        class: RegionClass,
         f: &mut dyn FnMut(&mut dyn draw::DrawHandle),
     ) {
-        let rect = rect + self.offset;
-        let pass = self.draw.add_clip_region(rect);
+        let inner_rect = rect + self.offset;
+        let outer_rect = match class {
+            RegionClass::ScrollRegion => inner_rect,
+            RegionClass::Overlay => inner_rect.expand(self.window.dims.frame),
+        };
+        let pass = self.draw.add_clip_region(self.pass, outer_rect, class);
+
+        if class == RegionClass::Overlay {
+            let outer = Quad::from(outer_rect);
+            let inner = Quad::from(inner_rect);
+            let norm = (0.0, 0.0);
+            self.draw.shaded_square_frame(
+                pass,
+                outer,
+                inner,
+                norm,
+                Colour::TRANSPARENT,
+                Colour::BLACK,
+            );
+            self.draw.rect(pass, inner, self.cols.background);
+        }
+
         let mut handle = DrawHandle {
             shared: self.shared,
             draw: self.draw,
             window: self.window,
             cols: self.cols,
-            rect,
             offset: self.offset - offset,
             pass,
         };
@@ -259,7 +273,7 @@ where
 
     fn target_rect(&self) -> Rect {
         // Translate to local coordinates
-        self.rect - self.offset
+        self.draw.get_clip_rect(self.pass) - self.offset
     }
 
     fn outer_frame(&mut self, rect: Rect) {
@@ -269,16 +283,6 @@ where
         let col = self.cols.background;
         self.draw
             .shaded_round_frame(self.pass, outer, inner, norm, col);
-    }
-
-    fn menu_frame(&mut self, rect: Rect) {
-        let outer = Quad::from(rect + self.offset);
-        let inner = outer.shrink(self.window.dims.frame as f32);
-        let norm = (0.7, 0.0);
-        let col = self.cols.background;
-        self.draw
-            .shaded_round_frame(self.pass, outer, inner, norm, col);
-        self.draw.rect(self.pass, inner, self.cols.background);
     }
 
     fn separator(&mut self, rect: Rect) {
@@ -339,7 +343,7 @@ where
 
         if let Some(col) = self.cols.nav_region(state) {
             let outer = outer.shrink(self.window.dims.inner_margin as f32);
-            self.draw.rounded_frame(self.pass, outer, inner, 0.5, col);
+            self.draw.rounded_frame(self.pass, outer, inner, 0.6, col);
         }
     }
 
