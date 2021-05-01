@@ -5,7 +5,7 @@
 
 //! Sub-menu
 
-use super::{Menu, MenuFrame};
+use super::Menu;
 use kas::draw::TextClass;
 use kas::event::{self, Command, ConfigureManager};
 use kas::prelude::*;
@@ -24,7 +24,7 @@ pub struct SubMenu<D: Directional, W: Menu> {
     label_off: Offset,
     frame_size: Size,
     #[widget]
-    pub list: MenuFrame<Column<W>>,
+    pub list: Column<W>,
     popup_id: Option<WindowId>,
 }
 
@@ -65,7 +65,7 @@ impl<D: Directional, W: Menu> SubMenu<D, W> {
             label: Text::new_single(label.into()),
             label_off: Offset::ZERO,
             frame_size: Size::ZERO,
-            list: MenuFrame::new(Column::new(list)),
+            list: Column::new(list),
             popup_id: None,
         }
     }

@@ -8,7 +8,7 @@
 use std::fmt::{self, Debug};
 use std::rc::Rc;
 
-use super::{Column, MenuEntry, MenuFrame};
+use super::{Column, MenuEntry};
 use kas::draw::TextClass;
 use kas::event::{self, Command, GrabMode};
 use kas::prelude::*;
@@ -109,7 +109,7 @@ impl ComboBox<VoidMsg> {
             frame_size: Default::default(),
             popup: ComboPopup {
                 core: Default::default(),
-                inner: MenuFrame::new(Column::new(entries)),
+                inner: Column::new(entries),
             },
             active,
             opening: false,
@@ -185,7 +185,7 @@ impl<M: 'static> ComboBox<M> {
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn push<T: Into<AccelString>>(&mut self, label: T) -> TkAction {
-        let column = &mut self.popup.inner.inner;
+        let column = &mut self.popup.inner;
         column.push(MenuEntry::new(label, ()))
         // TODO: localised reconfigure
     }
@@ -194,7 +194,7 @@ impl<M: 'static> ComboBox<M> {
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn pop(&mut self) -> (Option<()>, TkAction) {
-        let r = self.popup.inner.inner.pop();
+        let r = self.popup.inner.pop();
         (r.0.map(|_| ()), r.1)
     }
 
@@ -204,7 +204,7 @@ impl<M: 'static> ComboBox<M> {
     ///
     /// Triggers a [reconfigure action](Manager::send_action).
     pub fn insert<T: Into<AccelString>>(&mut self, index: usize, label: T) -> TkAction {
-        let column = &mut self.popup.inner.inner;
+        let column = &mut self.popup.inner;
         column.insert(index, MenuEntry::new(label, ()))
         // TODO: localised reconfigure
     }
@@ -301,7 +301,7 @@ impl<M: 'static> event::Handler for ComboBox<M> {
                 parent: s.id(),
                 direction: Direction::Down,
             });
-            if let Some(id) = s.popup.inner.inner.get_child(s.active).map(|w| w.id()) {
+            if let Some(id) = s.popup.inner.get_child(s.active).map(|w| w.id()) {
                 mgr.set_nav_focus(id);
             }
         };
@@ -405,5 +405,5 @@ struct ComboPopup {
     #[widget_core]
     core: CoreData,
     #[widget]
-    inner: MenuFrame<Column<MenuEntry<()>>>,
+    inner: Column<MenuEntry<()>>,
 }

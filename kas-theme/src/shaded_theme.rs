@@ -266,21 +266,6 @@ where
             .shaded_round_frame(self.pass, outer, inner, norm, col);
     }
 
-    fn menu_frame(&mut self, rect: Rect) {
-        let outer = Quad::from(rect + self.offset);
-        let inner = outer.shrink(self.window.dims.frame as f32);
-        let norm = (0.0, 0.0);
-        self.draw.shaded_square_frame(
-            self.pass,
-            outer,
-            inner,
-            norm,
-            Colour::TRANSPARENT,
-            Colour::BLACK,
-        );
-        self.draw.rect(self.pass, inner, self.cols.background);
-    }
-
     fn separator(&mut self, rect: Rect) {
         let outer = Quad::from(rect + self.offset);
         let inner = outer.shrink(outer.size().min_comp() / 2.0);

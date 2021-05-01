@@ -315,11 +315,6 @@ pub trait DrawHandle {
     /// The frame dimensions equal those of [`SizeHandle::frame`] on each side.
     fn outer_frame(&mut self, rect: Rect);
 
-    /// Draw a menu frame and background inside the given `rect`
-    ///
-    /// The frame dimensions equal those of [`SizeHandle::frame`] on each side.
-    fn menu_frame(&mut self, rect: Rect);
-
     /// Draw a separator in the given `rect`
     fn separator(&mut self, rect: Rect);
 
@@ -673,9 +668,6 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn outer_frame(&mut self, rect: Rect) {
         self.deref_mut().outer_frame(rect);
     }
-    fn menu_frame(&mut self, rect: Rect) {
-        self.deref_mut().menu_frame(rect);
-    }
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);
     }
@@ -761,9 +753,6 @@ where
     }
     fn outer_frame(&mut self, rect: Rect) {
         self.deref_mut().outer_frame(rect);
-    }
-    fn menu_frame(&mut self, rect: Rect) {
-        self.deref_mut().menu_frame(rect);
     }
     fn separator(&mut self, rect: Rect) {
         self.deref_mut().separator(rect);

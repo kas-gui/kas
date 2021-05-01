@@ -8,12 +8,10 @@
 use std::ops::{Deref, DerefMut};
 
 mod menu_entry;
-mod menu_frame;
 mod menubar;
 mod submenu;
 
 pub use menu_entry::{MenuEntry, MenuToggle};
-pub use menu_frame::MenuFrame;
 pub use menubar::MenuBar;
 pub use submenu::SubMenu;
 
