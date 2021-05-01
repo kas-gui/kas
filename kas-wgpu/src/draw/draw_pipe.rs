@@ -106,19 +106,19 @@ impl<C: CustomPipe> DrawPipe<C> {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer {
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                         buffer: &scale_buf,
                         offset: 0,
                         size: None,
-                    },
+                    }),
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Buffer {
+                    resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
                         buffer: &light_norm_buf,
                         offset: 0,
                         size: None,
-                    },
+                    }),
                 },
             ],
         });
@@ -198,8 +198,8 @@ impl<C: CustomPipe> DrawPipe<C> {
             .text
             .write_buffers(device, &mut self.staging_belt, &mut encoder);
 
-        let mut color_attachments = [wgpu::RenderPassColorAttachmentDescriptor {
-            attachment: frame_view,
+        let mut color_attachments = [wgpu::RenderPassColorAttachment {
+            view: frame_view,
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(clear_color),

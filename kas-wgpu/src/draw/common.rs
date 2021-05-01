@@ -119,6 +119,9 @@ impl<V: bytemuck::Pod> Window<V> {
     ) {
         if let Some(buffer) = self.buffer.as_ref() {
             if let Some(pass) = self.passes.get(pass) {
+                if pass.data_range.is_empty() {
+                    return;
+                }
                 rpass.set_pipeline(pipeline);
                 rpass.set_bind_group(0, bg_common, &[]);
                 rpass.set_vertex_buffer(0, buffer.slice(pass.data_range.clone()));

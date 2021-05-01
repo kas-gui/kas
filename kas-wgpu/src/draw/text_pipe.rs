@@ -14,6 +14,7 @@ use kas::text::fonts::{fonts, FontId};
 use kas::text::{Effect, Glyph, TextDisplay};
 use std::collections::hash_map::{Entry, HashMap};
 use std::mem::size_of;
+use std::num::NonZeroU32;
 
 fn to_vec2(p: ab_glyph::Point) -> Vec2 {
     Vec2(p.x, p.y)
@@ -181,11 +182,11 @@ impl Pipeline {
                     array_stride: size_of::<Instance>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Instance,
                     attributes: &wgpu::vertex_attr_array![
-                        0 => Float2,
-                        1 => Float2,
-                        2 => Float2,
-                        3 => Float2,
-                        4 => Float4,
+                        0 => Float32x2,
+                        1 => Float32x2,
+                        2 => Float32x2,
+                        3 => Float32x2,
+                        4 => Float32x4,
                     ],
                 }],
             },
@@ -229,7 +230,7 @@ impl Pipeline {
         }
         for (atlas, origin, size, data) in self.prepare.drain(..) {
             queue.write_texture(
-                wgpu::TextureCopyView {
+                wgpu::ImageCopyTexture {
                     texture: self.atlas_pipe.get_texture(atlas),
                     mip_level: 0,
                     origin: wgpu::Origin3d {
@@ -239,15 +240,15 @@ impl Pipeline {
                     },
                 },
                 &data,
-                wgpu::TextureDataLayout {
+                wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: size.0,
-                    rows_per_image: size.1,
+                    bytes_per_row: NonZeroU32::new(size.0),
+                    rows_per_image: NonZeroU32::new(size.1),
                 },
                 wgpu::Extent3d {
                     width: size.0,
                     height: size.1,
-                    depth: 1,
+                    depth_or_array_layers: 1,
                 },
             );
         }

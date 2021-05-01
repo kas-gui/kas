@@ -8,9 +8,9 @@
 
 precision mediump float;
 
-layout(location = 0) flat in vec4 fragColor;
+layout(location = 0) in vec4 fragColor;
 layout(location = 1) in vec2 dir;
-layout(location = 2) flat in vec2 adjust;
+layout(location = 2) in vec2 adjust;
 layout(location = 3) in vec2 off;
 
 layout(location = 0) out vec4 outColor;
