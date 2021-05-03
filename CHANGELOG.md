@@ -2,6 +2,10 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] — 2021-05-03
+
+-   Fix for spans in grids (landed in master in #184)
+
 ## [0.7.0] — 2021-04-03
 
 The major focus of this release is "view widgets": the ability to construct a
