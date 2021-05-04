@@ -376,8 +376,7 @@
 //!
 //! The structs are both defined with `layout` and `handler` attributes which
 //! are forwarded to the [`derive(Widget)]` macro. Attributes may be applied
-//! like usual, however `#[derive(Clone, Debug, kas::macros::Widget)]`
-//! is implied.
+//! like usual, however `#[derive(Debug, kas::macros::Widget)]` is implied.
 //!
 //! Different from [`derive(Widget)`], one must specify the message type via
 //! either `#[handler(msg = ..)]` or a [`Handler`] implementation. The type does
@@ -400,17 +399,20 @@
 //! of unspecified types, thus this must be emulated with generics. The macro
 //! deals with the necessary type arguments to implementations, however macro
 //! expansions (as sometimes seen in error messages) are ugly and, perhaps worst
-//! of all, the field will have opaque type (making methods and inner fields
-//! inaccessible).
+//! of all, any code outside the `make_widget` macro instance will see the
+//! field type as generic with only the declared bounds.
 //!
-//! The inner-field-acces problem can be worked around via trait bounds:
-//!
+//! Type bounds may be specified using "impl Trait" syntax:
 //! ```nocompile
 //! #[widget] display: impl HasText = EditBox::new("editable"),
 //! ```
 //!
-//! Alternatively, generics can be introduced explicitly:
+//! For widgets, the message type may be specified as follows:
+//! ```nocompile
+//! #[widget] buttons -> MyMessage = make_buttons(),
+//! ```
 //!
+//! Alternatively, generics can be introduced explicitly:
 //! ```nocompile
 //! #[widget] display: for<W: Widget<Msg = VoidMsg>> Frame<W> =
 //!     Frame::new(Label::new("example")),
