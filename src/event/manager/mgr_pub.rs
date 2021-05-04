@@ -569,20 +569,30 @@ impl<'a> Manager<'a> {
     /// This effect is purely visual. A widget is depressed when one or more
     /// grabs targets the widget to depress, or when a keyboard binding is used
     /// to activate a widget (for the duration of the key-press).
-    pub fn set_grab_depress(&mut self, source: PressSource, target: Option<WidgetId>) {
+    ///
+    /// Queues a redraw and returns `true` if the depress target changes,
+    /// otherwise returns `false`.
+    pub fn set_grab_depress(&mut self, source: PressSource, target: Option<WidgetId>) -> bool {
+        let mut redraw = false;
         match source {
             PressSource::Mouse(_, _) => {
                 if let Some(grab) = self.state.mouse_grab.as_mut() {
+                    redraw = grab.depress != target;
                     grab.depress = target;
                 }
             }
             PressSource::Touch(id) => {
                 if let Some(grab) = self.state.touch_grab.get_mut(&id) {
+                    redraw = grab.depress != target;
                     grab.depress = target;
                 }
             }
         }
-        self.state.send_action(TkAction::REDRAW);
+        if redraw {
+            trace!("Manager: set_grab_depress on target={:?}", target);
+            self.state.send_action(TkAction::REDRAW);
+        }
+        redraw
     }
 
     /// Get the current keyboard navigation focus, if any

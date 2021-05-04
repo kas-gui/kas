@@ -132,24 +132,23 @@ impl<W: Menu<Msg = M>, D: Directional, M> event::Handler for MenuBar<W, D> {
                 coord,
                 ..
             } => {
-                if let Some(w) = cur_id.and_then(|id| self.find_leaf(id)) {
-                    if w.key_nav() {
-                        let id = cur_id.unwrap();
-                        mgr.set_grab_depress(source, Some(id));
-                        mgr.set_nav_focus(id);
-                        // We instantly open a sub-menu on motion over the bar,
-                        // but delay when over a sub-menu (most intuitive?)
-                        if self.rect().contains(coord) {
-                            self.delayed_open = None;
-                            self.menu_path(mgr, Some(id));
-                        } else {
-                            self.delayed_open = Some(id);
-                            let delay = mgr.config().menu_delay();
-                            mgr.update_on_timer(delay, self.id(), 0);
-                        }
+                let target_id =
+                    cur_id.filter(|id| self.find_leaf(*id).map(|w| w.key_nav()).unwrap_or(false));
+                if !mgr.set_grab_depress(source, target_id) {
+                    return Response::None;
+                }
+                if let Some(id) = target_id {
+                    mgr.set_nav_focus(id);
+                    // We instantly open a sub-menu on motion over the bar,
+                    // but delay when over a sub-menu (most intuitive?)
+                    if self.rect().contains(coord) {
+                        self.delayed_open = None;
+                        self.menu_path(mgr, Some(id));
+                    } else {
+                        self.delayed_open = Some(id);
+                        let delay = mgr.config().menu_delay();
+                        mgr.update_on_timer(delay, self.id(), 0);
                     }
-                } else {
-                    mgr.set_grab_depress(source, None);
                 }
             }
             Event::PressEnd { coord, end_id, .. } => {
