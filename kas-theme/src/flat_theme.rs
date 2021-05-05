@@ -10,7 +10,7 @@
 use std::f32;
 use std::ops::Range;
 
-use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
+use crate::{Config, Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
 use kas::draw::{
@@ -28,31 +28,35 @@ const BG_SHRINK_FACTOR: f32 = 1.0 - std::f32::consts::FRAC_1_SQRT_2;
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
 pub struct FlatTheme {
-    pt_size: f32,
+    config: Config,
     cols: ThemeColours,
 }
 
 impl FlatTheme {
     /// Construct
+    #[inline]
     pub fn new() -> Self {
         FlatTheme {
-            pt_size: 12.0,
-            cols: ThemeColours::new(),
+            config: Default::default(),
+            cols: ThemeColours::default(),
         }
     }
 
     /// Set font size
     ///
     /// Units: Points per Em (standard unit of font size)
+    #[inline]
     pub fn with_font_size(mut self, pt_size: f32) -> Self {
-        self.pt_size = pt_size;
+        self.config.font_size = pt_size;
         self
     }
 
     /// Set the colour scheme
     ///
     /// If no scheme by this name is found the scheme is left unchanged.
+    #[inline]
     pub fn with_colours(mut self, scheme: &str) -> Self {
+        self.config.color_scheme = scheme.to_owned();
         if let Some(scheme) = ThemeColours::open(scheme) {
             self.cols = scheme;
         }
@@ -98,11 +102,11 @@ where
     }
 
     fn new_window(&self, _draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
-        DimensionsWindow::new(DIMS, self.pt_size, dpi_factor)
+        DimensionsWindow::new(DIMS, self.config.font_size, dpi_factor)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        window.dims = Dimensions::new(DIMS, self.pt_size, dpi_factor);
+        window.dims = Dimensions::new(DIMS, self.config.font_size, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -150,7 +154,7 @@ where
 
 impl ThemeApi for FlatTheme {
     fn set_font_size(&mut self, size: f32) -> ThemeAction {
-        self.pt_size = size;
+        self.config.font_size = size;
         ThemeAction::ThemeResize
     }
 

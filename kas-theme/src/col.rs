@@ -46,6 +46,13 @@ pub struct ThemeColours {
     pub checkbox: Colour,
 }
 
+impl Default for ThemeColours {
+    #[inline]
+    fn default() -> Self {
+        ThemeColours::white_blue()
+    }
+}
+
 impl ThemeColours {
     /// Open the given scheme, if found
     ///
@@ -53,7 +60,7 @@ impl ThemeColours {
     /// external resources. For now, we simply hard-code a few instances.
     pub fn open(scheme: &str) -> Option<Self> {
         Some(match scheme {
-            "default" | "white" => Self::new(),
+            "default" | "white" => Self::white_blue(),
             "grey" => Self::grey(),
             "light" => Self::light(),
             "dark" => Self::dark(),
@@ -64,8 +71,8 @@ impl ThemeColours {
         })
     }
 
-    /// Default theme: white with blue activable items
-    pub fn new() -> Self {
+    /// White background with blue activable items
+    pub fn white_blue() -> Self {
         ThemeColours {
             background: Colour::grey(1.0),
             frame: Colour::grey(0.7),
@@ -88,7 +95,7 @@ impl ThemeColours {
 
     /// Grey with blue activable items
     pub fn grey() -> Self {
-        let mut col = ThemeColours::new();
+        let mut col = ThemeColours::white_blue();
         col.background = Colour::grey(0.8);
         col
     }
