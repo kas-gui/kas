@@ -91,7 +91,7 @@ pub use winit::event::{ModifiersState, MouseButton, VirtualKeyCode};
 #[cfg(feature = "winit")]
 pub use winit::window::CursorIcon;
 
-pub use config::{Config, ConfigError};
+pub use config::Config;
 #[cfg(not(feature = "winit"))]
 pub use enums::{CursorIcon, ModifiersState, MouseButton, VirtualKeyCode};
 pub use events::*;

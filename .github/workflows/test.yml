@@ -68,9 +68,9 @@ jobs:
       - name: test (kas)
         run: |
           cargo test
-          # Note: we must test serde without winit and with winit
-          cargo test --features serde
-          cargo test --features internal_doc,shaping,markdown,yaml,json
+          # Note: we must test config with and without winit
+          cargo test --features config
+          cargo test --features config,winit,internal_doc,shaping,markdown,yaml,json
       - name: test (kas-theme)
         run: cargo test --manifest-path kas-theme/Cargo.toml
       - name: test (kas-wgpu)

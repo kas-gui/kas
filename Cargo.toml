@@ -42,16 +42,16 @@ shaping = ["kas-text/shaping"]
 # Enable Markdown parsing
 markdown = ["kas-text/markdown"]
 
-#TODO: once namespaced-features (cargo#5565) and weak-dep-features (cargo#8832)
-# are stable, enable this and remove the serde feature requirement under dependencies.winit
-# For now, this does work with nightly Cargo and -Z namespaced-features -Z weak-dep-features
-# serde = ["dep:serde", "winit?/serde"]
+# Enable config read/write
+#TODO(cargo): once weak-dep-features (cargo#8832) is stable, add "winit?/serde"
+# and remove the serde feature requirement under dependencies.winit.
+config = ["serde"]
 
 # Enable support for YAML (de)serialisation
-yaml = ["serde", "serde_yaml"]
+yaml = ["config", "serde_yaml"]
 
 # Enable support for JSON (de)serialisation
-json = ["serde", "serde_json"]
+json = ["config", "serde_json"]
 
 [dependencies]
 easy-cast = "0.4.2"

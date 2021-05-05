@@ -58,7 +58,7 @@ pub enum Error {
     NoAdapter,
     /// Config load/save error
     #[error("config load/save error")]
-    Config(#[from] kas::event::ConfigError),
+    Config(#[from] kas::config::Error),
     #[doc(hidden)]
     /// OS error during window creation
     #[error("operating system error")]

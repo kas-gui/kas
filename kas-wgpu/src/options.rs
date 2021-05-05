@@ -159,13 +159,12 @@ impl Options {
     pub fn config(&self) -> Result<kas::event::Config, Error> {
         if !self.config_path.as_os_str().is_empty() {
             match self.config_mode {
-                ConfigMode::Read => Ok(kas::event::Config::from_path(
-                    &self.config_path,
-                    Default::default(),
-                )?),
+                ConfigMode::Read => {
+                    Ok(kas::config::Format::guess_and_read_path(&self.config_path)?)
+                }
                 ConfigMode::WriteDefault => {
                     let config: kas::event::Config = Default::default();
-                    config.write_path(&self.config_path, Default::default())?;
+                    kas::config::Format::guess_and_write_path(&self.config_path, &config)?;
                     Ok(config)
                 }
             }
