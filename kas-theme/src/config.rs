@@ -7,7 +7,8 @@
 
 use crate::ThemeColours;
 use kas::TkAction;
-use std::collections::HashMap;
+#[cfg(feature = "serde")]
+use std::collections::BTreeMap;
 
 /// Event handling configuration
 #[derive(Clone, Debug, PartialEq)]
@@ -29,8 +30,8 @@ pub struct Config {
     ///
     /// TODO: possibly we should not save default schemes and merge when
     /// loading (perhaps via a `PartialConfig` type).
-    #[cfg_attr(feature = "serde", serde(default = "defaults::color_schemes"))]
-    pub color_schemes: HashMap<String, ThemeColours>,
+    #[cfg_attr(feature = "serde", serde(default = "defaults::color_schemes",))]
+    pub color_schemes: BTreeMap<String, ThemeColours>,
 }
 
 impl Default for Config {
@@ -62,8 +63,8 @@ mod defaults {
         12.0
     }
 
-    pub fn color_schemes() -> HashMap<String, ThemeColours> {
-        let mut schemes = HashMap::new();
+    pub fn color_schemes() -> BTreeMap<String, ThemeColours> {
+        let mut schemes = BTreeMap::new();
         schemes.insert("".to_string(), ThemeColours::white_blue());
         schemes.insert("light".to_string(), ThemeColours::light());
         schemes.insert("dark".to_string(), ThemeColours::dark());

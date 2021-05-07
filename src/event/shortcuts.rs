@@ -260,8 +260,14 @@ impl Serialize for Shortcuts {
         S: Serializer,
     {
         let mut map = s.serialize_map(Some(self.map.len()))?;
-        for (k, v) in &self.map {
-            map.serialize_entry(state_to_string(*k), v)?;
+        for (state, bindings) in &self.map {
+            map.serialize_key(state_to_string(*state))?;
+
+            // Sort items in the hash-map to ensure stable order
+            // NOTE: We need a "map type" to ensure entries are serialised as
+            // a map, not as a list. BTreeMap is easier than a shim over a Vec.
+            let bindings: std::collections::BTreeMap<_, _> = bindings.iter().collect();
+            map.serialize_value(&bindings)?;
         }
         map.end()
     }
