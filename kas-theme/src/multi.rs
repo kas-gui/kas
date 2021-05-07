@@ -9,7 +9,7 @@ use std::collections::HashMap;
 #[cfg(feature = "unsize")]
 use std::marker::Unsize;
 
-use crate::{StackDst, Theme, ThemeDst, WindowDst};
+use crate::{Config, StackDst, Theme, ThemeDst, WindowDst};
 use kas::draw::{Colour, DrawHandle, DrawShared, ThemeApi};
 use kas::TkAction;
 
@@ -102,12 +102,32 @@ impl<Draw> MultiThemeBuilder<Draw> {
 }
 
 impl<D: DrawShared> Theme<D> for MultiTheme<D> {
+    type Config = Config;
     type Window = StackDst<dyn WindowDst<D>>;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = StackDst<dyn DrawHandle>;
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = StackDst<dyn DrawHandle + 'a>;
+
+    fn config(&self) -> std::borrow::Cow<Self::Config> {
+        let boxed_config = self.themes[self.active].config();
+        // TODO: write each sub-theme's config instead of this stupid cast!
+        let config: Config = boxed_config
+            .as_ref()
+            .downcast_ref::<Config>()
+            .unwrap()
+            .clone();
+        std::borrow::Cow::Owned(config)
+    }
+
+    fn apply_config(&mut self, config: &Self::Config) -> TkAction {
+        let mut action = TkAction::empty();
+        for theme in &mut self.themes {
+            action |= theme.apply_config(config);
+        }
+        action
+    }
 
     fn init(&mut self, draw: &mut D) {
         for theme in &mut self.themes {

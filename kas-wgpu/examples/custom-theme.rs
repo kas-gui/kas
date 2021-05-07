@@ -49,12 +49,21 @@ impl<D: DrawShared> Theme<D> for CustomTheme
 where
     D::Draw: DrawRounded,
 {
+    type Config = kas_theme::Config;
     type Window = <FlatTheme as Theme<D>>::Window;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = <FlatTheme as Theme<D>>::DrawHandle;
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = <FlatTheme as Theme<D>>::DrawHandle<'a>;
+
+    fn config(&self) -> std::borrow::Cow<Self::Config> {
+        Theme::<D>::config(&self.inner)
+    }
+
+    fn apply_config(&mut self, config: &Self::Config) -> TkAction {
+        Theme::<D>::apply_config(&mut self.inner, config)
+    }
 
     fn init(&mut self, draw: &mut D) {
         self.inner.init(draw);
@@ -94,11 +103,11 @@ where
 
 impl ThemeApi for CustomTheme {
     fn set_font_size(&mut self, size: f32) -> TkAction {
-        ThemeApi::set_font_size(&mut self.inner, size)
+        self.inner.set_font_size(size)
     }
 
     fn set_colours(&mut self, scheme: &str) -> TkAction {
-        ThemeApi::set_colours(&mut self.inner, scheme)
+        self.inner.set_colours(scheme)
     }
 }
 

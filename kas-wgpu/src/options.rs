@@ -6,6 +6,8 @@
 //! Options
 
 use super::Error;
+use kas::draw::DrawShared;
+use kas_theme::Theme;
 use log::warn;
 use std::env::var;
 use std::path::PathBuf;
@@ -27,6 +29,8 @@ pub enum ConfigMode {
 pub struct Options {
     /// Config file path. Default: empty. See `KAS_CONFIG` doc.
     pub config_path: PathBuf,
+    /// Theme config path. Default: empty.
+    pub theme_config_path: PathBuf,
     /// Config mode. Default: Read.
     pub config_mode: ConfigMode,
     /// Adapter power preference. Default value: low power.
@@ -39,6 +43,7 @@ impl Default for Options {
     fn default() -> Self {
         Options {
             config_path: PathBuf::new(),
+            theme_config_path: PathBuf::new(),
             config_mode: ConfigMode::Read,
             power_preference: PowerPreference::LowPower,
             backends: BackendBit::PRIMARY,
@@ -53,14 +58,20 @@ impl Options {
     ///
     /// ### Config
     ///
+    /// WARNING: file formats are not stable and may not be compatible across
+    /// KAS versions (aside from patch versions)!
+    ///
     /// The `KAS_CONFIG` variable, if given, provides a path to the KAS config
-    /// file, where configuration can be read and/or written.
-    ///
-    /// WARNING: file formats are unstable!
-    ///
-    /// If `KAS_CONFIG` is not set, platform-default configuration is used
+    /// file, which is read or written according to `KAS_CONFIG_MODE`.
+    /// If `KAS_CONFIG` is not specified, platform-default configuration is used
     /// without reading or writing. This may change to use a platform-specific
     /// default path in future versions.
+    ///
+    /// The `KAS_THEME_CONFIG` variable, if given, provides a path to the theme
+    /// config file, which is read or written according to `KAS_CONFIG_MODE`.
+    /// If `KAS_THEME_CONFIG` is not specified, platform-default configuration
+    /// is used without reading or writing. This may change to use a
+    /// platform-specific default path in future versions.
     ///
     /// The `KAS_CONFIG_MODE` variable determines the read/write mode:
     ///
@@ -95,6 +106,10 @@ impl Options {
 
         if let Ok(v) = var("KAS_CONFIG") {
             options.config_path = v.into();
+        }
+
+        if let Ok(v) = var("KAS_THEME_CONFIG") {
+            options.theme_config_path = v.into();
         }
 
         if let Ok(mut v) = var("KAS_CONFIG_MODE") {
@@ -155,7 +170,28 @@ impl Options {
         self.backends
     }
 
-    /// Load KAS config
+    /// Load/save theme config
+    pub fn theme_config<D: DrawShared, T: Theme<D>>(&self, theme: &mut T) -> Result<(), Error> {
+        if !self.theme_config_path.as_os_str().is_empty() {
+            match self.config_mode {
+                ConfigMode::Read => {
+                    let config = kas::config::Format::guess_and_read_path(&self.theme_config_path)?;
+                    // Ignore TkAction: UI isn't built yet
+                    let _ = theme.apply_config(&config);
+                }
+                ConfigMode::WriteDefault => {
+                    let config = theme.config();
+                    kas::config::Format::guess_and_write_path(
+                        &self.theme_config_path,
+                        config.as_ref(),
+                    )?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Load/save KAS config
     pub fn config(&self) -> Result<kas::event::Config, Error> {
         if !self.config_path.as_os_str().is_empty() {
             match self.config_mode {

@@ -115,14 +115,17 @@ where
     ///
     /// The [`Options`] parameter allows direct specification of shell options;
     /// usually, these are provided by [`Options::from_env`].
-    /// KAS config is provided by [`Options::config`].
+    ///
+    /// KAS config is provided by [`Options::config`] and `theme` is configured
+    /// through [`Options::theme_config`].
     #[inline]
     pub fn new_custom<CB: CustomPipeBuilder<Pipe = C>>(
         custom: CB,
-        theme: T,
+        mut theme: T,
         options: Options,
     ) -> Result<Self, Error> {
         let el = EventLoop::with_user_event();
+        options.theme_config(&mut theme)?;
         let config = Rc::new(RefCell::new(options.config()?));
         let scale_factor = find_scale_factor(&el);
         Ok(Toolkit {
@@ -136,6 +139,9 @@ where
     ///
     /// This is like [`Toolkit::new_custom`], but allows KAS config to be
     /// specified directly, instead of loading via [`Options::config`].
+    ///
+    /// Unlike other the constructors, this method does not configure the theme.
+    /// The user may wish to call [`Options::theme_config`] before this method.
     #[inline]
     pub fn new_custom_config<CB: CustomPipeBuilder<Pipe = C>>(
         custom: CB,

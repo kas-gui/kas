@@ -39,7 +39,7 @@ pub use flat_theme::FlatTheme;
 pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use shaded_theme::ShadedTheme;
 #[cfg(feature = "stack_dst")]
-pub use theme_dst::{ThemeDst, WindowDst};
+pub use theme_dst::{MaybeBoxed, ThemeDst, WindowDst};
 pub use traits::{Theme, Window};
 
 #[cfg(feature = "stack_dst")]

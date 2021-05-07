@@ -7,9 +7,10 @@
 
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use kas::TkAction;
 
 /// Event handling configuration
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
     /// Standard font size
@@ -30,6 +31,18 @@ impl Default for Config {
         Config {
             font_size: defaults::font_size(),
             color_scheme: Default::default(),
+        }
+    }
+}
+
+impl Config {
+    pub fn action_from_diff(&self, other: &Config) -> TkAction {
+        if self.font_size != other.font_size {
+            TkAction::RESIZE | TkAction::THEME_UPDATE
+        } else if self != other {
+            TkAction::REDRAW
+        } else {
+            TkAction::empty()
         }
     }
 }

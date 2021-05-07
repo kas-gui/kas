@@ -78,12 +78,23 @@ impl<D: DrawShared> Theme<D> for ShadedTheme
 where
     D::Draw: DrawRounded + DrawShaded,
 {
+    type Config = Config;
     type Window = DimensionsWindow;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = DrawHandle<'static, D>;
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = DrawHandle<'a, D>;
+
+    fn config(&self) -> std::borrow::Cow<Self::Config> {
+        std::borrow::Cow::Borrowed(&self.config)
+    }
+
+    fn apply_config(&mut self, config: &Self::Config) -> TkAction {
+        let action = self.config.action_from_diff(config);
+        self.config = config.clone();
+        action
+    }
 
     fn init(&mut self, _draw: &mut D) {
         if let Err(e) = kas::text::fonts::fonts().load_default() {
