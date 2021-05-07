@@ -20,7 +20,13 @@ pub use wgpu::{BackendBit, PowerPreference};
 pub enum ConfigMode {
     /// Read-only mode
     Read,
+    /// Read-write mode
+    ///
+    /// This mode reads config on start and writes changes on exit.
+    ReadWrite,
     /// Use default config and write out
+    ///
+    /// This mode only writes initial (default) config and does not update.
     WriteDefault,
 }
 
@@ -76,6 +82,7 @@ impl Options {
     /// The `KAS_CONFIG_MODE` variable determines the read/write mode:
     ///
     /// -   `Read` (default): read-only
+    /// -   `ReadWrite`: read on start-up, write on exit
     /// -   `WriteDefault`: generate platform-default configuration, and write
     ///     it to the config path, overwriting any existing config
     ///
@@ -116,6 +123,7 @@ impl Options {
             v.make_ascii_uppercase();
             options.config_mode = match v.as_str() {
                 "READ" => ConfigMode::Read,
+                "READWRITE" => ConfigMode::ReadWrite,
                 "WRITEDEFAULT" => ConfigMode::WriteDefault,
                 other => {
                     warn!("Unexpected environment value: KAS_CONFIG_MODE={}", other);
@@ -170,11 +178,11 @@ impl Options {
         self.backends
     }
 
-    /// Load/save theme config
+    /// Load/save theme config on start
     pub fn theme_config<D: DrawShared, T: Theme<D>>(&self, theme: &mut T) -> Result<(), Error> {
         if !self.theme_config_path.as_os_str().is_empty() {
             match self.config_mode {
-                ConfigMode::Read => {
+                ConfigMode::Read | ConfigMode::ReadWrite => {
                     let config = kas::config::Format::guess_and_read_path(&self.theme_config_path)?;
                     // Ignore TkAction: UI isn't built yet
                     let _ = theme.apply_config(&config);
@@ -191,11 +199,11 @@ impl Options {
         Ok(())
     }
 
-    /// Load/save KAS config
+    /// Load/save KAS config on start
     pub fn config(&self) -> Result<kas::event::Config, Error> {
         if !self.config_path.as_os_str().is_empty() {
             match self.config_mode {
-                ConfigMode::Read => {
+                ConfigMode::Read | ConfigMode::ReadWrite => {
                     Ok(kas::config::Format::guess_and_read_path(&self.config_path)?)
                 }
                 ConfigMode::WriteDefault => {
@@ -207,5 +215,26 @@ impl Options {
         } else {
             Ok(Default::default())
         }
+    }
+
+    /// Save all config (on exit or after changes)
+    pub fn save_config<D: DrawShared, T: Theme<D>>(
+        &self,
+        config: &kas::event::Config,
+        theme: &T,
+    ) -> Result<(), Error> {
+        if self.config_mode == ConfigMode::ReadWrite {
+            if !self.config_path.as_os_str().is_empty() {
+                kas::config::Format::guess_and_write_path(&self.config_path, &config)?;
+            }
+            if !self.theme_config_path.as_os_str().is_empty() {
+                let config = theme.config();
+                kas::config::Format::guess_and_write_path(
+                    &self.theme_config_path,
+                    config.as_ref(),
+                )?;
+            }
+        }
+        Ok(())
     }
 }

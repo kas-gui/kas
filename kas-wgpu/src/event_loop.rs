@@ -176,6 +176,7 @@ where
                 self.resumes.sort_by_key(|item| item.0);
 
                 *control_flow = if *control_flow == ControlFlow::Exit || self.windows.is_empty() {
+                    self.shared.on_exit();
                     ControlFlow::Exit
                 } else if *control_flow == ControlFlow::Poll {
                     ControlFlow::Poll

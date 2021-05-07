@@ -38,6 +38,7 @@ pub struct SharedState<C: CustomPipe, T> {
     /// created. This is used to estimate ideal window size.
     pub scale_factor: f64,
     window_id: u32,
+    options: Options,
 }
 
 impl<C: CustomPipe, T: Theme<DrawPipe<C>>> SharedState<C, T>
@@ -84,6 +85,7 @@ where
             pending: vec![],
             scale_factor,
             window_id: 0,
+            options,
         })
     }
 
@@ -188,6 +190,13 @@ where
                 .into_iter()
                 .map(|handle| PendingAction::Update(handle, payload)),
         );
+    }
+
+    pub fn on_exit(&self) {
+        match self.options.save_config(&self.config.borrow(), &self.theme) {
+            Ok(()) => (),
+            Err(error) => warn_about_error("Failed to save config", &error),
+        }
     }
 }
 
