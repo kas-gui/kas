@@ -5,13 +5,13 @@
 
 //! Theme configuration
 
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use crate::ThemeColours;
 use kas::TkAction;
+use std::collections::HashMap;
 
 /// Event handling configuration
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Config {
     /// Standard font size
     ///
@@ -24,6 +24,13 @@ pub struct Config {
     /// An empty string will resolve the default colour scheme.
     #[cfg_attr(feature = "serde", serde(default))]
     pub color_scheme: String,
+
+    /// All colour schemes
+    ///
+    /// TODO: possibly we should not save default schemes and merge when
+    /// loading (perhaps via a `PartialConfig` type).
+    #[cfg_attr(feature = "serde", serde(default = "defaults::color_schemes"))]
+    pub color_schemes: HashMap<String, ThemeColours>,
 }
 
 impl Default for Config {
@@ -31,6 +38,7 @@ impl Default for Config {
         Config {
             font_size: defaults::font_size(),
             color_scheme: Default::default(),
+            color_schemes: defaults::color_schemes(),
         }
     }
 }
@@ -48,7 +56,17 @@ impl Config {
 }
 
 mod defaults {
+    use super::*;
+
     pub fn font_size() -> f32 {
         12.0
+    }
+
+    pub fn color_schemes() -> HashMap<String, ThemeColours> {
+        let mut schemes = HashMap::new();
+        schemes.insert("".to_string(), ThemeColours::white_blue());
+        schemes.insert("light".to_string(), ThemeColours::light());
+        schemes.insert("dark".to_string(), ThemeColours::dark());
+        schemes
     }
 }

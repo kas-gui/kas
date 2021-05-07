@@ -58,8 +58,8 @@ impl FlatTheme {
     #[inline]
     pub fn with_colours(mut self, scheme: &str) -> Self {
         self.config.color_scheme = scheme.to_owned();
-        if let Some(scheme) = ThemeColours::open(scheme) {
-            self.cols = scheme;
+        if let Some(scheme) = self.config.color_schemes.get(scheme) {
+            self.cols = scheme.clone();
         }
         self
     }
@@ -171,8 +171,8 @@ impl ThemeApi for FlatTheme {
     }
 
     fn set_colours(&mut self, scheme: &str) -> TkAction {
-        if let Some(scheme) = ThemeColours::open(scheme) {
-            self.cols = scheme;
+        if let Some(scheme) = self.config.color_schemes.get(scheme) {
+            self.cols = scheme.clone();
             TkAction::REDRAW
         } else {
             TkAction::empty()
