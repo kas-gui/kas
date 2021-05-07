@@ -159,7 +159,15 @@ impl ThemeApi for ShadedTheme {
         TkAction::RESIZE | TkAction::THEME_UPDATE
     }
 
-    fn set_colours(&mut self, scheme: &str) -> TkAction {
+    fn list_schemes(&self) -> Vec<&str> {
+        self.config
+            .color_schemes
+            .keys()
+            .map(|name| &**name)
+            .collect()
+    }
+
+    fn set_scheme(&mut self, scheme: &str) -> TkAction {
         if let Some(scheme) = self.config.color_schemes.get(scheme) {
             self.cols = scheme.clone();
             TkAction::REDRAW

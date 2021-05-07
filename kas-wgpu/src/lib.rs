@@ -158,6 +158,18 @@ where
         })
     }
 
+    /// Access the theme by ref
+    #[inline]
+    pub fn theme(&self) -> &T {
+        &self.shared.theme
+    }
+
+    /// Access the theme by ref mut
+    #[inline]
+    pub fn theme_mut(&mut self) -> &mut T {
+        &mut self.shared.theme
+    }
+
     /// Assume ownership of and display a window
     ///
     /// This is a convenience wrapper around [`Toolkit::add_boxed`].

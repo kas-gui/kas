@@ -171,7 +171,7 @@ impl<D: DrawShared> Theme<D> for MultiTheme<D> {
 impl<Draw> ThemeApi for MultiTheme<Draw> {
     fn set_font_size(&mut self, size: f32) -> TkAction {
         // Slightly inefficient, but sufficient: update both
-        // (Otherwise we would have to call set_colours in set_theme too.)
+        // (Otherwise we would have to call set_scheme in set_theme too.)
         let mut action = TkAction::empty();
         for theme in &mut self.themes {
             action = action.max(theme.set_font_size(size));
@@ -179,14 +179,20 @@ impl<Draw> ThemeApi for MultiTheme<Draw> {
         action
     }
 
-    fn set_colours(&mut self, scheme: &str) -> TkAction {
+    fn set_scheme(&mut self, scheme: &str) -> TkAction {
         // Slightly inefficient, but sufficient: update all
-        // (Otherwise we would have to call set_colours in set_theme too.)
+        // (Otherwise we would have to call set_scheme in set_theme too.)
         let mut action = TkAction::empty();
         for theme in &mut self.themes {
-            action = action.max(theme.set_colours(scheme));
+            action = action.max(theme.set_scheme(scheme));
         }
         action
+    }
+
+    fn list_schemes(&self) -> Vec<&str> {
+        // We list only schemes of the active theme. Probably all themes should
+        // have the same schemes anyway.
+        self.themes[self.active].list_schemes()
     }
 
     fn set_theme(&mut self, theme: &str) -> TkAction {

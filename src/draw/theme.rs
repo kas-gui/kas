@@ -8,7 +8,7 @@
 #[allow(unused)]
 use crate::event::Manager;
 use crate::TkAction;
-use std::ops::DerefMut;
+use std::ops::{Deref, DerefMut};
 
 /// Interface through which a theme can be adjusted at run-time
 ///
@@ -24,8 +24,10 @@ pub trait ThemeApi {
     /// Change the colour scheme
     ///
     /// If no scheme by this name is found the scheme is left unchanged.
-    // TODO: revise scheme identification and error handling?
-    fn set_colours(&mut self, _scheme: &str) -> TkAction;
+    fn set_scheme(&mut self, scheme: &str) -> TkAction;
+
+    /// List available colour schemes
+    fn list_schemes(&self) -> Vec<&str>;
 
     /// Switch the theme
     ///
@@ -40,8 +42,11 @@ impl<T: ThemeApi> ThemeApi for Box<T> {
     fn set_font_size(&mut self, size: f32) -> TkAction {
         self.deref_mut().set_font_size(size)
     }
-    fn set_colours(&mut self, scheme: &str) -> TkAction {
-        self.deref_mut().set_colours(scheme)
+    fn set_scheme(&mut self, scheme: &str) -> TkAction {
+        self.deref_mut().set_scheme(scheme)
+    }
+    fn list_schemes(&self) -> Vec<&str> {
+        self.deref().list_schemes()
     }
     fn set_theme(&mut self, theme: &str) -> TkAction {
         self.deref_mut().set_theme(theme)

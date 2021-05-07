@@ -106,8 +106,12 @@ impl ThemeApi for CustomTheme {
         self.inner.set_font_size(size)
     }
 
-    fn set_colours(&mut self, scheme: &str) -> TkAction {
-        self.inner.set_colours(scheme)
+    fn list_schemes(&self) -> Vec<&str> {
+        self.inner.list_schemes()
+    }
+
+    fn set_scheme(&mut self, scheme: &str) -> TkAction {
+        self.inner.set_scheme(scheme)
     }
 }
 

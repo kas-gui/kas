@@ -97,10 +97,19 @@ impl Handler for TextEditPopup {
 fn main() -> Result<(), kas_wgpu::Error> {
     env_logger::init();
 
+    #[cfg(feature = "stack_dst")]
+    let theme = kas_theme::MultiTheme::builder()
+        .add("shaded", kas_theme::ShadedTheme::new())
+        .add("flat", kas_theme::FlatTheme::new())
+        .build();
+    #[cfg(not(feature = "stack_dst"))]
+    let theme = kas_theme::ShadedTheme::new();
+    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
+
     #[derive(Clone, Debug, VoidMsg)]
     enum Menu {
         Theme(&'static str),
-        Colour(&'static str),
+        Colour(String),
         Disabled(bool),
         Quit,
     }
@@ -109,12 +118,33 @@ fn main() -> Result<(), kas_wgpu::Error> {
         MenuEntry::new("&Shaded", Menu::Theme("shaded")).boxed(),
         MenuEntry::new("&Flat", Menu::Theme("flat")).boxed(),
     ];
-    let colours = vec![
-        MenuEntry::new("&White", Menu::Colour("white")),
-        MenuEntry::new("&Grey", Menu::Colour("grey")),
-        MenuEntry::new("&Light", Menu::Colour("light")),
-        MenuEntry::new("Dar&k", Menu::Colour("dark")),
-    ];
+    // Enumerate colour schemes. Access through the toolkit since this handles
+    // config loading.
+    let colours = toolkit
+        .theme()
+        .list_schemes()
+        .iter()
+        .map(|name| {
+            let mut title = String::with_capacity(name.len() + 1);
+            match name {
+                &"" => title.push_str("&Default"),
+                &"dark" => title.push_str("Dar&k"),
+                name => {
+                    let mut iter = name.char_indices();
+                    if let Some((_, c)) = iter.next() {
+                        title.push('&');
+                        for c in c.to_uppercase() {
+                            title.push(c);
+                        }
+                        if let Some((i, _)) = iter.next() {
+                            title.push_str(&name[i..]);
+                        }
+                    }
+                }
+            }
+            MenuEntry::new(title, Menu::Colour(name.to_string()))
+        })
+        .collect();
     let styles = vec![
         SubMenu::right("&Colours", colours).boxed(),
         Separator::infer().boxed(),
@@ -259,7 +289,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         }
                         Menu::Colour(name) => {
                             println!("Colour scheme: {:?}", name);
-                            mgr.adjust_theme(|theme| theme.set_colours(name));
+                            mgr.adjust_theme(|theme| theme.set_scheme(&name));
                         }
                         Menu::Disabled(state) => {
                             *mgr |= self.gallery.set_disabled(state);
@@ -286,15 +316,6 @@ fn main() -> Result<(), kas_wgpu::Error> {
         },
     );
 
-    #[cfg(feature = "stack_dst")]
-    let theme = kas_theme::MultiTheme::builder()
-        .add("shaded", kas_theme::ShadedTheme::new())
-        .add("flat", kas_theme::FlatTheme::new())
-        .build();
-    #[cfg(not(feature = "stack_dst"))]
-    let theme = kas_theme::ShadedTheme::new();
-
-    let mut toolkit = kas_wgpu::Toolkit::new(theme)?;
     toolkit.add(window)?;
     toolkit.run()
 }
