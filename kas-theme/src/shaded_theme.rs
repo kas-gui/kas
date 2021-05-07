@@ -91,8 +91,10 @@ where
     }
 
     fn apply_config(&mut self, config: &Self::Config) -> TkAction {
-        let action = self.config.action_from_diff(config);
-        self.config = config.clone();
+        let action = self.config.apply_config(config);
+        if let Some(scheme) = self.config.color_schemes.get(&self.config.color_scheme) {
+            self.cols = scheme.clone();
+        }
         action
     }
 
@@ -167,13 +169,15 @@ impl ThemeApi for ShadedTheme {
             .collect()
     }
 
-    fn set_scheme(&mut self, scheme: &str) -> TkAction {
-        if let Some(scheme) = self.config.color_schemes.get(scheme) {
-            self.cols = scheme.clone();
-            TkAction::REDRAW
-        } else {
-            TkAction::empty()
+    fn set_scheme(&mut self, name: &str) -> TkAction {
+        if name != self.config.color_scheme {
+            if let Some(scheme) = self.config.color_schemes.get(name) {
+                self.config.color_scheme = name.to_string();
+                self.cols = scheme.clone();
+                return TkAction::REDRAW;
+            }
         }
+        TkAction::empty()
     }
 }
 

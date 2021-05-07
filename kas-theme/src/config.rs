@@ -45,14 +45,18 @@ impl Default for Config {
 }
 
 impl Config {
-    pub fn action_from_diff(&self, other: &Config) -> TkAction {
-        if self.font_size != other.font_size {
+    /// Currently this is just "set". Later, maybe some type of merge.
+    pub fn apply_config(&mut self, other: &Config) -> TkAction {
+        let action = if self.font_size != other.font_size {
             TkAction::RESIZE | TkAction::THEME_UPDATE
         } else if self != other {
             TkAction::REDRAW
         } else {
             TkAction::empty()
-        }
+        };
+
+        *self = other.clone();
+        action
     }
 }
 
