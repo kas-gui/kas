@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use std::u16;
 
 use super::*;
-use crate::draw::{SizeHandle, ThemeAction, ThemeApi};
+use crate::draw::{SizeHandle, ThemeApi};
 use crate::geom::Coord;
 use crate::updatable::Updatable;
 #[allow(unused)]
@@ -324,7 +324,7 @@ impl<'a> Manager<'a> {
 
     /// Adjust the theme
     #[inline]
-    pub fn adjust_theme<F: FnMut(&mut dyn ThemeApi) -> ThemeAction>(&mut self, mut f: F) {
+    pub fn adjust_theme<F: FnMut(&mut dyn ThemeApi) -> TkAction>(&mut self, mut f: F) {
         self.shell.adjust_theme(&mut f);
     }
 

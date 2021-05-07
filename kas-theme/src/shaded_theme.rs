@@ -12,10 +12,11 @@ use crate::{Config, Dimensions, DimensionsParams, DimensionsWindow, Theme, Theme
 use kas::dir::{Direction, Directional};
 use kas::draw::{
     self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, InputState, Pass,
-    RegionClass, SizeHandle, TextClass, ThemeAction, ThemeApi,
+    RegionClass, SizeHandle, TextClass, ThemeApi,
 };
 use kas::geom::*;
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
+use kas::TkAction;
 
 /// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]
@@ -142,17 +143,17 @@ where
 }
 
 impl ThemeApi for ShadedTheme {
-    fn set_font_size(&mut self, size: f32) -> ThemeAction {
+    fn set_font_size(&mut self, size: f32) -> TkAction {
         self.config.font_size = size;
-        ThemeAction::ThemeResize
+        TkAction::RESIZE | TkAction::THEME_UPDATE
     }
 
-    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
+    fn set_colours(&mut self, scheme: &str) -> TkAction {
         if let Some(scheme) = ThemeColours::open(scheme) {
             self.cols = scheme;
-            ThemeAction::RedrawAll
+            TkAction::REDRAW
         } else {
-            ThemeAction::None
+            TkAction::empty()
         }
     }
 }

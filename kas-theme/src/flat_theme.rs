@@ -15,11 +15,12 @@ use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
 use kas::draw::{
     self, Colour, Draw, DrawRounded, DrawShared, ImageId, InputState, Pass, RegionClass,
-    SizeHandle, TextClass, ThemeAction, ThemeApi,
+    SizeHandle, TextClass, ThemeApi,
 };
 use kas::geom::*;
 use kas::text::format::FormattableText;
 use kas::text::{AccelString, Effect, Text, TextApi, TextDisplay};
+use kas::TkAction;
 
 // Used to ensure a rectangular background is inside a circular corner.
 // Also the maximum inner radius of circular borders to overlap with this rect.
@@ -153,17 +154,17 @@ where
 }
 
 impl ThemeApi for FlatTheme {
-    fn set_font_size(&mut self, size: f32) -> ThemeAction {
+    fn set_font_size(&mut self, size: f32) -> TkAction {
         self.config.font_size = size;
-        ThemeAction::ThemeResize
+        TkAction::RESIZE | TkAction::THEME_UPDATE
     }
 
-    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
+    fn set_colours(&mut self, scheme: &str) -> TkAction {
         if let Some(scheme) = ThemeColours::open(scheme) {
             self.cols = scheme;
-            ThemeAction::RedrawAll
+            TkAction::REDRAW
         } else {
-            ThemeAction::None
+            TkAction::empty()
         }
     }
 }

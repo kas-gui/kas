@@ -10,7 +10,8 @@ use std::collections::HashMap;
 use std::marker::Unsize;
 
 use crate::{StackDst, Theme, ThemeDst, WindowDst};
-use kas::draw::{Colour, DrawHandle, DrawShared, ThemeAction, ThemeApi};
+use kas::draw::{Colour, DrawHandle, DrawShared, ThemeApi};
+use kas::TkAction;
 
 #[cfg(feature = "unsize")]
 type DynTheme<Draw> = StackDst<dyn ThemeDst<Draw>>;
@@ -148,33 +149,33 @@ impl<D: DrawShared> Theme<D> for MultiTheme<D> {
 }
 
 impl<Draw> ThemeApi for MultiTheme<Draw> {
-    fn set_font_size(&mut self, size: f32) -> ThemeAction {
+    fn set_font_size(&mut self, size: f32) -> TkAction {
         // Slightly inefficient, but sufficient: update both
         // (Otherwise we would have to call set_colours in set_theme too.)
-        let mut action = ThemeAction::None;
+        let mut action = TkAction::empty();
         for theme in &mut self.themes {
             action = action.max(theme.set_font_size(size));
         }
         action
     }
 
-    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
+    fn set_colours(&mut self, scheme: &str) -> TkAction {
         // Slightly inefficient, but sufficient: update all
         // (Otherwise we would have to call set_colours in set_theme too.)
-        let mut action = ThemeAction::None;
+        let mut action = TkAction::empty();
         for theme in &mut self.themes {
             action = action.max(theme.set_colours(scheme));
         }
         action
     }
 
-    fn set_theme(&mut self, theme: &str) -> ThemeAction {
+    fn set_theme(&mut self, theme: &str) -> TkAction {
         if let Some(index) = self.names.get(theme).cloned() {
             if index != self.active {
                 self.active = index;
-                return ThemeAction::ThemeResize;
+                return TkAction::RESIZE | TkAction::THEME_UPDATE;
             }
         }
-        ThemeAction::None
+        TkAction::empty()
     }
 }

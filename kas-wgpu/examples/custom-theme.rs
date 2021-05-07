@@ -9,8 +9,7 @@
 use std::cell::Cell;
 
 use kas::draw::*;
-use kas::event::{Manager, VoidMsg, VoidResponse};
-use kas::macros::{make_widget, VoidMsg};
+use kas::prelude::*;
 use kas::widget::*;
 use kas_theme::Theme;
 
@@ -94,11 +93,11 @@ where
 }
 
 impl ThemeApi for CustomTheme {
-    fn set_font_size(&mut self, size: f32) -> ThemeAction {
+    fn set_font_size(&mut self, size: f32) -> TkAction {
         ThemeApi::set_font_size(&mut self.inner, size)
     }
 
-    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
+    fn set_colours(&mut self, scheme: &str) -> TkAction {
         ThemeApi::set_colours(&mut self.inner, scheme)
     }
 }
@@ -138,7 +137,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             }
             impl {
                 fn handler(&mut self, _: &mut Manager, item: Item)
-                    -> VoidResponse
+                    -> Response<VoidMsg>
                 {
                     match item {
                         Item::White => BACKGROUND.with(|b| b.set(Colour::grey(1.0))),
@@ -146,7 +145,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         Item::Green => BACKGROUND.with(|b| b.set(Colour::new(0.2, 0.9, 0.2))),
                         Item::Yellow => BACKGROUND.with(|b| b.set(Colour::new(0.9, 0.9, 0.2))),
                     };
-                    VoidResponse::None
+                    Response::None
                 }
             }
         },

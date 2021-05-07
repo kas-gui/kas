@@ -229,14 +229,16 @@ where
                         self.id_map.remove(&id);
                     }
                 }
-                PendingAction::ThemeResize => {
-                    for (_, window) in self.windows.iter_mut() {
-                        window.theme_resize(&mut self.shared);
-                    }
-                }
-                PendingAction::RedrawAll => {
-                    for (_, window) in self.windows.iter_mut() {
-                        window.window.request_redraw();
+                PendingAction::TkAction(action) => {
+                    if action.contains(TkAction::CLOSE | TkAction::EXIT) {
+                        for (_, window) in self.windows.drain() {
+                            let _ = window.handle_closure(&mut self.shared);
+                        }
+                        *control_flow = ControlFlow::Poll;
+                    } else {
+                        for (_, window) in self.windows.iter_mut() {
+                            window.handle_action(&mut self.shared, action);
+                        }
                     }
                 }
                 PendingAction::Update(handle, payload) => {
