@@ -223,6 +223,10 @@ impl Options {
         config: &kas::event::Config,
         theme: &T,
     ) -> Result<(), Error> {
+        //TODO: we should only write out config when it changed. This would be
+        // easy to test with a hash value, but std::hash does not support f32 or
+        // HashMap (with good reasons), thus we can't simply derive(Hash).
+        // Perhaps write to a buffer first and compare the buffer's checksum?
         if self.config_mode == ConfigMode::ReadWrite {
             if !self.config_path.as_os_str().is_empty() {
                 kas::config::Format::guess_and_write_path(&self.config_path, &config)?;

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 /// Event handling configuration
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Config {
     /// Delay before opening/closing menus on mouse hover
@@ -79,7 +79,7 @@ impl Config {
 /// For non-text cases, this does not conflict with other event handlers since
 /// panning is only possible when events are otherwise unused, thus `Always` is
 /// acceptable (equivalent to touch scrolling).
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum MousePan {
     /// Disable

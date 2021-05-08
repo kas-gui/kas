@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 /// Shortcut manager
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Shortcuts {
     map: LinearMap<ModifiersState, HashMap<VirtualKeyCode, Command>>,
 }
