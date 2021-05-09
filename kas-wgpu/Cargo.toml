@@ -38,7 +38,7 @@ unsize = ["kas-theme/unsize"]
 
 [dependencies]
 kas = { path = "..", version = "0.7.0", features = ["config", "winit"] }
-kas-theme = { path = "../kas-theme", features = ["serde"], version = "0.7.0" }
+kas-theme = { path = "../kas-theme", features = ["config"], version = "0.7.0" }
 bytemuck = "1.5.1"
 futures = "0.3"
 log = "0.4"

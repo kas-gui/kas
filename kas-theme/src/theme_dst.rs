@@ -166,6 +166,17 @@ where
 
 #[cfg(feature = "gat")]
 impl<'a, D: DrawShared, T: Theme<D>> ThemeDst<D> for T {
+    fn config(&self) -> MaybeBoxed<dyn Any> {
+        match self.config() {
+            Cow::Borrowed(config) => MaybeBoxed::Borrowed(config),
+            Cow::Owned(config) => MaybeBoxed::Boxed(Box::new(config.to_owned())),
+        }
+    }
+
+    fn apply_config(&mut self, config: &dyn Any) -> TkAction {
+        self.apply_config(config.downcast_ref().unwrap())
+    }
+
     fn init(&mut self, draw: &mut D) {
         self.init(draw);
     }

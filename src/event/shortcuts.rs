@@ -7,12 +7,12 @@
 
 use super::{Command, ModifiersState, VirtualKeyCode};
 use linear_map::LinearMap;
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 use serde::de::{self, Deserialize, Deserializer, MapAccess, Unexpected, Visitor};
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::collections::HashMap;
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 use std::fmt;
 
 /// Shortcut manager
@@ -211,7 +211,7 @@ impl Shortcuts {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 fn state_to_string(state: ModifiersState) -> &'static str {
     const SHIFT: ModifiersState = ModifiersState::SHIFT;
     const CTRL: ModifiersState = ModifiersState::CTRL;
@@ -253,7 +253,7 @@ fn state_to_string(state: ModifiersState) -> &'static str {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 impl Serialize for Shortcuts {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
     where
@@ -279,9 +279,9 @@ impl Serialize for Shortcuts {
 //     State(String),
 // }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 struct ModifierStateVisitor(ModifiersState);
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 impl<'de> Visitor<'de> for ModifierStateVisitor {
     type Value = ModifierStateVisitor;
 
@@ -330,7 +330,7 @@ impl<'de> Visitor<'de> for ModifierStateVisitor {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 impl<'de> Deserialize<'de> for ModifierStateVisitor {
     fn deserialize<D>(d: D) -> Result<Self, D::Error>
     where
@@ -340,9 +340,9 @@ impl<'de> Deserialize<'de> for ModifierStateVisitor {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 struct ShortcutsVisitor;
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 impl<'de> Visitor<'de> for ShortcutsVisitor {
     type Value = Shortcuts;
 
@@ -363,7 +363,7 @@ impl<'de> Visitor<'de> for ShortcutsVisitor {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 impl<'de> Deserialize<'de> for Shortcuts {
     fn deserialize<D>(d: D) -> Result<Self, D::Error>
     where

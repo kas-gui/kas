@@ -18,14 +18,14 @@ use std::ops::{Deref, DerefMut};
 /// large resources (e.g. fonts and icons) consider using external storage.
 pub trait Theme<D: DrawShared>: ThemeApi {
     /// The associated config type
-    #[cfg(feature = "serde")]
+    #[cfg(feature = "config")]
     type Config: Clone
         + std::fmt::Debug
         + 'static
         + for<'a> serde::Deserialize<'a>
         + serde::Serialize;
     /// The associated config type
-    #[cfg(not(feature = "serde"))]
+    #[cfg(not(feature = "config"))]
     type Config: Clone + std::fmt::Debug + 'static;
 
     /// The associated [`Window`] implementation.

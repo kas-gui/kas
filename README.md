@@ -185,9 +185,10 @@ The `kas` crate has the following feature flags:
 -   `shaping`: enables complex glyph forming for languages such as Arabic.
     This requires that the HarfBuzz library is installed.
 -   `markdown`: enables Markdown parsing for rich-text
--   `serde`: adds (de)serialisation support to various types
--   `json`: adds config (de)serialisation using JSON (implies `serde`)
--   `yaml`: adds config (de)serialisation using YAML (implies `serde`)
+-   `config`: adds (de)serialisation support for configuration plus a few
+    utility types (specifying `serde` instead only implements for utility types)
+-   `json`: adds config (de)serialisation using JSON (implies `config`)
+-   `yaml`: adds config (de)serialisation using YAML (implies `config`)
 -   `winit`: adds compatibility code for winit's event and geometry types.
     This is currently the only functional windowing/event library.
 -   `stack_dst`: some compatibility impls (see `kas-theme`'s documentation)

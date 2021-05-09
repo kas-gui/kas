@@ -9,7 +9,7 @@ use kas::draw::{Colour, InputState, TextClass};
 
 /// Provides standard theme colours
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
 pub struct ThemeColours {
     /// Background colour
     pub background: Colour,

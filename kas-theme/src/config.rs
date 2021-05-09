@@ -7,30 +7,29 @@
 
 use crate::ThemeColours;
 use kas::TkAction;
-#[cfg(feature = "serde")]
 use std::collections::BTreeMap;
 
 /// Event handling configuration
 #[derive(Clone, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
 pub struct Config {
     /// Standard font size
     ///
     /// Units: points per Em. Pixel size depends on the screen's scale factor.
-    #[cfg_attr(feature = "serde", serde(default = "defaults::font_size"))]
+    #[cfg_attr(feature = "config", serde(default = "defaults::font_size"))]
     pub font_size: f32,
 
     /// Active colour scheme (name)
     ///
     /// An empty string will resolve the default colour scheme.
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "config", serde(default))]
     pub color_scheme: String,
 
     /// All colour schemes
     ///
     /// TODO: possibly we should not save default schemes and merge when
     /// loading (perhaps via a `PartialConfig` type).
-    #[cfg_attr(feature = "serde", serde(default = "defaults::color_schemes",))]
+    #[cfg_attr(feature = "config", serde(default = "defaults::color_schemes",))]
     pub color_schemes: BTreeMap<String, ThemeColours>,
 }
 
