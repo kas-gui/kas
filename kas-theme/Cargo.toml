@@ -15,6 +15,9 @@ documentation = "https://docs.rs/kas-theme/"
 default = ["stack_dst"]
 nightly = ["unsize", "kas/nightly"]
 
+# Enable config read/write
+config = ["serde", "kas/config"]
+
 # Use Generic Associated Types (this is too unstable to include in nightly!)
 gat = ["unsize", "kas/gat"]
 
@@ -26,6 +29,7 @@ unsize = ["stack_dst_/unsize"]
 
 [dependencies]
 log = "0.4"
+serde = { version = "1.0.123", features = ["derive"], optional = true }
 stack_dst_ = { version = "0.6", package = "stack_dst", optional = true }
 
 [dependencies.kas]

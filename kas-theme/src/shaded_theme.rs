@@ -8,19 +8,20 @@
 use std::f32;
 use std::ops::Range;
 
-use crate::{Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
+use crate::{Config, Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::dir::{Direction, Directional};
 use kas::draw::{
     self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, InputState, Pass,
-    RegionClass, SizeHandle, TextClass, ThemeAction, ThemeApi,
+    RegionClass, SizeHandle, TextClass, ThemeApi,
 };
 use kas::geom::*;
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
+use kas::TkAction;
 
 /// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]
 pub struct ShadedTheme {
-    pt_size: f32,
+    config: Config,
     cols: ThemeColours,
 }
 
@@ -28,8 +29,8 @@ impl ShadedTheme {
     /// Construct
     pub fn new() -> Self {
         ShadedTheme {
-            pt_size: 12.0,
-            cols: ThemeColours::new(),
+            config: Default::default(),
+            cols: ThemeColours::default(),
         }
     }
 
@@ -37,7 +38,7 @@ impl ShadedTheme {
     ///
     /// Units: Points per Em (standard unit of font size)
     pub fn with_font_size(mut self, pt_size: f32) -> Self {
-        self.pt_size = pt_size;
+        self.config.font_size = pt_size;
         self
     }
 
@@ -45,8 +46,9 @@ impl ShadedTheme {
     ///
     /// If no scheme by this name is found the scheme is left unchanged.
     pub fn with_colours(mut self, scheme: &str) -> Self {
-        if let Some(scheme) = ThemeColours::open(scheme) {
-            self.cols = scheme;
+        self.config.color_scheme = scheme.to_owned();
+        if let Some(scheme) = self.config.color_schemes.get(scheme) {
+            self.cols = scheme.clone();
         }
         self
     }
@@ -76,12 +78,25 @@ impl<D: DrawShared> Theme<D> for ShadedTheme
 where
     D::Draw: DrawRounded + DrawShaded,
 {
+    type Config = Config;
     type Window = DimensionsWindow;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = DrawHandle<'static, D>;
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = DrawHandle<'a, D>;
+
+    fn config(&self) -> std::borrow::Cow<Self::Config> {
+        std::borrow::Cow::Borrowed(&self.config)
+    }
+
+    fn apply_config(&mut self, config: &Self::Config) -> TkAction {
+        let action = self.config.apply_config(config);
+        if let Some(scheme) = self.config.color_schemes.get(&self.config.color_scheme) {
+            self.cols = scheme.clone();
+        }
+        action
+    }
 
     fn init(&mut self, _draw: &mut D) {
         if let Err(e) = kas::text::fonts::fonts().load_default() {
@@ -90,11 +105,11 @@ where
     }
 
     fn new_window(&self, _draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
-        DimensionsWindow::new(DIMS, self.pt_size, dpi_factor)
+        DimensionsWindow::new(DIMS, self.config.font_size, dpi_factor)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        window.dims = Dimensions::new(DIMS, self.pt_size, dpi_factor);
+        window.dims = Dimensions::new(DIMS, self.config.font_size, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -141,18 +156,28 @@ where
 }
 
 impl ThemeApi for ShadedTheme {
-    fn set_font_size(&mut self, size: f32) -> ThemeAction {
-        self.pt_size = size;
-        ThemeAction::ThemeResize
+    fn set_font_size(&mut self, size: f32) -> TkAction {
+        self.config.font_size = size;
+        TkAction::RESIZE | TkAction::THEME_UPDATE
     }
 
-    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
-        if let Some(scheme) = ThemeColours::open(scheme) {
-            self.cols = scheme;
-            ThemeAction::RedrawAll
-        } else {
-            ThemeAction::None
+    fn list_schemes(&self) -> Vec<&str> {
+        self.config
+            .color_schemes
+            .keys()
+            .map(|name| &**name)
+            .collect()
+    }
+
+    fn set_scheme(&mut self, name: &str) -> TkAction {
+        if name != self.config.color_scheme {
+            if let Some(scheme) = self.config.color_schemes.get(name) {
+                self.config.color_scheme = name.to_string();
+                self.cols = scheme.clone();
+                return TkAction::REDRAW;
+            }
         }
+        TkAction::empty()
     }
 }
 

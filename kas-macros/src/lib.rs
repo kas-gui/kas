@@ -8,12 +8,10 @@
 
 extern crate proc_macro;
 
-mod args;
-
-use std::collections::HashMap;
-
+use self::args::{ChildType, HandlerArgs};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
+use std::collections::HashMap;
 use std::fmt::Write;
 #[cfg(nightly)]
 use syn::spanned::Spanned;
@@ -21,8 +19,7 @@ use syn::Token;
 use syn::{parse_macro_input, parse_quote};
 use syn::{GenericParam, Ident, Type, TypeParam, TypePath};
 
-use self::args::{ChildType, HandlerArgs};
-
+mod args;
 mod layout;
 
 struct SubstTyGenerics<'a>(&'a syn::Generics, HashMap<Ident, Type>);
@@ -81,7 +78,7 @@ impl<'a> ToTokens for SubstTyGenerics<'a> {
 
 /// Macro to derive widget traits
 ///
-/// See the [`kas::macros`](../kas/macros/index.html) module documentation.
+/// See the [`kas::macros`](../../kas/macros/index.html) module documentation.
 #[proc_macro_derive(Widget, attributes(widget_core, widget, layout, handler, layout_data))]
 pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut ast = parse_macro_input!(input as syn::DeriveInput);
@@ -322,7 +319,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 /// Macro to create a widget with anonymous type
 ///
-/// See the [`kas::macros`](../kas/macros/index.html) module documentation.
+/// See the [`kas::macros`](../../kas/macros/index.html) module documentation.
 #[proc_macro]
 pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut find_handler_ty_buf: Vec<(Ident, Type)> = vec![];
@@ -598,7 +595,7 @@ pub fn make_widget(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 /// Macro to derive `From<VoidMsg>`
 ///
-/// See the [`kas::macros`](../kas/macros/index.html) module documentation.
+/// See the [`kas::macros`](../../kas/macros/index.html) module documentation.
 #[proc_macro_derive(VoidMsg)]
 pub fn derive_empty_msg(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = parse_macro_input!(input as syn::DeriveInput);

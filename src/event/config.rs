@@ -7,66 +7,21 @@
 
 use super::{shortcuts::Shortcuts, ModifiersState};
 use crate::cast::Cast;
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 use serde::{Deserialize, Serialize};
-use std::path::Path;
 use std::time::Duration;
-use thiserror::Error;
-
-#[derive(Error, Debug)]
-pub enum ConfigError {
-    #[cfg(feature = "yaml")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "yaml")))]
-    #[error("config (de)serialisation to YAML failed")]
-    Yaml(#[from] serde_yaml::Error),
-    #[cfg(feature = "json")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "json")))]
-    #[error("config (de)serialisation to JSON failed")]
-    Json(#[from] serde_json::Error),
-    #[error("error reading / writing config file")]
-    IoError(#[from] std::io::Error),
-    #[error("format not supported: {0}")]
-    UnsupportedFormat(ConfigFormat),
-}
-
-/// Serialisation formats
-#[non_exhaustive]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Error)]
-pub enum ConfigFormat {
-    /// Not specified: guess from the path
-    #[error("no format")]
-    None,
-    /// JSON
-    #[error("JSON")]
-    Json,
-    /// TOML
-    #[error("TOML")]
-    Toml,
-    /// YAML
-    #[error("YAML")]
-    Yaml,
-    /// Error: unable to guess format
-    #[error("(unknown format)")]
-    Unknown,
-}
-
-impl Default for ConfigFormat {
-    fn default() -> Self {
-        ConfigFormat::None
-    }
-}
 
 /// Event handling configuration
-#[derive(Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "config", derive(Serialize, Deserialize))]
 pub struct Config {
     /// Delay before opening/closing menus on mouse hover
-    #[cfg_attr(feature = "serde", serde(default = "defaults::menu_delay_ns"))]
+    #[cfg_attr(feature = "config", serde(default = "defaults::menu_delay_ns"))]
     pub menu_delay_ns: u32,
 
     /// Delay before switching from panning to text-selection mode
     #[cfg_attr(
-        feature = "serde",
+        feature = "config",
         serde(default = "defaults::touch_text_sel_delay_ns")
     )]
     pub touch_text_sel_delay_ns: u32,
@@ -77,17 +32,17 @@ pub struct Config {
     /// start; otherwise the system should wait for the text-selection timer.
     /// We currently recommend the L-inf distance metric (max of abs of values).
     // TODO: multiply by scale factor on access?
-    #[cfg_attr(feature = "serde", serde(default = "defaults::pan_dist_thresh"))]
+    #[cfg_attr(feature = "config", serde(default = "defaults::pan_dist_thresh"))]
     pub pan_dist_thresh: i32,
 
     /// When to pan general widgets (unhandled events) with the mouse
-    #[cfg_attr(feature = "serde", serde(default = "defaults::mouse_pan"))]
+    #[cfg_attr(feature = "config", serde(default = "defaults::mouse_pan"))]
     pub mouse_pan: MousePan,
     /// When to pan text fields with the mouse
-    #[cfg_attr(feature = "serde", serde(default = "defaults::mouse_text_pan"))]
+    #[cfg_attr(feature = "config", serde(default = "defaults::mouse_text_pan"))]
     pub mouse_text_pan: MousePan,
 
-    #[cfg_attr(feature = "serde", serde(default = "Shortcuts::platform_defaults"))]
+    #[cfg_attr(feature = "config", serde(default = "Shortcuts::platform_defaults"))]
     pub shortcuts: Shortcuts,
 }
 
@@ -114,68 +69,6 @@ impl Config {
     pub fn touch_text_sel_delay(&self) -> Duration {
         Duration::from_nanos(self.touch_text_sel_delay_ns.cast())
     }
-
-    fn guess_format(path: &Path) -> ConfigFormat {
-        // use == since there is no OsStr literal
-        if let Some(ext) = path.extension() {
-            if ext == "json" {
-                ConfigFormat::Json
-            } else if ext == "toml" {
-                ConfigFormat::Toml
-            } else if ext == "yaml" {
-                ConfigFormat::Yaml
-            } else {
-                ConfigFormat::Unknown
-            }
-        } else {
-            ConfigFormat::Unknown
-        }
-    }
-
-    /// Read from a path
-    pub fn from_path(path: &Path, mut format: ConfigFormat) -> Result<Self, ConfigError> {
-        if format == ConfigFormat::None {
-            format = Self::guess_format(path);
-        }
-
-        match format {
-            #[cfg(feature = "json")]
-            ConfigFormat::Json => {
-                let r = std::io::BufReader::new(std::fs::File::open(path)?);
-                Ok(serde_json::from_reader(r)?)
-            }
-            #[cfg(feature = "yaml")]
-            ConfigFormat::Yaml => {
-                let r = std::io::BufReader::new(std::fs::File::open(path)?);
-                Ok(serde_yaml::from_reader(r)?)
-            }
-            _ => Err(ConfigError::UnsupportedFormat(format)),
-        }
-    }
-
-    /// Write to a path
-    pub fn write_path(&self, path: &Path, mut format: ConfigFormat) -> Result<(), ConfigError> {
-        if format == ConfigFormat::None {
-            format = Self::guess_format(path);
-        }
-
-        match format {
-            #[cfg(feature = "json")]
-            ConfigFormat::Json => {
-                let w = std::io::BufWriter::new(std::fs::File::create(path)?);
-                serde_json::to_writer_pretty(w, self)?;
-                Ok(())
-            }
-            #[cfg(feature = "yaml")]
-            ConfigFormat::Yaml => {
-                let w = std::io::BufWriter::new(std::fs::File::create(path)?);
-                serde_yaml::to_writer(w, self)?;
-                Ok(())
-            }
-            // NOTE: Toml is not supported since the `toml` crate does not support enums as map keys
-            _ => Err(ConfigError::UnsupportedFormat(format)),
-        }
-    }
 }
 
 /// When mouse-panning is enabled (click+drag to scroll)
@@ -186,8 +79,8 @@ impl Config {
 /// For non-text cases, this does not conflict with other event handlers since
 /// panning is only possible when events are otherwise unused, thus `Always` is
 /// acceptable (equivalent to touch scrolling).
-#[derive(Clone, Copy, Debug)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Clone, Copy, Debug, Hash, PartialEq)]
+#[cfg_attr(feature = "config", derive(Serialize, Deserialize))]
 pub enum MousePan {
     /// Disable
     Never,

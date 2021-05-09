@@ -5,10 +5,10 @@
 
 //! Theme traits
 
+use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
+use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
-
-use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
 
 /// A *theme* provides widget sizing and drawing implementations.
 ///
@@ -17,6 +17,17 @@ use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
 pub trait Theme<D: DrawShared>: ThemeApi {
+    /// The associated config type
+    #[cfg(feature = "config")]
+    type Config: Clone
+        + std::fmt::Debug
+        + 'static
+        + for<'a> serde::Deserialize<'a>
+        + serde::Serialize;
+    /// The associated config type
+    #[cfg(not(feature = "config"))]
+    type Config: Clone + std::fmt::Debug + 'static;
+
     /// The associated [`Window`] implementation.
     type Window: Window<D>;
 
@@ -25,6 +36,12 @@ pub trait Theme<D: DrawShared>: ThemeApi {
     type DrawHandle: DrawHandle;
     #[cfg(feature = "gat")]
     type DrawHandle<'a>: DrawHandle;
+
+    /// Get current config
+    fn config(&self) -> std::borrow::Cow<Self::Config>;
+
+    /// Apply/set the passed config
+    fn apply_config(&mut self, config: &Self::Config) -> TkAction;
 
     /// Theme initialisation
     ///
@@ -115,11 +132,19 @@ pub trait Window<D: DrawShared>: 'static {
 
 impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
     type Window = <T as Theme<D>>::Window;
+    type Config = <T as Theme<D>>::Config;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = <T as Theme<D>>::DrawHandle;
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = <T as Theme<D>>::DrawHandle<'a>;
+
+    fn config(&self) -> std::borrow::Cow<Self::Config> {
+        self.deref().config()
+    }
+    fn apply_config(&mut self, config: &Self::Config) -> TkAction {
+        self.deref_mut().apply_config(config)
+    }
 
     fn init(&mut self, draw: &mut D) {
         self.deref_mut().init(draw);

@@ -19,6 +19,7 @@
 #![cfg_attr(feature = "unsize", feature(unsize))]
 
 mod col;
+mod config;
 mod dim;
 mod flat_theme;
 #[cfg(feature = "stack_dst")]
@@ -31,13 +32,14 @@ mod traits;
 pub use kas;
 
 pub use col::ThemeColours;
+pub use config::Config;
 pub use dim::{Dimensions, DimensionsParams, DimensionsWindow};
 pub use flat_theme::FlatTheme;
 #[cfg(feature = "stack_dst")]
 pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use shaded_theme::ShadedTheme;
 #[cfg(feature = "stack_dst")]
-pub use theme_dst::{ThemeDst, WindowDst};
+pub use theme_dst::{MaybeBoxed, ThemeDst, WindowDst};
 pub use traits::{Theme, Window};
 
 #[cfg(feature = "stack_dst")]

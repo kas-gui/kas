@@ -10,7 +10,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use kas::cast::Cast;
-use kas::draw::{SizeHandle, ThemeAction, ThemeApi};
+use kas::draw::{SizeHandle, ThemeApi};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
@@ -118,16 +118,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         Ok(r)
     }
 
-    pub fn theme_resize(&mut self, shared: &mut SharedState<C, T>) {
-        debug!("Window::theme_resize");
-        let scale_factor = self.window.scale_factor() as f32;
-        shared
-            .theme
-            .update_window(&mut self.theme_window, scale_factor);
-        self.solve_cache.invalidate_rule_cache();
-        self.apply_size(shared);
-    }
-
     /// Handle an event
     pub fn handle_event(&mut self, shared: &mut SharedState<C, T>, event: WindowEvent) {
         // Note: resize must be handled here to update self.swap_chain.
@@ -165,8 +155,21 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         if action.contains(TkAction::CLOSE | TkAction::EXIT) {
             return (action, None);
         }
+        self.handle_action(shared, action);
+
+        (action, self.mgr.next_resume())
+    }
+
+    /// Handle an action (excludes handling of CLOSE and EXIT)
+    pub fn handle_action(&mut self, shared: &mut SharedState<C, T>, action: TkAction) {
         if action.contains(TkAction::RECONFIGURE) {
             self.reconfigure(shared);
+        }
+        if action.contains(TkAction::THEME_UPDATE) {
+            let scale_factor = self.window.scale_factor() as f32;
+            shared
+                .theme
+                .update_window(&mut self.theme_window, scale_factor);
         }
         if action.contains(TkAction::RESIZE) {
             self.solve_cache.invalidate_rule_cache();
@@ -187,8 +190,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         } else if action.contains(TkAction::REDRAW) {
             self.window.request_redraw();
         }
-
-        (action, self.mgr.next_resume())
     }
 
     pub fn handle_closure(mut self, shared: &mut SharedState<C, T>) -> TkAction {
@@ -448,12 +449,9 @@ where
         self.shared.set_clipboard(content);
     }
 
-    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> ThemeAction) {
-        match f(&mut self.shared.theme) {
-            ThemeAction::None => (),
-            ThemeAction::RedrawAll => self.shared.pending.push(PendingAction::RedrawAll),
-            ThemeAction::ThemeResize => self.shared.pending.push(PendingAction::ThemeResize),
-        }
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> TkAction) {
+        let action = f(&mut self.shared.theme);
+        self.shared.pending.push(PendingAction::TkAction(action));
     }
 
     fn size_handle(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {

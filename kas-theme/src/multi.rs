@@ -9,8 +9,9 @@ use std::collections::HashMap;
 #[cfg(feature = "unsize")]
 use std::marker::Unsize;
 
-use crate::{StackDst, Theme, ThemeDst, WindowDst};
-use kas::draw::{Colour, DrawHandle, DrawShared, ThemeAction, ThemeApi};
+use crate::{Config, StackDst, Theme, ThemeDst, WindowDst};
+use kas::draw::{Colour, DrawHandle, DrawShared, ThemeApi};
+use kas::TkAction;
 
 #[cfg(feature = "unsize")]
 type DynTheme<Draw> = StackDst<dyn ThemeDst<Draw>>;
@@ -101,12 +102,32 @@ impl<Draw> MultiThemeBuilder<Draw> {
 }
 
 impl<D: DrawShared> Theme<D> for MultiTheme<D> {
+    type Config = Config;
     type Window = StackDst<dyn WindowDst<D>>;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = StackDst<dyn DrawHandle>;
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = StackDst<dyn DrawHandle + 'a>;
+
+    fn config(&self) -> std::borrow::Cow<Self::Config> {
+        let boxed_config = self.themes[self.active].config();
+        // TODO: write each sub-theme's config instead of this stupid cast!
+        let config: Config = boxed_config
+            .as_ref()
+            .downcast_ref::<Config>()
+            .unwrap()
+            .clone();
+        std::borrow::Cow::Owned(config)
+    }
+
+    fn apply_config(&mut self, config: &Self::Config) -> TkAction {
+        let mut action = TkAction::empty();
+        for theme in &mut self.themes {
+            action |= theme.apply_config(config);
+        }
+        action
+    }
 
     fn init(&mut self, draw: &mut D) {
         for theme in &mut self.themes {
@@ -148,33 +169,39 @@ impl<D: DrawShared> Theme<D> for MultiTheme<D> {
 }
 
 impl<Draw> ThemeApi for MultiTheme<Draw> {
-    fn set_font_size(&mut self, size: f32) -> ThemeAction {
+    fn set_font_size(&mut self, size: f32) -> TkAction {
         // Slightly inefficient, but sufficient: update both
-        // (Otherwise we would have to call set_colours in set_theme too.)
-        let mut action = ThemeAction::None;
+        // (Otherwise we would have to call set_scheme in set_theme too.)
+        let mut action = TkAction::empty();
         for theme in &mut self.themes {
             action = action.max(theme.set_font_size(size));
         }
         action
     }
 
-    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
+    fn set_scheme(&mut self, scheme: &str) -> TkAction {
         // Slightly inefficient, but sufficient: update all
-        // (Otherwise we would have to call set_colours in set_theme too.)
-        let mut action = ThemeAction::None;
+        // (Otherwise we would have to call set_scheme in set_theme too.)
+        let mut action = TkAction::empty();
         for theme in &mut self.themes {
-            action = action.max(theme.set_colours(scheme));
+            action = action.max(theme.set_scheme(scheme));
         }
         action
     }
 
-    fn set_theme(&mut self, theme: &str) -> ThemeAction {
+    fn list_schemes(&self) -> Vec<&str> {
+        // We list only schemes of the active theme. Probably all themes should
+        // have the same schemes anyway.
+        self.themes[self.active].list_schemes()
+    }
+
+    fn set_theme(&mut self, theme: &str) -> TkAction {
         if let Some(index) = self.names.get(theme).cloned() {
             if index != self.active {
                 self.active = index;
-                return ThemeAction::ThemeResize;
+                return TkAction::RESIZE | TkAction::THEME_UPDATE;
             }
         }
-        ThemeAction::None
+        TkAction::empty()
     }
 }

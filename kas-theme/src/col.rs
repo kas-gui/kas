@@ -5,12 +5,11 @@
 
 //! Colour schemes
 
-use log::warn;
-
 use kas::draw::{Colour, InputState, TextClass};
 
 /// Provides standard theme colours
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
 pub struct ThemeColours {
     /// Background colour
     pub background: Colour,
@@ -46,26 +45,16 @@ pub struct ThemeColours {
     pub checkbox: Colour,
 }
 
-impl ThemeColours {
-    /// Open the given scheme, if found
-    ///
-    /// TODO: the intention is that this method can read and cache data from
-    /// external resources. For now, we simply hard-code a few instances.
-    pub fn open(scheme: &str) -> Option<Self> {
-        Some(match scheme {
-            "default" | "white" => Self::new(),
-            "grey" => Self::grey(),
-            "light" => Self::light(),
-            "dark" => Self::dark(),
-            other => {
-                warn!("ThemeColours::open: scheme \"{}\" not found", other);
-                return None;
-            }
-        })
+impl Default for ThemeColours {
+    #[inline]
+    fn default() -> Self {
+        ThemeColours::white_blue()
     }
+}
 
-    /// Default theme: white with blue activable items
-    pub fn new() -> Self {
+impl ThemeColours {
+    /// White background with blue activable items
+    pub fn white_blue() -> Self {
         ThemeColours {
             background: Colour::grey(1.0),
             frame: Colour::grey(0.7),
@@ -84,13 +73,6 @@ impl ThemeColours {
             button_depressed: Colour::new(0.15, 0.525, 0.75),
             checkbox: Colour::new(0.2, 0.7, 1.0),
         }
-    }
-
-    /// Grey with blue activable items
-    pub fn grey() -> Self {
-        let mut col = ThemeColours::new();
-        col.background = Colour::grey(0.8);
-        col
     }
 
     /// Light scheme

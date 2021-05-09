@@ -58,7 +58,7 @@ pub enum Error {
     NoAdapter,
     /// Config load/save error
     #[error("config load/save error")]
-    Config(#[from] kas::event::ConfigError),
+    Config(#[from] kas::config::Error),
     #[doc(hidden)]
     /// OS error during window creation
     #[error("operating system error")]
@@ -115,14 +115,17 @@ where
     ///
     /// The [`Options`] parameter allows direct specification of shell options;
     /// usually, these are provided by [`Options::from_env`].
-    /// KAS config is provided by [`Options::config`].
+    ///
+    /// KAS config is provided by [`Options::config`] and `theme` is configured
+    /// through [`Options::theme_config`].
     #[inline]
     pub fn new_custom<CB: CustomPipeBuilder<Pipe = C>>(
         custom: CB,
-        theme: T,
+        mut theme: T,
         options: Options,
     ) -> Result<Self, Error> {
         let el = EventLoop::with_user_event();
+        options.theme_config(&mut theme)?;
         let config = Rc::new(RefCell::new(options.config()?));
         let scale_factor = find_scale_factor(&el);
         Ok(Toolkit {
@@ -136,6 +139,9 @@ where
     ///
     /// This is like [`Toolkit::new_custom`], but allows KAS config to be
     /// specified directly, instead of loading via [`Options::config`].
+    ///
+    /// Unlike other the constructors, this method does not configure the theme.
+    /// The user may wish to call [`Options::theme_config`] before this method.
     #[inline]
     pub fn new_custom_config<CB: CustomPipeBuilder<Pipe = C>>(
         custom: CB,
@@ -150,6 +156,18 @@ where
             windows: vec![],
             shared: SharedState::new(custom, theme, options, config, scale_factor)?,
         })
+    }
+
+    /// Access the theme by ref
+    #[inline]
+    pub fn theme(&self) -> &T {
+        &self.shared.theme
+    }
+
+    /// Access the theme by ref mut
+    #[inline]
+    pub fn theme_mut(&mut self) -> &mut T {
+        &mut self.shared.theme
     }
 
     /// Assume ownership of and display a window

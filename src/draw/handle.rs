@@ -146,11 +146,7 @@ pub trait SizeHandle {
     /// Size of a frame around child widget(s)
     fn frame(&self, vert: bool) -> FrameRules;
 
-    /// Menu frame
-    ///
-    /// Menu items have a larger-than-usual margin / invisible frame around
-    /// them. This should be drawn with [`DrawHandle::menu_frame`],
-    /// though likely the theme will only draw when highlighted.
+    /// Frame/margin around a menu entry
     fn menu_frame(&self, vert: bool) -> FrameRules;
 
     /// Size of a separator frame between items
@@ -306,7 +302,7 @@ pub trait DrawHandle {
     /// Target area for drawing
     ///
     /// Drawing is restricted to this [`Rect`], which may be the whole window, a
-    /// [clip region](DrawHandle::clip_region) or an [overlay](DrawHandle::overlay).
+    /// [clip region](DrawHandleExt::clip_region) or an [overlay](DrawHandleExt::overlay).
     /// This may be used to cull hidden items from lists inside a scrollable view.
     fn target_rect(&self) -> Rect;
 

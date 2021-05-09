@@ -42,6 +42,8 @@ mod toolkit;
 // public implementations:
 pub mod adapter;
 pub mod class;
+#[cfg(feature = "config")]
+pub mod config;
 pub mod dir;
 pub mod draw;
 pub mod event;

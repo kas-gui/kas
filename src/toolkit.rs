@@ -15,7 +15,7 @@
 use std::num::NonZeroU32;
 use std::rc::Rc;
 
-use crate::draw::{SizeHandle, ThemeAction, ThemeApi};
+use crate::draw::{SizeHandle, ThemeApi};
 use crate::event;
 use crate::event::UpdateHandle;
 use crate::updatable::Updatable;
@@ -74,6 +74,8 @@ bitflags! {
         const SET_SIZE = 1 << 8;
         /// Resize all widgets
         const RESIZE = 1 << 9;
+        /// Update theme memory
+        const THEME_UPDATE = 1 << 10;
         /// Window requires reconfiguring
         ///
         /// *Configuring* widgets assigns [`WidgetId`] identifiers and calls
@@ -137,7 +139,10 @@ pub trait ShellWindow {
     fn set_clipboard<'c>(&mut self, content: String);
 
     /// Adjust the theme
-    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> ThemeAction);
+    ///
+    /// Note: theme adjustments apply to all windows, as does the [`TkAction`]
+    /// returned from the closure.
+    fn adjust_theme(&mut self, f: &mut dyn FnMut(&mut dyn ThemeApi) -> TkAction);
 
     /// Access a [`SizeHandle`]
     ///

@@ -7,64 +7,48 @@
 
 #[allow(unused)]
 use crate::event::Manager;
-use std::ops::DerefMut;
-
-/// Return value of [`ThemeApi`] functions
-///
-/// This type is used to notify the toolkit of required updates.
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
-pub enum ThemeAction {
-    /// No action needed
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    None,
-    /// All windows require redrawing
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    RedrawAll,
-    /// Theme sizes have changed
-    ///
-    /// This implies that per-window theme data must be updated
-    /// (via [`kas-theme::Theme::update_window`]) and all widgets resized.
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    ThemeResize,
-}
+use crate::TkAction;
+use std::ops::{Deref, DerefMut};
 
 /// Interface through which a theme can be adjusted at run-time
 ///
-/// All methods return a [`ThemeAction`] to enable correct action when a theme
+/// All methods return a [`TkAction`] to enable correct action when a theme
 /// is updated via [`Manager::adjust_theme`]. When adjusting a theme before
 /// the UI is started, this return value can be safely ignored.
 pub trait ThemeApi {
     /// Set font size
     ///
     /// Units: Points per Em (standard unit of font size)
-    fn set_font_size(&mut self, pt_size: f32) -> ThemeAction;
+    fn set_font_size(&mut self, pt_size: f32) -> TkAction;
 
     /// Change the colour scheme
     ///
     /// If no scheme by this name is found the scheme is left unchanged.
-    // TODO: revise scheme identification and error handling?
-    fn set_colours(&mut self, _scheme: &str) -> ThemeAction;
+    fn set_scheme(&mut self, scheme: &str) -> TkAction;
+
+    /// List available colour schemes
+    fn list_schemes(&self) -> Vec<&str>;
 
     /// Switch the theme
     ///
     /// Most themes do not react to this method; `kas_theme::MultiTheme` uses
     /// it to switch themes.
-    fn set_theme(&mut self, _theme: &str) -> ThemeAction {
-        ThemeAction::None
+    fn set_theme(&mut self, _theme: &str) -> TkAction {
+        TkAction::empty()
     }
 }
 
 impl<T: ThemeApi> ThemeApi for Box<T> {
-    fn set_font_size(&mut self, size: f32) -> ThemeAction {
+    fn set_font_size(&mut self, size: f32) -> TkAction {
         self.deref_mut().set_font_size(size)
     }
-    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
-        self.deref_mut().set_colours(scheme)
+    fn set_scheme(&mut self, scheme: &str) -> TkAction {
+        self.deref_mut().set_scheme(scheme)
     }
-    fn set_theme(&mut self, theme: &str) -> ThemeAction {
+    fn list_schemes(&self) -> Vec<&str> {
+        self.deref().list_schemes()
+    }
+    fn set_theme(&mut self, theme: &str) -> TkAction {
         self.deref_mut().set_theme(theme)
     }
 }

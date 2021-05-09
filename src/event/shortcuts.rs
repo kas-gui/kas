@@ -7,16 +7,16 @@
 
 use super::{Command, ModifiersState, VirtualKeyCode};
 use linear_map::LinearMap;
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 use serde::de::{self, Deserialize, Deserializer, MapAccess, Unexpected, Visitor};
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 use serde::ser::{Serialize, SerializeMap, Serializer};
 use std::collections::HashMap;
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 use std::fmt;
 
 /// Shortcut manager
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Shortcuts {
     map: LinearMap<ModifiersState, HashMap<VirtualKeyCode, Command>>,
 }
@@ -211,7 +211,7 @@ impl Shortcuts {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 fn state_to_string(state: ModifiersState) -> &'static str {
     const SHIFT: ModifiersState = ModifiersState::SHIFT;
     const CTRL: ModifiersState = ModifiersState::CTRL;
@@ -253,15 +253,21 @@ fn state_to_string(state: ModifiersState) -> &'static str {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 impl Serialize for Shortcuts {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut map = s.serialize_map(Some(self.map.len()))?;
-        for (k, v) in &self.map {
-            map.serialize_entry(state_to_string(*k), v)?;
+        for (state, bindings) in &self.map {
+            map.serialize_key(state_to_string(*state))?;
+
+            // Sort items in the hash-map to ensure stable order
+            // NOTE: We need a "map type" to ensure entries are serialised as
+            // a map, not as a list. BTreeMap is easier than a shim over a Vec.
+            let bindings: std::collections::BTreeMap<_, _> = bindings.iter().collect();
+            map.serialize_value(&bindings)?;
         }
         map.end()
     }
@@ -273,9 +279,9 @@ impl Serialize for Shortcuts {
 //     State(String),
 // }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 struct ModifierStateVisitor(ModifiersState);
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 impl<'de> Visitor<'de> for ModifierStateVisitor {
     type Value = ModifierStateVisitor;
 
@@ -324,7 +330,7 @@ impl<'de> Visitor<'de> for ModifierStateVisitor {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 impl<'de> Deserialize<'de> for ModifierStateVisitor {
     fn deserialize<D>(d: D) -> Result<Self, D::Error>
     where
@@ -334,9 +340,9 @@ impl<'de> Deserialize<'de> for ModifierStateVisitor {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 struct ShortcutsVisitor;
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 impl<'de> Visitor<'de> for ShortcutsVisitor {
     type Value = Shortcuts;
 
@@ -357,7 +363,7 @@ impl<'de> Visitor<'de> for ShortcutsVisitor {
     }
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "config")]
 impl<'de> Deserialize<'de> for Shortcuts {
     fn deserialize<D>(d: D) -> Result<Self, D::Error>
     where

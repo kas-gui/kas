@@ -9,8 +9,7 @@
 use std::cell::Cell;
 
 use kas::draw::*;
-use kas::event::{Manager, VoidMsg, VoidResponse};
-use kas::macros::{make_widget, VoidMsg};
+use kas::prelude::*;
 use kas::widget::*;
 use kas_theme::Theme;
 
@@ -50,12 +49,21 @@ impl<D: DrawShared> Theme<D> for CustomTheme
 where
     D::Draw: DrawRounded,
 {
+    type Config = kas_theme::Config;
     type Window = <FlatTheme as Theme<D>>::Window;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = <FlatTheme as Theme<D>>::DrawHandle;
     #[cfg(feature = "gat")]
     type DrawHandle<'a> = <FlatTheme as Theme<D>>::DrawHandle<'a>;
+
+    fn config(&self) -> std::borrow::Cow<Self::Config> {
+        Theme::<D>::config(&self.inner)
+    }
+
+    fn apply_config(&mut self, config: &Self::Config) -> TkAction {
+        Theme::<D>::apply_config(&mut self.inner, config)
+    }
 
     fn init(&mut self, draw: &mut D) {
         self.inner.init(draw);
@@ -94,12 +102,16 @@ where
 }
 
 impl ThemeApi for CustomTheme {
-    fn set_font_size(&mut self, size: f32) -> ThemeAction {
-        ThemeApi::set_font_size(&mut self.inner, size)
+    fn set_font_size(&mut self, size: f32) -> TkAction {
+        self.inner.set_font_size(size)
     }
 
-    fn set_colours(&mut self, scheme: &str) -> ThemeAction {
-        ThemeApi::set_colours(&mut self.inner, scheme)
+    fn list_schemes(&self) -> Vec<&str> {
+        self.inner.list_schemes()
+    }
+
+    fn set_scheme(&mut self, scheme: &str) -> TkAction {
+        self.inner.set_scheme(scheme)
     }
 }
 
@@ -138,7 +150,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
             }
             impl {
                 fn handler(&mut self, _: &mut Manager, item: Item)
-                    -> VoidResponse
+                    -> Response<VoidMsg>
                 {
                     match item {
                         Item::White => BACKGROUND.with(|b| b.set(Colour::grey(1.0))),
@@ -146,7 +158,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
                         Item::Green => BACKGROUND.with(|b| b.set(Colour::new(0.2, 0.9, 0.2))),
                         Item::Yellow => BACKGROUND.with(|b| b.set(Colour::new(0.9, 0.9, 0.2))),
                     };
-                    VoidResponse::None
+                    Response::None
                 }
             }
         },

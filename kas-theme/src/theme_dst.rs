@@ -6,10 +6,29 @@
 //! Stack-DST versions of theme traits
 
 use std::any::Any;
+use std::borrow::Cow;
 use std::ops::DerefMut;
 
 use super::{StackDst, Theme, Window};
 use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
+use kas::TkAction;
+
+/// An optionally-owning (boxed) reference
+///
+/// This is related but not identical to [`Cow`].
+pub enum MaybeBoxed<'a, B: 'a + ?Sized> {
+    Borrowed(&'a B),
+    Boxed(Box<B>),
+}
+
+impl<T: ?Sized> AsRef<T> for MaybeBoxed<'_, T> {
+    fn as_ref(&self) -> &T {
+        match self {
+            MaybeBoxed::Borrowed(r) => r,
+            MaybeBoxed::Boxed(b) => b.as_ref(),
+        }
+    }
+}
 
 /// As [`Theme`], but without associated types
 ///
@@ -19,6 +38,12 @@ use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
 ///
 /// **Feature gated**: this is only available with feature `stack_dst`.
 pub trait ThemeDst<D: DrawShared>: ThemeApi {
+    /// Get current config
+    fn config(&self) -> MaybeBoxed<dyn Any>;
+
+    /// Apply/set the passed config
+    fn apply_config(&mut self, config: &dyn Any) -> TkAction;
+
     /// Theme initialisation
     ///
     /// See also [`Theme::init`].
@@ -77,6 +102,17 @@ where
     <T as Theme<D>>::DrawHandle: 'static,
     <<T as Theme<D>>::Window as Window<D>>::SizeHandle: 'static,
 {
+    fn config(&self) -> MaybeBoxed<dyn Any> {
+        match self.config() {
+            Cow::Borrowed(config) => MaybeBoxed::Borrowed(config),
+            Cow::Owned(config) => MaybeBoxed::Boxed(Box::new(config.to_owned())),
+        }
+    }
+
+    fn apply_config(&mut self, config: &dyn Any) -> TkAction {
+        self.apply_config(config.downcast_ref().unwrap())
+    }
+
     fn init(&mut self, draw: &mut D) {
         self.init(draw);
     }
@@ -130,6 +166,17 @@ where
 
 #[cfg(feature = "gat")]
 impl<'a, D: DrawShared, T: Theme<D>> ThemeDst<D> for T {
+    fn config(&self) -> MaybeBoxed<dyn Any> {
+        match self.config() {
+            Cow::Borrowed(config) => MaybeBoxed::Borrowed(config),
+            Cow::Owned(config) => MaybeBoxed::Boxed(Box::new(config.to_owned())),
+        }
+    }
+
+    fn apply_config(&mut self, config: &dyn Any) -> TkAction {
+        self.apply_config(config.downcast_ref().unwrap())
+    }
+
     fn init(&mut self, draw: &mut D) {
         self.init(draw);
     }
