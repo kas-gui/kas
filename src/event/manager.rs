@@ -284,7 +284,7 @@ impl<'a> Manager<'a> {
     {
         use VirtualKeyCode as VK;
         let config = self.state.config.borrow();
-        let opt_command = config.shortcuts.get(self.state.modifiers, vkey);
+        let opt_command = config.shortcuts().get(self.state.modifiers, vkey);
         drop(config);
         let shift = self.state.modifiers.shift();
 
