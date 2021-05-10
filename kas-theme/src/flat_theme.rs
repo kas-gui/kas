@@ -48,7 +48,7 @@ impl FlatTheme {
     /// Units: Points per Em (standard unit of font size)
     #[inline]
     pub fn with_font_size(mut self, pt_size: f32) -> Self {
-        self.config.font_size = pt_size;
+        self.config.set_font_size(pt_size);
         self
     }
 
@@ -57,9 +57,9 @@ impl FlatTheme {
     /// If no scheme by this name is found the scheme is left unchanged.
     #[inline]
     pub fn with_colours(mut self, scheme: &str) -> Self {
-        self.config.color_scheme = scheme.to_owned();
-        if let Some(scheme) = self.config.color_schemes.get(scheme) {
-            self.cols = scheme.clone();
+        self.config.set_active_scheme(scheme);
+        if let Some(scheme) = self.config.get_color_scheme(scheme) {
+            self.cols = scheme;
         }
         self
     }
@@ -103,7 +103,7 @@ where
 
     fn apply_config(&mut self, config: &Self::Config) -> TkAction {
         let action = self.config.apply_config(config);
-        if let Some(scheme) = self.config.color_schemes.get(&self.config.color_scheme) {
+        if let Some(scheme) = self.config.get_active_scheme() {
             self.cols = scheme.clone();
         }
         action
@@ -116,11 +116,11 @@ where
     }
 
     fn new_window(&self, _draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
-        DimensionsWindow::new(DIMS, self.config.font_size, dpi_factor)
+        DimensionsWindow::new(DIMS, self.config.font_size(), dpi_factor)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        window.dims = Dimensions::new(DIMS, self.config.font_size, dpi_factor);
+        window.dims = Dimensions::new(DIMS, self.config.font_size(), dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -167,24 +167,23 @@ where
 }
 
 impl ThemeApi for FlatTheme {
-    fn set_font_size(&mut self, size: f32) -> TkAction {
-        self.config.font_size = size;
+    fn set_font_size(&mut self, pt_size: f32) -> TkAction {
+        self.config.set_font_size(pt_size);
         TkAction::RESIZE | TkAction::THEME_UPDATE
     }
 
     fn list_schemes(&self) -> Vec<&str> {
         self.config
-            .color_schemes
-            .keys()
-            .map(|name| &**name)
+            .color_schemes_iter()
+            .map(|(name, _)| name)
             .collect()
     }
 
     fn set_scheme(&mut self, name: &str) -> TkAction {
-        if name != self.config.color_scheme {
-            if let Some(scheme) = self.config.color_schemes.get(name) {
-                self.config.color_scheme = name.to_string();
-                self.cols = scheme.clone();
+        if name != self.config.active_scheme() {
+            if let Some(scheme) = self.config.get_color_scheme(name) {
+                self.cols = scheme;
+                self.config.set_active_scheme(name);
                 return TkAction::REDRAW;
             }
         }

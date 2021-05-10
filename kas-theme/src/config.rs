@@ -13,37 +13,94 @@ use std::collections::BTreeMap;
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
 pub struct Config {
-    /// Standard font size
-    ///
-    /// Units: points per Em. Pixel size depends on the screen's scale factor.
+    #[cfg_attr(feature = "config", serde(skip))]
+    dirty: bool,
+
     #[cfg_attr(feature = "config", serde(default = "defaults::font_size"))]
-    pub font_size: f32,
+    font_size: f32,
 
-    /// Active colour scheme (name)
-    ///
-    /// An empty string will resolve the default colour scheme.
     #[cfg_attr(feature = "config", serde(default))]
-    pub color_scheme: String,
+    active_scheme: String,
 
-    /// All colour schemes
-    ///
     /// TODO: possibly we should not save default schemes and merge when
     /// loading (perhaps via a `PartialConfig` type).
     #[cfg_attr(feature = "config", serde(default = "defaults::color_schemes",))]
-    pub color_schemes: BTreeMap<String, ThemeColours>,
+    color_schemes: BTreeMap<String, ThemeColours>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Config {
+            dirty: false,
             font_size: defaults::font_size(),
-            color_scheme: Default::default(),
+            active_scheme: Default::default(),
             color_schemes: defaults::color_schemes(),
         }
     }
 }
 
+/// Getters
 impl Config {
+    /// Standard font size
+    ///
+    /// Units: points per Em. Pixel size depends on the screen's scale factor.
+    #[inline]
+    pub fn font_size(&self) -> f32 {
+        self.font_size
+    }
+
+    /// Active colour scheme (name)
+    ///
+    /// An empty string will resolve the default colour scheme.
+    #[inline]
+    pub fn active_scheme(&self) -> &str {
+        &self.active_scheme
+    }
+
+    /// Iterate over all colour schemes
+    #[inline]
+    pub fn color_schemes_iter(&self) -> impl Iterator<Item = (&str, &ThemeColours)> {
+        self.color_schemes.iter().map(|(s, t)| (s.as_str(), t))
+    }
+
+    /// Get a colour scheme by name
+    #[inline]
+    pub fn get_color_scheme(&self, name: &str) -> Option<ThemeColours> {
+        self.color_schemes.get(name).cloned()
+    }
+
+    /// Get the active colour scheme
+    ///
+    /// Even this one isn't guaranteed to exist.
+    #[inline]
+    pub fn get_active_scheme(&self) -> Option<ThemeColours> {
+        self.color_schemes.get(&self.active_scheme).cloned()
+    }
+}
+
+/// Setters
+impl Config {
+    /// Set font size
+    pub fn set_font_size(&mut self, pt_size: f32) {
+        self.dirty = true;
+        self.font_size = pt_size;
+    }
+
+    /// Set colour scheme
+    pub fn set_active_scheme(&mut self, scheme: impl ToString) {
+        self.dirty = true;
+        self.active_scheme = scheme.to_string();
+    }
+}
+
+/// Other functions
+impl Config {
+    /// Has the config ever been updated?
+    #[inline]
+    pub fn is_dirty(&self) -> bool {
+        self.dirty
+    }
+
     /// Currently this is just "set". Later, maybe some type of merge.
     pub fn apply_config(&mut self, other: &Config) -> TkAction {
         let action = if self.font_size != other.font_size {
