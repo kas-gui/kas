@@ -40,7 +40,7 @@ pub use multi::{MultiTheme, MultiThemeBuilder};
 pub use shaded_theme::ShadedTheme;
 #[cfg(feature = "stack_dst")]
 pub use theme_dst::{MaybeBoxed, ThemeDst, WindowDst};
-pub use traits::{Theme, Window};
+pub use traits::{Theme, ThemeConfig, Window};
 
 #[cfg(feature = "stack_dst")]
 /// Fixed-size object of `Unsized` type

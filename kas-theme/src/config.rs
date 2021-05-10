@@ -5,7 +5,7 @@
 
 //! Theme configuration
 
-use crate::ThemeColours;
+use crate::{ThemeColours, ThemeConfig};
 use kas::TkAction;
 use std::collections::BTreeMap;
 
@@ -95,12 +95,6 @@ impl Config {
 
 /// Other functions
 impl Config {
-    /// Has the config ever been updated?
-    #[inline]
-    pub fn is_dirty(&self) -> bool {
-        self.dirty
-    }
-
     /// Currently this is just "set". Later, maybe some type of merge.
     pub fn apply_config(&mut self, other: &Config) -> TkAction {
         let action = if self.font_size != other.font_size {
@@ -113,6 +107,14 @@ impl Config {
 
         *self = other.clone();
         action
+    }
+}
+
+impl ThemeConfig for Config {
+    /// Has the config ever been updated?
+    #[inline]
+    fn is_dirty(&self) -> bool {
+        self.dirty
     }
 }
 
