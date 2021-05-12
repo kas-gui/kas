@@ -111,7 +111,7 @@ impl Config {
 }
 
 impl ThemeConfig for Config {
-    /// Has the config ever been updated?
+    #[cfg(feature = "config")]
     #[inline]
     fn is_dirty(&self) -> bool {
         self.dirty
