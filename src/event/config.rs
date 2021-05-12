@@ -15,35 +15,26 @@ use std::time::Duration;
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "config", derive(Serialize, Deserialize))]
 pub struct Config {
-    /// Delay before opening/closing menus on mouse hover
     #[cfg_attr(feature = "config", serde(default = "defaults::menu_delay_ns"))]
-    pub menu_delay_ns: u32,
+    menu_delay_ns: u32,
 
-    /// Delay before switching from panning to text-selection mode
     #[cfg_attr(
         feature = "config",
         serde(default = "defaults::touch_text_sel_delay_ns")
     )]
-    pub touch_text_sel_delay_ns: u32,
+    touch_text_sel_delay_ns: u32,
 
-    /// Drag distance threshold before panning (scrolling) starts
-    ///
-    /// When the distance moved is greater than this threshold, panning should
-    /// start; otherwise the system should wait for the text-selection timer.
-    /// We currently recommend the L-inf distance metric (max of abs of values).
     // TODO: multiply by scale factor on access?
     #[cfg_attr(feature = "config", serde(default = "defaults::pan_dist_thresh"))]
-    pub pan_dist_thresh: i32,
+    pan_dist_thresh: i32,
 
-    /// When to pan general widgets (unhandled events) with the mouse
     #[cfg_attr(feature = "config", serde(default = "defaults::mouse_pan"))]
-    pub mouse_pan: MousePan,
-    /// When to pan text fields with the mouse
+    mouse_pan: MousePan,
     #[cfg_attr(feature = "config", serde(default = "defaults::mouse_text_pan"))]
-    pub mouse_text_pan: MousePan,
+    mouse_text_pan: MousePan,
 
     #[cfg_attr(feature = "config", serde(default = "Shortcuts::platform_defaults"))]
-    pub shortcuts: Shortcuts,
+    shortcuts: Shortcuts,
 }
 
 impl Default for Config {
@@ -59,15 +50,55 @@ impl Default for Config {
     }
 }
 
+/// Getters
 impl Config {
-    /// Get menu delay as a `Duration`
+    /// Delay before opening/closing menus on mouse hover
+    #[inline]
     pub fn menu_delay(&self) -> Duration {
         Duration::from_nanos(self.menu_delay_ns.cast())
     }
 
-    /// Get touch selection delay as a `Duration`
+    /// Delay before switching from panning to text-selection mode
+    #[inline]
     pub fn touch_text_sel_delay(&self) -> Duration {
         Duration::from_nanos(self.touch_text_sel_delay_ns.cast())
+    }
+
+    /// Drag distance threshold before panning (scrolling) starts
+    ///
+    /// When the distance moved is greater than this threshold, panning should
+    /// start; otherwise the system should wait for the text-selection timer.
+    /// We currently recommend the L-inf distance metric (max of abs of values).
+    #[inline]
+    pub fn pan_dist_thresh(&self) -> i32 {
+        self.pan_dist_thresh
+    }
+
+    /// When to pan general widgets (unhandled events) with the mouse
+    #[inline]
+    pub fn mouse_pan(&self) -> MousePan {
+        self.mouse_pan
+    }
+
+    /// When to pan text fields with the mouse
+    #[inline]
+    pub fn mouse_text_pan(&self) -> MousePan {
+        self.mouse_text_pan
+    }
+
+    /// Read shortcut config
+    #[inline]
+    pub fn shortcuts(&self) -> &Shortcuts {
+        &self.shortcuts
+    }
+}
+
+/// Other functions
+impl Config {
+    /// Has the config ever been updated?
+    #[inline]
+    pub fn is_dirty(&self) -> bool {
+        false // current code never updates config
     }
 }
 

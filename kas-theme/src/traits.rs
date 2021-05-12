@@ -10,6 +10,19 @@ use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
 
+/// Requirements on theme config (without `config` feature)
+#[cfg(not(feature = "config"))]
+pub trait ThemeConfig: Clone + std::fmt::Debug + 'static {}
+
+/// Requirements on theme config (with `config` feature)
+#[cfg(feature = "config")]
+pub trait ThemeConfig:
+    Clone + std::fmt::Debug + 'static + for<'a> serde::Deserialize<'a> + serde::Serialize
+{
+    /// Has the config ever been updated?
+    fn is_dirty(&self) -> bool;
+}
+
 /// A *theme* provides widget sizing and drawing implementations.
 ///
 /// The theme is generic over some `Draw` type.
@@ -18,15 +31,7 @@ use std::ops::{Deref, DerefMut};
 /// large resources (e.g. fonts and icons) consider using external storage.
 pub trait Theme<D: DrawShared>: ThemeApi {
     /// The associated config type
-    #[cfg(feature = "config")]
-    type Config: Clone
-        + std::fmt::Debug
-        + 'static
-        + for<'a> serde::Deserialize<'a>
-        + serde::Serialize;
-    /// The associated config type
-    #[cfg(not(feature = "config"))]
-    type Config: Clone + std::fmt::Debug + 'static;
+    type Config: ThemeConfig;
 
     /// The associated [`Window`] implementation.
     type Window: Window<D>;

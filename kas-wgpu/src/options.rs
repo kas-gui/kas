@@ -7,7 +7,7 @@
 
 use super::Error;
 use kas::draw::DrawShared;
-use kas_theme::Theme;
+use kas_theme::{Theme, ThemeConfig};
 use log::warn;
 use std::env::var;
 use std::path::PathBuf;
@@ -228,14 +228,14 @@ impl Options {
         // HashMap (with good reasons), thus we can't simply derive(Hash).
         // Perhaps write to a buffer first and compare the buffer's checksum?
         if self.config_mode == ConfigMode::ReadWrite {
-            if !self.config_path.as_os_str().is_empty() {
+            if !self.config_path.as_os_str().is_empty() && config.is_dirty() {
                 kas::config::Format::guess_and_write_path(&self.config_path, &config)?;
             }
-            if !self.theme_config_path.as_os_str().is_empty() {
-                let config = theme.config();
+            let theme_config = theme.config();
+            if !self.theme_config_path.as_os_str().is_empty() && theme_config.is_dirty() {
                 kas::config::Format::guess_and_write_path(
                     &self.theme_config_path,
-                    config.as_ref(),
+                    theme_config.as_ref(),
                 )?;
             }
         }
