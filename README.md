@@ -60,9 +60,11 @@ even usable to a million since many operations are `O(log n)` or better.
 acceleration. Currently no CPU fallback.  
 **Themes:** theme engine supports sizing and drawing many common widget parts
 (not yet comprehensive), with two example themes (not especially good ones).  
-**API:** via theme or via a few primitives. Basic.  
+**DPI scaling:** perfect stepless scaling for text and most drawables; images may be sized according to pixels  
+**Anti-aliased:** yes for "rounded" shapes, no for simple blocks and images.  
+**API:** limited high-level widget graphics via theme plus simple shapes via low-level API; not yet comprehensive.  
 **Custom accelerated widgets:** yes (see [Mandlebrot example](kas-wgpu/examples/README.md#Mandlebrot)).  
-**Textures/images:** missing (probably for v0.8).
+**Textures/images:** done in master branch (currently only for raster images from path)
 
 ### Event handling
 
