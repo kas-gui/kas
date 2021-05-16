@@ -191,7 +191,7 @@ impl Images {
         Ok(id)
     }
 
-    /// Free an image
+    /// Reduce usage count for `id` and free if zero
     pub fn remove(&mut self, id: ImageId) {
         // We don't have a map from id to path, hence have to iterate. We can
         // however do a fast check that id is used.
