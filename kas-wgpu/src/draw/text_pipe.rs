@@ -384,7 +384,7 @@ impl Window {
         if effects.len() > 1
             || effects
                 .get(0)
-                .map(|e| *e != Default::default())
+                .map(|e| *e != Effect::default(()))
                 .unwrap_or(false)
         {
             let for_rect = |x1, x2, mut y, h: f32, _, _| {
@@ -397,7 +397,7 @@ impl Window {
                 let quad = Quad::with_coords(pos + Vec2(x1, y), pos + Vec2(x2, y2));
                 rects.push(quad);
             };
-            text.glyphs_with_effects(effects, for_glyph, for_rect);
+            text.glyphs_with_effects(effects, (), for_glyph, for_rect);
         } else {
             text.glyphs(|font, dpu, height, glyph| for_glyph(font, dpu, height, glyph, 0, ()));
         }
@@ -454,7 +454,7 @@ impl Window {
             rects.push((quad, col));
         };
 
-        text.glyphs_with_effects(effects, for_glyph, for_rect);
+        text.glyphs_with_effects(effects, Colour::BLACK, for_glyph, for_rect);
 
         self.duration += time.elapsed();
         rects
