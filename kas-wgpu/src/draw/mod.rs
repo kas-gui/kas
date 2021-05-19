@@ -26,7 +26,10 @@ pub(crate) use shaders::ShaderManager;
 
 pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};
 
-pub(crate) const TEX_FORMAT: TextureFormat = TextureFormat::Bgra8UnormSrgb;
+/// Output format
+///
+/// Required by WGPU to be BGRA, either sRGB or Unorm.
+pub(crate) const RENDER_TEX_FORMAT: TextureFormat = TextureFormat::Bgra8UnormSrgb;
 
 /// 3-part colour data
 #[repr(C)]

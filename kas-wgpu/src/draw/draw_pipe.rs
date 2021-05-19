@@ -57,7 +57,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let shaded_square = shaded_square::Pipeline::new(device, shaders, &bgl_common);
         let shaded_round = shaded_round::Pipeline::new(device, shaders, &bgl_common);
         let flat_round = flat_round::Pipeline::new(device, shaders, &bgl_common);
-        let custom = custom.build(&device, &bgl_common, TEX_FORMAT);
+        let custom = custom.build(&device, &bgl_common, RENDER_TEX_FORMAT);
         let text = text_pipe::Pipeline::new(device, shaders, &bgl_common);
 
         DrawPipe {

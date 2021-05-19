@@ -23,7 +23,7 @@ use winit::event::WindowEvent;
 use winit::event_loop::EventLoopWindowTarget;
 use winit::window::WindowBuilder;
 
-use crate::draw::{CustomPipe, DrawPipe, DrawWindow, TEX_FORMAT};
+use crate::draw::{CustomPipe, DrawPipe, DrawWindow};
 use crate::shared::{PendingAction, SharedState};
 use crate::ProxyAction;
 
@@ -93,7 +93,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         let surface = unsafe { shared.instance.create_surface(&window) };
         let sc_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
-            format: TEX_FORMAT,
+            format: crate::draw::RENDER_TEX_FORMAT,
             width: size.0.cast(),
             height: size.1.cast(),
             present_mode: wgpu::PresentMode::Mailbox,

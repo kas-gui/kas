@@ -64,7 +64,7 @@ impl Pipeline {
                 module: &shaders.frag_shaded_square,
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                    format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
