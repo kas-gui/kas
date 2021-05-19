@@ -66,8 +66,8 @@ impl Layout for Clock {
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
         let col_face = color::Rgba::grey(0.4);
-        let col_hands = color::Rgba::rgb(0.2, 0.2, 0.4);
-        let col_secs = color::Rgba::rgb(0.6, 0.2, 0.2);
+        let col_hands = color::Rgba8Srgb::rgb(124, 124, 170).into();
+        let col_secs = color::Rgba8Srgb::rgb(203, 124, 124).into();
         let text_class = TextClass::Label;
 
         // We use the low-level draw device to draw our clock. This means it is
