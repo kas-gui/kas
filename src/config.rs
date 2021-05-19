@@ -23,6 +23,11 @@ pub enum Error {
     #[error("config (de)serialisation to JSON failed")]
     Json(#[from] serde_json::Error),
 
+    #[cfg(feature = "ron")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "ron")))]
+    #[error("config (de)serialisation to RON failed")]
+    Ron(#[from] dep_ron::Error),
+
     #[error("error reading / writing config file")]
     IoError(#[from] std::io::Error),
 
@@ -38,17 +43,21 @@ pub enum Format {
     #[error("no format")]
     None,
 
-    /// JSON
+    /// JavaScript Object Notation
     #[error("JSON")]
     Json,
 
-    /// TOML
+    /// Tom's Obvious Minimal Language
     #[error("TOML")]
     Toml,
 
-    /// YAML
+    /// YAML Ain't Markup Language
     #[error("YAML")]
     Yaml,
+
+    /// Rusty Object Notation
+    #[error("RON")]
+    Ron,
 
     /// Error: unable to guess format
     #[error("(unknown format)")]
@@ -78,6 +87,8 @@ impl Format {
                 Format::Toml
             } else if ext == "yaml" {
                 Format::Yaml
+            } else if ext == "ron" {
+                Format::Ron
             } else {
                 Format::Unknown
             }
@@ -100,6 +111,11 @@ impl Format {
                 let r = std::io::BufReader::new(std::fs::File::open(path)?);
                 Ok(serde_yaml::from_reader(r)?)
             }
+            #[cfg(feature = "ron")]
+            Format::Ron => {
+                let r = std::io::BufReader::new(std::fs::File::open(path)?);
+                Ok(dep_ron::de::from_reader(r)?)
+            }
             _ => {
                 let _ = path; // squelch unused warning
                 Err(Error::UnsupportedFormat(self))
@@ -121,6 +137,13 @@ impl Format {
             Format::Yaml => {
                 let w = std::io::BufWriter::new(std::fs::File::create(path)?);
                 serde_yaml::to_writer(w, value)?;
+                Ok(())
+            }
+            #[cfg(feature = "ron")]
+            Format::Ron => {
+                let w = std::io::BufWriter::new(std::fs::File::create(path)?);
+                let pretty = dep_ron::ser::PrettyConfig::default();
+                dep_ron::ser::to_writer_pretty(w, value, pretty)?;
                 Ok(())
             }
             // NOTE: Toml is not supported since the `toml` crate does not support enums as map keys

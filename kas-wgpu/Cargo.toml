@@ -54,7 +54,7 @@ guillotiere = "0.6.0"
 [dev-dependencies]
 chrono = "0.4"
 env_logger = "0.8"
-kas = { path = "..", features = ["markdown", "winit", "json", "yaml"] }
+kas = { path = "..", features = ["markdown", "winit", "json", "yaml", "ron"] }
 
 [build-dependencies]
 glob = "0.3"
