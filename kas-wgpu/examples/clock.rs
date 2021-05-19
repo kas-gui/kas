@@ -12,7 +12,7 @@ use log::info;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::draw::{Colour, DrawRounded, TextClass};
+use kas::draw::{color, DrawRounded, TextClass};
 use kas::geom::{Quad, Vec2};
 use kas::text::util::set_text_and_prepare;
 use kas::widget::Window;
@@ -65,9 +65,9 @@ impl Layout for Clock {
     }
 
     fn draw(&self, draw_handle: &mut dyn DrawHandle, _: &ManagerState, _: bool) {
-        let col_face = Colour::grey(0.4);
-        let col_hands = Colour::new(0.2, 0.2, 0.4);
-        let col_secs = Colour::new(0.6, 0.2, 0.2);
+        let col_face = color::Rgba::grey(0.4);
+        let col_hands = color::Rgba::rgb(0.2, 0.2, 0.4);
+        let col_secs = color::Rgba::rgb(0.6, 0.2, 0.2);
         let text_class = TextClass::Label;
 
         // We use the low-level draw device to draw our clock. This means it is

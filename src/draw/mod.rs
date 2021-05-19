@@ -37,7 +37,8 @@
 //! to the host graphics API, for example
 //! [`kas-wgpu::draw::CustomPipe`](https://docs.rs/kas-wgpu/*/kas_wgpu/draw/trait.CustomPipe.html).
 
-mod colour;
+pub mod color;
+
 mod handle;
 mod theme;
 
@@ -48,8 +49,8 @@ use std::path::Path;
 use crate::cast::Cast;
 use crate::geom::{Quad, Rect, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
+use color::Rgba;
 
-pub use colour::Colour;
 pub use handle::*;
 pub use theme::*;
 
@@ -130,7 +131,7 @@ pub trait DrawShared: 'static {
         pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
-        col: Colour,
+        col: Rgba,
     );
 
     /// Draw text with a colour and effects
@@ -143,7 +144,7 @@ pub trait DrawShared: 'static {
         pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
-        col: Colour,
+        col: Rgba,
         effects: &[Effect<()>],
     );
 
@@ -158,7 +159,7 @@ pub trait DrawShared: 'static {
         pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
-        effects: &[Effect<Colour>],
+        effects: &[Effect<Rgba>],
     );
 }
 
@@ -194,12 +195,12 @@ pub trait Draw: Any {
     fn get_clip_rect(&self, pass: Pass) -> Rect;
 
     /// Draw a rectangle of uniform colour
-    fn rect(&mut self, pass: Pass, rect: Quad, col: Colour);
+    fn rect(&mut self, pass: Pass, rect: Quad, col: Rgba);
 
     /// Draw a frame of uniform colour
     ///
     /// The frame is defined by the area inside `outer` and not inside `inner`.
-    fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Colour);
+    fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Rgba);
 }
 
 /// Drawing commands for rounded shapes
@@ -218,7 +219,7 @@ pub trait DrawRounded: Draw {
     ///
     /// Note that for rectangular, axis-aligned lines, [`Draw::rect`] should be
     /// preferred.
-    fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Colour);
+    fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Rgba);
 
     /// Draw a circle or oval of uniform colour
     ///
@@ -227,7 +228,7 @@ pub trait DrawRounded: Draw {
     /// The `inner_radius` parameter gives the inner radius relative to the
     /// outer radius: a value of `0.0` will result in the whole shape being
     /// painted, while `1.0` will result in a zero-width line on the outer edge.
-    fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Colour);
+    fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Rgba);
 
     /// Draw a frame with rounded corners and uniform colour
     ///
@@ -240,14 +241,7 @@ pub trait DrawRounded: Draw {
     /// painted, while `1.0` will result in a zero-width line on the outer edge.
     /// When `inner_radius > 0`, the frame will be visually thinner than the
     /// allocated area.
-    fn rounded_frame(
-        &mut self,
-        pass: Pass,
-        outer: Quad,
-        inner: Quad,
-        inner_radius: f32,
-        col: Colour,
-    );
+    fn rounded_frame(&mut self, pass: Pass, outer: Quad, inner: Quad, inner_radius: f32, col: Rgba);
 }
 
 /// Drawing commands for shaded shapes
@@ -263,10 +257,10 @@ pub trait DrawRounded: Draw {
 /// 0 is perpendicular to the screen towards the viewer, and 1 points outwards.
 pub trait DrawShaded: Draw {
     /// Add a shaded square to the draw buffer
-    fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Colour);
+    fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba);
 
     /// Add a shaded circle to the draw buffer
-    fn shaded_circle(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Colour);
+    fn shaded_circle(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba);
 
     /// Add a square shaded frame to the draw buffer.
     fn shaded_square_frame(
@@ -275,8 +269,8 @@ pub trait DrawShaded: Draw {
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
-        outer_col: Colour,
-        inner_col: Colour,
+        outer_col: Rgba,
+        inner_col: Rgba,
     );
 
     /// Add a rounded shaded frame to the draw buffer.
@@ -286,6 +280,6 @@ pub trait DrawShaded: Draw {
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
-        col: Colour,
+        col: Rgba,
     );
 }

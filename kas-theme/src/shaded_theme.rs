@@ -11,7 +11,7 @@ use std::ops::Range;
 use crate::{Config, Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
 use kas::dir::{Direction, Directional};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, InputState, Pass,
+    self, color::Rgba, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, InputState, Pass,
     RegionClass, SizeHandle, TextClass, ThemeApi,
 };
 use kas::geom::*;
@@ -150,7 +150,7 @@ where
         }
     }
 
-    fn clear_color(&self) -> Colour {
+    fn clear_color(&self) -> Rgba {
         self.cols.background
     }
 }
@@ -206,7 +206,7 @@ where
     /// - `outer`: define position via outer rect
     /// - `bg_col`: colour of background
     /// - `nav_col`: colour of navigation highlight, if visible
-    fn draw_edit_box(&mut self, outer: Rect, bg_col: Colour, nav_col: Option<Colour>) -> Quad {
+    fn draw_edit_box(&mut self, outer: Rect, bg_col: Rgba, nav_col: Option<Rgba>) -> Quad {
         let mut outer = Quad::from(outer);
         let mut inner = outer.shrink(self.window.dims.frame as f32);
 
@@ -273,14 +273,8 @@ where
             let outer = Quad::from(outer_rect);
             let inner = Quad::from(inner_rect);
             let norm = (0.0, 0.0);
-            self.draw.shaded_square_frame(
-                pass,
-                outer,
-                inner,
-                norm,
-                Colour::TRANSPARENT,
-                Colour::BLACK,
-            );
+            self.draw
+                .shaded_square_frame(pass, outer, inner, norm, Rgba::TRANSPARENT, Rgba::BLACK);
             self.draw.rect(pass, inner, self.cols.background);
         }
 

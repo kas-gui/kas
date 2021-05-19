@@ -5,10 +5,10 @@
 
 //! Text drawing pipeline
 
-use super::{atlases, Rgba, ShaderManager};
+use super::{atlases, ShaderManager};
 use ab_glyph::{Font, FontRef};
 use kas::cast::*;
-use kas::draw::{Colour, Pass};
+use kas::draw::{color::Rgba, Pass};
 use kas::geom::{Quad, Vec2};
 use kas::text::fonts::{fonts, FontId};
 use kas::text::{Effect, Glyph, TextDisplay};
@@ -322,10 +322,9 @@ impl Window {
         pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
-        col: Colour,
+        col: Rgba,
     ) {
         let time = std::time::Instant::now();
-        let col = col.into();
 
         let for_glyph = |font: FontId, _, height: f32, glyph: Glyph| {
             let desc = SpriteDescriptor::new(font, glyph, height);
@@ -350,7 +349,7 @@ impl Window {
         pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
-        col: Colour,
+        col: Rgba,
         effects: &[Effect<()>],
     ) -> Vec<Quad> {
         // Optimisation: use cheaper TextDisplay::glyphs method
@@ -365,7 +364,6 @@ impl Window {
         }
 
         let time = std::time::Instant::now();
-        let col = col.into();
         let mut rects = vec![];
 
         let mut for_glyph = |font: FontId, _, height: f32, glyph: Glyph, _: usize, _: ()| {
@@ -412,8 +410,8 @@ impl Window {
         pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
-        effects: &[Effect<Colour>],
-    ) -> Vec<(Quad, Colour)> {
+        effects: &[Effect<Rgba>],
+    ) -> Vec<(Quad, Rgba)> {
         // Optimisation: use cheaper TextDisplay::glyphs method
         if effects.len() <= 1
             && effects
@@ -421,7 +419,7 @@ impl Window {
                 .map(|e| e.flags == Default::default())
                 .unwrap_or(true)
         {
-            let col = effects.get(0).map(|e| e.aux).unwrap_or(Colour::default());
+            let col = effects.get(0).map(|e| e.aux).unwrap_or(Rgba::BLACK);
             self.text(pipe, pass, pos, text, col);
             return vec![];
         }
@@ -429,21 +427,20 @@ impl Window {
         let time = std::time::Instant::now();
         let mut rects = vec![];
 
-        let for_glyph = |font: FontId, _, height: f32, glyph: Glyph, _, col: Colour| {
+        let for_glyph = |font: FontId, _, height: f32, glyph: Glyph, _, col: Rgba| {
             let desc = SpriteDescriptor::new(font, glyph, height);
             if let Some(sprite) = pipe.get_glyph(desc) {
                 let pos = pos + Vec2::from(glyph.position);
                 let a = pos + sprite.offset;
                 let b = a + sprite.size;
                 let (ta, tb) = (sprite.tex_quad.a, sprite.tex_quad.b);
-                let col = col.into();
                 let instance = Instance { a, b, ta, tb, col };
                 // TODO(opt): avoid calling repeatedly?
                 self.atlas.rect(pass, sprite.atlas, instance);
             }
         };
 
-        let for_rect = |x1, x2, mut y, h: f32, _, col: Colour| {
+        let for_rect = |x1, x2, mut y, h: f32, _, col: Rgba| {
             let y2 = y + h;
             if h < 1.0 {
                 // h too small can make the line invisible due to rounding
@@ -454,7 +451,7 @@ impl Window {
             rects.push((quad, col));
         };
 
-        text.glyphs_with_effects(effects, Colour::BLACK, for_glyph, for_rect);
+        text.glyphs_with_effects(effects, Rgba::BLACK, for_glyph, for_rect);
 
         self.duration += time.elapsed();
         rects

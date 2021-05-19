@@ -362,7 +362,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     }
 }
 
-fn to_wgpu_color(c: kas::draw::Colour) -> wgpu::Color {
+fn to_wgpu_color(c: kas::draw::color::Rgba) -> wgpu::Color {
     wgpu::Color {
         r: c.r as f64,
         g: c.g as f64,
