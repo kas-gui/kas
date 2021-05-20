@@ -5,57 +5,119 @@
 
 //! Colour schemes
 
-use kas::draw::{color::Rgba, InputState, TextClass};
+use kas::draw::color::{Rgba, Rgba8Srgb};
+use kas::draw::{InputState, TextClass};
 
 /// Provides standard theme colours
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
-pub struct ThemeColours {
+pub struct Colors<C> {
     /// Background colour
-    pub background: Rgba,
+    pub background: C,
     /// Colour for frames (not always used)
-    pub frame: Rgba,
+    pub frame: C,
     /// Background colour of `EditBox`
-    pub bg: Rgba,
+    pub bg: C,
     /// Background colour of `EditBox` (disabled state)
-    pub bg_disabled: Rgba,
+    pub bg_disabled: C,
     /// Background colour of `EditBox` (error state)
-    pub bg_error: Rgba,
+    pub bg_error: C,
     /// Text colour in an `EditBox`
-    pub text: Rgba,
+    pub text: C,
     /// Selected tect colour
-    pub text_sel: Rgba,
+    pub text_sel: C,
     /// Selected text background colour
-    pub text_sel_bg: Rgba,
+    pub text_sel_bg: C,
     /// Text colour in a `Label`
-    pub label_text: Rgba,
+    pub label_text: C,
     /// Text colour on a `TextButton`
-    pub button_text: Rgba,
+    pub button_text: C,
     /// Highlight colour for keyboard navigation
-    pub nav_focus: Rgba,
+    pub nav_focus: C,
     /// Colour of a `TextButton`
-    pub button: Rgba,
+    pub button: C,
     /// Colour of a `TextButton` (disabled state)
-    pub button_disabled: Rgba,
+    pub button_disabled: C,
     /// Colour of a `TextButton` when hovered by the mouse
-    pub button_highlighted: Rgba,
+    pub button_highlighted: C,
     /// Colour of a `TextButton` when depressed
-    pub button_depressed: Rgba,
+    pub button_depressed: C,
     /// Colour of mark within a `CheckBox` or `RadioBox`
-    pub checkbox: Rgba,
+    pub checkbox: C,
 }
 
-impl Default for ThemeColours {
-    #[inline]
-    fn default() -> Self {
-        ThemeColours::white_blue()
+/// [`Colors`] parameterised for reading and writing using sRGB
+pub type ColorsSrgb = Colors<Rgba8Srgb>;
+
+/// [`Colors`] parameterised for graphics usage
+pub type ColorsLinear = Colors<Rgba>;
+
+impl From<ColorsSrgb> for ColorsLinear {
+    fn from(col: ColorsSrgb) -> Self {
+        Colors {
+            background: col.background.into(),
+            frame: col.frame.into(),
+            bg: col.bg.into(),
+            bg_disabled: col.bg_disabled.into(),
+            bg_error: col.bg_error.into(),
+            text: col.text.into(),
+            text_sel: col.text_sel.into(),
+            text_sel_bg: col.text_sel_bg.into(),
+            label_text: col.label_text.into(),
+            button_text: col.button_text.into(),
+            nav_focus: col.nav_focus.into(),
+            button: col.button.into(),
+            button_disabled: col.button_disabled.into(),
+            button_highlighted: col.button_highlighted.into(),
+            button_depressed: col.button_depressed.into(),
+            checkbox: col.checkbox.into(),
+        }
     }
 }
 
-impl ThemeColours {
+impl From<ColorsLinear> for ColorsSrgb {
+    fn from(col: ColorsLinear) -> Self {
+        Colors {
+            background: col.background.into(),
+            frame: col.frame.into(),
+            bg: col.bg.into(),
+            bg_disabled: col.bg_disabled.into(),
+            bg_error: col.bg_error.into(),
+            text: col.text.into(),
+            text_sel: col.text_sel.into(),
+            text_sel_bg: col.text_sel_bg.into(),
+            label_text: col.label_text.into(),
+            button_text: col.button_text.into(),
+            nav_focus: col.nav_focus.into(),
+            button: col.button.into(),
+            button_disabled: col.button_disabled.into(),
+            button_highlighted: col.button_highlighted.into(),
+            button_depressed: col.button_depressed.into(),
+            checkbox: col.checkbox.into(),
+        }
+    }
+}
+
+impl Default for ColorsLinear {
+    #[inline]
+    fn default() -> Self {
+        Colors::white_blue()
+    }
+}
+
+impl Default for ColorsSrgb {
+    #[inline]
+    fn default() -> Self {
+        ColorsLinear::default().into()
+    }
+}
+
+// NOTE: these colour schemes are defined using linear (Rgba) colours instead of
+// sRGB (Rgba8Srgb) colours for historical reasons. Either should be fine.
+impl ColorsLinear {
     /// White background with blue activable items
     pub fn white_blue() -> Self {
-        ThemeColours {
+        Colors {
             background: Rgba::grey(1.0),
             frame: Rgba::grey(0.7),
             bg: Rgba::grey(1.0),
@@ -77,7 +139,7 @@ impl ThemeColours {
 
     /// Light scheme
     pub fn light() -> Self {
-        ThemeColours {
+        Colors {
             background: Rgba::grey(0.9),
             frame: Rgba::rgb(0.8, 0.8, 0.9),
             bg: Rgba::grey(1.0),
@@ -99,7 +161,7 @@ impl ThemeColours {
 
     /// Dark scheme
     pub fn dark() -> Self {
-        ThemeColours {
+        Colors {
             background: Rgba::grey(0.2),
             frame: Rgba::grey(0.4),
             bg: Rgba::grey(0.1),

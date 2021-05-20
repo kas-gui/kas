@@ -6,6 +6,7 @@
 //! Colour types
 
 use crate::cast::{Conv, ConvFloat};
+use thiserror::Error;
 
 /// 4-part colour data, linear, sRGB colour space
 ///
@@ -115,6 +116,21 @@ impl Rgba8Srgb {
     pub const fn grey(s: u8) -> Self {
         Self::rgb(s, s, s)
     }
+
+    /// Format to a string
+    ///
+    /// This looks like `#123456` if the alpha component is opaque, otherwise
+    /// like `#12345678`.
+    pub fn format_html(self) -> String {
+        if self.0[3] == 255 {
+            format!("#{:02X}{:02X}{:02X}", self.0[0], self.0[1], self.0[2])
+        } else {
+            format!(
+                "#{:02X}{:02X}{:02X}{:02X}",
+                self.0[0], self.0[1], self.0[2], self.0[3]
+            )
+        }
+    }
 }
 
 impl From<Rgba8Srgb> for [u8; 4] {
@@ -129,11 +145,13 @@ impl From<[u8; 4]> for Rgba8Srgb {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Error)]
 pub enum ParseError {
     /// Incorrect input length
+    #[error("input has unexpected length (expected optional `#` then 6 or 8 bytes")]
     Length,
     /// Invalid hex byte
+    #[error("input byte is not a valid hex byte (expected 0-9, a-f or A-F)")]
     InvalidHex,
 }
 
@@ -178,6 +196,45 @@ impl std::str::FromStr for Rgba8Srgb {
         let a = if s.len() == 8 { byte(&s[6..8])? } else { 0xFF };
 
         Ok(Rgba8Srgb([r, g, b, a]))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl serde::Serialize for Rgba8Srgb {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.format_html())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for Rgba8Srgb {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct Visitor;
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = Rgba8Srgb;
+
+            fn expecting(&self, fmtr: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(
+                    fmtr,
+                    "an HTML color code with optional '#' prefix then 6 or 8 hex digits"
+                )
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                v.parse().map_err(E::custom)
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
     }
 }
 
