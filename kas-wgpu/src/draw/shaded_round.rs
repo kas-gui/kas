@@ -6,8 +6,8 @@
 //! Rounded shading pipeline
 
 use super::common;
-use crate::draw::{Rgba, ShaderManager};
-use kas::draw::{Colour, Pass};
+use crate::draw::ShaderManager;
+use kas::draw::{color::Rgba, Pass};
 use kas::geom::{Quad, Vec2};
 use std::f32::consts::FRAC_PI_2;
 use std::mem::size_of;
@@ -81,7 +81,7 @@ impl Pipeline {
                 module: &shaders.frag_shaded_round,
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                    format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
@@ -105,7 +105,7 @@ impl Pipeline {
 
 impl Window {
     /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
-    pub fn circle(&mut self, pass: Pass, rect: Quad, mut norm: Vec2, col: Colour) {
+    pub fn circle(&mut self, pass: Pass, rect: Quad, mut norm: Vec2, col: Rgba) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -118,7 +118,6 @@ impl Window {
         }
 
         let adjust = Vec2(FRAC_PI_2 * norm.0, norm.1 - norm.0);
-        let col = col.into();
 
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
@@ -155,7 +154,7 @@ impl Window {
         outer: Quad,
         inner: Quad,
         mut norm: Vec2,
-        col: Colour,
+        col: Rgba,
     ) {
         let aa = outer.a;
         let bb = outer.b;
@@ -180,7 +179,6 @@ impl Window {
         }
 
         let adjust = Vec2(FRAC_PI_2 * norm.0, norm.1 - norm.0);
-        let col = col.into();
 
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);

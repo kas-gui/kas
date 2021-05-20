@@ -10,11 +10,11 @@
 use std::f32;
 use std::ops::Range;
 
-use crate::{Config, Dimensions, DimensionsParams, DimensionsWindow, Theme, ThemeColours, Window};
+use crate::{ColorsLinear, Config, Dimensions, DimensionsParams, DimensionsWindow, Theme, Window};
 use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
 use kas::draw::{
-    self, Colour, Draw, DrawRounded, DrawShared, ImageId, InputState, Pass, RegionClass,
+    self, color::Rgba, Draw, DrawRounded, DrawShared, ImageId, InputState, Pass, RegionClass,
     SizeHandle, TextClass, ThemeApi,
 };
 use kas::geom::*;
@@ -30,7 +30,7 @@ const BG_SHRINK_FACTOR: f32 = 1.0 - std::f32::consts::FRAC_1_SQRT_2;
 #[derive(Clone, Debug)]
 pub struct FlatTheme {
     config: Config,
-    cols: ThemeColours,
+    cols: ColorsLinear,
 }
 
 impl FlatTheme {
@@ -39,7 +39,7 @@ impl FlatTheme {
     pub fn new() -> Self {
         FlatTheme {
             config: Default::default(),
-            cols: ThemeColours::default(),
+            cols: ColorsLinear::default(),
         }
     }
 
@@ -59,7 +59,7 @@ impl FlatTheme {
     pub fn with_colours(mut self, scheme: &str) -> Self {
         self.config.set_active_scheme(scheme);
         if let Some(scheme) = self.config.get_color_scheme(scheme) {
-            self.cols = scheme;
+            self.cols = scheme.into();
         }
         self
     }
@@ -80,7 +80,7 @@ pub struct DrawHandle<'a, D: DrawShared> {
     pub(crate) shared: &'a mut D,
     pub(crate) draw: &'a mut D::Draw,
     pub(crate) window: &'a mut DimensionsWindow,
-    pub(crate) cols: &'a ThemeColours,
+    pub(crate) cols: &'a ColorsLinear,
     pub(crate) offset: Offset,
     pub(crate) pass: Pass,
 }
@@ -104,7 +104,7 @@ where
     fn apply_config(&mut self, config: &Self::Config) -> TkAction {
         let action = self.config.apply_config(config);
         if let Some(scheme) = self.config.get_active_scheme() {
-            self.cols = scheme.clone();
+            self.cols = scheme.into();
         }
         action
     }
@@ -139,7 +139,7 @@ where
             shared: extend_lifetime(shared),
             draw: extend_lifetime(draw),
             window: extend_lifetime(window),
-            cols: std::mem::transmute::<&'a ThemeColours, &'static ThemeColours>(&self.cols),
+            cols: std::mem::transmute::<&'a ColorsLinear, &'static ColorsLinear>(&self.cols),
             offset: Offset::ZERO,
             pass: Pass::new(0),
         }
@@ -161,7 +161,7 @@ where
         }
     }
 
-    fn clear_color(&self) -> Colour {
+    fn clear_color(&self) -> Rgba {
         self.cols.background
     }
 }
@@ -182,7 +182,7 @@ impl ThemeApi for FlatTheme {
     fn set_scheme(&mut self, name: &str) -> TkAction {
         if name != self.config.active_scheme() {
             if let Some(scheme) = self.config.get_color_scheme(name) {
-                self.cols = scheme;
+                self.cols = scheme.into();
                 self.config.set_active_scheme(name);
                 return TkAction::REDRAW;
             }
@@ -201,7 +201,7 @@ where
     /// - `outer`: define position via outer rect
     /// - `bg_col`: colour of background
     /// - `nav_col`: colour of navigation highlight, if visible
-    fn draw_edit_box(&mut self, outer: Rect, bg_col: Colour, nav_col: Option<Colour>) -> Quad {
+    fn draw_edit_box(&mut self, outer: Rect, bg_col: Rgba, nav_col: Option<Rgba>) -> Quad {
         let outer = Quad::from(outer);
         let inner1 = outer.shrink(self.window.dims.frame as f32 * BG_SHRINK_FACTOR);
         let inner2 = outer.shrink(self.window.dims.frame as f32);

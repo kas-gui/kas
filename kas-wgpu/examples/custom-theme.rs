@@ -8,6 +8,7 @@
 
 use std::cell::Cell;
 
+use kas::draw::color::Rgba;
 use kas::draw::*;
 use kas::prelude::*;
 use kas::widget::*;
@@ -42,7 +43,7 @@ impl Clone for CustomTheme {
 
 thread_local! {
     // Cell is not thread-safe. Lazy way to solve that :-D
-    static BACKGROUND: Cell<Colour> = Cell::new(Colour::grey(1.0));
+    static BACKGROUND: Cell<Rgba> = Cell::new(Rgba::grey(1.0));
 }
 
 impl<D: DrawShared> Theme<D> for CustomTheme
@@ -96,7 +97,7 @@ where
         Theme::<D>::draw_handle(&self.inner, shared, draw, window)
     }
 
-    fn clear_color(&self) -> Colour {
+    fn clear_color(&self) -> Rgba {
         BACKGROUND.with(|b| b.get())
     }
 }
@@ -153,10 +154,10 @@ fn main() -> Result<(), kas_wgpu::Error> {
                     -> Response<VoidMsg>
                 {
                     match item {
-                        Item::White => BACKGROUND.with(|b| b.set(Colour::grey(1.0))),
-                        Item::Red => BACKGROUND.with(|b| b.set(Colour::new(0.9, 0.2, 0.2))),
-                        Item::Green => BACKGROUND.with(|b| b.set(Colour::new(0.2, 0.9, 0.2))),
-                        Item::Yellow => BACKGROUND.with(|b| b.set(Colour::new(0.9, 0.9, 0.2))),
+                        Item::White => BACKGROUND.with(|b| b.set(Rgba::WHITE)),
+                        Item::Red => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.2, 0.2))),
+                        Item::Green => BACKGROUND.with(|b| b.set(Rgba::rgb(0.2, 0.9, 0.2))),
+                        Item::Yellow => BACKGROUND.with(|b| b.set(Rgba::rgb(0.9, 0.9, 0.2))),
                     };
                     Response::None
                 }

@@ -5,7 +5,7 @@
 
 //! Theme configuration
 
-use crate::{ThemeColours, ThemeConfig};
+use crate::{ColorsLinear, ColorsSrgb, ThemeConfig};
 use kas::TkAction;
 use std::collections::BTreeMap;
 
@@ -25,7 +25,7 @@ pub struct Config {
     /// TODO: possibly we should not save default schemes and merge when
     /// loading (perhaps via a `PartialConfig` type).
     #[cfg_attr(feature = "config", serde(default = "defaults::color_schemes",))]
-    color_schemes: BTreeMap<String, ThemeColours>,
+    color_schemes: BTreeMap<String, ColorsSrgb>,
 }
 
 impl Default for Config {
@@ -59,13 +59,13 @@ impl Config {
 
     /// Iterate over all colour schemes
     #[inline]
-    pub fn color_schemes_iter(&self) -> impl Iterator<Item = (&str, &ThemeColours)> {
+    pub fn color_schemes_iter(&self) -> impl Iterator<Item = (&str, &ColorsSrgb)> {
         self.color_schemes.iter().map(|(s, t)| (s.as_str(), t))
     }
 
     /// Get a colour scheme by name
     #[inline]
-    pub fn get_color_scheme(&self, name: &str) -> Option<ThemeColours> {
+    pub fn get_color_scheme(&self, name: &str) -> Option<ColorsSrgb> {
         self.color_schemes.get(name).cloned()
     }
 
@@ -73,7 +73,7 @@ impl Config {
     ///
     /// Even this one isn't guaranteed to exist.
     #[inline]
-    pub fn get_active_scheme(&self) -> Option<ThemeColours> {
+    pub fn get_active_scheme(&self) -> Option<ColorsSrgb> {
         self.color_schemes.get(&self.active_scheme).cloned()
     }
 }
@@ -125,11 +125,11 @@ mod defaults {
         12.0
     }
 
-    pub fn color_schemes() -> BTreeMap<String, ThemeColours> {
+    pub fn color_schemes() -> BTreeMap<String, ColorsSrgb> {
         let mut schemes = BTreeMap::new();
-        schemes.insert("".to_string(), ThemeColours::white_blue());
-        schemes.insert("light".to_string(), ThemeColours::light());
-        schemes.insert("dark".to_string(), ThemeColours::dark());
+        schemes.insert("".to_string(), ColorsLinear::white_blue().into());
+        schemes.insert("light".to_string(), ColorsLinear::light().into());
+        schemes.insert("dark".to_string(), ColorsLinear::dark().into());
         schemes
     }
 }

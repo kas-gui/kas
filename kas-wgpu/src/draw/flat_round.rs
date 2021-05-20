@@ -6,8 +6,8 @@
 //! Rounded flat pipeline
 
 use super::common;
-use crate::draw::{Rgba, ShaderManager};
-use kas::draw::{Colour, Pass};
+use crate::draw::ShaderManager;
+use kas::draw::{color::Rgba, Pass};
 use kas::geom::{Quad, Vec2};
 use std::mem::size_of;
 
@@ -85,7 +85,7 @@ impl Pipeline {
                 module: &shaders.frag_flat_round,
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                    format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
@@ -108,7 +108,7 @@ impl Pipeline {
 }
 
 impl Window {
-    pub fn line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
+    pub fn line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Rgba) {
         if p1 == p2 {
             let a = p1 - radius;
             let b = p2 + radius;
@@ -120,8 +120,6 @@ impl Window {
             // transparent: nothing to draw
             return;
         }
-
-        let col = col.into();
 
         let vx = p2 - p1;
         let vx = vx * radius / (vx.0 * vx.0 + vx.1 * vx.1).sqrt();
@@ -166,7 +164,7 @@ impl Window {
     }
 
     /// Bounds on input: `0 ≤ inner_radius ≤ 1`.
-    pub fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Colour) {
+    pub fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Rgba) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -176,8 +174,6 @@ impl Window {
         }
 
         let inner = inner_radius.max(0.0).min(1.0);
-
-        let col = col.into();
 
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
@@ -214,7 +210,7 @@ impl Window {
         outer: Quad,
         inner: Quad,
         inner_radius: f32,
-        col: Colour,
+        col: Rgba,
     ) {
         let aa = outer.a;
         let bb = outer.b;
@@ -237,8 +233,6 @@ impl Window {
 
         let inner = inner_radius.clamp(0.0, 1.0);
         let inner = inner * inner; // shader compares to square
-
-        let col = col.into();
 
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);

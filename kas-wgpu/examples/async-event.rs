@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use kas::draw::Colour;
+use kas::draw::color::Rgba;
 use kas::prelude::*;
 use kas::widget::Window;
 
@@ -29,7 +29,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
     // The sender and receiver need to communicate. We use Arc<Mutex<T>>, but
     // could instead use global statics or std::sync::mpsc or even encode our
     // data within the update payload (a u64, so some compression required).
-    let colour = Arc::new(Mutex::new(Colour::grey(1.0)));
+    let colour = Arc::new(Mutex::new(Rgba::grey(1.0)));
     let colour2 = colour.clone();
 
     thread::spawn(move || generate_colors(proxy, handle, colour2));
@@ -50,7 +50,7 @@ fn main() -> Result<(), kas_wgpu::Error> {
 struct ColourSquare {
     #[widget_core]
     core: CoreData,
-    colour: Arc<Mutex<Colour>>,
+    colour: Arc<Mutex<Rgba>>,
     handle: UpdateHandle,
 }
 impl WidgetConfig for ColourSquare {
@@ -85,11 +85,7 @@ impl Handler for ColourSquare {
     }
 }
 
-fn generate_colors(
-    proxy: kas_wgpu::ToolkitProxy,
-    handle: UpdateHandle,
-    colour: Arc<Mutex<Colour>>,
-) {
+fn generate_colors(proxy: kas_wgpu::ToolkitProxy, handle: UpdateHandle, colour: Arc<Mutex<Rgba>>) {
     // This function is called in a separate thread, and runs until the program ends.
     let start_time = Instant::now();
 
@@ -101,7 +97,7 @@ fn generate_colors(
             let k: f32 = (n + hue * 6.0) % 6.0;
             1.0 - k.min(4.0 - k).clamp(0.0, 1.0)
         };
-        let c = Colour::new(f(5.0), f(3.0), f(1.0));
+        let c = Rgba::rgb(f(5.0), f(3.0), f(1.0));
 
         // Communicate the colour ...
         *colour.lock().unwrap() = c;

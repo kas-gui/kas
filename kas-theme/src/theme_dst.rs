@@ -10,7 +10,7 @@ use std::borrow::Cow;
 use std::ops::DerefMut;
 
 use super::{StackDst, Theme, Window};
-use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
+use kas::draw::{color, DrawHandle, DrawShared, SizeHandle, ThemeApi};
 use kas::TkAction;
 
 /// An optionally-owning (boxed) reference
@@ -93,7 +93,7 @@ pub trait ThemeDst<D: DrawShared>: ThemeApi {
     /// Background colour
     ///
     /// See also [`Theme::clear_color`].
-    fn clear_color(&self) -> Colour;
+    fn clear_color(&self) -> color::Rgba;
 }
 
 #[cfg(not(feature = "gat"))]
@@ -159,7 +159,7 @@ where
         }
     }
 
-    fn clear_color(&self) -> Colour {
+    fn clear_color(&self) -> color::Rgba {
         self.clear_color()
     }
 }
@@ -202,7 +202,7 @@ impl<'a, D: DrawShared, T: Theme<D>> ThemeDst<D> for T {
         StackDst::new_or_boxed(h)
     }
 
-    fn clear_color(&self) -> Colour {
+    fn clear_color(&self) -> color::Rgba {
         self.clear_color()
     }
 }

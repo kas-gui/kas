@@ -53,6 +53,9 @@ yaml = ["config", "serde_yaml"]
 # Enable support for JSON (de)serialisation
 json = ["config", "serde_json"]
 
+# Enable support for RON (de)serialisation
+ron = ["config", "dep_ron"]
+
 [dependencies]
 easy-cast = "0.4.2"
 log = "0.4"
@@ -65,6 +68,7 @@ thiserror = "1.0.23"
 serde = { version = "1.0.123", features = ["derive"], optional = true }
 serde_json = { version = "1.0.61", optional = true }
 serde_yaml = { version = "0.8.16", optional = true }
+dep_ron = { version = "0.6.4", package = "ron", optional = true }
 
 [dependencies.kas-macros]
 version = "0.7.0"
@@ -75,9 +79,12 @@ version = "0.2.1"
 
 [dependencies.winit]
 # Provides translations for several winit types
-version = "0.24"
+version = "0.25"
 optional = true
 features = ["serde"]
 
 [workspace]
 members = ["kas-macros", "kas-theme", "kas-wgpu"]
+
+[patch.crates-io]
+kas-text = { git = "https://github.com/kas-gui/kas-text.git", rev = "df3fcc1b6a8f8644c0b799021045248bc29098c8" }

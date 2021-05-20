@@ -12,7 +12,9 @@ use wgpu::util::DeviceExt;
 
 use super::*;
 use kas::cast::Cast;
-use kas::draw::{Colour, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, Pass, RegionClass};
+use kas::draw::{
+    color::Rgba, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, Pass, RegionClass,
+};
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
 
@@ -57,7 +59,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let shaded_square = shaded_square::Pipeline::new(device, shaders, &bgl_common);
         let shaded_round = shaded_round::Pipeline::new(device, shaders, &bgl_common);
         let flat_round = flat_round::Pipeline::new(device, shaders, &bgl_common);
-        let custom = custom.build(&device, &bgl_common, TEX_FORMAT);
+        let custom = custom.build(&device, &bgl_common, RENDER_TEX_FORMAT);
         let text = text_pipe::Pipeline::new(device, shaders, &bgl_common);
 
         DrawPipe {
@@ -297,7 +299,7 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
         pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
-        col: Colour,
+        col: Rgba,
     ) {
         window.text.text(&mut self.text, pass, pos, text, col);
     }
@@ -308,7 +310,7 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
         pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
-        col: Colour,
+        col: Rgba,
         effects: &[Effect<()>],
     ) {
         let rects = window
@@ -325,7 +327,7 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
         pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
-        effects: &[Effect<Colour>],
+        effects: &[Effect<Rgba>],
     ) {
         let rects = window
             .text
@@ -360,24 +362,24 @@ impl<CW: CustomWindow> Draw for DrawWindow<CW> {
     }
 
     #[inline]
-    fn rect(&mut self, pass: Pass, rect: Quad, col: Colour) {
+    fn rect(&mut self, pass: Pass, rect: Quad, col: Rgba) {
         self.shaded_square.rect(pass, rect, col);
     }
 
     #[inline]
-    fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Colour) {
+    fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Rgba) {
         self.shaded_square.frame(pass, outer, inner, col);
     }
 }
 
 impl<CW: CustomWindow> DrawRounded for DrawWindow<CW> {
     #[inline]
-    fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Colour) {
+    fn rounded_line(&mut self, pass: Pass, p1: Vec2, p2: Vec2, radius: f32, col: Rgba) {
         self.flat_round.line(pass, p1, p2, radius, col);
     }
 
     #[inline]
-    fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Colour) {
+    fn circle(&mut self, pass: Pass, rect: Quad, inner_radius: f32, col: Rgba) {
         self.flat_round.circle(pass, rect, inner_radius, col);
     }
 
@@ -388,7 +390,7 @@ impl<CW: CustomWindow> DrawRounded for DrawWindow<CW> {
         outer: Quad,
         inner: Quad,
         inner_radius: f32,
-        col: Colour,
+        col: Rgba,
     ) {
         self.flat_round
             .rounded_frame(pass, outer, inner, inner_radius, col);
@@ -397,13 +399,13 @@ impl<CW: CustomWindow> DrawRounded for DrawWindow<CW> {
 
 impl<CW: CustomWindow> DrawShaded for DrawWindow<CW> {
     #[inline]
-    fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Colour) {
+    fn shaded_square(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba) {
         self.shaded_square
             .shaded_rect(pass, rect, Vec2::from(norm), col);
     }
 
     #[inline]
-    fn shaded_circle(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Colour) {
+    fn shaded_circle(&mut self, pass: Pass, rect: Quad, norm: (f32, f32), col: Rgba) {
         self.shaded_round.circle(pass, rect, Vec2::from(norm), col);
     }
 
@@ -414,8 +416,8 @@ impl<CW: CustomWindow> DrawShaded for DrawWindow<CW> {
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
-        outer_col: Colour,
-        inner_col: Colour,
+        outer_col: Rgba,
+        inner_col: Rgba,
     ) {
         self.shaded_square
             .shaded_frame(pass, outer, inner, Vec2::from(norm), outer_col, inner_col);
@@ -428,7 +430,7 @@ impl<CW: CustomWindow> DrawShaded for DrawWindow<CW> {
         outer: Quad,
         inner: Quad,
         norm: (f32, f32),
-        col: Colour,
+        col: Rgba,
     ) {
         self.shaded_round
             .shaded_frame(pass, outer, inner, Vec2::from(norm), col);

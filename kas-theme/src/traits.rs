@@ -5,7 +5,7 @@
 
 //! Theme traits
 
-use kas::draw::{Colour, DrawHandle, DrawShared, SizeHandle, ThemeApi};
+use kas::draw::{color, DrawHandle, DrawShared, SizeHandle, ThemeApi};
 use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
@@ -106,7 +106,7 @@ pub trait Theme<D: DrawShared>: ThemeApi {
     ) -> Self::DrawHandle<'a>;
 
     /// Background colour
-    fn clear_color(&self) -> Colour;
+    fn clear_color(&self) -> color::Rgba;
 }
 
 /// Per-window storage for the theme
@@ -181,7 +181,7 @@ impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
         self.deref().draw_handle(shared, draw, window)
     }
 
-    fn clear_color(&self) -> Colour {
+    fn clear_color(&self) -> color::Rgba {
         self.deref().clear_color()
     }
 }

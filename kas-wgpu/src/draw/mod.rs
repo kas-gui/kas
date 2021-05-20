@@ -26,28 +26,11 @@ pub(crate) use shaders::ShaderManager;
 
 pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};
 
-pub(crate) const TEX_FORMAT: TextureFormat = TextureFormat::Bgra8UnormSrgb;
-
-/// 3-part colour data
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Rgba {
-    pub r: f32,
-    pub g: f32,
-    pub b: f32,
-    pub a: f32,
-}
-
-impl From<kas::draw::Colour> for Rgba {
-    fn from(c: kas::draw::Colour) -> Self {
-        Rgba {
-            r: c.r,
-            g: c.g,
-            b: c.b,
-            a: c.a,
-        }
-    }
-}
+/// Output format
+///
+/// Required by WGPU to be BGRA, either sRGB or Unorm. Currently we assume sRGB
+/// and let the graphics pipeline handle colour conversions.
+pub(crate) const RENDER_TEX_FORMAT: TextureFormat = TextureFormat::Bgra8UnormSrgb;
 
 /// Shared pipeline data
 pub struct DrawPipe<C> {

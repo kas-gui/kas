@@ -6,8 +6,8 @@
 //! Simple pipeline for "square" shading
 
 use super::common;
-use crate::draw::{Rgba, ShaderManager};
-use kas::draw::{Colour, Pass};
+use crate::draw::ShaderManager;
+use kas::draw::{color::Rgba, Pass};
 use kas::geom::{Quad, Vec2};
 use std::mem::size_of;
 
@@ -64,7 +64,7 @@ impl Pipeline {
                 module: &shaders.frag_shaded_square,
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
-                    format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                    format: super::RENDER_TEX_FORMAT,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
@@ -88,7 +88,7 @@ impl Pipeline {
 
 impl Window {
     /// Add a rectangle to the buffer
-    pub fn rect(&mut self, pass: Pass, rect: Quad, col: Colour) {
+    pub fn rect(&mut self, pass: Pass, rect: Quad, col: Rgba) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -100,7 +100,6 @@ impl Window {
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
 
-        let col = col.into();
         let t = Vec2(0.0, 0.0);
 
         #[rustfmt::skip]
@@ -113,7 +112,7 @@ impl Window {
     /// Add a rect to the buffer, defined by two outer corners, `aa` and `bb`.
     ///
     /// Bounds on input: `aa < cc` and `-1 ≤ norm ≤ 1`.
-    pub fn shaded_rect(&mut self, pass: Pass, rect: Quad, mut norm: Vec2, col: Colour) {
+    pub fn shaded_rect(&mut self, pass: Pass, rect: Quad, mut norm: Vec2, col: Rgba) {
         let aa = rect.a;
         let bb = rect.b;
 
@@ -129,7 +128,6 @@ impl Window {
         let ab = Vec2(aa.0, bb.1);
         let ba = Vec2(bb.0, aa.1);
 
-        let col = col.into();
         let tt = (Vec2(0.0, -norm.1), Vec2(0.0, -norm.0));
         let tl = (Vec2(-norm.1, 0.0), Vec2(-norm.0, 0.0));
         let tb = (Vec2(0.0, norm.1), Vec2(0.0, norm.0));
@@ -145,7 +143,7 @@ impl Window {
     }
 
     #[inline]
-    pub fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Colour) {
+    pub fn frame(&mut self, pass: Pass, outer: Quad, inner: Quad, col: Rgba) {
         let norm = Vec2::splat(0.0);
         self.shaded_frame(pass, outer, inner, norm, col, col);
     }
@@ -160,8 +158,8 @@ impl Window {
         outer: Quad,
         inner: Quad,
         mut norm: Vec2,
-        outer_col: Colour,
-        inner_col: Colour,
+        outer_col: Rgba,
+        inner_col: Rgba,
     ) {
         let aa = outer.a;
         let bb = outer.b;
@@ -190,8 +188,6 @@ impl Window {
         let cd = Vec2(cc.0, dd.1);
         let dc = Vec2(dd.0, cc.1);
 
-        let outer_col = outer_col.into();
-        let inner_col = inner_col.into();
         let tt = (Vec2(0.0, -norm.1), Vec2(0.0, -norm.0));
         let tl = (Vec2(-norm.1, 0.0), Vec2(-norm.0, 0.0));
         let tb = (Vec2(0.0, norm.1), Vec2(0.0, norm.0));

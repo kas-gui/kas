@@ -241,7 +241,10 @@ pub trait SizeHandle {
     /// use count. This method increments the use-count.
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>>;
 
-    /// Remove an image
+    /// Remove image usage
+    ///
+    /// Usage counting is used internally; this method reduces the count by one
+    /// and frees the resource if the count reaches zero.
     fn remove_image(&mut self, id: ImageId);
 
     /// Get image size

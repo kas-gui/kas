@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::marker::Unsize;
 
 use crate::{Config, StackDst, Theme, ThemeDst, WindowDst};
-use kas::draw::{Colour, DrawHandle, DrawShared, ThemeApi};
+use kas::draw::{color, DrawHandle, DrawShared, ThemeApi};
 use kas::TkAction;
 
 #[cfg(feature = "unsize")]
@@ -163,7 +163,7 @@ impl<D: DrawShared> Theme<D> for MultiTheme<D> {
         self.themes[self.active].draw_handle(shared, draw, window)
     }
 
-    fn clear_color(&self) -> Colour {
+    fn clear_color(&self) -> color::Rgba {
         self.themes[self.active].clear_color()
     }
 }

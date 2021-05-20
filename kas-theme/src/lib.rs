@@ -18,7 +18,7 @@
 #![cfg_attr(feature = "gat", feature(generic_associated_types))]
 #![cfg_attr(feature = "unsize", feature(unsize))]
 
-mod col;
+mod colors;
 mod config;
 mod dim;
 mod flat_theme;
@@ -31,7 +31,7 @@ mod traits;
 
 pub use kas;
 
-pub use col::ThemeColours;
+pub use colors::{Colors, ColorsLinear, ColorsSrgb};
 pub use config::Config;
 pub use dim::{Dimensions, DimensionsParams, DimensionsWindow};
 pub use flat_theme::FlatTheme;
