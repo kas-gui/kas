@@ -10,7 +10,7 @@ use ab_glyph::{Font, FontRef};
 use kas::cast::*;
 use kas::draw::{color::Rgba, Pass};
 use kas::geom::{Quad, Vec2};
-use kas::text::fonts::{fonts, FontId};
+use kas::text::fonts::{fonts, FaceId};
 use kas::text::{Effect, Glyph, TextDisplay};
 use std::collections::hash_map::{Entry, HashMap};
 use std::mem::size_of;
@@ -43,15 +43,15 @@ impl SpriteDescriptor {
         (30.0 / height).round().clamp(1.0, 15.0)
     }
 
-    fn new(font: FontId, glyph: Glyph, height: f32) -> Self {
-        let font: u16 = font.get().cast();
+    fn new(face: FaceId, glyph: Glyph, height: f32) -> Self {
+        let face: u16 = face.get().cast();
         let glyph_id: u16 = glyph.id.0;
         let mult = Self::sub_pixel_from_height(height);
         let height: u32 = (height * SCALE_MULT).cast_nearest();
         let x_off: u8 = (glyph.position.0.fract() * mult).cast_nearest();
         let y_off: u8 = (glyph.position.1.fract() * mult).cast_nearest();
         assert!(height & 0xFF00_0000 == 0 && x_off & 0xF0 == 0 && y_off & 0xF0 == 0);
-        let packed = font as u64
+        let packed = face as u64
             | ((glyph_id as u64) << 16)
             | ((height as u64) << 32)
             | ((x_off as u64) << 56)
@@ -59,7 +59,7 @@ impl SpriteDescriptor {
         SpriteDescriptor(packed)
     }
 
-    fn font(self) -> usize {
+    fn face(self) -> usize {
         (self.0 & 0x0000_0000_0000_FFFF) as usize
     }
 
@@ -98,7 +98,7 @@ struct Sprite {
 impl atlases::Pipeline<Instance> {
     fn rasterize(
         &mut self,
-        font: &FontRef<'static>,
+        face: &FontRef<'static>,
         desc: SpriteDescriptor,
     ) -> Option<(Sprite, (u32, u32), (u32, u32), Vec<u8>)> {
         let fract_pos = desc.fractional_position();
@@ -107,7 +107,7 @@ impl atlases::Pipeline<Instance> {
             scale: desc.height().into(),
             position: fract_pos.into(),
         };
-        let outline = font.outline_glyph(glyph)?;
+        let outline = face.outline_glyph(glyph)?;
 
         let bounds = outline.px_bounds();
         let size = to_vec2(bounds.max - bounds.min);
@@ -159,7 +159,7 @@ unsafe impl bytemuck::Pod for Instance {}
 /// A pipeline for rendering text
 pub struct Pipeline {
     atlas_pipe: atlases::Pipeline<Instance>,
-    fonts: Vec<FontRef<'static>>,
+    faces: Vec<FontRef<'static>>,
     glyphs: HashMap<SpriteDescriptor, Option<Sprite>>,
     prepare: Vec<(u32, (u32, u32), (u32, u32), Vec<u8>)>,
 }
@@ -194,26 +194,26 @@ impl Pipeline {
         );
         Pipeline {
             atlas_pipe,
-            fonts: Default::default(),
+            faces: Default::default(),
             glyphs: Default::default(),
             prepare: Default::default(),
         }
     }
 
-    /// Prepare fonts
+    /// Prepare font faces
     ///
     /// This must happen before any drawing is queued. TODO: perhaps instead
     /// use temporary IDs for unrastered glyphs and update in `prepare`?
     pub fn prepare_fonts(&mut self) {
         let fonts = fonts();
-        let n1 = self.fonts.len();
-        let n2 = fonts.num_fonts();
+        let n1 = self.faces.len();
+        let n2 = fonts.num_faces();
         if n2 > n1 {
-            let font_data = fonts.font_data();
+            let face_data = fonts.face_data();
             for i in n1..n2 {
-                let (data, index) = font_data.get_data(i);
-                let font = FontRef::try_from_slice_and_index(data, index).unwrap();
-                self.fonts.push(font);
+                let (data, index) = face_data.get_data(i);
+                let face = FontRef::try_from_slice_and_index(data, index).unwrap();
+                self.faces.push(face);
             }
         }
     }
@@ -276,8 +276,8 @@ impl Pipeline {
             Entry::Vacant(entry) => {
                 // NOTE: we only need the allocation and coordinates now; the
                 // rendering could be offloaded.
-                let font = &self.fonts[desc.font()];
-                let result = self.atlas_pipe.rasterize(font, desc);
+                let face = &self.faces[desc.face()];
+                let result = self.atlas_pipe.rasterize(face, desc);
                 let sprite = if let Some((sprite, origin, size, data)) = result {
                     self.prepare.push((sprite.atlas, origin, size, data));
                     Some(sprite)
@@ -326,8 +326,8 @@ impl Window {
     ) {
         let time = std::time::Instant::now();
 
-        let for_glyph = |font: FontId, _, height: f32, glyph: Glyph| {
-            let desc = SpriteDescriptor::new(font, glyph, height);
+        let for_glyph = |face: FaceId, _, height: f32, glyph: Glyph| {
+            let desc = SpriteDescriptor::new(face, glyph, height);
             if let Some(sprite) = pipe.get_glyph(desc) {
                 let pos = pos + Vec2::from(glyph.position);
                 let a = pos + sprite.offset;
@@ -366,8 +366,8 @@ impl Window {
         let time = std::time::Instant::now();
         let mut rects = vec![];
 
-        let mut for_glyph = |font: FontId, _, height: f32, glyph: Glyph, _: usize, _: ()| {
-            let desc = SpriteDescriptor::new(font, glyph, height);
+        let mut for_glyph = |face: FaceId, _, height: f32, glyph: Glyph, _: usize, _: ()| {
+            let desc = SpriteDescriptor::new(face, glyph, height);
             if let Some(sprite) = pipe.get_glyph(desc) {
                 let pos = pos + Vec2::from(glyph.position);
                 let a = pos + sprite.offset;
@@ -397,7 +397,7 @@ impl Window {
             };
             text.glyphs_with_effects(effects, (), for_glyph, for_rect);
         } else {
-            text.glyphs(|font, dpu, height, glyph| for_glyph(font, dpu, height, glyph, 0, ()));
+            text.glyphs(|face, dpu, height, glyph| for_glyph(face, dpu, height, glyph, 0, ()));
         }
 
         self.duration += time.elapsed();
@@ -427,8 +427,8 @@ impl Window {
         let time = std::time::Instant::now();
         let mut rects = vec![];
 
-        let for_glyph = |font: FontId, _, height: f32, glyph: Glyph, _, col: Rgba| {
-            let desc = SpriteDescriptor::new(font, glyph, height);
+        let for_glyph = |face: FaceId, _, height: f32, glyph: Glyph, _, col: Rgba| {
+            let desc = SpriteDescriptor::new(face, glyph, height);
             if let Some(sprite) = pipe.get_glyph(desc) {
                 let pos = pos + Vec2::from(glyph.position);
                 let a = pos + sprite.offset;
