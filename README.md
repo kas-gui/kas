@@ -132,12 +132,6 @@ Currently, KAS's only drawing method is [WebGPU] which requires DirectX 11/12,
 Vulkan or Metal.
 In the future, there may be support for OpenGL and software rendering.
 
-#### HarfBuzz (optional)
-
-This is only needed if the `shaping` feature is enabled. On my system, the
-following libraries are used: `libharfbuzz.so.0`, `libglib-2.0.so.0`,
-`libgraphite2.so.3` and `libpcre.so.1`.
-
 ### Quick-start
 
 Install dependencies:
@@ -184,8 +178,8 @@ and runs the UI.
 
 The `kas` crate has the following feature flags:
 
--   `shaping`: enables complex glyph forming for languages such as Arabic.
-    This requires that the HarfBuzz library is installed.
+-   `shaping` (enabled by default): enables complex glyph forming for languages such as Arabic.
+    Alternate: `harfbuzz` forces use of the HarfBuzz library for shaping.
 -   `markdown`: enables Markdown parsing for rich-text
 -   `config`: adds (de)serialisation support for configuration plus a few
     utility types (specifying `serde` instead only implements for utility types)
