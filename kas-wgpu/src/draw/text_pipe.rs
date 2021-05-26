@@ -113,6 +113,9 @@ impl atlases::Pipeline<Instance> {
         let size = to_vec2(bounds.max - bounds.min);
         let offset = to_vec2(bounds.min) - Vec2(fract_pos.0.round(), fract_pos.1.round());
         let size_u32 = (u32::conv_trunc(size.0), u32::conv_trunc(size.1));
+        if size_u32.0 == 0 || size_u32.1 == 0 {
+            return None; // nothing to draw
+        }
 
         let (atlas, _, origin, tex_quad) = match self.allocate(size_u32) {
             Ok(result) => result,
