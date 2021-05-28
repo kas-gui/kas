@@ -1,0 +1,45 @@
+---
+font_size: 10.0
+active_scheme: dark
+color_schemes:
+  "":
+    background: "#FFFFFF"
+    frame: "#DADADA"
+    bg: "#FFFFFF"
+    bg_disabled: "#EDEDED"
+    bg_error: "#FFBCBC"
+    text: "#000000"
+    text_sel: "#FFFFFF"
+    text_sel_bg: "#6CC0E1"
+    label_text: "#000000"
+    button_text: "#FFFFFF"
+    nav_focus: "#F3D3AA"
+    button: "#7CDAFF"
+    button_disabled: "#BCBCBC"
+    button_highlighted: "#89E7FF"
+    button_depressed: "#6CC0E1"
+    checkbox: "#7CDAFF"
+  dark:
+    background: "#4d4f50"
+    frame: "#AAAAAA"
+    bg: "#595959"
+    bg_disabled: "#959595"
+    bg_error: "#FFBCBC"
+    text: "#FFFFFF"
+    text_sel: "#FFFFFF"
+    text_sel_bg: "#CB9559"
+    label_text: "#FFFFFF"
+    button_text: "#FFFFFF"
+    nav_focus: "#FFDABC"
+    button: "#BC5959"
+    button_disabled: "#DADADA"
+    button_highlighted: "#CB9559"
+    button_depressed: "#955959"
+    checkbox: "#BC5959"
+font_aliases:
+  sans-serif:
+    mode: Prepend
+    list: [Calibri]
+  Calibri:
+    mode: Append
+    list: [Carlito]

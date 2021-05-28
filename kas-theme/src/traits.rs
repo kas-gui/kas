@@ -12,7 +12,10 @@ use std::ops::{Deref, DerefMut};
 
 /// Requirements on theme config (without `config` feature)
 #[cfg(not(feature = "config"))]
-pub trait ThemeConfig: Clone + std::fmt::Debug + 'static {}
+pub trait ThemeConfig: Clone + std::fmt::Debug + 'static {
+    /// Apply startup effects
+    fn apply_startup(&self);
+}
 
 /// Requirements on theme config (with `config` feature)
 #[cfg(feature = "config")]
@@ -21,6 +24,9 @@ pub trait ThemeConfig:
 {
     /// Has the config ever been updated?
     fn is_dirty(&self) -> bool;
+
+    /// Apply startup effects
+    fn apply_startup(&self);
 }
 
 /// A *theme* provides widget sizing and drawing implementations.

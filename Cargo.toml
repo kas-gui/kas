@@ -47,7 +47,7 @@ markdown = ["kas-text/markdown"]
 # Enable config read/write
 #TODO(cargo): once weak-dep-features (cargo#8832) is stable, add "winit?/serde"
 # and remove the serde feature requirement under dependencies.winit.
-config = ["serde"]
+config = ["serde", "kas-text/serde"]
 
 # Enable support for YAML (de)serialisation
 yaml = ["config", "serde_yaml"]
@@ -89,4 +89,4 @@ features = ["serde"]
 members = ["kas-macros", "kas-theme", "kas-wgpu"]
 
 [patch.crates-io]
-kas-text = { git = "https://github.com/kas-gui/kas-text.git", rev = "cfe73eceee41062db081421bae30d0c311f4fde9" }
+kas-text = { git = "https://github.com/kas-gui/kas-text.git", rev = "c594569d5d8a4640c2b76865114453b2701d0c35" }
