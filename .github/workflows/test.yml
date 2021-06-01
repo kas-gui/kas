@@ -74,6 +74,4 @@ jobs:
       - name: test (kas-theme)
         run: cargo test --manifest-path kas-theme/Cargo.toml
       - name: test (kas-wgpu)
-        run: |
-          cargo test --manifest-path kas-wgpu/Cargo.toml
-          cargo test --manifest-path kas-wgpu/Cargo.toml --features clipboard,shaping
+        run: cargo test --manifest-path kas-wgpu/Cargo.toml --features clipboard
