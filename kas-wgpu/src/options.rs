@@ -196,6 +196,7 @@ impl Options {
                 }
             }
         }
+        theme.config().apply_startup();
         Ok(())
     }
 

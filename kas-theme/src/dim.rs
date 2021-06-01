@@ -66,7 +66,11 @@ impl Dimensions {
         let font_id = Default::default();
         let dpp = scale_factor * (96.0 / 72.0);
         let dpem = dpp * pt_size;
-        let line_height = i32::conv_ceil(kas::text::fonts::fonts().get(font_id).height(dpem));
+        let line_height = i32::conv_ceil(
+            kas::text::fonts::fonts()
+                .get_first_face(font_id)
+                .height(dpem),
+        );
 
         let outer_margin = (params.outer_margin * scale_factor).cast_nearest();
         let inner_margin = (params.inner_margin * scale_factor).cast_nearest();

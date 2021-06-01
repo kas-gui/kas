@@ -19,6 +19,8 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc,markdown,yaml,json --all --no-deps --open
 
 [features]
+default = ["shaping"]
+
 # Enables usage of unstable Rust features
 nightly = ["min_spec"]
 
@@ -34,10 +36,10 @@ min_spec = []
 # This flag does not change the API, only built documentation.
 internal_doc = []
 
-# Enables text shaping via HarfBuzz
-# Shaping is part of Complex Text Layout, used for ligatures and where form
-# depends on position and context (especially important for Arabic).
+# Enable shaping via rustybuzz
 shaping = ["kas-text/shaping"]
+# Force use of HarfBuzz for shaping
+harfbuzz = ["kas-text/harfbuzz"]
 
 # Enable Markdown parsing
 markdown = ["kas-text/markdown"]
@@ -45,7 +47,7 @@ markdown = ["kas-text/markdown"]
 # Enable config read/write
 #TODO(cargo): once weak-dep-features (cargo#8832) is stable, add "winit?/serde"
 # and remove the serde feature requirement under dependencies.winit.
-config = ["serde"]
+config = ["serde", "kas-text/serde"]
 
 # Enable support for YAML (de)serialisation
 yaml = ["config", "serde_yaml"]
@@ -87,4 +89,4 @@ features = ["serde"]
 members = ["kas-macros", "kas-theme", "kas-wgpu"]
 
 [patch.crates-io]
-kas-text = { git = "https://github.com/kas-gui/kas-text.git", rev = "df3fcc1b6a8f8644c0b799021045248bc29098c8" }
+kas-text = { git = "https://github.com/kas-gui/kas-text.git", rev = "c594569d5d8a4640c2b76865114453b2701d0c35" }

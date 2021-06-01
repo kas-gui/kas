@@ -99,7 +99,7 @@ where
     }
 
     fn init(&mut self, _draw: &mut D) {
-        if let Err(e) = kas::text::fonts::fonts().load_default() {
+        if let Err(e) = kas::text::fonts::fonts().select_default() {
             panic!("Error loading font: {}", e);
         }
     }

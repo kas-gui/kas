@@ -67,7 +67,7 @@ pub mod util {
     /// Note: an alternative approach would be to delay text preparation by
     /// adding TkAction::PREPARE and a new method, perhaps in Layout.
     fn prepare_if_needed<T: format::FormattableText>(text: &mut Text<T>, avail: Size) -> TkAction {
-        if fonts::fonts().num_fonts() == 0 {
+        if fonts::fonts().num_faces() == 0 {
             // Fonts not loaded yet: cannot prepare and can assume it will happen later anyway.
             return TkAction::empty();
         }

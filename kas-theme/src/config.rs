@@ -6,6 +6,7 @@
 //! Theme configuration
 
 use crate::{ColorsLinear, ColorsSrgb, ThemeConfig};
+use kas::text::fonts::{fonts, AddMode};
 use kas::TkAction;
 use std::collections::BTreeMap;
 
@@ -16,16 +17,23 @@ pub struct Config {
     #[cfg_attr(feature = "config", serde(skip))]
     dirty: bool,
 
+    /// Standard font size, in units of points-per-Em
     #[cfg_attr(feature = "config", serde(default = "defaults::font_size"))]
     font_size: f32,
 
+    /// The colour scheme to use
     #[cfg_attr(feature = "config", serde(default))]
     active_scheme: String,
 
+    /// All colour schemes
     /// TODO: possibly we should not save default schemes and merge when
     /// loading (perhaps via a `PartialConfig` type).
     #[cfg_attr(feature = "config", serde(default = "defaults::color_schemes",))]
     color_schemes: BTreeMap<String, ColorsSrgb>,
+
+    /// Font aliases, used when searching for a font family matching the key.
+    #[cfg_attr(feature = "config", serde(default))]
+    font_aliases: BTreeMap<String, FontAliases>,
 }
 
 impl Default for Config {
@@ -35,6 +43,7 @@ impl Default for Config {
             font_size: defaults::font_size(),
             active_scheme: Default::default(),
             color_schemes: defaults::color_schemes(),
+            font_aliases: Default::default(),
         }
     }
 }
@@ -116,6 +125,28 @@ impl ThemeConfig for Config {
     fn is_dirty(&self) -> bool {
         self.dirty
     }
+
+    /// Apply config effects which only happen on startup
+    fn apply_startup(&self) {
+        if !self.font_aliases.is_empty() {
+            fonts().update_db(|db| {
+                for (family, aliases) in self.font_aliases.iter() {
+                    db.add_aliases(
+                        family.to_string().into(),
+                        aliases.list.iter().map(|s| s.to_string().into()),
+                        aliases.mode,
+                    );
+                }
+            });
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
+pub struct FontAliases {
+    mode: AddMode,
+    list: Vec<String>,
 }
 
 mod defaults {

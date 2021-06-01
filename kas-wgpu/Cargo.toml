@@ -27,9 +27,6 @@ gat = ["kas-theme/gat"]
 # Enables clipboard read/write
 clipboard = ["window_clipboard"]
 
-# Enables text shaping
-shaping = ["kas/shaping"]
-
 # Use stack_dst crate for sized unsized types
 stack_dst = ["kas-theme/stack_dst"]
 
