@@ -29,8 +29,8 @@ const BG_SHRINK_FACTOR: f32 = 1.0 - std::f32::consts::FRAC_1_SQRT_2;
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
 pub struct FlatTheme {
-    config: Config,
-    cols: ColorsLinear,
+    pub(crate) config: Config,
+    pub(crate) cols: ColorsLinear,
 }
 
 impl FlatTheme {
