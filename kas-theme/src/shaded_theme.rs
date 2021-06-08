@@ -8,9 +8,7 @@
 use std::f32;
 use std::ops::Range;
 
-use crate::{
-    ColorsLinear, Config, Dimensions, DimensionsParams, DimensionsWindow, FlatTheme, Theme, Window,
-};
+use crate::{ColorsLinear, Config, DimensionsParams, DimensionsWindow, FlatTheme, Theme, Window};
 use kas::dir::{Direction, Directional};
 use kas::draw::{
     self, color::Rgba, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, InputState, Pass,
@@ -98,11 +96,12 @@ where
     }
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
-        DimensionsWindow::new(DIMS, self.flat.config.font_size(), dpi_factor)
+        let fonts = self.flat.fonts.as_ref().clone().unwrap().clone();
+        DimensionsWindow::new(DIMS, self.flat.config.font_size(), dpi_factor, fonts)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        window.dims = Dimensions::new(DIMS, self.flat.config.font_size(), dpi_factor);
+        window.update(DIMS, self.flat.config.font_size(), dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
