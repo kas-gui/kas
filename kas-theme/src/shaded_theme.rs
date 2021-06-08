@@ -104,7 +104,7 @@ where
         }
     }
 
-    fn new_window(&self, _draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
+    fn new_window(&self, dpi_factor: f32) -> Self::Window {
         DimensionsWindow::new(DIMS, self.config.font_size(), dpi_factor)
     }
 

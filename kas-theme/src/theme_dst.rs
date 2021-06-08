@@ -54,7 +54,7 @@ pub trait ThemeDst<D: DrawShared>: ThemeApi {
     /// Uses a [`StackDst`] to avoid requiring an associated type.
     ///
     /// See also [`Theme::new_window`].
-    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<D>>;
+    fn new_window(&self, dpi_factor: f32) -> StackDst<dyn WindowDst<D>>;
 
     /// Update a window created by [`Theme::new_window`]
     ///
@@ -117,8 +117,8 @@ where
         self.init(draw);
     }
 
-    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<D>> {
-        let window = <T as Theme<D>>::new_window(self, draw, dpi_factor);
+    fn new_window(&self, dpi_factor: f32) -> StackDst<dyn WindowDst<D>> {
+        let window = <T as Theme<D>>::new_window(self, dpi_factor);
         #[cfg(feature = "unsize")]
         {
             StackDst::new_or_boxed(window)
@@ -181,8 +181,8 @@ impl<'a, D: DrawShared, T: Theme<D>> ThemeDst<D> for T {
         self.init(draw);
     }
 
-    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> StackDst<dyn WindowDst<D>> {
-        let window = <T as Theme<D>>::new_window(self, draw, dpi_factor);
+    fn new_window(&self, dpi_factor: f32) -> StackDst<dyn WindowDst<D>> {
+        let window = <T as Theme<D>>::new_window(self, dpi_factor);
         StackDst::new_or_boxed(window)
     }
 

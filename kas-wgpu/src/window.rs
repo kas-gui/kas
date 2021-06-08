@@ -56,7 +56,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         // Create draw immediately (with Size::ZERO) to find ideal window size
         let scale_factor = shared.scale_factor as f32;
         let mut draw = shared.draw.new_window(&mut shared.device, Size::ZERO);
-        let mut theme_window = shared.theme.new_window(&mut draw, scale_factor);
+        let mut theme_window = shared.theme.new_window(scale_factor);
 
         let mut mgr = ManagerState::new(shared.config.clone());
         let mut tkw = TkWindow::new(shared, None, &mut theme_window);

@@ -74,7 +74,7 @@ pub trait Theme<D: DrawShared>: ThemeApi {
     /// ```
     ///
     /// A reference to the draw backend is provided allowing configuration.
-    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> Self::Window;
+    fn new_window(&self, dpi_factor: f32) -> Self::Window;
 
     /// Update a window created by [`Theme::new_window`]
     ///
@@ -161,8 +161,8 @@ impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
         self.deref_mut().init(draw);
     }
 
-    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
-        self.deref().new_window(draw, dpi_factor)
+    fn new_window(&self, dpi_factor: f32) -> Self::Window {
+        self.deref().new_window(dpi_factor)
     }
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
         self.deref().update_window(window, dpi_factor);

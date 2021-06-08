@@ -135,8 +135,8 @@ impl<D: DrawShared> Theme<D> for MultiTheme<D> {
         }
     }
 
-    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
-        self.themes[self.active].new_window(draw, dpi_factor)
+    fn new_window(&self, dpi_factor: f32) -> Self::Window {
+        self.themes[self.active].new_window(dpi_factor)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
