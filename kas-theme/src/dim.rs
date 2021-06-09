@@ -239,7 +239,7 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
             // cause problems (e.g. edit boxes greedily consuming too much
             // space). This is a hard layout problem; for now don't do this.
             let stretch = match class {
-                TextClass::LabelFixed => Stretch::None,
+                TextClass::MenuLabel => Stretch::None,
                 TextClass::Button => Stretch::Filler,
                 _ => Stretch::Low,
             };
@@ -247,7 +247,7 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
         } else {
             let min = match class {
                 TextClass::Label => i32::conv_ceil(required.1),
-                TextClass::LabelFixed | TextClass::Button | TextClass::Edit => {
+                TextClass::MenuLabel | TextClass::Button | TextClass::Edit => {
                     self.w.dims.line_height
                 }
                 TextClass::EditMulti | TextClass::LabelScroll => self.w.dims.line_height * 3,

@@ -50,3 +50,7 @@ fonts:
   EditMulti:
     families:
       - serif
+  MenuLabel:
+    families:
+      - sans-serif
+    weight: 600

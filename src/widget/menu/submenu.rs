@@ -108,7 +108,7 @@ impl<D: Directional, W: Menu> WidgetConfig for SubMenu<D, W> {
 impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let frame_rules = size_handle.menu_frame(axis.is_vertical());
-        let text_rules = size_handle.text_bound(&mut self.label, TextClass::LabelFixed, axis);
+        let text_rules = size_handle.text_bound(&mut self.label, TextClass::MenuLabel, axis);
         let (rules, offset, size) = frame_rules.surround(text_rules);
         self.label_off.set_component(axis, offset);
         self.frame_size.set_component(axis, size);
@@ -134,7 +134,12 @@ impl<D: Directional, W: Menu> kas::Layout for SubMenu<D, W> {
         state.depress = state.depress || self.popup_id.is_some();
         draw_handle.menu_entry(self.core.rect, state);
         let pos = self.core.rect.pos + self.label_off;
-        draw_handle.text_accel(pos, &self.label, mgr.show_accel_labels(), TextClass::Label);
+        draw_handle.text_accel(
+            pos,
+            &self.label,
+            mgr.show_accel_labels(),
+            TextClass::MenuLabel,
+        );
     }
 }
 
