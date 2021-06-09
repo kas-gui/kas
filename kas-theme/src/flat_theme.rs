@@ -21,7 +21,7 @@ use kas::draw::{
 };
 use kas::geom::*;
 use kas::text::format::FormattableText;
-use kas::text::{fonts::FontId, AccelString, Effect, Text, TextApi, TextDisplay};
+use kas::text::{fonts, AccelString, Effect, Text, TextApi, TextDisplay};
 use kas::TkAction;
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -33,7 +33,7 @@ const BG_SHRINK_FACTOR: f32 = 1.0 - std::f32::consts::FRAC_1_SQRT_2;
 pub struct FlatTheme {
     pub(crate) config: Config,
     pub(crate) cols: ColorsLinear,
-    pub(crate) fonts: Option<Rc<LinearMap<TextClass, FontId>>>,
+    pub(crate) fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
 }
 
 impl FlatTheme {
@@ -117,6 +117,13 @@ where
         if let Err(e) = kas::text::fonts::fonts().select_default() {
             panic!("Error loading font: {}", e);
         }
+        let fonts = fonts::fonts();
+        self.fonts = Some(Rc::new(
+            self.config
+                .iter_fonts()
+                .filter_map(|(c, s)| fonts.select_font(&s).ok().map(|id| (*c, id)))
+                .collect(),
+        ));
     }
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {

@@ -43,3 +43,10 @@ font_aliases:
   Calibri:
     mode: Append
     list: [Carlito]
+fonts:
+  Edit:
+    families:
+      - serif
+  EditMulti:
+    families:
+      - serif

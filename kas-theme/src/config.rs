@@ -6,7 +6,8 @@
 //! Theme configuration
 
 use crate::{ColorsLinear, ColorsSrgb, ThemeConfig};
-use kas::text::fonts::{fonts, AddMode};
+use kas::draw::TextClass;
+use kas::text::fonts::{fonts, AddMode, FontSelector};
 use kas::TkAction;
 use std::collections::BTreeMap;
 
@@ -34,6 +35,10 @@ pub struct Config {
     /// Font aliases, used when searching for a font family matching the key.
     #[cfg_attr(feature = "config", serde(default))]
     font_aliases: BTreeMap<String, FontAliases>,
+
+    /// Standard fonts
+    #[cfg_attr(feature = "config", serde(default))]
+    fonts: BTreeMap<TextClass, FontSelector<'static>>,
 }
 
 impl Default for Config {
@@ -44,6 +49,7 @@ impl Default for Config {
             active_scheme: Default::default(),
             color_schemes: defaults::color_schemes(),
             font_aliases: Default::default(),
+            fonts: defaults::fonts(),
         }
     }
 }
@@ -84,6 +90,12 @@ impl Config {
     #[inline]
     pub fn get_active_scheme(&self) -> Option<ColorsSrgb> {
         self.color_schemes.get(&self.active_scheme).cloned()
+    }
+
+    /// Get an iterator over font mappings
+    #[inline]
+    pub fn iter_fonts(&self) -> impl Iterator<Item = (&TextClass, &FontSelector<'static>)> {
+        self.fonts.iter()
     }
 }
 
@@ -162,5 +174,15 @@ mod defaults {
         schemes.insert("light".to_string(), ColorsLinear::light().into());
         schemes.insert("dark".to_string(), ColorsLinear::dark().into());
         schemes
+    }
+
+    pub fn fonts() -> BTreeMap<TextClass, FontSelector<'static>> {
+        let mut selector = FontSelector::new();
+        selector.set_families(vec!["serif".into()]);
+        let list = [
+            (TextClass::Edit, selector.clone()),
+            (TextClass::EditMulti, selector),
+        ];
+        list.iter().cloned().collect()
     }
 }

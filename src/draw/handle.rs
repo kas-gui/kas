@@ -69,6 +69,7 @@ impl std::ops::BitOr for InputState {
 ///
 /// Themes choose font, font size, colour, and alignment based on this.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TextClass {
     /// Label text is drawn over the background colour
     Label,
