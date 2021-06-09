@@ -253,7 +253,7 @@ impl ColorsLinear {
     /// Get text colour from class
     pub fn text_class(&self, class: TextClass) -> Rgba {
         match class {
-            TextClass::Label | TextClass::LabelFixed | TextClass::LabelScroll => self.label_text,
+            TextClass::Label | TextClass::MenuLabel | TextClass::LabelScroll => self.label_text,
             TextClass::Button => self.button_text,
             TextClass::Edit | TextClass::EditMulti => self.text,
         }

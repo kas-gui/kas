@@ -69,11 +69,10 @@ impl std::ops::BitOr for InputState {
 ///
 /// Themes choose font, font size, colour, and alignment based on this.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TextClass {
     /// Label text is drawn over the background colour
     Label,
-    /// Single-line label with fixed size (does not stretch to fill space)
-    LabelFixed,
     /// Scrollable label (same as label except that min height is limited)
     LabelScroll,
     /// Button text is drawn over a button
@@ -82,6 +81,8 @@ pub enum TextClass {
     Edit,
     /// Class of text drawn in a multi-line edit box
     EditMulti,
+    /// Menu label (single line, does not stretch)
+    MenuLabel,
 }
 
 impl TextClass {

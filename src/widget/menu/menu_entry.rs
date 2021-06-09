@@ -41,7 +41,7 @@ impl<M: Clone + Debug + 'static> WidgetConfig for MenuEntry<M> {
 impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
     fn size_rules(&mut self, size_handle: &mut dyn SizeHandle, axis: AxisInfo) -> SizeRules {
         let frame_rules = size_handle.menu_frame(axis.is_vertical());
-        let text_rules = size_handle.text_bound(&mut self.label, TextClass::LabelFixed, axis);
+        let text_rules = size_handle.text_bound(&mut self.label, TextClass::MenuLabel, axis);
         let (rules, offset, size) = frame_rules.surround(text_rules);
         self.label_off.set_component(axis, offset);
         self.frame_size.set_component(axis, size);
@@ -60,7 +60,12 @@ impl<M: Clone + Debug + 'static> Layout for MenuEntry<M> {
     fn draw(&self, draw_handle: &mut dyn DrawHandle, mgr: &ManagerState, disabled: bool) {
         draw_handle.menu_entry(self.core.rect, self.input_state(mgr, disabled));
         let pos = self.core.rect.pos + self.label_off;
-        draw_handle.text_accel(pos, &self.label, mgr.show_accel_labels(), TextClass::Label);
+        draw_handle.text_accel(
+            pos,
+            &self.label,
+            mgr.show_accel_labels(),
+            TextClass::MenuLabel,
+        );
     }
 }
 
@@ -128,6 +133,7 @@ pub struct MenuToggle<M: 'static> {
     layout_data: <Self as kas::LayoutData>::Data,
     #[widget]
     checkbox: CheckBoxBare<M>,
+    // TODO: label should use TextClass::MenuLabel
     #[widget]
     label: AccelLabel,
 }

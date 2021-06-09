@@ -7,15 +7,17 @@
 //!
 //! Widget size and appearance can be modified through themes.
 
+use linear_map::LinearMap;
 use std::any::Any;
 use std::f32;
 use std::path::Path;
+use std::rc::Rc;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
 use kas::draw::{self, DrawShared, ImageId, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
-use kas::text::{TextApi, TextApiExt};
+use kas::text::{fonts::FontId, TextApi, TextApiExt};
 
 /// Parameterisation of [`Dimensions`]
 ///
@@ -99,13 +101,24 @@ impl Dimensions {
 /// A convenient implementation of [`crate::Window`]
 pub struct DimensionsWindow {
     pub dims: Dimensions,
+    pub fonts: Rc<LinearMap<TextClass, FontId>>,
 }
 
 impl DimensionsWindow {
-    pub fn new(dims: DimensionsParams, pt_size: f32, scale_factor: f32) -> Self {
+    pub fn new(
+        dims: DimensionsParams,
+        pt_size: f32,
+        scale_factor: f32,
+        fonts: Rc<LinearMap<TextClass, FontId>>,
+    ) -> Self {
         DimensionsWindow {
             dims: Dimensions::new(dims, pt_size, scale_factor),
+            fonts,
         }
+    }
+
+    pub fn update(&mut self, dims: DimensionsParams, pt_size: f32, scale_factor: f32) {
+        self.dims = Dimensions::new(dims, pt_size, scale_factor);
     }
 }
 
@@ -118,12 +131,12 @@ impl<D: DrawShared> crate::Window<D> for DimensionsWindow {
     #[cfg(not(feature = "gat"))]
     unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut D) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        let h: SizeHandle<'a, D> = SizeHandle::new(&self.dims, draw);
+        let h: SizeHandle<'a, D> = SizeHandle::new(self, draw);
         std::mem::transmute(h)
     }
     #[cfg(feature = "gat")]
     fn size_handle<'a>(&'a mut self, draw: &'a mut D) -> Self::SizeHandle<'a> {
-        SizeHandle::new(&self.dims, draw)
+        SizeHandle::new(self, draw)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
@@ -132,57 +145,57 @@ impl<D: DrawShared> crate::Window<D> for DimensionsWindow {
 }
 
 pub struct SizeHandle<'a, D: DrawShared> {
-    dims: &'a Dimensions,
+    w: &'a DimensionsWindow,
     draw: &'a mut D,
 }
 
 impl<'a, D: DrawShared> SizeHandle<'a, D> {
-    pub fn new(dims: &'a Dimensions, draw: &'a mut D) -> Self {
-        SizeHandle { dims, draw }
+    pub fn new(w: &'a DimensionsWindow, draw: &'a mut D) -> Self {
+        SizeHandle { w, draw }
     }
 }
 
 impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
     fn scale_factor(&self) -> f32 {
-        self.dims.scale_factor
+        self.w.dims.scale_factor
     }
 
     fn pixels_from_points(&self, pt: f32) -> f32 {
-        self.dims.dpp * pt
+        self.w.dims.dpp * pt
     }
 
     fn pixels_from_em(&self, em: f32) -> f32 {
-        self.dims.dpp * self.dims.pt_size * em
+        self.w.dims.dpp * self.w.dims.pt_size * em
     }
 
     fn frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.dims.frame, 0, 0)
+        FrameRules::new_sym(self.w.dims.frame, 0, 0)
     }
     fn menu_frame(&self, vert: bool) -> FrameRules {
-        let mut size = self.dims.frame;
+        let mut size = self.w.dims.frame;
         if vert {
             size /= 2;
         }
         FrameRules::new_sym(size, 0, 0)
     }
     fn separator(&self) -> Size {
-        Size::splat(self.dims.frame)
+        Size::splat(self.w.dims.frame)
     }
 
     fn nav_frame(&self, _vert: bool) -> FrameRules {
-        FrameRules::new_sym(self.dims.inner_margin.into(), 0, 0)
+        FrameRules::new_sym(self.w.dims.inner_margin.into(), 0, 0)
     }
 
     fn inner_margin(&self) -> Size {
-        Size::splat(self.dims.inner_margin.into())
+        Size::splat(self.w.dims.inner_margin.into())
     }
 
     fn outer_margins(&self) -> Margins {
-        Margins::splat(self.dims.outer_margin)
+        Margins::splat(self.w.dims.outer_margin)
     }
 
     fn line_height(&self, _: TextClass) -> i32 {
-        self.dims.line_height
+        self.w.dims.line_height
     }
 
     fn text_bound(
@@ -192,8 +205,11 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
         axis: AxisInfo,
     ) -> SizeRules {
         let required = text.update_env(|env| {
-            env.set_dpp(self.dims.dpp);
-            env.set_pt_size(self.dims.pt_size);
+            if let Some(font_id) = self.w.fonts.get(&class).cloned() {
+                env.set_font_id(font_id);
+            }
+            env.set_dpp(self.w.dims.dpp);
+            env.set_pt_size(self.w.dims.pt_size);
 
             let mut bounds = kas::text::Vec2::INFINITY;
             if let Some(size) = axis.size_other_if_fixed(false) {
@@ -209,11 +225,11 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
             });
         });
 
-        let margin = self.dims.text_margin;
+        let margin = self.w.dims.text_margin;
         let margins = (margin, margin);
         if axis.is_horizontal() {
             let bound = i32::conv_ceil(required.0);
-            let min = self.dims.min_line_length;
+            let min = self.w.dims.min_line_length;
             let (min, ideal) = match class {
                 TextClass::Edit => (min, 2 * min),
                 TextClass::EditMulti => (min, 3 * min),
@@ -223,7 +239,7 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
             // cause problems (e.g. edit boxes greedily consuming too much
             // space). This is a hard layout problem; for now don't do this.
             let stretch = match class {
-                TextClass::LabelFixed => Stretch::None,
+                TextClass::MenuLabel => Stretch::None,
                 TextClass::Button => Stretch::Filler,
                 _ => Stretch::Low,
             };
@@ -231,10 +247,10 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
         } else {
             let min = match class {
                 TextClass::Label => i32::conv_ceil(required.1),
-                TextClass::LabelFixed | TextClass::Button | TextClass::Edit => {
-                    self.dims.line_height
+                TextClass::MenuLabel | TextClass::Button | TextClass::Edit => {
+                    self.w.dims.line_height
                 }
-                TextClass::EditMulti | TextClass::LabelScroll => self.dims.line_height * 3,
+                TextClass::EditMulti | TextClass::LabelScroll => self.w.dims.line_height * 3,
             };
             let ideal = i32::conv_ceil(required.1).max(min);
             let stretch = match class {
@@ -246,23 +262,23 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
     }
 
     fn edit_marker_width(&self) -> f32 {
-        self.dims.font_marker_width
+        self.w.dims.font_marker_width
     }
 
     fn button_surround(&self, _vert: bool) -> FrameRules {
-        let inner = self.dims.inner_margin.into();
-        let outer = self.dims.outer_margin;
-        FrameRules::new_sym(self.dims.frame, inner, outer)
+        let inner = self.w.dims.inner_margin.into();
+        let outer = self.w.dims.outer_margin;
+        FrameRules::new_sym(self.w.dims.frame, inner, outer)
     }
 
     fn edit_surround(&self, _vert: bool) -> FrameRules {
-        let inner = self.dims.inner_margin.into();
+        let inner = self.w.dims.inner_margin.into();
         let outer = 0;
-        FrameRules::new_sym(self.dims.frame, inner, outer)
+        FrameRules::new_sym(self.w.dims.frame, inner, outer)
     }
 
     fn checkbox(&self) -> Size {
-        Size::splat(self.dims.checkbox)
+        Size::splat(self.w.dims.checkbox)
     }
 
     #[inline]
@@ -271,17 +287,17 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
     }
 
     fn scrollbar(&self) -> (Size, i32) {
-        let size = self.dims.scrollbar;
+        let size = self.w.dims.scrollbar;
         (size, 3 * size.0)
     }
 
     fn slider(&self) -> (Size, i32) {
-        let size = self.dims.slider;
+        let size = self.w.dims.slider;
         (size, 5 * size.0)
     }
 
     fn progress_bar(&self) -> Size {
-        self.dims.progress_bar
+        self.w.dims.progress_bar
     }
 
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {

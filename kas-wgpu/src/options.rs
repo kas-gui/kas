@@ -183,12 +183,15 @@ impl Options {
         if !self.theme_config_path.as_os_str().is_empty() {
             match self.config_mode {
                 ConfigMode::Read | ConfigMode::ReadWrite => {
-                    let config = kas::config::Format::guess_and_read_path(&self.theme_config_path)?;
+                    let config: T::Config =
+                        kas::config::Format::guess_and_read_path(&self.theme_config_path)?;
+                    config.apply_startup();
                     // Ignore TkAction: UI isn't built yet
                     let _ = theme.apply_config(&config);
                 }
                 ConfigMode::WriteDefault => {
                     let config = theme.config();
+                    config.apply_startup();
                     kas::config::Format::guess_and_write_path(
                         &self.theme_config_path,
                         config.as_ref(),
@@ -196,7 +199,6 @@ impl Options {
                 }
             }
         }
-        theme.config().apply_startup();
         Ok(())
     }
 

@@ -70,8 +70,8 @@ where
         self.inner.init(draw);
     }
 
-    fn new_window(&self, draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
-        Theme::<D>::new_window(&self.inner, draw, dpi_factor)
+    fn new_window(&self, dpi_factor: f32) -> Self::Window {
+        Theme::<D>::new_window(&self.inner, dpi_factor)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {

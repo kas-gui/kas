@@ -8,7 +8,7 @@
 use std::f32;
 use std::ops::Range;
 
-use crate::{ColorsLinear, Config, Dimensions, DimensionsParams, DimensionsWindow, Theme, Window};
+use crate::{ColorsLinear, Config, DimensionsParams, DimensionsWindow, FlatTheme, Theme, Window};
 use kas::dir::{Direction, Directional};
 use kas::draw::{
     self, color::Rgba, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, InputState, Pass,
@@ -21,24 +21,21 @@ use kas::TkAction;
 /// A theme using simple shading to give apparent depth to elements
 #[derive(Clone, Debug)]
 pub struct ShadedTheme {
-    config: Config,
-    cols: ColorsLinear,
+    flat: FlatTheme,
 }
 
 impl ShadedTheme {
     /// Construct
     pub fn new() -> Self {
-        ShadedTheme {
-            config: Default::default(),
-            cols: ColorsLinear::default(),
-        }
+        let flat = FlatTheme::new();
+        ShadedTheme { flat }
     }
 
     /// Set font size
     ///
     /// Units: Points per Em (standard unit of font size)
     pub fn with_font_size(mut self, pt_size: f32) -> Self {
-        self.config.set_font_size(pt_size);
+        self.flat.config.set_font_size(pt_size);
         self
     }
 
@@ -46,9 +43,9 @@ impl ShadedTheme {
     ///
     /// If no scheme by this name is found the scheme is left unchanged.
     pub fn with_colours(mut self, scheme: &str) -> Self {
-        self.config.set_active_scheme(scheme);
-        if let Some(scheme) = self.config.get_color_scheme(scheme) {
-            self.cols = scheme.into();
+        self.flat.config.set_active_scheme(scheme);
+        if let Some(scheme) = self.flat.config.get_color_scheme(scheme) {
+            self.flat.cols = scheme.into();
         }
         self
     }
@@ -87,29 +84,24 @@ where
     type DrawHandle<'a> = DrawHandle<'a, D>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
-        std::borrow::Cow::Borrowed(&self.config)
+        <FlatTheme as Theme<D>>::config(&self.flat)
     }
 
     fn apply_config(&mut self, config: &Self::Config) -> TkAction {
-        let action = self.config.apply_config(config);
-        if let Some(scheme) = self.config.get_active_scheme() {
-            self.cols = scheme.into();
-        }
-        action
+        <FlatTheme as Theme<D>>::apply_config(&mut self.flat, config)
     }
 
-    fn init(&mut self, _draw: &mut D) {
-        if let Err(e) = kas::text::fonts::fonts().select_default() {
-            panic!("Error loading font: {}", e);
-        }
+    fn init(&mut self, draw: &mut D) {
+        <FlatTheme as Theme<D>>::init(&mut self.flat, draw)
     }
 
-    fn new_window(&self, _draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
-        DimensionsWindow::new(DIMS, self.config.font_size(), dpi_factor)
+    fn new_window(&self, dpi_factor: f32) -> Self::Window {
+        let fonts = self.flat.fonts.as_ref().clone().unwrap().clone();
+        DimensionsWindow::new(DIMS, self.flat.config.font_size(), dpi_factor, fonts)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        window.dims = Dimensions::new(DIMS, self.config.font_size(), dpi_factor);
+        window.update(DIMS, self.flat.config.font_size(), dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
@@ -128,7 +120,7 @@ where
             shared: extend_lifetime(shared),
             draw: extend_lifetime(draw),
             window: extend_lifetime(window),
-            cols: std::mem::transmute::<&'a ColorsLinear, &'static ColorsLinear>(&self.cols),
+            cols: std::mem::transmute::<&'a ColorsLinear, &'static ColorsLinear>(&self.flat.cols),
             offset: Offset::ZERO,
             pass: Pass::new(0),
         }
@@ -144,39 +136,28 @@ where
             shared,
             draw,
             window,
-            cols: &self.cols,
+            cols: &self.flat.cols,
             offset: Offset::ZERO,
             pass: Pass::new(0),
         }
     }
 
     fn clear_color(&self) -> Rgba {
-        self.cols.background
+        <FlatTheme as Theme<D>>::clear_color(&self.flat)
     }
 }
 
 impl ThemeApi for ShadedTheme {
     fn set_font_size(&mut self, pt_size: f32) -> TkAction {
-        self.config.set_font_size(pt_size);
-        TkAction::RESIZE | TkAction::THEME_UPDATE
+        self.flat.set_font_size(pt_size)
     }
 
     fn list_schemes(&self) -> Vec<&str> {
-        self.config
-            .color_schemes_iter()
-            .map(|(name, _)| name)
-            .collect()
+        self.flat.list_schemes()
     }
 
     fn set_scheme(&mut self, name: &str) -> TkAction {
-        if name != self.config.active_scheme() {
-            if let Some(scheme) = self.config.get_color_scheme(name) {
-                self.cols = scheme.into();
-                self.config.set_active_scheme(name);
-                return TkAction::REDRAW;
-            }
-        }
-        TkAction::empty()
+        self.flat.set_scheme(name)
     }
 }
 

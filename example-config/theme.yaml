@@ -43,3 +43,14 @@ font_aliases:
   Calibri:
     mode: Append
     list: [Carlito]
+fonts:
+  Edit:
+    families:
+      - serif
+  EditMulti:
+    families:
+      - serif
+  MenuLabel:
+    families:
+      - sans-serif
+    weight: 600

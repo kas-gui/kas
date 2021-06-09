@@ -7,10 +7,12 @@
 //!
 //! Widget size and appearance can be modified through themes.
 
+use linear_map::LinearMap;
 use std::f32;
 use std::ops::Range;
+use std::rc::Rc;
 
-use crate::{ColorsLinear, Config, Dimensions, DimensionsParams, DimensionsWindow, Theme, Window};
+use crate::{ColorsLinear, Config, DimensionsParams, DimensionsWindow, Theme, Window};
 use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
 use kas::draw::{
@@ -19,7 +21,7 @@ use kas::draw::{
 };
 use kas::geom::*;
 use kas::text::format::FormattableText;
-use kas::text::{AccelString, Effect, Text, TextApi, TextDisplay};
+use kas::text::{fonts, AccelString, Effect, Text, TextApi, TextDisplay};
 use kas::TkAction;
 
 // Used to ensure a rectangular background is inside a circular corner.
@@ -29,8 +31,9 @@ const BG_SHRINK_FACTOR: f32 = 1.0 - std::f32::consts::FRAC_1_SQRT_2;
 /// A theme with flat (unshaded) rendering
 #[derive(Clone, Debug)]
 pub struct FlatTheme {
-    config: Config,
-    cols: ColorsLinear,
+    pub(crate) config: Config,
+    pub(crate) cols: ColorsLinear,
+    pub(crate) fonts: Option<Rc<LinearMap<TextClass, fonts::FontId>>>,
 }
 
 impl FlatTheme {
@@ -40,6 +43,7 @@ impl FlatTheme {
         FlatTheme {
             config: Default::default(),
             cols: ColorsLinear::default(),
+            fonts: None,
         }
     }
 
@@ -113,14 +117,22 @@ where
         if let Err(e) = kas::text::fonts::fonts().select_default() {
             panic!("Error loading font: {}", e);
         }
+        let fonts = fonts::fonts();
+        self.fonts = Some(Rc::new(
+            self.config
+                .iter_fonts()
+                .filter_map(|(c, s)| fonts.select_font(&s).ok().map(|id| (*c, id)))
+                .collect(),
+        ));
     }
 
-    fn new_window(&self, _draw: &mut D::Draw, dpi_factor: f32) -> Self::Window {
-        DimensionsWindow::new(DIMS, self.config.font_size(), dpi_factor)
+    fn new_window(&self, dpi_factor: f32) -> Self::Window {
+        let fonts = self.fonts.as_ref().clone().unwrap().clone();
+        DimensionsWindow::new(DIMS, self.config.font_size(), dpi_factor, fonts)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        window.dims = Dimensions::new(DIMS, self.config.font_size(), dpi_factor);
+        window.update(DIMS, self.config.font_size(), dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
