@@ -6,17 +6,24 @@
 //! Text drawing pipeline
 
 use super::{atlases, ShaderManager};
-use ab_glyph::{Font, FontRef};
+#[cfg(not(feature = "fontdue"))]
+use ab_glyph::Font as _;
 use kas::cast::*;
 use kas::draw::{color::Rgba, Pass};
 use kas::geom::{Quad, Vec2};
 use kas::text::conv::DPU;
 use kas::text::fonts::{fonts, FaceId, ScaledFaceRef};
-use kas::text::{Effect, Glyph, GlyphId, TextDisplay};
+use kas::text::{Effect, Glyph, TextDisplay};
 use std::collections::hash_map::{Entry, HashMap};
 use std::mem::size_of;
 use std::num::NonZeroU32;
 
+#[cfg(not(feature = "fontdue"))]
+type FontFace = ab_glyph::FontRef<'static>;
+#[cfg(feature = "fontdue")]
+use fontdue::Font as FontFace;
+
+#[cfg(not(feature = "fontdue"))]
 fn to_vec2(p: ab_glyph::Point) -> Vec2 {
     Vec2(p.x, p.y)
 }
@@ -71,11 +78,13 @@ impl SpriteDescriptor {
         ((self.0 & 0x0000_0000_FFFF_0000) >> 16) as u16
     }
 
+    #[allow(unused)]
     fn height(self) -> f32 {
         let height = ((self.0 & 0x00FF_FFFF_0000_0000) >> 32) as u32;
         f32::conv(height) / SCALE_MULT
     }
 
+    #[allow(unused)]
     fn fractional_position(self) -> (f32, f32) {
         let mult = 1.0 / Self::sub_pixel_from_height(self.height());
         let x = ((self.0 & 0x0F00_0000_0000_0000) >> 56) as u8;
@@ -100,13 +109,14 @@ struct Sprite {
 }
 
 impl atlases::Pipeline<Instance> {
+    #[cfg(not(feature = "fontdue"))]
     fn rasterize(
         &mut self,
         sf: ScaledFaceRef,
-        face: &FontRef<'static>,
+        face: &FontFace,
         desc: SpriteDescriptor,
-    ) -> Option<(Sprite, (u32, u32), (u32, u32), Vec<u8>)> {
-        let id = GlyphId(desc.glyph());
+    ) -> Option<(Vec2, (u32, u32), Vec<u8>)> {
+        let id = kas::text::GlyphId(desc.glyph());
         let (x, y) = desc.fractional_position();
         let glyph_off = Vec2(x.round(), y.round());
 
@@ -118,40 +128,44 @@ impl atlases::Pipeline<Instance> {
         let outline = face.outline_glyph(glyph)?;
 
         let bounds = outline.px_bounds();
-        let size = to_vec2(bounds.max - bounds.min);
         let offset = to_vec2(bounds.min) - glyph_off;
-        let size_u32 = (u32::conv_trunc(size.0), u32::conv_trunc(size.1));
-        if size_u32.0 == 0 || size_u32.1 == 0 {
+        let size = bounds.max - bounds.min;
+        let size = (u32::conv_trunc(size.x), u32::conv_trunc(size.y));
+        if size.0 == 0 || size.1 == 0 {
             log::warn!("Zero-sized glyph: {}", desc.glyph());
             return None; // nothing to draw
         }
 
-        let (atlas, _, origin, tex_quad) = match self.allocate(size_u32) {
-            Ok(result) => result,
-            Err(_) => {
-                log::warn!(
-                    "text_pipe: failed to allocate glyph with size {:?}",
-                    size_u32
-                );
-                return None;
-            }
-        };
-
         let mut data = Vec::new();
-        data.resize(usize::conv(size_u32.0 * size_u32.1), 0u8);
+        data.resize(usize::conv(size.0 * size.1), 0u8);
         outline.draw(|x, y, c| {
             // Convert to u8 with saturating conversion, rounding down:
-            data[usize::conv((y * size_u32.0) + x)] = (c * 256.0) as u8;
+            data[usize::conv((y * size.0) + x)] = (c * 256.0) as u8;
         });
 
-        let sprite = Sprite {
-            atlas,
-            size,
-            offset,
-            tex_quad,
-        };
+        Some((offset, size, data))
+    }
 
-        Some((sprite, origin, size_u32, data))
+    #[cfg(feature = "fontdue")]
+    fn rasterize(
+        &mut self,
+        sf: ScaledFaceRef,
+        face: &FontFace,
+        desc: SpriteDescriptor,
+    ) -> Option<(Vec2, (u32, u32), Vec<u8>)> {
+        // Ironically fontdue uses DPU internally, but doesn't let us input that.
+        let px_per_em = sf.dpu().0 * face.units_per_em();
+        let (metrics, data) = face.rasterize_indexed(desc.glyph() as usize, px_per_em);
+
+        let size = (u32::conv(metrics.width), u32::conv(metrics.height));
+        let h_off = -metrics.ymin - i32::conv(metrics.height);
+        let offset = Vec2(metrics.xmin.cast(), h_off.cast());
+        if size.0 == 0 || size.1 == 0 {
+            log::warn!("Zero-sized glyph: {}", desc.glyph());
+            return None; // nothing to draw
+        }
+
+        Some((offset, size, data))
     }
 }
 
@@ -171,7 +185,7 @@ unsafe impl bytemuck::Pod for Instance {}
 /// A pipeline for rendering text
 pub struct Pipeline {
     atlas_pipe: atlases::Pipeline<Instance>,
-    faces: Vec<FontRef<'static>>,
+    faces: Vec<FontFace>,
     glyphs: HashMap<SpriteDescriptor, Option<Sprite>>,
     prepare: Vec<(u32, (u32, u32), (u32, u32), Vec<u8>)>,
 }
@@ -224,7 +238,15 @@ impl Pipeline {
             let face_data = fonts.face_data();
             for i in n1..n2 {
                 let (data, index) = face_data.get_data(i);
-                let face = FontRef::try_from_slice_and_index(data, index).unwrap();
+                #[cfg(not(feature = "fontdue"))]
+                let face = ab_glyph::FontRef::try_from_slice_and_index(data, index).unwrap();
+                #[cfg(feature = "fontdue")]
+                let settings = fontdue::FontSettings {
+                    collection_index: index,
+                    scale: 40.0, // TODO: max expected font size in dpem
+                };
+                #[cfg(feature = "fontdue")]
+                let face = FontFace::from_bytes(data, settings).unwrap();
                 self.faces.push(face);
             }
         }
@@ -291,14 +313,26 @@ impl Pipeline {
                 // rendering could be offloaded.
                 let sf = fonts().get_face(face).scale_by_dpu(dpu);
                 let face = &self.faces[usize::conv(face.0)];
-                let result = self.atlas_pipe.rasterize(sf, face, desc);
-                let sprite = if let Some((sprite, origin, size, data)) = result {
-                    self.prepare.push((sprite.atlas, origin, size, data));
-                    Some(sprite)
+                let mut sprite = None;
+                if let Some((offset, size, data)) = self.atlas_pipe.rasterize(sf, face, desc) {
+                    match self.atlas_pipe.allocate(size) {
+                        Ok((atlas, _, origin, tex_quad)) => {
+                            let s = Sprite {
+                                atlas,
+                                size: Vec2(size.0.cast(), size.1.cast()),
+                                offset,
+                                tex_quad,
+                            };
+
+                            self.prepare.push((s.atlas, origin, size, data));
+                            sprite = Some(s);
+                        }
+                        Err(_) => {
+                            log::warn!("text_pipe: failed to allocate glyph with size {:?}", size);
+                        }
+                    };
                 } else {
                     log::warn!("Failed to rasterize glyph: {:?}", glyph);
-
-                    None
                 };
                 entry.insert(sprite.clone());
                 sprite

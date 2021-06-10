@@ -31,11 +31,14 @@ Optional features
 This crate has the following feature flags:
 
 -   `clipboard` (enabled by default): clipboard integration
+-   `fontdue`: use [fontdue] library for font rasterisation (otherwise, `ab_glyph` is used)
 -   `stack_dst` (enabled by default): enables `kas-theme::MultiTheme`
 -   `gat`: enables usage of the Generic Associated Types feature (nightly only
     and currently unstable), allowing some usages of `unsafe` to be avoided.
     (The plan is to enable this by default once the feature is mature.)
 -   `unsize`: forwards this feature flag to `kas-theme`
+
+[fontdue]: https://github.com/mooman219/fontdue
 
 Copyright and Licence
 -------
