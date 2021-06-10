@@ -10,8 +10,9 @@ use ab_glyph::{Font, FontRef};
 use kas::cast::*;
 use kas::draw::{color::Rgba, Pass};
 use kas::geom::{Quad, Vec2};
-use kas::text::fonts::{fonts, FaceId};
-use kas::text::{Effect, Glyph, TextDisplay};
+use kas::text::conv::DPU;
+use kas::text::fonts::{fonts, FaceId, ScaledFaceRef};
+use kas::text::{Effect, Glyph, GlyphId, TextDisplay};
 use std::collections::hash_map::{Entry, HashMap};
 use std::mem::size_of;
 use std::num::NonZeroU32;
@@ -37,19 +38,21 @@ struct SpriteDescriptor(u64);
 impl SpriteDescriptor {
     /// Choose a sub-pixel precision multiplier based on the height
     ///
-    /// Must return an integer between 1 and 15.
+    /// Must return an integer between 1 and 16.
     fn sub_pixel_from_height(height: f32) -> f32 {
         // Due to rounding sub-pixel precision is disabled for height > 20
-        (30.0 / height).round().clamp(1.0, 15.0)
+        (30.0 / height).round().clamp(1.0, 16.0)
     }
 
     fn new(face: FaceId, glyph: Glyph, height: f32) -> Self {
         let face: u16 = face.get().cast();
         let glyph_id: u16 = glyph.id.0;
         let mult = Self::sub_pixel_from_height(height);
+        let mult2 = 0.5 * mult;
+        let steps = u8::conv_nearest(mult);
         let height: u32 = (height * SCALE_MULT).cast_nearest();
-        let x_off: u8 = (glyph.position.0.fract() * mult).cast_nearest();
-        let y_off: u8 = (glyph.position.1.fract() * mult).cast_nearest();
+        let x_off = u8::conv_floor(glyph.position.0.fract() * mult + mult2) % steps;
+        let y_off = u8::conv_floor(glyph.position.1.fract() * mult + mult2) % steps;
         assert!(height & 0xFF00_0000 == 0 && x_off & 0xF0 == 0 && y_off & 0xF0 == 0);
         let packed = face as u64
             | ((glyph_id as u64) << 16)
@@ -59,6 +62,7 @@ impl SpriteDescriptor {
         SpriteDescriptor(packed)
     }
 
+    #[allow(unused)]
     fn face(self) -> usize {
         (self.0 & 0x0000_0000_0000_FFFF) as usize
     }
@@ -98,22 +102,27 @@ struct Sprite {
 impl atlases::Pipeline<Instance> {
     fn rasterize(
         &mut self,
+        sf: ScaledFaceRef,
         face: &FontRef<'static>,
         desc: SpriteDescriptor,
     ) -> Option<(Sprite, (u32, u32), (u32, u32), Vec<u8>)> {
-        let fract_pos = desc.fractional_position();
+        let id = GlyphId(desc.glyph());
+        let (x, y) = desc.fractional_position();
+        let glyph_off = Vec2(x.round(), y.round());
+
         let glyph = ab_glyph::Glyph {
-            id: ab_glyph::GlyphId(desc.glyph()),
+            id: ab_glyph::GlyphId(id.0),
             scale: desc.height().into(),
-            position: fract_pos.into(),
+            position: ab_glyph::point(x, y),
         };
         let outline = face.outline_glyph(glyph)?;
 
         let bounds = outline.px_bounds();
         let size = to_vec2(bounds.max - bounds.min);
-        let offset = to_vec2(bounds.min) - Vec2(fract_pos.0.round(), fract_pos.1.round());
+        let offset = to_vec2(bounds.min) - glyph_off;
         let size_u32 = (u32::conv_trunc(size.0), u32::conv_trunc(size.1));
         if size_u32.0 == 0 || size_u32.1 == 0 {
+            log::warn!("Zero-sized glyph: {}", desc.glyph());
             return None; // nothing to draw
         }
 
@@ -273,18 +282,22 @@ impl Pipeline {
     ///
     /// This returns `None` if there's nothing to render. It may also return
     /// `None` (with a warning) on error.
-    fn get_glyph(&mut self, desc: SpriteDescriptor) -> Option<Sprite> {
+    fn get_glyph(&mut self, face: FaceId, dpu: DPU, height: f32, glyph: Glyph) -> Option<Sprite> {
+        let desc = SpriteDescriptor::new(face, glyph, height);
         match self.glyphs.entry(desc) {
             Entry::Occupied(entry) => entry.get().clone(),
             Entry::Vacant(entry) => {
                 // NOTE: we only need the allocation and coordinates now; the
                 // rendering could be offloaded.
-                let face = &self.faces[desc.face()];
-                let result = self.atlas_pipe.rasterize(face, desc);
+                let sf = fonts().get_face(face).scale_by_dpu(dpu);
+                let face = &self.faces[usize::conv(face.0)];
+                let result = self.atlas_pipe.rasterize(sf, face, desc);
                 let sprite = if let Some((sprite, origin, size, data)) = result {
                     self.prepare.push((sprite.atlas, origin, size, data));
                     Some(sprite)
                 } else {
+                    log::warn!("Failed to rasterize glyph: {:?}", glyph);
+
                     None
                 };
                 entry.insert(sprite.clone());
@@ -329,9 +342,8 @@ impl Window {
     ) {
         let time = std::time::Instant::now();
 
-        let for_glyph = |face: FaceId, _, height: f32, glyph: Glyph| {
-            let desc = SpriteDescriptor::new(face, glyph, height);
-            if let Some(sprite) = pipe.get_glyph(desc) {
+        let for_glyph = |face: FaceId, dpu: DPU, height: f32, glyph: Glyph| {
+            if let Some(sprite) = pipe.get_glyph(face, dpu, height, glyph) {
                 let pos = pos + Vec2::from(glyph.position);
                 let a = pos + sprite.offset;
                 let b = a + sprite.size;
@@ -369,9 +381,8 @@ impl Window {
         let time = std::time::Instant::now();
         let mut rects = vec![];
 
-        let mut for_glyph = |face: FaceId, _, height: f32, glyph: Glyph, _: usize, _: ()| {
-            let desc = SpriteDescriptor::new(face, glyph, height);
-            if let Some(sprite) = pipe.get_glyph(desc) {
+        let mut for_glyph = |face: FaceId, dpu: DPU, height: f32, glyph: Glyph, _: usize, _: ()| {
+            if let Some(sprite) = pipe.get_glyph(face, dpu, height, glyph) {
                 let pos = pos + Vec2::from(glyph.position);
                 let a = pos + sprite.offset;
                 let b = a + sprite.size;
@@ -430,9 +441,8 @@ impl Window {
         let time = std::time::Instant::now();
         let mut rects = vec![];
 
-        let for_glyph = |face: FaceId, _, height: f32, glyph: Glyph, _, col: Rgba| {
-            let desc = SpriteDescriptor::new(face, glyph, height);
-            if let Some(sprite) = pipe.get_glyph(desc) {
+        let for_glyph = |face: FaceId, dpu: DPU, height: f32, glyph: Glyph, _, col: Rgba| {
+            if let Some(sprite) = pipe.get_glyph(face, dpu, height, glyph) {
                 let pos = pos + Vec2::from(glyph.position);
                 let a = pos + sprite.offset;
                 let b = a + sprite.size;

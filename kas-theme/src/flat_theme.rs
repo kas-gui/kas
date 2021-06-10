@@ -114,10 +114,10 @@ where
     }
 
     fn init(&mut self, _draw: &mut D) {
-        if let Err(e) = kas::text::fonts::fonts().select_default() {
+        let fonts = fonts::fonts();
+        if let Err(e) = fonts.select_default() {
             panic!("Error loading font: {}", e);
         }
-        let fonts = fonts::fonts();
         self.fonts = Some(Rc::new(
             self.config
                 .iter_fonts()
