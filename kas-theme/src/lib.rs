@@ -32,7 +32,7 @@ mod traits;
 pub use kas;
 
 pub use colors::{Colors, ColorsLinear, ColorsSrgb};
-pub use config::Config;
+pub use config::{Config, RasterConfig};
 pub use dim::{Dimensions, DimensionsParams, DimensionsWindow};
 pub use flat_theme::FlatTheme;
 #[cfg(feature = "stack_dst")]

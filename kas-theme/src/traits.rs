@@ -15,6 +15,9 @@ use std::ops::{Deref, DerefMut};
 pub trait ThemeConfig: Clone + std::fmt::Debug + 'static {
     /// Apply startup effects
     fn apply_startup(&self);
+
+    /// Get raster config
+    fn raster(&self) -> &crate::RasterConfig;
 }
 
 /// Requirements on theme config (with `config` feature)
@@ -27,6 +30,9 @@ pub trait ThemeConfig:
 
     /// Apply startup effects
     fn apply_startup(&self);
+
+    /// Get raster config
+    fn raster(&self) -> &crate::RasterConfig;
 }
 
 /// A *theme* provides widget sizing and drawing implementations.

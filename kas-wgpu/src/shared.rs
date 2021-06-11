@@ -16,7 +16,7 @@ use crate::{warn_about_error, Error, Options, WindowId};
 use kas::event::UpdateHandle;
 use kas::updatable::Updatable;
 use kas::TkAction;
-use kas_theme::Theme;
+use kas_theme::{Theme, ThemeConfig};
 
 #[cfg(feature = "clipboard")]
 use window_clipboard::Clipboard;
@@ -67,7 +67,7 @@ where
         let (device, queue) = futures::executor::block_on(req)?;
 
         let shaders = ShaderManager::new(&device);
-        let mut draw = DrawPipe::new(custom, &device, &shaders);
+        let mut draw = DrawPipe::new(custom, &device, &shaders, theme.config().raster());
 
         theme.init(&mut draw);
 
