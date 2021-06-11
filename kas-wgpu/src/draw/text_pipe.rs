@@ -6,34 +6,62 @@
 //! Text drawing pipeline
 
 use super::{atlases, ShaderManager};
-#[cfg(not(feature = "fontdue"))]
-use ab_glyph::Font as _;
 use kas::cast::*;
 use kas::draw::{color::Rgba, Pass};
 use kas::geom::{Quad, Vec2};
 use kas::text::conv::DPU;
 use kas::text::fonts::{fonts, FaceId, ScaledFaceRef};
 use kas::text::{Effect, Glyph, TextDisplay};
+use kas_theme::RasterConfig;
 use std::collections::hash_map::{Entry, HashMap};
 use std::mem::size_of;
 use std::num::NonZeroU32;
 
-#[cfg(not(feature = "fontdue"))]
-type FontFace = ab_glyph::FontRef<'static>;
-#[cfg(feature = "fontdue")]
-use fontdue::Font as FontFace;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "ab_glyph")] {
+        type FaceAb = ab_glyph::FontRef<'static>;
+    } else {
+        type FaceAb = ();
+    }
+}
 
+#[cfg(feature = "fontdue")]
+type FaceFontdue = fontdue::Font;
 #[cfg(not(feature = "fontdue"))]
+type FaceFontdue = ();
+
+type FontFace = (FaceAb, FaceFontdue);
+
+#[cfg(feature = "ab_glyph")]
 fn to_vec2(p: ab_glyph::Point) -> Vec2 {
     Vec2(p.x, p.y)
 }
 
-/// Scale multiplier for fixed-precision
-///
-/// This should be an integer `n >= 1`, e.g. `n = 4` provides four sub-pixel
-/// steps of precision. It is also required that `n * h < (1 << 24)` where
-/// `h` is the text height in pixels.
-const SCALE_MULT: f32 = 4.0;
+struct ConfigCache {
+    #[allow(unused)]
+    sb_align: bool,
+    #[allow(unused)]
+    fontdue: bool,
+    scale_steps: f32,
+    subpixel_threshold: f32,
+    subpixel_steps: f32,
+}
+
+impl From<&RasterConfig> for ConfigCache {
+    fn from(c: &RasterConfig) -> Self {
+        assert!(
+            c.mode < 3,
+            "supported raster modes: 0=ab_glyph, 1=ab_glyph with side-bearing alignment, 2=fontdue"
+        );
+        ConfigCache {
+            sb_align: c.mode == 1,
+            fontdue: c.mode == 2,
+            scale_steps: c.scale_steps.cast(),
+            subpixel_threshold: c.subpixel_threshold.cast(),
+            subpixel_steps: c.subpixel_steps.cast(),
+        }
+    }
+}
 
 /// A Sprite descriptor
 ///
@@ -46,18 +74,21 @@ impl SpriteDescriptor {
     /// Choose a sub-pixel precision multiplier based on the height
     ///
     /// Must return an integer between 1 and 16.
-    fn sub_pixel_from_height(height: f32) -> f32 {
-        // Due to rounding sub-pixel precision is disabled for height > 20
-        (30.0 / height).round().clamp(1.0, 16.0)
+    fn sub_pixel_from_height(config: &ConfigCache, height: f32) -> f32 {
+        if height < config.subpixel_threshold {
+            config.subpixel_steps
+        } else {
+            1.0
+        }
     }
 
-    fn new(face: FaceId, glyph: Glyph, height: f32) -> Self {
+    fn new(config: &ConfigCache, face: FaceId, glyph: Glyph, height: f32) -> Self {
         let face: u16 = face.get().cast();
         let glyph_id: u16 = glyph.id.0;
-        let mult = Self::sub_pixel_from_height(height);
+        let mult = Self::sub_pixel_from_height(config, height);
         let mult2 = 0.5 * mult;
         let steps = u8::conv_nearest(mult);
-        let height: u32 = (height * SCALE_MULT).cast_nearest();
+        let height: u32 = (height * config.scale_steps).cast_nearest();
         let x_off = u8::conv_floor(glyph.position.0.fract() * mult + mult2) % steps;
         let y_off = u8::conv_floor(glyph.position.1.fract() * mult + mult2) % steps;
         assert!(height & 0xFF00_0000 == 0 && x_off & 0xF0 == 0 && y_off & 0xF0 == 0);
@@ -79,14 +110,14 @@ impl SpriteDescriptor {
     }
 
     #[allow(unused)]
-    fn height(self) -> f32 {
+    fn height(self, config: &ConfigCache) -> f32 {
         let height = ((self.0 & 0x00FF_FFFF_0000_0000) >> 32) as u32;
-        f32::conv(height) / SCALE_MULT
+        f32::conv(height) / config.scale_steps
     }
 
     #[allow(unused)]
-    fn fractional_position(self) -> (f32, f32) {
-        let mult = 1.0 / Self::sub_pixel_from_height(self.height());
+    fn fractional_position(self, config: &ConfigCache) -> (f32, f32) {
+        let mult = 1.0 / Self::sub_pixel_from_height(config, self.height(config));
         let x = ((self.0 & 0x0F00_0000_0000_0000) >> 56) as u8;
         let y = ((self.0 & 0xF000_0000_0000_0000) >> 60) as u8;
         let x = f32::conv(x) * mult;
@@ -109,20 +140,26 @@ struct Sprite {
 }
 
 impl atlases::Pipeline<Instance> {
-    #[cfg(not(feature = "fontdue"))]
-    fn rasterize(
+    #[cfg(feature = "ab_glyph")]
+    fn raster_ab(
         &mut self,
+        config: &ConfigCache,
         sf: ScaledFaceRef,
-        face: &FontFace,
+        face: &FaceAb,
         desc: SpriteDescriptor,
     ) -> Option<(Vec2, (u32, u32), Vec<u8>)> {
+        use ab_glyph::Font;
+
         let id = kas::text::GlyphId(desc.glyph());
-        let (x, y) = desc.fractional_position();
+        let (mut x, y) = desc.fractional_position(config);
         let glyph_off = Vec2(x.round(), y.round());
+        if config.sb_align && desc.height(config) >= config.subpixel_threshold {
+            x -= sf.h_side_bearing(id);
+        }
 
         let glyph = ab_glyph::Glyph {
             id: ab_glyph::GlyphId(id.0),
-            scale: desc.height().into(),
+            scale: desc.height(config).into(),
             position: ab_glyph::point(x, y),
         };
         let outline = face.outline_glyph(glyph)?;
@@ -147,10 +184,10 @@ impl atlases::Pipeline<Instance> {
     }
 
     #[cfg(feature = "fontdue")]
-    fn rasterize(
+    fn raster_fontdue(
         &mut self,
         sf: ScaledFaceRef,
-        face: &FontFace,
+        face: &FaceFontdue,
         desc: SpriteDescriptor,
     ) -> Option<(Vec2, (u32, u32), Vec<u8>)> {
         // Ironically fontdue uses DPU internally, but doesn't let us input that.
@@ -184,6 +221,7 @@ unsafe impl bytemuck::Pod for Instance {}
 
 /// A pipeline for rendering text
 pub struct Pipeline {
+    config: ConfigCache,
     atlas_pipe: atlases::Pipeline<Instance>,
     faces: Vec<FontFace>,
     glyphs: HashMap<SpriteDescriptor, Option<Sprite>>,
@@ -195,6 +233,7 @@ impl Pipeline {
         device: &wgpu::Device,
         shaders: &ShaderManager,
         bgl_common: &wgpu::BindGroupLayout,
+        config: &RasterConfig,
     ) -> Self {
         let atlas_pipe = atlases::Pipeline::new(
             device,
@@ -219,6 +258,7 @@ impl Pipeline {
             &shaders.frag_glyph,
         );
         Pipeline {
+            config: config.into(),
             atlas_pipe,
             faces: Default::default(),
             glyphs: Default::default(),
@@ -238,16 +278,27 @@ impl Pipeline {
             let face_data = fonts.face_data();
             for i in n1..n2 {
                 let (data, index) = face_data.get_data(i);
-                #[cfg(not(feature = "fontdue"))]
-                let face = ab_glyph::FontRef::try_from_slice_and_index(data, index).unwrap();
-                #[cfg(feature = "fontdue")]
-                let settings = fontdue::FontSettings {
-                    collection_index: index,
-                    scale: 40.0, // TODO: max expected font size in dpem
-                };
-                #[cfg(feature = "fontdue")]
-                let face = FontFace::from_bytes(data, settings).unwrap();
-                self.faces.push(face);
+
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "ab_glyph")] {
+                        let face_ab = ab_glyph::FontRef::try_from_slice_and_index(data, index).unwrap();
+                    } else {
+                        let face_ab = ();
+                    }
+                }
+                cfg_if::cfg_if! {
+                    if #[cfg(feature = "fontdue")] {
+                        let settings = fontdue::FontSettings {
+                            collection_index: index,
+                            scale: 40.0, // TODO: max expected font size in dpem
+                        };
+                        let face_fontdue = FaceFontdue::from_bytes(data, settings).unwrap();
+                    } else {
+                        let face_fontdue = ();
+                    }
+                }
+
+                self.faces.push((face_ab, face_fontdue));
             }
         }
     }
@@ -305,7 +356,7 @@ impl Pipeline {
     /// This returns `None` if there's nothing to render. It may also return
     /// `None` (with a warning) on error.
     fn get_glyph(&mut self, face: FaceId, dpu: DPU, height: f32, glyph: Glyph) -> Option<Sprite> {
-        let desc = SpriteDescriptor::new(face, glyph, height);
+        let desc = SpriteDescriptor::new(&self.config, face, glyph, height);
         match self.glyphs.entry(desc) {
             Entry::Occupied(entry) => entry.get().clone(),
             Entry::Vacant(entry) => {
@@ -314,7 +365,24 @@ impl Pipeline {
                 let sf = fonts().get_face(face).scale_by_dpu(dpu);
                 let face = &self.faces[usize::conv(face.0)];
                 let mut sprite = None;
-                if let Some((offset, size, data)) = self.atlas_pipe.rasterize(sf, face, desc) {
+
+                cfg_if::cfg_if! {
+                    if #[cfg(all(not(feature = "fontdue"), not(feature = "ab_glyph")))] {
+                        std::compile_error!("require at least one of these features: ab_glyph, fontdue");
+                    } else if #[cfg(all(feature = "fontdue", feature = "ab_glyph"))] {
+                        let result = if self.config.fontdue {
+                            self.atlas_pipe.raster_fontdue(sf, &face.1, desc)
+                        } else {
+                            self.atlas_pipe.raster_ab(&self.config, sf, &face.0, desc)
+                        };
+                    } else if #[cfg(feature = "ab_glyph")] {
+                        let result = self.atlas_pipe.raster_ab(&self.config, sf, &face.0, desc);
+                    } else {
+                        let result = self.atlas_pipe.raster_fontdue(sf, &face.1, desc);
+                    }
+                }
+
+                if let Some((offset, size, data)) = result {
                     match self.atlas_pipe.allocate(size) {
                         Ok((atlas, _, origin, tex_quad)) => {
                             let s = Sprite {
@@ -332,7 +400,8 @@ impl Pipeline {
                         }
                     };
                 } else {
-                    log::warn!("Failed to rasterize glyph: {:?}", glyph);
+                    // This comes up a lot and is usually harmless
+                    log::debug!("Failed to rasterize glyph: {:?}", glyph);
                 };
                 entry.insert(sprite.clone());
                 sprite

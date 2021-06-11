@@ -24,6 +24,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         mut custom: CB,
         device: &wgpu::Device,
         shaders: &ShaderManager,
+        raster_config: &kas_theme::RasterConfig,
     ) -> Self {
         // Create staging belt and a local pool
         let staging_belt = wgpu::util::StagingBelt::new(1024);
@@ -60,7 +61,7 @@ impl<C: CustomPipe> DrawPipe<C> {
         let shaded_round = shaded_round::Pipeline::new(device, shaders, &bgl_common);
         let flat_round = flat_round::Pipeline::new(device, shaders, &bgl_common);
         let custom = custom.build(&device, &bgl_common, RENDER_TEX_FORMAT);
-        let text = text_pipe::Pipeline::new(device, shaders, &bgl_common);
+        let text = text_pipe::Pipeline::new(device, shaders, &bgl_common, raster_config);
 
         DrawPipe {
             local_pool,

@@ -27,6 +27,9 @@ pub trait ThemeConfig:
 
     /// Apply startup effects
     fn apply_startup(&self);
+
+    /// Get raster config
+    fn raster(&self) -> &crate::RasterConfig;
 }
 
 /// A *theme* provides widget sizing and drawing implementations.

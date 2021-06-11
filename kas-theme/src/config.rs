@@ -39,6 +39,10 @@ pub struct Config {
     /// Standard fonts
     #[cfg_attr(feature = "config", serde(default))]
     fonts: BTreeMap<TextClass, FontSelector<'static>>,
+
+    /// Text glyph rastering settings
+    #[cfg_attr(feature = "config", serde(default))]
+    raster: RasterConfig,
 }
 
 impl Default for Config {
@@ -50,6 +54,61 @@ impl Default for Config {
             color_schemes: defaults::color_schemes(),
             font_aliases: Default::default(),
             fonts: defaults::fonts(),
+            raster: Default::default(),
+        }
+    }
+}
+
+/// Font raster settings
+///
+/// These are not used by the theme, but passed through to the rendering
+/// backend.
+#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "config", derive(serde::Serialize, serde::Deserialize))]
+pub struct RasterConfig {
+    //// Raster mode/engine (backend dependent)
+    #[cfg_attr(feature = "config", serde(default))]
+    pub mode: u8,
+    /// Scale multiplier for fixed-precision
+    ///
+    /// This should be an integer `n >= 1`, e.g. `n = 4` provides four sub-pixel
+    /// steps of precision. It is also required that `n * h < (1 << 24)` where
+    /// `h` is the text height in pixels.
+    #[cfg_attr(feature = "config", serde(default = "defaults::scale_steps"))]
+    pub scale_steps: u8,
+    /// Subpixel positioning threshold
+    ///
+    /// Text with height `h` less than this threshold will use sub-pixel
+    /// positioning, which should make letter spacing more accurate for small
+    /// fonts (though exact behaviour depends on the font; it may be worse).
+    /// This may make rendering worse by breaking pixel alignment.
+    ///
+    /// Note: this feature may not be available, depending on the backend and
+    /// the mode.
+    ///
+    /// See also sub-pixel positioning steps.
+    #[cfg_attr(feature = "config", serde(default = "defaults::subpixel_threshold"))]
+    pub subpixel_threshold: u8,
+    /// Subpixel steps
+    ///
+    /// The number of sub-pixel positioning steps to use. 1 is the minimum and
+    /// equivalent to no sub-pixel positioning. 16 is the maximum.
+    ///
+    /// Note that since this applies to horizontal and vertical positioning, the
+    /// maximum number of rastered glyphs is multiplied by the square of this
+    /// value, though this maxmimum may not be reached in practice. Since this
+    /// feature is usually only used for small fonts this likely acceptable.
+    #[cfg_attr(feature = "config", serde(default = "defaults::subpixel_steps"))]
+    pub subpixel_steps: u8,
+}
+
+impl Default for RasterConfig {
+    fn default() -> Self {
+        RasterConfig {
+            mode: 0,
+            scale_steps: defaults::scale_steps(),
+            subpixel_threshold: defaults::subpixel_threshold(),
+            subpixel_steps: defaults::subpixel_steps(),
         }
     }
 }
@@ -152,6 +211,12 @@ impl ThemeConfig for Config {
             });
         }
     }
+
+    /// Get raster config
+    #[inline]
+    fn raster(&self) -> &RasterConfig {
+        &self.raster
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -184,5 +249,15 @@ mod defaults {
             (TextClass::EditMulti, selector),
         ];
         list.iter().cloned().collect()
+    }
+
+    pub fn scale_steps() -> u8 {
+        4
+    }
+    pub fn subpixel_threshold() -> u8 {
+        0
+    }
+    pub fn subpixel_steps() -> u8 {
+        5
     }
 }

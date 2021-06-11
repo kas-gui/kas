@@ -54,3 +54,7 @@ fonts:
     families:
       - sans-serif
     weight: 600
+raster:
+    mode: 0
+    subpixel_threshold: 0
+    subpixel_steps: 1
