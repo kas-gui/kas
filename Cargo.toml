@@ -89,4 +89,4 @@ features = ["serde"]
 members = ["kas-macros", "kas-theme", "kas-wgpu"]
 
 [patch.crates-io]
-kas-text = { git = "https://github.com/kas-gui/kas-text.git", rev = "448d07fc3290f011440d83af6d97901ebce9c72e" }
+kas-text = { git = "https://github.com/kas-gui/kas-text.git", rev = "8e85e49df78f7908662d1356cacdf0b796274530" }
