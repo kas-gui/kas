@@ -17,9 +17,6 @@ use std::collections::hash_map::{Entry, HashMap};
 use std::mem::size_of;
 use std::num::NonZeroU32;
 
-#[cfg(all(not(feature = "fontdue"), not(feature = "ab_glyph")))]
-std::compile_error!("require at least one of these features: ab_glyph, fontdue");
-
 /// A Sprite
 ///
 /// A "sprite" is a glyph rendered to a texture with fixed properties. This

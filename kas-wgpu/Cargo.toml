@@ -18,11 +18,12 @@ no-default-features = true
 features = ["stack_dst"]
 
 [features]
-default = ["ab_glyph", "clipboard", "stack_dst"]
+# WARNING: if "raster" is disabled, an alternative like "kas-text/fontdue" is required!
+default = ["clipboard", "stack_dst","shaping", "raster"]
 nightly = ["unsize", "kas/nightly", "kas-theme/nightly"]
 
-ab_glyph = ["kas-text/ab_glyph"]
-fontdue = ["kas-text/fontdue"]
+shaping = ["kas-text/shaping"]
+raster = ["kas-text/raster"]
 
 # Use Generic Associated Types (this is too unstable to include in nightly!)
 gat = ["kas-theme/gat"]
@@ -39,7 +40,7 @@ unsize = ["kas-theme/unsize"]
 [dependencies]
 kas = { path = "..", version = "0.7.0", features = ["config", "winit"] }
 kas-theme = { path = "../kas-theme", features = ["config"], version = "0.7.0" }
-kas-text = { version = "0.2.1" }
+kas-text = { version = "0.3.0" }
 bytemuck = "1.5.1"
 futures = "0.3"
 log = "0.4"
