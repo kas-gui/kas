@@ -324,8 +324,6 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
     pub(crate) fn do_draw(&mut self, shared: &mut SharedState<C, T>) {
         let time = Instant::now();
 
-        shared.draw.text.prepare_fonts();
-
         unsafe {
             // Safety: we must drop draw_handle after draw call (wrong lifetime)
             let mut draw_handle =
