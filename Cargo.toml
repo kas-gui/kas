@@ -19,7 +19,7 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 # RUSTDOCFLAGS="--cfg doc_cfg" cargo +nightly doc --features=nightly,internal_doc,markdown,yaml,json --all --no-deps --open
 
 [features]
-default = ["shaping"]
+default = []
 
 # Enables usage of unstable Rust features
 nightly = ["min_spec"]
@@ -35,11 +35,6 @@ min_spec = []
 # thus is omitted from built documentation by default.
 # This flag does not change the API, only built documentation.
 internal_doc = []
-
-# Enable shaping via rustybuzz
-shaping = ["kas-text/shaping"]
-# Force use of HarfBuzz for shaping
-harfbuzz = ["kas-text/harfbuzz"]
 
 # Enable Markdown parsing
 markdown = ["kas-text/markdown"]
@@ -77,7 +72,7 @@ version = "0.7.0"
 path = "kas-macros"
 
 [dependencies.kas-text]
-version = "0.2.1"
+version = "0.3.0"
 
 [dependencies.winit]
 # Provides translations for several winit types
@@ -89,4 +84,4 @@ features = ["serde"]
 members = ["kas-macros", "kas-theme", "kas-wgpu"]
 
 [patch.crates-io]
-kas-text = { git = "https://github.com/kas-gui/kas-text.git", rev = "8e85e49df78f7908662d1356cacdf0b796274530" }
+kas-text = { git = "https://github.com/kas-gui/kas-text.git", rev = "fe480966daad0c17f5b7d0a956189e2f3823faf2" }

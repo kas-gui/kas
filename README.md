@@ -178,8 +178,6 @@ and runs the UI.
 
 The `kas` crate has the following feature flags:
 
--   `shaping` (enabled by default): enables complex glyph forming for languages such as Arabic.
-    Alternate: `harfbuzz` forces use of the HarfBuzz library for shaping.
 -   `markdown`: enables Markdown parsing for rich-text
 -   `config`: adds (de)serialisation support for configuration plus a few
     utility types (specifying `serde` instead only implements for utility types)
