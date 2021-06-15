@@ -93,14 +93,24 @@ are scalable to large data sets.
 Also included are several improvements to sizing, widget construction and event
 handling, as well as a new type-conversion library.
 
-### 0.8.0 — unreleased
+### 0.8.0 — June 2021
 
-This version will likely (finally) add support for images and textures, as well
-as some related work:
+This release finally addressed one of the most obvious missing features of KAS:
+images. At least, in their most basic form: static raster images loaded from
+file sources. This new raster-image rendering system was then tweaked and used
+as a replacement for the `glyph_brush` library, giving us better control over
+glyph rendering and caching, and allowing a choice of font glyph rasterer.
 
--   generalised buttons: support at least image or text contents
--   SVG support?
--   Better drawing APIs?
+The work on fonts and text did not stop there: as part of KAS-text 0.3, the
+(rather large and mostly unused) dependency `font-kit` was replaced with
+`fontdb` (plus a collection of custom aliases), extended to support font
+fallbacks and run-time configuration, meanwhile `rustybuzz` was integrated as
+a pure-Rust alternative to HarfBuzz for text shaping. These changes removed
+all non-Rust dependencies from the text system.
+
+Partially related to the above was the work on theme configuration, covering
+colour schemes, font size, font family (per font class and global), and glyph
+rastering.
 
 
 Future work
