@@ -7,22 +7,22 @@ The past
 First, lets summarise KAS's journey so far.
 For details, see the [CHANGELOG](CHANGELOG.md).
 
-### 0.0.x — Jan 2019
+### 0.0.x — January 2019
 
 Early releases, built over GTK.
 
-### 0.1.0 — Dec 2019
+### 0.1.0 — December 2019
 
 A restart, replacing GTK with direct widget implementations including rendering
 via the `rgx` crate. Initial theme traits, event-handling revision.
 
-### 0.2.0 — Feb 2020
+### 0.2.0 — February 2020
 
 Lots of small but significant changes, including the introduction of the
 `Manager` handle, user-defined `configure` code, scheduled updates (animation),
 a scrollable region with scrollbars and addition of `ToolkitProxy`.
 
-### 0.3.0 — Feb 2020
+### 0.3.0 — February 2020
 
 Only three weeks later, this delivered two new levels of draw API (portrayed by
 `clock` and `mandlebrot` examples respectively), a "flat" theme, run-time theme
@@ -53,7 +53,7 @@ Small additions included recursive disabled states for all widgets and an error
 state for `EditBox` (set via a user-defined input guard). Widgets included a
 `Slider`, a resizable `Splitter`, a `ComboBox` and menu widgets.
 
-### 0.5.0 — Aug 2020
+### 0.5.0 — August 2020
 
 This release focussed on text presentation and editing with a new library,
 [kas-text](https://github.com/kas-gui/kas-text/). The text editing experience
@@ -68,7 +68,7 @@ short-cuts, double-click tracking and separate inner and outer margins.
 Additionally, a [CONTRIBUTING](CONTRIBUTING.md) guide and this `ROADMAP`
 have been added.
 
-### 0.6.0 — Nov 2020
+### 0.6.0 — November 2020
 
 A continuation of the work on text, with intial support for rich text,
 exemplified via a Markdown parser. Underline and strike-through may be applied
@@ -80,10 +80,10 @@ To allow retrieval of data from temporary (dialog) windows, the
 
 This release also simplifies distribution by bundling pre-compiled GLSL shaders.
 
-### 0.7.0 — unreleased (March 2021?)
+### 0.7.0 — April 2021
 
-This release focusses on one of the remaining hard problems: data sharing. A new
-framework for "view widgets" is introduced, allowing (interactive) views over
+This release focussed on one of the remaining hard problems: data sharing. A new
+framework for "view widgets" was introduced, allowing (interactive) views over
 shared data.
 
 View widgets enable synchronised access to shared data from multiple locations.
