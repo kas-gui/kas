@@ -28,7 +28,13 @@ struct Shaders {
 impl Shaders {
     fn new(device: &wgpu::Device) -> Self {
         let vertex = device.create_shader_module(&include_spirv!("mandlebrot/shader.vert.spv"));
-        let fragment = device.create_shader_module(&include_spirv!("mandlebrot/shader.frag.spv"));
+        // Note: we don't use wgpu::include_spirv since it forces validation,
+        // which cannot currently deal with double precision floats (dvec2).
+        let fragment = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+            label: Some("fragment shader"),
+            source: wgpu::util::make_spirv(include_bytes!("mandlebrot/shader.frag.spv")),
+            flags: Default::default(),
+        });
 
         Shaders { vertex, fragment }
     }
