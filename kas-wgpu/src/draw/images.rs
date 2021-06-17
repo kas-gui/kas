@@ -173,7 +173,7 @@ impl Images {
         ImageId::try_new(n).expect("exhausted image IDs")
     }
 
-    /// Load an image
+    /// Load an image from the file-system
     pub fn load_path(
         &mut self,
         path: &Path,
@@ -199,20 +199,22 @@ impl Images {
             return;
         }
 
-        let images = &mut self.images;
-        let atlas_pipe = &mut self.atlas_pipe;
+        let mut ref_count = 0;
         self.paths.retain(|_, obj| {
             if obj.0 == id {
                 obj.1 -= 1;
-                if obj.1 == 0 {
-                    if let Some(im) = images.remove(&id) {
-                        atlas_pipe.deallocate(im.atlas, im.alloc);
-                    }
-                    return false;
-                }
+                ref_count = obj.1;
+                ref_count != 0
+            } else {
+                true
             }
-            true
-        })
+        });
+
+        if ref_count == 0 {
+            if let Some(im) = self.images.remove(&id) {
+                self.atlas_pipe.deallocate(im.atlas, im.alloc);
+            }
+        }
     }
 
     /// Query image size

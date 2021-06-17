@@ -7,22 +7,22 @@ The past
 First, lets summarise KAS's journey so far.
 For details, see the [CHANGELOG](CHANGELOG.md).
 
-### 0.0.x — Jan 2019
+### 0.0.x — January 2019
 
 Early releases, built over GTK.
 
-### 0.1.0 — Dec 2019
+### 0.1.0 — December 2019
 
 A restart, replacing GTK with direct widget implementations including rendering
 via the `rgx` crate. Initial theme traits, event-handling revision.
 
-### 0.2.0 — Feb 2020
+### 0.2.0 — February 2020
 
 Lots of small but significant changes, including the introduction of the
 `Manager` handle, user-defined `configure` code, scheduled updates (animation),
 a scrollable region with scrollbars and addition of `ToolkitProxy`.
 
-### 0.3.0 — Feb 2020
+### 0.3.0 — February 2020
 
 Only three weeks later, this delivered two new levels of draw API (portrayed by
 `clock` and `mandlebrot` examples respectively), a "flat" theme, run-time theme
@@ -53,7 +53,7 @@ Small additions included recursive disabled states for all widgets and an error
 state for `EditBox` (set via a user-defined input guard). Widgets included a
 `Slider`, a resizable `Splitter`, a `ComboBox` and menu widgets.
 
-### 0.5.0 — Aug 2020
+### 0.5.0 — August 2020
 
 This release focussed on text presentation and editing with a new library,
 [kas-text](https://github.com/kas-gui/kas-text/). The text editing experience
@@ -68,7 +68,7 @@ short-cuts, double-click tracking and separate inner and outer margins.
 Additionally, a [CONTRIBUTING](CONTRIBUTING.md) guide and this `ROADMAP`
 have been added.
 
-### 0.6.0 — Nov 2020
+### 0.6.0 — November 2020
 
 A continuation of the work on text, with intial support for rich text,
 exemplified via a Markdown parser. Underline and strike-through may be applied
@@ -80,10 +80,10 @@ To allow retrieval of data from temporary (dialog) windows, the
 
 This release also simplifies distribution by bundling pre-compiled GLSL shaders.
 
-### 0.7.0 — unreleased (March 2021?)
+### 0.7.0 — April 2021
 
-This release focusses on one of the remaining hard problems: data sharing. A new
-framework for "view widgets" is introduced, allowing (interactive) views over
+This release focussed on one of the remaining hard problems: data sharing. A new
+framework for "view widgets" was introduced, allowing (interactive) views over
 shared data.
 
 View widgets enable synchronised access to shared data from multiple locations.
@@ -93,14 +93,24 @@ are scalable to large data sets.
 Also included are several improvements to sizing, widget construction and event
 handling, as well as a new type-conversion library.
 
-### 0.8.0 — unreleased
+### 0.8.0 — June 2021
 
-This version will likely (finally) add support for images and textures, as well
-as some related work:
+This release finally addressed one of the most obvious missing features of KAS:
+images. At least, in their most basic form: static raster images loaded from
+file sources. This new raster-image rendering system was then tweaked and used
+as a replacement for the `glyph_brush` library, giving us better control over
+glyph rendering and caching, and allowing a choice of font glyph rasterer.
 
--   generalised buttons: support at least image or text contents
--   SVG support?
--   Better drawing APIs?
+The work on fonts and text did not stop there: as part of KAS-text 0.3, the
+(rather large and mostly unused) dependency `font-kit` was replaced with
+`fontdb` (plus a collection of custom aliases), extended to support font
+fallbacks and run-time configuration, meanwhile `rustybuzz` was integrated as
+a pure-Rust alternative to HarfBuzz for text shaping. These changes removed
+all non-Rust dependencies from the text system.
+
+Partially related to the above was the work on theme configuration, covering
+colour schemes, font size, font family (per font class and global), and glyph
+rastering.
 
 
 Future work
@@ -118,8 +128,6 @@ types instead. See [#95](https://github.com/kas-gui/kas/issues/95).
 
 Support display of images in the GUI:
 
--   fixed-size raster images sized to the pixel count without scaling
--   scaling of fixed raster images
 -   image display using a target size and multiple rastered versions, with
     the option of scaling to the target size or using the nearest size
 -   vector images rastered to a target size
@@ -127,29 +135,6 @@ Support display of images in the GUI:
 
 Possibly as part of this topic, implement colour management
 [#59](https://github.com/kas-gui/kas/issues/59).
-
-### Text: glyph caching and rasterisation
-
-Currently we use `wgpu_glyph` for glyph rasterisation and caching (which uses
-`glyph_brush` which uses `ab_glyph`). We already do our own glyph layout, so
-could perhaps move up the dependency tree or rewrite part of it. A few steps are
-involved, from font loading (already part of `kas-text`) to rasterising (several
-existing crates do this) to cache and texture management.
-
-Alongside this we could enable some extra features: sub-pixel precision for more
-accurate layout at low DPI, rotated and flipped text, fade-out where text is
-partially obscured.
-
-### Configuration and resource management
-
-Currently KAS has an ad-hoc font loader and fixed colour-schemes and shortcuts.
-This work item includes:
-
--   discovery of resources (fonts, icons, colour-schemes) from the system and
-    from user-local directories
--   configuration for e.g. fonts, colour schemes, icon sets
--   overriding the scale factor
--   shortcuts (e.g. Ctrl+Z), including configuration and maybe some localisation
 
 ### Standard resource sets
 
@@ -170,7 +155,20 @@ perhaps selecting a special context menu).
 At the same time, the undo history should probably be removed from widgets and
 stored in some shared state.
 
-This may also be a good time to review clipboard integration (see below).
+Slightly related to this is support for global and standard shortcuts such as
+undo, copy selection, save file, quit app.
+
+### Script-driven UIs
+
+So far, KAS only supports statically defined widgets and (more limited, without
+event handlers) programmatically added widgets. We should aim to support
+script-driven UIs: support all layouts with dynamic containers, add direct
+integration with a Rust-centric scripting language for building UIs, and add
+support for event handlers using dynamic typing.
+
+This should aim both to allow rapid prototyping of UIs and to make KAS easier
+to use (especially for those less familiar with Rust's traits, generics and
+macros).
 
 ### Widget identifiers
 
@@ -207,24 +205,6 @@ available.
 External dependencies
 ----------------------
 
-### Rust
-
-KAS currently *does* support stable `rustc`, but with feature limitations.
-Getting everything working well on stable Rust *requires* some new Rust
-features, though not all of these issues have a clear solution:
-
--   [#25](https://github.com/kas-gui/kas/issues/25) lists existing (optional)
-    usage of Rust nightly features; all of these
-    would be great to have in stable Rust but must are not essential
--   [#15](https://github.com/kas-gui/kas/issues/15) documents a major limitation
-    of `make_widget!`; Rust's
-    [RFC 2524](https://github.com/rust-lang/rfcs/pull/2524) provides
-    a solution but has neither been accepted nor implemented
--   [#11](https://github.com/kas-gui/kas/issues/11) documents one example of a
-    bad error message; another case of bad error messages is
-    [the sole reason `msg` does not have a default type within `make_widget!`](https://github.com/kas-gui/kas/blob/master/src/macros.rs#L381);
-    it is not clear (to me) how best to solve these issues
-
 ### WebGPU and CPU rasterisation
 
 Currently, KAS can only draw via `wgpu`, which currently does not support OpenGL
@@ -237,17 +217,9 @@ Additionally, KAS should provide a CPU-based renderer. See
 
 ### Clipboard support
 
-The current clipboard dependency is sub-par.
-[window_clipboard](https://github.com/hecrj/window_clipboard) may be the path
-forward, but still needs a lot of work (even copy-to-clipboard support).
-
-This includes support for formats other than plain text, e.g. images and HTML.
-
-This is not a trivial topic, especially considering that platforms have very
-different approaches to this (e.g. both X11 and Wayland expect apps to publish
-a list of available formats by mime type, then send contents in the window's
-event handler, while other platforms usually have more restricted formats and
-expect data to be sent to the clipboard provider in all formats up front).
+We have plain text clipboard support via
+[window_clipboard](https://github.com/hecrj/window_clipboard), but lack support
+for formatted text, images, etc.
 
 ### (winit) pop-up window support
 
@@ -264,8 +236,8 @@ receiving a drop or under a hovered drop.
 See [#98](https://github.com/kas-gui/kas/issues/98) and
 [winit#1550](https://github.com/rust-windowing/winit/issues/1550).
 
-### (winit) full key-bindings
+### (winit) key-bindings and text input
 
-Winit's `VirtualKeyCode` enum is rather limited. See
-[#27](https://github.com/kas-gui/kas/issues/27) (and *several* winit issues) on
-this topic.
+This needs revision, allowing more generic key bindings and supporting Input
+Method Editors (IME). Winit has an on-going effort here which will require
+support in KAS: <https://github.com/rust-windowing/winit/issues/1806>.

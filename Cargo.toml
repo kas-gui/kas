@@ -1,6 +1,6 @@
 [package]
 name = "kas"
-version = "0.7.1"
+version = "0.8.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -68,7 +68,7 @@ serde_yaml = { version = "0.8.16", optional = true }
 dep_ron = { version = "0.6.4", package = "ron", optional = true }
 
 [dependencies.kas-macros]
-version = "0.7.0"
+version = "0.8.0"
 path = "kas-macros"
 
 [dependencies.kas-text]
@@ -82,6 +82,3 @@ features = ["serde"]
 
 [workspace]
 members = ["kas-macros", "kas-theme", "kas-wgpu"]
-
-[patch.crates-io]
-kas-text = { git = "https://github.com/kas-gui/kas-text.git", rev = "fe480966daad0c17f5b7d0a956189e2f3823faf2" }

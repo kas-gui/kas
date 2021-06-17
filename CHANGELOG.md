@@ -2,6 +2,51 @@
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] — 2021-06-17
+
+This release sees basic support for images, improved text rendering,
+replacements for all non-Rust dependencies, and theme configuration support.
+
+### Themes and text style/layout
+
+-   Support theme configuration (#196, #198)
+-   Support write-on-exit for updated configuration files (#196, #197)
+-   Revise colour types: replace `Colour` with `Rgba` and `Rgba8Srgb` (#198)
+
+### Text layout and configuration
+
+-   Use rustybuzz for text shaping, enabled by default (#199)
+-   Allow custom font aliases in config (#199)
+-   Allow assigning a custom font per text class; new `TextClass::MenuLabel`,
+    use (by default) serif fonts for edit fields (#200)
+-   Vertically-align text lines (#201)
+-   Configuration for text rastering (#201)
+
+### Images and (text) rendering
+
+-   Support raster images loaded from the file-system (#185)
+-   Use dynamic image atlases (#186) created on demand (#187)
+-   Replace `wgpu_glyph` and `glyph_brush` with our own glyph caching (#190)
+-   Add transparent shadows to pop-up layers (#194)
+-   Support `fontdue` for glyph rastering (#201)
+-   Move glyph raster code to KAS-text (#202)
+
+Details:
+
+-   Use push constants (#184)
+-   Remove depth-buffer (#185)
+-   Use common bind group for graphics pipes (#187)
+-   Use a staging belt for vertex uploads (#189)
+-   Significant code revision (#184 - #190)
+-   Update `wgpu-rs` to 0.8 (#193)
+
+### Other
+
+-   Fix (or work-around) hang-on-exit with multiple windows open (#184)
+-   Better scrolling for widgets not receiving the initial event (#192)
+-   Avoid unnecessary redraws on mouse-movement while a mouse-grab is in
+    effect (#196)
+
 ## [0.7.1] — 2021-05-03
 
 -   Fix for spans in grids (landed in master in #184)

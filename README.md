@@ -13,8 +13,7 @@ KAS's design provides:
 -   concise, partially declarative specification of widgets
 -   type-safe, widget-local event handlers
 -   simple ownership with no retained pointers into widget state
--   widgets embed state and handlers (easy reuse of complex components)
--   scalability to millions of widgets
+-   fast, efficient, responsive UI
 
 ## Documentation
 
@@ -31,85 +30,19 @@ Further examples can be found in [kas-gui/7guis](https://github.com/kas-gui/7gui
 
 ![Gallery](https://github.com/kas-gui/data-dump/blob/master/video/gallery.png)
 
-## Status and Features
+## Features
 
 The below should give a rough idea of what's done and what's not. See also the
 [ROADMAP].
 
-We aim to make new minor releases (0.x.0) every couple of months and patch
-releases (0.x.y) only for minor fixes where required.
-Before 1.0 (which will *not* be the release after 0.9), some breaking changes
-should be expected in each minor release.
-
-### Layout
-
-**Widget layout:** works well but not perfectly; automatic sizing according to
-content or specified size for custom widgets; automatic position and stretching
-within row/column or grid layouts. Some tweaking still needed.  
-**Text layout:** custom engine handles shaping, bidi and line-wrapping (some
-bugs). Several features missing: font fallbacks, emoticons, large-text support.
-See separate [KAS-text] repository.  
-**DPI scaling:** done.  
-**Performance/scalability:** pretty fast. Exception: text layout of larger
-documents (not done). Scalability is okay to at least thousands of widgets and
-even usable to a million since many operations are `O(log n)` or better.  
-
-### Graphics
-
-**Support:** uses [WebGPU] for DirectX/Vulkan/Metal and (maybe) OpenGL
-acceleration. Currently no CPU fallback.  
-**Themes:** theme engine supports sizing and drawing many common widget parts
-(not yet comprehensive), with two example themes (not especially good ones).  
-**DPI scaling:** perfect stepless scaling for text and most drawables; images may be sized according to pixels  
-**Anti-aliased:** yes for "rounded" shapes, no for simple blocks and images.  
-**API:** limited high-level widget graphics via theme plus simple shapes via low-level API; not yet comprehensive.  
-**Custom accelerated widgets:** yes (see [Mandlebrot example](kas-wgpu/examples/README.md#Mandlebrot)).  
-**Textures/images:** done in master branch (currently only for raster images from path)
-
-### Event handling
-
-**Mouse interactions:** most left-click actions implemented for existing
-widgets, including double-click and delayed responses. Context-menus missing.  
-**Keyboard interactions:** tab-navigation, arrow-key navigation and accelerator
-keys all done. Menus navigable with arrows and Alt+Key combos. Widgets may
-respond to Home, PageUp, etc.  
-**Touch interactions:** most single-touch gestures done. Minimal support for
-multi-touch gestures (see Mandlebrot demo app).  
-**Text-editing:** most expected keyboard/mouse behaviours done. Basic touch
-interactions supported but less complete and no virtual keyboard.  
-**Shortcuts:** widget-local and some navigation shortcuts supported; global
-shortcuts are missing. Several platform-specific bindings.  
-**Configuration:** shortcuts and some event-handling behaviour configurable.
-Serialisation to/from JSON and YAML. [See below](#Configuration).
-
-### Platform integration
-
-**Font discovery:** basic.  
-**Platform-specific default config:** yes (but probably needs tuning).  
-**Windowing:** uses [winit] which supports basic windows but lacks a few things,
-including pop-up/modal windows and good text input support.
-In theory a back-end could directly target Windows/X11/... instead but this has
-not been done.  
-**Platform-native menus:** no; waiting on [winit] support (see above).  
-**Platform-native dialogs:** no; waiting on [winit] support (see above).  
-**Embedding (within a game):** not supported; only really requires graphics
-([WebGPU] or implementing basics over another backend) plus input binding
-(currently only [winit] events are supported).  
-
-### Data handling
-
-**Embedded state in widgets:** yes.  
-**Shared state:** yes (in progress). Used by the `sync-counter`, `filter-list`
-and `dynamic-view` examples; allows custom widgets within a data-sharing "view"
-over a single datum or list of data. Missing a few common widgets (tree-view,
-table, spreadsheet).  
-**Multi-thread communication:** yes (at least basic support). See the
-`async-event` example.  
-
-### Widget library
-
-This is ad-hoc: it contains only the things wanted so far. See:
-[available widgets (latest release)](https://docs.rs/kas/latest/kas/widget/).
+-   Stepless DPI scaling
+-   Texts supporting bidirectional languages and font fallback
+-   Accelerated graphics via [WebGPU] (via DirectX/Vulkan/Metal or possibly
+    OpenGL); currently no CPU fallback
+-   Shaders in custom widgets (see [Mandlebrot example](kas-wgpu/examples/README.md#Mandlebrot))
+-   Support themes, colour schemes and end-user configuration
+-   Keyboard navigation and control
+-   View widgets over shared state
 
 
 Installation and dependencies

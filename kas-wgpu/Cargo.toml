@@ -1,6 +1,6 @@
 [package]
 name = "kas-wgpu"
-version = "0.7.0"
+version = "0.8.0"
 authors = ["Diggory Hardy <git@dhardy.name>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -38,10 +38,10 @@ stack_dst = ["kas-theme/stack_dst"]
 unsize = ["kas-theme/unsize"]
 
 [dependencies]
-kas = { path = "..", version = "0.7.0", features = ["config", "winit"] }
-kas-theme = { path = "../kas-theme", features = ["config"], version = "0.7.0" }
+kas = { path = "..", version = "0.8.0", features = ["config", "winit"] }
+kas-theme = { path = "../kas-theme", features = ["config"], version = "0.8.0" }
 kas-text = { version = "0.3.0" }
-bytemuck = "1.5.1"
+bytemuck = "1.7.0"
 futures = "0.3"
 log = "0.4"
 smallvec = "1.6.1"
