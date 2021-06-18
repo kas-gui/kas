@@ -78,7 +78,7 @@ impl Image {
         origin: (u32, u32),
         queue: &wgpu::Queue,
     ) {
-        // TODO(opt): use an upload buffer and encoder.copy_buffer_to_texture?
+        // TODO(opt): use StagingBelt for upload (when supported)? Or our own equivalent.
         let size = self.image.dimensions();
         queue.write_texture(
             wgpu::ImageCopyTexture {
@@ -127,7 +127,6 @@ pub struct Images {
     last_image_n: u32,
     paths: HashMap<PathBuf, (ImageId, u32)>,
     images: HashMap<ImageId, Image>,
-    prepare: Vec<(ImageId, (u32, u32))>,
 }
 
 impl Images {
@@ -171,7 +170,6 @@ impl Images {
             last_image_n: 0,
             paths: Default::default(),
             images: Default::default(),
-            prepare: vec![],
         }
     }
 
@@ -184,6 +182,8 @@ impl Images {
     /// Load an image from the file-system
     pub fn load_path(
         &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
         path: &Path,
     ) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
         if let Some((id, _)) = self.paths.get(path) {
@@ -193,7 +193,12 @@ impl Images {
         let id = self.next_image_id();
         let (image, origin) = Image::load_path(&mut self.atlas_pipe, path)?;
         self.images.insert(id, image);
-        self.prepare.push((id, origin));
+
+        self.atlas_pipe.prepare(device);
+        if let Some(image) = self.images.get_mut(&id) {
+            image.write_to_tex(&self.atlas_pipe, origin, queue);
+        }
+
         self.paths.insert(path.to_owned(), (id, 1));
 
         Ok(id)
@@ -235,25 +240,9 @@ impl Images {
         &mut self,
         window: &mut Window,
         device: &wgpu::Device,
-        queue: &wgpu::Queue,
         staging_belt: &mut wgpu::util::StagingBelt,
         encoder: &mut wgpu::CommandEncoder,
     ) {
-        // TODO: could potentially start preparing images asynchronously after
-        // configure, then join thread and do any final prep now.
-        self.atlas_pipe.prepare(device);
-
-        if !self.prepare.is_empty() {
-            log::trace!("Images::prepare: uploading {} sprites", self.prepare.len());
-        }
-        for (id, origin) in self.prepare.drain(..) {
-            if let Some(image) = self.images.get_mut(&id) {
-                // TODO: wgpu plans to add StagingBelt::write_texture; when it
-                // does we can remove the queue parameter
-                image.write_to_tex(&self.atlas_pipe, origin, queue);
-            }
-        }
-
         window.write_buffers(device, staging_belt, encoder);
     }
 

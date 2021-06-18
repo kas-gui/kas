@@ -189,7 +189,6 @@ impl<C: CustomPipe> DrawPipe<C> {
         self.images.prepare(
             &mut window.images,
             &mut self.device,
-            &mut self.queue,
             &mut self.staging_belt,
             &mut encoder,
         );
@@ -295,7 +294,7 @@ impl<C: CustomPipe> DrawShared for DrawPipe<C> {
 
     #[inline]
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        self.images.load_path(path)
+        self.images.load_path(&self.device, &self.queue, path)
     }
 
     #[inline]
