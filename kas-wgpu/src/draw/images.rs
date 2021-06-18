@@ -186,7 +186,8 @@ impl Images {
         queue: &wgpu::Queue,
         path: &Path,
     ) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        if let Some((id, _)) = self.paths.get(path) {
+        if let Some((id, ref mut count)) = self.paths.get_mut(path) {
+            *count += 1;
             return Ok(*id);
         }
 
