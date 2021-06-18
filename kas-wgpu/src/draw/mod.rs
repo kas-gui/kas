@@ -21,7 +21,6 @@ mod text_pipe;
 use kas::geom::Rect;
 use wgpu::TextureFormat;
 
-pub(crate) use images::ImageError;
 use shaders::ShaderManager;
 
 pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};

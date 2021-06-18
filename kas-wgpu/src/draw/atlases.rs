@@ -9,8 +9,8 @@ use guillotiere::{AllocId, Allocation, AtlasAllocator};
 use std::mem::size_of;
 use std::num::NonZeroU64;
 use std::ops::Range;
+use thiserror::Error;
 
-use super::ImageError;
 use kas::cast::{Cast, Conv};
 use kas::draw::Pass;
 use kas::geom::{Quad, Size, Vec2};
@@ -18,6 +18,11 @@ use kas::geom::{Quad, Size, Vec2};
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
     Vec2(p.x.cast(), p.y.cast())
 }
+
+/// Allocation failed: too large
+#[derive(Error, Debug)]
+#[error("allocation failed: image is too large")]
+pub struct AllocError;
 
 pub struct Atlas {
     alloc: AtlasAllocator,
@@ -197,8 +202,6 @@ impl<I: bytemuck::Pod> Pipeline<I> {
 
     /// Allocate space within a texture atlas
     ///
-    /// Fails with `ImageError::Allocation` if size is too large.
-    ///
     /// On success, returns:
     ///
     /// -   `atlas` number
@@ -208,10 +211,10 @@ impl<I: bytemuck::Pod> Pipeline<I> {
     pub fn allocate(
         &mut self,
         size: (u32, u32),
-    ) -> Result<(u32, AllocId, (u32, u32), Quad), ImageError> {
+    ) -> Result<(u32, AllocId, (u32, u32), Quad), AllocError> {
         let tex_size_u32: u32 = self.tex_size.cast();
         if size.0 > tex_size_u32 || size.1 > tex_size_u32 {
-            return Err(ImageError::Allocation);
+            return Err(AllocError);
         }
         let (atlas, alloc) = self.allocate_space((size.0.cast(), size.1.cast()));
 

@@ -24,8 +24,8 @@ pub enum ImageError {
     IOError(#[from] std::io::Error),
     #[error(transparent)]
     Image(#[from] image::ImageError),
-    #[error("allocation failed: insufficient space in image atlas")]
-    Allocation,
+    #[error(transparent)]
+    Allocation(#[from] atlases::AllocError),
 }
 
 #[derive(Debug)]
