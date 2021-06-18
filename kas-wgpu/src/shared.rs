@@ -27,8 +27,6 @@ pub struct SharedState<C: CustomPipe, T> {
     clipboard: Option<Clipboard>,
     data_updates: HashMap<UpdateHandle, Vec<Rc<dyn Updatable>>>,
     pub instance: wgpu::Instance,
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
     pub shaders: ShaderManager,
     pub draw: DrawPipe<C>,
     pub theme: T,
@@ -67,7 +65,7 @@ where
         let (device, queue) = futures::executor::block_on(req)?;
 
         let shaders = ShaderManager::new(&device);
-        let mut draw = DrawPipe::new(custom, &device, &shaders, theme.config().raster());
+        let mut draw = DrawPipe::new(custom, device, queue, &shaders, theme.config().raster());
 
         theme.init(&mut draw);
 
@@ -76,8 +74,6 @@ where
             clipboard: None,
             data_updates: Default::default(),
             instance,
-            device,
-            queue,
             shaders,
             draw,
             theme,
@@ -114,13 +110,7 @@ where
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) {
-        self.draw.render(
-            window,
-            &mut self.device,
-            &mut self.queue,
-            frame_view,
-            clear_color,
-        );
+        self.draw.render(window, frame_view, clear_color);
     }
 
     #[inline]

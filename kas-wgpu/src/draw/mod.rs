@@ -34,6 +34,8 @@ pub(crate) const RENDER_TEX_FORMAT: TextureFormat = TextureFormat::Bgra8UnormSrg
 
 /// Shared pipeline data
 pub struct DrawPipe<C> {
+    device: wgpu::Device,
+    queue: wgpu::Queue,
     local_pool: futures::executor::LocalPool,
     staging_belt: wgpu::util::StagingBelt,
     bgl_common: wgpu::BindGroupLayout,
