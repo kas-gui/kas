@@ -22,11 +22,11 @@ impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
         mut custom: CB,
-        device: wgpu::Device,
-        queue: wgpu::Queue,
-        shaders: &ShaderManager,
+        (device, queue): (wgpu::Device, wgpu::Queue),
         raster_config: &kas_theme::RasterConfig,
     ) -> Self {
+        let shaders = ShaderManager::new(&device);
+
         // Create staging belt and a local pool
         let staging_belt = wgpu::util::StagingBelt::new(1024);
         let local_pool = futures::executor::LocalPool::new();
@@ -57,12 +57,12 @@ impl<C: CustomPipe> DrawPipe<C> {
             ],
         });
 
-        let images = images::Images::new(&device, shaders, &bgl_common);
-        let shaded_square = shaded_square::Pipeline::new(&device, shaders, &bgl_common);
-        let shaded_round = shaded_round::Pipeline::new(&device, shaders, &bgl_common);
-        let flat_round = flat_round::Pipeline::new(&device, shaders, &bgl_common);
+        let images = images::Images::new(&device, &shaders, &bgl_common);
+        let shaded_square = shaded_square::Pipeline::new(&device, &shaders, &bgl_common);
+        let shaded_round = shaded_round::Pipeline::new(&device, &shaders, &bgl_common);
+        let flat_round = flat_round::Pipeline::new(&device, &shaders, &bgl_common);
         let custom = custom.build(&device, &bgl_common, RENDER_TEX_FORMAT);
-        let text = text_pipe::Pipeline::new(&device, shaders, &bgl_common, raster_config);
+        let text = text_pipe::Pipeline::new(&device, &shaders, &bgl_common, raster_config);
 
         DrawPipe {
             device,

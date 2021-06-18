@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::rc::Rc;
 
-use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow, ShaderManager};
+use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow};
 use crate::{warn_about_error, Error, Options, WindowId};
 use kas::event::UpdateHandle;
 use kas::updatable::Updatable;
@@ -27,7 +27,6 @@ pub struct SharedState<C: CustomPipe, T> {
     clipboard: Option<Clipboard>,
     data_updates: HashMap<UpdateHandle, Vec<Rc<dyn Updatable>>>,
     pub instance: wgpu::Instance,
-    pub shaders: ShaderManager,
     pub draw: DrawPipe<C>,
     pub theme: T,
     pub config: Rc<RefCell<kas::event::Config>>,
@@ -62,10 +61,9 @@ where
 
         let desc = CB::device_descriptor();
         let req = adapter.request_device(&desc, None);
-        let (device, queue) = futures::executor::block_on(req)?;
+        let device_and_queue = futures::executor::block_on(req)?;
 
-        let shaders = ShaderManager::new(&device);
-        let mut draw = DrawPipe::new(custom, device, queue, &shaders, theme.config().raster());
+        let mut draw = DrawPipe::new(custom, device_and_queue, theme.config().raster());
 
         theme.init(&mut draw);
 
@@ -74,7 +72,6 @@ where
             clipboard: None,
             data_updates: Default::default(),
             instance,
-            shaders,
             draw,
             theme,
             config,
