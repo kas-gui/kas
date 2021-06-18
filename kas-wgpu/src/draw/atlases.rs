@@ -100,7 +100,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         tex_size: i32,
         tex_format: wgpu::TextureFormat,
         vertex: wgpu::VertexState,
-        fragment_module: &wgpu::ShaderModule,
+        fragment: wgpu::FragmentState,
     ) -> Self {
         let bg_tex_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("atlas texture bind group layout"),
@@ -148,15 +148,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
             },
             depth_stencil: None,
             multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: fragment_module,
-                entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
-                    format: super::RENDER_TEX_FORMAT,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrite::ALL,
-                }],
-            }),
+            fragment: Some(fragment),
         });
 
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {

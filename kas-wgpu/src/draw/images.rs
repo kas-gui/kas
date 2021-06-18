@@ -156,7 +156,15 @@ impl Images {
                     ],
                 }],
             },
-            &shaders.frag_image,
+            wgpu::FragmentState {
+                module: &shaders.frag_image,
+                entry_point: "main",
+                targets: &[wgpu::ColorTargetState {
+                    format: super::RENDER_TEX_FORMAT,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrite::ALL,
+                }],
+            },
         );
         Images {
             atlas_pipe,
