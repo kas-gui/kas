@@ -13,7 +13,7 @@ use wgpu::util::DeviceExt;
 use super::*;
 use kas::cast::Cast;
 use kas::draw::{
-    color::Rgba, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, Pass, RegionClass,
+    color::Rgba, Draw, DrawRounded, DrawShaded, DrawableShared, ImageId, Pass, RegionClass,
 };
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
@@ -289,7 +289,7 @@ impl<C: CustomPipe> DrawPipe<C> {
     }
 }
 
-impl<C: CustomPipe> DrawShared for DrawPipe<C> {
+impl<C: CustomPipe> DrawableShared for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
 
     #[inline]

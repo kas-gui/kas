@@ -15,10 +15,7 @@ use std::rc::Rc;
 use crate::{ColorsLinear, Config, DimensionsParams, DimensionsWindow, Theme, Window};
 use kas::cast::Cast;
 use kas::dir::{Direction, Directional};
-use kas::draw::{
-    self, color::Rgba, Draw, DrawRounded, DrawShared, ImageId, InputState, Pass, RegionClass,
-    SizeHandle, TextClass, ThemeApi,
-};
+use kas::draw::{self, color::Rgba, *};
 use kas::geom::*;
 use kas::text::format::FormattableText;
 use kas::text::{fonts, AccelString, Effect, Text, TextApi, TextDisplay};
@@ -80,26 +77,26 @@ const DIMS: DimensionsParams = DimensionsParams {
     progress_bar: Vec2::splat(12.0),
 };
 
-pub struct DrawHandle<'a, D: DrawShared> {
-    pub(crate) shared: &'a mut D,
-    pub(crate) draw: &'a mut D::Draw,
+pub struct DrawHandle<'a, DS: DrawableShared> {
+    pub(crate) shared: &'a mut DrawShared<DS>,
+    pub(crate) draw: &'a mut DS::Draw,
     pub(crate) window: &'a mut DimensionsWindow,
     pub(crate) cols: &'a ColorsLinear,
     pub(crate) offset: Offset,
     pub(crate) pass: Pass,
 }
 
-impl<D: DrawShared> Theme<D> for FlatTheme
+impl<DS: DrawableShared> Theme<DS> for FlatTheme
 where
-    D::Draw: DrawRounded,
+    DS::Draw: DrawRounded,
 {
     type Config = Config;
     type Window = DimensionsWindow;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = DrawHandle<'static, D>;
+    type DrawHandle = DrawHandle<'static, DS>;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = DrawHandle<'a, D>;
+    type DrawHandle<'a> = DrawHandle<'a, DS>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
         std::borrow::Cow::Borrowed(&self.config)
@@ -113,7 +110,7 @@ where
         action
     }
 
-    fn init(&mut self, _draw: &mut D) {
+    fn init(&mut self, _shared: &mut DrawShared<DS>) {
         let fonts = fonts::fonts();
         if let Err(e) = fonts.select_default() {
             panic!("Error loading font: {}", e);
@@ -138,8 +135,8 @@ where
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut D,
-        draw: &'a mut D::Draw,
+        shared: &'a mut DrawShared<DS>,
+        draw: &'a mut DS::Draw,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
@@ -159,8 +156,8 @@ where
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut D,
-        draw: &'a mut D::Draw,
+        shared: &'a mut DrawShared<DS>,
+        draw: &'a mut DS::Draw,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {
@@ -203,9 +200,9 @@ impl ThemeApi for FlatTheme {
     }
 }
 
-impl<'a, D: DrawShared> DrawHandle<'a, D>
+impl<'a, DS: DrawableShared> DrawHandle<'a, DS>
 where
-    D::Draw: DrawRounded,
+    DS::Draw: DrawRounded,
 {
     /// Draw an edit box with optional navigation highlight.
     /// Return the inner rect.
@@ -247,9 +244,9 @@ where
     }
 }
 
-impl<'a, D: DrawShared> draw::DrawHandle for DrawHandle<'a, D>
+impl<'a, DS: DrawableShared> draw::DrawHandle for DrawHandle<'a, DS>
 where
-    D::Draw: DrawRounded,
+    DS::Draw: DrawRounded,
 {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {

@@ -106,13 +106,100 @@ impl ImageId {
     }
 }
 
-/// Bounds on type shared across [`Draw`] implementations
-pub trait DrawShared: 'static {
-    type Draw: Draw;
+/// Interface over a shared draw object
+pub struct DrawShared<DS: DrawableShared> {
+    pub draw: DS,
+}
 
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+impl<DS: DrawableShared> DrawShared<DS> {
+    /// Construct
+    pub fn new(draw: DS) -> Self {
+        DrawShared { draw }
+    }
+}
+
+impl<DS: DrawableShared> DrawShared<DS> {
     /// Load an image from a path, autodetecting file type
     ///
     /// TODO: revise error handling?
+    pub fn load_image(
+        &mut self,
+        path: &Path,
+    ) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
+        self.draw.load_image(path)
+    }
+
+    /// Free an image
+    pub fn remove_image(&mut self, id: ImageId) {
+        self.draw.remove_image(id);
+    }
+
+    /// Get size of image
+    pub fn image_size(&self, id: ImageId) -> Option<Size> {
+        self.draw.image_size(id)
+    }
+
+    /// Draw the image in the given `rect`
+    pub fn draw_image(&self, window: &mut DS::Draw, pass: Pass, id: ImageId, rect: Quad) {
+        self.draw.draw_image(window, pass, id, rect)
+    }
+
+    /// Draw text with a colour
+    pub fn draw_text(
+        &mut self,
+        window: &mut DS::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Rgba,
+    ) {
+        self.draw.draw_text(window, pass, pos, text, col)
+    }
+
+    /// Draw text with a colour and effects
+    ///
+    /// The effects list does not contain colour information, but may contain
+    /// underlining/strikethrough information. It may be empty.
+    pub fn draw_text_col_effects(
+        &mut self,
+        window: &mut DS::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        col: Rgba,
+        effects: &[Effect<()>],
+    ) {
+        self.draw
+            .draw_text_col_effects(window, pass, pos, text, col, effects)
+    }
+
+    /// Draw text with effects
+    ///
+    /// The `effects` list provides both underlining and colour information.
+    /// If the `effects` list is empty or the first entry has `start > 0`, a
+    /// default entity will be assumed.
+    pub fn draw_text_effects(
+        &mut self,
+        window: &mut DS::Draw,
+        pass: Pass,
+        pos: Vec2,
+        text: &TextDisplay,
+        effects: &[Effect<Rgba>],
+    ) {
+        self.draw
+            .draw_text_effects(window, pass, pos, text, effects)
+    }
+}
+
+/// Trait over shared data of draw object
+///
+/// This is typically used via [`DrawShared`].
+#[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
+pub trait DrawableShared: 'static {
+    type Draw: Draw;
+
+    /// Load an image from a path, autodetecting file type
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>>;
 
     /// Free an image

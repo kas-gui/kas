@@ -10,34 +10,34 @@ use std::collections::HashMap;
 use std::marker::Unsize;
 
 use crate::{Config, StackDst, Theme, ThemeDst, WindowDst};
-use kas::draw::{color, DrawHandle, DrawShared, ThemeApi};
+use kas::draw::{color, DrawHandle, DrawShared, DrawableShared, ThemeApi};
 use kas::TkAction;
 
 #[cfg(feature = "unsize")]
-type DynTheme<Draw> = StackDst<dyn ThemeDst<Draw>>;
+type DynTheme<DS> = StackDst<dyn ThemeDst<DS>>;
 #[cfg(not(feature = "unsize"))]
-type DynTheme<Draw> = Box<dyn ThemeDst<Draw>>;
+type DynTheme<DS> = Box<dyn ThemeDst<DS>>;
 
 /// Wrapper around mutliple themes, supporting run-time switching
 ///
 /// **Feature gated**: this is only available with feature `stack_dst`.
-pub struct MultiTheme<Draw> {
+pub struct MultiTheme<DS> {
     names: HashMap<String, usize>,
-    themes: Vec<DynTheme<Draw>>,
+    themes: Vec<DynTheme<DS>>,
     active: usize,
 }
 
 /// Builder for [`MultiTheme`]
 ///
 /// Construct via [`MultiTheme::builder`].
-pub struct MultiThemeBuilder<Draw> {
+pub struct MultiThemeBuilder<DS> {
     names: HashMap<String, usize>,
-    themes: Vec<DynTheme<Draw>>,
+    themes: Vec<DynTheme<DS>>,
 }
 
-impl<Draw> MultiTheme<Draw> {
+impl<DS> MultiTheme<DS> {
     /// Construct with builder pattern
-    pub fn builder() -> MultiThemeBuilder<Draw> {
+    pub fn builder() -> MultiThemeBuilder<DS> {
         MultiThemeBuilder {
             names: HashMap::new(),
             themes: vec![],
@@ -45,7 +45,7 @@ impl<Draw> MultiTheme<Draw> {
     }
 }
 
-impl<Draw> MultiThemeBuilder<Draw> {
+impl<DS> MultiThemeBuilder<DS> {
     /// Add a theme
     ///
     /// Note: the constraints of this method vary depending on the `unsize`
@@ -53,8 +53,8 @@ impl<Draw> MultiThemeBuilder<Draw> {
     #[cfg(feature = "unsize")]
     pub fn add<S: ToString, U>(mut self, name: S, theme: U) -> Self
     where
-        U: Unsize<dyn ThemeDst<Draw>>,
-        Box<U>: Unsize<dyn ThemeDst<Draw>>,
+        U: Unsize<dyn ThemeDst<DS>>,
+        Box<U>: Unsize<dyn ThemeDst<DS>>,
     {
         let index = self.themes.len();
         self.names.insert(name.to_string(), index);
@@ -69,8 +69,8 @@ impl<Draw> MultiThemeBuilder<Draw> {
     #[cfg(not(feature = "unsize"))]
     pub fn add<S: ToString, T>(mut self, name: S, theme: T) -> Self
     where
-        Draw: DrawShared,
-        T: ThemeDst<Draw> + 'static,
+        DS: DrawableShared,
+        T: ThemeDst<DS> + 'static,
     {
         let index = self.themes.len();
         self.names.insert(name.to_string(), index);
@@ -81,7 +81,7 @@ impl<Draw> MultiThemeBuilder<Draw> {
     /// Build
     ///
     /// Fails if no themes were added.
-    pub fn try_build(self) -> Result<MultiTheme<Draw>, ()> {
+    pub fn try_build(self) -> Result<MultiTheme<DS>, ()> {
         if self.themes.len() == 0 {
             return Err(());
         }
@@ -95,15 +95,15 @@ impl<Draw> MultiThemeBuilder<Draw> {
     /// Build
     ///
     /// Panics if no themes were added.
-    pub fn build(self) -> MultiTheme<Draw> {
+    pub fn build(self) -> MultiTheme<DS> {
         self.try_build()
             .unwrap_or_else(|_| panic!("MultiThemeBuilder: no themes added"))
     }
 }
 
-impl<D: DrawShared> Theme<D> for MultiTheme<D> {
+impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
     type Config = Config;
-    type Window = StackDst<dyn WindowDst<D>>;
+    type Window = StackDst<dyn WindowDst<DS>>;
 
     #[cfg(not(feature = "gat"))]
     type DrawHandle = StackDst<dyn DrawHandle>;
@@ -129,9 +129,9 @@ impl<D: DrawShared> Theme<D> for MultiTheme<D> {
         action
     }
 
-    fn init(&mut self, draw: &mut D) {
+    fn init(&mut self, shared: &mut DrawShared<DS>) {
         for theme in &mut self.themes {
-            theme.init(draw);
+            theme.init(shared);
         }
     }
 
@@ -146,8 +146,8 @@ impl<D: DrawShared> Theme<D> for MultiTheme<D> {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut D,
-        draw: &'a mut D::Draw,
+        shared: &'a mut DrawShared<DS>,
+        draw: &'a mut DS::Draw,
         window: &'a mut Self::Window,
     ) -> StackDst<dyn DrawHandle> {
         self.themes[self.active].draw_handle(shared, draw, window)
@@ -156,8 +156,8 @@ impl<D: DrawShared> Theme<D> for MultiTheme<D> {
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut D,
-        draw: &'a mut D::Draw,
+        shared: &'a mut DrawShared<DS>,
+        draw: &'a mut DS::Draw,
         window: &'a mut Self::Window,
     ) -> StackDst<dyn DrawHandle + 'a> {
         self.themes[self.active].draw_handle(shared, draw, window)
@@ -168,7 +168,7 @@ impl<D: DrawShared> Theme<D> for MultiTheme<D> {
     }
 }
 
-impl<Draw> ThemeApi for MultiTheme<Draw> {
+impl<DS> ThemeApi for MultiTheme<DS> {
     fn set_font_size(&mut self, size: f32) -> TkAction {
         // Slightly inefficient, but sufficient: update both
         // (Otherwise we would have to call set_scheme in set_theme too.)

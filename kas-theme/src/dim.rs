@@ -14,7 +14,7 @@ use std::path::Path;
 use std::rc::Rc;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
-use kas::draw::{self, DrawShared, ImageId, TextClass};
+use kas::draw::{self, DrawShared, DrawableShared, ImageId, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, TextApi, TextApiExt};
@@ -122,21 +122,21 @@ impl DimensionsWindow {
     }
 }
 
-impl<D: DrawShared> crate::Window<D> for DimensionsWindow {
+impl<DS: DrawableShared> crate::Window<DS> for DimensionsWindow {
     #[cfg(not(feature = "gat"))]
-    type SizeHandle = SizeHandle<'static, D>;
+    type SizeHandle = SizeHandle<'static, DS>;
     #[cfg(feature = "gat")]
-    type SizeHandle<'a> = SizeHandle<'a, D>;
+    type SizeHandle<'a> = SizeHandle<'a, DS>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle<'a>(&'a mut self, draw: &'a mut D) -> Self::SizeHandle {
+    unsafe fn size_handle<'a>(&'a mut self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
-        let h: SizeHandle<'a, D> = SizeHandle::new(self, draw);
+        let h: SizeHandle<'a, DS> = SizeHandle::new(self, shared);
         std::mem::transmute(h)
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, draw: &'a mut D) -> Self::SizeHandle<'a> {
-        SizeHandle::new(self, draw)
+    fn size_handle<'a>(&'a mut self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle<'a> {
+        SizeHandle::new(self, shared)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
@@ -144,18 +144,18 @@ impl<D: DrawShared> crate::Window<D> for DimensionsWindow {
     }
 }
 
-pub struct SizeHandle<'a, D: DrawShared> {
+pub struct SizeHandle<'a, DS: DrawableShared> {
     w: &'a DimensionsWindow,
-    draw: &'a mut D,
+    shared: &'a mut DrawShared<DS>,
 }
 
-impl<'a, D: DrawShared> SizeHandle<'a, D> {
-    pub fn new(w: &'a DimensionsWindow, draw: &'a mut D) -> Self {
-        SizeHandle { w, draw }
+impl<'a, DS: DrawableShared> SizeHandle<'a, DS> {
+    pub fn new(w: &'a DimensionsWindow, shared: &'a mut DrawShared<DS>) -> Self {
+        SizeHandle { w, shared }
     }
 }
 
-impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
+impl<'a, DS: DrawableShared> draw::SizeHandle for SizeHandle<'a, DS> {
     fn scale_factor(&self) -> f32 {
         self.w.dims.scale_factor
     }
@@ -301,13 +301,13 @@ impl<'a, D: DrawShared> draw::SizeHandle for SizeHandle<'a, D> {
     }
 
     fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        self.draw.load_image(path)
+        self.shared.load_image(path)
     }
     fn remove_image(&mut self, id: ImageId) {
-        self.draw.remove_image(id);
+        self.shared.remove_image(id);
     }
 
     fn image(&self, id: ImageId) -> Option<Size> {
-        self.draw.image_size(id)
+        self.shared.image_size(id)
     }
 }

@@ -10,10 +10,7 @@ use std::ops::Range;
 
 use crate::{ColorsLinear, Config, DimensionsParams, DimensionsWindow, FlatTheme, Theme, Window};
 use kas::dir::{Direction, Directional};
-use kas::draw::{
-    self, color::Rgba, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, InputState, Pass,
-    RegionClass, SizeHandle, TextClass, ThemeApi,
-};
+use kas::draw::{self, color::Rgba, *};
 use kas::geom::*;
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
 use kas::TkAction;
@@ -62,37 +59,37 @@ const DIMS: DimensionsParams = DimensionsParams {
     progress_bar: Vec2::splat(12.0),
 };
 
-pub struct DrawHandle<'a, D: DrawShared> {
-    shared: &'a mut D,
-    draw: &'a mut D::Draw,
+pub struct DrawHandle<'a, DS: DrawableShared> {
+    shared: &'a mut DrawShared<DS>,
+    draw: &'a mut DS::Draw,
     window: &'a mut DimensionsWindow,
     cols: &'a ColorsLinear,
     offset: Offset,
     pass: Pass,
 }
 
-impl<D: DrawShared> Theme<D> for ShadedTheme
+impl<DS: DrawableShared> Theme<DS> for ShadedTheme
 where
-    D::Draw: DrawRounded + DrawShaded,
+    DS::Draw: DrawRounded + DrawShaded,
 {
     type Config = Config;
     type Window = DimensionsWindow;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = DrawHandle<'static, D>;
+    type DrawHandle = DrawHandle<'static, DS>;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = DrawHandle<'a, D>;
+    type DrawHandle<'a> = DrawHandle<'a, DS>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
-        <FlatTheme as Theme<D>>::config(&self.flat)
+        <FlatTheme as Theme<DS>>::config(&self.flat)
     }
 
     fn apply_config(&mut self, config: &Self::Config) -> TkAction {
-        <FlatTheme as Theme<D>>::apply_config(&mut self.flat, config)
+        <FlatTheme as Theme<DS>>::apply_config(&mut self.flat, config)
     }
 
-    fn init(&mut self, draw: &mut D) {
-        <FlatTheme as Theme<D>>::init(&mut self.flat, draw)
+    fn init(&mut self, shared: &mut DrawShared<DS>) {
+        <FlatTheme as Theme<DS>>::init(&mut self.flat, shared)
     }
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
@@ -107,8 +104,8 @@ where
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut D,
-        draw: &'a mut D::Draw,
+        shared: &'a mut DrawShared<DS>,
+        draw: &'a mut DS::Draw,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle {
         // We extend lifetimes (unsafe) due to the lack of associated type generics.
@@ -128,8 +125,8 @@ where
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut D,
-        draw: &'a mut D::Draw,
+        shared: &'a mut DrawShared<DS>,
+        draw: &'a mut DS::Draw,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {
@@ -143,7 +140,7 @@ where
     }
 
     fn clear_color(&self) -> Rgba {
-        <FlatTheme as Theme<D>>::clear_color(&self.flat)
+        <FlatTheme as Theme<DS>>::clear_color(&self.flat)
     }
 }
 
@@ -161,12 +158,12 @@ impl ThemeApi for ShadedTheme {
     }
 }
 
-impl<'a, D: DrawShared> DrawHandle<'a, D>
+impl<'a, DS: DrawableShared> DrawHandle<'a, DS>
 where
-    D::Draw: DrawRounded + DrawShaded,
+    DS::Draw: DrawRounded + DrawShaded,
 {
     // Type-cast to flat_theme's DrawHandle. Should be equivalent to transmute.
-    fn as_flat<'b, 'c>(&'b mut self) -> super::flat_theme::DrawHandle<'c, D>
+    fn as_flat<'b, 'c>(&'b mut self) -> super::flat_theme::DrawHandle<'c, DS>
     where
         'a: 'c,
         'b: 'c,
@@ -221,9 +218,9 @@ where
     }
 }
 
-impl<'a, D: DrawShared> draw::DrawHandle for DrawHandle<'a, D>
+impl<'a, DS: DrawableShared> draw::DrawHandle for DrawHandle<'a, DS>
 where
-    D::Draw: DrawRounded + DrawShaded,
+    DS::Draw: DrawRounded + DrawShaded,
 {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
