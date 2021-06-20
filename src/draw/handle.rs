@@ -10,7 +10,7 @@ use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use std::path::Path;
 
 use kas::dir::Direction;
-use kas::draw::{Draw, ImageError, ImageId, Pass};
+use kas::draw::{Drawable, ImageError, ImageId, Pass};
 use kas::geom::{Coord, Offset, Rect, Size};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
@@ -290,7 +290,7 @@ pub trait DrawHandle {
     /// # let rect = Rect::new(Coord::ZERO, Size::ZERO);
     /// let rect = rect + offset;
     /// ```
-    fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw);
+    fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Drawable);
 
     /// Add a clip region
     #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
@@ -650,7 +650,7 @@ impl<H: DrawHandle> DrawHandle for Box<H> {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         self.deref_mut().size_handle_dyn(f)
     }
-    fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw) {
+    fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Drawable) {
         self.deref_mut().draw_device()
     }
     fn add_clip_region(
@@ -736,7 +736,7 @@ where
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         self.deref_mut().size_handle_dyn(f)
     }
-    fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Draw) {
+    fn draw_device(&mut self) -> (Pass, Offset, &mut dyn Drawable) {
         self.deref_mut().draw_device()
     }
     fn add_clip_region(

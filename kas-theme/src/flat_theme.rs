@@ -79,7 +79,7 @@ const DIMS: DimensionsParams = DimensionsParams {
 
 pub struct DrawHandle<'a, DS: DrawableShared> {
     pub(crate) shared: &'a mut DrawShared<DS>,
-    pub(crate) draw: &'a mut DS::Draw,
+    pub(crate) draw: Draw<'a, DS::Draw>,
     pub(crate) window: &'a mut DimensionsWindow,
     pub(crate) cols: &'a ColorsLinear,
     pub(crate) offset: Offset,
@@ -88,7 +88,7 @@ pub struct DrawHandle<'a, DS: DrawableShared> {
 
 impl<DS: DrawableShared> Theme<DS> for FlatTheme
 where
-    DS::Draw: DrawRounded,
+    DS::Draw: DrawableRounded,
 {
     type Config = Config;
     type Window = DimensionsWindow;
@@ -136,7 +136,7 @@ where
     unsafe fn draw_handle(
         &self,
         shared: &'static mut DrawShared<DS>,
-        draw: &'static mut DS::Draw,
+        draw: Draw<'static, DS::Draw>,
         window: &'static mut Self::Window,
     ) -> Self::DrawHandle {
         DrawHandle {
@@ -152,7 +152,7 @@ where
     fn draw_handle<'a>(
         &'a self,
         shared: &'a mut DrawShared<DS>,
-        draw: &'a mut DS::Draw,
+        draw: Draw<'a, DS::Draw>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {
@@ -197,7 +197,7 @@ impl ThemeApi for FlatTheme {
 
 impl<'a, DS: DrawableShared> DrawHandle<'a, DS>
 where
-    DS::Draw: DrawRounded,
+    DS::Draw: DrawableRounded,
 {
     /// Draw an edit box with optional navigation highlight.
     /// Return the inner rect.
@@ -241,7 +241,7 @@ where
 
 impl<'a, DS: DrawableShared> draw::DrawHandle for DrawHandle<'a, DS>
 where
-    DS::Draw: DrawRounded,
+    DS::Draw: DrawableRounded,
 {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
@@ -250,8 +250,8 @@ where
         }
     }
 
-    fn draw_device(&mut self) -> (kas::draw::Pass, Offset, &mut dyn kas::draw::Draw) {
-        (self.pass, self.offset, self.draw)
+    fn draw_device(&mut self) -> (kas::draw::Pass, Offset, &mut dyn kas::draw::Drawable) {
+        (self.pass, self.offset, self.draw.draw)
     }
 
     fn add_clip_region(
@@ -279,7 +279,7 @@ where
 
         let mut handle = DrawHandle {
             shared: self.shared,
-            draw: self.draw,
+            draw: self.draw.reborrow(),
             window: self.window,
             cols: self.cols,
             offset: self.offset - offset,
@@ -327,12 +327,12 @@ where
         let pos = pos + self.offset;
         let col = self.cols.text_class(class);
         self.shared
-            .draw_text(&mut self.draw, self.pass, pos.into(), text, col);
+            .draw_text(self.draw.reborrow(), self.pass, pos.into(), text, col);
     }
 
     fn text_effects(&mut self, pos: Coord, text: &dyn TextApi, class: TextClass) {
         self.shared.draw_text_col_effects(
-            &mut self.draw,
+            self.draw.reborrow(),
             self.pass,
             (pos + self.offset).into(),
             text.display(),
@@ -347,7 +347,7 @@ where
         if state {
             let effects = text.text().effect_tokens();
             self.shared.draw_text_col_effects(
-                &mut self.draw,
+                self.draw.reborrow(),
                 self.pass,
                 pos,
                 text.as_ref(),
@@ -356,7 +356,7 @@ where
             );
         } else {
             self.shared
-                .draw_text(&mut self.draw, self.pass, pos, text.as_ref(), col);
+                .draw_text(self.draw.reborrow(), self.pass, pos, text.as_ref(), col);
         }
     }
 
@@ -396,7 +396,7 @@ where
             },
         ];
         self.shared
-            .draw_text_effects(&mut self.draw, self.pass, pos, text, &effects);
+            .draw_text_effects(self.draw.reborrow(), self.pass, pos, text, &effects);
     }
 
     fn edit_marker(&mut self, pos: Coord, text: &TextDisplay, class: TextClass, byte: usize) {
@@ -526,6 +526,7 @@ where
 
     fn image(&mut self, id: ImageId, rect: Rect) {
         let rect = Quad::from(rect + self.offset);
-        self.shared.draw_image(&mut self.draw, self.pass, id, rect);
+        self.shared
+            .draw_image(self.draw.reborrow(), self.pass, id, rect);
     }
 }

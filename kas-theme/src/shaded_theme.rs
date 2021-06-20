@@ -61,7 +61,7 @@ const DIMS: DimensionsParams = DimensionsParams {
 
 pub struct DrawHandle<'a, DS: DrawableShared> {
     shared: &'a mut DrawShared<DS>,
-    draw: &'a mut DS::Draw,
+    draw: Draw<'a, DS::Draw>,
     window: &'a mut DimensionsWindow,
     cols: &'a ColorsLinear,
     offset: Offset,
@@ -70,7 +70,7 @@ pub struct DrawHandle<'a, DS: DrawableShared> {
 
 impl<DS: DrawableShared> Theme<DS> for ShadedTheme
 where
-    DS::Draw: DrawRounded + DrawShaded,
+    DS::Draw: DrawableRounded + DrawableShaded,
 {
     type Config = Config;
     type Window = DimensionsWindow;
@@ -105,7 +105,7 @@ where
     unsafe fn draw_handle(
         &self,
         shared: &'static mut DrawShared<DS>,
-        draw: &'static mut DS::Draw,
+        draw: Draw<'static, DS::Draw>,
         window: &'static mut Self::Window,
     ) -> Self::DrawHandle {
         DrawHandle {
@@ -121,7 +121,7 @@ where
     fn draw_handle<'a>(
         &'a self,
         shared: &'a mut DrawShared<DS>,
-        draw: &'a mut DS::Draw,
+        draw: Draw<'a, DS::Draw>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         DrawHandle {
@@ -155,7 +155,7 @@ impl ThemeApi for ShadedTheme {
 
 impl<'a, DS: DrawableShared> DrawHandle<'a, DS>
 where
-    DS::Draw: DrawRounded + DrawShaded,
+    DS::Draw: DrawableRounded + DrawableShaded,
 {
     // Type-cast to flat_theme's DrawHandle. Should be equivalent to transmute.
     fn as_flat<'b, 'c>(&'b mut self) -> super::flat_theme::DrawHandle<'c, DS>
@@ -165,7 +165,7 @@ where
     {
         super::flat_theme::DrawHandle {
             shared: *&mut self.shared,
-            draw: *&mut self.draw,
+            draw: self.draw.reborrow(),
             window: *&mut self.window,
             cols: *&self.cols,
             offset: self.offset,
@@ -215,7 +215,7 @@ where
 
 impl<'a, DS: DrawableShared> draw::DrawHandle for DrawHandle<'a, DS>
 where
-    DS::Draw: DrawRounded + DrawShaded,
+    DS::Draw: DrawableRounded + DrawableShaded,
 {
     fn size_handle_dyn(&mut self, f: &mut dyn FnMut(&mut dyn SizeHandle)) {
         unsafe {
@@ -224,8 +224,8 @@ where
         }
     }
 
-    fn draw_device(&mut self) -> (kas::draw::Pass, Offset, &mut dyn kas::draw::Draw) {
-        (self.pass, self.offset, self.draw)
+    fn draw_device(&mut self) -> (kas::draw::Pass, Offset, &mut dyn kas::draw::Drawable) {
+        (self.pass, self.offset, self.draw.draw)
     }
 
     fn add_clip_region(
@@ -253,7 +253,7 @@ where
 
         let mut handle = DrawHandle {
             shared: self.shared,
-            draw: self.draw,
+            draw: self.draw.reborrow(),
             window: self.window,
             cols: self.cols,
             offset: self.offset - offset,

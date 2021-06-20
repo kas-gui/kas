@@ -5,7 +5,7 @@
 
 //! Theme traits
 
-use kas::draw::{color, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
+use kas::draw::{color, Draw, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
 use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
@@ -108,14 +108,14 @@ pub trait Theme<DS: DrawableShared>: ThemeApi {
     unsafe fn draw_handle(
         &self,
         shared: &'static mut DrawShared<DS>,
-        draw: &'static mut DS::Draw,
+        draw: Draw<'static, DS::Draw>,
         window: &'static mut Self::Window,
     ) -> Self::DrawHandle;
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
         shared: &'a mut DrawShared<DS>,
-        draw: &'a mut DS::Draw,
+        draw: Draw<'a, DS::Draw>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a>;
 
@@ -180,7 +180,7 @@ impl<T: Theme<DS>, DS: DrawableShared> Theme<DS> for Box<T> {
     unsafe fn draw_handle(
         &self,
         shared: &'static mut DrawShared<DS>,
-        draw: &'static mut DS::Draw,
+        draw: Draw<'static, DS::Draw>,
         window: &'static mut Self::Window,
     ) -> Self::DrawHandle {
         self.deref().draw_handle(shared, draw, window)
@@ -189,7 +189,7 @@ impl<T: Theme<DS>, DS: DrawableShared> Theme<DS> for Box<T> {
     fn draw_handle<'a>(
         &'a self,
         shared: &'a mut DrawShared<DS>,
-        draw: &'a mut DS::Draw,
+        draw: Draw<'a, DS::Draw>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         self.deref().draw_handle(shared, draw, window)

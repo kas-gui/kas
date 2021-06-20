@@ -12,7 +12,7 @@ use log::info;
 use std::f32::consts::PI;
 use std::time::Duration;
 
-use kas::draw::{color, DrawRounded, TextClass};
+use kas::draw::{color, DrawableRounded, TextClass};
 use kas::geom::{Quad, Vec2};
 use kas::text::util::set_text_and_prepare;
 use kas::widget::Window;

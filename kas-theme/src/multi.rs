@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::marker::Unsize;
 
 use crate::{Config, StackDst, Theme, ThemeDst, WindowDst};
-use kas::draw::{color, DrawHandle, DrawShared, DrawableShared, ThemeApi};
+use kas::draw::{color, Draw, DrawHandle, DrawShared, DrawableShared, ThemeApi};
 use kas::TkAction;
 
 #[cfg(feature = "unsize")]
@@ -147,7 +147,7 @@ impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
     unsafe fn draw_handle(
         &self,
         shared: &'static mut DrawShared<DS>,
-        draw: &'static mut DS::Draw,
+        draw: Draw<'static, DS::Draw>,
         window: &'static mut Self::Window,
     ) -> StackDst<dyn DrawHandle> {
         self.themes[self.active].draw_handle(shared, draw, window)
@@ -157,7 +157,7 @@ impl<DS: DrawableShared> Theme<DS> for MultiTheme<DS> {
     fn draw_handle<'a>(
         &'a self,
         shared: &'a mut DrawShared<DS>,
-        draw: &'a mut DS::Draw,
+        draw: Draw<'a, DS::Draw>,
         window: &'a mut Self::Window,
     ) -> StackDst<dyn DrawHandle + 'a> {
         self.themes[self.active].draw_handle(shared, draw, window)

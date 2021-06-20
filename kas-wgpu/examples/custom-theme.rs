@@ -48,7 +48,7 @@ thread_local! {
 
 impl<DS: DrawableShared> Theme<DS> for CustomTheme
 where
-    DS::Draw: DrawRounded,
+    DS::Draw: DrawableRounded,
 {
     type Config = kas_theme::Config;
     type Window = <FlatTheme as Theme<DS>>::Window;
@@ -82,7 +82,7 @@ where
     unsafe fn draw_handle(
         &self,
         shared: &'static mut DrawShared<DS>,
-        draw: &'static mut DS::Draw,
+        draw: Draw<'static, DS::Draw>,
         window: &'static mut Self::Window,
     ) -> Self::DrawHandle {
         Theme::<DS>::draw_handle(&self.inner, shared, draw, window)
@@ -91,7 +91,7 @@ where
     fn draw_handle<'a>(
         &'a self,
         shared: &'a mut DrawShared<DS>,
-        draw: &'a mut DS::Draw,
+        draw: Draw<'a, DS::Draw>,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         Theme::<DS>::draw_handle(&self.inner, shared, draw, window)
