@@ -10,7 +10,7 @@ use std::ops::{Bound, Deref, DerefMut, Range, RangeBounds};
 use std::path::Path;
 
 use kas::dir::Direction;
-use kas::draw::{Draw, ImageId, Pass};
+use kas::draw::{Draw, ImageError, ImageId, Pass};
 use kas::geom::{Coord, Offset, Rect, Size};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules};
 use kas::text::{AccelString, Text, TextApi, TextDisplay};
@@ -240,7 +240,7 @@ pub trait SizeHandle {
     ///
     /// Image resources are deduplicated through the path lookup and have a
     /// use count. This method increments the use-count.
-    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>>;
+    fn image_from_path(&mut self, path: &Path) -> Result<ImageId, ImageError>;
 
     /// Remove image usage
     ///
@@ -250,7 +250,7 @@ pub trait SizeHandle {
 
     /// Get image size
     ///
-    /// If loading is in progress (see [`SizeHandle::load_image`]), this blocks
+    /// If loading is in progress (see [`SizeHandle::image_from_path`]), this blocks
     /// until done.
     ///
     /// Returns `None` if the resource is not found or failed to load.
@@ -553,8 +553,8 @@ impl<S: SizeHandle> SizeHandle for Box<S> {
     fn progress_bar(&self) -> Size {
         self.deref().progress_bar()
     }
-    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        self.deref_mut().load_image(path)
+    fn image_from_path(&mut self, path: &Path) -> Result<ImageId, ImageError> {
+        self.deref_mut().image_from_path(path)
     }
     fn remove_image(&mut self, id: ImageId) {
         self.deref_mut().remove_image(id);
@@ -635,8 +635,8 @@ where
     fn progress_bar(&self) -> Size {
         self.deref().progress_bar()
     }
-    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        self.deref_mut().load_image(path)
+    fn image_from_path(&mut self, path: &Path) -> Result<ImageId, ImageError> {
+        self.deref_mut().image_from_path(path)
     }
     fn remove_image(&mut self, id: ImageId) {
         self.deref_mut().remove_image(id);

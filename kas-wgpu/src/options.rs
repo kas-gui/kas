@@ -6,7 +6,7 @@
 //! Options
 
 use super::Error;
-use kas::draw::DrawShared;
+use kas::draw::DrawableShared;
 use kas_theme::{Theme, ThemeConfig};
 use log::warn;
 use std::env::var;
@@ -179,7 +179,10 @@ impl Options {
     }
 
     /// Load/save theme config on start
-    pub fn theme_config<D: DrawShared, T: Theme<D>>(&self, theme: &mut T) -> Result<(), Error> {
+    pub fn theme_config<DS: DrawableShared, T: Theme<DS>>(
+        &self,
+        theme: &mut T,
+    ) -> Result<(), Error> {
         if !self.theme_config_path.as_os_str().is_empty() {
             match self.config_mode {
                 ConfigMode::Read | ConfigMode::ReadWrite => {
@@ -221,7 +224,7 @@ impl Options {
     }
 
     /// Save all config (on exit or after changes)
-    pub fn save_config<D: DrawShared, T: Theme<D>>(
+    pub fn save_config<DS: DrawableShared, T: Theme<DS>>(
         &self,
         config: &kas::event::Config,
         theme: &T,

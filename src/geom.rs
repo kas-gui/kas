@@ -403,6 +403,12 @@ impl From<(u32, u32)> for Size {
     }
 }
 
+impl From<Size> for (u32, u32) {
+    fn from(size: Size) -> (u32, u32) {
+        (u32::conv(size.0), u32::conv(size.1))
+    }
+}
+
 impl From<Size> for kas_text::Vec2 {
     fn from(size: Size) -> kas_text::Vec2 {
         debug_assert!(size.0 >= 0 && size.1 >= 0);

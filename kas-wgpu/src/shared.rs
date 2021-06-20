@@ -11,8 +11,9 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::rc::Rc;
 
-use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow, ShaderManager};
+use crate::draw::{CustomPipe, CustomPipeBuilder, DrawPipe, DrawWindow};
 use crate::{warn_about_error, Error, Options, WindowId};
+use kas::draw::DrawShared;
 use kas::event::UpdateHandle;
 use kas::updatable::Updatable;
 use kas::TkAction;
@@ -27,10 +28,7 @@ pub struct SharedState<C: CustomPipe, T> {
     clipboard: Option<Clipboard>,
     data_updates: HashMap<UpdateHandle, Vec<Rc<dyn Updatable>>>,
     pub instance: wgpu::Instance,
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
-    pub shaders: ShaderManager,
-    pub draw: DrawPipe<C>,
+    pub draw: DrawShared<DrawPipe<C>>,
     pub theme: T,
     pub config: Rc<RefCell<kas::event::Config>>,
     pub pending: Vec<PendingAction>,
@@ -64,10 +62,10 @@ where
 
         let desc = CB::device_descriptor();
         let req = adapter.request_device(&desc, None);
-        let (device, queue) = futures::executor::block_on(req)?;
+        let device_and_queue = futures::executor::block_on(req)?;
 
-        let shaders = ShaderManager::new(&device);
-        let mut draw = DrawPipe::new(custom, &device, &shaders, theme.config().raster());
+        let pipe = DrawPipe::new(custom, device_and_queue, theme.config().raster());
+        let mut draw = DrawShared::new(pipe);
 
         theme.init(&mut draw);
 
@@ -76,9 +74,6 @@ where
             clipboard: None,
             data_updates: Default::default(),
             instance,
-            device,
-            queue,
-            shaders,
             draw,
             theme,
             config,
@@ -114,13 +109,7 @@ where
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) {
-        self.draw.render(
-            window,
-            &mut self.device,
-            &mut self.queue,
-            frame_view,
-            clear_color,
-        );
+        self.draw.draw.render(window, frame_view, clear_color);
     }
 
     #[inline]

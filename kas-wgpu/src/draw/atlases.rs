@@ -9,14 +9,25 @@ use guillotiere::{AllocId, Allocation, AtlasAllocator};
 use std::mem::size_of;
 use std::num::NonZeroU64;
 use std::ops::Range;
+use thiserror::Error;
 
-use super::ImageError;
 use kas::cast::{Cast, Conv};
-use kas::draw::Pass;
+use kas::draw::{ImageError, Pass};
 use kas::geom::{Quad, Size, Vec2};
 
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
     Vec2(p.x.cast(), p.y.cast())
+}
+
+/// Allocation failed: too large
+#[derive(Error, Debug)]
+#[error("failed to allocate texture space for image")]
+pub struct AllocError;
+
+impl From<AllocError> for ImageError {
+    fn from(_: AllocError) -> ImageError {
+        ImageError::Allocation
+    }
 }
 
 pub struct Atlas {
@@ -100,7 +111,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
         tex_size: i32,
         tex_format: wgpu::TextureFormat,
         vertex: wgpu::VertexState,
-        fragment_module: &wgpu::ShaderModule,
+        fragment: wgpu::FragmentState,
     ) -> Self {
         let bg_tex_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("atlas texture bind group layout"),
@@ -148,15 +159,7 @@ impl<I: bytemuck::Pod> Pipeline<I> {
             },
             depth_stencil: None,
             multisample: Default::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: fragment_module,
-                entry_point: "main",
-                targets: &[wgpu::ColorTargetState {
-                    format: super::RENDER_TEX_FORMAT,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
-                    write_mask: wgpu::ColorWrite::ALL,
-                }],
-            }),
+            fragment: Some(fragment),
         });
 
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -205,8 +208,6 @@ impl<I: bytemuck::Pod> Pipeline<I> {
 
     /// Allocate space within a texture atlas
     ///
-    /// Fails with `ImageError::Allocation` if size is too large.
-    ///
     /// On success, returns:
     ///
     /// -   `atlas` number
@@ -216,10 +217,10 @@ impl<I: bytemuck::Pod> Pipeline<I> {
     pub fn allocate(
         &mut self,
         size: (u32, u32),
-    ) -> Result<(u32, AllocId, (u32, u32), Quad), ImageError> {
+    ) -> Result<(u32, AllocId, (u32, u32), Quad), AllocError> {
         let tex_size_u32: u32 = self.tex_size.cast();
         if size.0 > tex_size_u32 || size.1 > tex_size_u32 {
-            return Err(ImageError::Allocation);
+            return Err(AllocError);
         }
         let (atlas, alloc) = self.allocate_space((size.0.cast(), size.1.cast()));
 

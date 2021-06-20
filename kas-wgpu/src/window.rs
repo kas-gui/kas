@@ -55,7 +55,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         // Create draw immediately (with Size::ZERO) to find ideal window size
         let scale_factor = shared.scale_factor as f32;
-        let mut draw = shared.draw.new_window(&mut shared.device, Size::ZERO);
+        let mut draw = shared.draw.draw.new_window(Size::ZERO);
         let mut theme_window = shared.theme.new_window(scale_factor);
 
         let mut mgr = ManagerState::new(shared.config.clone());
@@ -86,9 +86,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
         info!("Constucted new window with size {:?}", size);
 
         // draw was initially created with Size::ZERO; we must resize
-        shared
-            .draw
-            .resize(&mut draw, &shared.device, &shared.queue, size);
+        shared.draw.draw.resize(&mut draw, size);
 
         let surface = unsafe { shared.instance.create_surface(&window) };
         let sc_desc = wgpu::SwapChainDescriptor {
@@ -98,7 +96,7 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             height: size.1.cast(),
             present_mode: wgpu::PresentMode::Mailbox,
         };
-        let swap_chain = shared.device.create_swap_chain(&surface, &sc_desc);
+        let swap_chain = shared.draw.draw.create_swap_chain(&surface, &sc_desc);
 
         let mut r = Window {
             widget,
@@ -301,14 +299,13 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
             return;
         }
 
-        shared
-            .draw
-            .resize(&mut self.draw, &shared.device, &shared.queue, size);
+        shared.draw.draw.resize(&mut self.draw, size);
 
         self.sc_desc.width = size.0.cast();
         self.sc_desc.height = size.1.cast();
         self.swap_chain = shared
-            .device
+            .draw
+            .draw
             .create_swap_chain(&self.surface, &self.sc_desc);
 
         // Note that on resize, width adjustments may affect height

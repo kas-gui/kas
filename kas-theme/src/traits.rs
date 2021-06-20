@@ -5,7 +5,7 @@
 
 //! Theme traits
 
-use kas::draw::{color, DrawHandle, DrawShared, SizeHandle, ThemeApi};
+use kas::draw::{color, DrawHandle, DrawShared, DrawableShared, SizeHandle, ThemeApi};
 use kas::TkAction;
 use std::any::Any;
 use std::ops::{Deref, DerefMut};
@@ -41,12 +41,12 @@ pub trait ThemeConfig:
 ///
 /// Objects of this type are copied within each window's data structure. For
 /// large resources (e.g. fonts and icons) consider using external storage.
-pub trait Theme<D: DrawShared>: ThemeApi {
+pub trait Theme<DS: DrawableShared>: ThemeApi {
     /// The associated config type
     type Config: ThemeConfig;
 
     /// The associated [`Window`] implementation.
-    type Window: Window<D>;
+    type Window: Window<DS>;
 
     /// The associated [`DrawHandle`] implementation.
     #[cfg(not(feature = "gat"))]
@@ -67,7 +67,7 @@ pub trait Theme<D: DrawShared>: ThemeApi {
     ///
     /// At a minimum, a theme must load a font to [`kas::text::fonts`].
     /// The first font loaded (by any theme) becomes the default font.
-    fn init(&mut self, draw: &mut D);
+    fn init(&mut self, shared: &mut DrawShared<DS>);
 
     /// Construct per-window storage
     ///
@@ -105,15 +105,15 @@ pub trait Theme<D: DrawShared>: ThemeApi {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut D,
-        draw: &mut D::Draw,
+        shared: &mut DrawShared<DS>,
+        draw: &mut DS::Draw,
         window: &mut Self::Window,
     ) -> Self::DrawHandle;
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut D,
-        draw: &'a mut D::Draw,
+        shared: &'a mut DrawShared<DS>,
+        draw: &'a mut DS::Draw,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a>;
 
@@ -127,34 +127,34 @@ pub trait Theme<D: DrawShared>: ThemeApi {
 ///
 /// The main reason for this separation is to allow proper handling of
 /// multi-window applications across screens with differing DPIs.
-pub trait Window<D: DrawShared>: 'static {
+pub trait Window<DS: DrawableShared>: 'static {
     /// The associated [`SizeHandle`] implementation.
     #[cfg(not(feature = "gat"))]
     type SizeHandle: SizeHandle;
     #[cfg(feature = "gat")]
-    // TODO(gat): add D: Draw parameter instead of using dyn Draw?
+    // TODO(gat): add DS: Draw parameter instead of using dyn Draw?
     type SizeHandle<'a>: SizeHandle;
 
     /// Construct a [`SizeHandle`] object
     ///
-    /// The `draw` reference is guaranteed to be identical to the one used to
+    /// The `shared` reference is guaranteed to be identical to the one used to
     /// construct this object.
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&mut self, draw: &mut D) -> Self::SizeHandle;
+    unsafe fn size_handle(&mut self, shared: &mut DrawShared<DS>) -> Self::SizeHandle;
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, draw: &'a mut D) -> Self::SizeHandle<'a>;
+    fn size_handle<'a>(&'a mut self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle<'a>;
 
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
-    type Window = <T as Theme<D>>::Window;
-    type Config = <T as Theme<D>>::Config;
+impl<T: Theme<DS>, DS: DrawableShared> Theme<DS> for Box<T> {
+    type Window = <T as Theme<DS>>::Window;
+    type Config = <T as Theme<DS>>::Config;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = <T as Theme<D>>::DrawHandle;
+    type DrawHandle = <T as Theme<DS>>::DrawHandle;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = <T as Theme<D>>::DrawHandle<'a>;
+    type DrawHandle<'a> = <T as Theme<DS>>::DrawHandle<'a>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
         self.deref().config()
@@ -163,8 +163,8 @@ impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
         self.deref_mut().apply_config(config)
     }
 
-    fn init(&mut self, draw: &mut D) {
-        self.deref_mut().init(draw);
+    fn init(&mut self, shared: &mut DrawShared<DS>) {
+        self.deref_mut().init(shared);
     }
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
@@ -177,8 +177,8 @@ impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut D,
-        draw: &mut D::Draw,
+        shared: &mut DrawShared<DS>,
+        draw: &mut DS::Draw,
         window: &mut Self::Window,
     ) -> Self::DrawHandle {
         self.deref().draw_handle(shared, draw, window)
@@ -186,8 +186,8 @@ impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut D,
-        draw: &'a mut D::Draw,
+        shared: &'a mut DrawShared<DS>,
+        draw: &'a mut DS::Draw,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
         self.deref().draw_handle(shared, draw, window)
@@ -198,19 +198,19 @@ impl<T: Theme<D>, D: DrawShared> Theme<D> for Box<T> {
     }
 }
 
-impl<D: DrawShared, W: Window<D>> Window<D> for Box<W> {
+impl<DS: DrawableShared, W: Window<DS>> Window<DS> for Box<W> {
     #[cfg(not(feature = "gat"))]
-    type SizeHandle = <W as Window<D>>::SizeHandle;
+    type SizeHandle = <W as Window<DS>>::SizeHandle;
     #[cfg(feature = "gat")]
-    type SizeHandle<'a> = <W as Window<D>>::SizeHandle<'a>;
+    type SizeHandle<'a> = <W as Window<DS>>::SizeHandle<'a>;
 
     #[cfg(not(feature = "gat"))]
-    unsafe fn size_handle(&mut self, draw: &mut D) -> Self::SizeHandle {
-        self.deref_mut().size_handle(draw)
+    unsafe fn size_handle(&mut self, shared: &mut DrawShared<DS>) -> Self::SizeHandle {
+        self.deref_mut().size_handle(shared)
     }
     #[cfg(feature = "gat")]
-    fn size_handle<'a>(&'a mut self, draw: &'a mut D) -> Self::SizeHandle<'a> {
-        self.deref_mut().size_handle(draw)
+    fn size_handle<'a>(&'a mut self, shared: &'a mut DrawShared<DS>) -> Self::SizeHandle<'a> {
+        self.deref_mut().size_handle(shared)
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {

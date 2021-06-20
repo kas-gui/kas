@@ -7,14 +7,12 @@
 
 use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
-use std::path::Path;
 use wgpu::util::DeviceExt;
 
 use super::*;
 use kas::cast::Cast;
-use kas::draw::{
-    color::Rgba, Draw, DrawRounded, DrawShaded, DrawShared, ImageId, Pass, RegionClass,
-};
+use kas::draw::color::Rgba;
+use kas::draw::*;
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
 
@@ -22,10 +20,11 @@ impl<C: CustomPipe> DrawPipe<C> {
     /// Construct
     pub fn new<CB: CustomPipeBuilder<Pipe = C>>(
         mut custom: CB,
-        device: &wgpu::Device,
-        shaders: &ShaderManager,
+        (device, queue): (wgpu::Device, wgpu::Queue),
         raster_config: &kas_theme::RasterConfig,
     ) -> Self {
+        let shaders = ShaderManager::new(&device);
+
         // Create staging belt and a local pool
         let staging_belt = wgpu::util::StagingBelt::new(1024);
         let local_pool = futures::executor::LocalPool::new();
@@ -56,14 +55,16 @@ impl<C: CustomPipe> DrawPipe<C> {
             ],
         });
 
-        let images = images::Images::new(device, shaders, &bgl_common);
-        let shaded_square = shaded_square::Pipeline::new(device, shaders, &bgl_common);
-        let shaded_round = shaded_round::Pipeline::new(device, shaders, &bgl_common);
-        let flat_round = flat_round::Pipeline::new(device, shaders, &bgl_common);
+        let images = images::Images::new(&device, &shaders, &bgl_common);
+        let shaded_square = shaded_square::Pipeline::new(&device, &shaders, &bgl_common);
+        let shaded_round = shaded_round::Pipeline::new(&device, &shaders, &bgl_common);
+        let flat_round = flat_round::Pipeline::new(&device, &shaders, &bgl_common);
         let custom = custom.build(&device, &bgl_common, RENDER_TEX_FORMAT);
-        let text = text_pipe::Pipeline::new(device, shaders, &bgl_common, raster_config);
+        let text = text_pipe::Pipeline::new(&device, &shaders, &bgl_common, raster_config);
 
         DrawPipe {
+            device,
+            queue,
             local_pool,
             staging_belt,
             bgl_common,
@@ -77,14 +78,16 @@ impl<C: CustomPipe> DrawPipe<C> {
     }
 
     /// Construct per-window state
-    pub fn new_window(&self, device: &wgpu::Device, size: Size) -> DrawWindow<C::Window> {
+    pub fn new_window(&self, size: Size) -> DrawWindow<C::Window> {
         type Scale = [f32; 2];
         let scale_factor: Scale = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        let scale_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SR scale_buf"),
-            contents: bytemuck::cast_slice(&scale_factor),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
+        let scale_buf = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("SR scale_buf"),
+                contents: bytemuck::cast_slice(&scale_factor),
+                usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            });
 
         // Light dir: `(a, b)` where `0 ≤ a < pi/2` is the angle to the screen
         // normal (i.e. `a = 0` is straight at the screen) and `b` is the bearing
@@ -97,13 +100,15 @@ impl<C: CustomPipe> DrawPipe<C> {
         let f = a.0 / a.1;
         let light_norm = [dir.1.sin() * f, -dir.1.cos() * f, 1.0];
 
-        let light_norm_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("SR light_norm_buf"),
-            contents: bytemuck::cast_slice(&light_norm),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
-        });
+        let light_norm_buf = self
+            .device
+            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("SR light_norm_buf"),
+                contents: bytemuck::cast_slice(&light_norm),
+                usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            });
 
-        let bg_common = device.create_bind_group(&wgpu::BindGroupDescriptor {
+        let bg_common = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("common bind group"),
             layout: &self.bgl_common,
             entries: &[
@@ -128,7 +133,7 @@ impl<C: CustomPipe> DrawPipe<C> {
 
         let rect = Rect::new(Coord::ZERO, size);
 
-        let custom = self.custom.new_window(device, size);
+        let custom = self.custom.new_window(&self.device, size);
 
         DrawWindow {
             scale_buf,
@@ -143,63 +148,67 @@ impl<C: CustomPipe> DrawPipe<C> {
         }
     }
 
-    /// Process window resize
-    pub fn resize(
+    /// Wraps [`wgpu::Device::create_swap_chain`]
+    pub fn create_swap_chain(
         &self,
-        window: &mut DrawWindow<C::Window>,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        size: Size,
-    ) {
+        surface: &wgpu::Surface,
+        desc: &wgpu::SwapChainDescriptor,
+    ) -> wgpu::SwapChain {
+        self.device.create_swap_chain(surface, desc)
+    }
+
+    /// Process window resize
+    pub fn resize(&self, window: &mut DrawWindow<C::Window>, size: Size) {
         window.clip_regions[0].size = size;
 
         let scale_factor = [2.0 / size.0 as f32, -2.0 / size.1 as f32];
-        queue.write_buffer(&window.scale_buf, 0, bytemuck::cast_slice(&scale_factor));
+        self.queue
+            .write_buffer(&window.scale_buf, 0, bytemuck::cast_slice(&scale_factor));
 
-        self.custom.resize(&mut window.custom, device, queue, size);
+        self.custom
+            .resize(&mut window.custom, &self.device, &self.queue, size);
 
-        queue.submit(std::iter::empty());
+        self.queue.submit(std::iter::empty());
     }
 
     /// Render batched draw instructions via `rpass`
     pub fn render(
         &mut self,
         window: &mut DrawWindow<C::Window>,
-        device: &mut wgpu::Device,
-        queue: &mut wgpu::Queue,
         frame_view: &wgpu::TextureView,
         clear_color: wgpu::Color,
     ) {
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("render"),
-        });
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("render"),
+            });
 
         self.images.prepare(
             &mut window.images,
-            device,
-            queue,
+            &mut self.device,
             &mut self.staging_belt,
             &mut encoder,
         );
         window
             .shaded_square
-            .write_buffers(device, &mut self.staging_belt, &mut encoder);
+            .write_buffers(&mut self.device, &mut self.staging_belt, &mut encoder);
         window
             .shaded_round
-            .write_buffers(device, &mut self.staging_belt, &mut encoder);
+            .write_buffers(&mut self.device, &mut self.staging_belt, &mut encoder);
         window
             .flat_round
-            .write_buffers(device, &mut self.staging_belt, &mut encoder);
+            .write_buffers(&mut self.device, &mut self.staging_belt, &mut encoder);
         self.custom.prepare(
             &mut window.custom,
-            device,
+            &mut self.device,
             &mut self.staging_belt,
             &mut encoder,
         );
-        self.text.prepare(device, queue);
+        self.text.prepare(&mut self.device, &mut self.queue);
         window
             .text
-            .write_buffers(device, &mut self.staging_belt, &mut encoder);
+            .write_buffers(&mut self.device, &mut self.staging_belt, &mut encoder);
 
         let mut color_attachments = [wgpu::RenderPassColorAttachment {
             view: frame_view,
@@ -238,8 +247,13 @@ impl<C: CustomPipe> DrawPipe<C> {
                     .render(&window.shaded_round, pass, &mut rpass, bg_common);
                 self.flat_round
                     .render(&window.flat_round, pass, &mut rpass, bg_common);
-                self.custom
-                    .render_pass(&mut window.custom, device, pass, &mut rpass, bg_common);
+                self.custom.render_pass(
+                    &mut window.custom,
+                    &mut self.device,
+                    pass,
+                    &mut rpass,
+                    bg_common,
+                );
                 self.text
                     .render(&mut window.text, pass, &mut rpass, bg_common);
             }
@@ -250,14 +264,19 @@ impl<C: CustomPipe> DrawPipe<C> {
         // Fonts and custom pipes use their own render pass(es).
         let size = window.clip_regions[0].size;
 
-        self.custom
-            .render_final(&mut window.custom, device, &mut encoder, frame_view, size);
+        self.custom.render_final(
+            &mut window.custom,
+            &mut self.device,
+            &mut encoder,
+            frame_view,
+            size,
+        );
 
         // Keep only first clip region (which is the entire window)
         window.clip_regions.truncate(1);
 
         self.staging_belt.finish();
-        queue.submit(std::iter::once(encoder.finish()));
+        self.queue.submit(std::iter::once(encoder.finish()));
 
         use futures::task::SpawnExt;
         self.local_pool
@@ -268,21 +287,27 @@ impl<C: CustomPipe> DrawPipe<C> {
     }
 }
 
-impl<C: CustomPipe> DrawShared for DrawPipe<C> {
+impl<C: CustomPipe> DrawableShared for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
 
     #[inline]
-    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        self.images.load_path(path)
+    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
+        self.images.alloc(size)
     }
 
     #[inline]
-    fn remove_image(&mut self, id: ImageId) {
-        self.images.remove(id);
+    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat) {
+        self.images
+            .upload(&self.device, &self.queue, id, data, format);
     }
 
     #[inline]
-    fn image_size(&self, id: ImageId) -> Option<Size> {
+    fn image_free(&mut self, id: ImageId) {
+        self.images.free(id);
+    }
+
+    #[inline]
+    fn image_size(&self, id: ImageId) -> Option<(u32, u32)> {
         self.images.image_size(id)
     }
 

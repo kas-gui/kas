@@ -19,10 +19,8 @@ mod shaders;
 mod text_pipe;
 
 use kas::geom::Rect;
+use shaders::ShaderManager;
 use wgpu::TextureFormat;
-
-pub(crate) use images::ImageError;
-pub(crate) use shaders::ShaderManager;
 
 pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};
 
@@ -34,6 +32,8 @@ pub(crate) const RENDER_TEX_FORMAT: TextureFormat = TextureFormat::Bgra8UnormSrg
 
 /// Shared pipeline data
 pub struct DrawPipe<C> {
+    device: wgpu::Device,
+    queue: wgpu::Queue,
     local_pool: futures::executor::LocalPool,
     staging_belt: wgpu::util::StagingBelt,
     bgl_common: wgpu::BindGroupLayout,

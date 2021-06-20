@@ -78,7 +78,15 @@ impl Pipeline {
                     ],
                 }],
             },
-            &shaders.frag_glyph,
+            wgpu::FragmentState {
+                module: &shaders.frag_glyph,
+                entry_point: "main",
+                targets: &[wgpu::ColorTargetState {
+                    format: super::RENDER_TEX_FORMAT,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrite::ALL,
+                }],
+            },
         );
         Pipeline {
             config: Config::new(

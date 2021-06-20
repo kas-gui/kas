@@ -46,55 +46,55 @@ thread_local! {
     static BACKGROUND: Cell<Rgba> = Cell::new(Rgba::grey(1.0));
 }
 
-impl<D: DrawShared> Theme<D> for CustomTheme
+impl<DS: DrawableShared> Theme<DS> for CustomTheme
 where
-    D::Draw: DrawRounded,
+    DS::Draw: DrawRounded,
 {
     type Config = kas_theme::Config;
-    type Window = <FlatTheme as Theme<D>>::Window;
+    type Window = <FlatTheme as Theme<DS>>::Window;
 
     #[cfg(not(feature = "gat"))]
-    type DrawHandle = <FlatTheme as Theme<D>>::DrawHandle;
+    type DrawHandle = <FlatTheme as Theme<DS>>::DrawHandle;
     #[cfg(feature = "gat")]
-    type DrawHandle<'a> = <FlatTheme as Theme<D>>::DrawHandle<'a>;
+    type DrawHandle<'a> = <FlatTheme as Theme<DS>>::DrawHandle<'a>;
 
     fn config(&self) -> std::borrow::Cow<Self::Config> {
-        Theme::<D>::config(&self.inner)
+        Theme::<DS>::config(&self.inner)
     }
 
     fn apply_config(&mut self, config: &Self::Config) -> TkAction {
-        Theme::<D>::apply_config(&mut self.inner, config)
+        Theme::<DS>::apply_config(&mut self.inner, config)
     }
 
-    fn init(&mut self, draw: &mut D) {
-        self.inner.init(draw);
+    fn init(&mut self, shared: &mut DrawShared<DS>) {
+        self.inner.init(shared);
     }
 
     fn new_window(&self, dpi_factor: f32) -> Self::Window {
-        Theme::<D>::new_window(&self.inner, dpi_factor)
+        Theme::<DS>::new_window(&self.inner, dpi_factor)
     }
 
     fn update_window(&self, window: &mut Self::Window, dpi_factor: f32) {
-        Theme::<D>::update_window(&self.inner, window, dpi_factor);
+        Theme::<DS>::update_window(&self.inner, window, dpi_factor);
     }
 
     #[cfg(not(feature = "gat"))]
     unsafe fn draw_handle(
         &self,
-        shared: &mut D,
-        draw: &mut D::Draw,
+        shared: &mut DrawShared<DS>,
+        draw: &mut DS::Draw,
         window: &mut Self::Window,
     ) -> Self::DrawHandle {
-        Theme::<D>::draw_handle(&self.inner, shared, draw, window)
+        Theme::<DS>::draw_handle(&self.inner, shared, draw, window)
     }
     #[cfg(feature = "gat")]
     fn draw_handle<'a>(
         &'a self,
-        shared: &'a mut D,
-        draw: &'a mut D::Draw,
+        shared: &'a mut DrawShared<DS>,
+        draw: &'a mut DS::Draw,
         window: &'a mut Self::Window,
     ) -> Self::DrawHandle<'a> {
-        Theme::<D>::draw_handle(&self.inner, shared, draw, window)
+        Theme::<DS>::draw_handle(&self.inner, shared, draw, window)
     }
 
     fn clear_color(&self) -> Rgba {
