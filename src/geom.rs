@@ -405,7 +405,7 @@ impl From<(u32, u32)> for Size {
 
 impl From<Size> for (u32, u32) {
     fn from(size: Size) -> (u32, u32) {
-        (size.0.cast(), size.1.cast())
+        (u32::conv(size.0), u32::conv(size.1))
     }
 }
 
