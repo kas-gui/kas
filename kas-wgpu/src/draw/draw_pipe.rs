@@ -5,7 +5,6 @@
 
 //! Drawing API for `kas_wgpu`
 
-use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
 use wgpu::util::DeviceExt;
 
@@ -365,7 +364,12 @@ impl<C: CustomPipe> DrawableShared for DrawPipe<C> {
 
 impl<CW: CustomWindow> Drawable for DrawWindow<CW> {
     #[inline]
-    fn as_any_mut(&mut self) -> &mut dyn Any {
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+
+    #[inline]
+    fn as_drawable_mut(&mut self) -> &mut dyn Drawable {
         self
     }
 

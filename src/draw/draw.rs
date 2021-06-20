@@ -5,27 +5,55 @@
 
 //! Drawing APIs — draw interface
 
-use std::any::Any;
-
 use super::color::Rgba;
 use super::{Pass, RegionClass};
 use crate::geom::{Quad, Rect, Vec2};
+use std::any::Any;
 
 /// Interface over a (local) draw object
-pub struct Draw<'a, D: Drawable> {
-    pub draw: &'a mut D,
+pub struct Draw<'a, D: Any + ?Sized> {
     pass: Pass,
+    pub draw: &'a mut D,
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-impl<'a, D: Drawable> Draw<'a, D> {
+impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
     /// Construct
     pub fn new(draw: &'a mut D, pass: Pass) -> Self {
         Draw { draw, pass }
     }
 }
 
-impl<'a, D: Drawable> Draw<'a, D> {
+impl<'a> Draw<'a, dyn Any> {
+    /// Attempt to downcast to a derived type
+    pub fn downcast<'b, D>(&'b mut self) -> Option<Draw<'b, D>>
+    where
+        'a: 'b,
+        D: Drawable,
+    {
+        let pass = self.pass;
+        self.draw.downcast_mut().map(|draw| Draw { draw, pass })
+    }
+
+    // TODO: support unsized (dyn trait) downcast to boxed value (unsafe)
+}
+
+impl<'a> Draw<'a, dyn Drawable> {
+    /// Attempt to downcast to a derived type
+    pub fn downcast<'b, D>(&'b mut self) -> Option<Draw<'b, D>>
+    where
+        'a: 'b,
+        D: Drawable,
+    {
+        let pass = self.pass;
+        self.draw
+            .as_any_mut()
+            .downcast_mut()
+            .map(|draw| Draw { draw, pass })
+    }
+}
+
+impl<'a, D: Drawable + ?Sized> Draw<'a, D> {
     /// Reborrow with a new lifetime
     pub fn reborrow<'b>(&'b mut self) -> Draw<'b, D>
     where
@@ -33,6 +61,17 @@ impl<'a, D: Drawable> Draw<'a, D> {
     {
         Draw {
             draw: &mut *self.draw,
+            pass: self.pass,
+        }
+    }
+
+    /// Upcast to `dyn Drawable` type
+    pub fn upcast_base<'b>(&'b mut self) -> Draw<'b, dyn Drawable>
+    where
+        'a: 'b,
+    {
+        Draw {
+            draw: self.draw.as_drawable_mut(),
             pass: self.pass,
         }
     }
@@ -74,7 +113,7 @@ impl<'a, D: Drawable> Draw<'a, D> {
     }
 }
 
-impl<'a, D: DrawableRounded> Draw<'a, D> {
+impl<'a, D: DrawableRounded + ?Sized> Draw<'a, D> {
     /// Draw a line with rounded ends and uniform colour
     ///
     /// This command draws a line segment between the points `p1` and `p2`.
@@ -115,7 +154,7 @@ impl<'a, D: DrawableRounded> Draw<'a, D> {
     }
 }
 
-impl<'a, D: DrawableShaded> Draw<'a, D> {
+impl<'a, D: DrawableShaded + ?Sized> Draw<'a, D> {
     /// Add a shaded square to the draw buffer
     pub fn shaded_square(&mut self, rect: Quad, norm: (f32, f32), col: Rgba) {
         self.draw.shaded_square(self.pass, rect, norm, col);
@@ -162,11 +201,14 @@ impl<'a, D: DrawableShaded> Draw<'a, D> {
 /// into methods as required. [`Drawable::add_clip_region`] creates a new [`Pass`].
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 pub trait Drawable: Any {
-    /// Cast self to [`std::any::Any`] reference.
+    /// Cast self to [`Any`] referfence
     ///
     /// A downcast on this value may be used to obtain a reference to a
     /// shell-specific API.
     fn as_any_mut(&mut self) -> &mut dyn Any;
+
+    /// Upcast to dyn drawable
+    fn as_drawable_mut(&mut self) -> &mut dyn Drawable;
 
     /// Add a clip region
     fn add_clip_region(&mut self, pass: Pass, rect: Rect, class: RegionClass) -> Pass;

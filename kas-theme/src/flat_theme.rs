@@ -247,8 +247,8 @@ where
         }
     }
 
-    fn draw_device(&mut self) -> (kas::draw::Pass, Offset, &mut dyn kas::draw::Drawable) {
-        (self.draw.pass(), self.offset, self.draw.draw)
+    fn draw_device<'b>(&'b mut self) -> (Offset, Draw<'b, dyn Drawable>) {
+        (self.offset, self.draw.upcast_base())
     }
 
     fn with_clip_region(
