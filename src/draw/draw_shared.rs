@@ -6,7 +6,7 @@
 //! Drawing APIs — shared draw state
 
 use super::color::Rgba;
-use super::{images, Draw, Drawable, ImageError, ImageFormat, ImageId, Pass};
+use super::{images, Draw, Drawable, ImageError, ImageFormat, ImageId};
 use crate::geom::{Quad, Size, Vec2};
 use crate::text::{Effect, TextDisplay};
 use std::path::Path;
@@ -70,20 +70,13 @@ impl<DS: DrawableShared> DrawShared<DS> {
     }
 
     /// Draw the image in the given `rect`
-    pub fn draw_image(&self, target: Draw<DS::Draw>, pass: Pass, id: ImageId, rect: Quad) {
-        self.draw.draw_image(target, pass, id, rect)
+    pub fn draw_image(&self, target: Draw<DS::Draw>, id: ImageId, rect: Quad) {
+        self.draw.draw_image(target, id, rect)
     }
 
     /// Draw text with a colour
-    pub fn draw_text(
-        &mut self,
-        target: Draw<DS::Draw>,
-        pass: Pass,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-    ) {
-        self.draw.draw_text(target, pass, pos, text, col)
+    pub fn draw_text(&mut self, target: Draw<DS::Draw>, pos: Vec2, text: &TextDisplay, col: Rgba) {
+        self.draw.draw_text(target, pos, text, col)
     }
 
     /// Draw text with a colour and effects
@@ -93,14 +86,13 @@ impl<DS: DrawableShared> DrawShared<DS> {
     pub fn draw_text_col_effects(
         &mut self,
         target: Draw<DS::Draw>,
-        pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
     ) {
         self.draw
-            .draw_text_col_effects(target, pass, pos, text, col, effects)
+            .draw_text_col_effects(target, pos, text, col, effects)
     }
 
     /// Draw text with effects
@@ -111,13 +103,11 @@ impl<DS: DrawableShared> DrawShared<DS> {
     pub fn draw_text_effects(
         &mut self,
         target: Draw<DS::Draw>,
-        pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) {
-        self.draw
-            .draw_text_effects(target, pass, pos, text, effects)
+        self.draw.draw_text_effects(target, pos, text, effects)
     }
 }
 
@@ -146,17 +136,10 @@ pub trait DrawableShared: 'static {
     fn image_size(&self, id: ImageId) -> Option<(u32, u32)>;
 
     /// Draw the image in the given `rect`
-    fn draw_image(&self, target: Draw<Self::Draw>, pass: Pass, id: ImageId, rect: Quad);
+    fn draw_image(&self, target: Draw<Self::Draw>, id: ImageId, rect: Quad);
 
     /// Draw text with a colour
-    fn draw_text(
-        &mut self,
-        target: Draw<Self::Draw>,
-        pass: Pass,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-    );
+    fn draw_text(&mut self, target: Draw<Self::Draw>, pos: Vec2, text: &TextDisplay, col: Rgba);
 
     /// Draw text with a colour and effects
     ///
@@ -165,7 +148,6 @@ pub trait DrawableShared: 'static {
     fn draw_text_col_effects(
         &mut self,
         target: Draw<Self::Draw>,
-        pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
@@ -180,7 +162,6 @@ pub trait DrawableShared: 'static {
     fn draw_text_effects(
         &mut self,
         target: Draw<Self::Draw>,
-        pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],

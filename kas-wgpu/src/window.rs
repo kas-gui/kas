@@ -10,7 +10,7 @@ use std::rc::Rc;
 use std::time::Instant;
 
 use kas::cast::Cast;
-use kas::draw::{Draw, SizeHandle, ThemeApi};
+use kas::draw::{Draw, Pass, SizeHandle, ThemeApi};
 use kas::event::{CursorIcon, ManagerState, UpdateHandle};
 use kas::geom::{Coord, Rect, Size};
 use kas::layout::SolveCache;
@@ -329,7 +329,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
             // Safety: lifetimes do not escape the returned draw_handle value.
             let draw_shared = extend_lifetime(&mut shared.draw);
-            let draw = Draw::new(extend_lifetime(&mut self.draw));
+            let pass = Pass::new(0);
+            let draw = Draw::new(extend_lifetime(&mut self.draw), pass);
             let window = extend_lifetime(&mut self.theme_window);
 
             let mut draw_handle = shared.theme.draw_handle(draw_shared, draw, window);
@@ -338,7 +339,8 @@ impl<C: CustomPipe, T: Theme<DrawPipe<C>>> Window<C, T> {
 
         #[cfg(feature = "gat")]
         {
-            let draw = Draw::new(&mut self.draw);
+            let pass = Pass::new(0);
+            let draw = Draw::new(&mut self.draw, pass);
             let mut draw_handle =
                 shared
                     .theme

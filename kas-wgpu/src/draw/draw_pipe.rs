@@ -312,33 +312,29 @@ impl<C: CustomPipe> DrawableShared for DrawPipe<C> {
     }
 
     #[inline]
-    fn draw_image(&self, target: Draw<Self::Draw>, pass: Pass, id: ImageId, rect: Quad) {
+    fn draw_image(&self, target: Draw<Self::Draw>, id: ImageId, rect: Quad) {
         if let Some((atlas, tex)) = self.images.get_im_atlas_coords(id) {
-            target.draw.images.rect(pass, atlas, tex, rect);
+            target.draw.images.rect(target.pass(), atlas, tex, rect);
         };
     }
 
     #[inline]
-    fn draw_text(
-        &mut self,
-        target: Draw<Self::Draw>,
-        pass: Pass,
-        pos: Vec2,
-        text: &TextDisplay,
-        col: Rgba,
-    ) {
-        target.draw.text.text(&mut self.text, pass, pos, text, col);
+    fn draw_text(&mut self, target: Draw<Self::Draw>, pos: Vec2, text: &TextDisplay, col: Rgba) {
+        target
+            .draw
+            .text
+            .text(&mut self.text, target.pass(), pos, text, col);
     }
 
     fn draw_text_col_effects(
         &mut self,
         target: Draw<Self::Draw>,
-        pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
         col: Rgba,
         effects: &[Effect<()>],
     ) {
+        let pass = target.pass();
         let rects =
             target
                 .draw
@@ -352,11 +348,11 @@ impl<C: CustomPipe> DrawableShared for DrawPipe<C> {
     fn draw_text_effects(
         &mut self,
         target: Draw<Self::Draw>,
-        pass: Pass,
         pos: Vec2,
         text: &TextDisplay,
         effects: &[Effect<Rgba>],
     ) {
+        let pass = target.pass();
         let rects = target
             .draw
             .text
