@@ -14,7 +14,7 @@ use std::path::Path;
 use std::rc::Rc;
 
 use kas::cast::{Cast, CastFloat, ConvFloat};
-use kas::draw::{self, DrawShared, DrawableShared, ImageId, TextClass};
+use kas::draw::{self, DrawShared, DrawableShared, ImageError, ImageId, TextClass};
 use kas::geom::{Size, Vec2};
 use kas::layout::{AxisInfo, FrameRules, Margins, SizeRules, Stretch};
 use kas::text::{fonts::FontId, TextApi, TextApiExt};
@@ -300,8 +300,8 @@ impl<'a, DS: DrawableShared> draw::SizeHandle for SizeHandle<'a, DS> {
         self.w.dims.progress_bar
     }
 
-    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        self.shared.load_image(path)
+    fn image_from_path(&mut self, path: &Path) -> Result<ImageId, ImageError> {
+        self.shared.image_from_path(path)
     }
     fn remove_image(&mut self, id: ImageId) {
         self.shared.remove_image(id);

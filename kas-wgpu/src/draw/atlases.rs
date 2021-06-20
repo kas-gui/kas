@@ -12,7 +12,7 @@ use std::ops::Range;
 use thiserror::Error;
 
 use kas::cast::{Cast, Conv};
-use kas::draw::Pass;
+use kas::draw::{ImageError, Pass};
 use kas::geom::{Quad, Size, Vec2};
 
 fn to_vec2(p: guillotiere::Point) -> Vec2 {
@@ -21,8 +21,14 @@ fn to_vec2(p: guillotiere::Point) -> Vec2 {
 
 /// Allocation failed: too large
 #[derive(Error, Debug)]
-#[error("allocation failed: image is too large")]
+#[error("failed to allocate texture space for image")]
 pub struct AllocError;
+
+impl From<AllocError> for ImageError {
+    fn from(_: AllocError) -> ImageError {
+        ImageError::Allocation
+    }
+}
 
 pub struct Atlas {
     alloc: AtlasAllocator,

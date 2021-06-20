@@ -7,14 +7,12 @@
 
 use std::any::Any;
 use std::f32::consts::FRAC_PI_2;
-use std::path::Path;
 use wgpu::util::DeviceExt;
 
 use super::*;
 use kas::cast::Cast;
-use kas::draw::{
-    color::Rgba, Draw, DrawRounded, DrawShaded, DrawableShared, ImageId, Pass, RegionClass,
-};
+use kas::draw::color::Rgba;
+use kas::draw::*;
 use kas::geom::{Coord, Quad, Rect, Size, Vec2};
 use kas::text::{Effect, TextDisplay};
 
@@ -293,17 +291,23 @@ impl<C: CustomPipe> DrawableShared for DrawPipe<C> {
     type Draw = DrawWindow<C::Window>;
 
     #[inline]
-    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        self.images.load_path(&self.device, &self.queue, path)
+    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
+        self.images.alloc(size)
     }
 
     #[inline]
-    fn remove_image(&mut self, id: ImageId) {
-        self.images.remove(id);
+    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat) {
+        self.images
+            .upload(&self.device, &self.queue, id, data, format);
     }
 
     #[inline]
-    fn image_size(&self, id: ImageId) -> Option<Size> {
+    fn image_free(&mut self, id: ImageId) {
+        self.images.free(id);
+    }
+
+    #[inline]
+    fn image_size(&self, id: ImageId) -> Option<(u32, u32)> {
         self.images.image_size(id)
     }
 

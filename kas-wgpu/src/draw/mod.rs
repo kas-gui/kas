@@ -19,9 +19,8 @@ mod shaders;
 mod text_pipe;
 
 use kas::geom::Rect;
-use wgpu::TextureFormat;
-
 use shaders::ShaderManager;
+use wgpu::TextureFormat;
 
 pub use custom::{CustomPipe, CustomPipeBuilder, CustomWindow, DrawCustom};
 

@@ -40,10 +40,10 @@
 pub mod color;
 
 mod handle;
+mod images;
 mod theme;
 
 use std::any::Any;
-use std::num::NonZeroU32;
 use std::path::Path;
 
 use crate::cast::Cast;
@@ -52,6 +52,7 @@ use crate::text::{Effect, TextDisplay};
 use color::Rgba;
 
 pub use handle::*;
+pub use images::{ImageError, ImageFormat, ImageId};
 pub use theme::*;
 
 /// Pass identifier
@@ -88,56 +89,60 @@ impl Pass {
     }
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ImageId(NonZeroU32);
-
-impl ImageId {
-    /// Construct a new identifier from `u32` value not equal to 0
-    #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
-    #[cfg_attr(doc_cfg, doc(cfg(internal_doc)))]
-    #[inline]
-    pub const fn try_new(n: u32) -> Option<Self> {
-        // We can't use ? or .map in a const fn so do it the tedious way:
-        if let Some(nz) = NonZeroU32::new(n) {
-            Some(ImageId(nz))
-        } else {
-            None
-        }
-    }
-}
-
 /// Interface over a shared draw object
 pub struct DrawShared<DS: DrawableShared> {
     pub draw: DS,
+    images: images::Images,
 }
 
 #[cfg_attr(not(feature = "internal_doc"), doc(hidden))]
 impl<DS: DrawableShared> DrawShared<DS> {
     /// Construct
     pub fn new(draw: DS) -> Self {
-        DrawShared { draw }
+        let images = images::Images::new();
+        DrawShared { draw, images }
     }
 }
 
 impl<DS: DrawableShared> DrawShared<DS> {
+    /// Allocate an image
+    ///
+    /// Use [`DrawShared::upload`] to set contents of the new image.
+    pub fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
+        self.draw.image_alloc(size)
+    }
+
+    /// Upload an image to the GPU
+    ///
+    /// This should be called at least once on each image before display. May be
+    /// called again to update the image contents.
+    pub fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat) {
+        self.draw.image_upload(id, data, format);
+    }
+
     /// Load an image from a path, autodetecting file type
     ///
-    /// TODO: revise error handling?
-    pub fn load_image(
-        &mut self,
-        path: &Path,
-    ) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        self.draw.load_image(path)
+    /// This deduplicates multiple loads of the same path, instead incrementing
+    /// a reference count.
+    pub fn image_from_path(&mut self, path: &Path) -> Result<ImageId, ImageError> {
+        self.images.load_path(&mut self.draw, path)
+    }
+
+    /// Remove a loaded image, by path
+    ///
+    /// This reduces the reference count and frees if zero.
+    pub fn remove_image_from_path(&mut self, path: &Path) {
+        self.images.remove_path(&mut self.draw, path);
     }
 
     /// Free an image
     pub fn remove_image(&mut self, id: ImageId) {
-        self.draw.remove_image(id);
+        self.images.remove_id(&mut self.draw, id);
     }
 
-    /// Get size of image
+    /// Get the size of an image
     pub fn image_size(&self, id: ImageId) -> Option<Size> {
-        self.draw.image_size(id)
+        self.draw.image_size(id).map(|size| size.into())
     }
 
     /// Draw the image in the given `rect`
@@ -199,14 +204,22 @@ impl<DS: DrawableShared> DrawShared<DS> {
 pub trait DrawableShared: 'static {
     type Draw: Draw;
 
-    /// Load an image from a path, autodetecting file type
-    fn load_image(&mut self, path: &Path) -> Result<ImageId, Box<dyn std::error::Error + 'static>>;
+    /// Allocate an image
+    ///
+    /// Use [`DrawableShared::upload`] to set contents of the new image.
+    fn image_alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError>;
 
-    /// Free an image
-    fn remove_image(&mut self, id: ImageId);
+    /// Upload an image to the GPU
+    ///
+    /// This should be called at least once on each image before display. May be
+    /// called again to update the image contents.
+    fn image_upload(&mut self, id: ImageId, data: &[u8], format: ImageFormat);
 
-    /// Get size of image
-    fn image_size(&self, id: ImageId) -> Option<Size>;
+    /// Free an image allocation
+    fn image_free(&mut self, id: ImageId);
+
+    /// Query an image's size
+    fn image_size(&self, id: ImageId) -> Option<(u32, u32)>;
 
     /// Draw the image in the given `rect`
     fn draw_image(&self, window: &mut Self::Draw, pass: Pass, id: ImageId, rect: Quad);

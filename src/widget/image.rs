@@ -89,12 +89,12 @@ impl Image {
             if let Some(id) = self.id {
                 sh.remove_image(id);
             }
-            match sh.load_image(&self.path) {
+            match sh.image_from_path(&self.path) {
                 Ok(id) => {
                     self.id = Some(id);
                     img_size = sh.image(id).unwrap_or(Size::ZERO);
                 }
-                Err(error) => self.handle_load_fail(&*error),
+                Err(error) => self.handle_load_fail(&error),
             };
         });
         mgr.redraw(self.id());
@@ -129,9 +129,9 @@ impl WidgetConfig for Image {
     fn configure(&mut self, mgr: &mut Manager) {
         if self.do_load {
             self.do_load = false;
-            match mgr.size_handle(|sh| sh.load_image(&self.path)) {
+            match mgr.size_handle(|sh| sh.image_from_path(&self.path)) {
                 Ok(id) => self.id = Some(id),
-                Err(error) => self.handle_load_fail(&*error),
+                Err(error) => self.handle_load_fail(&error),
             }
         }
     }

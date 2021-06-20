@@ -77,6 +77,7 @@ mod window;
 
 pub mod view;
 
+pub use self::image::{Image, ImageScaling};
 pub use button::TextButton;
 pub use checkbox::{CheckBox, CheckBoxBare};
 pub use combobox::ComboBox;
@@ -85,7 +86,6 @@ pub use drag::DragHandle;
 pub use editbox::{EditBox, EditField, EditGuard};
 pub use filler::Filler;
 pub use frame::Frame;
-pub use image::{Image, ImageScaling};
 pub use label::{AccelLabel, Label, StrLabel, StringLabel};
 pub use list::*;
 pub use menu::*;

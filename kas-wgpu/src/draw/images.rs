@@ -6,91 +6,43 @@
 //! Images pipeline
 
 use guillotiere::AllocId;
-use image::RgbaImage;
 use std::collections::HashMap;
 use std::mem::size_of;
 use std::num::NonZeroU32;
-use std::path::{Path, PathBuf};
-use thiserror::Error;
 
 use super::{atlases, ShaderManager};
-use kas::draw::{ImageId, Pass};
-use kas::geom::{Quad, Size, Vec2};
-
-/// Image loading errors
-#[derive(Error, Debug)]
-pub enum ImageError {
-    #[error("IO error")]
-    IOError(#[from] std::io::Error),
-    #[error(transparent)]
-    Image(#[from] image::ImageError),
-    #[error(transparent)]
-    Allocation(#[from] atlases::AllocError),
-}
+use kas::draw::{ImageError, ImageFormat, ImageId, Pass};
+use kas::geom::{Quad, Vec2};
 
 #[derive(Debug)]
-pub struct Image {
-    image: RgbaImage,
+struct Image {
     atlas: u32,
     alloc: AllocId,
+    size: (u32, u32),
+    origin: (u32, u32),
     tex_quad: Quad,
 }
 
 impl Image {
-    /// Load an image
-    pub fn load_path(
-        atlas_pipe: &mut atlases::Pipeline<Instance>,
-        path: &Path,
-    ) -> Result<(Self, (u32, u32)), ImageError> {
-        let image = image::io::Reader::open(path)?.decode()?;
-        // TODO(opt): we convert to RGBA8 since this is the only format common
-        // to both the image crate and WGPU. It may not be optimal however.
-        // It also assumes that the image colour space is sRGB.
-        let image = image.into_rgba8();
-        let size = image.dimensions();
-
-        let (atlas, alloc, origin, tex_quad) = atlas_pipe.allocate(size)?;
-
-        let image = Image {
-            image,
-            atlas: atlas,
-            alloc,
-            tex_quad,
-        };
-        log::debug!(
-            "Image: atlas={}, alloc={:?}, tex_quad={:?}",
-            image.atlas,
-            image.alloc,
-            image.tex_quad
-        );
-        Ok((image, origin))
-    }
-
-    /// Query image size
-    pub fn size(&self) -> (u32, u32) {
-        self.image.dimensions()
-    }
-
-    /// Prepare textures
-    pub fn write_to_tex(
+    fn upload(
         &mut self,
         atlas_pipe: &atlases::Pipeline<Instance>,
-        origin: (u32, u32),
         queue: &wgpu::Queue,
+        data: &[u8],
     ) {
         // TODO(opt): use StagingBelt for upload (when supported)? Or our own equivalent.
-        let size = self.image.dimensions();
+        let size = self.size;
         queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: atlas_pipe.get_texture(self.atlas),
                 mip_level: 0,
                 origin: wgpu::Origin3d {
-                    x: origin.0,
-                    y: origin.1,
+                    x: self.origin.0,
+                    y: self.origin.1,
                     z: 0,
                 },
             },
-            &self.image,
+            data,
             wgpu::ImageDataLayout {
                 offset: 0,
                 bytes_per_row: NonZeroU32::new(4 * size.0),
@@ -102,10 +54,6 @@ impl Image {
                 depth_or_array_layers: 1,
             },
         );
-    }
-
-    pub fn tex_quad(&self) -> Quad {
-        self.tex_quad
     }
 }
 
@@ -125,7 +73,6 @@ unsafe impl bytemuck::Pod for Instance {}
 pub struct Images {
     atlas_pipe: atlases::Pipeline<Instance>,
     last_image_n: u32,
-    paths: HashMap<PathBuf, (ImageId, u32)>,
     images: HashMap<ImageId, Image>,
 }
 
@@ -168,7 +115,6 @@ impl Images {
         Images {
             atlas_pipe,
             last_image_n: 0,
-            paths: Default::default(),
             images: Default::default(),
         }
     }
@@ -179,61 +125,52 @@ impl Images {
         ImageId::try_new(n).expect("exhausted image IDs")
     }
 
-    /// Load an image from the file-system
-    pub fn load_path(
-        &mut self,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-        path: &Path,
-    ) -> Result<ImageId, Box<dyn std::error::Error + 'static>> {
-        if let Some((id, ref mut count)) = self.paths.get_mut(path) {
-            *count += 1;
-            return Ok(*id);
-        }
-
+    /// Allocate an image
+    pub fn alloc(&mut self, size: (u32, u32)) -> Result<ImageId, ImageError> {
         let id = self.next_image_id();
-        let (image, origin) = Image::load_path(&mut self.atlas_pipe, path)?;
+        let (atlas, alloc, origin, tex_quad) = self.atlas_pipe.allocate(size)?;
+        let image = Image {
+            atlas,
+            alloc,
+            size,
+            origin,
+            tex_quad,
+        };
         self.images.insert(id, image);
-
-        self.atlas_pipe.prepare(device);
-        if let Some(image) = self.images.get_mut(&id) {
-            image.write_to_tex(&self.atlas_pipe, origin, queue);
-        }
-
-        self.paths.insert(path.to_owned(), (id, 1));
-
         Ok(id)
     }
 
-    /// Reduce usage count for `id` and free if zero
-    pub fn remove(&mut self, id: ImageId) {
-        // We don't have a map from id to path, hence have to iterate. We can
-        // however do a fast check that id is used.
-        if !self.images.contains_key(&id) {
-            return;
+    /// Upload an image to the GPU
+    pub fn upload(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        id: ImageId,
+        data: &[u8],
+        format: ImageFormat,
+    ) {
+        // The atlas pipe allocates textures lazily. Ensure ours is ready:
+        self.atlas_pipe.prepare(device);
+
+        match format {
+            ImageFormat::Rgba8 => (),
         }
 
-        let mut ref_count = 0;
-        self.paths.retain(|_, obj| {
-            if obj.0 == id {
-                obj.1 -= 1;
-                ref_count = obj.1;
-                ref_count != 0
-            } else {
-                true
-            }
-        });
+        if let Some(image) = self.images.get_mut(&id) {
+            image.upload(&self.atlas_pipe, queue, data);
+        }
+    }
 
-        if ref_count == 0 {
-            if let Some(im) = self.images.remove(&id) {
-                self.atlas_pipe.deallocate(im.atlas, im.alloc);
-            }
+    /// Free an image allocation
+    pub fn free(&mut self, id: ImageId) {
+        if let Some(im) = self.images.remove(&id) {
+            self.atlas_pipe.deallocate(im.atlas, im.alloc);
         }
     }
 
     /// Query image size
-    pub fn image_size(&self, id: ImageId) -> Option<Size> {
-        self.images.get(&id).map(|im| im.size().into())
+    pub fn image_size(&self, id: ImageId) -> Option<(u32, u32)> {
+        self.images.get(&id).map(|im| im.size)
     }
 
     /// Write to textures
@@ -249,7 +186,7 @@ impl Images {
 
     /// Get atlas and texture coordinates for an image
     pub fn get_im_atlas_coords(&self, id: ImageId) -> Option<(u32, Quad)> {
-        self.images.get(&id).map(|im| (im.atlas, im.tex_quad()))
+        self.images.get(&id).map(|im| (im.atlas, im.tex_quad))
     }
 
     /// Enqueue render commands
